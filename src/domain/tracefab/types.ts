@@ -31,6 +31,8 @@ export type DocumentStatus = 'uploaded' | 'scanning' | 'available' | 'rejected' 
 export type DocumentVisibility = 'private' | 'shared' | 'public_projection';
 export type VerificationStatus = 'pending' | 'passed' | 'failed' | 'needs_review' | 'expired';
 export type ShareStatus = 'active' | 'revoked' | 'expired';
+export type QualityIssueSeverity = 'info' | 'warning' | 'blocking';
+export type QualityIssueStatus = 'open' | 'acknowledged' | 'resolved' | 'waived';
 export type DppReadinessStatus = 'not_started' | 'in_progress' | 'data_ready' | 'review_required' | 'ready_to_publish' | 'published';
 
 export interface Organization {
@@ -284,6 +286,43 @@ export interface VerificationRecord {
   verifiedBy: UUID | null;
   verifiedAt: ISODateTime | null;
   createdAt: ISODateTime;
+}
+
+export interface DataQualityIssue {
+  id: UUID;
+  ownerOrganizationId: UUID;
+  supplierId: UUID | null;
+  productId: UUID | null;
+  subjectId: UUID;
+  ruleKey: string;
+  ruleVersion: string;
+  severity: QualityIssueSeverity;
+  status: QualityIssueStatus;
+  fieldKey: string | null;
+  message: string;
+  details: Record<string, unknown>;
+  detectedAt: ISODateTime;
+  acknowledgedAt: ISODateTime | null;
+  acknowledgedBy: UUID | null;
+  resolvedAt: ISODateTime | null;
+  resolvedBy: UUID | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
+export interface DataQualityScore {
+  id: UUID;
+  ownerOrganizationId: UUID;
+  supplierId: UUID | null;
+  productId: UUID | null;
+  completeness: number;
+  freshness: number;
+  documentationCoverage: number;
+  consistency: number;
+  missingFields: string[];
+  blockingIssues: Array<Record<string, unknown>>;
+  calculationVersion: string;
+  computedAt: ISODateTime;
 }
 
 export interface DataShareScope {

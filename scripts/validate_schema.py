@@ -14,11 +14,13 @@ SUPPLIER_SQL_PATH = ROOT / "supabase/migrations/20260922010000_tracefab_supplier
 PRODUCT_SQL_PATH = ROOT / "supabase/migrations/20260922020000_tracefab_product_data.sql"
 COLLECTION_SQL_PATH = ROOT / "supabase/migrations/20260922030000_tracefab_data_collection.sql"
 DOCUMENT_SQL_PATH = ROOT / "supabase/migrations/20260922040000_tracefab_documents_certifications.sql"
+QUALITY_SQL_PATH = ROOT / "supabase/migrations/20260922050000_tracefab_data_quality.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
 COLLECTION_SQL = COLLECTION_SQL_PATH.read_text(encoding="utf-8")
 DOCUMENT_SQL = DOCUMENT_SQL_PATH.read_text(encoding="utf-8")
+QUALITY_SQL = QUALITY_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -160,6 +162,27 @@ if "CREATE POLICY verifications_insert_authorized" in DOCUMENT_SQL:
 
 if re.search(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+tracefab_finalize_document_upload.*TO\s+authenticated", DOCUMENT_SQL, re.IGNORECASE):
     errors.append("document finalization is granted to authenticated")
+
+for required_marker in (
+    "CREATE TABLE IF NOT EXISTS data_quality_issues",
+    "quality_issue_severity",
+    "quality_issue_status",
+    "tracefab_validate_quality_issue_subject",
+    "tracefab_upsert_quality_issue",
+    "tracefab_compute_supplier_quality",
+    "tracefab_compute_product_quality",
+    "tracefab_acknowledge_quality_issue",
+    "tracefab_waive_quality_issue",
+    "quality_issues_select_owner",
+):
+    if required_marker not in QUALITY_SQL:
+        errors.append(f"data quality marker missing: {required_marker}")
+
+if "CREATE POLICY quality_issues_insert" in QUALITY_SQL or "CREATE POLICY quality_issues_update" in QUALITY_SQL:
+    errors.append("direct quality issue mutation policy found")
+
+if re.search(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+tracefab_upsert_quality_issue", QUALITY_SQL, re.IGNORECASE):
+    errors.append("internal quality issue upsert function is publicly granted")
 
 if errors:
     print("schema validation failed:")

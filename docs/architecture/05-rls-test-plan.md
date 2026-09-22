@@ -66,6 +66,14 @@ The migration cannot be declared production-ready until these scenarios run agai
 50. Verification records are visible only to the owner, verifier participant or shared certification grantee.
 51. Editing a verified certification resets it to a non-verified state.
 52. Direct authenticated INSERT/UPDATE of verification records is denied by RLS.
+53. A quality issue cannot attach a supplier or product from another organization.
+54. A supplier owner can compute its score; an unrelated organization cannot.
+55. A brand can compute/read a supplier score only with an explicit supplier share.
+56. A quality score snapshot exposes dimensions and blocking issue codes without claiming verification.
+57. A waived issue requires an owner/admin reason and is not silently reopened by the same rule version.
+58. A resolved issue reopens when the same rule detects the defect again.
+59. Direct authenticated INSERT/UPDATE of quality issues and score snapshots is denied by RLS.
+60. A product with expired data or an incomplete composition receives a blocking quality issue.
 
 ## Test status in chantier 1
 
