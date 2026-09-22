@@ -23,6 +23,8 @@ organizations ──< organization_memberships >── auth.users
 
 organizations (brand) ──< brand_supplier_relationships >── organizations (supplier)
 brand_supplier_relationships ──< data_shares
+tracefab_products ──< product_identifiers
+tracefab_products ──< data_points
 tracefab_products ──< dpp_records
 supply_chain_nodes ──< supply_chain_links >── supply_chain_nodes
 ```

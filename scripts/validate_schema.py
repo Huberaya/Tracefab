@@ -11,8 +11,10 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 SQL_PATH = ROOT / "supabase/migrations/20260922000000_tracefab_core.sql"
 SUPPLIER_SQL_PATH = ROOT / "supabase/migrations/20260922010000_tracefab_supplier_profile.sql"
+PRODUCT_SQL_PATH = ROOT / "supabase/migrations/20260922020000_tracefab_product_data.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
+PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -83,9 +85,30 @@ for required_marker in (
 if re.search(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+tracefab_calculate_supplier_profile_completion", SUPPLIER_SQL, re.IGNORECASE):
     errors.append("internal supplier completeness function is publicly granted")
 
+if "CREATE TABLE IF NOT EXISTS product_identifiers" not in PRODUCT_SQL:
+    errors.append("product identifiers table missing")
+
+for required_marker in (
+    "product_data_readiness",
+    "tracefab_validate_product_brand_ownership",
+    "computed_product_fields_are_not_client_writable",
+    "tracefab_validate_product_material_ownership",
+    "tracefab_calculate_product_data_completion",
+    "tracefab_refresh_product_data_readiness",
+    "tracefab_create_product",
+    "tracefab_update_product_data",
+    "tracefab_start_product_revision",
+    "product_identifiers_select_brand",
+):
+    if required_marker not in PRODUCT_SQL:
+        errors.append(f"product data marker missing: {required_marker}")
+
+if re.search(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+tracefab_calculate_product_data_completion", PRODUCT_SQL, re.IGNORECASE):
+    errors.append("internal product readiness function is publicly granted")
+
 if errors:
     print("schema validation failed:")
     print("- " + "\n- ".join(errors))
     sys.exit(1)
 
-print(f"schema validation passed: {len(actual_tables)} tables, {len(policies)} policies")
+print(f"schema validation passed: {len(actual_tables)} core tables, {len(policies)} core policies plus supplier/product migration markers")

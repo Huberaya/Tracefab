@@ -36,6 +36,14 @@ The migration cannot be declared production-ready until these scenarios run agai
 20. A supplier contributor can update profile fields only through the profile function.
 21. A profile below 100 percent cannot be submitted.
 22. A complete profile moves to `submitted`; a later edit reopens it as `in_progress`.
+23. A supplier organization cannot create a product for a brand.
+24. A viewer cannot create or update product data.
+25. A brand cannot attach a private supplier material without an explicit share.
+26. A shared material can be attached only when the share scope contains that material.
+27. A product revision requires a new current-version composition; the previous composition is not copied automatically.
+28. Product readiness changes when identifiers, materials or product data points change.
+29. A product with an expired or `needs_review` data point cannot remain `data_ready`.
+30. `data_ready` does not create public access or a regulatory compliance claim.
 
 ## Test status in chantier 1
 

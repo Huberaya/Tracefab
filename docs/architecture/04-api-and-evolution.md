@@ -7,6 +7,9 @@ The first application can use Supabase directly for low-risk reads and authentic
 - `tracefab_invite_supplier(...)` pour créer le fournisseur invité, la relation et le token hashé ;
 - `tracefab_accept_organization_invitation(...)` pour accepter l'invitation ;
 - `tracefab_submit_supplier_profile(...)` pour soumettre le profil ;
+- `tracefab_create_product(...)` pour créer un produit ;
+- `tracefab_update_product_data(...)` pour modifier ses données ;
+- `tracefab_start_product_revision(...)` pour commencer une nouvelle version ;
 - créer une relation brand/supplier hors du parcours d'invitation ;
 - generate signed document URLs;
 - submit a request;
@@ -25,6 +28,9 @@ When the HTTP API is introduced:
 /api/v1/suppliers/{supplierId}/profile
 /api/v1/suppliers/{supplierId}/sites
 /api/v1/products
+/api/v1/products/{productId}/data
+/api/v1/products/{productId}/materials
+/api/v1/products/{productId}/identifiers
 /api/v1/data-requests
 /api/v1/documents
 /api/v1/dpp-records

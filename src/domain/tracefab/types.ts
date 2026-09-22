@@ -1,9 +1,9 @@
 /**
  * Canonical domain types for Tracefab.
  *
- * These types intentionally mirror the first Supabase migration. They are
- * domain contracts, not generated database types yet. Database type
- * generation will be introduced once the schema is connected to a project.
+ * These types intentionally mirror the Tracefab Supabase migrations. They are
+ * domain contracts, not generated database types yet. Database type generation
+ * will be introduced once the schema is connected to a project.
  */
 
 export type UUID = string;
@@ -18,6 +18,8 @@ export type RelationshipStatus = 'invited' | 'active' | 'suspended' | 'ended';
 export type SupplierOnboardingStatus = 'not_started' | 'invited' | 'in_progress' | 'submitted' | 'approved' | 'rejected';
 export type SupplierEmployeeCountRange = '1_10' | '11_50' | '51_250' | '251_1000' | '1001_plus';
 export type ProductStatus = 'draft' | 'active' | 'archived';
+export type ProductDataReadiness = 'not_started' | 'in_progress' | 'data_ready' | 'needs_review';
+export type ProductIdentifierType = 'gtin' | 'ean' | 'upc' | 'internal';
 export type NodeType = 'product' | 'material' | 'organization' | 'site' | 'process';
 export type SupplyChainLinkType = 'sourced_from' | 'transformed_at' | 'manufactured_at' | 'supplied_by' | 'contains' | 'next_step';
 export type DataRequestStatus = 'draft' | 'sent' | 'in_progress' | 'submitted' | 'changes_requested' | 'approved' | 'cancelled';
@@ -96,12 +98,44 @@ export interface TracefabProduct {
   sku: string | null;
   name: string;
   category: string | null;
+  description: string | null;
+  productFamily: string | null;
+  colorName: string | null;
+  sizeRange: string[];
+  countryOfDesign: string | null;
+  countryOfManufacture: string | null;
+  weightGrams: number | null;
+  careInstructions: Record<string, unknown>;
   status: ProductStatus;
   version: number;
+  dataReadiness: ProductDataReadiness;
+  dataCompletion: number;
+  dataReadyAt: ISODateTime | null;
+  lastDataUpdatedBy: UUID | null;
   publicSlug: string | null;
   createdBy: UUID | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
+}
+
+export interface ProductMaterial {
+  productId: UUID;
+  materialId: UUID;
+  materialRole: string;
+  percentage: number | null;
+  unit: string;
+  productVersion: number;
+  createdAt: ISODateTime;
+}
+
+export interface ProductIdentifier {
+  id: UUID;
+  productId: UUID;
+  identifierType: ProductIdentifierType;
+  identifierValue: string;
+  isPrimary: boolean;
+  createdBy: UUID | null;
+  createdAt: ISODateTime;
 }
 
 export interface Material {
