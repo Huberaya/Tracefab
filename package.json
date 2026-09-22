@@ -1,0 +1,13 @@
+{
+  "name": "tracefab",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tracefab supplier data platform foundations",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "schema:static": "python3 scripts/validate_schema.py"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
