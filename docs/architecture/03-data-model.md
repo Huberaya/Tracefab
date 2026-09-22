@@ -46,7 +46,7 @@ The status is deliberately not boolean. A certificate PDF can be present while t
 
 ## Request model
 
-`data_requests` and `data_request_items` are the first version of a configurable collection engine. Questionnaire templates are kept in the application layer for now; a future migration can promote them to database configuration after the MVP questions are validated with pilot suppliers.
+`data_requests`, `data_request_items` and versioned `data_responses` form the first collection engine. A request is bound to an active brand-supplier relationship, can be idempotently created, progresses from draft to review, and tracks required-item completion. Questionnaire templates are kept in the application layer for now; a future migration can promote them to database configuration after the MVP questions are validated with pilot suppliers.
 
 ## Graph model
 

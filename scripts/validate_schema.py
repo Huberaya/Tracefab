@@ -12,9 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SQL_PATH = ROOT / "supabase/migrations/20260922000000_tracefab_core.sql"
 SUPPLIER_SQL_PATH = ROOT / "supabase/migrations/20260922010000_tracefab_supplier_profile.sql"
 PRODUCT_SQL_PATH = ROOT / "supabase/migrations/20260922020000_tracefab_product_data.sql"
+COLLECTION_SQL_PATH = ROOT / "supabase/migrations/20260922030000_tracefab_data_collection.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
+COLLECTION_SQL = COLLECTION_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -105,6 +107,30 @@ for required_marker in (
 
 if re.search(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+tracefab_calculate_product_data_completion", PRODUCT_SQL, re.IGNORECASE):
     errors.append("internal product readiness function is publicly granted")
+
+for required_marker in (
+    "relationship_id UUID REFERENCES brand_supplier_relationships",
+    "idx_responses_current_item",
+    "tracefab_validate_data_request_integrity",
+    "tracefab_validate_data_response_integrity",
+    "tracefab_validate_data_request_item_mutation",
+    "tracefab_create_data_request",
+    "tracefab_add_data_request_item",
+    "tracefab_send_data_request",
+    "tracefab_submit_data_response",
+    "tracefab_submit_data_request",
+    "tracefab_review_data_response",
+    "requests_update_brand",
+    "request_items_update_brand",
+):
+    if required_marker not in COLLECTION_SQL:
+        errors.append(f"data collection marker missing: {required_marker}")
+
+if "CREATE POLICY responses_insert_supplier" in COLLECTION_SQL or "CREATE POLICY responses_update_supplier" in COLLECTION_SQL:
+    errors.append("direct authenticated response mutation policy found")
+
+if re.search(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+tracefab_refresh_data_request_progress", COLLECTION_SQL, re.IGNORECASE):
+    errors.append("internal data request progress function is publicly granted")
 
 if errors:
     print("schema validation failed:")

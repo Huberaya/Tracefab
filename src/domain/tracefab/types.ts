@@ -171,6 +171,63 @@ export interface DataPoint {
   updatedAt: ISODateTime;
 }
 
+export interface DataRequest {
+  id: UUID;
+  brandOrganizationId: UUID;
+  supplierOrganizationId: UUID;
+  relationshipId: UUID;
+  productId: UUID | null;
+  title: string;
+  questionnaireKey: string;
+  questionnaireVersion: string;
+  status: DataRequestStatus;
+  dueAt: ISODateTime | null;
+  idempotencyKey: string | null;
+  completionPercentage: number;
+  createdBy: UUID | null;
+  submittedAt: ISODateTime | null;
+  closedAt: ISODateTime | null;
+  lastActivityAt: ISODateTime | null;
+  reviewedAt: ISODateTime | null;
+  reviewedBy: UUID | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
+export interface DataRequestItem {
+  id: UUID;
+  dataRequestId: UUID;
+  fieldKey: string;
+  label: string;
+  dataType: DataType;
+  required: boolean;
+  evidenceRequired: boolean;
+  helpText: string | null;
+  validationRules: Record<string, unknown>;
+  evidenceKinds: string[];
+  visibility: Record<string, unknown>;
+  status: DataRequestItemStatus;
+  sortOrder: number;
+  createdAt: ISODateTime;
+}
+
+export interface DataResponse {
+  id: UUID;
+  dataRequestItemId: UUID;
+  value: unknown;
+  dataType: DataType;
+  status: DataValueStatus;
+  sourceDocumentId: UUID | null;
+  respondedBy: UUID | null;
+  supersedesId: UUID | null;
+  responseVersion: number;
+  isCurrent: boolean;
+  reviewComment: string | null;
+  submittedAt: ISODateTime;
+  reviewedAt: ISODateTime | null;
+  reviewedBy: UUID | null;
+}
+
 export interface Document {
   id: UUID;
   ownerOrganizationId: UUID;

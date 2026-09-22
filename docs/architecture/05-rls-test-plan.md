@@ -44,6 +44,16 @@ The migration cannot be declared production-ready until these scenarios run agai
 28. Product readiness changes when identifiers, materials or product data points change.
 29. A product with an expired or `needs_review` data point cannot remain `data_ready`.
 30. `data_ready` does not create public access or a regulatory compliance claim.
+31. A brand cannot create a data request without an active brand-supplier relationship.
+32. A supplier cannot see a request while it is still `draft`.
+33. A brand cannot modify request items after the request is sent.
+34. A supplier cannot modify request definitions or review statuses through direct client writes.
+35. A response revision supersedes exactly one current response and preserves history.
+36. A response document must belong to the supplier organization that responds.
+37. A supplier cannot submit a request with missing required items.
+38. A reviewer can mark a response `verified_by_reviewer` or `needs_review`, but not `certified_by_third_party`.
+39. A negative review moves the request to `changes_requested`; all required accepted items can move it to `approved`.
+40. Request idempotency returns the existing draft instead of creating a duplicate.
 
 ## Test status in chantier 1
 
