@@ -74,6 +74,14 @@ The migration cannot be declared production-ready until these scenarios run agai
 58. A resolved issue reopens when the same rule detects the defect again.
 59. Direct authenticated INSERT/UPDATE of quality issues and score snapshots is denied by RLS.
 60. A product with expired data or an incomplete composition receives a blocking quality issue.
+61. A traceability node cannot contain multiple subject references or a mismatched node type.
+62. A brand cannot add a private supplier material or site to a graph without the matching share.
+63. A graph link cannot self-reference or attach a product node from another product.
+64. Direct authenticated node/link INSERT or UPDATE is denied by RLS.
+65. A graph source document is accepted only when the declaring user can access it.
+66. The graph projection hides evidence document identifiers after a share is revoked.
+67. A supplier cannot read the full brand product graph solely because one node is shared.
+68. Traceability statuses remain declared/documented unless a separate verification workflow changes them.
 
 ## Test status in chantier 1
 

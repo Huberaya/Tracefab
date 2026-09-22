@@ -20,6 +20,7 @@ The first application can use Supabase directly for low-risk reads and authentic
 - `tracefab_review_certification(...)` pour une revue interne ou tierce ;
 - `tracefab_compute_supplier_quality(...)` et `tracefab_compute_product_quality(...)` ;
 - `tracefab_acknowledge_quality_issue(...)` et `tracefab_waive_quality_issue(...)` ;
+- `tracefab_create_supply_chain_node(...)`, `tracefab_add_supply_chain_link(...)` et `tracefab_get_product_traceability(...)` ;
 - créer une relation brand/supplier hors du parcours d'invitation ;
 - generate signed document URLs;
 - submit a request;
@@ -50,6 +51,9 @@ When the HTTP API is introduced:
 /api/v1/quality/suppliers/{supplierId}
 /api/v1/quality/products/{productId}
 /api/v1/quality/issues
+/api/v1/products/{productId}/traceability
+/api/v1/products/{productId}/traceability/nodes
+/api/v1/products/{productId}/traceability/links
 /api/v1/dpp-records
 ```
 

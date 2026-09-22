@@ -50,7 +50,7 @@ The status is deliberately not boolean. A certificate PDF can be present while t
 
 ## Graph model
 
-`supply_chain_nodes` and `supply_chain_links` support a product-oriented graph without forcing the first version to implement a full graph database. PostgreSQL adjacency tables are sufficient for the initial scale and preserve transactionality with products, materials and evidence.
+`supply_chain_nodes` and `supply_chain_links` support a product-oriented graph without forcing the first version to implement a full graph database. PostgreSQL adjacency tables are sufficient for the initial scale and preserve transactionality with products, materials and evidence. Chantier 7 adds node/link integrity, provenance statuses, controlled mutations and an authorized graph projection.
 
 ## DPP model
 

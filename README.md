@@ -4,9 +4,9 @@ Infrastructure de données fournisseurs pour la traçabilité textile, la qualit
 
 ## Statut
 
-**Chantier 6 — Data Quality**
+**Chantier 7 — Traceability**
 
-Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications et le premier moteur explicable de qualité des données. Les interfaces Brand Console, Supplier Portal et Quality Center restent à construire.
+Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité et le premier graphe de traçabilité produit. Les interfaces Brand Console, Supplier Portal et Quality Center restent à construire.
 
 ## Principes
 
@@ -32,6 +32,7 @@ docs/architecture/
   08-data-collection.md
   09-documents-and-certifications.md
   10-data-quality.md
+  11-traceability.md
 
 scripts/
   validate_schema.py
@@ -47,6 +48,7 @@ supabase/migrations/
   20260922030000_tracefab_data_collection.sql
   20260922040000_tracefab_documents_certifications.sql
   20260922050000_tracefab_data_quality.sql
+  20260922060000_tracefab_traceability.sql
 ```
 
 ## Appliquer la migration
@@ -67,7 +69,7 @@ Avant toute application en production :
 4. exécuter les tests RLS d'intégration ;
 5. configurer Storage privé dans un chantier dédié.
 
-La création initiale d'une organisation et de son membership owner passe par `tracefab_create_organization(...)`. Pour le parcours fournisseur, `tracefab_invite_supplier(...)`, `tracefab_accept_organization_invitation(...)` et `tracefab_submit_supplier_profile(...)` sont les fonctions de transition sécurisées. Pour les produits, `tracefab_create_product(...)`, `tracefab_update_product_data(...)` et `tracefab_start_product_revision(...)` centralisent les mutations sensibles. Pour la collecte, `tracefab_create_data_request(...)`, `tracefab_send_data_request(...)`, `tracefab_submit_data_response(...)`, `tracefab_submit_data_request(...)` et `tracefab_review_data_response(...)` pilotent le workflow. Pour les documents et certifications, `tracefab_register_document(...)`, `tracefab_finalize_document_upload(...)`, `tracefab_register_certification(...)` et `tracefab_review_certification(...)` encadrent les transitions. Pour la qualité, `tracefab_compute_supplier_quality(...)`, `tracefab_compute_product_quality(...)`, `tracefab_acknowledge_quality_issue(...)` et `tracefab_waive_quality_issue(...)` produisent et traitent les findings. La génération du token brut, l'envoi email, les notifications, le scan antivirus, les recalculs asynchrones et les imports catalogue restent à implémenter dans des fonctions ou services de confiance.
+La création initiale d'une organisation et de son membership owner passe par `tracefab_create_organization(...)`. Pour le parcours fournisseur, `tracefab_invite_supplier(...)`, `tracefab_accept_organization_invitation(...)` et `tracefab_submit_supplier_profile(...)` sont les fonctions de transition sécurisées. Pour les produits, `tracefab_create_product(...)`, `tracefab_update_product_data(...)` et `tracefab_start_product_revision(...)` centralisent les mutations sensibles. Pour la collecte, `tracefab_create_data_request(...)`, `tracefab_send_data_request(...)`, `tracefab_submit_data_response(...)`, `tracefab_submit_data_request(...)` et `tracefab_review_data_response(...)` pilotent le workflow. Pour les documents et certifications, `tracefab_register_document(...)`, `tracefab_finalize_document_upload(...)`, `tracefab_register_certification(...)` et `tracefab_review_certification(...)` encadrent les transitions. Pour la qualité, `tracefab_compute_supplier_quality(...)`, `tracefab_compute_product_quality(...)`, `tracefab_acknowledge_quality_issue(...)` et `tracefab_waive_quality_issue(...)` produisent et traitent les findings. Pour la traçabilité, `tracefab_create_supply_chain_node(...)`, `tracefab_add_supply_chain_link(...)` et `tracefab_get_product_traceability(...)` encadrent le graphe produit. La génération du token brut, l'envoi email, les notifications, le scan antivirus, les recalculs asynchrones et les imports catalogue restent à implémenter dans des fonctions ou services de confiance.
 
 ## Ce qui n'est pas encore implémenté
 

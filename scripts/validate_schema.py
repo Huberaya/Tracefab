@@ -15,12 +15,14 @@ PRODUCT_SQL_PATH = ROOT / "supabase/migrations/20260922020000_tracefab_product_d
 COLLECTION_SQL_PATH = ROOT / "supabase/migrations/20260922030000_tracefab_data_collection.sql"
 DOCUMENT_SQL_PATH = ROOT / "supabase/migrations/20260922040000_tracefab_documents_certifications.sql"
 QUALITY_SQL_PATH = ROOT / "supabase/migrations/20260922050000_tracefab_data_quality.sql"
+TRACEABILITY_SQL_PATH = ROOT / "supabase/migrations/20260922060000_tracefab_traceability.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
 COLLECTION_SQL = COLLECTION_SQL_PATH.read_text(encoding="utf-8")
 DOCUMENT_SQL = DOCUMENT_SQL_PATH.read_text(encoding="utf-8")
 QUALITY_SQL = QUALITY_SQL_PATH.read_text(encoding="utf-8")
+TRACEABILITY_SQL = TRACEABILITY_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -183,6 +185,23 @@ if "CREATE POLICY quality_issues_insert" in QUALITY_SQL or "CREATE POLICY qualit
 
 if re.search(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+tracefab_upsert_quality_issue", QUALITY_SQL, re.IGNORECASE):
     errors.append("internal quality issue upsert function is publicly granted")
+
+for required_marker in (
+    "tracefab_validate_supply_chain_node",
+    "tracefab_validate_supply_chain_link",
+    "tracefab_create_supply_chain_node",
+    "tracefab_update_supply_chain_node",
+    "tracefab_add_supply_chain_link",
+    "tracefab_update_supply_chain_link",
+    "tracefab_get_product_traceability",
+    "nodes_select_traceability_graph",
+    "links_select_traceability_graph",
+):
+    if required_marker not in TRACEABILITY_SQL:
+        errors.append(f"traceability marker missing: {required_marker}")
+
+if "CREATE POLICY nodes_insert_authorized" in TRACEABILITY_SQL or "CREATE POLICY links_insert_brand" in TRACEABILITY_SQL:
+    errors.append("direct traceability mutation policy found")
 
 if errors:
     print("schema validation failed:")

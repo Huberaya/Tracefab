@@ -140,6 +140,41 @@ export interface ProductIdentifier {
   createdAt: ISODateTime;
 }
 
+export interface SupplyChainNode {
+  id: UUID;
+  nodeType: NodeType;
+  organizationId: UUID | null;
+  supplierSiteId: UUID | null;
+  productId: UUID | null;
+  materialId: UUID | null;
+  processCode: string | null;
+  label: string;
+  metadata: Record<string, unknown>;
+  status: DataValueStatus;
+  sourceDocumentId: UUID | null;
+  declaredBy: UUID | null;
+  observedAt: ISODate | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
+export interface SupplyChainLink {
+  id: UUID;
+  productId: UUID;
+  sourceNodeId: UUID;
+  targetNodeId: UUID;
+  linkType: SupplyChainLinkType;
+  sequenceNumber: number | null;
+  validFrom: ISODate | null;
+  validUntil: ISODate | null;
+  evidenceDocumentId: UUID | null;
+  metadata: Record<string, unknown>;
+  status: DataValueStatus;
+  declaredBy: UUID | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
 export interface Material {
   id: UUID;
   ownerOrganizationId: UUID;
