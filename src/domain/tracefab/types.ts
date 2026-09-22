@@ -34,6 +34,7 @@ export type ShareStatus = 'active' | 'revoked' | 'expired';
 export type QualityIssueSeverity = 'info' | 'warning' | 'blocking';
 export type QualityIssueStatus = 'open' | 'acknowledged' | 'resolved' | 'waived';
 export type DppReadinessStatus = 'not_started' | 'in_progress' | 'data_ready' | 'review_required' | 'ready_to_publish' | 'published';
+export type DppProfileStatus = 'draft' | 'active' | 'retired';
 
 export interface Organization {
   id: UUID;
@@ -385,15 +386,32 @@ export interface DataShare {
   createdAt: ISODateTime;
 }
 
+export interface DppRequirementProfile {
+  id: UUID;
+  profileKey: string;
+  profileVersion: string;
+  name: string;
+  status: DppProfileStatus;
+  definition: Record<string, unknown>;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
 export interface DppRecord {
   id: UUID;
   productId: UUID;
   productVersion: number;
   requirementProfileKey: string;
   requirementProfileVersion: string;
+  requirementProfileId: UUID | null;
   readinessStatus: DppReadinessStatus;
-  missingFields: string[];
-  blockingIssues: string[];
+  missingFields: Array<Record<string, unknown>>;
+  blockingIssues: Array<Record<string, unknown>>;
+  publicProjection: Record<string, unknown>;
   computedAt: ISODateTime;
   computedBy: UUID | null;
+  inputFingerprint: string | null;
+  sourceSnapshot: Record<string, unknown>;
+  reviewedAt: ISODateTime | null;
+  reviewedBy: UUID | null;
 }

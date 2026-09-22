@@ -21,12 +21,13 @@ The first application can use Supabase directly for low-risk reads and authentic
 - `tracefab_compute_supplier_quality(...)` et `tracefab_compute_product_quality(...)` ;
 - `tracefab_acknowledge_quality_issue(...)` et `tracefab_waive_quality_issue(...)` ;
 - `tracefab_create_supply_chain_node(...)`, `tracefab_add_supply_chain_link(...)` et `tracefab_get_product_traceability(...)` ;
+- `tracefab_compute_dpp_readiness(...)` et `tracefab_mark_dpp_ready_to_publish(...)` ;
 - créer une relation brand/supplier hors du parcours d'invitation ;
 - generate signed document URLs;
 - submit a request;
 - compute a data-quality score;
-- compute DPP readiness;
-- publish a public projection.
+- compute the internal DPP readiness projection;
+- do not publish a public projection in Chantier 8.
 
 ## API conventions
 
@@ -54,6 +55,7 @@ When the HTTP API is introduced:
 /api/v1/products/{productId}/traceability
 /api/v1/products/{productId}/traceability/nodes
 /api/v1/products/{productId}/traceability/links
+/api/v1/products/{productId}/dpp-readiness
 /api/v1/dpp-records
 ```
 

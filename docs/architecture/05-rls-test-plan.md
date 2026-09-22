@@ -82,6 +82,13 @@ The migration cannot be declared production-ready until these scenarios run agai
 66. The graph projection hides evidence document identifiers after a share is revoked.
 67. A supplier cannot read the full brand product graph solely because one node is shared.
 68. Traceability statuses remain declared/documented unless a separate verification workflow changes them.
+69. An inactive or retired DPP profile cannot be used for readiness computation.
+70. A product readiness record lists missing requirements and blocking issues with its profile version.
+71. DPP readiness returns `review_required` when the latest product quality snapshot has blocking issues.
+72. A product cannot be marked `ready_to_publish` unless its computed status is `data_ready`.
+73. Computing readiness resets a previous internal review when source data changes.
+74. DPP records cannot be inserted or updated directly by the authenticated client.
+75. `public_projection` remains empty and no anonymous DPP read policy exists in chantier 8.
 
 ## Test status in chantier 1
 

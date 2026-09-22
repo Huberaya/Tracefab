@@ -7,7 +7,8 @@
 - `tracefab_products`: brand-owned product reference.
 - `data_requests`: a brand's request for a supplier dataset.
 - `documents`: private evidence owned by an organization.
-- `dpp_records`: versioned readiness calculation for a product.
+- `dpp_requirement_profiles`: versioned, configurable operational readiness requirements.
+- `dpp_records`: versioned readiness calculation for a product, including missing requirements, blockers, input fingerprint and source snapshot.
 
 ## Relationship map
 
@@ -25,7 +26,7 @@ organizations (brand) ──< brand_supplier_relationships >── organizations
 brand_supplier_relationships ──< data_shares
 tracefab_products ──< product_identifiers
 tracefab_products ──< data_points
-tracefab_products ──< dpp_records
+tracefab_products ──< dpp_records >── dpp_requirement_profiles
 supply_chain_nodes ──< supply_chain_links >── supply_chain_nodes
 ```
 
@@ -52,9 +53,13 @@ The status is deliberately not boolean. A certificate PDF can be present while t
 
 `supply_chain_nodes` and `supply_chain_links` support a product-oriented graph without forcing the first version to implement a full graph database. PostgreSQL adjacency tables are sufficient for the initial scale and preserve transactionality with products, materials and evidence. Chantier 7 adds node/link integrity, provenance statuses, controlled mutations and an authorized graph projection.
 
-## DPP model
+## DPP readiness model
 
-`dpp_records` stores the result of a computation, not the only source of truth. The product and data-point tables remain authoritative. A new regulatory profile creates a new computation version rather than a destructive schema change.
+`dpp_requirement_profiles` stores versioned operational profiles. The initial `textile_readiness_mvp` profile is explicitly not a final regulatory requirement set.
+
+`dpp_records` stores the result of a computation, not the only source of truth. The product, composition, quality and traceability tables remain authoritative. Each record retains the profile version, explainable `missing_fields`, `blocking_issues`, an input fingerprint and a source snapshot. A new profile version creates a new computation version rather than a destructive schema change.
+
+`data_ready` means that the configured operational checks are met. It does not mean verified, certified or legally compliant. `ready_to_publish` is a controlled review state only; public projection remains empty in Chantier 8.
 
 ## Deliberate exclusions from this migration
 

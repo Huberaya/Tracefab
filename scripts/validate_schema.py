@@ -16,6 +16,7 @@ COLLECTION_SQL_PATH = ROOT / "supabase/migrations/20260922030000_tracefab_data_c
 DOCUMENT_SQL_PATH = ROOT / "supabase/migrations/20260922040000_tracefab_documents_certifications.sql"
 QUALITY_SQL_PATH = ROOT / "supabase/migrations/20260922050000_tracefab_data_quality.sql"
 TRACEABILITY_SQL_PATH = ROOT / "supabase/migrations/20260922060000_tracefab_traceability.sql"
+DPP_SQL_PATH = ROOT / "supabase/migrations/20260922070000_tracefab_dpp_readiness.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
@@ -23,6 +24,7 @@ COLLECTION_SQL = COLLECTION_SQL_PATH.read_text(encoding="utf-8")
 DOCUMENT_SQL = DOCUMENT_SQL_PATH.read_text(encoding="utf-8")
 QUALITY_SQL = QUALITY_SQL_PATH.read_text(encoding="utf-8")
 TRACEABILITY_SQL = TRACEABILITY_SQL_PATH.read_text(encoding="utf-8")
+DPP_SQL = DPP_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -202,6 +204,23 @@ for required_marker in (
 
 if "CREATE POLICY nodes_insert_authorized" in TRACEABILITY_SQL or "CREATE POLICY links_insert_brand" in TRACEABILITY_SQL:
     errors.append("direct traceability mutation policy found")
+
+for required_marker in (
+    "CREATE TABLE IF NOT EXISTS dpp_requirement_profiles",
+    "textile_readiness_mvp",
+    "tracefab_dpp_requirement_met",
+    "tracefab_compute_dpp_readiness",
+    "tracefab_mark_dpp_ready_to_publish",
+    "dpp_profiles_select_authenticated",
+    "REVOKE INSERT, UPDATE ON dpp_records FROM authenticated",
+):
+    if required_marker not in DPP_SQL:
+        errors.append(f"DPP readiness marker missing: {required_marker}")
+
+if "CREATE POLICY dpp_insert_brand" in DPP_SQL:
+    errors.append("direct DPP record insert policy found")
+if re.search(r"CREATE POLICY.*ON dpp_records.*TO anon", DPP_SQL, re.IGNORECASE):
+    errors.append("anonymous DPP policy found")
 
 if errors:
     print("schema validation failed:")

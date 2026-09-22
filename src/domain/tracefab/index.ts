@@ -5,3 +5,4 @@ export * from './data-collection';
 export * from './documents-certifications';
 export * from './data-quality';
 export * from './traceability';
+export * from './dpp-readiness';
