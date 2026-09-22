@@ -242,6 +242,47 @@ export interface Document {
   visibility: DocumentVisibility;
   expiresAt: ISODate | null;
   uploadedBy: UUID | null;
+  metadata: Record<string, unknown>;
+  availableAt: ISODateTime | null;
+  deletedAt: ISODateTime | null;
+  deletedBy: UUID | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
+export interface Certification {
+  id: UUID;
+  ownerOrganizationId: UUID;
+  supplierId: UUID | null;
+  supplierSiteId: UUID | null;
+  productId: UUID | null;
+  standardName: string;
+  standardCode: string | null;
+  issuerName: string | null;
+  certificateNumber: string | null;
+  issuedAt: ISODate | null;
+  expiresAt: ISODate | null;
+  documentId: UUID | null;
+  status: DataValueStatus;
+  createdBy: UUID | null;
+  lastVerifiedAt: ISODateTime | null;
+  lastVerifiedBy: UUID | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
+export interface VerificationRecord {
+  id: UUID;
+  ownerOrganizationId: UUID;
+  dataPointId: UUID | null;
+  documentId: UUID | null;
+  certificationId: UUID | null;
+  verifierOrganizationId: UUID | null;
+  method: string;
+  status: VerificationStatus;
+  notes: string | null;
+  verifiedBy: UUID | null;
+  verifiedAt: ISODateTime | null;
   createdAt: ISODateTime;
 }
 

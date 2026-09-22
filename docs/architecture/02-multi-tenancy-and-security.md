@@ -55,8 +55,7 @@ No migration creates public buckets or public read policies.
 
 ## Operational requirements still pending
 
-- Supabase Storage bucket creation and private object policies;
-- signed URL Edge Function;
+- signed URL Edge Function using the private Storage policies delivered in chantier 5;
 - invitation token hashing and acceptance flow;
 - rate limits and abuse protection;
 - malware scanning;

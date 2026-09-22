@@ -54,6 +54,18 @@ The migration cannot be declared production-ready until these scenarios run agai
 38. A reviewer can mark a response `verified_by_reviewer` or `needs_review`, but not `certified_by_third_party`.
 39. A negative review moves the request to `changes_requested`; all required accepted items can move it to `approved`.
 40. Request idempotency returns the existing draft instead of creating a duplicate.
+41. Anonymous users cannot access the `tracefab-private` Storage bucket.
+42. An object cannot be uploaded without a pre-registered tenant-scoped document row.
+43. A supplier cannot upload into another organization’s path.
+44. A shared brand can read only an available document explicitly present in the share scope.
+45. A rejected or deleted document cannot be read through the database or Storage policies.
+46. A client cannot directly forge document `available`, hash, scan or delete fields.
+47. A certification without a document remains `declared`; attaching evidence makes it `documented`.
+48. A client cannot directly set a certification to `verified_by_reviewer` or `certified_by_third_party`.
+49. Only a verifier organization can produce `certified_by_third_party`.
+50. Verification records are visible only to the owner, verifier participant or shared certification grantee.
+51. Editing a verified certification resets it to a non-verified state.
+52. Direct authenticated INSERT/UPDATE of verification records is denied by RLS.
 
 ## Test status in chantier 1
 

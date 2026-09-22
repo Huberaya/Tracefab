@@ -14,6 +14,10 @@ The first application can use Supabase directly for low-risk reads and authentic
 - `tracefab_send_data_request(...)` pour l'envoyer ;
 - `tracefab_submit_data_response(...)` et `tracefab_submit_data_request(...)` pour les réponses fournisseur ;
 - `tracefab_review_data_response(...)` pour la revue marque ;
+- `tracefab_register_document(...)` avant un upload privé ;
+- `tracefab_finalize_document_upload(...)` depuis un worker de confiance ;
+- `tracefab_register_certification(...)` et `tracefab_update_certification(...)` ;
+- `tracefab_review_certification(...)` pour une revue interne ou tierce ;
 - créer une relation brand/supplier hors du parcours d'invitation ;
 - generate signed document URLs;
 - submit a request;
@@ -39,6 +43,8 @@ When the HTTP API is introduced:
 /api/v1/data-requests/{requestId}/items
 /api/v1/data-requests/{requestId}/responses
 /api/v1/documents
+/api/v1/certifications
+/api/v1/verifications
 /api/v1/dpp-records
 ```
 
