@@ -4,8 +4,10 @@
 
 The first application can use Supabase directly for low-risk reads and authenticated mutations. Sensitive operations should go through Edge Functions or trusted database functions:
 
-- accept invitation;
-- create a brand/supplier relationship;
+- `tracefab_invite_supplier(...)` pour créer le fournisseur invité, la relation et le token hashé ;
+- `tracefab_accept_organization_invitation(...)` pour accepter l'invitation ;
+- `tracefab_submit_supplier_profile(...)` pour soumettre le profil ;
+- créer une relation brand/supplier hors du parcours d'invitation ;
 - generate signed document URLs;
 - submit a request;
 - compute a data-quality score;
@@ -18,7 +20,9 @@ When the HTTP API is introduced:
 
 ```text
 /api/v1/organizations
+/api/v1/supplier-invitations
 /api/v1/suppliers
+/api/v1/suppliers/{supplierId}/profile
 /api/v1/suppliers/{supplierId}/sites
 /api/v1/products
 /api/v1/data-requests

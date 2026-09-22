@@ -4,9 +4,9 @@ Infrastructure de données fournisseurs pour la traçabilité textile, la qualit
 
 ## Statut
 
-**Chantier 1 — Architecture / Data Model**
+**Chantier 2 — Supplier Profile**
 
-Ce repository contient actuellement les fondations d'architecture et le modèle de données TRACEFAB. Le frontend et les parcours métier seront ajoutés dans les chantiers suivants.
+Le repository contient les fondations d'architecture, le modèle de données et le premier parcours sécurisé d'invitation et d'onboarding fournisseur. Les interfaces Brand Console et Supplier Portal restent à construire.
 
 ## Principes
 
@@ -27,6 +27,7 @@ docs/architecture/
   03-data-model.md
   04-api-and-evolution.md
   05-rls-test-plan.md
+  06-supplier-profile.md
 
 scripts/
   validate_schema.py
@@ -37,6 +38,7 @@ src/domain/tracefab/
 
 supabase/migrations/
   20260922000000_tracefab_core.sql
+  20260922010000_tracefab_supplier_profile.sql
 ```
 
 ## Appliquer la migration
@@ -57,7 +59,7 @@ Avant toute application en production :
 4. exécuter les tests RLS d'intégration ;
 5. configurer Storage privé dans un chantier dédié.
 
-La création initiale d'une organisation et de son membership owner devra passer par la fonction SQL `tracefab_create_organization(...)`. Les invitations et leur acceptation seront ajoutées dans le chantier 2.
+La création initiale d'une organisation et de son membership owner passe par `tracefab_create_organization(...)`. Pour le parcours fournisseur, `tracefab_invite_supplier(...)`, `tracefab_accept_organization_invitation(...)` et `tracefab_submit_supplier_profile(...)` sont les fonctions de transition sécurisées. La génération du token brut et l'envoi email restent à implémenter dans une Edge Function.
 
 ## Ce qui n'est pas encore implémenté
 

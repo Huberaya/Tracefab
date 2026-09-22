@@ -16,6 +16,7 @@ export type MembershipRole = 'owner' | 'admin' | 'manager' | 'contributor' | 'vi
 export type MembershipStatus = 'invited' | 'active' | 'suspended' | 'revoked';
 export type RelationshipStatus = 'invited' | 'active' | 'suspended' | 'ended';
 export type SupplierOnboardingStatus = 'not_started' | 'invited' | 'in_progress' | 'submitted' | 'approved' | 'rejected';
+export type SupplierEmployeeCountRange = '1_10' | '11_50' | '51_250' | '251_1000' | '1001_plus';
 export type ProductStatus = 'draft' | 'active' | 'archived';
 export type NodeType = 'product' | 'material' | 'organization' | 'site' | 'process';
 export type SupplyChainLinkType = 'sourced_from' | 'transformed_at' | 'manufactured_at' | 'supplied_by' | 'contains' | 'next_step';
@@ -60,8 +61,16 @@ export interface Supplier {
   organizationId: UUID;
   onboardingStatus: SupplierOnboardingStatus;
   activityTypes: string[];
+  profileSummary: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  employeeCountRange: SupplierEmployeeCountRange | null;
+  yearEstablished: number | null;
+  profileCompletion: number;
   profileVersion: number;
   lastSubmittedAt: ISODateTime | null;
+  lastProfileUpdatedBy: UUID | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }

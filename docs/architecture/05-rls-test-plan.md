@@ -29,6 +29,13 @@ The migration cannot be declared production-ready until these scenarios run agai
 13. The bootstrap function creates exactly one owner membership for the caller.
 14. The bootstrap function rejects `platform` organizations for normal users.
 15. A document path owned by Supplier B cannot be replaced by Brand A through Storage policies.
+16. A brand manager can create one supplier invitation with only a token hash.
+17. A supplier invitation cannot be duplicated while an active invitation exists for the same brand and email.
+18. Invitation acceptance requires an authenticated email matching the invitation email.
+19. Invitation acceptance creates one supplier owner membership and activates the relationship.
+20. A supplier contributor can update profile fields only through the profile function.
+21. A profile below 100 percent cannot be submitted.
+22. A complete profile moves to `submitted`; a later edit reopens it as `in_progress`.
 
 ## Test status in chantier 1
 

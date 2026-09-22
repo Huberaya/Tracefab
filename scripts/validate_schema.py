@@ -10,7 +10,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SQL_PATH = ROOT / "supabase/migrations/20260922000000_tracefab_core.sql"
+SUPPLIER_SQL_PATH = ROOT / "supabase/migrations/20260922010000_tracefab_supplier_profile.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
+SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -61,6 +63,25 @@ if "tracefab_create_organization" not in SQL:
     errors.append("organization bootstrap function missing")
 if "tracefab_can_access_shared_subject" not in SQL:
     errors.append("object-scoped share helper missing")
+
+for required_marker in (
+    "profile_completion",
+    "relationship_id UUID REFERENCES brand_supplier_relationships",
+    "tracefab_invite_supplier",
+    "tracefab_accept_organization_invitation",
+    "tracefab_update_supplier_profile",
+    "tracefab_submit_supplier_profile",
+    "relationships_validate_organizations",
+    "shares_validate_relationship",
+    "invitations_validate_relationship",
+    "invitations_select_participant",
+    "invitations_update_participant",
+):
+    if required_marker not in SUPPLIER_SQL:
+        errors.append(f"supplier profile marker missing: {required_marker}")
+
+if re.search(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+tracefab_calculate_supplier_profile_completion", SUPPLIER_SQL, re.IGNORECASE):
+    errors.append("internal supplier completeness function is publicly granted")
 
 if errors:
     print("schema validation failed:")
