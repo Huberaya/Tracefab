@@ -6,9 +6,11 @@ TRACEFAB utilise désormais PostgreSQL sur Neon et Clerk pour l'identité. Les m
 
 ```text
 prisma/migrations/20260923130000_tracefab_neon_initial/migration.sql
+prisma/migrations/20260923140000_tracefab_clerk_context/migration.sql
+prisma/migrations/20260923150000_fix_invitation_acceptance/migration.sql
 ```
 
-Le schéma Prisma introspecté après application est `prisma/schema.prisma`.
+La seconde migration remplace la lecture historique de l'email JWT dans la fonction d'acceptation d'invitation par le contexte Clerk transactionnel, sans réécrire le checksum de la migration initiale. Le schéma Prisma introspecté après application est `prisma/schema.prisma`.
 
 ## Identité
 
@@ -29,13 +31,14 @@ Neon n'apporte pas `auth.uid()` ni les rôles Supabase `authenticated` et `servi
 tracefab_current_user_id()
 ```
 
-Cette fonction lit le paramètre transactionnel `tracefab.user_id`. Le backend doit :
+Cette fonction lit le paramètre transactionnel `tracefab.user_id`. L'acceptation d'invitation lit aussi `tracefab_current_user_email()`, alimentée par `tracefab.user_email`, afin que l'email du JWT Clerk reste la frontière de confiance SQL. Le backend doit :
 
 1. vérifier le JWT Clerk côté serveur ;
 2. retrouver ou créer l'utilisateur local à partir de `clerk_user_id` ;
 3. exécuter les requêtes protégées dans une transaction ;
-4. définir `tracefab.user_id` avec `set_config(..., true)` ;
-5. ne jamais accepter cet UUID depuis le navigateur.
+4. définir `tracefab.user_id` et `tracefab.user_email` avec `set_config(..., true)` ;
+5. ne jamais accepter cet UUID ou cet email depuis le navigateur ;
+6. ne jamais transmettre le token brut d'invitation à SQL : seul son hash SHA-256 est persisté.
 
 Les politiques RLS restent présentes sur les tables Tracefab. Les données ne sont pas exposées directement au navigateur : l'accès applicatif passe par l'API de confiance.
 
@@ -79,9 +82,13 @@ Le Chantier 9 ajoute des fonctions Vercel TypeScript :
 
 - `GET /api/health` : vérifie la disponibilité de Neon sans authentification ;
 - `GET /api/me` : vérifie le JWT Clerk, synchronise `users` et retourne les memberships actifs ;
-- `GET/POST /api/organizations` : lit les organisations accessibles et crée une organisation avec son membership owner.
+- `GET/POST /api/organizations` : lit les organisations accessibles et crée une organisation avec son membership owner ;
+- `POST /api/organizations/:organizationId/invitations` : crée une invitation fournisseur et renvoie le token brut une seule fois au backend appelant ;
+- `POST /api/invitations/accept` : hache le token reçu, vérifie l'utilisateur Clerk et accepte l'invitation uniquement si l'email correspond ;
+- `GET/PATCH /api/suppliers/:supplierId/profile` : lit ou met à jour le profil derrière `tracefab_update_supplier_profile(...)` ;
+- `POST /api/suppliers/:supplierId/profile/submit` : soumet un profil complet derrière `tracefab_submit_supplier_profile(...)`.
 
-`api/_lib/context.ts` encapsule les requêtes tenant dans une transaction et initialise `tracefab.user_id` avant les lectures/écritures protégées.
+`api/_lib/context.ts` encapsule les requêtes tenant dans une transaction et initialise `tracefab.user_id` et `tracefab.user_email` avant les lectures/écritures protégées. `api/_lib/sql-errors.ts` centralise la traduction des exceptions métier PostgreSQL en réponses API sans réimprimer les détails SQL.
 
 Les clés Clerk doivent être définies dans l'environnement Vercel :
 
@@ -100,5 +107,6 @@ La clé secrète n'est jamais utilisée dans le navigateur.
 - migration Neon/Clerk appliquée ;
 - Prisma introspecté sur le schéma créé ;
 - aucune donnée métier initiale créée ;
-- runtime Vercel et premières routes Clerk/Prisma ajoutés ;
+- runtime Vercel, API multi-tenant et onboarding fournisseur Clerk/Prisma ajoutés ;
+- tests Neon d'isolation RLS/refus des rôles insuffisants (`npm run test:neon:security`) et du parcours invitation/profil (`npm run test:neon:supplier`) ;
 - pages Clerk et interfaces métier restent à construire dans un frontend dédié.

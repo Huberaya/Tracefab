@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     if (req.method === 'GET') {
-      const memberships = await withTracefabUserContext(user.id, (tx) =>
+      const memberships = await withTracefabUserContext(user.id, user.email, (tx) =>
         tx.organization_memberships.findMany({
           where: { user_id: user.id, status: 'active' },
           select: {
@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'invalid_organization' });
     }
 
-    const organization = await withTracefabUserContext(user.id, async (tx) => {
+    const organization = await withTracefabUserContext(user.id, user.email, async (tx) => {
       // The trusted SQL function creates the organization and its first owner
       // membership atomically; a direct membership insert would not pass the
       // normal admin-only membership policy before an owner exists.

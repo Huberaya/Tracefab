@@ -5,7 +5,9 @@
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "api:typecheck": "tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --skipLibCheck --esModuleInterop --types node --lib ES2020,DOM api/*.ts api/_lib/*.ts",
+    "api:typecheck": "tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --skipLibCheck --esModuleInterop --types node --lib ES2020,DOM $(find api -name '*.ts' -print)",
+    "test:neon:security": "node scripts/test_neon_security.mjs",
+    "test:neon:supplier": "node scripts/test_neon_supplier_flow.mjs",
     "schema:static": "python3 scripts/validate_schema.py",
     "db:neon:build": "python3 scripts/build_neon_migration.py",
     "db:generate": "prisma generate",

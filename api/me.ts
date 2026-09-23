@@ -8,7 +8,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { clerkUser, user } = await requireClerkUser(req);
-    const memberships = await withTracefabUserContext(user.id, (tx) =>
+    const memberships = await withTracefabUserContext(user.id, user.email, (tx) =>
       tx.organization_memberships.findMany({
         where: { user_id: user.id, status: 'active' },
         select: {
