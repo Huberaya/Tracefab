@@ -56,7 +56,7 @@ async function main() {
         'Supplier origin questionnaire',
         'supplier_origin_v1',
         '1.0',
-        now() + interval '14 days',
+        now() + interval '24 hours',
         ${`collection-${brandOrganization}`}
       )
     `;
@@ -106,6 +106,15 @@ async function main() {
     return rows[0];
   });
 
+  const firstReminderRun = await prisma.$queryRaw`
+    SELECT tracefab_enqueue_due_data_request_reminders(72)::integer AS enqueued
+  `;
+  assert(Number(firstReminderRun[0]?.enqueued) === 1, 'due-soon reminder was not enqueued');
+  const secondReminderRun = await prisma.$queryRaw`
+    SELECT tracefab_enqueue_due_data_request_reminders(72)::integer AS enqueued
+  `;
+  assert(Number(secondReminderRun[0]?.enqueued) === 0, 'due-soon reminder was duplicated on the same day');
+
   const submitted = await inUserContext(supplierUser, async (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_submit_data_request(${request.id}::uuid)
   `);
@@ -141,11 +150,12 @@ async function main() {
     WHERE request_id = ${request.id}::uuid
     ORDER BY created_at
   `;
-  assert(notifications.length === 3, 'expected one durable notification per workflow transition');
-  assert(notifications.map(({ event_type }) => event_type).join(',') === 'request_sent,request_submitted,response_verified', 'notification event order was not preserved');
+  assert(notifications.length === 4, 'expected workflow and due-soon notifications');
+  assert(notifications.map(({ event_type }) => event_type).join(',') === 'request_sent,request_due_soon,request_submitted,response_verified', 'notification event order was not preserved');
   assert(notifications.every(({ status }) => status === 'pending'), 'new notification jobs must be pending');
   assert(notifications[0].recipient_organization_id === supplierOrganization, 'send notification recipient is not the supplier');
-  assert(notifications[1].recipient_organization_id === brandOrganization, 'submit notification recipient is not the brand');
+  assert(notifications[1].recipient_organization_id === supplierOrganization, 'due-soon reminder recipient is not the supplier');
+  assert(notifications[2].recipient_organization_id === brandOrganization, 'submit notification recipient is not the brand');
 
   const claimed = await prisma.$queryRaw`
     SELECT id, status, attempts

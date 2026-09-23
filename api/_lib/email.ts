@@ -15,7 +15,9 @@ export type DataRequestNotificationEvent =
   | 'request_sent'
   | 'request_submitted'
   | 'response_verified'
-  | 'changes_requested';
+  | 'changes_requested'
+  | 'request_due_soon'
+  | 'request_overdue';
 
 type DataRequestNotificationEmail = {
   to: string[];
@@ -129,6 +131,14 @@ const notificationCopy: Record<DataRequestNotificationEvent, { subject: string; 
   changes_requested: {
     subject: 'Tracefab changes requested',
     action: 'The brand reviewer requested changes or additional evidence.',
+  },
+  request_due_soon: {
+    subject: 'Tracefab data request due soon',
+    action: 'This supplier data request is approaching its due date.',
+  },
+  request_overdue: {
+    subject: 'Tracefab data request overdue',
+    action: 'This supplier data request is past its due date and needs attention.',
   },
 };
 
