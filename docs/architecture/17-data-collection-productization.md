@@ -40,7 +40,7 @@ La même valeur reste soumise à la fonction SQL et aux contrôles de rôle. Une
 
 ## Notifications
 
-Les transitions suivantes déclenchent une notification Resend best-effort après le commit de la mutation :
+Les transitions suivantes créent désormais une entrée durable dans `tracefab_notification_outbox` dans la même transaction que la mutation. Le worker privé effectue ensuite la livraison Resend :
 
 | Transition | Destinataires | Événement |
 |---|---|---|
@@ -49,7 +49,7 @@ Les transitions suivantes déclenchent une notification Resend best-effort aprè
 | marque vérifie une réponse | membres actifs du fournisseur | `response_verified` |
 | marque demande des changements | membres actifs du fournisseur | `changes_requested` |
 
-Les adresses sont dédupliquées et le payload ne contient ni token d'invitation ni secret. Le statut de livraison est renvoyé séparément (`sent`, `not_configured`, `failed`) : une panne Resend ne revient pas sur une transition déjà committée. La mise en file durable, les retries et les relances planifiées restent une évolution d'exploitation à ajouter avant un volume important.
+Les adresses sont dédupliquées et le payload ne contient ni token d'invitation ni secret. Le statut de livraison est suivi séparément (`pending`, `processing`, `sent`, `failed`) : une panne Resend ne revient pas sur une transition déjà committée. Les retries sont bornés à cinq tentatives ; les relances métier planifiées restent une évolution d'exploitation distincte.
 
 ## Surfaces Brand Console / Supplier Portal
 

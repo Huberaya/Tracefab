@@ -135,7 +135,36 @@ async function main() {
   assert(finalRequest?.status === 'approved', 'request was not approved after review');
   assert(String(finalRequest.completion_percentage) === '100.00' || String(finalRequest.completion_percentage) === '100', 'request completion was not 100');
 
-  console.log('Neon data collection integration passed: request, item, supplier response, submission, review and role denial');
+  const notifications = await prisma.$queryRaw`
+    SELECT event_type, status, recipient_organization_id, recipient_emails
+    FROM tracefab_notification_outbox
+    WHERE request_id = ${request.id}::uuid
+    ORDER BY created_at
+  `;
+  assert(notifications.length === 3, 'expected one durable notification per workflow transition');
+  assert(notifications.map(({ event_type }) => event_type).join(',') === 'request_sent,request_submitted,response_verified', 'notification event order was not preserved');
+  assert(notifications.every(({ status }) => status === 'pending'), 'new notification jobs must be pending');
+  assert(notifications[0].recipient_organization_id === supplierOrganization, 'send notification recipient is not the supplier');
+  assert(notifications[1].recipient_organization_id === brandOrganization, 'submit notification recipient is not the brand');
+
+  const claimed = await prisma.$queryRaw`
+    SELECT id, status, attempts
+    FROM tracefab_claim_notification_outbox(1)
+  `;
+  assert(claimed.length === 1 && claimed[0].status === 'processing' && claimed[0].attempts === 1, 'notification worker claim did not lock one job');
+  const completed = await prisma.$queryRaw`
+    SELECT status, last_error
+    FROM tracefab_complete_notification_outbox(
+      ${claimed[0].id}::uuid,
+      'pending'::tracefab_notification_status,
+      NULL,
+      'test_backoff',
+      now() + interval '1 minute'
+    )
+  `;
+  assert(completed[0]?.status === 'pending' && completed[0]?.last_error === 'test_backoff', 'notification retry state was not persisted');
+
+  console.log('Neon data collection integration passed: request, item, supplier response, submission, review, notifications, outbox claim and role denial');
 }
 
 async function inUserContext(userId, callback) {
