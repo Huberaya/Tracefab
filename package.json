@@ -5,9 +5,18 @@
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "schema:static": "python3 scripts/validate_schema.py"
+    "schema:static": "python3 scripts/validate_schema.py",
+    "db:neon:build": "python3 scripts/build_neon_migration.py",
+    "db:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:pull": "prisma db pull"
   },
   "devDependencies": {
+    "prisma": "^6.19.0",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0"
   }
 }

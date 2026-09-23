@@ -17,6 +17,7 @@ DOCUMENT_SQL_PATH = ROOT / "supabase/migrations/20260922040000_tracefab_document
 QUALITY_SQL_PATH = ROOT / "supabase/migrations/20260922050000_tracefab_data_quality.sql"
 TRACEABILITY_SQL_PATH = ROOT / "supabase/migrations/20260922060000_tracefab_traceability.sql"
 DPP_SQL_PATH = ROOT / "supabase/migrations/20260922070000_tracefab_dpp_readiness.sql"
+NEON_SQL_PATH = ROOT / "prisma/migrations/20260923130000_tracefab_neon_initial/migration.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
@@ -25,6 +26,7 @@ DOCUMENT_SQL = DOCUMENT_SQL_PATH.read_text(encoding="utf-8")
 QUALITY_SQL = QUALITY_SQL_PATH.read_text(encoding="utf-8")
 TRACEABILITY_SQL = TRACEABILITY_SQL_PATH.read_text(encoding="utf-8")
 DPP_SQL = DPP_SQL_PATH.read_text(encoding="utf-8")
+NEON_SQL = NEON_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -222,9 +224,24 @@ if "CREATE POLICY dpp_insert_brand" in DPP_SQL:
 if re.search(r"CREATE POLICY.*ON dpp_records.*TO anon", DPP_SQL, re.IGNORECASE):
     errors.append("anonymous DPP policy found")
 
+for required_marker in (
+    "CREATE TABLE IF NOT EXISTS users",
+    "clerk_user_id TEXT NOT NULL UNIQUE",
+    "tracefab_current_user_id",
+    "CREATE TABLE IF NOT EXISTS orders",
+    "CREATE TABLE IF NOT EXISTS dpp_requirement_profiles",
+    "CREATE TABLE IF NOT EXISTS dpp_records",
+):
+    if required_marker not in NEON_SQL:
+        errors.append(f"Neon migration marker missing: {required_marker}")
+
+for forbidden_marker in ("auth.users", "auth.uid()", "storage.objects", "storage.buckets"):
+    if forbidden_marker in NEON_SQL:
+        errors.append(f"Supabase-only marker remains in Neon migration: {forbidden_marker}")
+
 if errors:
     print("schema validation failed:")
     print("- " + "\n- ".join(errors))
     sys.exit(1)
 
-print(f"schema validation passed: {len(actual_tables)} core tables, {len(policies)} core policies plus supplier/product migration markers")
+print(f"schema validation passed: {len(actual_tables)} historical core tables, {len(policies)} historical core policies plus Neon/Clerk migration markers")

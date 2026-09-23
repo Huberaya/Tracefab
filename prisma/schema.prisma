@@ -1,0 +1,954 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                                                                  String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId                                                         String                         @unique @map("clerk_user_id")
+  email                                                               String                         @unique
+  fullName                                                            String                         @map("full_name")
+  createdAt                                                           DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                                                           DateTime                       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  audit_logs                                                          audit_logs[]
+  brand_supplier_relationships                                        brand_supplier_relationships[]
+  certifications_certifications_created_byTousers                     certifications[]               @relation("certifications_created_byTousers")
+  certifications_certifications_last_verified_byTousers               certifications[]               @relation("certifications_last_verified_byTousers")
+  data_points                                                         data_points[]
+  data_quality_issues_data_quality_issues_acknowledged_byTousers      data_quality_issues[]          @relation("data_quality_issues_acknowledged_byTousers")
+  data_quality_issues_data_quality_issues_resolved_byTousers          data_quality_issues[]          @relation("data_quality_issues_resolved_byTousers")
+  data_requests_data_requests_created_byTousers                       data_requests[]                @relation("data_requests_created_byTousers")
+  data_requests_data_requests_reviewed_byTousers                      data_requests[]                @relation("data_requests_reviewed_byTousers")
+  data_responses_data_responses_responded_byTousers                   data_responses[]               @relation("data_responses_responded_byTousers")
+  data_responses_data_responses_reviewed_byTousers                    data_responses[]               @relation("data_responses_reviewed_byTousers")
+  data_shares                                                         data_shares[]
+  documents_documents_deleted_byTousers                               documents[]                    @relation("documents_deleted_byTousers")
+  documents_documents_uploaded_byTousers                              documents[]                    @relation("documents_uploaded_byTousers")
+  dpp_records_dpp_records_computed_byTousers                          dpp_records[]                  @relation("dpp_records_computed_byTousers")
+  dpp_records_dpp_records_reviewed_byTousers                          dpp_records[]                  @relation("dpp_records_reviewed_byTousers")
+  materials                                                           materials[]
+  orders                                                              orders[]
+  organization_invitations                                            organization_invitations[]
+  organization_memberships_organization_memberships_invited_byTousers organization_memberships[]     @relation("organization_memberships_invited_byTousers")
+  organization_memberships_organization_memberships_user_idTousers    organization_memberships[]     @relation("organization_memberships_user_idTousers")
+  organizations                                                       organizations[]
+  product_identifiers                                                 product_identifiers[]
+  suppliers                                                           suppliers[]
+  supply_chain_links                                                  supply_chain_links[]
+  supply_chain_nodes                                                  supply_chain_nodes[]
+  tracefab_products_tracefab_products_created_byTousers               tracefab_products[]            @relation("tracefab_products_created_byTousers")
+  tracefab_products_tracefab_products_last_data_updated_byTousers     tracefab_products[]            @relation("tracefab_products_last_data_updated_byTousers")
+  verification_records                                                verification_records[]
+
+  @@map("users")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model audit_logs {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  actor_user_id   String?       @db.Uuid
+  action          String
+  entity_type     String
+  entity_id       String?       @db.Uuid
+  before_state    Json?
+  after_state     Json?
+  metadata        Json          @default("{}")
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  users           User?         @relation(fields: [actor_user_id], references: [id], onUpdate: NoAction)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organization_id, created_at(sort: Desc)], map: "idx_audit_org_created")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model brand_supplier_relationships {
+  id                                                                                 String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand_organization_id                                                              String                     @db.Uuid
+  supplier_organization_id                                                           String                     @db.Uuid
+  status                                                                             relationship_status        @default(invited)
+  requested_by                                                                       String?                    @db.Uuid
+  accepted_at                                                                        DateTime?                  @db.Timestamptz(6)
+  ended_at                                                                           DateTime?                  @db.Timestamptz(6)
+  sharing_defaults                                                                   Json                       @default("{}")
+  created_at                                                                         DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at                                                                         DateTime                   @default(now()) @db.Timestamptz(6)
+  organizations_brand_supplier_relationships_brand_organization_idToorganizations    organizations              @relation("brand_supplier_relationships_brand_organization_idToorganizations", fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                                                                              User?                      @relation(fields: [requested_by], references: [id], onUpdate: NoAction)
+  organizations_brand_supplier_relationships_supplier_organization_idToorganizations organizations              @relation("brand_supplier_relationships_supplier_organization_idToorganizations", fields: [supplier_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  data_requests                                                                      data_requests[]
+  data_shares                                                                        data_shares[]
+  organization_invitations                                                           organization_invitations[]
+
+  @@unique([brand_organization_id, supplier_organization_id])
+  @@index([brand_organization_id, status], map: "idx_relationship_brand")
+  @@index([supplier_organization_id, status], map: "idx_relationship_supplier")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model certifications {
+  id                                           String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id                        String                 @db.Uuid
+  supplier_id                                  String?                @db.Uuid
+  supplier_site_id                             String?                @db.Uuid
+  product_id                                   String?                @db.Uuid
+  standard_name                                String
+  standard_code                                String?
+  issuer_name                                  String?
+  certificate_number                           String?
+  issued_at                                    DateTime?              @db.Date
+  expires_at                                   DateTime?              @db.Date
+  document_id                                  String?                @db.Uuid
+  status                                       data_value_status      @default(declared)
+  created_by                                   String?                @db.Uuid
+  created_at                                   DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                                   DateTime               @default(now()) @db.Timestamptz(6)
+  last_verified_at                             DateTime?              @db.Timestamptz(6)
+  last_verified_by                             String?                @db.Uuid
+  users_certifications_created_byTousers       User?                  @relation("certifications_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  documents                                    documents?             @relation(fields: [document_id], references: [id], onUpdate: NoAction)
+  users_certifications_last_verified_byTousers User?                  @relation("certifications_last_verified_byTousers", fields: [last_verified_by], references: [id], onUpdate: NoAction)
+  organizations                                organizations          @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products                            tracefab_products?     @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  suppliers                                    suppliers?             @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  supplier_sites                               supplier_sites?        @relation(fields: [supplier_site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  verification_records                         verification_records[]
+
+  @@index([owner_organization_id, status], map: "idx_certifications_owner")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model data_points {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id String                 @db.Uuid
+  supplier_id           String?                @db.Uuid
+  supplier_site_id      String?                @db.Uuid
+  product_id            String?                @db.Uuid
+  material_id           String?                @db.Uuid
+  data_key              String
+  value                 Json
+  data_type             data_type
+  status                data_value_status      @default(declared)
+  source_document_id    String?                @db.Uuid
+  declared_by           String?                @db.Uuid
+  valid_from            DateTime?              @db.Date
+  valid_until           DateTime?              @db.Date
+  version               Int                    @default(1)
+  supersedes_id         String?                @db.Uuid
+  created_at            DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime               @default(now()) @db.Timestamptz(6)
+  users                 User?                  @relation(fields: [declared_by], references: [id], onUpdate: NoAction)
+  materials             materials?             @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations         organizations          @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products     tracefab_products?     @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  documents             documents?             @relation(fields: [source_document_id], references: [id], onUpdate: NoAction)
+  data_points           data_points?           @relation("data_pointsTodata_points", fields: [supersedes_id], references: [id], onUpdate: NoAction)
+  other_data_points     data_points[]          @relation("data_pointsTodata_points")
+  suppliers             suppliers?             @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  supplier_sites        supplier_sites?        @relation(fields: [supplier_site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  verification_records  verification_records[]
+
+  @@index([owner_organization_id, data_key, status], map: "idx_data_points_owner")
+  @@index([product_id, data_key, version], map: "idx_data_points_product")
+  @@index([supplier_id, data_key, version], map: "idx_data_points_supplier")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model data_quality_issues {
+  id                                               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id                            String                 @db.Uuid
+  supplier_id                                      String?                @db.Uuid
+  product_id                                       String?                @db.Uuid
+  subject_id                                       String?                @default(dbgenerated("COALESCE(supplier_id, product_id)")) @db.Uuid
+  rule_key                                         String
+  rule_version                                     String
+  severity                                         quality_issue_severity
+  status                                           quality_issue_status   @default(open)
+  field_key                                        String?
+  message                                          String
+  details                                          Json                   @default("{}")
+  detected_at                                      DateTime               @default(now()) @db.Timestamptz(6)
+  acknowledged_at                                  DateTime?              @db.Timestamptz(6)
+  acknowledged_by                                  String?                @db.Uuid
+  resolved_at                                      DateTime?              @db.Timestamptz(6)
+  resolved_by                                      String?                @db.Uuid
+  created_at                                       DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                                       DateTime               @default(now()) @db.Timestamptz(6)
+  users_data_quality_issues_acknowledged_byTousers User?                  @relation("data_quality_issues_acknowledged_byTousers", fields: [acknowledged_by], references: [id], onUpdate: NoAction)
+  organizations                                    organizations          @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products                                tracefab_products?     @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_data_quality_issues_resolved_byTousers     User?                  @relation("data_quality_issues_resolved_byTousers", fields: [resolved_by], references: [id], onUpdate: NoAction)
+  suppliers                                        suppliers?             @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([owner_organization_id, subject_id, rule_key, rule_version], map: "idx_quality_issues_identity")
+  @@index([owner_organization_id, detected_at(sort: Desc)], map: "idx_quality_issues_owner_detected")
+  @@index([product_id, status, severity], map: "idx_quality_issues_product_status")
+  @@index([supplier_id, status, severity], map: "idx_quality_issues_supplier_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model data_quality_scores {
+  id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id  String             @db.Uuid
+  supplier_id            String?            @db.Uuid
+  product_id             String?            @db.Uuid
+  completeness           Decimal            @default(0) @db.Decimal(5, 2)
+  freshness              Decimal            @default(0) @db.Decimal(5, 2)
+  documentation_coverage Decimal            @default(0) @db.Decimal(5, 2)
+  consistency            Decimal            @default(0) @db.Decimal(5, 2)
+  missing_fields         Json               @default("[]")
+  blocking_issues        Json               @default("[]")
+  calculation_version    String
+  computed_at            DateTime           @default(now()) @db.Timestamptz(6)
+  organizations          organizations      @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products      tracefab_products? @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  suppliers              suppliers?         @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([product_id, computed_at(sort: Desc)], map: "idx_quality_product")
+  @@index([supplier_id, computed_at(sort: Desc)], map: "idx_quality_supplier")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model data_request_items {
+  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  data_request_id   String                   @db.Uuid
+  field_key         String
+  label             String
+  data_type         data_type
+  required          Boolean                  @default(false)
+  evidence_required Boolean                  @default(false)
+  visibility        Json                     @default("{}")
+  status            data_request_item_status @default(pending)
+  sort_order        Int                      @default(0)
+  created_at        DateTime                 @default(now()) @db.Timestamptz(6)
+  help_text         String?
+  validation_rules  Json                     @default("{}")
+  evidence_kinds    String[]                 @default([])
+  data_requests     data_requests            @relation(fields: [data_request_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  data_responses    data_responses[]
+
+  @@unique([data_request_id, field_key])
+  @@index([data_request_id, status], map: "idx_request_items_request")
+  @@index([data_request_id, required, status], map: "idx_request_items_required_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model data_requests {
+  id                                                                  String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand_organization_id                                               String                        @db.Uuid
+  supplier_organization_id                                            String                        @db.Uuid
+  product_id                                                          String?                       @db.Uuid
+  title                                                               String
+  questionnaire_key                                                   String
+  questionnaire_version                                               String
+  status                                                              data_request_status           @default(draft)
+  due_at                                                              DateTime?                     @db.Timestamptz(6)
+  created_by                                                          String?                       @db.Uuid
+  submitted_at                                                        DateTime?                     @db.Timestamptz(6)
+  closed_at                                                           DateTime?                     @db.Timestamptz(6)
+  created_at                                                          DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                                                          DateTime                      @default(now()) @db.Timestamptz(6)
+  relationship_id                                                     String?                       @db.Uuid
+  idempotency_key                                                     String?
+  completion_percentage                                               Decimal                       @default(0) @db.Decimal(5, 2)
+  last_activity_at                                                    DateTime?                     @db.Timestamptz(6)
+  reviewed_at                                                         DateTime?                     @db.Timestamptz(6)
+  reviewed_by                                                         String?                       @db.Uuid
+  data_request_items                                                  data_request_items[]
+  organizations_data_requests_brand_organization_idToorganizations    organizations                 @relation("data_requests_brand_organization_idToorganizations", fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_data_requests_created_byTousers                               User?                         @relation("data_requests_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  tracefab_products                                                   tracefab_products?            @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  brand_supplier_relationships                                        brand_supplier_relationships? @relation(fields: [relationship_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  users_data_requests_reviewed_byTousers                              User?                         @relation("data_requests_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  organizations_data_requests_supplier_organization_idToorganizations organizations                 @relation("data_requests_supplier_organization_idToorganizations", fields: [supplier_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([brand_organization_id, status], map: "idx_requests_brand")
+  @@index([relationship_id, status, last_activity_at(sort: Desc)], map: "idx_requests_relationship_status")
+  @@index([supplier_organization_id, status], map: "idx_requests_supplier")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model data_responses {
+  id                                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  data_request_item_id                     String             @db.Uuid
+  value                                    Json
+  data_type                                data_type
+  status                                   data_value_status  @default(declared)
+  source_document_id                       String?            @db.Uuid
+  responded_by                             String?            @db.Uuid
+  supersedes_id                            String?            @db.Uuid
+  submitted_at                             DateTime           @default(now()) @db.Timestamptz(6)
+  reviewed_at                              DateTime?          @db.Timestamptz(6)
+  reviewed_by                              String?            @db.Uuid
+  response_version                         Int                @default(1)
+  is_current                               Boolean            @default(true)
+  review_comment                           String?
+  data_request_items                       data_request_items @relation(fields: [data_request_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_data_responses_responded_byTousers User?              @relation("data_responses_responded_byTousers", fields: [responded_by], references: [id], onUpdate: NoAction)
+  users_data_responses_reviewed_byTousers  User?              @relation("data_responses_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  documents                                documents?         @relation(fields: [source_document_id], references: [id], onUpdate: NoAction)
+  data_responses                           data_responses?    @relation("data_responsesTodata_responses", fields: [supersedes_id], references: [id], onUpdate: NoAction)
+  other_data_responses                     data_responses[]   @relation("data_responsesTodata_responses")
+
+  @@index([data_request_item_id, submitted_at(sort: Desc)], map: "idx_responses_item")
+  @@index([data_request_item_id, response_version(sort: Desc)], map: "idx_responses_item_version")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model data_shares {
+  id                                                                String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  relationship_id                                                   String                       @db.Uuid
+  supplier_organization_id                                          String                       @db.Uuid
+  grantee_organization_id                                           String                       @db.Uuid
+  scope                                                             Json                         @default("{}")
+  status                                                            share_status                 @default(active)
+  starts_at                                                         DateTime                     @default(now()) @db.Timestamptz(6)
+  ends_at                                                           DateTime?                    @db.Timestamptz(6)
+  created_by                                                        String?                      @db.Uuid
+  revoked_at                                                        DateTime?                    @db.Timestamptz(6)
+  created_at                                                        DateTime                     @default(now()) @db.Timestamptz(6)
+  users                                                             User?                        @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organizations_data_shares_grantee_organization_idToorganizations  organizations                @relation("data_shares_grantee_organization_idToorganizations", fields: [grantee_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  brand_supplier_relationships                                      brand_supplier_relationships @relation(fields: [relationship_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations_data_shares_supplier_organization_idToorganizations organizations                @relation("data_shares_supplier_organization_idToorganizations", fields: [supplier_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([grantee_organization_id, status], map: "idx_shares_grantee")
+  @@index([relationship_id, status], map: "idx_shares_relationship")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model documents {
+  id                                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id              String                 @db.Uuid
+  storage_bucket                     String
+  storage_path                       String
+  original_filename                  String
+  content_type                       String
+  byte_size                          BigInt
+  sha256                             String?
+  kind                               document_kind          @default(other)
+  status                             document_status        @default(uploaded)
+  visibility                         document_visibility    @default(private)
+  expires_at                         DateTime?              @db.Date
+  uploaded_by                        String?                @db.Uuid
+  created_at                         DateTime               @default(now()) @db.Timestamptz(6)
+  metadata                           Json                   @default("{}")
+  available_at                       DateTime?              @db.Timestamptz(6)
+  deleted_at                         DateTime?              @db.Timestamptz(6)
+  deleted_by                         String?                @db.Uuid
+  updated_at                         DateTime               @default(now()) @db.Timestamptz(6)
+  certifications                     certifications[]
+  data_points                        data_points[]
+  data_responses                     data_responses[]
+  users_documents_deleted_byTousers  User?                  @relation("documents_deleted_byTousers", fields: [deleted_by], references: [id], onUpdate: NoAction)
+  organizations                      organizations          @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_documents_uploaded_byTousers User?                  @relation("documents_uploaded_byTousers", fields: [uploaded_by], references: [id], onUpdate: NoAction)
+  supply_chain_links                 supply_chain_links[]
+  supply_chain_nodes                 supply_chain_nodes[]
+  verification_records               verification_records[]
+
+  @@unique([storage_bucket, storage_path])
+  @@index([owner_organization_id, status], map: "idx_documents_owner")
+  @@index([owner_organization_id, kind, status], map: "idx_documents_owner_kind")
+  @@index([storage_bucket, storage_path, status], map: "idx_documents_storage_lookup")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model dpp_records {
+  id                                   String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id                           String                    @db.Uuid
+  product_version                      Int
+  requirement_profile_key              String
+  requirement_profile_version          String
+  readiness_status                     dpp_readiness_status      @default(not_started)
+  missing_fields                       Json                      @default("[]")
+  blocking_issues                      Json                      @default("[]")
+  public_projection                    Json                      @default("{}")
+  computed_at                          DateTime                  @default(now()) @db.Timestamptz(6)
+  computed_by                          String?                   @db.Uuid
+  requirement_profile_id               String?                   @db.Uuid
+  input_fingerprint                    String?
+  source_snapshot                      Json                      @default("{}")
+  reviewed_at                          DateTime?                 @db.Timestamptz(6)
+  reviewed_by                          String?                   @db.Uuid
+  users_dpp_records_computed_byTousers User?                     @relation("dpp_records_computed_byTousers", fields: [computed_by], references: [id], onUpdate: NoAction)
+  tracefab_products                    tracefab_products         @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dpp_requirement_profiles             dpp_requirement_profiles? @relation(fields: [requirement_profile_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  users_dpp_records_reviewed_byTousers User?                     @relation("dpp_records_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+
+  @@unique([product_id, product_version, requirement_profile_key, requirement_profile_version])
+  @@index([product_id, computed_at(sort: Desc)], map: "idx_dpp_product")
+  @@index([requirement_profile_id, product_id, product_version, computed_at(sort: Desc)], map: "idx_dpp_records_profile")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model dpp_requirement_profiles {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_key     String
+  profile_version String
+  name            String
+  status          dpp_profile_status @default(draft)
+  definition      Json
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime           @default(now()) @db.Timestamptz(6)
+  dpp_records     dpp_records[]
+
+  @@unique([profile_key, profile_version])
+  @@index([profile_key, profile_version, status], map: "idx_dpp_profiles_active")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model materials {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id String               @db.Uuid
+  material_type         String
+  name                  String
+  normalized_name       String?
+  composition           Json                 @default("{}")
+  origin_country_code   String?              @db.VarChar(2)
+  created_by            String?              @db.Uuid
+  created_at            DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime             @default(now()) @db.Timestamptz(6)
+  data_points           data_points[]
+  users                 User?                @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organizations         organizations        @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product_materials     product_materials[]
+  supply_chain_nodes    supply_chain_nodes[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model orders {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_user_id     String                @db.Uuid
+  organization_id   String?               @db.Uuid
+  product_id        String                @db.Uuid
+  quantity          Decimal               @db.Decimal(12, 3)
+  status            tracefab_order_status @default(draft)
+  notes             String?
+  created_at        DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime              @default(now()) @db.Timestamptz(6)
+  users             User                  @relation(fields: [buyer_user_id], references: [id], onUpdate: NoAction)
+  organizations     organizations?        @relation(fields: [organization_id], references: [id], onUpdate: NoAction)
+  tracefab_products tracefab_products     @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+
+  @@index([buyer_user_id, created_at(sort: Desc)], map: "idx_tracefab_orders_buyer")
+  @@index([product_id, created_at(sort: Desc)], map: "idx_tracefab_orders_product")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model organization_invitations {
+  id                           String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id              String                        @db.Uuid
+  email                        String
+  target_role                  membership_role               @default(viewer)
+  token_hash                   String                        @unique
+  invited_by                   String                        @db.Uuid
+  expires_at                   DateTime                      @db.Timestamptz(6)
+  accepted_at                  DateTime?                     @db.Timestamptz(6)
+  created_at                   DateTime                      @default(now()) @db.Timestamptz(6)
+  relationship_id              String?                       @db.Uuid
+  users                        User                          @relation(fields: [invited_by], references: [id], onUpdate: NoAction)
+  organizations                organizations                 @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  brand_supplier_relationships brand_supplier_relationships? @relation(fields: [relationship_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([relationship_id, accepted_at, expires_at], map: "idx_invitations_relationship")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization_memberships {
+  id                                               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id                                  String            @db.Uuid
+  user_id                                          String            @db.Uuid
+  role                                             membership_role   @default(viewer)
+  status                                           membership_status @default(active)
+  invited_by                                       String?           @db.Uuid
+  joined_at                                        DateTime?         @db.Timestamptz(6)
+  created_at                                       DateTime          @default(now()) @db.Timestamptz(6)
+  users_organization_memberships_invited_byTousers User?             @relation("organization_memberships_invited_byTousers", fields: [invited_by], references: [id], onUpdate: NoAction)
+  organizations                                    organizations     @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_organization_memberships_user_idTousers    User              @relation("organization_memberships_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, user_id])
+  @@index([organization_id, status], map: "idx_memberships_org")
+  @@index([user_id, status], map: "idx_memberships_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organizations {
+  id                                                                                                String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type                                                                                              organization_type
+  legal_name                                                                                        String
+  display_name                                                                                      String?
+  country_code                                                                                      String?                        @db.VarChar(2)
+  registration_number                                                                               String?
+  website                                                                                           String?
+  status                                                                                            organization_status            @default(active)
+  created_by                                                                                        String?                        @db.Uuid
+  created_at                                                                                        DateTime                       @default(now()) @db.Timestamptz(6)
+  updated_at                                                                                        DateTime                       @default(now()) @db.Timestamptz(6)
+  audit_logs                                                                                        audit_logs[]
+  brand_supplier_relationships_brand_supplier_relationships_brand_organization_idToorganizations    brand_supplier_relationships[] @relation("brand_supplier_relationships_brand_organization_idToorganizations")
+  brand_supplier_relationships_brand_supplier_relationships_supplier_organization_idToorganizations brand_supplier_relationships[] @relation("brand_supplier_relationships_supplier_organization_idToorganizations")
+  certifications                                                                                    certifications[]
+  data_points                                                                                       data_points[]
+  data_quality_issues                                                                               data_quality_issues[]
+  data_quality_scores                                                                               data_quality_scores[]
+  data_requests_data_requests_brand_organization_idToorganizations                                  data_requests[]                @relation("data_requests_brand_organization_idToorganizations")
+  data_requests_data_requests_supplier_organization_idToorganizations                               data_requests[]                @relation("data_requests_supplier_organization_idToorganizations")
+  data_shares_data_shares_grantee_organization_idToorganizations                                    data_shares[]                  @relation("data_shares_grantee_organization_idToorganizations")
+  data_shares_data_shares_supplier_organization_idToorganizations                                   data_shares[]                  @relation("data_shares_supplier_organization_idToorganizations")
+  documents                                                                                         documents[]
+  materials                                                                                         materials[]
+  orders                                                                                            orders[]
+  organization_invitations                                                                          organization_invitations[]
+  organization_memberships                                                                          organization_memberships[]
+  users                                                                                             User?                          @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  suppliers                                                                                         suppliers?
+  supply_chain_nodes                                                                                supply_chain_nodes[]
+  tracefab_products                                                                                 tracefab_products[]
+  verification_records_verification_records_owner_organization_idToorganizations                    verification_records[]         @relation("verification_records_owner_organization_idToorganizations")
+  verification_records_verification_records_verifier_organization_idToorganizations                 verification_records[]         @relation("verification_records_verifier_organization_idToorganizations")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model product_identifiers {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id        String            @db.Uuid
+  identifier_type   String
+  identifier_value  String
+  is_primary        Boolean           @default(false)
+  created_by        String?           @db.Uuid
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  users             User?             @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  tracefab_products tracefab_products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([product_id, identifier_type, identifier_value])
+  @@index([product_id, identifier_type], map: "idx_product_identifiers_product")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model product_materials {
+  product_id        String            @db.Uuid
+  material_id       String            @db.Uuid
+  material_role     String            @default("main")
+  percentage        Decimal?          @db.Decimal(7, 4)
+  unit              String            @default("%")
+  product_version   Int               @default(1)
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  materials         materials         @relation(fields: [material_id], references: [id], onUpdate: NoAction)
+  tracefab_products tracefab_products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([product_id, material_id, material_role, product_version])
+  @@index([material_id], map: "idx_product_materials_material")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model supplier_sites {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supplier_id        String               @db.Uuid
+  name               String
+  country_code       String               @db.VarChar(2)
+  address            String?
+  city               String?
+  postal_code        String?
+  latitude           Float?
+  longitude          Float?
+  activity_types     String[]             @default([])
+  is_active          Boolean              @default(true)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  certifications     certifications[]
+  data_points        data_points[]
+  suppliers          suppliers            @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  supply_chain_nodes supply_chain_nodes[]
+
+  @@index([supplier_id, is_active], map: "idx_supplier_sites_supplier")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model suppliers {
+  id                      String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id         String                     @unique @db.Uuid
+  onboarding_status       supplier_onboarding_status @default(not_started)
+  activity_types          String[]                   @default([])
+  profile_version         Int                        @default(1)
+  last_submitted_at       DateTime?                  @db.Timestamptz(6)
+  created_at              DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime                   @default(now()) @db.Timestamptz(6)
+  profile_summary         String?
+  contact_name            String?
+  contact_email           String?
+  contact_phone           String?
+  employee_count_range    String?
+  year_established        Int?
+  profile_completion      Decimal                    @default(0) @db.Decimal(5, 2)
+  last_profile_updated_by String?                    @db.Uuid
+  certifications          certifications[]
+  data_points             data_points[]
+  data_quality_issues     data_quality_issues[]
+  data_quality_scores     data_quality_scores[]
+  supplier_sites          supplier_sites[]
+  users                   User?                      @relation(fields: [last_profile_updated_by], references: [id], onUpdate: NoAction)
+  organizations           organizations              @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([onboarding_status, profile_completion], map: "idx_suppliers_onboarding")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model supply_chain_links {
+  id                                                                       String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id                                                               String                 @db.Uuid
+  source_node_id                                                           String                 @db.Uuid
+  target_node_id                                                           String                 @db.Uuid
+  link_type                                                                supply_chain_link_type
+  sequence_number                                                          Int?
+  valid_from                                                               DateTime?              @db.Date
+  valid_until                                                              DateTime?              @db.Date
+  evidence_document_id                                                     String?                @db.Uuid
+  metadata                                                                 Json                   @default("{}")
+  created_at                                                               DateTime               @default(now()) @db.Timestamptz(6)
+  status                                                                   data_value_status      @default(declared)
+  declared_by                                                              String?                @db.Uuid
+  updated_at                                                               DateTime               @default(now()) @db.Timestamptz(6)
+  users                                                                    User?                  @relation(fields: [declared_by], references: [id], onUpdate: NoAction)
+  documents                                                                documents?             @relation(fields: [evidence_document_id], references: [id], onUpdate: NoAction, map: "supply_chain_links_evidence_document_fk")
+  tracefab_products                                                        tracefab_products      @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  supply_chain_nodes_supply_chain_links_source_node_idTosupply_chain_nodes supply_chain_nodes     @relation("supply_chain_links_source_node_idTosupply_chain_nodes", fields: [source_node_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  supply_chain_nodes_supply_chain_links_target_node_idTosupply_chain_nodes supply_chain_nodes     @relation("supply_chain_links_target_node_idTosupply_chain_nodes", fields: [target_node_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([product_id, sequence_number], map: "idx_graph_product")
+  @@index([source_node_id, target_node_id], map: "idx_traceability_links_nodes")
+  @@index([product_id, status, sequence_number], map: "idx_traceability_links_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model supply_chain_nodes {
+  id                                                                       String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  node_type                                                                node_type
+  organization_id                                                          String?              @db.Uuid
+  supplier_site_id                                                         String?              @db.Uuid
+  product_id                                                               String?              @db.Uuid
+  material_id                                                              String?              @db.Uuid
+  process_code                                                             String?
+  label                                                                    String
+  metadata                                                                 Json                 @default("{}")
+  created_at                                                               DateTime             @default(now()) @db.Timestamptz(6)
+  status                                                                   data_value_status    @default(declared)
+  source_document_id                                                       String?              @db.Uuid
+  declared_by                                                              String?              @db.Uuid
+  observed_at                                                              DateTime?            @db.Date
+  updated_at                                                               DateTime             @default(now()) @db.Timestamptz(6)
+  supply_chain_links_supply_chain_links_source_node_idTosupply_chain_nodes supply_chain_links[] @relation("supply_chain_links_source_node_idTosupply_chain_nodes")
+  supply_chain_links_supply_chain_links_target_node_idTosupply_chain_nodes supply_chain_links[] @relation("supply_chain_links_target_node_idTosupply_chain_nodes")
+  users                                                                    User?                @relation(fields: [declared_by], references: [id], onUpdate: NoAction)
+  materials                                                                materials?           @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations                                                            organizations?       @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products                                                        tracefab_products?   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  documents                                                                documents?           @relation(fields: [source_document_id], references: [id], onUpdate: NoAction)
+  supplier_sites                                                           supplier_sites?      @relation(fields: [supplier_site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([product_id, node_type, status], map: "idx_traceability_nodes_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tracefab_products {
+  id                                                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand_organization_id                               String                 @db.Uuid
+  reference                                           String
+  sku                                                 String?
+  name                                                String
+  category                                            String?
+  status                                              product_status         @default(draft)
+  version                                             Int                    @default(1)
+  public_slug                                         String?
+  created_by                                          String?                @db.Uuid
+  created_at                                          DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                                          DateTime               @default(now()) @db.Timestamptz(6)
+  description                                         String?
+  product_family                                      String?
+  color_name                                          String?
+  size_range                                          String[]               @default([])
+  country_of_design                                   String?                @db.VarChar(2)
+  country_of_manufacture                              String?                @db.VarChar(2)
+  weight_grams                                        Decimal?               @db.Decimal(10, 2)
+  care_instructions                                   Json                   @default("{}")
+  data_readiness                                      product_data_readiness @default(not_started)
+  data_completion                                     Decimal                @default(0) @db.Decimal(5, 2)
+  data_ready_at                                       DateTime?              @db.Timestamptz(6)
+  last_data_updated_by                                String?                @db.Uuid
+  certifications                                      certifications[]
+  data_points                                         data_points[]
+  data_quality_issues                                 data_quality_issues[]
+  data_quality_scores                                 data_quality_scores[]
+  data_requests                                       data_requests[]
+  dpp_records                                         dpp_records[]
+  orders                                              orders[]
+  product_identifiers                                 product_identifiers[]
+  product_materials                                   product_materials[]
+  supply_chain_links                                  supply_chain_links[]
+  supply_chain_nodes                                  supply_chain_nodes[]
+  organizations                                       organizations          @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_tracefab_products_created_byTousers           User?                  @relation("tracefab_products_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  users_tracefab_products_last_data_updated_byTousers User?                  @relation("tracefab_products_last_data_updated_byTousers", fields: [last_data_updated_by], references: [id], onUpdate: NoAction)
+
+  @@unique([brand_organization_id, public_slug])
+  @@unique([brand_organization_id, reference])
+  @@index([brand_organization_id, status], map: "idx_products_brand")
+  @@index([brand_organization_id, data_readiness, data_completion], map: "idx_products_data_readiness")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model verification_records {
+  id                                                                         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id                                                      String              @db.Uuid
+  data_point_id                                                              String?             @db.Uuid
+  document_id                                                                String?             @db.Uuid
+  certification_id                                                           String?             @db.Uuid
+  verifier_organization_id                                                   String?             @db.Uuid
+  method                                                                     String
+  status                                                                     verification_status @default(pending)
+  notes                                                                      String?
+  verified_by                                                                String?             @db.Uuid
+  verified_at                                                                DateTime?           @db.Timestamptz(6)
+  created_at                                                                 DateTime            @default(now()) @db.Timestamptz(6)
+  certifications                                                             certifications?     @relation(fields: [certification_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  data_points                                                                data_points?        @relation(fields: [data_point_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  documents                                                                  documents?          @relation(fields: [document_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations_verification_records_owner_organization_idToorganizations    organizations       @relation("verification_records_owner_organization_idToorganizations", fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                                                                      User?               @relation(fields: [verified_by], references: [id], onUpdate: NoAction)
+  organizations_verification_records_verifier_organization_idToorganizations organizations?      @relation("verification_records_verifier_organization_idToorganizations", fields: [verifier_organization_id], references: [id], onUpdate: NoAction)
+
+  @@index([owner_organization_id, status], map: "idx_verifications_owner")
+}
+
+enum data_request_item_status {
+  pending
+  answered
+  needs_review
+  accepted
+  rejected
+}
+
+enum data_request_status {
+  draft
+  sent
+  in_progress
+  submitted
+  changes_requested
+  approved
+  cancelled
+}
+
+enum data_type {
+  text
+  number
+  boolean
+  date
+  country
+  percentage
+  json
+  document
+}
+
+enum data_value_status {
+  declared
+  documented
+  checked_for_consistency
+  verified_by_reviewer
+  certified_by_third_party
+  expired
+  needs_review
+}
+
+enum document_kind {
+  certificate
+  technical_spec
+  origin_proof
+  audit_report
+  invoice
+  other
+}
+
+enum document_status {
+  uploaded
+  scanning
+  available
+  rejected
+  deleted
+}
+
+enum document_visibility {
+  private
+  shared
+  public_projection
+}
+
+enum dpp_profile_status {
+  draft
+  active
+  retired
+}
+
+enum dpp_readiness_status {
+  not_started
+  in_progress
+  data_ready
+  review_required
+  ready_to_publish
+  published
+}
+
+enum membership_role {
+  owner
+  admin
+  manager
+  contributor
+  viewer
+  auditor
+}
+
+enum membership_status {
+  invited
+  active
+  suspended
+  revoked
+}
+
+enum node_type {
+  product
+  material
+  organization
+  site
+  process
+}
+
+enum organization_status {
+  invited
+  active
+  suspended
+  archived
+}
+
+enum organization_type {
+  brand
+  supplier
+  verifier
+  platform
+}
+
+enum product_data_readiness {
+  not_started
+  in_progress
+  data_ready
+  needs_review
+}
+
+enum product_status {
+  draft
+  active
+  archived
+}
+
+enum quality_issue_severity {
+  info
+  warning
+  blocking
+}
+
+enum quality_issue_status {
+  open
+  acknowledged
+  resolved
+  waived
+}
+
+enum relationship_status {
+  invited
+  active
+  suspended
+  ended
+}
+
+enum share_status {
+  active
+  revoked
+  expired
+}
+
+enum supplier_onboarding_status {
+  not_started
+  invited
+  in_progress
+  submitted
+  approved
+  rejected
+}
+
+enum supply_chain_link_type {
+  sourced_from
+  transformed_at
+  manufactured_at
+  supplied_by
+  contains
+  next_step
+}
+
+enum tracefab_order_status {
+  draft
+  submitted
+  confirmed
+  fulfilled
+  cancelled
+}
+
+enum verification_status {
+  pending
+  passed
+  failed
+  needs_review
+  expired
+}

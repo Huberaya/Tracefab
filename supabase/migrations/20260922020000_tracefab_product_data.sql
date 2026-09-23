@@ -166,6 +166,7 @@ DECLARE
   v_percentage_total NUMERIC;
   v_has_identifier BOOLEAN;
   v_has_product_data_point BOOLEAN;
+  v_needs_review BOOLEAN;
   v_completed INTEGER := 0;
 BEGIN
   SELECT * INTO v_product
