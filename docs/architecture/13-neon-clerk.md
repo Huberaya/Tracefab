@@ -73,6 +73,26 @@ npm run db:generate
 
 Les secrets ne doivent pas être commités. `DATABASE_URL` et `CLERK_SECRET_KEY` restent des variables serveur. Une branche Neon dédiée doit être utilisée pour toute future migration destructive ou évolution de schéma.
 
+## Runtime Vercel et API Clerk
+
+Le Chantier 9 ajoute des fonctions Vercel TypeScript :
+
+- `GET /api/health` : vérifie la disponibilité de Neon sans authentification ;
+- `GET /api/me` : vérifie le JWT Clerk, synchronise `users` et retourne les memberships actifs ;
+- `GET/POST /api/organizations` : lit les organisations accessibles et crée une organisation avec son membership owner.
+
+`api/_lib/context.ts` encapsule les requêtes tenant dans une transaction et initialise `tracefab.user_id` avant les lectures/écritures protégées.
+
+Les clés Clerk doivent être définies dans l'environnement Vercel :
+
+```text
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
+DATABASE_URL=postgresql://...
+```
+
+La clé secrète n'est jamais utilisée dans le navigateur.
+
 ## État de cette étape
 
 - URL Neon Tracefab vérifiée ;
@@ -80,4 +100,5 @@ Les secrets ne doivent pas être commités. `DATABASE_URL` et `CLERK_SECRET_KEY`
 - migration Neon/Clerk appliquée ;
 - Prisma introspecté sur le schéma créé ;
 - aucune donnée métier initiale créée ;
-- endpoints applicatifs, pages Clerk et synchronisation serveur restent à construire dans la couche application, absente du repository actuel.
+- runtime Vercel et premières routes Clerk/Prisma ajoutés ;
+- pages Clerk et interfaces métier restent à construire dans un frontend dédié.

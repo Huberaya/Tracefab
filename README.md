@@ -36,6 +36,17 @@ docs/architecture/
   12-dpp-readiness.md
   13-neon-clerk.md
 
+api/
+  health.ts
+  me.ts
+  organizations.ts
+
+api/_lib/
+  auth.ts
+  context.ts
+  http.ts
+  prisma.ts
+
 auth and database:
   prisma/schema.prisma
   prisma/migrations/20260923130000_tracefab_neon_initial/migration.sql
@@ -81,7 +92,7 @@ Avant toute évolution en production :
 
 Les fichiers sous `supabase/migrations/` sont conservés comme historique de conception des chantiers. Ils ne doivent pas être appliqués directement à Neon : la migration canonique est sous `prisma/migrations/`.
 
-La création initiale d'une organisation et de son membership owner passe par `tracefab_create_organization(...)`. Pour le parcours fournisseur, `tracefab_invite_supplier(...)`, `tracefab_accept_organization_invitation(...)` et `tracefab_submit_supplier_profile(...)` sont les fonctions de transition sécurisées. Pour les produits, `tracefab_create_product(...)`, `tracefab_update_product_data(...)` et `tracefab_start_product_revision(...)` centralisent les mutations sensibles. Pour la collecte, `tracefab_create_data_request(...)`, `tracefab_send_data_request(...)`, `tracefab_submit_data_response(...)`, `tracefab_submit_data_request(...)` et `tracefab_review_data_response(...)` pilotent le workflow. Pour les documents et certifications, `tracefab_register_document(...)`, `tracefab_finalize_document_upload(...)`, `tracefab_register_certification(...)` et `tracefab_review_certification(...)` encadrent les transitions. Pour la qualité, `tracefab_compute_supplier_quality(...)`, `tracefab_compute_product_quality(...)`, `tracefab_acknowledge_quality_issue(...)` et `tracefab_waive_quality_issue(...)` produisent et traitent les findings. Pour la traçabilité, `tracefab_create_supply_chain_node(...)`, `tracefab_add_supply_chain_link(...)` et `tracefab_get_product_traceability(...)` encadrent le graphe produit. Pour la préparation DPP, `tracefab_compute_dpp_readiness(...)` et `tracefab_mark_dpp_ready_to_publish(...)` produisent une projection interne, sans publication publique. La génération du token brut, l'envoi email, les notifications, le scan antivirus, les recalculs asynchrones et les imports catalogue restent à implémenter dans des fonctions ou services de confiance.
+La création initiale d'une organisation et de son membership owner passe par `tracefab_create_organization(...)` ou `POST /api/organizations`. Le runtime Vercel expose aussi `GET /api/health` et `GET /api/me` pour la vérification Clerk et la synchronisation de `users`. Pour le parcours fournisseur, `tracefab_invite_supplier(...)`, `tracefab_accept_organization_invitation(...)` et `tracefab_submit_supplier_profile(...)` sont les fonctions de transition sécurisées. Pour les produits, `tracefab_create_product(...)`, `tracefab_update_product_data(...)` et `tracefab_start_product_revision(...)` centralisent les mutations sensibles. Pour la collecte, `tracefab_create_data_request(...)`, `tracefab_send_data_request(...)`, `tracefab_submit_data_response(...)`, `tracefab_submit_data_request(...)` et `tracefab_review_data_response(...)` pilotent le workflow. Pour les documents et certifications, `tracefab_register_document(...)`, `tracefab_finalize_document_upload(...)`, `tracefab_register_certification(...)` et `tracefab_review_certification(...)` encadrent les transitions. Pour la qualité, `tracefab_compute_supplier_quality(...)`, `tracefab_compute_product_quality(...)`, `tracefab_acknowledge_quality_issue(...)` et `tracefab_waive_quality_issue(...)` produisent et traitent les findings. Pour la traçabilité, `tracefab_create_supply_chain_node(...)`, `tracefab_add_supply_chain_link(...)` et `tracefab_get_product_traceability(...)` encadrent le graphe produit. Pour la préparation DPP, `tracefab_compute_dpp_readiness(...)` et `tracefab_mark_dpp_ready_to_publish(...)` produisent une projection interne, sans publication publique. La génération du token brut, l'envoi email, les notifications, le scan antivirus, les recalculs asynchrones et les imports catalogue restent à implémenter dans des fonctions ou services de confiance.
 
 ## Ce qui n'est pas encore implémenté
 
