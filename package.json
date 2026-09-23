@@ -9,6 +9,7 @@
     "test:neon:security": "node scripts/test_neon_security.mjs",
     "test:neon:supplier": "node scripts/test_neon_supplier_flow.mjs",
     "test:neon:product": "node scripts/test_neon_product_flow.mjs",
+    "test:neon:quality": "node scripts/test_neon_quality_flow.mjs",
     "test:neon:collection": "node scripts/test_neon_data_collection_flow.mjs",
     "test:questionnaires": "node scripts/test_questionnaires.mjs",
     "test:email": "node scripts/test_email_delivery.mjs",

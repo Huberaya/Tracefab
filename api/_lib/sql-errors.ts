@@ -48,6 +48,13 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   only_current_response_can_be_reviewed: { status: 409 },
   data_request_not_reviewable: { status: 409 },
   reviewer_role_required: { status: 403 },
+  quality_calculation_version_required: { status: 400 },
+  supplier_quality_access_denied: { status: 403 },
+  product_quality_access_denied: { status: 403 },
+  quality_issue_not_found: { status: 404 },
+  quality_issue_review_role_required: { status: 403 },
+  quality_issue_waive_role_required: { status: 403 },
+  quality_issue_waiver_reason_required: { status: 422 },
 };
 
 /**
