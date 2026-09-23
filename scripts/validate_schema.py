@@ -18,6 +18,7 @@ QUALITY_SQL_PATH = ROOT / "supabase/migrations/20260922050000_tracefab_data_qual
 TRACEABILITY_SQL_PATH = ROOT / "supabase/migrations/20260922060000_tracefab_traceability.sql"
 DPP_SQL_PATH = ROOT / "supabase/migrations/20260922070000_tracefab_dpp_readiness.sql"
 NEON_SQL_PATH = ROOT / "prisma/migrations/20260923130000_tracefab_neon_initial/migration.sql"
+PRODUCT_API_SQL_PATH = ROOT / "prisma/migrations/20260923160000_tracefab_product_api_functions/migration.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
@@ -27,6 +28,7 @@ QUALITY_SQL = QUALITY_SQL_PATH.read_text(encoding="utf-8")
 TRACEABILITY_SQL = TRACEABILITY_SQL_PATH.read_text(encoding="utf-8")
 DPP_SQL = DPP_SQL_PATH.read_text(encoding="utf-8")
 NEON_SQL = NEON_SQL_PATH.read_text(encoding="utf-8")
+PRODUCT_API_SQL = PRODUCT_API_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -238,6 +240,17 @@ for required_marker in (
 for forbidden_marker in ("auth.users", "auth.uid()", "storage.objects", "storage.buckets"):
     if forbidden_marker in NEON_SQL:
         errors.append(f"Supabase-only marker remains in Neon migration: {forbidden_marker}")
+
+for required_marker in (
+    "tracefab_create_material",
+    "tracefab_update_material",
+    "tracefab_add_product_identifier",
+    "tracefab_update_product_identifier",
+    "tracefab_add_product_material",
+    "tracefab_update_product_material",
+):
+    if required_marker not in PRODUCT_API_SQL:
+        errors.append(f"product API migration marker missing: {required_marker}")
 
 if errors:
     print("schema validation failed:")

@@ -86,7 +86,10 @@ Le Chantier 9 ajoute des fonctions Vercel TypeScript :
 - `POST /api/organizations/:organizationId/invitations` : crée une invitation fournisseur et tente sa livraison via l'adaptateur Resend ; le token brut n'est renvoyé qu'en mode manuel ou après échec ;
 - `POST /api/invitations/accept` : hache le token reçu, vérifie l'utilisateur Clerk et accepte l'invitation uniquement si l'email correspond ;
 - `GET/PATCH /api/suppliers/:supplierId/profile` : lit ou met à jour le profil derrière `tracefab_update_supplier_profile(...)` ;
-- `POST /api/suppliers/:supplierId/profile/submit` : soumet un profil complet derrière `tracefab_submit_supplier_profile(...)`.
+- `POST /api/suppliers/:supplierId/profile/submit` : soumet un profil complet derrière `tracefab_submit_supplier_profile(...)` ;
+- `GET/POST /api/products` et `GET/PATCH /api/products/:productId` : exposent les produits de marque ;
+- `/api/products/:productId/revision`, `/materials` et `/identifiers` : exposent les révisions, la composition et les identifiants via les fonctions SQL de confiance ;
+- `/api/materials` : gère les matériaux possédés ou partagés dans les organisations accessibles.
 
 `api/_lib/context.ts` encapsule les requêtes tenant dans une transaction et initialise `tracefab.user_id` et `tracefab.user_email` avant les lectures/écritures protégées. `api/_lib/sql-errors.ts` centralise la traduction des exceptions métier PostgreSQL en réponses API sans réimprimer les détails SQL.
 
@@ -110,4 +113,5 @@ La clé secrète n'est jamais utilisée dans le navigateur.
 - runtime Vercel, API multi-tenant et onboarding fournisseur Clerk/Prisma ajoutés ;
 - tests Neon d'isolation RLS/refus des rôles insuffisants (`npm run test:neon:security`) et du parcours invitation/profil (`npm run test:neon:supplier`) ;
 - email transactionnel d'invitation et contrat Resend ajoutés dans le Chantier 11 (`npm run test:email`) ;
+- API Product Data, matériaux, composition et révisions ajoutées dans le Chantier 12 (`npm run test:neon:product`) ;
 - pages Clerk et interfaces métier restent à construire dans un frontend dédié.

@@ -17,6 +17,19 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   supplier_not_found: { status: 404 },
   supplier_profile_role_required: { status: 403 },
   supplier_profile_status_does_not_allow_submission: { status: 409 },
+  brand_product_role_required: { status: 403 },
+  brand_product_manager_role_required: { status: 403 },
+  product_not_found: { status: 404 },
+  product_identifier_not_found: { status: 404 },
+  product_material_not_found: { status: 404 },
+  material_not_found: { status: 404 },
+  material_owner_role_required: { status: 403 },
+  material_not_shared_with_product_brand: { status: 403 },
+  invalid_material: { status: 400 },
+  invalid_product_identifier: { status: 400 },
+  invalid_material_percentage: { status: 400 },
+  invalid_product_material: { status: 400 },
+  product_material_version_must_match_current_product_version: { status: 409 },
 };
 
 /**
