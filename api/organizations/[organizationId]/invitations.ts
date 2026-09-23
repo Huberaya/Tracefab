@@ -5,6 +5,7 @@ import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
 import { withTracefabUserContext } from '../../_lib/context';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
 import { sqlBusinessError } from '../../_lib/sql-errors';
+import { sendSupplierInvitationEmail } from '../../_lib/email';
 
 type InviteSupplierBody = {
   email?: string;
@@ -19,6 +20,11 @@ type InvitationRow = {
   supplier_id: string;
   invitation_id: string;
   expires_at: Date;
+};
+
+type InvitationTransactionResult = {
+  invitation: InvitationRow;
+  brandName: string;
 };
 
 function routeOrganizationId(req: VercelRequest) {
@@ -61,7 +67,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const invitationToken = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256').update(invitationToken).digest('hex');
 
-    const invitation = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const transactionResult = await withTracefabUserContext(user.id, user.email, async (tx): Promise<InvitationTransactionResult> => {
+      const brand = await tx.organizations.findUnique({
+        where: { id: organizationId },
+        select: { legal_name: true, display_name: true },
+      });
       const rows = await tx.$queryRaw<InvitationRow[]>`
         SELECT *
         FROM tracefab_invite_supplier(
@@ -75,11 +85,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       const row = rows[0];
       if (!row) throw new Error('invitation_creation_failed');
-      return row;
+      return {
+        invitation: row,
+        brandName: brand?.display_name || brand?.legal_name || 'A Tracefab organization',
+      };
     });
 
-    res.setHeader('Cache-Control', 'no-store');
-    return json(res, 201, {
+    const invitation = transactionResult.invitation;
+    const delivery = await sendSupplierInvitationEmail({
+      to: email,
+      supplierName: displayName || legalName,
+      brandName: transactionResult.brandName,
+      invitationToken,
+      expiresAt: invitation.expires_at,
+    });
+    const response = {
       invitation: {
         id: invitation.invitation_id,
         relationshipId: invitation.relationship_id,
@@ -87,8 +107,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         supplierId: invitation.supplier_id,
         expiresAt: invitation.expires_at,
       },
-      // This value is intentionally returned once so an email adapter can
-      // build the acceptance link. It is never logged or stored in PostgreSQL.
+      delivery: delivery.status === 'sent'
+        ? { status: delivery.status, providerId: delivery.providerId }
+        : { status: delivery.status },
+    };
+
+    res.setHeader('Cache-Control', 'no-store');
+    if (delivery.status === 'sent') return json(res, 201, response);
+
+    // When delivery is not configured or fails, return the one-time token to
+    // the trusted caller so it can be delivered manually. It never enters SQL
+    // and is never logged by this API.
+    return json(res, delivery.status === 'failed' ? 502 : 201, {
+      ...response,
       invitationToken,
     });
   } catch (error) {

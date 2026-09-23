@@ -10,7 +10,7 @@ prisma/migrations/20260923140000_tracefab_clerk_context/migration.sql
 prisma/migrations/20260923150000_fix_invitation_acceptance/migration.sql
 ```
 
-La seconde migration remplace la lecture historique de l'email JWT dans la fonction d'acceptation d'invitation par le contexte Clerk transactionnel, sans réécrire le checksum de la migration initiale. Le schéma Prisma introspecté après application est `prisma/schema.prisma`.
+Les deux migrations suivantes remplacent la lecture historique de l'email JWT dans la fonction d'acceptation d'invitation par le contexte Clerk transactionnel puis qualifient une colonne ambiguë dans cette fonction, sans réécrire le checksum de la migration initiale. Le schéma Prisma introspecté après application est `prisma/schema.prisma`.
 
 ## Identité
 
@@ -83,7 +83,7 @@ Le Chantier 9 ajoute des fonctions Vercel TypeScript :
 - `GET /api/health` : vérifie la disponibilité de Neon sans authentification ;
 - `GET /api/me` : vérifie le JWT Clerk, synchronise `users` et retourne les memberships actifs ;
 - `GET/POST /api/organizations` : lit les organisations accessibles et crée une organisation avec son membership owner ;
-- `POST /api/organizations/:organizationId/invitations` : crée une invitation fournisseur et renvoie le token brut une seule fois au backend appelant ;
+- `POST /api/organizations/:organizationId/invitations` : crée une invitation fournisseur et tente sa livraison via l'adaptateur Resend ; le token brut n'est renvoyé qu'en mode manuel ou après échec ;
 - `POST /api/invitations/accept` : hache le token reçu, vérifie l'utilisateur Clerk et accepte l'invitation uniquement si l'email correspond ;
 - `GET/PATCH /api/suppliers/:supplierId/profile` : lit ou met à jour le profil derrière `tracefab_update_supplier_profile(...)` ;
 - `POST /api/suppliers/:supplierId/profile/submit` : soumet un profil complet derrière `tracefab_submit_supplier_profile(...)`.
@@ -109,4 +109,5 @@ La clé secrète n'est jamais utilisée dans le navigateur.
 - aucune donnée métier initiale créée ;
 - runtime Vercel, API multi-tenant et onboarding fournisseur Clerk/Prisma ajoutés ;
 - tests Neon d'isolation RLS/refus des rôles insuffisants (`npm run test:neon:security`) et du parcours invitation/profil (`npm run test:neon:supplier`) ;
+- email transactionnel d'invitation et contrat Resend ajoutés dans le Chantier 11 (`npm run test:email`) ;
 - pages Clerk et interfaces métier restent à construire dans un frontend dédié.
