@@ -4,6 +4,8 @@ import { withTracefabUserContext } from '../../_lib/context';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
 import { sqlBusinessError } from '../../_lib/sql-errors';
 import { isUuid, optionalString } from '../../_lib/data-requests';
+import { organizationNotificationAudience } from '../../_lib/notifications';
+import { sendDataRequestNotificationEmail } from '../../_lib/email';
 
 type ReviewBody = {
   status?: string;
@@ -63,18 +65,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'invalid_review_status' });
     }
     const reviewComment = optionalString(body.reviewComment, 'review_comment', 4000);
-    const rows = await withTracefabUserContext(user.id, user.email, (tx) =>
-      tx.$queryRaw<ResponseRow[]>`
+    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const rows = await tx.$queryRaw<ResponseRow[]>`
         SELECT *
         FROM tracefab_review_data_response(
           ${responseId}::uuid,
           ${body.status}::data_value_status,
           ${reviewComment}
         )
-      `,
-    );
-    if (!rows[0]) throw new Error('data_response_review_failed');
-    return json(res, 200, { response: serializeResponse(rows[0]) });
+      `;
+      if (!rows[0]) throw new Error('data_response_review_failed');
+
+      const context = await tx.data_responses.findUnique({
+        where: { id: responseId },
+        select: {
+          data_request_items: {
+            select: {
+              data_requests: {
+                select: {
+                  id: true,
+                  title: true,
+                  due_at: true,
+                  brand_organization_id: true,
+                  supplier_organization_id: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      const request = context?.data_request_items.data_requests;
+      if (!request) throw new Error('data_response_review_failed');
+      const [supplierAudience, brand] = await Promise.all([
+        organizationNotificationAudience(tx, request.supplier_organization_id),
+        tx.organizations.findUnique({ where: { id: request.brand_organization_id }, select: { legal_name: true, display_name: true } }),
+      ]);
+      return {
+        response: rows[0],
+        request,
+        supplierAudience,
+        brandName: brand?.display_name || brand?.legal_name || 'Tracefab brand',
+      };
+    });
+
+    const delivery = await sendDataRequestNotificationEmail({
+      to: result.supplierAudience.recipients.map(({ email }) => email),
+      recipientName: result.supplierAudience.recipients[0]?.fullName || 'Supplier team',
+      brandName: result.brandName,
+      supplierName: result.supplierAudience.organizationName,
+      requestTitle: result.request.title,
+      requestId: result.request.id,
+      dueAt: result.request.due_at,
+      event: body.status === 'verified_by_reviewer' ? 'response_verified' : 'changes_requested',
+    });
+
+    return json(res, 200, {
+      response: serializeResponse(result.response),
+      delivery: delivery.status === 'sent'
+        ? { status: delivery.status, providerId: delivery.providerId }
+        : { status: delivery.status },
+    });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);

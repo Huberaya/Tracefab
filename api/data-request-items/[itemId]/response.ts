@@ -4,6 +4,7 @@ import { withTracefabUserContext } from '../../_lib/context';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
 import { sqlBusinessError } from '../../_lib/sql-errors';
 import { isUuid } from '../../_lib/data-requests';
+import { validateResponseValue } from '../../_lib/questionnaires';
 
 type ResponseBody = {
   value?: unknown;
@@ -67,22 +68,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : isUuid(body.sourceDocumentId) ? body.sourceDocumentId : null;
     if (body.sourceDocumentId && !sourceDocumentId) return json(res, 400, { error: 'invalid_source_document_id' });
 
-    const rows = await withTracefabUserContext(user.id, user.email, (tx) =>
-      tx.$queryRaw<ResponseRow[]>`
+    const response = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const item = await tx.data_request_items.findUnique({
+        where: { id: itemId },
+        select: { data_type: true, validation_rules: true },
+      });
+      if (!item) throw new Error('data_request_item_not_found');
+      const validationError = validateResponseValue(item, body.value);
+      if (validationError) throw new Error(validationError);
+
+      const rows = await tx.$queryRaw<ResponseRow[]>`
         SELECT *
         FROM tracefab_submit_data_response(
           ${itemId}::uuid,
           ${JSON.stringify(body.value)}::jsonb,
           ${sourceDocumentId}::uuid
         )
-      `,
-    );
-    if (!rows[0]) throw new Error('data_response_creation_failed');
-    return json(res, 201, { response: serializeResponse(rows[0]) });
+      `;
+      if (!rows[0]) throw new Error('data_response_creation_failed');
+      return rows[0];
+    });
+    return json(res, 201, { response: serializeResponse(response) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
+    if (error instanceof Error && (error.message === 'data_request_item_not_found' || error.message === 'data_response_creation_failed')) {
+      return json(res, error.message === 'data_request_item_not_found' ? 404 : 500, { error: error.message });
+    }
+    if (error instanceof Error && /^response_value_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') {
       return json(res, 503, { error: 'clerk_not_configured' });

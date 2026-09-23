@@ -52,6 +52,22 @@ try {
   assert(payload.text.includes('raw-test-token'), 'acceptance link omitted the one-time token');
   assert(payload.html.includes('&lt;Test&gt;') && payload.html.includes('Brand &amp; Co'), 'HTML was not escaped');
 
+  const notification = await email.sendDataRequestNotificationEmail({
+    to: ['reviewer@example.test', 'REVIEWER@example.test'],
+    recipientName: 'Reviewer <One>',
+    brandName: 'Brand & Co',
+    supplierName: 'Supplier',
+    requestTitle: 'Product data',
+    requestId: '00000000-0000-0000-0000-000000000001',
+    dueAt: new Date('2026-10-01T00:00:00.000Z'),
+    event: 'request_submitted',
+  });
+  const notificationPayload = JSON.parse(request.init.body);
+  assert(notification.status === 'sent', 'data request notification was not delivered');
+  assert(notificationPayload.to.length === 1 && notificationPayload.to[0] === 'reviewer@example.test', 'notification recipients were not normalized');
+  assert(notificationPayload.html.includes('data-requests/00000000-0000-0000-0000-000000000001'), 'request link was omitted');
+  assert(notificationPayload.html.includes('Reviewer &lt;One&gt;') && notificationPayload.html.includes('Brand &amp; Co'), 'notification HTML was not escaped');
+
   globalThis.fetch = async () => { throw new Error('provider unavailable'); };
   const failed = await email.sendSupplierInvitationEmail({
     to: 'supplier@example.test',
