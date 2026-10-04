@@ -14,7 +14,11 @@ assert(syntax.status === 0, syntax.stderr || 'Brand Console script syntax is inv
 for (const contract of [
   '/api/config',
   '/api/me',
+  '/api/suppliers',
+  '/api/materials',
   '/api/products',
+  '/materials',
+  '/identifiers',
   '/api/data-requests',
   '/api/questionnaires',
   '/api/quality/products/',
@@ -25,7 +29,20 @@ for (const contract of [
 ]) {
   assert(html.includes(contract), `Brand Console contract missing: ${contract}`);
 }
+for (const formContract of [
+  'id="product-detail-form"',
+  'id="material-form"',
+  'material-edit-form',
+  'id="identifier-form"',
+  'identifier-edit-form',
+  'const method = isUpdate ? \'PATCH\' : \'POST\';',
+  "method: identifierId ? 'PATCH' : 'POST'",
+]) {
+  assert(html.includes(formContract), `Brand Console form contract missing: ${formContract}`);
+}
+assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token must be sent through Authorization');
 assert(!html.includes('localhost'), 'Brand Console must not call localhost from browser code');
+assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');
 assert(html.toLowerCase().includes('tracefab'), 'Brand Console branding is missing');
 console.log('Brand Console contract passed: static shell, Clerk bootstrap, API actions and browser-safe URLs');
 

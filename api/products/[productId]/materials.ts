@@ -72,6 +72,29 @@ function serializedMaterial(row: MaterialRow) {
   };
 }
 
+async function hydrateMaterial(tx: Prisma.TransactionClient, row: MaterialRow) {
+  return tx.product_materials.findUnique({
+    where: {
+      product_id_material_id_material_role_product_version: {
+        product_id: row.product_id,
+        material_id: row.material_id,
+        material_role: row.material_role,
+        product_version: row.product_version,
+      },
+    },
+    select: {
+      product_id: true,
+      material_id: true,
+      material_role: true,
+      percentage: true,
+      unit: true,
+      product_version: true,
+      created_at: true,
+      materials: { select: { id: true, material_type: true, name: true, normalized_name: true, origin_country_code: true } },
+    },
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST' && req.method !== 'PATCH') {
     return methodNotAllowed(res, ['GET', 'POST', 'PATCH']);
@@ -126,7 +149,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ${unit}
           )
         `;
-        return { material: rows[0] };
+        const material = rows[0] ? await hydrateMaterial(tx, rows[0]) : null;
+        return { material };
       }
 
       if (!Number.isInteger(body.productVersion) || body.productVersion !== product.version) {
@@ -143,7 +167,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${unit}
         )
       `;
-      return { material: rows[0] };
+      const material = rows[0] ? await hydrateMaterial(tx, rows[0]) : null;
+      return { material };
     });
 
     if (!result) return json(res, 404, { error: 'product_not_found' });

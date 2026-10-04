@@ -164,6 +164,8 @@
         user: null,
         memberships: [],
         organizations: [],
+        suppliers: [],
+        materials: [],
         products: [],
         requests: [],
         questionnaires: [],
@@ -171,6 +173,8 @@
         activeOrganizationId: null,
         selectedRequest: null,
         selectedProduct: null,
+        selectedProductDetail: null,
+        selectedSupplier: null,
         quality: null,
         modal: null,
         toast: null,
@@ -214,6 +218,8 @@
           { organization_id: 'demo-supplier', role: 'manager', organizations: { id: 'demo-supplier', type: 'supplier', display_name: 'Nhãn Textile', legal_name: 'Nhãn Textile' } },
         ];
         state.memberships = state.organizations;
+        state.suppliers = [{ id: 'demo-supplier-record', organization_id: 'demo-supplier', relationship_id: 'demo-relationship', organizations: { id: 'demo-supplier', type: 'supplier', display_name: 'Nhãn Textile', legal_name: 'Nhãn Textile', country_code: 'PT', status: 'active' } }];
+        state.materials = [{ id: 'demo-material-1', name: 'Coton biologique', materialType: 'fiber', originCountryCode: 'PT' }];
         state.products = [
           { id: 'demo-product-1', brandOrganizationId: 'demo-brand', reference: 'AT-ESS-001', name: 'Essentiel coton', category: 'T-shirt', status: 'active', version: 2, dataReadiness: 'needs_review', dataCompletion: '82' },
           { id: 'demo-product-2', brandOrganizationId: 'demo-brand', reference: 'AT-LIN-004', name: 'Ligne lin naturel', category: 'Chemise', status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '46' },
@@ -229,12 +235,14 @@
         state.loading = true; render();
         try {
           if (state.demo) { demoData(); state.loading = false; render(); return; }
-          const [me, orgs, products, requests, questionnaires] = await Promise.all([
-            api('/api/me'), api('/api/organizations'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires')
+          const [me, orgs, supplierPayload, materials, products, requests, questionnaires] = await Promise.all([
+            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires')
           ]);
           state.user = me.user;
           state.memberships = me.memberships || [];
           state.organizations = orgs.organizations || [];
+          state.suppliers = supplierPayload.suppliers || [];
+          state.materials = materials.materials || [];
           state.products = products.products || [];
           state.requests = requests.requests || [];
           state.questionnaires = questionnaires.questionnaires || [];
@@ -251,10 +259,11 @@
         return state.memberships.find((m) => m.organization_id === state.activeOrganizationId)?.organizations;
       }
       function brands() { return state.memberships.filter((m) => m.organizations?.type === 'brand'); }
-      function suppliers() { return state.memberships.filter((m) => m.organizations?.type === 'supplier'); }
+      function suppliers() { return state.suppliers || []; }
       function orgName(id) {
         const membership = state.memberships.find((m) => m.organization_id === id);
-        return membership?.organizations?.display_name || membership?.organizations?.legal_name || id?.slice(0, 8) || '—';
+        const supplier = suppliers().find((s) => s.organization_id === id);
+        return membership?.organizations?.display_name || membership?.organizations?.legal_name || supplier?.organizations?.display_name || supplier?.organizations?.legal_name || id?.slice(0, 8) || '—';
       }
       function requestCounts() {
         const open = state.requests.filter((r) => !['approved', 'cancelled'].includes(r.status));
@@ -287,7 +296,7 @@
           ${state.modal ? modal(state.modal) : ''}
           ${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
-      function viewLabel() { return ({ overview: 'Vue d’ensemble', requests: 'Demandes de données', products: 'Produits', quality: 'Qualité', suppliers: 'Fournisseurs', requestDetail: 'Détail de la demande' })[state.view] || 'Vue d’ensemble'; }
+      function viewLabel() { return ({ overview: 'Vue d’ensemble', requests: 'Demandes de données', products: 'Produits', quality: 'Qualité', suppliers: 'Fournisseurs', requestDetail: 'Détail de la demande', productDetail: 'Détail du produit', supplierDetail: 'Détail du fournisseur' })[state.view] || 'Vue d’ensemble'; }
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
       function render() {
@@ -296,7 +305,7 @@
         }
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>Préparation de votre espace…</h1><p>Chargement des organisations, produits et demandes.</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }
-        const content = state.view === 'overview' ? overview() : state.view === 'requests' ? requestsView() : state.view === 'products' ? productsView() : state.view === 'quality' ? qualityView() : state.view === 'suppliers' ? suppliersView() : requestDetailView();
+        const content = state.view === 'overview' ? overview() : state.view === 'requests' ? requestsView() : state.view === 'products' ? productsView() : state.view === 'quality' ? qualityView() : state.view === 'suppliers' ? suppliersView() : state.view === 'productDetail' ? productDetailView() : state.view === 'supplierDetail' ? supplierDetailView() : requestDetailView();
         app.innerHTML = shell(content); bind();
       }
 
@@ -322,11 +331,38 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">Écosystème fournisseur</div><h1>Fournisseurs</h1><p>Invitez et suivez les organisations qui alimentent vos données.</p></div><div class="actions"><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Rôle</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td>${esc(labels[s.role] || s.role)}</td><td>${count}</td><td><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-id="${esc(s.organization_id)}">Demander des données</button></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>Aucun fournisseur connecté</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">Écosystème fournisseur</div><h1>Fournisseurs</h1><p>Invitez et suivez les organisations qui alimentent vos données.</p></div><div class="actions"><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Rôle</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">Demander des données</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>Aucun fournisseur connecté</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
+      }
+
+      function materialName(material) { return material?.name || material?.materialName || material?.id || 'Matériau'; }
+      function materialType(material) { return material?.materialType || material?.material_type || ''; }
+      function productDetailView() {
+        const detail = state.selectedProductDetail;
+        if (!detail?.product) return `<div class="empty"><div class="empty-icon">◇</div><strong>Produit introuvable</strong><button class="btn btn-secondary" data-view="products">Retour aux produits</button></div>`;
+        const p = detail.product;
+        const materialOptions = state.materials.map((material) => `<option value="${esc(material.id)}">${esc(material.name)}${material.materialType ? ` · ${esc(material.materialType)}` : ''}</option>`).join('');
+        return `<div class="page-head"><div><button class="link-button" data-view="products">← Retour aux produits</button><div class="eyebrow" style="margin-top:20px">Produit · v${esc(p.version)}</div><h1>${esc(p.name)}</h1><p>${esc(p.reference)} · ${esc(p.category || 'Catégorie non renseignée')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="product-revision">Créer une révision</button><button class="btn btn-primary" data-action="product-quality-from-detail">Ouvrir la qualité</button></div></div>
+          <div class="grid split">
+            <div class="card panel"><div class="panel-head"><h2>Données produit</h2><span class="meta">Les champs calculés restent contrôlés par Neon</span></div><form id="product-detail-form"><div class="form-grid"><label>Référence<input class="input" name="reference" value="${esc(p.reference)}" required></label><label>Nom<input class="input" name="name" value="${esc(p.name)}" required></label><label>Catégorie<input class="input" name="category" value="${esc(p.category || '')}"></label><label>SKU<input class="input" name="sku" value="${esc(p.sku || '')}"></label><label>Description<textarea class="textarea field-full" name="description" rows="4">${esc(p.description || '')}</textarea></label><label>Famille produit<input class="input" name="productFamily" value="${esc(p.productFamily || '')}"></label><label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || '')}"></label><label>Pays de conception<input class="input" name="countryOfDesign" maxlength="2" value="${esc(p.countryOfDesign || '')}"></label><label>Pays de fabrication<input class="input" name="countryOfManufacture" maxlength="2" value="${esc(p.countryOfManufacture || '')}"></label><label>Poids en grammes<input class="input" name="weightGrams" type="number" min="0" step="0.1" value="${esc(p.weightGrams || '')}"></label><label>Tailles<input class="input" name="sizeRange" value="${esc((p.sizeRange || []).join(', '))}" placeholder="S, M, L"></label></div><div class="form-actions"><button class="btn btn-primary">Enregistrer les données</button></div></form></div>
+            <div class="card panel"><div class="panel-head"><div><h2>Composition</h2><p class="meta" style="margin:5px 0 0">Version courante · matériaux partagés par votre organisation</p></div><span class="status status-${state.materials.length ? 'approved' : 'draft'}">${state.materials.length} matériau(x)</span></div>
+              ${detail.materials?.length ? `<div class="item-list">${detail.materials.map((m) => `<form class="item material-edit-form" data-material-product-id="${esc(p.id)}"><input type="hidden" name="materialId" value="${esc(m.materialId)}"><input type="hidden" name="materialRole" value="${esc(m.role)}"><input type="hidden" name="productVersion" value="${esc(m.productVersion || p.version)}"><div><strong>${esc(materialName(m.material))}</strong><div class="meta">${esc(m.role)} · ${esc(materialType(m.material))}</div></div><div class="actions"><label class="meta">Valeur<input class="input" name="percentage" type="number" min="0" max="100" step="0.01" value="${esc(m.percentage || '')}" aria-label="Pourcentage de ${esc(materialName(m.material))}"></label><label class="meta">Unité<input class="input" name="unit" value="${esc(m.unit || '%')}" maxlength="20" aria-label="Unité de ${esc(materialName(m.material))}"></label><button class="btn btn-secondary btn-small" type="submit">Mettre à jour</button></div></form>`).join('')}</div>` : '<div class="empty" style="padding:12px 0 18px"><p>Aucune composition renseignée pour cette version.</p></div>'}
+              <form id="material-form" class="form-grid" style="margin-top:18px"><label class="field-full">Matériau<select class="select" name="materialId" required>${materialOptions || '<option value="">Aucun matériau disponible</option>'}</select></label><label>Rôle<input class="input" name="materialRole" required value="main" placeholder="main"></label><label>Pourcentage<input class="input" name="percentage" type="number" min="0" max="100" step="0.01" placeholder="80"></label><label>Unité<input class="input" name="unit" value="%" maxlength="20"></label><div class="form-actions field-full"><button class="btn btn-primary btn-small" type="submit" ${state.materials.length ? '' : 'disabled'}>Ajouter à la composition</button></div></form>
+            </div>
+          </div>
+          <div class="card panel" style="margin-top:17px"><div class="panel-head"><div><h2>Identifiants</h2><p class="meta" style="margin:5px 0 0">Les identifiants servent à relier cette référence aux systèmes externes.</p></div><span class="meta">${detail.identifiers?.length || 0} enregistré(s)</span></div>
+            ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">Créé le ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">Enregistrer</button></div></form>`).join('')}</div>` : '<div class="empty" style="padding:12px 0 18px"><p>Aucun identifiant renseigné pour cette version.</p></div>'}
+            <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>Type<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> Définir comme principal</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">Ajouter l’identifiant</button></div></form>
+          </div>`;
+      }
+
+      function supplierDetailView() {
+        const supplier = state.selectedSupplier;
+        if (!supplier) return `<div class="empty"><div class="empty-icon">◎</div><strong>Fournisseur introuvable</strong><button class="btn btn-secondary" data-view="suppliers">Retour aux fournisseurs</button></div>`;
+        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">← Retour aux fournisseurs</button><div class="eyebrow" style="margin-top:20px">Fournisseur</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || 'Pays non renseigné')} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">Nouvelle demande</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(labels[supplier.profile?.onboardingStatus] || supplier.profile?.onboardingStatus || 'Non chargé')}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">Complétude</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">Activités</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">Résumé</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : '<div class="empty"><p>Profil non disponible pour cette organisation.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
       }
 
       function qualityView() {
@@ -372,6 +408,64 @@
         state.modal = null; await sync(); await openRequest(created.request.id); notify('Demande créée et questionnaire préparé.');
       }
       async function openRequest(id) { state.view = 'requestDetail'; if (state.demo) { state.selectedRequest = state.requests.find((r) => r.id === id); render(); return; } state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(id)}`)).request; render(); }
+      async function openProduct(id) { state.view = 'productDetail'; state.selectedProduct = state.products.find((p) => p.id === id) || null; if (state.demo) { state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] }; render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(id)}`); render(); }
+      async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: 'Partenaire actif' }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
+      async function saveProduct(form) { const data = Object.fromEntries(new FormData(form)); const body = { ...data, sizeRange: String(data.sizeRange || '').split(',').map((x) => x.trim()).filter(Boolean), weightGrams: data.weightGrams ? Number(data.weightGrams) : null }; if (state.demo) { Object.assign(state.selectedProductDetail.product, body); state.selectedProduct = state.selectedProductDetail.product; notify('Produit mis à jour en mode démonstration.'); render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`, { method: 'PATCH', body: JSON.stringify(body) }); await sync(); notify('Données produit enregistrées.'); render(); }
+      async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify('Nouvelle révision simulée.'); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify('Nouvelle révision créée.'); render(); }
+      async function refreshProductDetail() {
+        if (!state.selectedProductDetail?.product) return;
+        if (!state.demo) state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`);
+        state.selectedProduct = state.selectedProductDetail.product;
+        render();
+      }
+      async function saveMaterial(form) {
+        if (!state.selectedProductDetail?.product) return;
+        const data = Object.fromEntries(new FormData(form));
+        const body = {
+          materialId: data.materialId,
+          materialRole: data.materialRole,
+          percentage: data.percentage === '' ? null : Number(data.percentage),
+          unit: data.unit || '%',
+          productVersion: data.productVersion ? Number(data.productVersion) : undefined,
+        };
+        const productId = state.selectedProductDetail.product.id;
+        const isUpdate = Boolean(form.classList.contains('material-edit-form'));
+        if (state.demo) {
+          const material = state.materials.find((entry) => entry.id === body.materialId);
+          const existing = state.selectedProductDetail.materials.find((entry) => entry.materialId === body.materialId && entry.role === body.materialRole && (!isUpdate || entry.productVersion === body.productVersion));
+          if (existing) Object.assign(existing, { percentage: body.percentage === null ? null : String(body.percentage), unit: body.unit });
+          else state.selectedProductDetail.materials.push({ ...body, percentage: body.percentage === null ? null : String(body.percentage), productVersion: state.selectedProductDetail.product.version, role: body.materialRole, material: material ? { name: material.name, materialType: material.materialType, id: material.id } : { id: body.materialId } });
+          notify(isUpdate ? 'Composition mise à jour en mode démonstration.' : 'Matériau ajouté en mode démonstration.');
+          render();
+          return;
+        }
+        const method = isUpdate ? 'PATCH' : 'POST';
+        await api(`/api/products/${encodeURIComponent(productId)}/materials`, { method, body: JSON.stringify(body) });
+        await refreshProductDetail();
+        notify(isUpdate ? 'Composition mise à jour.' : 'Matériau ajouté à la composition.');
+      }
+      async function saveIdentifier(form) {
+        if (!state.selectedProductDetail?.product) return;
+        const data = Object.fromEntries(new FormData(form));
+        const identifierId = form.dataset.identifierId;
+        const body = { identifierType: data.identifierType, identifierValue: data.identifierValue, isPrimary: data.isPrimary === 'on' };
+        const productId = state.selectedProductDetail.product.id;
+        if (state.demo) {
+          if (identifierId) {
+            const existing = state.selectedProductDetail.identifiers.find((entry) => entry.id === identifierId);
+            if (existing) Object.assign(existing, { value: body.identifierValue, isPrimary: body.isPrimary });
+          } else {
+            state.selectedProductDetail.identifiers.push({ id: `demo-identifier-${Date.now()}`, type: body.identifierType, value: body.identifierValue, isPrimary: body.isPrimary, createdAt: new Date().toISOString() });
+          }
+          notify(identifierId ? 'Identifiant mis à jour en mode démonstration.' : 'Identifiant ajouté en mode démonstration.');
+          render();
+          return;
+        }
+        const path = `/api/products/${encodeURIComponent(productId)}/identifiers${identifierId ? `?identifierId=${encodeURIComponent(identifierId)}` : ''}`;
+        await api(path, { method: identifierId ? 'PATCH' : 'POST', body: JSON.stringify(body) });
+        await refreshProductDetail();
+        notify(identifierId ? 'Identifiant mis à jour.' : 'Identifiant ajouté.');
+      }
       async function refreshDetail() { if (!state.selectedRequest) return; if (!state.demo) state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}`)).request; render(); }
       async function sendRequest() { if (!state.selectedRequest) return; if (!state.demo) await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}/send`, { method: 'POST' }); state.selectedRequest.status = 'sent'; state.modal = null; await refreshDetail(); notify('Demande envoyée au fournisseur.'); }
       async function loadQuality(id) { state.selectedProduct = state.products.find((p) => p.id === id); state.view = 'quality'; state.quality = null; render(); if (!state.demo) { try { state.quality = await api(`/api/quality/products/${encodeURIComponent(id)}`); render(); } catch (e) { notify(e.message, true); } } else { state.quality = { score: { completeness: 82, freshness: 78, documentationCoverage: 61, consistency: 90 }, issues: [{ severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', message: 'Certaines données produit n’ont pas encore de preuve documentaire.', detectedAt: new Date().toISOString() }] }; render(); } }
@@ -390,7 +484,7 @@
           const action = el.dataset.action;
           try {
             if (action === 'new-product') { state.modal = 'new-product'; render(); }
-            if (action === 'new-request') { state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierId; render(); }
+            if (action === 'new-request') { state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierOrgId || el.dataset.supplierId; render(); }
             if (action === 'invite-supplier') { state.modal = 'invite-supplier'; render(); }
             if (action === 'close-modal') { state.modal = null; render(); }
             if (action === 'retry') { state.configError = null; boot(); }
@@ -398,11 +492,15 @@
             if (action === 'send-request') await sendRequest();
             if (action === 'select-quality-product') { state.selectedProduct = null; state.quality = null; render(); }
             if (action === 'compute-quality') await computeQuality();
+            if (action === 'product-revision') await reviseProduct();
+            if (action === 'product-quality-from-detail') { state.selectedProduct = state.selectedProductDetail?.product; await loadQuality(state.selectedProduct?.id); }
             if (action === 'signout' && state.clerk) await state.clerk.signOut();
           } catch (error) { notify(error.message, true); }
         }));
         document.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openRequest(el.dataset.requestId); }));
         document.querySelectorAll('[data-quality-product]').forEach((el) => el.addEventListener('click', () => loadQuality(el.dataset.qualityProduct)));
+        document.querySelectorAll('[data-product-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openProduct(el.dataset.productId); }));
+        document.querySelectorAll('[data-supplier-id-view]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openSupplier(el.dataset.supplierIdView); }));
         document.querySelectorAll('[data-review-response]').forEach((el) => el.addEventListener('click', () => reviewResponse(el.dataset.reviewResponse, el.dataset.reviewStatus).catch((error) => notify(error.message, true))));
         const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => { state.activeOrganizationId = org.value; sync(); });
         const search = document.getElementById('request-search'); const filter = document.getElementById('request-filter');
@@ -410,6 +508,11 @@
         search?.addEventListener('input', filterRequests); filter?.addEventListener('change', filterRequests);
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('product-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('material-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); }));
+        document.getElementById('identifier-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveIdentifier(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.querySelectorAll('.identifier-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveIdentifier(e.currentTarget).catch((err) => notify(err.message, true)); }));
         document.getElementById('supplier-form')?.addEventListener('submit', (e) => { e.preventDefault(); inviteSupplier(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('request-form')?.addEventListener('submit', (e) => { e.preventDefault(); createRequest(e.currentTarget).catch((err) => notify(err.message, true)); });
       }

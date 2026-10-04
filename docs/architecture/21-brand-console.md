@@ -1,33 +1,30 @@
-# 21. Brand Console minimale — Chantier 18
+# 21. Brand Console approfondie — Chantier 18
 
 ## Périmètre livré
 
-La première console marque est livrée comme une application statique sous :
+La console marque est une application statique sous :
 
 ```text
 /brand-console/
 ```
 
-Elle consomme les APIs Vercel/Clerk existantes et couvre le premier parcours opérationnel :
+Elle consomme les APIs Vercel/Clerk existantes et couvre les parcours opérationnels suivants :
 
-- authentification Clerk côté navigateur ;
-- sélection de l'organisation marque ;
+- authentification Clerk côté navigateur et sélection de l'organisation marque ;
 - vue d'ensemble avec indicateurs produits, demandes, échéances et fournisseurs ;
-- création d'un produit ;
-- invitation d'un fournisseur ;
-- liste des demandes de données ;
-- création d'une demande à partir d'un questionnaire versionné ;
-- initialisation des items depuis le template ;
-- envoi de la demande ;
-- détail d'une demande avec avancement, items et réponses courantes ;
-- vérification d'une réponse ou demande de correction ;
-- catalogue produit ;
-- calcul et lecture du score qualité produit ;
-- lecture des issues qualité.
+- états de chargement, erreur de configuration, vide, succès et notifications d'action ;
+- catalogue produit : création, liste, détail, édition des données produit et création d'une révision ;
+- composition produit : lecture de la composition courante, ajout d'un matériau du catalogue et édition du pourcentage/unité avec contrôle de version ;
+- identifiants produit : ajout et édition de la valeur, du statut principal et du type supporté ;
+- invitation et liste des fournisseurs partenaires issus de la relation active marque-fournisseur ;
+- profil fournisseur avec lecture de l'API fournisseur et navigation vers les demandes associées ;
+- demandes de données : création à partir d'un questionnaire versionné, initialisation des items, envoi et détail ;
+- revue des réponses courantes : vérification ou demande de correction avec commentaire ;
+- calcul et lecture du score qualité produit et de ses issues explicables.
 
-Le code est volontairement sans framework frontend pour conserver un premier déploiement statique simple. Les styles, la navigation et l'état de l'interface sont embarqués dans `brand-console/index.html`.
+Le code reste volontairement sans framework frontend pour conserver un déploiement statique simple. Les styles, la navigation et l'état de l'interface sont embarqués dans `brand-console/index.html`, avec des fonctions de synchronisation séparées pour les produits, matériaux, identifiants et fournisseurs. Les mutations sensibles sont toujours déléguées aux API et aux fonctions SQL ; l'interface n'est pas une frontière de sécurité.
 
-## Authentification
+## Authentification et isolation
 
 La page récupère la clé publishable via :
 
@@ -35,44 +32,75 @@ La page récupère la clé publishable via :
 GET /api/config
 ```
 
-Elle charge ensuite Clerk JS dans le navigateur, obtient un token de session et l'envoie en `Authorization: Bearer ...` vers les APIs. La clé secrète Clerk reste exclusivement côté serveur.
+Elle charge ensuite Clerk JS dans le navigateur, obtient un token de session et l'envoie en `Authorization: Bearer ...` vers les APIs. La clé secrète Clerk reste exclusivement côté serveur. Les API filtrent l'organisation active, les relations fournisseur et l'accès produit dans le contexte Neon/RLS ; les données affichées en mode démonstration ne sont jamais présentées comme vérifiées ou certifiées.
 
-`?demo=1` permet d'inspecter l'interface sans backend ni clé Clerk. Ce mode ne doit jamais être utilisé comme mode de production.
+`?demo=1` permet d'inspecter les états et parcours sans backend ni clé Clerk. Ce mode ne doit jamais être utilisé en production.
 
 ## API consommées
 
 ```text
-GET  /api/me
-GET  /api/organizations
-GET  /api/products
-POST /api/products
-GET  /api/data-requests
-POST /api/data-requests
-GET  /api/data-requests/:requestId
-POST /api/data-requests/:requestId/items/from-template
-POST /api/data-requests/:requestId/send
-POST /api/data-responses/:responseId/review
-GET  /api/questionnaires
-GET  /api/quality/products/:productId
-POST /api/quality/products/:productId
-POST /api/organizations/:organizationId/invitations
+GET    /api/config
+GET    /api/me
+GET    /api/organizations
+GET    /api/suppliers
+GET    /api/suppliers/:supplierId/profile
+GET    /api/materials
+GET    /api/products
+POST   /api/products
+GET    /api/products/:productId
+PATCH  /api/products/:productId
+POST   /api/products/:productId/revision
+GET    /api/products/:productId/materials
+POST   /api/products/:productId/materials
+PATCH  /api/products/:productId/materials
+GET    /api/products/:productId/identifiers
+POST   /api/products/:productId/identifiers
+PATCH  /api/products/:productId/identifiers?identifierId=:identifierId
+GET    /api/data-requests
+POST   /api/data-requests
+GET    /api/data-requests/:requestId
+POST   /api/data-requests/:requestId/items/from-template
+POST   /api/data-requests/:requestId/send
+POST   /api/data-responses/:responseId/review
+GET    /api/questionnaires
+GET    /api/quality/products/:productId
+POST   /api/quality/products/:productId
+POST   /api/organizations/:organizationId/invitations
 ```
 
-Les règles d'autorisation restent côté API et SQL. L'interface ne constitue pas une frontière de sécurité.
+Les champs calculés de readiness restent contrôlés par le backend. Une valeur `DATA READY` ou `DPP READY` décrit une projection de données et ne constitue ni preuve, ni vérification, ni certification.
 
-## Limites connues
+## Tests et validation
 
-- le Supplier Portal n'est pas encore livré ;
-- le Quality Center complet n'est pas encore livré ;
-- la revue utilise actuellement un commentaire navigateur simple ;
-- l'upload de preuves documentaires attend le chantier de stockage privé ;
-- le chargement de Clerk JS s'appuie sur le CDN configuré pour le déploiement ;
-- les tests actuels vérifient le contrat statique et la syntaxe, mais pas encore un parcours navigateur automatisé Playwright.
-
-## Validation
+Contrats statiques et syntaxe :
 
 ```bash
 npm run test:brand-console
 ```
 
-Le test vérifie la syntaxe JavaScript embarquée, la présence des contrats API, les actions principales et l'absence d'appel navigateur à `localhost`.
+Parcours navigateur Playwright en mode démonstration :
+
+```bash
+npx playwright install chromium
+npm run test:brand-console:browser
+```
+
+Le scénario navigateur couvre le chargement de la console, la navigation catalogue, l'ajout d'une composition, l'édition d'un identifiant et l'ouverture d'un profil fournisseur. Le test de contrat vérifie en complément les URL browser-safe, l'absence de secret privé, la présence du bootstrap Clerk et les formulaires de mutation.
+
+Les validations TypeScript et le contrôle de whitespace sont exécutés au niveau repository :
+
+```bash
+npm run api:typecheck
+npm run typecheck
+git diff --check
+```
+
+## Limites connues et dépendances externes
+
+- le Supplier Portal complet n'est pas encore livré ;
+- le Quality Center frontend complet n'est pas encore livré ;
+- la revue utilise actuellement un commentaire navigateur simple ;
+- l'upload et le stockage privé des preuves, l'antivirus et le téléchargement sécurisé attendent le chantier de stockage privé ;
+- le chargement de Clerk JS s'appuie sur le CDN configuré pour le déploiement ;
+- les vulnérabilités de dépendances existantes nécessitent une décision d'upgrade potentiellement cassante et aucun `npm audit fix --force` n'a été appliqué ;
+- la validation staging et production doit être réalisée avec des secrets Clerk/Neon renouvelés et des données représentatives non sensibles.
