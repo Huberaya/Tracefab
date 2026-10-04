@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tracefab — Brand Console</title>
+  <meta name="description" content="Tracefab Brand Console — collecter, revoir et améliorer les données fournisseurs.">
+  <style>
+    :root {
+      --ink: #17231f;
+      --muted: #71807a;
+      --paper: #f7f8f4;
+      --panel: #ffffff;
+      --line: #e2e8df;
+      --green: #0b7656;
+      --green-dark: #07523e;
+      --green-soft: #e4f3ec;
+      --yellow: #d79621;
+      --yellow-soft: #fff3d8;
+      --red: #bd514e;
+      --red-soft: #ffebea;
+      --shadow: 0 16px 45px rgba(20, 42, 34, .08);
+      --radius: 18px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: grid; grid-template-columns: 256px minmax(0, 1fr); min-height: 100vh; }
+    .sidebar { background: #112b23; color: #eff8f2; padding: 25px 16px; display: flex; flex-direction: column; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 11px 31px; }
+    .brand-mark { width: 36px; height: 36px; border-radius: 12px; background: #d7f3e4; color: var(--green-dark); display: grid; place-items: center; font-weight: 900; letter-spacing: -.08em; }
+    .brand-name { font-weight: 780; letter-spacing: -.03em; font-size: 18px; }
+    .brand-name small { display: block; color: #a9c4b6; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin-top: 2px; }
+    .nav { display: grid; gap: 6px; }
+    .nav button { appearance: none; border: 0; color: #b8cec2; background: transparent; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 12px 13px; text-align: left; font-size: 13px; font-weight: 650; }
+    .nav button:hover, .nav button.active { background: rgba(255,255,255,.1); color: white; }
+    .nav-icon { width: 19px; text-align: center; opacity: .9; }
+    .sidebar-bottom { margin-top: auto; border-top: 1px solid rgba(255,255,255,.12); padding: 18px 10px 2px; }
+    .user-mini { display: flex; gap: 10px; align-items: center; color: #c5d8cd; font-size: 12px; min-width: 0; }
+    .avatar { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; background: #9edec0; color: #124936; display: grid; place-items: center; font-weight: 800; font-size: 12px; }
+    .user-mini strong { display: block; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-mini span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .link-button { border: 0; background: transparent; color: inherit; padding: 0; font-size: 12px; text-decoration: underline; opacity: .85; }
+    .main { min-width: 0; }
+    .topbar { height: 76px; padding: 0 40px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.7); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .crumb { color: var(--muted); font-size: 13px; font-weight: 650; }
+    .crumb strong { color: var(--ink); }
+    .top-actions { display: flex; align-items: center; gap: 12px; }
+    .org-select { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; color: var(--ink); background: white; max-width: 220px; }
+    .content { max-width: 1420px; margin: 0 auto; padding: 42px 40px 70px; }
+    .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .13em; color: var(--green); font-weight: 800; margin-bottom: 11px; }
+    h1 { margin: 0; font-size: clamp(27px, 3vw, 42px); line-height: 1.06; letter-spacing: -.055em; }
+    h2 { margin: 0; font-size: 22px; letter-spacing: -.035em; }
+    h3 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    p { color: var(--muted); line-height: 1.6; }
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 31px; }
+    .page-head p { margin: 10px 0 0; max-width: 640px; font-size: 14px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .btn { border: 1px solid transparent; border-radius: 11px; padding: 10px 15px; font-weight: 750; font-size: 13px; transition: transform .15s, box-shadow .15s, background .15s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { color: white; background: var(--green); box-shadow: 0 7px 16px rgba(11,118,86,.18); }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-secondary { background: white; color: var(--ink); border-color: var(--line); }
+    .btn-danger { background: var(--red-soft); color: var(--red); border-color: #f7cbc8; }
+    .btn-small { padding: 7px 10px; font-size: 12px; }
+    .grid { display: grid; gap: 17px; }
+    .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 22px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .kpi { padding: 20px; position: relative; overflow: hidden; }
+    .kpi::after { content: ""; width: 90px; height: 90px; border-radius: 50%; position: absolute; right: -30px; bottom: -44px; background: var(--green-soft); }
+    .kpi-label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .kpi-value { font-size: 30px; font-weight: 800; letter-spacing: -.06em; margin: 13px 0 3px; }
+    .kpi-note { font-size: 11px; color: var(--muted); }
+    .split { grid-template-columns: minmax(0, 1.55fr) minmax(300px, .85fr); align-items: start; }
+    .panel { padding: 23px; }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 18px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 610px; }
+    th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; text-align: left; padding: 0 12px 12px; font-weight: 800; }
+    td { border-top: 1px solid #edf0eb; padding: 14px 12px; font-size: 13px; vertical-align: middle; }
+    td:first-child, th:first-child { padding-left: 0; }
+    td:last-child, th:last-child { padding-right: 0; text-align: right; }
+    .clickable { cursor: pointer; }
+    .clickable:hover td { background: #fbfcfa; }
+    .status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 800; background: #edf1ed; color: #5b6962; }
+    .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .status-sent, .status-in_progress { background: #e8f1ff; color: #3970b3; }
+    .status-submitted { background: var(--yellow-soft); color: #9a680e; }
+    .status-approved, .status-verified_by_reviewer { background: var(--green-soft); color: var(--green); }
+    .status-changes_requested, .status-needs_review { background: var(--red-soft); color: var(--red); }
+    .status-draft { background: #f0f1f0; color: #69766e; }
+    .progress { height: 7px; background: #e9eee9; border-radius: 99px; overflow: hidden; min-width: 82px; }
+    .progress > span { display: block; height: 100%; background: var(--green); border-radius: inherit; }
+    .progress-line { display: flex; align-items: center; gap: 9px; }
+    .progress-line small { color: var(--muted); font-weight: 700; min-width: 32px; }
+    .quick-grid { display: grid; gap: 10px; }
+    .quick { display: flex; align-items: center; gap: 12px; padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: #fcfdfa; text-align: left; color: var(--ink); }
+    .quick:hover { border-color: #afd8c4; background: var(--green-soft); }
+    .quick-icon { width: 33px; height: 33px; display: grid; place-items: center; background: var(--green-soft); border-radius: 10px; color: var(--green); font-weight: 900; }
+    .quick strong { display: block; font-size: 13px; }
+    .quick span { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .empty { padding: 44px 20px; text-align: center; color: var(--muted); }
+    .empty-icon { width: 44px; height: 44px; display: grid; place-items: center; margin: 0 auto 13px; border-radius: 14px; background: var(--green-soft); color: var(--green); font-size: 20px; }
+    .filters { display: flex; gap: 10px; margin-bottom: 17px; flex-wrap: wrap; }
+    .input, .select, .textarea { width: 100%; border: 1px solid #d8e1d8; border-radius: 10px; padding: 11px 12px; background: white; color: var(--ink); outline: none; }
+    .input:focus, .select:focus, .textarea:focus { border-color: #58a887; box-shadow: 0 0 0 3px rgba(88,168,135,.13); }
+    .filters .input { max-width: 300px; }
+    label { display: grid; gap: 7px; color: #53625a; font-size: 12px; font-weight: 750; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .field-full { grid-column: 1 / -1; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 21px; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(13,30,24,.42); display: grid; place-items: center; padding: 20px; z-index: 20; }
+    .modal { width: min(630px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 80px rgba(0,0,0,.22); }
+    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 20px; }
+    .close { border: 0; background: #f2f4f1; color: var(--muted); width: 31px; height: 31px; border-radius: 9px; font-size: 18px; }
+    .detail-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 23px; }
+    .detail-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .meta { color: var(--muted); font-size: 12px; }
+    .item-list { display: grid; gap: 11px; }
+    .item { padding: 16px; border: 1px solid var(--line); border-radius: 13px; display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: center; }
+    .item h3 { font-size: 14px; }
+    .item p { margin: 5px 0 0; font-size: 12px; }
+    .item-response { margin-top: 11px; padding: 10px 11px; background: #f7faf6; border-radius: 10px; font-size: 12px; color: #44544b; }
+    .item-response strong { color: var(--ink); }
+    .score-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 20px; }
+    .score { padding: 18px; }
+    .score-name { color: var(--muted); font-size: 11px; font-weight: 750; }
+    .score-value { font-size: 26px; font-weight: 800; letter-spacing: -.06em; margin: 10px 0; }
+    .issue { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding: 15px 0; border-top: 1px solid #edf0eb; }
+    .severity { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 850; padding: 5px 7px; border-radius: 6px; background: var(--yellow-soft); color: #9a680e; }
+    .severity-blocking { background: var(--red-soft); color: var(--red); }
+    .severity-info { background: var(--green-soft); color: var(--green); }
+    .issue strong { display: block; font-size: 13px; }
+    .issue p { margin: 4px 0 0; font-size: 12px; }
+    .toast { position: fixed; right: 25px; bottom: 25px; z-index: 50; color: white; background: #19372d; border-radius: 12px; padding: 13px 16px; box-shadow: 0 12px 35px rgba(0,0,0,.2); font-size: 13px; max-width: 360px; }
+    .toast.error { background: #8e3d3b; }
+    .auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 25px; background: radial-gradient(circle at 10% 0%, #d9f1e4, transparent 32%), var(--paper); }
+    .auth-card { width: min(950px, 100%); display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border-radius: 24px; background: white; box-shadow: var(--shadow); border: 1px solid var(--line); }
+    .auth-copy { padding: 52px; background: #112b23; color: white; }
+    .auth-copy h1 { font-size: 38px; margin-top: 75px; }
+    .auth-copy p { color: #bdd2c7; max-width: 370px; }
+    .auth-copy ul { color: #d7e9df; padding-left: 19px; line-height: 2; font-size: 13px; }
+    .auth-box { padding: 38px; min-height: 480px; }
+    .config-error { max-width: 600px; background: white; padding: 35px; border-radius: 20px; box-shadow: var(--shadow); }
+    .demo-banner { background: var(--yellow-soft); border-bottom: 1px solid #f2ddb0; padding: 8px 15px; text-align: center; font-size: 11px; color: #8f6417; font-weight: 750; }
+    @media (max-width: 1050px) { .kpis { grid-template-columns: repeat(2, 1fr); } .split { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) { .app { display: block; } .sidebar { min-height: auto; padding: 15px; } .brand { padding-bottom: 16px; } .nav { display: flex; overflow-x: auto; } .nav button { white-space: nowrap; } .sidebar-bottom { display: none; } .topbar { padding: 0 18px; height: 64px; } .content { padding: 28px 18px 50px; } .page-head, .detail-hero { display: block; } .actions { justify-content: flex-start; margin-top: 17px; } .org-select { max-width: 150px; } .auth-card { grid-template-columns: 1fr; } .auth-copy { display: none; } .auth-box { min-height: 500px; } .form-grid { grid-template-columns: 1fr; } .field-full { grid-column: auto; } .score-grid { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    (() => {
+      'use strict';
+      const app = document.getElementById('app');
+      const state = {
+        clerk: null,
+        loading: true,
+        configError: null,
+        user: null,
+        memberships: [],
+        organizations: [],
+        products: [],
+        requests: [],
+        questionnaires: [],
+        view: 'overview',
+        activeOrganizationId: null,
+        selectedRequest: null,
+        selectedProduct: null,
+        quality: null,
+        modal: null,
+        toast: null,
+        demo: new URLSearchParams(location.search).has('demo'),
+      };
+
+      const labels = {
+        draft: 'Brouillon', sent: 'Envoyée', in_progress: 'En cours', submitted: 'Soumise',
+        changes_requested: 'À corriger', approved: 'Approuvée', cancelled: 'Annulée',
+        verified_by_reviewer: 'Vérifiée', needs_review: 'À revoir', open: 'Ouverte', acknowledged: 'Acquittée', waived: 'Dérogation', resolved: 'Résolue'
+      };
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
+      const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TF';
+      const status = (value) => `<span class="status status-${esc(value)}">${esc(labels[value] || value || '—')}</span>`;
+      const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
+      const date = (value) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value)) : '—';
+      const moneyless = (value) => Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+
+      function notify(message, isError = false) {
+        state.toast = { message, isError };
+        render();
+        setTimeout(() => { state.toast = null; render(); }, 3500);
+      }
+
+      async function api(path, options = {}) {
+        const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+        if (!state.demo && state.clerk?.session) {
+          const token = await state.clerk.session.getToken();
+          if (token) headers.Authorization = `Bearer ${token}`;
+        }
+        const response = await fetch(path, { ...options, headers });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`);
+        return payload;
+      }
+
+      function demoData() {
+        state.user = { fullName: 'Camille Martin', email: 'camille@atelier-demo.fr' };
+        state.organizations = [
+          { organization_id: 'demo-brand', role: 'owner', organizations: { id: 'demo-brand', type: 'brand', display_name: 'Atelier Demo', legal_name: 'Atelier Demo' } },
+          { organization_id: 'demo-supplier', role: 'manager', organizations: { id: 'demo-supplier', type: 'supplier', display_name: 'Nhãn Textile', legal_name: 'Nhãn Textile' } },
+        ];
+        state.memberships = state.organizations;
+        state.products = [
+          { id: 'demo-product-1', brandOrganizationId: 'demo-brand', reference: 'AT-ESS-001', name: 'Essentiel coton', category: 'T-shirt', status: 'active', version: 2, dataReadiness: 'needs_review', dataCompletion: '82' },
+          { id: 'demo-product-2', brandOrganizationId: 'demo-brand', reference: 'AT-LIN-004', name: 'Ligne lin naturel', category: 'Chemise', status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '46' },
+        ];
+        state.requests = [
+          { id: 'demo-request-1', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Données produit — collection automne', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'in_progress', dueAt: new Date(Date.now() + 5 * 86400000).toISOString(), completionPercentage: '64', lastActivityAt: new Date().toISOString() },
+          { id: 'demo-request-2', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Origine et composition — Essentiel coton', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'submitted', dueAt: new Date(Date.now() + 2 * 86400000).toISOString(), completionPercentage: '100', lastActivityAt: new Date(Date.now() - 86400000).toISOString() },
+        ];
+        state.questionnaires = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Données produit, composition et fabrication.', itemCount: 5, requiredItemCount: 4 }];
+      }
+
+      async function sync() {
+        state.loading = true; render();
+        try {
+          if (state.demo) { demoData(); state.loading = false; render(); return; }
+          const [me, orgs, products, requests, questionnaires] = await Promise.all([
+            api('/api/me'), api('/api/organizations'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires')
+          ]);
+          state.user = me.user;
+          state.memberships = me.memberships || [];
+          state.organizations = orgs.organizations || [];
+          state.products = products.products || [];
+          state.requests = requests.requests || [];
+          state.questionnaires = questionnaires.questionnaires || [];
+          const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
+          state.activeOrganizationId = state.activeOrganizationId || brands[0]?.organization_id || null;
+          state.loading = false;
+          render();
+        } catch (error) {
+          state.loading = false; state.configError = error.message; render();
+        }
+      }
+
+      function currentBrand() {
+        return state.memberships.find((m) => m.organization_id === state.activeOrganizationId)?.organizations;
+      }
+      function brands() { return state.memberships.filter((m) => m.organizations?.type === 'brand'); }
+      function suppliers() { return state.memberships.filter((m) => m.organizations?.type === 'supplier'); }
+      function orgName(id) {
+        const membership = state.memberships.find((m) => m.organization_id === id);
+        return membership?.organizations?.display_name || membership?.organizations?.legal_name || id?.slice(0, 8) || '—';
+      }
+      function requestCounts() {
+        const open = state.requests.filter((r) => !['approved', 'cancelled'].includes(r.status));
+        const dueSoon = open.filter((r) => r.dueAt && new Date(r.dueAt).getTime() - Date.now() < 7 * 86400000);
+        return { open: open.length, dueSoon: dueSoon.length, submitted: state.requests.filter((r) => r.status === 'submitted').length };
+      }
+
+      function shell(content) {
+        const brand = currentBrand();
+        const userName = state.user?.fullName || state.user?.email || 'Utilisateur';
+        const brandOptions = brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('');
+        return `${state.demo ? '<div class="demo-banner">Mode démonstration — ajoutez ?demo=0 et configurez Clerk pour connecter les APIs Tracefab.</div>' : ''}
+          <div class="app">
+            <aside class="sidebar">
+              <div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div>
+              <nav class="nav">
+                ${navButton('overview', '⌂', 'Vue d’ensemble')}
+                ${navButton('requests', '↗', 'Demandes de données')}
+                ${navButton('products', '◇', 'Produits')}
+                ${navButton('quality', '◒', 'Qualité')}
+                ${navButton('suppliers', '◎', 'Fournisseurs')}
+              </nav>
+              <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">Se déconnecter</button></div></div></div>
+            </aside>
+            <main class="main">
+              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brands().length ? `<select class="org-select" id="active-org">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">+ Nouvelle demande</button></div></header>
+              <section class="content">${content}</section>
+            </main>
+          </div>
+          ${state.modal ? modal(state.modal) : ''}
+          ${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
+      }
+      function viewLabel() { return ({ overview: 'Vue d’ensemble', requests: 'Demandes de données', products: 'Produits', quality: 'Qualité', suppliers: 'Fournisseurs', requestDetail: 'Détail de la demande' })[state.view] || 'Vue d’ensemble'; }
+      function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
+
+      function render() {
+        if (state.configError && !state.demo && !state.user) {
+          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>Connexion indisponible</h1><p>${esc(state.configError)}. Vérifiez Clerk et la configuration de l’API, ou ouvrez <code>?demo=1</code> pour parcourir l’interface.</p><button class="btn btn-secondary" data-action="retry">Réessayer</button></div></div>`; bind(); return;
+        }
+        if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>Préparation de votre espace…</h1><p>Chargement des organisations, produits et demandes.</p></div></div>`; return; }
+        if (!state.user && !state.demo) { renderAuth(); return; }
+        const content = state.view === 'overview' ? overview() : state.view === 'requests' ? requestsView() : state.view === 'products' ? productsView() : state.view === 'quality' ? qualityView() : state.view === 'suppliers' ? suppliersView() : requestDetailView();
+        app.innerHTML = shell(content); bind();
+      }
+
+      function renderAuth() {
+        app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div><h1>La donnée fournisseur, enfin pilotable.</h1><p>Centralisez vos demandes, rendez les progrès visibles et transformez les données déclarées en décisions documentées.</p><ul><li>Demandes et questionnaires</li><li>Revue et collaboration</li><li>Score qualité explicable</li></ul></div><div class="auth-box"><div class="eyebrow">Espace marque</div><h2>Se connecter</h2><p>Accédez à votre espace Tracefab sécurisé.</p><div id="clerk-sign-in"></div></div></div></div>`;
+        if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'), { appearance: { elements: { card: 'shadow-none', rootBox: 'w-full' } } });
+      }
+
+      function overview() {
+        const counts = requestCounts(); const brand = currentBrand();
+        return `<div class="page-head"><div><div class="eyebrow">${esc(brand?.display_name || 'Votre organisation')}</div><h1>Bonjour ${esc((state.user?.fullName || 'équipe').split(' ')[0])}.</h1><p>Voici l’état de vos données fournisseurs et les actions qui méritent votre attention.</p></div><div class="actions"><button class="btn btn-secondary" data-action="invite-supplier">Inviter un fournisseur</button><button class="btn btn-primary" data-action="new-request">+ Nouvelle demande</button></div></div>
+          <div class="grid kpis"><div class="card kpi"><div class="kpi-label">Produits actifs</div><div class="kpi-value">${moneyless(state.products.filter((p) => p.status === 'active').length)}</div><div class="kpi-note">${state.products.length} produits dans l’espace</div></div><div class="card kpi"><div class="kpi-label">Demandes ouvertes</div><div class="kpi-value">${moneyless(counts.open)}</div><div class="kpi-note">${counts.submitted} en attente de revue</div></div><div class="card kpi"><div class="kpi-label">Échéances proches</div><div class="kpi-value">${moneyless(counts.dueSoon)}</div><div class="kpi-note">dans les 7 prochains jours</div></div><div class="card kpi"><div class="kpi-label">Fournisseurs actifs</div><div class="kpi-value">${moneyless(suppliers().length)}</div><div class="kpi-note">relations disponibles</div></div></div>
+          <div class="grid split"><div class="card panel"><div class="panel-head"><h2>Demandes récentes</h2><button class="btn btn-secondary btn-small" data-view="requests">Tout voir</button></div>${requestTable(state.requests.slice(0, 5))}</div><div class="card panel"><div class="panel-head"><h2>Actions rapides</h2></div><div class="quick-grid"><button class="quick" data-action="new-request"><span class="quick-icon">↗</span><span><strong>Demander des données</strong><span>Lancer un questionnaire fournisseur</span></span></button><button class="quick" data-action="new-product"><span class="quick-icon">◇</span><span><strong>Créer un produit</strong><span>Ajouter une référence au catalogue</span></span></button><button class="quick" data-action="invite-supplier"><span class="quick-icon">◎</span><span><strong>Inviter un fournisseur</strong><span>Créer une nouvelle relation active</span></span></button></div></div></div>`;
+      }
+
+      function requestTable(items) {
+        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>Créez votre première demande fournisseur.</p><button class="btn btn-primary btn-small" data-action="new-request">Créer une demande</button></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>Échéance</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button></td></tr>`).join('')}</tbody></table></div>`;
+      }
+
+      function requestsView() {
+        return `<div class="page-head"><div><div class="eyebrow">Pilotage fournisseur</div><h1>Demandes de données</h1><p>Créez, envoyez et révisez les informations demandées à vos fournisseurs.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request">+ Nouvelle demande</button></div></div><div class="card panel"><div class="filters"><input class="input" id="request-search" placeholder="Rechercher une demande…"><select class="select" id="request-filter" style="max-width:190px"><option value="all">Tous les statuts</option><option value="draft">Brouillons</option><option value="in_progress">En cours</option><option value="submitted">À revoir</option><option value="approved">Approuvées</option></select></div><div id="request-list">${requestTable(state.requests)}</div></div>`;
+      }
+
+      function productsView() {
+        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
+      }
+
+      function suppliersView() {
+        return `<div class="page-head"><div><div class="eyebrow">Écosystème fournisseur</div><h1>Fournisseurs</h1><p>Invitez et suivez les organisations qui alimentent vos données.</p></div><div class="actions"><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Rôle</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td>${esc(labels[s.role] || s.role)}</td><td>${count}</td><td><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-id="${esc(s.organization_id)}">Demander des données</button></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>Aucun fournisseur connecté</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
+      }
+
+      function qualityView() {
+        if (!state.selectedProduct) return `<div class="page-head"><div><div class="eyebrow">Quality Center</div><h1>Qualité produit</h1><p>Sélectionnez un produit pour calculer et consulter son score qualité explicable.</p></div></div><div class="card panel"><label>Produit<select class="select" id="quality-product-select"><option value="">Choisir un produit…</option>${state.products.map((p) => `<option value="${esc(p.id)}">${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label></div>`;
+        const q = state.quality; const score = q?.score;
+        return `<div class="page-head"><div><div class="eyebrow">Quality Center</div><h1>${esc(state.selectedProduct.name)}</h1><p>Le score décrit l’état de préparation des données. Il ne constitue pas une certification.</p></div><div class="actions"><button class="btn btn-secondary" data-action="select-quality-product">Changer de produit</button><button class="btn btn-primary" data-action="compute-quality">Recalculer le score</button></div></div>${score ? `<div class="grid score-grid">${scoreCard('Complétude', score.completeness)}${scoreCard('Fraîcheur', score.freshness)}${scoreCard('Preuves', score.documentationCoverage)}${scoreCard('Cohérence', score.consistency)}</div>` : `<div class="card empty"><div class="empty-icon">◒</div><strong>Score non calculé</strong><p>Lancez un premier calcul qualité pour ce produit.</p><button class="btn btn-primary btn-small" data-action="compute-quality">Calculer maintenant</button></div>`}${q ? `<div class="card panel"><div class="panel-head"><h2>Issues ouvertes</h2><span class="meta">${q.issues.length} issue(s)</span></div>${q.issues.length ? q.issues.map(issueCard).join('') : '<div class="empty"><strong>Aucune issue ouverte</strong><p>Les règles qualité ne remontent aucun blocage actif.</p></div>'}</div>` : ''}`;
+      }
+      function scoreCard(label, value) { return `<div class="card score"><div class="score-name">${label}</div><div class="score-value">${moneyless(value)}%</div><div class="progress"><span style="width:${pct(value)}%"></span></div></div>`; }
+      function issueCard(issue) { return `<div class="issue"><span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span><div><strong>${esc(issue.message)}</strong><p>${esc(issue.ruleKey)} · ${esc(labels[issue.status] || issue.status)}</p></div><span class="meta">${date(issue.detectedAt)}</span></div>`; }
+
+      function requestDetailView() {
+        const r = state.selectedRequest;
+        if (!r) return `<div class="empty"><div class="empty-icon">↗</div><strong>Demande introuvable</strong><button class="btn btn-secondary" data-view="requests">Retour aux demandes</button></div>`;
+        return `<div class="detail-hero"><div><button class="link-button" data-view="requests">← Retour aux demandes</button><div class="eyebrow" style="margin-top:20px">${esc(orgName(r.supplierOrganizationId))}</div><h1>${esc(r.title)}</h1><div class="detail-meta">${status(r.status)}<span class="meta">${esc(r.questionnaireKey)} · v${esc(r.questionnaireVersion)}</span><span class="meta">Échéance : ${date(r.dueAt)}</span></div></div><div class="actions">${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}</div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Items du questionnaire</h2><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></div><div class="item-list">${(r.items || []).map((item) => `<div class="item"><div><h3>${esc(item.label)} ${item.required ? '<span style="color:var(--red)">*</span>' : ''}</h3><p>${esc(item.helpText || item.fieldKey)} · ${esc(item.dataType)}</p>${item.responses?.filter((response) => response.isCurrent).map((response) => `<div class="item-response"><strong>Réponse :</strong> ${esc(JSON.stringify(response.value))} <span class="status status-${esc(response.status)}">${esc(labels[response.status] || response.status)}</span>${['declared','documented','needs_review'].includes(response.status) ? `<div class="actions" style="justify-content:flex-start;margin-top:10px"><button class="btn btn-primary btn-small" data-review-response="${esc(response.id)}" data-review-status="verified_by_reviewer">Vérifier</button><button class="btn btn-danger btn-small" data-review-response="${esc(response.id)}" data-review-status="needs_review">Demander une correction</button></div>` : ''}</div>`).join('') || '<div class="item-response">En attente de réponse fournisseur.</div>'}</div><div>${status(item.status)}</div></div>`).join('') || '<div class="empty">Aucun item.</div>'}</div></div><div class="card panel"><div class="panel-head"><h2>Résumé</h2></div><dl style="display:grid;gap:13px;margin:0"><div><dt class="meta">Fournisseur</dt><dd style="margin:4px 0;font-weight:750">${esc(orgName(r.supplierOrganizationId))}</dd></div><div><dt class="meta">Créée le</dt><dd style="margin:4px 0;font-weight:750">${date(r.createdAt)}</dd></div><div><dt class="meta">Dernière activité</dt><dd style="margin:4px 0;font-weight:750">${date(r.lastActivityAt)}</dd></div><div><dt class="meta">Réponses</dt><dd style="margin:4px 0;font-weight:750">${(r.items || []).reduce((n, item) => n + (item.responses || []).filter((x) => x.isCurrent).length, 0)} courante(s)</dd></div></dl><p style="font-size:12px;margin-bottom:0">Les actions de revue détaillées pourront être ajoutées depuis les réponses courantes lorsque le fournisseur aura soumis la demande.</p></div></div>`;
+      }
+
+      function modal(type) {
+        if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>Nouveau produit</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>Référence<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>Nom<input class="input" name="name" required placeholder="Essentiel coton"></label><label>Catégorie<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer le produit</button></div></form></div></div>`;
+        if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Écosystème</div><h2>Inviter un fournisseur</h2></div><button class="close" data-action="close-modal">×</button></div><p>Un lien d’activation sera généré côté serveur. Le token reste privé et n’est jamais persisté en clair.</p><form id="supplier-form"><div class="form-grid"><label class="field-full">Email professionnel<input class="input" name="email" type="email" required placeholder="contact@fournisseur.com"></label><label>Nom légal<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>Nom affiché<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>Pays<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>Organisation marque<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Envoyer l’invitation</button></div></form></div></div>`;
+        if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Collecte</div><h2>Nouvelle demande de données</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">Titre<input class="input" name="title" required placeholder="Données produit — collection automne"></label><label>Fournisseur<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label>Date d’échéance<input class="input" name="dueAt" type="date"></label><label>Organisation marque<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer et préparer</button></div></form></div></div>`;
+        return '';
+      }
+
+      async function createProduct(form) {
+        const data = Object.fromEntries(new FormData(form));
+        if (state.demo) { state.products.unshift({ id: `demo-${Date.now()}`, brandOrganizationId: state.activeOrganizationId, reference: data.reference, name: data.name, category: data.category, status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '0' }); state.modal = null; notify('Produit créé en mode démonstration.'); return; }
+        await api('/api/products', { method: 'POST', body: JSON.stringify({ ...data, brandOrganizationId: state.activeOrganizationId }) });
+        state.modal = null; await sync(); notify('Produit créé.');
+      }
+      async function inviteSupplier(form) {
+        const data = Object.fromEntries(new FormData(form));
+        if (state.demo) { state.modal = null; notify('Invitation simulée en mode démonstration.'); return; }
+        await api(`/api/organizations/${encodeURIComponent(data.organizationId)}/invitations`, { method: 'POST', body: JSON.stringify(data) });
+        state.modal = null; await sync(); notify('Invitation fournisseur créée.');
+      }
+      async function createRequest(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const questionnaire = state.questionnaires.find((q) => q.key === data.questionnaireKey);
+        const body = { ...data, questionnaireVersion: questionnaire?.version || '1.0', dueAt: data.dueAt ? `${data.dueAt}T23:59:59.000Z` : null, idempotencyKey: `brand-console-${Date.now()}` };
+        if (state.demo) { const request = { id: `demo-${Date.now()}`, ...body, status: 'draft', completionPercentage: '0', createdAt: new Date().toISOString() }; state.requests.unshift(request); state.modal = null; notify('Demande créée en mode démonstration.'); return; }
+        const created = await api('/api/data-requests', { method: 'POST', body: JSON.stringify(body) });
+        await api(`/api/data-requests/${created.request.id}/items/from-template`, { method: 'POST', body: '{}' });
+        state.modal = null; await sync(); await openRequest(created.request.id); notify('Demande créée et questionnaire préparé.');
+      }
+      async function openRequest(id) { state.view = 'requestDetail'; if (state.demo) { state.selectedRequest = state.requests.find((r) => r.id === id); render(); return; } state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(id)}`)).request; render(); }
+      async function refreshDetail() { if (!state.selectedRequest) return; if (!state.demo) state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}`)).request; render(); }
+      async function sendRequest() { if (!state.selectedRequest) return; if (!state.demo) await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}/send`, { method: 'POST' }); state.selectedRequest.status = 'sent'; state.modal = null; await refreshDetail(); notify('Demande envoyée au fournisseur.'); }
+      async function loadQuality(id) { state.selectedProduct = state.products.find((p) => p.id === id); state.view = 'quality'; state.quality = null; render(); if (!state.demo) { try { state.quality = await api(`/api/quality/products/${encodeURIComponent(id)}`); render(); } catch (e) { notify(e.message, true); } } else { state.quality = { score: { completeness: 82, freshness: 78, documentationCoverage: 61, consistency: 90 }, issues: [{ severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', message: 'Certaines données produit n’ont pas encore de preuve documentaire.', detectedAt: new Date().toISOString() }] }; render(); } }
+      async function computeQuality() { if (!state.selectedProduct) return; if (!state.demo) state.quality = await api(`/api/quality/products/${encodeURIComponent(state.selectedProduct.id)}`, { method: 'POST', body: JSON.stringify({ calculationVersion: 'product_quality_v1' }) }); notify('Score qualité recalculé.'); render(); }
+      async function reviewResponse(responseId, reviewStatus) {
+        const comment = window.prompt(reviewStatus === 'verified_by_reviewer' ? 'Commentaire de vérification (facultatif)' : 'Indiquez la correction ou la preuve attendue', '') || '';
+        if (state.demo) { notify(reviewStatus === 'verified_by_reviewer' ? 'Réponse vérifiée en mode démonstration.' : 'Correction demandée en mode démonstration.'); return; }
+        await api(`/api/data-responses/${encodeURIComponent(responseId)}/review`, { method: 'POST', body: JSON.stringify({ status: reviewStatus, reviewComment: comment }) });
+        await refreshDetail();
+        notify(reviewStatus === 'verified_by_reviewer' ? 'Réponse vérifiée.' : 'Demande de correction envoyée.');
+      }
+
+      function bind() {
+        document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => { state.view = el.dataset.view; state.selectedRequest = null; render(); }));
+        document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async () => {
+          const action = el.dataset.action;
+          try {
+            if (action === 'new-product') { state.modal = 'new-product'; render(); }
+            if (action === 'new-request') { state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierId; render(); }
+            if (action === 'invite-supplier') { state.modal = 'invite-supplier'; render(); }
+            if (action === 'close-modal') { state.modal = null; render(); }
+            if (action === 'retry') { state.configError = null; boot(); }
+            if (action === 'refresh-detail') await refreshDetail();
+            if (action === 'send-request') await sendRequest();
+            if (action === 'select-quality-product') { state.selectedProduct = null; state.quality = null; render(); }
+            if (action === 'compute-quality') await computeQuality();
+            if (action === 'signout' && state.clerk) await state.clerk.signOut();
+          } catch (error) { notify(error.message, true); }
+        }));
+        document.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openRequest(el.dataset.requestId); }));
+        document.querySelectorAll('[data-quality-product]').forEach((el) => el.addEventListener('click', () => loadQuality(el.dataset.qualityProduct)));
+        document.querySelectorAll('[data-review-response]').forEach((el) => el.addEventListener('click', () => reviewResponse(el.dataset.reviewResponse, el.dataset.reviewStatus).catch((error) => notify(error.message, true))));
+        const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => { state.activeOrganizationId = org.value; sync(); });
+        const search = document.getElementById('request-search'); const filter = document.getElementById('request-filter');
+        const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); };
+        search?.addEventListener('input', filterRequests); filter?.addEventListener('change', filterRequests);
+        document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
+        document.getElementById('product-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('supplier-form')?.addEventListener('submit', (e) => { e.preventDefault(); inviteSupplier(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('request-form')?.addEventListener('submit', (e) => { e.preventDefault(); createRequest(e.currentTarget).catch((err) => notify(err.message, true)); });
+      }
+
+      async function boot() {
+        if (state.demo) { await sync(); return; }
+        try {
+          const config = await fetch('/api/config').then((r) => r.json());
+          if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
+          await new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js'; s.onload = resolve; s.onerror = () => reject(new Error('clerk_sdk_unavailable')); document.head.appendChild(s); });
+          state.clerk = new window.Clerk(config.publishableKey);
+          await state.clerk.load();
+          state.clerk.addListener(() => { if (state.clerk.user && !state.user) sync(); });
+          if (state.clerk.user) await sync(); else { state.loading = false; render(); }
+        } catch (error) { state.loading = false; state.configError = error.message; render(); }
+      }
+      window.tracefabBrandConsole = { state, sync };
+      boot();
+    })();
+  </script>
+</body>
+</html>
