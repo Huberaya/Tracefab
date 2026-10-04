@@ -85,7 +85,7 @@ Une seule réponse courante est autorisée par item via un index unique partiel.
 - Edge Function de notification email et relances ;
 - templates de questionnaires configurables en base ;
 - validations JSON Schema côté serveur ;
-- interface Supplier Portal de réponse ;
-- interface Brand Console de revue ;
+- Supplier Portal complet : preuves, sites, documents et expérience multi-organisation ;
+- interface Brand Console de revue avancée ;
 - règles de SLA et relance ;
 - tests RLS exécutés sur un projet Supabase réel.

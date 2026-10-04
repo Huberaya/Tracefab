@@ -9,7 +9,7 @@ Le Chantier 14 complète l'API du Chantier 13 pour fournir les briques nécessai
 - **notifications métier** : information du fournisseur et de la marque après les transitions importantes ;
 - **contrats de questionnaires** : versions immuables et validation serveur des réponses.
 
-Le repository ne contient pas encore de runtime frontend. Les routes documentées ci-dessous sont donc les contrats backend consommés par la future Brand Console et le futur Supplier Portal.
+Les Chantiers 18 et 19 ajoutent les premiers runtimes statiques sous `/brand-console/` et `/supplier-portal/`. Les routes documentées ci-dessous restent les contrats backend consommés par ces surfaces ; elles ne déplacent aucune règle d'autorisation dans le navigateur.
 
 ## Questionnaire catalogue
 

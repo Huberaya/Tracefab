@@ -5,6 +5,7 @@ import { withTracefabUserContext } from './_lib/context';
 import { json, methodNotAllowed, readJsonBody } from './_lib/http';
 import { sqlBusinessError } from './_lib/sql-errors';
 import { activeOrganizationIds } from './_lib/products';
+import { activeSupplierOrganizationIds } from './_lib/supplier-profile';
 import {
   isUuid,
   parseDate,
@@ -32,7 +33,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     if (req.method === 'GET') {
+      const scope = Array.isArray(req.query.scope) ? req.query.scope[0] : req.query.scope;
       const requests = await withTracefabUserContext(user.id, user.email, async (tx) => {
+        if (scope === 'supplier') {
+          const supplierOrganizationIds = await activeSupplierOrganizationIds(tx, user.id);
+          if (supplierOrganizationIds.length === 0) return [];
+          return tx.data_requests.findMany({
+            where: { supplier_organization_id: { in: supplierOrganizationIds }, status: { not: 'draft' } },
+            select: REQUEST_SELECT,
+            orderBy: { last_activity_at: 'desc' },
+          });
+        }
         const organizationIds = await activeOrganizationIds(tx, user.id);
         if (organizationIds.length === 0) return [];
         return tx.data_requests.findMany({

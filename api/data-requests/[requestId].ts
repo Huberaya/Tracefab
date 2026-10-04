@@ -4,7 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../_lib/auth';
 import { withTracefabUserContext } from '../_lib/context';
 import { json, methodNotAllowed } from '../_lib/http';
 import { sqlBusinessError } from '../_lib/sql-errors';
-import { accessibleRequest, isUuid, REQUEST_SELECT, serializeRequest } from '../_lib/data-requests';
+import { accessibleRequest, accessibleSupplierRequest, isUuid, REQUEST_SELECT, serializeRequest } from '../_lib/data-requests';
 
 const DETAIL_SELECT = {
   ...REQUEST_SELECT,
@@ -100,8 +100,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const requestId = routeRequestId(req);
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
+    const scope = Array.isArray(req.query.scope) ? req.query.scope[0] : req.query.scope;
     const request = await withTracefabUserContext(user.id, user.email, (tx) =>
-      accessibleRequest(tx, user.id, requestId, DETAIL_SELECT),
+      scope === 'supplier'
+        ? accessibleSupplierRequest(tx, user.id, requestId, DETAIL_SELECT)
+        : accessibleRequest(tx, user.id, requestId, DETAIL_SELECT),
     );
     if (!request) return json(res, 404, { error: 'data_request_not_found' });
     return json(res, 200, serializeDetail(request));

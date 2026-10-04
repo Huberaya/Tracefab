@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { activeOrganizationIds } from './products';
+import { activeSupplierOrganizationIds } from './supplier-profile';
 
 export const REQUEST_SELECT = {
   id: true,
@@ -74,6 +75,25 @@ export async function accessibleRequest<T extends Prisma.data_requestsSelect = t
           status: { not: 'draft' },
         },
       ],
+    },
+    select,
+  });
+}
+
+export async function accessibleSupplierRequest<T extends Prisma.data_requestsSelect = typeof REQUEST_SELECT>(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  requestId: string,
+  select: T = REQUEST_SELECT as T,
+): Promise<Prisma.data_requestsGetPayload<{ select: T }> | null> {
+  const organizationIds = await activeSupplierOrganizationIds(tx, userId);
+  if (organizationIds.length === 0) return null;
+
+  return tx.data_requests.findFirst({
+    where: {
+      id: requestId,
+      supplier_organization_id: { in: organizationIds },
+      status: { not: 'draft' },
     },
     select,
   });

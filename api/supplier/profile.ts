@@ -1,42 +1,33 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
-import { withTracefabUserContext } from '../../_lib/context';
-import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
-import { sqlBusinessError } from '../../_lib/sql-errors';
+import { requireClerkUser, isUnauthorized } from '../_lib/auth';
+import { withTracefabUserContext } from '../_lib/context';
+import { json, methodNotAllowed, readJsonBody } from '../_lib/http';
+import { sqlBusinessError } from '../_lib/sql-errors';
 import {
+  currentSupplier,
   profileMutationValues,
   serializeSupplierProfile,
-  SUPPLIER_PROFILE_SELECT,
-  type SupplierProfileRecord,
-} from '../../_lib/supplier-profile';
+} from '../_lib/supplier-profile';
 
-function routeSupplierId(req: VercelRequest) {
-  const value = req.query.supplierId;
-  return Array.isArray(value) ? value[0] : value;
-}
+type ProfileBody = Record<string, unknown>;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'PATCH') return methodNotAllowed(res, ['GET', 'PATCH']);
 
   try {
-    const supplierId = routeSupplierId(req);
-    if (!supplierId || !/^[0-9a-f-]{36}$/i.test(supplierId)) {
-      return json(res, 400, { error: 'invalid_supplier_id' });
-    }
-
     const { user } = await requireClerkUser(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const current = await tx.suppliers.findUnique({ where: { id: supplierId }, select: SUPPLIER_PROFILE_SELECT });
+      const current = await currentSupplier(tx, user.id);
       if (!current) return null;
-      if (req.method === 'GET') return current;
+      if (req.method === 'GET') return { current };
 
-      const body = await readJsonBody<Record<string, unknown>>(req);
+      const body = await readJsonBody<ProfileBody>(req);
       const values = profileMutationValues(body, current);
-      const rows = await tx.$queryRaw<SupplierProfileRecord[]>`
+      const rows = await tx.$queryRaw<typeof current[]>`
         SELECT *
         FROM tracefab_update_supplier_profile(
-          ${supplierId}::uuid,
+          ${current.id}::uuid,
           ${values.profileSummary},
           ${values.contactName},
           ${values.contactEmail},
@@ -46,11 +37,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${values.activityTypes}::text[]
         )
       `;
-      return rows[0] ?? null;
+      return { current: rows[0] ?? null };
     });
 
-    if (!result) return json(res, 404, { error: 'supplier_not_found' });
-    return json(res, 200, { profile: serializeSupplierProfile(result) });
+    if (!result?.current) return json(res, 404, { error: 'supplier_profile_not_found' });
+    return json(res, 200, {
+      supplier: {
+        id: result.current.id,
+        organizationId: result.current.organization_id,
+      },
+      profile: serializeSupplierProfile(result.current),
+    });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
@@ -62,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') {
       return json(res, 503, { error: 'clerk_not_configured' });
     }
-    console.error('GET/PATCH /api/suppliers/:supplierId/profile failed', error);
+    console.error(`${req.method} /api/supplier/profile failed`, error);
     return json(res, 500, { error: 'internal_server_error' });
   }
 }
