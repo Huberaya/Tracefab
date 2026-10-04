@@ -1,4 +1,4 @@
-# 22. Supplier Portal minimal — Chantier 19
+# 22. Supplier Portal approfondi — Chantier 19
 
 ## Périmètre livré
 
@@ -13,6 +13,10 @@ Il couvre un parcours fournisseur authentifié et multi-tenant :
 - connexion Clerk et chargement de l'organisation fournisseur courante ;
 - tableau de bord avec complétude du profil, demandes ouvertes, échéances proches et réponses soumises ;
 - profil fournisseur : lecture, édition des champs autorisés et soumission ;
+- sites de production : création, édition, activation/désactivation et activités déclarées ;
+- matériaux fournisseur : création, édition, origine et composition JSON déclarée ;
+- certificats : déclaration, édition, rattachement à un site et dates de validité ;
+- qualité fournisseur : score explicable, champs manquants, issues et recalcul ;
 - liste des demandes de données visibles par le fournisseur, à l'exclusion des brouillons marque ;
 - détail versionné d'une demande et réponses item par item ;
 - contrôles adaptés aux types `text`, `number`, `percentage`, `country`, `date`, `boolean` et `json` ;
@@ -34,6 +38,17 @@ GET    /api/me
 GET    /api/supplier/profile
 PATCH  /api/supplier/profile
 POST   /api/supplier/profile/submit
+GET    /api/supplier/sites
+POST   /api/supplier/sites
+PATCH  /api/supplier/sites/:siteId
+GET    /api/supplier/certifications
+POST   /api/supplier/certifications
+PATCH  /api/supplier/certifications/:certificationId
+GET    /api/supplier/quality
+POST   /api/supplier/quality
+GET    /api/materials?organizationId=:organizationId
+POST   /api/materials
+PATCH  /api/materials/:materialId
 GET    /api/data-requests?scope=supplier
 GET    /api/data-requests/:requestId?scope=supplier
 POST   /api/data-request-items/:itemId/response
@@ -78,9 +93,10 @@ git diff --check
 
 ## Limites explicites
 
-- Supplier Portal complet : sites, matériaux, certificats, documents et gestion avancée des utilisateurs non livrés ;
+- gestion des documents, preuves et data points structurés non livrée dans le portail ;
 - upload et stockage privé des preuves, antivirus et téléchargement sécurisé dépendants du chantier de stockage ;
 - les documents ne peuvent pas encore être associés via `sourceDocumentId` depuis l'interface ;
-- la navigation ne gère pas encore plusieurs organisations fournisseur dans une même session ;
+- la gestion avancée des utilisateurs et la navigation multi-organisation fournisseur restent à construire ;
+- le rattachement avancé des matériaux aux produits et aux graphes de traçabilité reste hors de cette surface ;
 - les validations staging et production doivent être réalisées avec des secrets Clerk/Neon renouvelés et des données représentatives non sensibles ;
 - les vulnérabilités de dépendances existantes restent à traiter séparément sans upgrade cassant automatique.

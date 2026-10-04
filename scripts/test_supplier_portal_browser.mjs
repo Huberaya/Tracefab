@@ -20,6 +20,27 @@ try {
   await page.locator('#profile-form button[type="submit"]').click();
   await page.getByText('Profil enregistré en mode démonstration.').waitFor();
 
+  await page.locator('button[data-view="sites"]').first().click();
+  await page.locator('#site-form input[name="name"]').fill('Nhãn Lisbon');
+  await page.locator('#site-form input[name="countryCode"]').fill('PT');
+  await page.locator('#site-form button[type="submit"]').click();
+  await page.getByText('Site ajouté en mode démonstration.').waitFor();
+
+  await page.locator('button[data-view="certifications"]').first().click();
+  await page.locator('#certification-form input[name="standardName"]').fill('OEKO-TEX');
+  await page.locator('#certification-form button[type="submit"]').click();
+  await page.getByText('Certificat déclaré en mode démonstration.').waitFor();
+
+  await page.locator('button[data-view="materials"]').first().click();
+  await page.locator('#material-form input[name="name"]').fill('Lin européen');
+  await page.locator('#material-form input[name="materialType"]').fill('fiber');
+  await page.locator('#material-form button[type="submit"]').click();
+  await page.getByText('Matériau ajouté en mode démonstration.').waitFor();
+
+  await page.locator('button[data-view="quality"]').first().click();
+  await page.getByRole('button', { name: 'Recalculer le score' }).click();
+  await page.getByText('Score qualité recalculé en mode démonstration.').waitFor();
+
   await page.locator('button[data-view="requests"]').first().click();
   await page.locator('[data-request-id="demo-supplier-request-1"]').click();
   await page.getByRole('heading', { name: 'Données produit — collection automne' }).waitFor();
@@ -35,7 +56,7 @@ try {
   await page.getByText('Demande soumise en mode démonstration.').waitFor();
 
   await browser.close();
-  console.log('Supplier Portal browser flow passed: profile, request response and submission');
+  console.log('Supplier Portal browser flow passed: profile, sites, certifications, materials, quality, request response and submission');
 } finally {
   server.kill('SIGTERM');
 }

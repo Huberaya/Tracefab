@@ -4,9 +4,9 @@ Infrastructure de données fournisseurs pour la traçabilité textile, la qualit
 
 ## Statut
 
-**Chantier 19 — Supplier Portal minimal / Brand Console approfondie / Quality Center API / Collection Reminders / Notification Outbox / Data Collection Productization / Data Collection API / Product Data API / supplier onboarding / Neon + Clerk**
+**Chantier 19 — Supplier Portal approfondi / Brand Console approfondie / Quality Center API / Collection Reminders / Notification Outbox / Data Collection Productization / Data Collection API / Product Data API / supplier onboarding / Neon + Clerk**
 
-Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité, le graphe de traçabilité et la première projection versionnée de préparation DPP. Le schéma Neon est appliqué via Prisma avec une identité Clerk côté serveur. Le Chantier 18 ajoute une Brand Console statique sous `/brand-console/` avec produits, révisions, composition, identifiants, fournisseurs, demandes, revue et qualité. Le Chantier 19 ajoute un Supplier Portal minimal sous `/supplier-portal/` pour le profil, les demandes de données, les réponses versionnées et la soumission. L'upload privé, l'antivirus et le téléchargement sécurisé restent dépendants du chantier de stockage privé.
+Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité, le graphe de traçabilité et la première projection versionnée de préparation DPP. Le schéma Neon est appliqué via Prisma avec une identité Clerk côté serveur. Le Chantier 18 ajoute une Brand Console statique sous `/brand-console/` avec produits, révisions, composition, identifiants, fournisseurs, demandes, revue et qualité. Le Chantier 19 ajoute un Supplier Portal approfondi sous `/supplier-portal/` pour le profil, les sites, les matériaux, les certificats déclarés, la qualité fournisseur, les demandes de données, les réponses versionnées et la soumission. L'upload privé, l'antivirus et le téléchargement sécurisé restent dépendants du chantier de stockage privé.
 
 ## Principes
 
@@ -57,6 +57,11 @@ api/
   me.ts
   supplier/profile.ts
   supplier/profile/submit.ts
+  supplier/sites.ts
+  supplier/sites/[siteId].ts
+  supplier/certifications.ts
+  supplier/certifications/[certificationId].ts
+  supplier/quality.ts
   organizations.ts
   organizations/[organizationId]/invitations.ts
   suppliers.ts
@@ -169,7 +174,7 @@ La création initiale d'une organisation et de son membership owner passe par `t
 ## Ce qui n'est pas encore implémenté
 
 - relances planifiées de notifications au-delà du retry worker ;
-- Supplier Portal complet : sites, documents, certificats et gestion avancée des utilisateurs ;
+- gestion Supplier Portal avancée : documents, preuves, data points, utilisateurs et multi-organisation ;
 - Quality Center frontend complet ;
 - stockage objet privé et scan antivirus ;
 - OCR/Document Intelligence ;

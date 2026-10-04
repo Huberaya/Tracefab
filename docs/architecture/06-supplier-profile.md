@@ -108,7 +108,7 @@ Les tests d'intégration Supabase doivent couvrir :
 
 - Edge Function de génération et d'envoi email ;
 - enrichissement du parcours Brand Console « Ajouter un fournisseur » ;
-- Supplier Portal complet : sites, documents, certificats et gestion multi-organisation ;
+- Supplier Portal complet : documents, certificats avec preuves, data points et gestion multi-organisation ;
 - formulaire multi-étapes et validations UX avancées ;
 - tests RLS exécutés contre Supabase ;
 - journalisation métier complète des invitations et soumissions.
