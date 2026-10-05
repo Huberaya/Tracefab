@@ -85,8 +85,9 @@ export async function accessibleSupplierRequest<T extends Prisma.data_requestsSe
   userId: string,
   requestId: string,
   select: T = REQUEST_SELECT as T,
+  organizationId?: string | null,
 ): Promise<Prisma.data_requestsGetPayload<{ select: T }> | null> {
-  const organizationIds = await activeSupplierOrganizationIds(tx, userId);
+  const organizationIds = await activeSupplierOrganizationIds(tx, userId, organizationId);
   if (organizationIds.length === 0) return null;
 
   return tx.data_requests.findFirst({

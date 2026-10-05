@@ -6,6 +6,7 @@ import { json, methodNotAllowed, readJsonBody } from '../_lib/http';
 import { sqlBusinessError } from '../_lib/sql-errors';
 import {
   currentSupplier,
+  requestedOrganizationId,
   profileMutationValues,
   serializeSupplierProfile,
 } from '../_lib/supplier-profile';
@@ -18,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const current = await currentSupplier(tx, user.id);
+      const current = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!current) return null;
       if (req.method === 'GET') return { current };
 

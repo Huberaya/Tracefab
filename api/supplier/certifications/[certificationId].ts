@@ -4,7 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
 import { withTracefabUserContext } from '../../_lib/context';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
 import { sqlBusinessError } from '../../_lib/sql-errors';
-import { currentSupplier } from '../../_lib/supplier-profile';
+import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile';
 import { certificationValues, serializeSupplierCertification, SUPPLIER_CERTIFICATION_SELECT, type SupplierCertificationRecord } from '../../_lib/supplier-certifications';
 
 function routeCertificationId(req: VercelRequest) {
@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(certificationId)) return json(res, 400, { error: 'invalid_certification_id' });
     const { user } = await requireClerkUser(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id);
+      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!supplier) return null;
       const current = await tx.certifications.findFirst({ where: { id: certificationId, owner_organization_id: supplier.organization_id, supplier_id: supplier.id }, select: SUPPLIER_CERTIFICATION_SELECT });
       if (!current) return null;

@@ -4,7 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth';
 import { withTracefabUserContext } from '../../../_lib/context';
 import { json, methodNotAllowed } from '../../../_lib/http';
 import { sqlBusinessError } from '../../../_lib/sql-errors';
-import { currentSupplier } from '../../../_lib/supplier-profile';
+import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile';
 import { DOCUMENT_SELECT, scanAndFinalizeDocument, serializeDocument } from '../../../_lib/documents';
 
 function routeDocumentId(req: VercelRequest) { const value = req.query.documentId; return Array.isArray(value) ? value[0] : value; }
@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
     const document = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id);
+      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!supplier) return null;
       const current = await tx.documents.findFirst({ where: { id: documentId, owner_organization_id: supplier.organization_id, status: { in: ['uploaded', 'scanning'] } }, select: DOCUMENT_SELECT });
       if (!current) return null;

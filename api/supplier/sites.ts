@@ -4,7 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../_lib/auth';
 import { withTracefabUserContext } from '../_lib/context';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http';
 import { sqlBusinessError } from '../_lib/sql-errors';
-import { currentSupplier } from '../_lib/supplier-profile';
+import { currentSupplier, requestedOrganizationId } from '../_lib/supplier-profile';
 import { serializeSupplierSite, siteMutationValues, SUPPLIER_SITE_SELECT, type SupplierSiteRecord } from '../_lib/supplier-sites';
 
 type SiteBody = Record<string, unknown>;
@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id);
+      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!supplier) return null;
       if (req.method === 'GET') {
         const sites = await tx.supplier_sites.findMany({

@@ -4,7 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
 import { withTracefabUserContext } from '../../_lib/context';
 import { json, methodNotAllowed } from '../../_lib/http';
 import { sqlBusinessError } from '../../_lib/sql-errors';
-import { currentSupplier, serializeSupplierProfile } from '../../_lib/supplier-profile';
+import { currentSupplier, requestedOrganizationId, serializeSupplierProfile } from '../../_lib/supplier-profile';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
@@ -12,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const profile = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const current = await currentSupplier(tx, user.id);
+      const current = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!current) return null;
       const rows = await tx.$queryRaw<typeof current[]>`
         SELECT * FROM tracefab_submit_supplier_profile(${current.id}::uuid)

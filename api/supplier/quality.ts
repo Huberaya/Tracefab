@@ -3,7 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../_lib/auth';
 import { withTracefabUserContext } from '../_lib/context';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http';
 import { sqlBusinessError } from '../_lib/sql-errors';
-import { currentSupplier } from '../_lib/supplier-profile';
+import { currentSupplier, requestedOrganizationId } from '../_lib/supplier-profile';
 import { qualityBundle, serializeQualityIssue, serializeQualityScore } from '../_lib/quality';
 
 type QualityBody = { calculationVersion?: string | null };
@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const body = req.method === 'POST' ? await readJsonBody<QualityBody>(req) : {};
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id);
+      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!supplier) return null;
       if (req.method === 'POST') {
         const calculationVersion = typeof body.calculationVersion === 'string' && body.calculationVersion.trim().length <= 120

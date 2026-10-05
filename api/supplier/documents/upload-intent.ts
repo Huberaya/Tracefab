@@ -4,7 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
 import { withTracefabUserContext } from '../../_lib/context';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
 import { sqlBusinessError } from '../../_lib/sql-errors';
-import { currentSupplier } from '../../_lib/supplier-profile';
+import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile';
 import { documentMetadata, serializeDocument, DOCUMENT_SELECT } from '../../_lib/documents';
 import { presignedUpload, storageObjectKey } from '../../_lib/storage';
 
@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const body = documentMetadata(await readJsonBody<Record<string, unknown>>(req));
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id);
+      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!supplier) return null;
       const storagePath = storageObjectKey(supplier.organization_id, body.originalFilename);
       const rows = await tx.$queryRaw<Array<Prisma.documentsGetPayload<{ select: typeof DOCUMENT_SELECT }>>>`

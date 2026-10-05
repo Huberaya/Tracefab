@@ -58,6 +58,63 @@ export function emailDeliveryConfigured() {
   );
 }
 
+type OrganizationMemberInvitationEmail = {
+  to: string;
+  organizationName: string;
+  targetRole: string;
+  invitationToken: string;
+  expiresAt: Date;
+};
+
+export async function sendOrganizationMemberInvitationEmail(
+  input: OrganizationMemberInvitationEmail,
+): Promise<EmailDeliveryResult> {
+  const invitationUrl = configuredEmailUrl(`/invitations/accept?token=${encodeURIComponent(input.invitationToken)}`);
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+  if (!invitationUrl || !apiKey || !from) return { status: 'not_configured' };
+
+  const organizationName = escapeHtml(input.organizationName);
+  const safeInvitationUrl = escapeHtml(invitationUrl);
+  const expiresAt = input.expiresAt.toISOString();
+  let response: Response;
+  try {
+    response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from,
+        to: [input.to],
+        subject: `${input.organizationName} invited you to Tracefab`,
+        text: [
+          `Hello,`,
+          '',
+          `${input.organizationName} invited you to join its Tracefab supplier workspace as ${input.targetRole}.`,
+          `Accept the invitation: ${invitationUrl}`,
+          `This link expires on ${expiresAt}.`,
+        ].join('\n'),
+        html: [
+          `<p>Hello,</p>`,
+          `<p><strong>${organizationName}</strong> invited you to join its Tracefab supplier workspace as <strong>${escapeHtml(input.targetRole)}</strong>.</p>`,
+          `<p><a href="${safeInvitationUrl}">Accept the Tracefab invitation</a></p>`,
+          `<p>This link expires on ${escapeHtml(expiresAt)}.</p>`,
+        ].join(''),
+      }),
+    });
+  } catch {
+    return { status: 'failed' };
+  }
+  if (!response.ok) return { status: 'failed' };
+  let providerId: string | null = null;
+  try {
+    const payload = await response.json() as { id?: unknown };
+    if (typeof payload.id === 'string') providerId = payload.id;
+  } catch {
+    // A successful provider response without a JSON body is still a delivery.
+  }
+  return { status: 'sent', providerId };
+}
+
 export async function sendSupplierInvitationEmail(
   input: SupplierInvitationEmail,
 ): Promise<EmailDeliveryResult> {

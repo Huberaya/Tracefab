@@ -20,14 +20,28 @@ export const SUPPLIER_PROFILE_SELECT = {
 
 export type SupplierProfileRecord = Prisma.suppliersGetPayload<{ select: typeof SUPPLIER_PROFILE_SELECT }>;
 
+export function requestedOrganizationId(request: {
+  query?: Record<string, unknown>;
+  headers?: Record<string, string | string[] | undefined>;
+}) {
+  const header = request.headers?.['x-tracefab-organization-id'];
+  const query = request.query?.organizationId;
+  const raw = Array.isArray(header) ? header[0] : header || (Array.isArray(query) ? query[0] : query);
+  if (raw === undefined || raw === null || raw === '') return null;
+  if (typeof raw !== 'string' || !/^[0-9a-f-]{36}$/i.test(raw)) throw new Error('invalid_organization_id');
+  return raw;
+}
+
 export async function activeSupplierOrganizationIds(
   tx: Prisma.TransactionClient,
   userId: string,
+  organizationId?: string | null,
 ) {
   const memberships = await tx.organization_memberships.findMany({
     where: {
       user_id: userId,
       status: 'active',
+      ...(organizationId ? { organization_id: organizationId } : {}),
       organizations: { type: 'supplier' },
     },
     select: { organization_id: true },
@@ -38,11 +52,13 @@ export async function activeSupplierOrganizationIds(
 export async function currentSupplier(
   tx: Prisma.TransactionClient,
   userId: string,
+  organizationId?: string | null,
 ) {
   const membership = await tx.organization_memberships.findFirst({
     where: {
       user_id: userId,
       status: 'active',
+      ...(organizationId ? { organization_id: organizationId } : {}),
       organizations: { type: 'supplier' },
     },
     select: { organization_id: true },

@@ -5,6 +5,7 @@ import { withTracefabUserContext } from '../_lib/context';
 import { json, methodNotAllowed } from '../_lib/http';
 import { sqlBusinessError } from '../_lib/sql-errors';
 import { accessibleRequest, accessibleSupplierRequest, isUuid, REQUEST_SELECT, serializeRequest } from '../_lib/data-requests';
+import { requestedOrganizationId } from '../_lib/supplier-profile';
 
 const DETAIL_SELECT = {
   ...REQUEST_SELECT,
@@ -101,9 +102,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
     const scope = Array.isArray(req.query.scope) ? req.query.scope[0] : req.query.scope;
+    const queryOrganizationId = Array.isArray(req.query.organizationId) ? req.query.organizationId[0] : req.query.organizationId;
+    if (queryOrganizationId && !isUuid(queryOrganizationId)) return json(res, 400, { error: 'invalid_organization_id' });
+    const organizationId = requestedOrganizationId(req) || queryOrganizationId;
     const request = await withTracefabUserContext(user.id, user.email, (tx) =>
       scope === 'supplier'
-        ? accessibleSupplierRequest(tx, user.id, requestId, DETAIL_SELECT)
+        ? accessibleSupplierRequest(tx, user.id, requestId, DETAIL_SELECT, organizationId)
         : accessibleRequest(tx, user.id, requestId, DETAIL_SELECT),
     );
     if (!request) return json(res, 404, { error: 'data_request_not_found' });
@@ -112,6 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
+    if (error instanceof Error && error.message === 'invalid_organization_id') return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') {
       return json(res, 503, { error: 'clerk_not_configured' });
     }

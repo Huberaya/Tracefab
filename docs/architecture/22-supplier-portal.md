@@ -93,7 +93,8 @@ git diff --check
 
 ## Limites explicites
 
-- gestion des data points structurés, utilisateurs et multi-organisation non livrée dans le portail ;
+- les data points structurés, les membres et le contexte multi-organisation sont livrés au Chantier 23 ;
+- révocation d'invitations en attente et synchronisation d'annuaire Clerk restent hors de cette surface ;
 - bucket et scanner antivirus réels à configurer sur staging/production ;
 - suppression objet interactive, rétention et nettoyage Storage restent à industrialiser ;
 - la gestion avancée des utilisateurs et la navigation multi-organisation fournisseur restent à construire ;

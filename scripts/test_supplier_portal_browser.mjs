@@ -42,6 +42,20 @@ try {
   await page.locator('#document-form button[type="submit"]').click();
   await page.getByText('Preuve ajoutée en mode démonstration.').waitFor();
 
+  await page.locator('button[data-view="dataPoints"]').first().click();
+  await page.locator('#data-point-form input[name="dataKey"]').fill('annual_production_capacity');
+  await page.locator('#data-point-form select[name="dataType"]').selectOption('number');
+  await page.locator('#data-point-form textarea[name="value"]').fill('125000');
+  await page.locator('#data-point-form button[type="submit"]').click();
+  await page.getByText('Donnée enregistrée en mode démonstration.').waitFor();
+
+  await page.locator('button[data-view="members"]').first().click();
+  await page.locator('#member-invite-form input[name="email"]').fill('quality@nhan-textile.example');
+  await page.locator('#member-invite-form button[type="submit"]').click();
+  await page.getByText('Invitation créée en mode démonstration.').waitFor();
+  await page.locator('#organization-switcher').selectOption('demo-supplier-org-2');
+  await page.locator('#organization-switcher').selectOption('demo-supplier-org');
+
   await page.locator('button[data-view="quality"]').first().click();
   await page.getByRole('button', { name: 'Recalculer le score' }).click();
   await page.getByText('Score qualité recalculé en mode démonstration.').waitFor();
@@ -63,7 +77,7 @@ try {
   await page.getByText('Demande soumise en mode démonstration.').waitFor();
 
   await browser.close();
-  console.log('Supplier Portal browser flow passed: profile, sites, certifications, materials, private evidence, quality, request response and submission');
+  console.log('Supplier Portal browser flow passed: profile, sites, certifications, materials, private evidence, data points, team, multi-organization switch, quality, request response and submission');
 } finally {
   server.kill('SIGTERM');
 }
