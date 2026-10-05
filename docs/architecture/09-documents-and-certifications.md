@@ -71,13 +71,16 @@ Une certification contient :
 - Les documents partagés ne sont lisibles qu'après un partage objet actif ; les objets non disponibles ne sont pas exposés au bénéficiaire.
 - Les certifications vérifiées et les vérifications ne sont pas modifiables par un simple `UPDATE` client.
 
-## Reste à faire
+## Suite du chantier
 
-- Edge Function d'upload signé ou upload contrôlé ;
-- antivirus et validation MIME réelle ;
+Le Chantier 20 livre l'adaptateur S3-compatible, les URLs présignées, la validation MIME/taille, le hash serveur, le contrat antivirus et les routes de téléchargement temporaire. La mise en service réelle reste conditionnée par un bucket privé et un endpoint antivirus de staging/production.
+
+Restent hors périmètre :
+
 - extraction OCR en chantier IA documentaire ;
 - rotation/rétention et nettoyage Storage ;
+- suppression objet interactive et job de reprise des scans bloqués ;
 - alertes d'expiration ;
 - registre externe des certificateurs ;
 - interface de revue et piste d'audit détaillée ;
-- tests RLS/Storage sur un projet Supabase réel.
+- tests RLS/Storage sur un environnement de stockage réel.

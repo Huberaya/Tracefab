@@ -71,11 +71,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response = await withTracefabUserContext(user.id, user.email, async (tx) => {
       const item = await tx.data_request_items.findUnique({
         where: { id: itemId },
-        select: { data_type: true, validation_rules: true },
+        select: { data_request_id: true, data_type: true, validation_rules: true },
       });
       if (!item) throw new Error('data_request_item_not_found');
       const validationError = validateResponseValue(item, body.value);
       if (validationError) throw new Error(validationError);
+      if (sourceDocumentId) {
+        const request = await tx.data_requests.findUnique({ where: { id: item.data_request_id }, select: { supplier_organization_id: true } });
+        const document = request ? await tx.documents.findFirst({ where: { id: sourceDocumentId, owner_organization_id: request.supplier_organization_id, status: 'available' }, select: { id: true } }) : null;
+        if (!document) throw new Error('invalid_source_document_id');
+      }
 
       const rows = await tx.$queryRaw<ResponseRow[]>`
         SELECT *

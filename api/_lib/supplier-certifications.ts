@@ -60,10 +60,12 @@ export function certificationDate(value: unknown, field: string) {
 }
 
 export function certificationValues(body: Record<string, unknown>, current?: SupplierCertificationRecord) {
-  const allowedKeys = new Set(['supplierSiteId', 'standardName', 'standardCode', 'issuerName', 'certificateNumber', 'issuedAt', 'expiresAt']);
+  const allowedKeys = new Set(['supplierSiteId', 'documentId', 'standardName', 'standardCode', 'issuerName', 'certificateNumber', 'issuedAt', 'expiresAt']);
   if (Object.keys(body).some((key) => !allowedKeys.has(key))) throw new Error('invalid_certification_fields');
   const supplierSiteId = Object.prototype.hasOwnProperty.call(body, 'supplierSiteId') ? body.supplierSiteId : current?.supplier_site_id ?? null;
   if (supplierSiteId !== null && supplierSiteId !== undefined && (typeof supplierSiteId !== 'string' || !/^[0-9a-f-]{36}$/i.test(supplierSiteId))) throw new Error('invalid_supplier_site_id');
+  const documentId = Object.prototype.hasOwnProperty.call(body, 'documentId') ? body.documentId : current?.document_id ?? null;
+  if (documentId !== null && documentId !== undefined && (typeof documentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(documentId))) throw new Error('invalid_document_id');
   const standardName = Object.prototype.hasOwnProperty.call(body, 'standardName') ? certificationString(body.standardName, 'certification_standard_name', 240, true) : current?.standard_name;
   const standardCode = Object.prototype.hasOwnProperty.call(body, 'standardCode') ? certificationString(body.standardCode, 'certification_standard_code', 120) : current?.standard_code ?? null;
   const issuerName = Object.prototype.hasOwnProperty.call(body, 'issuerName') ? certificationString(body.issuerName, 'certification_issuer_name', 240) : current?.issuer_name ?? null;
@@ -71,5 +73,5 @@ export function certificationValues(body: Record<string, unknown>, current?: Sup
   const issuedAt = Object.prototype.hasOwnProperty.call(body, 'issuedAt') ? certificationDate(body.issuedAt, 'certification_issued_at') : current?.issued_at ? current.issued_at.toISOString().slice(0, 10) : null;
   const expiresAt = Object.prototype.hasOwnProperty.call(body, 'expiresAt') ? certificationDate(body.expiresAt, 'certification_expires_at') : current?.expires_at ? current.expires_at.toISOString().slice(0, 10) : null;
   if (issuedAt && expiresAt && expiresAt < issuedAt) throw new Error('invalid_certification_date_range');
-  return { supplierSiteId: supplierSiteId || null, standardName, standardCode, issuerName, certificateNumber, issuedAt, expiresAt };
+  return { supplierSiteId: supplierSiteId || null, documentId: documentId || null, standardName, standardCode, issuerName, certificateNumber, issuedAt, expiresAt };
 }

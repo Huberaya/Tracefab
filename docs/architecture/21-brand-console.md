@@ -100,7 +100,7 @@ git diff --check
 - le Supplier Portal complet n'est pas encore livré ;
 - le Quality Center frontend complet n'est pas encore livré ;
 - la revue utilise actuellement un commentaire navigateur simple ;
-- l'upload et le stockage privé des preuves, l'antivirus et le téléchargement sécurisé attendent le chantier de stockage privé ;
+- le stockage privé des preuves est livré au Chantier 20 ; sa mise en service dépend d'un bucket S3-compatible privé et d'un scanner antivirus configurés ;
 - le chargement de Clerk JS s'appuie sur le CDN configuré pour le déploiement ;
 - les vulnérabilités de dépendances existantes nécessitent une décision d'upgrade potentiellement cassante et aucun `npm audit fix --force` n'a été appliqué ;
 - la validation staging et production doit être réalisée avec des secrets Clerk/Neon renouvelés et des données représentatives non sensibles.

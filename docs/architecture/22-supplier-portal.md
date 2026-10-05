@@ -61,9 +61,9 @@ Les mutations de profil et de soumission passent par `tracefab_update_supplier_p
 
 ## Réponses et preuves
 
-Chaque enregistrement d'une réponse crée une nouvelle version et conserve l'historique. Le portail affiche le statut `declared` sans le transformer en vérification ou certification. Les items signalant `evidenceRequired` sont visibles, mais l'upload de preuve est désactivé tant que le stockage privé, l'antivirus et le téléchargement sécurisé ne sont pas livrés.
+Chaque enregistrement d'une réponse crée une nouvelle version et conserve l'historique. Le portail affiche le statut `declared` sans le transformer en vérification ou certification. Les items signalant `evidenceRequired` peuvent associer une preuve déjà disponible ; le document doit avoir passé le contrôle serveur et antivirus avant d'être sélectionnable.
 
-Pour les réponses JSON de composition, le portail applique uniquement le contrat de forme côté serveur ; il ne crée pas directement de matériaux ni de produit. Les champs `document` sont affichés comme non disponibles afin d'éviter de faire croire à un upload sécurisé.
+Pour les réponses JSON de composition, le portail applique uniquement le contrat de forme côté serveur ; il ne crée pas directement de matériaux ni de produit. Les champs `document` restent contrôlés par l'API et ne deviennent disponibles qu'après le cycle de stockage privé.
 
 ## Tests et validation
 
@@ -93,9 +93,9 @@ git diff --check
 
 ## Limites explicites
 
-- gestion des documents, preuves et data points structurés non livrée dans le portail ;
-- upload et stockage privé des preuves, antivirus et téléchargement sécurisé dépendants du chantier de stockage ;
-- les documents ne peuvent pas encore être associés via `sourceDocumentId` depuis l'interface ;
+- gestion des data points structurés, utilisateurs et multi-organisation non livrée dans le portail ;
+- bucket et scanner antivirus réels à configurer sur staging/production ;
+- suppression objet interactive, rétention et nettoyage Storage restent à industrialiser ;
 - la gestion avancée des utilisateurs et la navigation multi-organisation fournisseur restent à construire ;
 - le rattachement avancé des matériaux aux produits et aux graphes de traçabilité reste hors de cette surface ;
 - les validations staging et production doivent être réalisées avec des secrets Clerk/Neon renouvelés et des données représentatives non sensibles ;

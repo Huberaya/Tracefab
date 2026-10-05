@@ -37,6 +37,11 @@ try {
   await page.locator('#material-form button[type="submit"]').click();
   await page.getByText('Matériau ajouté en mode démonstration.').waitFor();
 
+  await page.locator('button[data-view="documents"]').first().click();
+  await page.locator('#document-form input[name="file"]').setInputFiles({ name:'audit-note.txt', mimeType:'text/plain', buffer:Buffer.from('private evidence demo') });
+  await page.locator('#document-form button[type="submit"]').click();
+  await page.getByText('Preuve ajoutée en mode démonstration.').waitFor();
+
   await page.locator('button[data-view="quality"]').first().click();
   await page.getByRole('button', { name: 'Recalculer le score' }).click();
   await page.getByText('Score qualité recalculé en mode démonstration.').waitFor();
@@ -49,14 +54,16 @@ try {
   await page.locator('[data-item-id="demo-item-1"] button[type="submit"]').click();
   await page.getByText('Réponse enregistrée en mode démonstration.').waitFor();
   await page.locator('[data-item-id="demo-item-3"] input[name="responseValue"]').fill('80');
+  await page.locator('[data-item-id="demo-item-3"] select[name="sourceDocumentId"]').selectOption('demo-document-1');
   await page.locator('[data-item-id="demo-item-3"] button[type="submit"]').click();
   await page.locator('[data-item-id="demo-item-4"] textarea[name="responseValue"]').fill('[{"materialKey":"cotton","percentage":80}]');
+  await page.locator('[data-item-id="demo-item-4"] select[name="sourceDocumentId"]').selectOption('demo-document-1');
   await page.locator('[data-item-id="demo-item-4"] button[type="submit"]').click();
   await page.getByRole('button', { name: 'Soumettre à la marque' }).click();
   await page.getByText('Demande soumise en mode démonstration.').waitFor();
 
   await browser.close();
-  console.log('Supplier Portal browser flow passed: profile, sites, certifications, materials, quality, request response and submission');
+  console.log('Supplier Portal browser flow passed: profile, sites, certifications, materials, private evidence, quality, request response and submission');
 } finally {
   server.kill('SIGTERM');
 }

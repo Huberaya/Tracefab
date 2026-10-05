@@ -29,6 +29,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const site = await tx.supplier_sites.findFirst({ where: { id: values.supplierSiteId, supplier_id: supplier.id }, select: { id: true } });
         if (!site) throw new Error('invalid_supplier_site_id');
       }
+      if (values.documentId) {
+        const document = await tx.documents.findFirst({ where: { id: values.documentId, owner_organization_id: supplier.organization_id, status: 'available' }, select: { id: true } });
+        if (!document) throw new Error('invalid_document_id');
+      }
       const rows = await tx.$queryRaw<SupplierCertificationRecord[]>`
         SELECT * FROM tracefab_update_certification(
           ${certificationId}::uuid,
@@ -38,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${values.certificateNumber},
           ${values.issuedAt}::date,
           ${values.expiresAt}::date,
-          ${current.document_id}::uuid
+          ${values.documentId}::uuid
         )
       `;
       return rows[0] ?? null;
