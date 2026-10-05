@@ -3,12 +3,12 @@ import { readFile } from 'node:fs/promises';
 const files = Object.fromEntries(await Promise.all([
   ['storage', 'api/_lib/storage.ts'],
   ['documents', 'api/_lib/documents.ts'],
-  ['uploadIntent', 'api/supplier/documents/upload-intent.ts'],
-  ['scan', 'api/supplier/documents/[documentId]/scan.ts'],
-  ['supplierDownload', 'api/supplier/documents/[documentId]/download.ts'],
-  ['genericDownload', 'api/documents/[documentId]/download.ts'],
-  ['response', 'api/data-request-items/[itemId]/response.ts'],
-  ['certifications', 'api/supplier/certifications.ts'],
+  ['uploadIntent', 'api/_routes/supplier/documents/upload-intent.ts'],
+  ['scan', 'api/_routes/supplier/documents/[documentId]/scan.ts'],
+  ['supplierDownload', 'api/_routes/supplier/documents/[documentId]/download.ts'],
+  ['genericDownload', 'api/_routes/documents/[documentId]/download.ts'],
+  ['response', 'api/_routes/data-request-items/[itemId]/response.ts'],
+  ['certifications', 'api/_routes/supplier/certifications.ts'],
 ].map(async ([key, path]) => [key, await readFile(path, 'utf8')])));
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };

@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 
 const [scheduler, health, observability, env, docs, readme] = await Promise.all([
-  readFile('api/internal/notification-outbox/schedule.ts', 'utf8'),
-  readFile('api/internal/notification-outbox/health.ts', 'utf8'),
+  readFile('api/_routes/internal/notification-outbox/schedule.ts', 'utf8'),
+  readFile('api/_routes/internal/notification-outbox/health.ts', 'utf8'),
   readFile('api/_lib/notification-observability.ts', 'utf8'),
   readFile('.env.example', 'utf8'),
   readFile('docs/architecture/25-notification-observability.md', 'utf8'),

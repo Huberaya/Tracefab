@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
 const [route, auth, env, vercel, docs] = await Promise.all([
-  readFile('api/internal/notification-outbox/schedule.ts', 'utf8'),
+  readFile('api/_routes/internal/notification-outbox/schedule.ts', 'utf8'),
   readFile('api/_lib/worker-auth.ts', 'utf8'),
   readFile('.env.example', 'utf8'),
   readFile('vercel.json', 'utf8'),
