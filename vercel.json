@@ -3,12 +3,31 @@
     {
       "src": "api/index.ts",
       "use": "@vercel/node"
+    },
+    {
+      "src": "**/*.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/api/index.ts?path=$1"
+    },
+    {
+      "src": "/supplier-portal(?:/)?",
+      "dest": "/supplier-portal/index.html"
+    },
+    {
+      "src": "/invitations/accept(?:/)?",
+      "dest": "/invitations/accept/index.html"
+    },
+    {
+      "src": "/brand-console(?:/)?",
+      "dest": "/brand-console/index.html"
+    },
+    {
+      "handle": "filesystem"
     }
   ],
   "crons": [

@@ -39,5 +39,6 @@
     "@clerk/backend": "^3.18.1",
     "@prisma/client": "^6.19.0",
     "@vercel/node": "^13.0.2"
-  }
+  },
+  "type": "module"
 }
