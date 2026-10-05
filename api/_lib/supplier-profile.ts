@@ -49,6 +49,31 @@ export async function activeSupplierOrganizationIds(
   return memberships.map(({ organization_id }) => organization_id);
 }
 
+export const SUPPLIER_MUTATION_ROLES = new Set(['owner', 'admin', 'manager', 'contributor']);
+
+export async function supplierMembership(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  organizationId: string,
+) {
+  return tx.organization_memberships.findUnique({
+    where: { organization_id_user_id: { organization_id: organizationId, user_id: userId } },
+    select: { role: true, status: true },
+  });
+}
+
+export async function requireSupplierMutationRole(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  organizationId: string,
+) {
+  const membership = await supplierMembership(tx, userId, organizationId);
+  if (!membership || membership.status !== 'active' || !SUPPLIER_MUTATION_ROLES.has(membership.role)) {
+    throw new Error('supplier_data_mutation_role_required');
+  }
+  return membership;
+}
+
 export async function currentSupplier(
   tx: Prisma.TransactionClient,
   userId: string,

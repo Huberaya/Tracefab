@@ -8,6 +8,7 @@
     "api:typecheck": "tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --skipLibCheck --esModuleInterop --types node --lib ES2020,DOM $(find api -name '*.ts' -print)",
     "test:neon:security": "node scripts/test_neon_security.mjs",
     "test:neon:supplier": "node scripts/test_neon_supplier_flow.mjs",
+    "test:neon:supplier:advanced": "node scripts/test_neon_supplier_advanced.mjs",
     "test:neon:product": "node scripts/test_neon_product_flow.mjs",
     "test:neon:quality": "node scripts/test_neon_quality_flow.mjs",
     "test:neon:collection": "node scripts/test_neon_data_collection_flow.mjs",

@@ -2,10 +2,10 @@ import { data_type, data_value_status, Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { requireClerkUser, isUnauthorized } from '../_lib/auth';
 import { withTracefabUserContext } from '../_lib/context';
-import { dataPointMutation, DATA_POINT_SELECT, serializeDataPoint } from '../_lib/data-points';
+import { dataPointMutation, DATA_POINT_DEFINITIONS, DATA_POINT_SELECT, serializeDataPoint } from '../_lib/data-points';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http';
 import { sqlBusinessError } from '../_lib/sql-errors';
-import { currentSupplier, requestedOrganizationId } from '../_lib/supplier-profile';
+import { currentSupplier, requestedOrganizationId, requireSupplierMutationRole } from '../_lib/supplier-profile';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);
@@ -28,6 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return { points };
       }
 
+      await requireSupplierMutationRole(tx, user.id, supplier.organization_id);
       const values = dataPointMutation(await readJsonBody<Record<string, unknown>>(req));
       let supplierSiteId: string | null = null;
       if (values.subjectType === 'site') {
@@ -59,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return { point };
     });
     if (!result) return json(res, 404, { error: 'supplier_organization_not_found' });
-    if ('points' in result) return json(res, 200, { dataPoints: result.points.map(serializeDataPoint) });
+    if ('points' in result) return json(res, 200, { dataPoints: result.points.map(serializeDataPoint), definitions: DATA_POINT_DEFINITIONS });
     return json(res, 201, { dataPoint: serializeDataPoint(result.point) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });

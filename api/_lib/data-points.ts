@@ -25,6 +25,34 @@ export type DataPointRecord = Prisma.data_pointsGetPayload<{ select: typeof DATA
 
 export const SUPPLIER_DATA_TYPES = new Set(['text', 'number', 'boolean', 'date', 'country', 'percentage', 'json']);
 
+export const DATA_POINT_DEFINITIONS: Record<string, { dataType: string; description: string }> = {
+  country_of_manufacture: { dataType: 'country', description: 'ISO 3166-1 alpha-2 country code.' },
+  country_of_origin: { dataType: 'country', description: 'ISO 3166-1 alpha-2 country code.' },
+  annual_production_capacity: { dataType: 'number', description: 'Annual production capacity in the declared unit.' },
+  employee_count: { dataType: 'number', description: 'Number of employees at the subject.' },
+  main_material_percentage: { dataType: 'percentage', description: 'Share by mass of the main material.' },
+  activity_types: { dataType: 'json', description: 'Array of controlled activity keys.' },
+  material_composition: { dataType: 'json', description: 'Array of material keys and percentages.' },
+};
+
+function validateKnownJsonShape(dataKey: string, value: unknown) {
+  if (dataKey === 'activity_types') {
+    if (!Array.isArray(value) || value.length > 64 || value.some((entry) => typeof entry !== 'string' || !/^[A-Za-z0-9_.:-]{1,80}$/.test(entry))) throw new Error('invalid_data_point_value');
+  }
+  if (dataKey === 'material_composition') {
+    if (!Array.isArray(value) || value.length > 100) throw new Error('invalid_data_point_value');
+    let total = 0;
+    for (const entry of value) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('invalid_data_point_value');
+      const materialKey = (entry as Record<string, unknown>).materialKey;
+      const percentage = (entry as Record<string, unknown>).percentage;
+      if (typeof materialKey !== 'string' || !/^[A-Za-z0-9_.:-]{1,120}$/.test(materialKey) || typeof percentage !== 'number' || !Number.isFinite(percentage) || percentage < 0 || percentage > 100) throw new Error('invalid_data_point_value');
+      total += percentage;
+    }
+    if (total > 100.0001) throw new Error('invalid_data_point_value');
+  }
+}
+
 export function serializeDataPoint(point: DataPointRecord) {
   return {
     id: point.id,
@@ -48,21 +76,31 @@ export function serializeDataPoint(point: DataPointRecord) {
   };
 }
 
-export function dataPointDate(value: unknown, field: string) {
-  if (value === undefined || value === null || value === '') return null;
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`))) throw new Error(`invalid_${field}`);
-  return new Date(`${value}T00:00:00Z`);
+function parseIsoDate(value: unknown) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value ? null : parsed;
 }
 
-export function validateDataPointValue(dataType: string, value: unknown) {
+export function dataPointDate(value: unknown, field: string) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = parseIsoDate(value);
+  if (!parsed) throw new Error(`invalid_${field}`);
+  return parsed;
+}
+
+export function validateDataPointValue(dataType: string, value: unknown, dataKey?: string) {
   if (!SUPPLIER_DATA_TYPES.has(dataType)) throw new Error('invalid_data_type');
+  const definition = dataKey ? DATA_POINT_DEFINITIONS[dataKey] : undefined;
+  if (definition && definition.dataType !== dataType) throw new Error('data_point_type_mismatch');
   if (dataType === 'text' && (typeof value !== 'string' || value.length > 10000)) throw new Error('invalid_data_point_value');
   if (dataType === 'number' && (typeof value !== 'number' || !Number.isFinite(value))) throw new Error('invalid_data_point_value');
   if (dataType === 'boolean' && typeof value !== 'boolean') throw new Error('invalid_data_point_value');
-  if (dataType === 'date' && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`)))) throw new Error('invalid_data_point_value');
+  if (dataType === 'date' && !parseIsoDate(value)) throw new Error('invalid_data_point_value');
   if (dataType === 'country' && (typeof value !== 'string' || !/^[A-Za-z]{2}$/.test(value))) throw new Error('invalid_data_point_value');
   if (dataType === 'percentage' && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100)) throw new Error('invalid_data_point_value');
   if (dataType === 'json' && (typeof value !== 'object' || value === null || JSON.stringify(value).length > 50000)) throw new Error('invalid_data_point_value');
+  if (dataType === 'json' && dataKey) validateKnownJsonShape(dataKey, value);
   return dataType === 'country' && typeof value === 'string' ? value.toUpperCase() : value;
 }
 
@@ -72,7 +110,7 @@ export function dataPointMutation(body: Record<string, unknown>) {
   if (typeof body.dataKey !== 'string' || body.dataKey.trim().length === 0 || body.dataKey.trim().length > 160 || !/^[A-Za-z0-9_.:-]+$/.test(body.dataKey.trim())) throw new Error('invalid_data_key');
   if (typeof body.dataType !== 'string' || !SUPPLIER_DATA_TYPES.has(body.dataType)) throw new Error('invalid_data_type');
   if (!Object.prototype.hasOwnProperty.call(body, 'value')) throw new Error('data_point_value_required');
-  const value = validateDataPointValue(body.dataType, body.value);
+  const value = validateDataPointValue(body.dataType, body.value, body.dataKey.trim());
   if (body.subjectType !== 'supplier' && body.subjectType !== 'site') throw new Error('invalid_data_point_subject');
   if (body.subjectType === 'site' && (typeof body.subjectId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.subjectId))) throw new Error('invalid_supplier_site_id');
   if (body.subjectType === 'supplier' && body.subjectId !== undefined && body.subjectId !== null && body.subjectId !== '') throw new Error('invalid_data_point_subject');

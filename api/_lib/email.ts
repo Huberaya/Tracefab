@@ -58,6 +58,10 @@ export function emailDeliveryConfigured() {
   );
 }
 
+export function manualInvitationFallbackAllowed() {
+  return process.env.NODE_ENV !== 'production' || process.env.TRACEFAB_ALLOW_MANUAL_INVITATION_FALLBACK === 'true';
+}
+
 type OrganizationMemberInvitationEmail = {
   to: string;
   organizationName: string;

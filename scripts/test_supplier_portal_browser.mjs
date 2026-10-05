@@ -53,6 +53,10 @@ try {
   await page.locator('#member-invite-form input[name="email"]').fill('quality@nhan-textile.example');
   await page.locator('#member-invite-form button[type="submit"]').click();
   await page.getByText('Invitation créée en mode démonstration.').waitFor();
+  await page.locator('[data-invitation-action="resend"]').last().click();
+  await page.getByText('Invitation renvoyée en mode démonstration.').waitFor();
+  await page.locator('[data-invitation-action="revoke"]').last().click();
+  await page.getByText('Invitation révoquée en mode démonstration.').waitFor();
   await page.locator('#organization-switcher').selectOption('demo-supplier-org-2');
   await page.locator('#organization-switcher').selectOption('demo-supplier-org');
 

@@ -5,7 +5,7 @@ import { withTracefabUserContext } from '../../_lib/context';
 import { dataPointMutation, DATA_POINT_SELECT, serializeDataPoint } from '../../_lib/data-points';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
 import { sqlBusinessError } from '../../_lib/sql-errors';
-import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile';
+import { currentSupplier, requestedOrganizationId, requireSupplierMutationRole } from '../../_lib/supplier-profile';
 
 function routeDataPointId(req: VercelRequest) { const value = req.query.dataPointId; return Array.isArray(value) ? value[0] : value; }
 function isUuid(value: unknown): value is string { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
@@ -24,6 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         select: DATA_POINT_SELECT,
       });
       if (!current) return null;
+      await requireSupplierMutationRole(tx, user.id, supplier.organization_id);
       const body = await readJsonBody<Record<string, unknown>>(req);
       const allowedKeys = new Set(['dataKey', 'dataType', 'value', 'subjectType', 'subjectId', 'sourceDocumentId', 'validFrom', 'validUntil']);
       if (Object.keys(body).some((key) => !allowedKeys.has(key))) throw new Error('invalid_data_point_fields');

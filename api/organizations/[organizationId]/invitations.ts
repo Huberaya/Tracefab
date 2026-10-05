@@ -5,7 +5,7 @@ import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
 import { withTracefabUserContext } from '../../_lib/context';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
 import { sqlBusinessError } from '../../_lib/sql-errors';
-import { sendSupplierInvitationEmail } from '../../_lib/email';
+import { manualInvitationFallbackAllowed, sendSupplierInvitationEmail } from '../../_lib/email';
 
 type InviteSupplierBody = {
   email?: string;
@@ -114,9 +114,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.setHeader('Cache-Control', 'no-store');
     if (delivery.status === 'sent') return json(res, 201, response);
+    if (!manualInvitationFallbackAllowed()) return json(res, 503, response);
 
-    // When delivery is not configured or fails, return the one-time token to
-    // the trusted caller so it can be delivered manually. It never enters SQL
+    // In non-production/manual environments only, return the one-time token
+    // to the trusted caller for delivery outside Tracefab. It never enters SQL
     // and is never logged by this API.
     return json(res, delivery.status === 'failed' ? 502 : 201, {
       ...response,

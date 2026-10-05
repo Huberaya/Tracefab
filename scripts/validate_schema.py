@@ -19,6 +19,7 @@ TRACEABILITY_SQL_PATH = ROOT / "supabase/migrations/20260922060000_tracefab_trac
 DPP_SQL_PATH = ROOT / "supabase/migrations/20260922070000_tracefab_dpp_readiness.sql"
 NEON_SQL_PATH = ROOT / "prisma/migrations/20260923130000_tracefab_neon_initial/migration.sql"
 PRODUCT_API_SQL_PATH = ROOT / "prisma/migrations/20260923160000_tracefab_product_api_functions/migration.sql"
+SUPPLIER_ADVANCED_SQL_PATH = ROOT / "prisma/migrations/20261005090000_supplier_portal_advanced_hardening/migration.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
@@ -29,6 +30,7 @@ TRACEABILITY_SQL = TRACEABILITY_SQL_PATH.read_text(encoding="utf-8")
 DPP_SQL = DPP_SQL_PATH.read_text(encoding="utf-8")
 NEON_SQL = NEON_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_API_SQL = PRODUCT_API_SQL_PATH.read_text(encoding="utf-8")
+SUPPLIER_ADVANCED_SQL = SUPPLIER_ADVANCED_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -251,6 +253,22 @@ for required_marker in (
 ):
     if required_marker not in PRODUCT_API_SQL:
         errors.append(f"product API migration marker missing: {required_marker}")
+
+for required_marker in (
+    "CREATE POLICY data_points_insert_owner",
+    "tracefab_validate_membership_mutation",
+    "organization_memberships_validate_mutation",
+    "owner_role_not_promotable",
+    "last_owner_membership_required",
+    "tracefab_validate_member_invitation_role",
+    "owner_role_not_invitable",
+    "reactivates only revoked memberships",
+):
+    if required_marker not in SUPPLIER_ADVANCED_SQL:
+        errors.append(f"supplier advanced hardening marker missing: {required_marker}")
+
+if re.search(r"CREATE POLICY data_points_insert_owner.*?tracefab_is_org_member", SUPPLIER_ADVANCED_SQL, re.IGNORECASE | re.DOTALL):
+    errors.append("data point insert policy still permits every active member")
 
 if errors:
     print("schema validation failed:")

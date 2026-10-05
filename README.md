@@ -6,7 +6,7 @@ Infrastructure de données fournisseurs pour la traçabilité textile, la qualit
 
 **Chantier 23 — Supplier Portal avancé / Notification Observability / Notification Scheduler / Stockage privé des preuves / Supplier Portal approfondi / Brand Console approfondie / Quality Center API / Collection Reminders / Notification Outbox / Data Collection Productization / Data Collection API / Product Data API / supplier onboarding / Neon + Clerk**
 
-Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité, le graphe de traçabilité et la première projection versionnée de préparation DPP. Le schéma Neon est appliqué via Prisma avec une identité Clerk côté serveur. Le Chantier 18 ajoute une Brand Console statique sous `/brand-console/` avec produits, révisions, composition, identifiants, fournisseurs, demandes, revue et qualité. Le Chantier 19 ajoute un Supplier Portal approfondi sous `/supplier-portal/` pour le profil, les sites, les matériaux, les certificats déclarés, la qualité fournisseur, les demandes de données, les réponses versionnées et la soumission. Le Chantier 20 ajoute le stockage privé des preuves avec URLs présignées, contrôle serveur, hash SHA-256, antivirus contractuel et téléchargements temporaires. Le Chantier 21 ajoute la planification Vercel Cron des relances et l'enchaînement sécurisé de l'outbox. Le Chantier 22 ajoute les logs corrélés, l'état protégé de l'outbox et les alertes webhook timeout-safe pour les échecs de notification. Le Chantier 23 ajoute les data points structurés, la gestion d'équipe et le contexte multi-organisation du Supplier Portal. Le bucket, le scanner antivirus, la configuration Cron, le webhook d'alerte et les memberships réels restent des dépendances d'infrastructure à activer sur staging/production.
+Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité, le graphe de traçabilité et la première projection versionnée de préparation DPP. Le schéma Neon est appliqué via Prisma avec une identité Clerk côté serveur. Le Chantier 18 ajoute une Brand Console statique sous `/brand-console/` avec produits, révisions, composition, identifiants, fournisseurs, demandes, revue et qualité. Le Chantier 19 ajoute un Supplier Portal approfondi sous `/supplier-portal/` pour le profil, les sites, les matériaux, les certificats déclarés, la qualité fournisseur, les demandes de données, les réponses versionnées et la soumission. Le Chantier 20 ajoute le stockage privé des preuves avec URLs présignées, contrôle serveur, hash SHA-256, antivirus contractuel et téléchargements temporaires. Le Chantier 21 ajoute la planification Vercel Cron des relances et l'enchaînement sécurisé de l'outbox. Le Chantier 22 ajoute les logs corrélés, l'état protégé de l'outbox et les alertes webhook timeout-safe pour les échecs de notification. Le Chantier 23 ajoute les data points structurés, la gestion d'équipe et le contexte multi-organisation du Supplier Portal, avec acceptation Clerk des invitations, renvoi/révocation et durcissement RLS Neon. Le bucket, le scanner antivirus, la configuration Cron, le webhook d'alerte et les memberships réels restent des dépendances d'infrastructure à activer sur staging/production.
 
 ## Principes
 
@@ -72,6 +72,7 @@ api/
   supplier/documents/[documentId]/download.ts
   supplier/organizations.ts
   supplier/members.ts
+  supplier/member-invitations/[invitationId].ts
   supplier/data-points.ts
   supplier/data-points/[dataPointId].ts
   documents/[documentId]/download.ts
@@ -140,6 +141,7 @@ scripts/
   build_neon_migration.py
   test_neon_security.mjs
   test_neon_supplier_flow.mjs
+  test_neon_supplier_advanced.mjs
   test_neon_product_flow.mjs
   test_neon_quality_flow.mjs
   test_neon_data_collection_flow.mjs
@@ -195,11 +197,11 @@ La création initiale d'une organisation et de son membership owner passe par `t
 ## Ce qui n'est pas encore implémenté
 
 - intégration d'un webhook d'alerte réel et tableaux de bord externes ;
-- gestion Supplier Portal résiduelle : révocation d'invitations en attente, synchronisation d'annuaire Clerk et schémas JSON métier avancés ;
+- gestion Supplier Portal résiduelle : synchronisation d'annuaire Clerk automatique et migration vers des schémas JSON pilotés par catalogue externe ;
 - Quality Center frontend complet ;
 - suppression objet interactive, rétention et nettoyage Storage ;
 - OCR/Document Intelligence ;
 - rendu public DPP ;
 - API publique et connecteurs ERP/PLM/PIM.
 
-Voir `docs/architecture/` pour les décisions et contrats versionnés des chantiers 1 à 23 et de l'intégration Neon/Clerk. Les contrats se vérifient avec `npm run test:private-storage`, `npm run test:notification-scheduler`, `npm run test:notification-observability` et `npm run test:supplier-advanced`.
+Voir `docs/architecture/` pour les décisions et contrats versionnés des chantiers 1 à 23 et de l'intégration Neon/Clerk. Les contrats se vérifient avec `npm run test:private-storage`, `npm run test:notification-scheduler`, `npm run test:notification-observability` et `npm run test:supplier-advanced`. Avec une base de test configurée, `npm run test:neon:supplier:advanced` vérifie aussi l'isolation tenant, le versionnement des data points et les garde-fous RLS.

@@ -3,7 +3,7 @@ import { Prisma, membership_role, membership_status } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { requireClerkUser, isUnauthorized } from '../_lib/auth';
 import { withTracefabUserContext } from '../_lib/context';
-import { sendOrganizationMemberInvitationEmail } from '../_lib/email';
+import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../_lib/email';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http';
 import { sqlBusinessError } from '../_lib/sql-errors';
 import { currentSupplier, requestedOrganizationId } from '../_lib/supplier-profile';
@@ -109,6 +109,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (req.method === 'POST') {
         const email = validEmail(body.email);
         if (typeof body.targetRole !== 'string' || !INVITABLE_ROLES.has(body.targetRole)) throw new Error('invalid_member_role');
+        const invitedUser = await tx.user.findUnique({ where: { email }, select: { id: true } });
+        if (invitedUser) {
+          const existingMembership = await tx.organization_memberships.findUnique({ where: { organization_id_user_id: { organization_id: context.supplier.organization_id, user_id: invitedUser.id } }, select: { status: true } });
+          if (existingMembership && existingMembership.status !== 'revoked') throw new Error('member_already_exists');
+        }
+        const existingInvitation = await tx.organization_invitations.findFirst({ where: { organization_id: context.supplier.organization_id, email, accepted_at: null, expires_at: { gt: new Date() } }, select: { id: true } });
+        if (existingInvitation) throw new Error('active_member_invitation_exists');
         const invitationToken = randomBytes(32).toString('base64url');
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         const invitation = await tx.organization_invitations.create({
@@ -171,6 +178,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       delivery: delivery.status === 'sent' ? { status: delivery.status, providerId: delivery.providerId } : { status: delivery.status },
     };
     if (delivery.status === 'sent') return json(res, 201, payload);
+    if (!manualInvitationFallbackAllowed()) return json(res, 503, payload);
     return json(res, delivery.status === 'failed' ? 502 : 201, { ...payload, invitationToken: result.invitationToken });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
