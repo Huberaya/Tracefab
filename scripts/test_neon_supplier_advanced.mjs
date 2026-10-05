@@ -61,11 +61,7 @@ async function main() {
     { id: otherSupplierId, organization_id: otherOrganizationId, onboarding_status: 'in_progress' },
   ] });
 
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
-    await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${ownerId}, true)`;
-    await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${ownerEmail}, true)`;
-
+  await runAs(ownerId, ownerEmail, async (tx) => {
     const visibleOrganizations = await tx.$queryRaw`SELECT id FROM organizations ORDER BY id`;
     assert(visibleOrganizations.length === 1 && visibleOrganizations[0].id === organizationId, 'supplier organization RLS leaked another tenant');
 
@@ -94,10 +90,10 @@ async function main() {
     } });
     const versions = await tx.data_points.findMany({ where: { supplier_id: supplierId, data_key: 'country_of_manufacture' }, orderBy: { version: 'asc' }, select: { version: true, supersedes_id: true } });
     assert(versions.length === 2 && versions[1].version === 2 && versions[1].supersedes_id === pointId, 'data point version chain is not preserved');
+  });
 
-    await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${viewerId}, true)`;
-    await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${viewerEmail}, true)`;
-    await expectFailure(() => tx.data_points.create({ data: {
+  await expectFailure(
+    () => runAs(viewerId, viewerEmail, (tx) => tx.data_points.create({ data: {
       owner_organization_id: organizationId,
       supplier_id: supplierId,
       data_key: 'annual_production_capacity',
@@ -106,22 +102,36 @@ async function main() {
       status: 'declared',
       declared_by: viewerId,
       version: 1,
-    } }), 'row-level security');
+    } })),
+    'row-level security',
+  );
 
-    await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${ownerId}, true)`;
-    await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${ownerEmail}, true)`;
-    await expectFailure(() => tx.organization_memberships.update({ where: { organization_id_user_id: { organization_id: organizationId, user_id: ownerId } }, data: { status: 'suspended' } }), 'last_owner_membership_required');
-    await expectFailure(() => tx.organization_invitations.create({ data: {
+  await expectFailure(
+    () => runAs(ownerId, ownerEmail, (tx) => tx.organization_memberships.update({ where: { organization_id_user_id: { organization_id: organizationId, user_id: ownerId } }, data: { status: 'suspended' } })),
+    'last_owner_membership_required',
+  );
+  await expectFailure(
+    () => runAs(ownerId, ownerEmail, (tx) => tx.organization_invitations.create({ data: {
       organization_id: organizationId,
       email: `cannot-owner-${process.pid}@example.test`,
       target_role: 'owner',
       token_hash: `hash-${process.pid}`,
       invited_by: ownerId,
       expires_at: new Date(Date.now() + 86400000),
-    } }), 'owner_role_not_invitable');
-  });
+    } })),
+    'owner_role_not_invitable',
+  );
 
   console.log('Neon Supplier Portal advanced integration passed: tenant isolation, data-point versioning, role RLS and owner invariants');
+}
+
+async function runAs(userId, email, callback) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
+    await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${email}, true)`;
+    return callback(tx);
+  });
 }
 
 try {
@@ -134,6 +144,9 @@ try {
     });
   } finally {
     try {
+      await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM ${role}`);
+      await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM ${role}`);
+      await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`REVOKE ${role} FROM CURRENT_USER`);
       await prisma.$executeRawUnsafe(`DROP ROLE IF EXISTS ${role}`);
     } finally {

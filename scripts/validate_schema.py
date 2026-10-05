@@ -20,6 +20,7 @@ DPP_SQL_PATH = ROOT / "supabase/migrations/20260922070000_tracefab_dpp_readiness
 NEON_SQL_PATH = ROOT / "prisma/migrations/20260923130000_tracefab_neon_initial/migration.sql"
 PRODUCT_API_SQL_PATH = ROOT / "prisma/migrations/20260923160000_tracefab_product_api_functions/migration.sql"
 SUPPLIER_ADVANCED_SQL_PATH = ROOT / "prisma/migrations/20261005090000_supplier_portal_advanced_hardening/migration.sql"
+SUPPLIER_INVITATION_COMPAT_SQL_PATH = ROOT / "prisma/migrations/20261005100000_supplier_invitation_compatibility/migration.sql"
 SQL = SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_SQL = SUPPLIER_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_SQL = PRODUCT_SQL_PATH.read_text(encoding="utf-8")
@@ -31,6 +32,7 @@ DPP_SQL = DPP_SQL_PATH.read_text(encoding="utf-8")
 NEON_SQL = NEON_SQL_PATH.read_text(encoding="utf-8")
 PRODUCT_API_SQL = PRODUCT_API_SQL_PATH.read_text(encoding="utf-8")
 SUPPLIER_ADVANCED_SQL = SUPPLIER_ADVANCED_SQL_PATH.read_text(encoding="utf-8")
+SUPPLIER_INVITATION_COMPAT_SQL = SUPPLIER_INVITATION_COMPAT_SQL_PATH.read_text(encoding="utf-8")
 
 EXPECTED_TABLES = {
     "organizations",
@@ -269,6 +271,9 @@ for required_marker in (
 
 if re.search(r"CREATE POLICY data_points_insert_owner.*?tracefab_is_org_member", SUPPLIER_ADVANCED_SQL, re.IGNORECASE | re.DOTALL):
     errors.append("data point insert policy still permits every active member")
+
+if "NEW.target_role = 'owner' AND NEW.relationship_id IS NULL" not in SUPPLIER_INVITATION_COMPAT_SQL:
+    errors.append("supplier invitation compatibility marker missing")
 
 if errors:
     print("schema validation failed:")

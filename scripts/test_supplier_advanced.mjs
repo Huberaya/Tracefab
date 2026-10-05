@@ -15,6 +15,7 @@ const files = Object.fromEntries(await Promise.all([
   ['docs', 'docs/architecture/26-supplier-portal-advanced.md'],
   ['acceptPage', 'invitations/accept/index.html'],
   ['hardening', 'prisma/migrations/20261005090000_supplier_portal_advanced_hardening/migration.sql'],
+  ['supplierInvitationCompatibility', 'prisma/migrations/20261005100000_supplier_invitation_compatibility/migration.sql'],
   ['email', 'api/_lib/email.ts'],
 ].map(async ([key, path]) => [key, await readFile(path, 'utf8')])));
 
@@ -37,5 +38,6 @@ const acceptScript = files.acceptPage.match(/<script>([\s\S]*)<\/script>/)?.[1];
 assert(acceptScript, 'Invitation acceptance page script is missing');
 new vm.Script(acceptScript, { filename: 'invitations/accept/index.html' });
 assert(files.hardening.includes('last_owner_membership_required') && files.hardening.includes('data_points_insert_owner'), 'Neon hardening migration is missing role and RLS guards');
+assert(files.supplierInvitationCompatibility.includes("NEW.target_role = 'owner' AND NEW.relationship_id IS NULL"), 'Supplier onboarding owner invitation compatibility is missing');
 assert(files.email.includes('manualInvitationFallbackAllowed') && files.email.includes('TRACEFAB_ALLOW_MANUAL_INVITATION_FALLBACK'), 'Production invitation fallback is not explicitly gated');
 console.log('Supplier advanced contract passed: structured points, evidence gating, versioning, member controls and multi-organization context');
