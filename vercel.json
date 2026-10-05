@@ -1,4 +1,16 @@
 {
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts?path=$1"
+    }
+  ],
   "crons": [
     {
       "path": "/api/internal/notification-outbox/schedule",
