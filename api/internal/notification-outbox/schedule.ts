@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { json, methodNotAllowed } from '../../_lib/http';
 import { processNotificationOutbox } from '../../_lib/notification-outbox';
 import { enqueueDueDataRequestReminders } from '../../_lib/notification-reminders';
+import { emitNotificationAlert, notificationAlertConfigured, notificationLog, notificationRunId } from '../../_lib/notification-observability';
 import { cronAuthorized, cronSecretConfigured } from '../../_lib/worker-auth';
 
 function configuredInteger(name: string, fallback: number, minimum: number, maximum: number) {
@@ -20,19 +21,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const batchLimit = configuredInteger('TRACEFAB_NOTIFICATION_BATCH_LIMIT', 10, 1, 50);
   if (horizonHours === null || batchLimit === null) return json(res, 503, { error: 'notification_cron_configuration_invalid' });
 
+  const runId = notificationRunId();
   try {
     const enqueued = await enqueueDueDataRequestReminders(horizonHours);
     const summary = await processNotificationOutbox(batchLimit);
+    const alerts: Record<string, string> = {};
+    if (summary.failed > 0) {
+      alerts.failed = await emitNotificationAlert('notification_delivery_failed', { runId, failed: summary.failed, pending: summary.pending });
+    }
+    if (summary.notConfigured > 0) {
+      alerts.notConfigured = await emitNotificationAlert('notification_delivery_not_configured', { runId, notConfigured: summary.notConfigured });
+    }
+    notificationLog('notification_schedule_completed', {
+      runId,
+      enqueued,
+      claimed: summary.claimed,
+      sent: summary.sent,
+      pending: summary.pending,
+      failed: summary.failed,
+      alertingConfigured: notificationAlertConfigured(),
+    });
     res.setHeader('Cache-Control', 'no-store');
     return json(res, 200, {
       schedule: 'notification_outbox',
+      runId,
       horizonHours,
       batchLimit,
       reminders: { enqueued },
       processing: summary,
+      alerts,
+      alertingConfigured: notificationAlertConfigured(),
     });
   } catch (error) {
-    console.error('GET /api/internal/notification-outbox/schedule failed', error);
-    return json(res, 500, { error: 'notification_schedule_failed' });
+    notificationLog('notification_schedule_failed', { runId, errorCode: 'notification_schedule_failed' });
+    await emitNotificationAlert('notification_schedule_failed', { runId, errorCode: 'notification_schedule_failed' });
+    return json(res, 500, { error: 'notification_schedule_failed', runId });
   }
 }

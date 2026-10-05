@@ -86,4 +86,4 @@ Le test de contrat vérifie la route GET, l'authentification bearer, la planific
 - la livraison réelle dépend toujours de `RESEND_API_KEY`, `EMAIL_FROM` et d'une configuration Vercel Cron active ;
 - une seule exécution quotidienne est configurée ; les relances sont néanmoins protégées contre les doublons journaliers ;
 - les événements échoués et les retries restent gouvernés par l'outbox du Chantier 15 ;
-- la surveillance externe du cron et les alertes d'échec restent à brancher sur l'observabilité de production.
+- les logs corrélés, l'état protégé de l'outbox et le webhook d'alerte sont détaillés dans le Chantier 22 ; son endpoint d'alerte réel et ses dashboards restent à configurer.

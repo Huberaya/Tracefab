@@ -16,6 +16,7 @@
     "test:supplier-portal": "node scripts/test_supplier_portal.mjs",
     "test:private-storage": "node scripts/test_private_storage.mjs",
     "test:notification-scheduler": "node scripts/test_notification_scheduler.mjs",
+    "test:notification-observability": "node scripts/test_notification_observability.mjs",
     "test:supplier-portal:browser": "node scripts/test_supplier_portal_browser.mjs",
     "test:questionnaires": "node scripts/test_questionnaires.mjs",
     "test:email": "node scripts/test_email_delivery.mjs",
