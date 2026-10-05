@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/notification-outbox/schedule",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}

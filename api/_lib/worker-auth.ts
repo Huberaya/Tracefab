@@ -1,8 +1,19 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { VercelRequest } from '@vercel/node';
 
+function secretConfigured(name: string) {
+  return Boolean(process.env[name]?.trim());
+}
+
+function secretMatches(expected: string | undefined, actual: string | undefined) {
+  if (!expected || !actual) return false;
+  const expectedBytes = Uint8Array.from(Buffer.from(expected));
+  const actualBytes = Uint8Array.from(Buffer.from(actual));
+  return expectedBytes.length === actualBytes.length && timingSafeEqual(expectedBytes, actualBytes);
+}
+
 export function workerSecretConfigured() {
-  return Boolean(process.env.TRACEFAB_NOTIFICATION_WORKER_SECRET?.trim());
+  return secretConfigured('TRACEFAB_NOTIFICATION_WORKER_SECRET');
 }
 
 export function workerAuthorized(req: VercelRequest) {
@@ -11,9 +22,21 @@ export function workerAuthorized(req: VercelRequest) {
   const actual = (Array.isArray(value) ? value[0] : value)?.trim();
   if (!expected || !actual) return false;
 
-  const expectedBytes = Uint8Array.from(Buffer.from(expected));
-  const actualBytes = Uint8Array.from(Buffer.from(actual));
-  return expectedBytes.length === actualBytes.length && timingSafeEqual(expectedBytes, actualBytes);
+  return secretMatches(expected, actual);
+}
+
+export function cronSecretConfigured() {
+  return secretConfigured('CRON_SECRET');
+}
+
+export function cronAuthorized(req: VercelRequest) {
+  const authorization = req.headers.authorization;
+  const bearer = typeof authorization === 'string' && authorization.startsWith('Bearer ')
+    ? authorization.slice('Bearer '.length).trim()
+    : undefined;
+  const header = req.headers['x-tracefab-cron-secret'];
+  const actual = bearer || (Array.isArray(header) ? header[0] : header)?.trim();
+  return secretMatches(process.env.CRON_SECRET?.trim(), actual);
 }
 
 export function queryInteger(

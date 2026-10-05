@@ -39,11 +39,19 @@ x-tracefab-worker-secret: <secret serveur>
 
 La fenêtre est bornée entre 1 et 720 heures. La route est indépendante de Clerk et protégée par `TRACEFAB_NOTIFICATION_WORKER_SECRET`. Elle ne délivre pas directement les emails : elle remplit l'outbox du Chantier 15, qui reste responsable du claim, des retries et de Resend.
 
-Une planification de production peut exécuter cette route une fois par jour, puis appeler le worker d'envoi :
+Le Chantier 21 ajoute une entrée Vercel Cron qui enchaîne automatiquement l'enqueue et le traitement à 07:00 UTC :
+
+```text
+GET /api/internal/notification-outbox/schedule
+Authorization: Bearer <CRON_SECRET>
+```
+
+Les routes manuelles restent disponibles pour l'exploitation contrôlée :
 
 ```text
 POST /api/internal/notification-outbox/reminders
 POST /api/internal/notification-outbox/process?limit=50
+x-tracefab-worker-secret: <TRACEFAB_NOTIFICATION_WORKER_SECRET>
 ```
 
 ## Sécurité et données

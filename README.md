@@ -4,9 +4,9 @@ Infrastructure de données fournisseurs pour la traçabilité textile, la qualit
 
 ## Statut
 
-**Chantier 20 — Stockage privé des preuves / Supplier Portal approfondi / Brand Console approfondie / Quality Center API / Collection Reminders / Notification Outbox / Data Collection Productization / Data Collection API / Product Data API / supplier onboarding / Neon + Clerk**
+**Chantier 21 — Notification Scheduler / Stockage privé des preuves / Supplier Portal approfondi / Brand Console approfondie / Quality Center API / Collection Reminders / Notification Outbox / Data Collection Productization / Data Collection API / Product Data API / supplier onboarding / Neon + Clerk**
 
-Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité, le graphe de traçabilité et la première projection versionnée de préparation DPP. Le schéma Neon est appliqué via Prisma avec une identité Clerk côté serveur. Le Chantier 18 ajoute une Brand Console statique sous `/brand-console/` avec produits, révisions, composition, identifiants, fournisseurs, demandes, revue et qualité. Le Chantier 19 ajoute un Supplier Portal approfondi sous `/supplier-portal/` pour le profil, les sites, les matériaux, les certificats déclarés, la qualité fournisseur, les demandes de données, les réponses versionnées et la soumission. Le Chantier 20 ajoute le stockage privé des preuves avec URLs présignées, contrôle serveur, hash SHA-256, antivirus contractuel et téléchargements temporaires. Le bucket et le scanner antivirus restent des dépendances d'infrastructure à configurer sur staging/production.
+Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité, le graphe de traçabilité et la première projection versionnée de préparation DPP. Le schéma Neon est appliqué via Prisma avec une identité Clerk côté serveur. Le Chantier 18 ajoute une Brand Console statique sous `/brand-console/` avec produits, révisions, composition, identifiants, fournisseurs, demandes, revue et qualité. Le Chantier 19 ajoute un Supplier Portal approfondi sous `/supplier-portal/` pour le profil, les sites, les matériaux, les certificats déclarés, la qualité fournisseur, les demandes de données, les réponses versionnées et la soumission. Le Chantier 20 ajoute le stockage privé des preuves avec URLs présignées, contrôle serveur, hash SHA-256, antivirus contractuel et téléchargements temporaires. Le Chantier 21 ajoute la planification Vercel Cron des relances et l'enchaînement sécurisé de l'outbox. Le bucket, le scanner antivirus et la configuration Cron restent des dépendances d'infrastructure à activer sur staging/production.
 
 ## Principes
 
@@ -45,6 +45,7 @@ docs/architecture/
   21-brand-console.md
   22-supplier-portal.md
   23-private-evidence-storage.md
+  24-notification-scheduler.md
 
 brand-console/
   index.html
@@ -91,6 +92,7 @@ api/
   data-responses/[responseId]/review.ts
   internal/notification-outbox/process.ts
   internal/notification-outbox/reminders.ts
+  internal/notification-outbox/schedule.ts
   quality/suppliers/[supplierId].ts
   quality/products/[productId].ts
   quality-issues/[issueId]/acknowledge.ts
@@ -136,6 +138,8 @@ scripts/
   test_brand_console_browser.mjs
   test_supplier_portal.mjs
   test_supplier_portal_browser.mjs
+  test_private_storage.mjs
+  test_notification_scheduler.mjs
   test_questionnaires.mjs
   test_email_delivery.mjs
 
@@ -179,7 +183,7 @@ La création initiale d'une organisation et de son membership owner passe par `t
 
 ## Ce qui n'est pas encore implémenté
 
-- relances planifiées de notifications au-delà du retry worker ;
+- observabilité et alerting externes du cron et des échecs de livraison ;
 - gestion Supplier Portal avancée : data points, utilisateurs et multi-organisation ;
 - Quality Center frontend complet ;
 - suppression objet interactive, rétention et nettoyage Storage ;
@@ -187,4 +191,4 @@ La création initiale d'une organisation et de son membership owner passe par `t
 - rendu public DPP ;
 - API publique et connecteurs ERP/PLM/PIM.
 
-Voir `docs/architecture/` pour les décisions et contrats versionnés des chantiers 1 à 20 et de l'intégration Neon/Clerk. Le contrat de stockage privé se vérifie avec `npm run test:private-storage`.
+Voir `docs/architecture/` pour les décisions et contrats versionnés des chantiers 1 à 21 et de l'intégration Neon/Clerk. Les contrats se vérifient avec `npm run test:private-storage` et `npm run test:notification-scheduler`.
