@@ -1,11 +1,11 @@
 import { randomBytes, createHash } from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Prisma } from '@prisma/client';
-import { requireClerkUser, isUnauthorized } from '../../../_lib/auth';
-import { withTracefabUserContext } from '../../../_lib/context';
-import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http';
-import { sqlBusinessError } from '../../../_lib/sql-errors';
-import { manualInvitationFallbackAllowed, sendSupplierInvitationEmail } from '../../../_lib/email';
+import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
+import { withTracefabUserContext } from '../../../_lib/context.js';
+import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
+import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { manualInvitationFallbackAllowed, sendSupplierInvitationEmail } from '../../../_lib/email.js';
 
 type InviteSupplierBody = {
   email?: string;

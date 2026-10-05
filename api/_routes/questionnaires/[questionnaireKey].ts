@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
-import { json, methodNotAllowed } from '../../_lib/http';
-import { getQuestionnaire } from '../../_lib/questionnaires';
+import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
+import { json, methodNotAllowed } from '../../_lib/http.js';
+import { getQuestionnaire } from '../../_lib/questionnaires.js';
 
 function routeKey(req: VercelRequest) {
   const value = req.query.questionnaireKey;

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '.././_lib/auth';
-import { json, methodNotAllowed } from '.././_lib/http';
-import { listQuestionnaires } from '.././_lib/questionnaires';
+import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
+import { json, methodNotAllowed } from '.././_lib/http.js';
+import { listQuestionnaires } from '.././_lib/questionnaires.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);

@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../../_lib/auth';
-import { withTracefabUserContext } from '../../../_lib/context';
-import { json, methodNotAllowed } from '../../../_lib/http';
-import { sqlBusinessError } from '../../../_lib/sql-errors';
-import { activeBrandOrganizationIds, isUuid, PRODUCT_SELECT, serializeProduct } from '../../../_lib/products';
+import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
+import { withTracefabUserContext } from '../../../_lib/context.js';
+import { json, methodNotAllowed } from '../../../_lib/http.js';
+import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { activeBrandOrganizationIds, isUuid, PRODUCT_SELECT, serializeProduct } from '../../../_lib/products.js';
 
 type ProductIdRow = { id: string };
 

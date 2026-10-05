@@ -1,8 +1,8 @@
 import { organization_type, Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '.././_lib/auth';
-import { withTracefabUserContext } from '.././_lib/context';
-import { json, methodNotAllowed, readJsonBody } from '.././_lib/http';
+import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
+import { withTracefabUserContext } from '.././_lib/context.js';
+import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 
 type CreateOrganizationBody = {
   type?: string;

@@ -1,12 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../../_lib/auth';
-import { withTracefabUserContext } from '../../../_lib/context';
-import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../../_lib/email';
-import { json, methodNotAllowed } from '../../../_lib/http';
-import { sqlBusinessError } from '../../../_lib/sql-errors';
-import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile';
+import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
+import { withTracefabUserContext } from '../../../_lib/context.js';
+import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../../_lib/email.js';
+import { json, methodNotAllowed } from '../../../_lib/http.js';
+import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile.js';
 
 const INVITATION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 

@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
-import { activeOrganizationIds } from './products';
-import { activeSupplierOrganizationIds } from './supplier-profile';
+import { activeOrganizationIds } from './products.js';
+import { activeSupplierOrganizationIds } from './supplier-profile.js';
 
 export const REQUEST_SELECT = {
   id: true,

@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import type { QualityIssueRecord } from '../../../_lib/quality';
-import { requireClerkUser, isUnauthorized } from '../../../_lib/auth';
-import { withTracefabUserContext } from '../../../_lib/context';
-import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http';
-import { sqlBusinessError } from '../../../_lib/sql-errors';
-import { isUuid, requiredString } from '../../../_lib/data-requests';
-import { serializeQualityIssue } from '../../../_lib/quality';
+import type { QualityIssueRecord } from '../../../_lib/quality.js';
+import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
+import { withTracefabUserContext } from '../../../_lib/context.js';
+import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
+import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isUuid, requiredString } from '../../../_lib/data-requests.js';
+import { serializeQualityIssue } from '../../../_lib/quality.js';
 
 type WaiveBody = { reason?: string };
 

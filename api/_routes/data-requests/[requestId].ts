@@ -1,11 +1,11 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
-import { withTracefabUserContext } from '../../_lib/context';
-import { json, methodNotAllowed } from '../../_lib/http';
-import { sqlBusinessError } from '../../_lib/sql-errors';
-import { accessibleRequest, accessibleSupplierRequest, isUuid, REQUEST_SELECT, serializeRequest } from '../../_lib/data-requests';
-import { requestedOrganizationId } from '../../_lib/supplier-profile';
+import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
+import { withTracefabUserContext } from '../../_lib/context.js';
+import { json, methodNotAllowed } from '../../_lib/http.js';
+import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { accessibleRequest, accessibleSupplierRequest, isUuid, REQUEST_SELECT, serializeRequest } from '../../_lib/data-requests.js';
+import { requestedOrganizationId } from '../../_lib/supplier-profile.js';
 
 const DETAIL_SELECT = {
   ...REQUEST_SELECT,

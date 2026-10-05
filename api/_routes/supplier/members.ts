@@ -1,12 +1,12 @@
 import { randomBytes, createHash } from 'node:crypto';
 import { Prisma, membership_role, membership_status } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
-import { withTracefabUserContext } from '../../_lib/context';
-import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../_lib/email';
-import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
-import { sqlBusinessError } from '../../_lib/sql-errors';
-import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile';
+import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
+import { withTracefabUserContext } from '../../_lib/context.js';
+import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../_lib/email.js';
+import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
+import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile.js';
 
 const INVITABLE_ROLES = new Set(['admin', 'manager', 'contributor', 'viewer', 'auditor']);
 const MEMBER_STATUSES = new Set(['active', 'suspended', 'revoked']);

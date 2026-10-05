@@ -1,12 +1,12 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../../_lib/auth';
-import { withTracefabUserContext } from '../../../_lib/context';
-import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http';
-import { sqlBusinessError } from '../../../_lib/sql-errors';
-import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile';
-import { documentMetadata, serializeDocument, DOCUMENT_SELECT } from '../../../_lib/documents';
-import { presignedUpload, storageObjectKey } from '../../../_lib/storage';
+import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
+import { withTracefabUserContext } from '../../../_lib/context.js';
+import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
+import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile.js';
+import { documentMetadata, serializeDocument, DOCUMENT_SELECT } from '../../../_lib/documents.js';
+import { presignedUpload, storageObjectKey } from '../../../_lib/storage.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);

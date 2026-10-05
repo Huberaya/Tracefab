@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Prisma } from '@prisma/client';
-import { requireClerkUser, isUnauthorized } from '../../../_lib/auth';
-import { withTracefabUserContext } from '../../../_lib/context';
-import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http';
-import { sqlBusinessError } from '../../../_lib/sql-errors';
-import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile';
-import { certificationValues, serializeSupplierCertification, SUPPLIER_CERTIFICATION_SELECT, type SupplierCertificationRecord } from '../../../_lib/supplier-certifications';
+import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
+import { withTracefabUserContext } from '../../../_lib/context.js';
+import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
+import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile.js';
+import { certificationValues, serializeSupplierCertification, SUPPLIER_CERTIFICATION_SELECT, type SupplierCertificationRecord } from '../../../_lib/supplier-certifications.js';
 
 function routeCertificationId(req: VercelRequest) {
   const value = req.query.certificationId;

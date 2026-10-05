@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth';
-import { withTracefabUserContext } from '../../../../_lib/context';
-import { json, methodNotAllowed } from '../../../../_lib/http';
-import { sqlBusinessError } from '../../../../_lib/sql-errors';
-import { currentSupplier, requestedOrganizationId } from '../../../../_lib/supplier-profile';
-import { DOCUMENT_SELECT, serializeDocument } from '../../../../_lib/documents';
-import { presignedDownload } from '../../../../_lib/storage';
+import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
+import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { json, methodNotAllowed } from '../../../../_lib/http.js';
+import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
+import { currentSupplier, requestedOrganizationId } from '../../../../_lib/supplier-profile.js';
+import { DOCUMENT_SELECT, serializeDocument } from '../../../../_lib/documents.js';
+import { presignedDownload } from '../../../../_lib/storage.js';
 
 function routeDocumentId(req: VercelRequest) { const value = req.query.documentId; return Array.isArray(value) ? value[0] : value; }
 function isUuid(value: unknown): value is string { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }

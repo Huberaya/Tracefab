@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { prisma } from './prisma';
+import { prisma } from './prisma.js';
 
 /**
  * Execute tenant-scoped queries in one transaction with the Clerk-resolved

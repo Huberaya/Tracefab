@@ -1,11 +1,11 @@
 import { data_type, data_value_status, Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireClerkUser, isUnauthorized } from '../../_lib/auth';
-import { withTracefabUserContext } from '../../_lib/context';
-import { dataPointMutation, DATA_POINT_DEFINITIONS, DATA_POINT_SELECT, serializeDataPoint } from '../../_lib/data-points';
-import { json, methodNotAllowed, readJsonBody } from '../../_lib/http';
-import { sqlBusinessError } from '../../_lib/sql-errors';
-import { currentSupplier, requestedOrganizationId, requireSupplierMutationRole } from '../../_lib/supplier-profile';
+import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
+import { withTracefabUserContext } from '../../_lib/context.js';
+import { dataPointMutation, DATA_POINT_DEFINITIONS, DATA_POINT_SELECT, serializeDataPoint } from '../../_lib/data-points.js';
+import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
+import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { currentSupplier, requestedOrganizationId, requireSupplierMutationRole } from '../../_lib/supplier-profile.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);

@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { downloadObject, headObject, MAX_DOCUMENT_BYTES, scanWithAntivirus } from './storage';
+import { downloadObject, headObject, MAX_DOCUMENT_BYTES, scanWithAntivirus } from './storage.js';
 
 export const DOCUMENT_SELECT = {
   id: true,

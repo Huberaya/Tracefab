@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { json, methodNotAllowed } from '../../../_lib/http';
-import { notificationAlertConfigured } from '../../../_lib/notification-observability';
-import { prisma } from '../../../_lib/prisma';
-import { workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth';
+import { json, methodNotAllowed } from '../../../_lib/http.js';
+import { notificationAlertConfigured } from '../../../_lib/notification-observability.js';
+import { prisma } from '../../../_lib/prisma.js';
+import { workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth.js';
 
 type OutboxHealthRow = {
   pending: number;

@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { json, methodNotAllowed } from '../../../_lib/http';
-import { processNotificationOutbox } from '../../../_lib/notification-outbox';
-import { enqueueDueDataRequestReminders } from '../../../_lib/notification-reminders';
-import { emitNotificationAlert, notificationAlertConfigured, notificationLog, notificationRunId } from '../../../_lib/notification-observability';
-import { cronAuthorized, cronSecretConfigured } from '../../../_lib/worker-auth';
+import { json, methodNotAllowed } from '../../../_lib/http.js';
+import { processNotificationOutbox } from '../../../_lib/notification-outbox.js';
+import { enqueueDueDataRequestReminders } from '../../../_lib/notification-reminders.js';
+import { emitNotificationAlert, notificationAlertConfigured, notificationLog, notificationRunId } from '../../../_lib/notification-observability.js';
+import { cronAuthorized, cronSecretConfigured } from '../../../_lib/worker-auth.js';
 
 function configuredInteger(name: string, fallback: number, minimum: number, maximum: number) {
   const raw = process.env[name]?.trim();

@@ -1,4 +1,4 @@
-import { prisma } from './prisma';
+import { prisma } from './prisma.js';
 
 export async function enqueueDueDataRequestReminders(horizonHours: number) {
   const rows = await prisma.$queryRaw<Array<{ enqueued: number }>>`

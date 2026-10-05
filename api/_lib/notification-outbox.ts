@@ -1,5 +1,5 @@
-import { prisma } from './prisma';
-import { sendDataRequestNotificationEmail, type DataRequestNotificationEvent } from './email';
+import { prisma } from './prisma.js';
+import { sendDataRequestNotificationEmail, type DataRequestNotificationEvent } from './email.js';
 
 type NotificationOutboxRow = {
   id: string;

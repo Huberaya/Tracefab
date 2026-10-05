@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { json, methodNotAllowed } from '../../../_lib/http';
-import { processNotificationOutbox } from '../../../_lib/notification-outbox';
-import { queryInteger, workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth';
+import { json, methodNotAllowed } from '../../../_lib/http.js';
+import { processNotificationOutbox } from '../../../_lib/notification-outbox.js';
+import { queryInteger, workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);

@@ -1,6 +1,6 @@
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import type { VercelRequest } from '@vercel/node';
-import { prisma } from './prisma';
+import { prisma } from './prisma.js';
 
 const clerkSecretKey = process.env.CLERK_SECRET_KEY;
 

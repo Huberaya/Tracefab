@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { json, methodNotAllowed } from '../../../_lib/http';
-import { enqueueDueDataRequestReminders } from '../../../_lib/notification-reminders';
-import { queryInteger, workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth';
+import { json, methodNotAllowed } from '../../../_lib/http.js';
+import { enqueueDueDataRequestReminders } from '../../../_lib/notification-reminders.js';
+import { queryInteger, workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
