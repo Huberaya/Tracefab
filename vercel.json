@@ -15,6 +15,10 @@
       "dest": "/api/index.ts?path=$1"
     },
     {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
       "src": "/supplier-portal(?:/)?",
       "dest": "/supplier-portal/index.html"
     },
