@@ -1,4 +1,5 @@
-import { prisma } from './prisma.js';
+import type { Prisma } from '@prisma/client';
+import { withTracefabWorkerContext } from './context.js';
 import { sendDataRequestNotificationEmail, type DataRequestNotificationEvent } from './email.js';
 
 type NotificationOutboxRow = {
@@ -26,9 +27,9 @@ export type NotificationProcessSummary = {
 };
 
 export async function processNotificationOutbox(limit: number): Promise<NotificationProcessSummary> {
-  const rows = await prisma.$queryRaw<NotificationOutboxRow[]>`
+  const rows = await withTracefabWorkerContext((tx) => tx.$queryRaw<NotificationOutboxRow[]>`
     SELECT * FROM tracefab_claim_notification_outbox(${limit})
-  `;
+  `);
   const summary: NotificationProcessSummary = {
     claimed: rows.length,
     sent: 0,
@@ -90,7 +91,18 @@ async function completeOutboxItem(
   error: string | null,
   nextAttempt: Date | null,
 ) {
-  await prisma.$queryRaw`
+  await withTracefabWorkerContext((tx) => completeOutboxItemWithClient(tx, id, status, providerId, error, nextAttempt));
+}
+
+async function completeOutboxItemWithClient(
+  client: Prisma.TransactionClient,
+  id: string,
+  status: 'pending' | 'sent' | 'failed',
+  providerId: string | null,
+  error: string | null,
+  nextAttempt: Date | null,
+) {
+  await client.$queryRaw`
     SELECT *
     FROM tracefab_complete_notification_outbox(
       ${id}::uuid,

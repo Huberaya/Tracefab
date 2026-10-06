@@ -57,9 +57,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         syncResult,
       });
     } catch (err: any) {
+      console.warn('PLM payload rejected', { errorCode: err instanceof Error ? err.message : 'invalid_payload' });
       return json(res, 400, {
         error: 'plm_sync_error',
-        message: err.message,
       });
     }
   });

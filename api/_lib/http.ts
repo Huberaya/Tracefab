@@ -1,6 +1,11 @@
 import type { VercelResponse } from '@vercel/node';
 
 export function json(res: VercelResponse, status: number, payload: unknown) {
+  if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
   return res.status(status).setHeader('Content-Type', 'application/json').json(payload);
 }
 

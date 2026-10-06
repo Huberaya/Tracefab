@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
-    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:onboarding:chantier6 && npm run test:brand-console && npm run test:supplier-portal && npm run test:p1-catalog && npm run test:questionnaires",
+    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run security:production:hardening && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:onboarding:chantier6 && npm run test:brand-console && npm run test:supplier-portal && npm run test:p1-catalog && npm run test:questionnaires",
     "typecheck": "tsc --noEmit",
     "api:typecheck": "tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --skipLibCheck --esModuleInterop --types node --lib ES2020,DOM $(find api -name '*.ts' -print)",
     "test:security:chantier1": "node scripts/test_security_chantier1.mjs",
@@ -41,6 +41,8 @@
     "test:p1-i18n": "node scripts/test_p1_i18n.mjs",
     "test:email": "node scripts/test_email_delivery.mjs",
     "schema:static": "python3 scripts/validate_schema.py",
+    "security:production:env": "node scripts/audit_production_env.mjs --production",
+    "security:production:hardening": "node scripts/test_production_hardening.mjs",
     "db:neon:build": "python3 scripts/build_neon_migration.py",
     "db:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",

@@ -7,7 +7,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     await prisma.$queryRaw`SELECT 1`;
-    return json(res, 200, { ok: true, service: 'tracefab-api', database: 'neon' });
+    res.setHeader('Cache-Control', 'no-store');
+    return json(res, 200, { ok: true, service: 'tracefab-api' });
   } catch (error) {
     console.error('GET /api/health failed', error);
     return json(res, 503, { ok: false, error: 'database_unavailable' });

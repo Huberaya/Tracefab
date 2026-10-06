@@ -20,7 +20,16 @@ export async function requireClerkUser(req: VercelRequest) {
     throw error;
   }
 
-  const claims = await verifyToken(token, { secretKey: clerkSecretKey });
+  const authorizedParties = (process.env.TRACEFAB_AUTHORIZED_PARTIES || '')
+    .split(',')
+    .map((party) => party.trim())
+    .filter(Boolean);
+  if (process.env.NODE_ENV === 'production' && authorizedParties.length === 0) {
+    throw new Error('authorized_parties_not_configured');
+  }
+  const claims = authorizedParties.length > 0
+    ? await verifyToken(token, { secretKey: clerkSecretKey, authorizedParties })
+    : await verifyToken(token, { secretKey: clerkSecretKey });
   if (!claims.sub) {
     const error = new Error('unauthorized');
     error.name = 'UnauthorizedError';

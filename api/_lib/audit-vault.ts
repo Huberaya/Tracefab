@@ -93,9 +93,10 @@ export async function appendImmutableAuditLog(
  * Validates the chronological cryptographic hash-chain for an organization's audit trail.
  */
 export async function verifyAuditChainIntegrity(
-  organizationId: string
+  client: Prisma.TransactionClient | typeof prisma,
+  organizationId: string,
 ): Promise<{ isValid: boolean; totalEntries: number; brokenAtEntryId?: string }> {
-  const logs = await prisma.audit_logs.findMany({
+  const logs = await client.audit_logs.findMany({
     where: { organization_id: organizationId },
     orderBy: { created_at: 'asc' },
   });

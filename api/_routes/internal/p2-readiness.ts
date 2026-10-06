@@ -3,7 +3,7 @@ import { emailDeliveryConfigured } from '../../_lib/email.js';
 import { notificationAlertConfigured } from '../../_lib/notification-observability.js';
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
-import { workerAuthorized } from '../../_lib/worker-auth.js';
+import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -26,6 +26,7 @@ function privateStorageReadiness() {
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
+  if (!workerSecretConfigured()) return json(res, 503, { error: 'worker_not_configured' });
   if (!workerAuthorized(req)) return json(res, 401, { error: 'worker_unauthorized' });
 
   const privateStorage = privateStorageReadiness();

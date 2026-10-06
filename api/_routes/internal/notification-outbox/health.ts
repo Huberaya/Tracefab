@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { notificationAlertConfigured } from '../../../_lib/notification-observability.js';
-import { prisma } from '../../../_lib/prisma.js';
+import { withTracefabWorkerContext } from '../../../_lib/context.js';
 import { workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth.js';
 
 type OutboxHealthRow = {
@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!workerAuthorized(req)) return json(res, 401, { error: 'unauthorized' });
 
   try {
-    const rows = await prisma.$queryRaw<OutboxHealthRow[]>`
+    const rows = await withTracefabWorkerContext((tx) => tx.$queryRaw<OutboxHealthRow[]>`
       SELECT
         COUNT(*) FILTER (WHERE status = 'pending')::integer AS "pending",
         COUNT(*) FILTER (WHERE status = 'processing')::integer AS "processing",
@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             AND attempts < 5
         ) AS "oldestReadyAt"
       FROM tracefab_notification_outbox
-    `;
+    `);
     const health = rows[0] || { pending: 0, processing: 0, sent: 0, failed: 0, ready: 0, staleProcessing: 0, exhausted: 0, oldestReadyAt: null };
     const degraded = health.staleProcessing > 0 || health.exhausted > 0;
     res.setHeader('Cache-Control', 'no-store');

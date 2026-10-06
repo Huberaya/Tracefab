@@ -6,6 +6,24 @@ import { prisma } from './prisma.js';
  * internal user UUID and email available to PostgreSQL RLS and SECURITY
  * DEFINER functions.
  */
+export async function withTracefabWorkerContext<T>(
+  callback: (tx: Prisma.TransactionClient) => Promise<T>,
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('tracefab.worker_context', 'true', true)`;
+    try {
+      return await callback(tx);
+    } finally {
+      try {
+        await tx.$executeRaw`SELECT set_config('tracefab.worker_context', 'false', true)`;
+      } catch {
+        // Preserve the original transaction error if PostgreSQL has already
+        // marked the transaction as aborted.
+      }
+    }
+  });
+}
+
 export async function withTracefabUserContext<T>(
   userId: string,
   userEmail: string,

@@ -110,6 +110,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     route.params.forEach((param, index) => { query[param] = decodeURIComponent(match[index + 1]); });
     req.query = query;
   }
-  const module = await route.load();
-  return module.default(req, res);
+  try {
+    const module = await route.load();
+    return await module.default(req, res);
+  } catch (error) {
+    const errorCode = error instanceof Error ? error.message : 'unknown_error';
+    if (error instanceof Error && error.name === 'UnauthorizedError') return json(res, 401, { error: 'unauthorized' });
+    if (errorCode === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
+    if (errorCode === 'authorized_parties_not_configured') return json(res, 503, { error: 'auth_not_configured' });
+    console.error('Unhandled API route failure', { path, errorCode });
+    return json(res, 500, { error: 'internal_server_error' });
+  }
 }
