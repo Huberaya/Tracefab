@@ -56,6 +56,14 @@
       "dest": "/brand-console/index.html"
     },
     {
+      "src": "/dpp(?:/)?",
+      "dest": "/dpp/index.html"
+    },
+    {
+      "src": "/p/(.*)",
+      "dest": "/dpp/index.html?gtin=$1"
+    },
+    {
       "src": "/quality-center(?:/)?",
       "dest": "/quality-center/index.html"
     },

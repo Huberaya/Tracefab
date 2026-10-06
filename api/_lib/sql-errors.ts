@@ -75,6 +75,11 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   dpp_record_not_data_ready: { status: 409 },
   dpp_record_already_ready_to_publish: { status: 409 },
   invalid_country_code: { status: 400 },
+  document_not_found: { status: 404 },
+  document_access_denied: { status: 403 },
+  document_not_available: { status: 409 },
+  certification_not_found: { status: 404 },
+  certification_has_no_document: { status: 400 },
 };
 
 /**
