@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, symlinkSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,21 @@ const localLibraryDirectories = [
 const configuredDirectories = process.env.TRACEFAB_BROWSER_LIB_DIR
   ? process.env.TRACEFAB_BROWSER_LIB_DIR.split(':').filter(Boolean)
   : [];
+function ensureLibraryAliases(directory) {
+  for (const entry of readdirSync(directory)) {
+    const match = entry.match(/^(.*\.so\.\d+)(?:\..+)$/);
+    if (!match) continue;
+    const alias = join(directory, match[1]);
+    if (existsSync(alias)) continue;
+    try {
+      symlinkSync(entry, alias);
+    } catch {
+      // A concurrent test process may have created the alias already.
+    }
+  }
+}
+
+for (const directory of localLibraryDirectories) ensureLibraryAliases(directory);
 const libraryDirectories = [...configuredDirectories, ...localLibraryDirectories];
 const existingLibraryPath = process.env.LD_LIBRARY_PATH?.trim();
 const env = {
