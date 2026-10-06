@@ -4,9 +4,11 @@
   "version": "0.1.0",
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
-    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:supplier-portal && npm run test:questionnaires",
+    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:supplier-portal && npm run test:questionnaires",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "npx tsx scripts/test_neon_bulk_operations_chantier8.mjs",
+    "test:wallet:chantier9": "npx tsx scripts/test_wallet_chantier9.ts",
+    "test:neon:wallet:chantier9": "npx tsx scripts/test_neon_wallet_chantier9.ts",
     "test:docai:chantier1": "node scripts/test_document_ai_chantier1.mjs",
     "test:plm-erp:chantier2": "node scripts/test_plm_erp_gs1_chantier2.mjs",
     "test:pef:chantier3": "node scripts/test_pef_chantier3.mjs",
@@ -49,13 +51,25 @@
   },
   "devDependencies": {
     "@prisma/client": "^6.19.0",
+    "@types/archiver": "^8.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "playwright": "^1.63.0",
     "prisma": "^6.19.0",
     "typescript": "^5.9.2"
   },
   "dependencies": {
     "@clerk/backend": "^3.18.1",
-    "@vercel/node": "^13.0.2"
+    "@vercel/node": "^13.0.2",
+    "archiver": "^8.0.0",
+    "autoprefixer": "^10.6.1",
+    "jsonwebtoken": "^9.0.3",
+    "next": "^14.2.35",
+    "postcss": "^8.5.29",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.19"
   },
   "type": "module"
 }

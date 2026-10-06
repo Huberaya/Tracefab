@@ -13,4 +13,6 @@ uploads/
 .config/
 .npm/
 .sudo_as_admin_successful
+.next/
+*.tsbuildinfo
 
