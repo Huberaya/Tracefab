@@ -15,7 +15,7 @@ Il couvre un parcours fournisseur authentifié et multi-tenant :
 - profil fournisseur : lecture, édition des champs autorisés et soumission ;
 - sites de production : création, édition, activation/désactivation et activités déclarées ;
 - matériaux fournisseur : création, édition, origine et composition JSON déclarée ;
-- certificats : déclaration, édition, rattachement à un site et dates de validité ;
+- certificats : déclaration, édition, rattachement à un site et dates de validité ; sélection assistée par le catalogue versionné des standards ;
 - qualité fournisseur : score explicable, champs manquants, issues et recalcul ;
 - liste des demandes de données visibles par le fournisseur, à l'exclusion des brouillons marque ;
 - détail versionné d'une demande et réponses item par item ;
@@ -41,6 +41,7 @@ POST   /api/supplier/profile/submit
 GET    /api/supplier/sites
 POST   /api/supplier/sites
 PATCH  /api/supplier/sites/:siteId
+GET    /api/catalog/certification-standards
 GET    /api/supplier/certifications
 POST   /api/supplier/certifications
 PATCH  /api/supplier/certifications/:certificationId
@@ -56,6 +57,8 @@ POST   /api/data-requests/:requestId/submit
 ```
 
 `/api/supplier/profile` résout le fournisseur à partir du membership Clerk actif de type `supplier`. Les variantes `/api/suppliers/:supplierId/profile` restent disponibles pour les parcours administrés ou marque, mais le portail n'accepte jamais un identifiant fournisseur fourni par l'utilisateur pour choisir son tenant.
+
+Le catalogue de standards est une source versionnée côté serveur ; il guide les champs de déclaration sans jamais créer une preuve ni une certification. Les références superseded ne sont pas proposées par défaut.
 
 Les mutations de profil et de soumission passent par `tracefab_update_supplier_profile(...)` et `tracefab_submit_supplier_profile(...)`. Les réponses passent par `tracefab_submit_data_response(...)`; la soumission passe par `tracefab_submit_data_request(...)`. Le paramètre `scope=supplier` active une lecture strictement bornée aux organisations fournisseur actives et exclut les brouillons, y compris lorsqu'un utilisateur possède plusieurs memberships. L'autorisation métier reste côté API, contexte Neon et RLS.
 

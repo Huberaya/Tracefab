@@ -6,7 +6,9 @@ Le Chantier 23 complète le Supplier Portal avec les trois surfaces qui restaien
 
 - faits structurés fournisseur et site (`data_points`) ;
 - gestion des membres et invitations d'une organisation fournisseur ;
-- sélection explicite entre plusieurs organisations fournisseur auxquelles un même utilisateur appartient.
+- sélection explicite entre plusieurs organisations fournisseur auxquelles un même utilisateur appartient ;
+- lecture des partages actifs avec les marques et affichage du périmètre One-to-Many sans exposer de secret commercial ;
+- sélection assistée par le catalogue versionné des standards de certification.
 
 La donnée reste déclarative. Aucun écran ne transforme un statut `declared` ou `documented` en vérification, certification ou conformité.
 
@@ -20,7 +22,13 @@ X-Tracefab-Organization-Id: <organization UUID>
 
 Le serveur ne fait jamais confiance à cet identifiant seul. `requestedOrganizationId(...)` le valide comme UUID, puis `currentSupplier(...)` exige un membership actif de l'utilisateur dans une organisation de type `supplier`. Un identifiant appartenant à un autre tenant retourne une absence d'organisation autorisée.
 
-Le contexte sélectionné est utilisé par les routes profil, sites, certificats, qualité, documents, data points, membres et demandes de collecte fournisseur. La lecture des demandes accepte aussi `organizationId` pour borner la requête au fournisseur sélectionné.
+Le contexte sélectionné est utilisé par les routes profil, sites, certificats, qualité, documents, partages, data points, membres et demandes de collecte fournisseur. La lecture des demandes accepte aussi `organizationId` pour borner la requête au fournisseur sélectionné.
+
+## Partages et catalogue de certification
+
+Le portail lit `GET /api/supplier/shares` dans le contexte de l'organisation sélectionnée et affiche uniquement les partages actifs autorisés par la relation fournisseur-marque. Le périmètre affiché est une information de gouvernance : les prix, marges, formulations et noms de sous-traitants restent protégés par le service de sanitization côté API. La présence d'un partage ne transforme aucune donnée déclarée en vérification.
+
+Le formulaire de certificat consomme `GET /api/catalog/certification-standards`. Le catalogue indique une version de référence et les standards superseded sont masqués par défaut. Cette aide à la saisie ne constitue ni une preuve, ni une certification.
 
 ## Données structurées
 
