@@ -14,6 +14,7 @@ const routes: Route[] = [
   { pattern: /^data\-requests\/([^\/]+)\/items\/from\-template$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items/from-template.js') },
   { pattern: /^data\-requests\/([^\/]+)\/items$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items.js') },
   { pattern: /^data\-requests\/([^\/]+)\/send$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/send.js') },
+  { pattern: /^data\-requests\/([^\/]+)\/remind$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/remind.js') },
   { pattern: /^data\-requests\/([^\/]+)\/submit$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/submit.js') },
   { pattern: /^data\-requests\/([^\/]+)$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId].js') },
   { pattern: /^data\-requests$/, params: [], load: () => import('./_routes/data-requests.js') },

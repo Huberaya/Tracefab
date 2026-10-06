@@ -1,7 +1,12 @@
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 
-const html = await readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8');
+const [html, reminderRoute, reminderMigration, email] = await Promise.all([
+  readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8'),
+  readFile(new URL('../api/_routes/data-requests/[requestId]/remind.ts', import.meta.url), 'utf8'),
+  readFile(new URL('../prisma/migrations/20261006130000_tracefab_manual_data_request_reminders/migration.sql', import.meta.url), 'utf8'),
+  readFile(new URL('../api/_lib/email.ts', import.meta.url), 'utf8'),
+]);
 const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert(script, 'Brand Console inline application script is missing');
 
@@ -20,12 +25,15 @@ for (const contract of [
   '/materials',
   '/identifiers',
   '/api/data-requests',
+  '/api/data-requests/',
+  '/remind',
   '/api/questionnaires',
   '/api/quality/products/',
   '/api/data-responses/',
   'data-action="new-request"',
   'data-action="new-product"',
   'data-action="invite-supplier"',
+  'data-action="remind-request"',
 ]) {
   assert(html.includes(contract), `Brand Console contract missing: ${contract}`);
 }
@@ -44,7 +52,10 @@ assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token 
 assert(!html.includes('localhost'), 'Brand Console must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');
 assert(html.toLowerCase().includes('tracefab'), 'Brand Console branding is missing');
-console.log('Brand Console contract passed: static shell, Clerk bootstrap, API actions and browser-safe URLs');
+assert(reminderRoute.includes("req.method !== 'POST'") && reminderRoute.includes('activeOrganizationIds') && reminderRoute.includes('withTracefabUserContext'), 'Manual reminder route must be authenticated and brand-tenant scoped');
+assert(reminderMigration.includes("request_manual_reminder") && reminderMigration.includes('ON CONFLICT (event_key) DO NOTHING') && reminderMigration.includes('REVOKE EXECUTE'), 'Manual reminder migration must be typed, idempotent and non-public');
+assert(email.includes('request_manual_reminder'), 'Manual reminder email copy is missing');
+console.log('Brand Console contract passed: static shell, Clerk bootstrap, API actions, reminder workflow and browser-safe URLs');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);

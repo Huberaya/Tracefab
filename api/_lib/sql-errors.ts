@@ -56,6 +56,7 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   response_value_required: { status: 400 },
   required_data_request_items_incomplete: { status: 422 },
   data_request_not_submittable: { status: 409 },
+  data_request_not_remindable: { status: 409 },
   unsupported_review_status: { status: 400 },
   only_current_response_can_be_reviewed: { status: 409 },
   data_request_not_reviewable: { status: 409 },

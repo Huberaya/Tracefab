@@ -1291,7 +1291,7 @@
 
       function requestTable(items) {
         if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>Créez votre première demande fournisseur.</p><button class="btn btn-primary btn-small" data-action="new-request">Créer une demande</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>Échéance</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button></td></tr>`).join('')}</tbody></table></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>Échéance</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">Relancer</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
       function requestsView() {
@@ -1655,6 +1655,7 @@
           </div>
           <div class="actions">
             ${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}
+            ${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary" data-action="remind-request" data-reminder-request-id="${esc(r.id)}">Relancer le fournisseur</button>` : ''}
             ${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}
             <button class="btn btn-primary" onclick="alert('Rapport complet de revue RSE exporté.')">Exporter Synthèse</button>
           </div>
@@ -1894,6 +1895,16 @@
       }
       async function refreshDetail() { if (!state.selectedRequest) return; if (!state.demo) state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}`)).request; render(); }
       async function sendRequest() { if (!state.selectedRequest) return; if (!state.demo) await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}/send`, { method: 'POST' }); state.selectedRequest.status = 'sent'; state.modal = null; await refreshDetail(); notify('Demande envoyée au fournisseur.'); }
+      async function remindRequest(requestId) {
+        const id = requestId || state.selectedRequest?.id;
+        if (!id) return;
+        if (state.demo) {
+          notify('Relance fournisseur mise en file en mode démonstration.');
+          return;
+        }
+        await api(`/api/data-requests/${encodeURIComponent(id)}/remind`, { method: 'POST' });
+        notify('Relance fournisseur mise en file. Une seule relance est dédoublonnée pendant dix minutes.');
+      }
       async function loadQuality(id) {
         state.selectedProduct = state.products.find((p) => p.id === id);
         state.view = 'quality';
@@ -2284,7 +2295,7 @@
 
       function bind() {
         document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => { state.view = el.dataset.view; state.selectedRequest = null; render(); }));
-        document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async () => {
+        document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async (event) => {
           const action = el.dataset.action;
           try {
             if (action === 'new-product') { state.modal = 'new-product'; render(); }
@@ -2295,6 +2306,7 @@
             if (action === 'retry') { state.configError = null; boot(); }
             if (action === 'refresh-detail') await refreshDetail();
             if (action === 'send-request') await sendRequest();
+            if (action === 'remind-request') { event.stopPropagation(); await remindRequest(el.dataset.reminderRequestId); }
             if (action === 'select-quality-product') { state.selectedProduct = null; state.quality = null; render(); }
             if (action === 'select-supply-chain-product') { state.selectedSupplyChainProduct = null; state.supplyChain = null; render(); }
             if (action === 'select-dpp-product') { state.selectedDppProduct = null; state.dpp = null; render(); }
@@ -2322,7 +2334,7 @@
         document.querySelectorAll('[data-action="open-waive-modal"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); state.modal = 'waive-issue'; state.modalIssueId = el.dataset.issueId; render(); }));
         const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => { state.activeOrganizationId = org.value; sync(); });
         const search = document.getElementById('request-search'); const filter = document.getElementById('request-filter');
-        const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); };
+        const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); list?.querySelectorAll('[data-action="remind-request"]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); remindRequest(el.dataset.reminderRequestId).catch((error) => notify(error.message, true)); })); };
         search?.addEventListener('input', filterRequests); filter?.addEventListener('change', filterRequests);
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('supply-chain-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadSupplyChain(e.target.value); });

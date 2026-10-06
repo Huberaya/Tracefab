@@ -61,6 +61,7 @@ POST   /api/data-requests
 GET    /api/data-requests/:requestId
 POST   /api/data-requests/:requestId/items/from-template
 POST   /api/data-requests/:requestId/send
+POST   /api/data-requests/:requestId/remind
 POST   /api/data-responses/:responseId/review
 GET    /api/questionnaires
 GET    /api/quality/products/:productId
@@ -99,6 +100,7 @@ git diff --check
 
 - le Supplier Portal complet n'est pas encore livré ;
 - le Quality Center frontend complet n'est pas encore livré ;
+- la relance manuelle est authentifiée côté marque et mise en file dans l'outbox ; elle est dédoublonnée pendant dix minutes et ne contourne pas le statut de la demande ;
 - la revue utilise actuellement un commentaire navigateur simple ;
 - le stockage privé des preuves est livré au Chantier 20 ; sa mise en service dépend d'un bucket S3-compatible privé et d'un scanner antivirus configurés ;
 - le chargement de Clerk JS s'appuie sur le CDN configuré pour le déploiement ;
