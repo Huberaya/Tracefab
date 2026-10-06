@@ -7,6 +7,7 @@ type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default:
 const routes: Route[] = [
   { pattern: /^catalog\/questionnaires$/, params: [], load: () => import('./_routes/catalog/questionnaires.js') },
   { pattern: /^catalog\/schemas$/, params: [], load: () => import('./_routes/catalog/schemas.js') },
+  { pattern: /^catalog\/certification-standards$/, params: [], load: () => import('./_routes/catalog/certification-standards.js') },
   { pattern: /^config$/, params: [], load: () => import('./_routes/config.js') },
   { pattern: /^dpp\/validate$/, params: [], load: () => import('./_routes/dpp/validate.js') },
   { pattern: /^data\-request\-items\/([^\/]+)\/response$/, params: ['itemId'], load: () => import('./_routes/data-request-items/[itemId]/response.js') },
@@ -24,6 +25,7 @@ const routes: Route[] = [
   { pattern: /^internal\/notification\-outbox\/process$/, params: [], load: () => import('./_routes/internal/notification-outbox/process.js') },
   { pattern: /^internal\/notification\-outbox\/reminders$/, params: [], load: () => import('./_routes/internal/notification-outbox/reminders.js') },
   { pattern: /^internal\/notification\-outbox\/schedule$/, params: [], load: () => import('./_routes/internal/notification-outbox/schedule.js') },
+  { pattern: /^internal\/p2\/readiness$/, params: [], load: () => import('./_routes/internal/p2-readiness.js') },
   { pattern: /^operations\/overview$/, params: [], load: () => import('./_routes/operations/overview.js') },
   { pattern: /^invitations\/accept$/, params: [], load: () => import('./_routes/invitations/accept.js') },
   { pattern: /^webhooks\/clerk$/, params: [], load: () => import('./_routes/webhooks/clerk.js') },
