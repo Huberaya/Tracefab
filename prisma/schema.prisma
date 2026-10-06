@@ -8,41 +8,53 @@ datasource db {
 }
 
 model User {
-  id                                                                  String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clerkUserId                                                         String                         @unique @map("clerk_user_id")
-  email                                                               String                         @unique
-  fullName                                                            String                         @map("full_name")
-  createdAt                                                           DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                                                           DateTime                       @default(now()) @map("updated_at") @db.Timestamptz(6)
-  audit_logs                                                          audit_logs[]
-  brand_supplier_relationships                                        brand_supplier_relationships[]
-  certifications_certifications_created_byTousers                     certifications[]               @relation("certifications_created_byTousers")
-  certifications_certifications_last_verified_byTousers               certifications[]               @relation("certifications_last_verified_byTousers")
-  data_points                                                         data_points[]
-  data_quality_issues_data_quality_issues_acknowledged_byTousers      data_quality_issues[]          @relation("data_quality_issues_acknowledged_byTousers")
-  data_quality_issues_data_quality_issues_resolved_byTousers          data_quality_issues[]          @relation("data_quality_issues_resolved_byTousers")
-  data_requests_data_requests_created_byTousers                       data_requests[]                @relation("data_requests_created_byTousers")
-  data_requests_data_requests_reviewed_byTousers                      data_requests[]                @relation("data_requests_reviewed_byTousers")
-  data_responses_data_responses_responded_byTousers                   data_responses[]               @relation("data_responses_responded_byTousers")
-  data_responses_data_responses_reviewed_byTousers                    data_responses[]               @relation("data_responses_reviewed_byTousers")
-  data_shares                                                         data_shares[]
-  documents_documents_deleted_byTousers                               documents[]                    @relation("documents_deleted_byTousers")
-  documents_documents_uploaded_byTousers                              documents[]                    @relation("documents_uploaded_byTousers")
-  dpp_records_dpp_records_computed_byTousers                          dpp_records[]                  @relation("dpp_records_computed_byTousers")
-  dpp_records_dpp_records_reviewed_byTousers                          dpp_records[]                  @relation("dpp_records_reviewed_byTousers")
-  materials                                                           materials[]
-  orders                                                              orders[]
-  organization_invitations                                            organization_invitations[]
-  organization_memberships_organization_memberships_invited_byTousers organization_memberships[]     @relation("organization_memberships_invited_byTousers")
-  organization_memberships_organization_memberships_user_idTousers    organization_memberships[]     @relation("organization_memberships_user_idTousers")
-  organizations                                                       organizations[]
-  product_identifiers                                                 product_identifiers[]
-  suppliers                                                           suppliers[]
-  supply_chain_links                                                  supply_chain_links[]
-  supply_chain_nodes                                                  supply_chain_nodes[]
-  tracefab_products_tracefab_products_created_byTousers               tracefab_products[]            @relation("tracefab_products_created_byTousers")
-  tracefab_products_tracefab_products_last_data_updated_byTousers     tracefab_products[]            @relation("tracefab_products_last_data_updated_byTousers")
-  verification_records                                                verification_records[]
+  id                                                                                  String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId                                                                         String                            @unique @map("clerk_user_id")
+  email                                                                               String                            @unique
+  fullName                                                                            String                            @map("full_name")
+  createdAt                                                                           DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                                                                           DateTime                          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  audit_logs                                                                          audit_logs[]
+  brand_supplier_relationships                                                        brand_supplier_relationships[]
+  certifications_certifications_created_byTousers                                     certifications[]                  @relation("certifications_created_byTousers")
+  certifications_certifications_last_verified_byTousers                               certifications[]                  @relation("certifications_last_verified_byTousers")
+  data_points                                                                         data_points[]
+  data_quality_issues_data_quality_issues_acknowledged_byTousers                      data_quality_issues[]             @relation("data_quality_issues_acknowledged_byTousers")
+  data_quality_issues_data_quality_issues_resolved_byTousers                          data_quality_issues[]             @relation("data_quality_issues_resolved_byTousers")
+  data_requests_data_requests_created_byTousers                                       data_requests[]                   @relation("data_requests_created_byTousers")
+  data_requests_data_requests_reviewed_byTousers                                      data_requests[]                   @relation("data_requests_reviewed_byTousers")
+  data_responses_data_responses_responded_byTousers                                   data_responses[]                  @relation("data_responses_responded_byTousers")
+  data_responses_data_responses_reviewed_byTousers                                    data_responses[]                  @relation("data_responses_reviewed_byTousers")
+  data_shares                                                                         data_shares[]
+  documents_documents_deleted_byTousers                                               documents[]                       @relation("documents_deleted_byTousers")
+  documents_documents_uploaded_byTousers                                              documents[]                       @relation("documents_uploaded_byTousers")
+  dpp_records_dpp_records_computed_byTousers                                          dpp_records[]                     @relation("dpp_records_computed_byTousers")
+  dpp_records_dpp_records_reviewed_byTousers                                          dpp_records[]                     @relation("dpp_records_reviewed_byTousers")
+  green_claims_audits                                                                 green_claims_audits[]
+  mass_balance_allocations                                                            mass_balance_allocations[]
+  mass_balance_reconciliations                                                        mass_balance_reconciliations[]
+  materials                                                                           materials[]
+  orders                                                                              orders[]
+  organization_invitations                                                            organization_invitations[]
+  organization_memberships_organization_memberships_invited_byTousers                 organization_memberships[]        @relation("organization_memberships_invited_byTousers")
+  organization_memberships_organization_memberships_user_idTousers                    organization_memberships[]        @relation("organization_memberships_user_idTousers")
+  organizations                                                                       organizations[]
+  plm_erp_sync_jobs                                                                   plm_erp_sync_jobs[]
+  product_green_claims                                                                product_green_claims[]
+  product_identifiers                                                                 product_identifiers[]
+  product_pef_assessments                                                             product_pef_assessments[]
+  quality_cap_messages                                                                quality_cap_messages[]
+  quality_corrective_action_plans_quality_corrective_action_plans_created_byTousers   quality_corrective_action_plans[] @relation("quality_corrective_action_plans_created_byTousers")
+  quality_corrective_action_plans_quality_corrective_action_plans_reviewed_byTousers  quality_corrective_action_plans[] @relation("quality_corrective_action_plans_reviewed_byTousers")
+  quality_corrective_action_plans_quality_corrective_action_plans_submitted_byTousers quality_corrective_action_plans[] @relation("quality_corrective_action_plans_submitted_byTousers")
+  suppliers                                                                           suppliers[]
+  supply_chain_links                                                                  supply_chain_links[]
+  supply_chain_nodes                                                                  supply_chain_nodes[]
+  tracefab_products_tracefab_products_created_byTousers                               tracefab_products[]               @relation("tracefab_products_created_byTousers")
+  tracefab_products_tracefab_products_last_data_updated_byTousers                     tracefab_products[]               @relation("tracefab_products_last_data_updated_byTousers")
+  tracefab_schema_bindings                                                            tracefab_schema_bindings[]
+  transaction_certificates                                                            transaction_certificates[]
+  verification_records                                                                verification_records[]
 
   @@map("users")
 }
@@ -120,6 +132,7 @@ model certifications {
   tracefab_products                            tracefab_products?     @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   suppliers                                    suppliers?             @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   supplier_sites                               supplier_sites?        @relation(fields: [supplier_site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product_green_claims                         product_green_claims[]
   verification_records                         verification_records[]
 
   @@index([owner_organization_id, status], map: "idx_certifications_owner")
@@ -167,30 +180,32 @@ model data_points {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model data_quality_issues {
-  id                                               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  owner_organization_id                            String                 @db.Uuid
-  supplier_id                                      String?                @db.Uuid
-  product_id                                       String?                @db.Uuid
-  subject_id                                       String?                @default(dbgenerated("COALESCE(supplier_id, product_id)")) @db.Uuid
+  id                                               String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id                            String                            @db.Uuid
+  supplier_id                                      String?                           @db.Uuid
+  product_id                                       String?                           @db.Uuid
+  subject_id                                       String?                           @default(dbgenerated("COALESCE(supplier_id, product_id)")) @db.Uuid
   rule_key                                         String
   rule_version                                     String
   severity                                         quality_issue_severity
-  status                                           quality_issue_status   @default(open)
+  status                                           quality_issue_status              @default(open)
   field_key                                        String?
   message                                          String
-  details                                          Json                   @default("{}")
-  detected_at                                      DateTime               @default(now()) @db.Timestamptz(6)
-  acknowledged_at                                  DateTime?              @db.Timestamptz(6)
-  acknowledged_by                                  String?                @db.Uuid
-  resolved_at                                      DateTime?              @db.Timestamptz(6)
-  resolved_by                                      String?                @db.Uuid
-  created_at                                       DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at                                       DateTime               @default(now()) @db.Timestamptz(6)
-  users_data_quality_issues_acknowledged_byTousers User?                  @relation("data_quality_issues_acknowledged_byTousers", fields: [acknowledged_by], references: [id], onUpdate: NoAction)
-  organizations                                    organizations          @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tracefab_products                                tracefab_products?     @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_data_quality_issues_resolved_byTousers     User?                  @relation("data_quality_issues_resolved_byTousers", fields: [resolved_by], references: [id], onUpdate: NoAction)
-  suppliers                                        suppliers?             @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  details                                          Json                              @default("{}")
+  detected_at                                      DateTime                          @default(now()) @db.Timestamptz(6)
+  acknowledged_at                                  DateTime?                         @db.Timestamptz(6)
+  acknowledged_by                                  String?                           @db.Uuid
+  resolved_at                                      DateTime?                         @db.Timestamptz(6)
+  resolved_by                                      String?                           @db.Uuid
+  created_at                                       DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                                       DateTime                          @default(now()) @db.Timestamptz(6)
+  users_data_quality_issues_acknowledged_byTousers User?                             @relation("data_quality_issues_acknowledged_byTousers", fields: [acknowledged_by], references: [id], onUpdate: NoAction)
+  organizations                                    organizations                     @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products                                tracefab_products?                @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_data_quality_issues_resolved_byTousers     User?                             @relation("data_quality_issues_resolved_byTousers", fields: [resolved_by], references: [id], onUpdate: NoAction)
+  suppliers                                        suppliers?                        @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mass_balance_reconciliations                     mass_balance_reconciliations[]
+  quality_corrective_action_plans                  quality_corrective_action_plans[]
 
   @@unique([owner_organization_id, subject_id, rule_key, rule_version], map: "idx_quality_issues_identity")
   @@index([owner_organization_id, detected_at(sort: Desc)], map: "idx_quality_issues_owner_detected")
@@ -250,33 +265,35 @@ model data_request_items {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model data_requests {
-  id                                                                  String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  brand_organization_id                                               String                        @db.Uuid
-  supplier_organization_id                                            String                        @db.Uuid
-  product_id                                                          String?                       @db.Uuid
+  id                                                                  String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand_organization_id                                               String                         @db.Uuid
+  supplier_organization_id                                            String                         @db.Uuid
+  product_id                                                          String?                        @db.Uuid
   title                                                               String
   questionnaire_key                                                   String
   questionnaire_version                                               String
-  status                                                              data_request_status           @default(draft)
-  due_at                                                              DateTime?                     @db.Timestamptz(6)
-  created_by                                                          String?                       @db.Uuid
-  submitted_at                                                        DateTime?                     @db.Timestamptz(6)
-  closed_at                                                           DateTime?                     @db.Timestamptz(6)
-  created_at                                                          DateTime                      @default(now()) @db.Timestamptz(6)
-  updated_at                                                          DateTime                      @default(now()) @db.Timestamptz(6)
-  relationship_id                                                     String?                       @db.Uuid
+  status                                                              data_request_status            @default(draft)
+  due_at                                                              DateTime?                      @db.Timestamptz(6)
+  created_by                                                          String?                        @db.Uuid
+  submitted_at                                                        DateTime?                      @db.Timestamptz(6)
+  closed_at                                                           DateTime?                      @db.Timestamptz(6)
+  created_at                                                          DateTime                       @default(now()) @db.Timestamptz(6)
+  updated_at                                                          DateTime                       @default(now()) @db.Timestamptz(6)
+  relationship_id                                                     String?                        @db.Uuid
   idempotency_key                                                     String?
-  completion_percentage                                               Decimal                       @default(0) @db.Decimal(5, 2)
-  last_activity_at                                                    DateTime?                     @db.Timestamptz(6)
-  reviewed_at                                                         DateTime?                     @db.Timestamptz(6)
-  reviewed_by                                                         String?                       @db.Uuid
+  completion_percentage                                               Decimal                        @default(0) @db.Decimal(5, 2)
+  last_activity_at                                                    DateTime?                      @db.Timestamptz(6)
+  reviewed_at                                                         DateTime?                      @db.Timestamptz(6)
+  reviewed_by                                                         String?                        @db.Uuid
   data_request_items                                                  data_request_items[]
-  organizations_data_requests_brand_organization_idToorganizations    organizations                 @relation("data_requests_brand_organization_idToorganizations", fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_data_requests_created_byTousers                               User?                         @relation("data_requests_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
-  tracefab_products                                                   tracefab_products?            @relation(fields: [product_id], references: [id], onUpdate: NoAction)
-  brand_supplier_relationships                                        brand_supplier_relationships? @relation(fields: [relationship_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  users_data_requests_reviewed_byTousers                              User?                         @relation("data_requests_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
-  organizations_data_requests_supplier_organization_idToorganizations organizations                 @relation("data_requests_supplier_organization_idToorganizations", fields: [supplier_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations_data_requests_brand_organization_idToorganizations    organizations                  @relation("data_requests_brand_organization_idToorganizations", fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_data_requests_created_byTousers                               User?                          @relation("data_requests_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  tracefab_products                                                   tracefab_products?             @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  brand_supplier_relationships                                        brand_supplier_relationships?  @relation(fields: [relationship_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  users_data_requests_reviewed_byTousers                              User?                          @relation("data_requests_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  organizations_data_requests_supplier_organization_idToorganizations organizations                  @relation("data_requests_supplier_organization_idToorganizations", fields: [supplier_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_notification_outbox                                        tracefab_notification_outbox[]
+  tracefab_schema_bindings                                            tracefab_schema_bindings[]
 
   @@index([brand_organization_id, status], map: "idx_requests_brand")
   @@index([relationship_id, status, last_activity_at(sort: Desc)], map: "idx_requests_relationship_status")
@@ -287,26 +304,27 @@ model data_requests {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model data_responses {
-  id                                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  data_request_item_id                     String             @db.Uuid
+  id                                       String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  data_request_item_id                     String                         @db.Uuid
   value                                    Json
   data_type                                data_type
-  status                                   data_value_status  @default(declared)
-  source_document_id                       String?            @db.Uuid
-  responded_by                             String?            @db.Uuid
-  supersedes_id                            String?            @db.Uuid
-  submitted_at                             DateTime           @default(now()) @db.Timestamptz(6)
-  reviewed_at                              DateTime?          @db.Timestamptz(6)
-  reviewed_by                              String?            @db.Uuid
-  response_version                         Int                @default(1)
-  is_current                               Boolean            @default(true)
+  status                                   data_value_status              @default(declared)
+  source_document_id                       String?                        @db.Uuid
+  responded_by                             String?                        @db.Uuid
+  supersedes_id                            String?                        @db.Uuid
+  submitted_at                             DateTime                       @default(now()) @db.Timestamptz(6)
+  reviewed_at                              DateTime?                      @db.Timestamptz(6)
+  reviewed_by                              String?                        @db.Uuid
+  response_version                         Int                            @default(1)
+  is_current                               Boolean                        @default(true)
   review_comment                           String?
-  data_request_items                       data_request_items @relation(fields: [data_request_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_data_responses_responded_byTousers User?              @relation("data_responses_responded_byTousers", fields: [responded_by], references: [id], onUpdate: NoAction)
-  users_data_responses_reviewed_byTousers  User?              @relation("data_responses_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
-  documents                                documents?         @relation(fields: [source_document_id], references: [id], onUpdate: NoAction)
-  data_responses                           data_responses?    @relation("data_responsesTodata_responses", fields: [supersedes_id], references: [id], onUpdate: NoAction)
-  other_data_responses                     data_responses[]   @relation("data_responsesTodata_responses")
+  data_request_items                       data_request_items             @relation(fields: [data_request_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_data_responses_responded_byTousers User?                          @relation("data_responses_responded_byTousers", fields: [responded_by], references: [id], onUpdate: NoAction)
+  users_data_responses_reviewed_byTousers  User?                          @relation("data_responses_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  documents                                documents?                     @relation(fields: [source_document_id], references: [id], onUpdate: NoAction)
+  data_responses                           data_responses?                @relation("data_responsesTodata_responses", fields: [supersedes_id], references: [id], onUpdate: NoAction)
+  other_data_responses                     data_responses[]               @relation("data_responsesTodata_responses")
+  tracefab_notification_outbox             tracefab_notification_outbox[]
 
   @@index([data_request_item_id, submitted_at(sort: Desc)], map: "idx_responses_item")
   @@index([data_request_item_id, response_version(sort: Desc)], map: "idx_responses_item_version")
@@ -339,33 +357,37 @@ model data_shares {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model documents {
-  id                                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  owner_organization_id              String                 @db.Uuid
+  id                                 String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id              String                            @db.Uuid
   storage_bucket                     String
   storage_path                       String
   original_filename                  String
   content_type                       String
   byte_size                          BigInt
   sha256                             String?
-  kind                               document_kind          @default(other)
-  status                             document_status        @default(uploaded)
-  visibility                         document_visibility    @default(private)
-  expires_at                         DateTime?              @db.Date
-  uploaded_by                        String?                @db.Uuid
-  created_at                         DateTime               @default(now()) @db.Timestamptz(6)
-  metadata                           Json                   @default("{}")
-  available_at                       DateTime?              @db.Timestamptz(6)
-  deleted_at                         DateTime?              @db.Timestamptz(6)
-  deleted_by                         String?                @db.Uuid
-  updated_at                         DateTime               @default(now()) @db.Timestamptz(6)
+  kind                               document_kind                     @default(other)
+  status                             document_status                   @default(uploaded)
+  visibility                         document_visibility               @default(private)
+  expires_at                         DateTime?                         @db.Date
+  uploaded_by                        String?                           @db.Uuid
+  created_at                         DateTime                          @default(now()) @db.Timestamptz(6)
+  metadata                           Json                              @default("{}")
+  available_at                       DateTime?                         @db.Timestamptz(6)
+  deleted_at                         DateTime?                         @db.Timestamptz(6)
+  deleted_by                         String?                           @db.Uuid
+  updated_at                         DateTime                          @default(now()) @db.Timestamptz(6)
   certifications                     certifications[]
   data_points                        data_points[]
   data_responses                     data_responses[]
-  users_documents_deleted_byTousers  User?                  @relation("documents_deleted_byTousers", fields: [deleted_by], references: [id], onUpdate: NoAction)
-  organizations                      organizations          @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_documents_uploaded_byTousers User?                  @relation("documents_uploaded_byTousers", fields: [uploaded_by], references: [id], onUpdate: NoAction)
+  users_documents_deleted_byTousers  User?                             @relation("documents_deleted_byTousers", fields: [deleted_by], references: [id], onUpdate: NoAction)
+  organizations                      organizations                     @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_documents_uploaded_byTousers User?                             @relation("documents_uploaded_byTousers", fields: [uploaded_by], references: [id], onUpdate: NoAction)
+  product_green_claims               product_green_claims[]
+  quality_cap_messages               quality_cap_messages[]
+  quality_corrective_action_plans    quality_corrective_action_plans[]
   supply_chain_links                 supply_chain_links[]
   supply_chain_nodes                 supply_chain_nodes[]
+  transaction_certificates           transaction_certificates[]
   verification_records               verification_records[]
 
   @@unique([storage_bucket, storage_path])
@@ -425,39 +447,41 @@ model dpp_requirement_profiles {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model materials {
-  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  owner_organization_id String               @db.Uuid
-  material_type         String
-  name                  String
-  normalized_name       String?
-  composition           Json                 @default("{}")
-  origin_country_code   String?              @db.VarChar(2)
-  created_by            String?              @db.Uuid
-  created_at            DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime             @default(now()) @db.Timestamptz(6)
-  data_points           data_points[]
-  users                 User?                @relation(fields: [created_by], references: [id], onUpdate: NoAction)
-  organizations         organizations        @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  product_materials     product_materials[]
-  supply_chain_nodes    supply_chain_nodes[]
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_organization_id    String                     @db.Uuid
+  material_type            String
+  name                     String
+  normalized_name          String?
+  composition              Json                       @default("{}")
+  origin_country_code      String?                    @db.VarChar(2)
+  created_by               String?                    @db.Uuid
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  data_points              data_points[]
+  users                    User?                      @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organizations            organizations              @relation(fields: [owner_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product_materials        product_materials[]
+  supply_chain_nodes       supply_chain_nodes[]
+  tracefab_schema_bindings tracefab_schema_bindings[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model orders {
-  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  buyer_user_id     String                @db.Uuid
-  organization_id   String?               @db.Uuid
-  product_id        String                @db.Uuid
-  quantity          Decimal               @db.Decimal(12, 3)
-  status            tracefab_order_status @default(draft)
-  notes             String?
-  created_at        DateTime              @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime              @default(now()) @db.Timestamptz(6)
-  users             User                  @relation(fields: [buyer_user_id], references: [id], onUpdate: NoAction)
-  organizations     organizations?        @relation(fields: [organization_id], references: [id], onUpdate: NoAction)
-  tracefab_products tracefab_products     @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_user_id            String                     @db.Uuid
+  organization_id          String?                    @db.Uuid
+  product_id               String                     @db.Uuid
+  quantity                 Decimal                    @db.Decimal(12, 3)
+  status                   tracefab_order_status      @default(draft)
+  notes                    String?
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  mass_balance_allocations mass_balance_allocations[]
+  users                    User                       @relation(fields: [buyer_user_id], references: [id], onUpdate: NoAction)
+  organizations            organizations?             @relation(fields: [organization_id], references: [id], onUpdate: NoAction)
+  tracefab_products        tracefab_products          @relation(fields: [product_id], references: [id], onUpdate: NoAction)
 
   @@index([buyer_user_id, created_at(sort: Desc)], map: "idx_tracefab_orders_buyer")
   @@index([product_id, created_at(sort: Desc)], map: "idx_tracefab_orders_product")
@@ -487,7 +511,6 @@ model organization_invitations {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model organization_memberships {
   id                                               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clerkMembershipId                                String?           @unique @map("clerk_membership_id")
   organization_id                                  String            @db.Uuid
   user_id                                          String            @db.Uuid
   role                                             membership_role   @default(viewer)
@@ -495,6 +518,7 @@ model organization_memberships {
   invited_by                                       String?           @db.Uuid
   joined_at                                        DateTime?         @db.Timestamptz(6)
   created_at                                       DateTime          @default(now()) @db.Timestamptz(6)
+  clerkMembershipId                                String?           @unique @map("clerk_membership_id")
   users_organization_memberships_invited_byTousers User?             @relation("organization_memberships_invited_byTousers", fields: [invited_by], references: [id], onUpdate: NoAction)
   organizations                                    organizations     @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users_organization_memberships_user_idTousers    User              @relation("organization_memberships_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -507,40 +531,55 @@ model organization_memberships {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model organizations {
-  id                                                                                                String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clerkOrganizationId                                                                               String?                        @unique @map("clerk_organization_id")
-  type                                                                                              organization_type
-  legal_name                                                                                        String
-  display_name                                                                                      String?
-  country_code                                                                                      String?                        @db.VarChar(2)
-  registration_number                                                                               String?
-  website                                                                                           String?
-  status                                                                                            organization_status            @default(active)
-  created_by                                                                                        String?                        @db.Uuid
-  created_at                                                                                        DateTime                       @default(now()) @db.Timestamptz(6)
-  updated_at                                                                                        DateTime                       @default(now()) @db.Timestamptz(6)
-  audit_logs                                                                                        audit_logs[]
-  brand_supplier_relationships_brand_supplier_relationships_brand_organization_idToorganizations    brand_supplier_relationships[] @relation("brand_supplier_relationships_brand_organization_idToorganizations")
-  brand_supplier_relationships_brand_supplier_relationships_supplier_organization_idToorganizations brand_supplier_relationships[] @relation("brand_supplier_relationships_supplier_organization_idToorganizations")
-  certifications                                                                                    certifications[]
-  data_points                                                                                       data_points[]
-  data_quality_issues                                                                               data_quality_issues[]
-  data_quality_scores                                                                               data_quality_scores[]
-  data_requests_data_requests_brand_organization_idToorganizations                                  data_requests[]                @relation("data_requests_brand_organization_idToorganizations")
-  data_requests_data_requests_supplier_organization_idToorganizations                               data_requests[]                @relation("data_requests_supplier_organization_idToorganizations")
-  data_shares_data_shares_grantee_organization_idToorganizations                                    data_shares[]                  @relation("data_shares_grantee_organization_idToorganizations")
-  data_shares_data_shares_supplier_organization_idToorganizations                                   data_shares[]                  @relation("data_shares_supplier_organization_idToorganizations")
-  documents                                                                                         documents[]
-  materials                                                                                         materials[]
-  orders                                                                                            orders[]
-  organization_invitations                                                                          organization_invitations[]
-  organization_memberships                                                                          organization_memberships[]
-  users                                                                                             User?                          @relation(fields: [created_by], references: [id], onUpdate: NoAction)
-  suppliers                                                                                         suppliers?
-  supply_chain_nodes                                                                                supply_chain_nodes[]
-  tracefab_products                                                                                 tracefab_products[]
-  verification_records_verification_records_owner_organization_idToorganizations                    verification_records[]         @relation("verification_records_owner_organization_idToorganizations")
-  verification_records_verification_records_verifier_organization_idToorganizations                 verification_records[]         @relation("verification_records_verifier_organization_idToorganizations")
+  id                                                                                                           String                              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type                                                                                                         organization_type
+  legal_name                                                                                                   String
+  display_name                                                                                                 String?
+  country_code                                                                                                 String?                             @db.VarChar(2)
+  registration_number                                                                                          String?
+  website                                                                                                      String?
+  status                                                                                                       organization_status                 @default(active)
+  created_by                                                                                                   String?                             @db.Uuid
+  created_at                                                                                                   DateTime                            @default(now()) @db.Timestamptz(6)
+  updated_at                                                                                                   DateTime                            @default(now()) @db.Timestamptz(6)
+  clerkOrganizationId                                                                                          String?                             @unique @map("clerk_organization_id")
+  audit_logs                                                                                                   audit_logs[]
+  brand_supplier_relationships_brand_supplier_relationships_brand_organization_idToorganizations               brand_supplier_relationships[]      @relation("brand_supplier_relationships_brand_organization_idToorganizations")
+  brand_supplier_relationships_brand_supplier_relationships_supplier_organization_idToorganizations            brand_supplier_relationships[]      @relation("brand_supplier_relationships_supplier_organization_idToorganizations")
+  certifications                                                                                               certifications[]
+  data_points                                                                                                  data_points[]
+  data_quality_issues                                                                                          data_quality_issues[]
+  data_quality_scores                                                                                          data_quality_scores[]
+  data_requests_data_requests_brand_organization_idToorganizations                                             data_requests[]                     @relation("data_requests_brand_organization_idToorganizations")
+  data_requests_data_requests_supplier_organization_idToorganizations                                          data_requests[]                     @relation("data_requests_supplier_organization_idToorganizations")
+  data_shares_data_shares_grantee_organization_idToorganizations                                               data_shares[]                       @relation("data_shares_grantee_organization_idToorganizations")
+  data_shares_data_shares_supplier_organization_idToorganizations                                              data_shares[]                       @relation("data_shares_supplier_organization_idToorganizations")
+  documents                                                                                                    documents[]
+  green_claims_audits                                                                                          green_claims_audits[]
+  mass_balance_reconciliations                                                                                 mass_balance_reconciliations[]
+  materials                                                                                                    materials[]
+  orders                                                                                                       orders[]
+  organization_invitations                                                                                     organization_invitations[]
+  organization_memberships                                                                                     organization_memberships[]
+  users                                                                                                        User?                               @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  plm_erp_integrations                                                                                         plm_erp_integrations[]
+  plm_erp_sync_jobs                                                                                            plm_erp_sync_jobs[]
+  product_green_claims                                                                                         product_green_claims[]
+  product_pef_assessments                                                                                      product_pef_assessments[]
+  quality_cap_messages                                                                                         quality_cap_messages[]
+  quality_corrective_action_plans_quality_corrective_action_plans_brand_organization_idToorganizations         quality_corrective_action_plans[]   @relation("quality_corrective_action_plans_brand_organization_idToorganizations")
+  quality_corrective_action_plans_quality_corrective_action_plans_supplier_organization_idToorganizations      quality_corrective_action_plans[]   @relation("quality_corrective_action_plans_supplier_organization_idToorganizations")
+  supplier_passport_access_requests_supplier_passport_access_requests_requester_organization_idToorganizations supplier_passport_access_requests[] @relation("supplier_passport_access_requests_requester_organization_idToorganizations")
+  supplier_passport_access_requests_supplier_passport_access_requests_supplier_organization_idToorganizations  supplier_passport_access_requests[] @relation("supplier_passport_access_requests_supplier_organization_idToorganizations")
+  supplier_universal_passports                                                                                 supplier_universal_passports?
+  suppliers                                                                                                    suppliers?
+  supply_chain_nodes                                                                                           supply_chain_nodes[]
+  tracefab_notification_outbox                                                                                 tracefab_notification_outbox[]
+  tracefab_products                                                                                            tracefab_products[]
+  transaction_certificates_transaction_certificates_buyer_organization_idToorganizations                       transaction_certificates[]          @relation("transaction_certificates_buyer_organization_idToorganizations")
+  transaction_certificates_transaction_certificates_seller_organization_idToorganizations                      transaction_certificates[]          @relation("transaction_certificates_seller_organization_idToorganizations")
+  verification_records_verification_records_owner_organization_idToorganizations                               verification_records[]              @relation("verification_records_owner_organization_idToorganizations")
+  verification_records_verification_records_verifier_organization_idToorganizations                            verification_records[]              @relation("verification_records_verifier_organization_idToorganizations")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -606,29 +645,31 @@ model supplier_sites {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model suppliers {
-  id                      String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organization_id         String                     @unique @db.Uuid
-  onboarding_status       supplier_onboarding_status @default(not_started)
-  activity_types          String[]                   @default([])
-  profile_version         Int                        @default(1)
-  last_submitted_at       DateTime?                  @db.Timestamptz(6)
-  created_at              DateTime                   @default(now()) @db.Timestamptz(6)
-  updated_at              DateTime                   @default(now()) @db.Timestamptz(6)
-  profile_summary         String?
-  contact_name            String?
-  contact_email           String?
-  contact_phone           String?
-  employee_count_range    String?
-  year_established        Int?
-  profile_completion      Decimal                    @default(0) @db.Decimal(5, 2)
-  last_profile_updated_by String?                    @db.Uuid
-  certifications          certifications[]
-  data_points             data_points[]
-  data_quality_issues     data_quality_issues[]
-  data_quality_scores     data_quality_scores[]
-  supplier_sites          supplier_sites[]
-  users                   User?                      @relation(fields: [last_profile_updated_by], references: [id], onUpdate: NoAction)
-  organizations           organizations              @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id              String                         @unique @db.Uuid
+  onboarding_status            supplier_onboarding_status     @default(not_started)
+  activity_types               String[]                       @default([])
+  profile_version              Int                            @default(1)
+  last_submitted_at            DateTime?                      @db.Timestamptz(6)
+  created_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  profile_summary              String?
+  contact_name                 String?
+  contact_email                String?
+  contact_phone                String?
+  employee_count_range         String?
+  year_established             Int?
+  profile_completion           Decimal                        @default(0) @db.Decimal(5, 2)
+  last_profile_updated_by      String?                        @db.Uuid
+  certifications               certifications[]
+  data_points                  data_points[]
+  data_quality_issues          data_quality_issues[]
+  data_quality_scores          data_quality_scores[]
+  supplier_sites               supplier_sites[]
+  supplier_universal_passports supplier_universal_passports[]
+  users                        User?                          @relation(fields: [last_profile_updated_by], references: [id], onUpdate: NoAction)
+  organizations                organizations                  @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_schema_bindings     tracefab_schema_bindings[]
 
   @@index([onboarding_status, profile_completion], map: "idx_suppliers_onboarding")
 }
@@ -697,44 +738,51 @@ model supply_chain_nodes {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model tracefab_products {
-  id                                                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  brand_organization_id                               String                 @db.Uuid
+  id                                                  String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand_organization_id                               String                            @db.Uuid
   reference                                           String
   sku                                                 String?
   name                                                String
   category                                            String?
-  status                                              product_status         @default(draft)
-  version                                             Int                    @default(1)
+  status                                              product_status                    @default(draft)
+  version                                             Int                               @default(1)
   public_slug                                         String?
-  created_by                                          String?                @db.Uuid
-  created_at                                          DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at                                          DateTime               @default(now()) @db.Timestamptz(6)
+  created_by                                          String?                           @db.Uuid
+  created_at                                          DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                                          DateTime                          @default(now()) @db.Timestamptz(6)
   description                                         String?
   product_family                                      String?
   color_name                                          String?
-  size_range                                          String[]               @default([])
-  country_of_design                                   String?                @db.VarChar(2)
-  country_of_manufacture                              String?                @db.VarChar(2)
-  weight_grams                                        Decimal?               @db.Decimal(10, 2)
-  care_instructions                                   Json                   @default("{}")
-  data_readiness                                      product_data_readiness @default(not_started)
-  data_completion                                     Decimal                @default(0) @db.Decimal(5, 2)
-  data_ready_at                                       DateTime?              @db.Timestamptz(6)
-  last_data_updated_by                                String?                @db.Uuid
+  size_range                                          String[]                          @default([])
+  country_of_design                                   String?                           @db.VarChar(2)
+  country_of_manufacture                              String?                           @db.VarChar(2)
+  weight_grams                                        Decimal?                          @db.Decimal(10, 2)
+  care_instructions                                   Json                              @default("{}")
+  data_readiness                                      product_data_readiness            @default(not_started)
+  data_completion                                     Decimal                           @default(0) @db.Decimal(5, 2)
+  data_ready_at                                       DateTime?                         @db.Timestamptz(6)
+  last_data_updated_by                                String?                           @db.Uuid
   certifications                                      certifications[]
   data_points                                         data_points[]
   data_quality_issues                                 data_quality_issues[]
   data_quality_scores                                 data_quality_scores[]
   data_requests                                       data_requests[]
   dpp_records                                         dpp_records[]
+  green_claims_audits                                 green_claims_audits[]
+  mass_balance_allocations                            mass_balance_allocations[]
+  mass_balance_reconciliations                        mass_balance_reconciliations[]
   orders                                              orders[]
+  product_green_claims                                product_green_claims[]
   product_identifiers                                 product_identifiers[]
   product_materials                                   product_materials[]
+  product_pef_assessments                             product_pef_assessments[]
+  quality_corrective_action_plans                     quality_corrective_action_plans[]
   supply_chain_links                                  supply_chain_links[]
   supply_chain_nodes                                  supply_chain_nodes[]
-  organizations                                       organizations          @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_tracefab_products_created_byTousers           User?                  @relation("tracefab_products_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
-  users_tracefab_products_last_data_updated_byTousers User?                  @relation("tracefab_products_last_data_updated_byTousers", fields: [last_data_updated_by], references: [id], onUpdate: NoAction)
+  organizations                                       organizations                     @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_tracefab_products_created_byTousers           User?                             @relation("tracefab_products_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  users_tracefab_products_last_data_updated_byTousers User?                             @relation("tracefab_products_last_data_updated_byTousers", fields: [last_data_updated_by], references: [id], onUpdate: NoAction)
+  tracefab_schema_bindings                            tracefab_schema_bindings[]
 
   @@unique([brand_organization_id, public_slug])
   @@unique([brand_organization_id, reference])
@@ -765,6 +813,434 @@ model verification_records {
   organizations_verification_records_verifier_organization_idToorganizations organizations?      @relation("verification_records_verifier_organization_idToorganizations", fields: [verifier_organization_id], references: [id], onUpdate: NoAction)
 
   @@index([owner_organization_id, status], map: "idx_verifications_owner")
+}
+
+model plm_erp_integrations {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String              @db.Uuid
+  system_type     String
+  name            String
+  endpoint_url    String?
+  auth_type       String              @default("api_key")
+  status          String              @default("active")
+  config          Json                @default("{}")
+  last_sync_at    DateTime?           @db.Timestamptz(6)
+  sync_count      Int                 @default(0)
+  created_at      DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime            @default(now()) @db.Timestamptz(6)
+  organizations   organizations       @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sync_jobs       plm_erp_sync_jobs[]
+
+  @@unique([organization_id, system_type, name])
+  @@index([organization_id, status], map: "idx_plm_integrations_org")
+}
+
+model plm_erp_sync_jobs {
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand_organization_id String                @db.Uuid
+  source_system         String
+  job_reference         String
+  status                String                @default("completed")
+  total_records         Int                   @default(0)
+  products_created      Int                   @default(0)
+  products_updated      Int                   @default(0)
+  materials_created     Int                   @default(0)
+  nodes_created         Int                   @default(0)
+  warnings              Json                  @default("[]")
+  payload_preview       Json                  @default("{}")
+  created_by            String?               @db.Uuid
+  created_at            DateTime              @default(now()) @db.Timestamptz(6)
+  integration_id        String?               @db.Uuid
+  organizations         organizations         @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                 User?                 @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  integrations          plm_erp_integrations? @relation(fields: [integration_id], references: [id], onUpdate: NoAction)
+
+  @@index([brand_organization_id, created_at(sort: Desc)], map: "idx_plm_sync_jobs_brand_org")
+  @@index([brand_organization_id, created_at(sort: Desc)], map: "idx_plm_erp_sync_jobs_brand")
+}
+
+model pef_emission_factors {
+  id                            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factor_type                   String
+  factor_key                    String   @unique
+  name                          String
+  category                      String
+  unit                          String
+  carbon_kg_co2e                Decimal  @db.Decimal(8, 4)
+  water_m3                      Decimal  @default(0) @db.Decimal(8, 4)
+  eutrophication_kg_p           Decimal  @default(0) @db.Decimal(8, 5)
+  microplastics_risk            String   @default("A")
+  circularity_recyclability_pct Decimal  @default(85) @db.Decimal(5, 2)
+  source_reference              String   @default("PEFCR Apparel & Footwear 2024 / ADEME Base Empreinte")
+  is_active                     Boolean  @default(true)
+  created_at                    DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model product_pef_assessments {
+  id                                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id                        String            @db.Uuid
+  product_version                   Int               @default(1)
+  brand_organization_id             String            @db.Uuid
+  assessment_method                 String            @default("pefcr_apparel_v1")
+  garment_category                  String            @default("other")
+  garment_weight_kg                 Decimal           @default(0.400) @db.Decimal(6, 3)
+  carbon_footprint_kg_co2e          Decimal           @default(0) @db.Decimal(8, 3)
+  carbon_breakdown                  Json              @default("{}")
+  water_scarcity_m3                 Decimal           @default(0) @db.Decimal(8, 3)
+  water_breakdown                   Json              @default("{}")
+  eutrophication_freshwater_kg_p_eq Decimal           @default(0) @db.Decimal(8, 4)
+  microplastics_risk_grade          String            @default("A")
+  circularity_score                 Int               @default(50)
+  pef_eco_score                     Int               @default(50)
+  pef_grade                         String            @default("C")
+  conventional_comparison           Json              @default("{}")
+  data_quality_rating               String            @default("medium")
+  status                            data_value_status @default(declared)
+  methodology_version               String            @default("PEFCR-EU-2024.1")
+  raw_parameters                    Json              @default("{}")
+  calculated_by                     String?           @db.Uuid
+  calculated_at                     DateTime          @default(now()) @db.Timestamptz(6)
+  created_at                        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at                        DateTime          @default(now()) @db.Timestamptz(6)
+  organizations                     organizations     @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                             User?             @relation(fields: [calculated_by], references: [id], onUpdate: NoAction)
+  tracefab_products                 tracefab_products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([product_id, product_version], map: "product_pef_unique")
+  @@index([product_id, product_version], map: "idx_product_pef_product")
+  @@index([brand_organization_id, pef_grade], map: "idx_product_pef_org")
+}
+
+model green_claims_rules {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rule_code          String   @unique
+  category           String
+  rule_title         String
+  description        String
+  target_pattern     String
+  severity           String
+  legal_basis        String   @default("Directive (UE) Allégations Environnementales / Directive 2024/825")
+  remediation_advice String
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model product_green_claims {
+  id                          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id                  String            @db.Uuid
+  product_version             Int               @default(1)
+  brand_organization_id       String            @db.Uuid
+  claim_text                  String
+  claim_type                  String            @default("product_level")
+  target_subject_id           String?           @db.Uuid
+  status                      String            @default("unsubstantiated")
+  risk_level                  String            @default("medium")
+  is_blocking_for_dpp         Boolean           @default(false)
+  supporting_certification_id String?           @db.Uuid
+  supporting_document_id      String?           @db.Uuid
+  compliance_explanation      String            @default("")
+  remediation_suggestion      String?
+  verified_at                 DateTime?         @db.Timestamptz(6)
+  verified_by                 String?           @db.Uuid
+  created_at                  DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime          @default(now()) @db.Timestamptz(6)
+  organizations               organizations     @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products           tracefab_products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  certifications              certifications?   @relation(fields: [supporting_certification_id], references: [id], onUpdate: NoAction)
+  documents                   documents?        @relation(fields: [supporting_document_id], references: [id], onUpdate: NoAction)
+  users                       User?             @relation(fields: [verified_by], references: [id], onUpdate: NoAction)
+
+  @@index([product_id, product_version], map: "idx_product_green_claims_prod")
+  @@index([brand_organization_id, status], map: "idx_product_green_claims_org")
+}
+
+model green_claims_audits {
+  id                           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id                   String            @db.Uuid
+  product_version              Int               @default(1)
+  brand_organization_id        String            @db.Uuid
+  total_claims_analyzed        Int               @default(0)
+  verified_claims_count        Int               @default(0)
+  prohibited_claims_count      Int               @default(0)
+  unsubstantiated_claims_count Int               @default(0)
+  green_claims_score           Int               @default(100)
+  audit_verdict                String            @default("compliant")
+  blocking_issues              Json              @default("[]")
+  audit_summary                String            @default("")
+  audited_at                   DateTime          @default(now()) @db.Timestamptz(6)
+  audited_by                   String?           @db.Uuid
+  created_at                   DateTime          @default(now()) @db.Timestamptz(6)
+  users                        User?             @relation(fields: [audited_by], references: [id], onUpdate: NoAction)
+  organizations                organizations     @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products            tracefab_products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([product_id, product_version], map: "green_claims_audit_unique")
+  @@index([product_id, product_version], map: "idx_green_claims_audits_prod")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model quality_cap_messages {
+  id                              String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cap_id                          String                          @db.Uuid
+  sender_organization_id          String                          @db.Uuid
+  sender_user_id                  String?                         @db.Uuid
+  sender_role                     String
+  message                         String
+  attachment_document_id          String?                         @db.Uuid
+  created_at                      DateTime                        @default(now()) @db.Timestamptz(6)
+  documents                       documents?                      @relation(fields: [attachment_document_id], references: [id], onUpdate: NoAction)
+  quality_corrective_action_plans quality_corrective_action_plans @relation(fields: [cap_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations                   organizations                   @relation(fields: [sender_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                           User?                           @relation(fields: [sender_user_id], references: [id], onUpdate: NoAction)
+
+  @@index([cap_id, created_at], map: "idx_cap_messages_cap")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model quality_corrective_action_plans {
+  id                                                                                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quality_issue_id                                                                      String                 @db.Uuid
+  brand_organization_id                                                                 String                 @db.Uuid
+  supplier_organization_id                                                              String                 @db.Uuid
+  product_id                                                                            String?                @db.Uuid
+  title                                                                                 String
+  instructions                                                                          String
+  status                                                                                String                 @default("requested")
+  priority                                                                              String                 @default("high")
+  due_date                                                                              DateTime               @db.Date
+  supplier_response_summary                                                             String?
+  supporting_document_id                                                                String?                @db.Uuid
+  submitted_at                                                                          DateTime?              @db.Timestamptz(6)
+  submitted_by                                                                          String?                @db.Uuid
+  reviewed_at                                                                           DateTime?              @db.Timestamptz(6)
+  reviewed_by                                                                           String?                @db.Uuid
+  review_verdict                                                                        String?
+  review_notes                                                                          String?
+  created_by                                                                            String?                @db.Uuid
+  created_at                                                                            DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                                                                            DateTime               @default(now()) @db.Timestamptz(6)
+  quality_cap_messages                                                                  quality_cap_messages[]
+  organizations_quality_corrective_action_plans_brand_organization_idToorganizations    organizations          @relation("quality_corrective_action_plans_brand_organization_idToorganizations", fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_quality_corrective_action_plans_created_byTousers                               User?                  @relation("quality_corrective_action_plans_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  tracefab_products                                                                     tracefab_products?     @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  data_quality_issues                                                                   data_quality_issues    @relation(fields: [quality_issue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_quality_corrective_action_plans_reviewed_byTousers                              User?                  @relation("quality_corrective_action_plans_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  users_quality_corrective_action_plans_submitted_byTousers                             User?                  @relation("quality_corrective_action_plans_submitted_byTousers", fields: [submitted_by], references: [id], onUpdate: NoAction)
+  organizations_quality_corrective_action_plans_supplier_organization_idToorganizations organizations          @relation("quality_corrective_action_plans_supplier_organization_idToorganizations", fields: [supplier_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  documents                                                                             documents?             @relation(fields: [supporting_document_id], references: [id], onUpdate: NoAction)
+
+  @@index([brand_organization_id, status], map: "idx_cap_brand")
+  @@index([due_date, status], map: "idx_cap_due_date")
+  @@index([quality_issue_id], map: "idx_cap_issue")
+  @@index([supplier_organization_id, status], map: "idx_cap_supplier")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tracefab_notification_outbox {
+  id                        String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_key                 String                       @unique
+  event_type                tracefab_notification_event
+  channel                   String                       @default("email")
+  request_id                String                       @db.Uuid
+  response_id               String?                      @db.Uuid
+  recipient_organization_id String                       @db.Uuid
+  recipient_emails          String[]                     @default([])
+  recipient_name            String
+  brand_name                String
+  supplier_name             String
+  request_title             String
+  due_at                    DateTime?                    @db.Timestamptz(6)
+  status                    tracefab_notification_status @default(pending)
+  attempts                  Int                          @default(0)
+  available_at              DateTime                     @default(now()) @db.Timestamptz(6)
+  locked_at                 DateTime?                    @db.Timestamptz(6)
+  sent_at                   DateTime?                    @db.Timestamptz(6)
+  provider_id               String?
+  last_error                String?
+  created_at                DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                     @default(now()) @db.Timestamptz(6)
+  organizations             organizations                @relation(fields: [recipient_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  data_requests             data_requests                @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  data_responses            data_responses?              @relation(fields: [response_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status, available_at, created_at], map: "idx_tracefab_notification_outbox_claim")
+  @@index([request_id, created_at], map: "idx_tracefab_notification_outbox_request")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tracefab_schema_bindings {
+  id                      String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schema_key              String
+  schema_version          String
+  product_id              String?                 @db.Uuid
+  material_id             String?                 @db.Uuid
+  supplier_id             String?                 @db.Uuid
+  data_request_id         String?                 @db.Uuid
+  bound_by                String?                 @db.Uuid
+  created_at              DateTime                @default(now()) @db.Timestamptz(6)
+  tracefab_schema_catalog tracefab_schema_catalog @relation(fields: [schema_key, schema_version], references: [schema_key, schema_version], onDelete: NoAction, onUpdate: NoAction, map: "tracefab_schema_binding_catalog_fk")
+  users                   User?                   @relation(fields: [bound_by], references: [id], onUpdate: NoAction)
+  data_requests           data_requests?          @relation(fields: [data_request_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  materials               materials?              @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products       tracefab_products?      @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  suppliers               suppliers?              @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tracefab_schema_catalog {
+  schema_key               String
+  schema_version           String
+  subject_types            String[]
+  title                    String
+  checksum                 String?
+  active                   Boolean                    @default(true)
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  tracefab_schema_bindings tracefab_schema_bindings[]
+
+  @@id([schema_key, schema_version])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model supplier_passport_access_requests {
+  id                                                                                       String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  passport_id                                                                              String                       @db.Uuid
+  supplier_organization_id                                                                 String                       @db.Uuid
+  requester_email                                                                          String
+  requester_name                                                                           String
+  requester_company                                                                        String
+  requester_organization_id                                                                String?                      @db.Uuid
+  message                                                                                  String?
+  requested_scope                                                                          String[]                     @default(["full_evidence", "exact_sites"])
+  nda_accepted                                                                             Boolean                      @default(true)
+  nda_accepted_at                                                                          DateTime                     @default(now()) @db.Timestamptz(6)
+  status                                                                                   String                       @default("pending")
+  reviewed_at                                                                              DateTime?                    @db.Timestamptz(6)
+  created_at                                                                               DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                                                                               DateTime                     @default(now()) @db.Timestamptz(6)
+  organizations_supplier_passport_access_requests_requester_organization_idToorganizations organizations?               @relation("supplier_passport_access_requests_requester_organization_idToorganizations", fields: [requester_organization_id], references: [id], onUpdate: NoAction, map: "supplier_passport_access_request_requester_organization_id_fkey")
+  supplier_universal_passports                                                             supplier_universal_passports @relation(fields: [passport_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations_supplier_passport_access_requests_supplier_organization_idToorganizations  organizations                @relation("supplier_passport_access_requests_supplier_organization_idToorganizations", fields: [supplier_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([passport_id, status], map: "idx_passport_access_passport")
+  @@index([requester_email], map: "idx_passport_access_requester")
+  @@index([supplier_organization_id, status], map: "idx_passport_access_supplier")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model supplier_universal_passports {
+  id                                String                              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supplier_organization_id          String                              @unique @db.Uuid
+  supplier_id                       String?                             @db.Uuid
+  slug                              String?                             @unique
+  share_token                       String                              @unique
+  is_public                         Boolean                             @default(true)
+  headline                          String?
+  trade_secret_mode                 String                              @default("redacted")
+  disclosed_sections                Json                                @default("{\"sites\": true, \"contact\": true, \"materials\": true, \"quality_score\": true, \"certifications\": true, \"exact_addresses\": false}")
+  nda_terms                         String?
+  views_count                       Int                                 @default(0)
+  last_viewed_at                    DateTime?                           @db.Timestamptz(6)
+  created_at                        DateTime                            @default(now()) @db.Timestamptz(6)
+  updated_at                        DateTime                            @default(now()) @db.Timestamptz(6)
+  supplier_passport_access_requests supplier_passport_access_requests[]
+  suppliers                         suppliers?                          @relation(fields: [supplier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations                     organizations                       @relation(fields: [supplier_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([supplier_organization_id], map: "idx_universal_passports_org")
+  @@index([slug], map: "idx_universal_passports_slug")
+  @@index([share_token], map: "idx_universal_passports_token")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mass_balance_allocations {
+  id                         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_certificate_id String                   @db.Uuid
+  product_id                 String                   @db.Uuid
+  order_id                   String?                  @db.Uuid
+  allocated_weight_kg        Decimal                  @db.Decimal(12, 3)
+  allocated_meters           Decimal?                 @default(0) @db.Decimal(12, 3)
+  notes                      String?
+  allocated_by               String?                  @db.Uuid
+  created_at                 DateTime                 @default(now()) @db.Timestamptz(6)
+  users                      User?                    @relation(fields: [allocated_by], references: [id], onUpdate: NoAction)
+  orders                     orders?                  @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  tracefab_products          tracefab_products        @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transaction_certificates   transaction_certificates @relation(fields: [transaction_certificate_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([product_id], map: "idx_mb_alloc_product")
+  @@index([transaction_certificate_id], map: "idx_mb_alloc_tc")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mass_balance_reconciliations {
+  id                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id              String               @db.Uuid
+  brand_organization_id   String               @db.Uuid
+  batch_reference         String               @default("GLOBAL_PRODUCTION")
+  production_volume_units Int
+  unit_weight_grams       Decimal              @db.Decimal(10, 2)
+  cutting_waste_pct       Decimal              @default(12.00) @db.Decimal(5, 2)
+  theoretical_required_kg Decimal              @db.Decimal(12, 3)
+  allocated_certified_kg  Decimal              @db.Decimal(12, 3)
+  deficit_kg              Decimal              @default(0) @db.Decimal(12, 3)
+  coverage_ratio_pct      Decimal              @db.Decimal(6, 2)
+  verdict                 String
+  fraud_risk_score        Int
+  summary                 String
+  blocking_issue_created  Boolean              @default(false)
+  quality_issue_id        String?              @db.Uuid
+  reconciled_by           String?              @db.Uuid
+  created_at              DateTime             @default(now()) @db.Timestamptz(6)
+  organizations           organizations        @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products       tracefab_products    @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  data_quality_issues     data_quality_issues? @relation(fields: [quality_issue_id], references: [id], onUpdate: NoAction)
+  users                   User?                @relation(fields: [reconciled_by], references: [id], onUpdate: NoAction)
+
+  @@index([brand_organization_id, verdict], map: "idx_mb_reconcil_brand")
+  @@index([product_id, created_at(sort: Desc)], map: "idx_mb_reconcil_product")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model transaction_certificates {
+  id                                                                           String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tc_number                                                                    String                     @unique
+  standard                                                                     String
+  issuer_name                                                                  String
+  seller_organization_id                                                       String                     @db.Uuid
+  buyer_organization_id                                                        String                     @db.Uuid
+  certified_material_name                                                      String
+  total_certified_weight_kg                                                    Decimal                    @db.Decimal(12, 3)
+  total_certified_meters                                                       Decimal?                   @db.Decimal(12, 3)
+  allocated_weight_kg                                                          Decimal                    @default(0) @db.Decimal(12, 3)
+  allocated_meters                                                             Decimal                    @default(0) @db.Decimal(12, 3)
+  status                                                                       String                     @default("active")
+  issue_date                                                                   DateTime                   @db.Date
+  expiry_date                                                                  DateTime?                  @db.Date
+  document_id                                                                  String?                    @db.Uuid
+  created_by                                                                   String?                    @db.Uuid
+  created_at                                                                   DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at                                                                   DateTime                   @default(now()) @db.Timestamptz(6)
+  mass_balance_allocations                                                     mass_balance_allocations[]
+  organizations_transaction_certificates_buyer_organization_idToorganizations  organizations              @relation("transaction_certificates_buyer_organization_idToorganizations", fields: [buyer_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                                                                        User?                      @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  documents                                                                    documents?                 @relation(fields: [document_id], references: [id], onUpdate: NoAction)
+  organizations_transaction_certificates_seller_organization_idToorganizations organizations              @relation("transaction_certificates_seller_organization_idToorganizations", fields: [seller_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([buyer_organization_id, status], map: "idx_tc_buyer")
+  @@index([tc_number], map: "idx_tc_number")
+  @@index([seller_organization_id, status], map: "idx_tc_seller")
 }
 
 enum data_request_item_status {
@@ -953,4 +1429,20 @@ enum verification_status {
   failed
   needs_review
   expired
+}
+
+enum tracefab_notification_event {
+  request_sent
+  request_submitted
+  response_verified
+  changes_requested
+  request_due_soon
+  request_overdue
+}
+
+enum tracefab_notification_status {
+  pending
+  processing
+  sent
+  failed
 }
