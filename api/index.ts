@@ -5,6 +5,8 @@ type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;
 type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default: RouteHandler }> };
 
 const routes: Route[] = [
+  { pattern: /^catalog\/questionnaires$/, params: [], load: () => import('./_routes/catalog/questionnaires.js') },
+  { pattern: /^catalog\/schemas$/, params: [], load: () => import('./_routes/catalog/schemas.js') },
   { pattern: /^config$/, params: [], load: () => import('./_routes/config.js') },
   { pattern: /^data\-request\-items\/([^\/]+)\/response$/, params: ['itemId'], load: () => import('./_routes/data-request-items/[itemId]/response.js') },
   { pattern: /^data\-requests\/([^\/]+)\/items\/from\-template$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items/from-template.js') },
@@ -20,7 +22,9 @@ const routes: Route[] = [
   { pattern: /^internal\/notification\-outbox\/process$/, params: [], load: () => import('./_routes/internal/notification-outbox/process.js') },
   { pattern: /^internal\/notification\-outbox\/reminders$/, params: [], load: () => import('./_routes/internal/notification-outbox/reminders.js') },
   { pattern: /^internal\/notification\-outbox\/schedule$/, params: [], load: () => import('./_routes/internal/notification-outbox/schedule.js') },
+  { pattern: /^operations\/overview$/, params: [], load: () => import('./_routes/operations/overview.js') },
   { pattern: /^invitations\/accept$/, params: [], load: () => import('./_routes/invitations/accept.js') },
+  { pattern: /^webhooks\/clerk$/, params: [], load: () => import('./_routes/webhooks/clerk.js') },
   { pattern: /^materials\/([^\/]+)$/, params: ['materialId'], load: () => import('./_routes/materials/[materialId].js') },
   { pattern: /^materials$/, params: [], load: () => import('./_routes/materials.js') },
   { pattern: /^me$/, params: [], load: () => import('./_routes/me.js') },
@@ -31,6 +35,8 @@ const routes: Route[] = [
   { pattern: /^products\/([^\/]+)\/revision$/, params: ['productId'], load: () => import('./_routes/products/[productId]/revision.js') },
   { pattern: /^products\/([^\/]+)$/, params: ['productId'], load: () => import('./_routes/products/[productId].js') },
   { pattern: /^products$/, params: [], load: () => import('./_routes/products.js') },
+  { pattern: /^quality\/overview$/, params: [], load: () => import('./_routes/quality/overview.js') },
+  { pattern: /^schema\-bindings$/, params: [], load: () => import('./_routes/schema-bindings.js') },
   { pattern: /^quality\/products\/([^\/]+)$/, params: ['productId'], load: () => import('./_routes/quality/products/[productId].js') },
   { pattern: /^quality\/suppliers\/([^\/]+)$/, params: ['supplierId'], load: () => import('./_routes/quality/suppliers/[supplierId].js') },
   { pattern: /^quality\-issues\/([^\/]+)\/acknowledge$/, params: ['issueId'], load: () => import('./_routes/quality-issues/[issueId]/acknowledge.js') },

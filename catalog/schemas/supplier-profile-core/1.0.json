@@ -1,0 +1,12 @@
+{
+  "key": "supplier-profile-core",
+  "version": "1.0",
+  "subjectTypes": ["supplier"],
+  "title": "Supplier profile core",
+  "description": "Versioned supplier profile facts and operating footprint.",
+  "fields": [
+    { "fieldKey": "legal_name", "label": "Legal name", "dataType": "text", "required": true, "evidenceRequired": false, "validationRules": { "maxLength": 240 } },
+    { "fieldKey": "country_code", "label": "Country", "dataType": "country", "required": true, "evidenceRequired": false, "validationRules": {} },
+    { "fieldKey": "contact_email", "label": "Contact email", "dataType": "text", "required": false, "evidenceRequired": false, "validationRules": { "maxLength": 320 } }
+  ]
+}

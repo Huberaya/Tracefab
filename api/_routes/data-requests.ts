@@ -4,6 +4,7 @@ import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
 import { withTracefabUserContext } from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
+import { getSchema } from '.././_lib/schema-catalog.js';
 import { activeOrganizationIds } from '.././_lib/products.js';
 import { activeSupplierOrganizationIds, requestedOrganizationId } from '.././_lib/supplier-profile.js';
 import {
@@ -73,6 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const title = requiredString(body.title, 'request_title', 240);
     const questionnaireKey = requiredString(body.questionnaireKey, 'questionnaire_key', 160);
     const questionnaireVersion = requiredString(body.questionnaireVersion, 'questionnaire_version', 80);
+    const boundSchema = getSchema(questionnaireKey, questionnaireVersion);
+    if (!boundSchema || !boundSchema.subjectTypes.includes('data_request')) throw new Error('invalid_questionnaire_schema');
     const dueAt = parseDate(body.dueAt, 'due_at');
     const idempotencyKey = optionalString(body.idempotencyKey, 'idempotency_key', 200);
 
@@ -94,6 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!id) throw new Error('data_request_creation_failed');
       const created = await tx.data_requests.findUnique({ where: { id }, select: REQUEST_SELECT });
       if (!created) throw new Error('data_request_creation_failed');
+      await tx.$queryRaw`SELECT id FROM tracefab_bind_schema(${questionnaireKey}, ${questionnaireVersion}, 'data_request', ${id}::uuid)`;
       return created;
     });
 

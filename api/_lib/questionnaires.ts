@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Prisma } from '@prisma/client';
 
 export type QuestionnaireItem = {
@@ -19,69 +21,29 @@ export type QuestionnaireTemplate = {
   items: QuestionnaireItem[];
 };
 
-// Templates are immutable, versioned application contracts for now. A future
-// admin workflow can promote them to database configuration without changing
-// the request/item API because every request stores both key and version.
-const TEMPLATES: QuestionnaireTemplate[] = [
-  {
-    key: 'product-data-core',
-    version: '1.0',
-    title: 'Product data core',
-    description: 'Minimum product, composition and manufacturing data requested from a supplier.',
-    items: [
-      {
-        fieldKey: 'product_description',
-        label: 'Product description',
-        dataType: 'text',
-        required: true,
-        evidenceRequired: false,
-        helpText: 'Describe the product and its intended use.',
-        validationRules: { minLength: 10, maxLength: 2000 },
-        evidenceKinds: [],
-      },
-      {
-        fieldKey: 'country_of_manufacture',
-        label: 'Country of manufacture',
-        dataType: 'country',
-        required: true,
-        evidenceRequired: false,
-        helpText: 'Use the ISO 3166-1 alpha-2 country code.',
-        validationRules: {},
-        evidenceKinds: [],
-      },
-      {
-        fieldKey: 'main_material_percentage',
-        label: 'Main material percentage',
-        dataType: 'percentage',
-        required: true,
-        evidenceRequired: true,
-        helpText: 'Percentage by mass of the main material.',
-        validationRules: { min: 0, max: 100 },
-        evidenceKinds: ['technical_spec', 'certificate'],
-      },
-      {
-        fieldKey: 'material_composition',
-        label: 'Material composition',
-        dataType: 'json',
-        required: true,
-        evidenceRequired: true,
-        helpText: 'Provide an array of materials and their percentages.',
-        validationRules: { jsonShape: 'material_composition' },
-        evidenceKinds: ['technical_spec'],
-      },
-      {
-        fieldKey: 'manufacturing_site_name',
-        label: 'Manufacturing site name',
-        dataType: 'text',
-        required: false,
-        evidenceRequired: false,
-        helpText: null,
-        validationRules: { maxLength: 240 },
-        evidenceKinds: [],
-      },
-    ],
-  },
-];
+// Questionnaire definitions are externalized versioned catalog files. The API
+// stores the key and version on each request, so catalog evolution never
+// changes the meaning of an existing request.
+const CATALOG_PATH = join(process.cwd(), 'catalog/questionnaires/product-data-core/1.0.json');
+
+function loadCatalog(): QuestionnaireTemplate[] {
+  const parsed = JSON.parse(readFileSync(CATALOG_PATH, 'utf8')) as QuestionnaireTemplate;
+  if (!parsed.key || !parsed.version || !Array.isArray(parsed.items) || parsed.items.length === 0) {
+    throw new Error('questionnaire_catalog_invalid');
+  }
+  for (const item of parsed.items) {
+    if (!item.fieldKey || !item.label || !item.dataType || typeof item.required !== 'boolean' || typeof item.evidenceRequired !== 'boolean') {
+      throw new Error('questionnaire_catalog_item_invalid');
+    }
+  }
+  return [parsed];
+}
+
+const TEMPLATES = loadCatalog();
+
+export function questionnaireCatalogSource() {
+  return { source: 'versioned_external_catalog', files: ['catalog/questionnaires/product-data-core/1.0.json'] };
+}
 
 export function listQuestionnaires() {
   return TEMPLATES.map(({ key, version, title, description, items }) => ({
