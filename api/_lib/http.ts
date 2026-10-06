@@ -1,4 +1,4 @@
-import type { VercelResponse } from '@vercel/node';
+import type { VercelResponse } from './vercel-types.js';
 
 export function json(res: VercelResponse, status: number, payload: unknown) {
   if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', 'no-store');

@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import type { VercelRequest } from '@vercel/node';
+import type { VercelRequest } from './vercel-types.js';
 
 function secretConfigured(name: string) {
   return Boolean(process.env[name]?.trim());

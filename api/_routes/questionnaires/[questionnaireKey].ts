@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { getQuestionnaire } from '../../_lib/questionnaires.js';

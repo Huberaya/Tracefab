@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { Prisma } from '@prisma/client';
 import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
 import { withTracefabUserContext } from '.././_lib/context.js';

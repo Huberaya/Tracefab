@@ -1,5 +1,5 @@
 import { data_type, data_value_status, Prisma } from '@prisma/client';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { dataPointMutation, DATA_POINT_SELECT, serializeDataPoint } from '../../../_lib/data-points.js';

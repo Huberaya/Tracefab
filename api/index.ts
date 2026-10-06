@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './_lib/vercel-types.js';
 import { json } from './_lib/http.js';
 
 type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;

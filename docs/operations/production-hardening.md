@@ -16,6 +16,20 @@ Le durcissement applicatif est versionné dans le chantier `production-hardening
 
 La rotation effective des valeurs Vercel, Clerk, Neon, Resend, stockage privé et GitHub reste une opération d’administration externe : elle doit être exécutée par un opérateur ayant accès aux comptes concernés. Aucun secret n’est inclus dans le dépôt.
 
+## Contrôle des dépendances
+
+Le lockfile est la source d’installation de production et doit être régénéré avec `npm ci`. La vérification de sécurité doit couvrir les deux arbres :
+
+```bash
+npm ci
+npm audit --omit=dev --audit-level=moderate
+npm audit --audit-level=moderate
+```
+
+Les deux commandes `npm audit` doivent terminer avec **0 vulnérabilité**. Ne pas utiliser `npm audit fix --force` sans revue : cela pourrait changer le runtime Vercel ou le client Prisma par une montée majeure non validée.
+
+Le projet conserve Prisma 6 pour préserver le schéma et le mode de connexion existants ; les versions corrigées de `deepmerge-ts` et `effect` sont verrouillées par `overrides` et validées par `prisma generate`, le build et les tests. Les handlers API utilisent des types locaux (`api/_lib/vercel-types.ts`) : le package de build `@vercel/node`, qui introduisait une chaîne de dépendances vulnérable uniquement pour des imports de types, n’est pas embarqué dans l’application.
+
 ## Variables Vercel — production
 
 Configurer les variables suivantes dans l’environnement **Production** du projet Vercel. Ne pas réutiliser les valeurs Preview/Development.

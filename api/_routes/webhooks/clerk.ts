@@ -2,7 +2,7 @@ import { createClerkClient } from '@clerk/backend';
 import { verifyWebhook } from '@clerk/backend/webhooks';
 import { membership_role, organization_type } from '@prisma/client';
 import { prisma } from '../../_lib/prisma.js';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 
 type ClerkEmailAddress = { id?: unknown; email_address?: unknown };

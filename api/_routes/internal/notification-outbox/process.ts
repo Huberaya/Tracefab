@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { processNotificationOutbox } from '../../../_lib/notification-outbox.js';
 import { queryInteger, workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth.js';

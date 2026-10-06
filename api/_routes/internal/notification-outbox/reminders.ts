@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { enqueueDueDataRequestReminders } from '../../../_lib/notification-reminders.js';
 import { queryInteger, workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth.js';

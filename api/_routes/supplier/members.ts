@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from 'node:crypto';
 import { Prisma, membership_role, membership_status } from '@prisma/client';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../_lib/email.js';

@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { certificationStandardsSource, getCertificationStandard, listCertificationStandards } from '../../_lib/certification-standards.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 

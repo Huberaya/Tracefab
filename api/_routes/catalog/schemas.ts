@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { getSchema, listSchemas, schemaCatalogSource } from '../../_lib/schema-catalog.js';
 import type { SchemaDefinition } from '../../_lib/schema-catalog.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';

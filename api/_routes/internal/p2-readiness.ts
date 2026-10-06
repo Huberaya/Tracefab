@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { emailDeliveryConfigured } from '../../_lib/email.js';
 import { notificationAlertConfigured } from '../../_lib/notification-observability.js';
 import { storageConfig } from '../../_lib/storage.js';

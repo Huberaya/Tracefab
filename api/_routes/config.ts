@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '.././_lib/http.js';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
