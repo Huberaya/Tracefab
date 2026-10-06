@@ -164,6 +164,87 @@
           requestSubmitted: "Request submitted to brand.",
           signOut: "Sign out"
         },
+                de: {
+          overview: "Übersicht",
+          requests: "Datenanfragen",
+          sites: "Produktionsstätten",
+          certifications: "Zertifikate",
+          materials: "Materialien & Garne",
+          documents: "Nachweis-Tresor (Vault)",
+          dataPoints: "Strukturierte Daten",
+          members: "Team & Berechtigungen",
+          quality: "Qualitätsindex",
+          profile: "Unternehmensprofil",
+          requestDetail: "Auf Anfrage antworten",
+          vaultDesc: "Laden Sie Ihre Prüfzertifikate einmal hoch und teilen Sie sie sofort mit all Ihren Marken.",
+          uploadEvidence: "Nachweis zum Vault hinzufügen",
+          ndaTitle: "Schutz von Geschäftsgeheimnissen",
+          ndaDesc: "Geschützte Rezepturen, Preise und Margen bleiben streng vertraulich. Nur Prüfungs-Hashes werden geteilt.",
+          hello: "Hallo",
+          pendingRequests: "Offene Anfragen",
+          sitesRegistered: "Registrierte Stätten",
+          validCerts: "Aktive Zertifikate",
+          qualityIndex: "Vollständigkeitsgrad",
+          submitToBrand: "An Marke übermitteln",
+          saveDraft: "Entwurf speichern",
+          responseRecorded: "Antwort erfolgreich gespeichert.",
+          requestSubmitted: "Anfrage an Auftraggeber übermittelt.",
+          signOut: "Abmelden"
+        },
+        es: {
+          overview: "Resumen",
+          requests: "Solicitudes de datos",
+          sites: "Centros de producción",
+          certifications: "Certificados",
+          materials: "Materiales e hilados",
+          documents: "Bóveda de Evidencias (Vault)",
+          dataPoints: "Datos estructurados",
+          members: "Equipo y accesos",
+          quality: "Puntuación de calidad",
+          profile: "Perfil de empresa",
+          requestDetail: "Responder a solicitud",
+          vaultDesc: "Cargue sus certificados de auditoría una sola vez y compártalos al instante con todas sus marcas.",
+          uploadEvidence: "Añadir evidencia a la Bóveda",
+          ndaTitle: "Protección de Secretos Comerciales",
+          ndaDesc: "Fórmulas exclusivas, precios y márgenes quedan estrictamente protegidos. Solo se auditan hashes de cumplimiento.",
+          hello: "Hola",
+          pendingRequests: "Solicitudes abiertas",
+          sitesRegistered: "Centros registrados",
+          validCerts: "Certificados activos",
+          qualityIndex: "Grado de integridad",
+          submitToBrand: "Enviar a la marca",
+          saveDraft: "Guardar borrador",
+          responseRecorded: "Respuesta guardada con éxito.",
+          requestSubmitted: "Solicitud enviada a la marca cliente.",
+          signOut: "Cerrar sesión"
+        },
+        nl: {
+          overview: "Overzicht",
+          requests: "Gegevensaanvragen",
+          sites: "Productielocaties",
+          certifications: "Certificaten",
+          materials: "Materialen & Garens",
+          documents: "Bewijskluis (Vault)",
+          dataPoints: "Gestructureerde data",
+          members: "Team & Toegang",
+          quality: "Kwaliteitsscore",
+          profile: "Bedrijfsprofiel",
+          requestDetail: "Reageren op aanvraag",
+          vaultDesc: "Upload uw auditcertificaten eenmalig en deel ze direct met al uw merkklanten.",
+          uploadEvidence: "Bewijs toevoegen aan kluis",
+          ndaTitle: "Bescherming Bedrijfsgeheimen",
+          ndaDesc: "Formules, prijzen en marges blijven strikt vertrouwelijk. Alleen conformiteitshashes worden gedeeld.",
+          hello: "Hallo",
+          pendingRequests: "Openstaande aanvragen",
+          sitesRegistered: "Geregistreerde locaties",
+          validCerts: "Actieve certificaten",
+          qualityIndex: "Volledigheidsscore",
+          submitToBrand: "Verzenden naar merk",
+          saveDraft: "Concept opslaan",
+          responseRecorded: "Reactie succesvol opgeslagen.",
+          requestSubmitted: "Aanvraag ingediend bij opdrachtgever.",
+          signOut: "Uitloggen"
+        },
         pt: {
           overview: "Visão Geral",
           requests: "Pedidos de Dados",
@@ -360,10 +441,13 @@
       function currentOrg() { return state.organizations.find((entry) => entry.organizationId === state.selectedOrganizationId)?.organization || state.memberships.find((membership) => membership.organization_id === state.selectedOrganizationId)?.organizations; }
       function langSwitcher() {
         return `<select class="lang-switcher-select" id="lang-switch" title="Choisir la langue / Select language">
-          <option value="fr" ${state.lang === 'fr' ? 'selected' : ''}>🇫🇷 FR (Français)</option>
           <option value="en" ${state.lang === 'en' ? 'selected' : ''}>🇬🇧 EN (English)</option>
-          <option value="pt" ${state.lang === 'pt' ? 'selected' : ''}>🇵🇹 PT (Português)</option>
+          <option value="fr" ${state.lang === 'fr' ? 'selected' : ''}>🇫🇷 FR (Français)</option>
+          <option value="de" ${state.lang === 'de' ? 'selected' : ''}>🇩🇪 DE (Deutsch)</option>
           <option value="it" ${state.lang === 'it' ? 'selected' : ''}>🇮🇹 IT (Italiano)</option>
+          <option value="es" ${state.lang === 'es' ? 'selected' : ''}>🇪🇸 ES (Español)</option>
+          <option value="nl" ${state.lang === 'nl' ? 'selected' : ''}>🇳🇱 NL (Nederlands)</option>
+          <option value="pt" ${state.lang === 'pt' ? 'selected' : ''}>🇵🇹 PT (Português)</option>
           <option value="tr" ${state.lang === 'tr' ? 'selected' : ''}>🇹🇷 TR (Türkçe)</option>
           <option value="zh" ${state.lang === 'zh' ? 'selected' : ''}>🇨🇳 ZH (中文)</option>
         </select>`;

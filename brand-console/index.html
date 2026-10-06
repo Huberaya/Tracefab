@@ -230,6 +230,7 @@
       'use strict';
       const app = document.getElementById('app');
       const state = {
+        lang: (typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'en',
         clerk: null,
         loading: true,
         configError: null,
@@ -622,27 +623,27 @@
             <aside class="sidebar">
               <div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div>
               <nav class="nav">
-                <div class="nav-section-title">Console Principale</div>
-                ${navButton('overview', '⌂', 'Vue d’ensemble')}
-                ${navButton('products', '◇', 'Produits')}
-                ${navButton('suppliers', '◎', 'Fournisseurs')}
-                ${navButton('materials', '⬡', 'Matières')}
-                ${navButton('supplyChain', '☍', 'Traçabilité')}
-                <div class="nav-section-title">Collecte & Conformité</div>
-                ${navButton('requests', '↗', 'Demandes de données')}
-                ${navButton('questionnaires', '✎', 'Questionnaires')}
-                ${navButton('documents', '▤', 'Documents')}
-                ${navButton('certifications', '✓', 'Certifications')}
-                ${navButton('quality', '◒', 'Qualité & Conformité')}
-                ${navButton('dpp', '📋', 'Passeport DPP')}
-                <div class="nav-section-title">Gouvernance</div>
-                ${navButton('reports', '☷', 'Rapports & Audits')}
-                ${navButton('settings', '⚙', 'Paramètres')}
+                <div class="nav-section-title">${esc(bt('navMain'))}</div>
+                ${navButton('overview', '⌂', bt('overview'))}
+                ${navButton('products', '◇', bt('products'))}
+                ${navButton('suppliers', '◎', bt('suppliers'))}
+                ${navButton('materials', '⬡', bt('materials'))}
+                ${navButton('supplyChain', '☍', bt('supplyChain'))}
+                <div class="nav-section-title">${esc(bt('navCollection'))}</div>
+                ${navButton('requests', '↗', bt('requests'))}
+                ${navButton('questionnaires', '✎', bt('questionnaires'))}
+                ${navButton('documents', '▤', bt('documents'))}
+                ${navButton('certifications', '✓', bt('certifications'))}
+                ${navButton('quality', '◒', bt('quality'))}
+                ${navButton('dpp', '📋', bt('dpp'))}
+                <div class="nav-section-title">${esc(bt('navGov'))}</div>
+                ${navButton('reports', '☷', bt('reports'))}
+                ${navButton('settings', '⚙', bt('settings'))}
               </nav>
               <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">Se déconnecter</button></div></div></div>
             </aside>
             <main class="main">
-              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brands().length ? `<select class="org-select" id="active-org">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">+ Nouvelle demande</button></div></header>
+              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">${esc(bt("newRequest"))}</button></div></header>
               <section class="content">${content}</section>
             </main>
           </div>
@@ -669,7 +670,224 @@
       })[state.view] || 'Vue d’ensemble'; }
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
-      function render() {
+      
+      const brandTranslations = {
+        fr: {
+          navMain: "Console Principale",
+          overview: "Vue d’ensemble",
+          products: "Produits",
+          suppliers: "Fournisseurs",
+          materials: "Matières",
+          supplyChain: "Traçabilité",
+          navCollection: "Collecte & Conformité",
+          requests: "Demandes de données",
+          questionnaires: "Questionnaires",
+          documents: "Documents",
+          certifications: "Certifications",
+          quality: "Qualité & Conformité",
+          dpp: "Passeport DPP",
+          navGov: "Gouvernance",
+          reports: "Rapports & Audits",
+          settings: "Paramètres",
+          newRequest: "+ Nouvelle demande",
+          signOut: "Déconnexion",
+          openRequests: "Demandes ouvertes",
+          dueSoon: "Échéances proches (< 7j)",
+          submitted: "Réponses reçues",
+          quickActions: "Actions Rapides",
+          createRequest: "Créer une demande de données",
+          dppReadiness: "Passeport Produit Numérique (DPP)",
+          dppDesc: "Vérifiez l'éligibilité de vos collections aux normes européennes ESPR et CIRPASS 1.2."
+        },
+        en: {
+          navMain: "Main Console",
+          overview: "Overview",
+          products: "Products",
+          suppliers: "Suppliers",
+          materials: "Materials",
+          supplyChain: "Traceability",
+          navCollection: "Collection & Compliance",
+          requests: "Data Requests",
+          questionnaires: "Questionnaires",
+          documents: "Documents",
+          certifications: "Certifications",
+          quality: "Quality & Compliance",
+          dpp: "DPP Passport",
+          navGov: "Governance",
+          reports: "Reports & Audits",
+          settings: "Settings",
+          newRequest: "+ New request",
+          signOut: "Sign out",
+          openRequests: "Open requests",
+          dueSoon: "Due soon (< 7d)",
+          submitted: "Responses received",
+          quickActions: "Quick Actions",
+          createRequest: "Create data request",
+          dppReadiness: "Digital Product Passport (DPP)",
+          dppDesc: "Verify your collection readiness against European ESPR and CIRPASS 1.2 standards."
+        },
+        de: {
+          navMain: "Hauptkonsole",
+          overview: "Übersicht",
+          products: "Produkte",
+          suppliers: "Lieferanten",
+          materials: "Materialien",
+          supplyChain: "Rückverfolgbarkeit",
+          navCollection: "Erfassung & Konformität",
+          requests: "Datenanfragen",
+          questionnaires: "Fragebögen",
+          documents: "Dokumente",
+          certifications: "Zertifikate",
+          quality: "Qualität & Konformität",
+          dpp: "DPP-Pass",
+          navGov: "Governance",
+          reports: "Berichte & Audits",
+          settings: "Einstellungen",
+          newRequest: "+ Neue Anfrage",
+          signOut: "Abmelden",
+          openRequests: "Offene Anfragen",
+          dueSoon: "Fällig bald (< 7T)",
+          submitted: "Antworten erhalten",
+          quickActions: "Schnellaktionen",
+          createRequest: "Datenanfrage erstellen",
+          dppReadiness: "Digitaler Produktpass (DPP)",
+          dppDesc: "Überprüfen Sie die Konformität Ihrer Kollektionen gemäß europäischen ESPR- und CIRPASS 1.2-Normen."
+        },
+        it: {
+          navMain: "Console Principale",
+          overview: "Panoramica",
+          products: "Prodotti",
+          suppliers: "Fornitori",
+          materials: "Materiali",
+          supplyChain: "Tracciabilità",
+          navCollection: "Raccolta & Conformità",
+          requests: "Richieste dati",
+          questionnaires: "Questionari",
+          documents: "Documenti",
+          certifications: "Certificazioni",
+          quality: "Qualità & Conformità",
+          dpp: "Passaporto DPP",
+          navGov: "Governance",
+          reports: "Rapporti & Audit",
+          settings: "Impostazioni",
+          newRequest: "+ Nuova richiesta",
+          signOut: "Disconnetti",
+          openRequests: "Richieste aperte",
+          dueSoon: "In scadenza (< 7gg)",
+          submitted: "Risposte ricevute",
+          quickActions: "Azioni Rapide",
+          createRequest: "Crea richiesta dati",
+          dppReadiness: "Passaporto Digitale del Prodotto (DPP)",
+          dppDesc: "Verifica l'idoneità delle tue collezioni rispetto agli standard europei ESPR e CIRPASS 1.2."
+        },
+        es: {
+          navMain: "Consola Principal",
+          overview: "Resumen",
+          products: "Productos",
+          suppliers: "Proveedores",
+          materials: "Materiales",
+          supplyChain: "Trazabilidad",
+          navCollection: "Recopilación y Cumplimiento",
+          requests: "Solicitudes de datos",
+          questionnaires: "Cuestionarios",
+          documents: "Documentos",
+          certifications: "Certificaciones",
+          quality: "Calidad y Cumplimiento",
+          dpp: "Pasaporte DPP",
+          navGov: "Gobernanza",
+          reports: "Informes y Auditorías",
+          settings: "Configuración",
+          newRequest: "+ Nueva solicitud",
+          signOut: "Cerrar sesión",
+          openRequests: "Solicitudes abiertas",
+          dueSoon: "Próximas a vencer (< 7d)",
+          submitted: "Respuestas recibidas",
+          quickActions: "Acciones Rápidas",
+          createRequest: "Crear solicitud de datos",
+          dppReadiness: "Pasaporte Digital de Producto (DPP)",
+          dppDesc: "Verifique la preparación de sus colecciones frente a los estándares europeos ESPR y CIRPASS 1.2."
+        },
+        nl: {
+          navMain: "Hoofdconsole",
+          overview: "Overzicht",
+          products: "Producten",
+          suppliers: "Leveranciers",
+          materials: "Materialen",
+          supplyChain: "Traceerbaarheid",
+          navCollection: "Verzameling & Naleving",
+          requests: "Gegevensaanvragen",
+          questionnaires: "Vragenlijsten",
+          documents: "Documenten",
+          certifications: "Certificeringen",
+          quality: "Kwaliteit & Naleving",
+          dpp: "DPP-Paspoort",
+          navGov: "Governance",
+          reports: "Rapporten & Audits",
+          settings: "Instellingen",
+          newRequest: "+ Nieuwe aanvraag",
+          signOut: "Uitloggen",
+          openRequests: "Openstaande aanvragen",
+          dueSoon: "Binnenkort verwacht (< 7d)",
+          submitted: "Ontvangen antwoorden",
+          quickActions: "Snelle Acties",
+          createRequest: "Gegevensaanvraag aanmaken",
+          dppReadiness: "Digitaal Productpaspoort (DPP)",
+          dppDesc: "Controleer de conformiteit van uw collecties met de Europese normen ESPR en CIRPASS 1.2."
+        },
+        pt: {
+          navMain: "Consola Principal",
+          overview: "Visão geral",
+          products: "Produtos",
+          suppliers: "Fornecedores",
+          materials: "Materiais",
+          supplyChain: "Rastreabilidade",
+          navCollection: "Recolha & Conformidade",
+          requests: "Pedidos de dados",
+          questionnaires: "Questionários",
+          documents: "Documentos",
+          certifications: "Certificações",
+          quality: "Qualidade & Conformidade",
+          dpp: "Passaporte DPP",
+          navGov: "Governança",
+          reports: "Relatórios & Auditorias",
+          settings: "Definições",
+          newRequest: "+ Novo pedido",
+          signOut: "Terminar sessão",
+          openRequests: "Pedidos abertos",
+          dueSoon: "A expirar brevemente (< 7d)",
+          submitted: "Respostas recebidas",
+          quickActions: "Ações Rápidas",
+          createRequest: "Criar pedido de dados",
+          dppReadiness: "Passaporte Digital de Produto (DPP)",
+          dppDesc: "Verifique a conformidade das suas coleções com as normas europeias ESPR e CIRPASS 1.2."
+        }
+      };
+
+      function bt(key) {
+        const lang = state.lang || 'en';
+        return brandTranslations[lang]?.[key] || brandTranslations['en']?.[key] || brandTranslations['fr']?.[key] || key;
+      }
+
+      function brandLangSwitcher() {
+        return `<select class="org-select" id="brand-lang-select" onchange="setBrandLang(this.value)" style="margin-right:8px;font-family:inherit;font-weight:700;">
+          <option value="en" ${state.lang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
+          <option value="fr" ${state.lang === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
+          <option value="de" ${state.lang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch</option>
+          <option value="it" ${state.lang === 'it' ? 'selected' : ''}>🇮🇹 Italiano</option>
+          <option value="es" ${state.lang === 'es' ? 'selected' : ''}>🇪🇸 Español</option>
+          <option value="nl" ${state.lang === 'nl' ? 'selected' : ''}>🇳🇱 Nederlands</option>
+          <option value="pt" ${state.lang === 'pt' ? 'selected' : ''}>🇵🇹 Português</option>
+        </select>`;
+      }
+
+      function setBrandLang(lang) {
+        state.lang = lang;
+        localStorage.setItem('tracefab_lang', lang);
+        document.documentElement.lang = lang;
+        render();
+      }
+
+function render() {
         if (state.configError && !state.demo && !state.user) {
           app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>Connexion indisponible</h1><p>${esc(state.configError)}. Vérifiez Clerk et la configuration de l’API, ou ouvrez <code>?demo=1</code> pour parcourir l’interface.</p><button class="btn btn-secondary" data-action="retry">Réessayer</button></div></div>`; bind(); return;
         }

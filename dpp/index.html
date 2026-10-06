@@ -686,9 +686,20 @@
           <span>Paris, France</span>
         </div>
       </div>
-      <div class="badge-eu">
-        <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-        EU ESPR / DPP Conforme
+      <div style="display:flex;align-items:center;gap:12px;">
+        <select id="dpp-lang-select" onchange="applyDppLang(this.value)" style="background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);padding:6px 12px;border-radius:9999px;font-size:12px;font-family:inherit;font-weight:700;cursor:pointer;">
+          <option value="en">🇬🇧 English</option>
+          <option value="fr">🇫🇷 Français</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="it">🇮🇹 Italiano</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="nl">🇳🇱 Nederlands</option>
+          <option value="pt">🇵🇹 Português</option>
+        </select>
+        <div class="badge-eu">
+          <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          EU ESPR / DPP Conforme
+        </div>
       </div>
     </header>
 
@@ -1058,5 +1069,111 @@
       });
     })();
   </script>
+
+  <script>
+    const dppLangs = {
+      en: {
+        badgeEu: "EU ESPR / DPP Compliant",
+        verifiedOrigin: "✓ Verified Provenance",
+        composition: "Material Composition",
+        traceability: "Supply Chain Traceability",
+        operations: "Operations & Facilities",
+        circularity: "Circularity & Care",
+        repairScore: "Repairability Index",
+        carbon: "Environmental Footprint",
+        passcode: "SHA-256 Verified Seal",
+        viewCert: "View Audit Certificate"
+      },
+      fr: {
+        badgeEu: "EU ESPR / DPP Conforme",
+        verifiedOrigin: "✓ Provenance Vérifiée",
+        composition: "Composition des Matières",
+        traceability: "Traçabilité de la Chaîne",
+        operations: "Opérations & Ateliers",
+        circularity: "Circularité & Entretien",
+        repairScore: "Indice de Réparabilité",
+        carbon: "Empreinte Environnementale",
+        passcode: "Sceau Scellé SHA-256",
+        viewCert: "Voir le certificat d'audit"
+      },
+      de: {
+        badgeEu: "EU ESPR / DPP Konform",
+        verifiedOrigin: "✓ Verifizierte Herkunft",
+        composition: "Materialzusammensetzung",
+        traceability: "Lieferketten-Rückverfolgbarkeit",
+        operations: "Betriebe & Werkstätten",
+        circularity: "Kreislaufwirtschaft & Pflege",
+        repairScore: "Reparierbarkeitsindex",
+        carbon: "Ökologischer Fußabdruck",
+        passcode: "SHA-256 Verifiziertes Siegel",
+        viewCert: "Audit-Zertifikat ansehen"
+      },
+      it: {
+        badgeEu: "EU ESPR / DPP Conforme",
+        verifiedOrigin: "✓ Provenienza Verificata",
+        composition: "Composizione Materiali",
+        traceability: "Tracciabilità della Filiera",
+        operations: "Operazioni & Stabilimenti",
+        circularity: "Circolarità & Cura",
+        repairScore: "Indice di Riparabilità",
+        carbon: "Impronta Ambientale",
+        passcode: "Sigillo Verificato SHA-256",
+        viewCert: "Visualizza certificato audit"
+      },
+      es: {
+        badgeEu: "EU ESPR / DPP Conforme",
+        verifiedOrigin: "✓ Procedencia Verificada",
+        composition: "Composición de Materiales",
+        traceability: "Trazabilidad de la Cadena",
+        operations: "Operaciones e Instalaciones",
+        circularity: "Circularidad y Cuidado",
+        repairScore: "Índice de Reparabilidad",
+        carbon: "Huella Ambiental",
+        passcode: "Sello Verificado SHA-256",
+        viewCert: "Ver certificado de auditoría"
+      },
+      nl: {
+        badgeEu: "EU ESPR / DPP Conform",
+        verifiedOrigin: "✓ Geverifieerde Herkomst",
+        composition: "Materiaalsamenstelling",
+        traceability: "Traceerbaarheid Toeleveringsketen",
+        operations: "Bewerkingen & Faciliteiten",
+        circularity: "Circulariteit & Onderhoud",
+        repairScore: "Repareerbaarheidsindex",
+        carbon: "Milieu-voetafdruk",
+        passcode: "SHA-256 Geverifieerd Zegel",
+        viewCert: "Auditcertificaat bekijken"
+      },
+      pt: {
+        badgeEu: "EU ESPR / DPP Conforme",
+        verifiedOrigin: "✓ Proveniência Verificada",
+        composition: "Composição dos Materiais",
+        traceability: "Rastreabilidade da Cadeia",
+        operations: "Operações & Instalações",
+        circularity: "Circularidade & Cuidados",
+        repairScore: "Índice de Reparabilidade",
+        carbon: "Pegada Ambiental",
+        passcode: "Selo Verificado SHA-256",
+        viewCert: "Ver certificado de auditoria"
+      }
+    };
+
+    function applyDppLang(lang) {
+      if (!dppLangs[lang]) lang = 'en';
+      localStorage.setItem('tracefab_lang', lang);
+      document.documentElement.lang = lang;
+      const t = dppLangs[lang];
+      const badge = document.querySelector('.badge-eu');
+      if (badge) badge.innerHTML = `<svg fill="currentColor" viewBox="0 0 20 20" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg> ` + t.badgeEu;
+      const select = document.getElementById('dpp-lang-select');
+      if (select) select.value = lang;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('tracefab_lang') || 'en';
+      applyDppLang(saved);
+    });
+  </script>
+
 </body>
 </html>
