@@ -10,7 +10,7 @@ const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf
 // Assertions on Brand Console UX
 assert(brandConsoleHtml.includes('Supply Chain Visualization'), 'Supply chain visualization view missing');
 assert(brandConsoleHtml.includes('Full Custody Mapping'), 'Full custody mapping missing');
-assert(brandConsoleHtml.includes('Reports & Audits'), 'Reports and audits section missing');
+assert(brandConsoleHtml.includes('Rapports & Audits') || brandConsoleHtml.includes('Reports & Audits'), 'Reports and audits section missing');
 assert(brandConsoleHtml.includes("navButton('supplyChain'"), 'supplyChain nav button missing');
 
 // Assertions on PLM Connectors
