@@ -136,6 +136,35 @@
     .severity-info { background: var(--green-soft); color: var(--green); }
     .issue strong { display: block; font-size: 13px; }
     .issue p { margin: 4px 0 0; font-size: 12px; }
+    .pipeline { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 15px; margin-top: 15px; }
+    .dpp-hero { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: center; padding: 24px; background: white; border: 1px solid var(--line); border-radius: 18px; margin-bottom: 22px; }
+    .dpp-gauge-box { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-right: 1px solid #edf0eb; padding-right: 20px; }
+    .dpp-gauge-val { font-size: 48px; font-weight: 850; letter-spacing: -.06em; line-height: 1; }
+    .dpp-gauge-label { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-top: 6px; letter-spacing: .06em; }
+    .dpp-pillars { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 22px; }
+    .pillar-card { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+    .pillar-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .pillar-name { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .pillar-score { font-size: 18px; font-weight: 850; }
+    .pillar-bar-bg { width: 100%; height: 6px; background: #edf2ee; border-radius: 3px; overflow: hidden; margin-bottom: 12px; }
+    .pillar-bar-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width .3s ease; }
+    .pillar-items { display: grid; gap: 6px; }
+    .pillar-item { display: flex; align-items: center; justify-content: space-between; font-size: 12px; padding: 5px 0; border-top: 1px solid #f4f6f3; }
+    .pillar-item-label { display: flex; align-items: center; gap: 7px; color: #37473d; }
+    .check-icon { font-weight: 800; font-size: 12px; }
+    .check-icon.met { color: var(--green); }
+    .check-icon.unmet { color: var(--red); }
+    .tier-column { background: #fbfdfa; border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 11px; min-height: 240px; }
+    .tier-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #edf0eb; padding-bottom: 8px; }
+    .tier-title { font-size: 11px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; color: var(--green); }
+    .tier-badge { font-size: 10px; background: var(--green-soft); color: var(--green); padding: 2px 7px; border-radius: 6px; font-weight: 800; }
+    .node-card { background: white; border: 1px solid #e1e7e2; border-radius: 11px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.03); display: grid; gap: 7px; position: relative; }
+    .node-card:hover { border-color: #4da87d; box-shadow: 0 4px 12px rgba(88,168,135,.15); }
+    .node-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+    .node-type-pill { font-size: 9px; text-transform: uppercase; font-weight: 850; padding: 2px 6px; border-radius: 4px; background: #eef3ef; color: #44544b; }
+    .node-label { font-size: 13px; font-weight: 750; color: var(--ink); line-height: 1.3; }
+    .node-meta { font-size: 11px; color: var(--muted); }
+    .node-connector { display: flex; justify-content: center; align-items: center; color: #8ba093; font-size: 16px; margin: -4px 0; }
     .toast { position: fixed; right: 25px; bottom: 25px; z-index: 50; color: white; background: #19372d; border-radius: 12px; padding: 13px 16px; box-shadow: 0 12px 35px rgba(0,0,0,.2); font-size: 13px; max-width: 360px; }
     .toast.error { background: #8e3d3b; }
     .auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 25px; background: radial-gradient(circle at 10% 0%, #d9f1e4, transparent 32%), var(--paper); }
@@ -221,15 +250,36 @@
         selectedProductDetail: null,
         selectedSupplier: null,
         quality: null,
+        supplyChain: null,
+        selectedSupplyChainProduct: null,
+        dpp: null,
+        selectedDppProduct: null,
         modal: null,
+        modalIssueId: null,
         toast: null,
         demo: new URLSearchParams(location.search).has('demo'),
+      };
+
+      const PROCESS_LABELS = {
+        ginning: 'Égrenage (Ginning)',
+        spinning: 'Filature (Spinning)',
+        weaving: 'Tissage (Weaving)',
+        knitting: 'Tricotage (Knitting)',
+        dyeing: 'Teinture (Dyeing)',
+        printing: 'Impression (Printing)',
+        finishing: 'Ennoblissement (Finishing)',
+        cutting: 'Coupe (Cutting)',
+        sewing: 'Confection (Sewing)',
+        assembly: 'Assemblage (Assembly)',
+        laundering: 'Lavage (Laundering)',
+        packaging: 'Conditionnement (Packaging)',
       };
 
       const labels = {
         draft: 'Brouillon', sent: 'Envoyée', in_progress: 'En cours', submitted: 'Soumise',
         changes_requested: 'À corriger', approved: 'Approuvée', cancelled: 'Annulée',
-        verified_by_reviewer: 'Vérifiée', needs_review: 'À revoir', open: 'Ouverte', acknowledged: 'Acquittée', waived: 'Dérogation', resolved: 'Résolue'
+        verified_by_reviewer: 'Vérifiée', needs_review: 'À revoir', open: 'Ouverte', acknowledged: 'Acquittée', waived: 'Dérogation', resolved: 'Résolue',
+        not_started: 'Non démarré', data_ready: 'Prêt pour validation', ready_to_publish: 'Validé & Prêt à publier', review_required: 'Revue requise'
       };
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TF';
@@ -570,22 +620,22 @@
             <aside class="sidebar">
               <div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div>
               <nav class="nav">
-                <div class="nav-section-title">Core Console</div>
-                ${navButton('overview', '⌂', 'Overview')}
-                ${navButton('products', '◇', 'Products')}
-                ${navButton('suppliers', '◎', 'Suppliers')}
-                ${navButton('materials', '⬡', 'Materials')}
-                ${navButton('supplyChain', '⇄', 'Supply Chain')}
-                <div class="nav-section-title">Data & Compliance</div>
-                ${navButton('requests', '↗', 'Data Requests')}
-                ${navButton('questionnaires', '✎', 'Questionnaire Builder')}
+                <div class="nav-section-title">Console Principale</div>
+                ${navButton('overview', '⌂', 'Vue d’ensemble')}
+                ${navButton('products', '◇', 'Produits')}
+                ${navButton('suppliers', '◎', 'Fournisseurs')}
+                ${navButton('materials', '⬡', 'Matières')}
+                ${navButton('supplyChain', '☍', 'Traçabilité')}
+                <div class="nav-section-title">Collecte & Conformité</div>
+                ${navButton('requests', '↗', 'Demandes de données')}
+                ${navButton('questionnaires', '✎', 'Questionnaires')}
                 ${navButton('documents', '▤', 'Documents')}
                 ${navButton('certifications', '✓', 'Certifications')}
-                ${navButton('quality', '◒', 'Quality Center')}
-                ${navButton('dpp', '▣', 'DPP Readiness')}
-                <div class="nav-section-title">Governance</div>
-                ${navButton('reports', '☷', 'Reports & Audits')}
-                ${navButton('settings', '⚙', 'Settings')}
+                ${navButton('quality', '◒', 'Qualité & Conformité')}
+                ${navButton('dpp', '📋', 'Passeport DPP')}
+                <div class="nav-section-title">Gouvernance</div>
+                ${navButton('reports', '☷', 'Rapports & Audits')}
+                ${navButton('settings', '⚙', 'Paramètres')}
               </nav>
               <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">Se déconnecter</button></div></div></div>
             </aside>
@@ -598,23 +648,23 @@
           ${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
       function viewLabel() { return ({
-        overview: 'Overview',
-        products: 'Products',
-        suppliers: 'Suppliers',
-        materials: 'Materials & Fibers',
-        supplyChain: 'Supply Chain Map',
-        requests: 'Data Requests',
-        questionnaires: 'Questionnaire Builder (Form Studio)',
-        documents: 'Evidence Documents',
+        overview: 'Vue d’ensemble',
+        products: 'Produits',
+        suppliers: 'Fournisseurs',
+        materials: 'Matières & Fibres',
+        supplyChain: 'Supply Chain & Traçabilité',
+        requests: 'Demandes de données',
+        questionnaires: 'Créateur de Questionnaires',
+        documents: 'Preuves & Documents',
         certifications: 'Certifications',
-        quality: 'Quality Center',
-        dpp: 'DPP Readiness',
-        reports: 'Reports & Audits',
-        settings: 'Settings',
+        quality: 'Qualité & Conformité',
+        dpp: 'Passeport Numérique (DPP Readiness)',
+        reports: 'Rapports & Audits',
+        settings: 'Paramètres',
         requestDetail: 'Détail de la demande',
         productDetail: 'Détail du produit',
         supplierDetail: 'Détail du fournisseur'
-      })[state.view] || 'Overview'; }
+      })[state.view] || 'Vue d’ensemble'; }
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
       function render() {
@@ -630,10 +680,10 @@
           state.view === 'quality' ? qualityView() :
           state.view === 'suppliers' ? suppliersView() :
           state.view === 'materials' ? materialsConsoleView() :
-          state.view === 'supplyChain' ? supplyChainConsoleView() :
+          state.view === 'supplyChain' ? supplyChainView() :
           state.view === 'documents' ? documentsConsoleView() :
           state.view === 'certifications' ? certificationsConsoleView() :
-          state.view === 'dpp' ? dppConsoleView() :
+          state.view === 'dpp' ? dppView() :
           state.view === 'reports' ? reportsConsoleView() :
           state.view === 'settings' ? settingsConsoleView() :
           state.view === 'productDetail' ? productDetailView() :
@@ -1249,7 +1299,7 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
       }
 
       function suppliersView() {
@@ -1263,7 +1313,7 @@
         if (!detail?.product) return `<div class="empty"><div class="empty-icon">◇</div><strong>Produit introuvable</strong><button class="btn btn-secondary" data-view="products">Retour aux produits</button></div>`;
         const p = detail.product;
         const materialOptions = state.materials.map((material) => `<option value="${esc(material.id)}">${esc(material.name)}${material.materialType ? ` · ${esc(material.materialType)}` : ''}</option>`).join('');
-        return `<div class="page-head"><div><button class="link-button" data-view="products">← Retour aux produits</button><div class="eyebrow" style="margin-top:20px">Produit · v${esc(p.version)}</div><h1>${esc(p.name)}</h1><p>${esc(p.reference)} · ${esc(p.category || 'Catégorie non renseignée')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="product-revision">Créer une révision</button><button class="btn btn-primary" data-action="product-quality-from-detail">Ouvrir la qualité</button></div></div>
+        return `<div class="page-head"><div><button class="link-button" data-view="products">← Retour aux produits</button><div class="eyebrow" style="margin-top:20px">Produit · v${esc(p.version)}</div><h1>${esc(p.name)}</h1><p>${esc(p.reference)} · ${esc(p.category || 'Catégorie non renseignée')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="product-new-request" data-product-id="${esc(p.id)}">+ Demande fournisseur</button><button class="btn btn-secondary" data-action="product-supply-chain-from-detail">Graphe de traçabilité</button><button class="btn btn-secondary" data-action="product-dpp-from-detail">📋 Passeport DPP</button><button class="btn btn-secondary" data-action="product-revision">Créer une révision</button><button class="btn btn-primary" data-action="product-quality-from-detail">Ouvrir la qualité</button></div></div>
           <div class="grid split">
             <div class="card panel"><div class="panel-head"><h2>Données produit</h2><span class="meta">Les champs calculés restent contrôlés par Neon</span></div><form id="product-detail-form"><div class="form-grid"><label>Référence<input class="input" name="reference" value="${esc(p.reference)}" required></label><label>Nom<input class="input" name="name" value="${esc(p.name)}" required></label><label>Catégorie<input class="input" name="category" value="${esc(p.category || '')}"></label><label>SKU<input class="input" name="sku" value="${esc(p.sku || '')}"></label><label>Description<textarea class="textarea field-full" name="description" rows="4">${esc(p.description || '')}</textarea></label><label>Famille produit<input class="input" name="productFamily" value="${esc(p.productFamily || '')}"></label><label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || '')}"></label><label>Pays de conception<input class="input" name="countryOfDesign" maxlength="2" value="${esc(p.countryOfDesign || '')}"></label><label>Pays de fabrication<input class="input" name="countryOfManufacture" maxlength="2" value="${esc(p.countryOfManufacture || '')}"></label><label>Poids en grammes<input class="input" name="weightGrams" type="number" min="0" step="0.1" value="${esc(p.weightGrams || '')}"></label><label>Tailles<input class="input" name="sizeRange" value="${esc((p.sizeRange || []).join(', '))}" placeholder="S, M, L"></label></div><div class="form-actions"><button class="btn btn-primary">Enregistrer les données</button></div></form></div>
             <div class="card panel"><div class="panel-head"><div><h2>Composition</h2><p class="meta" style="margin:5px 0 0">Version courante · matériaux partagés par votre organisation</p></div><span class="status status-${state.materials.length ? 'approved' : 'draft'}">${state.materials.length} matériau(x)</span></div>
@@ -1290,7 +1340,302 @@
         return `<div class="page-head"><div><div class="eyebrow">Quality Center</div><h1>${esc(state.selectedProduct.name)}</h1><p>Le score décrit l’état de préparation des données. Il ne constitue pas une certification.</p></div><div class="actions"><button class="btn btn-secondary" data-action="select-quality-product">Changer de produit</button><button class="btn btn-primary" data-action="compute-quality">Recalculer le score</button></div></div>${score ? `<div class="grid score-grid">${scoreCard('Complétude', score.completeness)}${scoreCard('Fraîcheur', score.freshness)}${scoreCard('Preuves', score.documentationCoverage)}${scoreCard('Cohérence', score.consistency)}</div>` : `<div class="card empty"><div class="empty-icon">◒</div><strong>Score non calculé</strong><p>Lancez un premier calcul qualité pour ce produit.</p><button class="btn btn-primary btn-small" data-action="compute-quality">Calculer maintenant</button></div>`}${q ? `<div class="card panel"><div class="panel-head"><h2>Issues ouvertes</h2><span class="meta">${q.issues.length} issue(s)</span></div>${q.issues.length ? q.issues.map(issueCard).join('') : '<div class="empty"><strong>Aucune issue ouverte</strong><p>Les règles qualité ne remontent aucun blocage actif.</p></div>'}</div>` : ''}`;
       }
       function scoreCard(label, value) { return `<div class="card score"><div class="score-name">${label}</div><div class="score-value">${moneyless(value)}%</div><div class="progress"><span style="width:${pct(value)}%"></span></div></div>`; }
-      function issueCard(issue) { return `<div class="issue"><span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span><div><strong>${esc(issue.message)}</strong><p>${esc(issue.ruleKey)} · ${esc(labels[issue.status] || issue.status)}</p></div><span class="meta">${date(issue.detectedAt)}</span></div>`; }
+      function issueCard(issue) {
+        const isWaived = issue.status === 'waived';
+        const isAcknowledged = issue.status === 'acknowledged';
+        const waiverReason = issue.details?.waiver_reason || issue.waiverReason;
+        return `
+          <div class="issue">
+            <span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span>
+            <div>
+              <strong>${esc(issue.message)}</strong>
+              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(labels[issue.status] || issue.status)}</span> · <span class="meta">Détectée le ${date(issue.detectedAt)}</span></p>
+              ${isWaived && waiverReason ? `
+                <div class="item-response" style="margin-top:7px;background:#edf7f0;border:1px solid #cce8d5;border-radius:8px;font-size:11px;color:#285e42">
+                  <strong>Dérogation accordée :</strong> ${esc(waiverReason)}
+                </div>
+              ` : ''}
+              ${isAcknowledged ? `
+                <div class="meta" style="margin-top:5px;color:#3d6752">✓ Prise en compte et acquittée par l’équipe qualité${issue.acknowledgedAt ? ` le ${date(issue.acknowledgedAt)}` : ''}.</div>
+              ` : ''}
+            </div>
+            <div class="actions" style="justify-content:flex-end">
+              ${issue.status === 'open' ? `
+                <button class="btn btn-secondary btn-small" data-action="acknowledge-issue" data-issue-id="${esc(issue.id)}">Acquitter</button>
+                <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">Déroger (Waive)</button>
+              ` : isAcknowledged ? `
+                <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">Déroger (Waive)</button>
+              ` : `
+                <span class="status status-approved" style="font-size:10px">Dérogation active</span>
+              `}
+            </div>
+          </div>
+        `;
+      }
+
+      function supplyChainView() {
+        if (!state.selectedSupplyChainProduct) {
+          return `<div class="page-head"><div><div class="eyebrow">Supply Chain Graph</div><h1>Traçabilité de la chaîne de valeur</h1><p>Sélectionnez un produit pour explorer et cartographier sa chaîne d’approvisionnement multi-rangs (Tier 4 à Tier 0).</p></div></div>
+            <div class="card panel"><label>Produit<select class="select" id="supply-chain-product-select"><option value="">Choisir un produit…</option>${state.products.map((p) => `<option value="${esc(p.id)}">${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label></div>`;
+        }
+
+        const p = state.selectedSupplyChainProduct;
+        const sc = state.supplyChain || { graph: { nodes: [], links: [] }, summary: { nodeCount: 0, linkCount: 0, documentationRate: 0, stagesCoveredCount: 0 }, stages: { tier4_raw_materials: [], tier3_spinning: [], tier2_fabric: [], tier1_assembly: [], tier0_product: [], other_nodes: [] } };
+        const summary = sc.summary || { nodeCount: 0, linkCount: 0, documentationRate: 0, stagesCoveredCount: 0 };
+        const nodes = sc.graph?.nodes || [];
+        const links = sc.graph?.links || [];
+        const stages = sc.stages || { tier4_raw_materials: [], tier3_spinning: [], tier2_fabric: [], tier1_assembly: [], tier0_product: [], other_nodes: [] };
+
+        const renderNodeCard = (node) => {
+          const processLabel = PROCESS_LABELS[node.process_code] || node.process_code || '';
+          const entityInfo = node.site_name ? `${node.site_name} (${node.site_country || ''})` : node.material_name ? `${node.material_name} · ${node.material_type || ''}` : node.organization_name ? node.organization_name : '';
+          return `<div class="node-card" data-node-id="${esc(node.id)}">
+            <div class="node-card-head">
+              <span class="node-type-pill">${esc(node.node_type)}</span>
+              <span class="status status-${esc(node.status)}">${esc(labels[node.status] || node.status)}</span>
+            </div>
+            <strong class="node-label">${esc(node.label)}</strong>
+            ${processLabel ? `<div class="node-meta">⚙ ${esc(processLabel)}</div>` : ''}
+            ${entityInfo ? `<div class="node-meta">📍 ${esc(entityInfo)}</div>` : ''}
+            ${node.source_document_id ? `<div class="node-meta"><a href="/api/documents/${encodeURIComponent(node.source_document_id)}/download" target="_blank" class="link-button">📄 Preuve documentaire</a></div>` : '<div class="node-meta" style="color:#b26a27">⚠ Non documenté</div>'}
+          </div>`;
+        };
+
+        const renderTierCol = (title, badge, items) => `
+          <div class="tier-column">
+            <div class="tier-header">
+              <span class="tier-title">${esc(title)}</span>
+              <span class="tier-badge">${items.length}</span>
+            </div>
+            ${items.length ? items.map(renderNodeCard).join('') : '<div class="empty" style="padding:25px 5px;font-size:11px">Aucune étape</div>'}
+          </div>
+        `;
+
+        return `
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Supply Chain Graph · Traçabilité</div>
+              <h1>${esc(p.name)}</h1>
+              <p>${esc(p.reference)} · Chaîne de transformation du rang 4 au produit fini</p>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" data-action="select-supply-chain-product">Changer de produit</button>
+              <button class="btn btn-secondary" data-action="new-chain-node">+ Nœud</button>
+              <button class="btn btn-secondary" data-action="new-chain-link" ${nodes.length >= 2 ? '' : 'disabled'}>+ Lien</button>
+              <button class="btn btn-primary" data-action="generate-baseline-chain">Générer la chaîne de base</button>
+            </div>
+          </div>
+
+          <div class="grid score-grid">
+            <div class="card score"><div class="score-name">Étapes / Nœuds</div><div class="score-value">${summary.nodeCount}</div><div class="node-meta">points de traçabilité</div></div>
+            <div class="card score"><div class="score-name">Flux / Liens</div><div class="score-value">${summary.linkCount}</div><div class="node-meta">relations de chaîne</div></div>
+            <div class="card score"><div class="score-name">Preuves documentées</div><div class="score-value">${summary.documentationRate}%</div><div class="progress"><span style="width:${pct(summary.documentationRate)}%"></span></div></div>
+            <div class="card score"><div class="score-name">Procédés couverts</div><div class="score-value">${summary.stagesCoveredCount}</div><div class="node-meta">filature, tissage, confection…</div></div>
+          </div>
+
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h2>Pipeline de Transformation Multi-Rangs</h2>
+                <p class="meta" style="margin:4px 0 0">Visualisation chronologique des matières premières, ateliers de transformation et sites de confection.</p>
+              </div>
+              <span class="status status-${nodes.length ? 'approved' : 'draft'}">${nodes.length ? 'Graphe actif' : 'Vide'}</span>
+            </div>
+
+            ${nodes.length ? `
+              <div class="pipeline">
+                ${renderTierCol('Tier 4 · Matières', 'Fibre', stages.tier4_raw_materials)}
+                ${renderTierCol('Tier 3 · Filature', 'Fil', stages.tier3_spinning)}
+                ${renderTierCol('Tier 2 · Tissage / Teinture', 'Étoffe', stages.tier2_fabric)}
+                ${renderTierCol('Tier 1 · Confection', 'Atelier', stages.tier1_assembly)}
+                ${renderTierCol('Tier 0 · Produit Fini', 'Packaging', stages.tier0_product)}
+              </div>
+            ` : `
+              <div class="empty">
+                <div class="empty-icon">☍</div>
+                <strong>Aucune étape dans la chaîne de traçabilité</strong>
+                <p>Initialisez la chaîne automatiquement à partir des composants de ce produit ou ajoutez des étapes manuellement.</p>
+                <button class="btn btn-primary" data-action="generate-baseline-chain" style="margin-top:10px">Générer la chaîne de base depuis la composition</button>
+              </div>
+            `}
+          </div>
+
+          <div class="card panel" style="margin-top:17px">
+            <div class="panel-head">
+              <div>
+                <h2>Flux & Liens de Traçabilité (${links.length})</h2>
+                <p class="meta" style="margin:4px 0 0">Relations transactionnelles entre les étapes successives de la chaîne d’approvisionnement.</p>
+              </div>
+              <button class="btn btn-secondary btn-small" data-action="new-chain-link" ${nodes.length >= 2 ? '' : 'disabled'}>+ Ajouter un lien</button>
+            </div>
+            ${links.length ? `
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ordre</th>
+                      <th>Étape Source</th>
+                      <th>Lien</th>
+                      <th>Étape Cible</th>
+                      <th>Statut</th>
+                      <th>Preuve</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${links.map((link) => {
+                      const src = nodes.find((n) => n.id === link.source_node_id);
+                      const tgt = nodes.find((n) => n.id === link.target_node_id);
+                      return `<tr>
+                        <td><strong>${esc(link.sequence_number ?? '—')}</strong></td>
+                        <td><strong>${esc(src?.label || link.source_node_id)}</strong><div class="meta">${esc(src?.node_type || '')}</div></td>
+                        <td><span class="node-type-pill">${esc(link.link_type)}</span></td>
+                        <td><strong>${esc(tgt?.label || link.target_node_id)}</strong><div class="meta">${esc(tgt?.node_type || '')}</div></td>
+                        <td><span class="status status-${esc(link.status)}">${esc(labels[link.status] || link.status)}</span></td>
+                        <td>${link.evidence_document_id ? `<a href="/api/documents/${encodeURIComponent(link.evidence_document_id)}/download" target="_blank" class="link-button">📄 Preuve</a>` : '<span class="meta">—</span>'}</td>
+                        <td style="text-align:right"><button class="btn btn-danger btn-small" data-delete-chain-link="${esc(link.id)}">Supprimer</button></td>
+                      </tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : '<div class="empty" style="padding:20px 0"><p>Aucun lien directionnel enregistré.</p></div>'}
+          </div>
+        `;
+      }
+
+      function dppView() {
+        if (!state.selectedDppProduct) {
+          return `<div class="page-head"><div><div class="eyebrow">Digital Product Passport</div><h1>Préparation DPP (Passeport Numérique des Produits)</h1><p>Sélectionnez un produit textile pour auditer son niveau de conformité et de préparation opérationnelle aux exigences du Passeport Numérique européen (ESPR / DPP).</p></div></div>
+            <div class="card panel"><label>Sélectionner un produit<select class="select" id="dpp-product-select"><option value="">Choisir un produit du catalogue…</option>${state.products.map((p) => `<option value="${esc(p.id)}">${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label></div>`;
+        }
+
+        const p = state.selectedDppProduct;
+        const dpp = state.dpp || {
+          readinessStatus: 'not_started',
+          statusLabel: 'Non démarré',
+          completionScore: 0,
+          totalRequirements: 9,
+          metRequirements: 0,
+          blockingCount: 0,
+          pillars: {},
+          missingFields: [],
+          blockingIssues: [],
+          canMarkReadyToPublish: false,
+          isReadyToPublish: false,
+        };
+
+        const pillars = dpp.pillars || {};
+        const scoreColor = dpp.completionScore >= 80 ? 'var(--green)' : dpp.completionScore >= 50 ? '#c68b1a' : 'var(--red)';
+
+        return `<div class="page-head">
+            <div>
+              <div class="eyebrow">Passeport Numérique des Produits · DPP Readiness</div>
+              <h1>${esc(p.name)}</h1>
+              <p>Réf: <strong>${esc(p.reference)}</strong> · Version v${esc(p.version)} · Catégorie: ${esc(p.category || 'Non spécifiée')}</p>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" data-action="select-dpp-product">Changer de produit</button>
+              <button class="btn btn-secondary" data-action="compute-dpp">Recalculer la préparation</button>
+              ${dpp.canMarkReadyToPublish ? '<button class="btn btn-primary" data-action="publish-dpp">✓ Valider pour publication DPP</button>' : ''}
+            </div>
+          </div>
+
+          ${dpp.isReadyToPublish ? `
+            <div class="card panel" style="background:#edf7f0;border-color:#bce3c9;margin-bottom:20px;padding:16px 20px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-size:24px">🎉</span>
+                <div>
+                  <strong style="color:var(--green);font-size:15px">Passeport Numérique validé pour publication (Ready to publish)</strong>
+                  <p class="meta" style="margin:4px 0 0;color:#285e42">Ce produit remplit l’ensemble des exigences opérationnelles du profil <code>${esc(dpp.profileKey || 'textile_readiness_mvp')}</code>. La validation interne a été signée le ${date(dpp.reviewedAt || new Date())}.</p>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="dpp-hero">
+            <div class="dpp-gauge-box">
+              <div class="dpp-gauge-val" style="color:${scoreColor}">${moneyless(dpp.completionScore)}%</div>
+              <div class="dpp-gauge-label">Score Global DPP</div>
+              <div style="margin-top:10px">${status(dpp.readinessStatus)}</div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <span class="eyebrow">Profil Actif : ${esc(dpp.profileKey || 'textile_readiness_mvp')} v${esc(dpp.profileVersion || '1.0')}</span>
+                <span class="meta">${esc(dpp.metRequirements)} / ${esc(dpp.totalRequirements)} exigences satisfaites</span>
+              </div>
+              <div class="progress" style="height:10px;margin-bottom:12px"><span style="width:${pct(dpp.completionScore)}%;background:${scoreColor}"></span></div>
+              <p class="meta" style="margin:0;line-height:1.5">Évaluation multi-critères projetée sur 4 piliers normatifs : identification du modèle, traçabilité amont, composition certifiée et intégrité documentaire sans anomalie bloquante.</p>
+            </div>
+          </div>
+
+          <div class="dpp-pillars">
+            ${renderPillarCard(pillars.identification, '🏷️', '1. Identification & Caractéristiques')}
+            ${renderPillarCard(pillars.composition, '🧵', '2. Composition Matières')}
+            ${renderPillarCard(pillars.traceability, '☍', '3. Traçabilité Supply Chain')}
+            ${renderPillarCard(pillars.quality, '🛡️', '4. Qualité & Preuves')}
+          </div>
+
+          ${dpp.missingFields && dpp.missingFields.length ? `
+            <div class="card panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Exigences Restantes à Compléter (${dpp.missingFields.length})</h2>
+                  <p class="meta" style="margin:4px 0 0">Actions requises avant de pouvoir certifier le passeport en statut Prêt pour validation.</p>
+                </div>
+                <span class="status status-changes_requested">${dpp.blockingCount} bloquant(s)</span>
+              </div>
+              <div class="item-list">
+                ${dpp.missingFields.map((m) => `
+                  <div class="item">
+                    <div>
+                      <h3>${esc(m.label || m.key)} ${m.blocking ? '<span style="color:var(--red)">*</span>' : ''}</h3>
+                      <p class="meta">Code d’exigence : <code>${esc(m.key)}</code> · ${m.blocking ? 'Obligatoire pour la publication' : 'Recommandé'}</p>
+                    </div>
+                    <div>
+                      <span class="severity ${m.blocking ? 'severity-blocking' : 'severity-info'}">${m.blocking ? 'Bloquant' : 'Recommandé'}</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : `
+            <div class="card panel" style="text-align:center;padding:28px">
+              <span style="font-size:32px">✨</span>
+              <h2 style="margin:10px 0 6px">Toutes les exigences opérationnelles sont satisfaites !</h2>
+              <p class="meta">Aucun point bloquant ou manquant n’a été détecté pour ce profil produit.</p>
+              ${dpp.canMarkReadyToPublish ? '<button class="btn btn-primary" data-action="publish-dpp" style="margin-top:14px">Valider le passeport pour publication</button>' : ''}
+            </div>
+          `}
+        `;
+      }
+
+      function renderPillarCard(pillar, defaultIcon, defaultTitle) {
+        if (!pillar) return '';
+        const pctVal = pillar.metPercent || 0;
+        const color = pctVal === 100 ? 'var(--green)' : pctVal >= 50 ? '#c68b1a' : 'var(--red)';
+        return `
+          <div class="pillar-card">
+            <div class="pillar-head">
+              <div class="pillar-name"><span>${esc(pillar.icon || defaultIcon)}</span> ${esc(pillar.name || defaultTitle)}</div>
+              <div class="pillar-score" style="color:${color}">${moneyless(pctVal)}%</div>
+            </div>
+            <div class="pillar-bar-bg"><div class="pillar-bar-fill" style="width:${pct(pctVal)}%;background:${color}"></div></div>
+            <p class="meta" style="margin-bottom:12px">${esc(pillar.description || '')}</p>
+            <div class="pillar-items">
+              ${(pillar.items || []).map((it) => `
+                <div class="pillar-item">
+                  <span class="pillar-item-label">
+                    <span class="check-icon ${it.met ? 'met' : 'unmet'}">${it.met ? '✓' : '✗'}</span>
+                    ${esc(it.label)}
+                  </span>
+                  <span class="meta">${it.met ? '<span style="color:var(--green)">Conforme</span>' : '<span style="color:var(--red)">Manquant</span>'}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
 
       function requestDetailView() {
         const r = state.selectedRequest;
@@ -1304,6 +1649,7 @@
               ${status(r.status)}
               <span class="meta">${esc(r.questionnaireKey)} · v${esc(r.questionnaireVersion)}</span>
               <span class="meta">Échéance : ${date(r.dueAt)}</span>
+              ${r.productId ? `<span class="meta">Produit : <strong><button class="link-button" data-product-id="${esc(r.productId)}" style="display:inline;padding:0;font-size:inherit">${esc(state.products.find((p) => p.id === r.productId)?.name || r.productId)}</button></strong></span>` : ''}
               <span class="cert-pill">Piste d'audit Neon active</span>
             </div>
           </div>
@@ -1422,7 +1768,13 @@
         if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>Nouveau produit</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>Référence<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>Nom<input class="input" name="name" required placeholder="Essentiel coton"></label><label>Catégorie<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer le produit</button></div></form></div></div>`;
         if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Écosystème</div><h2>Inviter un fournisseur</h2></div><button class="close" data-action="close-modal">×</button></div><p>Un lien d’activation sera généré côté serveur. Le token reste privé et n’est jamais persisté en clair.</p><form id="supplier-form"><div class="form-grid"><label class="field-full">Email professionnel<input class="input" name="email" type="email" required placeholder="contact@fournisseur.com"></label><label>Nom légal<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>Nom affiché<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>Pays<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>Organisation marque<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Envoyer l’invitation</button></div></form></div></div>`;
         if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>Créer un protocole d'audit personnalisé</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">Titre du questionnaire<input class="input" name="title" required placeholder="ex: Audit Rejets Eaux Usées & Teintures"></label><label>Identifiant unique (slug)<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>Catégorie RSE<select class="select" name="category"><option value="Chimie & Rejets">Chimie & Rejets</option><option value="Matières & Traçabilité">Matières & Traçabilité</option><option value="Social & Éthique">Social & Éthique</option><option value="Empreinte Carbone">Empreinte Carbone</option></select></label><label class="field-full">Description de l'audit<textarea class="textarea" name="description" rows="3" required placeholder="Expliquez aux fournisseurs les justificatifs de laboratoire attendus..."></textarea></label><label>Type de premier champ requis<select class="select" name="firstFieldType"><option value="document_proof">Preuve Documentaire scellée (avec OCR)</option><option value="composition_table">Tableau de composition 100%</option><option value="facility_select">Sélecteur de site de production</option></select></label><label>Champ obligatoire<select class="select" name="required"><option value="true">Oui (bloquant pour le score)</option><option value="false">Optionnel</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button type="submit" class="btn btn-primary">Publier le Questionnaire</button></div></form></div></div>`;
-      if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Collecte</div><h2>Nouvelle demande de données</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">Titre<input class="input" name="title" required placeholder="Données produit — collection automne"></label><label>Fournisseur<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label>Date d’échéance<input class="input" name="dueAt" type="date"></label><label>Organisation marque<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer et préparer</button></div></form></div></div>`;
+        if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Collecte</div><h2>Nouvelle demande de données</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">Titre<input class="input" name="title" required placeholder="Données produit — collection automne"></label><label>Fournisseur<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label class="field-full">Produit associé (optionnel)<select class="select" name="productId"><option value="">Aucun produit associé (questionnaire général)</option>${state.products.map((p) => `<option value="${esc(p.id)}" ${state.modalProductId === p.id ? 'selected' : ''}>${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label><label>Date d’échéance<input class="input" name="dueAt" type="date"></label><label>Organisation marque<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer et préparer</button></div></form></div></div>`;
+        if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>Ajouter une étape / nœud</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">Libellé de l’étape<input class="input" name="label" required placeholder="ex. Filature de Barcelos ou Coton bio GOTS"></label><label>Type de nœud<select class="select" name="nodeType" required><option value="process">Procédé / Transformation</option><option value="site">Site industriel fournisseur</option><option value="material">Matière première</option><option value="organization">Organisation partenaire</option></select></label><label>Procédé textile<select class="select" name="processCode"><option value="">Aucun / Autre</option><option value="ginning">Égrenage (Ginning)</option><option value="spinning">Filature (Spinning)</option><option value="weaving">Tissage (Weaving)</option><option value="knitting">Tricotage (Knitting)</option><option value="dyeing">Teinture (Dyeing)</option><option value="finishing">Ennoblissement (Finishing)</option><option value="cutting">Coupe (Cutting)</option><option value="sewing">Confection (Sewing)</option><option value="assembly">Assemblage (Assembly)</option><option value="packaging">Packaging (Packaging)</option></select></label><label class="field-full">Matière associée (si type matière)<select class="select" name="materialId"><option value="">Aucune</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">Fournisseur / Organisation<select class="select" name="organizationId"><option value="">Aucune</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Ajouter le nœud</button></div></form></div></div>`;
+        if (type === 'new-chain-link') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>Relier deux étapes</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-link-form"><div class="form-grid"><label class="field-full">Étape Source (Amont)<select class="select" name="sourceNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label class="field-full">Étape Cible (Aval)<select class="select" name="targetNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label>Type de relation<select class="select" name="linkType" required><option value="next_step">Étape suivante (next_step)</option><option value="transformed_at">Transformé à (transformed_at)</option><option value="manufactured_at">Fabriqué à (manufactured_at)</option><option value="sourced_from">Sourcé depuis (sourced_from)</option><option value="contains">Contient (contains)</option></select></label><label>Ordre séquentiel<input class="input" name="sequenceNumber" type="number" min="1" step="1" placeholder="1"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer le lien</button></div></form></div></div>`;
+        if (type === 'waive-issue') {
+          const issue = state.quality?.issues?.find((i) => i.id === state.modalIssueId);
+          return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Qualité · Dérogation</div><h2>Accorder une dérogation</h2></div><button class="close" data-action="close-modal">×</button></div><p>Une dérogation permet d’exempter cette anomalie des pénalités de cohérence et de débloquer le Passeport DPP. Un motif d’au moins 10 caractères est requis pour la traçabilité d’audit.</p>${issue ? `<div class="notice" style="margin-bottom:15px;background:#fdfcf9;border:1px solid #f1ece1;padding:10px 14px;border-radius:8px"><strong>${esc(issue.message)}</strong><div class="meta">${esc(issue.ruleKey)} · Sévérité : ${esc(issue.severity)}</div></div>` : ''}<form id="waive-issue-form"><input type="hidden" name="issueId" value="${esc(state.modalIssueId)}"><div class="form-grid"><label class="field-full">Motif formel de dérogation (min. 10 caractères)<textarea class="textarea" name="reason" rows="3" required minlength="10" placeholder="ex. Dérogation accordée suite à l’audit physique du 06/10/2026. Preuve documentaire archivée sous la réf AUD-2026-08."></textarea></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Valider la dérogation</button></div></form></div></div>`;
+        }
         return '';
       }
 
@@ -1441,11 +1793,12 @@
       async function createRequest(form) {
         const data = Object.fromEntries(new FormData(form));
         const questionnaire = state.questionnaires.find((q) => q.key === data.questionnaireKey);
-        const body = { ...data, questionnaireVersion: questionnaire?.version || '1.0', dueAt: data.dueAt ? `${data.dueAt}T23:59:59.000Z` : null, idempotencyKey: `brand-console-${Date.now()}` };
-        if (state.demo) { const request = { id: `demo-${Date.now()}`, ...body, status: 'draft', completionPercentage: '0', createdAt: new Date().toISOString() }; state.requests.unshift(request); state.modal = null; notify('Demande créée en mode démonstration.'); return; }
+        const productId = data.productId ? String(data.productId).trim() : null;
+        const body = { ...data, productId: productId || null, questionnaireVersion: questionnaire?.version || '1.0', dueAt: data.dueAt ? `${data.dueAt}T23:59:59.000Z` : null, idempotencyKey: `brand-console-${Date.now()}` };
+        if (state.demo) { const request = { id: `demo-${Date.now()}`, ...body, status: 'draft', completionPercentage: '0', createdAt: new Date().toISOString() }; state.requests.unshift(request); state.modal = null; state.modalProductId = null; notify('Demande créée en mode démonstration.'); return; }
         const created = await api('/api/data-requests', { method: 'POST', body: JSON.stringify(body) });
         await api(`/api/data-requests/${created.request.id}/items/from-template`, { method: 'POST', body: '{}' });
-        state.modal = null; await sync(); await openRequest(created.request.id); notify('Demande créée et questionnaire préparé.');
+        state.modal = null; state.modalProductId = null; await sync(); await openRequest(created.request.id); notify('Demande créée et questionnaire préparé.');
       }
       async function openRequest(id) {
         state.view = 'requestDetail';
@@ -1541,8 +1894,98 @@
       }
       async function refreshDetail() { if (!state.selectedRequest) return; if (!state.demo) state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}`)).request; render(); }
       async function sendRequest() { if (!state.selectedRequest) return; if (!state.demo) await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}/send`, { method: 'POST' }); state.selectedRequest.status = 'sent'; state.modal = null; await refreshDetail(); notify('Demande envoyée au fournisseur.'); }
-      async function loadQuality(id) { state.selectedProduct = state.products.find((p) => p.id === id); state.view = 'quality'; state.quality = null; render(); if (!state.demo) { try { state.quality = await api(`/api/quality/products/${encodeURIComponent(id)}`); render(); } catch (e) { notify(e.message, true); } } else { state.quality = { score: { completeness: 82, freshness: 78, documentationCoverage: 61, consistency: 90 }, issues: [{ severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', message: 'Certaines données produit n’ont pas encore de preuve documentaire.', detectedAt: new Date().toISOString() }] }; render(); } }
-      async function computeQuality() { if (!state.selectedProduct) return; if (!state.demo) state.quality = await api(`/api/quality/products/${encodeURIComponent(state.selectedProduct.id)}`, { method: 'POST', body: JSON.stringify({ calculationVersion: 'product_quality_v1' }) }); notify('Score qualité recalculé.'); render(); }
+      async function loadQuality(id) {
+        state.selectedProduct = state.products.find((p) => p.id === id);
+        state.view = 'quality';
+        state.quality = null;
+        render();
+        if (!state.demo) {
+          try {
+            state.quality = await api(`/api/quality/products/${encodeURIComponent(id)}`);
+            render();
+          } catch (e) {
+            notify(e.message, true);
+          }
+        } else {
+          state.quality = {
+            score: { completeness: 82, freshness: 78, documentationCoverage: 61, consistency: 80 },
+            issues: [
+              { id: 'demo-issue-1', severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', message: 'Certaines données produit n’ont pas encore de preuve documentaire.', detectedAt: new Date().toISOString() },
+              { id: 'demo-issue-2', severity: 'blocking', status: 'open', ruleKey: 'product_expired_certification', message: 'Le certificat GOTS associé au composant principal est expiré.', detectedAt: new Date().toISOString() },
+            ],
+          };
+          render();
+        }
+      }
+
+      async function computeQuality() {
+        if (!state.selectedProduct) return;
+        if (state.demo) {
+          if (state.quality?.score) {
+            const hasBlocking = (state.quality.issues || []).some((i) => i.severity === 'blocking' && ['open', 'acknowledged'].includes(i.status));
+            state.quality.score.consistency = hasBlocking ? 70 : 100;
+          }
+          notify('Score qualité recalculé en mode démonstration.');
+          render();
+          return;
+        }
+        state.quality = await api(`/api/quality/products/${encodeURIComponent(state.selectedProduct.id)}`, {
+          method: 'POST',
+          body: JSON.stringify({ calculationVersion: 'product_quality_v1' }),
+        });
+        notify('Score qualité recalculé.');
+        render();
+      }
+
+      async function acknowledgeIssue(issueId) {
+        if (!state.selectedProduct) return;
+        if (state.demo) {
+          const issue = state.quality?.issues?.find((i) => i.id === issueId);
+          if (issue) {
+            issue.status = 'acknowledged';
+            issue.acknowledgedAt = new Date().toISOString();
+          }
+          notify('Anomalie qualité acquittée en mode démonstration.');
+          render();
+          return;
+        }
+        await api(`/api/quality-issues/${encodeURIComponent(issueId)}/acknowledge`, { method: 'POST' });
+        await loadQuality(state.selectedProduct.id);
+        notify('Anomalie qualité acquittée avec succès.');
+      }
+
+      async function waiveIssue(form) {
+        if (!state.selectedProduct) return;
+        const data = Object.fromEntries(new FormData(form));
+        const issueId = data.issueId;
+        const reason = (data.reason || '').trim();
+        if (reason.length < 10) {
+          notify('Le motif de dérogation doit comporter au moins 10 caractères.', true);
+          return;
+        }
+        if (state.demo) {
+          const issue = state.quality?.issues?.find((i) => i.id === issueId);
+          if (issue) {
+            issue.status = 'waived';
+            issue.details = { waiver_reason: reason, waived_at: new Date().toISOString() };
+            if (state.quality?.score) {
+              const hasBlocking = (state.quality.issues || []).some((i) => i.severity === 'blocking' && ['open', 'acknowledged'].includes(i.status));
+              state.quality.score.consistency = hasBlocking ? 70 : 100;
+            }
+          }
+          state.modal = null;
+          notify('Dérogation accordée en mode démonstration.');
+          render();
+          return;
+        }
+        await api(`/api/quality-issues/${encodeURIComponent(issueId)}/waive`, {
+          method: 'POST',
+          body: JSON.stringify({ reason }),
+        });
+        state.modal = null;
+        await computeQuality();
+        notify('Dérogation enregistrée avec succès.');
+      }
       async function reviewResponse(responseId, reviewStatus) {
         const comment = window.prompt(reviewStatus === 'verified_by_reviewer' ? 'Commentaire de vérification (facultatif)' : 'Indiquez la correction ou la preuve attendue', '') || '';
         if (state.demo) {
@@ -1565,35 +2008,325 @@
         notify(reviewStatus === 'verified_by_reviewer' ? 'Réponse vérifiée.' : 'Demande de correction envoyée.');
       }
 
+      function demoSupplyChain() {
+        const p = state.selectedSupplyChainProduct || state.products[0];
+        const nodes = [
+          { id: 'node-raw', node_type: 'material', label: 'Coton biologique certifié GOTS', process_code: 'ginning', status: 'documented', material_name: 'Coton bio', source_document_id: 'demo-doc-1' },
+          { id: 'node-spin', node_type: 'process', label: 'Filature · Fil 30/1 peigné haute résistance', process_code: 'spinning', status: 'documented', source_document_id: 'demo-doc-2' },
+          { id: 'node-weav', node_type: 'process', label: 'Tissage jersey & Teinture certifiée OEKO-TEX', process_code: 'weaving', status: 'verified_by_reviewer', source_document_id: 'demo-doc-3' },
+          { id: 'node-site', node_type: 'site', label: 'Atelier de Confection · Nhãn Textile (Barcelos, PT)', process_code: 'sewing', status: 'verified_by_reviewer', site_name: 'Nhãn Textile Factory', site_country: 'PT', site_city: 'Barcelos' },
+          { id: 'node-prod', node_type: 'product', label: `Produit fini · ${p?.name || 'T-Shirt Essentiel'}`, process_code: 'packaging', status: 'documented' },
+        ];
+        const links = [
+          { id: 'link-1', source_node_id: 'node-raw', target_node_id: 'node-spin', link_type: 'transformed_at', sequence_number: 1, status: 'documented' },
+          { id: 'link-2', source_node_id: 'node-spin', target_node_id: 'node-weav', link_type: 'next_step', sequence_number: 2, status: 'documented' },
+          { id: 'link-3', source_node_id: 'node-weav', target_node_id: 'node-site', link_type: 'next_step', sequence_number: 3, status: 'verified_by_reviewer' },
+          { id: 'link-4', source_node_id: 'node-site', target_node_id: 'node-prod', link_type: 'manufactured_at', sequence_number: 4, status: 'verified_by_reviewer' },
+        ];
+        return {
+          product: p,
+          graph: { product_id: p?.id || 'demo-p1', nodes, links },
+          stages: {
+            tier4_raw_materials: [nodes[0]],
+            tier3_spinning: [nodes[1]],
+            tier2_fabric: [nodes[2]],
+            tier1_assembly: [nodes[3]],
+            tier0_product: [nodes[4]],
+            other_nodes: [],
+          },
+          summary: {
+            nodeCount: 5,
+            linkCount: 4,
+            documentationRate: 100,
+            stagesCoveredCount: 5,
+            isCompleteChain: true,
+          },
+        };
+      }
+
+      async function loadSupplyChain(productId) {
+        state.selectedSupplyChainProduct = state.products.find((p) => p.id === productId) || null;
+        state.view = 'supplyChain';
+        state.supplyChain = null;
+        render();
+        if (state.demo) {
+          state.supplyChain = demoSupplyChain();
+          render();
+          return;
+        }
+        try {
+          state.supplyChain = await api(`/api/products/${encodeURIComponent(productId)}/supply-chain`);
+          render();
+        } catch (e) {
+          notify(e.message, true);
+        }
+      }
+
+      async function generateBaselineChain() {
+        if (!state.selectedSupplyChainProduct) return;
+        if (state.demo) {
+          state.supplyChain = demoSupplyChain();
+          notify('Chaîne de base générée en mode démonstration.');
+          render();
+          return;
+        }
+        try {
+          state.supplyChain = await api(`/api/products/${encodeURIComponent(state.selectedSupplyChainProduct.id)}/supply-chain/generate-baseline`, { method: 'POST' });
+          notify('Chaîne de traçabilité générée avec succès.');
+          render();
+        } catch (e) {
+          notify(e.message, true);
+        }
+      }
+
+      async function addChainNode(form) {
+        if (!state.selectedSupplyChainProduct) return;
+        const data = Object.fromEntries(new FormData(form));
+        const body = {
+          label: data.label,
+          nodeType: data.nodeType,
+          processCode: data.processCode || null,
+          materialId: data.materialId || null,
+          organizationId: data.organizationId || null,
+        };
+        if (state.demo) {
+          const newNode = { id: `node-${Date.now()}`, node_type: body.nodeType, label: body.label, process_code: body.processCode, status: 'declared' };
+          state.supplyChain.graph.nodes.push(newNode);
+          state.modal = null;
+          notify('Nœud ajouté en mode démonstration.');
+          render();
+          return;
+        }
+        await api(`/api/products/${encodeURIComponent(state.selectedSupplyChainProduct.id)}/supply-chain/nodes`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        state.modal = null;
+        await loadSupplyChain(state.selectedSupplyChainProduct.id);
+        notify('Nœud ajouté au graphe de traçabilité.');
+      }
+
+      async function addChainLink(form) {
+        if (!state.selectedSupplyChainProduct) return;
+        const data = Object.fromEntries(new FormData(form));
+        const body = {
+          sourceNodeId: data.sourceNodeId,
+          targetNodeId: data.targetNodeId,
+          linkType: data.linkType,
+          sequenceNumber: data.sequenceNumber ? Number(data.sequenceNumber) : null,
+        };
+        if (state.demo) {
+          const newLink = { id: `link-${Date.now()}`, source_node_id: body.sourceNodeId, target_node_id: body.targetNodeId, link_type: body.linkType, sequence_number: body.sequenceNumber, status: 'declared' };
+          state.supplyChain.graph.links.push(newLink);
+          state.modal = null;
+          notify('Lien ajouté en mode démonstration.');
+          render();
+          return;
+        }
+        await api(`/api/products/${encodeURIComponent(state.selectedSupplyChainProduct.id)}/supply-chain/links`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        state.modal = null;
+        await loadSupplyChain(state.selectedSupplyChainProduct.id);
+        notify('Lien créé avec succès.');
+      }
+
+      async function deleteChainLink(linkId) {
+        if (!state.selectedSupplyChainProduct) return;
+        if (state.demo) {
+          state.supplyChain.graph.links = state.supplyChain.graph.links.filter((l) => l.id !== linkId);
+          notify('Lien supprimé en mode démonstration.');
+          render();
+          return;
+        }
+        await api(`/api/products/${encodeURIComponent(state.selectedSupplyChainProduct.id)}/supply-chain/links/${encodeURIComponent(linkId)}`, {
+          method: 'DELETE',
+        });
+        await loadSupplyChain(state.selectedSupplyChainProduct.id);
+        notify('Lien supprimé.');
+      }
+
+      function demoDpp() {
+        const p = state.selectedDppProduct || state.products[0];
+        return {
+          id: 'demo-dpp-rec-1',
+          productId: p?.id || 'demo-p1',
+          productVersion: p?.version || 1,
+          profileKey: 'textile_readiness_mvp',
+          profileVersion: '1.0',
+          readinessStatus: 'data_ready',
+          statusLabel: 'Prêt pour validation',
+          completionScore: 100,
+          totalRequirements: 9,
+          metRequirements: 9,
+          blockingCount: 0,
+          missingFields: [],
+          blockingIssues: [],
+          canMarkReadyToPublish: true,
+          isReadyToPublish: false,
+          computedAt: new Date().toISOString(),
+          reviewedAt: null,
+          reviewedBy: null,
+          pillars: {
+            identification: {
+              key: 'identification',
+              name: 'Identification & Caractéristiques',
+              description: 'Référence, libellé, description, catégorie et pays de confection.',
+              icon: '🏷️',
+              score: 100, total: 6, met: 6, metPercent: 100,
+              items: [
+                { key: 'product.reference', label: 'Référence produit (SKU / Réf)', met: true, blocking: true },
+                { key: 'product.name', label: 'Désignation commerciale', met: true, blocking: true },
+                { key: 'product.description', label: 'Description détaillée (min. 30 caractères)', met: true, blocking: true },
+                { key: 'product.category', label: 'Catégorie textile définie', met: true, blocking: true },
+                { key: 'product.country_of_manufacture', label: 'Pays de confection (code ISO-2)', met: true, blocking: true },
+                { key: 'product.data_ready', label: 'Préparation générale des données produit', met: true, blocking: true },
+              ],
+            },
+            composition: {
+              key: 'composition',
+              name: 'Composition Matières',
+              description: 'Répartition exhaustive et validée à 100% des fibres et matériaux.',
+              icon: '🧵',
+              score: 100, total: 1, met: 1, metPercent: 100,
+              items: [
+                { key: 'composition.complete', label: 'Composition matière exhaustive (total 100%)', met: true, blocking: true },
+              ],
+            },
+            traceability: {
+              key: 'traceability',
+              name: 'Traçabilité Supply Chain',
+              description: 'Graphe multi-rangs reliant les matières, filatures, ateliers et sites.',
+              icon: '☍',
+              score: 100, total: 1, met: 1, metPercent: 100,
+              items: [
+                { key: 'traceability.graph', label: 'Graphe de traçabilité multi-rangs actif', met: true, blocking: true },
+              ],
+            },
+            quality: {
+              key: 'quality',
+              name: 'Qualité & Preuves',
+              description: 'Absence d’anomalies critiques et validation documentaire.',
+              icon: '🛡️',
+              score: 100, total: 1, met: 1, metPercent: 100,
+              items: [
+                { key: 'quality.no_blocking_issues', label: 'Absence d’anomalie bloquante sur le score qualité', met: true, blocking: true },
+              ],
+            },
+          },
+        };
+      }
+
+      async function loadDpp(productId) {
+        state.selectedDppProduct = state.products.find((p) => p.id === productId) || null;
+        state.view = 'dpp';
+        state.dpp = null;
+        render();
+        if (state.demo) {
+          state.dpp = demoDpp();
+          render();
+          return;
+        }
+        try {
+          const res = await api(`/api/products/${encodeURIComponent(productId)}/dpp`);
+          state.dpp = res.dpp;
+          render();
+        } catch (e) {
+          notify(e.message, true);
+        }
+      }
+
+      async function computeDpp() {
+        if (!state.selectedDppProduct) return;
+        if (state.demo) {
+          state.dpp = demoDpp();
+          notify('Passeport DPP recalculé en mode démonstration.');
+          render();
+          return;
+        }
+        try {
+          const res = await api(`/api/products/${encodeURIComponent(state.selectedDppProduct.id)}/dpp`, {
+            method: 'POST',
+          });
+          state.dpp = res.dpp;
+          notify('Calcul de préparation DPP actualisé.');
+          render();
+        } catch (e) {
+          notify(e.message, true);
+        }
+      }
+
+      async function publishDpp() {
+        if (!state.selectedDppProduct) return;
+        if (!confirm('Confirmez-vous la validation de ce passeport produit pour publication ?')) return;
+        if (state.demo) {
+          state.dpp.readinessStatus = 'ready_to_publish';
+          state.dpp.statusLabel = 'Validé & Prêt à publier';
+          state.dpp.isReadyToPublish = true;
+          state.dpp.canMarkReadyToPublish = false;
+          state.dpp.reviewedAt = new Date().toISOString();
+          notify('Passeport DPP validé pour publication en mode démonstration.');
+          render();
+          return;
+        }
+        try {
+          const res = await api(`/api/products/${encodeURIComponent(state.selectedDppProduct.id)}/dpp/publish-review`, {
+            method: 'POST',
+          });
+          state.dpp = res.dpp;
+          notify('Passeport DPP validé pour publication avec succès !');
+          render();
+        } catch (e) {
+          notify(e.message, true);
+        }
+      }
+
       function bind() {
         document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => { state.view = el.dataset.view; state.selectedRequest = null; render(); }));
         document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async () => {
           const action = el.dataset.action;
           try {
             if (action === 'new-product') { state.modal = 'new-product'; render(); }
-            if (action === 'new-request') { state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierOrgId || el.dataset.supplierId; render(); }
+            if (action === 'new-request') { state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierOrgId || el.dataset.supplierId; state.modalProductId = null; render(); }
+            if (action === 'product-new-request') { state.modal = 'new-request'; state.modalProductId = el.dataset.productId; render(); }
             if (action === 'invite-supplier') { state.modal = 'invite-supplier'; render(); }
-            if (action === 'close-modal') { state.modal = null; render(); }
+            if (action === 'close-modal') { state.modal = null; state.modalProductId = null; render(); }
             if (action === 'retry') { state.configError = null; boot(); }
             if (action === 'refresh-detail') await refreshDetail();
             if (action === 'send-request') await sendRequest();
             if (action === 'select-quality-product') { state.selectedProduct = null; state.quality = null; render(); }
+            if (action === 'select-supply-chain-product') { state.selectedSupplyChainProduct = null; state.supplyChain = null; render(); }
+            if (action === 'select-dpp-product') { state.selectedDppProduct = null; state.dpp = null; render(); }
             if (action === 'compute-quality') await computeQuality();
+            if (action === 'compute-dpp') await computeDpp();
+            if (action === 'publish-dpp') await publishDpp();
+            if (action === 'generate-baseline-chain') await generateBaselineChain();
+            if (action === 'new-chain-node') { state.modal = 'new-chain-node'; render(); }
+            if (action === 'new-chain-link') { state.modal = 'new-chain-link'; render(); }
             if (action === 'product-revision') await reviseProduct();
             if (action === 'product-quality-from-detail') { state.selectedProduct = state.selectedProductDetail?.product; await loadQuality(state.selectedProduct?.id); }
+            if (action === 'product-supply-chain-from-detail') { await loadSupplyChain(state.selectedProductDetail?.product?.id); }
+            if (action === 'product-dpp-from-detail') { await loadDpp(state.selectedProductDetail?.product?.id); }
             if (action === 'signout' && state.clerk) await state.clerk.signOut();
           } catch (error) { notify(error.message, true); }
         }));
         document.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openRequest(el.dataset.requestId); }));
         document.querySelectorAll('[data-quality-product]').forEach((el) => el.addEventListener('click', () => loadQuality(el.dataset.qualityProduct)));
+        document.querySelectorAll('[data-dpp-product]').forEach((el) => el.addEventListener('click', () => loadDpp(el.dataset.dppProduct)));
         document.querySelectorAll('[data-product-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openProduct(el.dataset.productId); }));
         document.querySelectorAll('[data-supplier-id-view]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openSupplier(el.dataset.supplierIdView); }));
         document.querySelectorAll('[data-review-response]').forEach((el) => el.addEventListener('click', () => reviewResponse(el.dataset.reviewResponse, el.dataset.reviewStatus).catch((error) => notify(error.message, true))));
+        document.querySelectorAll('[data-delete-chain-link]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); deleteChainLink(el.dataset.deleteChainLink); }));
+        document.querySelectorAll('[data-action="acknowledge-issue"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); acknowledgeIssue(el.dataset.issueId).catch((err) => notify(err.message, true)); }));
+        document.querySelectorAll('[data-action="open-waive-modal"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); state.modal = 'waive-issue'; state.modalIssueId = el.dataset.issueId; render(); }));
         const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => { state.activeOrganizationId = org.value; sync(); });
         const search = document.getElementById('request-search'); const filter = document.getElementById('request-filter');
         const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); };
         search?.addEventListener('input', filterRequests); filter?.addEventListener('change', filterRequests);
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
+        document.getElementById('supply-chain-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadSupplyChain(e.target.value); });
+        document.getElementById('dpp-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadDpp(e.target.value); });
         document.getElementById('product-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('schema-binding-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveSchemaBinding(e.currentTarget).catch((err) => notify(err.message, true)); });
@@ -1625,6 +2358,9 @@
           render();
         });
         document.getElementById('request-form')?.addEventListener('submit', (e) => { e.preventDefault(); createRequest(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('chain-node-form')?.addEventListener('submit', (e) => { e.preventDefault(); addChainNode(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('chain-link-form')?.addEventListener('submit', (e) => { e.preventDefault(); addChainLink(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('waive-issue-form')?.addEventListener('submit', (e) => { e.preventDefault(); waiveIssue(e.currentTarget).catch((err) => notify(err.message, true)); });
       }
 
       async function boot() {

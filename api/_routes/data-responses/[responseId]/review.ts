@@ -4,6 +4,8 @@ import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, optionalString } from '../../../_lib/data-requests.js';
+import { DATA_POINT_SELECT, serializeDataPoint } from '../../../_lib/data-points.js';
+import { QUALITY_SCORE_SELECT, serializeQualityScore } from '../../../_lib/quality.js';
 
 type ReviewBody = {
   status?: string;
@@ -63,7 +65,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'invalid_review_status' });
     }
     const reviewComment = optionalString(body.reviewComment, 'review_comment', 4000);
-    const response = await withTracefabUserContext(user.id, user.email, async (tx) => {
+
+    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
       const rows = await tx.$queryRaw<ResponseRow[]>`
         SELECT *
         FROM tracefab_review_data_response(
@@ -72,12 +75,63 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${reviewComment}
         )
       `;
-      if (!rows[0]) throw new Error('data_response_review_failed');
-      return rows[0];
+      const reviewed = rows[0];
+      if (!reviewed) throw new Error('data_response_review_failed');
+
+      // Query parent request and field key to verify bridge execution
+      const item = await tx.data_request_items.findUnique({
+        where: { id: reviewed.data_request_item_id },
+        select: {
+          field_key: true,
+          status: true,
+          data_requests: {
+            select: {
+              id: true,
+              status: true,
+              product_id: true,
+              supplier_organization_id: true,
+            },
+          },
+        },
+      });
+
+      let dataPoint = null;
+      let qualityScore = null;
+
+      if (body.status === 'verified_by_reviewer' && item) {
+        if (item.data_requests.product_id) {
+          dataPoint = await tx.data_points.findFirst({
+            where: {
+              product_id: item.data_requests.product_id,
+              data_key: item.field_key,
+            },
+            orderBy: { version: 'desc' },
+            select: DATA_POINT_SELECT,
+          });
+
+          if (item.data_requests.status === 'approved') {
+            qualityScore = await tx.data_quality_scores.findFirst({
+              where: { product_id: item.data_requests.product_id },
+              orderBy: { computed_at: 'desc' },
+              select: QUALITY_SCORE_SELECT,
+            });
+          }
+        }
+      }
+
+      return {
+        response: reviewed,
+        request: item?.data_requests ? { id: item.data_requests.id, status: item.data_requests.status } : null,
+        dataPoint,
+        qualityScore,
+      };
     });
 
     return json(res, 200, {
-      response: serializeResponse(response),
+      response: serializeResponse(result.response),
+      request: result.request,
+      dataPoint: result.dataPoint ? serializeDataPoint(result.dataPoint) : null,
+      qualityScore: serializeQualityScore(result.qualityScore),
       delivery: { status: 'queued' },
     });
   } catch (error) {

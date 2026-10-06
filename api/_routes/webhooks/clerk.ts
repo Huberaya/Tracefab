@@ -1,7 +1,6 @@
 import { createClerkClient } from '@clerk/backend';
 import { verifyWebhook } from '@clerk/backend/webhooks';
 import { membership_role, organization_type } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
 import { prisma } from '../../_lib/prisma.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { json, methodNotAllowed } from '../../_lib/http.js';
@@ -83,17 +82,9 @@ function organizationData(data: ClerkEventData) {
 
 async function syncOrganization(data: ClerkEventData) {
   const org = organizationData(data);
-  return prisma.organizations.upsert({
-    where: { clerkOrganizationId: org.clerkOrganizationId },
-    create: {
-      clerkOrganizationId: org.clerkOrganizationId,
-      type: org.type,
-      legal_name: org.legalName,
-      display_name: org.displayName,
-      status: 'active',
-    },
-    update: { legal_name: org.legalName, display_name: org.displayName, status: 'active' },
-  });
+  const rows = await prisma.$queryRaw`SELECT * FROM tracefab_sync_clerk_organization(${org.clerkOrganizationId}, ${org.legalName}, ${org.displayName}, ${org.type}::organization_type)`;
+  if (!Array.isArray(rows) || !rows[0]) throw new Error('clerk_organization_sync_failed');
+  return rows[0];
 }
 
 function membershipData(data: ClerkEventData) {
@@ -107,47 +98,21 @@ function membershipData(data: ClerkEventData) {
   return { clerkOrganizationId, clerkUserId, clerkMembershipId, role };
 }
 
-async function logDirectoryAudit(organizationId: string, actorUserId: string | null, action: string, entityId: string | null, metadata: Record<string, unknown>) {
-  await prisma.audit_logs.create({ data: { organization_id: organizationId, actor_user_id: actorUserId, action, entity_type: 'clerk_directory', entity_id: entityId, metadata: metadata as Prisma.InputJsonValue } });
-}
-
 async function syncMembership(data: ClerkEventData) {
   const membership = membershipData(data);
   const user = await ensureUser(membership.clerkUserId, data);
-  const organization = await prisma.organizations.findUnique({ where: { clerkOrganizationId: membership.clerkOrganizationId } });
+  const organizationRows = await prisma.$queryRaw<Array<{ id: string }>>`SELECT id FROM organizations WHERE clerk_organization_id = ${membership.clerkOrganizationId}`;
+  const organization = organizationRows[0];
   if (!organization) throw new Error('clerk_organization_not_synced');
-  const existing = await prisma.organization_memberships.findUnique({ where: { clerkMembershipId: membership.clerkMembershipId } });
-  if (existing) {
-    const result = await prisma.organization_memberships.update({
-      where: { id: existing.id },
-      data: { organization_id: organization.id, user_id: user.id, status: 'active', joined_at: existing.joined_at ?? new Date() },
-    });
-    await logDirectoryAudit(organization.id, user.id, 'clerk.membership.sync', result.id, { source: 'clerk_webhook', clerkMembershipId: membership.clerkMembershipId });
-    return result;
-  }
-  const byUser = await prisma.organization_memberships.findUnique({ where: { organization_id_user_id: { organization_id: organization.id, user_id: user.id } } });
-  if (byUser) {
-    const result = await prisma.organization_memberships.update({
-      where: { id: byUser.id },
-      data: { clerkMembershipId: membership.clerkMembershipId, status: 'active', joined_at: byUser.joined_at ?? new Date() },
-    });
-    await logDirectoryAudit(organization.id, user.id, 'clerk.membership.sync', result.id, { source: 'clerk_webhook', clerkMembershipId: membership.clerkMembershipId });
-    return result;
-  }
-  const result = await prisma.organization_memberships.create({
-    data: { clerkMembershipId: membership.clerkMembershipId, organization_id: organization.id, user_id: user.id, role: membership.role, status: 'active', joined_at: new Date() },
-  });
-  await logDirectoryAudit(organization.id, user.id, 'clerk.membership.created', result.id, { source: 'clerk_webhook', clerkMembershipId: membership.clerkMembershipId });
-  return result;
+  const rows = await prisma.$queryRaw`SELECT * FROM tracefab_sync_clerk_membership(${membership.clerkMembershipId}, ${organization.id}::uuid, ${user.id}::uuid, ${membership.role}::membership_role)`;
+  if (!Array.isArray(rows) || !rows[0]) throw new Error('clerk_membership_sync_failed');
+  return rows[0];
 }
 
 async function revokeMembership(data: ClerkEventData) {
   const clerkMembershipId = stringValue(data.id);
   if (!clerkMembershipId) return;
-  const membership = await prisma.organization_memberships.findUnique({ where: { clerkMembershipId }, select: { id: true, organization_id: true, user_id: true } });
-  if (!membership) return;
-  await prisma.organization_memberships.update({ where: { id: membership.id }, data: { status: 'revoked' } });
-  await logDirectoryAudit(membership.organization_id, membership.user_id, 'clerk.membership.revoked', membership.id, { source: 'clerk_webhook', clerkMembershipId });
+  await prisma.$executeRaw`SELECT tracefab_revoke_clerk_membership(${clerkMembershipId})`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -155,9 +120,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!process.env.CLERK_WEBHOOK_SIGNING_SECRET?.trim()) return json(res, 503, { error: 'clerk_webhook_not_configured' });
 
   let eventType = 'unknown';
+  let verified = false;
   try {
-    const event = await verifyWebhook(requestForVerification(req, bodyText(req)), { signingSecret: process.env.CLERK_WEBHOOK_SIGNING_SECRET.trim() }) as unknown as ClerkWebhookEvent;
-    eventType = event.type || 'unknown';
+    const rawBody = bodyText(req);
+    try {
+      const unsignedPayload = JSON.parse(rawBody) as { type?: unknown };
+      eventType = stringValue(unsignedPayload.type) ?? 'unknown';
+    } catch {
+      // Signature verification below remains authoritative; this only improves safe diagnostics.
+    }
+    const event = await verifyWebhook(requestForVerification(req, rawBody), { signingSecret: process.env.CLERK_WEBHOOK_SIGNING_SECRET.trim() }) as unknown as ClerkWebhookEvent;
+    verified = true;
+    eventType = event.type || eventType;
     if (eventType === 'user.created' || eventType === 'user.updated') await upsertUserFromClerkEvent(event.data);
     else if (eventType === 'user.deleted') {
       const clerkUserId = stringValue(event.data.id);
@@ -177,7 +151,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, { ok: true, eventType });
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : 'unknown_error';
-    console.error('POST /api/webhooks/clerk failed', { eventType, errorCode });
-    return json(res, 400, { error: 'invalid_clerk_webhook' });
+    const databaseCode = typeof error === 'object' && error && 'code' in error && typeof error.code === 'string' && /^P\d+$/.test(error.code) ? `database_${error.code.toLowerCase()}` : null;
+    const publicError = !verified
+      ? 'invalid_clerk_webhook'
+      : (errorCode.startsWith('clerk_') ? errorCode : databaseCode || 'clerk_sync_failed');
+    console.error('POST /api/webhooks/clerk failed', { eventType, errorCode, databaseCode });
+    return json(res, 400, { error: publicError, eventType });
   }
 }

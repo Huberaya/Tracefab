@@ -8,3 +8,9 @@ coverage/
 .supabase/
 .DS_Store
 *.log
+uploads/
+.cache/
+.config/
+.npm/
+.sudo_as_admin_successful
+

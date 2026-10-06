@@ -16,7 +16,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const document = await tx.documents.findFirst({ where: { id: documentId, status: 'available' }, select: DOCUMENT_SELECT });
+      const accessRows = await tx.$queryRaw<Array<{ can_access: boolean }>>`
+        SELECT tracefab_can_access_document(${documentId}::uuid) AS can_access
+      `;
+      if (!accessRows[0]?.can_access) return null;
+
+      const document = await tx.documents.findFirst({
+        where: { id: documentId, status: 'available' },
+        select: DOCUMENT_SELECT,
+      });
       if (!document) return null;
       return { document, download: presignedDownload(document.storage_path) };
     });
