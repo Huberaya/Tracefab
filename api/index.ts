@@ -57,6 +57,7 @@ const routes: Route[] = [
   { pattern: /^questionnaires\/([^\/]+)$/, params: ['questionnaireKey'], load: () => import('./_routes/questionnaires/[questionnaireKey].js') },
   { pattern: /^questionnaires$/, params: [], load: () => import('./_routes/questionnaires.js') },
   { pattern: /^supplier\/certifications\/ocr\-extract$/, params: [], load: () => import('./_routes/supplier/certifications/ocr-extract.js') },
+  { pattern: /^supplier\/materials\/import\-bom$/, params: [], load: () => import('./_routes/supplier/materials/import-bom.js') },
   { pattern: /^supplier\/certifications\/([^\/]+)$/, params: ['certificationId'], load: () => import('./_routes/supplier/certifications/[certificationId].js') },
   { pattern: /^supplier\/certifications$/, params: [], load: () => import('./_routes/supplier/certifications.js') },
   { pattern: /^supplier\/shares$/, params: [], load: () => import('./_routes/supplier/shares.js') },

@@ -369,7 +369,53 @@
       function openRequests() { return state.requests.filter((request) => !['approved','cancelled'].includes(request.status)); }
       function shell(content) {
         const userName = state.user?.fullName || state.user?.email || 'Utilisateur';
-        return `${state.demo ? '<div class="demo-banner">Mode démonstration — ouvrez <code>?demo=0</code> pour connecter Clerk et les APIs Tracefab.</div>' : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
+        return `${state.demo ? '<div class="demo-banner">Mode démonstration — ouvrez <code>?demo=0</code> pour connecter Clerk et les APIs Tracefab.</div>' : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
+      }
+
+      function modalView(type) {
+        if (type === 'import-bom') {
+          return `<div class="modal-backdrop" style="display:grid;position:fixed;inset:0;background:rgba(7,18,14,0.65);backdrop-filter:blur(6px);z-index:200;place-items:center;padding:20px;">
+            <div class="card panel" style="max-width:700px;width:100%;box-shadow:var(--shadow-xl);border-radius:18px;max-height:90vh;overflow-y:auto;padding:28px;">
+              <div class="panel-head" style="margin-bottom:14px;">
+                <div>
+                  <div class="eyebrow">Ingestion Industrielle</div>
+                  <h2 style="font-size:20px;font-weight:800;margin-top:2px;">Importateur Excel / CSV (BOM & Lots)</h2>
+                  <p style="font-size:12.5px;color:var(--muted);margin-top:2px;">Collez votre nomenclature matière textile ou déposez votre tableau (séparateur point-virgule ou virgule).</p>
+                </div>
+                <button class="btn btn-secondary btn-small" onclick="state.modal=null;render();">✕ Fermer</button>
+              </div>
+
+              <div style="background:#f8faf8;border:1px solid #edf0eb;border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--muted);">
+                <strong style="color:var(--ink);display:block;margin-bottom:4px;">Format attendu des colonnes :</strong>
+                <code>Matiere; Pourcentage; Type; Pays; Standard; NumeroLicence; LotFournisseur</code>
+                <div style="margin-top:6px;">Exemple : <code>Coton Biologique; 85%; fiber; PT; GOTS; CU-881294; LOT-2026-089</code></div>
+              </div>
+
+              <form id="bom-import-form" onsubmit="handleBomImportSubmit(event)">
+                <div class="form-grid">
+                  <label class="field-full">
+                    Contenu CSV / Texte copié depuis Excel *
+                    <textarea class="textarea" id="bom-csv-input" rows="8" placeholder="Matiere; Pourcentage; Type; Pays; Standard; NumeroLicence; LotFournisseur
+Coton Biologique Peigné; 85%; fiber; PT; GOTS; CU-881294; LOT-2026-089
+Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required style="font-family:var(--font-mono);font-size:12px;"></textarea>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;" class="field-full">
+                    <input type="checkbox" id="bom-autosave" checked> Enregistrer automatiquement les composants dans mon catalogue de matériaux
+                  </label>
+                </div>
+
+                <div id="bom-preview-area" style="margin-top:16px;display:none;"></div>
+
+                <div class="form-actions" style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px;">
+                  <button type="button" class="btn btn-secondary" onclick="state.modal=null;render();">Annuler</button>
+                  <button type="button" class="btn btn-secondary" onclick="previewBomCsv()">Vérifier la nomenclature (100%)</button>
+                  <button type="submit" class="btn btn-primary" id="bom-submit-btn">📥 Importer & Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>`;
+        }
+        return '';
       }
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
       function render() {
@@ -408,7 +454,7 @@
         return `<div class="page-head"><div><div class="eyebrow">Déclarations fournisseur</div><h1>Certificats</h1><p>Déclarez vos standards et dates de validité. La présence d’un certificat ne signifie pas qu’il est vérifié.</p></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.certifications.length} certificat(s)</h2><span class="meta">Statut de déclaration</span></div>${state.certifications.length ? `<div class="item-list">${state.certifications.map((certification) => `<form class="item certification-edit-form" data-certification-id="${esc(certification.id)}"><div class="item-head"><div><h3>${esc(certification.standardName)}</h3><p>${esc(certification.standardCode || 'Code non renseigné')} · ${esc(certification.issuerName || 'Émetteur non renseigné')}</p></div>${status(certification.status)}</div><div class="form-grid" style="margin-top:14px"><label>Standard<input class="input" name="standardName" value="${esc(certification.standardName)}" required></label><label>Code<input class="input" name="standardCode" value="${esc(certification.standardCode || '')}"></label><label>Émetteur<input class="input" name="issuerName" value="${esc(certification.issuerName || '')}"></label><label>Numéro<input class="input" name="certificateNumber" value="${esc(certification.certificateNumber || '')}"></label><label>Date d’émission<input class="input" name="issuedAt" type="date" value="${esc(String(certification.issuedAt || '').slice(0,10))}"></label><label>Date d’expiration<input class="input" name="expiresAt" type="date" value="${esc(String(certification.expiresAt || '').slice(0,10))}"></label><label class="field-full">Preuve privée<select class="select" name="documentId"><option value="">Aucune preuve</option>${state.documents.filter((document) => document.status === 'available').map((document) => `<option value="${esc(document.id)}" ${certification.documentId === document.id ? 'selected' : ''}>${esc(document.originalFilename)}</option>`).join('')}</select></label></div><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">Enregistrer le certificat</button></div></form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">✓</div><strong>Aucun certificat déclaré</strong><p>Déclarez vos standards et associez une preuve disponible lorsque cela est nécessaire.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Déclarer un certificat</h2></div><form id="certification-form"><div class="form-grid"><label>Standard<input class="input" name="standardName" required placeholder="GOTS"></label><label>Site<select class="select" name="supplierSiteId"><option value="">Organisation entière</option>${state.sites.filter((site) => site.isActive).map((site) => `<option value="${esc(site.id)}">${esc(site.name)}</option>`).join('')}</select></label><label>Code<input class="input" name="standardCode" placeholder="CU-12345"></label><label>Émetteur<input class="input" name="issuerName" placeholder="Control Union"></label><label>Numéro<input class="input" name="certificateNumber"></label><label>Date d’émission<input class="input" name="issuedAt" type="date"></label><label>Date d’expiration<input class="input" name="expiresAt" type="date"></label><label class="field-full">Preuve privée<select class="select" name="documentId"><option value="">Aucune preuve</option>${state.documents.filter((document) => document.status === 'available').map((document) => `<option value="${esc(document.id)}">${esc(document.originalFilename)}</option>`).join('')}</select></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">Déclarer le certificat</button></div></form><div class="notice" style="margin-top:20px">Les preuves disponibles sont contrôlées côté serveur avant association au certificat. Une déclaration reste distincte d’une vérification.</div></div></div>`;
       }
       function materialsView() {
-        return `<div class="page-head"><div><div class="eyebrow">Catalogue fournisseur</div><h1>Matériaux</h1><p>Maintenez les matériaux dont votre organisation est propriétaire. Les matériaux partagés par une marque restent consultables selon les autorisations.</p></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.materials.length} matériau(x)</h2></div>${state.materials.length ? `<div class="item-list">${state.materials.map((material) => `<form class="item material-edit-form" data-material-id="${esc(material.id)}"><div class="item-head"><div><h3>${esc(material.name)}</h3><p>${esc(material.materialType)} · ${esc(material.originCountryCode || 'Origine non renseignée')}</p></div><span class="meta">${esc(material.normalizedName || '')}</span></div><div class="form-grid" style="margin-top:14px"><label>Nom<input class="input" name="name" value="${esc(material.name)}" required></label><label>Type<input class="input" name="materialType" value="${esc(material.materialType)}" required></label><label>Origine<input class="input" name="originCountryCode" maxlength="2" value="${esc(material.originCountryCode || '')}"></label><label class="field-full">Composition JSON<textarea class="textarea" name="composition" rows="3">${esc(JSON.stringify(material.composition || {}, null, 2))}</textarea></label></div><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">Enregistrer le matériau</button></div></form><form class="schema-material-form" data-material-schema-id="${esc(material.id)}" style="margin-top:10px;display:flex;gap:8px;align-items:end;flex-wrap:wrap"><label class="meta">Schéma versionné<select class="select" name="schemaIdentity">${state.schemaCatalog.filter((schema) => schema.subjectTypes?.includes('material')).map((schema) => `<option value="${esc(schema.key)}|${esc(schema.version)}">${esc(schema.title)} · v${esc(schema.version)}</option>`).join('') || '<option value="">Aucun schéma disponible</option>'}</select></label><button class="btn btn-secondary btn-small" type="submit">Rattacher le schéma</button></form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">◇</div><strong>Aucun matériau</strong><p>Ajoutez vos premiers matériaux déclarés.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Ajouter un matériau</h2></div><form id="material-form"><div class="form-grid"><label>Nom<input class="input" name="name" required placeholder="Coton biologique"></label><label>Type<input class="input" name="materialType" required placeholder="fiber"></label><label>Origine<input class="input" name="originCountryCode" maxlength="2" placeholder="PT"></label><label class="field-full">Composition JSON<textarea class="textarea" name="composition" rows="4" placeholder="{}">{}</textarea></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">Ajouter le matériau</button></div></form><div class="notice" style="margin-top:20px">Une déclaration de matériau est une donnée fournisseur. Elle n’est pas automatiquement vérifiée.</div></div></div>`;
+        return `<div class="page-head"><div><div class="eyebrow">Catalogue fournisseur</div><h1>Matériaux</h1><p>Maintenez les matériaux dont votre organisation est propriétaire. Les matériaux partagés par une marque restent consultables selon les autorisations.</p></div><div class="actions"><button class="btn btn-secondary" onclick="state.modal='import-bom';render();">📥 Importer Excel / CSV (BOM & Lots)</button></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.materials.length} matériau(x)</h2></div>${state.materials.length ? `<div class="item-list">${state.materials.map((material) => `<form class="item material-edit-form" data-material-id="${esc(material.id)}"><div class="item-head"><div><h3>${esc(material.name)}</h3><p>${esc(material.materialType)} · ${esc(material.originCountryCode || 'Origine non renseignée')}</p></div><span class="meta">${esc(material.normalizedName || '')}</span></div><div class="form-grid" style="margin-top:14px"><label>Nom<input class="input" name="name" value="${esc(material.name)}" required></label><label>Type<input class="input" name="materialType" value="${esc(material.materialType)}" required></label><label>Origine<input class="input" name="originCountryCode" maxlength="2" value="${esc(material.originCountryCode || '')}"></label><label class="field-full">Composition JSON<textarea class="textarea" name="composition" rows="3">${esc(JSON.stringify(material.composition || {}, null, 2))}</textarea></label></div><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">Enregistrer le matériau</button></div></form><form class="schema-material-form" data-material-schema-id="${esc(material.id)}" style="margin-top:10px;display:flex;gap:8px;align-items:end;flex-wrap:wrap"><label class="meta">Schéma versionné<select class="select" name="schemaIdentity">${state.schemaCatalog.filter((schema) => schema.subjectTypes?.includes('material')).map((schema) => `<option value="${esc(schema.key)}|${esc(schema.version)}">${esc(schema.title)} · v${esc(schema.version)}</option>`).join('') || '<option value="">Aucun schéma disponible</option>'}</select></label><button class="btn btn-secondary btn-small" type="submit">Rattacher le schéma</button></form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">◇</div><strong>Aucun matériau</strong><p>Ajoutez vos premiers matériaux déclarés ou importez un fichier CSV/Excel de nomenclature.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Ajouter un matériau</h2></div><form id="material-form"><div class="form-grid"><label>Nom<input class="input" name="name" required placeholder="Coton biologique"></label><label>Type<input class="input" name="materialType" required placeholder="fiber"></label><label>Origine<input class="input" name="originCountryCode" maxlength="2" placeholder="PT"></label><label class="field-full">Composition JSON<textarea class="textarea" name="composition" rows="4" placeholder="{}">{}</textarea></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">Ajouter le matériau</button></div></form><div class="notice" style="margin-top:20px">Une déclaration de matériau est une donnée fournisseur. Elle n’est pas automatiquement vérifiée.</div></div></div>`;
       }
       function latestDataPoints() {
         const latest = new Map();
@@ -702,6 +748,80 @@
         if (state.demo) { state.quality.score.computedAt = new Date().toISOString(); notify('Score qualité recalculé en mode démonstration.'); render(); return; }
         state.quality = await api('/api/supplier/quality', { method:'POST', body:JSON.stringify({ calculationVersion:'supplier_quality_v1' }) }); notify('Score qualité recalculé.'); render();
       }
+
+      async function handleBomImportSubmit(event) {
+        event.preventDefault();
+        const csv = document.getElementById('bom-csv-input')?.value || '';
+        const autosave = document.getElementById('bom-autosave')?.checked || false;
+        if (!csv.trim()) { notify('Veuillez coller le contenu de la nomenclature CSV.', true); return; }
+
+        if (state.demo) {
+          notify('Importation BOM réussie en mode démo : 2 composants ajoutés au catalogue.');
+          state.modal = null;
+          render();
+          return;
+        }
+
+        try {
+          const res = await api('/api/supplier/materials/import-bom', {
+            method: 'POST',
+            body: JSON.stringify({ csvContent: csv, autoSaveMaterials: autosave })
+          });
+          if (res.isValid) {
+            notify(`Nomenclature validée à 100% : ${res.rowsCount} matière(s) traitée(s) et ${res.savedMaterialsCount} enregistrée(s).`);
+            state.modal = null;
+            await sync();
+          } else {
+            notify(`Erreur de validation : ${res.errors.map(e => e.message).join(' | ')}`, true);
+          }
+        } catch (err) {
+          notify(err.message || 'Erreur lors de l’importation de la nomenclature', true);
+        }
+      }
+
+      function previewBomCsv() {
+        const csv = document.getElementById('bom-csv-input')?.value || '';
+        const preview = document.getElementById('bom-preview-area');
+        if (!preview) return;
+
+        const lines = csv.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length < 2) {
+          preview.style.display = 'block';
+          preview.innerHTML = '<div style="color:var(--red);font-size:12px;">Erreur : Le tableau doit contenir au moins une ligne d’en-tête et une matière.</div>';
+          return;
+        }
+
+        const delimiter = lines[0].includes(';') ? ';' : lines[0].includes('\t') ? '\t' : ',';
+        let totalPct = 0;
+        let count = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(delimiter);
+          if (cols.length > 1) {
+            const raw = (cols[1] || '').replace(/%/g, '').replace(/,/g, '.').trim();
+            const val = parseFloat(raw);
+            if (!isNaN(val)) totalPct += val;
+            count++;
+          }
+        }
+
+        totalPct = Number(totalPct.toFixed(2));
+        const isExact = Math.abs(totalPct - 100) <= 0.5;
+
+        preview.style.display = 'block';
+        preview.innerHTML = `
+          <div style="background:#f8faf8;border:1px solid ${isExact ? 'var(--green)' : 'var(--red)'};border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <strong>Somme de composition calculée : ${totalPct}%</strong>
+              <span class="status status-${isExact ? 'approved' : 'rejected'}">${isExact ? '✓ Conforme ESPR (100%)' : '⚠ Non conforme (doit sommer à 100%)'}</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px;">${count} ligne(s) détectée(s) avec séparateur [${delimiter}].</div>
+          </div>
+        `;
+      }
+
+      window.handleBomImportSubmit = handleBomImportSubmit;
+      window.previewBomCsv = previewBomCsv;
 
       function bind() {
         document.querySelectorAll('[data-view]').forEach((element) => element.addEventListener('click', () => { state.view = element.dataset.view; if (state.view !== 'requestDetail') state.selectedRequest = null; render(); }));
