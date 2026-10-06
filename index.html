@@ -1309,6 +1309,200 @@
       .footer-grid { grid-template-columns: 1fr; }
       .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
     }
+  
+    /* ==========================================================================
+       BOXBET CYBER-DARK THEME MODE
+       ========================================================================== */
+    html[data-theme="dark"], html.dark {
+      --tf-canvas: #0c0f12 !important;
+      --tf-canvas-gradient: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
+                            radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.08) 0%, transparent 40%),
+                            #0b0e14 !important;
+      --tf-surface: #12171e !important;
+      --tf-surface-soft: #161c24 !important;
+      --tf-surface-inset: #1a222c !important;
+      --tf-bento-bg: #12171e !important;
+      --tf-bento-border: rgba(52, 211, 153, 0.18) !important;
+      --tf-bento-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7), 0 0 20px rgba(16, 185, 129, 0.08) !important;
+      --tf-border-light: rgba(255, 255, 255, 0.08) !important;
+      --tf-border-medium: rgba(255, 255, 255, 0.14) !important;
+      --tf-text-primary: #f3f4f6 !important;
+      --tf-text-secondary: #9ca3af !important;
+      --tf-text-muted: #6b7280 !important;
+      --tf-emerald-500: #10b981 !important;
+      --tf-emerald-soft: rgba(16, 185, 129, 0.12) !important;
+      --tf-emerald-subtle: rgba(16, 185, 129, 0.06) !important;
+      background-color: #0b0e14 !important;
+      color: #f3f4f6 !important;
+    }
+
+    html[data-theme="dark"] body {
+      background-color: #0b0e14 !important;
+      color: #f3f4f6 !important;
+    }
+
+    html[data-theme="dark"] .site-header {
+      background: rgba(11, 14, 20, 0.85) !important;
+      border-bottom: 1px solid rgba(52, 211, 153, 0.18) !important;
+      backdrop-filter: blur(16px) !important;
+    }
+
+    html[data-theme="dark"] .brand-name,
+    html[data-theme="dark"] .hero-title,
+    html[data-theme="dark"] .bento-card h3,
+    html[data-theme="dark"] .section-title,
+    html[data-theme="dark"] .step-title,
+    html[data-theme="dark"] .pipeline-label,
+    html[data-theme="dark"] .metric-value,
+    html[data-theme="dark"] .faq-q,
+    html[data-theme="dark"] .pricing-card h3 {
+      color: #ffffff !important;
+    }
+
+    html[data-theme="dark"] .bento-card,
+    html[data-theme="dark"] .pipeline-card,
+    html[data-theme="dark"] .pricing-card,
+    html[data-theme="dark"] .hero-card-preview,
+    html[data-theme="dark"] .faq-item {
+      background: #12171e !important;
+      border: 1px solid rgba(255, 255, 255, 0.09) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    html[data-theme="dark"] .bento-card:hover,
+    html[data-theme="dark"] .pipeline-card:hover,
+    html[data-theme="dark"] .pricing-card:hover {
+      border-color: rgba(52, 211, 153, 0.45) !important;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 25px rgba(16, 185, 129, 0.18) !important;
+    }
+
+    html[data-theme="dark"] .nav-link {
+      color: #9ca3af !important;
+    }
+    html[data-theme="dark"] .nav-link:hover {
+      color: #34d399 !important;
+    }
+
+    html[data-theme="dark"] .hero-sub,
+    html[data-theme="dark"] .section-lead,
+    html[data-theme="dark"] .bento-card p {
+      color: #9ca3af !important;
+    }
+
+    html[data-theme="dark"] .theme-toggle-btn {
+      background: rgba(16, 185, 129, 0.15) !important;
+      border: 1px solid #10b981 !important;
+      color: #34d399 !important;
+    }
+
+  
+    /* ==========================================================================
+       HAUTE-HORLOGERIE / LUXURY DARK B2B SYSTEM
+       ========================================================================== */
+    html[data-theme="dark"] {
+      --tf-canvas: #090b0e !important;
+      --tf-surface: #0f1318 !important;
+      --tf-surface-soft: #141920 !important;
+      --tf-surface-inset: #1a212b !important;
+      --tf-border-light: rgba(255, 255, 255, 0.07) !important;
+      --tf-border-medium: rgba(255, 255, 255, 0.12) !important;
+      --tf-text-title: #ffffff !important;
+      --tf-text-body: #9ca3af !important;
+      --tf-text-muted: #6b7280 !important;
+      --tf-text-subtle: #4b5563 !important;
+      --tf-bento-bg: #0f1318 !important;
+      --tf-bento-border: rgba(255, 255, 255, 0.08) !important;
+      --tf-bento-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+      background: #090b0e !important;
+      color: #f3f4f6 !important;
+    }
+
+    html[data-theme="dark"] body {
+      background: #090b0e !important;
+      color: #f3f4f6 !important;
+    }
+
+    html[data-theme="dark"] .header,
+    html[data-theme="dark"] .site-header {
+      background: rgba(9, 11, 14, 0.88) !important;
+      backdrop-filter: blur(24px) !important;
+      -webkit-backdrop-filter: blur(24px) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    html[data-theme="dark"] .nav-link,
+    html[data-theme="dark"] .header-nav a {
+      color: #9ca3af !important;
+    }
+
+    html[data-theme="dark"] .nav-link:hover,
+    html[data-theme="dark"] .header-nav a:hover {
+      color: #34d399 !important;
+    }
+
+    html[data-theme="dark"] .logo-text,
+    html[data-theme="dark"] .brand-logo {
+      color: #ffffff !important;
+    }
+
+    html[data-theme="dark"] .hero-section {
+      background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.1) 0%, transparent 60%),
+                  radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.06) 0%, transparent 45%),
+                  #090b0e !important;
+    }
+
+    html[data-theme="dark"] .hero-title,
+    html[data-theme="dark"] .section-title,
+    html[data-theme="dark"] .bento-card h3,
+    html[data-theme="dark"] .card-heading,
+    html[data-theme="dark"] .pricing-card h3,
+    html[data-theme="dark"] .metric-value {
+      color: #ffffff !important;
+    }
+
+    html[data-theme="dark"] .hero-subtitle,
+    html[data-theme="dark"] .section-lead,
+    html[data-theme="dark"] .bento-card p {
+      color: #9ca3af !important;
+    }
+
+    html[data-theme="dark"] .bento-card,
+    html[data-theme="dark"] .feature-card,
+    html[data-theme="dark"] .pipeline-card,
+    html[data-theme="dark"] .pricing-card,
+    html[data-theme="dark"] .faq-item,
+    html[data-theme="dark"] .console-mockup,
+    html[data-theme="dark"] .hero-card-preview {
+      background: #0f1318 !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.7) !important;
+    }
+
+    html[data-theme="dark"] .bento-card:hover,
+    html[data-theme="dark"] .feature-card:hover,
+    html[data-theme="dark"] .pipeline-card:hover {
+      border-color: rgba(52, 211, 153, 0.4) !important;
+      box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.9), 0 0 30px rgba(16, 185, 129, 0.15) !important;
+    }
+
+    html[data-theme="dark"] .hero-mockup-frame,
+    html[data-theme="dark"] .mockup-glass {
+      background: #0d1117 !important;
+      border: 1px solid rgba(52, 211, 153, 0.25) !important;
+      box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.12) !important;
+    }
+
+    html[data-theme="dark"] select#globalLangSelector {
+      background: #141920 !important;
+      color: #e5e7eb !important;
+      border-color: rgba(255, 255, 255, 0.15) !important;
+    }
+
+    html[data-theme="dark"] .footer {
+      background: #050709 !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
   </style>
 </head>
 <body>
@@ -2638,5 +2832,44 @@
       body.innerHTML = productTabContents[tabKey] || productTabContents.overview;
     }
   </script>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      const newTheme = isDark ? 'light' : 'dark';
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('tracefab_theme', newTheme);
+      updateThemeUI(newTheme);
+    }
+
+    function updateThemeUI(theme) {
+      const btn = document.getElementById('themeToggleBtn');
+      const icon = document.getElementById('themeIcon');
+      const label = document.getElementById('themeLabel');
+      if (!btn || !icon || !label) return;
+      if (theme === 'dark') {
+        icon.textContent = '☀️';
+        label.textContent = 'LIGHT MODE';
+        btn.style.borderColor = '#f59e0b';
+        btn.style.color = '#fbbf24';
+        btn.style.background = 'rgba(245, 158, 11, 0.15)';
+      } else {
+        icon.textContent = '🌙';
+        label.textContent = 'DARK (BOXBET)';
+        btn.style.borderColor = 'rgba(16,185,129,0.4)';
+        btn.style.color = '#10b981';
+        btn.style.background = '#07120e';
+      }
+    }
+
+    // Initialize theme from preference or default to dark if preferred
+    (function initTheme() {
+      const saved = localStorage.getItem('tracefab_theme') || 'dark'; // activate dark theme initially to showcase Boxbet
+      document.documentElement.setAttribute('data-theme', saved);
+      document.addEventListener('DOMContentLoaded', () => updateThemeUI(saved));
+    })();
+  </script>
+
 </body>
 </html>
