@@ -178,6 +178,49 @@
     .demo-banner { background: var(--yellow-soft); border-bottom: 1px solid #f2ddb0; padding: 8px 15px; text-align: center; font-size: 11px; color: #8f6417; font-weight: 750; }
     @media (max-width: 1050px) { .kpis { grid-template-columns: repeat(2, 1fr); } .split { grid-template-columns: 1fr; } }
     @media (max-width: 760px) { .app { display: block; } .sidebar { min-height: auto; padding: 15px; } .brand { padding-bottom: 16px; } .nav { display: flex; overflow-x: auto; } .nav button { white-space: nowrap; } .sidebar-bottom { display: none; } .topbar { padding: 0 18px; height: 64px; } .content { padding: 28px 18px 50px; } .page-head, .detail-hero { display: block; } .actions { justify-content: flex-start; margin-top: 17px; } .org-select { max-width: 150px; } .auth-card { grid-template-columns: 1fr; } .auth-copy { display: none; } .auth-box { min-height: 500px; } .form-grid { grid-template-columns: 1fr; } .field-full { grid-column: auto; } .score-grid { grid-template-columns: repeat(2, 1fr); } }
+  
+    /* Review Workflow & Document Annotations (Chantier 4) */
+    .annotation-panel {
+      background: #fbfdfc;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+    .doc-preview-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #ffffff;
+      border: 1px solid #dce6e0;
+      border-radius: 10px;
+      margin-top: 8px;
+    }
+    .badge-ocr {
+      background: #ede9fe;
+      color: #6d28d9;
+      font-size: 10px;
+      font-weight: 750;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+    }
+    .annotation-bubble {
+      background: #fffbeb;
+      border-left: 3px solid #d97706;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #78350f;
+      margin-top: 10px;
+    }
+    .annotation-bubble.verified {
+      background: #f0fdf4;
+      border-left-color: #10b981;
+      color: #065f46;
+    }
+
   </style>
 </head>
 <body>
@@ -198,6 +241,8 @@
         products: [],
         requests: [],
         questionnaires: [],
+        schemaCatalog: [],
+        schemaBindings: [],
         view: 'overview',
         activeOrganizationId: null,
         selectedRequest: null,
@@ -276,17 +321,261 @@
         ];
         state.requests = [
           { id: 'demo-request-1', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Données produit — collection automne', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'in_progress', dueAt: new Date(Date.now() + 5 * 86400000).toISOString(), completionPercentage: '64', lastActivityAt: new Date().toISOString() },
-          { id: 'demo-request-2', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Origine et composition — Essentiel coton', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'submitted', dueAt: new Date(Date.now() + 2 * 86400000).toISOString(), completionPercentage: '100', lastActivityAt: new Date(Date.now() - 86400000).toISOString() },
+          {
+          id: 'demo-request-2',
+          brandOrganizationId: 'demo-brand',
+          supplierOrganizationId: 'demo-supplier',
+          title: 'Origine et composition — Essentiel coton',
+          questionnaireKey: 'product-data-core',
+          questionnaireVersion: '1.0',
+          status: 'submitted',
+          dueAt: new Date(Date.now() + 2 * 86400000).toISOString(),
+          completionPercentage: '100',
+          lastActivityAt: new Date(Date.now() - 86400000).toISOString(),
+          items: [
+            {
+              id: 'req-item-1',
+              label: 'Certificat de Transaction GOTS (Fibre & Fil)',
+              fieldKey: 'gots_tc_document',
+              required: true,
+              dataType: 'document_proof',
+              helpText: 'Certificat de transaction délivré par Control Union (CU-881294).',
+              status: 'submitted',
+              documentName: 'GOTS_Transaction_Certificate_TC2026.pdf',
+              documentSize: '1.2 MB',
+              responses: [
+                {
+                  id: 'resp-item-1',
+                  isCurrent: true,
+                  status: 'documented',
+                  value: 'CU-881294 (GOTS v6.0 - 85% Coton Biologique Peigné)',
+                  reviewerNote: 'Preuve documentaire inspectée. Le numéro de lot correspond au bon de livraison Fiação Norte.'
+                }
+              ]
+            },
+            {
+              id: 'req-item-2',
+              label: 'Conformité Chimique & RSL (OEKO-TEX Standard 100)',
+              fieldKey: 'oekotex_rsl_compliance',
+              required: true,
+              dataType: 'document_proof',
+              helpText: 'Rapport d\'essais analytiques garantissant l\'absence de colorants azoïques.',
+              status: 'submitted',
+              documentName: 'OEKO_TEX_Test_Report_Appendix4.pdf',
+              documentSize: '2.4 MB',
+              responses: [
+                {
+                  id: 'resp-item-2',
+                  isCurrent: true,
+                  status: 'documented',
+                  value: 'Rapport Hohenstein #21.HPT.94112 — Zéro substance restreinte',
+                  reviewerNote: null
+                }
+              ]
+            },
+            {
+              id: 'req-item-3',
+              label: 'Audit Social d\'Atelier de Confection (SMETA 4-Pillar)',
+              fieldKey: 'smeta_social_audit',
+              required: true,
+              dataType: 'document_proof',
+              helpText: 'Attestation de respect des normes de travail décent et sécurité.',
+              status: 'submitted',
+              documentName: 'SMETA_4Pillar_Audit_Porto_2026.pdf',
+              documentSize: '4.8 MB',
+              responses: [
+                {
+                  id: 'resp-item-3',
+                  isCurrent: true,
+                  status: 'verified_by_reviewer',
+                  value: 'Audit SMETA valide jusqu\'au 15 Janvier 2028 (Score A)',
+                  reviewerNote: 'Vérifié par Camille Martin le 04/10/2026 : salaires décents et sécurité incendie validés.'
+                }
+              ]
+            }
+          ]
+        },
         ];
-        state.questionnaires = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Données produit, composition et fabrication.', itemCount: 5, requiredItemCount: 4 }];
+        state.selectedChainNode = 'node-fiber';
+        state.chainNodes = {
+          'node-fiber': {
+            id: 'node-fiber',
+            tier: 'Tier 4',
+            title: 'Culture de la Fibre (Coton)',
+            entity: 'Quinta de São Martinho',
+            facilityType: 'Exploitation agricole régénératrice',
+            location: 'Alentejo, Portugal (PT)',
+            coordinates: '38.0151° N, 7.8632° W',
+            certifications: ['GOTS v6.0 (CU-881294)', 'Regenerative Organic'],
+            batchLot: 'LOT-PT-2026-CTN-089',
+            auditor: 'Control Union Netherlands',
+            auditScore: '100% Conforme',
+            evidenceFiles: [
+              { name: 'GOTS_Transaction_Certificate_TC2026.pdf', size: '1.2 MB', date: '12 Avr 2026' },
+              { name: 'Soil_Health_Carbon_Report.pdf', size: '3.4 MB', date: '04 Mar 2026' }
+            ],
+            metrics: { massReconciled: '100%', waterEfficiency: '-72% vs conventionnel', pesticideUse: '0.0 kg/ha' },
+            status: 'approved'
+          },
+          'node-spinning': {
+            id: 'node-spinning',
+            tier: 'Tier 3',
+            title: 'Filature & Peignage',
+            entity: 'Fiação Norte Lda',
+            facilityType: 'Unité de peignage et filage à rotor',
+            location: 'Guimarães, Portugal (PT)',
+            coordinates: '41.4425° N, 8.2918° W',
+            certifications: ['OEKO-TEX Standard 100', 'ISO 9001:2015'],
+            batchLot: 'YARN-30-1-COMBED-89',
+            auditor: 'CITEVE Portugal',
+            auditScore: '98.5% Qualité Titre',
+            evidenceFiles: [
+              { name: 'Yarn_Tensile_Strength_Report.pdf', size: '890 KB', date: '22 Avr 2026' }
+            ],
+            metrics: { massReconciled: '99.4%', yarnTension: '18.4 cN/tex', spindleSpeed: '18,000 RPM' },
+            status: 'approved'
+          },
+          'node-mill': {
+            id: 'node-mill',
+            tier: 'Tier 3',
+            title: 'Tricotage Jersey Circulaire',
+            entity: 'Malhas do Ave',
+            facilityType: 'Tricotage industriel grand diamètre',
+            location: 'Santo Tirso, Portugal (PT)',
+            coordinates: '41.3431° N, 8.4738° W',
+            certifications: ['GOTS Mill Certified', 'BCI Member'],
+            batchLot: 'FAB-JERSEY-185-NVY',
+            auditor: 'SGS Inspection Europe',
+            auditScore: 'Conforme A+',
+            evidenceFiles: [
+              { name: 'Knitting_Grammage_Report_185gsm.pdf', size: '1.1 MB', date: '02 Mai 2026' }
+            ],
+            metrics: { massReconciled: '98.9%', grammage: '185 g/m² (±1.5%)', shrinkageTolerance: '< 2.5%' },
+            status: 'approved'
+          },
+          'node-dyeing': {
+            id: 'node-dyeing',
+            tier: 'Tier 2',
+            title: 'Ennoblissement & Teinture',
+            entity: 'Tinturaria Braga Lda',
+            facilityType: 'Usine de teinture en circuit fermé',
+            location: 'Braga, Portugal (PT)',
+            coordinates: '41.5454° N, 8.4265° W',
+            certifications: ['OEKO-TEX STeP (Level 3)', 'ZDHC MRSL Level 3'],
+            batchLot: 'DYE-NAVY-ECO-04',
+            auditor: 'Hohenstein Institute',
+            auditScore: 'ZDHC Zero Discharge',
+            evidenceFiles: [
+              { name: 'Effluent_Water_Analysis_Q1_2026.pdf', size: '4.2 MB', date: '28 Avr 2026' }
+            ],
+            metrics: { waterRecycled: '94%', chemicalPassRate: '100%', colorFastness: 'Note 4-5/5' },
+            status: 'approved'
+          },
+          'node-assembly': {
+            id: 'node-assembly',
+            tier: 'Tier 1',
+            title: 'Confection & Coupe-Couture',
+            entity: 'Nhãn Textile Confeção',
+            facilityType: 'Atelier principal de confection',
+            location: 'Porto, Portugal (PT)',
+            coordinates: '41.1579° N, 8.6291° W',
+            certifications: ['SMETA 4-Pillar (Social & Safety)', 'ISO 14001:2018'],
+            batchLot: 'CMT-PO-2026-9921',
+            auditor: 'Bureau Veritas',
+            auditScore: 'Score SMETA : Zero Non-Conformité',
+            evidenceFiles: [
+              { name: 'SMETA_Social_Audit_Full_Report.pdf', size: '5.8 MB', date: '15 Jan 2026' }
+            ],
+            metrics: { onTimeDelivery: '99.2%', reworkRate: '0.4%', livingWageCoverage: '100%' },
+            status: 'approved'
+          },
+          'node-product': {
+            id: 'node-product',
+            tier: 'Produit / DPP',
+            title: 'Produit Fini & Passeport DPP',
+            entity: 'Atelier Demo (Donneur d\'ordre)',
+            facilityType: 'Distribution & Émission Passeport ESPR',
+            location: 'Paris, France (FR)',
+            coordinates: '48.8566° N, 2.3522° E',
+            certifications: ['CIRPASS DPP Spec 1.2', 'Loi AGEC Fiche Validée'],
+            batchLot: 'AT-ESS-001 (Collection FW26)',
+            auditor: 'TRACEFAB Continuous RegTech Engine',
+            auditScore: 'Score Qualité : 96% (Verified)',
+            evidenceFiles: [
+              { name: 'CIRPASS_DPP_Export_JSONLD.jsonld', size: '48 KB', date: '06 Oct 2026' }
+            ],
+            metrics: { totalTraceability: '100%', readinessDPP: '94%', consumerScans: '1,420 scans' },
+            status: 'approved'
+          }
+        };
+        state.questionnaires = [
+          {
+            key: 'product-data-core',
+            version: '1.0',
+            title: 'Audit Cœur de Produit (Core)',
+            category: 'Général',
+            description: 'Données produit, composition matière et ateliers de confection.',
+            itemCount: 5,
+            requiredItemCount: 4,
+            fields: [
+              { id: 'f-1', key: 'product_composition', label: 'Composition exacte des matières (%)', type: 'composition_table', required: true, helpText: 'Détail de chaque fibre avec son pourcentage massique' },
+              { id: 'f-2', key: 'country_of_spinning', label: 'Pays de filature / filage', type: 'country_code', required: true, helpText: 'Code pays ISO 3166-1 alpha-2' },
+              { id: 'f-3', key: 'facility_registration', label: 'Site de production principal', type: 'facility_select', required: true, helpText: 'Sélectionner parmi les sites enregistrés au portail' },
+              { id: 'f-4', key: 'care_instructions', label: 'Consignes de lavage et d\'entretien', type: 'text_multiline', required: false, helpText: 'Symboles GINETEX ou texte explicatif' }
+            ]
+          },
+          {
+            key: 'textile-chemical-reach',
+            version: '2.1',
+            title: 'Conformité Chimique & Teinture (REACH / ZDHC)',
+            category: 'Chimie & Rejets',
+            description: 'Audit des intrants chimiques, métaux lourds et analyse des effluents d\'eau de teinture.',
+            itemCount: 4,
+            requiredItemCount: 3,
+            fields: [
+              { id: 'c-1', key: 'rsl_test_report', label: 'Rapport d\'essais laboratoire RSL (< 12 mois)', type: 'document_proof', required: true, helpText: 'Analyse accréditée ISO 17025 (SGS, Intertek, CITEVE)' },
+              { id: 'c-2', key: 'zdhc_level', label: 'Niveau d\'attestation ZDHC MRSL', type: 'select_single', required: true, helpText: 'Level 1, Level 2 ou Level 3' },
+              { id: 'c-3', key: 'closed_loop_water', label: 'Pourcentage de recyclage des eaux de teinture', type: 'percentage_number', required: false, helpText: 'Taux de réutilisation en boucle fermée' }
+            ]
+          },
+          {
+            key: 'social-fair-wage',
+            version: '1.5',
+            title: 'Audit Social & Droits Humains (SMETA / SA8000)',
+            category: 'Social & RSE',
+            description: 'Vérification du respect des conventions OIT, sécurité incendie et salaire décent.',
+            itemCount: 4,
+            requiredItemCount: 4,
+            fields: [
+              { id: 's-1', key: 'social_audit_file', label: 'Rapport complet d\'audit social tierce partie', type: 'document_proof', required: true, helpText: 'SMETA 4-Pillar, BSCI ou SA8000 en cours de validité' },
+              { id: 's-2', key: 'audit_score_letter', label: 'Notation globale obtenue', type: 'text_short', required: true, helpText: 'Score A, B ou Zero Critical Non-Conformity' },
+              { id: 's-3', key: 'living_wage_attestation', label: 'Attestation de salaire vital (Living Wage)', type: 'document_proof', required: true, helpText: 'Calcul basé sur les benchmarks Anker / Global Living Wage' }
+            ]
+          },
+          {
+            key: 'carbon-pef-footprint',
+            version: '1.0',
+            title: 'Empreinte Carbone & PEF Échelon 3',
+            category: 'Environnement',
+            description: 'Consommation électrique et combustible des métiers à tisser et filatures.',
+            itemCount: 3,
+            requiredItemCount: 2,
+            fields: [
+              { id: 'e-1', key: 'kwh_per_kg', label: 'Énergie électrique consommée (kWh/kg de maille)', type: 'decimal_number', required: true, helpText: 'Compteurs divisionnaires de l\'atelier' },
+              { id: 'e-2', key: 'renewable_energy_ratio', label: 'Part d\'électricité d\'origine renouvelable (%)', type: 'percentage_number', required: false, helpText: 'Garanties d\'origine ou panneaux solaires sur site' }
+            ]
+          }
+        ];
+        state.schemaCatalog = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Faits produit versionnés.', subjectTypes: ['product', 'data_request'], fields: [] }];
+        state.schemaBindings = [];
       }
 
       async function sync() {
         state.loading = true; render();
         try {
           if (state.demo) { demoData(); state.loading = false; render(); return; }
-          const [me, orgs, supplierPayload, materials, products, requests, questionnaires] = await Promise.all([
-            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires')
+          const [me, orgs, supplierPayload, materials, products, requests, questionnaires, schemas] = await Promise.all([
+            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product')
           ]);
           state.user = me.user;
           state.memberships = me.memberships || [];
@@ -296,6 +585,7 @@
           state.products = products.products || [];
           state.requests = requests.requests || [];
           state.questionnaires = questionnaires.questionnaires || [];
+          state.schemaCatalog = schemas.schemas || [];
           const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
           state.activeOrganizationId = state.activeOrganizationId || brands[0]?.organization_id || null;
           state.loading = false;
@@ -330,13 +620,22 @@
             <aside class="sidebar">
               <div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div>
               <nav class="nav">
+                <div class="nav-section-title">Console Principale</div>
                 ${navButton('overview', '⌂', 'Vue d’ensemble')}
-                ${navButton('requests', '↗', 'Demandes de données')}
                 ${navButton('products', '◇', 'Produits')}
-                ${navButton('supplyChain', '☍', 'Traçabilité')}
-                ${navButton('dpp', '📋', 'Passeport DPP')}
-                ${navButton('quality', '◒', 'Qualité')}
                 ${navButton('suppliers', '◎', 'Fournisseurs')}
+                ${navButton('materials', '⬡', 'Matières')}
+                ${navButton('supplyChain', '☍', 'Traçabilité')}
+                <div class="nav-section-title">Collecte & Conformité</div>
+                ${navButton('requests', '↗', 'Demandes de données')}
+                ${navButton('questionnaires', '✎', 'Questionnaires')}
+                ${navButton('documents', '▤', 'Documents')}
+                ${navButton('certifications', '✓', 'Certifications')}
+                ${navButton('quality', '◒', 'Qualité & Conformité')}
+                ${navButton('dpp', '📋', 'Passeport DPP')}
+                <div class="nav-section-title">Gouvernance</div>
+                ${navButton('reports', '☷', 'Rapports & Audits')}
+                ${navButton('settings', '⚙', 'Paramètres')}
               </nav>
               <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">Se déconnecter</button></div></div></div>
             </aside>
@@ -348,7 +647,24 @@
           ${state.modal ? modal(state.modal) : ''}
           ${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
-      function viewLabel() { return ({ overview: 'Vue d’ensemble', requests: 'Demandes de données', products: 'Produits', quality: 'Qualité', suppliers: 'Fournisseurs', requestDetail: 'Détail de la demande', productDetail: 'Détail du produit', supplierDetail: 'Détail du fournisseur', supplyChain: 'Supply Chain & Traçabilité', dpp: 'Passeport Numérique (DPP Readiness)' })[state.view] || 'Vue d’ensemble'; }
+      function viewLabel() { return ({
+        overview: 'Vue d’ensemble',
+        products: 'Produits',
+        suppliers: 'Fournisseurs',
+        materials: 'Matières & Fibres',
+        supplyChain: 'Supply Chain & Traçabilité',
+        requests: 'Demandes de données',
+        questionnaires: 'Créateur de Questionnaires',
+        documents: 'Preuves & Documents',
+        certifications: 'Certifications',
+        quality: 'Qualité & Conformité',
+        dpp: 'Passeport Numérique (DPP Readiness)',
+        reports: 'Rapports & Audits',
+        settings: 'Paramètres',
+        requestDetail: 'Détail de la demande',
+        productDetail: 'Détail du produit',
+        supplierDetail: 'Détail du fournisseur'
+      })[state.view] || 'Vue d’ensemble'; }
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
       function render() {
@@ -357,13 +673,613 @@
         }
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>Préparation de votre espace…</h1><p>Chargement des organisations, produits et demandes.</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }
-        const content = state.view === 'overview' ? overview() : state.view === 'requests' ? requestsView() : state.view === 'products' ? productsView() : state.view === 'quality' ? qualityView() : state.view === 'suppliers' ? suppliersView() : state.view === 'productDetail' ? productDetailView() : state.view === 'supplierDetail' ? supplierDetailView() : state.view === 'supplyChain' ? supplyChainView() : state.view === 'dpp' ? dppView() : requestDetailView();
+        const content = state.view === 'overview' ? overview() :
+          state.view === 'requests' ? requestsView() :
+          state.view === 'questionnaires' ? questionnairesBuilderView() :
+          state.view === 'products' ? productsView() :
+          state.view === 'quality' ? qualityView() :
+          state.view === 'suppliers' ? suppliersView() :
+          state.view === 'materials' ? materialsConsoleView() :
+          state.view === 'supplyChain' ? supplyChainView() :
+          state.view === 'documents' ? documentsConsoleView() :
+          state.view === 'certifications' ? certificationsConsoleView() :
+          state.view === 'dpp' ? dppView() :
+          state.view === 'reports' ? reportsConsoleView() :
+          state.view === 'settings' ? settingsConsoleView() :
+          state.view === 'productDetail' ? productDetailView() :
+          state.view === 'supplierDetail' ? supplierDetailView() :
+          requestDetailView();
         app.innerHTML = shell(content); bind();
       }
 
       function renderAuth() {
         app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div><h1>La donnée fournisseur, enfin pilotable.</h1><p>Centralisez vos demandes, rendez les progrès visibles et transformez les données déclarées en décisions documentées.</p><ul><li>Demandes et questionnaires</li><li>Revue et collaboration</li><li>Score qualité explicable</li></ul></div><div class="auth-box"><div class="eyebrow">Espace marque</div><h2>Se connecter</h2><p>Accédez à votre espace Tracefab sécurisé.</p><div id="clerk-sign-in"></div></div></div></div>`;
         if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'), { appearance: { elements: { card: 'shadow-none', rootBox: 'w-full' } } });
+      }
+
+      
+      
+      function questionnairesBuilderView() {
+        const qList = state.questionnaires || [];
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">Form Studio & Custom Compliance Protocols</div>
+            <h1>Questionnaire Builder</h1>
+            <p>Concevez et déployez des questionnaires sur-mesure pour vos fournisseurs : exigences documentaires, extraction OCR, règles de validation et conformité CSRD.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="alert('Catalogue des gabarits standards exporté au format JSON.')">Exporter Gabarits (JSON)</button>
+            <button class="btn btn-primary" onclick="state.modal='new-questionnaire';render();">+ Créer un questionnaire</button>
+          </div>
+        </div>
+
+        <div class="grid split">
+          <!-- Questionnaires Catalog List -->
+          <div class="card panel">
+            <div class="panel-head">
+              <h2>Protocoles d'Audit Actifs (${qList.length})</h2>
+              <span class="meta">Schémas validés Neon</span>
+            </div>
+            <div class="item-list">
+              ${qList.map((q) => `
+                <div class="item">
+                  <div style="flex:1">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                      <div>
+                        <span class="cert-pill" style="margin-bottom:6px;">${esc(q.category || 'Conformité')} · v${esc(q.version)}</span>
+                        <h3 style="font-size:15px;margin-top:2px;">${esc(q.title)}</h3>
+                      </div>
+                      <span class="status status-approved">${q.itemCount || q.fields?.length || 4} champs (${q.requiredItemCount || 3} obligatoires)</span>
+                    </div>
+                    <p style="margin:6px 0 12px;font-size:12.5px;color:var(--muted);">${esc(q.description)}</p>
+
+                    <!-- Preview of Fields in Builder -->
+                    <div style="background:#f8faf8;border:1px solid #edf0eb;border-radius:10px;padding:12px;">
+                      <div style="font-size:11px;font-weight:750;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Champs & Types configurés :</div>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        ${(q.fields || []).map(f => `
+                          <span style="font-size:11px;background:#ffffff;border:1px solid var(--line);padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                            <strong>${esc(f.label)}</strong>
+                            <span style="color:var(--green);font-family:var(--font-mono);font-size:10px;">[${esc(f.type)}]</span>
+                            ${f.required ? '<span style="color:var(--red)">*</span>' : ''}
+                          </span>
+                        `).join('') || '<span style="font-size:11px;color:var(--muted);">Gabarit préconfiguré avec extraction OCR</span>'}
+                      </div>
+                    </div>
+
+                    <div class="actions" style="justify-content:flex-start;margin-top:14px;gap:8px;">
+                      <button class="btn btn-primary btn-small" data-action="new-request" onclick="state.modal='new-request';state.selectedQuestionnairePreset='${esc(q.key)}';render();">
+                        ↗ Lancer une collecte avec ce modèle
+                      </button>
+                      <button class="btn btn-secondary btn-small" onclick="alert('Édition du protocole ${esc(q.title)} : ajout de nouvelles règles de preuve.')">
+                        Modifier le protocole
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Studio Configuration Helper -->
+          <div style="display:grid;gap:18px;">
+            <div class="card panel">
+              <div class="panel-head"><h2>Types de Champs Disponibles</h2></div>
+              <div style="display:grid;gap:10px;font-size:12px;">
+                <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid var(--green);">
+                  <strong>Preuve Documentaire + Détection OCR</strong>
+                  <div style="color:var(--muted);margin-top:2px;">Exige le dépôt d'un fichier PDF scellé avec extraction automatique des dates de validité.</div>
+                </div>
+                <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid #0284c7;">
+                  <strong>Nomenclature Matière (Bill of Materials)</strong>
+                  <div style="color:var(--muted);margin-top:2px;">Tableau multi-colonnes vérifiant que la somme des pourcentages égale exactement 100%.</div>
+                </div>
+                <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid #6366f1;">
+                  <strong>Sélecteur d'Usines & Coordonnées GPS</strong>
+                  <div style="color:var(--muted);margin-top:2px;">Associe directement le site certifié du profil fournisseur à la fiche produit.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card panel">
+              <div class="panel-head"><h2>Conformité Réglementaire Automatisée</h2></div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6;">
+                Chaque questionnaire créé dans TRACEFAB génère automatiquement un mapping vers le standard européen <strong>CIRPASS JSON-LD</strong> et les points de contrôle de la <strong>Loi AGEC</strong>.
+              </p>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      function materialsConsoleView() {
+        const mats = state.materials || [];
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">Materials & Fibers</div>
+            <h1>Raw Materials Catalog</h1>
+            <p>Track fiber origins, spinning types, mass-balance certifications, and Tier 3–4 suppliers.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="alert('Exportation CSV générée.')">Exporter CSV</button>
+            <button class="btn btn-primary" onclick="alert('Nouveau matériau enregistré.')">+ Ajouter un matériau</button>
+          </div>
+        </div>
+        <div class="card panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Nom du matériau</th><th>Type</th><th>Origine</th><th>Recyclé</th><th>Certifications</th><th>Échelon</th><th style="text-align:right">Actions</th></tr>
+              </thead>
+              <tbody>
+                ${mats.map((m) => `<tr>
+                  <td><strong>${esc(m.name)}</strong></td>
+                  <td><span class="status status-draft">${esc(m.materialType || 'fiber')}</span></td>
+                  <td>${esc(m.originCountryCode || 'PT')}</td>
+                  <td><strong>${esc(m.recycledContent || '0%')}</strong></td>
+                  <td>${(m.certifications || ['GOTS']).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')}</td>
+                  <td><span class="badge-tier">${esc(m.tier || 'Tier 4')}</span></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Détails du matériau ${esc(m.name)}')">Inspecter</button></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+      }
+
+      
+      function supplyChainConsoleView() {
+        const selectedId = state.selectedChainNode || 'node-fiber';
+        const nodes = state.chainNodes || {};
+        const node = nodes[selectedId] || nodes['node-fiber'] || {
+          tier: 'Tier 4',
+          title: 'Culture de la Fibre',
+          entity: 'Quinta de São Martinho',
+          location: 'Alentejo, Portugal',
+          auditScore: '100% Conforme',
+          coordinates: '38.0151° N, 7.8632° W',
+          batchLot: 'LOT-PT-2026-CTN-089',
+          auditor: 'Control Union',
+          certifications: ['GOTS v6.0'],
+          metrics: { Rendement: '100%', Eau: '-72%' },
+          evidenceFiles: []
+        };
+
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">Full Custody Mapping & Forensic Traceability</div>
+            <h1>Supply Chain Visualization & Node Inspector</h1>
+            <p>Cartographie interactive multi-échelons : cliquez sur un nœud industriel pour inspecter les coordonnées GPS, bilans massiques et preuves d'audit scellées.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Ouvrir Vue Consommateur DPP ↗</button>
+            <button class="btn btn-primary" onclick="alert('Rapport complet de traçabilité exporté.')">Exporter Audit Complet</button>
+          </div>
+        </div>
+
+        <!-- Cockpit & Interactive SVG Visualizer -->
+        <div class="graph-cockpit">
+          <div class="graph-toolbar">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span class="status status-approved">Chaîne de confiance active (6 échelons audités)</span>
+              <span style="font-size:12px;color:var(--muted);">Matière : <strong>Coton Biologique GOTS</strong> · SKU : <strong>AT-ESS-001</strong></span>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary btn-small" onclick="state.selectedChainNode='node-fiber';render();">← Début (Fibre)</button>
+              <button class="btn btn-secondary btn-small" onclick="state.selectedChainNode='node-product';render();">Fin (DPP) →</button>
+            </div>
+          </div>
+
+          <div class="graph-canvas-wrap">
+            <svg class="svg-flow-diagram" viewBox="0 0 1000 220" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#0b7656" stop-opacity="0.6"/>
+                  <stop offset="50%" stop-color="#10b981" stop-opacity="0.9"/>
+                  <stop offset="100%" stop-color="#0284c7" stop-opacity="0.8"/>
+                </linearGradient>
+                <filter id="nodeShadow" x="-10%" y="-10%" width="130%" height="130%">
+                  <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0d251d" flood-opacity="0.08"/>
+                </filter>
+              </defs>
+
+              <path d="M 85 110 L 255 110 L 425 110 L 595 110 L 765 110 L 915 110" stroke="url(#lineGrad)" stroke-width="4" stroke-dasharray="6,4" fill="none"/>
+
+              <!-- Node 1: Fiber -->
+              <g class="graph-node ${selectedId === 'node-fiber' ? 'active' : ''}" onclick="state.selectedChainNode='node-fiber';render();" transform="translate(20, 45)">
+                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-fiber' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-fiber' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
+                <circle cx="24" cy="24" r="6" fill="#0b7656" class="graph-pulse-circle"/>
+                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656" font-family="var(--font-sans)">TIER 4</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Fibre Coton</text>
+                <text x="16" y="78" font-size="10.5" fill="#56675e">São Martinho</text>
+                <text x="16" y="98" font-size="9.5" fill="#88988f">Portugal (PT)</text>
+                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
+                <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">GOTS v6.0 Audité</text>
+              </g>
+
+              <!-- Node 2: Spinning -->
+              <g class="graph-node ${selectedId === 'node-spinning' ? 'active' : ''}" onclick="state.selectedChainNode='node-spinning';render();" transform="translate(190, 45)">
+                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-spinning' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-spinning' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
+                <circle cx="24" cy="24" r="6" fill="#0b7656"/>
+                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 3</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Filature</text>
+                <text x="16" y="78" font-size="10.5" fill="#56675e">Fiação Norte</text>
+                <text x="16" y="98" font-size="9.5" fill="#88988f">Fil peigné 30/1</text>
+                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
+                <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">OEKO-TEX 100</text>
+              </g>
+
+              <!-- Node 3: Mill -->
+              <g class="graph-node ${selectedId === 'node-mill' ? 'active' : ''}" onclick="state.selectedChainNode='node-mill';render();" transform="translate(360, 45)">
+                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-mill' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-mill' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
+                <circle cx="24" cy="24" r="6" fill="#0b7656"/>
+                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 3</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Tricotage Maille</text>
+                <text x="16" y="78" font-size="10.5" fill="#56675e">Malhas do Ave</text>
+                <text x="16" y="98" font-size="9.5" fill="#88988f">Jersey 185g/m²</text>
+                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
+                <text x="26" y="116" font-size="8.5" font-weight="700" fill="#0b7656">BCI & GOTS Mill</text>
+              </g>
+
+              <!-- Node 4: Dyeing -->
+              <g class="graph-node ${selectedId === 'node-dyeing' ? 'active' : ''}" onclick="state.selectedChainNode='node-dyeing';render();" transform="translate(530, 45)">
+                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-dyeing' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-dyeing' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
+                <circle cx="24" cy="24" r="6" fill="#0b7656"/>
+                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 2</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Teinture</text>
+                <text x="16" y="78" font-size="10.5" fill="#56675e">Tinturaria Braga</text>
+                <text x="16" y="98" font-size="9.5" fill="#88988f">Circuit fermé STeP</text>
+                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
+                <text x="24" y="116" font-size="8.5" font-weight="700" fill="#0b7656">ZDHC Level 3</text>
+              </g>
+
+              <!-- Node 5: Assembly -->
+              <g class="graph-node ${selectedId === 'node-assembly' ? 'active' : ''}" onclick="state.selectedChainNode='node-assembly';render();" transform="translate(700, 45)">
+                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-assembly' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-assembly' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
+                <circle cx="24" cy="24" r="6" fill="#0b7656"/>
+                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 1</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Confection</text>
+                <text x="16" y="78" font-size="10.5" fill="#56675e">Nhãn Textile</text>
+                <text x="16" y="98" font-size="9.5" fill="#88988f">Porto (PT)</text>
+                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
+                <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">SMETA 4-Pillar</text>
+              </g>
+
+              <!-- Node 6: Product / DPP -->
+              <g class="graph-node ${selectedId === 'node-product' ? 'active' : ''}" onclick="state.selectedChainNode='node-product';render();" transform="translate(850, 45)">
+                <rect width="130" height="130" rx="14" fill="${selectedId === 'node-product' ? '#f0fdf4' : '#ffffff'}" stroke="#0284c7" stroke-width="2" filter="url(#nodeShadow)"/>
+                <circle cx="24" cy="24" r="6" fill="#0284c7"/>
+                <text x="38" y="28" font-size="10" font-weight="800" fill="#0284c7">PRODUIT / DPP</text>
+                <text x="16" y="58" font-size="12" font-weight="800" fill="#13221b">Essentiel Coton</text>
+                <text x="16" y="78" font-size="10.5" fill="#56675e">Atelier Demo</text>
+                <text x="16" y="98" font-size="9.5" fill="#0284c7">Passeport Numérique</text>
+                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e0f2fe"/>
+                <text x="20" y="116" font-size="8.5" font-weight="700" fill="#0284c7">ESPR Cirpass Ready</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Node Inspector Split View -->
+        <div class="grid split">
+          <div class="inspector-card">
+            <div class="inspector-header">
+              <div>
+                <span class="badge-tier" style="margin-bottom:6px;">${esc(node.tier)} · Nœud sélectionné</span>
+                <h2 style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">${esc(node.title)}</h2>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px;">Entité : <strong>${esc(node.entity)}</strong> · ${esc(node.location)}</div>
+              </div>
+              <span class="status status-approved">${esc(node.auditScore)}</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin-bottom:20px;">
+              <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
+                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">Coordonnées GPS</span>
+                <strong style="display:block;font-size:12px;font-family:var(--font-mono);margin-top:3px;">${esc(node.coordinates)}</strong>
+              </div>
+              <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
+                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">Lot / Batch ID</span>
+                <strong style="display:block;font-size:12px;font-family:var(--font-mono);margin-top:3px;">${esc(node.batchLot)}</strong>
+              </div>
+              <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
+                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">Organisme Auditeur</span>
+                <strong style="display:block;font-size:12px;margin-top:3px;">${esc(node.auditor)}</strong>
+              </div>
+            </div>
+
+            <div style="margin-bottom:20px;">
+              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">Certifications & Normes Rattachées</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${(node.certifications || []).map(cert => `<span class="cert-pill">✓ ${esc(cert)}</span>`).join('')}
+              </div>
+            </div>
+
+            <div style="margin-bottom:20px;">
+              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">Indicateurs Opérationnels Clés</div>
+              <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;font-size:12px;">
+                ${Object.entries(node.metrics || {}).map(([k, v]) => `
+                  <div style="padding:10px;background:#fcfdfa;border:1px solid var(--line);border-radius:8px;">
+                    <div style="font-size:10.5px;color:var(--muted);">${esc(k)}</div>
+                    <strong style="font-size:13px;color:var(--ink);">${esc(v)}</strong>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">Preuves Documentaires Scellées (${(node.evidenceFiles || []).length})</div>
+              <div style="display:grid;gap:8px;">
+                ${(node.evidenceFiles || []).map(f => `
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#ffffff;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <span style="font-size:16px;">📄</span>
+                      <div>
+                        <strong style="font-size:12.5px;">${esc(f.name)}</strong>
+                        <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · Téléversé le ${esc(f.date)}</div>
+                      </div>
+                    </div>
+                    <button class="btn btn-secondary btn-small" onclick="alert('Inspection de la preuve ${esc(f.name)} scellée avec hash.')">Inspecter</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Side Context & Mass Balance -->
+          <div style="display:grid;gap:18px;">
+            <div class="card panel">
+              <div class="panel-head"><h2>Réconciliation Bilan Massique</h2><span class="status status-approved">Équilibré</span></div>
+              <p style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:14px;">TRACEFAB vérifie en continu le volume de matière entrant et sortant à chaque transformation.</p>
+              <div style="display:grid;gap:10px;font-size:12px;">
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
+                  <span>Fibre Brute Récoltée (São Martinho)</span>
+                  <strong>10,500 kg</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
+                  <span>Rendement Filature (Fiação Norte)</span>
+                  <strong>9,870 kg (94.0%)</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
+                  <span>Métrage Tricoté (Malhas do Ave)</span>
+                  <strong>51,400 m</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;">
+                  <span>Pièces Confectionnées (Nhãn Textile)</span>
+                  <strong style="color:var(--green)">25,000 unités</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="card panel">
+              <div class="panel-head"><h2>Règles de Conformité (ESPR & AGEC)</h2></div>
+              <ul style="padding-left:18px;font-size:12px;color:var(--muted);line-height:1.7;">
+                <li><strong>Traçabilité Géographique (AGEC Art. 13)</strong> : Pays de tissage, teinture et confection vérifiés.</li>
+                <li><strong>Zéro Déforestation & Régénératif</strong> : Parcelle agricole géoréférencée par satellite.</li>
+                <li><strong>Anti-Greenwashing (Directive EmpCo)</strong> : Toutes les allégations reposent sur des certificats de transaction (TC).</li>
+              </ul>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      function documentsConsoleView() {
+        const docs = state.documents || [];
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">Evidence Vault</div>
+            <h1>Document Verification Center</h1>
+            <p>Audit and verify transaction certificates, lab reports, social audits, and chemical testing files.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="alert('Rapport de vérification téléchargé.')">Télécharger le registre</button>
+            <button class="btn btn-primary" onclick="alert('Formulaire de dépôt de preuve ouvert.')">+ Déposer une preuve</button>
+          </div>
+        </div>
+        <div class="card panel">
+          <div class="panel-head"><h2>Preuves documentaires actives (${docs.length})</h2><span class="meta">Contrôle d'intégrité Neon</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Titre du document</th><th>Type</th><th>Fournisseur</th><th>Couverture</th><th>Date d'émission</th><th>Statut de revue</th><th style="text-align:right">Action</th></tr>
+              </thead>
+              <tbody>
+                ${docs.map((d) => `<tr>
+                  <td><strong>${esc(d.title)}</strong></td>
+                  <td><span class="status status-draft">${esc(d.type)}</span></td>
+                  <td>${esc(d.supplier)}</td>
+                  <td><code>${esc(d.coverage)}</code></td>
+                  <td>${esc(d.date)}</td>
+                  <td><span class="status ${d.status === 'verified' ? 'status-approved' : 'status-changes_requested'}">${esc(d.status === 'verified' ? 'Vérifié' : 'À revoir')}</span></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Document ${esc(d.title)} ouvert pour inspection.')">Vérifier</button></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+      }
+
+      function certificationsConsoleView() {
+        const certs = state.certifications || [];
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">Standard Compliance</div>
+            <h1>Certifications & Audit Standards</h1>
+            <p>Active multi-facility certifications: GOTS, GRS, OEKO-TEX, and ISO 14001.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="alert('Nouveau certificat déclaré.')">+ Déclarer un certificat</button>
+          </div>
+        </div>
+        <div class="grid split">
+          <div class="card panel">
+            <div class="panel-head"><h2>Certificats en vigueur</h2></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Norme / Standard</th><th>Numéro de certificat</th><th>Organisme</th><th>Expiration</th><th>Statut</th></tr>
+                </thead>
+                <tbody>
+                  ${certs.map((c) => `<tr>
+                    <td><strong>${esc(c.standard)}</strong></td>
+                    <td><code>${esc(c.number)}</code></td>
+                    <td>${esc(c.issuer)}</td>
+                    <td>${esc(c.expires)}</td>
+                    <td><span class="status status-approved">Valide</span></td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><h2>Veille des Expirations</h2></div>
+            <div style="font-size:12.5px;color:var(--muted);display:grid;gap:12px;">
+              <p>Aucun certificat n’expire dans les 60 prochains jours. Prochain renouvellement prévu : <strong>OEKO-TEX Standard 100</strong> (Décembre 2026).</p>
+              <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);">
+                <strong style="color:var(--green-dark);">Règle de conformité continue</strong>
+                <div style="font-size:11px;margin-top:4px;">Tracefab alerte automatiquement les fournisseurs 90 jours avant l'expiration d'un certificat d'exploitation.</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      function dppConsoleView() {
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">EU ESPR Compliance Engine</div>
+            <h1>Digital Product Passport (DPP) Readiness</h1>
+            <p>Score de préparation au Passeport Numérique des Produits de l'Union Européenne.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Exporter JSON-LD (CIRPASS) ↗</button>
+            <button class="btn btn-primary" onclick="alert('Tous les scores DPP ont été recalculés.')">Recalculer les scores DPP</button>
+          </div>
+        </div>
+
+        <div class="grid kpis">
+          <div class="card kpi">
+            <div class="kpi-label">Score Global DPP</div>
+            <div class="kpi-value" style="color:var(--green)">88%</div>
+            <div class="kpi-note">Prêt pour émission QR</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Styles Prêts (Eligible)</div>
+            <div class="kpi-value">42 / 48</div>
+            <div class="kpi-note">87.5% de la collection</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Preuves Manquantes</div>
+            <div class="kpi-value" style="color:#d97706">6</div>
+            <div class="kpi-note">2 demandes en cours</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Conformité ESPR</div>
+            <div class="kpi-value" style="color:var(--green)">100%</div>
+            <div class="kpi-note">Schéma textile v2.1</div>
+          </div>
+        </div>
+
+        <div class="grid split">
+          <div class="card panel">
+            <div class="panel-head"><h2>Matrice d'éligibilité par Produit</h2></div>
+            <table class="mockup-table">
+              <thead>
+                <tr><th>Référence</th><th>Nom du produit</th><th>Matières</th><th>Traçabilité</th><th>Score DPP</th><th>Statut</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>AT-ESS-001</code></td>
+                  <td><strong>Essentiel coton</strong></td>
+                  <td>100% Coton bio</td>
+                  <td>Tier 1 à 4</td>
+                  <td><strong style="color:var(--green)">94%</strong></td>
+                  <td><span class="status status-approved">Prêt pour QR</span></td>
+                </tr>
+                <tr>
+                  <td><code>AT-LIN-004</code></td>
+                  <td><strong>Ligne lin naturel</strong></td>
+                  <td>100% Lin FR</td>
+                  <td>Tier 1 à 3</td>
+                  <td><strong style="color:#d97706">76%</strong></td>
+                  <td><span class="status status-submitted">Preuve en attente</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card panel">
+            <div class="panel-head"><h2>Aperçu du Passeport Public (Consumer QR)</h2></div>
+            <div style="background:#f8faf8;border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center;">
+              <div style="width:110px;height:110px;background:white;border:1px solid #d0ded4;border-radius:12px;margin:0 auto 14px;display:grid;place-items:center;">
+                <div style="font-size:11px;font-family:var(--font-mono);font-weight:700;color:var(--ink);">[QR DPP LIVE]</div>
+              </div>
+              <strong style="font-size:14px;display:block;">Essentiel Coton Biologique</strong>
+              <span style="font-size:11px;color:var(--muted);"><a href="/dpp/" target="_blank" style="color:var(--green);font-weight:700;">https://dpp.tracefab.com/p/at-ess-001 ↗</a></span>
+              <div style="margin-top:14px;display:flex;justify-content:center;gap:8px;">
+                <button class="btn btn-secondary btn-small" onclick="window.open('/dpp/', '_blank')">Ouvrir la page publique</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      function reportsConsoleView() {
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">Reporting & CSRD Audits</div>
+            <h1>Rapports RSE & Conformité Réglementaire</h1>
+            <p>Générez les extraits de données pour les auditeurs CSRD (ESRS E1, E4, E5), Loi AGEC et LkSG.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="alert('Rapport CSRD exporté avec succès.')">Générer le rapport CSRD</button>
+          </div>
+        </div>
+        <div class="grid split">
+          <div class="card panel">
+            <div class="panel-head"><h2>Rapports disponibles</h2></div>
+            <div style="display:grid;gap:12px;">
+              <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <strong>Export Réglementaire CSRD (ESRS E5 Circularité)</strong>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Composition certifiée, recyclabilité, et taux de matières recyclées.</div>
+                </div>
+                <button class="btn btn-secondary btn-small" onclick="alert('Export CSRD lancé.')">Télécharger XLSX</button>
+              </div>
+              <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <strong>Fiche Conformité Loi AGEC (France - Article 13)</strong>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Traçabilité des opérations de tissage, teinture et confection.</div>
+                </div>
+                <button class="btn btn-secondary btn-small" onclick="alert('Fiche AGEC générée.')">Télécharger PDF</button>
+              </div>
+            </div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><h2>Piste d'audit immuable</h2></div>
+            <p style="font-size:12px;color:var(--muted);line-height:1.6;">Chaque déclaration fournisseur est enregistrée avec son empreinte SHA-256 dans la base de données Neon PostgreSQL, garantissant l'intégrité des données face aux contrôles de la DGCCRF.</p>
+          </div>
+        </div>`;
+      }
+
+      function settingsConsoleView() {
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">Configuration</div>
+            <h1>Settings & Governance</h1>
+            <p>Paramètres de l'organisation, intégrations API, clés d'accès et politiques de conformité.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="alert('Paramètres sauvegardés.')">Enregistrer</button>
+          </div>
+        </div>
+        <div class="card panel">
+          <div class="panel-head"><h2>Organisation & Marque</h2></div>
+          <form class="form-grid">
+            <label>Nom de la marque<input class="input" value="${esc(currentBrand()?.display_name || 'Atelier Demo')}"></label>
+            <label>Identifiant d'organisation Neon<input class="input" value="${esc(state.activeOrganizationId || 'demo-brand')}" readonly></label>
+            <label>Format des identifiants DPP<input class="input" value="urn:epc:id:sgtin:3760123"></label>
+            <label>Seuil minimal de qualité requis (%)<input class="input" type="number" value="85"></label>
+          </form>
+        </div>`;
       }
 
       function overview() {
@@ -408,7 +1324,8 @@
           <div class="card panel" style="margin-top:17px"><div class="panel-head"><div><h2>Identifiants</h2><p class="meta" style="margin:5px 0 0">Les identifiants servent à relier cette référence aux systèmes externes.</p></div><span class="meta">${detail.identifiers?.length || 0} enregistré(s)</span></div>
             ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">Créé le ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">Enregistrer</button></div></form>`).join('')}</div>` : '<div class="empty" style="padding:12px 0 18px"><p>Aucun identifiant renseigné pour cette version.</p></div>'}
             <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>Type<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> Définir comme principal</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">Ajouter l’identifiant</button></div></form>
-          </div>`;
+          </div>
+          <div class="card panel" style="margin-top:17px"><div class="panel-head"><div><h2>Schémas rattachés</h2><p class="meta" style="margin:5px 0 0">Le schéma versionné décrit les champs attendus. Il ne constitue pas une preuve.</p></div><span class="meta">${state.schemaBindings.length} rattachement(s)</span></div>${state.schemaBindings.length ? `<div class="item-list">${state.schemaBindings.map((binding) => `<div class="item"><div><strong>${esc(binding.schemaKey)} · v${esc(binding.schemaVersion)}</strong><div class="meta">Rattaché le ${date(binding.createdAt)}</div></div></div>`).join('')}</div>` : '<div class="empty" style="padding:12px 0 18px"><p>Aucun schéma rattaché à ce produit.</p></div>'}<form id="schema-binding-form" class="form-grid" style="margin-top:18px"><label class="field-full">Schéma<select class="select" name="schemaIdentity" required>${state.schemaCatalog.filter((schema) => schema.subjectTypes?.includes('product')).map((schema) => `<option value="${esc(schema.key)}|${esc(schema.version)}">${esc(schema.title)} · v${esc(schema.version)}</option>`).join('') || '<option value="">Aucun schéma disponible</option>'}</select></label><div class="form-actions"><button class="btn btn-primary btn-small" type="submit" ${state.schemaCatalog.length ? '' : 'disabled'}>Rattacher le schéma</button></div></form></div>`;
       }
 
       function supplierDetailView() {
@@ -723,12 +1640,134 @@
       function requestDetailView() {
         const r = state.selectedRequest;
         if (!r) return `<div class="empty"><div class="empty-icon">↗</div><strong>Demande introuvable</strong><button class="btn btn-secondary" data-view="requests">Retour aux demandes</button></div>`;
-        return `<div class="detail-hero"><div><button class="link-button" data-view="requests">← Retour aux demandes</button><div class="eyebrow" style="margin-top:20px">${esc(orgName(r.supplierOrganizationId))}</div><h1>${esc(r.title)}</h1><div class="detail-meta">${status(r.status)}<span class="meta">${esc(r.questionnaireKey)} · v${esc(r.questionnaireVersion)}</span><span class="meta">Échéance : ${date(r.dueAt)}</span>${r.productId ? `<span class="meta">Produit : <strong>${esc(state.products.find((p) => p.id === r.productId)?.name || r.productId)}</strong></span>` : ''}</div></div><div class="actions">${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}</div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Items du questionnaire</h2><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></div><div class="item-list">${(r.items || []).map((item) => `<div class="item"><div><h3>${esc(item.label)} ${item.required ? '<span style="color:var(--red)">*</span>' : ''}</h3><p>${esc(item.helpText || item.fieldKey)} · ${esc(item.dataType)}</p>${item.responses?.filter((response) => response.isCurrent).map((response) => `<div class="item-response"><strong>Réponse :</strong> ${esc(JSON.stringify(response.value))} <span class="status status-${esc(response.status)}">${esc(labels[response.status] || response.status)}</span>${['declared','documented','needs_review'].includes(response.status) ? `<div class="actions" style="justify-content:flex-start;margin-top:10px"><button class="btn btn-primary btn-small" data-review-response="${esc(response.id)}" data-review-status="verified_by_reviewer">Vérifier</button><button class="btn btn-danger btn-small" data-review-response="${esc(response.id)}" data-review-status="needs_review">Demander une correction</button></div>` : ''}</div>`).join('') || '<div class="item-response">En attente de réponse fournisseur.</div>'}</div><div>${status(item.status)}</div></div>`).join('') || '<div class="empty">Aucun item.</div>'}</div></div><div class="card panel"><div class="panel-head"><h2>Résumé</h2></div><dl style="display:grid;gap:13px;margin:0"><div><dt class="meta">Fournisseur</dt><dd style="margin:4px 0;font-weight:750">${esc(orgName(r.supplierOrganizationId))}</dd></div><div><dt class="meta">Créée le</dt><dd style="margin:4px 0;font-weight:750">${date(r.createdAt)}</dd></div><div><dt class="meta">Dernière activité</dt><dd style="margin:4px 0;font-weight:750">${date(r.lastActivityAt)}</dd></div><div><dt class="meta">Réponses</dt><dd style="margin:4px 0;font-weight:750">${(r.items || []).reduce((n, item) => n + (item.responses || []).filter((x) => x.isCurrent).length, 0)} courante(s)</dd></div>${r.productId ? `<div><dt class="meta">Produit associé</dt><dd style="margin:4px 0;font-weight:750"><button class="link-button" data-product-id="${esc(r.productId)}">${esc(state.products.find((p) => p.id === r.productId)?.name || 'Voir produit')}</button></dd></div>` : ''}</dl><p style="font-size:12px;margin-bottom:0">Les actions de revue détaillées mettent à jour le statut, alimentent les Data Points et déclenchent le recalcul qualité du produit lors de l’approbation.</p></div></div>`;
-      }
+        return `<div class="detail-hero">
+          <div>
+            <button class="link-button" data-view="requests">← Retour aux demandes</button>
+            <div class="eyebrow" style="margin-top:20px">${esc(orgName(r.supplierOrganizationId))}</div>
+            <h1>${esc(r.title)}</h1>
+            <div class="detail-meta">
+              ${status(r.status)}
+              <span class="meta">${esc(r.questionnaireKey)} · v${esc(r.questionnaireVersion)}</span>
+              <span class="meta">Échéance : ${date(r.dueAt)}</span>
+              ${r.productId ? `<span class="meta">Produit : <strong><button class="link-button" data-product-id="${esc(r.productId)}" style="display:inline;padding:0;font-size:inherit">${esc(state.products.find((p) => p.id === r.productId)?.name || r.productId)}</button></strong></span>` : ''}
+              <span class="cert-pill">Piste d'audit Neon active</span>
+            </div>
+          </div>
+          <div class="actions">
+            ${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}
+            ${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}
+            <button class="btn btn-primary" onclick="alert('Rapport complet de revue RSE exporté.')">Exporter Synthèse</button>
+          </div>
+        </div>
 
+        <div class="grid split">
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h2>Points de Preuve & Réponses Fournisseur</h2>
+                <span class="meta">Vérification documentaire opposable</span>
+              </div>
+              <div class="progress-line">
+                <div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div>
+                <small>${moneyless(r.completionPercentage)}%</small>
+              </div>
+            </div>
+
+            <div class="item-list">
+              ${(r.items || []).map((item) => `
+                <div class="item">
+                  <div style="flex:1">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                      <h3>${esc(item.label)} ${item.required ? '<span style="color:var(--red)">*</span>' : ''}</h3>
+                      ${status(item.status)}
+                    </div>
+                    <p style="margin:4px 0 8px;font-size:12px;color:var(--muted);">${esc(item.helpText || item.fieldKey)}</p>
+
+                    ${item.documentName ? `
+                      <div class="doc-preview-strip">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                          <span style="font-size:20px;">📄</span>
+                          <div>
+                            <strong style="font-size:12.5px;">${esc(item.documentName)}</strong>
+                            <div style="font-size:11px;color:var(--muted);">${esc(item.documentSize)} · Scellé SHA-256</div>
+                          </div>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                          <span class="badge-ocr">OCR 99% Valide</span>
+                          <button class="btn btn-secondary btn-small" onclick="alert('Inspection visuelle de ${esc(item.documentName)} ouverte.')">Inspecter Document</button>
+                        </div>
+                      </div>
+                    ` : ''}
+
+                    ${(item.responses || []).filter((resp) => resp.isCurrent).map((response) => `
+                      <div class="annotation-panel">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <div>
+                            <strong style="font-size:11px;color:var(--muted);text-transform:uppercase;">Donnée Déclarée par le Fournisseur :</strong>
+                            <div style="font-size:13px;font-weight:750;margin-top:2px;">${esc(response.value)}</div>
+                          </div>
+                          <span class="status status-${esc(response.status)}">${esc(labels[response.status] || response.status)}</span>
+                        </div>
+
+                        ${response.reviewerNote ? `
+                          <div class="annotation-bubble ${response.status === 'verified_by_reviewer' ? 'verified' : ''}">
+                            <strong>Note d'Audit / Justification :</strong>
+                            <div>${esc(response.reviewerNote)}</div>
+                          </div>
+                        ` : ''}
+
+                        <div class="actions" style="justify-content:flex-start;margin-top:12px;gap:8px;">
+                          <button class="btn btn-primary btn-small" data-review-response="${esc(response.id)}" data-review-status="verified_by_reviewer">
+                            ✓ Valider la preuve
+                          </button>
+                          <button class="btn btn-danger btn-small" data-review-response="${esc(response.id)}" data-review-status="needs_review">
+                            ✕ Demander une correction
+                          </button>
+                        </div>
+                      </div>
+                    `).join('') || '<div class="item-response" style="margin-top:10px;font-size:12px;color:var(--muted);">En attente de réponse fournisseur.</div>'}
+                  </div>
+                </div>
+              `).join('') || '<div class="empty">Aucun item de questionnaire rattaché.</div>'}
+            </div>
+          </div>
+
+          <div style="display:grid;gap:18px;">
+            <div class="card panel">
+              <div class="panel-head"><h2>Protocole d'Audit de Preuve</h2></div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6;">
+                Chaque validation génère un enregistrement immuable sur Neon PostgreSQL opposable aux audits de certification.
+              </p>
+              <div style="display:grid;gap:12px;margin-top:14px;font-size:12px;">
+                <div style="padding:10px;background:#f8faf8;border-left:3px solid var(--green);border-radius:8px;">
+                  <strong>Certificats de transaction (TC)</strong>
+                  <div style="color:var(--muted);margin-top:2px;">Vérification de concordance du numéro de lot avec la facture d'achat.</div>
+                </div>
+                <div style="padding:10px;background:#f8faf8;border-left:3px solid #0284c7;border-radius:8px;">
+                  <strong>Contrôle RSL & Chimie</strong>
+                  <div style="color:var(--muted);margin-top:2px;">Rapport de test accrédité de moins de 12 mois requis.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card panel">
+              <div class="panel-head"><h2>Actions Rapides</h2></div>
+              <div style="display:grid;gap:8px;">
+                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="alert('Rappel email envoyé à Rui Silva (Nhãn Textile).')">
+                  ✉️ Relancer le fournisseur par email
+                </button>
+                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="window.open('/dpp/', '_blank')">
+                  ▣ Prévisualiser le passeport DPP correspondant
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }
       function modal(type) {
         if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>Nouveau produit</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>Référence<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>Nom<input class="input" name="name" required placeholder="Essentiel coton"></label><label>Catégorie<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer le produit</button></div></form></div></div>`;
         if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Écosystème</div><h2>Inviter un fournisseur</h2></div><button class="close" data-action="close-modal">×</button></div><p>Un lien d’activation sera généré côté serveur. Le token reste privé et n’est jamais persisté en clair.</p><form id="supplier-form"><div class="form-grid"><label class="field-full">Email professionnel<input class="input" name="email" type="email" required placeholder="contact@fournisseur.com"></label><label>Nom légal<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>Nom affiché<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>Pays<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>Organisation marque<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Envoyer l’invitation</button></div></form></div></div>`;
+        if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>Créer un protocole d'audit personnalisé</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">Titre du questionnaire<input class="input" name="title" required placeholder="ex: Audit Rejets Eaux Usées & Teintures"></label><label>Identifiant unique (slug)<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>Catégorie RSE<select class="select" name="category"><option value="Chimie & Rejets">Chimie & Rejets</option><option value="Matières & Traçabilité">Matières & Traçabilité</option><option value="Social & Éthique">Social & Éthique</option><option value="Empreinte Carbone">Empreinte Carbone</option></select></label><label class="field-full">Description de l'audit<textarea class="textarea" name="description" rows="3" required placeholder="Expliquez aux fournisseurs les justificatifs de laboratoire attendus..."></textarea></label><label>Type de premier champ requis<select class="select" name="firstFieldType"><option value="document_proof">Preuve Documentaire scellée (avec OCR)</option><option value="composition_table">Tableau de composition 100%</option><option value="facility_select">Sélecteur de site de production</option></select></label><label>Champ obligatoire<select class="select" name="required"><option value="true">Oui (bloquant pour le score)</option><option value="false">Optionnel</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button type="submit" class="btn btn-primary">Publier le Questionnaire</button></div></form></div></div>`;
         if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Collecte</div><h2>Nouvelle demande de données</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">Titre<input class="input" name="title" required placeholder="Données produit — collection automne"></label><label>Fournisseur<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label class="field-full">Produit associé (optionnel)<select class="select" name="productId"><option value="">Aucun produit associé (questionnaire général)</option>${state.products.map((p) => `<option value="${esc(p.id)}" ${state.modalProductId === p.id ? 'selected' : ''}>${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label><label>Date d’échéance<input class="input" name="dueAt" type="date"></label><label>Organisation marque<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer et préparer</button></div></form></div></div>`;
         if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>Ajouter une étape / nœud</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">Libellé de l’étape<input class="input" name="label" required placeholder="ex. Filature de Barcelos ou Coton bio GOTS"></label><label>Type de nœud<select class="select" name="nodeType" required><option value="process">Procédé / Transformation</option><option value="site">Site industriel fournisseur</option><option value="material">Matière première</option><option value="organization">Organisation partenaire</option></select></label><label>Procédé textile<select class="select" name="processCode"><option value="">Aucun / Autre</option><option value="ginning">Égrenage (Ginning)</option><option value="spinning">Filature (Spinning)</option><option value="weaving">Tissage (Weaving)</option><option value="knitting">Tricotage (Knitting)</option><option value="dyeing">Teinture (Dyeing)</option><option value="finishing">Ennoblissement (Finishing)</option><option value="cutting">Coupe (Cutting)</option><option value="sewing">Confection (Sewing)</option><option value="assembly">Assemblage (Assembly)</option><option value="packaging">Packaging (Packaging)</option></select></label><label class="field-full">Matière associée (si type matière)<select class="select" name="materialId"><option value="">Aucune</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">Fournisseur / Organisation<select class="select" name="organizationId"><option value="">Aucune</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Ajouter le nœud</button></div></form></div></div>`;
         if (type === 'new-chain-link') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>Relier deux étapes</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-link-form"><div class="form-grid"><label class="field-full">Étape Source (Amont)<select class="select" name="sourceNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label class="field-full">Étape Cible (Aval)<select class="select" name="targetNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label>Type de relation<select class="select" name="linkType" required><option value="next_step">Étape suivante (next_step)</option><option value="transformed_at">Transformé à (transformed_at)</option><option value="manufactured_at">Fabriqué à (manufactured_at)</option><option value="sourced_from">Sourcé depuis (sourced_from)</option><option value="contains">Contient (contains)</option></select></label><label>Ordre séquentiel<input class="input" name="sequenceNumber" type="number" min="1" step="1" placeholder="1"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer le lien</button></div></form></div></div>`;
@@ -761,11 +1800,44 @@
         await api(`/api/data-requests/${created.request.id}/items/from-template`, { method: 'POST', body: '{}' });
         state.modal = null; state.modalProductId = null; await sync(); await openRequest(created.request.id); notify('Demande créée et questionnaire préparé.');
       }
-      async function openRequest(id) { state.view = 'requestDetail'; if (state.demo) { state.selectedRequest = state.requests.find((r) => r.id === id); render(); return; } state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(id)}`)).request; render(); }
-      async function openProduct(id) { state.view = 'productDetail'; state.selectedProduct = state.products.find((p) => p.id === id) || null; if (state.demo) { state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] }; render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(id)}`); render(); }
+      async function openRequest(id) {
+        state.view = 'requestDetail';
+        if (state.demo) {
+          state.selectedRequest = state.requests.find((r) => r.id === id);
+          if (state.selectedRequest && !state.selectedRequest.items) {
+            state.selectedRequest.items = state.requests.find((r) => r.id === 'demo-request-2')?.items || [];
+          }
+          render();
+          return;
+        }
+        state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(id)}`)).request;
+        render();
+      }
+      async function openProduct(id) {
+        state.view = 'productDetail';
+        state.selectedProduct = state.products.find((p) => p.id === id) || null;
+        if (state.demo) {
+          state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] };
+          state.schemaBindings = [];
+          render();
+          return;
+        }
+        state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(id)}`);
+        state.schemaBindings = (await api(`/api/schema-bindings?subjectType=product&subjectId=${encodeURIComponent(id)}`)).bindings || [];
+        render();
+      }
       async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: 'Partenaire actif' }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
       async function saveProduct(form) { const data = Object.fromEntries(new FormData(form)); const body = { ...data, sizeRange: String(data.sizeRange || '').split(',').map((x) => x.trim()).filter(Boolean), weightGrams: data.weightGrams ? Number(data.weightGrams) : null }; if (state.demo) { Object.assign(state.selectedProductDetail.product, body); state.selectedProduct = state.selectedProductDetail.product; notify('Produit mis à jour en mode démonstration.'); render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`, { method: 'PATCH', body: JSON.stringify(body) }); await sync(); notify('Données produit enregistrées.'); render(); }
       async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify('Nouvelle révision simulée.'); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify('Nouvelle révision créée.'); render(); }
+      async function saveSchemaBinding(form) {
+        if (!state.selectedProductDetail?.product) return;
+        const [schemaKey, schemaVersion] = String(new FormData(form).get('schemaIdentity') || '').split('|');
+        if (!schemaKey || !schemaVersion) return;
+        if (state.demo) { state.schemaBindings.push({ id: `demo-schema-${Date.now()}`, schemaKey, schemaVersion, subjectType: 'product', subjectId: state.selectedProductDetail.product.id, createdAt: new Date().toISOString() }); notify('Schéma rattaché en mode démonstration.'); render(); return; }
+        const result = await api('/api/schema-bindings', { method: 'POST', body: JSON.stringify({ schemaKey, schemaVersion, subjectType: 'product', subjectId: state.selectedProductDetail.product.id }) });
+        state.schemaBindings = [...state.schemaBindings.filter((binding) => binding.id !== result.binding.id), result.binding];
+        notify('Schéma rattaché au produit.'); render();
+      }
       async function refreshProductDetail() {
         if (!state.selectedProductDetail?.product) return;
         if (!state.demo) state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`);
@@ -916,7 +1988,21 @@
       }
       async function reviewResponse(responseId, reviewStatus) {
         const comment = window.prompt(reviewStatus === 'verified_by_reviewer' ? 'Commentaire de vérification (facultatif)' : 'Indiquez la correction ou la preuve attendue', '') || '';
-        if (state.demo) { notify(reviewStatus === 'verified_by_reviewer' ? 'Réponse vérifiée en mode démonstration.' : 'Correction demandée en mode démonstration.'); return; }
+        if (state.demo) {
+          if (state.selectedRequest?.items) {
+            for (const item of state.selectedRequest.items) {
+              const resp = item.responses?.find((r) => r.id === responseId);
+              if (resp) {
+                resp.status = reviewStatus;
+                resp.reviewerNote = comment || (reviewStatus === 'verified_by_reviewer' ? 'Preuve inspectée et validée par la marque.' : 'Correction demandée au fournisseur.');
+                break;
+              }
+            }
+          }
+          notify(reviewStatus === 'verified_by_reviewer' ? 'Preuve vérifiée et scellée.' : 'Demande de correction transmise.');
+          render();
+          return;
+        }
         await api(`/api/data-responses/${encodeURIComponent(responseId)}/review`, { method: 'POST', body: JSON.stringify({ status: reviewStatus, reviewComment: comment }) });
         await refreshDetail();
         notify(reviewStatus === 'verified_by_reviewer' ? 'Réponse vérifiée.' : 'Demande de correction envoyée.');
@@ -1243,11 +2329,34 @@
         document.getElementById('dpp-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadDpp(e.target.value); });
         document.getElementById('product-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('schema-binding-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveSchemaBinding(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('material-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); }));
         document.getElementById('identifier-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveIdentifier(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.identifier-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveIdentifier(e.currentTarget).catch((err) => notify(err.message, true)); }));
         document.getElementById('supplier-form')?.addEventListener('submit', (e) => { e.preventDefault(); inviteSupplier(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('questionnaire-builder-form')?.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          const data = Object.fromEntries(new FormData(form));
+          const newQ = {
+            key: data.key,
+            version: '1.0',
+            title: data.title,
+            category: data.category,
+            description: data.description,
+            itemCount: 4,
+            requiredItemCount: data.required === 'true' ? 4 : 3,
+            fields: [
+              { id: `f-${Date.now()}-1`, key: 'primary_evidence', label: 'Preuve documentaire d\'audit principal', type: data.firstFieldType, required: data.required === 'true', helpText: 'Rapport accrédité' },
+              { id: `f-${Date.now()}-2`, key: 'attestation_compliance', label: 'Déclaration formelle de conformité', type: 'text_short', required: true, helpText: 'Signé par le directeur d\'usine' }
+            ]
+          };
+          state.questionnaires.unshift(newQ);
+          state.modal = null;
+          notify(`Protocole "${data.title}" créé et disponible pour toutes les marques.`);
+          render();
+        });
         document.getElementById('request-form')?.addEventListener('submit', (e) => { e.preventDefault(); createRequest(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('chain-node-form')?.addEventListener('submit', (e) => { e.preventDefault(); addChainNode(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('chain-link-form')?.addEventListener('submit', (e) => { e.preventDefault(); addChainLink(e.currentTarget).catch((err) => notify(err.message, true)); });

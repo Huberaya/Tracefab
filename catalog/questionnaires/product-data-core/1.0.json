@@ -1,0 +1,58 @@
+{
+  "key": "product-data-core",
+  "version": "1.0",
+  "title": "Product data core",
+  "description": "Minimum product, composition and manufacturing data requested from a supplier.",
+  "items": [
+    {
+      "fieldKey": "product_description",
+      "label": "Product description",
+      "dataType": "text",
+      "required": true,
+      "evidenceRequired": false,
+      "helpText": "Describe the product and its intended use.",
+      "validationRules": { "minLength": 10, "maxLength": 2000 },
+      "evidenceKinds": []
+    },
+    {
+      "fieldKey": "country_of_manufacture",
+      "label": "Country of manufacture",
+      "dataType": "country",
+      "required": true,
+      "evidenceRequired": false,
+      "helpText": "Use the ISO 3166-1 alpha-2 country code.",
+      "validationRules": {},
+      "evidenceKinds": []
+    },
+    {
+      "fieldKey": "main_material_percentage",
+      "label": "Main material percentage",
+      "dataType": "percentage",
+      "required": true,
+      "evidenceRequired": true,
+      "helpText": "Percentage by mass of the main material.",
+      "validationRules": { "min": 0, "max": 100 },
+      "evidenceKinds": ["technical_spec", "certificate"]
+    },
+    {
+      "fieldKey": "material_composition",
+      "label": "Material composition",
+      "dataType": "json",
+      "required": true,
+      "evidenceRequired": true,
+      "helpText": "Provide an array of materials and their percentages.",
+      "validationRules": { "jsonShape": "material_composition" },
+      "evidenceKinds": ["technical_spec"]
+    },
+    {
+      "fieldKey": "manufacturing_site_name",
+      "label": "Manufacturing site name",
+      "dataType": "text",
+      "required": false,
+      "evidenceRequired": false,
+      "helpText": null,
+      "validationRules": { "maxLength": 240 },
+      "evidenceKinds": []
+    }
+  ]
+}

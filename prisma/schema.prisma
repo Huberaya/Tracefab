@@ -487,6 +487,7 @@ model organization_invitations {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model organization_memberships {
   id                                               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkMembershipId                                String?           @unique @map("clerk_membership_id")
   organization_id                                  String            @db.Uuid
   user_id                                          String            @db.Uuid
   role                                             membership_role   @default(viewer)
@@ -507,6 +508,7 @@ model organization_memberships {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model organizations {
   id                                                                                                String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkOrganizationId                                                                               String?                        @unique @map("clerk_organization_id")
   type                                                                                              organization_type
   legal_name                                                                                        String
   display_name                                                                                      String?
