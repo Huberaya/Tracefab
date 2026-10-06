@@ -770,6 +770,7 @@
       }
     }
   </style>
+  <script src="/i18n-engine.js"></script>
 </head>
 <body>
 
@@ -785,11 +786,11 @@
       </a>
 
       <nav class="nav-pill-menu" aria-label="Main Menu">
-        <a href="#why">Why</a>
-        <a href="#platform">Platform</a>
-        <a href="#supply-chain">Supply Chain</a>
-        <a href="#product-intelligence">Intelligence</a>
-        <a href="#dpp">DPP</a>
+        <a href="#why" data-i18n="nav_why">Why</a>
+        <a href="#platform" data-i18n="nav_platform">Platform</a>
+        <a href="#supply-chain" data-i18n="nav_supply_chain">Supply Chain</a>
+        <a href="#product-intelligence" data-i18n="nav_intelligence">Intelligence</a>
+        <a href="#dpp" data-i18n="nav_dpp">DPP</a>
       </nav>
 
       <div class="nav-right-actions">
@@ -809,20 +810,20 @@
             <div style="padding:6px 10px;font-size:12px;color:#fff;cursor:pointer;" onclick="setLanguage('pt')">PT - Português</div>
           </div>
         </div>
-        <a href="/brand-console/" class="btn-login-pill">Sign In</a>
-        <a href="#demo" class="btn-demo-pill">Request Demo</a>
+        <a href="/brand-console/" class="btn-login-pill" data-i18n="nav_signin">Sign In</a>
+        <a href="#demo" class="btn-demo-pill" data-i18n="nav_demo">Request Demo</a>
       </div>
     </header>
 
     <!-- Center Headline & Copy -->
     <div class="hero-center-content">
-      <h1 class="hero-headline">Let's Make Your Textile Supply Chain Truly Verifiable.</h1>
-      <p class="hero-lead">
+      <h1 class="hero-headline" data-i18n="hero_headline">Let's Make Your Textile Supply Chain Truly Verifiable.</h1>
+      <p class="hero-lead" data-i18n="hero_lead">
         Collect raw material evidence, reconcile Tier 1–4 supplier lot certificates, and automatically generate DPP-ready intelligence in seconds.
       </p>
       <div class="hero-buttons">
-        <a href="/brand-console/" class="btn-white-hero">Launch Platform</a>
-        <a href="#supply-chain" class="btn-trans-hero">Explore Supply Chain</a>
+        <a href="/brand-console/" class="btn-white-hero" data-i18n="hero_btn_launch">Launch Platform</a>
+        <a href="#supply-chain" class="btn-trans-hero" data-i18n="hero_btn_explore">Explore Supply Chain</a>
       </div>
     </div>
 
@@ -832,12 +833,12 @@
       <div class="tablet-chrome-bar">
         <div class="tablet-logo-pill">
           <span style="width:10px;height:10px;border-radius:50%;background:#10b981;"></span>
-          <span>TRACEFAB BRAND CONSOLE</span>
+          <span data-i18n="console_title">TRACEFAB BRAND CONSOLE</span>
         </div>
         <div class="tablet-top-pills">
           <span class="top-tag">CIRPASS 1.2</span>
-          <span class="top-tag" style="background:#eaf5ef;color:#0b7656;">ESPR READY</span>
-          <span class="top-tag">1,248 VERIFIED LOTS</span>
+          <span class="top-tag" style="background:#eaf5ef;color:#0b7656;" data-i18n="espr_tag">ESPR READY</span>
+          <span class="top-tag" data-i18n="lots_tag">1,248 VERIFIED LOTS</span>
         </div>
       </div>
 
@@ -856,10 +857,10 @@
         <div class="tablet-content-body">
           <!-- Panoramic Banner -->
           <div class="tablet-panorama-banner">
-            <span class="panorama-tag">SUPPLY CHAIN INTELLIGENCE</span>
+            <span class="panorama-tag" data-i18n="banner_tag">SUPPLY CHAIN INTELLIGENCE</span>
             <div>
               <div style="font-size:12px;font-family:var(--font-mono);opacity:0.8;margin-bottom:4px;">COTTON TWILL OVERSHIRT #4289</div>
-              <div class="panorama-title">100% Polygon GPS Mapped & Reconciled Across 4 Tiers</div>
+              <div class="panorama-title" data-i18n="banner_title">100% Polygon GPS Mapped & Reconciled Across 4 Tiers</div>
             </div>
           </div>
 
@@ -867,32 +868,32 @@
           <div class="tablet-three-cards">
             <div class="t-card">
               <div class="t-card-head">
-                <span>TIER 1–4 TRACEABILITY</span>
+                <span data-i18n="card1_head">TIER 1–4 TRACEABILITY</span>
                 <span style="color:#10b981;">100%</span>
               </div>
-              <div class="t-card-title">Provenance Chain</div>
+              <div class="t-card-title" data-i18n="card1_title">Provenance Chain</div>
               <div class="t-progress-bar"><div class="t-progress-fill" style="width:100%;"></div></div>
-              <div style="font-size:11px;color:var(--tf-text-muted);">Portugal spinning & weaving verified</div>
+              <div style="font-size:11px;color:var(--tf-text-muted);" data-i18n="card1_desc">Portugal spinning & weaving verified</div>
             </div>
 
             <div class="t-card">
               <div class="t-card-head">
-                <span>CHEMICAL SAFETY</span>
+                <span data-i18n="card2_head">CHEMICAL SAFETY</span>
                 <span style="color:#10b981;">PASSED</span>
               </div>
-              <div class="t-card-title">ZDHC MRSL Level 3</div>
+              <div class="t-card-title" data-i18n="card2_title">ZDHC MRSL Level 3</div>
               <div class="t-progress-bar"><div class="t-progress-fill" style="width:92%;"></div></div>
-              <div style="font-size:11px;color:var(--tf-text-muted);">Zero hazardous discharge effluent</div>
+              <div style="font-size:11px;color:var(--tf-text-muted);" data-i18n="card2_desc">Zero hazardous discharge effluent</div>
             </div>
 
             <div class="t-card">
               <div class="t-card-head">
-                <span>DPP READINESS</span>
+                <span data-i18n="card3_head">DPP READINESS</span>
                 <span style="color:#10b981;">88%</span>
               </div>
-              <div class="t-card-title">Digital Product Passport</div>
+              <div class="t-card-title" data-i18n="card3_title">Digital Product Passport</div>
               <div class="t-progress-bar"><div class="t-progress-fill" style="width:88%;"></div></div>
-              <div style="font-size:11px;color:var(--tf-text-muted);">GS1 Digital Link ready for QR printing</div>
+              <div style="font-size:11px;color:var(--tf-text-muted);" data-i18n="card3_desc">GS1 Digital Link ready for QR printing</div>
             </div>
           </div>
         </div>
@@ -907,10 +908,10 @@
     <div class="container">
       <div class="editorial-header-flex">
         <div>
-          <div class="section-eyebrow-chip">OPERATIONAL SPEED</div>
-          <h2 class="editorial-headline">Plan Smarter Supply Chains<br>In Seconds</h2>
+          <div class="section-eyebrow-chip" data-i18n="sec2_eyebrow">OPERATIONAL SPEED</div>
+          <h2 class="editorial-headline" data-i18n="sec2_title">Plan Smarter Supply Chains<br>In Seconds</h2>
         </div>
-        <a href="/brand-console/" class="btn-pill-dark">Explore All Features</a>
+        <a href="/brand-console/" class="btn-pill-dark" data-i18n="sec2_btn">Explore All Features</a>
       </div>
 
       <!-- 3 Asymmetric Photo/Graphic Cards with Floating White Overlay Boxes -->
@@ -919,8 +920,8 @@
         <div class="editorial-photo-card">
           <div class="card-photo-bg bg-textile-1"></div>
           <div class="floating-white-box">
-            <h4>Universal BOM & Lot Importer</h4>
-            <p>Upload Excel, CSV or PLM exports with instant 100% material composition validation and fiber reconciliation.</p>
+            <h4 data-i18n="sec2_c1_title">Universal BOM & Lot Importer</h4>
+            <p data-i18n="sec2_c1_desc">Upload Excel, CSV or PLM exports with instant 100% material composition validation and fiber reconciliation.</p>
             <div class="tag-row">
               <span class="tiny-chip">EXCEL / CSV</span>
               <span class="tiny-chip">100% VALIDATION</span>
@@ -932,8 +933,8 @@
         <div class="editorial-photo-card">
           <div class="card-photo-bg bg-textile-2"></div>
           <div class="floating-white-box">
-            <h4>Intelligent Certificate OCR</h4>
-            <p>Automate verification of GOTS, OEKO-TEX, and ZDHC audit scopes without manual spreadsheet reviews.</p>
+            <h4 data-i18n="sec2_c2_title">Intelligent Certificate OCR</h4>
+            <p data-i18n="sec2_c2_desc">Automate verification of GOTS, OEKO-TEX, and ZDHC audit scopes without manual spreadsheet reviews.</p>
             <div class="tag-row">
               <span class="tiny-chip">AUTO-EXTRACT</span>
               <span class="tiny-chip">EXPIRY WATCH</span>
@@ -945,8 +946,8 @@
         <div class="editorial-photo-card">
           <div class="card-photo-bg bg-textile-3"></div>
           <div class="floating-white-box">
-            <h4>Supplier Data Vault Shield</h4>
-            <p>Protect upstream trade secrets and tier pricing while sharing cryptographic proof of regulatory compliance.</p>
+            <h4 data-i18n="sec2_c3_title">Supplier Data Vault Shield</h4>
+            <p data-i18n="sec2_c3_desc">Protect upstream trade secrets and tier pricing while sharing cryptographic proof of regulatory compliance.</p>
             <div class="tag-row">
               <span class="tiny-chip">ZERO-LEAK</span>
               <span class="tiny-chip">AES-256</span>
@@ -963,11 +964,11 @@
   <section class="section-centered-flow" id="platform">
     <div class="container">
       <div class="centered-header-block">
-        <div class="centered-eyebrow">COMPLETE PLATFORM</div>
-        <h2 class="centered-title-big">
+        <div class="centered-eyebrow" data-i18n="sec3_eyebrow">COMPLETE PLATFORM</div>
+        <h2 class="centered-title-big" data-i18n="sec3_title">
           Everything <span class="icon-inline-pill">⚡</span> You Need To Deliver The Perfect Passport
         </h2>
-        <p class="centered-lead">
+        <p class="centered-lead" data-i18n="sec3_lead">
           From fiber harvest to retail QR code: turn fragmented supplier declarations into audit-proof European Digital Product Passports.
         </p>
       </div>
@@ -979,11 +980,11 @@
               <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">SUPPLIER PORTAL</span>
               <span style="font-size:11px;font-weight:700;color:#10b981;">LIVE</span>
             </div>
-            <div class="widget-stat-num">0% Friction</div>
-            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;">No supplier account required to submit lots</div>
+            <div class="widget-stat-num" data-i18n="sec3_w1_stat">0% Friction</div>
+            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;" data-i18n="sec3_w1_sub">No supplier account required to submit lots</div>
           </div>
-          <h3 class="widget-title">Zero-Barrier Supplier Onboarding</h3>
-          <p class="widget-desc">Direct magic links allow spinning mills and garment makers to submit evidence and declare BOMs in seconds.</p>
+          <h3 class="widget-title" data-i18n="sec3_w1_title">Zero-Barrier Supplier Onboarding</h3>
+          <p class="widget-desc" data-i18n="sec3_w1_desc">Direct magic links allow spinning mills and garment makers to submit evidence and declare BOMs in seconds.</p>
         </div>
 
         <div class="dash-widget-card">
@@ -992,11 +993,11 @@
               <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">DATA QUALITY INDEX</span>
               <span style="font-size:11px;font-weight:700;color:#10b981;">GRADE A</span>
             </div>
-            <div class="widget-stat-num">98.4 / 100</div>
-            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;">Defensible against European customs audits</div>
+            <div class="widget-stat-num" data-i18n="sec3_w2_stat">98.4 / 100</div>
+            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;" data-i18n="sec3_w2_sub">Defensible against European customs audits</div>
           </div>
-          <h3 class="widget-title">Dynamic Quality Center</h3>
-          <p class="widget-desc">Explainable 6-tier scoring that verifies document authenticity, lot coherence, and mass balance conservation.</p>
+          <h3 class="widget-title" data-i18n="sec3_w2_title">Dynamic Quality Center</h3>
+          <p class="widget-desc" data-i18n="sec3_w2_desc">Explainable 6-tier scoring that verifies document authenticity, lot coherence, and mass balance conservation.</p>
         </div>
 
         <div class="dash-widget-card">
@@ -1005,11 +1006,11 @@
               <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">EUROPEAN GATEWAY</span>
               <span style="font-size:11px;font-weight:700;color:#10b981;">ESPR 2027</span>
             </div>
-            <div class="widget-stat-num">JSON-LD CIRPASS</div>
-            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;">Standardized open semantic data schema</div>
+            <div class="widget-stat-num" data-i18n="sec3_w3_stat">JSON-LD CIRPASS</div>
+            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;" data-i18n="sec3_w3_sub">Standardized open semantic data schema</div>
           </div>
-          <h3 class="widget-title">Instant DPP Generation</h3>
-          <p class="widget-desc">Publish compliant consumer-facing QR passports with French AGEC Art. 13 operations and circularity metrics.</p>
+          <h3 class="widget-title" data-i18n="sec3_w3_title">Instant DPP Generation</h3>
+          <p class="widget-desc" data-i18n="sec3_w3_desc">Publish compliant consumer-facing QR passports with French AGEC Art. 13 operations and circularity metrics.</p>
         </div>
       </div>
     </div>
@@ -1022,10 +1023,10 @@
     <div class="container">
       <div class="centered-header-block">
         <div class="centered-eyebrow">GLOBAL HUBS</div>
-        <h2 class="centered-title-big">
+        <h2 class="centered-title-big" data-i18n="sec4_title">
           Map The <span class="icon-inline-pill">🌍</span> World's Major Textile Hubs
         </h2>
-        <p class="centered-lead">
+        <p class="centered-lead" data-i18n="sec4_lead">
           Connect your European design headquarters directly to spinning mills, dye houses, and sewing ateliers worldwide.
         </p>
       </div>
@@ -1034,36 +1035,36 @@
         <div class="hub-card">
           <div class="hub-cover-img cover-portugal">
             <span class="hub-badge">TIER 1 & 2 HUB</span>
-            <span>PORTUGAL</span>
+            <span data-i18n="hub1_country">PORTUGAL</span>
           </div>
           <div class="hub-content">
-            <div class="hub-country-tag">PORTO & GUIMARÃES</div>
-            <h4>Knitting & Finishing Ateliers</h4>
-            <p>100% GOTS certified organic jersey, spinning mills and automated cutting facilities fully polygon mapped.</p>
+            <div class="hub-country-tag" data-i18n="hub1_city">PORTO & GUIMARÃES</div>
+            <h4 data-i18n="hub1_title">Knitting & Finishing Ateliers</h4>
+            <p data-i18n="hub1_desc">100% GOTS certified organic jersey, spinning mills and automated cutting facilities fully polygon mapped.</p>
           </div>
         </div>
 
         <div class="hub-card">
           <div class="hub-cover-img cover-italy">
             <span class="hub-badge">LUXURY WEAVING</span>
-            <span>ITALY</span>
+            <span data-i18n="hub2_country">ITALY</span>
           </div>
           <div class="hub-content">
-            <div class="hub-country-tag">BIELLA & PRATO</div>
-            <h4>Wool & Silk Provenance</h4>
-            <p>Traceable fine spinning, ZDHC compliant wet processing and circular recycled fiber certificates.</p>
+            <div class="hub-country-tag" data-i18n="hub2_city">BIELLA & PRATO</div>
+            <h4 data-i18n="hub2_title">Wool & Silk Provenance</h4>
+            <p data-i18n="hub2_desc">Traceable fine spinning, ZDHC compliant wet processing and circular recycled fiber certificates.</p>
           </div>
         </div>
 
         <div class="hub-card">
           <div class="hub-cover-img cover-france">
             <span class="hub-badge">FLAX & LINEN</span>
-            <span>FRANCE</span>
+            <span data-i18n="hub3_country">FRANCE</span>
           </div>
           <div class="hub-content">
-            <div class="hub-country-tag">NORMANDY & HAUTS-DE-FRANCE</div>
-            <h4>Master of Linen Scutching</h4>
-            <p>Complete farm-to-yarn agricultural batch records complying with French AGEC traceability standards.</p>
+            <div class="hub-country-tag" data-i18n="hub3_city">NORMANDY & HAUTS-DE-FRANCE</div>
+            <h4 data-i18n="hub3_title">Master of Linen Scutching</h4>
+            <p data-i18n="hub3_desc">Complete farm-to-yarn agricultural batch records complying with French AGEC traceability standards.</p>
           </div>
         </div>
       </div>
@@ -1076,17 +1077,17 @@
   <footer class="clean-footer">
     <div class="container">
       <div class="footer-brand-title">TRACEFAB</div>
-      <p style="margin-bottom: 24px;">European Textile Data & Digital Product Passport Infrastructure</p>
+      <p style="margin-bottom: 24px;" data-i18n="footer_desc">European Textile Data & Digital Product Passport Infrastructure</p>
       <div style="display:flex;justify-content:center;gap:24px;font-size:12px;color:var(--tf-text-subtle);">
         <a href="#why">Why TRACEFAB</a>
-        <a href="#platform">Platform</a>
-        <a href="#supply-chain">Supply Chain</a>
+        <a href="#platform" data-i18n="nav_platform">Platform</a>
+        <a href="#supply-chain" data-i18n="nav_supply_chain">Supply Chain</a>
         <a href="/brand-console/">Brand Console</a>
         <a href="/supplier-portal/">Supplier Portal</a>
         <a href="/dpp/">DPP Consumer View</a>
       </div>
       <div style="margin-top:24px;font-size:11px;color:var(--tf-text-subtle);">
-        © 2026 TRACEFAB. All rights reserved.
+        <span data-i18n="footer_rights">© 2026 TRACEFAB. All rights reserved.</span>
       </div>
     </div>
   </footer>
