@@ -1442,35 +1442,51 @@
           <div>
             <div class="eyebrow">Reporting & CSRD Audits</div>
             <h1>Rapports RSE & Conformité Réglementaire</h1>
-            <p>Générez les extraits de données pour les auditeurs CSRD (ESRS E1, E4, E5), Loi AGEC et LkSG.</p>
+            <p>Générez les extraits de données certifiées pour les auditeurs CSRD (ESRS E1, E4, E5), ESPR, Loi AGEC et LkSG.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Rapport CSRD exporté avec succès.')">Générer le rapport CSRD</button>
+            <button class="btn btn-primary" data-action="download-audit-dossier">📥 Exporter Dossier d'Audit Réglementaire (JSON)</button>
           </div>
         </div>
         <div class="grid split">
           <div class="card panel">
-            <div class="panel-head"><h2>Rapports disponibles</h2></div>
+            <div class="panel-head"><h2>Dossiers & Exports d'Audit Réglementaire</h2></div>
             <div style="display:grid;gap:12px;">
               <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
                 <div>
-                  <strong>Export Réglementaire CSRD (ESRS E5 Circularité)</strong>
-                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Composition certifiée, recyclabilité, et taux de matières recyclées.</div>
+                  <strong>Dossier d'Audit Complet CSRD & ESPR (Dossier Unique JSON)</strong>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Données d'organisation, inventaire produits, traçabilité de chaîne, bilans massiques et justificatifs documentaires scellés.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Export CSRD lancé.')">Télécharger XLSX</button>
+                <button class="btn btn-primary btn-small" data-action="download-audit-dossier">Télécharger JSON</button>
               </div>
               <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
                 <div>
-                  <strong>Fiche Conformité Loi AGEC (France - Article 13)</strong>
-                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Traçabilité des opérations de tissage, teinture et confection.</div>
+                  <strong>Export Référentiel Catalogue & Nomenclatures (CSV)</strong>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Toutes les références, GTIN-13 GS1, composition matières, pays de fabrication et scores de complétude.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Fiche AGEC générée.')">Télécharger PDF</button>
+                <button class="btn btn-secondary btn-small" data-action="export-products-csv">Télécharger CSV</button>
+              </div>
+              <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <strong>Export Cartographie & Annuaire Fournisseurs (CSV)</strong>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Raison sociale, rôles supply chain, pays, contacts d'audit et statuts de vérification des certificats.</div>
+                </div>
+                <button class="btn btn-secondary btn-small" data-action="export-suppliers-csv">Télécharger CSV</button>
               </div>
             </div>
           </div>
           <div class="card panel">
-            <div class="panel-head"><h2>Piste d'audit immuable</h2></div>
-            <p style="font-size:12px;color:var(--muted);line-height:1.6;">Chaque déclaration fournisseur est enregistrée avec son empreinte SHA-256 dans la base de données Neon PostgreSQL, garantissant l'intégrité des données face aux contrôles de la DGCCRF.</p>
+            <div class="panel-head"><h2>Piste d'audit immuable & Conformité UE</h2></div>
+            <p style="font-size:12px;color:var(--muted);line-height:1.6;">Chaque déclaration fournisseur, certificat de transaction (TC) et allocation bilancielle est archivée avec son empreinte SHA-256 dans la base de données Neon PostgreSQL, garantissant l'intégrité probatoire face aux contrôles de la DGCCRF et des commissaires aux comptes (CAC) CSRD.</p>
+            <div style="margin-top:16px;padding:12px;background:#f8faf8;border:1px solid #dce6e0;border-radius:8px;font-size:12px;">
+              <strong>Règlementations couvertes :</strong>
+              <ul style="margin:6px 0 0;padding-left:18px;color:var(--muted);">
+                <li>ESPR 2024/1781 (Digital Product Passport & Traçabilité textile)</li>
+                <li>CSRD (ESRS E1 Changement climatique, ESRS E5 Économie circulaire)</li>
+                <li>Loi AGEC Article 13 (Fiche de traçabilité des étapes de confection)</li>
+                <li>Directive Européenne Green Claims (Allégations environnementales vérifiées)</li>
+              </ul>
+            </div>
           </div>
         </div>`;
       }
@@ -1514,11 +1530,11 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-secondary" data-action="export-products-csv">📥 Exporter (CSV)</button><button class="btn btn-secondary" data-action="open-import-products-modal">📤 Import Massif (CSV/JSON)</button><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><div class="actions" style="justify-content:center;margin-top:12px;"><button class="btn btn-secondary btn-small" data-action="open-import-products-modal">📤 Importer un fichier CSV</button><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">Écosystème fournisseur</div><h1>Fournisseurs</h1><p>Invitez et suivez les organisations qui alimentent vos données.</p></div><div class="actions"><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Rôle</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">Demander des données</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>Aucun fournisseur connecté</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">Écosystème fournisseur</div><h1>Fournisseurs</h1><p>Invitez et suivez les organisations qui alimentent vos données.</p></div><div class="actions"><button class="btn btn-secondary" data-action="export-suppliers-csv">📥 Exporter (CSV)</button><button class="btn btn-secondary" data-action="open-import-suppliers-modal">📤 Onboarding Massif (CSV/JSON)</button><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Rôle</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">Demander des données</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>Aucun fournisseur connecté</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><div class="actions" style="justify-content:center;margin-top:12px;"><button class="btn btn-secondary btn-small" data-action="open-import-suppliers-modal">📤 Onboarding par fichier CSV</button><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || 'Matériau'; }
@@ -2574,6 +2590,67 @@
           const prod = state.selectedProductDetail?.product;
           return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Calcul Mathématique</div><h2>Réconciliation du Bilan Massique</h2></div><button class="close" data-action="close-modal">×</button></div><p style="font-size:12.5px;color:var(--muted);margin-top:4px;">Compare le volume de pièces confectionnées avec les certificats de transaction pour détecter tout greenwashing ou déficit de matière.</p><form id="reconcile-mass-balance-form"><input type="hidden" name="productId" value="${esc(prod?.id || '')}"><div class="form-grid"><label class="field-full">Produit<input class="input" disabled value="${esc(prod?.name || 'Produit actif')} (${esc(prod?.reference || '')})"></label><label>Volume produit (Nombre de pièces) *<input class="input" name="productionVolumeUnits" type="number" min="1" required placeholder="2500" value="2500"></label><label>Perte de coupe estimée (%)<input class="input" name="cuttingWastePct" type="number" min="0" max="50" step="0.1" required value="10.0" placeholder="10.0"></label><label class="field-full">Référence du lot / Ordre de fabrication (OF)<input class="input" name="batchReference" required value="LOT-PRINTEMPS-2026-B1" placeholder="LOT-2026-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary" type="submit">⚡ Exécuter l'Arbitrage Bilanciel</button></div></form></div></div>`;
         }
+        if (type === 'import-products') {
+          return `<div class="modal-backdrop"><div class="modal" style="max-width:720px"><div class="modal-head"><div><div class="eyebrow">Catalogue & Référentiel</div><h2>Import Massif de Produits (CSV / JSON)</h2></div><button class="close" data-action="close-modal">×</button></div>
+          <p style="font-size:12.5px;color:var(--muted);margin-top:4px;">Importez en un clic vos gammes de produits. Le moteur calcule automatiquement les clés GTIN-13 GS1 conformes, extrait les compositions textiles (ex: <em>80% Coton bio, 20% Chanvre</em>) et rattache les matières au catalogue.</p>
+          <div style="margin:12px 0;display:flex;gap:8px;align-items:center;">
+            <button type="button" class="btn btn-secondary btn-small" id="btn-sample-products-csv">📋 Charger un exemple CSV</button>
+            <button type="button" class="btn btn-secondary btn-small" id="btn-sample-products-json">📋 Charger un exemple JSON</button>
+          </div>
+          <form id="bulk-import-products-form">
+            <div class="form-grid">
+              <label class="field-full">Format des données
+                <select class="select" name="format" id="import-prod-format">
+                  <option value="csv" selected>CSV (Fichier tableur délimité par virgules ou points-virgules)</option>
+                  <option value="json">JSON (Tableau d'objets structurés)</option>
+                </select>
+              </label>
+              <label class="field-full">Données brutes (Collez vos lignes ou utilisez le bouton d'exemple ci-dessus)
+                <textarea class="textarea field-full" name="payload" id="import-prod-payload" rows="8" required style="font-family:monospace;font-size:11.5px;" placeholder="reference,name,category,sku,countryOfManufacture,weightGrams,materialsSummary&#10;REF-BIO-01,Chemise Lin Normand,Chemise,SHIRT-LIN-01,FR,240,100% Lin"></textarea>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:8px;" class="field-full">
+                <input type="checkbox" name="dryRun" value="true"> Valider la conformité uniquement (simulation sans persister en base)
+              </label>
+            </div>
+            <div id="import-prod-results" style="margin-top:12px;display:none;"></div>
+            <div class="form-actions" style="margin-top:16px;">
+              <button type="button" class="btn btn-secondary" data-action="close-modal">Fermer</button>
+              <button class="btn btn-primary" type="submit" id="btn-submit-import-products">⚡ Exécuter l'Import Massif</button>
+            </div>
+          </form></div></div>`;
+        }
+        if (type === 'import-suppliers') {
+          return `<div class="modal-backdrop"><div class="modal" style="max-width:720px"><div class="modal-head"><div><div class="eyebrow">Écosystème & Partenaires</div><h2>Onboarding Massif Fournisseurs (CSV / JSON)</h2></div><button class="close" data-action="close-modal">×</button></div>
+          <p style="font-size:12.5px;color:var(--muted);margin-top:4px;">Enrôlez massivement vos tisseurs, filatures, confectionneurs et tricoteurs. Le moteur provisionne les organisations fournisseurs, sécurise les tokens cryptographiques d'invitation et peut notifier immédiatement vos contacts.</p>
+          <div style="margin:12px 0;display:flex;gap:8px;align-items:center;">
+            <button type="button" class="btn btn-secondary btn-small" id="btn-sample-suppliers-csv">📋 Charger un exemple CSV</button>
+            <button type="button" class="btn btn-secondary btn-small" id="btn-sample-suppliers-json">📋 Charger un exemple JSON</button>
+          </div>
+          <form id="bulk-import-suppliers-form">
+            <div class="form-grid">
+              <label class="field-full">Format des données
+                <select class="select" name="format" id="import-supp-format">
+                  <option value="csv" selected>CSV (Fichier tableur)</option>
+                  <option value="json">JSON (Tableau structuré)</option>
+                </select>
+              </label>
+              <label class="field-full">Données brutes (Collez vos lignes ou utilisez le bouton d'exemple ci-dessus)
+                <textarea class="textarea field-full" name="payload" id="import-supp-payload" rows="8" required style="font-family:monospace;font-size:11.5px;" placeholder="legalName,displayName,email,countryCode,role,address&#10;Filature du Nord SAS,Filature du Nord,contact@filature-nord.fr,FR,spinning,14 rue de l'Usine Lille&#10;Teintures Ibériques Lda,Teintures Ibériques,pedro@ibero-dye.pt,PT,dyeing,Zona Industrial Porto"></textarea>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:8px;" class="field-full">
+                <input type="checkbox" name="sendInvitations" value="true" checked> Envoyer immédiatement les e-mails d'invitation sécurisés avec token d'activation
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;" class="field-full">
+                <input type="checkbox" name="dryRun" value="true"> Valider la conformité uniquement (simulation sans persister en base)
+              </label>
+            </div>
+            <div id="import-supp-results" style="margin-top:12px;display:none;"></div>
+            <div class="form-actions" style="margin-top:16px;">
+              <button type="button" class="btn btn-secondary" data-action="close-modal">Fermer</button>
+              <button class="btn btn-primary" type="submit" id="btn-submit-import-suppliers">⚡ Exécuter l'Onboarding Massif</button>
+            </div>
+          </form></div></div>`;
+        }
         if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>Nouveau produit</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>Référence<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>Nom<input class="input" name="name" required placeholder="Essentiel coton"></label><label>Catégorie<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer le produit</button></div></form></div></div>`;
         if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Écosystème</div><h2>Inviter un fournisseur</h2></div><button class="close" data-action="close-modal">×</button></div><p>Un lien d’activation sera généré côté serveur. Le token reste privé et n’est jamais persisté en clair.</p><form id="supplier-form"><div class="form-grid"><label class="field-full">Email professionnel<input class="input" name="email" type="email" required placeholder="contact@fournisseur.com"></label><label>Nom légal<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>Nom affiché<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>Pays<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>Organisation marque<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Envoyer l’invitation</button></div></form></div></div>`;
         if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>Créer un protocole d'audit personnalisé</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">Titre du questionnaire<input class="input" name="title" required placeholder="ex: Audit Rejets Eaux Usées & Teintures"></label><label>Identifiant unique (slug)<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>Catégorie RSE<select class="select" name="category"><option value="Chimie & Rejets">Chimie & Rejets</option><option value="Matières & Traçabilité">Matières & Traçabilité</option><option value="Social & Éthique">Social & Éthique</option><option value="Empreinte Carbone">Empreinte Carbone</option></select></label><label class="field-full">Description de l'audit<textarea class="textarea" name="description" rows="3" required placeholder="Expliquez aux fournisseurs les justificatifs de laboratoire attendus..."></textarea></label><label>Type de premier champ requis<select class="select" name="firstFieldType"><option value="document_proof">Preuve Documentaire scellée (avec OCR)</option><option value="composition_table">Tableau de composition 100%</option><option value="facility_select">Sélecteur de site de production</option></select></label><label>Champ obligatoire<select class="select" name="required"><option value="true">Oui (bloquant pour le score)</option><option value="false">Optionnel</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button type="submit" class="btn btn-primary">Publier le Questionnaire</button></div></form></div></div>`;
@@ -3563,6 +3640,68 @@
         }, null, 2)
       };
 
+      async function downloadExport(path, filename, fallbackType) {
+        if (state.demo) {
+          let content = '';
+          if (fallbackType === 'csv') {
+            if (path.includes('products')) {
+              content = 'Reference,Name,Category,SKU,Status,Version,MaterialsSummary,GTIN\n' +
+                state.products.map((p) => `"${p.reference}","${p.name}","${p.category || ''}","${p.sku || ''}","${p.status}",${p.version},"100% Coton biologique","3760345833592"`).join('\n');
+            } else {
+              content = 'LegalName,DisplayName,Email,CountryCode,Role\n' +
+                suppliers().map((s) => `"${s.organizations?.legal_name || ''}","${s.organizations?.display_name || ''}","contact@example.com","${s.organizations?.country_code || 'FR'}","supplier"`).join('\n');
+            }
+          } else {
+            content = JSON.stringify({
+              metadata: { exportDate: new Date().toISOString(), standard: 'ESPR_CSRD_AUDIT_V1', scope: 'Brand and Tier-1/Tier-2 Suppliers' },
+              brand: currentBrand(),
+              products: state.products,
+              suppliers: suppliers()
+            }, null, 2);
+          }
+          const blob = new Blob([content], { type: fallbackType === 'csv' ? 'text/csv;charset=utf-8;' : 'application/json;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          notify(`Export ${filename} téléchargé en mode démonstration.`);
+          return;
+        }
+
+        try {
+          notify(`Génération de l'export ${filename}...`);
+          const headers = {};
+          if (state.clerk?.session) {
+            const token = await state.clerk.session.getToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+          }
+          const orgId = state.activeOrganizationId;
+          if (orgId) headers['x-tracefab-organization-id'] = orgId;
+          const url = `${path}?organizationId=${encodeURIComponent(orgId || '')}`;
+          const res = await fetch(url, { headers });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Erreur serveur (${res.status})`);
+          }
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(blobUrl);
+          notify(`Export ${filename} téléchargé avec succès !`);
+        } catch (err) {
+          notify(`Échec du téléchargement : ${err.message}`, true);
+        }
+      }
+
       function bind() {
         document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => { state.view = el.dataset.view; state.selectedRequest = null; render(); }));
         document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async () => {
@@ -3714,6 +3853,23 @@
             if (action === 'refresh-integrations') {
               await sync();
               notify('Statut des connecteurs actualisé.');
+            }
+            if (action === 'open-import-products-modal') {
+              state.modal = 'import-products';
+              render();
+            }
+            if (action === 'open-import-suppliers-modal') {
+              state.modal = 'import-suppliers';
+              render();
+            }
+            if (action === 'export-products-csv') {
+              await downloadExport('/api/catalog/export/products', 'tracefab-products.csv', 'csv');
+            }
+            if (action === 'export-suppliers-csv') {
+              await downloadExport('/api/catalog/export/suppliers', 'tracefab-suppliers.csv', 'csv');
+            }
+            if (action === 'download-audit-dossier') {
+              await downloadExport('/api/catalog/export/audit-dossier', 'tracefab-audit-dossier.json', 'json');
             }
             if (action === 'signout' && state.clerk) await state.clerk.signOut();
           } catch (error) { notify(error.message, true); }
@@ -4038,6 +4194,277 @@
         document.getElementById('create-cap-form')?.addEventListener('submit', (e) => { e.preventDefault(); createCap(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('review-cap-form')?.addEventListener('submit', (e) => { e.preventDefault(); reviewCap(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('cap-message-form')?.addEventListener('submit', (e) => { e.preventDefault(); sendCapMessage(e.currentTarget).catch((err) => notify(err.message, true)); });
+
+        document.getElementById('btn-sample-products-csv')?.addEventListener('click', () => {
+          const ta = document.getElementById('import-prod-payload');
+          const fmt = document.getElementById('import-prod-format');
+          if (fmt) fmt.value = 'csv';
+          if (ta) ta.value = [
+            'reference,name,category,sku,description,productFamily,colorName,countryOfDesign,countryOfManufacture,weightGrams,materialsSummary',
+            'TF-POLO-001,Polo Piqué Coton Bio,Polo,POLO-BIO-01,Polo piqué 220g avec col bord-côte,Haut,Bleu Marine,FR,PT,240,100% Coton biologique',
+            'TF-DENIM-002,Jean Brut Selvedge,Pantalon,JEAN-SLV-02,Denim selvedge 13.5oz toile italienne,Bas,Brut Indigo,FR,TN,650,98% Coton biologique, 2% Élasthanne',
+            'TF-LINEN-003,Veste Chemise Lin Normand,Veste,OVERSHIRT-03,Veste estivale non doublée,Veste,Naturel Écru,FR,FR,420,85% Lin normand, 15% Coton peigné'
+          ].join('\n');
+        });
+
+        document.getElementById('btn-sample-products-json')?.addEventListener('click', () => {
+          const ta = document.getElementById('import-prod-payload');
+          const fmt = document.getElementById('import-prod-format');
+          if (fmt) fmt.value = 'json';
+          if (ta) ta.value = JSON.stringify([
+            {
+              reference: 'TF-HOOD-004',
+              name: 'Hoodie Molleton Recyclé',
+              category: 'Sweatshirt',
+              sku: 'HOOD-GRS-04',
+              description: 'Molleton gratté certifié GRS',
+              countryOfManufacture: 'PT',
+              weightGrams: 520,
+              materialsSummary: '60% Coton recyclé, 40% Coton biologique'
+            },
+            {
+              reference: 'TF-TOTE-005',
+              name: 'Tote Bag Toile Canvas',
+              category: 'Accessoires',
+              sku: 'TOTE-CNV-05',
+              description: 'Toile coton écru 340g',
+              countryOfManufacture: 'FR',
+              weightGrams: 160,
+              materialsSummary: '100% Coton biologique'
+            }
+          ], null, 2);
+        });
+
+        document.getElementById('bulk-import-products-form')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          const formData = new FormData(form);
+          const format = formData.get('format') || 'csv';
+          const payload = (formData.get('payload') || '').toString().trim();
+          const dryRun = formData.get('dryRun') === 'true';
+          const resultsDiv = document.getElementById('import-prod-results');
+          const submitBtn = document.getElementById('btn-submit-import-products');
+
+          if (!payload) {
+            notify('Veuillez renseigner ou coller les données à importer.', true);
+            return;
+          }
+
+          if (submitBtn) submitBtn.disabled = true;
+          if (resultsDiv) {
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div style="padding:10px;background:#f0f7ff;border:1px solid #c7ddfc;border-radius:6px;font-size:12px;color:#1e40af;">⚡ Analyse et import en cours dans Neon...</div>';
+          }
+
+          try {
+            if (state.demo) {
+              const count = format === 'json' ? JSON.parse(payload).length : payload.split('\n').filter(Boolean).length - 1;
+              notify(`Simulation réussie : ${Math.max(1, count)} produit(s) analysé(s) en mode démo.`);
+              state.modal = null;
+              render();
+              return;
+            }
+
+            const headers = {};
+            if (state.clerk?.session) {
+              const token = await state.clerk.session.getToken();
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+            }
+            const orgId = state.activeOrganizationId;
+            if (orgId) headers['x-tracefab-organization-id'] = orgId;
+
+            let body;
+            if (format === 'csv') {
+              headers['Content-Type'] = 'text/csv; charset=utf-8';
+              body = payload;
+            } else {
+              headers['Content-Type'] = 'application/json';
+              let parsed;
+              try { parsed = JSON.parse(payload); } catch (e) { throw new Error('Format JSON invalide'); }
+              body = JSON.stringify({
+                organizationId: orgId,
+                products: Array.isArray(parsed) ? parsed : (parsed.products || []),
+                dryRun
+              });
+            }
+
+            const url = `/api/catalog/import/products${dryRun ? '?dryRun=true' : ''}`;
+            const res = await fetch(url, { method: 'POST', headers, body });
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || 'Erreur lors de l’import');
+            }
+
+            const s = data.summary;
+            const errHtml = s.errors?.length ? `
+              <div style="margin-top:8px;padding:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:11.5px;color:#991b1b;max-height:100px;overflow-y:auto;">
+                <strong>Erreurs rencontrées (${s.errors.length}) :</strong><br>
+                ${s.errors.map((err) => `• Ligne ${err.row}: ${err.reason}`).join('<br>')}
+              </div>
+            ` : '';
+
+            if (resultsDiv) {
+              resultsDiv.innerHTML = `
+                <div style="padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12.5px;color:#166534;">
+                  <strong>${dryRun ? '🔍 Simulation d’Import Conforme' : '✅ Import Massif Terminé avec Succès'}</strong><br>
+                  Total : ${s.totalRows} | Créés : ${s.inserted} | Mis à jour : ${s.updated} | Échecs : ${s.failed}<br>
+                  Matières rattachées : ${s.materialsLinked} | Identifiants GTIN-13 : ${s.identifiersGenerated}
+                  ${errHtml}
+                </div>
+              `;
+            }
+
+            if (!dryRun) {
+              await sync();
+              notify(`Catalogue mis à jour : ${s.inserted} créé(s), ${s.updated} actualisé(s).`);
+              setTimeout(() => {
+                state.modal = null;
+                render();
+              }, 1800);
+            }
+          } catch (err) {
+            if (resultsDiv) {
+              resultsDiv.innerHTML = `<div style="padding:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:12px;color:#991b1b;">❌ Échec de l'import : ${esc(err.message)}</div>`;
+            }
+            notify(`Erreur d'import : ${err.message}`, true);
+          } finally {
+            if (submitBtn) submitBtn.disabled = false;
+          }
+        });
+
+        document.getElementById('btn-sample-suppliers-csv')?.addEventListener('click', () => {
+          const ta = document.getElementById('import-supp-payload');
+          const fmt = document.getElementById('import-supp-format');
+          if (fmt) fmt.value = 'csv';
+          if (ta) ta.value = [
+            'legalName,displayName,email,countryCode,role,address,vatNumber,contactName',
+            'Filatures Réunies de Guimarães,Filatures de Guimarães,contact@fil-guimaraes.pt,PT,spinning,Rua das Fabricas 45 Guimarães,PT501234567,Manuel Silva',
+            'Tricotage Normand SAS,Tricotage Normand,atelier@tricot-normand.fr,FR,knitting,Zone Industrielle Sud Rouen,FR89123456789,Sophie Dubois',
+            'Teinturerie d’Occitanie,Teintures d’Occitanie,jean@teinture-occitanie.fr,FR,dyeing,12 avenue des Teinturiers Castres,FR77123456789,Jean Fabre'
+          ].join('\n');
+        });
+
+        document.getElementById('btn-sample-suppliers-json')?.addEventListener('click', () => {
+          const ta = document.getElementById('import-supp-payload');
+          const fmt = document.getElementById('import-supp-format');
+          if (fmt) fmt.value = 'json';
+          if (ta) ta.value = JSON.stringify([
+            {
+              legalName: 'Confection Portugaise Lda',
+              displayName: 'Confection Porto',
+              email: 'geral@confeccoes-porto.pt',
+              countryCode: 'PT',
+              role: 'garment_assembly',
+              address: 'Estrada da Maia 120 Porto'
+            },
+            {
+              legalName: 'Atelier de Coupe Parisien',
+              displayName: 'Atelier Parisien',
+              email: 'contact@atelier-coupe-paris.fr',
+              countryCode: 'FR',
+              role: 'cutting',
+              address: '15 rue du Faubourg Saint-Antoine Paris'
+            }
+          ], null, 2);
+        });
+
+        document.getElementById('bulk-import-suppliers-form')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          const formData = new FormData(form);
+          const format = formData.get('format') || 'csv';
+          const payload = (formData.get('payload') || '').toString().trim();
+          const sendInvitations = formData.get('sendInvitations') === 'true';
+          const dryRun = formData.get('dryRun') === 'true';
+          const resultsDiv = document.getElementById('import-supp-results');
+          const submitBtn = document.getElementById('btn-submit-import-suppliers');
+
+          if (!payload) {
+            notify('Veuillez renseigner ou coller les données fournisseurs.', true);
+            return;
+          }
+
+          if (submitBtn) submitBtn.disabled = true;
+          if (resultsDiv) {
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div style="padding:10px;background:#f0f7ff;border:1px solid #c7ddfc;border-radius:6px;font-size:12px;color:#1e40af;">⚡ Provisioning des comptes et génération des invitations...</div>';
+          }
+
+          try {
+            if (state.demo) {
+              const count = format === 'json' ? JSON.parse(payload).length : payload.split('\n').filter(Boolean).length - 1;
+              notify(`Simulation réussie : ${Math.max(1, count)} fournisseur(s) enrôlé(s) en mode démo.`);
+              state.modal = null;
+              render();
+              return;
+            }
+
+            const headers = {};
+            if (state.clerk?.session) {
+              const token = await state.clerk.session.getToken();
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+            }
+            const orgId = state.activeOrganizationId;
+            if (orgId) headers['x-tracefab-organization-id'] = orgId;
+
+            let body;
+            if (format === 'csv') {
+              headers['Content-Type'] = 'text/csv; charset=utf-8';
+              body = payload;
+            } else {
+              headers['Content-Type'] = 'application/json';
+              let parsed;
+              try { parsed = JSON.parse(payload); } catch (e) { throw new Error('Format JSON invalide'); }
+              body = JSON.stringify({
+                organizationId: orgId,
+                suppliers: Array.isArray(parsed) ? parsed : (parsed.suppliers || []),
+                sendInvitations,
+                dryRun
+              });
+            }
+
+            const url = `/api/catalog/import/suppliers?sendInvitations=${sendInvitations}&dryRun=${dryRun}`;
+            const res = await fetch(url, { method: 'POST', headers, body });
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || 'Erreur lors de l’import');
+            }
+
+            const s = data.summary;
+            const errHtml = s.errors?.length ? `
+              <div style="margin-top:8px;padding:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:11.5px;color:#991b1b;max-height:100px;overflow-y:auto;">
+                <strong>Erreurs rencontrées (${s.errors.length}) :</strong><br>
+                ${s.errors.map((err) => `• Ligne ${err.row}: ${err.reason}`).join('<br>')}
+              </div>
+            ` : '';
+
+            if (resultsDiv) {
+              resultsDiv.innerHTML = `
+                <div style="padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12.5px;color:#166534;">
+                  <strong>${dryRun ? '🔍 Simulation d’Onboarding Conforme' : '✅ Onboarding Massif Fournisseurs Terminé'}</strong><br>
+                  Total : ${s.totalRows} | Fournisseurs enrôlés : ${s.onboarded} | Invitations sécurisées : ${s.invitationsSent} | Échecs : ${s.failed}
+                  ${errHtml}
+                </div>
+              `;
+            }
+
+            if (!dryRun) {
+              await sync();
+              notify(`Partenaires intégrés : ${s.onboarded} organisation(s) configurée(s).`);
+              setTimeout(() => {
+                state.modal = null;
+                render();
+              }, 1800);
+            }
+          } catch (err) {
+            if (resultsDiv) {
+              resultsDiv.innerHTML = `<div style="padding:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:12px;color:#991b1b;">❌ Échec de l'onboarding : ${esc(err.message)}</div>`;
+            }
+            notify(`Erreur d'onboarding : ${err.message}`, true);
+          } finally {
+            if (submitBtn) submitBtn.disabled = false;
+          }
+        });
       }
 
       async function boot() {

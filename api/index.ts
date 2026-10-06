@@ -5,6 +5,11 @@ type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;
 type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default: RouteHandler }> };
 
 const routes: Route[] = [
+  { pattern: /^catalog\/import\/products$/, params: [], load: () => import('./_routes/catalog/import/products.js') },
+  { pattern: /^catalog\/import\/suppliers$/, params: [], load: () => import('./_routes/catalog/import/suppliers.js') },
+  { pattern: /^catalog\/export\/products$/, params: [], load: () => import('./_routes/catalog/export/products.js') },
+  { pattern: /^catalog\/export\/suppliers$/, params: [], load: () => import('./_routes/catalog/export/suppliers.js') },
+  { pattern: /^catalog\/export\/audit\-dossier$/, params: [], load: () => import('./_routes/catalog/export/audit-dossier.js') },
   { pattern: /^catalog\/questionnaires$/, params: [], load: () => import('./_routes/catalog/questionnaires.js') },
   { pattern: /^catalog\/schemas$/, params: [], load: () => import('./_routes/catalog/schemas.js') },
   { pattern: /^config$/, params: [], load: () => import('./_routes/config.js') },
