@@ -256,6 +256,8 @@
         selectedDppProduct: null,
         modal: null,
         modalIssueId: null,
+        catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
+        supplierImport: { filename: '', content: '', preview: null, job: null, delivery: null, loading: false },
         toast: null,
         demo: new URLSearchParams(location.search).has('demo'),
       };
@@ -1299,11 +1301,11 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">Importer CSV</button><button class="btn btn-secondary" data-action="catalog-export">Exporter CSV</button><button class="btn btn-secondary" data-action="audit-export">Exporter audit</button><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">Écosystème fournisseur</div><h1>Fournisseurs</h1><p>Invitez et suivez les organisations qui alimentent vos données.</p></div><div class="actions"><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Rôle</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">Demander des données</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>Aucun fournisseur connecté</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">Écosystème fournisseur</div><h1>Fournisseurs</h1><p>Invitez et suivez les organisations qui alimentent vos données.</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">Importer CSV</button><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Rôle</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">Demander des données</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>Aucun fournisseur connecté</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || 'Matériau'; }
@@ -1765,8 +1767,24 @@
           </div>
         </div>`;
       }
+      function supplierImportPreview() {
+        const preview = state.supplierImport.preview;
+        if (!preview) return '<p class="meta" style="margin-top:14px">Prévisualisez le fichier pour valider les emails et éviter les invitations en double.</p>';
+        const issues = (preview.errors || []).slice(0, 12);
+        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>Résultat de validation</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : '<span class="status status-changes_requested">À corriger</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">Lignes</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">Invitations</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">Rejetées</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">Aucune erreur de validation détectée.</p>'}</div>`;
+      }
+
+      function catalogImportPreview() {
+        const preview = state.catalogImport.preview;
+        if (!preview) return '<p class="meta" style="margin-top:14px">Prévisualisez le fichier pour obtenir les erreurs par ligne avant de lancer l’import.</p>';
+        const issues = (preview.errors || []).slice(0, 12);
+        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>Résultat de validation</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : '<span class="status status-changes_requested">À corriger</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">Lignes</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">Acceptées</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">Rejetées</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">Aucune erreur de validation détectée.</p>'}${(preview.warnings || []).length ? `<p class="meta" style="margin-top:10px">${moneyless(preview.warnings.length)} avertissement(s) non bloquant(s).</p>` : ''}</div>`;
+      }
+
       function modal(type) {
         if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>Nouveau produit</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>Référence<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>Nom<input class="input" name="name" required placeholder="Essentiel coton"></label><label>Catégorie<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer le produit</button></div></form></div></div>`;
+        if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Onboarding fournisseur</div><h2>Inviter des fournisseurs en masse</h2></div><button class="close" data-action="close-modal">×</button></div><p>Colonnes obligatoires : <code>email</code>, <code>legalName</code>. Une invitation active existante est rejetée sans être renvoyée. Les tokens d’invitation ne sont jamais exportés ni stockés en clair.</p><label class="field-full">Fichier CSV<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">Ou coller le contenu CSV<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">Prévisualiser</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>Créer les invitations valides</button></div>${supplierImportPreview()}</div></div>`;
+        if (type === 'catalog-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue produit</div><h2>Importer un catalogue CSV</h2></div><button class="close" data-action="close-modal">×</button></div><p>Importez des produits sans modifier les références existantes. Les lignes invalides sont rejetées individuellement et le fichier source n’est pas conservé.</p><div class="notice" style="margin:14px 0">Colonnes obligatoires : <code>reference</code>, <code>name</code>. Les colonnes complémentaires acceptées sont documentées dans l’export CSV.</div><label class="field-full">Fichier CSV<input class="input" id="catalog-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">Ou coller le contenu CSV<textarea class="textarea" id="catalog-import-content" rows="8" placeholder="reference,name,category,sku\nAT-NEW-001,Produit exemple,T-shirt,SKU-001">${esc(state.catalogImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-catalog-import">Prévisualiser</button><button type="button" class="btn btn-primary" data-action="commit-catalog-import" ${state.catalogImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>Importer les lignes valides</button></div>${catalogImportPreview()}</div></div>`;
         if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Écosystème</div><h2>Inviter un fournisseur</h2></div><button class="close" data-action="close-modal">×</button></div><p>Un lien d’activation sera généré côté serveur. Le token reste privé et n’est jamais persisté en clair.</p><form id="supplier-form"><div class="form-grid"><label class="field-full">Email professionnel<input class="input" name="email" type="email" required placeholder="contact@fournisseur.com"></label><label>Nom légal<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>Nom affiché<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>Pays<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>Organisation marque<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Envoyer l’invitation</button></div></form></div></div>`;
         if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>Créer un protocole d'audit personnalisé</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">Titre du questionnaire<input class="input" name="title" required placeholder="ex: Audit Rejets Eaux Usées & Teintures"></label><label>Identifiant unique (slug)<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>Catégorie RSE<select class="select" name="category"><option value="Chimie & Rejets">Chimie & Rejets</option><option value="Matières & Traçabilité">Matières & Traçabilité</option><option value="Social & Éthique">Social & Éthique</option><option value="Empreinte Carbone">Empreinte Carbone</option></select></label><label class="field-full">Description de l'audit<textarea class="textarea" name="description" rows="3" required placeholder="Expliquez aux fournisseurs les justificatifs de laboratoire attendus..."></textarea></label><label>Type de premier champ requis<select class="select" name="firstFieldType"><option value="document_proof">Preuve Documentaire scellée (avec OCR)</option><option value="composition_table">Tableau de composition 100%</option><option value="facility_select">Sélecteur de site de production</option></select></label><label>Champ obligatoire<select class="select" name="required"><option value="true">Oui (bloquant pour le score)</option><option value="false">Optionnel</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button type="submit" class="btn btn-primary">Publier le Questionnaire</button></div></form></div></div>`;
         if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Collecte</div><h2>Nouvelle demande de données</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">Titre<input class="input" name="title" required placeholder="Données produit — collection automne"></label><label>Fournisseur<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label class="field-full">Produit associé (optionnel)<select class="select" name="productId"><option value="">Aucun produit associé (questionnaire général)</option>${state.products.map((p) => `<option value="${esc(p.id)}" ${state.modalProductId === p.id ? 'selected' : ''}>${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label><label>Date d’échéance<input class="input" name="dueAt" type="date"></label><label>Organisation marque<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Créer et préparer</button></div></form></div></div>`;
@@ -1777,6 +1795,141 @@
           return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Qualité · Dérogation</div><h2>Accorder une dérogation</h2></div><button class="close" data-action="close-modal">×</button></div><p>Une dérogation permet d’exempter cette anomalie des pénalités de cohérence et de débloquer le Passeport DPP. Un motif d’au moins 10 caractères est requis pour la traçabilité d’audit.</p>${issue ? `<div class="notice" style="margin-bottom:15px;background:#fdfcf9;border:1px solid #f1ece1;padding:10px 14px;border-radius:8px"><strong>${esc(issue.message)}</strong><div class="meta">${esc(issue.ruleKey)} · Sévérité : ${esc(issue.severity)}</div></div>` : ''}<form id="waive-issue-form"><input type="hidden" name="issueId" value="${esc(state.modalIssueId)}"><div class="form-grid"><label class="field-full">Motif formel de dérogation (min. 10 caractères)<textarea class="textarea" name="reason" rows="3" required minlength="10" placeholder="ex. Dérogation accordée suite à l’audit physique du 06/10/2026. Preuve documentaire archivée sous la réf AUD-2026-08."></textarea></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">Annuler</button><button class="btn btn-primary">Valider la dérogation</button></div></form></div></div>`;
         }
         return '';
+      }
+
+      function demoCatalogPreview(content) {
+        const lines = String(content || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
+        const delimiter = (lines[0] || '').includes(';') ? ';' : ',';
+        const headers = (lines[0] || '').split(delimiter).map((value) => value.trim().toLowerCase());
+        const referenceIndex = headers.indexOf('reference');
+        const nameIndex = headers.indexOf('name');
+        const errors = [];
+        const rows = [];
+        if (referenceIndex < 0 || nameIndex < 0) errors.push({ line: 1, code: 'required_column_missing', message: 'Les colonnes reference et name sont obligatoires.' });
+        for (let index = 1; index < lines.length && errors.length < 100; index += 1) {
+          const cells = lines[index].split(delimiter).map((value) => value.trim().replace(/^"|"$/g, ''));
+          if (!cells[referenceIndex] || !cells[nameIndex]) errors.push({ line: index + 1, code: 'required_value_missing', message: 'reference et name sont obligatoires.' });
+          else rows.push({ reference: cells[referenceIndex], name: cells[nameIndex], category: cells[headers.indexOf('category')] || null, sku: cells[headers.indexOf('sku')] || null });
+        }
+        return { valid: errors.length === 0 && rows.length > 0, totalRows: Math.max(0, lines.length - 1), acceptedRows: rows.length, rejectedRows: Math.max(0, lines.length - 1 - rows.length), errors, warnings: [], rows };
+      }
+
+      function demoSupplierPreview(content) {
+        const lines = String(content || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
+        const delimiter = (lines[0] || '').includes(';') ? ';' : ',';
+        const headers = (lines[0] || '').split(delimiter).map((value) => value.trim().toLowerCase());
+        const emailIndex = headers.indexOf('email'); const legalNameIndex = headers.indexOf('legalname'); const errors = []; const rows = [];
+        if (emailIndex < 0 || legalNameIndex < 0) errors.push({ line: 1, code: 'required_column_missing', message: 'Les colonnes email et legalName sont obligatoires.' });
+        for (let index = 1; index < lines.length; index += 1) {
+          const cells = lines[index].split(delimiter).map((value) => value.trim().replace(/^"|"$/g, ''));
+          const email = cells[emailIndex]?.toLowerCase(); const legalName = cells[legalNameIndex];
+          if (!email || !legalName) errors.push({ line: index + 1, code: 'required_value_missing', message: 'email et legalName sont obligatoires.' });
+          else rows.push({ email, legalName });
+        }
+        return { valid: errors.length === 0 && rows.length > 0, totalRows: Math.max(0, lines.length - 1), acceptedRows: rows.length, rejectedRows: Math.max(0, lines.length - 1 - rows.length), errors, rows };
+      }
+
+      async function previewSupplierImport() {
+        const content = state.supplierImport.content || document.getElementById('supplier-import-content')?.value || '';
+        if (!content.trim()) { notify('Sélectionnez ou collez un fichier CSV de fournisseurs.', true); return; }
+        state.supplierImport.content = content; state.supplierImport.loading = true; render();
+        try {
+          state.supplierImport.preview = state.demo
+            ? demoSupplierPreview(content)
+            : await api('/api/catalog/suppliers/import', { method: 'POST', body: JSON.stringify({ brandOrganizationId: state.activeOrganizationId, csvContent: content, filename: state.supplierImport.filename || 'suppliers.csv', dryRun: true }) });
+        } finally { state.supplierImport.loading = false; render(); }
+      }
+
+      async function commitSupplierImport() {
+        const content = state.supplierImport.content || document.getElementById('supplier-import-content')?.value || '';
+        if (!(state.supplierImport.preview?.acceptedRows > 0) || !content.trim()) { notify('Prévisualisez un fichier contenant au moins une ligne fournisseur importable.', true); return; }
+        state.supplierImport.loading = true; render();
+        try {
+          if (state.demo) {
+            const preview = demoSupplierPreview(content);
+            preview.rows.forEach((row, index) => state.suppliers.push({ id: `demo-supplier-import-${Date.now()}-${index}`, organization_id: `demo-supplier-import-${Date.now()}-${index}`, relationship_id: null, organizations: { display_name: row.legalName, legal_name: row.legalName, type: 'supplier', country_code: null, status: 'invited' } }));
+            state.supplierImport.delivery = { total: preview.acceptedRows, pending: preview.acceptedRows, sent: 0, failed: 0 };
+            state.supplierImport.job = { status: 'completed', acceptedRows: preview.acceptedRows, rejectedRows: preview.rejectedRows };
+          } else {
+            const result = await api('/api/catalog/suppliers/import', { method: 'POST', body: JSON.stringify({ brandOrganizationId: state.activeOrganizationId, csvContent: content, filename: state.supplierImport.filename || 'suppliers.csv', idempotencyKey: `brand-suppliers-${Date.now()}-${content.length}` }) });
+            state.supplierImport.job = result.job; state.supplierImport.delivery = result.delivery; await sync();
+          }
+          state.modal = null; const delivery = state.supplierImport.delivery; notify(`Import fournisseurs terminé : ${state.supplierImport.job?.acceptedRows || 0} invitation(s) créée(s).${delivery ? ` ${delivery.sent || 0} envoyée(s), ${delivery.pending || 0} en attente manuelle, ${delivery.failed || 0} en échec.` : ''}`);
+        } finally { state.supplierImport.loading = false; render(); }
+      }
+
+      async function previewCatalogImport() {
+        const content = state.catalogImport.content || document.getElementById('catalog-import-content')?.value || '';
+        if (!content.trim()) { notify('Sélectionnez ou collez un fichier CSV.', true); return; }
+        state.catalogImport.content = content;
+        state.catalogImport.loading = true;
+        render();
+        try {
+          state.catalogImport.preview = state.demo
+            ? demoCatalogPreview(content)
+            : await api('/api/catalog/products/import', { method: 'POST', body: JSON.stringify({ brandOrganizationId: state.activeOrganizationId, csvContent: content, filename: state.catalogImport.filename || 'catalog.csv', dryRun: true }) });
+        } finally {
+          state.catalogImport.loading = false;
+          render();
+        }
+      }
+
+      function downloadTextFile(filename, content, mime = 'text/csv;charset=utf-8') {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function demoCatalogCsv() {
+        const headers = ['reference', 'name', 'category', 'sku', 'description', 'productFamily', 'colorName', 'sizeRange', 'countryOfDesign', 'countryOfManufacture', 'weightGrams', 'careInstructions', 'dataReadiness', 'dataCompletion', 'version', 'compositionJson'];
+        const cell = (value) => { const text = value === null || value === undefined ? '' : typeof value === 'string' ? value : JSON.stringify(value); return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text; };
+        const rows = state.products.map((product) => headers.map((header) => cell(product[header] ?? (header === 'sizeRange' ? (product.sizeRange || []).join('|') : header === 'careInstructions' || header === 'compositionJson' ? {} : ''))).join(','));
+        return `\uFEFF${[headers.join(','), ...rows].join('\r\n')}\r\n`;
+      }
+
+      async function exportCatalog() {
+        if (state.demo) { downloadTextFile('tracefab-product-catalog-demo.csv', demoCatalogCsv()); notify('Catalogue exporté en mode démonstration.'); return; }
+        const token = await state.clerk?.session?.getToken();
+        const response = await fetch(`/api/catalog/products/export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || `request_failed_${response.status}`); }
+        downloadTextFile('tracefab-product-catalog.csv', await response.text());
+        notify('Catalogue exporté.');
+      }
+
+      async function exportAudit() {
+        if (state.demo) { downloadTextFile('tracefab-audit-export-demo.csv', 'recordType,productReference,productName,dataStatus,action,recordedAt\\r\\nPRODUCT,TF-DEMO-001,Produit démonstration,declared,catalog_demo_export,2026-10-06T00:00:00.000Z\\r\\n'); notify('Export audit simulé en mode démonstration.'); return; }
+        const token = await state.clerk?.session?.getToken();
+        const response = await fetch(`/api/catalog/audit-export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || `request_failed_${response.status}`); }
+        downloadTextFile('tracefab-audit-export.csv', await response.text());
+        notify('Dossier audit exporté.');
+      }
+
+      async function commitCatalogImport() {
+        const content = state.catalogImport.content || document.getElementById('catalog-import-content')?.value || '';
+        if (!(state.catalogImport.preview?.acceptedRows > 0) || !content.trim()) { notify('Prévisualisez un fichier contenant au moins une ligne importable avant de lancer l’import.', true); return; }
+        state.catalogImport.loading = true;
+        render();
+        try {
+          if (state.demo) {
+            const preview = demoCatalogPreview(content);
+            preview.rows.reverse().forEach((row) => state.products.unshift({ id: `demo-import-${Date.now()}-${row.reference}`, brandOrganizationId: state.activeOrganizationId, reference: row.reference, name: row.name, category: row.category, sku: row.sku, status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '0' }));
+            state.catalogImport.job = { status: 'completed', totalRows: preview.totalRows, acceptedRows: preview.acceptedRows, rejectedRows: preview.rejectedRows };
+          } else {
+            const result = await api('/api/catalog/products/import', { method: 'POST', body: JSON.stringify({ brandOrganizationId: state.activeOrganizationId, csvContent: content, filename: state.catalogImport.filename || 'catalog.csv', idempotencyKey: `brand-console-${Date.now()}-${content.length}` }) });
+            state.catalogImport.job = result.job;
+            await sync();
+          }
+          state.modal = null;
+          notify(`Import catalogue terminé : ${state.catalogImport.job?.acceptedRows || 0} ligne(s) acceptée(s).`);
+        } finally {
+          state.catalogImport.loading = false;
+          render();
+        }
       }
 
       async function createProduct(form) {
@@ -2299,6 +2452,14 @@
           const action = el.dataset.action;
           try {
             if (action === 'new-product') { state.modal = 'new-product'; render(); }
+            if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
+            if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
+            if (action === 'catalog-export') await exportCatalog();
+            if (action === 'audit-export') await exportAudit();
+            if (action === 'preview-catalog-import') await previewCatalogImport();
+            if (action === 'commit-catalog-import') await commitCatalogImport();
+            if (action === 'preview-supplier-import') await previewSupplierImport();
+            if (action === 'commit-supplier-import') await commitSupplierImport();
             if (action === 'new-request') { state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierOrgId || el.dataset.supplierId; state.modalProductId = null; render(); }
             if (action === 'product-new-request') { state.modal = 'new-request'; state.modalProductId = el.dataset.productId; render(); }
             if (action === 'invite-supplier') { state.modal = 'invite-supplier'; render(); }
@@ -2339,6 +2500,10 @@
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('supply-chain-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadSupplyChain(e.target.value); });
         document.getElementById('dpp-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadDpp(e.target.value); });
+        document.getElementById('catalog-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.catalogImport.filename = file.name; state.catalogImport.content = await file.text(); state.catalogImport.preview = null; render(); });
+        document.getElementById('catalog-import-content')?.addEventListener('input', (event) => { state.catalogImport.content = event.currentTarget.value; state.catalogImport.preview = null; });
+        document.getElementById('supplier-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.supplierImport.filename = file.name; state.supplierImport.content = await file.text(); state.supplierImport.preview = null; render(); });
+        document.getElementById('supplier-import-content')?.addEventListener('input', (event) => { state.supplierImport.content = event.currentTarget.value; state.supplierImport.preview = null; });
         document.getElementById('product-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('schema-binding-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveSchemaBinding(e.currentTarget).catch((err) => notify(err.message, true)); });

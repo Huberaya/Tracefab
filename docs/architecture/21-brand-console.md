@@ -14,6 +14,9 @@ Elle consomme les APIs Vercel/Clerk existantes et couvre les parcours opération
 - vue d'ensemble avec indicateurs produits, demandes, échéances et fournisseurs ;
 - états de chargement, erreur de configuration, vide, succès et notifications d'action ;
 - catalogue produit : création, liste, détail, édition des données produit et création d'une révision ;
+- import/export catalogue CSV avec prévisualisation, validation par ligne, job idempotent et téléchargement tenant-scoped ;
+- import groupé de fournisseurs avec invitations idempotentes, validation des emails et état de distribution ;
+- export audit CSV réservé aux rôles marque habilités, incluant fiches produit, data points et événements d’audit ;
 - composition produit : lecture de la composition courante, ajout d'un matériau du catalogue et édition du pourcentage/unité avec contrôle de version ;
 - identifiants produit : ajout et édition de la valeur, du statut principal et du type supporté ;
 - invitation et liste des fournisseurs partenaires issus de la relation active marque-fournisseur ;
@@ -47,6 +50,11 @@ GET    /api/suppliers/:supplierId/profile
 GET    /api/materials
 GET    /api/products
 POST   /api/products
+POST   /api/catalog/products/import
+GET    /api/catalog/products/export?organizationId=:organizationId
+GET    /api/catalog/audit-export?organizationId=:organizationId
+GET    /api/catalog/products/import-jobs/:jobId
+POST   /api/catalog/suppliers/import
 GET    /api/products/:productId
 PATCH  /api/products/:productId
 POST   /api/products/:productId/revision
