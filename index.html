@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark" class="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1501,6 +1501,148 @@
     html[data-theme="dark"] .footer {
       background: #050709 !important;
       border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+  
+    /* ==========================================================================
+       NEXT-GEN 2027 ULTRA-PREMIUM ARCHITECTURE (Linear / Stripe / Vercel Grade)
+       ========================================================================== */
+    html[data-theme="dark"], html.dark, :root[data-theme="dark"] {
+      --tf-canvas: #06080b !important;
+      --tf-canvas-gradient: radial-gradient(1000px 500px at 50% -100px, rgba(16, 185, 129, 0.12), transparent 70%),
+                            radial-gradient(800px 400px at 80% 20%, rgba(56, 189, 248, 0.05), transparent 60%),
+                            #06080b !important;
+      --tf-surface: #0b0f15 !important;
+      --tf-surface-soft: #0f151e !important;
+      --tf-surface-inset: #131b26 !important;
+      --tf-bento-bg: rgba(11, 15, 21, 0.8) !important;
+      --tf-bento-border: rgba(255, 255, 255, 0.07) !important;
+      --tf-bento-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8) !important;
+      --tf-border-light: rgba(255, 255, 255, 0.06) !important;
+      --tf-border-medium: rgba(255, 255, 255, 0.1) !important;
+      --tf-text-title: #f9fafb !important;
+      --tf-text-body: #94a3b8 !important;
+      --tf-text-muted: #64748b !important;
+      --tf-text-subtle: #475569 !important;
+      --tf-emerald-500: #10b981 !important;
+      --tf-emerald-600: #059669 !important;
+      background-color: #06080b !important;
+      color: #f1f5f9 !important;
+    }
+
+    body {
+      background: var(--tf-canvas) !important;
+      color: var(--tf-text-body) !important;
+      letter-spacing: -0.015em;
+    }
+
+    /* Ambient noise & grid lines for 2027 feel */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container, .header, main, footer, section {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Ultra-sleek Header */
+    .header {
+      background: rgba(6, 8, 11, 0.8) !important;
+      backdrop-filter: blur(20px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    }
+
+    /* Modern Hero */
+    .hero-section {
+      padding: 96px 0 80px !important;
+      position: relative;
+    }
+
+    .hero-title {
+      font-size: clamp(40px, 5.5vw, 68px) !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.04em !important;
+      line-height: 1.08 !important;
+      color: #ffffff !important;
+      background: linear-gradient(180deg, #ffffff 40%, rgba(255, 255, 255, 0.65) 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(17px, 2vw, 20px) !important;
+      line-height: 1.6 !important;
+      color: #94a3b8 !important;
+      max-width: 680px;
+      margin: 20px auto 32px !important;
+    }
+
+    /* Glass Cards & Bento Tiles */
+    .bento-card, .pipeline-card, .pricing-card, .faq-item {
+      background: rgba(13, 17, 23, 0.6) !important;
+      backdrop-filter: blur(12px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.07) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    .bento-card:hover, .pipeline-card:hover, .pricing-card:hover {
+      transform: translateY(-2px) !important;
+      border-color: rgba(16, 185, 129, 0.3) !important;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.9), 0 0 25px rgba(16, 185, 129, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Buttons Linear Style */
+    .btn-primary {
+      background: #10b981 !important;
+      color: #04100c !important;
+      font-weight: 700 !important;
+      border-radius: 9999px !important;
+      padding: 12px 24px !important;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+      border: none !important;
+      transition: all 0.2s ease !important;
+    }
+
+    .btn-primary:hover {
+      background: #34d399 !important;
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05) !important;
+      color: #e2e8f0 !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      border-radius: 9999px !important;
+      backdrop-filter: blur(8px) !important;
+      padding: 12px 24px !important;
+      transition: all 0.2s ease !important;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1) !important;
+      border-color: rgba(255, 255, 255, 0.25) !important;
+      color: #ffffff !important;
+    }
+
+    /* Status Pill / Live Badge */
+    .status-badge, .badge {
+      border-radius: 9999px !important;
+      font-family: var(--font-mono) !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.05em !important;
     }
 
   </style>
