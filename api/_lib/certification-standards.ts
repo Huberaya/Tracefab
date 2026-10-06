@@ -27,7 +27,7 @@ const CATALOG_ROOT = join(process.cwd(), 'catalog/certification-standards');
 const CATALOG_FILE = join(CATALOG_ROOT, '2026.10.json');
 const EVIDENCE_KINDS = new Set<CertificationEvidenceKind>(['certificate', 'scope_certificate', 'transaction_certificate', 'test_report', 'audit_report']);
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9-]{1,79}$/;
-const VERSION_PATTERN = /^\d{4}(?:\.\d+)?$/;
+const VERSION_PATTERN = /^(?:\d{4}|\d+(?:\.\d+)+)$/;
 
 function parseCatalog(): CertificationCatalogFile {
   const value = JSON.parse(readFileSync(CATALOG_FILE, 'utf8')) as Partial<CertificationCatalogFile>;

@@ -17,7 +17,7 @@ for (const standard of catalog.standards) {
   assert(standard.requiredFields.includes('certificate_number'), `${standard.code} certificate number field missing`);
   assert(standard.claimCaveat && /catalogue|evidence|certif/i.test(standard.claimCaveat), `${standard.code} must not be presented as proof`);
 }
-assert(source.includes('versioned_tracefab_certification_catalog') && source.includes('certification_standard_duplicate'), 'catalogue validation contract missing');
+assert(source.includes('versioned_tracefab_certification_catalog') && source.includes('certification_standard_duplicate') && source.includes('\\d+(?:\\.\\d+)+'), 'catalogue validation contract missing');
 assert(route.includes('certification_standard_not_found') && route.includes('listCertificationStandards'), 'catalogue route contract missing');
 assert(readiness.includes('tracefab-p2-readiness-v1') && readiness.includes('configuration_only') && readiness.includes('workerAuthorized'), 'P2 readiness contract missing');
 assert(indexTs.includes('certification-standards') && indexTs.includes('p2\\/readiness'), 'P2 routes missing from API router');
