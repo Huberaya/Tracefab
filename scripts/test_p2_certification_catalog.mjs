@@ -19,6 +19,6 @@ for (const standard of catalog.standards) {
 }
 assert(source.includes('versioned_tracefab_certification_catalog') && source.includes('certification_standard_duplicate') && source.includes('\\d+(?:\\.\\d+)+'), 'catalogue validation contract missing');
 assert(route.includes('certification_standard_not_found') && route.includes('listCertificationStandards'), 'catalogue route contract missing');
-assert(readiness.includes('tracefab-p2-readiness-v1') && readiness.includes('configuration_only') && readiness.includes('workerAuthorized'), 'P2 readiness contract missing');
+assert(readiness.includes('tracefab-p2-readiness-v1') && readiness.includes('configuration_only') && readiness.includes('workerAuthorized') && readiness.includes('PRIVATE_STORAGE_ANTIVIRUS_TOKEN'), 'P2 readiness contract missing');
 assert(indexTs.includes('certification-standards') && indexTs.includes('p2\\/readiness'), 'P2 routes missing from API router');
 console.log(`P2 certification catalogue passed: ${catalog.standards.length} standards, version ${catalog.catalogVersion}, configuration readiness route protected`);

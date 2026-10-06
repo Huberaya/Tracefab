@@ -128,10 +128,11 @@ export async function downloadObject(key: string) {
 
 export async function scanWithAntivirus(bytes: ArrayBuffer, filename: string, contentType: string) {
   const scannerUrl = process.env.PRIVATE_STORAGE_ANTIVIRUS_URL?.trim();
-  if (!scannerUrl) throw new Error('private_storage_antivirus_not_configured');
+  const scannerToken = process.env.PRIVATE_STORAGE_ANTIVIRUS_TOKEN?.trim();
+  if (!scannerUrl || !scannerToken) throw new Error('private_storage_antivirus_not_configured');
   const response = await fetch(scannerUrl, {
     method: 'POST',
-    headers: { 'Content-Type': contentType, 'X-Tracefab-Filename': filename, 'X-Tracefab-Scan-Protocol': 'tracefab-v1' },
+    headers: { Authorization: `Bearer ${scannerToken}`, 'Content-Type': contentType, 'X-Tracefab-Filename': filename, 'X-Tracefab-Scan-Protocol': 'tracefab-v1' },
     body: Buffer.from(bytes) as unknown as BodyInit,
   });
   const payload = await response.json().catch(() => null) as { clean?: unknown; mimeType?: unknown } | null;
