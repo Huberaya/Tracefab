@@ -96,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!result) return json(res, 404, { error: 'product_not_found' });
-    if ('points' in result) {
+    if ('points' in result && result.points) {
       return json(res, 200, {
         dataPoints: result.points.map(serializeDataPoint),
         definitions: DATA_POINT_DEFINITIONS,
