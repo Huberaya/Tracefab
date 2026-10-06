@@ -120,9 +120,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!process.env.CLERK_WEBHOOK_SIGNING_SECRET?.trim()) return json(res, 503, { error: 'clerk_webhook_not_configured' });
 
   let eventType = 'unknown';
+  let verified = false;
   try {
-    const event = await verifyWebhook(requestForVerification(req, bodyText(req)), { signingSecret: process.env.CLERK_WEBHOOK_SIGNING_SECRET.trim() }) as unknown as ClerkWebhookEvent;
-    eventType = event.type || 'unknown';
+    const rawBody = bodyText(req);
+    try {
+      const unsignedPayload = JSON.parse(rawBody) as { type?: unknown };
+      eventType = stringValue(unsignedPayload.type) ?? 'unknown';
+    } catch {
+      // Signature verification below remains authoritative; this only improves safe diagnostics.
+    }
+    const event = await verifyWebhook(requestForVerification(req, rawBody), { signingSecret: process.env.CLERK_WEBHOOK_SIGNING_SECRET.trim() }) as unknown as ClerkWebhookEvent;
+    verified = true;
+    eventType = event.type || eventType;
     if (eventType === 'user.created' || eventType === 'user.updated') await upsertUserFromClerkEvent(event.data);
     else if (eventType === 'user.deleted') {
       const clerkUserId = stringValue(event.data.id);
@@ -143,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : 'unknown_error';
     const databaseCode = typeof error === 'object' && error && 'code' in error && typeof error.code === 'string' && /^P\d+$/.test(error.code) ? `database_${error.code.toLowerCase()}` : null;
-    const publicError = eventType === 'unknown'
+    const publicError = !verified
       ? 'invalid_clerk_webhook'
       : (errorCode.startsWith('clerk_') ? errorCode : databaseCode || 'clerk_sync_failed');
     console.error('POST /api/webhooks/clerk failed', { eventType, errorCode, databaseCode });
