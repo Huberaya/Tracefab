@@ -60,6 +60,7 @@ assertIncludes(packageJson, 'security:production:env', 'Production env audit com
 assertIncludes(packageJson, 'security:production:hardening', 'Production hardening contract command is missing');
 
 const plm = await read('api/_routes/integrations/plm.ts');
+assertIncludes(plm, 'plm_integration_disabled', 'Development PLM stub must be disabled by default in production');
 assert.equal(plm.includes('message: err.message'), false, 'PLM endpoint must not return internal exception messages');
 
 console.log('Production hardening contract passed: Vercel headers, API fail-closed behavior, Clerk party binding, RLS gaps, internal endpoint guards, audit-chain tenant scope and secret-safe env checks');

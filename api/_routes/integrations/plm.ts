@@ -8,6 +8,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return methodNotAllowed(res, ['GET', 'POST']);
   }
+  if (process.env.NODE_ENV === 'production' && process.env.TRACEFAB_PLM_ENABLED !== 'true') {
+    return json(res, 404, { error: 'plm_integration_disabled' });
+  }
 
   const auth = await requireClerkUser(req);
   if (isUnauthorized(auth)) {

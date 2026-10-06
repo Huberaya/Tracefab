@@ -111,6 +111,8 @@ Résultat attendu : `relrowsecurity = true` et `relforcerowsecurity = true` pour
 
 Les endpoints internes ne disposent d’aucune route CORS wildcard. Ils renvoient `no-store` et ne renvoient pas de valeurs de secret. Les routes inconnues et les exceptions non traitées sont fermées avec une réponse générique `internal_server_error`.
 
+Le connecteur PLM actuellement simulé est désactivé en production sauf si `TRACEFAB_PLM_ENABLED=true` est explicitement configuré après raccordement à un connecteur réel.
+
 ## Headers actifs
 
 Vercel applique notamment :
