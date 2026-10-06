@@ -8,6 +8,7 @@ const routes: Route[] = [
   { pattern: /^catalog\/questionnaires$/, params: [], load: () => import('./_routes/catalog/questionnaires.js') },
   { pattern: /^catalog\/schemas$/, params: [], load: () => import('./_routes/catalog/schemas.js') },
   { pattern: /^config$/, params: [], load: () => import('./_routes/config.js') },
+  { pattern: /^dpp\/validate$/, params: [], load: () => import('./_routes/dpp/validate.js') },
   { pattern: /^data\-request\-items\/([^\/]+)\/response$/, params: ['itemId'], load: () => import('./_routes/data-request-items/[itemId]/response.js') },
   { pattern: /^data\-requests\/([^\/]+)\/items\/from\-template$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items/from-template.js') },
   { pattern: /^data\-requests\/([^\/]+)\/items$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items.js') },
