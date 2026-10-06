@@ -2094,52 +2094,73 @@
         </div>
       </div>
 
-      <!-- Real DPP Readiness Cockpit Mockup -->
-      <div class="dpp-cockpit-frame">
-        <div class="dpp-meter-row">
-          <div>
-            <div style="font-size:11.5px;font-weight:750;text-transform:uppercase;letter-spacing:0.08em;color:var(--tf-text-on-dark-muted);">Simulated Model Readiness</div>
-            <h3 style="font-size:18px;font-weight:800;">DPP Readiness</h3>
+      <!-- High-Impact Dark Glass Cockpit (Inspired by BoxBet Ref: Neon Accents, Cyber Cards, Live Currency/Lot Selector) -->
+      <div class="dpp-cockpit-frame" style="background:#091410;border:1px solid rgba(52,211,153,0.22);box-shadow:0 24px 64px -10px rgba(0,0,0,0.6), 0 0 40px rgba(16,185,129,0.1);position:relative;overflow:hidden;">
+        <!-- Glowing accent edge -->
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg, #10b981, #f59e0b, #10b981);"></div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#10b981;box-shadow:0 0 10px #10b981;"></div>
+            <div>
+              <div style="font-size:10px;font-family:var(--font-mono);font-weight:700;color:#34d399;letter-spacing:0.1em;text-transform:uppercase;">ESPR PASSPORT LEDGER · CIRPASS 1.2</div>
+              <h3 style="font-size:17px;font-weight:800;color:#ffffff;margin-top:2px;">Digital Passport Gateway</h3>
+            </div>
           </div>
-          <div style="text-align:right;">
-            <div class="dpp-score-huge">88%</div>
-            <span class="badge badge-verified" style="background:#10b981;color:#ffffff;border:none;">Ready</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <!-- Dark pill switcher inspired by BoxBet crypto switcher -->
+            <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:4px 10px;font-size:11px;font-family:var(--font-mono);">
+              <span style="color:#34d399;">●</span>
+              <span>EUR / GS1</span>
+            </div>
+            <span class="badge" style="background:#10b981;color:#07120e;font-weight:800;border:none;padding:5px 10px;border-radius:6px;">88% PASSED</span>
+          </div>
+        </div>
+
+        <!-- Cyber Bento Grid of Verified Cards (BoxBet Card Grid Style) -->
+        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:18px;">
+          <!-- Card 1: Provenance -->
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;position:relative;overflow:hidden;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;font-weight:700;">PROVENANCE</div>
+            <div style="font-size:18px;font-weight:800;color:#34d399;margin:4px 0 2px;">Tier 1–4</div>
+            <div style="font-size:10.5px;color:rgba(255,255,255,0.7);">100% Polygon GPS</div>
+          </div>
+          <!-- Card 2: Chemistry -->
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;position:relative;overflow:hidden;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;font-weight:700;">CHEMICAL MRSL</div>
+            <div style="font-size:18px;font-weight:800;color:#f59e0b;margin:4px 0 2px;">Level 3</div>
+            <div style="font-size:10.5px;color:rgba(255,255,255,0.7);">ZDHC Zero Discharge</div>
+          </div>
+          <!-- Card 3: Circularity -->
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;position:relative;overflow:hidden;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;font-weight:700;">REPAIRABILITY</div>
+            <div style="font-size:18px;font-weight:800;color:#60a5fa;margin:4px 0 2px;">8.8 / 10</div>
+            <div style="font-size:10.5px;color:rgba(255,255,255,0.7);">Take-Back Active</div>
           </div>
         </div>
 
         <div class="dpp-checklist-ul">
-          <div class="dpp-item-li passed">
-            <span>✓ Product identity & GTIN / EAN</span>
-            <strong>Passed</strong>
+          <div class="dpp-item-li passed" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.22);">
+            <span>✓ Product identity & GTIN / EAN (GS1 Digital Link)</span>
+            <strong style="color:#34d399;">Passed</strong>
           </div>
-          <div class="dpp-item-li passed">
-            <span>✓ Composition & material breakdown</span>
-            <strong>Passed</strong>
+          <div class="dpp-item-li passed" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.22);">
+            <span>✓ Composition & material breakdown (100% Reconciled)</span>
+            <strong style="color:#34d399;">Passed</strong>
           </div>
-          <div class="dpp-item-li passed">
-            <span>✓ Material provenance information</span>
-            <strong>Passed</strong>
+          <div class="dpp-item-li passed" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.22);">
+            <span>✓ French AGEC Art. 13 Operations (Weaving, Dyeing, CMT)</span>
+            <strong style="color:#34d399;">Passed</strong>
           </div>
-          <div class="dpp-item-li passed">
-            <span>✓ Supplier facility registrations</span>
-            <strong>Passed</strong>
-          </div>
-          <div class="dpp-item-li passed">
-            <span>✓ Manufacturing & assembly processes</span>
-            <strong>Passed</strong>
-          </div>
-          <div class="dpp-item-li warning">
-            <span>⚠ Missing evidence: Water effluent lab report</span>
-            <strong style="color:#fbbf24;">Action Required</strong>
-          </div>
-          <div class="dpp-item-li warning">
-            <span>⚠ Additional verification required: Dyeing facility audit</span>
+          <div class="dpp-item-li warning" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);">
+            <span>⚠ Missing evidence: Water effluent lab report for Lot #089</span>
             <strong style="color:#fbbf24;">Action Required</strong>
           </div>
         </div>
 
-        <div style="margin-top:16px;text-align:center;font-size:11px;color:var(--tf-text-on-dark-muted);">
-          Note: DPP Readiness reflects internal data completeness and does not constitute regulatory compliance certification.
+        <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:var(--tf-text-on-dark-muted);">
+          <span>Immutable SHA-256 Seal Active</span>
+          <a href="/dpp/" target="_blank" style="color:#34d399;font-weight:700;text-decoration:none;">Preview Consumer QR Passport →</a>
         </div>
       </div>
     </div>
