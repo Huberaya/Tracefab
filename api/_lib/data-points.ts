@@ -33,6 +33,10 @@ export const DATA_POINT_DEFINITIONS: Record<string, { dataType: string; descript
   main_material_percentage: { dataType: 'percentage', description: 'Share by mass of the main material.' },
   activity_types: { dataType: 'json', description: 'Array of controlled activity keys.' },
   material_composition: { dataType: 'json', description: 'Array of material keys and percentages.' },
+  recycled_content_percentage: { dataType: 'percentage', description: 'Percentage of recycled fiber content.' },
+  carbon_footprint_kg: { dataType: 'number', description: 'Product carbon footprint in kg CO2e.' },
+  water_usage_liters: { dataType: 'number', description: 'Product water usage in liters.' },
+  care_wash_temp: { dataType: 'number', description: 'Maximum recommended washing temperature in Celsius.' },
 };
 
 function validateKnownJsonShape(dataKey: string, value: unknown) {
@@ -120,4 +124,19 @@ export function dataPointMutation(body: Record<string, unknown>) {
   const validUntil = dataPointDate(body.validUntil, 'valid_until');
   if (validFrom && validUntil && validUntil < validFrom) throw new Error('invalid_data_point_date_range');
   return { dataKey: body.dataKey.trim(), dataType: body.dataType, value, subjectType: body.subjectType, subjectId: body.subjectType === 'site' ? body.subjectId as string : null, sourceDocumentId, validFrom, validUntil };
+}
+
+export function productDataPointMutation(body: Record<string, unknown>) {
+  const allowedKeys = new Set(['dataKey', 'dataType', 'value', 'sourceDocumentId', 'validFrom', 'validUntil']);
+  if (Object.keys(body).some((key) => !allowedKeys.has(key))) throw new Error('invalid_data_point_fields');
+  if (typeof body.dataKey !== 'string' || body.dataKey.trim().length === 0 || body.dataKey.trim().length > 160 || !/^[A-Za-z0-9_.:-]+$/.test(body.dataKey.trim())) throw new Error('invalid_data_key');
+  if (typeof body.dataType !== 'string' || !SUPPLIER_DATA_TYPES.has(body.dataType)) throw new Error('invalid_data_type');
+  if (!Object.prototype.hasOwnProperty.call(body, 'value')) throw new Error('data_point_value_required');
+  const value = validateDataPointValue(body.dataType, body.value, body.dataKey.trim());
+  const sourceDocumentId: string | null = body.sourceDocumentId === undefined || body.sourceDocumentId === null || body.sourceDocumentId === '' ? null : typeof body.sourceDocumentId === 'string' ? body.sourceDocumentId : null;
+  if (body.sourceDocumentId !== undefined && body.sourceDocumentId !== null && body.sourceDocumentId !== '' && (sourceDocumentId === null || !/^[0-9a-f-]{36}$/i.test(sourceDocumentId))) throw new Error('invalid_source_document_id');
+  const validFrom = dataPointDate(body.validFrom, 'valid_from');
+  const validUntil = dataPointDate(body.validUntil, 'valid_until');
+  if (validFrom && validUntil && validUntil < validFrom) throw new Error('invalid_data_point_date_range');
+  return { dataKey: body.dataKey.trim(), dataType: body.dataType, value, sourceDocumentId, validFrom, validUntil };
 }

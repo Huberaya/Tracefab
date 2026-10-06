@@ -80,7 +80,12 @@
           const supplierMemberships = state.memberships.filter((membership) => membership.organizations?.type === 'supplier');
           const storedOrganizationId = localStorage.getItem('tracefab_supplier_organization_id');
           state.selectedOrganizationId = supplierMemberships.some((membership) => membership.organization_id === storedOrganizationId) ? storedOrganizationId : supplierMemberships[0]?.organization_id || null;
-          if (!state.selectedOrganizationId) throw new Error('supplier_organization_not_found');
+          if (!state.selectedOrganizationId) {
+            state.view = 'selfOnboarding';
+            state.loading = false;
+            render();
+            return;
+          }
           const organizationPayload = await api(`/api/supplier/organizations?organizationId=${encodeURIComponent(state.selectedOrganizationId)}`);
           state.organizations = organizationPayload.organizations || [];
           const [profilePayload, requests] = await Promise.all([api('/api/supplier/profile'), api(`/api/data-requests?scope=supplier&organizationId=${encodeURIComponent(state.selectedOrganizationId)}`)]);
@@ -100,7 +105,7 @@
           state.loading = false; render();
         } catch (error) { state.loading = false; state.configError = error.message; render(); }
       }
-      function viewLabel() { return ({ overview:'Vue d’ensemble', requests:'Demandes de données', profile:'Mon profil', sites:'Sites de production', certifications:'Certificats', materials:'Matériaux', documents:'Preuves', dataPoints:'Données structurées', members:'Équipe', quality:'Qualité', requestDetail:'Répondre à une demande' })[state.view] || 'Vue d’ensemble'; }
+      function viewLabel() { return ({ overview:'Vue d’ensemble', requests:'Demandes de données', profile:'Mon profil', sites:'Sites de production', certifications:'Certificats', materials:'Matériaux', documents:'Preuves', dataPoints:'Données structurées', members:'Équipe', quality:'Qualité', requestDetail:'Répondre à une demande', selfOnboarding:'Création d’entreprise fournisseur' })[state.view] || 'Vue d’ensemble'; }
       function currentOrg() { return state.organizations.find((entry) => entry.organizationId === state.selectedOrganizationId)?.organization || state.memberships.find((membership) => membership.organization_id === state.selectedOrganizationId)?.organizations; }
       function organizationSwitcher() { if (state.organizations.length < 2) return currentOrg() ? `<span class="meta">${esc(currentOrg().display_name || currentOrg().legal_name)}</span>` : ''; return `<label style="min-width:220px"><span class="meta">Organisation active</span><select class="select" id="organization-switcher">${state.organizations.map((entry) => `<option value="${esc(entry.organizationId)}" ${entry.organizationId === state.selectedOrganizationId ? 'selected' : ''}>${esc(entry.organization.display_name || entry.organization.legal_name)}</option>`).join('')}</select></label>`; }
       function openRequests() { return state.requests.filter((request) => !['approved','cancelled'].includes(request.status)); }
@@ -113,10 +118,16 @@
         if (state.configError && !state.demo && !state.user) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Supplier Portal</div><h1>Connexion indisponible</h1><p>${esc(state.configError)}. Vérifiez Clerk et la configuration de l’API, ou ouvrez <code>?demo=1</code> pour parcourir l’interface.</p><button class="btn btn-secondary" data-action="retry">Réessayer</button></div></div>`; bind(); return; }
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>Préparation de votre espace…</h1><p>Chargement du profil fournisseur et des demandes de données.</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }
+        if (state.view === 'selfOnboarding') { app.innerHTML = selfOnboardingView(); bind(); return; }
         const content = state.view === 'overview' ? overview() : state.view === 'requests' ? requestsView() : state.view === 'profile' ? profileView() : state.view === 'sites' ? sitesView() : state.view === 'certifications' ? certificationsView() : state.view === 'materials' ? materialsView() : state.view === 'documents' ? documentsView() : state.view === 'dataPoints' ? dataPointsView() : state.view === 'members' ? membersView() : state.view === 'quality' ? qualityView() : requestDetailView();
         app.innerHTML = shell(content); bind();
       }
       function renderAuth() { app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><h1>Vos données, votre rythme.</h1><p>Complétez votre profil, répondez aux demandes de vos marques clientes et gardez l’historique de vos réponses.</p><ul><li>Profil fournisseur maîtrisé</li><li>Demandes versionnées</li><li>Réponses déclarées et traçables</li></ul></div><div class="auth-box"><div class="eyebrow">Espace fournisseur</div><h2>Se connecter</h2><p>Accédez à votre espace Tracefab sécurisé.</p><div id="clerk-sign-in"></div></div></div></div>`; if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'), { appearance:{ elements:{ card:'shadow-none', rootBox:'w-full' } } }); }
+
+      function selfOnboardingView() {
+        const userName = state.user?.fullName || state.user?.email || '';
+        return `<div class="auth-screen"><div class="config-error" style="max-width:680px;text-align:left"><div class="brand" style="margin-bottom:20px"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><div class="eyebrow">Bienvenue sur Tracefab</div><h1 style="font-size:26px;margin:8px 0 12px">Création de votre espace fournisseur</h1><p style="color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:22px">Aucune organisation fournisseur n’est encore associée à votre compte. Configurez votre entreprise pour commencer à déclarer vos capacités, vos sites et répondre aux demandes de vos marques partenaires.</p><form id="self-onboarding-form"><div class="form-grid"><label class="field-full">Raison sociale / Nom légal *<input class="input" name="legalName" required placeholder="ex. Nhãn Textile Lda ou Tissages du Nord SAS"></label><label>Nom commercial usuel (facultatif)<input class="input" name="displayName" placeholder="ex. Nhãn Textile"></label><label>Pays du siège social (code ISO-2) *<input class="input" name="countryCode" required maxlength="2" placeholder="PT" style="text-transform:uppercase"></label><label>Nom du contact principal<input class="input" name="contactName" value="${esc(userName)}" placeholder="Nom et prénom"></label><label>Téléphone professionnel<input class="input" name="contactPhone" placeholder="+351 253 000 000"></label><label class="field-full">Activités textiles principales (séparées par une virgule)<input class="input" name="activityTypes" placeholder="spinning, weaving, dyeing, confection, packaging"></label><label class="field-full">Présentation de l’entreprise<textarea class="textarea" name="profileSummary" rows="3" placeholder="Présentez vos capacités industrielles, certifications et spécialités textiles…"></textarea></label></div><div class="form-actions" style="margin-top:20px"><button type="button" class="btn btn-secondary" data-action="signout">Se déconnecter</button><button class="btn btn-primary" type="submit">Créer mon espace fournisseur</button></div></form></div></div>`;
+      }
 
       function overview() {
         const dueSoon = openRequests().filter((request) => request.dueAt && new Date(request.dueAt).getTime() - Date.now() < 7*86400000);
@@ -212,6 +223,35 @@
       async function submitRequest() { if (!state.selectedRequest) return; if (state.demo) { state.selectedRequest.status = 'submitted'; notify('Demande soumise en mode démonstration.'); render(); return; } const result = await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}/submit`, { method:'POST' }); state.selectedRequest = result.request; await refreshRequest(); notify('Demande soumise à la marque.'); }
       async function saveProfile(form) { const data = Object.fromEntries(new FormData(form)); const body = { profileSummary:data.profileSummary || null, contactName:data.contactName || null, contactEmail:data.contactEmail || null, contactPhone:data.contactPhone || null, employeeCountRange:data.employeeCountRange || null, yearEstablished:data.yearEstablished ? Number(data.yearEstablished) : null, activityTypes:String(data.activityTypes || '').split(',').map((value) => value.trim()).filter(Boolean) }; if (state.demo) { Object.assign(state.profile, body, { profileCompletion:'86' }); notify('Profil enregistré en mode démonstration.'); render(); return; } const result = await api('/api/supplier/profile', { method:'PATCH', body:JSON.stringify(body) }); state.profile = result.profile; state.supplier = result.supplier; notify('Profil enregistré.'); render(); }
       async function submitProfile() { if (state.demo) { state.profile.onboardingStatus = 'submitted'; state.profile.lastSubmittedAt = new Date().toISOString(); notify('Profil soumis en mode démonstration.'); render(); return; } const result = await api('/api/supplier/profile/submit', { method:'POST' }); state.profile = result.profile; notify('Profil soumis à votre organisation cliente.'); render(); }
+      async function submitSelfOnboarding(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const body = {
+          legalName: (data.legalName || '').trim(),
+          displayName: (data.displayName || '').trim() || null,
+          countryCode: (data.countryCode || '').trim().toUpperCase(),
+          contactName: (data.contactName || '').trim() || null,
+          contactPhone: (data.contactPhone || '').trim() || null,
+          profileSummary: (data.profileSummary || '').trim() || null,
+          activityTypes: String(data.activityTypes || '').split(',').map((s) => s.trim()).filter(Boolean),
+        };
+        if (!body.legalName) { notify('Le nom légal est requis.', true); return; }
+        if (!body.countryCode || body.countryCode.length !== 2) { notify('Le code pays doit comporter 2 lettres (ex: PT, FR).', true); return; }
+        if (state.demo) {
+          state.selectedOrganizationId = 'demo-org-new';
+          state.view = 'overview';
+          notify('Espace fournisseur créé en mode démonstration.');
+          await sync();
+          return;
+        }
+        try {
+          const result = await api('/api/supplier/onboarding', { method:'POST', body:JSON.stringify(body) });
+          localStorage.setItem('tracefab_supplier_organization_id', result.organization.id);
+          state.selectedOrganizationId = result.organization.id;
+          state.view = 'overview';
+          notify('Espace fournisseur créé avec succès !');
+          await sync();
+        } catch (err) { notify(err.message, true); }
+      }
       function splitValues(value) { return String(value || '').split(',').map((entry) => entry.trim()).filter(Boolean); }
       function parseJsonField(value) { try { return JSON.parse(String(value || '{}')); } catch { throw new Error('invalid_material_composition'); } }
       async function refreshOptionalData() {
@@ -368,6 +408,7 @@
         document.getElementById('member-invite-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveMemberInvite(event.currentTarget).catch((error) => notify(error.message, true)); });
         document.querySelectorAll('.member-edit-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); saveMember(event.currentTarget).catch((error) => notify(error.message, true)); }));
         document.querySelectorAll('[data-invitation-action]').forEach((element) => element.addEventListener('click', () => manageInvitation(element.dataset.invitationId, element.dataset.invitationAction).catch((error) => notify(error.message, true))));
+        document.getElementById('self-onboarding-form')?.addEventListener('submit', (event) => { event.preventDefault(); submitSelfOnboarding(event.currentTarget).catch((error) => notify(error.message, true)); });
         document.getElementById('document-form')?.addEventListener('submit', (event) => { event.preventDefault(); uploadDocument(event.currentTarget).catch((error) => notify(error.message, true)); });
         document.querySelectorAll('[data-document-id]').forEach((element) => element.addEventListener('click', () => downloadDocument(element.dataset.documentId).catch((error) => notify(error.message, true))));
       }

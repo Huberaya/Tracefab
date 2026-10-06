@@ -67,6 +67,13 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   quality_issue_review_role_required: { status: 403 },
   quality_issue_waive_role_required: { status: 403 },
   quality_issue_waiver_reason_required: { status: 422 },
+  dpp_readiness_role_required: { status: 403 },
+  active_dpp_requirement_profile_not_found: { status: 404 },
+  dpp_record_not_found: { status: 404 },
+  dpp_publish_review_role_required: { status: 403 },
+  dpp_record_not_data_ready: { status: 409 },
+  dpp_record_already_ready_to_publish: { status: 409 },
+  invalid_country_code: { status: 400 },
 };
 
 /**
