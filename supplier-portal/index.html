@@ -109,7 +109,6 @@
       'use strict';
       const app = document.getElementById('app');
       
-      state.lang = localStorage.getItem('tracefab_lang') || 'fr';
       const translations = {
         fr: {
           overview: "Vue d’ensemble",
@@ -280,7 +279,7 @@
         return translations[lang]?.[key] || translations['fr'][key] || key;
       }
 
-      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], materials:[], schemaCatalog:[], documents:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, demo:new URLSearchParams(location.search).has('demo') };
+      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], materials:[], schemaCatalog:[], documents:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'fr', demo:new URLSearchParams(location.search).has('demo') };
       const labels = { draft:'Brouillon', sent:'Envoyée', in_progress:'En cours', submitted:'Soumise', changes_requested:'À corriger', approved:'Approuvée', cancelled:'Annulée', needs_review:'À revoir', verified_by_reviewer:'Vérifiée', not_started:'À commencer', uploaded:'Enregistré', scanning:'Contrôle en cours', available:'Disponible', rejected:'Rejeté', deleted:'Supprimé', declared:'Déclarée', documented:'Documentée', suspended:'Suspendu', revoked:'Révoqué' };
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0,2).toUpperCase() || 'TF';
