@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en" data-theme="dark" class="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TRACEFAB — Textile Supply Chain Data & DPP Infrastructure</title>
-  <meta name="description" content="TRACEFAB helps fashion brands collect, structure, verify and connect supplier data — from raw materials to finished products. Turn fragmented supply chain evidence into trusted, DPP-ready product intelligence.">
+  <meta name="description" content="TRACEFAB helps fashion and apparel brands collect, structure, verify and connect supplier data — from raw materials to finished products. Turn fragmented supply chain evidence into trusted, DPP-ready product intelligence.">
 
-    <!-- International hreflang alternate tags -->
+  <!-- International hreflang alternate tags -->
   <link rel="alternate" hreflang="en" href="https://tracefab.vercel.app/?lang=en">
   <link rel="alternate" hreflang="fr" href="https://tracefab.vercel.app/?lang=fr">
   <link rel="alternate" hreflang="de" href="https://tracefab.vercel.app/?lang=de">
@@ -15,96 +15,37 @@
   <link rel="alternate" hreflang="nl" href="https://tracefab.vercel.app/?lang=nl">
   <link rel="alternate" hreflang="pt" href="https://tracefab.vercel.app/?lang=pt">
   <link rel="alternate" hreflang="x-default" href="https://tracefab.vercel.app/">
+
   <!-- Open Graph -->
   <meta property="og:title" content="TRACEFAB — Turn your textile supply chain into trusted data.">
   <meta property="og:description" content="The data infrastructure behind the connected textile supply chain: STRUCTURED → DOCUMENTED → VERIFIED → TRACEABLE → DPP-READY.">
   <meta property="og:type" content="website">
 
-  <!-- Premium Typography: Plus Jakarta Sans & JetBrains Mono -->
+  <!-- Modern Fonts: Plus Jakarta Sans & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
     /* ==========================================================================
-       TRACEFAB DESIGN SYSTEM — HIGH-END B2B FASHION TECH & REGTECH TOKENS
+       TRIPFORGE-INSPIRED ULTRA-CLEAN EDITORIAL DESIGN SYSTEM FOR TRACEFAB
        ========================================================================== */
     :root {
-      /* New Modern B2B Bento & Elevated Dashboard Tokens */
-      --tf-canvas-gradient: radial-gradient(circle at 50% -10%, rgba(11, 118, 86, 0.08) 0%, transparent 60%),
-                            radial-gradient(circle at 90% 20%, rgba(16, 185, 129, 0.04) 0%, transparent 40%),
-                            #f8faf9;
-      --tf-bento-bg: #ffffff;
-      --tf-bento-border: #e8eee9;
-      --tf-bento-shadow: 0 10px 30px -5px rgba(7, 24, 18, 0.04), 0 4px 12px rgba(7, 24, 18, 0.02);
-:root {
-      /* Brand Accents — Architectural & Controlled (Never over-green) */
-      --tf-emerald-500: #0b7656;
-      --tf-emerald-600: #07523e;
-      --tf-emerald-700: #053b2c;
-      --tf-emerald-soft: #eaf5ef;
-      --tf-emerald-subtle: #f2f8f4;
-      --tf-emerald-glow: rgba(11, 118, 86, 0.16);
-
-      /* Authority & Deep Contrast Surfaces */
-      --tf-charcoal-950: #07120e;
-      --tf-charcoal-900: #0b1a14;
-      --tf-charcoal-800: #122820;
-      --tf-charcoal-700: #1b382d;
-      --tf-dark-border: rgba(255, 255, 255, 0.08);
-      --tf-dark-border-hover: rgba(255, 255, 255, 0.18);
-
-      /* Off-White, Surfaces & Canvas */
-      --tf-canvas: #fbfcfb;
-      --tf-surface: #ffffff;
-      --tf-surface-soft: #f4f6f4;
-      --tf-surface-inset: #eef2ef;
-
-      /* Line & Separators — Ultra-thin 1px */
-      --tf-border-light: #e8eee9;
-      --tf-border-medium: #d4dfd7;
-      --tf-border-strong: #b5c7bb;
-
-      /* Typography Grayscale */
-      --tf-text-title: #0e1d17;
-      --tf-text-body: #495851;
-      --tf-text-muted: #73847b;
-      --tf-text-subtle: #98a79f;
-      --tf-text-on-dark: #f2fbf6;
-      --tf-text-on-dark-muted: #9ebdb0;
-
-      /* Scientific Data Quality & Compliance Palette */
-      --status-declared: #0284c7;
-      --status-declared-bg: #e0f2fe;
-      --status-documented: #4f46e5;
-      --status-documented-bg: #eef2ff;
-      --status-verified: #0b7656;
-      --status-verified-bg: #eaf5ef;
-      --status-certified: #059669;
-      --status-certified-bg: #ecfdf5;
-      --status-review: #d97706;
-      --status-review-bg: #fef3c7;
-      --status-missing: #dc2626;
-      --status-missing-bg: #fee2e2;
-
-      /* Spatial System & Radii */
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --radius-xl: 22px;
-      --radius-2xl: 32px;
-      --radius-full: 9999px;
-
-      /* Elevation */
-      --shadow-sm: 0 1px 3px rgba(11, 27, 20, 0.03), 0 1px 2px rgba(11, 27, 20, 0.02);
-      --shadow-md: 0 4px 14px rgba(11, 27, 20, 0.05), 0 1px 3px rgba(11, 27, 20, 0.03);
-      --shadow-lg: 0 12px 32px rgba(11, 27, 20, 0.07), 0 4px 12px rgba(11, 27, 20, 0.04);
-      --shadow-xl: 0 24px 64px -12px rgba(11, 27, 20, 0.12), 0 8px 24px rgba(11, 27, 20, 0.04);
-      --shadow-mockup: 0 32px 80px -16px rgba(7, 18, 14, 0.22), 0 12px 30px rgba(7, 18, 14, 0.08);
-
-      /* Typography */
+      --tf-forest-deep: #163627;
+      --tf-forest-hero: #194330;
+      --tf-forest-accent: #215c42;
+      --tf-pine-light: #2c7755;
+      --tf-mint: #25d392;
+      --tf-bone: #f8faf8;
+      --tf-card-bg: #ffffff;
+      --tf-surface-soft: #f2f5f2;
+      --tf-border: #e3e8e3;
+      --tf-border-subtle: #edf1ed;
+      --tf-text-dark: #121814;
+      --tf-text-muted: #66736a;
+      --tf-text-subtle: #8e9a92;
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+      --font-mono: 'JetBrains Mono', Menlo, Consolas, monospace;
     }
 
     *, *::before, *::after {
@@ -113,19 +54,19 @@
       padding: 0;
     }
 
-    html {
-      scroll-behavior: smooth;
-      font-size: 16px;
-    }
-
     body {
       font-family: var(--font-sans);
-      color: var(--tf-text-body);
-      background-color: var(--tf-canvas);
-      line-height: 1.6;
+      background-color: #ffffff;
+      color: var(--tf-text-dark);
+      line-height: 1.5;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       overflow-x: hidden;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
     }
 
     /* Container Utility */
@@ -134,2682 +75,881 @@
       margin-inline: auto;
     }
     .container-wide {
-      width: min(1400px, 100% - 48px);
+      width: min(1360px, 100% - 48px);
       margin-inline: auto;
     }
 
-    /* Clean Architectural Header */
-    .header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(251, 252, 251, 0.94);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--tf-border-light);
-      transition: all 0.2s ease;
-    }
-    .header-inner {
-      height: 74px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .brand-logo {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      text-decoration: none;
-      color: var(--tf-text-title);
-    }
-    .logo-mark {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
-      background: linear-gradient(135deg, var(--tf-charcoal-900), var(--tf-emerald-600));
-      color: #ffffff;
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      font-size: 15px;
-      letter-spacing: -0.04em;
-      box-shadow: 0 4px 12px rgba(11, 118, 86, 0.2);
-    }
-    .logo-text {
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: -0.035em;
-      color: var(--tf-text-title);
-      line-height: 1;
-    }
-    .nav-menu {
-      display: flex;
-      align-items: center;
-      gap: 36px;
-      list-style: none;
-    }
-    .nav-menu a {
-      color: var(--tf-text-body);
-      text-decoration: none;
-      font-size: 13.5px;
-      font-weight: 600;
-      transition: color 0.15s ease;
-      letter-spacing: -0.01em;
-    }
-    .nav-menu a:hover {
-      color: var(--tf-emerald-500);
-    }
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-size: 13.5px;
-      font-weight: 650;
-      padding: 10px 18px;
-      border-radius: var(--radius-md);
-      text-decoration: none;
-      border: 1px solid transparent;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      white-space: nowrap;
-      letter-spacing: -0.01em;
-    }
-    .btn:hover {
-      transform: translateY(-1px);
-    }
-    .btn-primary {
-      background: var(--tf-emerald-500);
-      color: #ffffff;
-      box-shadow: 0 4px 14px var(--tf-emerald-glow);
-    }
-    .btn-primary:hover {
-      background: var(--tf-emerald-600);
-      box-shadow: 0 6px 20px var(--tf-emerald-glow);
-    }
-    .btn-secondary {
-      background: #ffffff;
-      color: var(--tf-text-title);
-      border-color: var(--tf-border-medium);
-      box-shadow: var(--shadow-sm);
-    }
-    .btn-secondary:hover {
-      background: var(--tf-surface-soft);
-      border-color: var(--tf-text-muted);
-    }
-    .btn-dark {
-      background: var(--tf-charcoal-950);
-      color: #ffffff;
-      border-color: rgba(255, 255, 255, 0.12);
-    }
-    .btn-dark:hover {
-      background: var(--tf-charcoal-800);
-    }
-    .btn-text {
-      background: transparent;
-      color: var(--tf-text-body);
-      padding: 10px 14px;
-    }
-    .btn-text:hover {
-      color: var(--tf-text-title);
-    }
-    .btn-lg {
-      padding: 13px 24px;
-      font-size: 14.5px;
-      border-radius: var(--radius-md);
-    }
-
-    /* Eyebrows & Badges */
-    .eyebrow {
-      font-size: 11px;
-      font-weight: 750;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--tf-emerald-500);
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      margin-bottom: 14px;
-    }
-    .eyebrow-pill {
-      background: var(--tf-emerald-soft);
-      padding: 4px 12px;
-      border-radius: var(--radius-full);
-      border: 1px solid #d2e8dc;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 9px;
-      border-radius: var(--radius-full);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.01em;
-      line-height: 1;
-    }
-    .badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-    .badge-verified { background: var(--status-verified-bg); color: var(--status-verified); border: 1px solid #bfe3d0; }
-    .badge-certified { background: var(--status-certified-bg); color: var(--status-certified); border: 1px solid #a7f3d0; }
-    .badge-documented { background: var(--status-documented-bg); color: var(--status-documented); border: 1px solid #c7d2fe; }
-    .badge-declared { background: var(--status-declared-bg); color: var(--status-declared); border: 1px solid #bae6fd; }
-    .badge-review { background: var(--status-review-bg); color: var(--status-review); border: 1px solid #fde68a; }
-    .badge-missing { background: var(--status-missing-bg); color: var(--status-missing); border: 1px solid #fecaca; }
-
-    /* ==========================================================================
-       HERO SECTION — HIGH IMPACT & SHARP HIERARCHY
-       ========================================================================== */
-    .hero-section {
-      padding: 70px 0 90px;
-      position: relative;
-      background: radial-gradient(circle at 75% 15%, rgba(11, 118, 86, 0.06) 0%, transparent 50%),
-                  radial-gradient(circle at 15% 75%, rgba(79, 70, 229, 0.03) 0%, transparent 40%),
-                  var(--tf-canvas);
-    }
-    .hero-grid {
-      display: grid;
-      grid-template-columns: 1fr 1.2fr;
-      gap: 56px;
-      align-items: center;
-    }
-    .hero-content {
-      max-width: 540px;
-    }
-    .hero-title {
-      font-size: clamp(38px, 4.4vw, 56px);
-      font-weight: 800;
-      letter-spacing: -0.045em;
-      line-height: 1.08;
-      color: var(--tf-text-title);
-      margin-bottom: 20px;
-    }
-    .hero-subtitle {
-      font-size: 17.5px;
-      line-height: 1.62;
-      color: var(--tf-text-body);
-      margin-bottom: 32px;
-      letter-spacing: -0.01em;
-    }
-    .hero-cta-group {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 32px;
-      flex-wrap: wrap;
-    }
-
-    /* Hero Pipeline Proof Bar (Supplier data → Evidence → Verification → Traceability → DPP) */
-    .hero-pipeline-proof {
-      padding-top: 24px;
-      border-top: 1px solid var(--tf-border-light);
-    }
-    .proof-label {
-      font-size: 11px;
-      font-weight: 750;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--tf-text-muted);
-      margin-bottom: 10px;
-    }
-    .proof-flow-chain {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--tf-text-title);
-    }
-    .proof-node-tag {
-      background: var(--tf-surface);
-      border: 1px solid var(--tf-border-medium);
-      padding: 4px 10px;
-      border-radius: 6px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-      white-space: nowrap;
-    }
-    .proof-node-tag.active {
-      background: var(--tf-emerald-soft);
-      border-color: #bce1ce;
-      color: var(--tf-emerald-500);
-    }
-    .proof-arrow {
-      color: var(--tf-text-subtle);
-      font-size: 11px;
-    }
-
-    /* Mockup Wrapper */
-    .mockup-wrapper {
+    /* Top Floating Glass Capsule Navigation */
+    .hero-wrapper {
+      background: linear-gradient(180deg, #183e2d 0%, #1c4835 45%, #255842 75%, #ffffff 100%);
+      padding: 24px 0 100px;
       position: relative;
     }
-    .mockup-demo-banner {
-      position: absolute;
-      top: -14px;
-      right: 24px;
-      z-index: 10;
-      background: var(--tf-charcoal-900);
-      color: #34d399;
-      font-size: 11px;
-      font-weight: 750;
-      font-family: var(--font-mono);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 5px 12px;
-      border-radius: var(--radius-full);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-    }
-    .mockup-window {
-      background: var(--tf-surface);
-      border: 1px solid var(--tf-border-medium);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-mockup);
-      overflow: hidden;
-      transition: transform 0.3s ease;
-    }
-    .mockup-window:hover {
-      transform: translateY(-2px);
-    }
-    .mockup-chrome-bar {
-      background: #f7f9f7;
-      border-bottom: 1px solid var(--tf-border-light);
-      padding: 11px 18px;
+
+    .top-navbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-    }
-    .mockup-dots {
-      display: flex;
-      gap: 6px;
-    }
-    .mockup-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #e2e8e3;
-    }
-    .mockup-dot:nth-child(1) { background: #fda4af; }
-    .mockup-dot:nth-child(2) { background: #fde047; }
-    .mockup-dot:nth-child(3) { background: #86efac; }
-    .mockup-url-pill {
-      background: #ffffff;
-      border: 1px solid var(--tf-border-light);
-      border-radius: var(--radius-sm);
-      padding: 3px 12px;
-      font-size: 11px;
-      font-family: var(--font-mono);
-      color: var(--tf-text-muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* Mockup Interior Layout */
-    .mockup-app-grid {
-      display: grid;
-      grid-template-columns: 180px 1fr;
-      min-height: 480px;
-      background: var(--tf-surface);
-    }
-    .mockup-sidebar {
-      background: var(--tf-charcoal-950);
-      color: #ffffff;
-      padding: 16px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .mockup-brand-title {
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    .mockup-nav {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-    .mockup-nav-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 9px;
-      border-radius: 7px;
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--tf-text-on-dark-muted);
-      text-decoration: none;
-    }
-    .mockup-nav-item.active {
-      background: rgba(11, 118, 86, 0.4);
-      color: #ffffff;
-    }
-    .mockup-body {
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      background: #fbfdfc;
-    }
-    .mockup-header-strip {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .mockup-title h3 {
-      font-size: 15px;
-      font-weight: 800;
-      color: var(--tf-text-title);
-    }
-    .mockup-title span {
-      font-size: 11px;
-      color: var(--tf-text-muted);
-    }
-
-    /* Mockup 4 KPIs */
-    .mockup-kpis {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-    .mockup-kpi {
-      background: #ffffff;
-      border: 1px solid var(--tf-border-light);
-      border-radius: var(--radius-md);
-      padding: 10px 12px;
-      box-shadow: var(--shadow-sm);
-    }
-    .mockup-kpi-label {
-      font-size: 9.5px;
-      font-weight: 750;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--tf-text-muted);
-    }
-    .mockup-kpi-val {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--tf-text-title);
-      margin: 3px 0 1px;
-      letter-spacing: -0.03em;
-    }
-    .mockup-kpi-sub {
-      font-size: 10px;
-      color: var(--tf-emerald-500);
-      font-weight: 600;
-    }
-
-    /* Mockup Mini Supply Chain Visualizer */
-    .mockup-supply-strip {
-      background: #ffffff;
-      border: 1px solid var(--tf-border-light);
-      border-radius: var(--radius-md);
-      padding: 12px;
-    }
-    .mockup-supply-title {
-      font-size: 11px;
-      font-weight: 750;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--tf-text-muted);
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .mockup-chain-flow {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 4px;
-      font-size: 10px;
-      font-weight: 700;
-    }
-    .mockup-chain-node {
-      background: var(--tf-surface-soft);
-      padding: 5px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--tf-border-light);
-      text-align: center;
-      flex: 1;
-    }
-    .mockup-chain-node.active {
-      background: var(--tf-emerald-soft);
-      color: var(--tf-emerald-600);
-      border-color: #bfe3d0;
-    }
-
-    /* Mockup Dual Split Panel */
-    .mockup-split-panel {
-      display: grid;
-      grid-template-columns: 1.35fr 1fr;
-      gap: 12px;
-    }
-    .mockup-panel {
-      background: #ffffff;
-      border: 1px solid var(--tf-border-light);
-      border-radius: var(--radius-md);
-      padding: 12px;
-    }
-    .mockup-panel-title {
-      font-size: 11.5px;
-      font-weight: 750;
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .mockup-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 10.5px;
-    }
-    .mockup-table th {
-      text-align: left;
-      font-size: 9px;
-      text-transform: uppercase;
-      color: var(--tf-text-subtle);
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--tf-border-light);
-    }
-    .mockup-table td {
-      padding: 6px 0;
-      border-bottom: 1px solid #f6f8f6;
-    }
-    .mockup-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    /* ==========================================================================
-       SECTION 5: SIGNATURE SEQUENCE
-       SUPPLIERS → DATA → EVIDENCE → QUALITY → TRACEABILITY → DPP
-       ========================================================================== */
-    .signature-section {
-      padding: 70px 0;
-      background: #ffffff;
-      border-top: 1px solid var(--tf-border-light);
-      border-bottom: 1px solid var(--tf-border-light);
-    }
-    .signature-header {
-      text-align: center;
-      max-width: 680px;
-      margin: 0 auto 44px;
-    }
-    .signature-header h2 {
-      font-size: clamp(24px, 2.8vw, 34px);
-      font-weight: 800;
-      letter-spacing: -0.035em;
-      color: var(--tf-text-title);
-      margin-bottom: 10px;
-    }
-    .signature-header p {
-      font-size: 15px;
-      color: var(--tf-text-muted);
-    }
-    .signature-chain-grid {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 14px;
-      position: relative;
-    }
-    .signature-step-card {
-      background: var(--tf-canvas);
-      border: 1px solid var(--tf-border-light);
-      border-radius: var(--radius-lg);
-      padding: 22px 16px;
-      text-align: left;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-    }
-    .signature-step-card:hover {
-      background: #ffffff;
-      border-color: var(--tf-emerald-500);
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-md);
-    }
-    .step-badge-num {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      color: var(--tf-emerald-500);
-      margin-bottom: 12px;
-      display: inline-block;
-    }
-    .step-icon-box {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: var(--tf-emerald-soft);
-      color: var(--tf-emerald-500);
-      display: grid;
-      place-items: center;
-      margin-bottom: 14px;
-      font-size: 18px;
-      transition: transform 0.2s ease;
-    }
-    .signature-step-card:hover .step-icon-box {
-      transform: scale(1.08);
-      background: var(--tf-emerald-500);
-      color: #ffffff;
-    }
-    .signature-step-card h3 {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--tf-text-title);
-      margin-bottom: 6px;
-    }
-    .signature-step-card p {
-      font-size: 12.5px;
-      color: var(--tf-text-muted);
-      line-height: 1.5;
-    }
-
-    /* ==========================================================================
-       SECTION 6: THE PROBLEM & TRANSFORMATION
-       Your supply chain already has the data. It just isn't connected.
-       ========================================================================== */
-    .problem-section {
-      padding: 100px 0;
-      background: var(--tf-canvas);
-    }
-    .transformation-cockpit {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 32px;
-      align-items: center;
-      margin-top: 48px;
-    }
-    .silo-card {
-      background: #ffffff;
-      border: 1px solid #fed7d7;
-      border-radius: var(--radius-xl);
-      padding: 32px;
-      box-shadow: var(--shadow-sm);
-    }
-    .silo-card h3 {
-      font-size: 18px;
-      font-weight: 800;
-      color: #991b1b;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .silo-badge-cloud {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin: 18px 0;
-    }
-    .silo-pill {
-      font-size: 12px;
-      font-weight: 700;
-      background: #fef2f2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
-      padding: 6px 12px;
-      border-radius: 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* Transformation Center Connector */
-    .engine-core {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 12px;
-    }
-    .engine-symbol {
-      width: 64px;
-      height: 64px;
-      border-radius: 18px;
-      background: linear-gradient(135deg, var(--tf-charcoal-900), var(--tf-emerald-600));
-      color: #ffffff;
-      display: grid;
-      place-items: center;
-      font-weight: 900;
-      font-size: 22px;
-      box-shadow: 0 10px 30px var(--tf-emerald-glow);
-      position: relative;
-    }
-    .engine-pulse-ring {
-      position: absolute;
-      inset: -6px;
-      border-radius: 24px;
-      border: 2px solid var(--tf-emerald-500);
-      opacity: 0.4;
-      animation: pulseCore 2.4s infinite ease-out;
-    }
-    @keyframes pulseCore {
-      0% { transform: scale(0.95); opacity: 0.6; }
-      50% { transform: scale(1.15); opacity: 0; }
-      100% { transform: scale(0.95); opacity: 0; }
-    }
-    .engine-label {
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--tf-emerald-500);
-    }
-
-    .unified-card {
-      background: #ffffff;
-      border: 1px solid #bbf7d0;
-      border-radius: var(--radius-xl);
-      padding: 32px;
-      box-shadow: 0 12px 36px rgba(11, 118, 86, 0.08);
-    }
-    .unified-card h3 {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--tf-emerald-600);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .unified-badge-cloud {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin: 18px 0;
-    }
-    .unified-pill {
-      font-size: 12px;
-      font-weight: 700;
-      background: var(--tf-emerald-soft);
-      color: var(--tf-emerald-600);
-      border: 1px solid #bfe3d0;
-      padding: 6px 12px;
-      border-radius: 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* ==========================================================================
-       SECTION 7: SUPPLY CHAIN INTERACTIVE GRAPH
-       See your supply chain as data.
-       ========================================================================== */
-    .supply-section {
-      padding: 100px 0;
-      background: #ffffff;
-      border-top: 1px solid var(--tf-border-light);
-      border-bottom: 1px solid var(--tf-border-light);
-    }
-    .graph-interactive-card {
-      background: var(--tf-canvas);
-      border: 1px solid var(--tf-border-medium);
-      border-radius: var(--radius-2xl);
-      padding: 36px;
-      box-shadow: var(--shadow-lg);
-      margin-top: 40px;
-    }
-    .sc-nodes-flow {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      overflow-x: auto;
-      padding: 10px 0 20px;
-    }
-    .sc-node-box {
-      flex: 1;
-      min-width: 140px;
-      background: #ffffff;
-      border: 1.5px solid var(--tf-border-medium);
-      border-radius: var(--radius-md);
-      padding: 16px 14px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-    }
-    .sc-node-box:hover, .sc-node-box.active {
-      border-color: var(--tf-emerald-500);
-      background: #ffffff;
-      transform: translateY(-3px);
-      box-shadow: 0 8px 24px var(--tf-emerald-glow);
-    }
-    .sc-tier-badge {
-      font-size: 9.5px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      color: var(--tf-emerald-500);
-      background: var(--tf-emerald-soft);
-      padding: 2px 7px;
-      border-radius: var(--radius-full);
-      display: inline-block;
-      margin-bottom: 6px;
-    }
-    .sc-node-name {
-      font-size: 13.5px;
-      font-weight: 800;
-      color: var(--tf-text-title);
-      display: block;
-      margin-bottom: 3px;
-    }
-    .sc-node-desc {
-      font-size: 11px;
-      color: var(--tf-text-muted);
-      display: block;
-    }
-    .sc-arrow-line {
-      color: var(--tf-text-subtle);
-      font-size: 14px;
-      flex-shrink: 0;
-      padding: 0 4px;
-    }
-
-    /* Node Forensic Inspector Area */
-    .sc-inspector-view {
-      background: #ffffff;
-      border: 1px solid var(--tf-border-light);
-      border-radius: var(--radius-xl);
-      padding: 24px;
-      margin-top: 20px;
-      display: grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap: 28px;
-    }
-    .inspector-entity-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 16px;
-    }
-    .inspector-metrics-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    .insp-metric-card {
-      background: var(--tf-surface-soft);
-      border-radius: 8px;
-      padding: 10px 12px;
-      border: 1px solid var(--tf-border-light);
-    }
-    .insp-metric-card span {
-      font-size: 10px;
-      text-transform: uppercase;
-      font-weight: 700;
-      color: var(--tf-text-muted);
-    }
-    .insp-metric-card strong {
-      display: block;
-      font-size: 13.5px;
-      font-weight: 800;
-      color: var(--tf-text-title);
-      margin-top: 2px;
-    }
-
-    /* ==========================================================================
-       SECTION 8: PRODUCT INTELLIGENCE MOCKUP
-       Single source of product truth.
-       ========================================================================== */
-    .product-section {
-      padding: 100px 0;
-      background: var(--tf-canvas);
-    }
-    .product-mockup-frame {
-      background: #ffffff;
-      border: 1px solid var(--tf-border-medium);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-xl);
-      overflow: hidden;
-      margin-top: 40px;
-    }
-    .product-mockup-head {
-      background: #f7f9f7;
-      padding: 14px 24px;
-      border-bottom: 1px solid var(--tf-border-light);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .mockup-tabs-bar {
-      display: flex;
-      gap: 4px;
-      border-bottom: 1px solid var(--tf-border-light);
+      max-width: 1200px;
+      margin: 0 auto 64px;
       padding: 0 24px;
-      background: #ffffff;
-      overflow-x: auto;
     }
-    .m-tab-btn {
-      padding: 12px 14px;
-      font-size: 12.5px;
-      font-weight: 700;
-      color: var(--tf-text-muted);
-      border: none;
-      background: none;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      white-space: nowrap;
-    }
-    .m-tab-btn.active {
-      color: var(--tf-emerald-500);
-      border-bottom-color: var(--tf-emerald-500);
-    }
-    .product-tab-body {
-      padding: 28px 24px;
-    }
-    .bom-bar-wrap {
-      height: 10px;
-      border-radius: var(--radius-full);
-      background: #e6eee8;
-      display: flex;
-      overflow: hidden;
-      margin: 12px 0 16px;
-    }
-    .bom-fill-1 { width: 85%; background: var(--tf-emerald-500); }
-    .bom-fill-2 { width: 15%; background: #0284c7; }
 
-    /* ==========================================================================
-       SECTION 9: SUPPLIER PORTAL (ONE PROFILE, MULTI-BRAND)
-       ========================================================================== */
-    .supplier-section {
-      padding: 100px 0;
-      background: #ffffff;
-      border-top: 1px solid var(--tf-border-light);
-      border-bottom: 1px solid var(--tf-border-light);
-    }
-    .supplier-split-view {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
+    .nav-brand {
+      display: flex;
       align-items: center;
-      margin-top: 40px;
-    }
-    .supplier-vault-card {
-      background: var(--tf-canvas);
-      border: 1px solid var(--tf-border-medium);
-      border-radius: var(--radius-xl);
-      padding: 28px;
-      box-shadow: var(--shadow-lg);
-    }
-    .nda-guarantee-pill {
-      background: #ffffff;
-      border: 1px solid #bbf7d0;
-      border-radius: var(--radius-md);
-      padding: 14px;
-      display: flex;
-      gap: 12px;
-      margin-top: 20px;
-    }
-
-    /* ==========================================================================
-       SECTION 10: DATA QUALITY EXPLAINABLE MATRIX
-       Know what you can trust.
-       ========================================================================== */
-    .quality-section {
-      padding: 100px 0;
-      background: var(--tf-canvas);
-    }
-    .quality-tiers-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-top: 40px;
-    }
-    .quality-tier-card {
-      background: #ffffff;
-      border: 1px solid var(--tf-border-light);
-      border-radius: var(--radius-lg);
-      padding: 22px;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.2s ease;
-    }
-    .quality-tier-card:hover {
-      border-color: var(--tf-emerald-500);
-      box-shadow: var(--shadow-md);
-    }
-    .quality-tier-card h4 {
-      font-size: 15px;
-      font-weight: 750;
-      margin: 10px 0 6px;
-      color: var(--tf-text-title);
-    }
-    .quality-tier-card p {
-      font-size: 12.5px;
-      color: var(--tf-text-muted);
-      line-height: 1.5;
-    }
-
-    /* ==========================================================================
-       SECTION 11: DPP READINESS (DON'T WAIT FOR THE PASSPORT)
-       ========================================================================== */
-    .dpp-section {
-      padding: 100px 0;
-      background: var(--tf-charcoal-950);
+      gap: 10px;
       color: #ffffff;
-      position: relative;
+      font-weight: 800;
+      font-size: 19px;
+      letter-spacing: -0.02em;
     }
-    .dpp-grid {
+
+    .nav-brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 56px;
-      align-items: center;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
-    .dpp-cockpit-frame {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: var(--radius-xl);
-      padding: 32px;
+
+    .nav-pill-menu {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      background: rgba(255, 255, 255, 0.12);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      box-shadow: var(--shadow-xl);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 9999px;
+      padding: 10px 28px;
     }
-    .dpp-meter-row {
+
+    .nav-pill-menu a {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    .nav-pill-menu a:hover {
+      color: #ffffff;
+    }
+
+    .nav-right-actions {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .lang-pill-select {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      font-size: 12.5px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      outline: none;
+      cursor: pointer;
+    }
+    .lang-pill-select option {
+      background: #183e2d;
+      color: #ffffff;
+    }
+
+    .btn-login-pill {
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 9px 20px;
+      border-radius: 9999px;
+      font-size: 13.5px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-login-pill:hover {
+      background: rgba(255, 255, 255, 0.28);
+    }
+
+    .btn-demo-pill {
+      background: #ffffff;
+      color: var(--tf-forest-deep);
+      padding: 9px 22px;
+      border-radius: 9999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+    .btn-demo-pill:hover {
+      background: #f0f4f1;
+      transform: translateY(-1px);
+    }
+
+    /* Hero Headline & Center Copy */
+    .hero-center-content {
+      text-align: center;
+      max-width: 860px;
+      margin: 0 auto 52px;
+      padding: 0 20px;
+    }
+
+    .hero-headline {
+      font-size: clamp(40px, 5.2vw, 68px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      color: #ffffff;
       margin-bottom: 20px;
     }
-    .dpp-score-huge {
-      font-size: 48px;
-      font-weight: 800;
-      color: #34d399;
-      letter-spacing: -0.04em;
-      line-height: 1;
-    }
-    .dpp-checklist-ul {
-      list-style: none;
-      display: grid;
-      gap: 9px;
-      margin-top: 18px;
-    }
-    .dpp-item-li {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 12.5px;
-    }
-    .dpp-item-li.passed {
-      background: rgba(16, 185, 129, 0.08);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-      color: #d1fae5;
-    }
-    .dpp-item-li.warning {
-      background: rgba(245, 158, 11, 0.08);
-      border: 1px solid rgba(245, 158, 11, 0.25);
-      color: #fef3c7;
+
+    .hero-lead {
+      font-size: clamp(16px, 1.8vw, 19px);
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.6;
+      max-width: 680px;
+      margin: 0 auto 32px;
     }
 
-    /* ==========================================================================
-       SECTION 12: FINAL CTA BANNER & ARCHITECTURAL FOOTER
-       ========================================================================== */
-    .cta-section {
-      padding: 80px 0;
-      background: var(--tf-canvas);
+    .hero-buttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
     }
-    .cta-monolith {
-      background: linear-gradient(135deg, var(--tf-charcoal-950) 0%, #0d281f 100%);
-      border-radius: var(--radius-2xl);
-      padding: 70px 48px;
-      text-align: center;
+
+    .btn-white-hero {
+      background: #ffffff;
+      color: var(--tf-forest-deep);
+      padding: 13px 28px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 700;
+      transition: all 0.2s;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+    .btn-white-hero:hover {
+      background: #f2f5f3;
+      transform: translateY(-2px);
+    }
+
+    .btn-trans-hero {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
       color: #ffffff;
-      box-shadow: var(--shadow-xl);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 13px 28px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 600;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
     }
-    .cta-monolith h2 {
-      font-size: clamp(30px, 3.8vw, 44px);
-      font-weight: 800;
-      letter-spacing: -0.035em;
-      margin-bottom: 16px;
-    }
-    .cta-monolith p {
-      font-size: 16.5px;
-      color: var(--tf-text-on-dark-muted);
-      max-width: 620px;
-      margin: 0 auto 36px;
+    .btn-trans-hero:hover {
+      background: rgba(255, 255, 255, 0.2);
     }
 
-    /* Footer */
-    .footer {
+    /* The Massive Product Tablet/Mockup Window */
+    .hero-tablet-window {
+      max-width: 1140px;
+      margin: 0 auto;
       background: #ffffff;
-      border-top: 1px solid var(--tf-border-light);
-      padding: 70px 0 40px;
-      font-size: 13.5px;
-      color: var(--tf-text-body);
-    }
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 2fr repeat(3, 1fr);
-      gap: 48px;
-      margin-bottom: 50px;
-    }
-    .footer-col h4 {
-      font-size: 12px;
-      font-weight: 750;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--tf-text-title);
-      margin-bottom: 18px;
-    }
-    .footer-col ul {
-      list-style: none;
-      display: grid;
-      gap: 10px;
-    }
-    .footer-col a {
-      color: var(--tf-text-muted);
-      text-decoration: none;
-      transition: color 0.15s ease;
-    }
-    .footer-col a:hover {
-      color: var(--tf-emerald-500);
-    }
-    .footer-bottom {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 28px;
-      border-top: 1px solid var(--tf-border-light);
-      font-size: 12px;
-      color: var(--tf-text-subtle);
-    }
-
-    /* Modal for Request Demo */
-    .modal-backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(7, 18, 14, 0.65);
-      backdrop-filter: blur(6px);
-      z-index: 200;
-      place-items: center;
-      padding: 20px;
-    }
-    .modal-backdrop.open {
-      display: grid;
-    }
-    .modal-box {
-      background: #ffffff;
-      border-radius: var(--radius-xl);
-      max-width: 520px;
-      width: 100%;
-      padding: 32px;
-      box-shadow: var(--shadow-xl);
-      border: 1px solid var(--tf-border-medium);
+      border-radius: 28px;
+      padding: 16px;
+      box-shadow: 0 32px 80px -15px rgba(22, 54, 39, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.05);
       position: relative;
     }
-    .modal-close-btn {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: none;
-      border: none;
-      font-size: 22px;
+
+    .tablet-chrome-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px 14px;
+      border-bottom: 1px solid var(--tf-border-subtle);
+    }
+
+    .tablet-logo-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 14px;
+      color: var(--tf-forest-deep);
+    }
+
+    .tablet-top-pills {
+      display: flex;
+      gap: 8px;
+    }
+
+    .top-tag {
+      background: var(--tf-surface-soft);
+      padding: 5px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--tf-forest-deep);
+      font-family: var(--font-mono);
+    }
+
+    .tablet-inner-layout {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 16px;
+      padding-top: 14px;
+    }
+
+    .tablet-icon-rail {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 0;
+      background: var(--tf-surface-soft);
+      border-radius: 20px;
+    }
+
+    .rail-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
       cursor: pointer;
-      color: var(--tf-text-muted);
-    }
-    .form-group {
-      margin-bottom: 16px;
-    }
-    .form-group label {
-      display: block;
-      font-size: 12px;
-      font-weight: 750;
-      color: var(--tf-text-title);
-      margin-bottom: 6px;
-    }
-    .form-input {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--tf-border-medium);
-      font-family: inherit;
-      font-size: 13.5px;
+      transition: all 0.2s;
+      color: var(--tf-forest-deep);
     }
 
-    /* Responsive adjustments */
-    @media (max-width: 1024px) {
-      .hero-grid { grid-template-columns: 1fr; }
-      .signature-chain-grid { grid-template-columns: repeat(3, 1fr); }
-      .transformation-cockpit { grid-template-columns: 1fr; }
-      .supplier-split-view { grid-template-columns: 1fr; }
-      .dpp-grid { grid-template-columns: 1fr; }
-      .quality-tiers-grid { grid-template-columns: repeat(2, 1fr); }
-      .footer-grid { grid-template-columns: 1fr 1fr; }
+    .rail-icon.active {
+      background: var(--tf-forest-deep);
+      color: #ffffff;
     }
 
-    @media (max-width: 640px) {
-      .header .nav-menu { display: none; }
-      .signature-chain-grid { grid-template-columns: 1fr; }
-      .mockup-app-grid { grid-template-columns: 1fr; }
-      .mockup-sidebar { display: none; }
-      .mockup-kpis { grid-template-columns: repeat(2, 1fr); }
-      .mockup-split-panel { grid-template-columns: 1fr; }
-      .sc-inspector-view { grid-template-columns: 1fr; }
-      .quality-tiers-grid { grid-template-columns: 1fr; }
-      .footer-grid { grid-template-columns: 1fr; }
-      .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
-    }
-  
-    /* ==========================================================================
-       BOXBET CYBER-DARK THEME MODE
-       ========================================================================== */
-    html[data-theme="dark"], html.dark {
-      --tf-canvas: #0c0f12 !important;
-      --tf-canvas-gradient: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
-                            radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.08) 0%, transparent 40%),
-                            #0b0e14 !important;
-      --tf-surface: #12171e !important;
-      --tf-surface-soft: #161c24 !important;
-      --tf-surface-inset: #1a222c !important;
-      --tf-bento-bg: #12171e !important;
-      --tf-bento-border: rgba(52, 211, 153, 0.18) !important;
-      --tf-bento-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7), 0 0 20px rgba(16, 185, 129, 0.08) !important;
-      --tf-border-light: rgba(255, 255, 255, 0.08) !important;
-      --tf-border-medium: rgba(255, 255, 255, 0.14) !important;
-      --tf-text-primary: #f3f4f6 !important;
-      --tf-text-secondary: #9ca3af !important;
-      --tf-text-muted: #6b7280 !important;
-      --tf-emerald-500: #10b981 !important;
-      --tf-emerald-soft: rgba(16, 185, 129, 0.12) !important;
-      --tf-emerald-subtle: rgba(16, 185, 129, 0.06) !important;
-      background-color: #0b0e14 !important;
-      color: #f3f4f6 !important;
+    .tablet-content-body {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
-    html[data-theme="dark"] body {
-      background-color: #0b0e14 !important;
-      color: #f3f4f6 !important;
+    /* Top Panoramic Media Banner inside tablet */
+    .tablet-panorama-banner {
+      height: 200px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #163627, #215c42);
+      display: flex;
+      align-items: flex-end;
+      padding: 24px;
+      color: #ffffff;
+      position: relative;
+      overflow: hidden;
     }
-
-    html[data-theme="dark"] .site-header {
-      background: rgba(11, 14, 20, 0.85) !important;
-      border-bottom: 1px solid rgba(52, 211, 153, 0.18) !important;
-      backdrop-filter: blur(16px) !important;
-    }
-
-    html[data-theme="dark"] .brand-name,
-    html[data-theme="dark"] .hero-title,
-    html[data-theme="dark"] .bento-card h3,
-    html[data-theme="dark"] .section-title,
-    html[data-theme="dark"] .step-title,
-    html[data-theme="dark"] .pipeline-label,
-    html[data-theme="dark"] .metric-value,
-    html[data-theme="dark"] .faq-q,
-    html[data-theme="dark"] .pricing-card h3 {
-      color: #ffffff !important;
-    }
-
-    html[data-theme="dark"] .bento-card,
-    html[data-theme="dark"] .pipeline-card,
-    html[data-theme="dark"] .pricing-card,
-    html[data-theme="dark"] .hero-card-preview,
-    html[data-theme="dark"] .faq-item {
-      background: #12171e !important;
-      border: 1px solid rgba(255, 255, 255, 0.09) !important;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
-    }
-
-    html[data-theme="dark"] .bento-card:hover,
-    html[data-theme="dark"] .pipeline-card:hover,
-    html[data-theme="dark"] .pricing-card:hover {
-      border-color: rgba(52, 211, 153, 0.45) !important;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 25px rgba(16, 185, 129, 0.18) !important;
-    }
-
-    html[data-theme="dark"] .nav-link {
-      color: #9ca3af !important;
-    }
-    html[data-theme="dark"] .nav-link:hover {
-      color: #34d399 !important;
-    }
-
-    html[data-theme="dark"] .hero-sub,
-    html[data-theme="dark"] .section-lead,
-    html[data-theme="dark"] .bento-card p {
-      color: #9ca3af !important;
-    }
-
-    html[data-theme="dark"] .theme-toggle-btn {
-      background: rgba(16, 185, 129, 0.15) !important;
-      border: 1px solid #10b981 !important;
-      color: #34d399 !important;
-    }
-
-  
-    /* ==========================================================================
-       HAUTE-HORLOGERIE / LUXURY DARK B2B SYSTEM
-       ========================================================================== */
-    html[data-theme="dark"] {
-      --tf-canvas: #090b0e !important;
-      --tf-surface: #0f1318 !important;
-      --tf-surface-soft: #141920 !important;
-      --tf-surface-inset: #1a212b !important;
-      --tf-border-light: rgba(255, 255, 255, 0.07) !important;
-      --tf-border-medium: rgba(255, 255, 255, 0.12) !important;
-      --tf-text-title: #ffffff !important;
-      --tf-text-body: #9ca3af !important;
-      --tf-text-muted: #6b7280 !important;
-      --tf-text-subtle: #4b5563 !important;
-      --tf-bento-bg: #0f1318 !important;
-      --tf-bento-border: rgba(255, 255, 255, 0.08) !important;
-      --tf-bento-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
-      background: #090b0e !important;
-      color: #f3f4f6 !important;
-    }
-
-    html[data-theme="dark"] body {
-      background: #090b0e !important;
-      color: #f3f4f6 !important;
-    }
-
-    html[data-theme="dark"] .header,
-    html[data-theme="dark"] .site-header {
-      background: rgba(9, 11, 14, 0.88) !important;
-      backdrop-filter: blur(24px) !important;
-      -webkit-backdrop-filter: blur(24px) !important;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-    }
-
-    html[data-theme="dark"] .nav-link,
-    html[data-theme="dark"] .header-nav a {
-      color: #9ca3af !important;
-    }
-
-    html[data-theme="dark"] .nav-link:hover,
-    html[data-theme="dark"] .header-nav a:hover {
-      color: #34d399 !important;
-    }
-
-    html[data-theme="dark"] .logo-text,
-    html[data-theme="dark"] .brand-logo {
-      color: #ffffff !important;
-    }
-
-    html[data-theme="dark"] .hero-section {
-      background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.1) 0%, transparent 60%),
-                  radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.06) 0%, transparent 45%),
-                  #090b0e !important;
-    }
-
-    html[data-theme="dark"] .hero-title,
-    html[data-theme="dark"] .section-title,
-    html[data-theme="dark"] .bento-card h3,
-    html[data-theme="dark"] .card-heading,
-    html[data-theme="dark"] .pricing-card h3,
-    html[data-theme="dark"] .metric-value {
-      color: #ffffff !important;
-    }
-
-    html[data-theme="dark"] .hero-subtitle,
-    html[data-theme="dark"] .section-lead,
-    html[data-theme="dark"] .bento-card p {
-      color: #9ca3af !important;
-    }
-
-    html[data-theme="dark"] .bento-card,
-    html[data-theme="dark"] .feature-card,
-    html[data-theme="dark"] .pipeline-card,
-    html[data-theme="dark"] .pricing-card,
-    html[data-theme="dark"] .faq-item,
-    html[data-theme="dark"] .console-mockup,
-    html[data-theme="dark"] .hero-card-preview {
-      background: #0f1318 !important;
-      border: 1px solid rgba(255, 255, 255, 0.08) !important;
-      box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.7) !important;
-    }
-
-    html[data-theme="dark"] .bento-card:hover,
-    html[data-theme="dark"] .feature-card:hover,
-    html[data-theme="dark"] .pipeline-card:hover {
-      border-color: rgba(52, 211, 153, 0.4) !important;
-      box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.9), 0 0 30px rgba(16, 185, 129, 0.15) !important;
-    }
-
-    html[data-theme="dark"] .hero-mockup-frame,
-    html[data-theme="dark"] .mockup-glass {
-      background: #0d1117 !important;
-      border: 1px solid rgba(52, 211, 153, 0.25) !important;
-      box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.12) !important;
-    }
-
-    html[data-theme="dark"] select#globalLangSelector {
-      background: #141920 !important;
-      color: #e5e7eb !important;
-      border-color: rgba(255, 255, 255, 0.15) !important;
-    }
-
-    html[data-theme="dark"] .footer {
-      background: #050709 !important;
-      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-    }
-
-  
-    /* ==========================================================================
-       NEXT-GEN 2027 ULTRA-PREMIUM ARCHITECTURE (Linear / Stripe / Vercel Grade)
-       ========================================================================== */
-    html[data-theme="dark"], html.dark, :root[data-theme="dark"] {
-      --tf-canvas: #06080b !important;
-      --tf-canvas-gradient: radial-gradient(1000px 500px at 50% -100px, rgba(16, 185, 129, 0.12), transparent 70%),
-                            radial-gradient(800px 400px at 80% 20%, rgba(56, 189, 248, 0.05), transparent 60%),
-                            #06080b !important;
-      --tf-surface: #0b0f15 !important;
-      --tf-surface-soft: #0f151e !important;
-      --tf-surface-inset: #131b26 !important;
-      --tf-bento-bg: rgba(11, 15, 21, 0.8) !important;
-      --tf-bento-border: rgba(255, 255, 255, 0.07) !important;
-      --tf-bento-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8) !important;
-      --tf-border-light: rgba(255, 255, 255, 0.06) !important;
-      --tf-border-medium: rgba(255, 255, 255, 0.1) !important;
-      --tf-text-title: #f9fafb !important;
-      --tf-text-body: #94a3b8 !important;
-      --tf-text-muted: #64748b !important;
-      --tf-text-subtle: #475569 !important;
-      --tf-emerald-500: #10b981 !important;
-      --tf-emerald-600: #059669 !important;
-      background-color: #06080b !important;
-      color: #f1f5f9 !important;
-    }
-
-    body {
-      background: var(--tf-canvas) !important;
-      color: var(--tf-text-body) !important;
-      letter-spacing: -0.015em;
-    }
-
-    /* Ambient noise & grid lines for 2027 feel */
-    body::before {
+    .tablet-panorama-banner::before {
       content: "";
-      position: fixed;
+      position: absolute;
       inset: 0;
-      background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-      background-size: 64px 64px;
-      pointer-events: none;
-      z-index: 0;
+      background: radial-gradient(circle at 70% 30%, rgba(37, 211, 146, 0.25), transparent 60%);
     }
 
-    .container, .header, main, footer, section {
+    .panorama-tag {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .panorama-title {
+      font-size: 22px;
+      font-weight: 800;
       position: relative;
       z-index: 1;
     }
 
-    /* Ultra-sleek Header */
-    .header {
-      background: rgba(6, 8, 11, 0.8) !important;
-      backdrop-filter: blur(20px) saturate(180%) !important;
-      -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-    }
-
-    /* Modern Hero */
-    .hero-section {
-      padding: 96px 0 80px !important;
-      position: relative;
-    }
-
-    .hero-title {
-      font-size: clamp(40px, 5.5vw, 68px) !important;
-      font-weight: 800 !important;
-      letter-spacing: -0.04em !important;
-      line-height: 1.08 !important;
-      color: #ffffff !important;
-      background: linear-gradient(180deg, #ffffff 40%, rgba(255, 255, 255, 0.65) 100%) !important;
-      -webkit-background-clip: text !important;
-      -webkit-text-fill-color: transparent !important;
-    }
-
-    .hero-subtitle {
-      font-size: clamp(17px, 2vw, 20px) !important;
-      line-height: 1.6 !important;
-      color: #94a3b8 !important;
-      max-width: 680px;
-      margin: 20px auto 32px !important;
-    }
-
-    /* Glass Cards & Bento Tiles */
-    .bento-card, .pipeline-card, .pricing-card, .faq-item {
-      background: rgba(13, 17, 23, 0.6) !important;
-      backdrop-filter: blur(12px) !important;
-      border: 1px solid rgba(255, 255, 255, 0.07) !important;
-      border-radius: 16px !important;
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    }
-
-    .bento-card:hover, .pipeline-card:hover, .pricing-card:hover {
-      transform: translateY(-2px) !important;
-      border-color: rgba(16, 185, 129, 0.3) !important;
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.9), 0 0 25px rgba(16, 185, 129, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-    }
-
-    /* Buttons Linear Style */
-    .btn-primary {
-      background: #10b981 !important;
-      color: #04100c !important;
-      font-weight: 700 !important;
-      border-radius: 9999px !important;
-      padding: 12px 24px !important;
-      box-shadow: 0 0 20px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-      border: none !important;
-      transition: all 0.2s ease !important;
-    }
-
-    .btn-primary:hover {
-      background: #34d399 !important;
-      box-shadow: 0 0 30px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
-      transform: translateY(-1px) !important;
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.05) !important;
-      color: #e2e8f0 !important;
-      border: 1px solid rgba(255, 255, 255, 0.12) !important;
-      border-radius: 9999px !important;
-      backdrop-filter: blur(8px) !important;
-      padding: 12px 24px !important;
-      transition: all 0.2s ease !important;
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1) !important;
-      border-color: rgba(255, 255, 255, 0.25) !important;
-      color: #ffffff !important;
-    }
-
-    /* Status Pill / Live Badge */
-    .status-badge, .badge {
-      border-radius: 9999px !important;
-      font-family: var(--font-mono) !important;
-      font-size: 11px !important;
-      font-weight: 600 !important;
-      letter-spacing: 0.05em !important;
-    }
-
-  
-    /* ==========================================================================
-       TRACEFAB MONUMENTAL IDENTITY — EDITORIAL + TECHNOLOGY + TEXTILE DATA
-       ========================================================================== */
-    :root {
-      --tf-deep-forest: #040e0b;
-      --tf-forest-dark: #071712;
-      --tf-forest-surface: #0c201a;
-      --tf-bone-white: #f5f7f5;
-      --tf-textile-sand: #e3e8e4;
-      --tf-slate-muted: #76877f;
-      --tf-emerald-accent: #10b981;
-      --tf-emerald-glow: rgba(16, 185, 129, 0.16);
-      --tf-hairline: rgba(255, 255, 255, 0.08);
-      --tf-hairline-emerald: rgba(16, 185, 129, 0.25);
-    }
-
-    body {
-      background-color: var(--tf-deep-forest) !important;
-      color: var(--tf-bone-white) !important;
-      overflow-x: hidden;
-      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    }
-
-    /* Architectural Header */
-    .tf-monumental-header {
-      position: sticky;
-      top: 0;
-      z-index: 120;
-      background: rgba(4, 14, 11, 0.85);
-      backdrop-filter: blur(24px) saturate(160%);
-      -webkit-backdrop-filter: blur(24px) saturate(160%);
-      border-bottom: 1px solid var(--tf-hairline);
-    }
-
-    .tf-nav-bar {
-      height: 78px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 40px;
-    }
-
-    .tf-brand-mark {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      text-decoration: none;
-      color: #ffffff;
-    }
-
-    .tf-logo-symbol {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: #10b981;
+    /* 3 Bottom Cards in Tablet Mockup */
+    .tablet-three-cards {
       display: grid;
-      place-items: center;
-      color: #040e0b;
-      font-weight: 900;
-      font-size: 14px;
-      letter-spacing: -0.04em;
-    }
-
-    .tf-logo-type {
-      font-family: var(--font-sans);
-      font-weight: 800;
-      font-size: 17px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #ffffff;
-    }
-
-    .tf-header-links {
-      display: flex;
-      align-items: center;
-      gap: 36px;
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-
-    .tf-header-links a {
-      color: var(--tf-slate-muted);
-      text-decoration: none;
-      font-size: 13.5px;
-      font-weight: 500;
-      letter-spacing: 0.01em;
-      transition: color 0.2s ease;
-    }
-
-    .tf-header-links a:hover {
-      color: #ffffff;
-    }
-
-    .tf-header-cta-group {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .tf-signin-link {
-      color: var(--tf-textile-sand);
-      text-decoration: none;
-      font-size: 13.5px;
-      font-weight: 600;
-      transition: color 0.2s;
-    }
-
-    .tf-signin-link:hover {
-      color: #ffffff;
-    }
-
-    .tf-btn-demo {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #10b981;
-      color: #040e0b;
-      font-weight: 700;
-      font-size: 13px;
-      padding: 10px 22px;
-      border-radius: 9999px;
-      text-decoration: none;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 0 24px rgba(16, 185, 129, 0.3);
-    }
-
-    .tf-btn-demo:hover {
-      background: #34d399;
-      transform: translateY(-1px);
-      box-shadow: 0 0 32px rgba(16, 185, 129, 0.5);
-    }
-
-    /* Monumental Hero Canvas */
-    .tf-hero-stage {
-      position: relative;
-      padding: 120px 40px 100px;
-      max-width: 1400px;
-      margin: 0 auto;
-      text-align: center;
-    }
-
-    /* Subdued Textile Texture Ambient Weave Background */
-    .tf-hero-stage::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100vw;
-      height: 100%;
-      background: radial-gradient(1200px 500px at 50% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 70%),
-                  radial-gradient(800px 400px at 80% 30%, rgba(8, 127, 91, 0.05) 0%, transparent 60%);
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    .tf-hero-eyebrow-container {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      padding: 6px 16px;
-      border-radius: 9999px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--tf-hairline);
-      margin-bottom: 32px;
-    }
-
-    .tf-eyebrow-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 8px #10b981;
-    }
-
-    .tf-hero-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--tf-emerald-accent);
-    }
-
-    .tf-hero-monumental-title {
-      font-size: clamp(48px, 6.2vw, 88px);
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      line-height: 1.04;
-      color: #ffffff;
-      max-width: 1120px;
-      margin: 0 auto 28px;
-      text-wrap: balance;
-    }
-
-    .tf-hero-sub-sequence {
-      font-family: var(--font-sans);
-      font-size: clamp(18px, 2.2vw, 24px);
-      font-weight: 400;
-      letter-spacing: -0.01em;
-      color: var(--tf-slate-muted);
-      margin-bottom: 48px;
-    }
-
-    .tf-hero-sub-sequence strong {
-      color: var(--tf-bone-white);
-      font-weight: 600;
-    }
-
-    .tf-hero-sub-sequence .accent-word {
-      color: var(--tf-emerald-accent);
-      font-weight: 600;
-    }
-
-    /* Primary Actions */
-    .tf-hero-actions {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      margin-bottom: 84px;
-    }
-
-    .tf-btn-large {
-      padding: 16px 36px;
-      font-size: 15px;
-      font-weight: 700;
-      border-radius: 9999px;
-      text-decoration: none;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .tf-btn-large-primary {
-      background: #10b981;
-      color: #040e0b;
-      box-shadow: 0 0 36px rgba(16, 185, 129, 0.35);
-    }
-
-    .tf-btn-large-primary:hover {
-      background: #34d399;
-      box-shadow: 0 0 50px rgba(16, 185, 129, 0.55);
-      transform: translateY(-2px);
-    }
-
-    .tf-btn-large-secondary {
-      background: rgba(255, 255, 255, 0.04);
-      color: #ffffff;
-      border: 1px solid var(--tf-hairline);
-      backdrop-filter: blur(12px);
-    }
-
-    .tf-btn-large-secondary:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.2);
-      transform: translateY(-2px);
-    }
-
-    /* TRACEFAB DATA CORE — THE LIVING CONNECTED TEXTILE FABRIC */
-    .tf-data-core-monolith {
-      background: #071712;
-      border: 1px solid var(--tf-hairline-emerald);
-      border-radius: 24px;
-      padding: 40px;
-      position: relative;
-      box-shadow: 0 32px 100px -20px rgba(0, 0, 0, 0.9), 0 0 60px rgba(16, 185, 129, 0.1);
-      overflow: hidden;
-      max-width: 1280px;
-      margin: 0 auto;
-    }
-
-    /* Top Command Header */
-    .tf-core-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 24px;
-      border-bottom: 1px solid var(--tf-hairline);
-      margin-bottom: 36px;
-    }
-
-    .tf-core-title-group {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      text-align: left;
-    }
-
-    .tf-core-badge {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 700;
-      color: #10b981;
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      padding: 4px 10px;
-      border-radius: 6px;
-    }
-
-    .tf-core-metrics-strip {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--tf-slate-muted);
-    }
-
-    .tf-core-metrics-strip strong {
-      color: #ffffff;
-      font-weight: 700;
-    }
-
-    /* Interactive Living Pipeline Grid */
-    .tf-pipeline-nodes {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 14px;
-      position: relative;
     }
 
-    .tf-node-card {
-      background: rgba(12, 32, 26, 0.7);
-      border: 1px solid var(--tf-hairline);
-      border-radius: 14px;
-      padding: 20px 14px;
-      text-align: left;
-      transition: all 0.25s ease;
-      position: relative;
+    .t-card {
+      background: var(--tf-surface-soft);
+      border-radius: 18px;
+      padding: 16px;
+      border: 1px solid var(--tf-border-subtle);
+      transition: transform 0.2s;
+    }
+    .t-card:hover {
+      transform: translateY(-2px);
     }
 
-    .tf-node-card:hover {
-      background: rgba(16, 42, 34, 0.9);
-      border-color: #10b981;
-      transform: translateY(-4px);
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(16, 185, 129, 0.15);
-    }
-
-    .tf-node-step {
+    .t-card-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
       font-family: var(--font-mono);
-      font-size: 10px;
-      color: var(--tf-emerald-accent);
       font-weight: 700;
-      letter-spacing: 0.1em;
+      color: var(--tf-text-muted);
       margin-bottom: 8px;
     }
 
-    .tf-node-label {
-      font-size: 14px;
+    .t-card-title {
+      font-size: 15px;
       font-weight: 800;
-      color: #ffffff;
-      letter-spacing: -0.01em;
+      color: var(--tf-text-dark);
       margin-bottom: 12px;
     }
 
-    .tf-node-stat {
-      font-size: 11px;
-      color: var(--tf-slate-muted);
-      line-height: 1.4;
-      border-top: 1px solid var(--tf-hairline);
-      padding-top: 10px;
+    .t-progress-bar {
+      height: 6px;
+      background: #e2e8e2;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .t-progress-fill {
+      height: 100%;
+      background: var(--tf-forest-deep);
+      border-radius: 9999px;
     }
 
-    .tf-node-stat strong {
-      color: var(--tf-bone-white);
-      display: block;
+    /* Section 2 — Plan Smarter (Asymmetric 3 cards with photo backdrop) */
+    .section-editorial-row {
+      padding: 120px 0 80px;
     }
 
-    /* Real-time Transmission Ticker below core */
-    .tf-core-footer-ticker {
-      margin-top: 28px;
-      padding-top: 20px;
-      border-top: 1px solid var(--tf-hairline);
+    .editorial-header-flex {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      color: var(--tf-slate-muted);
+      align-items: flex-end;
+      margin-bottom: 56px;
     }
 
-    .tf-core-pulse-live {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: #34d399;
-      font-weight: 700;
-    }
-
-    .tf-pulse-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      animation: pulseAnimation 2s infinite;
-    }
-
-    @keyframes pulseAnimation {
-      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
-
-    /* ==========================================================================
-       SECTION 01 — YOUR SUPPLY CHAIN IS FULL OF DATA (EDITORIAL DISPERSION)
-       ========================================================================== */
-    .tf-section-dispersion {
-      padding: 120px 40px;
-      max-width: 1400px;
-      margin: 0 auto;
-      border-top: 1px solid var(--tf-hairline);
-    }
-
-    .tf-dispersion-header {
-      max-width: 860px;
-      margin-bottom: 72px;
-    }
-
-    .tf-section-eyebrow {
+    .section-eyebrow-chip {
       font-family: var(--font-mono);
       font-size: 11.5px;
       font-weight: 700;
-      color: var(--tf-emerald-accent);
-      letter-spacing: 0.14em;
+      color: var(--tf-forest-accent);
       text-transform: uppercase;
-      margin-bottom: 18px;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
     }
 
-    .tf-dispersion-title {
-      font-size: clamp(38px, 4.5vw, 64px);
+    .editorial-headline {
+      font-size: clamp(34px, 4vw, 54px);
       font-weight: 800;
       letter-spacing: -0.035em;
-      line-height: 1.08;
+      line-height: 1.12;
+      color: var(--tf-text-dark);
+    }
+
+    .btn-pill-dark {
+      background: var(--tf-text-dark);
       color: #ffffff;
-      margin-bottom: 24px;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+    .btn-pill-dark:hover {
+      background: var(--tf-forest-deep);
     }
 
-    .tf-dispersion-lead {
-      font-size: 19px;
-      line-height: 1.6;
-      color: var(--tf-slate-muted);
-      max-width: 720px;
-    }
-
-    /* Editorial Multi-Source Fragmentation Grid */
-    .tf-dispersion-grid {
+    /* 3 Photo-backed cards */
+    .editorial-grid-three {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
     }
 
-    .tf-fragment-card {
-      background: rgba(12, 32, 26, 0.4);
-      border: 1px solid var(--tf-hairline);
-      border-radius: 16px;
-      padding: 28px 24px;
-      transition: all 0.3s ease;
+    .editorial-photo-card {
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 24px;
+      border: 1px solid var(--tf-border);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
       position: relative;
       overflow: hidden;
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
     }
 
-    .tf-fragment-card:hover {
-      background: rgba(12, 32, 26, 0.8);
-      border-color: rgba(255, 255, 255, 0.18);
-      transform: translateY(-2px);
+    .card-photo-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 190px;
+      background-size: cover;
+      background-position: center;
     }
 
-    .tf-fragment-badge {
-      font-family: var(--font-mono);
-      font-size: 10px;
+    .bg-textile-1 {
+      background: linear-gradient(180deg, rgba(22,54,39,0.2) 0%, rgba(22,54,39,0.85) 100%),
+                  radial-gradient(circle at 50% 50%, #255842, #163627);
+    }
+    .bg-textile-2 {
+      background: linear-gradient(180deg, rgba(37,88,66,0.2) 0%, rgba(22,54,39,0.85) 100%),
+                  radial-gradient(circle at 60% 40%, #1c4835, #0c2018);
+    }
+    .bg-textile-3 {
+      background: linear-gradient(180deg, rgba(22,54,39,0.2) 0%, rgba(22,54,39,0.85) 100%),
+                  radial-gradient(circle at 40% 60%, #2f7556, #163627);
+    }
+
+    .floating-white-box {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
+      position: relative;
+      z-index: 2;
+      border: 1px solid var(--tf-border-subtle);
+    }
+
+    .floating-white-box h4 {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--tf-text-dark);
+      margin-bottom: 8px;
+    }
+
+    .floating-white-box p {
+      font-size: 13px;
+      color: var(--tf-text-muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .tag-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tiny-chip {
+      background: var(--tf-surface-soft);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 10.5px;
       font-weight: 700;
-      color: var(--tf-slate-muted);
-      letter-spacing: 0.08em;
+      font-family: var(--font-mono);
+      color: var(--tf-forest-accent);
+    }
+
+    /* Section 3 — Centered Header & 3 Clean Dashboard Cards */
+    .section-centered-flow {
+      padding: 100px 0;
+      background: var(--tf-surface-soft);
+    }
+
+    .centered-header-block {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 60px;
+    }
+
+    .centered-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--tf-forest-accent);
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       margin-bottom: 14px;
     }
 
-    .tf-fragment-card h3 {
-      font-size: 18px;
+    .centered-title-big {
+      font-size: clamp(34px, 4.2vw, 56px);
       font-weight: 800;
-      color: #ffffff;
-      margin-bottom: 10px;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      color: var(--tf-text-dark);
+      margin-bottom: 16px;
     }
 
-    .tf-fragment-card p {
-      font-size: 13.5px;
-      color: var(--tf-slate-muted);
-      line-height: 1.55;
-      margin-bottom: 20px;
-    }
-
-    .tf-fragment-meta {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: #fbbf24;
-      display: flex;
+    .icon-inline-pill {
+      display: inline-flex;
       align-items: center;
       gap: 6px;
+      background: #ffffff;
+      border: 1px solid var(--tf-border);
+      padding: 3px 12px;
+      border-radius: 9999px;
+      font-size: 16px;
+      vertical-align: middle;
+    }
+
+    .centered-lead {
+      font-size: 17px;
+      color: var(--tf-text-muted);
+      line-height: 1.6;
+    }
+
+    .three-dash-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .dash-widget-card {
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 28px;
+      border: 1px solid var(--tf-border);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.03);
+      transition: transform 0.2s;
+    }
+    .dash-widget-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .widget-mini-ui {
+      background: var(--tf-surface-soft);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 24px;
+      border: 1px solid var(--tf-border-subtle);
+    }
+
+    .widget-stat-num {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--tf-forest-deep);
+      font-family: var(--font-mono);
+    }
+
+    .widget-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--tf-text-dark);
+      margin-bottom: 10px;
+    }
+
+    .widget-desc {
+      font-size: 13.5px;
+      color: var(--tf-text-muted);
+      line-height: 1.6;
+    }
+
+    /* Section 4 — Plan The World's Favorite Destinations (Textile Supply Hubs) */
+    .section-hubs {
+      padding: 120px 0;
+      background: #ffffff;
+    }
+
+    .hubs-grid-three {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 50px;
+    }
+
+    .hub-card {
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid var(--tf-border);
+      background: #ffffff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+      transition: transform 0.2s;
+    }
+    .hub-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .hub-cover-img {
+      height: 220px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .cover-portugal {
+      background: linear-gradient(135deg, #163627, #2c7755);
+    }
+    .cover-italy {
+      background: linear-gradient(135deg, #1b382d, #3d8a67);
+    }
+    .cover-france {
+      background: linear-gradient(135deg, #0f271c, #215c42);
+    }
+
+    .hub-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    .hub-content {
+      padding: 24px;
+    }
+
+    .hub-country-tag {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--tf-forest-accent);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .hub-content h4 {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--tf-text-dark);
+      margin-bottom: 8px;
+    }
+
+    .hub-content p {
+      font-size: 13.5px;
+      color: var(--tf-text-muted);
+      line-height: 1.5;
+    }
+
+    /* Clean Footer */
+    .clean-footer {
+      background: var(--tf-surface-soft);
+      border-top: 1px solid var(--tf-border);
+      padding: 60px 0 40px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--tf-text-muted);
+    }
+
+    .footer-brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--tf-text-dark);
+      margin-bottom: 12px;
     }
 
     @media (max-width: 1024px) {
-      .tf-pipeline-nodes {
-        grid-template-columns: repeat(2, 1fr);
+      .editorial-grid-three, .three-dash-cards, .hubs-grid-three {
+        grid-template-columns: 1fr;
       }
-      .tf-dispersion-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .tf-header-links {
+      .nav-pill-menu {
         display: none;
       }
-    }
-
-    @media (max-width: 640px) {
-      .tf-pipeline-nodes {
+      .tablet-inner-layout {
         grid-template-columns: 1fr;
       }
-      .tf-dispersion-grid {
+      .tablet-icon-rail {
+        flex-direction: row;
+        justify-content: center;
+      }
+      .tablet-three-cards {
         grid-template-columns: 1fr;
       }
-      .tf-hero-stage {
-        padding: 60px 20px;
-      }
     }
-
   </style>
 </head>
 <body>
 
-    <!-- ==========================================================================
-       1. MONUMENTAL REFINED HEADER (Clean, Sovereign & Focused)
+  <!-- ==========================================================================
+       TOP HERO STAGE WITH GREEN FOREST GRADIENT & FLOATING CAPSULE NAVIGATION
        ========================================================================== -->
-  <header class="tf-monumental-header">
-    <div class="tf-nav-bar">
-      <a href="#" class="tf-brand-mark" aria-label="TRACEFAB Home">
-        <div class="tf-logo-symbol">tf</div>
-        <div class="tf-logo-type">TRACEFAB</div>
+  <div class="hero-wrapper">
+    <!-- Top Pill Navbar -->
+    <header class="top-navbar">
+      <a href="#" class="nav-brand">
+        <div class="nav-brand-logo">tf</div>
+        <span>TRACEFAB</span>
       </a>
 
-      <nav aria-label="Main Navigation">
-        <ul class="tf-header-links">
-          <li><a href="#why-tracefab">Why</a></li>
-          <li><a href="#platform">Platform</a></li>
-          <li><a href="#supply-chain">Supply Chain</a></li>
-          <li><a href="#product-intelligence">Product Intelligence</a></li>
-          <li><a href="#dpp">DPP</a></li>
-          <li><a href="#resources">Resources</a></li>
-        </ul>
+      <nav class="nav-pill-menu" aria-label="Main Menu">
+        <a href="#why">Why</a>
+        <a href="#platform">Platform</a>
+        <a href="#supply-chain">Supply Chain</a>
+        <a href="#product-intelligence">Intelligence</a>
+        <a href="#dpp">DPP</a>
       </nav>
 
-      <div class="tf-header-cta-group">
-        <!-- Global Language Selector Dropdown -->
-        <select id="globalLangSelector" onchange="changeLanguage(this.value)" style="background:transparent;border:1px solid var(--tf-hairline);color:var(--tf-textile-sand);padding:6px 10px;border-radius:20px;font-size:12px;font-family:var(--font-mono);cursor:pointer;outline:none;">
-          <option value="en" selected style="background:#071712;color:#fff;">EN</option>
-          <option value="fr" style="background:#071712;color:#fff;">FR</option>
-          <option value="de" style="background:#071712;color:#fff;">DE</option>
-          <option value="it" style="background:#071712;color:#fff;">IT</option>
-          <option value="es" style="background:#071712;color:#fff;">ES</option>
-          <option value="nl" style="background:#071712;color:#fff;">NL</option>
-          <option value="pt" style="background:#071712;color:#fff;">PT</option>
-        </select>
-
-        <a href="/brand-console/" class="tf-signin-link">Sign in</a>
-        <a href="#demo" class="tf-btn-demo">Request a demo</a>
+      <div class="nav-right-actions">
+        <!-- Global Language Switcher (Pill Style from Image Model) -->
+        <div style="position:relative;display:inline-block;">
+          <button id="lang-menu-btn" class="lang-pill-select" onclick="toggleLangMenu()" style="display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.25);cursor:pointer;">
+            <span id="current-lang-code">EN</span>
+            <span style="font-size:10px;opacity:0.8;">▼</span>
+          </button>
+          <div id="lang-dropdown-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:#183e2d;border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:6px;min-width:110px;box-shadow:0 10px 25px rgba(0,0,0,0.3);z-index:150;">
+            <div style="padding:6px 10px;font-size:12px;color:#fff;cursor:pointer;" onclick="setLanguage('en')">EN - English</div>
+            <div style="padding:6px 10px;font-size:12px;color:#fff;cursor:pointer;" onclick="setLanguage('fr')">FR - Français</div>
+            <div style="padding:6px 10px;font-size:12px;color:#fff;cursor:pointer;" onclick="setLanguage('de')">DE - Deutsch</div>
+            <div style="padding:6px 10px;font-size:12px;color:#fff;cursor:pointer;" onclick="setLanguage('it')">IT - Italiano</div>
+            <div style="padding:6px 10px;font-size:12px;color:#fff;cursor:pointer;" onclick="setLanguage('es')">ES - Español</div>
+            <div style="padding:6px 10px;font-size:12px;color:#fff;cursor:pointer;" onclick="setLanguage('nl')">NL - Nederlands</div>
+            <div style="padding:6px 10px;font-size:12px;color:#fff;cursor:pointer;" onclick="setLanguage('pt')">PT - Português</div>
+          </div>
+        </div>
+        <a href="/brand-console/" class="btn-login-pill">Sign In</a>
+        <a href="#demo" class="btn-demo-pill">Request Demo</a>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <!-- ==========================================================================
-       2. MONUMENTAL HERO: A SOVEREIGN EUROPEAN TEXTILE DATA INFRASTRUCTURE
-       ========================================================================== -->
-  <section class="tf-hero-stage">
-    <div class="tf-hero-eyebrow-container">
-      <span class="tf-eyebrow-dot"></span>
-      <span class="tf-hero-eyebrow">EUROPEAN TEXTILE DATA INFRASTRUCTURE</span>
-    </div>
-
-    <h1 class="tf-hero-monumental-title">
-      Turn your textile supply chain into trusted data.
-    </h1>
-
-    <div class="tf-hero-sub-sequence">
-      <strong>Data.</strong> Evidence. Traceability. <span class="accent-word">Intelligence.</span>
-    </div>
-
-    <div class="tf-hero-actions">
-      <a href="/brand-console/" class="tf-btn-large tf-btn-large-primary">Explore Platform</a>
-      <a href="#supply-chain" class="tf-btn-large tf-btn-large-secondary">View Connected Supply Chain</a>
-    </div>
-
-    <!-- TRACEFAB DATA CORE: Real-Time Living Connected Textile Fabric -->
-    <div class="tf-data-core-monolith">
-      <div class="tf-core-header">
-        <div class="tf-core-title-group">
-          <div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--tf-slate-muted);text-transform:uppercase;letter-spacing:0.12em;">INFRASTRUCTURE ENGINE</div>
-            <div style="font-size:18px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;">TRACEFAB DATA CORE</div>
-          </div>
-          <span class="tf-core-badge">CIRPASS 1.2 · ESPR READY</span>
-        </div>
-        <div class="tf-core-metrics-strip">
-          <div>Verified Lots: <strong>1,248</strong></div>
-          <div>Tier 1–4 Provenance: <strong>100%</strong></div>
-          <div>Cryptographic Seal: <strong>SHA-256 Active</strong></div>
-        </div>
-      </div>
-
-      <!-- Live Dynamic Chain Transmission -->
-      <div class="tf-pipeline-nodes">
-        <div class="tf-node-card">
-          <div class="tf-node-step">01 / ORIGIN</div>
-          <div class="tf-node-label">SUPPLIER</div>
-          <div class="tf-node-stat">
-            <strong>Tier 1 to 4</strong>
-            <span>Verified Vault</span>
-          </div>
-        </div>
-
-        <div class="tf-node-card">
-          <div class="tf-node-step">02 / FIBER</div>
-          <div class="tf-node-label">MATERIAL</div>
-          <div class="tf-node-stat">
-            <strong>100% BOM</strong>
-            <span>Mass-Balance Rec.</span>
-          </div>
-        </div>
-
-        <div class="tf-node-card">
-          <div class="tf-node-step">03 / AUDIT</div>
-          <div class="tf-node-label">CERTIFICATE</div>
-          <div class="tf-node-stat">
-            <strong>GOTS & OEKO-TEX</strong>
-            <span>Automated OCR</span>
-          </div>
-        </div>
-
-        <div class="tf-node-card">
-          <div class="tf-node-step">04 / MILL</div>
-          <div class="tf-node-label">FACTORY</div>
-          <div class="tf-node-stat">
-            <strong>Polygon GPS</strong>
-            <span>Facility Registry</span>
-          </div>
-        </div>
-
-        <div class="tf-node-card">
-          <div class="tf-node-step">05 / STYLE</div>
-          <div class="tf-node-label">PRODUCT</div>
-          <div class="tf-node-stat">
-            <strong>42 Styles</strong>
-            <span>Genealogy Matrix</span>
-          </div>
-        </div>
-
-        <div class="tf-node-card">
-          <div class="tf-node-step">06 / PROOF</div>
-          <div class="tf-node-label">EVIDENCE</div>
-          <div class="tf-node-stat">
-            <strong>Zero Declaration</strong>
-            <span>Immutable Ledger</span>
-          </div>
-        </div>
-
-        <div class="tf-node-card" style="border-color:rgba(16,185,129,0.5);background:rgba(16,185,129,0.08);">
-          <div class="tf-node-step" style="color:#34d399;">07 / OUTPUT</div>
-          <div class="tf-node-label" style="color:#34d399;">DPP</div>
-          <div class="tf-node-stat">
-            <strong style="color:#ffffff;">GS1 Digital Link</strong>
-            <span>Consumer QR</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="tf-core-footer-ticker">
-        <div class="tf-core-pulse-live">
-          <span class="tf-pulse-dot"></span>
-          <span>TRACEFAB CONNECTS THE TEXTILE SUPPLY CHAIN</span>
-        </div>
-        <div>European Compliance Engine · AGEC Art. 13 & CSRD Ready</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       SECTION 01: YOUR SUPPLY CHAIN IS FULL OF DATA (EDITORIAL DISPERSION)
-       ========================================================================== -->
-  <section class="tf-section-dispersion" id="why-tracefab">
-    <div class="tf-dispersion-header">
-      <div class="tf-section-eyebrow">01 / The Fragmentation Problem</div>
-      <h2 class="tf-dispersion-title">Your supply chain is full of data.</h2>
-      <p class="tf-dispersion-lead">
-        Textile evidence is not missing — it is trapped in silos, unstandardized PDFs, supplier spreadsheets, and unverified declarations.
+    <!-- Center Headline & Copy -->
+    <div class="hero-center-content">
+      <h1 class="hero-headline">Let's Make Your Textile Supply Chain Truly Verifiable.</h1>
+      <p class="hero-lead">
+        Collect raw material evidence, reconcile Tier 1–4 supplier lot certificates, and automatically generate DPP-ready intelligence in seconds.
       </p>
-    </div>
-
-    <div class="tf-dispersion-grid">
-      <div class="tf-fragment-card">
-        <div class="tf-fragment-badge">FIBER & PROVENANCE</div>
-        <h3>PDFs & Test Reports</h3>
-        <p>Lab reports, spinning lot sheets, and water effluent scans stored across disconnected inboxes and cloud drives.</p>
-        <div class="tf-fragment-meta">⚠ Unstructured raw evidence</div>
-      </div>
-
-      <div class="tf-fragment-card">
-        <div class="tf-fragment-badge">TIER 1–4 COMPOSITION</div>
-        <h3>Excel Spreadsheets</h3>
-        <p>Multi-tab supplier BOMs with discrepancies in blend percentages, fiber trade names, and missing mass balances.</p>
-        <div class="tf-fragment-meta">⚠ Non-reconciled compositions</div>
-      </div>
-
-      <div class="tf-fragment-card">
-        <div class="tf-fragment-badge">FACILITY AUDITS</div>
-        <h3>Expired Certificates</h3>
-        <p>GOTS, ZDHC, and Higg FEM certificates renewed at different intervals with no automated expiry verification.</p>
-        <div class="tf-fragment-meta">⚠ Compliance blind spots</div>
-      </div>
-
-      <div class="tf-fragment-card">
-        <div class="tf-fragment-badge">SYSTEM DISCONNECT</div>
-        <h3>PLM & ERP Silos</h3>
-        <p>Centric, Lectra, SAP, or Infor containing product metadata with zero direct link to verified Tier 2–4 lots.</p>
-        <div class="tf-fragment-meta">⚠ Disconnected from physical reality</div>
+      <div class="hero-buttons">
+        <a href="/brand-console/" class="btn-white-hero">Launch Platform</a>
+        <a href="#supply-chain" class="btn-trans-hero">Explore Supply Chain</a>
       </div>
     </div>
-  </section>
 
-  <!-- ==========================================================================
-       3. SIGNATURE HORIZONTAL SEQUENCE
-       From supplier data to trusted product intelligence
-       SUPPLIERS → DATA → EVIDENCE → QUALITY → TRACEABILITY → DPP
-       ========================================================================== -->
-  <section class="signature-section" id="how-it-works">
-    <div class="container">
-      <div class="signature-header">
-        <div class="eyebrow"><span class="eyebrow-pill">The TRACEFAB Method</span></div>
-        <h2>From supplier data to trusted product intelligence.</h2>
-        <p>A rigorous architectural chain that turns scattered declarations into legally defensible product knowledge.</p>
-      </div>
-
-      <div class="signature-chain-grid">
-        <!-- 1. Suppliers -->
-        <div class="signature-step-card">
-          <span class="step-badge-num">01 / ONBOARD</span>
-          <div class="step-icon-box">🏢</div>
-          <h3>Suppliers</h3>
-          <p>Collaborative multi-tier portal for Tier 1 to Tier 4 partners with proprietary trade secret guarantees.</p>
+    <!-- Massive Product Mockup Window (Center Stage) -->
+    <div class="hero-tablet-window">
+      <!-- Chrome Bar -->
+      <div class="tablet-chrome-bar">
+        <div class="tablet-logo-pill">
+          <span style="width:10px;height:10px;border-radius:50%;background:#10b981;"></span>
+          <span>TRACEFAB BRAND CONSOLE</span>
         </div>
-
-        <!-- 2. Data -->
-        <div class="signature-step-card">
-          <span class="step-badge-num">02 / STRUCTURE</span>
-          <div class="step-icon-box">📊</div>
-          <h3>Data</h3>
-          <p>Standardized form schemas for fiber compositions, facility coordinates, chemical compliance and PEF footprints.</p>
-        </div>
-
-        <!-- 3. Evidence -->
-        <div class="signature-step-card">
-          <span class="step-badge-num">03 / ATTACH</span>
-          <div class="step-icon-box">📁</div>
-          <h3>Evidence</h3>
-          <p>Cryptographically linked transaction certificates (GOTS, GRS, SMETA, OEKO-TEX) with automated OCR validation.</p>
-        </div>
-
-        <!-- 4. Quality -->
-        <div class="signature-step-card">
-          <span class="step-badge-num">04 / AUDIT</span>
-          <div class="step-icon-box">⚖️</div>
-          <h3>Quality</h3>
-          <p>Explainable 6-level grading matrix from self-declared claims to certified third-party auditable facts.</p>
-        </div>
-
-        <!-- 5. Traceability -->
-        <div class="signature-step-card">
-          <span class="step-badge-num">05 / RECONCILE</span>
-          <div class="step-icon-box">⇄</div>
-          <h3>Traceability</h3>
-          <p>Continuous mass-balance reconciliation across every transformation stage to eradicate greenwashing risks.</p>
-        </div>
-
-        <!-- 6. DPP -->
-        <div class="signature-step-card">
-          <span class="step-badge-num">06 / COMPLY</span>
-          <div class="step-icon-box">▣</div>
-          <h3>DPP</h3>
-          <p>One-click European Digital Product Passport generation conforming to CIRPASS and ESPR standards.</p>
+        <div class="tablet-top-pills">
+          <span class="top-tag">CIRPASS 1.2</span>
+          <span class="top-tag" style="background:#eaf5ef;color:#0b7656;">ESPR READY</span>
+          <span class="top-tag">1,248 VERIFIED LOTS</span>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- ==========================================================================
-       4. THE PROBLEM & TRANSFORMATION
-       Your supply chain already has the data. It just isn't connected.
-       ========================================================================== -->
-  <section class="problem-section" id="why-tracefab">
-    <div class="container">
-      <div style="text-align:center;max-width:720px;margin:0 auto;">
-        <div class="eyebrow"><span class="eyebrow-pill">The Data Bottleneck</span></div>
-        <h2 style="font-size:clamp(28px,3.4vw,42px);font-weight:800;letter-spacing:-0.035em;color:var(--tf-text-title);margin-bottom:14px;">
-          Your supply chain already has the data.<br>It just isn't connected.
-        </h2>
-        <p style="font-size:16px;color:var(--tf-text-muted);">
-          Fashion brands don't lack supplier documents. They lack the technological infrastructure to verify, structure and query them at the product and lot level.
-        </p>
-      </div>
-
-      <div class="transformation-cockpit">
-        <!-- Fragmented -->
-        <div class="silo-card">
-          <h3>
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            Disconnected Silos
-          </h3>
-          <p style="font-size:13.5px;color:var(--tf-text-muted);">Unsearchable files scattered across departments and inboxes:</p>
-          <div class="silo-badge-cloud">
-            <span class="silo-pill">Excel spreadsheets</span>
-            <span class="silo-pill">PDF certificates</span>
-            <span class="silo-pill">Email chains</span>
-            <span class="silo-pill">Supplier portals</span>
-            <span class="silo-pill">ERP exports</span>
-            <span class="silo-pill">Lab test scans</span>
-          </div>
-          <p style="font-size:12.5px;color:#991b1b;font-weight:600;">Result: Expired certificates, unverified claims, blind compliance liability.</p>
+      <!-- Inner Layout with Left Rail & Content -->
+      <div class="tablet-inner-layout">
+        <!-- Left Icon Rail -->
+        <div class="tablet-icon-rail">
+          <div class="rail-icon active" title="Supply Chain">❖</div>
+          <div class="rail-icon" title="BOM Lots">▦</div>
+          <div class="rail-icon" title="Certificates">✓</div>
+          <div class="rail-icon" title="Quality Scores">◈</div>
+          <div class="rail-icon" title="DPP Passports">◉</div>
         </div>
 
-        <!-- Transformation Core -->
-        <div class="engine-core">
-          <div class="engine-symbol">
-            <div class="engine-pulse-ring"></div>
-            tf
-          </div>
-          <span class="engine-label">TRACEFAB OS</span>
-          <span style="font-size:11px;color:var(--tf-text-subtle);max-width:130px;line-height:1.4;">Automated Structure & Forensic Verification</span>
-        </div>
-
-        <!-- Unified -->
-        <div class="unified-card">
-          <h3>
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Connected Intelligence
-          </h3>
-          <p style="font-size:13.5px;color:var(--tf-text-muted);">Structured, queryable data models linked directly to SKUs:</p>
-          <div class="unified-badge-cloud">
-            <span class="unified-pill">Structured Data Schema</span>
-            <span class="unified-pill">Evidence Vault</span>
-            <span class="unified-pill">Verified Information</span>
-            <span class="unified-pill">Supply Chain Intelligence</span>
-            <span class="unified-pill">DPP Readiness Score</span>
-          </div>
-          <p style="font-size:12.5px;color:var(--tf-emerald-600);font-weight:600;">Result: Defensible CSRD reporting, automated audits, consumer trust.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       5. SUPPLY CHAIN INTERACTIVE GRAPH
-       See your supply chain as data.
-       ========================================================================== -->
-  <section class="supply-section" id="supply-chain">
-    <div class="container">
-      <div style="text-align:center;max-width:700px;margin:0 auto;">
-        <div class="eyebrow"><span class="eyebrow-pill">Forensic Custody Mapping</span></div>
-        <h2 style="font-size:clamp(28px,3.4vw,42px);font-weight:800;letter-spacing:-0.035em;color:var(--tf-text-title);margin-bottom:12px;">
-          See your supply chain as data.
-        </h2>
-        <p style="font-size:16px;color:var(--tf-text-muted);">
-          Trace transformation flows from agricultural origin to retail shelf with auditable mass-balance reconciliation. Click any node to inspect live credentials.
-        </p>
-      </div>
-
-      <div class="graph-interactive-card">
-        <!-- Interactive Node Selection -->
-        <div class="sc-nodes-flow">
-          <!-- Raw Material -->
-          <div class="sc-node-box active" onclick="selectScNode('raw-mat')">
-            <span class="sc-tier-badge">Tier 4</span>
-            <span class="sc-node-name">Raw Material</span>
-            <span class="sc-node-desc">Organic Cotton</span>
-          </div>
-          <span class="sc-arrow-line">→</span>
-
-          <!-- Fiber -->
-          <div class="sc-node-box" onclick="selectScNode('fiber')">
-            <span class="sc-tier-badge">Tier 4</span>
-            <span class="sc-node-name">Fiber Ginning</span>
-            <span class="sc-node-desc">Seed Removal</span>
-          </div>
-          <span class="sc-arrow-line">→</span>
-
-          <!-- Spinning -->
-          <div class="sc-node-box" onclick="selectScNode('spinning')">
-            <span class="sc-tier-badge">Tier 3</span>
-            <span class="sc-node-name">Spinning</span>
-            <span class="sc-node-desc">Combed Yarn Ne 30/1</span>
-          </div>
-          <span class="sc-arrow-line">→</span>
-
-          <!-- Weaving / Knitting -->
-          <div class="sc-node-box" onclick="selectScNode('knitting')">
-            <span class="sc-tier-badge">Tier 3</span>
-            <span class="sc-node-name">Weaving / Knit</span>
-            <span class="sc-node-desc">Circular Jersey 185g</span>
-          </div>
-          <span class="sc-arrow-line">→</span>
-
-          <!-- Dyeing -->
-          <div class="sc-node-box" onclick="selectScNode('dyeing')">
-            <span class="sc-tier-badge">Tier 2</span>
-            <span class="sc-node-name">Dyeing</span>
-            <span class="sc-node-desc">Closed-Loop STeP</span>
-          </div>
-          <span class="sc-arrow-line">→</span>
-
-          <!-- Manufacturing -->
-          <div class="sc-node-box" onclick="selectScNode('mfg')">
-            <span class="sc-tier-badge">Tier 1</span>
-            <span class="sc-node-name">Manufacturing</span>
-            <span class="sc-node-desc">Cut, Make & Trim</span>
-          </div>
-          <span class="sc-arrow-line">→</span>
-
-          <!-- Finished Product -->
-          <div class="sc-node-box" onclick="selectScNode('product')">
-            <span class="sc-tier-badge" style="background:#0b7656;color:#fff;">Product</span>
-            <span class="sc-node-name">Finished Product</span>
-            <span class="sc-node-desc">Digital Passport</span>
-          </div>
-        </div>
-
-        <!-- Detailed Forensic Node Inspector Panel -->
-        <div class="sc-inspector-view" id="sc-inspector">
-          <div>
-            <div class="inspector-entity-head">
-              <div>
-                <span class="sc-tier-badge" id="insp-tier">Tier 4 · Raw Agricultural Origin</span>
-                <h3 style="font-size:20px;font-weight:800;color:var(--tf-text-title);margin-top:2px;" id="insp-title">Quinta de São Martinho</h3>
-                <span style="font-size:12.5px;color:var(--tf-text-muted);" id="insp-loc">Alentejo, Portugal (PT) · GPS: 38.0151° N, 7.8632° W</span>
-              </div>
-              <span class="badge badge-verified" id="insp-badge">Data Quality: 100% Certified</span>
-            </div>
-
-            <div class="inspector-metrics-row">
-              <div class="insp-metric-card">
-                <span>Facility Role</span>
-                <strong id="insp-role">Regenerative Farming</strong>
-              </div>
-              <div class="insp-metric-card">
-                <span>Batch / Lot ID</span>
-                <strong id="insp-lot">LOT-PT-2026-CTN-089</strong>
-              </div>
-              <div class="insp-metric-card">
-                <span>Auditor Body</span>
-                <strong id="insp-auditor">Control Union BV</strong>
-              </div>
-            </div>
-
-            <div style="font-size:12.5px;color:var(--tf-text-body);margin-bottom:14px;" id="insp-desc">
-              Organic cotton cultivated under regenerative agriculture standards. Satellite polygon mapping confirms zero deforestation since 2018.
-            </div>
-
-            <div style="display:flex;gap:8px;flex-wrap:wrap;" id="insp-certs">
-              <span class="badge badge-verified">✓ GOTS v6.0 (#CU-881294)</span>
-              <span class="badge badge-certified">✓ Regenerative Organic Certified</span>
-              <span class="badge badge-documented">✓ Water Footprint Audit</span>
-            </div>
-          </div>
-
-          <!-- Proof Document Snapshot -->
-          <div style="background:#ffffff;border:1px solid var(--tf-border-light);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;justify-content:space-between;">
+        <!-- Main Mockup Viewport -->
+        <div class="tablet-content-body">
+          <!-- Panoramic Banner -->
+          <div class="tablet-panorama-banner">
+            <span class="panorama-tag">SUPPLY CHAIN INTELLIGENCE</span>
             <div>
-              <div style="font-size:11px;font-weight:750;text-transform:uppercase;color:var(--tf-text-muted);margin-bottom:8px;">Sealed Proof Document</div>
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-                <span style="font-size:24px;">📄</span>
-                <div>
-                  <strong style="font-size:13px;display:block;" id="insp-doc-name">GOTS_Transaction_Certificate_TC2026.pdf</strong>
-                  <span style="font-size:11px;color:var(--tf-text-muted);">1.2 MB · SHA-256 Verified on Neon</span>
-                </div>
-              </div>
-              <div style="font-size:11px;color:var(--tf-emerald-500);font-weight:600;background:var(--tf-emerald-soft);padding:6px 10px;border-radius:6px;">
-                ✓ OCR 99.4% Match: Transaction volume matches spinning delivery note
-              </div>
-            </div>
-            <div style="margin-top:16px;display:flex;gap:8px;">
-              <a href="/brand-console/?demo=1" class="btn btn-secondary btn-sm" style="flex:1;">Inspect in Console</a>
+              <div style="font-size:12px;font-family:var(--font-mono);opacity:0.8;margin-bottom:4px;">COTTON TWILL OVERSHIRT #4289</div>
+              <div class="panorama-title">100% Polygon GPS Mapped & Reconciled Across 4 Tiers</div>
             </div>
           </div>
-        </div>
 
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       6. PRODUCT INTELLIGENCE
-       The single source of truth for styles and SKUs.
-       ========================================================================== -->
-  <section class="product-section" id="product-intelligence">
-    <div class="container">
-      <div style="text-align:center;max-width:700px;margin:0 auto;">
-        <div class="eyebrow"><span class="eyebrow-pill">Single Source of Truth</span></div>
-        <h2 style="font-size:clamp(28px,3.4vw,42px);font-weight:800;letter-spacing:-0.035em;color:var(--tf-text-title);margin-bottom:12px;">
-          Product Intelligence at SKU Precision
-        </h2>
-        <p style="font-size:16px;color:var(--tf-text-muted);">
-          TRACEFAB aggregates compositions, facility certifications, chemical reports, and custody logs into an authoritative product specification record.
-        </p>
-      </div>
-
-      <!-- Real Product Intelligence Mockup -->
-      <div class="product-mockup-frame">
-        <div class="product-mockup-head">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <span class="badge badge-verified">Active Style · Version 2.4</span>
-            <strong style="font-size:15px;color:var(--tf-text-title);">Essentiel Coton Biologique</strong>
-            <span style="font-family:var(--font-mono);font-size:12px;color:var(--tf-text-muted);">SKU: AT-ESS-001</span>
-          </div>
-          <div style="display:flex;gap:8px;">
-            <a href="/brand-console/?demo=1" class="btn btn-primary btn-sm">Open in Brand Console</a>
-          </div>
-        </div>
-
-        <!-- 9 Product Tabs -->
-        <div class="mockup-tabs-bar">
-          <button class="m-tab-btn active" onclick="switchProductTab('overview')">Overview</button>
-          <button class="m-tab-btn" onclick="switchProductTab('composition')">Composition</button>
-          <button class="m-tab-btn" onclick="switchProductTab('materials')">Materials</button>
-          <button class="m-tab-btn" onclick="switchProductTab('suppliers')">Suppliers</button>
-          <button class="m-tab-btn" onclick="switchProductTab('manufacturing')">Manufacturing</button>
-          <button class="m-tab-btn" onclick="switchProductTab('certifications')">Certifications</button>
-          <button class="m-tab-btn" onclick="switchProductTab('documents')">Documents</button>
-          <button class="m-tab-btn" onclick="switchProductTab('quality')">Data Quality</button>
-          <button class="m-tab-btn" onclick="switchProductTab('dpp')">DPP</button>
-        </div>
-
-        <!-- Tab Content -->
-        <div class="product-tab-body" id="product-tab-body">
-          <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:32px;">
-            <div>
-              <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:8px;">Fiber Composition Bill-of-Materials</h4>
-              <p style="font-size:13px;color:var(--tf-text-muted);margin-bottom:14px;">100% reconciled against physical yarn spinning logs and customs filings.</p>
-
-              <div class="bom-bar-wrap">
-                <div class="bom-fill-1"></div>
-                <div class="bom-fill-2"></div>
+          <!-- 3 Micro Dashboard Cards -->
+          <div class="tablet-three-cards">
+            <div class="t-card">
+              <div class="t-card-head">
+                <span>TIER 1–4 TRACEABILITY</span>
+                <span style="color:#10b981;">100%</span>
               </div>
-
-              <div style="display:grid;gap:10px;font-size:13px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;">
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:8px;height:8px;border-radius:50%;background:var(--tf-emerald-500);"></div>
-                    <strong>85% Organic Cotton (GOTS Certified)</strong>
-                  </div>
-                  <span class="badge badge-verified">Tier 4 Provenance (PT)</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;">
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:8px;height:8px;border-radius:50%;background:#0284c7;"></div>
-                    <strong>15% Pre-Consumer Recycled Cotton (GRS)</strong>
-                  </div>
-                  <span class="badge badge-certified">GRS Certified</span>
-                </div>
-              </div>
+              <div class="t-card-title">Provenance Chain</div>
+              <div class="t-progress-bar"><div class="t-progress-fill" style="width:100%;"></div></div>
+              <div style="font-size:11px;color:var(--tf-text-muted);">Portugal spinning & weaving verified</div>
             </div>
 
-            <!-- Side Card with Verified Evidence & DPP State -->
-            <div style="background:var(--tf-surface-soft);border:1px solid var(--tf-border-light);border-radius:var(--radius-lg);padding:18px;">
-              <div style="font-size:11px;font-weight:750;text-transform:uppercase;color:var(--tf-text-muted);margin-bottom:10px;">Audit & Compliance Readiness</div>
-              <div style="display:grid;gap:8px;font-size:12px;">
-                <div style="display:flex;justify-content:space-between;">
-                  <span>GOTS Transaction Certificate</span>
-                  <strong style="color:var(--tf-emerald-500);">CU-881294 (Verified)</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;">
-                  <span>OEKO-TEX Standard 100</span>
-                  <strong style="color:var(--tf-emerald-500);">Class 1 Valid 2026</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;">
-                  <span>SMETA 4-Pillar Social Audit</span>
-                  <strong style="color:var(--tf-emerald-500);">Score A Valid 2028</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px dashed var(--tf-border-medium);">
-                  <span>DPP Passport Eligibility</span>
-                  <span class="badge badge-verified">94/100 Ready</span>
-                </div>
+            <div class="t-card">
+              <div class="t-card-head">
+                <span>CHEMICAL SAFETY</span>
+                <span style="color:#10b981;">PASSED</span>
               </div>
+              <div class="t-card-title">ZDHC MRSL Level 3</div>
+              <div class="t-progress-bar"><div class="t-progress-fill" style="width:92%;"></div></div>
+              <div style="font-size:11px;color:var(--tf-text-muted);">Zero hazardous discharge effluent</div>
+            </div>
+
+            <div class="t-card">
+              <div class="t-card-head">
+                <span>DPP READINESS</span>
+                <span style="color:#10b981;">88%</span>
+              </div>
+              <div class="t-card-title">Digital Product Passport</div>
+              <div class="t-progress-bar"><div class="t-progress-fill" style="width:88%;"></div></div>
+              <div style="font-size:11px;color:var(--tf-text-muted);">GS1 Digital Link ready for QR printing</div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
   <!-- ==========================================================================
-       7. SUPPLIER PORTAL (ONE PROFILE, MULTI-BRAND REUSABLE)
-       Enter data once → reuse with authorized brands.
+       SECTION 2: PLAN SMARTER TRIPS IN SECONDS → TRACK SMARTER SUPPLY CHAINS IN SECONDS
        ========================================================================== -->
-  <section class="supplier-section">
+  <section class="section-editorial-row" id="why">
     <div class="container">
-      <div class="supplier-split-view">
+      <div class="editorial-header-flex">
         <div>
-          <div class="eyebrow"><span class="eyebrow-pill">Supplier-First Adoption</span></div>
-          <h2 style="font-size:clamp(28px,3.4vw,42px);font-weight:800;letter-spacing:-0.035em;color:var(--tf-text-title);line-height:1.15;margin-bottom:16px;">
-            One supplier profile.<br>Reusable across products and brands.
-          </h2>
-          <p style="font-size:16px;color:var(--tf-text-muted);margin-bottom:24px;">
-            The biggest friction in textile traceability is supplier fatigue from repetitive questionnaire requests. TRACEFAB allows manufacturers to build a permanent, encrypted evidence vault.
-          </p>
+          <div class="section-eyebrow-chip">OPERATIONAL SPEED</div>
+          <h2 class="editorial-headline">Plan Smarter Supply Chains<br>In Seconds</h2>
+        </div>
+        <a href="/brand-console/" class="btn-pill-dark">Explore All Features</a>
+      </div>
 
-          <div style="background:var(--tf-emerald-soft);border:1.5px solid #bfe3d0;border-radius:var(--radius-lg);padding:18px;margin-bottom:24px;">
-            <div style="font-size:12px;font-weight:800;text-transform:uppercase;color:var(--tf-emerald-600);letter-spacing:0.08em;margin-bottom:4px;">Core Strategic Innovation</div>
-            <strong style="font-size:15px;color:var(--tf-charcoal-950);display:block;margin-bottom:4px;">Enter data once → reuse with authorized brands</strong>
-            <p style="font-size:13px;color:var(--tf-emerald-700);">Suppliers upload audits (GOTS, SMETA, ISO) once and grant instant access to selected brand clients in one click.</p>
-          </div>
-
-          <div style="display:flex;gap:12px;">
-            <a href="/supplier-portal/?demo=1" class="btn btn-primary">Open Supplier Portal Live</a>
+      <!-- 3 Asymmetric Photo/Graphic Cards with Floating White Overlay Boxes -->
+      <div class="editorial-grid-three">
+        <!-- Card 1 -->
+        <div class="editorial-photo-card">
+          <div class="card-photo-bg bg-textile-1"></div>
+          <div class="floating-white-box">
+            <h4>Universal BOM & Lot Importer</h4>
+            <p>Upload Excel, CSV or PLM exports with instant 100% material composition validation and fiber reconciliation.</p>
+            <div class="tag-row">
+              <span class="tiny-chip">EXCEL / CSV</span>
+              <span class="tiny-chip">100% VALIDATION</span>
+            </div>
           </div>
         </div>
 
-        <!-- Supplier Portal Realistic Mockup -->
-        <div class="supplier-vault-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-            <div>
-              <span class="badge badge-certified" style="margin-bottom:4px;">Active Tier 1 Partner</span>
-              <h3 style="font-size:18px;font-weight:800;color:var(--tf-text-title);">Nhãn Textile Manufacturing</h3>
-              <span style="font-size:11.5px;color:var(--tf-text-muted);">Porto, Portugal · 3 Facilities · 14 Materials</span>
-            </div>
-            <span class="badge badge-verified">Vault Encrypted</span>
-          </div>
-
-          <!-- Supplier Portal 7 Nav Modules -->
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;font-size:11.5px;font-weight:700;">
-            <span style="background:#ffffff;padding:4px 9px;border-radius:6px;border:1px solid var(--tf-border-medium);">Company Profile</span>
-            <span style="background:#ffffff;padding:4px 9px;border-radius:6px;border:1px solid var(--tf-border-medium);">Production Sites (3)</span>
-            <span style="background:#ffffff;padding:4px 9px;border-radius:6px;border:1px solid var(--tf-border-medium);">Certificates (8)</span>
-            <span style="background:#ffffff;padding:4px 9px;border-radius:6px;border:1px solid var(--tf-border-medium);">Materials (14)</span>
-            <span style="background:var(--tf-emerald-soft);color:var(--tf-emerald-600);padding:4px 9px;border-radius:6px;border:1px solid #bfe3d0;">Data Requests (2)</span>
-          </div>
-
-          <!-- Active One-to-Many Shared Document -->
-          <div style="background:#ffffff;border:1px solid var(--tf-border-light);border-radius:var(--radius-md);padding:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-              <div>
-                <strong style="font-size:13px;display:block;">OEKO-TEX Standard 100 Class 1</strong>
-                <span style="font-size:11px;color:var(--tf-text-muted);">Hohenstein Report #21.HPT.94112</span>
-              </div>
-              <span class="badge badge-verified">Active Vault File</span>
-            </div>
-            <div style="margin-top:10px;font-size:11.5px;color:var(--tf-text-muted);display:flex;justify-content:space-between;align-items:center;">
-              <span>Shared with: <strong>Atelier Demo + 3 brands</strong></span>
-              <span style="color:var(--tf-emerald-500);font-weight:700;">Zero Re-Upload</span>
+        <!-- Card 2 -->
+        <div class="editorial-photo-card">
+          <div class="card-photo-bg bg-textile-2"></div>
+          <div class="floating-white-box">
+            <h4>Intelligent Certificate OCR</h4>
+            <p>Automate verification of GOTS, OEKO-TEX, and ZDHC audit scopes without manual spreadsheet reviews.</p>
+            <div class="tag-row">
+              <span class="tiny-chip">AUTO-EXTRACT</span>
+              <span class="tiny-chip">EXPIRY WATCH</span>
             </div>
           </div>
+        </div>
 
-          <!-- NDA Guarantee Shield -->
-          <div class="nda-guarantee-pill">
-            <span style="font-size:20px;">🛡️</span>
-            <div>
-              <strong style="font-size:12.5px;color:var(--tf-text-title);display:block;">Trade Secret & Margin Protection</strong>
-              <span style="font-size:11px;color:var(--tf-text-muted);line-height:1.4;display:block;">Suppliers maintain 100% confidentiality over costs, margins, and proprietary recipes. Only certified compliance output is audited.</span>
+        <!-- Card 3 -->
+        <div class="editorial-photo-card">
+          <div class="card-photo-bg bg-textile-3"></div>
+          <div class="floating-white-box">
+            <h4>Supplier Data Vault Shield</h4>
+            <p>Protect upstream trade secrets and tier pricing while sharing cryptographic proof of regulatory compliance.</p>
+            <div class="tag-row">
+              <span class="tiny-chip">ZERO-LEAK</span>
+              <span class="tiny-chip">AES-256</span>
             </div>
           </div>
         </div>
@@ -2818,682 +958,203 @@
   </section>
 
   <!-- ==========================================================================
-       8. DATA QUALITY EXPLAINABLE MATRIX
-       Know what you can trust.
+       SECTION 3: EVERYTHING YOU NEED TO PERFECT PLAN → EVERYTHING YOU NEED FOR DPP COMPLIANCE
        ========================================================================== -->
-  <section class="quality-section">
+  <section class="section-centered-flow" id="platform">
     <div class="container">
-      <div style="text-align:center;max-width:720px;margin:0 auto;">
-        <div class="eyebrow"><span class="eyebrow-pill">Explainable Trust</span></div>
-        <h2 style="font-size:clamp(28px,3.4vw,42px);font-weight:800;letter-spacing:-0.035em;color:var(--tf-text-title);margin-bottom:12px;">
-          Know what you can trust.
+      <div class="centered-header-block">
+        <div class="centered-eyebrow">COMPLETE PLATFORM</div>
+        <h2 class="centered-title-big">
+          Everything <span class="icon-inline-pill">⚡</span> You Need To Deliver The Perfect Passport
         </h2>
-        <p style="font-size:16px;color:var(--tf-text-muted);">
-          No arbitrary 5-star ratings or opaque green badges. TRACEFAB grades every datapoint according to explicit, legally defensible tiers of evidence.
+        <p class="centered-lead">
+          From fiber harvest to retail QR code: turn fragmented supplier declarations into audit-proof European Digital Product Passports.
         </p>
       </div>
 
-      <!-- Example Score Box (Explicitly marked as simulated demo) -->
-      <div style="max-width:800px;margin:32px auto 0;background:#ffffff;border:1px solid var(--tf-border-medium);border-radius:var(--radius-xl);padding:24px 32px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-sm);flex-wrap:wrap;gap:16px;">
-        <div>
-          <span style="font-size:11px;font-family:var(--font-mono);font-weight:700;color:var(--tf-text-muted);text-transform:uppercase;">Example Metric · Style AT-ESS-001</span>
-          <div style="font-size:32px;font-weight:800;letter-spacing:-0.04em;color:var(--tf-text-title);margin-top:2px;">Data Quality Index — 92%</div>
-          <span style="font-size:12px;color:var(--tf-emerald-500);font-weight:600;">High Trust Level · 100% Core Requirements Documented</span>
-        </div>
-        <div style="display:flex;gap:18px;font-size:12px;">
-          <div><strong style="display:block;font-size:14px;color:var(--tf-text-title);">96%</strong><span style="color:var(--tf-text-muted);">Completeness</span></div>
-          <div><strong style="display:block;font-size:14px;color:var(--tf-text-title);">94%</strong><span style="color:var(--tf-text-muted);">Evidence Coverage</span></div>
-          <div><strong style="display:block;font-size:14px;color:var(--tf-text-title);">100%</strong><span style="color:var(--tf-text-muted);">Verified Status</span></div>
-        </div>
-      </div>
-
-      <!-- 6 Clear Levels -->
-      <div class="quality-tiers-grid">
-        <div class="quality-tier-card">
-          <span class="badge badge-certified">Certified</span>
-          <h4>Third-Party Audited Fact</h4>
-          <p>Backed by an accredited transaction certificate (GOTS, GRS, Oeko-Tex) verified against batch delivery notes.</p>
+      <div class="three-dash-cards">
+        <div class="dash-widget-card">
+          <div class="widget-mini-ui">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">SUPPLIER PORTAL</span>
+              <span style="font-size:11px;font-weight:700;color:#10b981;">LIVE</span>
+            </div>
+            <div class="widget-stat-num">0% Friction</div>
+            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;">No supplier account required to submit lots</div>
+          </div>
+          <h3 class="widget-title">Zero-Barrier Supplier Onboarding</h3>
+          <p class="widget-desc">Direct magic links allow spinning mills and garment makers to submit evidence and declare BOMs in seconds.</p>
         </div>
 
-        <div class="quality-tier-card">
-          <span class="badge badge-verified">Verified</span>
-          <h4>Reviewer Verified Evidence</h4>
-          <p>Supporting lab test or shipping bill inspected and approved by a qualified brand reviewer or audit authority.</p>
+        <div class="dash-widget-card">
+          <div class="widget-mini-ui">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">DATA QUALITY INDEX</span>
+              <span style="font-size:11px;font-weight:700;color:#10b981;">GRADE A</span>
+            </div>
+            <div class="widget-stat-num">98.4 / 100</div>
+            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;">Defensible against European customs audits</div>
+          </div>
+          <h3 class="widget-title">Dynamic Quality Center</h3>
+          <p class="widget-desc">Explainable 6-tier scoring that verifies document authenticity, lot coherence, and mass balance conservation.</p>
         </div>
 
-        <div class="quality-tier-card">
-          <span class="badge badge-documented">Documented</span>
-          <h4>Evidence Attached</h4>
-          <p>File or lab document uploaded by supplier and awaiting automated OCR and human inspection.</p>
-        </div>
-
-        <div class="quality-tier-card">
-          <span class="badge badge-declared">Declared</span>
-          <h4>Self-Stated Claim</h4>
-          <p>Entered in a questionnaire form without accompanying cryptographic third-party certification.</p>
-        </div>
-
-        <div class="quality-tier-card">
-          <span class="badge badge-review">Needs Review</span>
-          <h4>Discrepancy Detected</h4>
-          <p>Information flagged due to mass-balance inconsistency, expiring certificate, or missing audit proof.</p>
-        </div>
-
-        <div class="quality-tier-card">
-          <span class="badge badge-missing">Missing</span>
-          <h4>Data Gap</h4>
-          <p>Mandatory field required by ESPR regulation has not been provided by the designated supply chain tier.</p>
+        <div class="dash-widget-card">
+          <div class="widget-mini-ui">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">EUROPEAN GATEWAY</span>
+              <span style="font-size:11px;font-weight:700;color:#10b981;">ESPR 2027</span>
+            </div>
+            <div class="widget-stat-num">JSON-LD CIRPASS</div>
+            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;">Standardized open semantic data schema</div>
+          </div>
+          <h3 class="widget-title">Instant DPP Generation</h3>
+          <p class="widget-desc">Publish compliant consumer-facing QR passports with French AGEC Art. 13 operations and circularity metrics.</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ==========================================================================
-       9. DPP READINESS
-       Don't wait for the passport. Build the data behind it.
+       SECTION 4: PLAN THE WORLD'S FAVORITE DESTINATIONS → KEY TEXTILE HUBS
        ========================================================================== -->
-  <section class="dpp-section" id="dpp">
-    <div class="container dpp-grid">
-      <div>
-        <div class="eyebrow" style="color:#34d399;"><span class="eyebrow-pill" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:#34d399;">EU Regulation Preparation</span></div>
-        <h2 style="font-size:clamp(30px,3.8vw,44px);font-weight:800;letter-spacing:-0.035em;line-height:1.12;margin-bottom:18px;">
-          Don't wait for the passport.<br>Build the data behind it.
+  <section class="section-hubs" id="supply-chain">
+    <div class="container">
+      <div class="centered-header-block">
+        <div class="centered-eyebrow">GLOBAL HUBS</div>
+        <h2 class="centered-title-big">
+          Map The <span class="icon-inline-pill">🌍</span> World's Major Textile Hubs
         </h2>
-        <p style="font-size:16.5px;color:var(--tf-text-on-dark-muted);line-height:1.6;margin-bottom:28px;">
-          The EU Ecodesign for Sustainable Products Regulation (ESPR) is a data challenge, not a QR code challenge. Without auditable multi-tier provenance, public passports cannot be legally published.
+        <p class="centered-lead">
+          Connect your European design headquarters directly to spinning mills, dye houses, and sewing ateliers worldwide.
         </p>
-        <div style="display:flex;gap:14px;flex-wrap:wrap;">
-          <a href="/dpp/" target="_blank" class="btn btn-primary btn-lg" style="background:#ffffff;color:var(--tf-charcoal-950);">
-            Explore Live Consumer DPP ↗
-          </a>
-          <button class="btn btn-secondary btn-lg" style="background:transparent;color:#fff;border-color:rgba(255,255,255,0.2);" onclick="openDemoModal()">
-            Request a DPP Audit
-          </button>
-        </div>
       </div>
 
-      <!-- High-Impact Dark Glass Cockpit (Inspired by BoxBet Ref: Neon Accents, Cyber Cards, Live Currency/Lot Selector) -->
-      <div class="dpp-cockpit-frame" style="background:#091410;border:1px solid rgba(52,211,153,0.22);box-shadow:0 24px 64px -10px rgba(0,0,0,0.6), 0 0 40px rgba(16,185,129,0.1);position:relative;overflow:hidden;">
-        <!-- Glowing accent edge -->
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg, #10b981, #f59e0b, #10b981);"></div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:10px;height:10px;border-radius:50%;background:#10b981;box-shadow:0 0 10px #10b981;"></div>
-            <div>
-              <div style="font-size:10px;font-family:var(--font-mono);font-weight:700;color:#34d399;letter-spacing:0.1em;text-transform:uppercase;">ESPR PASSPORT LEDGER · CIRPASS 1.2</div>
-              <h3 style="font-size:17px;font-weight:800;color:#ffffff;margin-top:2px;">Digital Passport Gateway</h3>
-            </div>
+      <div class="hubs-grid-three">
+        <div class="hub-card">
+          <div class="hub-cover-img cover-portugal">
+            <span class="hub-badge">TIER 1 & 2 HUB</span>
+            <span>PORTUGAL</span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <!-- Dark pill switcher inspired by BoxBet crypto switcher -->
-            <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:4px 10px;font-size:11px;font-family:var(--font-mono);">
-              <span style="color:#34d399;">●</span>
-              <span>EUR / GS1</span>
-            </div>
-            <span class="badge" style="background:#10b981;color:#07120e;font-weight:800;border:none;padding:5px 10px;border-radius:6px;">88% PASSED</span>
+          <div class="hub-content">
+            <div class="hub-country-tag">PORTO & GUIMARÃES</div>
+            <h4>Knitting & Finishing Ateliers</h4>
+            <p>100% GOTS certified organic jersey, spinning mills and automated cutting facilities fully polygon mapped.</p>
           </div>
         </div>
 
-        <!-- Cyber Bento Grid of Verified Cards (BoxBet Card Grid Style) -->
-        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:18px;">
-          <!-- Card 1: Provenance -->
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;position:relative;overflow:hidden;">
-            <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;font-weight:700;">PROVENANCE</div>
-            <div style="font-size:18px;font-weight:800;color:#34d399;margin:4px 0 2px;">Tier 1–4</div>
-            <div style="font-size:10.5px;color:rgba(255,255,255,0.7);">100% Polygon GPS</div>
+        <div class="hub-card">
+          <div class="hub-cover-img cover-italy">
+            <span class="hub-badge">LUXURY WEAVING</span>
+            <span>ITALY</span>
           </div>
-          <!-- Card 2: Chemistry -->
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;position:relative;overflow:hidden;">
-            <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;font-weight:700;">CHEMICAL MRSL</div>
-            <div style="font-size:18px;font-weight:800;color:#f59e0b;margin:4px 0 2px;">Level 3</div>
-            <div style="font-size:10.5px;color:rgba(255,255,255,0.7);">ZDHC Zero Discharge</div>
-          </div>
-          <!-- Card 3: Circularity -->
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;position:relative;overflow:hidden;">
-            <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;font-weight:700;">REPAIRABILITY</div>
-            <div style="font-size:18px;font-weight:800;color:#60a5fa;margin:4px 0 2px;">8.8 / 10</div>
-            <div style="font-size:10.5px;color:rgba(255,255,255,0.7);">Take-Back Active</div>
+          <div class="hub-content">
+            <div class="hub-country-tag">BIELLA & PRATO</div>
+            <h4>Wool & Silk Provenance</h4>
+            <p>Traceable fine spinning, ZDHC compliant wet processing and circular recycled fiber certificates.</p>
           </div>
         </div>
 
-        <div class="dpp-checklist-ul">
-          <div class="dpp-item-li passed" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.22);">
-            <span>✓ Product identity & GTIN / EAN (GS1 Digital Link)</span>
-            <strong style="color:#34d399;">Passed</strong>
+        <div class="hub-card">
+          <div class="hub-cover-img cover-france">
+            <span class="hub-badge">FLAX & LINEN</span>
+            <span>FRANCE</span>
           </div>
-          <div class="dpp-item-li passed" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.22);">
-            <span>✓ Composition & material breakdown (100% Reconciled)</span>
-            <strong style="color:#34d399;">Passed</strong>
+          <div class="hub-content">
+            <div class="hub-country-tag">NORMANDY & HAUTS-DE-FRANCE</div>
+            <h4>Master of Linen Scutching</h4>
+            <p>Complete farm-to-yarn agricultural batch records complying with French AGEC traceability standards.</p>
           </div>
-          <div class="dpp-item-li passed" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.22);">
-            <span>✓ French AGEC Art. 13 Operations (Weaving, Dyeing, CMT)</span>
-            <strong style="color:#34d399;">Passed</strong>
-          </div>
-          <div class="dpp-item-li warning" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);">
-            <span>⚠ Missing evidence: Water effluent lab report for Lot #089</span>
-            <strong style="color:#fbbf24;">Action Required</strong>
-          </div>
-        </div>
-
-        <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:var(--tf-text-on-dark-muted);">
-          <span>Immutable SHA-256 Seal Active</span>
-          <a href="/dpp/" target="_blank" style="color:#34d399;font-weight:700;text-decoration:none;">Preview Consumer QR Passport →</a>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ==========================================================================
-       10. CTA MONOLITH BANNER
+       FOOTER
        ========================================================================== -->
-  <section class="cta-section">
+  <footer class="clean-footer">
     <div class="container">
-      <div class="cta-monolith">
-        <div class="eyebrow" style="color:#34d399;"><span class="eyebrow-pill" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:#34d399;">Enterprise Deployment</span></div>
-        <h2>Ready to transform your textile supply chain?</h2>
-        <p>
-          Join forward-thinking fashion brands and global textile leaders building audit-proof product intelligence.
-        </p>
-        <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;">
-          <button class="btn btn-primary btn-lg" style="background:#ffffff;color:var(--tf-charcoal-950);" onclick="openDemoModal()">
-            Request a personalized demo
-          </button>
-          <a href="/brand-console/?demo=1" class="btn btn-secondary btn-lg" style="background:transparent;color:#fff;border-color:rgba(255,255,255,0.3);">
-            Explore Brand Console Demo
-          </a>
-        </div>
+      <div class="footer-brand-title">TRACEFAB</div>
+      <p style="margin-bottom: 24px;">European Textile Data & Digital Product Passport Infrastructure</p>
+      <div style="display:flex;justify-content:center;gap:24px;font-size:12px;color:var(--tf-text-subtle);">
+        <a href="#why">Why TRACEFAB</a>
+        <a href="#platform">Platform</a>
+        <a href="#supply-chain">Supply Chain</a>
+        <a href="/brand-console/">Brand Console</a>
+        <a href="/supplier-portal/">Supplier Portal</a>
+        <a href="/dpp/">DPP Consumer View</a>
       </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       11. ARCHITECTURAL FOOTER
-       ========================================================================== -->
-  <footer class="footer" id="resources">
-    <div class="container">
-      <div class="footer-grid">
-        <div>
-          <div class="brand-logo" style="margin-bottom:14px;">
-            <div class="logo-mark">tf</div>
-            <div class="logo-text">TRACEFAB</div>
-          </div>
-          <p style="max-width:300px;line-height:1.6;font-size:13px;color:var(--tf-text-muted);margin-bottom:18px;">
-            The data infrastructure behind the connected textile supply chain. From raw materials to Digital Product Passports.
-          </p>
-          <span style="font-size:11.5px;color:var(--tf-text-subtle);">Built with enterprise PostgreSQL on Neon and Clerk Authentication.</span>
-        </div>
-
-        <div class="footer-col">
-          <h4>Platform</h4>
-          <ul>
-            <li><a href="#how-it-works">How it works</a></li>
-            <li><a href="#supply-chain">Supply Chain Graph</a></li>
-            <li><a href="#product-intelligence">Product Intelligence</a></li>
-            <li><a href="/brand-console/?demo=1">Brand Console</a></li>
-            <li><a href="/supplier-portal/?demo=1">Supplier Portal</a></li>
-            <li><a href="/dpp/">Digital Product Passport (DPP)</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-col">
-          <h4>Compliance & Standards</h4>
-          <ul>
-            <li><a href="#dpp">EU ESPR Regulation</a></li>
-            <li><a href="#why-tracefab">CSRD ESRS E1-E5</a></li>
-            <li><a href="#why-tracefab">French AGEC Law (Article 13)</a></li>
-            <li><a href="#why-tracefab">German LkSG Act</a></li>
-            <li><a href="#why-tracefab">GOTS & OEKO-TEX Audit Trail</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-col">
-          <h4>Resources & Trust</h4>
-          <ul>
-            <li><a href="https://github.com/Huberaya/Tracefab" target="_blank" rel="noreferrer">GitHub Repository</a></li>
-            <li><a href="/api/config">System Status & Config</a></li>
-            <li><a href="/quality-center/">Quality Center (Internal)</a></li>
-            <li><a href="/operations/">Operations & Outbox</a></li>
-            <li><a href="#" onclick="openDemoModal();return false;">Security & Architecture Whitepaper</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="footer-bottom">
-        <span>© 2026 TRACEFAB Technologies Inc. All rights reserved.</span>
-        <span>Enterprise RegTech & Fashion Tech Architecture · Version 2.5</span>
+      <div style="margin-top:24px;font-size:11px;color:var(--tf-text-subtle);">
+        © 2026 TRACEFAB. All rights reserved.
       </div>
     </div>
   </footer>
 
   <!-- ==========================================================================
-       DEMO REQUEST MODAL
+       CLIENT SCRIPT FOR MULTILINGUAL NATIVE SUPPORT
        ========================================================================== -->
-  <div class="modal-backdrop" id="demo-modal">
-    <div class="modal-box">
-      <button class="modal-close-btn" onclick="closeDemoModal()" aria-label="Close modal">&times;</button>
-      <div class="eyebrow"><span class="eyebrow-pill">TRACEFAB Enterprise</span></div>
-      <h3 style="font-size:22px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">Request a platform demo</h3>
-      <p style="font-size:13.5px;color:var(--tf-text-muted);margin-bottom:20px;">
-        See how TRACEFAB connects Tier 1 to Tier 4 data for your textile collections.
-      </p>
-
-      <form onsubmit="handleDemoSubmit(event)">
-        <div class="form-group">
-          <label>Work Email</label>
-          <input type="email" class="form-input" required placeholder="name@brand.com">
-        </div>
-        <div class="form-group">
-          <label>Company / Brand Name</label>
-          <input type="text" class="form-input" required placeholder="e.g. Maison de Mode Paris">
-        </div>
-        <div class="form-group">
-          <label>Primary Focus</label>
-          <select class="form-input">
-            <option>EU DPP Readiness (CIRPASS)</option>
-            <option>CSRD & Supply Chain Traceability</option>
-            <option>Supplier Data Collection & Portal</option>
-            <option>Tier 1 to Tier 4 Verification</option>
-          </select>
-        </div>
-        <div style="margin-top:24px;display:flex;justify-content:flex-end;gap:10px;">
-          <button type="button" class="btn btn-secondary" onclick="closeDemoModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary">Schedule Demo</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <script>
-    /* ==========================================================================
-       INTERACTIVE CLIENT CONTROLLERS
-       ========================================================================== */
-
-    
-    /* ==========================================================================
-       I18N NATIVE CONTROLLER
-       ========================================================================== */
-    const I18N_DICTIONARIES = {};
-    let currentLang = 'en';
-
-    async function loadTranslations(lang) {
-      if (I18N_DICTIONARIES[lang]) return I18N_DICTIONARIES[lang];
-      try {
-        const res = await fetch("/locales/" + lang + "/translation.json");
-        if (res.ok) {
-          I18N_DICTIONARIES[lang] = await res.json();
-          return I18N_DICTIONARIES[lang];
-        }
-      } catch (err) {
-        console.warn(, err);
+    const translations = {
+      en: {
+        headline: "Let's Make Your Textile Supply Chain Truly Verifiable.",
+        lead: "Collect raw material evidence, reconcile Tier 1–4 supplier lot certificates, and automatically generate DPP-ready intelligence in seconds."
+      },
+      fr: {
+        headline: "Rendez Votre Chaîne Textile Réellement Vérifiable.",
+        lead: "Collectez les preuves de matières premières, réconciliez les certificats de lots fournisseurs Rang 1 à 4, et générez des passeports DPP en quelques secondes."
+      },
+      de: {
+        headline: "Machen Sie Ihre textile Lieferkette nachweisbar verifizierbar.",
+        lead: "Rohstoffnachweise erfassen, Lieferantenzertifikate der Stufen 1–4 abgleichen und in Sekundenschnelle DPP-fähige Daten generieren."
+      },
+      it: {
+        headline: "Rendiamo la tua filiera tessile veramente verificabile.",
+        lead: "Raccogli le prove delle materie prime, riconcilia i certificati dei lotti di livello 1–4 e genera passaporti digitali in pochi secondi."
+      },
+      es: {
+        headline: "Hagamos que su cadena textil sea verdaderamente verificable.",
+        lead: "Recopile pruebas de materias primas, concilie certificados de lotes de nivel 1 a 4 y genere pasaportes digitales en segundos."
+      },
+      nl: {
+        headline: "Maak uw textieltoeleveringsketen echt verifieerbaar.",
+        lead: "Verzamel grondstofbewijzen, reconcilieer leverancierscertificaten van Tier 1–4 en genereer binnen enkele seconden DPP-inzichten."
+      },
+      pt: {
+        headline: "Torne a sua cadeia têxtil verdadeiramente verificável.",
+        lead: "Recolha evidências de matérias-primas, reconcilie certificados de lotes de fornecedores Nível 1–4 e gere dados prontos para DPP em segundos."
       }
-      return null;
-    }
+    };
 
     function toggleLangMenu() {
-      const menu = document.getElementById('lang-menu-list');
-      if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+      const menu = document.getElementById('lang-dropdown-menu');
+      if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
     }
 
-    document.addEventListener('click', (e) => {
-      const btn = document.getElementById('lang-menu-btn');
-      const menu = document.getElementById('lang-menu-list');
-      if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
-        menu.style.display = 'none';
-      }
-    });
-
-    async function setLanguage(lang) {
-      const validLangs = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
-      if (!validLangs.includes(lang)) lang = 'en';
-      currentLang = lang;
+    function setLanguage(lang) {
+      if (!translations[lang]) return;
+      const h1 = document.querySelector('.hero-headline');
+      const lead = document.querySelector('.hero-lead');
+      if (h1) h1.textContent = translations[lang].headline;
+      if (lead) lead.textContent = translations[lang].lead;
+      const code = document.getElementById('current-lang-code');
+      if (code) code.textContent = lang.toUpperCase();
       localStorage.setItem('tracefab_lang', lang);
-
-      // Update URL search param without reloading page
-      const url = new URL(window.location);
-      url.searchParams.set('lang', lang);
-      window.history.replaceState({}, '', url);
-
-      document.getElementById('current-lang-code').textContent = lang.toUpperCase();
-      const menu = document.getElementById('lang-menu-list');
+      document.documentElement.lang = lang;
+      const menu = document.getElementById('lang-dropdown-menu');
       if (menu) menu.style.display = 'none';
-
-      const t = await loadTranslations(lang);
-      if (!t) return;
-
-      // 1. Update Document Metadata
-      document.title = t.seo.title;
-      document.querySelector('meta[name="description"]')?.setAttribute('content', t.seo.description);
-      document.querySelector('meta[property="og:title"]')?.setAttribute('content', t.seo.ogTitle);
-      document.querySelector('meta[property="og:description"]')?.setAttribute('content', t.seo.ogDescription);
-
-      // 2. Update Hero & Titles
-      const heroTitle = document.querySelector('.hero-title');
-      if (heroTitle) heroTitle.innerHTML = t.hero.title;
-      const heroSub = document.querySelector('.hero-subtitle');
-      if (heroSub) heroSub.innerHTML = t.hero.subtitle;
-      const heroBadge = document.querySelector('.eyebrow-pill');
-      if (heroBadge) heroBadge.textContent = t.hero.badge;
-
-      // 3. Update Pipeline Proof
-      const proofTags = document.querySelectorAll('.proof-node-tag');
-      if (proofTags.length >= 5) {
-        proofTags[0].textContent = t.hero.pipeline.supplierData;
-        proofTags[1].textContent = t.hero.pipeline.evidence;
-        proofTags[2].textContent = t.hero.pipeline.verification;
-        proofTags[3].textContent = t.hero.pipeline.traceability;
-        proofTags[4].textContent = t.hero.pipeline.dppReady;
-      }
-
-      // 4. Update Navigation
-      const navLinks = document.querySelectorAll('.nav-menu a');
-      if (navLinks.length >= 6) {
-        navLinks[0].textContent = t.nav.why;
-        navLinks[1].textContent = t.nav.how;
-        navLinks[2].textContent = t.nav.supplyChain;
-        navLinks[3].textContent = t.nav.productIntel;
-        navLinks[4].textContent = t.nav.dpp;
-        navLinks[5].textContent = t.nav.resources;
-      }
-
-      // 5. Update Signature Cards
-      const sigCards = document.querySelectorAll('.signature-step-card');
-      if (sigCards.length >= 6) {
-        sigCards[0].querySelector('h3').textContent = t.signature.step1Title;
-        sigCards[0].querySelector('p').textContent = t.signature.step1Desc;
-        sigCards[1].querySelector('h3').textContent = t.signature.step2Title;
-        sigCards[1].querySelector('p').textContent = t.signature.step2Desc;
-        sigCards[2].querySelector('h3').textContent = t.signature.step3Title;
-        sigCards[2].querySelector('p').textContent = t.signature.step3Desc;
-        sigCards[3].querySelector('h3').textContent = t.signature.step4Title;
-        sigCards[3].querySelector('p').textContent = t.signature.step4Desc;
-        sigCards[4].querySelector('h3').textContent = t.signature.step5Title;
-        sigCards[4].querySelector('p').textContent = t.signature.step5Desc;
-        sigCards[5].querySelector('h3').textContent = t.signature.step6Title;
-        sigCards[5].querySelector('p').textContent = t.signature.step6Desc;
-      }
     }
 
-    // Auto-detect on boot
-    window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlLang = urlParams.get('lang');
-      const savedLang = localStorage.getItem('tracefab_lang');
-      const navLang = (navigator.language || 'en').slice(0, 2);
-
-      const target = urlLang || savedLang || navLang || 'en';
-      setLanguage(target);
-    });
-
-    // 1. Demo Modal Handlers
-    function openDemoModal() {
-      document.getElementById('demo-modal').classList.add('open');
-    }
-    function closeDemoModal() {
-      document.getElementById('demo-modal').classList.remove('open');
-    }
-    function handleDemoSubmit(e) {
-      e.preventDefault();
-      alert("Thank you for your interest! A TRACEFAB supply chain specialist will contact your team within 24 hours.");
-      closeDemoModal();
+    function changeLanguage(lang) {
+      setLanguage(lang);
     }
 
-    // 2. Supply Chain Node Interactive Selection
-    const scData = {
-      'raw-mat': {
-        tier: 'Tier 4 · Raw Agricultural Origin',
-        title: 'Quinta de São Martinho',
-        loc: 'Alentejo, Portugal (PT) · GPS: 38.0151° N, 7.8632° W',
-        role: 'Regenerative Farming',
-        lot: 'LOT-PT-2026-CTN-089',
-        auditor: 'Control Union BV',
-        desc: 'Organic cotton cultivated under regenerative agriculture standards. Satellite polygon mapping confirms zero deforestation since 2018.',
-        doc: 'GOTS_Transaction_Certificate_TC2026.pdf',
-        certs: ['✓ GOTS v6.0 (#CU-881294)', '✓ Regenerative Organic Certified', '✓ Water Footprint Audit']
-      },
-      'fiber': {
-        tier: 'Tier 4 · Fiber Processing',
-        title: 'Descaroçador do Sul Lda',
-        loc: 'Évora, Portugal (PT) · GPS: 38.5714° N, 7.9135° W',
-        role: 'Ginning & Baling',
-        lot: 'GIN-BALE-2026-44',
-        auditor: 'CITEVE Portugal',
-        desc: 'Mechanical seed separation with zero chemical agents. Energy powered by on-site solar photovoltaic installation.',
-        doc: 'Fiber_Length_Micronaire_Report.pdf',
-        certs: ['✓ GOTS Fiber Certified', '✓ 100% Solar Energy Verified']
-      },
-      'spinning': {
-        tier: 'Tier 3 · Yarn Production',
-        title: 'Fiação Norte Lda',
-        loc: 'Guimarães, Portugal (PT) · GPS: 41.4425° N, 8.2918° W',
-        role: 'Rotor & Ring Spinning',
-        lot: 'YARN-30-1-COMBED-89',
-        auditor: 'CITEVE Portugal',
-        desc: 'Combed ring-spun yarn Ne 30/1 with high tensile strength (18.4 cN/tex) suitable for premium long-life jersey.',
-        doc: 'Yarn_Tensile_Strength_Report.pdf',
-        certs: ['✓ OEKO-TEX Standard 100', '✓ ISO 9001:2015 Quality System']
-      },
-      'knitting': {
-        tier: 'Tier 3 · Fabric Weaving & Knit',
-        title: 'Malhas do Ave Lda',
-        loc: 'Santo Tirso, Portugal (PT) · GPS: 41.3431° N, 8.4738° W',
-        role: 'Circular Jersey Knitting',
-        lot: 'FAB-JERSEY-185-NVY',
-        auditor: 'SGS Inspection Europe',
-        desc: '28-gauge circular knitting machine. Verified grammage at 185 g/m² (±1.5%) with shrinkage tolerance below 2.5%.',
-        doc: 'Knitting_Grammage_Report_185gsm.pdf',
-        certs: ['✓ GOTS Mill Certified', '✓ Better Cotton Initiative Member']
-      },
-      'dyeing': {
-        tier: 'Tier 2 · Wet Processing & Finishing',
-        title: 'Tinturaria Braga Lda',
-        loc: 'Braga, Portugal (PT) · GPS: 41.5454° N, 8.4265° W',
-        role: 'Closed-Loop Low-Impact Dyeing',
-        lot: 'DYE-NAVY-ECO-04',
-        auditor: 'Hohenstein Institute',
-        desc: 'Water recycling rate of 94% using membrane biological reactors. ZDHC MRSL Level 3 conformant dyes without heavy metals.',
-        doc: 'Effluent_Water_Analysis_Q1_2026.pdf',
-        certs: ['✓ OEKO-TEX STeP Level 3', '✓ ZDHC MRSL Level 3 Conformant']
-      },
-      'mfg': {
-        tier: 'Tier 1 · Assembly & Finishing',
-        title: 'Nhãn Textile Confeção',
-        loc: 'Porto, Portugal (PT) · GPS: 41.1579° N, 8.6291° W',
-        role: 'Cut, Make & Trim (CMT)',
-        lot: 'CMT-PO-2026-9921',
-        auditor: 'Bureau Veritas',
-        desc: 'Full assembly facility employing 120 skilled craftspeople. 100% living wage coverage confirmed with zero non-conformities.',
-        doc: 'SMETA_4Pillar_Social_Audit_2026.pdf',
-        certs: ['✓ SMETA 4-Pillar (Grade A)', '✓ ISO 14001 Environmental']
-      },
-      'product': {
-        tier: 'Finished Good · Retail Shelf',
-        title: 'Atelier Demo (Brand HQ)',
-        loc: 'Paris, France (FR) · CIRPASS Spec 1.2',
-        role: 'Public DPP Issuance',
-        lot: 'AT-ESS-001-NVY-2026',
-        auditor: 'TRACEFAB Continuous RegTech',
-        desc: 'Public Digital Product Passport ready for consumer QR scan. Cryptographic SHA-256 seal stored on Neon PostgreSQL ledger.',
-        doc: 'CIRPASS_DPP_Export_JSONLD.jsonld',
-        certs: ['✓ CIRPASS JSON-LD Spec 1.2', '✓ French AGEC Art. 13 Compliant']
-      }
-    };
-
-    function selectScNode(nodeKey) {
-      document.querySelectorAll('.sc-node-box').forEach(el => el.classList.remove('active'));
-      event.currentTarget.classList.add('active');
-
-      const d = scData[nodeKey];
-      if (!d) return;
-
-      document.getElementById('insp-tier').textContent = d.tier;
-      document.getElementById('insp-title').textContent = d.title;
-      document.getElementById('insp-loc').textContent = d.loc;
-      document.getElementById('insp-role').textContent = d.role;
-      document.getElementById('insp-lot').textContent = d.lot;
-      document.getElementById('insp-auditor').textContent = d.auditor;
-      document.getElementById('insp-desc').textContent = d.desc;
-      document.getElementById('insp-doc-name').textContent = d.doc;
-
-      const certsCont = document.getElementById('insp-certs');
-      certsCont.innerHTML = d.certs.map(c => `<span class="badge badge-verified">${c}</span>`).join('');
-    }
-
-    // 3. Product Intelligence Mockup Tab Switcher
-    const productTabContents = {
-      overview: `
-        <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:32px;">
-          <div>
-            <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:8px;">Fiber Composition Bill-of-Materials</h4>
-            <p style="font-size:13px;color:var(--tf-text-muted);margin-bottom:14px;">100% reconciled against physical yarn spinning logs and customs filings.</p>
-            <div class="bom-bar-wrap"><div class="bom-fill-1"></div><div class="bom-fill-2"></div></div>
-            <div style="display:grid;gap:10px;font-size:13px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;">
-                <div style="display:flex;align-items:center;gap:8px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--tf-emerald-500);"></div><strong>85% Organic Cotton (GOTS)</strong></div>
-                <span class="badge badge-verified">Tier 4 Provenance (PT)</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;">
-                <div style="display:flex;align-items:center;gap:8px;"><div style="width:8px;height:8px;border-radius:50%;background:#0284c7;"></div><strong>15% Recycled Cotton (GRS)</strong></div>
-                <span class="badge badge-certified">GRS Certified</span>
-              </div>
-            </div>
-          </div>
-          <div style="background:var(--tf-surface-soft);border:1px solid var(--tf-border-light);border-radius:var(--radius-lg);padding:18px;">
-            <div style="font-size:11px;font-weight:750;text-transform:uppercase;color:var(--tf-text-muted);margin-bottom:10px;">Audit & Compliance Readiness</div>
-            <div style="display:grid;gap:8px;font-size:12px;">
-              <div style="display:flex;justify-content:space-between;"><span>GOTS Transaction Certificate</span><strong style="color:var(--tf-emerald-500);">CU-881294 (Verified)</strong></div>
-              <div style="display:flex;justify-content:space-between;"><span>OEKO-TEX Standard 100</span><strong style="color:var(--tf-emerald-500);">Class 1 Valid 2026</strong></div>
-              <div style="display:flex;justify-content:space-between;"><span>SMETA 4-Pillar Social Audit</span><strong style="color:var(--tf-emerald-500);">Score A Valid 2028</strong></div>
-              <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px dashed var(--tf-border-medium);"><span>DPP Passport Eligibility</span><span class="badge badge-verified">94/100 Ready</span></div>
-            </div>
-          </div>
-        </div>
-      `,
-      composition: `
-        <div>
-          <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">Normalized Fiber Specifications</h4>
-          <p style="font-size:13px;color:var(--tf-text-muted);margin-bottom:16px;">European Textile Labeling Regulation (EU No 1007/2011) Conformant Schema.</p>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
-            <div style="background:var(--tf-surface-soft);padding:14px;border-radius:8px;"><span>Fiber Type</span><strong style="display:block;font-size:14px;margin-top:4px;">100% Plant-Derived Cellulosic</strong></div>
-            <div style="background:var(--tf-surface-soft);padding:14px;border-radius:8px;"><span>Spinning Method</span><strong style="display:block;font-size:14px;margin-top:4px;">Ring-Spun Combed</strong></div>
-            <div style="background:var(--tf-surface-soft);padding:14px;border-radius:8px;"><span>Fabric Weight</span><strong style="display:block;font-size:14px;margin-top:4px;">185 g/m² Single Jersey</strong></div>
-          </div>
-        </div>
-      `,
-      materials: `
-        <div>
-          <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">Connected Raw Materials Catalog</h4>
-          <p style="font-size:13px;color:var(--tf-text-muted);margin-bottom:16px;">Traceable directly to material lots in the brand inventory.</p>
-          <div style="display:grid;gap:8px;font-size:12.5px;">
-            <div style="padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;display:flex;justify-content:space-between;"><span>MAT-001: Coton biologique GOTS (Portugal)</span><strong style="color:var(--tf-emerald-500);">Tier 4 Verified</strong></div>
-            <div style="padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;display:flex;justify-content:space-between;"><span>MAT-002: Lin européen certifié (France)</span><strong style="color:var(--tf-emerald-500);">Tier 3 Verified</strong></div>
-          </div>
-        </div>
-      `,
-      suppliers: `
-        <div>
-          <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">Authorized Multi-Tier Supply Chain Partners</h4>
-          <p style="font-size:13px;color:var(--tf-text-muted);margin-bottom:14px;">All partners onboarded and verified through the TRACEFAB Supplier Portal.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;">
-            <div style="padding:12px;background:var(--tf-surface-soft);border-radius:8px;"><strong>Nhãn Textile Confeção (Tier 1)</strong><div style="color:var(--tf-text-muted);margin-top:3px;">Porto, Portugal · CMT Assembly</div></div>
-            <div style="padding:12px;background:var(--tf-surface-soft);border-radius:8px;"><strong>Tinturaria Braga Lda (Tier 2)</strong><div style="color:var(--tf-text-muted);margin-top:3px;">Braga, Portugal · Wet Dyeing</div></div>
-          </div>
-        </div>
-      `,
-      manufacturing: `
-        <div>
-          <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">Manufacturing Operations (AGEC Article 13)</h4>
-          <p style="font-size:13px;color:var(--tf-text-muted);margin-bottom:14px;">Required by French and European circular economy laws:</p>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:12px;">
-            <div style="padding:12px;background:var(--tf-surface-soft);border-radius:8px;"><span>Tissage / Tricotage</span><strong style="display:block;margin-top:3px;">Portugal (PT)</strong></div>
-            <div style="padding:12px;background:var(--tf-surface-soft);border-radius:8px;"><span>Teinture / Impression</span><strong style="display:block;margin-top:3px;">Portugal (PT)</strong></div>
-            <div style="padding:12px;background:var(--tf-surface-soft);border-radius:8px;"><span>Confection</span><strong style="display:block;margin-top:3px;">Portugal (PT)</strong></div>
-          </div>
-        </div>
-      `,
-      certifications: `
-        <div>
-          <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">Third-Party Standard Certifications</h4>
-          <div style="display:grid;gap:8px;font-size:12px;margin-top:12px;">
-            <div style="padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;display:flex;justify-content:space-between;"><span>GOTS v6.0 (CU-881294)</span><span class="badge badge-verified">Valid thru 2027</span></div>
-            <div style="padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;display:flex;justify-content:space-between;"><span>OEKO-TEX Standard 100 Class 1</span><span class="badge badge-verified">Valid thru 2026</span></div>
-          </div>
-        </div>
-      `,
-      documents: `
-        <div>
-          <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">Sealed Evidence Vault Files</h4>
-          <p style="font-size:13px;color:var(--tf-text-muted);margin-bottom:12px;">Immutable SHA-256 records rattachés au produit.</p>
-          <div style="display:grid;gap:8px;font-size:12px;">
-            <div style="padding:10px 14px;background:var(--tf-surface-soft);border-radius:8px;display:flex;justify-content:space-between;"><span>GOTS_Transaction_Certificate_TC2026.pdf (1.2 MB)</span><button class="btn btn-secondary btn-small" onclick="alert('Inspection de la preuve ouverte')">Inspecter</button></div>
-          </div>
-        </div>
-      `,
-      quality: `
-        <div>
-          <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">Granular Quality Center Metrics</h4>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px;">
-            <div style="background:var(--tf-surface-soft);padding:14px;border-radius:8px;"><span>Completeness</span><strong style="display:block;font-size:18px;color:var(--tf-emerald-500);margin-top:2px;">96%</strong></div>
-            <div style="background:var(--tf-surface-soft);padding:14px;border-radius:8px;"><span>Evidence</span><strong style="display:block;font-size:18px;color:var(--tf-emerald-500);margin-top:2px;">94%</strong></div>
-            <div style="background:var(--tf-surface-soft);padding:14px;border-radius:8px;"><span>Freshness</span><strong style="display:block;font-size:18px;color:var(--tf-emerald-500);margin-top:2px;">90%</strong></div>
-            <div style="background:var(--tf-surface-soft);padding:14px;border-radius:8px;"><span>Consistency</span><strong style="display:block;font-size:18px;color:var(--tf-emerald-500);margin-top:2px;">98%</strong></div>
-          </div>
-        </div>
-      `,
-      dpp: `
-        <div>
-          <h4 style="font-size:16px;font-weight:800;color:var(--tf-text-title);margin-bottom:6px;">CIRPASS JSON-LD Payload Ready</h4>
-          <p style="font-size:13px;color:var(--tf-text-muted);margin-bottom:14px;">Complies with European ESPR standard. Ready for consumer QR publication.</p>
-          <a href="/dpp/" target="_blank" class="btn btn-primary btn-sm">Preview Consumer DPP Page ↗</a>
-        </div>
-      `
-    };
-
-    function switchProductTab(tabKey) {
-      document.querySelectorAll('.m-tab-btn').forEach(btn => btn.classList.remove('active'));
-      event.currentTarget.classList.add('active');
-      const body = document.getElementById('product-tab-body');
-      body.innerHTML = productTabContents[tabKey] || productTabContents.overview;
-    }
-  </script>
-
-  <script>
-    function toggleTheme() {
-      const html = document.documentElement;
-      const isDark = html.getAttribute('data-theme') === 'dark';
-      const newTheme = isDark ? 'light' : 'dark';
-      html.setAttribute('data-theme', newTheme);
-      localStorage.setItem('tracefab_theme', newTheme);
-      updateThemeUI(newTheme);
-    }
-
-    function updateThemeUI(theme) {
-      const btn = document.getElementById('themeToggleBtn');
-      const icon = document.getElementById('themeIcon');
-      const label = document.getElementById('themeLabel');
-      if (!btn || !icon || !label) return;
-      if (theme === 'dark') {
-        icon.textContent = '☀️';
-        label.textContent = 'LIGHT MODE';
-        btn.style.borderColor = '#f59e0b';
-        btn.style.color = '#fbbf24';
-        btn.style.background = 'rgba(245, 158, 11, 0.15)';
-      } else {
-        icon.textContent = '🌙';
-        label.textContent = 'DARK (BOXBET)';
-        btn.style.borderColor = 'rgba(16,185,129,0.4)';
-        btn.style.color = '#10b981';
-        btn.style.background = '#07120e';
-      }
-    }
-
-    // Initialize theme from preference or default to dark if preferred
-    (function initTheme() {
-      const saved = localStorage.getItem('tracefab_theme') || 'dark'; // activate dark theme initially to showcase Boxbet
-      document.documentElement.setAttribute('data-theme', saved);
-      document.addEventListener('DOMContentLoaded', () => updateThemeUI(saved));
+    (function initLang() {
+      const savedLang = localStorage.getItem('tracefab_lang') || 'en';
+      const select = document.getElementById('globalLangSelector');
+      if (select) select.value = savedLang;
+      changeLanguage(savedLang);
     })();
   </script>
-
 </body>
 </html>
