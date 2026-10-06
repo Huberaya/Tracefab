@@ -1,0 +1,14 @@
+{
+  "key": "material-data-core",
+  "version": "1.0",
+  "subjectTypes": ["material"],
+  "title": "Material data core",
+  "description": "Versioned material composition and origin facts.",
+  "fields": [
+    { "fieldKey": "material_name", "label": "Material name", "dataType": "text", "required": true, "evidenceRequired": false, "validationRules": { "minLength": 2, "maxLength": 240 } },
+    { "fieldKey": "material_type", "label": "Material type", "dataType": "text", "required": true, "evidenceRequired": false, "validationRules": { "maxLength": 120 } },
+    { "fieldKey": "origin_country_code", "label": "Origin country", "dataType": "country", "required": false, "evidenceRequired": true, "validationRules": {} },
+    { "fieldKey": "recycled_content_percentage", "label": "Recycled content percentage", "dataType": "percentage", "required": false, "evidenceRequired": true, "validationRules": { "min": 0, "max": 100 } },
+    { "fieldKey": "composition", "label": "Composition", "dataType": "json", "required": false, "evidenceRequired": true, "validationRules": { "jsonShape": "material_composition" } }
+  ]
+}

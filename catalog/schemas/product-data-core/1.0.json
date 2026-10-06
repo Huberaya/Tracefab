@@ -1,0 +1,13 @@
+{
+  "key": "product-data-core",
+  "version": "1.0",
+  "subjectTypes": ["product", "data_request"],
+  "title": "Product data core",
+  "description": "Versioned product facts used to structure product records and data requests.",
+  "fields": [
+    { "fieldKey": "product_description", "label": "Product description", "dataType": "text", "required": true, "evidenceRequired": false, "validationRules": { "minLength": 10, "maxLength": 2000 } },
+    { "fieldKey": "country_of_manufacture", "label": "Country of manufacture", "dataType": "country", "required": true, "evidenceRequired": false, "validationRules": {} },
+    { "fieldKey": "main_material_percentage", "label": "Main material percentage", "dataType": "percentage", "required": true, "evidenceRequired": true, "validationRules": { "min": 0, "max": 100 } },
+    { "fieldKey": "material_composition", "label": "Material composition", "dataType": "json", "required": true, "evidenceRequired": true, "validationRules": { "jsonShape": "material_composition" } }
+  ]
+}

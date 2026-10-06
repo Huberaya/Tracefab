@@ -1,6 +1,7 @@
 import { createClerkClient } from '@clerk/backend';
 import { verifyWebhook } from '@clerk/backend/webhooks';
 import { membership_role, organization_type } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../_lib/prisma.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { json, methodNotAllowed } from '../../_lib/http.js';
@@ -106,6 +107,10 @@ function membershipData(data: ClerkEventData) {
   return { clerkOrganizationId, clerkUserId, clerkMembershipId, role };
 }
 
+async function logDirectoryAudit(organizationId: string, actorUserId: string | null, action: string, entityId: string | null, metadata: Record<string, unknown>) {
+  await prisma.audit_logs.create({ data: { organization_id: organizationId, actor_user_id: actorUserId, action, entity_type: 'clerk_directory', entity_id: entityId, metadata: metadata as Prisma.InputJsonValue } });
+}
+
 async function syncMembership(data: ClerkEventData) {
   const membership = membershipData(data);
   const user = await ensureUser(membership.clerkUserId, data);
@@ -113,27 +118,36 @@ async function syncMembership(data: ClerkEventData) {
   if (!organization) throw new Error('clerk_organization_not_synced');
   const existing = await prisma.organization_memberships.findUnique({ where: { clerkMembershipId: membership.clerkMembershipId } });
   if (existing) {
-    return prisma.organization_memberships.update({
+    const result = await prisma.organization_memberships.update({
       where: { id: existing.id },
       data: { organization_id: organization.id, user_id: user.id, status: 'active', joined_at: existing.joined_at ?? new Date() },
     });
+    await logDirectoryAudit(organization.id, user.id, 'clerk.membership.sync', result.id, { source: 'clerk_webhook', clerkMembershipId: membership.clerkMembershipId });
+    return result;
   }
   const byUser = await prisma.organization_memberships.findUnique({ where: { organization_id_user_id: { organization_id: organization.id, user_id: user.id } } });
   if (byUser) {
-    return prisma.organization_memberships.update({
+    const result = await prisma.organization_memberships.update({
       where: { id: byUser.id },
       data: { clerkMembershipId: membership.clerkMembershipId, status: 'active', joined_at: byUser.joined_at ?? new Date() },
     });
+    await logDirectoryAudit(organization.id, user.id, 'clerk.membership.sync', result.id, { source: 'clerk_webhook', clerkMembershipId: membership.clerkMembershipId });
+    return result;
   }
-  return prisma.organization_memberships.create({
+  const result = await prisma.organization_memberships.create({
     data: { clerkMembershipId: membership.clerkMembershipId, organization_id: organization.id, user_id: user.id, role: membership.role, status: 'active', joined_at: new Date() },
   });
+  await logDirectoryAudit(organization.id, user.id, 'clerk.membership.created', result.id, { source: 'clerk_webhook', clerkMembershipId: membership.clerkMembershipId });
+  return result;
 }
 
 async function revokeMembership(data: ClerkEventData) {
   const clerkMembershipId = stringValue(data.id);
   if (!clerkMembershipId) return;
-  await prisma.organization_memberships.updateMany({ where: { clerkMembershipId }, data: { status: 'revoked' } });
+  const membership = await prisma.organization_memberships.findUnique({ where: { clerkMembershipId }, select: { id: true, organization_id: true, user_id: true } });
+  if (!membership) return;
+  await prisma.organization_memberships.update({ where: { id: membership.id }, data: { status: 'revoked' } });
+  await logDirectoryAudit(membership.organization_id, membership.user_id, 'clerk.membership.revoked', membership.id, { source: 'clerk_webhook', clerkMembershipId });
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

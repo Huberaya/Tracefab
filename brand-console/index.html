@@ -169,6 +169,8 @@
         products: [],
         requests: [],
         questionnaires: [],
+        schemaCatalog: [],
+        schemaBindings: [],
         view: 'overview',
         activeOrganizationId: null,
         selectedRequest: null,
@@ -229,14 +231,16 @@
           { id: 'demo-request-2', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Origine et composition — Essentiel coton', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'submitted', dueAt: new Date(Date.now() + 2 * 86400000).toISOString(), completionPercentage: '100', lastActivityAt: new Date(Date.now() - 86400000).toISOString() },
         ];
         state.questionnaires = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Données produit, composition et fabrication.', itemCount: 5, requiredItemCount: 4 }];
+        state.schemaCatalog = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Faits produit versionnés.', subjectTypes: ['product', 'data_request'], fields: [] }];
+        state.schemaBindings = [];
       }
 
       async function sync() {
         state.loading = true; render();
         try {
           if (state.demo) { demoData(); state.loading = false; render(); return; }
-          const [me, orgs, supplierPayload, materials, products, requests, questionnaires] = await Promise.all([
-            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires')
+          const [me, orgs, supplierPayload, materials, products, requests, questionnaires, schemas] = await Promise.all([
+            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product')
           ]);
           state.user = me.user;
           state.memberships = me.memberships || [];
@@ -246,6 +250,7 @@
           state.products = products.products || [];
           state.requests = requests.requests || [];
           state.questionnaires = questionnaires.questionnaires || [];
+          state.schemaCatalog = schemas.schemas || [];
           const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
           state.activeOrganizationId = state.activeOrganizationId || brands[0]?.organization_id || null;
           state.loading = false;
@@ -356,7 +361,8 @@
           <div class="card panel" style="margin-top:17px"><div class="panel-head"><div><h2>Identifiants</h2><p class="meta" style="margin:5px 0 0">Les identifiants servent à relier cette référence aux systèmes externes.</p></div><span class="meta">${detail.identifiers?.length || 0} enregistré(s)</span></div>
             ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">Créé le ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">Enregistrer</button></div></form>`).join('')}</div>` : '<div class="empty" style="padding:12px 0 18px"><p>Aucun identifiant renseigné pour cette version.</p></div>'}
             <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>Type<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> Définir comme principal</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">Ajouter l’identifiant</button></div></form>
-          </div>`;
+          </div>
+          <div class="card panel" style="margin-top:17px"><div class="panel-head"><div><h2>Schémas rattachés</h2><p class="meta" style="margin:5px 0 0">Le schéma versionné décrit les champs attendus. Il ne constitue pas une preuve.</p></div><span class="meta">${state.schemaBindings.length} rattachement(s)</span></div>${state.schemaBindings.length ? `<div class="item-list">${state.schemaBindings.map((binding) => `<div class="item"><div><strong>${esc(binding.schemaKey)} · v${esc(binding.schemaVersion)}</strong><div class="meta">Rattaché le ${date(binding.createdAt)}</div></div></div>`).join('')}</div>` : '<div class="empty" style="padding:12px 0 18px"><p>Aucun schéma rattaché à ce produit.</p></div>'}<form id="schema-binding-form" class="form-grid" style="margin-top:18px"><label class="field-full">Schéma<select class="select" name="schemaIdentity" required>${state.schemaCatalog.filter((schema) => schema.subjectTypes?.includes('product')).map((schema) => `<option value="${esc(schema.key)}|${esc(schema.version)}">${esc(schema.title)} · v${esc(schema.version)}</option>`).join('') || '<option value="">Aucun schéma disponible</option>'}</select></label><div class="form-actions"><button class="btn btn-primary btn-small" type="submit" ${state.schemaCatalog.length ? '' : 'disabled'}>Rattacher le schéma</button></div></form></div>`;
       }
 
       function supplierDetailView() {
@@ -408,10 +414,19 @@
         state.modal = null; await sync(); await openRequest(created.request.id); notify('Demande créée et questionnaire préparé.');
       }
       async function openRequest(id) { state.view = 'requestDetail'; if (state.demo) { state.selectedRequest = state.requests.find((r) => r.id === id); render(); return; } state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(id)}`)).request; render(); }
-      async function openProduct(id) { state.view = 'productDetail'; state.selectedProduct = state.products.find((p) => p.id === id) || null; if (state.demo) { state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] }; render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(id)}`); render(); }
+      async function openProduct(id) { state.view = 'productDetail'; state.selectedProduct = state.products.find((p) => p.id === id) || null; if (state.demo) { state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] }; state.schemaBindings = []; render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(id)}`); state.schemaBindings = (await api(`/api/schema-bindings?subjectType=product&subjectId=${encodeURIComponent(id)}`)).bindings || []; render(); }
       async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: 'Partenaire actif' }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
       async function saveProduct(form) { const data = Object.fromEntries(new FormData(form)); const body = { ...data, sizeRange: String(data.sizeRange || '').split(',').map((x) => x.trim()).filter(Boolean), weightGrams: data.weightGrams ? Number(data.weightGrams) : null }; if (state.demo) { Object.assign(state.selectedProductDetail.product, body); state.selectedProduct = state.selectedProductDetail.product; notify('Produit mis à jour en mode démonstration.'); render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`, { method: 'PATCH', body: JSON.stringify(body) }); await sync(); notify('Données produit enregistrées.'); render(); }
       async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify('Nouvelle révision simulée.'); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify('Nouvelle révision créée.'); render(); }
+      async function saveSchemaBinding(form) {
+        if (!state.selectedProductDetail?.product) return;
+        const [schemaKey, schemaVersion] = String(new FormData(form).get('schemaIdentity') || '').split('|');
+        if (!schemaKey || !schemaVersion) return;
+        if (state.demo) { state.schemaBindings.push({ id: `demo-schema-${Date.now()}`, schemaKey, schemaVersion, subjectType: 'product', subjectId: state.selectedProductDetail.product.id, createdAt: new Date().toISOString() }); notify('Schéma rattaché en mode démonstration.'); render(); return; }
+        const result = await api('/api/schema-bindings', { method: 'POST', body: JSON.stringify({ schemaKey, schemaVersion, subjectType: 'product', subjectId: state.selectedProductDetail.product.id }) });
+        state.schemaBindings = [...state.schemaBindings.filter((binding) => binding.id !== result.binding.id), result.binding];
+        notify('Schéma rattaché au produit.'); render();
+      }
       async function refreshProductDetail() {
         if (!state.selectedProductDetail?.product) return;
         if (!state.demo) state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`);
@@ -509,6 +524,7 @@
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('product-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('schema-binding-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveSchemaBinding(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('material-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); }));
         document.getElementById('identifier-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveIdentifier(e.currentTarget).catch((err) => notify(err.message, true)); });
