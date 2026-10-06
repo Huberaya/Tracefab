@@ -6,6 +6,15 @@
   <title>TRACEFAB — Textile Supply Chain Data & DPP Infrastructure</title>
   <meta name="description" content="TRACEFAB helps fashion brands collect, structure, verify and connect supplier data — from raw materials to finished products. Turn fragmented supply chain evidence into trusted, DPP-ready product intelligence.">
 
+    <!-- International hreflang alternate tags -->
+  <link rel="alternate" hreflang="en" href="https://tracefab.vercel.app/?lang=en">
+  <link rel="alternate" hreflang="fr" href="https://tracefab.vercel.app/?lang=fr">
+  <link rel="alternate" hreflang="de" href="https://tracefab.vercel.app/?lang=de">
+  <link rel="alternate" hreflang="it" href="https://tracefab.vercel.app/?lang=it">
+  <link rel="alternate" hreflang="es" href="https://tracefab.vercel.app/?lang=es">
+  <link rel="alternate" hreflang="nl" href="https://tracefab.vercel.app/?lang=nl">
+  <link rel="alternate" hreflang="pt" href="https://tracefab.vercel.app/?lang=pt">
+  <link rel="alternate" hreflang="x-default" href="https://tracefab.vercel.app/">
   <!-- Open Graph -->
   <meta property="og:title" content="TRACEFAB — Turn your textile supply chain into trusted data.">
   <meta property="og:description" content="The data infrastructure behind the connected textile supply chain: STRUCTURED → DOCUMENTED → VERIFIED → TRACEABLE → DPP-READY.">
@@ -1318,7 +1327,24 @@
         </ul>
       </nav>
 
-      <div class="header-actions">
+            <div class="header-actions">
+        <!-- Language Switcher: EN | FR | DE | IT | ES | NL | PT -->
+        <div class="lang-dropdown" style="position:relative;display:inline-block;">
+          <button class="btn btn-secondary btn-sm" id="lang-menu-btn" onclick="toggleLangMenu()" style="padding:6px 10px;font-size:12px;gap:5px;border-radius:8px;">
+            <span id="current-lang-code" style="font-weight:700;">EN</span>
+            <span style="font-size:10px;opacity:0.6;">▼</span>
+          </button>
+          <div id="lang-menu-list" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:#ffffff;border:1px solid var(--tf-border-medium);border-radius:10px;box-shadow:var(--shadow-lg);padding:6px;min-width:140px;z-index:300;">
+            <button onclick="setLanguage('en')" class="lang-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;background:none;text-align:left;font-size:12px;cursor:pointer;border-radius:6px;"><span>English</span></button>
+            <button onclick="setLanguage('fr')" class="lang-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;background:none;text-align:left;font-size:12px;cursor:pointer;border-radius:6px;"><span>Français</span></button>
+            <button onclick="setLanguage('de')" class="lang-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;background:none;text-align:left;font-size:12px;cursor:pointer;border-radius:6px;"><span>Deutsch</span></button>
+            <button onclick="setLanguage('it')" class="lang-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;background:none;text-align:left;font-size:12px;cursor:pointer;border-radius:6px;"><span>Italiano</span></button>
+            <button onclick="setLanguage('es')" class="lang-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;background:none;text-align:left;font-size:12px;cursor:pointer;border-radius:6px;"><span>Español</span></button>
+            <button onclick="setLanguage('nl')" class="lang-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;background:none;text-align:left;font-size:12px;cursor:pointer;border-radius:6px;"><span>Nederlands</span></button>
+            <button onclick="setLanguage('pt')" class="lang-opt" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;background:none;text-align:left;font-size:12px;cursor:pointer;border-radius:6px;"><span>Português</span></button>
+          </div>
+        </div>
+
         <a href="/brand-console/?demo=1" class="btn btn-text">Sign in</a>
         <button class="btn btn-primary" onclick="openDemoModal()">Request a demo</button>
       </div>
@@ -2229,6 +2255,122 @@
     /* ==========================================================================
        INTERACTIVE CLIENT CONTROLLERS
        ========================================================================== */
+
+    
+    /* ==========================================================================
+       I18N NATIVE CONTROLLER
+       ========================================================================== */
+    const I18N_DICTIONARIES = {};
+    let currentLang = 'en';
+
+    async function loadTranslations(lang) {
+      if (I18N_DICTIONARIES[lang]) return I18N_DICTIONARIES[lang];
+      try {
+        const res = await fetch("/locales/" + lang + "/translation.json");
+        if (res.ok) {
+          I18N_DICTIONARIES[lang] = await res.json();
+          return I18N_DICTIONARIES[lang];
+        }
+      } catch (err) {
+        console.warn(, err);
+      }
+      return null;
+    }
+
+    function toggleLangMenu() {
+      const menu = document.getElementById('lang-menu-list');
+      if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = document.getElementById('lang-menu-btn');
+      const menu = document.getElementById('lang-menu-list');
+      if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+        menu.style.display = 'none';
+      }
+    });
+
+    async function setLanguage(lang) {
+      const validLangs = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
+      if (!validLangs.includes(lang)) lang = 'en';
+      currentLang = lang;
+      localStorage.setItem('tracefab_lang', lang);
+
+      // Update URL search param without reloading page
+      const url = new URL(window.location);
+      url.searchParams.set('lang', lang);
+      window.history.replaceState({}, '', url);
+
+      document.getElementById('current-lang-code').textContent = lang.toUpperCase();
+      const menu = document.getElementById('lang-menu-list');
+      if (menu) menu.style.display = 'none';
+
+      const t = await loadTranslations(lang);
+      if (!t) return;
+
+      // 1. Update Document Metadata
+      document.title = t.seo.title;
+      document.querySelector('meta[name="description"]')?.setAttribute('content', t.seo.description);
+      document.querySelector('meta[property="og:title"]')?.setAttribute('content', t.seo.ogTitle);
+      document.querySelector('meta[property="og:description"]')?.setAttribute('content', t.seo.ogDescription);
+
+      // 2. Update Hero & Titles
+      const heroTitle = document.querySelector('.hero-title');
+      if (heroTitle) heroTitle.innerHTML = t.hero.title;
+      const heroSub = document.querySelector('.hero-subtitle');
+      if (heroSub) heroSub.innerHTML = t.hero.subtitle;
+      const heroBadge = document.querySelector('.eyebrow-pill');
+      if (heroBadge) heroBadge.textContent = t.hero.badge;
+
+      // 3. Update Pipeline Proof
+      const proofTags = document.querySelectorAll('.proof-node-tag');
+      if (proofTags.length >= 5) {
+        proofTags[0].textContent = t.hero.pipeline.supplierData;
+        proofTags[1].textContent = t.hero.pipeline.evidence;
+        proofTags[2].textContent = t.hero.pipeline.verification;
+        proofTags[3].textContent = t.hero.pipeline.traceability;
+        proofTags[4].textContent = t.hero.pipeline.dppReady;
+      }
+
+      // 4. Update Navigation
+      const navLinks = document.querySelectorAll('.nav-menu a');
+      if (navLinks.length >= 6) {
+        navLinks[0].textContent = t.nav.why;
+        navLinks[1].textContent = t.nav.how;
+        navLinks[2].textContent = t.nav.supplyChain;
+        navLinks[3].textContent = t.nav.productIntel;
+        navLinks[4].textContent = t.nav.dpp;
+        navLinks[5].textContent = t.nav.resources;
+      }
+
+      // 5. Update Signature Cards
+      const sigCards = document.querySelectorAll('.signature-step-card');
+      if (sigCards.length >= 6) {
+        sigCards[0].querySelector('h3').textContent = t.signature.step1Title;
+        sigCards[0].querySelector('p').textContent = t.signature.step1Desc;
+        sigCards[1].querySelector('h3').textContent = t.signature.step2Title;
+        sigCards[1].querySelector('p').textContent = t.signature.step2Desc;
+        sigCards[2].querySelector('h3').textContent = t.signature.step3Title;
+        sigCards[2].querySelector('p').textContent = t.signature.step3Desc;
+        sigCards[3].querySelector('h3').textContent = t.signature.step4Title;
+        sigCards[3].querySelector('p').textContent = t.signature.step4Desc;
+        sigCards[4].querySelector('h3').textContent = t.signature.step5Title;
+        sigCards[4].querySelector('p').textContent = t.signature.step5Desc;
+        sigCards[5].querySelector('h3').textContent = t.signature.step6Title;
+        sigCards[5].querySelector('p').textContent = t.signature.step6Desc;
+      }
+    }
+
+    // Auto-detect on boot
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlLang = urlParams.get('lang');
+      const savedLang = localStorage.getItem('tracefab_lang');
+      const navLang = (navigator.language || 'en').slice(0, 2);
+
+      const target = urlLang || savedLang || navLang || 'en';
+      setLanguage(target);
+    });
 
     // 1. Demo Modal Handlers
     function openDemoModal() {
