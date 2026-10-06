@@ -61,7 +61,10 @@ const routes: Route[] = [
   { pattern: /^supplier\/sites$/, params: [], load: () => import('./_routes/supplier/sites.js') },
   { pattern: /^suppliers\/([^\/]+)\/profile\/submit$/, params: ['supplierId'], load: () => import('./_routes/suppliers/[supplierId]/profile/submit.js') },
   { pattern: /^suppliers\/([^\/]+)\/profile$/, params: ['supplierId'], load: () => import('./_routes/suppliers/[supplierId]/profile.js') },
-  { pattern: /^suppliers$/, params: [], load: () => import('./_routes/suppliers.js') }
+  { pattern: /^suppliers$/, params: [], load: () => import('./_routes/suppliers.js') },
+  { pattern: /^traceability\/mass\-balance$/, params: [], load: () => import('./_routes/traceability/mass-balance.js') },
+  { pattern: /^traceability\/lineage\-graph$/, params: [], load: () => import('./_routes/traceability/lineage-graph.js') },
+  { pattern: /^traceability\/audit\-chain$/, params: [], load: () => import('./_routes/traceability/audit-chain.js') }
 ];
 
 function requestPath(req: VercelRequest) {
