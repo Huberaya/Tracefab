@@ -29,6 +29,8 @@
     "test:supplier-portal:browser": "node scripts/test_supplier_portal_browser.mjs",
     "test:questionnaires": "node scripts/test_questionnaires.mjs",
     "test:p1-quality": "node scripts/test_p1_quality.mjs",
+    "test:p2:certification-catalog": "node scripts/test_p2_certification_catalog.mjs",
+    "test:p2:staging": "node scripts/test_p2_staging.mjs",
     "test:chantier1": "node scripts/test_chantier1_core.mjs",
     "test:chantier2": "node scripts/test_chantier2_supplier.mjs",
     "test:chantier3": "node scripts/test_chantier3_quality.mjs",

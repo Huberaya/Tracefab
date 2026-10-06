@@ -1,0 +1,91 @@
+{
+  "catalogVersion": "2026.10",
+  "title": "Tracefab textile certification standards reference",
+  "disclaimer": "This catalogue identifies standards and evidence fields only. A catalogue entry is not proof that an organization, product or material is certified.",
+  "standards": [
+    {
+      "code": "GOTS",
+      "name": "Global Organic Textile Standard",
+      "issuer": "Global Standard gGmbH",
+      "referenceVersion": "7.0",
+      "scope": "organic_textiles",
+      "evidenceKinds": ["scope_certificate", "transaction_certificate", "test_report"],
+      "requiredFields": ["certificate_number", "issuer_name", "issued_at", "expires_at", "scope_description"],
+      "officialUrl": "https://global-standard.org/the-standard/general-description",
+      "catalogStatus": "active",
+      "claimCaveat": "Certification status and scope must be checked against the certificate and issuing body; the catalogue does not validate either."
+    },
+    {
+      "code": "OEKO-TEX-STANDARD-100",
+      "name": "OEKO-TEX STANDARD 100",
+      "issuer": "OEKO-TEX Association",
+      "referenceVersion": "01.2026",
+      "scope": "harmful_substances_textiles",
+      "evidenceKinds": ["certificate", "test_report"],
+      "requiredFields": ["certificate_number", "issuer_name", "issued_at", "expires_at", "product_class", "scope_description"],
+      "officialUrl": "https://www.oeko-tex.com/en/our-standards/standard-100-by-oeko-tex",
+      "catalogStatus": "active",
+      "claimCaveat": "The product class and certificate scope must be retained with the evidence; a STANDARD 100 entry is not a safety or certification conclusion by Tracefab."
+    },
+    {
+      "code": "GRS",
+      "name": "Global Recycled Standard",
+      "issuer": "Textile Exchange",
+      "referenceVersion": "4.0",
+      "scope": "recycled_content_and_chain_of_custody",
+      "evidenceKinds": ["scope_certificate", "transaction_certificate"],
+      "requiredFields": ["certificate_number", "issuer_name", "issued_at", "expires_at", "scope_description", "recycled_content_claim"],
+      "officialUrl": "https://textileexchange.org/standards/global-recycled-standard/",
+      "catalogStatus": "active",
+      "claimCaveat": "Recycled content, scope and chain-of-custody claims require the applicable certificate and transaction evidence."
+    },
+    {
+      "code": "RCS",
+      "name": "Recycled Claim Standard",
+      "issuer": "Textile Exchange",
+      "referenceVersion": "2.0",
+      "scope": "recycled_content_and_chain_of_custody",
+      "evidenceKinds": ["scope_certificate", "transaction_certificate"],
+      "requiredFields": ["certificate_number", "issuer_name", "issued_at", "expires_at", "scope_description", "recycled_content_claim"],
+      "officialUrl": "https://textileexchange.org/standards/recycled-claim-standard/",
+      "catalogStatus": "active",
+      "claimCaveat": "The catalogue records the declared standard only; it does not establish recycled content or certification validity."
+    },
+    {
+      "code": "OCS",
+      "name": "Organic Content Standard",
+      "issuer": "Textile Exchange",
+      "referenceVersion": "3.0",
+      "scope": "organic_content_and_chain_of_custody",
+      "evidenceKinds": ["scope_certificate", "transaction_certificate"],
+      "requiredFields": ["certificate_number", "issuer_name", "issued_at", "expires_at", "scope_description", "organic_content_claim"],
+      "officialUrl": "https://textileexchange.org/standards/organic-content-standard/",
+      "catalogStatus": "active",
+      "claimCaveat": "Organic content and chain-of-custody claims require independent evidence; a declared OCS record remains unverified."
+    },
+    {
+      "code": "ISO-14001",
+      "name": "Environmental management systems",
+      "issuer": "International Organization for Standardization",
+      "referenceVersion": "2026",
+      "scope": "environmental_management_system",
+      "evidenceKinds": ["certificate", "audit_report"],
+      "requiredFields": ["certificate_number", "issuer_name", "issued_at", "expires_at", "scope_description", "sites_in_scope"],
+      "officialUrl": "https://www.iso.org/standard/60857.html",
+      "catalogStatus": "active",
+      "claimCaveat": "ISO does not certify organizations itself; the certificate and accredited certification body remain the evidence source."
+    },
+    {
+      "code": "ISO-9001",
+      "name": "Quality management systems",
+      "issuer": "International Organization for Standardization",
+      "referenceVersion": "2015",
+      "scope": "quality_management_system",
+      "evidenceKinds": ["certificate", "audit_report"],
+      "requiredFields": ["certificate_number", "issuer_name", "issued_at", "expires_at", "scope_description", "sites_in_scope"],
+      "officialUrl": "https://www.iso.org/standard/62085.html",
+      "catalogStatus": "active",
+      "claimCaveat": "ISO does not certify organizations itself; the certificate and accredited certification body remain the evidence source."
+    }
+  ]
+}
