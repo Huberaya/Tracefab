@@ -31,13 +31,13 @@
     "build": "npm run db:generate && npm run typecheck && npm run api:typecheck && npm run schema:static"
   },
   "devDependencies": {
+    "@prisma/client": "^6.19.0",
     "playwright": "^1.63.0",
     "prisma": "^6.19.0",
     "typescript": "^5.9.2"
   },
   "dependencies": {
     "@clerk/backend": "^3.18.1",
-    "@prisma/client": "^6.19.0",
     "@vercel/node": "^13.0.2"
   },
   "type": "module"

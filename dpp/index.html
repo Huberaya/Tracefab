@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Passeport Numérique de Produit — Essentiel Coton Biologique | TRACEFAB</title>
+  <meta name="description" content="Passeport Numérique de Produit (DPP) certifié ESPR / CIRPASS pour le style Essentiel Coton Biologique par Atelier Demo. Données de traçabilité, composition et réparabilité.">
+
+  <!-- Open Graph / Meta -->
+  <meta property="og:title" content="DPP — Essentiel Coton Biologique">
+  <meta property="og:description" content="Traçabilité certifiée de la fibre au vêtement fini. Conforme Règlementation Européenne ESPR.">
+  <meta property="og:type" content="product">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- CIRPASS / ESPR Compliant JSON-LD Digital Product Passport schema -->
+  <script type="application/ld+json" id="dpp-jsonld">
+  {
+    "@context": [
+      "https://schema.org",
+      { "espr": "https://ec.europa.eu/commission/presscorner/detail/en/ip_24_1749#" }
+    ],
+    "@type": "Product",
+    "identifier": "urn:epc:id:sgtin:3760123456.001.2026",
+    "name": "Essentiel Coton Biologique",
+    "model": "AT-ESS-001",
+    "sku": "AT-ESS-001-NVY-M",
+    "gtin": "3760123456789",
+    "brand": {
+      "@type": "Brand",
+      "name": "Atelier Demo",
+      "legalName": "Atelier Demo SAS"
+    },
+    "description": "T-shirt en jersey de coton biologique peigné 185g/m², confectionné au Portugal dans le respect des normes sociales SMETA et environnementales GOTS.",
+    "countryOfOrigin": "PT",
+    "countryOfDesign": "FR",
+    "material": [
+      {
+        "@type": "DefinedTerm",
+        "name": "Coton biologique peigné (GOTS Certified)",
+        "percentage": 85,
+        "termCode": "COTTON_BIO",
+        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Coton recyclé pré-consommation (GRS Certified)",
+        "percentage": 15,
+        "termCode": "COTTON_REC",
+        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
+      }
+    ],
+    "certifications": [
+      {
+        "standard": "Global Organic Textile Standard (GOTS)",
+        "certificateNumber": "CU-881294-GOTS-2026",
+        "issuer": "Control Union",
+        "status": "active"
+      },
+      {
+        "standard": "OEKO-TEX Standard 100",
+        "certificateNumber": "21.HPT.94112",
+        "issuer": "Hohenstein Institute",
+        "status": "active"
+      }
+    ],
+    "traceability": {
+      "tier4_raw_fiber": { "country": "PT", "facility": "Quinta de São Martinho", "provenance": "100% Coton régénératif" },
+      "tier3_spinning": { "country": "PT", "facility": "Fiação Norte Lda", "process": "Filage fil peigné Ne 30/1" },
+      "tier3_weaving": { "country": "PT", "facility": "Malhas do Ave", "process": "Tricotage jersey circulaire" },
+      "tier2_dyeing": { "country": "PT", "facility": "Tinturaria Braga Lda", "process": "Teinture à bas impact environnemental" },
+      "tier1_assembly": { "country": "PT", "facility": "Nhãn Textile Confeção", "process": "Coupe, couture et repassage" }
+    },
+    "repairAndCare": {
+      "washingInstructions": "Lavage 30°C cycle délicat. Séchage à l'air libre conseillé. Repassage doux sur envers.",
+      "recyclabilityRate": "98%",
+      "repairServicesUrl": "https://atelier-demo.fr/repair-program",
+      "takeBackUrl": "https://atelier-demo.fr/second-life"
+    },
+    "verificationSignature": {
+      "signedBy": "TRACEFAB Cryptographic Ledger",
+      "timestamp": "2026-10-06T06:50:00Z",
+      "evidenceHash": "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+  </script>
+
+  <style>
+    :root {
+      --primary: #0b7656;
+      --primary-hover: #07523e;
+      --primary-soft: #e4f3ec;
+      --primary-glow: rgba(11, 118, 86, 0.2);
+
+      --forest-900: #081712;
+      --forest-800: #0e241c;
+      --forest-700: #14352a;
+
+      --bg-page: #f8faf8;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f2;
+
+      --text-main: #13221b;
+      --text-muted: #56675e;
+      --text-subtle: #88988f;
+
+      --border-light: #e4ede7;
+      --border-medium: #cfded4;
+
+      --status-verified: #0b7656;
+      --status-verified-bg: #e4f3ec;
+      --status-certified: #047857;
+      --status-certified-bg: #d1fae5;
+      --status-documented: #4f46e5;
+      --status-documented-bg: #eef2ff;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 26px;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 2px 6px rgba(11, 27, 20, 0.04);
+      --shadow-md: 0 8px 24px rgba(11, 27, 20, 0.07);
+      --shadow-lg: 0 16px 40px rgba(11, 27, 20, 0.1);
+
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 70px;
+    }
+
+    /* Container for Mobile First DPP Experience */
+    .dpp-container {
+      width: min(580px, 100%);
+      margin: 0 auto;
+      background: var(--bg-surface);
+      min-height: 100vh;
+      border-left: 1px solid var(--border-light);
+      border-right: 1px solid var(--border-light);
+      box-shadow: var(--shadow-md);
+      position: relative;
+    }
+
+    /* Top Brand & Regulation Header */
+    .dpp-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-light);
+      background: rgba(255, 255, 255, 0.95);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+    }
+    .brand-id {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--forest-900);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .brand-text strong {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      display: block;
+      line-height: 1.1;
+    }
+    .brand-text span {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .badge-eu {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      color: #3730a3;
+      border-radius: var(--radius-full);
+      font-size: 10.5px;
+      font-weight: 750;
+      letter-spacing: 0.02em;
+    }
+    .badge-eu svg {
+      width: 14px;
+      height: 14px;
+      color: #4338ca;
+    }
+
+    /* Hero Product Section */
+    .product-hero {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--border-light);
+      background: radial-gradient(circle at top right, #e8f5ed 0%, transparent 65%);
+    }
+    .product-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+      background: var(--primary-soft);
+      padding: 3px 9px;
+      border-radius: var(--radius-full);
+      margin-bottom: 10px;
+    }
+    .product-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 8px;
+    }
+    .product-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .product-summary {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* Trust Pill Bar */
+    .trust-pill-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 18px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .trust-badge-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 11.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      box-shadow: var(--shadow-sm);
+    }
+    .trust-badge-item.verified {
+      background: var(--status-verified-bg);
+      color: var(--status-verified);
+      border-color: #bbf7d0;
+    }
+
+    /* Tabbed Navigation inside DPP */
+    .dpp-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-light);
+      background: var(--bg-surface);
+      position: sticky;
+      top: 65px;
+      z-index: 40;
+    }
+    .dpp-tab-btn {
+      flex: 1;
+      padding: 13px 8px;
+      text-align: center;
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .dpp-tab-btn:hover {
+      color: var(--text-main);
+    }
+    .dpp-tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    /* Section Wrapper */
+    .tab-content-panel {
+      padding: 24px 20px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+
+    /* Composition Section */
+    .composition-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .comp-bar {
+      height: 12px;
+      border-radius: var(--radius-full);
+      background: #e6ede8;
+      display: flex;
+      overflow: hidden;
+      margin: 12px 0 16px;
+    }
+    .comp-fill-1 { width: 85%; background: var(--primary); }
+    .comp-fill-2 { width: 15%; background: #0284c7; }
+
+    .comp-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 13px;
+    }
+    .comp-item:last-child {
+      border-bottom: none;
+    }
+    .comp-item-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .comp-bullet {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* Supply Chain Flow Timeline (Vertical on Mobile) */
+    .trace-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+      margin-top: 14px;
+    }
+    .trace-timeline::before {
+      content: "";
+      position: absolute;
+      top: 24px;
+      bottom: 24px;
+      left: 20px;
+      width: 2px;
+      background: #d4e2d8;
+      z-index: 1;
+    }
+    .timeline-node {
+      display: flex;
+      gap: 16px;
+      position: relative;
+      z-index: 2;
+    }
+    .node-pin {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--bg-surface);
+      border: 2px solid var(--primary);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 10px var(--primary-glow);
+      font-size: 14px;
+    }
+    .node-body {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      flex: 1;
+      box-shadow: var(--shadow-sm);
+    }
+    .node-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+    .node-header strong {
+      font-size: 13.5px;
+      font-weight: 750;
+    }
+    .node-tier-tag {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-soft);
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+    }
+    .node-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .node-proof {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border-light);
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Environmental & Repair Section */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .info-card {
+      background: var(--bg-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      border: 1px solid var(--border-light);
+    }
+    .info-card span {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .info-card strong {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .info-card p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* Care & Repair Guide */
+    .care-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 13px;
+    }
+    .care-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--bg-subtle);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+    .care-text strong {
+      display: block;
+      font-size: 13px;
+    }
+    .care-text span {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    /* Verification Badge & Proof Signature */
+    .signature-card {
+      margin: 24px 20px 0;
+      background: var(--forest-900);
+      color: #fff;
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .signature-card::before {
+      content: "";
+      position: absolute;
+      top: -30px;
+      right: -30px;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: rgba(11, 118, 86, 0.35);
+    }
+    .sig-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .sig-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: #10b981;
+      color: #081712;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 12px;
+    }
+    .sig-top strong {
+      font-size: 13px;
+      letter-spacing: -0.02em;
+    }
+    .sig-hash {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 8px 10px;
+      border-radius: 6px;
+      word-break: break-all;
+      color: #a3bfb2;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 10px;
+    }
+
+    /* JSON-LD Drawer & Modal */
+    .jsonld-action-bar {
+      margin: 18px 20px 0;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-action {
+      flex: 1;
+      padding: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-medium);
+      background: var(--bg-surface);
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-action:hover {
+      background: var(--bg-subtle);
+    }
+    .btn-action-primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn-action-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Raw JSON-LD Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 23, 18, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      place-items: center;
+      padding: 20px;
+    }
+    .modal-overlay.open {
+      display: grid;
+    }
+    .modal-window {
+      background: #ffffff;
+      border-radius: var(--radius-xl);
+      max-width: 650px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    .modal-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .code-box {
+      background: var(--forest-900);
+      color: #a7f3d0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.5;
+      padding: 16px;
+      border-radius: var(--radius-md);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* Footer in DPP */
+    .dpp-footer {
+      padding: 24px 20px;
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--text-subtle);
+      border-top: 1px solid var(--border-light);
+      margin-top: 30px;
+    }
+    .dpp-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dpp-container">
+
+    <!-- Header with Brand & EU Standard Badge -->
+    <header class="dpp-header">
+      <div class="brand-id">
+        <div class="brand-mark">AD</div>
+        <div class="brand-text">
+          <strong>Atelier Demo</strong>
+          <span>Paris, France</span>
+        </div>
+      </div>
+      <div class="badge-eu">
+        <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        EU ESPR / DPP Conforme
+      </div>
+    </header>
+
+    <!-- Product Summary Hero -->
+    <div class="product-hero">
+      <span class="product-tag">Passeport Numérique Officiel</span>
+      <h1 class="product-title">Essentiel Coton Biologique</h1>
+      <div class="product-meta-row">
+        <span>SKU: AT-ESS-001</span>
+        <span>•</span>
+        <span>GTIN: 3760123456789</span>
+        <span>•</span>
+        <span>Batch: 2026-FW</span>
+      </div>
+      <p class="product-summary">
+        T-shirt iconique en jersey de coton biologique régénératif 185g/m². Tracé de la graine au vêtement confectionné avec 100% de preuves documentées.
+      </p>
+
+      <div class="trust-pill-bar">
+        <span class="trust-badge-item verified">✓ 100% Matières Certifiées</span>
+        <span class="trust-badge-item">GOTS Certified</span>
+        <span class="trust-badge-item">OEKO-TEX Class 1</span>
+        <span class="trust-badge-item">Fabriqué au Portugal</span>
+      </div>
+    </div>
+
+    <!-- Interactive Navigation Tabs -->
+    <nav class="dpp-tabs" aria-label="Sections du Passeport">
+      <button class="dpp-tab-btn active" data-tab="materials">Matières (2)</button>
+      <button class="dpp-tab-btn" data-tab="traceability">Traçabilité (5)</button>
+      <button class="dpp-tab-btn" data-tab="impact">Impact & Soin</button>
+      <button class="dpp-tab-btn" data-tab="evidence">Audit & Certificats</button>
+    </nav>
+
+    <!-- TAB 1: Matières & Composition -->
+    <section class="tab-content-panel" id="panel-materials">
+      <div class="section-title">
+        <span>Composition & Origine des Fibres</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;">100% Tracé</span>
+      </div>
+      <p class="section-desc">Déclaration vérifiée conformément au règlement textile européen et contrôlée par tiers accrédité.</p>
+
+      <div class="composition-card">
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:750;">
+          <span>Composition totale</span>
+          <span>185 g/m²</span>
+        </div>
+
+        <div class="comp-bar">
+          <div class="comp-fill-1"></div>
+          <div class="comp-fill-2"></div>
+        </div>
+
+        <div class="comp-item">
+          <div class="comp-item-title">
+            <div class="comp-bullet" style="background:var(--primary);"></div>
+            <div>
+              <strong>85% Coton Biologique Peigné</strong>
+              <div style="font-size:11px;color:var(--text-muted);">Origine : Portugal (Ferme São Martinho)</div>
+            </div>
+          </div>
+          <span style="font-weight:750;color:var(--primary);">GOTS v6.0</span>
+        </div>
+
+        <div class="comp-item">
+          <div class="comp-item-title">
+            <div class="comp-bullet" style="background:#0284c7;"></div>
+            <div>
+              <strong>15% Coton Recyclé Pré-consommation</strong>
+              <div style="font-size:11px;color:var(--text-muted);">Revalorisation des chutes de coupe d'atelier</div>
+            </div>
+          </div>
+          <span style="font-weight:750;color:#0284c7;">GRS Certified</span>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <span>Substances Chimiques</span>
+          <strong>0% Toxiques</strong>
+          <p>Conforme REACH & OEKO-TEX Standard 100.</p>
+        </div>
+        <div class="info-card">
+          <span>Microfibres Plastiques</span>
+          <strong>0 g / lavage</strong>
+          <p>100% fibres naturelles biodégradables.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Traçabilité Multi-Échelon -->
+    <section class="tab-content-panel" id="panel-traceability" style="display:none;">
+      <div class="section-title">
+        <span>Chaîne de Contrôle & Usines</span>
+        <span style="font-size:11px;background:var(--primary-soft);color:var(--primary);padding:3px 8px;border-radius:99px;font-weight:700;">5 Échelons Validés</span>
+      </div>
+      <p class="section-desc">Chaque étape industrielle est certifiée par un certificat de transaction (TC) audité.</p>
+
+      <div class="trace-timeline">
+        <!-- Tier 4 -->
+        <div class="timeline-node">
+          <div class="node-pin">🌱</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong>Culture de la Fibre</strong>
+              <span class="node-tier-tag">Tier 4</span>
+            </div>
+            <div class="node-sub">Quinta de São Martinho · Alentejo, Portugal</div>
+            <div class="node-proof">✓ Certificat GOTS #CU-881294</div>
+          </div>
+        </div>
+
+        <!-- Tier 3 Spinning -->
+        <div class="timeline-node">
+          <div class="node-pin">🧵</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong>Filature & Peignage</strong>
+              <span class="node-tier-tag">Tier 3</span>
+            </div>
+            <div class="node-sub">Fiação Norte Lda · Guimarães, Portugal</div>
+            <div class="node-proof">✓ Fil peigné haute résistance Ne 30/1</div>
+          </div>
+        </div>
+
+        <!-- Tier 3 Weaving -->
+        <div class="timeline-node">
+          <div class="node-pin">🧶</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong>Tricotage Jersey</strong>
+              <span class="node-tier-tag">Tier 3</span>
+            </div>
+            <div class="node-sub">Malhas do Ave · Santo Tirso, Portugal</div>
+            <div class="node-proof">✓ Maille circulaire jauge 28</div>
+          </div>
+        </div>
+
+        <!-- Tier 2 Dyeing -->
+        <div class="timeline-node">
+          <div class="node-pin">💧</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong>Ennoblissement & Teinture</strong>
+              <span class="node-tier-tag">Tier 2</span>
+            </div>
+            <div class="node-sub">Tinturaria Braga Lda · Braga, Portugal</div>
+            <div class="node-proof">✓ Circuit fermé & traitement des rejets (STeP)</div>
+          </div>
+        </div>
+
+        <!-- Tier 1 Assembly -->
+        <div class="timeline-node">
+          <div class="node-pin">✂️</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong>Coupe, Confection & Finitions</strong>
+              <span class="node-tier-tag">Tier 1</span>
+            </div>
+            <div class="node-sub">Nhãn Textile Manufacturing · Porto, Portugal</div>
+            <div class="node-proof">✓ Audit social SMETA 4-Pillar (Score A)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Impact & Soin / Réparation -->
+    <section class="tab-content-panel" id="panel-impact" style="display:none;">
+      <div class="section-title">
+        <span>Conseils d'Entretien & Réparabilité</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;">Indice: 9.2/10</span>
+      </div>
+      <p class="section-desc">Prolonger la durée de vie de votre vêtement divise par 3 son empreinte carbone globale.</p>
+
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:18px;">
+        <div class="care-row">
+          <div class="care-icon">🧺</div>
+          <div class="care-text">
+            <strong>Lavage délicat à 30°C</strong>
+            <span>Préserve les fibres de coton et réduit la consommation d'énergie de 60%.</span>
+          </div>
+        </div>
+        <div class="care-row">
+          <div class="care-icon">💨</div>
+          <div class="care-text">
+            <strong>Séchage naturel à l'air libre</strong>
+            <span>Le sèche-linge fragilise les coutures et consomme 1.5 kWh par cycle.</span>
+          </div>
+        </div>
+        <div class="care-row">
+          <div class="care-icon">🪡</div>
+          <div class="care-text">
+            <strong>Programme de Réparation Gratuit</strong>
+            <span>Coutures et ourlets réparables à vie via notre réseau partenaire.</span>
+          </div>
+        </div>
+        <div class="care-row" style="border-bottom:none;">
+          <div class="care-icon">♻️</div>
+          <div class="care-text">
+            <strong>Recyclabilité : 98%</strong>
+            <span>Fibre monocoton réintroduisible dans les filatures européennes de recyclage.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <span>Bilan Carbone Estimé</span>
+          <strong>2.8 kg CO₂e</strong>
+          <p>Soit 45% de moins que la moyenne de l'industrie (ADEME base carbone).</p>
+        </div>
+        <div class="info-card">
+          <span>Consommation d'eau</span>
+          <strong>-72% d'eau</strong>
+          <p>Irrigation raisonnée et récupération d'eau de pluie.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Evidence & Certificats -->
+    <section class="tab-content-panel" id="panel-evidence" style="display:none;">
+      <div class="section-title">
+        <span>Certificats & Preuves Légales</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;">Audité</span>
+      </div>
+      <p class="section-desc">Documents officiels opposables aux audits de conformité de l'Union Européenne et DGCCRF.</p>
+
+      <div style="display:grid;gap:12px;">
+        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <strong>Global Organic Textile Standard (GOTS)</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Certificat : CU-881294-GOTS-2026</div>
+            </div>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Valide 2027</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Organisme certificateur accrédité : Control Union Certification B.V.</div>
+        </div>
+
+        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <strong>OEKO-TEX Standard 100 — Classe 1</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Rapport : 21.HPT.94112</div>
+            </div>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Valide 2026</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Contrôle analytique d'absence de résidus chimiques nocifs (Hohenstein).</div>
+        </div>
+
+        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <strong>Audit Social SMETA 4-Pillar (Éthique & Sécurité)</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Réf : SEDEX-SMETA-2026-PT</div>
+            </div>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Conforme</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Rémunération décente, santé au travail et droits syndicaux audités.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cryptographic Signature Card -->
+    <div class="signature-card">
+      <div class="sig-top">
+        <div class="sig-logo">tf</div>
+        <div>
+          <strong>Scellé par le registre immuable TRACEFAB</strong>
+          <div style="font-size:10.5px;color:#a3bfb2;">Horodatage et preuve cryptographique Neon PostgreSQL</div>
+        </div>
+      </div>
+      <div class="sig-hash">
+        SHA-256 : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="jsonld-action-bar">
+      <button class="btn-action btn-action-primary" id="btn-export-jsonld">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Exporter JSON-LD CIRPASS
+      </button>
+      <button class="btn-action" id="btn-view-raw">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        Voir code source ESPR
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dpp-footer">
+      <p>Passeport Numérique conforme au Règlement Éco-conception de l'Union Européenne (ESPR).</p>
+      <p style="margin-top:6px;">Propulsé par <a href="/" target="_blank">TRACEFAB Textile Intelligence</a> · © 2026</p>
+    </footer>
+
+  </div>
+
+  <!-- Modal Raw JSON-LD Viewer -->
+  <div class="modal-overlay" id="modal-jsonld">
+    <div class="modal-window">
+      <div class="modal-head">
+        <strong>Spécification CIRPASS JSON-LD</strong>
+        <button id="modal-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Ce payload normalisé peut être interrogé directement par les douanes européennes, les auditeurs CSRD ou les applications de tri textile.</p>
+        <div class="code-box" id="json-code-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // Tab switching logic
+      const tabs = document.querySelectorAll('.dpp-tab-btn');
+      const panels = {
+        materials: document.getElementById('panel-materials'),
+        traceability: document.getElementById('panel-traceability'),
+        impact: document.getElementById('panel-impact'),
+        evidence: document.getElementById('panel-evidence')
+      };
+
+      tabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          btn.classList.add('active');
+          const target = btn.dataset.tab;
+          Object.keys(panels).forEach(k => {
+            if (panels[k]) panels[k].style.display = (k === target) ? 'block' : 'none';
+          });
+        });
+      });
+
+      // JSON-LD Export and Modal
+      const jsonContent = document.getElementById('dpp-jsonld').textContent.trim();
+      const modal = document.getElementById('modal-jsonld');
+      const codeContainer = document.getElementById('json-code-container');
+      const btnViewRaw = document.getElementById('btn-view-raw');
+      const btnClose = document.getElementById('modal-close');
+      const btnExport = document.getElementById('btn-export-jsonld');
+
+      btnViewRaw.addEventListener('click', () => {
+        try {
+          const formatted = JSON.stringify(JSON.parse(jsonContent), null, 2);
+          codeContainer.textContent = formatted;
+        } catch (e) {
+          codeContainer.textContent = jsonContent;
+        }
+        modal.classList.add('open');
+      });
+
+      btnClose.addEventListener('click', () => modal.classList.remove('open'));
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.remove('open');
+      });
+
+      btnExport.addEventListener('click', () => {
+        const blob = new Blob([jsonContent], { type: 'application/ld+json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'dpp-at-ess-001-cirpass.jsonld';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    })();
+  </script>
+</body>
+</html>
