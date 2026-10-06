@@ -10,6 +10,7 @@ coverage/
 *.log
 uploads/
 .cache/
+.browser-libs/
 .config/
 .npm/
 .sudo_as_admin_successful
