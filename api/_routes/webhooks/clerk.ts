@@ -53,6 +53,18 @@ async function upsertUserFromClerkEvent(event: ClerkEventData) {
 async function ensureUser(clerkUserId: string, data: ClerkEventData) {
   const existing = await prisma.user.findUnique({ where: { clerkUserId } });
   if (existing) return existing;
+
+  const publicUserData = data.public_user_data && typeof data.public_user_data === 'object' ? data.public_user_data as ClerkEventData : {};
+  const identifier = stringValue(publicUserData.identifier);
+  if (identifier?.includes('@')) {
+    const fullName = [stringValue(publicUserData.first_name), stringValue(publicUserData.last_name)].filter(Boolean).join(' ') || identifier;
+    return prisma.user.upsert({
+      where: { clerkUserId },
+      create: { clerkUserId, email: identifier.toLowerCase(), fullName },
+      update: { email: identifier.toLowerCase(), fullName },
+    });
+  }
+
   const secretKey = process.env.CLERK_SECRET_KEY?.trim();
   if (!secretKey) throw new Error('missing_clerk_secret_key');
   const clerkUser = await createClerkClient({ secretKey }).users.getUser(clerkUserId);
