@@ -142,7 +142,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, { ok: true, eventType });
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : 'unknown_error';
-    console.error('POST /api/webhooks/clerk failed', { eventType, errorCode });
-    return json(res, 400, { error: 'invalid_clerk_webhook' });
+    const databaseCode = typeof error === 'object' && error && 'code' in error && typeof error.code === 'string' && /^P\d+$/.test(error.code) ? `database_${error.code.toLowerCase()}` : null;
+    const publicError = eventType === 'unknown'
+      ? 'invalid_clerk_webhook'
+      : (errorCode.startsWith('clerk_') ? errorCode : databaseCode || 'clerk_sync_failed');
+    console.error('POST /api/webhooks/clerk failed', { eventType, errorCode, databaseCode });
+    return json(res, 400, { error: publicError, eventType });
   }
 }
