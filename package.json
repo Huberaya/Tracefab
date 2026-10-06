@@ -23,6 +23,7 @@
     "test:questionnaires": "node scripts/test_questionnaires.mjs",
     "test:p1-quality": "node scripts/test_p1_quality.mjs",
     "test:chantier1": "node scripts/test_chantier1_core.mjs",
+    "test:chantier2": "node scripts/test_chantier2_supplier.mjs",
     "test:email": "node scripts/test_email_delivery.mjs",
     "schema:static": "python3 scripts/validate_schema.py",
     "db:neon:build": "python3 scripts/build_neon_migration.py",
