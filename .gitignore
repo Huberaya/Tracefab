@@ -20,3 +20,5 @@ uploads/
 
 # Visual regression output (screenshots, reports)
 .visual/
+.gh_token
+*.token
