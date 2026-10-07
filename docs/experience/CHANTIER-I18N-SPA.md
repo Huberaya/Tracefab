@@ -441,3 +441,72 @@ La commande de vérification retire le filtre `browser` : 45 tests au lieu de 41
 - **`\"` dans une chaîne de remplacement Python s'écrit littéralement.** Six
   `onclick` ont reçu des contre-obliques parasites, inoffensives dans un
   littéral gabarit mais invisibles au test. Compter les `\"` avant/après.
+
+## Fait — tranche 6b (portail fournisseur, second bloc)
+
+Périmètre : matières, données structurées, équipe & accès, coffre de preuves,
+partage/passeport, bilan massique & TC, CAP, Quality Center, détail de demande,
+modale d'import BOM. **Le portail est terminé : 13/13 vues + la modale.**
+
+**211 clés × 9 langues** (109 au bloc 1, 102 au bloc 2) : la racine `portal`
+passe de 167 à **378 clés**. Sept chaînes de démonstration anglicisées.
+
+### Ce que l'extraction a appris
+
+Le dump du DOM ne suffisait pas. Trois filets successifs ont été nécessaires,
+chacun rattrapant ce que le précédent laissait filer :
+
+1. **DOM rendu** (212 chaînes) — rate tout ce qui vit dans une branche non
+   affichée en mode démonstration.
+2. **Nœuds et attributs de la source** (145 chaînes) — rate les littéraux JS.
+3. **Littéraux JS cités** (67 chaînes, dont **42 inédites**) — c'est là que se
+   cachaient les 26 `notify()` en dur, le ternaire
+   `canManage ? 'Gestion autorisée' : 'Lecture seule'` et les valeurs de repli
+   du type `'Ville non renseignée'`.
+
+S'arrêter au premier filet aurait laissé près d'un tiers du portail en français.
+
+### Trois pièges de remplacement
+
+- **Le repli « texte nu » a frappé une chaîne JS dans un ternaire**, produisant
+  `'${t('spMgmtAllowed')}'` — syntaxiquement mort. `node --check` a bloqué avant
+  toute écriture. Les chaînes citées se remplacent entières
+  (`'FR'` → `t('cle')`), jamais par injection de `${}`.
+- **Les mots courts (`Nom`, `Date`, `Actif`, `Autre`) ont leur propre mode
+  strict** : uniquement `>texte<` et `"texte"`, jamais le repli texte nu, qui
+  frapperait un identifiant JS homonyme.
+- **Un emoji ou un préfixe littéral doit rester hors de la clé** :
+  `'✓ Conforme ESPR (100%)'` devient `'✓ ' + t('spEsprOk')`.
+
+### Un résidu de la tranche 6a réparé
+
+La 6a avait coupé « Aucune preuve privée » en `t('spNoEvidence') + ' privée'`,
+ce qui affichait **« No evidence privée »** en anglais. La branche n'était pas
+rendue en mode démonstration, donc la sonde DOM ne pouvait pas la voir : c'est
+l'extraction en source qui l'a sortie. Remplacé par `spNoPrivateEvidence`.
+
+### Format CSV de l'import BOM
+
+Le format documenté est passé en anglais
+(`Material; Percentage; Type; Country; Standard; LicenseNumber; SupplierBatch`).
+Vérifié dans `api/_lib/bom-importer.ts` l.57-63 : `findColIndex` compare en
+`includes` sur une liste d'alias qui contient déjà les termes anglais. Le
+contrat serveur est donc intact.
+
+### Quatre tests repointés
+
+`test_quality_cap_chantier5.mjs`, `test_universal_passport_chantier6.mjs` et
+`test_p1_bom_importer.mjs` épinglaient de la copie française du balisage.
+Chacun reçoit les deux assertions habituelles — le balisage appelle `t('<clé>')`
+**et** `fr.json portal.<clé>` conserve le libellé d'origine — validées par
+contrôle négatif. Les deux premiers utilisent l'idiome `fs`/`path` synchrone du
+fichier hôte, pas `readFile`.
+
+### Vérifications
+
+- 45 tests verts · `npm run build` OK · `tsc --noEmit` OK
+- Sonde Playwright, portail en anglais, 13 vues + détail de demande + modale
+  BOM : **307 chaînes rendues, 0 résiduel français**, 0 `pageerror`.
+- Contrôles de locale : FR `Équipe fournisseur` / `Lecteur`, DE `Lieferantenteam`
+  / `Leser`, ZH `供应商团队` / `查看者`.
+- Personas CEO 6/6 · Conformité 4/4 · Fournisseur 4/4.

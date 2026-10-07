@@ -75,7 +75,14 @@ console.log('✓ Public Verifiable Passport Viewer (passport/index.html) verifie
 const supplierPortalPath = path.resolve('supplier-portal/index.html');
 const supplierPortal = fs.readFileSync(supplierPortalPath, 'utf8');
 assert(supplierPortal.includes('passportView'), 'Supplier portal must implement passportView');
-assert(supplierPortal.includes('Passeport Fournisseur Universel « 1-Clic »'), 'Supplier portal must display Universal Passport title');
+// La copie n'est plus en dur : le balisage appelle la cle, et le catalogue
+// francais conserve le libelle d'origine.
+assert(supplierPortal.includes("t('spPassportTitle')"), 'Supplier portal must display Universal Passport title');
+assert(
+  JSON.parse(fs.readFileSync(path.resolve('assets/i18n/fr.json'), 'utf8'))
+    .portal?.spPassportTitle === 'Passeport Fournisseur Universel « 1-Clic »',
+  'fr.json portal.spPassportTitle must keep the original French wording'
+);
 assert(supplierPortal.includes('passport-settings-form'), 'Supplier portal must have settings form');
 assert(supplierPortal.includes('review-passport-request'), 'Supplier portal must have review request action');
 console.log('✓ Supplier Portal UI/UX integration verified');

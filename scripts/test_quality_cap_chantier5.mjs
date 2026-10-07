@@ -72,7 +72,14 @@ console.log('✓ Brand Console UI/UX integration verified');
 // 6. Verify Supplier Portal UX
 const supplierPortalPath = path.resolve('supplier-portal/index.html');
 const supplierPortal = fs.readFileSync(supplierPortalPath, 'utf8');
-assert(supplierPortal.includes('Plans d’Actions Correctives Reçus (CAP / 8D)'), 'Supplier portal must display received CAPs');
+// La copie n'est plus en dur : le balisage appelle la cle, et le catalogue
+// francais conserve le libelle d'origine.
+assert(supplierPortal.includes("t('spCapTitle')"), 'Supplier portal must display received CAPs');
+assert(
+  JSON.parse(fs.readFileSync(path.resolve('assets/i18n/fr.json'), 'utf8'))
+    .portal?.spCapTitle === 'Plans d’Actions Correctives Reçus (CAP / 8D)',
+  'fr.json portal.spCapTitle must keep the original French wording'
+);
 assert(supplierPortal.includes('cap-submit-form'), 'Supplier portal must provide remediation submission form');
 assert(supplierPortal.includes('submitCapRemediation'), 'Supplier portal must implement submitCapRemediation function');
 console.log('✓ Supplier Portal UI/UX integration verified');
