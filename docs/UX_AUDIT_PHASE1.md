@@ -1478,10 +1478,19 @@ qualité → 5 « Non mesuré », « ÉTAT : À revoir », 0 erreur.
 Le repli lui-même était fabriqué : `const prodCount = state.products.length || 1248;` — un
 catalogue vide affichait les 1 248 produits du brief.
 
-La revendication la plus grave était **« Conformité AGEC Art. 13 : 100% »** : le Chantier 10 a
-établi que `prisma/schema.prisma` ne contient **aucune** colonne `agec`, donc `frenchAgecArt13`
-vaut structurellement `false`. Le tableau de bord affirmait une conformité que le système ne peut
-pas établir.
+La revendication la plus grave était **« Conformité AGEC Art. 13 : 100% »** : un pourcentage de
+conformité affiché alors qu'aucune donnée AGEC n'est saisie nulle part. Le tableau de bord
+affirmait une conformité que rien ne mesurait.
+
+> **Correction apportée au Chantier 21.** Ce paragraphe affirmait que `frenchAgecArt13` « vaut
+> structurellement `false` » faute de colonnes `agec` au schéma. **C'est faux.**
+> `validateDppCompliance()` ne lit pas la base : `api/_routes/dpp/validate.ts` reçoit un
+> `CirpassDppPayload` dans le corps d'un `POST`, et un appelant qui envoie
+> `frenchAgecArticle13: { tissageTricotage, teintureImpression, confection }` obtient bien
+> `frenchAgecArt13: true`. Le critère est satisfaisable. Ce qui est vrai, c'est que **rien ne
+> collecte ni ne persiste** ces données : aucun produit du système n'en porte, donc en pratique le
+> critère n'est jamais rempli. La suppression du « 100% » affiché reste justifiée, mais au motif
+> « aucune donnée », pas « impossible ».
 
 ### Ce qui a été fait
 
@@ -1909,10 +1918,15 @@ auditables.'`, `|| 'UE'`.
 
 **La plus grave était une déclaration légale.** Le pass Apple portait : *« Ce passeport produit
 est certifié conforme au Règlement Écoconception ESPR 2024/1781 et à la loi AGEC article 13. »*
-Le pass Google portait un module `CONFORMITÉ — ESPR UE 2024 / Loi AGEC Art. 13`. Or
-`api/_lib/dpp-validator.ts:134` calcule `frenchAgecArt13` à partir de colonnes `agec.*`
-absentes de `prisma/schema.prisma` : le critère est structurellement toujours faux. Le pass
-affirmait donc une conformité que le système ne peut pas établir.
+Le pass Google portait un module `CONFORMITÉ — ESPR UE 2024 / Loi AGEC Art. 13`.
+
+> **Correction apportée au Chantier 21.** J'écrivais ici que le critère était « structurellement
+> toujours faux » parce que `dpp-validator.ts:134` lirait des colonnes `agec.*` absentes du schéma.
+> **C'est faux** : le validateur est sans état et travaille sur un payload fourni par l'appelant,
+> jamais sur Prisma. L'affirmation du pass restait néanmoins injustifiée — elle sortait d'un
+> générateur qui ne consultait **aucune** évaluation de conformité, `standardsPassed` n'existant
+> pas dans `DppPassData`. Le pass déclarait une conformité qu'il n'avait pas vérifiée ; il ne
+> déclarait pas une conformité impossible.
 
 Enfin, les deux routes `api/_routes/dpp/[gtin]/{apple,google}-wallet.ts` faisaient
 `resolved || getFallbackDppData(gtinOrRef)` puis **généraient un pass signé et répondaient
@@ -1970,5 +1984,80 @@ sur 62**.
 
 Le pass n'affirme plus rien de faux, mais il n'affirme **rien** tant que l'ACV n'est pas
 saisie : la plupart des produits réels produiront un pass entièrement « Non mesuré ». Combler
-cela demande une saisie PEF, pas un correctif. Et le critère `frenchAgecArt13` reste
-structurellement insatisfaisable tant que les 8 colonnes AGEC manquent au schéma.
+cela demande une saisie PEF, pas un correctif.
+
+> **Correction apportée au Chantier 21** : cette phrase ajoutait que `frenchAgecArt13` resterait
+> « structurellement insatisfaisable » tant que les colonnes AGEC manquent au schéma. Faux, pour la
+> raison donnée plus haut. Le vrai manque est une **saisie** AGEC, pas une migration.
+
+---
+
+## Chantier 21 — Le dernier appelant qui laissait le résumé deviner le profil
+
+### Correction d'une affirmation fausse, répétée depuis le Chantier 10
+
+Trois passages de ce document (Chantiers 10 et 20) affirmaient que `frenchAgecArt13` était
+**structurellement toujours faux**, au motif que `dpp-validator.ts:134` lirait des colonnes
+`agec.*` absentes de `prisma/schema.prisma`.
+
+**C'est faux.** Vérifié : `validateDppCompliance()` est sans état et ne touche jamais à Prisma.
+Son seul appelant, `api/_routes/dpp/validate.ts`, reçoit un `CirpassDppPayload` dans le corps
+d'un `POST` (`body.payload`). Un appelant qui envoie
+`frenchAgecArticle13: { tissageTricotage, teintureImpression, confection }` obtient bien
+`frenchAgecArt13: true`. Le critère est satisfaisable ; il n'est simplement **jamais rempli en
+pratique**, parce que rien ne collecte ni ne persiste ces données. Les corrections sont
+insérées aux trois endroits, sans réécrire l'histoire.
+
+J'ai failli enchaîner sur une migration de schéma AGEC pour « réparer » cette impossibilité
+inexistante. Ajouter 8 colonnes à `prisma/schema.prisma` sans pouvoir appliquer la migration
+aurait cassé toutes les requêtes sur le modèle concerné.
+
+### Ce qui était réellement cassé
+
+`buildDppSummary(record, id, version, profile)` prend un profil optionnel ; sans lui, la
+résolution retombe sur `declaredBlocking ?? persistedBlocking ?? true`, donc **les neuf
+exigences deviennent bloquantes**. C'est le bug du Chantier 18.
+
+Sur les **quatre** points d'appel de route, trois passaient le profil. Le quatrième non :
+
+| Fichier | Profil passé |
+|---|---|
+| `api/_routes/gs1/digital-link/[gtin].ts:106` | oui |
+| `api/_routes/products/[productId]/dpp.ts:82` | oui |
+| `api/_routes/products/[productId]/dpp.ts:87` | oui |
+| `api/_routes/products/[productId]/dpp/publish-review.ts:82` | **non** |
+
+Et c'était précisément **l'endpoint qui valide la publication** — celui où un ensemble
+d'exigences bloquantes erroné a le plus de portée.
+
+### Ce qui a été fait
+
+`publish-review.ts` relit le profil et le transmet. Point important : il le relit depuis
+**l'enregistrement** que `tracefab_mark_dpp_ready_to_publish()` vient de produire
+(`requirement_profile_key` / `requirement_profile_version`), et non depuis le corps de la
+requête — c'est le profil que le calcul de readiness a réellement appliqué. Le
+`product_version` est lui aussi repris de l'enregistrement au lieu du `1` codé en dur ailleurs.
+
+### La garde qui manquait
+
+Les 23 contrôles de `test:dpp-blocking` exerçaient la fonction réelle mais **n'auraient pas
+détecté** ce bug : ils appellent `buildDppSummary` directement, jamais via une route.
+
+Section **I** ajoutée : elle parcourt tout `api/_routes/`, extrait chaque appel
+`buildDppSummary(` avec un parseur de parenthèses appariées, compte les arguments de premier
+niveau et exige `>= 4`. **28 contrôles, 0 échec.**
+
+**Contre-épreuve** : avec `publish-review.ts` débranché (restauré depuis git), la section I
+tombe — `FAIL … (2 arguments)`, **exit 1**. Rebranché, **28/28, exit 0**.
+
+### Vérification
+
+`api:typecheck` **98 = 98**, aucune erreur sur `publish-review`. `test:dpp-blocking`
+**28/28**. Suite complète : voir le résultat ci-dessous.
+
+### Ce que cela ne règle pas
+
+Comme au Chantier 18, le profil semé déclare les neuf exigences bloquantes : la sortie
+observable ne change donc pas encore. Le correctif supprime une divergence latente qui se
+manifestera dès qu'un profil non bloquant sera semé. Et la saisie AGEC reste à construire —
+c'est une collecte de données, pas une migration.

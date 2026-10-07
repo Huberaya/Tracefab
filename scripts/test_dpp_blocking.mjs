@@ -16,7 +16,8 @@
  *
  *   npm run test:dpp-blocking
  */
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { readdir, readFile, mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
@@ -180,6 +181,52 @@ assert(
   published.some((i) => i.blocking === false),
   'le champ publié peut désormais exprimer « recommandé »',
 );
+
+console.log('\nI. Aucun appelant de route ne laisse le résumé deviner le profil');
+/* buildDppSummary(record, id) sans profil retombe sur `true` : les neuf exigences
+   deviennent bloquantes. Le bug du Chantier 18 était exactement cela, et il a survécu
+   sur publish-review. On contrôle donc tous les points d'appel, pas seulement la
+   fonction. */
+function callArguments(source, startIndex) {
+  let depth = 0;
+  let args = 1;
+  for (let i = startIndex; i < source.length; i += 1) {
+    const char = source[i];
+    if (char === '(') depth += 1;
+    else if (char === ')') {
+      depth -= 1;
+      if (depth === 0) return args;
+    } else if (char === ',' && depth === 1) args += 1;
+  }
+  return args;
+}
+
+const routeFiles = [];
+async function collectRoutes(dir) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) await collectRoutes(full);
+    else if (entry.name.endsWith('.ts')) routeFiles.push(full);
+  }
+}
+await collectRoutes(join(root.pathname, 'api/_routes'));
+
+let callSites = 0;
+for (const file of routeFiles) {
+  const source = await readFile(file, 'utf8');
+  let index = source.indexOf('buildDppSummary(');
+  while (index !== -1) {
+    callSites += 1;
+    const argCount = callArguments(source, index + 'buildDppSummary'.length);
+    const relative = file.replace(root.pathname, '');
+    assert(
+      argCount >= 4,
+      `${relative} passe le profil à buildDppSummary (${argCount} arguments)`,
+    );
+    index = source.indexOf('buildDppSummary(', index + 1);
+  }
+}
+assert(callSites >= 4, `les ${callSites} points d'appel de route ont été contrôlés`);
 
 await rm(outDir, { recursive: true, force: true });
 

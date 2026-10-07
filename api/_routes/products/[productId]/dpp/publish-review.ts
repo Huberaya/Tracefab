@@ -5,7 +5,11 @@ import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 import { accessibleProduct } from '../../../../_lib/quality.js';
-import { buildDppSummary, fetchLatestDppRecord } from '../../../../_lib/dpp.js';
+import {
+  buildDppSummary,
+  fetchDppRequirementProfile,
+  fetchLatestDppRecord,
+} from '../../../../_lib/dpp.js';
 
 function routeProductId(req: VercelRequest) {
   const value = req.query.productId;
@@ -79,7 +83,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
 
       const updatedRecord = updatedRows[0];
-      return buildDppSummary(updatedRecord, productId);
+
+      // Le profil décide de ce qui est bloquant ; le résumé ne doit pas le deviner.
+      // On relit ici celui que la procédure stockée a réellement appliqué (porté par
+      // l'enregistrement), et non un défaut : sans profil, buildDppSummary retombe sur
+      // `true` et déclare bloquantes les neuf exigences. C'est sur cet endpoint — celui
+      // qui valide la publication — que l'erreur a le plus de portée.
+      const profile = await fetchDppRequirementProfile(
+        tx,
+        updatedRecord.requirement_profile_key,
+        updatedRecord.requirement_profile_version,
+      );
+
+      return buildDppSummary(
+        updatedRecord,
+        productId,
+        updatedRecord.product_version,
+        profile,
+      );
     });
 
     if (!result) {
