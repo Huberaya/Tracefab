@@ -1,0 +1,694 @@
+{
+ "meta": {
+  "title": "TRACEFAB — La couche d’intelligence de la chaîne textile mondiale",
+  "description": "TRACEFAB relie données fournisseurs, preuves, qualité, traçabilité et préparation au Passeport Numérique de Produit dans une seule infrastructure intelligente."
+ },
+ "common": {
+  "demoData": "Données de démonstration",
+  "demoNote": "Tous les chiffres de cette page sont des données de démonstration.",
+  "skip": "Aller au contenu principal"
+ },
+ "nav": {
+  "why": "Pourquoi TRACEFAB",
+  "platform": "Plateforme",
+  "supplyChain": "Chaîne d’approvisionnement",
+  "productIntel": "Intelligence produit",
+  "dpp": "DPP",
+  "resources": "Ressources",
+  "signIn": "Connexion",
+  "demo": "Demander une démo",
+  "openMenu": "Ouvrir le menu",
+  "language": "Langue"
+ },
+ "hero": {
+  "label": "Infrastructure européenne de données textiles",
+  "line1": "Connaissez votre produit.",
+  "line2": "Connaissez votre chaîne.",
+  "line3": "Prouvez-le.",
+  "sub": "TRACEFAB relie données fournisseurs, preuves, qualité, traçabilité et préparation au Passeport Numérique de Produit dans une seule infrastructure intelligente.",
+  "ctaPrimary": "Explorer TRACEFAB",
+  "ctaSecondary": "Demander une démo",
+  "scroll": "Déployer le système"
+ },
+ "core": {
+  "title": "Noyau de données vivant",
+  "hub": "TRACEFAB",
+  "hubSub": "DONNÉE × TEXTILE × CONFIANCE",
+  "stat1": "1 248",
+  "stat1Label": "Produits connectés",
+  "stat2": "214",
+  "stat2Label": "Sites cartographiés",
+  "stat3": "92,4 %",
+  "stat3Label": "Qualité des données",
+  "footLeft": "Les sept couches sont synchronisées",
+  "footRight": "ESPR · AGEC Art. 13 · CSRD · GS1 Digital Link",
+  "inspectHint": "Survolez une entité",
+  "nodes": {
+   "suppliers": {
+    "label": "Fournisseurs",
+    "meta": "Du rang 1 au rang 4",
+    "value": "86",
+    "kind": "Chaîne · Couche 01",
+    "r1k": "Fournisseurs actifs",
+    "r1v": "86",
+    "r2k": "Pays",
+    "r2v": "18",
+    "r3k": "Qualité moyenne",
+    "r3v": "87 %"
+   },
+   "products": {
+    "label": "Produits",
+    "meta": "Modèles et références",
+    "value": "1 248",
+    "kind": "Données produit · Couche 02",
+    "r1k": "Produits actifs",
+    "r1v": "1 248",
+    "r2k": "Nomenclature complète",
+    "r2v": "1 094",
+    "r3k": "Révisions suivies",
+    "r3v": "4 310"
+   },
+   "materials": {
+    "label": "Matières",
+    "meta": "Fibres, fils, tissus",
+    "value": "3 106",
+    "kind": "Données produit · Couche 02",
+    "r1k": "Fiches matière",
+    "r1v": "3 106",
+    "r2k": "Intrants certifiés",
+    "r2v": "71 %",
+    "r3k": "Composition résolue",
+    "r3v": "94 %"
+   },
+   "facilities": {
+    "label": "Sites",
+    "meta": "Usines et procédés",
+    "value": "214",
+    "kind": "Chaîne · Couche 01",
+    "r1k": "Sites cartographiés",
+    "r1v": "214",
+    "r2k": "Géolocalisés",
+    "r2v": "188",
+    "r3k": "Audités sur 24 mois",
+    "r3v": "132"
+   },
+   "documents": {
+    "label": "Documents",
+    "meta": "Coffre-fort de preuves",
+    "value": "9 847",
+    "kind": "Preuves · Couche 03",
+    "r1k": "Documents stockés",
+    "r1v": "9 847",
+    "r2k": "Lus automatiquement",
+    "r2v": "6 220",
+    "r3k": "Liés à un produit",
+    "r3v": "84 %"
+   },
+   "certifications": {
+    "label": "Certifications",
+    "meta": "Référentiels et portées",
+    "value": "612",
+    "kind": "Preuves · Couche 03",
+    "r1k": "Certificats valides",
+    "r1v": "612",
+    "r2k": "Expirent sous 90 jours",
+    "r2v": "8",
+    "r3k": "Référentiels couverts",
+    "r3v": "21"
+   },
+   "evidence": {
+    "label": "Preuves",
+    "meta": "Couverture probante",
+    "value": "84 %",
+    "kind": "Preuves · Couche 03",
+    "r1k": "Couverture des preuves",
+    "r1v": "84 %",
+    "r2k": "Éléments vérifiés",
+    "r2v": "78 %",
+    "r3k": "Intégrité scellée",
+    "r3v": "SHA-256"
+   },
+   "quality": {
+    "label": "Qualité",
+    "meta": "Échelle de confiance à 6 niveaux",
+    "value": "92,4 %",
+    "kind": "Qualité des données · Couche 04",
+    "r1k": "Complétude",
+    "r1v": "92,4 %",
+    "r2k": "Taux de vérification",
+    "r2v": "78 %",
+    "r3k": "Anomalies ouvertes",
+    "r3v": "42"
+   },
+   "traceability": {
+    "label": "Traçabilité",
+    "meta": "De la fibre au produit",
+    "value": "91 %",
+    "kind": "Traçabilité · Couche 05",
+    "r1k": "Produits traçables",
+    "r1v": "91 %",
+    "r2k": "Chaînes jusqu’au rang 4",
+    "r2v": "63 %",
+    "r3k": "Profondeur moyenne",
+    "r3v": "7 étapes"
+   },
+   "dpp": {
+    "label": "DPP",
+    "meta": "Préparation du passeport",
+    "value": "88 %",
+    "kind": "DPP · Couche 07",
+    "r1k": "Préparation DPP",
+    "r1v": "88 %",
+    "r2k": "Prêts à publier",
+    "r2v": "1 098",
+    "r3k": "Bloqués par une preuve",
+    "r3v": "150"
+   }
+  }
+ },
+ "ticker": {
+  "i1": "France",
+  "i2": "Portugal",
+  "i3": "Italie",
+  "i4": "Allemagne",
+  "i5": "Türkiye",
+  "i6": "Maroc",
+  "i7": "Tunisie",
+  "i8": "Inde",
+  "i9": "Bangladesh",
+  "i10": "Viêt Nam",
+  "i11": "Chine",
+  "i12": "États-Unis",
+  "i13": "ESPR 2024/1781",
+  "i14": "AGEC Article 13",
+  "i15": "CSRD",
+  "i16": "GS1 Digital Link",
+  "i17": "GOTS",
+  "i18": "GRS",
+  "i19": "OEKO-TEX",
+  "i20": "ZDHC MRSL",
+  "i21": "CIRPASS"
+ },
+ "eco": {
+  "label": "Le socle connecté",
+  "index": "01",
+  "line1": "Tout votre écosystème textile.",
+  "line2": "Un socle de données connecté.",
+  "lead": "Une chaîne textile n’est pas une liste de fournisseurs. C’est une suite de transformations, chacune avec son entreprise, son site, son certificat, son document et son niveau de preuve. TRACEFAB réunit l’ensemble dans un modèle continu — et vous laisse le lire dimension par dimension, ou tout à la fois.",
+  "hint": "Sélectionnez une étape pour ouvrir son dossier. Activez les dimensions pour relire la même chaîne autrement."
+ },
+ "chain": {
+  "dimensionsLabel": "Dimensions",
+  "stageLabel": "Étape",
+  "footLeft": "Chaîne de démonstration · T-shirt coton biologique AW26-0248",
+  "footRight": "9 étapes · 4 rangs · 3 pays",
+  "verticalHint": "Touchez une étape pour le détail",
+  "dims": {
+   "supplier": "Fournisseur",
+   "country": "Pays",
+   "facility": "Site",
+   "certificate": "Certificat",
+   "document": "Document",
+   "quality": "Qualité",
+   "status": "Statut"
+  },
+  "status": {
+   "verified": "Vérifié",
+   "certified": "Certifié",
+   "documented": "Documenté",
+   "review": "À revoir",
+   "declared": "Déclaré",
+   "missing": "Manquant"
+  },
+  "metricLabels": {
+   "quality": "Qualité des données",
+   "certificates": "Certificats",
+   "products": "Produits",
+   "evidence": "Preuves",
+   "sites": "Sites",
+   "tier": "Rang"
+  },
+  "stages": {
+   "fiber": {
+    "name": "Fibre",
+    "tier": "Rang 4",
+    "supplier": "Coopérative Algodão Vivo",
+    "country": "Portugal",
+    "facility": "Exploitations du Bas-Alentejo",
+    "certificate": "Portée GOTS 6.0",
+    "document": "Certificat de transaction",
+    "dossierName": "Coopérative Algodão Vivo",
+    "desc": "Coopérative de producteurs de coton biologique fournissant la fibre brute avec des certificats de transaction par lot, réconciliés avec le bilan massique."
+   },
+   "material": {
+    "name": "Matière",
+    "tier": "Rang 4",
+    "supplier": "Fibrha Material Lab",
+    "country": "Portugal",
+    "facility": "Laboratoire matières de Porto",
+    "certificate": "GRS 4.0",
+    "document": "Déclaration matière",
+    "dossierName": "Fibrha Material Lab",
+    "desc": "Caractérisation des matières et déclaration de mélange. La composition est résolue au pourcentage et liée à la nomenclature produit."
+   },
+   "spinning": {
+    "name": "Filature",
+    "tier": "Rang 3",
+    "supplier": "Guimarães Ring Spinners",
+    "country": "Portugal",
+    "facility": "Filature de Guimarães",
+    "certificate": "OEKO-TEX Standard 100",
+    "document": "Rapport d’essai laboratoire",
+    "dossierName": "Guimarães Ring Spinners",
+    "desc": "Filature à anneaux de fil biologique peigné. Les rapports d’essai sont joints mais la vérification tierce reste en attente pour deux titrages."
+   },
+   "weaving": {
+    "name": "Tissage",
+    "tier": "Rang 2",
+    "supplier": "Portugal Textile Mill",
+    "country": "Portugal",
+    "facility": "Atelier de tissage de Guimarães",
+    "certificate": "GOTS 6.0",
+    "document": "Relevé de production",
+    "dossierName": "Portugal Textile Mill",
+    "desc": "Tricotage jersey et tissage avec traitement de l’eau en circuit fermé. Les preuves de transfert de garde sont enregistrées pour chaque lot."
+   },
+   "dyeing": {
+    "name": "Teinture",
+    "tier": "Rang 2",
+    "supplier": "Adriatic Dye House",
+    "country": "Italie",
+    "facility": "Usine d’ennoblissement de Prato",
+    "certificate": "ZDHC MRSL Niveau 3",
+    "document": "Analyse des eaux usées",
+    "dossierName": "Adriatic Dye House",
+    "desc": "Teinture réactive et finition. Le dernier rapport d’analyse dépasse la fenêtre de douze mois : l’étape est signalée pour revue."
+   },
+   "cutting": {
+    "name": "Coupe",
+    "tier": "Rang 1",
+    "supplier": "Atelier Milano — Coupe",
+    "country": "Italie",
+    "facility": "Salle de coupe de Milan",
+    "certificate": "ISO 9001",
+    "document": "Relevé de production",
+    "dossierName": "Atelier Milano — Coupe",
+    "desc": "Coupe automatisée avec récupération des chutes alimentant le flux de contenu recyclé déclaré sur le passeport."
+   },
+   "assembly": {
+    "name": "Assemblage",
+    "tier": "Rang 1",
+    "supplier": "Atelier Milano",
+    "country": "Italie",
+    "facility": "Site d’assemblage de Milan",
+    "certificate": "SA8000",
+    "document": "Rapport d’audit social",
+    "dossierName": "Atelier Milano",
+    "desc": "Fabricant de rang 1. Les audits sociaux et qualité sont à jour, le taux de réponse est élevé, et deux anomalies sont en cours de résolution."
+   },
+   "product": {
+    "name": "Produit",
+    "tier": "Marque",
+    "supplier": "Atelier Demo",
+    "country": "France",
+    "facility": "Studio de création, Paris",
+    "certificate": "Product data core 1.0",
+    "document": "Fiche produit",
+    "dossierName": "T-shirt coton biologique · AW26-0248",
+    "desc": "La référence finie. Composition, identifiants, chaîne d’approvisionnement et preuves sont consolidés dans une fiche produit auditable."
+   },
+   "dpp": {
+    "name": "DPP",
+    "tier": "Passeport",
+    "supplier": "TRACEFAB",
+    "country": "Union européenne",
+    "facility": "Point d’accès public du passeport",
+    "certificate": "GS1 Digital Link",
+    "document": "Enregistrement du passeport",
+    "dossierName": "Passeport Numérique de Produit",
+    "desc": "Indicateur de préparation à la publication. Identité, composition, matières, fournisseurs et fabrication sont complets ; deux preuves restent à fournir."
+   }
+  }
+ },
+ "spine": {
+  "label": "Architecture de la plateforme",
+  "index": "02",
+  "line1": "Sept couches.",
+  "line2": "Une chaîne de preuve continue.",
+  "lead": "Simple à comprendre. Profond à explorer. Puissant à opérer. Chaque couche répond à une question et transmet sa réponse à la suivante.",
+  "openHint": "Explorer la couche",
+  "layers": {
+   "l1": {
+    "num": "Couche 01",
+    "name": "Chaîne d’approvisionnement",
+    "q": "Qui fabrique quoi ?",
+    "desc": "Fournisseurs, usines, sites, matières et procédés cartographiés sur tous les rangs — pas une liste de fournisseurs, un réseau de production.",
+    "chips": "Fournisseurs · Usines · Sites · Matières · Procédés",
+    "value": "214",
+    "valueLabel": "Sites cartographiés"
+   },
+   "l2": {
+    "num": "Couche 02",
+    "name": "Données produit",
+    "q": "Qu’est-ce que le produit ?",
+    "desc": "Composition, composants, matières et identifiants résolus au pourcentage, versionnés à chaque révision.",
+    "chips": "Produits · Composition · Matières · Composants · Identifiants",
+    "value": "1 248",
+    "valueLabel": "Produits connectés"
+   },
+   "l3": {
+    "num": "Couche 03",
+    "name": "Preuves",
+    "q": "Peut-on le prouver ?",
+    "desc": "Documents, certificats, déclarations, audits et rapports d’essai stockés avec émetteur, portée, validité et sceau d’intégrité.",
+    "chips": "Documents · Certificats · Déclarations · Audits · Essais",
+    "value": "9 847",
+    "valueLabel": "Éléments de preuve"
+   },
+   "l4": {
+    "num": "Couche 04",
+    "name": "Qualité des données",
+    "q": "Peut-on s’y fier ?",
+    "desc": "Chaque valeur porte un niveau : déclaré, documenté, vérifié, certifié, à revoir ou manquant. La confiance devient mesurable.",
+    "chips": "Déclaré · Documenté · Vérifié · Certifié · À revoir · Manquant",
+    "value": "92,4 %",
+    "valueLabel": "Qualité des données"
+   },
+   "l5": {
+    "num": "Couche 05",
+    "name": "Traçabilité",
+    "q": "D’où cela vient-il ?",
+    "desc": "De la fibre à la matière, puis à la transformation, à la fabrication et au produit — une chaîne de garde continue, pas des allégations isolées.",
+    "chips": "Fibre → Matière → Transformation → Fabrication → Produit",
+    "value": "91 %",
+    "valueLabel": "Produits traçables"
+   },
+   "l6": {
+    "num": "Couche 06",
+    "name": "Intelligence",
+    "q": "Que disent les données ?",
+    "desc": "Risques, lacunes, performance fournisseur, maturité produit et préparation réglementaire calculés à partir de vos propres données — jamais inventées.",
+    "chips": "Risque · Lacunes · Qualité · Performance fournisseur · Maturité",
+    "value": "42",
+    "valueLabel": "Signaux ouverts"
+   },
+   "l7": {
+    "num": "Couche 07",
+    "name": "DPP",
+    "q": "Que peut-on publier ?",
+    "desc": "Un indicateur de préparation, un passeport produit et une expérience consommateur publique. Un indicateur de préparation, jamais une certification juridique.",
+    "chips": "Préparation DPP · Passeport produit · Données publiques · Vue consommateur",
+    "value": "88 %",
+    "valueLabel": "Préparation DPP"
+   }
+  }
+ },
+ "promise": {
+  "label": "Pourquoi TRACEFAB",
+  "index": "03",
+  "line1": "La couche d’intelligence",
+  "line2": "de la chaîne textile mondiale.",
+  "c1Verb": "Voir.",
+  "c1Txt": "Chaque fournisseur, site, matière et transformation dans un modèle connecté — y compris les rangs que vous n’avez jamais pu atteindre.",
+  "c2Verb": "Structurer.",
+  "c2Txt": "Tableurs et PDF deviennent des données structurées, rattachées aux produits, versionnées et comparables sur tout votre catalogue.",
+  "c3Verb": "Vérifier.",
+  "c3Txt": "Chaque valeur porte un niveau de preuve, de la simple déclaration au certificat tiers, avec échéance et intégrité suivies.",
+  "c4Verb": "Prouver.",
+  "c4Txt": "Préparation réglementaire, dossiers d’audit et préparation du Passeport Numérique de Produit générés à partir des données que vous détenez déjà.",
+  "kicker": "Voir. Structurer. Vérifier. Tracer. Prouver."
+ },
+ "footer": {
+  "statement": "La couche d’intelligence de la chaîne textile mondiale.",
+  "europe": "Pensée en Europe · Mondiale par architecture",
+  "colPlatform": "Plateforme",
+  "colDomains": "Domaines",
+  "colResources": "Ressources",
+  "platform1": "Console Marque",
+  "platform2": "Portail Fournisseur",
+  "platform3": "Centre Qualité",
+  "platform4": "DPP public",
+  "domains1": "Cartographie de la chaîne",
+  "domains2": "Preuves et certifications",
+  "domains3": "Qualité des données",
+  "domains4": "Traçabilité",
+  "domains5": "Préparation DPP",
+  "resources1": "Architecture de la plateforme",
+  "resources2": "Design system",
+  "resources3": "Référence API",
+  "resources4": "Sécurité et multi-tenance",
+  "rights": "© 2026 TRACEFAB. Tous droits réservés.",
+  "legal": "La préparation DPP est un indicateur de maturité, pas une certification juridique."
+ },
+ "modal": {
+  "eyebrow": "Demander une démo",
+  "title": "Voyez TRACEFAB sur votre propre chaîne.",
+  "lead": "Dites-nous quelques mots sur votre organisation et nous préparerons une présentation avec une chaîne qui ressemble à la vôtre.",
+  "name": "Nom complet",
+  "email": "E-mail professionnel",
+  "company": "Société",
+  "role": "Fonction",
+  "roleBrand": "Marque / Fabricant",
+  "roleSupplier": "Fournisseur",
+  "roleConsultant": "Consultant / Auditeur",
+  "roleOther": "Autre",
+  "submit": "Demander une démo",
+  "cancel": "Annuler",
+  "close": "Fermer",
+  "successTitle": "Demande enregistrée.",
+  "successTxt": "Ce formulaire de démonstration n’est pas encore relié à une boîte mail. Rien n’a été transmis."
+ },
+ "pi": {
+  "demoBanner": "Fiche de démonstration — tous les chiffres de cette page sont des données de démonstration.",
+  "console": "intelligence produit",
+  "demoUser": "Espace de démonstration",
+  "nav": {
+   "main": "Console principale",
+   "overview": "Vue d’ensemble",
+   "products": "Produits",
+   "suppliers": "Fournisseurs",
+   "materials": "Matières",
+   "supplyChain": "Chaîne d’approvisionnement",
+   "collection": "Collecte & conformité",
+   "dataCollection": "Collecte de données",
+   "evidence": "Preuves",
+   "certifications": "Certifications",
+   "quality": "Qualité",
+   "risk": "Risque",
+   "dpp": "DPP",
+   "governance": "Gouvernance",
+   "reports": "Rapports",
+   "settings": "Paramètres"
+  },
+  "product": {
+   "name": "T-shirt en coton biologique",
+   "ref": "AW26-0248",
+   "collection": "Automne / Hiver 2026",
+   "lead": "Chaque valeur ci-dessous porte un niveau de preuve. Rien n’est affirmé sans un document derrière."
+  },
+  "actions": {
+   "viewPassport": "Voir le passeport public",
+   "requestData": "Demander des données"
+  },
+  "sections": {
+   "signals": "Signaux produit",
+   "identity": "Identité",
+   "timeline": "Activité récente",
+   "composition": "Composition",
+   "materials": "Matières",
+   "lineage": "Lignage produit",
+   "manufacturing": "Fabrication",
+   "suppliers": "Fournisseurs",
+   "evidence": "Preuves",
+   "certifications": "Certifications",
+   "quality": "Qualité des données",
+   "issues": "Anomalies ouvertes",
+   "dpp": "Préparation DPP",
+   "history": "Historique complet"
+  },
+  "metrics": {
+   "quality": "Qualité des données",
+   "evidence": "Couverture des preuves",
+   "traceability": "Traçabilité",
+   "dpp": "Préparation DPP"
+  },
+  "tabs": {
+   "overview": "Vue d’ensemble",
+   "composition": "Composition",
+   "materials": "Matières",
+   "supplyChain": "Chaîne",
+   "manufacturing": "Fabrication",
+   "suppliers": "Fournisseurs",
+   "evidence": "Preuves",
+   "certifications": "Certifications",
+   "quality": "Qualité",
+   "dpp": "DPP",
+   "history": "Historique"
+  },
+  "trust": {
+   "missing": "Manquant",
+   "review": "À revoir",
+   "declared": "Déclaré",
+   "documented": "Documenté",
+   "verified": "Vérifié",
+   "certified": "Certifié"
+  },
+  "labels": {
+   "reference": "Référence",
+   "gtin": "GTIN",
+   "sku": "SKU",
+   "category": "Catégorie",
+   "collection": "Collection",
+   "madeIn": "Fabriqué en",
+   "status": "Statut",
+   "material": "Matière",
+   "share": "Part",
+   "standard": "Référentiel",
+   "proof": "Preuve",
+   "type": "Type",
+   "supplier": "Fournisseur",
+   "origin": "Origine",
+   "step": "Étape",
+   "facility": "Site",
+   "country": "Pays",
+   "tier": "Rang",
+   "dataQuality": "Qualité des données",
+   "certificates": "Certificats",
+   "document": "Document",
+   "issuer": "Émetteur",
+   "issued": "Émis le",
+   "expires": "Expire le",
+   "verification": "Vérification",
+   "certificate": "Certificat",
+   "scope": "Portée",
+   "holder": "Détenteur",
+   "fix": "Corriger"
+  },
+  "values": {
+   "category": "Maille jersey — manches courtes",
+   "collection": "Automne / Hiver 2026",
+   "madeIn": "Italie",
+   "status": "Actif — publication en attente"
+  },
+  "fibers": {
+   "organicCotton": "Coton biologique",
+   "recycledElastane": "Élasthanne recyclé",
+   "sewingThread": "Fil à coudre"
+  },
+  "types": {
+   "yarn": "Fil",
+   "fabric": "Tissu",
+   "chemical": "Produit chimique",
+   "trim": "Fourniture"
+  },
+  "steps": {
+   "spinning": "Filature",
+   "knitting": "Tricotage",
+   "dyeing": "Teinture",
+   "cutting": "Coupe",
+   "assembly": "Assemblage",
+   "finishing": "Finition"
+  },
+  "lineage": {
+   "nodes": {
+    "fiber": "Fibre",
+    "spinner": "Filateur",
+    "yarn": "Fil",
+    "fabric": "Tissu",
+    "dyehouse": "Teinturerie",
+    "manufacturer": "Fabricant",
+    "product": "Produit fini",
+    "dpp": "DPP"
+   },
+   "detail": {
+    "fiber": "Coton biologique brut avec certificats de transaction par lot, réconciliés avec le bilan massique.",
+    "spinner": "Filature à anneaux de fil biologique peigné. Vérification tierce encore en attente sur deux titrages.",
+    "yarn": "Lots de fil rattachés à la nomenclature produit avec une chaîne de garde complète.",
+    "fabric": "Tricotage jersey avec traitement de l’eau en circuit fermé à l’atelier de Guimarães.",
+    "dyehouse": "Teinture réactive et finition. Le dernier rapport d’eaux usées dépasse la fenêtre de douze mois.",
+    "manufacturer": "Assemblage de rang 1. Audits sociaux et qualité à jour, deux constats en cours.",
+    "product": "L’article fini. Composition, identifiants, chaîne et preuves consolidés.",
+    "dpp": "Indicateur de préparation à la publication. Deux preuves restent à fournir."
+   }
+  },
+  "docs": {
+   "transactionCert": "Certificat de transaction",
+   "labReport": "Rapport d’essai laboratoire",
+   "socialAudit": "Rapport d’audit social",
+   "wastewater": "Analyse des eaux usées",
+   "productionRecord": "Relevé de production",
+   "materialDeclaration": "Déclaration matière"
+  },
+  "scopes": {
+   "scopeFiberFabric": "De la fibre au tissu",
+   "scopeRecycled": "Contenu recyclé",
+   "scopeChemical": "Sécurité chimique",
+   "scopeSocial": "Conformité sociale",
+   "scopeWastewater": "Rejets aqueux"
+  },
+  "quality": {
+   "completeness": "Complétude",
+   "evidenceCoverage": "Couverture des preuves",
+   "verificationRate": "Taux de vérification",
+   "supplyChainDepth": "Profondeur de chaîne"
+  },
+  "issues": {
+   "issueWastewater": {
+    "t": "Analyse des eaux usées périmée",
+    "d": "Adriatic Dye House — le dernier rapport dépasse la fenêtre de douze mois"
+   },
+   "issueOekoTex": {
+    "t": "Certificat OEKO-TEX bientôt expiré",
+    "d": "Guimarães Ring Spinners — valide moins de 90 jours"
+   },
+   "issueSpinnerVerify": {
+    "t": "Données filateur en attente de vérification",
+    "d": "Deux titrages déclarés mais non vérifiés par un tiers"
+   }
+  },
+  "dpp": {
+   "title": "Préparation au Passeport Numérique de Produit",
+   "lead": "Ce que ce produit pourrait publier aujourd’hui, et ce qui manque encore pour y arriver.",
+   "legal": "Un indicateur de préparation, jamais une certification juridique.",
+   "score": "Préparation",
+   "ready": "Prêt à publier",
+   "missing": "Que manque-t-il ?",
+   "items": {
+    "dppIdentity": "Identité produit et identifiants",
+    "dppComposition": "Composition résolue au pourcentage",
+    "dppMaterials": "Matières et leur origine",
+    "dppSuppliers": "Fournisseurs sur quatre rangs",
+    "dppManufacturing": "Étapes de fabrication et sites",
+    "dppCare": "Instructions d’entretien",
+    "dppCircularity": "Circularité et contenu recyclé",
+    "dppGapWastewater": "Analyse des eaux usées à jour pour la teinturerie",
+    "dppGapRepair": "Informations de réparation et pièces détachées"
+   }
+  },
+  "history": {
+   "hDppRecomputed": "Préparation DPP recalculée — 88 %",
+   "hProductionRecord": "Relevé de production joint par Atelier Milano",
+   "hDyeFlagged": "Teinturerie signalée pour revue — rapport d’eaux usées expiré",
+   "hLabReport": "Rapport d’essai vérifié par Intertek",
+   "hComposition": "Déclaration de composition résolue au pourcentage",
+   "hGotsLinked": "Certificat de transaction GOTS 6.0 rattaché",
+   "hSocialAudit": "Audit social SA8000 accepté",
+   "hCreated": "Produit créé dans l’espace de travail"
+  },
+  "notes": {
+   "composition": "Les pourcentages sont résolus sur la nomenclature et réconciliés avec les certificats de transaction fibre.",
+   "lineage": "Sélectionnez une étape pour inspecter l’organisation derrière. Chaque maillon porte son propre niveau de preuve.",
+   "evidence": "Chaque document est stocké avec son émetteur, sa portée, sa fenêtre de validité et un sceau d’intégrité SHA-256.",
+   "issues": "Chaque anomalie mène à l’écran qui la résout",
+   "otherRef": "Référence demandée {ref} — la fiche de démonstration est affichée."
+  }
+ },
+ "lang": {
+  "en": "English",
+  "fr": "Français",
+  "de": "Deutsch",
+  "it": "Italiano",
+  "es": "Español",
+  "nl": "Nederlands"
+ }
+}

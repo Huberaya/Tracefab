@@ -1,0 +1,694 @@
+{
+ "meta": {
+  "title": "TRACEFAB — De intelligentielaag van de mondiale textielketen",
+  "description": "TRACEFAB verbindt leveranciersdata, bewijs, kwaliteit, traceerbaarheid en DPP-gereedheid in één intelligente infrastructuur."
+ },
+ "common": {
+  "demoData": "Demonstratiegegevens",
+  "demoNote": "Alle cijfers op deze pagina zijn demonstratiegegevens.",
+  "skip": "Ga naar de hoofdinhoud"
+ },
+ "nav": {
+  "why": "Waarom TRACEFAB",
+  "platform": "Platform",
+  "supplyChain": "Toeleveringsketen",
+  "productIntel": "Productintelligentie",
+  "dpp": "DPP",
+  "resources": "Bronnen",
+  "signIn": "Inloggen",
+  "demo": "Demo aanvragen",
+  "openMenu": "Menu openen",
+  "language": "Taal"
+ },
+ "hero": {
+  "label": "Europese textieldata-infrastructuur",
+  "line1": "Ken je product.",
+  "line2": "Ken je keten.",
+  "line3": "Bewijs het.",
+  "sub": "TRACEFAB verbindt leveranciersdata, bewijs, kwaliteit, traceerbaarheid en gereedheid voor het Digitaal Productpaspoort in één intelligente infrastructuur.",
+  "ctaPrimary": "Ontdek TRACEFAB",
+  "ctaSecondary": "Demo aanvragen",
+  "scroll": "Systeem uitvouwen"
+ },
+ "core": {
+  "title": "Levende datakern",
+  "hub": "TRACEFAB",
+  "hubSub": "DATA × TEXTIEL × VERTROUWEN",
+  "stat1": "1.248",
+  "stat1Label": "Verbonden producten",
+  "stat2": "214",
+  "stat2Label": "Gekarteerde locaties",
+  "stat3": "92,4%",
+  "stat3Label": "Datakwaliteit",
+  "footLeft": "Alle zeven lagen gesynchroniseerd",
+  "footRight": "ESPR · AGEC art. 13 · CSRD · GS1 Digital Link",
+  "inspectHint": "Richt op een entiteit",
+  "nodes": {
+   "suppliers": {
+    "label": "Leveranciers",
+    "meta": "Tier 1 tot tier 4",
+    "value": "86",
+    "kind": "Keten · Laag 01",
+    "r1k": "Actieve leveranciers",
+    "r1v": "86",
+    "r2k": "Landen",
+    "r2v": "18",
+    "r3k": "Gemiddelde kwaliteit",
+    "r3v": "87%"
+   },
+   "products": {
+    "label": "Producten",
+    "meta": "Modellen en artikelen",
+    "value": "1.248",
+    "kind": "Productdata · Laag 02",
+    "r1k": "Actieve producten",
+    "r1v": "1.248",
+    "r2k": "Volledige stuklijst",
+    "r2v": "1.094",
+    "r3k": "Vastgelegde revisies",
+    "r3v": "4.310"
+   },
+   "materials": {
+    "label": "Materialen",
+    "meta": "Vezels, garens, weefsels",
+    "value": "3.106",
+    "kind": "Productdata · Laag 02",
+    "r1k": "Materiaalrecords",
+    "r1v": "3.106",
+    "r2k": "Gecertificeerde input",
+    "r2v": "71%",
+    "r3k": "Samenstelling herleid",
+    "r3v": "94%"
+   },
+   "facilities": {
+    "label": "Locaties",
+    "meta": "Fabrieken en processen",
+    "value": "214",
+    "kind": "Keten · Laag 01",
+    "r1k": "Gekarteerde locaties",
+    "r1v": "214",
+    "r2k": "Geocodeerd",
+    "r2v": "188",
+    "r3k": "Geauditeerd in 24 maanden",
+    "r3v": "132"
+   },
+   "documents": {
+    "label": "Documenten",
+    "meta": "Bewijskluis",
+    "value": "9.847",
+    "kind": "Bewijs · Laag 03",
+    "r1k": "Opgeslagen documenten",
+    "r1v": "9.847",
+    "r2k": "Machinaal gelezen",
+    "r2v": "6.220",
+    "r3k": "Aan product gekoppeld",
+    "r3v": "84%"
+   },
+   "certifications": {
+    "label": "Certificeringen",
+    "meta": "Standaarden en scopes",
+    "value": "612",
+    "kind": "Bewijs · Laag 03",
+    "r1k": "Geldige certificaten",
+    "r1v": "612",
+    "r2k": "Verlopen binnen 90 dagen",
+    "r2v": "8",
+    "r3k": "Gedekte standaarden",
+    "r3v": "21"
+   },
+   "evidence": {
+    "label": "Bewijs",
+    "meta": "Bewijsdekking",
+    "value": "84%",
+    "kind": "Bewijs · Laag 03",
+    "r1k": "Bewijsdekking",
+    "r1v": "84%",
+    "r2k": "Geverifieerde items",
+    "r2v": "78%",
+    "r3k": "Integriteit verzegeld",
+    "r3v": "SHA-256"
+   },
+   "quality": {
+    "label": "Kwaliteit",
+    "meta": "Vertrouwensschaal met 6 niveaus",
+    "value": "92,4%",
+    "kind": "Datakwaliteit · Laag 04",
+    "r1k": "Volledigheid",
+    "r1v": "92,4%",
+    "r2k": "Verificatiegraad",
+    "r2v": "78%",
+    "r3k": "Open afwijkingen",
+    "r3v": "42"
+   },
+   "traceability": {
+    "label": "Traceerbaarheid",
+    "meta": "Van vezel tot product",
+    "value": "91%",
+    "kind": "Traceerbaarheid · Laag 05",
+    "r1k": "Traceerbare producten",
+    "r1v": "91%",
+    "r2k": "Ketens tot tier 4",
+    "r2v": "63%",
+    "r3k": "Gemiddelde diepte",
+    "r3v": "7 stappen"
+   },
+   "dpp": {
+    "label": "DPP",
+    "meta": "Paspoortgereedheid",
+    "value": "88%",
+    "kind": "DPP · Laag 07",
+    "r1k": "DPP-gereedheid",
+    "r1v": "88%",
+    "r2k": "Klaar om te publiceren",
+    "r2v": "1.098",
+    "r3k": "Geblokkeerd door bewijs",
+    "r3v": "150"
+   }
+  }
+ },
+ "ticker": {
+  "i1": "Frankrijk",
+  "i2": "Portugal",
+  "i3": "Italië",
+  "i4": "Duitsland",
+  "i5": "Türkiye",
+  "i6": "Marokko",
+  "i7": "Tunesië",
+  "i8": "India",
+  "i9": "Bangladesh",
+  "i10": "Vietnam",
+  "i11": "China",
+  "i12": "Verenigde Staten",
+  "i13": "ESPR 2024/1781",
+  "i14": "AGEC artikel 13",
+  "i15": "CSRD",
+  "i16": "GS1 Digital Link",
+  "i17": "GOTS",
+  "i18": "GRS",
+  "i19": "OEKO-TEX",
+  "i20": "ZDHC MRSL",
+  "i21": "CIRPASS"
+ },
+ "eco": {
+  "label": "Het verbonden fundament",
+  "index": "01",
+  "line1": "Je hele textielecosysteem.",
+  "line2": "Eén verbonden datafundament.",
+  "lead": "Een textielketen is geen lijst leveranciers. Het is een reeks transformaties, elk met een eigen bedrijf, locatie, certificaat, document en bewijsniveau. TRACEFAB brengt ze samen in één doorlopend model — en laat je dezelfde keten dimensie voor dimensie lezen, of alles tegelijk.",
+  "hint": "Kies een stap om het dossier te openen. Zet dimensies aan om dezelfde keten opnieuw te lezen."
+ },
+ "chain": {
+  "dimensionsLabel": "Dimensies",
+  "stageLabel": "Stap",
+  "footLeft": "Demoketen · T-shirt van biologisch katoen AW26-0248",
+  "footRight": "9 stappen · 4 tiers · 3 landen",
+  "verticalHint": "Tik op een stap voor details",
+  "dims": {
+   "supplier": "Leverancier",
+   "country": "Land",
+   "facility": "Locatie",
+   "certificate": "Certificaat",
+   "document": "Document",
+   "quality": "Kwaliteit",
+   "status": "Status"
+  },
+  "status": {
+   "verified": "Geverifieerd",
+   "certified": "Gecertificeerd",
+   "documented": "Gedocumenteerd",
+   "review": "Te beoordelen",
+   "declared": "Verklaard",
+   "missing": "Ontbreekt"
+  },
+  "metricLabels": {
+   "quality": "Datakwaliteit",
+   "certificates": "Certificaten",
+   "products": "Producten",
+   "evidence": "Bewijs",
+   "sites": "Locaties",
+   "tier": "Tier"
+  },
+  "stages": {
+   "fiber": {
+    "name": "Vezel",
+    "tier": "Tier 4",
+    "supplier": "Coöperatie Algodão Vivo",
+    "country": "Portugal",
+    "facility": "Bedrijven in Baixo Alentejo",
+    "certificate": "GOTS 6.0-scope",
+    "document": "Transactiecertificaat",
+    "dossierName": "Coöperatie Algodão Vivo",
+    "desc": "Coöperatie van biologische katoentelers die ruwe vezel levert met transactiecertificaten per partij, afgestemd op de massabalans."
+   },
+   "material": {
+    "name": "Materiaal",
+    "tier": "Tier 4",
+    "supplier": "Fibrha Material Lab",
+    "country": "Portugal",
+    "facility": "Materiaallab Porto",
+    "certificate": "GRS 4.0",
+    "document": "Materiaalverklaring",
+    "dossierName": "Fibrha Material Lab",
+    "desc": "Materiaalkarakterisering en mengverklaring. De samenstelling is tot op de procent herleid en gekoppeld aan de productstuklijst."
+   },
+   "spinning": {
+    "name": "Spinnerij",
+    "tier": "Tier 3",
+    "supplier": "Guimarães Ring Spinners",
+    "country": "Portugal",
+    "facility": "Spinnerij Guimarães",
+    "certificate": "OEKO-TEX Standard 100",
+    "document": "Laboratoriumrapport",
+    "dossierName": "Guimarães Ring Spinners",
+    "desc": "Ringspinnerij voor gekamd biologisch garen. Testrapporten zijn bijgevoegd, maar verificatie door derden ontbreekt nog voor twee garennummers."
+   },
+   "weaving": {
+    "name": "Weverij",
+    "tier": "Tier 2",
+    "supplier": "Portugal Textile Mill",
+    "country": "Portugal",
+    "facility": "Weverij Guimarães",
+    "certificate": "GOTS 6.0",
+    "document": "Productieregistratie",
+    "dossierName": "Portugal Textile Mill",
+    "desc": "Jerseybreien en weven met gesloten waterkringloop. Overdrachtsbewijzen worden per partij vastgelegd."
+   },
+   "dyeing": {
+    "name": "Ververij",
+    "tier": "Tier 2",
+    "supplier": "Adriatic Dye House",
+    "country": "Italië",
+    "facility": "Veredelingsfabriek Prato",
+    "certificate": "ZDHC MRSL niveau 3",
+    "document": "Afvalwateranalyse",
+    "dossierName": "Adriatic Dye House",
+    "desc": "Reactief verven en finishing. Het laatste afvalwaterrapport valt buiten het venster van twaalf maanden; de stap is gemarkeerd voor beoordeling."
+   },
+   "cutting": {
+    "name": "Snijden",
+    "tier": "Tier 1",
+    "supplier": "Atelier Milano — Snijden",
+    "country": "Italië",
+    "facility": "Snijzaal Milaan",
+    "certificate": "ISO 9001",
+    "document": "Productieregistratie",
+    "dossierName": "Atelier Milano — Snijden",
+    "desc": "Geautomatiseerd snijden met terugwinning van restmateriaal, dat het in het paspoort vermelde recyclaatgehalte voedt."
+   },
+   "assembly": {
+    "name": "Assemblage",
+    "tier": "Tier 1",
+    "supplier": "Atelier Milano",
+    "country": "Italië",
+    "facility": "Assemblagelocatie Milaan",
+    "certificate": "SA8000",
+    "document": "Sociaal auditrapport",
+    "dossierName": "Atelier Milano",
+    "desc": "Tier 1-fabrikant. Sociale en kwaliteitsaudits zijn actueel, de responsgraad is hoog en twee afwijkingen worden afgehandeld."
+   },
+   "product": {
+    "name": "Product",
+    "tier": "Merk",
+    "supplier": "Atelier Demo",
+    "country": "Frankrijk",
+    "facility": "Designstudio, Parijs",
+    "certificate": "Product data core 1.0",
+    "document": "Productfiche",
+    "dossierName": "T-shirt van biologisch katoen · AW26-0248",
+    "desc": "Het afgewerkte artikel. Samenstelling, identificatoren, keten en bewijs komen samen in één controleerbaar productrecord."
+   },
+   "dpp": {
+    "name": "DPP",
+    "tier": "Paspoort",
+    "supplier": "TRACEFAB",
+    "country": "Europese Unie",
+    "facility": "Publiek paspoort-eindpunt",
+    "certificate": "GS1 Digital Link",
+    "document": "Paspoortrecord",
+    "dossierName": "Digitaal Productpaspoort",
+    "desc": "Gereedheidsindicator voor publicatie. Identiteit, samenstelling, materialen, leveranciers en productie zijn compleet; twee bewijsstukken ontbreken."
+   }
+  }
+ },
+ "spine": {
+  "label": "Platformarchitectuur",
+  "index": "02",
+  "line1": "Zeven lagen.",
+  "line2": "Eén doorlopende bewijsketen.",
+  "lead": "Eenvoudig te begrijpen. Diep te verkennen. Krachtig in gebruik. Elke laag beantwoordt één vraag en geeft het antwoord door aan de volgende.",
+  "openHint": "Laag verkennen",
+  "layers": {
+   "l1": {
+    "num": "Laag 01",
+    "name": "Toeleveringsketen",
+    "q": "Wie maakt wat?",
+    "desc": "Leveranciers, fabrieken, locaties, materialen en processen in kaart over alle tiers — geen leverancierslijst, maar een productienetwerk.",
+    "chips": "Leveranciers · Fabrieken · Locaties · Materialen · Processen",
+    "value": "214",
+    "valueLabel": "Gekarteerde locaties"
+   },
+   "l2": {
+    "num": "Laag 02",
+    "name": "Productdata",
+    "q": "Wat is het product?",
+    "desc": "Samenstelling, componenten, materialen en identificatoren tot op de procent herleid en bij elke revisie geversioneerd.",
+    "chips": "Producten · Samenstelling · Materialen · Componenten · Identificatoren",
+    "value": "1.248",
+    "valueLabel": "Verbonden producten"
+   },
+   "l3": {
+    "num": "Laag 03",
+    "name": "Bewijs",
+    "q": "Kun je het bewijzen?",
+    "desc": "Documenten, certificaten, verklaringen, audits en testrapporten, opgeslagen met uitgever, scope, geldigheid en integriteitszegel.",
+    "chips": "Documenten · Certificaten · Verklaringen · Audits · Tests",
+    "value": "9.847",
+    "valueLabel": "Bewijsstukken"
+   },
+   "l4": {
+    "num": "Laag 04",
+    "name": "Datakwaliteit",
+    "q": "Kun je de data vertrouwen?",
+    "desc": "Elke waarde draagt een niveau: verklaard, gedocumenteerd, geverifieerd, gecertificeerd, te beoordelen of ontbrekend. Vertrouwen wordt meetbaar.",
+    "chips": "Verklaard · Gedocumenteerd · Geverifieerd · Gecertificeerd · Te beoordelen · Ontbreekt",
+    "value": "92,4%",
+    "valueLabel": "Datakwaliteit"
+   },
+   "l5": {
+    "num": "Laag 05",
+    "name": "Traceerbaarheid",
+    "q": "Waar komt het vandaan?",
+    "desc": "Van vezel naar materiaal, naar verwerking, naar productie, naar product — één doorlopende keten van overdracht in plaats van losse claims.",
+    "chips": "Vezel → Materiaal → Verwerking → Productie → Product",
+    "value": "91%",
+    "valueLabel": "Traceerbare producten"
+   },
+   "l6": {
+    "num": "Laag 06",
+    "name": "Intelligentie",
+    "q": "Wat zeggen de data?",
+    "desc": "Risico, hiaten, leveranciersprestaties, productvolwassenheid en regelgevingsgereedheid, berekend op je eigen data — nooit verzonnen.",
+    "chips": "Risico · Hiaten · Kwaliteit · Leveranciersprestaties · Volwassenheid",
+    "value": "42",
+    "valueLabel": "Open signalen"
+   },
+   "l7": {
+    "num": "Laag 07",
+    "name": "DPP",
+    "q": "Wat kun je publiceren?",
+    "desc": "Een gereedheidsindicator, een productpaspoort en een publieke consumentenervaring. Een gereedheidsindicator, nooit een juridische certificering.",
+    "chips": "DPP-gereedheid · Productpaspoort · Publieke data · Consumentweergave",
+    "value": "88%",
+    "valueLabel": "DPP-gereedheid"
+   }
+  }
+ },
+ "promise": {
+  "label": "Waarom TRACEFAB",
+  "index": "03",
+  "line1": "De intelligentielaag",
+  "line2": "van de mondiale textielketen.",
+  "c1Verb": "Zie het.",
+  "c1Txt": "Elke leverancier, locatie, materiaal en bewerking in één verbonden model — ook de tiers die je nooit kon bereiken.",
+  "c2Verb": "Structureer het.",
+  "c2Txt": "Spreadsheets en pdf’s worden gestructureerde data: gekoppeld aan producten, geversioneerd en vergelijkbaar over je hele assortiment.",
+  "c3Verb": "Verifieer het.",
+  "c3Txt": "Elke waarde draagt een bewijsniveau, van eenvoudige verklaring tot certificaat van derden, met vervaldatum en integriteit bewaakt.",
+  "c4Verb": "Bewijs het.",
+  "c4Txt": "Regelgevingsgereedheid, auditdossiers en DPP-gereedheid, opgebouwd uit de data die je al hebt.",
+  "kicker": "Zien. Structureren. Verifiëren. Traceren. Bewijzen."
+ },
+ "footer": {
+  "statement": "De intelligentielaag van de mondiale textielketen.",
+  "europe": "Bedacht in Europa · Mondiaal van architectuur",
+  "colPlatform": "Platform",
+  "colDomains": "Domeinen",
+  "colResources": "Bronnen",
+  "platform1": "Brand Console",
+  "platform2": "Leveranciersportaal",
+  "platform3": "Quality Center",
+  "platform4": "Publiek DPP",
+  "domains1": "Ketenkartering",
+  "domains2": "Bewijs en certificeringen",
+  "domains3": "Datakwaliteit",
+  "domains4": "Traceerbaarheid",
+  "domains5": "DPP-gereedheid",
+  "resources1": "Platformarchitectuur",
+  "resources2": "Designsysteem",
+  "resources3": "API-referentie",
+  "resources4": "Beveiliging en multi-tenancy",
+  "rights": "© 2026 TRACEFAB. Alle rechten voorbehouden.",
+  "legal": "DPP-gereedheid is een volwassenheidsindicator, geen juridische certificering."
+ },
+ "modal": {
+  "eyebrow": "Demo aanvragen",
+  "title": "Zie TRACEFAB op je eigen keten.",
+  "lead": "Vertel ons kort wie je bent, dan bereiden we een sessie voor met een keten die op die van jou lijkt.",
+  "name": "Volledige naam",
+  "email": "Zakelijk e-mailadres",
+  "company": "Bedrijf",
+  "role": "Rol",
+  "roleBrand": "Merk / Fabrikant",
+  "roleSupplier": "Leverancier",
+  "roleConsultant": "Consultant / Auditor",
+  "roleOther": "Anders",
+  "submit": "Demo aanvragen",
+  "cancel": "Annuleren",
+  "close": "Sluiten",
+  "successTitle": "Aanvraag geregistreerd.",
+  "successTxt": "Dit demonstratieformulier is nog niet gekoppeld aan een mailbox. Er is niets verzonden."
+ },
+ "pi": {
+  "demoBanner": "Demonstratiedossier — elk cijfer op deze pagina is demonstratiedata.",
+  "console": "product intelligence",
+  "demoUser": "Demonstratiewerkruimte",
+  "nav": {
+   "main": "Hoofdconsole",
+   "overview": "Overzicht",
+   "products": "Producten",
+   "suppliers": "Leveranciers",
+   "materials": "Materialen",
+   "supplyChain": "Toeleveringsketen",
+   "collection": "Verzameling & naleving",
+   "dataCollection": "Gegevensverzameling",
+   "evidence": "Bewijs",
+   "certifications": "Certificeringen",
+   "quality": "Kwaliteit",
+   "risk": "Risico",
+   "dpp": "DPP",
+   "governance": "Governance",
+   "reports": "Rapporten",
+   "settings": "Instellingen"
+  },
+  "product": {
+   "name": "T-shirt van biologisch katoen",
+   "ref": "AW26-0248",
+   "collection": "Herfst / Winter 2026",
+   "lead": "Elke waarde hieronder draagt een bewijsniveau. Niets wordt beweerd zonder document erachter."
+  },
+  "actions": {
+   "viewPassport": "Bekijk het publieke paspoort",
+   "requestData": "Gegevens opvragen"
+  },
+  "sections": {
+   "signals": "Productsignalen",
+   "identity": "Identiteit",
+   "timeline": "Recente activiteit",
+   "composition": "Samenstelling",
+   "materials": "Materialen",
+   "lineage": "Productketen",
+   "manufacturing": "Productie",
+   "suppliers": "Leveranciers",
+   "evidence": "Bewijs",
+   "certifications": "Certificeringen",
+   "quality": "Gegevenskwaliteit",
+   "issues": "Open punten",
+   "dpp": "DPP-gereedheid",
+   "history": "Volledige historie"
+  },
+  "metrics": {
+   "quality": "Gegevenskwaliteit",
+   "evidence": "Bewijsdekking",
+   "traceability": "Traceerbaarheid",
+   "dpp": "DPP-gereedheid"
+  },
+  "tabs": {
+   "overview": "Overzicht",
+   "composition": "Samenstelling",
+   "materials": "Materialen",
+   "supplyChain": "Keten",
+   "manufacturing": "Productie",
+   "suppliers": "Leveranciers",
+   "evidence": "Bewijs",
+   "certifications": "Certificeringen",
+   "quality": "Kwaliteit",
+   "dpp": "DPP",
+   "history": "Historie"
+  },
+  "trust": {
+   "missing": "Ontbreekt",
+   "review": "Beoordelen",
+   "declared": "Opgegeven",
+   "documented": "Gedocumenteerd",
+   "verified": "Geverifieerd",
+   "certified": "Gecertificeerd"
+  },
+  "labels": {
+   "reference": "Referentie",
+   "gtin": "GTIN",
+   "sku": "SKU",
+   "category": "Categorie",
+   "collection": "Collectie",
+   "madeIn": "Gemaakt in",
+   "status": "Status",
+   "material": "Materiaal",
+   "share": "Aandeel",
+   "standard": "Standaard",
+   "proof": "Bewijs",
+   "type": "Type",
+   "supplier": "Leverancier",
+   "origin": "Herkomst",
+   "step": "Stap",
+   "facility": "Locatie",
+   "country": "Land",
+   "tier": "Niveau",
+   "dataQuality": "Gegevenskwaliteit",
+   "certificates": "Certificaten",
+   "document": "Document",
+   "issuer": "Uitgever",
+   "issued": "Uitgegeven",
+   "expires": "Verloopt",
+   "verification": "Verificatie",
+   "certificate": "Certificaat",
+   "scope": "Reikwijdte",
+   "holder": "Houder",
+   "fix": "Oplossen"
+  },
+  "values": {
+   "category": "Jersey breigoed — korte mouw",
+   "collection": "Herfst / Winter 2026",
+   "madeIn": "Italië",
+   "status": "Actief — publicatie in afwachting"
+  },
+  "fibers": {
+   "organicCotton": "Biologisch katoen",
+   "recycledElastane": "Gerecycled elastaan",
+   "sewingThread": "Naaigaren"
+  },
+  "types": {
+   "yarn": "Garen",
+   "fabric": "Stof",
+   "chemical": "Chemicalie",
+   "trim": "Fourniture"
+  },
+  "steps": {
+   "spinning": "Spinnen",
+   "knitting": "Breien",
+   "dyeing": "Verven",
+   "cutting": "Snijden",
+   "assembly": "Confectie",
+   "finishing": "Veredeling"
+  },
+  "lineage": {
+   "nodes": {
+    "fiber": "Vezel",
+    "spinner": "Spinnerij",
+    "yarn": "Garen",
+    "fabric": "Stof",
+    "dyehouse": "Ververij",
+    "manufacturer": "Fabrikant",
+    "product": "Eindproduct",
+    "dpp": "DPP"
+   },
+   "detail": {
+    "fiber": "Ruw biologisch katoen met transactiecertificaten per partij, afgestemd op de massabalans.",
+    "spinner": "Ringspinnen van gekamd biologisch garen. Verificatie door derden nog open op twee garennummers.",
+    "yarn": "Garenpartijen gekoppeld aan de productstuklijst met volledige chain of custody.",
+    "fabric": "Single jersey breien met gesloten waterbehandeling in Guimarães.",
+    "dyehouse": "Reactief verven en veredelen. Het laatste afvalwaterrapport valt buiten het twaalfmaandsvenster.",
+    "manufacturer": "Confectie niveau 1. Sociale en kwaliteitsaudits actueel, twee bevindingen lopend.",
+    "product": "Het eindartikel. Samenstelling, identificatoren, keten en bewijs geconsolideerd.",
+    "dpp": "Indicator van publicatiegereedheid. Twee bewijsstukken ontbreken nog."
+   }
+  },
+  "docs": {
+   "transactionCert": "Transactiecertificaat",
+   "labReport": "Laboratoriumtestrapport",
+   "socialAudit": "Sociaal auditrapport",
+   "wastewater": "Afvalwateranalyse",
+   "productionRecord": "Productieregistratie",
+   "materialDeclaration": "Materiaalverklaring"
+  },
+  "scopes": {
+   "scopeFiberFabric": "Van vezel tot stof",
+   "scopeRecycled": "Gerecycled gehalte",
+   "scopeChemical": "Chemische veiligheid",
+   "scopeSocial": "Sociale naleving",
+   "scopeWastewater": "Afvalwaterlozing"
+  },
+  "quality": {
+   "completeness": "Volledigheid",
+   "evidenceCoverage": "Bewijsdekking",
+   "verificationRate": "Verificatiegraad",
+   "supplyChainDepth": "Ketendiepte"
+  },
+  "issues": {
+   "issueWastewater": {
+    "t": "Afvalwateranalyse verouderd",
+    "d": "Adriatic Dye House — laatste rapport valt buiten het twaalfmaandsvenster"
+   },
+   "issueOekoTex": {
+    "t": "OEKO-TEX-certificaat verloopt binnenkort",
+    "d": "Guimarães Ring Spinners — minder dan 90 dagen geldig"
+   },
+   "issueSpinnerVerify": {
+    "t": "Spinnerijgegevens wachten op verificatie",
+    "d": "Twee garennummers opgegeven maar niet door derden geverifieerd"
+   }
+  },
+  "dpp": {
+   "title": "Gereedheid van het Digitaal Productpaspoort",
+   "lead": "Wat dit product vandaag zou kunnen publiceren, en wat daarvoor nog ontbreekt.",
+   "legal": "Een gereedheidsindicator, nooit een wettelijke certificering.",
+   "score": "Gereedheid",
+   "ready": "Klaar om te publiceren",
+   "missing": "Wat ontbreekt?",
+   "items": {
+    "dppIdentity": "Productidentiteit en identificatoren",
+    "dppComposition": "Samenstelling tot op de procent",
+    "dppMaterials": "Materialen en hun herkomst",
+    "dppSuppliers": "Leveranciers over vier niveaus",
+    "dppManufacturing": "Productiestappen en locaties",
+    "dppCare": "Onderhouds- en verzorgingsinstructies",
+    "dppCircularity": "Circulariteit en gerecycled gehalte",
+    "dppGapWastewater": "Actuele afvalwateranalyse van de ververij",
+    "dppGapRepair": "Reparatie- en onderdeleninformatie"
+   }
+  },
+  "history": {
+   "hDppRecomputed": "DPP-gereedheid herberekend — 88%",
+   "hProductionRecord": "Productieregistratie toegevoegd door Atelier Milano",
+   "hDyeFlagged": "Ververij gemarkeerd voor beoordeling — afvalwaterrapport verlopen",
+   "hLabReport": "Laboratoriumtestrapport geverifieerd door Intertek",
+   "hComposition": "Samenstellingsverklaring tot op de procent opgelost",
+   "hGotsLinked": "GOTS 6.0-transactiecertificaat gekoppeld",
+   "hSocialAudit": "SA8000 sociale audit geaccepteerd",
+   "hCreated": "Product aangemaakt in de werkruimte"
+  },
+  "notes": {
+   "composition": "Percentages worden opgelost tegen de stuklijst en afgestemd met de transactiecertificaten van de vezel.",
+   "lineage": "Selecteer een stap om de organisatie erachter te inspecteren. Elke schakel draagt zijn eigen bewijsniveau.",
+   "evidence": "Elk document wordt opgeslagen met uitgever, reikwijdte, geldigheidsvenster en een SHA-256-integriteitszegel.",
+   "issues": "Elk punt leidt naar het scherm dat het oplost",
+   "otherRef": "Gevraagde referentie {ref} — het demonstratiedossier wordt getoond."
+  }
+ },
+ "lang": {
+  "en": "English",
+  "fr": "Français",
+  "de": "Deutsch",
+  "it": "Italiano",
+  "es": "Español",
+  "nl": "Nederlands"
+ }
+}
