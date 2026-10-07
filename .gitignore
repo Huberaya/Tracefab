@@ -17,3 +17,6 @@ uploads/
 .next/
 *.tsbuildinfo
 
+
+# Visual regression output (screenshots, reports)
+.visual/
