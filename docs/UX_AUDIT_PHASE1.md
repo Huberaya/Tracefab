@@ -1457,3 +1457,60 @@ qualité → 5 « Non mesuré », « ÉTAT : À revoir », 0 erreur.
 (`documentsConsoleView` 6, `materialsConsoleView` 3, `reportsConsoleView` 3, `requestDetailView` 3,
 `questionnairesBuilderView` 2, `supplyChainConsoleView` 2, `certificationsConsoleView` 1,
 `settingsConsoleView` 1, `supplyChainView` 1).
+
+---
+
+## Chantier 15 — Phase 5 : le centre de pilotage rendu réel
+
+### Ce que la mesure a établi
+
+`overview()` faisait 147 lignes et référençait `state` **deux fois** (`state.products.length`,
+`state.requests`). Tous les autres chiffres étaient les exemples du brief, codés en dur :
+
+| Domaine | Valeurs codées en dur |
+|---|---|
+| 01 / SUPPLY CHAIN | `1 248` produits, `86` fournisseurs, `214` sites, `18 pays` |
+| 02 / DATA QUALITY | `92.4%`, `84.0%`, `78.0%`, `142` certificats |
+| 03 / TRACEABILITY | `91.0%`, `100%`, `214 sites`, `97.6%` |
+| 04 / DPP READINESS | `88.0%`, `1 098 styles`, `Conformité AGEC Art. 13 : 100%`, `Calculs PEF validés : Échelon 3` |
+| ATTENTION | `17`, `8`, `5`, `12` |
+
+Le repli lui-même était fabriqué : `const prodCount = state.products.length || 1248;` — un
+catalogue vide affichait les 1 248 produits du brief.
+
+La revendication la plus grave était **« Conformité AGEC Art. 13 : 100% »** : le Chantier 10 a
+établi que `prisma/schema.prisma` ne contient **aucune** colonne `agec`, donc `frenchAgecArt13`
+vaut structurellement `false`. Le tableau de bord affirmait une conformité que le système ne peut
+pas établir.
+
+### Ce qui a été fait
+
+`overviewMetrics()` calcule tout depuis les quatre listes chargées au démarrage
+(`/api/products`, `/api/suppliers`, `/api/materials`, `/api/data-requests`) :
+
+- **01 / SUPPLY CHAIN** — produits, fournisseurs, matières, et pays réellement déclarés
+  (union de `organizations.country_code` et `countryOfManufacture`).
+- **02 / DATA QUALITY** — complétude moyenne réelle sur `dataCompletion`, et répartition par
+  `dataReadiness` (`data_ready`, `in_progress`, `needs_review`, `not_started` — l'enum Prisma).
+- **03 / TRACEABILITY** et **04 / DPP READINESS** — **« Non mesuré »**, avec l'explication et un
+  renvoi vers la vue qui les calcule. Ces deux indicateurs sont évalués produit par produit depuis
+  le graphe de nœuds et la préparation DPP ; ils ne sont pas agrégables au démarrage. Le badge DPP
+  rappelle que le degré de préparation est un indicateur, pas une certification.
+- **ATTENTION** — demandes ouvertes et échéances sous 7 jours via `requestCounts()`, produits
+  incomplets (`dataCompletion < 100`) et produits à revoir (`needs_review`), chacun cliquable.
+- Le bandeau d'accroche ne promet plus de « conformité ESPR / AGEC ».
+
+### Mesures
+
+Sonde jsdom sur `?demo=1` (2 produits à 82% et 46%, 1 fournisseur, 1 matière, 2 demandes) :
+chiffres rendus `2 | 64% | Non mesuré | Non mesuré`, points d'attention `2 | 2 | 2 | 1`.
+**64% = round((82 + 46) / 2)** — la moyenne est bien recalculée. Aucun des chiffres du brief
+n'apparaît. 0 erreur.
+
+`test:dashboard:overview` — **37 contrôles, 0 échec** : chaque comptage est comparé à la liste
+réelle correspondante, la moyenne est recalculée indépendamment, et les dix chiffres du brief sont
+assertés absents.
+
+Portails : brand-console, dashboard:overview 37/0, supplychain:surface 76/0,
+supplychain:chantier3, dpp-readiness 83/0, route-registry, landing 95/0, quality-center 69/0,
+i18n 75/0. Balayage : **40 PASS / 18 FAIL** (était 37 / 19 au début), aucun nouvel échec.

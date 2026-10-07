@@ -2082,19 +2082,62 @@
         </div>`;
       }
 
-            function overview() {
+      /* ------------------------------------------------------------------
+         Indicateurs du centre de pilotage.
+         Tout est calculé depuis les listes réellement chargées au démarrage
+         (/api/products, /api/suppliers, /api/materials, /api/data-requests).
+         Ce qui n'est pas mesurable depuis ces listes est renvoyé `null` et
+         affiché « Non mesuré » : aucun chiffre n'est estimé ni reconduit.
+         ------------------------------------------------------------------ */
+      function overviewMetrics() {
+        const products = state.products || [];
+        const suppliers = state.suppliers || [];
+        const materials = state.materials || [];
+        const requests = state.requests || [];
         const counts = requestCounts();
+
+        const completions = products.map((p) => Number(p.dataCompletion)).filter((n) => Number.isFinite(n));
+        const avg = completions.length
+          ? Math.round(completions.reduce((a, b) => a + b, 0) / completions.length)
+          : null;
+
+        const byReadiness = (key) => products.filter((p) => p.dataReadiness === key).length;
+
+        const countries = new Set();
+        suppliers.forEach((s) => { const c = s?.organizations?.country_code; if (c) countries.add(String(c).toUpperCase()); });
+        products.forEach((p) => { if (p.countryOfManufacture) countries.add(String(p.countryOfManufacture).toUpperCase()); });
+
+        return {
+          products: products.length,
+          suppliers: suppliers.length,
+          materials: materials.length,
+          countries: countries.size,
+          avgCompletion: avg,
+          dataReady: byReadiness('data_ready'),
+          inProgress: byReadiness('in_progress'),
+          needsReview: byReadiness('needs_review'),
+          notStarted: byReadiness('not_started'),
+          incomplete: products.filter((p) => Number(p.dataCompletion) < 100).length,
+          openRequests: counts.open,
+          dueSoon: counts.dueSoon,
+          submitted: counts.submitted,
+        };
+      }
+
+      function overview() {
+        const m = overviewMetrics();
         const brand = currentBrand();
-        const prodCount = state.products.length || 1248;
-        const supCount = suppliers().length || 86;
+        const na = 'Non mesuré';
+        const pct = (v) => (v === null || v === undefined ? na : v + '%');
+        const go = (view) => `state.view='${view}';render();`;
 
         return `<div class="mc-container">
           <!-- Mission Control Strip -->
           <div class="mc-hero-strip">
             <div>
-              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#34d399;font-weight:700;letter-spacing:0.12em;margin-bottom:6px;">MISSION CONTROL CENTER · LAYER 01–07</div>
+              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#34d399;font-weight:700;letter-spacing:0.12em;margin-bottom:6px;">MISSION CONTROL · ${esc(brand?.legal_name || brand?.display_name || 'Espace de travail')}</div>
               <h1 class="mc-headline">Centre de Pilotage Opérationnel</h1>
-              <p class="mc-subline">Surveillance en temps réel de votre écosystème textile : complétude documentaire, traçabilité des lots et conformité ESPR / AGEC.</p>
+              <p class="mc-subline">État réel de votre écosystème textile : complétude des données produit, collecte auprès des fournisseurs et préparation au passeport. Chaque valeur provient de vos données — ce qui n'est pas encore mesurable est indiqué comme tel.</p>
             </div>
             <div style="display:flex;gap:12px;">
               <button class="btn btn-secondary" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);" data-action="invite-supplier">Inviter un fournisseur</button>
@@ -2102,94 +2145,94 @@
             </div>
           </div>
 
-          <!-- 4 Mission Domains : SUPPLY CHAIN | DATA | TRACEABILITY | DPP -->
+          <!-- 4 domaines : chaque chiffre est calculé, jamais reconduit -->
           <div class="mc-domains-grid">
-            <!-- Domain 1: Supply Chain -->
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">01 / SUPPLY CHAIN</span>
-                <span class="mc-domain-badge mc-badge-green">ACTIF</span>
+                <span class="mc-domain-badge ${m.products ? 'mc-badge-green' : 'mc-badge-amber'}">${m.products ? 'ACTIF' : 'VIDE'}</span>
               </div>
-              <div class="mc-stat-huge">${prodCount}</div>
+              <div class="mc-stat-huge">${m.products}</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Produits référencés</span><strong>1 248</strong></div>
-                <div class="mc-stat-subitem"><span>Fournisseurs Rang 1–4</span><strong>86</strong></div>
-                <div class="mc-stat-subitem"><span>Sites & Usines audités</span><strong>214</strong></div>
-                <div class="mc-stat-subitem"><span>Pays de production</span><strong>18 pays</strong></div>
+                <div class="mc-stat-subitem"><span>Produits référencés</span><strong>${m.products}</strong></div>
+                <div class="mc-stat-subitem"><span>Fournisseurs rattachés</span><strong>${m.suppliers}</strong></div>
+                <div class="mc-stat-subitem"><span>Matières au catalogue</span><strong>${m.materials}</strong></div>
+                <div class="mc-stat-subitem"><span>Pays déclarés</span><strong>${m.countries}</strong></div>
               </div>
             </div>
 
-            <!-- Domain 2: Data Quality & Evidence -->
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">02 / DATA QUALITY</span>
-                <span class="mc-domain-badge mc-badge-green">GRADE A</span>
+                <span class="mc-domain-badge ${m.avgCompletion === null ? 'mc-badge-amber' : m.avgCompletion >= 80 ? 'mc-badge-green' : 'mc-badge-amber'}">${m.avgCompletion === null ? 'NON MESURÉ' : 'COMPLÉTUDE MOYENNE'}</span>
               </div>
-              <div class="mc-stat-huge" style="color:#0b7656;">92.4%</div>
+              <div class="mc-stat-huge" style="color:#0b7656;">${pct(m.avgCompletion)}</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Score qualité global</span><strong>92.4%</strong></div>
-                <div class="mc-stat-subitem"><span>Couverture de preuves</span><strong>84.0%</strong></div>
-                <div class="mc-stat-subitem"><span>Données vérifiées par tiers</span><strong>78.0%</strong></div>
-                <div class="mc-stat-subitem"><span>Certificats scellés</span><strong>142</strong></div>
+                <div class="mc-stat-subitem"><span>Produits « données prêtes »</span><strong>${m.dataReady}</strong></div>
+                <div class="mc-stat-subitem"><span>En cours de collecte</span><strong>${m.inProgress}</strong></div>
+                <div class="mc-stat-subitem"><span>À revoir</span><strong>${m.needsReview}</strong></div>
+                <div class="mc-stat-subitem"><span>Non démarrés</span><strong>${m.notStarted}</strong></div>
               </div>
             </div>
 
-            <!-- Domain 3: Traceability Echelons -->
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">03 / TRACEABILITY</span>
-                <span class="mc-domain-badge mc-badge-blue">COMPLET</span>
+                <span class="mc-domain-badge mc-badge-amber">PAR PRODUIT</span>
               </div>
-              <div class="mc-stat-huge" style="color:#1d4ed8;">91.0%</div>
+              <div class="mc-stat-huge" style="color:#1d4ed8;">${na}</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Produits 100% traçables</span><strong>91.0%</strong></div>
-                <div class="mc-stat-subitem"><span>Lignée fibre à vêtement</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>Polygones GPS vérifiés</span><strong>214 sites</strong></div>
-                <div class="mc-stat-subitem"><span>Bilan massique équilibré</span><strong>97.6%</strong></div>
+                <div class="mc-stat-subitem"><span>Chaîne traçable</span><strong>${na}</strong></div>
+                <div class="mc-stat-subitem"><span>Lignée fibre à vêtement</span><strong>${na}</strong></div>
+                <div class="mc-stat-subitem" style="display:block;">
+                  <small style="color:#88988f;line-height:1.5;display:block;margin-top:4px;">La traçabilité est calculée produit par produit depuis le graphe de nœuds, et non agrégée au démarrage.</small>
+                </div>
+                <div class="mc-stat-subitem"><button class="link-button" onclick="${go('supplyChain')}">Ouvrir la chaîne d'approvisionnement →</button></div>
               </div>
             </div>
 
-            <!-- Domain 4: DPP Readiness -->
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">04 / DPP READINESS</span>
-                <span class="mc-domain-badge mc-badge-amber">CIRPASS 1.2</span>
+                <span class="mc-domain-badge mc-badge-amber">PAR PRODUIT</span>
               </div>
-              <div class="mc-stat-huge" style="color:#b45309;">88.0%</div>
+              <div class="mc-stat-huge" style="color:#b45309;">${na}</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Passeports prêts</span><strong>88.0%</strong></div>
-                <div class="mc-stat-subitem"><span>Résolution GS1 active</span><strong>1 098 styles</strong></div>
-                <div class="mc-stat-subitem"><span>Conformité AGEC Art. 13</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>Calculs PEF validés</span><strong>Échelon 3</strong></div>
+                <div class="mc-stat-subitem"><span>Passeports prêts</span><strong>${na}</strong></div>
+                <div class="mc-stat-subitem"><span>Produits évalués</span><strong>${na}</strong></div>
+                <div class="mc-stat-subitem" style="display:block;">
+                  <small style="color:#88988f;line-height:1.5;display:block;margin-top:4px;">Le degré de préparation est un indicateur, pas une certification : il est évalué produit par produit.</small>
+                </div>
+                <div class="mc-stat-subitem"><button class="link-button" onclick="${go('dpp')}">Ouvrir la préparation DPP →</button></div>
               </div>
             </div>
           </div>
 
-          <!-- Attention & Alerts Bar -->
+          <!-- Points d'attention : uniquement des comptes réels -->
           <div class="mc-attention-panel">
             <div class="mc-attention-head">
               <div class="mc-attention-title">
                 <span style="font-size:16px;">⚠️</span>
-                <span>Points d'Attention & Actions Prioritaires Recommandées</span>
+                <span>Points d'attention</span>
               </div>
-              <span class="meta" style="color:#b45309;font-weight:700;">Résolution guidée en 1 clic</span>
+              <span class="meta" style="color:#b45309;font-weight:700;">Comptés depuis vos données</span>
             </div>
             <div class="mc-attention-grid">
-              <div class="mc-attention-pill clickable" onclick="state.view=\'requests\';render();">
-                <div class="mc-attention-num">17</div>
-                <div><strong>Données manquantes</strong><br><small>Fournisseurs en attente</small></div>
+              <div class="mc-attention-pill clickable" onclick="${go('requests')}">
+                <div class="mc-attention-num">${m.openRequests}</div>
+                <div><strong>Demandes ouvertes</strong><br><small>En attente de réponse fournisseur</small></div>
               </div>
-              <div class="mc-attention-pill clickable" onclick="state.view=\'certifications\';render();">
-                <div class="mc-attention-num">8</div>
-                <div><strong>Certificats expirant</strong><br><small>Renouvellement sous 90j</small></div>
+              <div class="mc-attention-pill clickable" onclick="${go('requests')}">
+                <div class="mc-attention-num">${m.dueSoon}</div>
+                <div><strong>Échéances sous 7 jours</strong><br><small>À relancer</small></div>
               </div>
-              <div class="mc-attention-pill clickable" onclick="state.view=\'suppliers\';render();">
-                <div class="mc-attention-num">5</div>
-                <div><strong>Fournisseurs à revoir</strong><br><small>Score de complétude < 80%</small></div>
+              <div class="mc-attention-pill clickable" onclick="${go('products')}">
+                <div class="mc-attention-num">${m.incomplete}</div>
+                <div><strong>Produits incomplets</strong><br><small>Complétude inférieure à 100%</small></div>
               </div>
-              <div class="mc-attention-pill clickable" onclick="state.view=\'products\';render();">
-                <div class="mc-attention-num">12</div>
-                <div><strong>Produits incomplets</strong><br><small>BOM non équilibré à 100%</small></div>
+              <div class="mc-attention-pill clickable" onclick="${go('quality')}">
+                <div class="mc-attention-num">${m.needsReview}</div>
+                <div><strong>Produits à revoir</strong><br><small>État « needs_review »</small></div>
               </div>
             </div>
           </div>
@@ -2219,9 +2262,9 @@
                   <span class="quick-icon">◎</span>
                   <span><strong>Onboarder un partenaire</strong><span>Lien sécurisé sans création de compte</span></span>
                 </button>
-                <button class="quick" onclick="window.open(\'/dpp/\', \'_blank\')">
+                <button class="quick" onclick="window.open('/dpp/', '_blank')">
                   <span class="quick-icon">📋</span>
-                  <span><strong>Simuler le Passeport DPP</strong><span>Voir l'expérience consommateur QR</span></span>
+                  <span><strong>Voir le passeport public</strong><span>Expérience consommateur</span></span>
                 </button>
               </div>
             </div>
