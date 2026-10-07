@@ -1886,7 +1886,7 @@
                 <thead>
                   <tr>
                     <th>Référence & Article</th>
-                    <th>Fournisseur & Usine</th>
+                    <th>${bt('scSupplierFacility')}</th>
                     <th>Anomalie Identifiée</th>
                     <th>Preuve Citée</th>
                     <th style="text-align:right">Action Directe</th>
@@ -2095,7 +2095,7 @@
                   <td><strong>${esc(m.recycledContent || '0%')}</strong></td>
                   <td>${(m.certifications || ['GOTS']).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')}</td>
                   <td><span class="badge-tier">${esc(m.tier || 'Tier 4')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('scInspect')}</button></td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -2123,13 +2123,13 @@
 
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Cartographie de Traçabilité & Chaîne de Contrôle</div>
-            <h1>Visualisation de la Chaîne d'Approvisionnement & Inspecteur de Nœuds</h1>
+            <div class="eyebrow">${bt('scMapTitle')}</div>
+            <h1>${bt('scVisuTitle')}</h1>
             <p>Cartographie interactive multi-échelons : cliquez sur un nœud industriel pour inspecter les coordonnées GPS, bilans massiques et preuves d'audit scellées.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Ouvrir Vue Consommateur DPP ↗</button>
-            <button class="btn btn-primary" data-demo-action="1">Exporter Audit Complet</button>
+            <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">${bt('scOpenDpp')}</button>
+            <button class="btn btn-primary" data-demo-action="1">${bt('scExportAudit')}</button>
           </div>
         </div>
 
@@ -2137,12 +2137,12 @@
         <div class="graph-cockpit">
           <div class="graph-toolbar">
             <div style="display:flex;align-items:center;gap:12px;">
-              <span class="status status-approved">Chaîne de confiance active (6 échelons audités)</span>
-              <span style="font-size:12px;color:var(--muted);">Matière : <strong>Coton Biologique GOTS</strong> · SKU : <strong>AT-ESS-001</strong></span>
+              <span class="status status-approved">${bt('scTrustChain')}</span>
+              <span style="font-size:12px;color:var(--muted);">${bt('scMaterial')} <strong>GOTS Organic Cotton</strong> ${bt('scSku')} <strong>AT-ESS-001</strong></span>
             </div>
             <div style="display:flex;gap:8px;">
-              <button class="btn btn-secondary btn-small" onclick="state.selectedChainNode='node-fiber';render();">← Début (Fibre)</button>
-              <button class="btn btn-secondary btn-small" onclick="state.selectedChainNode='node-product';render();">Fin (DPP) →</button>
+              <button class="btn btn-secondary btn-small" onclick="state.selectedChainNode='node-fiber';render();">${bt('scStart')}</button>
+              <button class="btn btn-secondary btn-small" onclick="state.selectedChainNode='node-product';render();">${bt('scEnd')}</button>
             </div>
           </div>
 
@@ -2166,11 +2166,11 @@
                 <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-fiber' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-fiber' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
                 <circle cx="24" cy="24" r="6" fill="#0b7656" class="graph-pulse-circle"/>
                 <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656" font-family="var(--font-sans)">TIER 4</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Fibre Coton</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Cotton Fibre</text>
                 <text x="16" y="78" font-size="10.5" fill="#56675e">São Martinho</text>
                 <text x="16" y="98" font-size="9.5" fill="#88988f">Portugal (PT)</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
-                <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">GOTS v6.0 Audité</text>
+                <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">GOTS v6.0 audited</text>
               </g>
 
               <!-- Node 2: Spinning -->
@@ -2178,9 +2178,9 @@
                 <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-spinning' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-spinning' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
                 <circle cx="24" cy="24" r="6" fill="#0b7656"/>
                 <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 3</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Filature</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Spinning</text>
                 <text x="16" y="78" font-size="10.5" fill="#56675e">Fiação Norte</text>
-                <text x="16" y="98" font-size="9.5" fill="#88988f">Fil peigné 30/1</text>
+                <text x="16" y="98" font-size="9.5" fill="#88988f">Combed yarn 30/1</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
                 <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">OEKO-TEX 100</text>
               </g>
@@ -2190,7 +2190,7 @@
                 <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-mill' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-mill' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
                 <circle cx="24" cy="24" r="6" fill="#0b7656"/>
                 <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 3</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Tricotage Maille</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Knitting</text>
                 <text x="16" y="78" font-size="10.5" fill="#56675e">Malhas do Ave</text>
                 <text x="16" y="98" font-size="9.5" fill="#88988f">Jersey 185g/m²</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
@@ -2202,9 +2202,9 @@
                 <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-dyeing' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-dyeing' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
                 <circle cx="24" cy="24" r="6" fill="#0b7656"/>
                 <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 2</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Teinture</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Dyeing</text>
                 <text x="16" y="78" font-size="10.5" fill="#56675e">Tinturaria Braga</text>
-                <text x="16" y="98" font-size="9.5" fill="#88988f">Circuit fermé STeP</text>
+                <text x="16" y="98" font-size="9.5" fill="#88988f">${bt('scStep')}</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
                 <text x="24" y="116" font-size="8.5" font-weight="700" fill="#0b7656">ZDHC Level 3</text>
               </g>
@@ -2214,7 +2214,7 @@
                 <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-assembly' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-assembly' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
                 <circle cx="24" cy="24" r="6" fill="#0b7656"/>
                 <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 1</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Confection</text>
+                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Assembly</text>
                 <text x="16" y="78" font-size="10.5" fill="#56675e">Nhãn Textile</text>
                 <text x="16" y="98" font-size="9.5" fill="#88988f">Porto (PT)</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
@@ -2225,12 +2225,12 @@
               <g class="graph-node ${selectedId === 'node-product' ? 'active' : ''}" onclick="state.selectedChainNode='node-product';render();" transform="translate(850, 45)">
                 <rect width="130" height="130" rx="14" fill="${selectedId === 'node-product' ? '#f0fdf4' : '#ffffff'}" stroke="#0284c7" stroke-width="2" filter="url(#nodeShadow)"/>
                 <circle cx="24" cy="24" r="6" fill="#0284c7"/>
-                <text x="38" y="28" font-size="10" font-weight="800" fill="#0284c7">PRODUIT / DPP</text>
+                <text x="38" y="28" font-size="10" font-weight="800" fill="#0284c7">${bt('scProductDpp')}</text>
                 <text x="16" y="58" font-size="12" font-weight="800" fill="#13221b">Essentiel Coton</text>
                 <text x="16" y="78" font-size="10.5" fill="#56675e">Atelier Demo</text>
-                <text x="16" y="98" font-size="9.5" fill="#0284c7">Passeport Numérique</text>
+                <text x="16" y="98" font-size="9.5" fill="#0284c7">${bt('scDigitalPassport')}</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e0f2fe"/>
-                <text x="20" y="116" font-size="8.5" font-weight="700" fill="#0284c7">Conforme ESPR CIRPASS</text>
+                <text x="20" y="116" font-size="8.5" font-weight="700" fill="#0284c7">${bt('scEsprOk')}</text>
               </g>
             </svg>
           </div>
@@ -2243,14 +2243,14 @@
               <div>
                 <span class="badge-tier" style="margin-bottom:6px;">${esc(node.tier)} · Nœud sélectionné</span>
                 <h2 style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">${esc(node.title)}</h2>
-                <div style="font-size:13px;color:var(--muted);margin-top:2px;">Entité : <strong>${esc(node.entity)}</strong> · ${esc(node.location)}</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px;">${bt('scEntity')} <strong>${esc(node.entity)}</strong> · ${esc(node.location)}</div>
               </div>
               <span class="status status-approved">${esc(node.auditScore)}</span>
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin-bottom:20px;">
               <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
-                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">Coordonnées GPS</span>
+                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">${bt('scGps')}</span>
                 <strong style="display:block;font-size:12px;font-family:var(--font-mono);margin-top:3px;">${esc(node.coordinates)}</strong>
               </div>
               <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
@@ -2258,20 +2258,20 @@
                 <strong style="display:block;font-size:12px;font-family:var(--font-mono);margin-top:3px;">${esc(node.batchLot)}</strong>
               </div>
               <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
-                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">Organisme Auditeur</span>
+                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">${bt('scAuditor')}</span>
                 <strong style="display:block;font-size:12px;margin-top:3px;">${esc(node.auditor)}</strong>
               </div>
             </div>
 
             <div style="margin-bottom:20px;">
-              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">Certifications & Normes Rattachées</div>
+              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">${bt('scCerts')}</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 ${(node.certifications || []).map(cert => `<span class="cert-pill">✓ ${esc(cert)}</span>`).join('')}
               </div>
             </div>
 
             <div style="margin-bottom:20px;">
-              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">Indicateurs Opérationnels Clés</div>
+              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">${bt('scKpis')}</div>
               <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;font-size:12px;">
                 ${Object.entries(node.metrics || {}).map(([k, v]) => `
                   <div style="padding:10px;background:#fcfdfa;border:1px solid var(--line);border-radius:8px;">
@@ -2294,7 +2294,7 @@
                         <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · Téléversé le ${esc(f.date)}</div>
                       </div>
                     </div>
-                    <button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter</button>
+                    <button class="btn btn-secondary btn-small" data-demo-action="1">${bt('scInspect')}</button>
                   </div>
                 `).join('')}
               </div>
@@ -2304,34 +2304,34 @@
           <!-- Side Context & Mass Balance -->
           <div style="display:grid;gap:18px;">
             <div class="card panel">
-              <div class="panel-head"><h2>Réconciliation Bilan Massique</h2><span class="status status-approved">Équilibré</span></div>
-              <p style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:14px;">TRACEFAB vérifie en continu le volume de matière entrant et sortant à chaque transformation.</p>
+              <div class="panel-head"><h2>${bt('scMassRecon')}</h2><span class="status status-approved">${bt('scBalanced')}</span></div>
+              <p style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:14px;">${bt('scContinuous')}</p>
               <div style="display:grid;gap:10px;font-size:12px;">
                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
-                  <span>Fibre Brute Récoltée (São Martinho)</span>
+                  <span>Raw Fibre Harvested (São Martinho)</span>
                   <strong>10,500 kg</strong>
                 </div>
                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
-                  <span>Rendement Filature (Fiação Norte)</span>
+                  <span>Spinning Yield (Fiação Norte)</span>
                   <strong>9,870 kg (94.0%)</strong>
                 </div>
                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
-                  <span>Métrage Tricoté (Malhas do Ave)</span>
+                  <span>Knitted Length (Malhas do Ave)</span>
                   <strong>51,400 m</strong>
                 </div>
                 <div style="display:flex;justify-content:space-between;padding:8px 0;">
-                  <span>Pièces Confectionnées (Nhãn Textile)</span>
-                  <strong style="color:var(--green)">25,000 unités</strong>
+                  <span>Assembled Pieces (Nhãn Textile)</span>
+                  <strong style="color:var(--green)">25,000 units</strong>
                 </div>
               </div>
             </div>
 
             <div class="card panel">
-              <div class="panel-head"><h2>Règles de Conformité (ESPR & AGEC)</h2></div>
+              <div class="panel-head"><h2>${bt('scRules')}</h2></div>
               <ul style="padding-left:18px;font-size:12px;color:var(--muted);line-height:1.7;">
-                <li><strong>Traçabilité Géographique (AGEC Art. 13)</strong> : Pays de tissage, teinture et confection vérifiés.</li>
-                <li><strong>Zéro Déforestation & Régénératif</strong> : Parcelle agricole géoréférencée par satellite.</li>
-                <li><strong>Anti-Greenwashing (Directive EmpCo)</strong> : Toutes les allégations reposent sur des certificats de transaction (TC).</li>
+                <li><strong>${bt('scGeoTrace')}</strong> ${bt('scCountries')}</li>
+                <li><strong>${bt('scNoDeforest')}</strong> ${bt('scPlot')}</li>
+                <li><strong>${bt('scAntiGreen')}</strong> ${bt('scClaims')}</li>
               </ul>
             </div>
           </div>
@@ -2704,7 +2704,7 @@
               <div class="mc-stat-huge" style="color:#0b7656;">${ag.qualite}%</div>
               <div class="mc-stat-sublist">
                 <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${ag.qualite}%</strong></div>
-                <div class="mc-stat-subitem"><span>Couverture de preuves</span><strong>${ag.preuves}%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('scEvidenceCov')}</span><strong>${ag.preuves}%</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovVerified')}</span><strong>${ag.verifies}%</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovCertificates')}</span><strong>${ag.certificats}</strong></div>
               </div>
@@ -3335,7 +3335,7 @@
             <p>Score explicable à 6 niveaux vérifiant l'authenticité documentaire, la non-altération des preuves et la cohérence de masse de vos collections textiles.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" data-action="select-quality-product">Changer de produit</button>
+            <button class="btn btn-secondary" data-action="select-quality-product">${bt('scChangeProduct')}</button>
             <button class="btn btn-primary" data-action="compute-quality">⚡ Recalculer l'intégrité du produit</button>
           </div>
         </div>
@@ -3498,22 +3498,22 @@
         return `
           <div class="page-head">
             <div>
-              <div class="eyebrow">Traçabilité Forensique & Chaîne de Garde · Layer 05</div>
-              <h1>Traçabilité Multi-Rangs du Produit</h1>
+              <div class="eyebrow">${bt('scEyebrow')}</div>
+              <h1>${bt('scMultiTier')}</h1>
               <p>Reconstitution scientifique du parcours physique de la matière, depuis la parcelle agricole jusqu'au centre de distribution européen.</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary" data-demo-action="1">📥 Exporter le rapport forensique</button>
-              <button class="btn btn-secondary" data-action="select-supply-chain-product">Changer de produit</button>
-              <button class="btn btn-secondary" data-action="generate-baseline-chain">⚙ Générer la chaîne de base</button>
-              <button class="btn btn-secondary" data-action="new-chain-link">↔ Relier deux étapes</button>
-              <button class="btn btn-primary" data-action="new-chain-node">+ Ajouter un jalon vérifié</button>
+              <button class="btn btn-secondary" data-demo-action="1">${bt('scExportForensic')}</button>
+              <button class="btn btn-secondary" data-action="select-supply-chain-product">${bt('scChangeProduct')}</button>
+              <button class="btn btn-secondary" data-action="generate-baseline-chain">${bt('scGenChain')}</button>
+              <button class="btn btn-secondary" data-action="new-chain-link">${bt('scLinkSteps')}</button>
+              <button class="btn btn-primary" data-action="new-chain-node">${bt('scAddMilestone')}</button>
             </div>
           </div>
 
           <!-- Forensic Hero Banner -->
           <div class="tc-forensic-strip">
-            <div class="tc-forensic-badge">CHAÎNE DE GARDE CERTIFIÉE ISO 22095 · RECONCILIATION MASSIQUE 98.4%</div>
+            <div class="tc-forensic-badge">ISO 22095 CERTIFIED CHAIN OF CUSTODY · 98.4% MASS RECONCILIATION</div>
             <h2 class="tc-forensic-title">${esc(p.name)} · Réf. ${esc(p.reference)}</h2>
             <p class="tc-forensic-desc">
               Chaque maillon industriel ci-dessous est audité et scellé avec son modèle de garde associé (Ségrégation d'Identité ou Bilan Massique Réconcilié). Zéro déclaration sans preuve documentaire ou polygonale.
@@ -3523,43 +3523,43 @@
           <!-- 7-ECHELON CHAIN OF CUSTODY TIMELINE -->
           <div class="tc-echelons-grid">
             <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 01</div>
-              <div class="tc-ech-title">CHAMP / FERME</div>
+              <div class="tc-ech-num">${bt('scTier01')}</div>
+              <div class="tc-ech-title">${bt('scFieldFarm')}</div>
               <div class="tc-ech-model">Identity Preserved</div>
-              <div class="tc-ech-status">✓ Izmir, Turquie</div>
+              <div class="tc-ech-status">✓ İzmir, Türkiye</div>
             </div>
             <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 02</div>
-              <div class="tc-ech-title">ÉGRENAGE</div>
+              <div class="tc-ech-num">${bt('scTier02')}</div>
+              <div class="tc-ech-title">${bt('scGinningCaps')}</div>
               <div class="tc-ech-model">Segregated</div>
               <div class="tc-ech-status">✓ Ege Birlik Mill</div>
             </div>
             <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 03</div>
-              <div class="tc-ech-title">FILATURE</div>
+              <div class="tc-ech-num">${bt('scTier03')}</div>
+              <div class="tc-ech-title">${bt('scSpinningCaps')}</div>
               <div class="tc-ech-model">Mass Balance 100%</div>
               <div class="tc-ech-status">✓ Haute-Vienne, FR</div>
             </div>
             <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 04</div>
-              <div class="tc-ech-title">TRICOTAGE</div>
+              <div class="tc-ech-num">${bt('scTier04')}</div>
+              <div class="tc-ech-title">${bt('scKnittingCaps')}</div>
               <div class="tc-ech-model">Identity Preserved</div>
               <div class="tc-ech-status">✓ Barcelos, PT</div>
             </div>
             <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 05</div>
-              <div class="tc-ech-title">ENNOBLISSEMENT</div>
+              <div class="tc-ech-num">${bt('scTier05')}</div>
+              <div class="tc-ech-title">${bt('scFinishingCaps')}</div>
               <div class="tc-ech-model">ZDHC Level 3</div>
               <div class="tc-ech-status">✓ EcoDye Aquitaine</div>
             </div>
             <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 06</div>
-              <div class="tc-ech-title">CONFECTION</div>
+              <div class="tc-ech-num">${bt('scTier06')}</div>
+              <div class="tc-ech-title">${bt('scAssemblyCaps')}</div>
               <div class="tc-ech-model">SMETA 4-Pillar</div>
               <div class="tc-ech-status">✓ Atelier Braga, PT</div>
             </div>
             <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 07</div>
+              <div class="tc-ech-num">${bt('scTier07')}</div>
               <div class="tc-ech-title">DISTRIBUTION</div>
               <div class="tc-ech-model">DPP CIRPASS</div>
               <div class="tc-ech-status">✓ Hub Lyon, FR</div>
@@ -3568,80 +3568,80 @@
 
           <!-- Core Score KPIs -->
           <div class="grid score-grid">
-            <div class="card score"><div class="score-name">Étapes scellées</div><div class="score-value">7 / 7</div><div class="node-meta">100% de la chaîne physique</div></div>
-            <div class="card score"><div class="score-name">Polygones GPS vérifiés</div><div class="score-value">100%</div><div class="node-meta">coordonnées satellites cadastrées</div></div>
-            <div class="card score"><div class="score-name">Couverture de preuves</div><div class="score-value">98.4%</div><div class="progress"><span style="width:98.4%"></span></div></div>
-            <div class="card score"><div class="score-name">Modèle de Garde</div><div class="score-value" style="font-size:18px;color:#0b7656;">ISO 22095</div><div class="node-meta">Mass-Balance contrôlé</div></div>
+            <div class="card score"><div class="score-name">${bt('scSealedSteps')}</div><div class="score-value">7 / 7</div><div class="node-meta">${bt('scPhysical100')}</div></div>
+            <div class="card score"><div class="score-name">${bt('scGpsPolygons')}</div><div class="score-value">100%</div><div class="node-meta">${bt('scSatellite')}</div></div>
+            <div class="card score"><div class="score-name">${bt('scEvidenceCov')}</div><div class="score-value">98.4%</div><div class="progress"><span style="width:98.4%"></span></div></div>
+            <div class="card score"><div class="score-name">${bt('scCustodyModel')}</div><div class="score-value" style="font-size:18px;color:#0b7656;">ISO 22095</div><div class="node-meta">${bt('scMassChecked')}</div></div>
           </div>
 
           <!-- Mass Balance Reconciliation Breakdown -->
           <div class="tc-reconcil-card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <div>
-                <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:0 0 2px;">Réconciliation de la Balance Massique par Jalon</h3>
+                <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:0 0 2px;">${bt('scMassReconMile')}</h3>
                 <p class="meta" style="margin:0;">Vérification de la conservation des volumes entrants et sortants pour éliminer tout risque de greenwashing ou dilution frauduleuse.</p>
               </div>
-              <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">DELTA PERTE PROCÉDÉ : 2.4% (CONFORME)</span>
+              <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">PROCESS LOSS DELTA: 2.4% (COMPLIANT)</span>
             </div>
 
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Étape industrielle</th>
-                    <th>Fournisseur & Usine</th>
-                    <th>Volume Entrant (kg)</th>
-                    <th>Volume Sortant (kg)</th>
-                    <th>Rendement / Déchet</th>
-                    <th>Document de Traçabilité</th>
-                    <th style="text-align:right">Statut de Garde</th>
+                    <th>${bt('scIndustrialStep')}</th>
+                    <th>${bt('scSupplierFacility')}</th>
+                    <th>${bt('scVolIn')}</th>
+                    <th>${bt('scVolOut')}</th>
+                    <th>${bt('scYieldWaste')}</th>
+                    <th>${bt('scTraceDoc')}</th>
+                    <th style="text-align:right">${bt('scCustodyStatus')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td><strong>01. Égrenage Coton Bio</strong></td>
+                    <td><strong>01. Organic Cotton Ginning</strong></td>
                     <td>Ege Birlik Ginning Co.</td>
-                    <td>10 500 kg (Graine)</td>
-                    <td>3 570 kg (Fibre brute)</td>
+                    <td>10,500 kg (Seed)</td>
+                    <td>3,570 kg (Raw fibre)</td>
                     <td>34.0% (Normal)</td>
                     <td><code>TC-CU-881294-01</code></td>
                     <td style="text-align:right"><span class="status status-approved">✓ Segregated</span></td>
                   </tr>
                   <tr>
-                    <td><strong>02. Filature Peignée Ne 30/1</strong></td>
+                    <td><strong>02. Combed Spinning Ne 30/1</strong></td>
                     <td>Filature de Haute-Vienne</td>
-                    <td>3 570 kg (Fibre brute)</td>
-                    <td>3 285 kg (Bobines)</td>
-                    <td>92.0% (Rendement fil)</td>
+                    <td>3,570 kg (Raw fibre)</td>
+                    <td>3,285 kg (Bobbins)</td>
+                    <td>92.0% (Yarn yield)</td>
                     <td><code>TC-CU-881294-02</code></td>
                     <td style="text-align:right"><span class="status status-approved">✓ Identity Preserved</span></td>
                   </tr>
                   <tr>
-                    <td><strong>03. Tricotage Jersey 180g</strong></td>
+                    <td><strong>03. Jersey Knitting 180g</strong></td>
                     <td>Barcelos Knitting Mill</td>
-                    <td>3 285 kg (Bobines)</td>
-                    <td>3 150 kg (Rouleaux)</td>
-                    <td>95.9% (Normal tricot)</td>
+                    <td>3,285 kg (Bobbins)</td>
+                    <td>3,150 kg (Rolls)</td>
+                    <td>95.9% (Normal knit)</td>
                     <td><code>BL-PT-2026-904</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Scellé</span></td>
+                    <td style="text-align:right"><span class="status status-approved">✓ Sealed</span></td>
                   </tr>
                   <tr>
-                    <td><strong>04. Teinture & Lavage Bio</strong></td>
+                    <td><strong>04. Organic Dyeing & Washing</strong></td>
                     <td>EcoDye Aquitaine</td>
-                    <td>3 150 kg (Rouleaux)</td>
-                    <td>3 085 kg (Teint)</td>
-                    <td>97.9% (Fixation ZDHC)</td>
+                    <td>3,150 kg (Rolls)</td>
+                    <td>3,085 kg (Dyed)</td>
+                    <td>97.9% (ZDHC fixation)</td>
                     <td><code>ZDHC-LOT-089</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Validé</span></td>
+                    <td style="text-align:right"><span class="status status-approved">✓ Validated</span></td>
                   </tr>
                   <tr>
-                    <td><strong>05. Découpe & Confection</strong></td>
+                    <td><strong>05. Cutting & Assembly</strong></td>
                     <td>Atelier Braga & Co</td>
-                    <td>3 085 kg (Tissu fini)</td>
-                    <td>16 200 Pièces finies</td>
-                    <td>185g / pièce moyenne</td>
+                    <td>3,085 kg (Finished fabric)</td>
+                    <td>16,200 finished pieces</td>
+                    <td>185g / average piece</td>
                     <td><code>TC-CU-881294-05</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Réconcilié 100%</span></td>
+                    <td style="text-align:right"><span class="status status-approved">✓ 100% reconciled</span></td>
                   </tr>
                 </tbody>
               </table>
@@ -3681,7 +3681,7 @@
               <p>Réf: <strong>${esc(p.reference)}</strong> · Version v${esc(p.version)} · Catégorie: ${esc(p.category || 'Non spécifiée')}</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary" data-action="select-dpp-product">Changer de produit</button>
+              <button class="btn btn-secondary" data-action="select-dpp-product">${bt('scChangeProduct')}</button>
               <button class="btn btn-secondary" data-action="compute-dpp">Recalculer la préparation</button>
               ${dpp.canMarkReadyToPublish ? '<button class="btn btn-primary" data-action="publish-dpp">✓ Valider pour publication DPP</button>' : ''}
             </div>
