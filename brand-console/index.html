@@ -936,8 +936,49 @@
       color: #ffffff;
     }
 
+    /* ── Risk & exposure ─────────────────────────────────────────────────
+       Les classes mc-badge-* n'apportent que des couleurs, sans geometrie :
+       seules, elles rendent un texte nu. On pose ici les quelques regles
+       propres a la vue Risk, alignees sur les tokens existants. */
+    .risk-note { display:inline-block; padding:4px 11px; border-radius:999px; background:#f1f5f4; color:#37473d; font-size:11.5px; font-weight:750; white-space:nowrap; }
+    .risk-pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:800; letter-spacing:.01em; }
+    .risk-pill--critical { background:#fee2e2; color:#b91c1c; }
+    .risk-pill--high     { background:#ffedd5; color:#c2410c; }
+    .risk-pill--medium   { background:#fef3c7; color:#b45309; }
+    .risk-pill--low      { background:#eff6ff; color:#1d4ed8; }
+    .risk-dim { display:grid; gap:7px; padding:11px 0; border-bottom:1px solid var(--line); }
+    .risk-dim:last-child { border-bottom:0; }
+    .risk-dim__row { display:flex; align-items:baseline; justify-content:space-between; gap:14px; }
+    .risk-dim__name { font-size:13.5px; font-weight:750; color:#37473d; }
+    .risk-dim__val { font-size:17px; font-weight:850; font-variant-numeric:tabular-nums; }
+    .risk-dim__val.is-muted { font-size:12px; font-weight:650; color:var(--muted); }
+    /* l ornement d angle de .kpi passe par-dessus le libelle a 390px */
+    .cert-table .status { white-space: nowrap; }
+    @media (max-width: 720px) {
+      .dpp-hero { grid-template-columns: 1fr; gap: 16px; }
+      .dpp-hero > * { min-width: 0; }
+      .dpp-pillars { grid-template-columns: 1fr; }
+      .dpp-gauge-box { border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+      .pillar-head { flex-wrap: wrap; gap: 4px; }
+      .item .meta code { overflow-wrap: anywhere; }
+    }
+    .risk-kpis .kpi-value, .risk-kpis .kpi-label, .risk-kpis .kpi-note { position:relative; z-index:1; }
+    .risk-basis { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+
+
   </style>
-  <script src="/auto-translate.js"></script>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-spa-responsive.css">
+  <!-- The legacy auto-translate.js DOM rewriter was removed here: it reads the
+       same localStorage key as this app ("tracefab_lang") but defaults to "en"
+       while the app defaults to "fr", so on a first visit it rewrote only the
+       glossary-matched strings and produced a half-translated UI. This page owns
+       its own complete catalogue. -->
+    <!-- i18n consolide : catalogue unique /assets/i18n, servi par le runtime
+         partage tf-i18n.js. TF_I18N_SKIP_META protege le titre propre de
+         cette page : sans lui elle heriterait du titre de la landing. -->
+    <script>window.TF_I18N_SKIP_META = true;</script>
+    <script src="/assets/i18n/en.js"></script>
+    <script src="/assets/js/tf-i18n.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -994,18 +1035,49 @@
         packaging: 'Conditionnement (Packaging)',
       };
 
-      const labels = {
-        draft: 'Brouillon', sent: 'Envoyée', in_progress: 'En cours', submitted: 'Soumise',
-        changes_requested: 'À corriger', approved: 'Approuvée', cancelled: 'Annulée',
-        verified_by_reviewer: 'Vérifiée', needs_review: 'À revoir', open: 'Ouverte', acknowledged: 'Acquittée', waived: 'Dérogation', resolved: 'Résolue',
-        not_started: 'Non démarré', data_ready: 'Prêt pour validation', ready_to_publish: 'Validé & Prêt à publier', review_required: 'Revue requise'
+      // Status chips used to read French in every language because this was a
+      // hardcoded map. They now resolve through the catalogue.
+      const STATUS_KEYS = {
+        "draft": "stDraft",
+        "sent": "stSent",
+        "in_progress": "stInProgress",
+        "submitted": "stSubmitted",
+        "changes_requested": "stChangesRequested",
+        "approved": "stApproved",
+        "cancelled": "stCancelled",
+        "verified_by_reviewer": "stVerified",
+        "needs_review": "stNeedsReview",
+        "open": "stOpen",
+        "acknowledged": "stAcknowledged",
+        "waived": "stWaived",
+        "resolved": "stResolved",
+        "not_started": "stNotStarted",
+        "data_ready": "stDataReady",
+        "ready_to_publish": "stReadyToPublish",
+        "review_required": "stReviewRequired",
+        "active": "stActive",
+        "completed": "stCompleted",
+        "invited": "stInvited",
+        "declared": "stDeclared",
+        "documented": "stDocumented",
+        "uploaded": "stUploaded",
+        "scanning": "stScanning",
+        "available": "stAvailable",
+        "rejected": "stRejected",
+        "deleted": "stDeleted",
+        "suspended": "stSuspended",
+        "revoked": "stRevoked"
       };
+      const statusLabel = (value) => value ? bt(STATUS_KEYS[value] || value) : '—';
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TF';
-      const status = (value) => `<span class="status status-${esc(value)}">${esc(labels[value] || value || '—')}</span>`;
+      const status = (value) => `<span class="status status-${esc(value)}">${esc(statusLabel(value) || '—')}</span>`;
       const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
-      const date = (value) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value)) : '—';
-      const moneyless = (value) => Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+      // Dates and numbers used to render French whatever the chosen language.
+      const BCP47 = { fr:'fr-FR', en:'en-GB', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT', tr:'tr-TR', zh:'zh-CN' };
+      const locale = () => BCP47[state.lang] || 'en-GB';
+      const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle: 'medium' }).format(new Date(value)) : '—';
+      const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits: 0 });
 
       function notify(message, isError = false) {
         state.toast = { message, isError };
@@ -1287,6 +1359,74 @@
         ];
         state.schemaCatalog = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Faits produit versionnés.', subjectTypes: ['product', 'data_request'], fields: [] }];
         state.schemaBindings = [];
+
+        // --- Chantier 4 : ces deux vues atterrissaient sur un etat vide ---
+        // L'etat vide est legitime en production. En demonstration il prive
+        // le visiteur des deux vues qui portent justement la promesse
+        // reglementaire. Donnees de DEMONSTRATION : le bandeau en haut de
+        // page les identifie comme telles, et les echeances sont calculees
+        // en relatif pour ne jamais perimer.
+        const dans = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+        state.certifications = [
+          { standard: 'GOTS 7.0', number: 'CU-GOTS-884213', issuer: 'Control Union', expires: dans(412) },
+          { standard: 'OEKO-TEX STANDARD 100', number: 'SH025-174412-TESTEX', issuer: 'TESTEX', expires: dans(31) },
+          { standard: 'GRS 4.0', number: 'CU-GRS-771904', issuer: 'Control Union', expires: dans(58) },
+          { standard: 'ISO 14001:2015', number: 'FR-14001-20264', issuer: 'Bureau Veritas', expires: dans(233) },
+          { standard: 'SMETA 4-Pillar', number: 'SMETA-BRAGA-2026-118', issuer: 'SGS', expires: dans(176) },
+        ];
+
+        // Preparation DPP : 88%, coherent avec le KPI de la vue d'ensemble.
+        // 7 exigences sur 9, dont une bloquante restante — un score volontiers
+        // imparfait, pour que la vue montre aussi ce qui manque.
+        state.selectedDppProduct = state.products[0];
+        state.dpp = {
+          readinessStatus: 'in_progress',
+          completionScore: 88,
+          totalRequirements: 9,
+          metRequirements: 7,
+          blockingCount: 1,
+          profileKey: 'textile_readiness_mvp',
+          profileVersion: '1.0',
+          canMarkReadyToPublish: false,
+          isReadyToPublish: false,
+          pillars: {
+            identification: { icon: '\ud83c\udff7\ufe0f', name: '1. Identification & Caractéristiques', metPercent: 100,
+              description: 'Identifiants commerciaux et administratifs du modèle.',
+              items: [
+                { label: 'GTIN / EAN-13', met: true },
+                { label: 'Référence interne du modèle', met: true },
+                { label: 'Catégorie produit', met: true },
+                { label: 'Marque et entité responsable', met: true },
+              ] },
+            composition: { icon: '\ud83e\uddf5', name: '2. Composition Matières', metPercent: 100,
+              description: 'Composition fibreuse déclarée et vérifiée.',
+              items: [
+                { label: 'Composition fibre à fibre (%)', met: true },
+                { label: 'Part de matière recyclée', met: true },
+                { label: 'Origine géographique des matières', met: true },
+              ] },
+            traceability: { icon: '\u260d', name: '3. Traçabilité Supply Chain', metPercent: 75,
+              description: 'Chaîne reconstituée du rang 1 au rang 4.',
+              items: [
+                { label: 'Rang 1 \u2014 Confection', met: true },
+                { label: 'Rang 2 \u2014 Tissage / tricotage', met: true },
+                { label: 'Rang 3 \u2014 Filature', met: true },
+                { label: 'Rang 4 \u2014 Matière première', met: false },
+              ] },
+            quality: { icon: '\ud83d\udee1\ufe0f', name: '4. Qualité & Preuves', metPercent: 67,
+              description: 'Preuves documentaires attachées et vérifiées.',
+              items: [
+                { label: 'Certificats fournisseurs valides', met: true },
+                { label: 'Certificat de transaction (TC)', met: true },
+                { label: "Rapport d'essai laboratoire", met: false },
+              ] },
+          },
+          missingFields: [
+            { key: 'supply_chain.tier4_origin', label: 'Origine de la matière première (rang 4)', blocking: true },
+            { key: 'quality.lab_test_report', label: "Rapport d'essai laboratoire (REACH / ZDHC)", blocking: false },
+          ],
+          blockingIssues: [],
+        };
       }
 
       async function sync() {
@@ -1360,6 +1500,7 @@
                 ${navButton('documents', '▤', bt('documents'))}
                 ${navButton('certifications', '✓', bt('certifications'))}
                 ${navButton('quality', '◒', bt('quality'))}
+                ${navButton('risk', '⚠', bt('risk'))}
                 ${navButton('massBalance', '⚖', 'Bilan Massique (TC)')}
                 ${navButton('integrations', '⇄', 'Intégrations')}
                 ${navButton('intelligence', '✦', 'TRACEFAB Intelligence')}
@@ -1389,6 +1530,7 @@
         documents: 'Preuves & Documents',
         certifications: 'Certifications',
         quality: 'Qualité & Conformité',
+          risk: bt('riskViewLabel'),
         dpp: 'Passeport Numérique (DPP Readiness)',
         reports: 'Rapports & Audits',
         settings: 'Paramètres',
@@ -1399,201 +1541,16 @@
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
       
-      const brandTranslations = {
-        fr: {
-          navMain: "Console Principale",
-          overview: "Vue d’ensemble",
-          products: "Produits",
-          suppliers: "Fournisseurs",
-          materials: "Matières",
-          supplyChain: "Traçabilité",
-          navCollection: "Collecte & Conformité",
-          requests: "Demandes de données",
-          questionnaires: "Questionnaires",
-          documents: "Documents",
-          certifications: "Certifications",
-          quality: "Qualité & Conformité",
-          dpp: "Passeport DPP",
-          navGov: "Gouvernance",
-          reports: "Rapports & Audits",
-          settings: "Paramètres",
-          newRequest: "+ Nouvelle demande",
-          signOut: "Déconnexion",
-          openRequests: "Demandes ouvertes",
-          dueSoon: "Échéances proches (< 7j)",
-          submitted: "Réponses reçues",
-          quickActions: "Actions Rapides",
-          createRequest: "Créer une demande de données",
-          dppReadiness: "Passeport Produit Numérique (DPP)",
-          dppDesc: "Vérifiez l'éligibilité de vos collections aux normes européennes ESPR et CIRPASS 1.2."
-        },
-        en: {
-          navMain: "Main Console",
-          overview: "Overview",
-          products: "Products",
-          suppliers: "Suppliers",
-          materials: "Materials",
-          supplyChain: "Traceability",
-          navCollection: "Collection & Compliance",
-          requests: "Data Requests",
-          questionnaires: "Questionnaires",
-          documents: "Documents",
-          certifications: "Certifications",
-          quality: "Quality & Compliance",
-          dpp: "DPP Passport",
-          navGov: "Governance",
-          reports: "Reports & Audits",
-          settings: "Settings",
-          newRequest: "+ New request",
-          signOut: "Sign out",
-          openRequests: "Open requests",
-          dueSoon: "Due soon (< 7d)",
-          submitted: "Responses received",
-          quickActions: "Quick Actions",
-          createRequest: "Create data request",
-          dppReadiness: "Digital Product Passport (DPP)",
-          dppDesc: "Verify your collection readiness against European ESPR and CIRPASS 1.2 standards."
-        },
-        de: {
-          navMain: "Hauptkonsole",
-          overview: "Übersicht",
-          products: "Produkte",
-          suppliers: "Lieferanten",
-          materials: "Materialien",
-          supplyChain: "Rückverfolgbarkeit",
-          navCollection: "Erfassung & Konformität",
-          requests: "Datenanfragen",
-          questionnaires: "Fragebögen",
-          documents: "Dokumente",
-          certifications: "Zertifikate",
-          quality: "Qualität & Konformität",
-          dpp: "DPP-Pass",
-          navGov: "Governance",
-          reports: "Berichte & Audits",
-          settings: "Einstellungen",
-          newRequest: "+ Neue Anfrage",
-          signOut: "Abmelden",
-          openRequests: "Offene Anfragen",
-          dueSoon: "Fällig bald (< 7T)",
-          submitted: "Antworten erhalten",
-          quickActions: "Schnellaktionen",
-          createRequest: "Datenanfrage erstellen",
-          dppReadiness: "Digitaler Produktpass (DPP)",
-          dppDesc: "Überprüfen Sie die Konformität Ihrer Kollektionen gemäß europäischen ESPR- und CIRPASS 1.2-Normen."
-        },
-        it: {
-          navMain: "Console Principale",
-          overview: "Panoramica",
-          products: "Prodotti",
-          suppliers: "Fornitori",
-          materials: "Materiali",
-          supplyChain: "Tracciabilità",
-          navCollection: "Raccolta & Conformità",
-          requests: "Richieste dati",
-          questionnaires: "Questionari",
-          documents: "Documenti",
-          certifications: "Certificazioni",
-          quality: "Qualità & Conformità",
-          dpp: "Passaporto DPP",
-          navGov: "Governance",
-          reports: "Rapporti & Audit",
-          settings: "Impostazioni",
-          newRequest: "+ Nuova richiesta",
-          signOut: "Disconnetti",
-          openRequests: "Richieste aperte",
-          dueSoon: "In scadenza (< 7gg)",
-          submitted: "Risposte ricevute",
-          quickActions: "Azioni Rapide",
-          createRequest: "Crea richiesta dati",
-          dppReadiness: "Passaporto Digitale del Prodotto (DPP)",
-          dppDesc: "Verifica l'idoneità delle tue collezioni rispetto agli standard europei ESPR e CIRPASS 1.2."
-        },
-        es: {
-          navMain: "Consola Principal",
-          overview: "Resumen",
-          products: "Productos",
-          suppliers: "Proveedores",
-          materials: "Materiales",
-          supplyChain: "Trazabilidad",
-          navCollection: "Recopilación y Cumplimiento",
-          requests: "Solicitudes de datos",
-          questionnaires: "Cuestionarios",
-          documents: "Documentos",
-          certifications: "Certificaciones",
-          quality: "Calidad y Cumplimiento",
-          dpp: "Pasaporte DPP",
-          navGov: "Gobernanza",
-          reports: "Informes y Auditorías",
-          settings: "Configuración",
-          newRequest: "+ Nueva solicitud",
-          signOut: "Cerrar sesión",
-          openRequests: "Solicitudes abiertas",
-          dueSoon: "Próximas a vencer (< 7d)",
-          submitted: "Respuestas recibidas",
-          quickActions: "Acciones Rápidas",
-          createRequest: "Crear solicitud de datos",
-          dppReadiness: "Pasaporte Digital de Producto (DPP)",
-          dppDesc: "Verifique la preparación de sus colecciones frente a los estándares europeos ESPR y CIRPASS 1.2."
-        },
-        nl: {
-          navMain: "Hoofdconsole",
-          overview: "Overzicht",
-          products: "Producten",
-          suppliers: "Leveranciers",
-          materials: "Materialen",
-          supplyChain: "Traceerbaarheid",
-          navCollection: "Verzameling & Naleving",
-          requests: "Gegevensaanvragen",
-          questionnaires: "Vragenlijsten",
-          documents: "Documenten",
-          certifications: "Certificeringen",
-          quality: "Kwaliteit & Naleving",
-          dpp: "DPP-Paspoort",
-          navGov: "Governance",
-          reports: "Rapporten & Audits",
-          settings: "Instellingen",
-          newRequest: "+ Nieuwe aanvraag",
-          signOut: "Uitloggen",
-          openRequests: "Openstaande aanvragen",
-          dueSoon: "Binnenkort verwacht (< 7d)",
-          submitted: "Ontvangen antwoorden",
-          quickActions: "Snelle Acties",
-          createRequest: "Gegevensaanvraag aanmaken",
-          dppReadiness: "Digitaal Productpaspoort (DPP)",
-          dppDesc: "Controleer de conformiteit van uw collecties met de Europese normen ESPR en CIRPASS 1.2."
-        },
-        pt: {
-          navMain: "Consola Principal",
-          overview: "Visão geral",
-          products: "Produtos",
-          suppliers: "Fornecedores",
-          materials: "Materiais",
-          supplyChain: "Rastreabilidade",
-          navCollection: "Recolha & Conformidade",
-          requests: "Pedidos de dados",
-          questionnaires: "Questionários",
-          documents: "Documentos",
-          certifications: "Certificações",
-          quality: "Qualidade & Conformidade",
-          dpp: "Passaporte DPP",
-          navGov: "Governança",
-          reports: "Relatórios & Auditorias",
-          settings: "Definições",
-          newRequest: "+ Novo pedido",
-          signOut: "Terminar sessão",
-          openRequests: "Pedidos abertos",
-          dueSoon: "A expirar brevemente (< 7d)",
-          submitted: "Respostas recebidas",
-          quickActions: "Ações Rápidas",
-          createRequest: "Criar pedido de dados",
-          dppReadiness: "Passaporte Digital de Produto (DPP)",
-          dppDesc: "Verifique a conformidade das suas coleções com as normas europeias ESPR e CIRPASS 1.2."
-        }
-      };
+      // Le dictionnaire inline de cette page a ete fusionne dans le
+        // catalogue unique /assets/i18n (portees 'shared' et 'brandTranslations').
+        // Regenerable par scripts/build_app_i18n.mjs.
 
       function bt(key) {
-        const lang = state.lang || 'en';
-        return brandTranslations[lang]?.[key] || brandTranslations['en']?.[key] || brandTranslations['fr']?.[key] || key;
+        const T = window.TF_I18N;
+        if (!T) return key;
+        // Portee console d'abord, puis le fonds commun. Le repli anglais
+        // est assure par le runtime : plus aucun repli francais implicite.
+        return T.t('console.' + key, null) || T.t('shared.' + key, key);
       }
 
       function brandLangSwitcher() {
@@ -1609,11 +1566,35 @@
       }
 
       function setBrandLang(lang) {
+        const T = window.TF_I18N;
+        // setLanguage ecrit les deux cles de stockage, charge la locale puis
+        // emet tf:languagechange, qui declenche le rendu ci-dessous.
+        if (T) { T.setLanguage(lang); return; }
         state.lang = lang;
-        localStorage.setItem('tracefab_lang', lang);
         document.documentElement.lang = lang;
         render();
       }
+
+      // Un changement de langue ne vient pas forcement du selecteur de cette
+      // page : il peut venir de la landing ou d'un autre onglet. On re-rend
+      // sur l'evenement du runtime, ce qui donne un chemin unique quelle que
+      // soit l'origine. Le drapeau evite un double rendu a l'amorcage.
+      let i18nReady = false;
+      document.addEventListener('tf:languagechange', (event) => {
+        state.lang = event.detail.lang;
+        document.documentElement.lang = state.lang;
+        if (i18nReady) render();
+      });
+
+
+      // Le script de la console est encapsule dans une IIFE : les fonctions
+      // declarees ici ne sont pas globales. Les attributs HTML inline
+      // (onchange="setBrandLang(...)", onclick="...render()") sont evalues
+      // dans la portee globale et levaient "X is not defined".
+      // On expose uniquement les deux fonctions reellement referencees.
+      window.setBrandLang = setBrandLang;
+      window.render = render;
+      window.state = state;
 
 
       function intelligenceView() {
@@ -1766,6 +1747,8 @@
           state.view === 'questionnaires' ? questionnairesBuilderView() :
           state.view === 'products' ? productsView() :
           state.view === 'quality' ? qualityView() :
+            state.view === 'risk' ? riskView() :
+            state.view === 'intelligence' ? intelligenceView() :
           state.view === 'massBalance' ? massBalanceConsoleView() :
           state.view === 'integrations' ? integrationsView() :
           state.view === 'suppliers' ? suppliersView() :
@@ -1798,7 +1781,7 @@
             <p>Concevez et déployez des questionnaires sur-mesure pour vos fournisseurs : exigences documentaires, extraction OCR, règles de validation et conformité CSRD.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Catalogue des gabarits standards exporté au format JSON.')">Exporter Gabarits (JSON)</button>
+            <button class="btn btn-secondary" data-demo-action="1">Exporter Gabarits (JSON)</button>
             <button class="btn btn-primary" onclick="state.modal='new-questionnaire';render();">+ Créer un questionnaire</button>
           </div>
         </div>
@@ -1841,7 +1824,7 @@
                       <button class="btn btn-primary btn-small" data-action="new-request" onclick="state.modal='new-request';state.selectedQuestionnairePreset='${esc(q.key)}';render();">
                         ↗ Lancer une collecte avec ce modèle
                       </button>
-                      <button class="btn btn-secondary btn-small" onclick="alert('Édition du protocole ${esc(q.title)} : ajout de nouvelles règles de preuve.')">
+                      <button class="btn btn-secondary btn-small" data-demo-action="1">
                         Modifier le protocole
                       </button>
                     </div>
@@ -1890,8 +1873,8 @@
             <p>Suivez l'origine des fibres, les procédés de filature, les certifications de bilan massique et les fournisseurs Rang 3–4.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Exportation CSV générée.')">Exporter CSV</button>
-            <button class="btn btn-primary" onclick="alert('Nouveau matériau enregistré.')">+ Ajouter un matériau</button>
+            <button class="btn btn-secondary" data-demo-action="1">Exporter CSV</button>
+            <button class="btn btn-primary" data-demo-action="1">+ Ajouter un matériau</button>
           </div>
         </div>
         <div class="card panel">
@@ -1908,7 +1891,7 @@
                   <td><strong>${esc(m.recycledContent || '0%')}</strong></td>
                   <td>${(m.certifications || ['GOTS']).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')}</td>
                   <td><span class="badge-tier">${esc(m.tier || 'Tier 4')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Détails du matériau ${esc(m.name)}')">Inspecter</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter</button></td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -1942,7 +1925,7 @@
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Ouvrir Vue Consommateur DPP ↗</button>
-            <button class="btn btn-primary" onclick="alert('Rapport complet de traçabilité exporté.')">Exporter Audit Complet</button>
+            <button class="btn btn-primary" data-demo-action="1">Exporter Audit Complet</button>
           </div>
         </div>
 
@@ -2107,7 +2090,7 @@
                         <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · Téléversé le ${esc(f.date)}</div>
                       </div>
                     </div>
-                    <button class="btn btn-secondary btn-small" onclick="alert('Inspection de la preuve ${esc(f.name)} scellée avec hash.')">Inspecter</button>
+                    <button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter</button>
                   </div>
                 `).join('')}
               </div>
@@ -2160,8 +2143,8 @@
             <p>Auditez, scellez et vérifiez les preuves réelles de votre supply chain textile : certificats de transaction, rapports d'essais ISO 17025, audits sociaux SMETA et déclarations REACH.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Registre d\'audit cryptographique téléchargé (Format JSON-LD).')">📥 Télécharger le registre scellé</button>
-            <button class="btn btn-primary" onclick="alert('Formulaire de dépôt de preuve ouvert.')">+ Déposer une nouvelle preuve</button>
+            <button class="btn btn-secondary" data-demo-action="1">📥 Télécharger le registre scellé</button>
+            <button class="btn btn-primary" data-demo-action="1">+ Déposer une nouvelle preuve</button>
           </div>
         </div>
 
@@ -2228,7 +2211,7 @@
                   <td>14/01/2026</td>
                   <td>14/01/2027</td>
                   <td><span class="status status-approved">✓ SHA-256 Scellé</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Preuve inspectée avec succès.')">Vérifier</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
                 </tr>
                 <tr>
                   <td><strong>Rapport Laboratoire ZDHC MRSL Level 3</strong><div class="meta">Analyses eaux usées & métaux lourds</div></td>
@@ -2238,7 +2221,7 @@
                   <td>02/03/2026</td>
                   <td>02/03/2027</td>
                   <td><span class="status status-approved">✓ Validé ISO 17025</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Rapport de laboratoire conforme.')">Vérifier</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
                 </tr>
                 <tr>
                   <td><strong>Audit Social SMETA 4-Pillar (Grade A)</strong><div class="meta">Santé, sécurité & rémunération équitable</div></td>
@@ -2248,7 +2231,7 @@
                   <td>10/11/2025</td>
                   <td>10/11/2026</td>
                   <td><span class="status status-approved">✓ Conforme OIT</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Audit social approuvé sans non-conformité.')">Vérifier</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
                 </tr>
                 <tr>
                   <td><strong>Certificat OEKO-TEX Standard 100</strong><div class="meta">Classe 1 (Contact direct avec la peau)</div></td>
@@ -2258,7 +2241,7 @@
                   <td>18/02/2026</td>
                   <td>18/02/2027</td>
                   <td><span class="status status-approved">✓ Valide</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Certificat vérifié.')">Vérifier</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
                 </tr>
               </tbody>
             </table>
@@ -2266,45 +2249,63 @@
         </div>`;
       }
 
+      // Jours restants avant echeance, et pastille correspondante. La veille
+      // des expirations derive desormais de ces donnees : la version
+      // precedente affirmait en dur qu'aucun certificat n'expirait, ce qui
+      // devenait faux des que la vue etait alimentee.
+      const certJours = (c) => Math.ceil((Date.parse(c.expires) - Date.now()) / 86400000);
+      function certStatut(c) {
+        const j = certJours(c);
+        if (j < 0) return `<span class="status status-changes_requested">${esc(bt('certExpired'))}</span>`;
+        if (j <= 90) return `<span class="status status-needs_review">${esc(bt('certExpiringSoon'))}</span>`;
+        return `<span class="status status-approved">${esc(bt('certValid'))}</span>`;
+      }
+
       function certificationsConsoleView() {
         const certs = state.certifications || [];
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Standard Compliance</div>
-            <h1>Certifications & Audit Standards</h1>
-            <p>Active multi-facility certifications: GOTS, GRS, OEKO-TEX, and ISO 14001.</p>
+            <div class="eyebrow">${esc(bt('certEyebrow'))}</div>
+            <h1>${esc(bt('certTitle'))}</h1>
+            <p>${esc(bt('certLead'))}</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Nouveau certificat déclaré.')">+ Déclarer un certificat</button>
+            <button class="btn btn-primary" data-demo-action="1">+ ${esc(bt('certDeclare'))}</button>
           </div>
         </div>
         <div class="grid split">
           <div class="card panel">
-            <div class="panel-head"><h2>Certificats en vigueur</h2></div>
-            <div class="table-wrap">
+            <div class="panel-head"><h2>${esc(bt('certActiveTitle'))}</h2></div>
+            <div class="table-wrap cert-table">
               <table>
                 <thead>
-                  <tr><th>Norme / Standard</th><th>Numéro de certificat</th><th>Organisme</th><th>Expiration</th><th>Statut</th></tr>
+                  <tr><th>${esc(bt('certColStandard'))}</th><th>${esc(bt('certColNumber'))}</th><th>${esc(bt('certColIssuer'))}</th><th>${esc(bt('certColExpiry'))}</th><th>${esc(bt('certColStatus'))}</th></tr>
                 </thead>
                 <tbody>
-                  ${certs.map((c) => `<tr>
+                  ${certs.length ? certs.map((c) => `<tr>
                     <td><strong>${esc(c.standard)}</strong></td>
                     <td><code>${esc(c.number)}</code></td>
                     <td>${esc(c.issuer)}</td>
                     <td>${esc(c.expires)}</td>
-                    <td><span class="status status-approved">Valide</span></td>
-                  </tr>`).join('')}
+                    <td>${certStatut(c)}</td>
+                  </tr>`).join('') : `<tr><td colspan="5" class="empty">${esc(bt('certNone'))}</td></tr>`}
                 </tbody>
               </table>
             </div>
           </div>
           <div class="card panel">
-            <div class="panel-head"><h2>Veille des Expirations</h2></div>
+            <div class="panel-head"><h2>${esc(bt('certWatchTitle'))}</h2></div>
             <div style="font-size:12.5px;color:var(--muted);display:grid;gap:12px;">
-              <p>Aucun certificat n’expire dans les 60 prochains jours. Prochain renouvellement prévu : <strong>OEKO-TEX Standard 100</strong> (Décembre 2026).</p>
+              ${(() => {
+                const bientot = certs.filter((c) => certJours(c) <= 90).sort((a, b) => certJours(a) - certJours(b));
+                if (!bientot.length) return `<p>${esc(bt('certWatchNone'))}</p>`;
+                const t = bientot[0];
+                return `<p><strong>${bientot.length}</strong> ${esc(bt('certWatchCount'))}<br>
+                  ${esc(bt('certNextRenewal'))} : <strong>${esc(t.standard)}</strong> — ${certJours(t)} ${esc(bt('certDaysLeft'))}.</p>`;
+              })()}
               <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);">
-                <strong style="color:var(--green-dark);">Règle de conformité continue</strong>
-                <div style="font-size:11px;margin-top:4px;">Tracefab alerte automatiquement les fournisseurs 90 jours avant l'expiration d'un certificat d'exploitation.</div>
+                <strong style="color:var(--green-dark);">${esc(bt('certRuleTitle'))}</strong>
+                <div style="font-size:11px;margin-top:4px;">${esc(bt('certRuleBody'))}</div>
               </div>
             </div>
           </div>
@@ -2320,7 +2321,7 @@
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Exporter JSON-LD (CIRPASS) ↗</button>
-            <button class="btn btn-primary" onclick="alert('Tous les scores DPP ont été recalculés.')">Recalculer les scores DPP</button>
+            <button class="btn btn-primary" data-demo-action="1">Recalculer les scores DPP</button>
           </div>
         </div>
 
@@ -2399,7 +2400,7 @@
             <p>Générez les extraits de données pour les auditeurs CSRD (ESRS E1, E4, E5), Loi AGEC et LkSG.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Rapport CSRD exporté avec succès.')">Générer le rapport CSRD</button>
+            <button class="btn btn-primary" data-demo-action="1">Générer le rapport CSRD</button>
           </div>
         </div>
         <div class="grid split">
@@ -2411,14 +2412,14 @@
                   <strong>Export Réglementaire CSRD (ESRS E5 Circularité)</strong>
                   <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Composition certifiée, recyclabilité, et taux de matières recyclées.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Export CSRD lancé.')">Télécharger XLSX</button>
+                <button class="btn btn-secondary btn-small" data-demo-action="1">Télécharger XLSX</button>
               </div>
               <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
                 <div>
                   <strong>Fiche Conformité Loi AGEC (France - Article 13)</strong>
                   <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Traçabilité des opérations de tissage, teinture et confection.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Fiche AGEC générée.')">Télécharger PDF</button>
+                <button class="btn btn-secondary btn-small" data-demo-action="1">Télécharger PDF</button>
               </div>
             </div>
           </div>
@@ -2437,7 +2438,7 @@
             <p>Paramètres de l'organisation, intégrations API, clés d'accès et politiques de conformité.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Paramètres sauvegardés.')">Enregistrer</button>
+            <button class="btn btn-primary" data-demo-action="1">Enregistrer</button>
           </div>
         </div>
         <div class="card panel">
@@ -2752,31 +2753,31 @@
           </div>
 
           <div class="lineage-pipeline-flow">
-            <div class="lineage-step-card active" onclick="alert('Échelon Fibre : Coton Biologique certifié GOTS (Ferme Izmir, Turquie)')">
+            <div class="lineage-step-card active" data-demo-action="1">
               <div class="lineage-step-label">01. FIBRE</div>
               <div class="lineage-step-sub">Ferme GOTS</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Filature : Filature de Haute-Vienne (Combed Ring Spun Ne 30/1)')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">02. FILATURE</div>
               <div class="lineage-step-sub">Bilan Massique</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Tissage/Tricotage : Portugal Textile Mill (Jersey 185g/m²)')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">03. TRICOTAGE</div>
               <div class="lineage-step-sub">Guimarães PT</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Teinture : EcoDye Aquitaine (ZDHC Level 3, Zéro Rejet Dangereux)')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">04. TEINTURE</div>
               <div class="lineage-step-sub">ZDHC Level 3</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Confection : Atelier Confection SAS (Barcelos, SMETA 4-Pillar)')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">05. CONFECTION</div>
               <div class="lineage-step-sub">Atelier Certifié</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Produit Fini : Référence AT-ESS-001 réconciliée à 100%')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">06. PRODUIT</div>
               <div class="lineage-step-sub">BOM 100%</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Éco-Score : Calcul PEF Échelon 3 - 3.42 kg CO2e / pièce')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">07. PEF ÉCO</div>
               <div class="lineage-step-sub">Score A (PEF)</div>
             </div>
@@ -2865,7 +2866,7 @@
       function supplierDetailView() {
         const supplier = state.selectedSupplier;
         if (!supplier) return `<div class="empty"><div class="empty-icon">◎</div><strong>Fournisseur introuvable</strong><button class="btn btn-secondary" data-view="suppliers">Retour aux fournisseurs</button></div>`;
-        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">← Retour aux fournisseurs</button><div class="eyebrow" style="margin-top:20px">Fournisseur</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || 'Pays non renseigné')} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">Nouvelle demande</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(labels[supplier.profile?.onboardingStatus] || supplier.profile?.onboardingStatus || 'Non chargé')}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">Complétude</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">Activités</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">Résumé</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : '<div class="empty"><p>Profil non disponible pour cette organisation.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
+        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">← Retour aux fournisseurs</button><div class="eyebrow" style="margin-top:20px">Fournisseur</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || 'Pays non renseigné')} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">Nouvelle demande</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || 'Non chargé')}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">Complétude</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">Activités</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">Résumé</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : '<div class="empty"><p>Profil non disponible pour cette organisation.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
       }
 
       function capContractPanel() {
@@ -2882,6 +2883,238 @@
 
       function complianceContractPanel() {
         return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>Évaluation Environnementale & Empreinte PEF</h2><p class="meta">Éco-Score Textile : ${esc(state.pefAssessment?.pefGrade || '—')} · Audit greenClaimsAudit : ${esc(state.greenClaimsAudit?.status || 'à lancer')}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">Calculer le score PEF</button></div><div class="panel-head" style="margin-top:14px"><div><h2>Bouclier Anti-Greenwashing & Allégations Vertes</h2><p class="meta">Toute allégation doit rester documentée et auditée.</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">Auditer les allégations</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">Allégation<textarea class="textarea" name="claimText" rows="2" placeholder="Coton biologique certifié…"></textarea></label></form></div>`;
+      }
+
+
+      /* ── Risk & exposure ──────────────────────────────────────────────
+         Vue exigee par le cahier des charges (nav : Quality, Risk, DPP) et
+         absente de la console jusqu'ici.
+
+         Principe : aucune notation externe, aucune donnee inventee. Chaque
+         signal est derive des enregistrements deja charges dans state
+         (fournisseurs, produits, matieres, demandes). Une dimension sans
+         enregistrement vaut 0 et l'affiche comme telle, plutot que de
+         simuler un score. L'indice global est un indicateur operationnel
+         destine a prioriser le travail : ce n'est jamais une certification.
+      */
+      function riskSignals() {
+        const sup = state.suppliers || [];
+        const prods = state.products || [];
+        const reqs = state.requests || [];
+        const mats = state.materials || [];
+        const now = Date.now();
+        const org = (s) => s.organizations || {};
+        const nom = (o, s) => o.display_name || o.legal_name || s.id || '—';
+        const SEUIL = 70;          // completude produit jugee suffisante
+        const rows = [];
+
+        // 1. Concentration : part du pays le plus represente
+        const parPays = {};
+        sup.forEach((s) => { const c = org(s).country_code || ''; parPays[c] = (parPays[c] || 0) + 1; });
+        const pays = Object.entries(parPays).sort((a, b) => b[1] - a[1]);
+        const partMax = sup.length ? Math.round((pays[0][1] / sup.length) * 100) : 0;
+        if (sup.length > 1 && partMax >= 50) {
+          rows.push({ sev: partMax >= 80 ? 'High' : 'Medium', cat: 'riskCatGeography',
+            subject: pays[0][0] || bt('riskGeoUnknown'), sig: 'riskSigConcentration',
+            extra: partMax + '%', view: 'suppliers' });
+        }
+
+        // 2. Fournisseurs : relation inactive, pays non declare
+        sup.forEach((s) => {
+          const o = org(s);
+          if (o.status && o.status !== 'active') {
+            rows.push({ sev: 'High', cat: 'riskCatSupplier', subject: nom(o, s),
+              sig: 'riskSigInactive', extra: o.status, view: 'suppliers' });
+          }
+          if (!o.country_code) {
+            rows.push({ sev: 'Medium', cat: 'riskCatSupplier', subject: nom(o, s),
+              sig: 'riskSigNoCountry', extra: '', view: 'suppliers' });
+          }
+        });
+
+        // 3. Produits : completude sous le seuil, sinon donnees non validees
+        prods.forEach((p) => {
+          const c = Number(p.dataCompletion);
+          const label = [p.reference, p.name].filter(Boolean).join(' · ') || p.id;
+          if (Number.isFinite(c) && c < SEUIL) {
+            rows.push({ sev: c < 50 ? 'Critical' : 'High', cat: 'riskCatProduct', subject: label,
+              sig: 'riskSigIncomplete', extra: c + '%', view: 'products' });
+          } else if (p.dataReadiness && p.dataReadiness !== 'ready') {
+            rows.push({ sev: 'Medium', cat: 'riskCatProduct', subject: label,
+              sig: 'riskSigNotReady', extra: String(p.dataReadiness).replace(/_/g, ' '), view: 'products' });
+          }
+        });
+
+        // 4. Collecte : demandes echues, puis demandes en retard de completion
+        const clos = (r) => ['approved', 'completed', 'accepted'].includes(r.status);
+        reqs.forEach((r) => {
+          if (clos(r)) return;
+          const due = r.dueAt ? Date.parse(r.dueAt) : NaN;
+          const pct = Number(r.completionPercentage);
+          if (Number.isFinite(due) && due < now) {
+            const jours = Math.max(1, Math.round((now - due) / 86400000));
+            rows.push({ sev: 'Critical', cat: 'riskCatCollection', subject: r.title || r.id,
+              sig: 'riskSigOverdue', extra: '+' + jours + 'd', view: 'requests' });
+          } else if (Number.isFinite(pct) && pct < 50) {
+            rows.push({ sev: 'Medium', cat: 'riskCatCollection', subject: r.title || r.id,
+              sig: 'riskSigStalled', extra: pct + '%', view: 'requests' });
+          }
+        });
+
+        // 5. Matieres sans pays d'origine
+        mats.forEach((m) => {
+          if (!m.originCountryCode) {
+            rows.push({ sev: 'Medium', cat: 'riskCatMaterial', subject: m.name || m.id,
+              sig: 'riskSigNoOrigin', extra: '', view: 'materials' });
+          }
+        });
+
+        // Dimensions : part des enregistrements porteurs d'un signal.
+        const part = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+        const dims = [
+          { key: 'riskDimConcentration', n: sup.length,
+            score: sup.length > 1 ? Math.max(0, partMax - 20) : 0 },
+          { key: 'riskDimGeography', n: sup.length,
+            score: part(sup.filter((s) => !org(s).country_code).length, sup.length) },
+          { key: 'riskDimData', n: prods.length,
+            score: part(prods.filter((p) => Number(p.dataCompletion) < SEUIL
+              || (p.dataReadiness && p.dataReadiness !== 'ready')).length, prods.length) },
+          { key: 'riskDimCollection', n: reqs.length,
+            score: part(reqs.filter((r) => !clos(r) && ((r.dueAt && Date.parse(r.dueAt) < now)
+              || Number(r.completionPercentage) < 50)).length, reqs.length) },
+          { key: 'riskDimTraceability', n: mats.length,
+            score: part(mats.filter((m) => !m.originCountryCode).length, mats.length) },
+        ];
+        // Seules les dimensions reellement alimentees entrent dans l'indice :
+        // moyenner un zero issu d'une absence de donnees ferait baisser le
+        // score pour la mauvaise raison.
+        const vivantes = dims.filter((d) => d.n > 0);
+        const index = vivantes.length
+          ? Math.round(vivantes.reduce((a, d) => a + d.score, 0) / vivantes.length) : 0;
+
+        const rang = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+        rows.sort((a, b) => rang[a.sev] - rang[b.sev]);
+        return { rows, dims, index, pays, nbSup: sup.length, nbProd: prods.length };
+      }
+
+      function riskView() {
+        const r = riskSignals();
+        const bande = r.index >= 70 ? 'riskBandHigh' : r.index >= 45 ? 'riskBandElevated'
+          : r.index >= 20 ? 'riskBandModerate' : 'riskBandLow';
+        const pastille = { Critical: 'risk-pill risk-pill--critical', High: 'risk-pill risk-pill--high',
+          Medium: 'risk-pill risk-pill--medium', Low: 'risk-pill risk-pill--low' };
+        const sevKey = { Critical: 'riskSevCritical', High: 'riskSevHigh',
+          Medium: 'riskSevMedium', Low: 'riskSevLow' };
+        const critiques = r.rows.filter((x) => x.sev === 'Critical').length;
+        const fournSignales = new Set(r.rows.filter((x) => x.cat === 'riskCatSupplier')
+          .map((x) => x.subject)).size;
+        const produitsExposes = new Set(r.rows.filter((x) => x.cat === 'riskCatProduct')
+          .map((x) => x.subject)).size;
+
+        const lignes = r.rows.map((x) => `
+          <tr>
+            <td><span class="${pastille[x.sev]}">${esc(bt(sevKey[x.sev]))}</span></td>
+            <td>${esc(bt(x.cat))}</td>
+            <td><strong>${esc(x.subject)}</strong></td>
+            <td>${esc(bt(x.sig))}${x.extra ? ` <span class="meta">· ${esc(x.extra)}</span>` : ''}</td>
+            <td style="text-align:right">
+              <button class="btn btn-secondary btn-small" onclick="state.view='${x.view}';render();">
+                ${esc(bt('riskOpen'))}
+              </button>
+            </td>
+          </tr>`).join('');
+
+        return `
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">${esc(bt('riskEyebrow'))}</div>
+              <h1>${esc(bt('riskTitle'))}</h1>
+              <p>${esc(bt('riskLead'))}</p>
+            </div>
+            <div class="actions">
+              <span class="risk-note">${esc(bt('riskNotCertification'))}</span>
+              <button class="btn btn-secondary" onclick="render();">${esc(bt('riskRecompute'))}</button>
+            </div>
+          </div>
+
+          <div class="grid kpis risk-kpis">
+            <div class="card kpi">
+              <div class="kpi-value">${r.index}</div>
+              <div class="kpi-label">${esc(bt('riskIndex'))}</div>
+              <div class="kpi-note">${esc(bt(bande))} · ${esc(bt('riskOutOf100'))}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-value">${critiques}</div>
+              <div class="kpi-label">${esc(bt('riskCriticalSignals'))}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-value">${fournSignales}</div>
+              <div class="kpi-label">${esc(bt('riskSuppliersAtRisk'))}</div>
+              <div class="kpi-note">/ ${r.nbSup}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-value">${produitsExposes}</div>
+              <div class="kpi-label">${esc(bt('riskProductsExposed'))}</div>
+              <div class="kpi-note">/ ${r.nbProd}</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>${esc(bt('riskDimTitle'))}</h2></div>
+            <div>
+              ${r.dims.map((d) => `
+                <div class="risk-dim">
+                  <div class="risk-dim__row">
+                    <span class="risk-dim__name">${esc(bt(d.key))}</span>
+                    <span class="risk-dim__val${d.n ? '' : ' is-muted'}">${d.n ? d.score + '%' : esc(bt('riskNoRecords'))}</span>
+                  </div>
+                  <div class="pillar-bar-bg"><div class="pillar-bar-fill" style="width:${d.n ? d.score : 0}%"></div></div>
+                </div>`).join('')}
+            </div>
+            <p class="meta risk-basis">
+              <strong>${esc(bt('riskBasisTitle'))}.</strong> ${esc(bt('riskBasisBody'))}
+            </p>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>${esc(bt('riskRegisterTitle'))}</h2>
+              <span class="meta">${esc(bt('riskRegisterNote'))}</span>
+            </div>
+            ${r.rows.length ? `<div class="table-wrap"><table>
+              <thead><tr>
+                <th>${esc(bt('riskColSeverity'))}</th>
+                <th>${esc(bt('riskColCategory'))}</th>
+                <th>${esc(bt('riskColSubject'))}</th>
+                <th>${esc(bt('riskColSignal'))}</th>
+                <th style="text-align:right">${esc(bt('riskColAction'))}</th>
+              </tr></thead>
+              <tbody>${lignes}</tbody>
+            </table></div>` : `<div class="empty">
+              <div class="empty-icon">○</div>
+              <strong>${esc(bt('riskEmpty'))}</strong>
+              <p class="meta">${esc(bt('riskEmptyNote'))}</p>
+            </div>`}
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>${esc(bt('riskGeoTitle'))}</h2>
+              <span class="meta">${esc(bt('riskGeoNote'))}</span>
+            </div>
+            ${r.pays.length ? `<div>
+              ${r.pays.map(([code, n]) => {
+                const pc = r.nbSup ? Math.round((n / r.nbSup) * 100) : 0;
+                return `<div class="risk-dim">
+                  <div class="risk-dim__row">
+                    <span class="risk-dim__name">${esc(code || bt('riskGeoUnknown'))}</span>
+                    <span class="risk-dim__val">${pc}%<span class="meta" style="font-weight:650"> · ${n}</span></span>
+                  </div>
+                  <div class="pillar-bar-bg"><div class="pillar-bar-fill" style="width:${pc}%"></div></div>
+                </div>`;
+              }).join('')}
+            </div>` : `<div class="empty"><div class="empty-icon">○</div><strong>${esc(bt('riskEmpty'))}</strong></div>`}
+          </div>`;
       }
 
             function qualityView() {
@@ -3027,7 +3260,7 @@
             <span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span>
             <div>
               <strong>${esc(issue.message)}</strong>
-              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(labels[issue.status] || issue.status)}</span> · <span class="meta">Détectée le ${date(issue.detectedAt)}</span></p>
+              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(statusLabel(issue.status))}</span> · <span class="meta">Détectée le ${date(issue.detectedAt)}</span></p>
               ${isWaived && waiverReason ? `
                 <div class="item-response" style="margin-top:7px;background:#edf7f0;border:1px solid #cce8d5;border-radius:8px;font-size:11px;color:#285e42">
                   <strong>Dérogation accordée :</strong> ${esc(waiverReason)}
@@ -3064,7 +3297,7 @@
               <p>Reconstitution scientifique du parcours physique de la matière, depuis la parcelle agricole jusqu'au centre de distribution européen.</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary" onclick="alert('Rapport de Chaîne de Garde généré (Norme ISO 22095).')">📥 Exporter le rapport forensique</button>
+              <button class="btn btn-secondary" data-demo-action="1">📥 Exporter le rapport forensique</button>
               <button class="btn btn-secondary" data-action="select-supply-chain-product">Changer de produit</button>
               <button class="btn btn-primary" data-action="new-chain-node">+ Ajouter un jalon vérifié</button>
             </div>
@@ -3286,7 +3519,7 @@
               <div class="panel-head">
                 <div>
                   <h2>Exigences Restantes à Compléter (${dpp.missingFields.length})</h2>
-                  <p class="meta" style="margin:4px 0 0">Actions requises avant de pouvoir certifier le passeport en statut Prêt pour validation.</p>
+                  <p class="meta" style="margin:4px 0 0">Actions requises avant de pouvoir passer le passeport en statut Prêt pour validation. La préparation est un indicateur opérationnel, pas une certification.</p>
                 </div>
                 <span class="status status-changes_requested">${dpp.blockingCount} bloquant(s)</span>
               </div>
@@ -3362,7 +3595,7 @@
             ${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}
             ${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary" data-action="remind-request" data-reminder-request-id="${esc(r.id)}">Relancer le fournisseur</button>` : ''}
             ${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}
-            <button class="btn btn-primary" onclick="alert('Rapport complet de revue RSE exporté.')">Exporter Synthèse</button>
+            <button class="btn btn-primary" data-demo-action="1">Exporter Synthèse</button>
           </div>
         </div>
 
@@ -3400,7 +3633,7 @@
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
                           <span class="badge-ocr">OCR 99% Valide</span>
-                          <button class="btn btn-secondary btn-small" onclick="alert('Inspection visuelle de ${esc(item.documentName)} ouverte.')">Inspecter Document</button>
+                          <button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter Document</button>
                         </div>
                       </div>
                     ` : ''}
@@ -3412,7 +3645,7 @@
                             <strong style="font-size:11px;color:var(--muted);text-transform:uppercase;">Donnée Déclarée par le Fournisseur :</strong>
                             <div style="font-size:13px;font-weight:750;margin-top:2px;">${esc(response.value)}</div>
                           </div>
-                          <span class="status status-${esc(response.status)}">${esc(labels[response.status] || response.status)}</span>
+                          <span class="status status-${esc(response.status)}">${esc(statusLabel(response.status))}</span>
                         </div>
 
                         ${response.reviewerNote ? `
@@ -3459,7 +3692,7 @@
             <div class="card panel">
               <div class="panel-head"><h2>Actions Rapides</h2></div>
               <div style="display:grid;gap:8px;">
-                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="alert('Rappel email envoyé à Rui Silva (Nhãn Textile).')">
+                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" data-demo-action="1">
                   ✉️ Relancer le fournisseur par email
                 </button>
                 <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="window.open('/dpp/', '_blank')">
@@ -4164,6 +4397,11 @@
       }
 
       function bind() {
+
+        // Buttons that used to alert() a fake success now say what is actually true.
+        document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
+          event.preventDefault(); notify(bt('demoUnavailable'));
+        }));
         document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => { state.view = el.dataset.view; state.selectedRequest = null; render(); }));
         document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async (event) => {
           const action = el.dataset.action;
@@ -4295,7 +4533,11 @@
         }
       }
       window.tracefabBrandConsole = { state, sync };
-      boot();
+      // Le catalogue doit etre charge dans la langue de l'application avant
+      // le premier rendu.
+      (window.TF_I18N ? window.TF_I18N.setLanguage(state.lang) : Promise.resolve())
+        .then(() => { i18nReady = true; }, () => { i18nReady = true; })
+        .then(boot, boot);
     })();
   </script>
 </body>

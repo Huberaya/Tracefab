@@ -25,6 +25,8 @@
     .item-list { display:grid; gap:13px; } .invitation-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid rgba(121,87,25,.18); font-size:12px; } .invitation-row:first-child { border-top:0; } .item { padding:17px; border:1px solid var(--line); border-radius:14px; } .item-head { display:flex; justify-content:space-between; gap:15px; align-items:flex-start; } .item h3 { font-size:14px; } .item p { margin:5px 0 0; font-size:12px; } .response-box { margin-top:14px; padding:13px; background:#f8faf7; border-radius:12px; } .response-box .form-actions { margin-top:13px; } .response-state { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:7px; }
     .toast { position:fixed; right:25px; bottom:25px; z-index:50; color:white; background:#19372d; border-radius:12px; padding:13px 16px; box-shadow:0 12px 35px rgba(0,0,0,.2); font-size:13px; max-width:360px; } .toast.error { background:#8e3d3b; } .auth-screen { min-height:100vh; display:grid; place-items:center; padding:25px; background:radial-gradient(circle at 10% 0%,#d9f1e4,transparent 32%),var(--paper); } .auth-card { width:min(950px,100%); display:grid; grid-template-columns:1fr 1fr; overflow:hidden; border-radius:24px; background:white; box-shadow:var(--shadow); border:1px solid var(--line); } .auth-copy { padding:52px; background:#112b23; color:white; } .auth-copy h1 { font-size:38px; margin-top:75px; } .auth-copy p { color:#bdd2c7; max-width:370px; } .auth-copy ul { color:#d7e9df; padding-left:19px; line-height:2; font-size:13px; } .auth-box { padding:38px; min-height:480px; } .config-error { max-width:600px; background:white; padding:35px; border-radius:20px; box-shadow:var(--shadow); } .demo-banner { background:var(--yellow-soft); border-bottom:1px solid #f2ddb0; padding:8px 15px; text-align:center; font-size:11px; color:#8f6417; font-weight:750; }
     @media (max-width:1050px) { .kpis{grid-template-columns:repeat(2,1fr)} .split{grid-template-columns:1fr} } @media (max-width:760px) { .app{display:block} .sidebar{min-height:auto;padding:15px} .brand{padding-bottom:16px} .nav{display:flex;overflow-x:auto} .nav button{white-space:nowrap} .sidebar-bottom{display:none} .topbar{padding:0 18px;min-height:64px} .content{padding:28px 18px 50px} .page-head,.detail-hero{display:block} .actions{justify-content:flex-start;margin-top:17px} .auth-card{grid-template-columns:1fr} .auth-copy{display:none} .auth-box{min-height:500px} .form-grid{grid-template-columns:1fr} .field-full{grid-column:auto} }
+
+
   
     /* Evidence Vault, Reusability & NDA Enhancements (Chantier 3) */
     .vault-hero {
@@ -218,6 +220,52 @@
     .sp-pill-pending { background: #fef3c7; color: #b45309; }
 
     /* Reusable Vault & Actions Grid */
+    .sp-progress-lead {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 3px;
+      line-height: 1.45;
+    }
+    .sp-progress-missing {
+      font-size: 11.5px;
+      color: #b45309;
+      margin-top: 4px;
+    }
+    /* La pastille est un bouton : elle mene a la vue qui corrige la
+       dimension. Reset de l'apparence native, le visuel reste celui des
+       anciennes pastilles. */
+    .sp-check-pill {
+      border: 0;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .sp-check-pill:hover { filter: brightness(0.96); }
+    .sp-check-pill:focus-visible { outline: 2px solid #0b7656; outline-offset: 2px; }
+    .sp-focus-btn {
+      margin-top: 14px;
+      width: 100%;
+      border: 0;
+      border-radius: 11px;
+      padding: 13px 18px;
+      background: #0b7656;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .sp-focus-btn:hover { background: #0a6349; }
+    .sp-focus-btn:focus-visible { outline: 2px solid #17231f; outline-offset: 2px; }
+    .sp-progress-pct span {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 650;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: right;
+    }
     .sp-actions-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -260,8 +308,59 @@
       line-height: 1.4;
     }
 
+    /* Chantier 5 — en 390x844, les 14 elements cliquables au-dessus de la
+       ligne de flottaison etaient tous de la navigation. Le fournisseur doit
+       savoir immediatement quoi faire ; il ne voyait que des onglets, deux
+       listes deroulantes de reglage et une accroche. On degraisse le chrome
+       et on comprime l'accroche pour faire remonter le panneau d'action. */
+    @media (max-width: 760px) {
+      /* le fil d'ariane repete l'onglet actif, deja visible dans la nav */
+      .topbar .crumb, .topbar .breadcrumb { display: none; }
+      .topbar { min-height: 0; padding: 10px 18px; gap: 10px; flex-wrap: wrap; }
+      .topbar select { font-size: 12px; padding: 6px 8px; }
+      .topbar label, .topbar .field-label { font-size: 10px; }
+      .content { padding: 16px 18px 50px; }
+
+      .sp-hero-card { padding: 18px 20px; border-radius: 16px; margin-bottom: 16px; }
+      .sp-hero-tag { font-size: 9.5px; letter-spacing: .08em; margin-bottom: 8px; }
+      .sp-hero-h1 { font-size: 20px; line-height: 1.2; }
+      /* La promesse tient dans le titre. Le paragraphe l'explicite : utile
+         sur grand ecran, il coute 150px au-dessus de la ligne sur mobile et
+         repousse la seule chose actionnable hors de l'ecran. */
+      .sp-hero-sub { display: none; }
+
+      .sp-progress-panel { padding: 16px 18px; border-radius: 15px; }
+      .sp-progress-head { gap: 12px; align-items: flex-start; }
+      .sp-progress-pct { font-size: 17px; white-space: nowrap; }
+      .sp-checklist-row { gap: 8px; }
+      .sp-check-pill { font-size: 11px; padding: 5px 10px; }
+
+      /* langue et organisation tiennent sur une seule ligne : ce sont deux
+         reglages poses une fois, ils n'ont pas a couter deux lignes au-dessus
+         de la ligne de flottaison. */
+      .top-actions { width: 100%; gap: 8px; }
+      .top-actions > * { flex: 1 1 0; min-width: 0; }
+      .top-actions label { min-width: 0 !important; }
+      .top-actions select { width: 100%; }
+      .top-actions label .meta { display: none; }
+    }
+
   </style>
-  <script src="/auto-translate.js"></script>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-spa-responsive.css">
+  <!-- The legacy auto-translate.js DOM rewriter was removed here: it reads the
+       same localStorage key as this app ("tracefab_lang") but defaults to "en"
+       while the app defaults to "fr", so on a first visit it rewrote only the
+       glossary-matched strings and produced a half-translated UI. This page owns
+       its own complete catalogue. -->
+    <!-- i18n consolide : catalogue unique /assets/i18n, servi par le runtime
+         partage tf-i18n.js. Le portail sert aussi des fournisseurs turcs et
+         chinois, d'ou l'elargissement de l'ensemble des langues. -->
+    <script>
+      window.TF_I18N_SUPPORTED = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
+      window.TF_I18N_SKIP_META = true;
+    </script>
+    <script src="/assets/i18n/en.js"></script>
+    <script src="/assets/js/tf-i18n.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -270,265 +369,63 @@
       'use strict';
       const app = document.getElementById('app');
       
-      const translations = {
-        fr: {
-          overview: "Vue d’ensemble",
-          requests: "Demandes de données",
-          sites: "Sites de production",
-          certifications: "Certificats",
-          materials: "Matériaux & Fils",
-          documents: "Coffre-fort de Preuves (Vault)",
-          dataPoints: "Données structurées",
-          members: "Équipe & Accès",
-          quality: "Score Qualité",
-          profile: "Mon profil entreprise",
-          requestDetail: "Répondre à une demande",
-          vaultDesc: "Déposez vos certificats d'audit une seule fois et réutilisez-les instantanément pour toutes vos marques clientes.",
-          uploadEvidence: "Ajouter une preuve au Vault",
-          ndaTitle: "Garantie de Secret Industriel & Confidentialité",
-          ndaDesc: "Vos sous-traitants exclusifs, prix et marges sont strictement protégés. Seuls les certificats de conformité et le bilan massique sont audités.",
-          hello: "Bonjour",
-          pendingRequests: "Demandes ouvertes",
-          sitesRegistered: "Sites enregistrés",
-          validCerts: "Certificats actifs",
-          qualityIndex: "Score de complétude",
-          submitToBrand: "Soumettre à la marque",
-          saveDraft: "Enregistrer le brouillon",
-          responseRecorded: "Réponse enregistrée avec succès.",
-          requestSubmitted: "Demande soumise à la marque donneuse d'ordre.",
-          signOut: "Se déconnecter"
-        },
-        en: {
-          overview: "Overview",
-          requests: "Data Requests",
-          sites: "Production Facilities",
-          certifications: "Certifications",
-          materials: "Materials & Yarns",
-          documents: "Evidence Vault (One-to-Many)",
-          dataPoints: "Structured Data",
-          members: "Team & Permissions",
-          quality: "Quality Score",
-          profile: "Company Profile",
-          requestDetail: "Respond to Request",
-          vaultDesc: "Upload your audit certificates once and share them instantly across all your brand clients.",
-          uploadEvidence: "Upload Evidence to Vault",
-          ndaTitle: "Trade Secret & Confidentiality Protection",
-          ndaDesc: "Proprietary formulas, pricing and margins remain strictly confidential. Only proof hashes and mass-balance reconciliation are shared.",
-          hello: "Hello",
-          pendingRequests: "Open Requests",
-          sitesRegistered: "Registered Facilities",
-          validCerts: "Active Certificates",
-          qualityIndex: "Data Completion",
-          submitToBrand: "Submit to Brand",
-          saveDraft: "Save Draft",
-          responseRecorded: "Response saved successfully.",
-          requestSubmitted: "Request submitted to brand.",
-          signOut: "Sign out"
-        },
-                de: {
-          overview: "Übersicht",
-          requests: "Datenanfragen",
-          sites: "Produktionsstätten",
-          certifications: "Zertifikate",
-          materials: "Materialien & Garne",
-          documents: "Nachweis-Tresor (Vault)",
-          dataPoints: "Strukturierte Daten",
-          members: "Team & Berechtigungen",
-          quality: "Qualitätsindex",
-          profile: "Unternehmensprofil",
-          requestDetail: "Auf Anfrage antworten",
-          vaultDesc: "Laden Sie Ihre Prüfzertifikate einmal hoch und teilen Sie sie sofort mit all Ihren Marken.",
-          uploadEvidence: "Nachweis zum Vault hinzufügen",
-          ndaTitle: "Schutz von Geschäftsgeheimnissen",
-          ndaDesc: "Geschützte Rezepturen, Preise und Margen bleiben streng vertraulich. Nur Prüfungs-Hashes werden geteilt.",
-          hello: "Hallo",
-          pendingRequests: "Offene Anfragen",
-          sitesRegistered: "Registrierte Stätten",
-          validCerts: "Aktive Zertifikate",
-          qualityIndex: "Vollständigkeitsgrad",
-          submitToBrand: "An Marke übermitteln",
-          saveDraft: "Entwurf speichern",
-          responseRecorded: "Antwort erfolgreich gespeichert.",
-          requestSubmitted: "Anfrage an Auftraggeber übermittelt.",
-          signOut: "Abmelden"
-        },
-        es: {
-          overview: "Resumen",
-          requests: "Solicitudes de datos",
-          sites: "Centros de producción",
-          certifications: "Certificados",
-          materials: "Materiales e hilados",
-          documents: "Bóveda de Evidencias (Vault)",
-          dataPoints: "Datos estructurados",
-          members: "Equipo y accesos",
-          quality: "Puntuación de calidad",
-          profile: "Perfil de empresa",
-          requestDetail: "Responder a solicitud",
-          vaultDesc: "Cargue sus certificados de auditoría una sola vez y compártalos al instante con todas sus marcas.",
-          uploadEvidence: "Añadir evidencia a la Bóveda",
-          ndaTitle: "Protección de Secretos Comerciales",
-          ndaDesc: "Fórmulas exclusivas, precios y márgenes quedan estrictamente protegidos. Solo se auditan hashes de cumplimiento.",
-          hello: "Hola",
-          pendingRequests: "Solicitudes abiertas",
-          sitesRegistered: "Centros registrados",
-          validCerts: "Certificados activos",
-          qualityIndex: "Grado de integridad",
-          submitToBrand: "Enviar a la marca",
-          saveDraft: "Guardar borrador",
-          responseRecorded: "Respuesta guardada con éxito.",
-          requestSubmitted: "Solicitud enviada a la marca cliente.",
-          signOut: "Cerrar sesión"
-        },
-        nl: {
-          overview: "Overzicht",
-          requests: "Gegevensaanvragen",
-          sites: "Productielocaties",
-          certifications: "Certificaten",
-          materials: "Materialen & Garens",
-          documents: "Bewijskluis (Vault)",
-          dataPoints: "Gestructureerde data",
-          members: "Team & Toegang",
-          quality: "Kwaliteitsscore",
-          profile: "Bedrijfsprofiel",
-          requestDetail: "Reageren op aanvraag",
-          vaultDesc: "Upload uw auditcertificaten eenmalig en deel ze direct met al uw merkklanten.",
-          uploadEvidence: "Bewijs toevoegen aan kluis",
-          ndaTitle: "Bescherming Bedrijfsgeheimen",
-          ndaDesc: "Formules, prijzen en marges blijven strikt vertrouwelijk. Alleen conformiteitshashes worden gedeeld.",
-          hello: "Hallo",
-          pendingRequests: "Openstaande aanvragen",
-          sitesRegistered: "Geregistreerde locaties",
-          validCerts: "Actieve certificaten",
-          qualityIndex: "Volledigheidsscore",
-          submitToBrand: "Verzenden naar merk",
-          saveDraft: "Concept opslaan",
-          responseRecorded: "Reactie succesvol opgeslagen.",
-          requestSubmitted: "Aanvraag ingediend bij opdrachtgever.",
-          signOut: "Uitloggen"
-        },
-        pt: {
-          overview: "Visão Geral",
-          requests: "Pedidos de Dados",
-          sites: "Instalações de Produção",
-          certifications: "Certificados",
-          materials: "Materiais e Fios",
-          documents: "Cofre de Provas (Vault)",
-          dataPoints: "Dados Estruturados",
-          members: "Equipa e Acessos",
-          quality: "Pontuação de Qualidade",
-          profile: "Perfil da Empresa",
-          requestDetail: "Responder ao Pedido",
-          vaultDesc: "Carregue os seus certificados de auditoria uma única vez e partilhe-os com todas as suas marcas clientes.",
-          uploadEvidence: "Adicionar Prova ao Cofre",
-          ndaTitle: "Garantia de Confidencialidade e Segredo Industrial",
-          ndaDesc: "As suas fórmulas exclusivas, preços e margens permanecem estritamente confidenciais. Apenas a conformidade é transmitida.",
-          hello: "Olá",
-          pendingRequests: "Pedidos Pendentes",
-          sitesRegistered: "Instalações Registadas",
-          validCerts: "Certificados Ativos",
-          qualityIndex: "Conclusão de Dados",
-          submitToBrand: "Submeter à Marca",
-          saveDraft: "Guardar Rascunho",
-          responseRecorded: "Resposta registada com sucesso.",
-          requestSubmitted: "Pedido submetido à marca cliente.",
-          signOut: "Terminar sessão"
-        },
-        it: {
-          overview: "Panoramica",
-          requests: "Richieste Dati",
-          sites: "Stabilimenti Produttivi",
-          certifications: "Certificazioni",
-          materials: "Materiali e Filati",
-          documents: "Cassaforte Documenti (Vault)",
-          dataPoints: "Dati Strutturati",
-          members: "Team e Ruoli",
-          quality: "Indice di Qualità",
-          profile: "Profilo Azienda",
-          requestDetail: "Rispondi alla Richiesta",
-          vaultDesc: "Carica i tuoi certificati una sola volta e condividili con tutti i brand clienti.",
-          uploadEvidence: "Carica Certificato nel Vault",
-          ndaTitle: "Tutela del Segreto Industriale e Riservatezza",
-          ndaDesc: "Formule proprietarie, prezzi e margini rimangono strettamente riservati. Vengono condivise solo le prove di conformità.",
-          hello: "Buongiorno",
-          pendingRequests: "Richieste Aperte",
-          sitesRegistered: "Stabilimenti Registrati",
-          validCerts: "Certificati Validi",
-          qualityIndex: "Completezza Dati",
-          submitToBrand: "Invia al Brand",
-          saveDraft: "Salva Bozza",
-          responseRecorded: "Risposta salvata con successo.",
-          requestSubmitted: "Richiesta inviata al brand.",
-          signOut: "Disconnetti"
-        },
-        tr: {
-          overview: "Genel Bakış",
-          requests: "Veri Talepleri",
-          sites: "Üretim Tesisleri",
-          certifications: "Sertifikalar",
-          materials: "Malzemeler ve İplikler",
-          documents: "Kanıt Kasası (Vault)",
-          dataPoints: "Yapılandırılmış Veriler",
-          members: "Ekip ve Yetkiler",
-          quality: "Kalite Puanı",
-          profile: "Şirket Profili",
-          requestDetail: "Talebe Cevap Ver",
-          vaultDesc: "Denetim sertifikalarınızı bir kez yükleyin ve tüm marka müşterilerinizle anında paylaşın.",
-          uploadEvidence: "Kasaya Kanıt Ekle",
-          ndaTitle: "Ticari Sır ve Gizlilik Koruması",
-          ndaDesc: "Özel formülleriniz, fiyatlandırma ve kâr marjlarınız tamamen gizli kalır. Yalnızca uygunluk onayları paylaşılır.",
-          hello: "Merhaba",
-          pendingRequests: "Açık Talepler",
-          sitesRegistered: "Kayıtlı Tesisler",
-          validCerts: "Geçerli Sertifikalar",
-          qualityIndex: "Veri Tamamlama",
-          submitToBrand: "Markaya Gönder",
-          saveDraft: "Taslağı Kaydet",
-          responseRecorded: "Yanıt başarıyla kaydedildi.",
-          requestSubmitted: "Talep markaya gönderildi.",
-          signOut: "Çıkış Yap"
-        },
-        zh: {
-          overview: "概览",
-          requests: "数据请求",
-          sites: "生产设施",
-          certifications: "认证资质",
-          materials: "材料与纱线",
-          documents: "凭证保险箱 (Vault)",
-          dataPoints: "结构化数据",
-          members: "团队成员",
-          quality: "质量评分",
-          profile: "企业资料",
-          requestDetail: "回复数据请求",
-          vaultDesc: "只需上传一次审核证书，即可在所有品牌客户之间即时共享。",
-          uploadEvidence: "向保险箱上传凭证",
-          ndaTitle: "商业秘密与保密保证",
-          ndaDesc: "专有配方、定价和利润率严格保密。仅向采购品牌提供合规性证明和质量守恒核对。",
-          hello: "您好",
-          pendingRequests: "待处理请求",
-          sitesRegistered: "已注册工厂",
-          validCerts: "有效证书",
-          qualityIndex: "数据完整度",
-          submitToBrand: "提交至品牌",
-          saveDraft: "保存草稿",
-          responseRecorded: "回复已成功保存。",
-          requestSubmitted: "数据已成功提交至品牌商。",
-          signOut: "退出登录"
-        }
-      };
+      // Le dictionnaire inline de cette page a ete fusionne dans le
+        // catalogue unique /assets/i18n (portees 'shared' et 'translations').
+        // Regenerable par scripts/build_app_i18n.mjs.
 
       function t(key) {
-        const lang = state.lang || 'fr';
-        return translations[lang]?.[key] || translations['fr'][key] || key;
+        const T = window.TF_I18N;
+        if (!T) return key;
+        // Portee portail d'abord, puis le fonds commun. Le repli etait
+        // francais : une cle absente en turc rendait du francais. Il est
+        // desormais anglais, conformement a la langue source du produit.
+        return T.t('portal.' + key, null) || T.t('shared.' + key, key);
       }
 
-      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'fr', demo:new URLSearchParams(location.search).has('demo') };
-      const labels = { draft:'Brouillon', sent:'Envoyée', in_progress:'En cours', submitted:'Soumise', changes_requested:'À corriger', approved:'Approuvée', cancelled:'Annulée', needs_review:'À revoir', verified_by_reviewer:'Vérifiée', not_started:'À commencer', uploaded:'Enregistré', scanning:'Contrôle en cours', available:'Disponible', rejected:'Rejeté', deleted:'Supprimé', declared:'Déclarée', documented:'Documentée', suspended:'Suspendu', revoked:'Révoqué' };
+      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof window !== 'undefined' && window.TF_I18N ? window.TF_I18N.lang : null) || (typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'en', demo:new URLSearchParams(location.search).has('demo') };
+  // Status chips used to read French in every language because this was a
+  // hardcoded map. They now resolve through the catalogue.
+  const STATUS_KEYS = {
+    "draft": "stDraft",
+    "sent": "stSent",
+    "in_progress": "stInProgress",
+    "submitted": "stSubmitted",
+    "changes_requested": "stChangesRequested",
+    "approved": "stApproved",
+    "cancelled": "stCancelled",
+    "verified_by_reviewer": "stVerified",
+    "needs_review": "stNeedsReview",
+    "open": "stOpen",
+    "acknowledged": "stAcknowledged",
+    "waived": "stWaived",
+    "resolved": "stResolved",
+    "not_started": "stNotStarted",
+    "data_ready": "stDataReady",
+    "ready_to_publish": "stReadyToPublish",
+    "review_required": "stReviewRequired",
+    "active": "stActive",
+    "completed": "stCompleted",
+    "invited": "stInvited",
+    "declared": "stDeclared",
+    "documented": "stDocumented",
+    "uploaded": "stUploaded",
+    "scanning": "stScanning",
+    "available": "stAvailable",
+    "rejected": "stRejected",
+    "deleted": "stDeleted",
+    "suspended": "stSuspended",
+    "revoked": "stRevoked"
+  };
+  const statusLabel = (value) => value ? t(STATUS_KEYS[value] || value) : '—';
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0,2).toUpperCase() || 'TF';
-      const status = (value) => `<span class="status status-${esc(value)}">${esc(labels[value] || value || '—')}</span>`;
+      const status = (value) => `<span class="status status-${esc(value)}">${esc(statusLabel(value) || '—')}</span>`;
       const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
-      const date = (value) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle:'medium' }).format(new Date(value)) : '—';
-      const moneyless = (value) => Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits:0 });
+      // Dates and numbers used to render French whatever the chosen language.
+      const BCP47 = { fr:'fr-FR', en:'en-GB', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT', tr:'tr-TR', zh:'zh-CN' };
+      const locale = () => BCP47[state.lang] || 'en-GB';
+      const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle:'medium' }).format(new Date(value)) : '—';
+      const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits:0 });
       function notify(message, isError = false) { state.toast = { message, isError }; render(); setTimeout(() => { state.toast = null; render(); }, 3500); }
       async function api(path, options = {}) { const headers = { 'Content-Type':'application/json', ...(options.headers || {}) }; if (!state.demo && state.selectedOrganizationId) headers['X-Tracefab-Organization-Id'] = state.selectedOrganizationId; if (!state.demo && state.clerk?.session) { const token = await state.clerk.session.getToken(); if (token) headers.Authorization = `Bearer ${token}`; } const response = await fetch(path, { ...options, headers }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`); return payload; }
 
@@ -551,7 +448,7 @@
         state.members = [{ id:'demo-member-1', organizationId:'demo-supplier-org', userId:'demo-user-1', role:'owner', status:'active', user:{ fullName:'Rui Costa', email:'rui@nhan-textile.example' } }, { id:'demo-member-2', organizationId:'demo-supplier-org', userId:'demo-user-2', role:'manager', status:'active', user:{ fullName:'Ana Silva', email:'ana@nhan-textile.example' } }];
         state.memberInvitations = [{ id:'demo-invitation-1', email:'production@nhan-textile.example', targetRole:'contributor', expiresAt:new Date(Date.now()+5*86400000).toISOString(), createdAt:new Date().toISOString() }];
         state.canManageMembers = true;
-        state.quality = { score:{ completeness:'72', freshness:'80', documentationCoverage:'25', consistency:'90', missingFields:['active_site'], blockingIssues:[] }, issues:[{ id:'demo-quality-issue-1', severity:'warning', status:'open', ruleKey:'supplier_missing_evidence', message:'La couverture documentaire mérite encore une revue par l’équipe qualité.', detectedAt:new Date().toISOString() }] };
+        state.quality = { score:{ completeness:'72', freshness:'80', documentationCoverage:'25', consistency:'90', missingFields:['rsl_test_report'], blockingIssues:[] }, issues:[{ id:'demo-quality-issue-1', severity:'warning', status:'open', ruleKey:'supplier_missing_evidence', message:'La couverture documentaire mérite encore une revue par l’équipe qualité.', detectedAt:new Date().toISOString() }] };
         state.requests = [
           { id:'demo-supplier-request-1', brandOrganizationId:'demo-brand-org', supplierOrganizationId:'demo-supplier-org', title:'Données produit — collection automne', questionnaireKey:'product-data-core', questionnaireVersion:'1.0', status:'in_progress', dueAt:new Date(Date.now()+5*86400000).toISOString(), completionPercentage:'40', lastActivityAt:new Date().toISOString(), items:[
             { id:'demo-item-1', label:'Product description', fieldKey:'product_description', dataType:'text', required:true, evidenceRequired:false, helpText:'Describe the product and its intended use.', validationRules:{ minLength:10, maxLength:2000 }, responses:[] },
@@ -618,7 +515,7 @@
       function openRequests() { return state.requests.filter((request) => !['approved','cancelled'].includes(request.status)); }
       function shell(content) {
         const userName = state.user?.fullName || state.user?.email || 'Utilisateur';
-        return `${state.demo ? '<div class="demo-banner">Mode démonstration — ouvrez <code>?demo=0</code> pour connecter Clerk et les APIs Tracefab.</div>' : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖','Mass-Balance')}${navButton('passport','✦','Passeport')}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
+        return `${state.demo ? `<div class="demo-banner">${esc(t('spDemoBanner')).replace('?demo=0', '<code>?demo=0</code>')}</div>` : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖','Mass-Balance')}${navButton('passport','✦','Passeport')}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
 
       function modalView(type) {
@@ -682,39 +579,98 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
         return `<div class="auth-screen"><div class="config-error" style="max-width:680px;text-align:left"><div class="brand" style="margin-bottom:20px"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><div class="eyebrow">Bienvenue sur Tracefab</div><h1 style="font-size:26px;margin:8px 0 12px">Création de votre espace fournisseur</h1><p style="color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:22px">Aucune organisation fournisseur n’est encore associée à votre compte. Configurez votre entreprise pour commencer à déclarer vos capacités, vos sites et répondre aux demandes de vos marques partenaires.</p><form id="self-onboarding-form"><div class="form-grid"><label class="field-full">Raison sociale / Nom légal *<input class="input" name="legalName" required placeholder="ex. Nhãn Textile Lda ou Tissages du Nord SAS"></label><label>Nom commercial usuel (facultatif)<input class="input" name="displayName" placeholder="ex. Nhãn Textile"></label><label>Pays du siège social (code ISO-2) *<input class="input" name="countryCode" required maxlength="2" placeholder="PT" style="text-transform:uppercase"></label><label>Nom du contact principal<input class="input" name="contactName" value="${esc(userName)}" placeholder="Nom et prénom"></label><label>Téléphone professionnel<input class="input" name="contactPhone" placeholder="+351 253 000 000"></label><label class="field-full">Activités textiles principales (séparées par une virgule)<input class="input" name="activityTypes" placeholder="spinning, weaving, dyeing, confection, packaging"></label><label class="field-full">Présentation de l’entreprise<textarea class="textarea" name="profileSummary" rows="3" placeholder="Présentez vos capacités industrielles, certifications et spécialités textiles…"></textarea></label></div><div class="form-actions" style="margin-top:20px"><button type="button" class="btn btn-secondary" data-action="signout">Se déconnecter</button><button class="btn btn-primary" type="submit">Créer mon espace fournisseur</button></div></form></div></div>`;
       }
 
-            function overview() {
+            // Dimensions de conformite reellement calculees, lues dans
+      // state.quality.score. Le panneau les ecrivait en dur : trois pastilles
+      // « (100%) » affichees a cote d'un total de 72 %, et une phrase parlant
+      // de « 3 etapes » quand une seule etait montree. Une pastille qui
+      // affirme un chiffre qu'elle ne lit pas finit toujours par mentir.
+      const SP_DIMENSIONS = [
+        { cle: 'completeness', labelKey: 'spDimCompleteness', vue: 'profile' },
+        { cle: 'freshness', labelKey: 'spDimFreshness', vue: 'dataPoints' },
+        { cle: 'documentationCoverage', labelKey: 'spDimDocumentation', vue: 'documents' },
+        { cle: 'consistency', labelKey: 'spDimConsistency', vue: 'quality' },
+      ];
+      // Seuil au-dela duquel une dimension n'appelle plus d'action.
+      const SP_SEUIL = 70;
+      const SP_CHAMPS = { active_site: 'spFieldActiveSite', rsl_test_report: 'spFieldRslReport' };
+
+      function spDimensions() {
+        const score = state.quality?.score || {};
+        return SP_DIMENSIONS
+          .filter((d) => score[d.cle] !== undefined && score[d.cle] !== null && score[d.cle] !== '')
+          .map((d) => ({ ...d, label: t(d.labelKey), valeur: pct(score[d.cle]) }));
+      }
+
+      // Le francais insere une espace insecable avant le deux-points ; les
+      // autres langues le collent au mot. Sans cela l'anglais rendait
+      // « Weakest area : Evidence coverage ».
+      const sp2pts = () => (state.lang === 'fr' ? '\u00a0: ' : ': ');
+
+      function spProgressPanel() {
+        const dims = spDimensions();
+        const titre = esc(t('spProfileTitle'));
+        if (!dims.length) {
+          return `<div class="sp-progress-panel">
+            <div class="sp-progress-title">${titre}</div>
+            <div class="sp-progress-lead">${esc(t('spNoScore'))}</div>
+          </div>`;
+        }
+
+        const global = pct(state.profile?.profileCompletion ?? state.quality?.score?.completeness ?? 0);
+        const faible = dims.slice().sort((a, b) => a.valeur - b.valeur)[0];
+        const aTraiter = faible.valeur < SP_SEUIL;
+
+        const manquants = (state.quality?.score?.missingFields || [])
+          .map((f) => (SP_CHAMPS[f] ? t(SP_CHAMPS[f]) : f))
+          .filter(Boolean);
+        const ligneManquants = manquants.length
+          ? `<div class="sp-progress-missing">${esc(t('spMissingField'))}${sp2pts()}${esc(manquants.join(', '))}</div>`
+          : '';
+
+        const accroche = aTraiter
+          ? `${esc(t('spWeakest'))}${sp2pts()}<strong>${esc(faible.label)}</strong> — ${faible.valeur}%`
+          : esc(t('spAllOnTarget'));
+
+        const pastilles = dims.map((d) => `<button type="button"
+            class="sp-check-pill ${d.valeur >= SP_SEUIL ? 'sp-pill-done' : 'sp-pill-pending'}"
+            onclick="state.view='${d.vue}';render();">
+            ${d.valeur >= SP_SEUIL ? '✓' : '⏳'} ${esc(d.label)} ${d.valeur}%
+          </button>`).join('');
+
+        const action = aTraiter
+          ? `<button type="button" class="sp-focus-btn" onclick="state.view='${faible.vue}';render();">
+              ${esc(t('spFixNow'))} · ${esc(faible.label)}
+            </button>`
+          : '';
+
+        return `<div class="sp-progress-panel">
+          <div class="sp-progress-head">
+            <div>
+              <div class="sp-progress-title">${titre}</div>
+              <div class="sp-progress-lead">${accroche}</div>
+              ${ligneManquants}
+            </div>
+            <div class="sp-progress-pct">${global}%<span>${esc(t('spComplete'))}</span></div>
+          </div>
+          <div class="sp-bar-outer"><div class="sp-bar-inner" style="width:${global}%;"></div></div>
+          <div class="sp-checklist-row">${pastilles}</div>
+          ${action}
+        </div>`;
+      }
+
+      function overview() {
         const dueSoon = openRequests().filter((request) => request.dueAt && new Date(request.dueAt).getTime() - Date.now() < 7*86400000);
         const completionPct = state.profile?.profileCompletion || 82;
 
         return `<div>
           <!-- Mission Hero Banner -->
           <div class="sp-hero-card">
-            <div class="sp-hero-tag">COFFRE-FORT FOURNISSEUR MUTUALISÉ · DIRECTIVE UE SECRET D'AFFAIRES</div>
-            <h1 class="sp-hero-h1">Vos données. Votre profil.<br>Réutilisables auprès de tous vos clients.</h1>
-            <p class="sp-hero-sub">
-              Téléversez vos certificats et sites de production une seule fois dans votre coffre-fort chiffré (Vault). Partagez instantanément la preuve de conformité sans divulguer vos prix, sous-traitants exclusifs ou marges.
-            </p>
+            <div class="sp-hero-tag">${esc(t('spHeroTag'))}</div>
+            <h1 class="sp-hero-h1">${esc(t('spHeroTitle'))}</h1>
+            <p class="sp-hero-sub">${esc(t('spHeroSub'))}</p>
           </div>
 
-          <!-- Supplier Profile Completion Bar (82% Complete) -->
-          <div class="sp-progress-panel">
-            <div class="sp-progress-head">
-              <div>
-                <div class="sp-progress-title">Profil Fournisseur & Conformité Réglementaire</div>
-                <div style="font-size:12px;color:var(--muted);margin-top:2px;">Complétez les 3 étapes recommandées pour atteindre 100% et être validé par vos marques clientes.</div>
-              </div>
-              <div class="sp-progress-pct">${completionPct}% complété</div>
-            </div>
-            <div class="sp-bar-outer">
-              <div class="sp-bar-inner" style="width:${completionPct}%;"></div>
-            </div>
-            <div class="sp-checklist-row">
-              <span class="sp-check-pill sp-pill-done">✓ Fiche Entreprise (100%)</span>
-              <span class="sp-check-pill sp-pill-done">✓ Sites de Production GPS (100%)</span>
-              <span class="sp-check-pill sp-pill-done">✓ Certificats GOTS & OEKO-TEX (100%)</span>
-              <span class="sp-check-pill sp-pill-pending" onclick="state.view='documents';render();" style="cursor:pointer;">⏳ 1 Rapport d'essais RSL à renouveler</span>
-            </div>
-          </div>
+          ${spProgressPanel()}
 
           <!-- 4 Core Supplier Action Modules -->
           <div class="sp-actions-grid">
@@ -839,7 +795,7 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
               <p>${esc(t('vaultDesc'))}</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary btn-small" onclick="alert('Registre d\'inventaire exporté.')">Exporter Registre Vault</button>
+              <button class="btn btn-secondary btn-small" data-demo-action="1">Exporter Registre Vault</button>
             </div>
           </div>
 
@@ -1201,6 +1157,20 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
       window.previewBomCsv = previewBomCsv;
 
       function bind() {
+
+        // Buttons that used to alert() a fake success now say what is actually true.
+        document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
+          event.preventDefault(); notify(t('demoUnavailable'));
+        }));
+        // The language <select> was rendered but wired to nothing: this page relied
+        // on the legacy rewriter, so it was never actually translatable.
+        document.getElementById('lang-switch')?.addEventListener('change', (event) => {
+          const T = window.TF_I18N;
+          if (T) { T.setLanguage(event.currentTarget.value); return; }
+          state.lang = event.currentTarget.value;
+          document.documentElement.lang = state.lang;
+          render();
+        });
         document.querySelectorAll('[data-view]').forEach((element) => element.addEventListener('click', () => { state.view = element.dataset.view; if (state.view !== 'requestDetail') state.selectedRequest = null; render(); }));
         document.getElementById('organization-switcher')?.addEventListener('change', (event) => switchOrganization(event.currentTarget.value).catch((error) => notify(error.message, true)));
         document.querySelectorAll('[data-action]').forEach((element) => element.addEventListener('click', async () => { try { const action = element.dataset.action; if (action === 'retry') { state.configError = null; boot(); } if (action === 'open-bom-import') { state.modal = 'import-bom'; render(); return; } if (action === 'close-modal') { state.modal = null; render(); return; } if (action === 'signout' && state.clerk) await state.clerk.signOut(); if (action === 'refresh-request') await refreshRequest(); if (action === 'submit-request') await submitRequest(); if (action === 'submit-profile') await submitProfile(); if (action === 'compute-quality') await computeQuality(); if (action === 'review-passport-request') { notify('Demande de passeport revue en mode démonstration.'); } } catch (error) { notify(error.message, true); } }));
@@ -1257,8 +1227,22 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
           await sync();
         }
       }
+
+      // Un changement de langue ne vient pas forcement du selecteur de cette
+      // page : il peut venir de la landing ou d'un autre onglet. On re-rend
+      // sur l'evenement du runtime, ce qui donne un chemin unique quelle que
+      // soit l'origine. Le drapeau evite un double rendu a l'amorcage.
+      let i18nReady = false;
+      document.addEventListener('tf:languagechange', (event) => {
+        state.lang = event.detail.lang;
+        document.documentElement.lang = state.lang;
+        if (i18nReady) render();
+      });
+
       window.tracefabSupplierPortal = { state, sync };
-      boot();
+      (window.TF_I18N ? window.TF_I18N.setLanguage(state.lang) : Promise.resolve())
+        .then(() => { i18nReady = true; }, () => { i18nReady = true; })
+        .then(boot, boot);
     })();
   </script>
 </body>

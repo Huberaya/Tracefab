@@ -1,12 +1,14 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TRACEFAB — Textile Supply Chain Data & DPP Infrastructure</title>
-  <meta name="description" content="TRACEFAB helps fashion and apparel brands collect, structure, verify and connect supplier data — from raw materials to finished products. Turn fragmented supply chain evidence into trusted, DPP-ready product intelligence.">
+  <title>TRACEFAB — The intelligence layer for the global textile supply chain</title>
+  <meta name="description" content="TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product Passport readiness in one intelligent infrastructure for textile and apparel brands.">
+  <meta name="theme-color" content="#040b08">
+  <meta name="color-scheme" content="dark light">
 
-  <!-- International hreflang alternate tags -->
+  <link rel="canonical" href="https://tracefab.vercel.app/">
   <link rel="alternate" hreflang="en" href="https://tracefab.vercel.app/?lang=en">
   <link rel="alternate" hreflang="fr" href="https://tracefab.vercel.app/?lang=fr">
   <link rel="alternate" hreflang="de" href="https://tracefab.vercel.app/?lang=de">
@@ -16,2196 +18,623 @@
   <link rel="alternate" hreflang="pt" href="https://tracefab.vercel.app/?lang=pt">
   <link rel="alternate" hreflang="x-default" href="https://tracefab.vercel.app/">
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="TRACEFAB — Turn your textile supply chain into trusted data.">
-  <meta property="og:description" content="The data infrastructure behind the connected textile supply chain: STRUCTURED → DOCUMENTED → VERIFIED → TRACEABLE → DPP-READY.">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TRACEFAB">
+  <meta property="og:title" content="TRACEFAB — Know your product. Know your supply chain. Prove it.">
+  <meta property="og:description" content="Supplier data, evidence, quality, traceability and DPP readiness in one intelligent infrastructure.">
+  <meta name="twitter:card" content="summary_large_image">
 
-  <!-- Modern Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040b08'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230fb97c' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M8 25l5-6 6 3 5-15' fill='none' stroke='%230fb97c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    /* ==========================================================================
-       TRIPFORGE-INSPIRED ULTRA-CLEAN EDITORIAL DESIGN SYSTEM FOR TRACEFAB
-       ========================================================================== */
-    :root {
-      --tf-forest-deep: #163627;
-      --tf-forest-hero: #194330;
-      --tf-forest-accent: #215c42;
-      --tf-pine-light: #2c7755;
-      --tf-mint: #25d392;
-      --tf-bone: #f8faf8;
-      --tf-card-bg: #ffffff;
-      --tf-surface-soft: #f2f5f2;
-      --tf-border: #e3e8e3;
-      --tf-border-subtle: #edf1ed;
-      --tf-text-dark: #121814;
-      --tf-text-muted: #66736a;
-      --tf-text-subtle: #8e9a92;
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', Menlo, Consolas, monospace;
-    }
-
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: var(--font-sans);
-      background-color: #ffffff;
-      color: var(--tf-text-dark);
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      overflow-x: hidden;
-    }
-
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-
-    /* Container Utility */
-    .container {
-      width: min(1280px, 100% - 64px);
-      margin-inline: auto;
-    }
-    .container-wide {
-      width: min(1360px, 100% - 48px);
-      margin-inline: auto;
-    }
-
-    /* Top Floating Glass Capsule Navigation */
-    .hero-wrapper {
-      background: linear-gradient(180deg, #183e2d 0%, #1c4835 45%, #255842 75%, #ffffff 100%);
-      padding: 24px 0 100px;
-      position: relative;
-    }
-
-    .top-navbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      max-width: 1200px;
-      margin: 0 auto 64px;
-      padding: 0 24px;
-    }
-
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #ffffff;
-      font-weight: 800;
-      font-size: 19px;
-      letter-spacing: -0.02em;
-    }
-
-    .nav-brand-logo {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(8px);
-      display: grid;
-      place-items: center;
-      font-size: 14px;
-      font-weight: 800;
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .nav-pill-menu {
-      display: flex;
-      align-items: center;
-      gap: 28px;
-      background: rgba(255, 255, 255, 0.12);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 9999px;
-      padding: 10px 28px;
-    }
-
-    .nav-pill-menu a {
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 13.5px;
-      font-weight: 500;
-      transition: color 0.2s ease;
-    }
-
-    .nav-pill-menu a:hover {
-      color: #ffffff;
-    }
-
-    .nav-right-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .lang-pill-select {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #ffffff;
-      padding: 8px 14px;
-      border-radius: 9999px;
-      font-size: 12.5px;
-      font-weight: 700;
-      font-family: var(--font-mono);
-      outline: none;
-      cursor: pointer;
-    }
-    .lang-pill-select option {
-      background: #183e2d;
-      color: #ffffff;
-    }
-
-    .btn-login-pill {
-      background: rgba(255, 255, 255, 0.18);
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      padding: 9px 20px;
-      border-radius: 9999px;
-      font-size: 13.5px;
-      font-weight: 600;
-      transition: all 0.2s;
-    }
-    .btn-login-pill:hover {
-      background: rgba(255, 255, 255, 0.28);
-    }
-
-    .btn-demo-pill {
-      background: #ffffff;
-      color: var(--tf-forest-deep);
-      padding: 9px 22px;
-      border-radius: 9999px;
-      font-size: 13.5px;
-      font-weight: 700;
-      transition: all 0.2s;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-    }
-    .btn-demo-pill:hover {
-      background: #f0f4f1;
-      transform: translateY(-1px);
-    }
-
-    /* Hero Headline & Center Copy */
-    .hero-center-content {
-      text-align: center;
-      max-width: 860px;
-      margin: 0 auto 52px;
-      padding: 0 20px;
-    }
-
-    .hero-headline {
-      font-size: clamp(40px, 5.2vw, 68px);
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      line-height: 1.1;
-      color: #ffffff;
-      margin-bottom: 20px;
-    }
-
-    .hero-lead {
-      font-size: clamp(16px, 1.8vw, 19px);
-      color: rgba(255, 255, 255, 0.85);
-      line-height: 1.6;
-      max-width: 680px;
-      margin: 0 auto 32px;
-    }
-
-    .hero-buttons {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-    }
-
-    .btn-white-hero {
-      background: #ffffff;
-      color: var(--tf-forest-deep);
-      padding: 13px 28px;
-      border-radius: 9999px;
-      font-size: 14px;
-      font-weight: 700;
-      transition: all 0.2s;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    }
-    .btn-white-hero:hover {
-      background: #f2f5f3;
-      transform: translateY(-2px);
-    }
-
-    .btn-trans-hero {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #ffffff;
-      padding: 13px 28px;
-      border-radius: 9999px;
-      font-size: 14px;
-      font-weight: 600;
-      backdrop-filter: blur(8px);
-      transition: all 0.2s;
-    }
-    .btn-trans-hero:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    /* The Massive Product Tablet/Mockup Window */
-    .hero-tablet-window {
-      max-width: 1140px;
-      margin: 0 auto;
-      background: #ffffff;
-      border-radius: 28px;
-      padding: 16px;
-      box-shadow: 0 32px 80px -15px rgba(22, 54, 39, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.05);
-      position: relative;
-    }
-
-    .tablet-chrome-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 16px 14px;
-      border-bottom: 1px solid var(--tf-border-subtle);
-    }
-
-    .tablet-logo-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 800;
-      font-size: 14px;
-      color: var(--tf-forest-deep);
-    }
-
-    .tablet-top-pills {
-      display: flex;
-      gap: 8px;
-    }
-
-    .top-tag {
-      background: var(--tf-surface-soft);
-      padding: 5px 12px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--tf-forest-deep);
-      font-family: var(--font-mono);
-    }
-
-    .tablet-inner-layout {
-      display: grid;
-      grid-template-columns: 72px 1fr;
-      gap: 16px;
-      padding-top: 14px;
-    }
-
-    .tablet-icon-rail {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      padding: 12px 0;
-      background: var(--tf-surface-soft);
-      border-radius: 20px;
-    }
-
-    .rail-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-size: 16px;
-      cursor: pointer;
-      transition: all 0.2s;
-      color: var(--tf-forest-deep);
-    }
-
-    .rail-icon.active {
-      background: var(--tf-forest-deep);
-      color: #ffffff;
-    }
-
-    .tablet-content-body {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    /* Top Panoramic Media Banner inside tablet */
-    .tablet-panorama-banner {
-      height: 200px;
-      border-radius: 20px;
-      background: linear-gradient(135deg, #163627, #215c42);
-      display: flex;
-      align-items: flex-end;
-      padding: 24px;
-      color: #ffffff;
-      position: relative;
-      overflow: hidden;
-    }
-    .tablet-panorama-banner::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 70% 30%, rgba(37, 211, 146, 0.25), transparent 60%);
-    }
-
-    .panorama-tag {
-      position: absolute;
-      top: 18px;
-      left: 20px;
-      background: rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(8px);
-      padding: 4px 12px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-    }
-
-    .panorama-title {
-      font-size: 22px;
-      font-weight: 800;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* 3 Bottom Cards in Tablet Mockup */
-    .tablet-three-cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-    }
-
-    .t-card {
-      background: var(--tf-surface-soft);
-      border-radius: 18px;
-      padding: 16px;
-      border: 1px solid var(--tf-border-subtle);
-      transition: transform 0.2s;
-    }
-    .t-card:hover {
-      transform: translateY(-2px);
-    }
-
-    .t-card-head {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      color: var(--tf-text-muted);
-      margin-bottom: 8px;
-    }
-
-    .t-card-title {
-      font-size: 15px;
-      font-weight: 800;
-      color: var(--tf-text-dark);
-      margin-bottom: 12px;
-    }
-
-    .t-progress-bar {
-      height: 6px;
-      background: #e2e8e2;
-      border-radius: 9999px;
-      overflow: hidden;
-      margin-bottom: 8px;
-    }
-    .t-progress-fill {
-      height: 100%;
-      background: var(--tf-forest-deep);
-      border-radius: 9999px;
-    }
-
-    /* Section 2 — Plan Smarter (Asymmetric 3 cards with photo backdrop) */
-    .section-editorial-row {
-      padding: 120px 0 80px;
-    }
-
-    .editorial-header-flex {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-bottom: 56px;
-    }
-
-    .section-eyebrow-chip {
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      font-weight: 700;
-      color: var(--tf-forest-accent);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 12px;
-    }
-
-    .editorial-headline {
-      font-size: clamp(34px, 4vw, 54px);
-      font-weight: 800;
-      letter-spacing: -0.035em;
-      line-height: 1.12;
-      color: var(--tf-text-dark);
-    }
-
-    .btn-pill-dark {
-      background: var(--tf-text-dark);
-      color: #ffffff;
-      padding: 12px 24px;
-      border-radius: 9999px;
-      font-size: 13.5px;
-      font-weight: 700;
-      transition: all 0.2s;
-    }
-    .btn-pill-dark:hover {
-      background: var(--tf-forest-deep);
-    }
-
-    /* 3 Photo-backed cards */
-    .editorial-grid-three {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-
-    .editorial-photo-card {
-      background: #ffffff;
-      border-radius: 24px;
-      padding: 24px;
-      border: 1px solid var(--tf-border);
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
-      position: relative;
-      overflow: hidden;
-      min-height: 380px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-    }
-
-    .card-photo-bg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 190px;
-      background-size: cover;
-      background-position: center;
-    }
-
-    .bg-textile-1 {
-      background: linear-gradient(180deg, rgba(22,54,39,0.2) 0%, rgba(22,54,39,0.85) 100%),
-                  radial-gradient(circle at 50% 50%, #255842, #163627);
-    }
-    .bg-textile-2 {
-      background: linear-gradient(180deg, rgba(37,88,66,0.2) 0%, rgba(22,54,39,0.85) 100%),
-                  radial-gradient(circle at 60% 40%, #1c4835, #0c2018);
-    }
-    .bg-textile-3 {
-      background: linear-gradient(180deg, rgba(22,54,39,0.2) 0%, rgba(22,54,39,0.85) 100%),
-                  radial-gradient(circle at 40% 60%, #2f7556, #163627);
-    }
-
-    .floating-white-box {
-      background: #ffffff;
-      border-radius: 18px;
-      padding: 20px;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
-      position: relative;
-      z-index: 2;
-      border: 1px solid var(--tf-border-subtle);
-    }
-
-    .floating-white-box h4 {
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--tf-text-dark);
-      margin-bottom: 8px;
-    }
-
-    .floating-white-box p {
-      font-size: 13px;
-      color: var(--tf-text-muted);
-      line-height: 1.5;
-      margin-bottom: 12px;
-    }
-
-    .tag-row {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .tiny-chip {
-      background: var(--tf-surface-soft);
-      padding: 4px 10px;
-      border-radius: 9999px;
-      font-size: 10.5px;
-      font-weight: 700;
-      font-family: var(--font-mono);
-      color: var(--tf-forest-accent);
-    }
-
-    /* Section 3 — Centered Header & 3 Clean Dashboard Cards */
-    .section-centered-flow {
-      padding: 100px 0;
-      background: var(--tf-surface-soft);
-    }
-
-    .centered-header-block {
-      text-align: center;
-      max-width: 760px;
-      margin: 0 auto 60px;
-    }
-
-    .centered-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--tf-forest-accent);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 14px;
-    }
-
-    .centered-title-big {
-      font-size: clamp(34px, 4.2vw, 56px);
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      line-height: 1.1;
-      color: var(--tf-text-dark);
-      margin-bottom: 16px;
-    }
-
-    .icon-inline-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: #ffffff;
-      border: 1px solid var(--tf-border);
-      padding: 3px 12px;
-      border-radius: 9999px;
-      font-size: 16px;
-      vertical-align: middle;
-    }
-
-    .centered-lead {
-      font-size: 17px;
-      color: var(--tf-text-muted);
-      line-height: 1.6;
-    }
-
-    .three-dash-cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-
-    .dash-widget-card {
-      background: #ffffff;
-      border-radius: 24px;
-      padding: 28px;
-      border: 1px solid var(--tf-border);
-      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.03);
-      transition: transform 0.2s;
-    }
-    .dash-widget-card:hover {
-      transform: translateY(-3px);
-    }
-
-    .widget-mini-ui {
-      background: var(--tf-surface-soft);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 24px;
-      border: 1px solid var(--tf-border-subtle);
-    }
-
-    .widget-stat-num {
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--tf-forest-deep);
-      font-family: var(--font-mono);
-    }
-
-    .widget-title {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--tf-text-dark);
-      margin-bottom: 10px;
-    }
-
-    .widget-desc {
-      font-size: 13.5px;
-      color: var(--tf-text-muted);
-      line-height: 1.6;
-    }
-
-    /* Section 4 — Plan The World's Favorite Destinations (Textile Supply Hubs) */
-    .section-hubs {
-      padding: 120px 0;
-      background: #ffffff;
-    }
-
-    .hubs-grid-three {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-top: 50px;
-    }
-
-    .hub-card {
-      border-radius: 22px;
-      overflow: hidden;
-      border: 1px solid var(--tf-border);
-      background: #ffffff;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-      transition: transform 0.2s;
-    }
-    .hub-card:hover {
-      transform: translateY(-4px);
-    }
-
-    .hub-cover-img {
-      height: 220px;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #ffffff;
-      font-size: 32px;
-      font-weight: 900;
-      letter-spacing: -0.02em;
-    }
-
-    .cover-portugal {
-      background: linear-gradient(135deg, #163627, #2c7755);
-    }
-    .cover-italy {
-      background: linear-gradient(135deg, #1b382d, #3d8a67);
-    }
-    .cover-france {
-      background: linear-gradient(135deg, #0f271c, #215c42);
-    }
-
-    .hub-badge {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      background: rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(8px);
-      padding: 4px 12px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-    }
-
-    .hub-content {
-      padding: 24px;
-    }
-
-    .hub-country-tag {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      color: var(--tf-forest-accent);
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-
-    .hub-content h4 {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--tf-text-dark);
-      margin-bottom: 8px;
-    }
-
-    .hub-content p {
-      font-size: 13.5px;
-      color: var(--tf-text-muted);
-      line-height: 1.5;
-    }
-
-    /* Clean Footer */
-    .clean-footer {
-      background: var(--tf-surface-soft);
-      border-top: 1px solid var(--tf-border);
-      padding: 60px 0 40px;
-      text-align: center;
-      font-size: 13px;
-      color: var(--tf-text-muted);
-    }
-
-    .footer-brand-title {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--tf-text-dark);
-      margin-bottom: 12px;
-    }
-
-    @media (max-width: 1024px) {
-      .editorial-grid-three, .three-dash-cards, .hubs-grid-three {
-        grid-template-columns: 1fr;
-      }
-      .nav-pill-menu {
-        display: none;
-      }
-      .tablet-inner-layout {
-        grid-template-columns: 1fr;
-      }
-      .tablet-icon-rail {
-        flex-direction: row;
-        justify-content: center;
-      }
-      .tablet-three-cards {
-        grid-template-columns: 1fr;
-      }
-    }
-  
-    /* ==========================================================================
-       PHASE 3 CSS: ARCHITECTURAL DEEP FOREST DESIGN SYSTEM
-       Data × Textile × Trust (Linear, Stripe & TrusTrace Quality Reference)
-       ========================================================================== */
-    :root {
-      --tf-void-bg: #050f0b;
-      --tf-forest-dark: #081a13;
-      --tf-forest-surface: #0e271d;
-      --tf-forest-hover: #143528;
-      --tf-accent-emerald: #10b981;
-      --tf-emerald-glow: rgba(16, 185, 129, 0.2);
-      --tf-bone-text: #f5f8f5;
-      --tf-text-secondary: #90a498;
-      --tf-border-glass: rgba(255, 255, 255, 0.08);
-      --tf-border-accent: rgba(16, 185, 129, 0.3);
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', Menlo, Consolas, monospace;
-    }
-
-    body {
-      background-color: var(--tf-void-bg);
-      color: var(--tf-bone-text);
-      font-family: var(--font-sans);
-      margin: 0;
-      padding: 0;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-
-    /* Architectural Header */
-    .tf-world-header {
-      position: sticky;
-      top: 0;
-      z-index: 150;
-      background: rgba(5, 15, 11, 0.85);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border-bottom: 1px solid var(--tf-border-glass);
-      height: 74px;
-      display: flex;
-      align-items: center;
-    }
-
-    .tf-header-shell {
-      max-width: 1400px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 0 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .tf-brand-anchor {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: #ffffff;
-    }
-
-    .tf-brand-symbol {
-      width: 32px;
-      height: 32px;
-      background: var(--tf-accent-emerald);
-      color: #050f0b;
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      font-weight: 900;
-      font-size: 14px;
-      letter-spacing: -0.04em;
-    }
-
-    .tf-brand-title {
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-    }
-
-    .tf-nav-strip {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-    }
-
-    .tf-nav-strip a {
-      color: var(--tf-text-secondary);
-      font-size: 13.5px;
-      font-weight: 500;
-      text-decoration: none;
-      transition: color 0.2s ease;
-    }
-
-    .tf-nav-strip a:hover {
-      color: #ffffff;
-    }
-
-    .tf-header-right {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .tf-lang-wrap {
-      position: relative;
-    }
-
-    .tf-lang-btn {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--tf-border-glass);
-      color: #ffffff;
-      padding: 6px 12px;
-      border-radius: 9999px;
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .tf-lang-dropdown {
-      display: none;
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: 6px;
-      background: var(--tf-forest-dark);
-      border: 1px solid var(--tf-border-glass);
-      border-radius: 12px;
-      padding: 6px;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
-      min-width: 150px;
-      z-index: 200;
-    }
-
-    .tf-lang-item {
-      padding: 8px 12px;
-      font-size: 12.5px;
-      color: var(--tf-text-secondary);
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.15s;
-    }
-
-    .tf-lang-item:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #ffffff;
-    }
-
-    .tf-nav-signin {
-      color: var(--tf-text-secondary);
-      font-size: 13.5px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-
-    .tf-nav-signin:hover {
-      color: #ffffff;
-    }
-
-    .tf-nav-cta {
-      background: var(--tf-accent-emerald);
-      color: #050f0b;
-      border: none;
-      padding: 9px 20px;
-      border-radius: 9999px;
-      font-size: 13px;
-      font-weight: 750;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
-    }
-
-    .tf-nav-cta:hover {
-      background: #34d399;
-      transform: translateY(-1px);
-      box-shadow: 0 0 30px rgba(16, 185, 129, 0.45);
-    }
-
-    /* Monumental Hero */
-    .tf-hero-stage {
-      position: relative;
-      padding: 100px 40px 80px;
-      max-width: 1400px;
-      margin: 0 auto;
-      text-align: center;
-    }
-
-    .tf-ambient-mesh {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(1100px 480px at 50% 10%, rgba(16, 185, 129, 0.12), transparent 70%),
-                  radial-gradient(800px 400px at 80% 30%, rgba(33, 92, 66, 0.15), transparent 60%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .tf-hero-lead-shell {
-      position: relative;
-      z-index: 1;
-      max-width: 1080px;
-      margin: 0 auto 64px;
-    }
-
-    .tf-eyebrow-capsule {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 6px 16px;
-      border-radius: 9999px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--tf-border-glass);
-      margin-bottom: 28px;
-    }
-
-    .tf-capsule-beacon {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--tf-accent-emerald);
-      box-shadow: 0 0 8px var(--tf-accent-emerald);
-    }
-
-    .tf-capsule-text {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--tf-accent-emerald);
-      letter-spacing: 0.14em;
-    }
-
-    .tf-hero-monumental-h1 {
-      font-size: clamp(48px, 6vw, 84px);
-      font-weight: 850;
-      letter-spacing: -0.045em;
-      line-height: 1.05;
-      color: #ffffff;
-      margin: 0 auto 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .tf-h1-accent {
-      color: var(--tf-accent-emerald);
-      background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .tf-hero-sub-statement {
-      font-size: clamp(17px, 2vw, 21px);
-      line-height: 1.6;
-      color: var(--tf-text-secondary);
-      max-width: 740px;
-      margin: 0 auto 36px;
-    }
-
-    .tf-hero-cta-group {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-    }
-
-    .tf-btn-hero-primary {
-      background: var(--tf-accent-emerald);
-      color: #050f0b;
-      padding: 15px 36px;
-      border-radius: 9999px;
-      font-size: 14.5px;
-      font-weight: 750;
-      text-decoration: none;
-      transition: all 0.25s ease;
-      box-shadow: 0 0 32px rgba(16, 185, 129, 0.35);
-    }
-
-    .tf-btn-hero-primary:hover {
-      background: #34d399;
-      transform: translateY(-2px);
-      box-shadow: 0 0 45px rgba(16, 185, 129, 0.55);
-    }
-
-    .tf-btn-hero-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--tf-border-glass);
-      color: #ffffff;
-      padding: 15px 34px;
-      border-radius: 9999px;
-      font-size: 14.5px;
-      font-weight: 650;
-      cursor: pointer;
-      backdrop-filter: blur(8px);
-      transition: all 0.25s ease;
-    }
-
-    .tf-btn-hero-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    /* Core Interactive Living Fabric */
-    .tf-hero-core-canvas {
-      position: relative;
-      z-index: 1;
-      background: #081a13;
-      border: 1px solid var(--tf-border-accent);
-      border-radius: 28px;
-      padding: 36px;
-      box-shadow: 0 32px 100px -20px rgba(0, 0, 0, 0.9), 0 0 50px rgba(16, 185, 129, 0.08);
-      max-width: 1240px;
-      margin: 0 auto;
-    }
-
-    .tf-canvas-control-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 24px;
-      border-bottom: 1px solid var(--tf-border-glass);
-      margin-bottom: 32px;
-    }
-
-    .tf-canvas-title-box {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 13.5px;
-      font-weight: 750;
-      color: #ffffff;
-    }
-
-    .tf-live-indicator {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 8px #10b981;
-    }
-
-    .tf-version-pill {
-      background: rgba(16, 185, 129, 0.12);
-      color: #10b981;
-      font-family: var(--font-mono);
-      font-size: 10.5px;
-      padding: 3px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-
-    .tf-canvas-metrics-summary {
-      display: flex;
-      gap: 28px;
-    }
-
-    .tf-metric-cell {
-      text-align: right;
-    }
-
-    .tf-metric-label {
-      display: block;
-      font-family: var(--font-mono);
-      font-size: 9.5px;
-      color: var(--tf-text-secondary);
-      letter-spacing: 0.1em;
-      margin-bottom: 2px;
-    }
-
-    .tf-metric-val {
-      font-family: var(--font-mono);
-      font-size: 14px;
-      font-weight: 800;
-      color: #ffffff;
-    }
-
-    .tf-radial-core-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 12px;
-      align-items: center;
-      margin: 16px 0 28px;
-    }
-
-    .tf-core-node {
-      background: var(--tf-forest-surface);
-      border: 1px solid var(--tf-border-glass);
-      border-radius: 16px;
-      padding: 20px 14px;
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      text-align: left;
-      position: relative;
-    }
-
-    .tf-core-node:hover {
-      background: var(--tf-forest-hover);
-      border-color: var(--tf-accent-emerald);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.15);
-    }
-
-    .tf-core-centerpiece {
-      background: linear-gradient(135deg, #0e2f23, #154534);
-      border-color: rgba(16, 185, 129, 0.45);
-      text-align: center;
-      padding: 24px 14px;
-      box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
-    }
-
-    .tf-center-logo {
-      width: 36px;
-      height: 36px;
-      margin: 0 auto 8px;
-      background: var(--tf-accent-emerald);
-      color: #050f0b;
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      font-weight: 900;
-      font-size: 16px;
-    }
-
-    .tf-center-title {
-      font-size: 15px;
-      font-weight: 850;
-      letter-spacing: 0.04em;
-      color: #ffffff;
-    }
-
-    .tf-center-caption {
-      font-size: 10px;
-      font-family: var(--font-mono);
-      color: var(--tf-text-secondary);
-      margin-top: 4px;
-    }
-
-    .tf-node-badge {
-      font-family: var(--font-mono);
-      font-size: 9.5px;
-      color: var(--tf-accent-emerald);
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      margin-bottom: 8px;
-    }
-
-    .tf-node-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: #ffffff;
-      margin-bottom: 6px;
-      letter-spacing: -0.01em;
-    }
-
-    .tf-node-meta {
-      font-size: 11px;
-      color: var(--tf-text-secondary);
-      line-height: 1.4;
-    }
-
-    .tf-canvas-footer-strip {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-top: 1px solid var(--tf-border-glass);
-      padding-top: 18px;
-    }
-
-    /* WOW SECTION: THE LIVING SUPPLY CHAIN GRAPH */
-    .tf-wow-section {
-      padding: 120px 40px;
-      background: linear-gradient(180deg, #050f0b 0%, #071711 50%, #050f0b 100%);
-      border-top: 1px solid var(--tf-border-glass);
-      border-bottom: 1px solid var(--tf-border-glass);
-    }
-
-    .tf-section-shell {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .tf-wow-header {
-      max-width: 860px;
-      margin-bottom: 64px;
-    }
-
-    .tf-wow-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      font-weight: 750;
-      color: var(--tf-accent-emerald);
-      letter-spacing: 0.16em;
-      margin-bottom: 16px;
-    }
-
-    .tf-wow-h2 {
-      font-size: clamp(38px, 4.6vw, 64px);
-      font-weight: 850;
-      letter-spacing: -0.04em;
-      line-height: 1.08;
-      color: #ffffff;
-      margin-bottom: 20px;
-    }
-
-    .tf-wow-lead {
-      font-size: 18.5px;
-      line-height: 1.6;
-      color: var(--tf-text-secondary);
-    }
-
-    /* Pipeline Step Strip */
-    .tf-chain-pipeline-scroll {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 12px;
-      margin-bottom: 32px;
-    }
-
-    .tf-chain-node {
-      background: var(--tf-forest-dark);
-      border: 1px solid var(--tf-border-glass);
-      border-radius: 16px;
-      padding: 18px 14px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .tf-chain-node.active, .tf-chain-node:hover {
-      background: var(--tf-forest-surface);
-      border-color: var(--tf-accent-emerald);
-      transform: translateY(-2px);
-    }
-
-    .tf-step-order {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      color: var(--tf-text-secondary);
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    .tf-step-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: #ffffff;
-      margin-bottom: 4px;
-    }
-
-    .tf-step-type {
-      font-size: 11.5px;
-      color: var(--tf-text-secondary);
-      margin-bottom: 8px;
-    }
-
-    .tf-step-status {
-      font-size: 10.5px;
-      font-family: var(--font-mono);
-      color: #34d399;
-    }
-
-    /* Deep Inspector Card */
-    .tf-inspector-card-shell {
-      background: var(--tf-forest-dark);
-      border: 1px solid var(--tf-border-accent);
-      border-radius: 24px;
-      padding: 36px;
-      display: grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap: 36px;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
-      transition: all 0.3s ease;
-    }
-
-    .tf-inspector-badge {
-      display: inline-block;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      color: var(--tf-accent-emerald);
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 4px 10px;
-      border-radius: 6px;
-      margin-bottom: 14px;
-    }
-
-    .tf-inspector-title {
-      font-size: 24px;
-      font-weight: 800;
-      color: #ffffff;
-      margin-bottom: 8px;
-    }
-
-    .tf-inspector-location {
-      font-size: 13px;
-      color: #34d399;
-      font-family: var(--font-mono);
-      margin-bottom: 16px;
-    }
-
-    .tf-inspector-desc {
-      font-size: 14.5px;
-      line-height: 1.6;
-      color: var(--tf-text-secondary);
-      margin-bottom: 24px;
-    }
-
-    .tf-inspector-tags {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .tf-insp-tag {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--tf-border-glass);
-      color: #ffffff;
-      padding: 5px 12px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-family: var(--font-mono);
-    }
-
-    .tf-inspector-right {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .tf-stat-box {
-      background: var(--tf-forest-surface);
-      border: 1px solid var(--tf-border-glass);
-      border-radius: 14px;
-      padding: 16px 20px;
-    }
-
-    .tf-stat-title {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      color: var(--tf-text-secondary);
-      letter-spacing: 0.1em;
-      margin-bottom: 4px;
-    }
-
-    .tf-stat-num {
-      font-size: 22px;
-      font-weight: 800;
-      color: #ffffff;
-      margin-bottom: 2px;
-    }
-
-    .tf-stat-sub {
-      font-size: 11px;
-      color: var(--tf-text-secondary);
-    }
-
-    @media (max-width: 1024px) {
-      .tf-radial-core-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .tf-chain-pipeline-scroll {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .tf-inspector-card-shell {
-        grid-template-columns: 1fr;
-      }
-      .tf-nav-strip {
-        display: none;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .tf-radial-core-grid, .tf-chain-pipeline-scroll {
-        grid-template-columns: 1fr;
-      }
-      .tf-hero-stage, .tf-wow-section {
-        padding: 60px 20px;
-      }
-    }
-
-  </style>
-  <script src="/i18n-engine.js"></script>
-</head>
-<body>
-
-  
-  <!-- ==========================================================================
-       PHASE 3: MONUMENTAL ARCHITECTURAL HEADER & WORLD-CLASS HERO STAGE
-       ========================================================================== -->
-  <header class="tf-world-header">
-    <div class="tf-header-shell">
-      <a href="/" class="tf-brand-anchor">
-        <div class="tf-brand-symbol">tf</div>
-        <div class="tf-brand-title">TRACEFAB</div>
-      </a>
-
-      <nav class="tf-nav-strip" aria-label="Navigation Principale">
-        <a href="#why">Why TRACEFAB</a>
-        <a href="#layers">Platform</a>
-        <a href="#wow-ecosystem">Supply Chain</a>
-        <a href="#product-intelligence">Product Intelligence</a>
-        <a href="/dpp/" target="_blank">DPP</a>
-        <a href="#resources">Resources</a>
-      </nav>
-
-      <div class="tf-header-right">
-        <!-- Language Switcher Pill -->
-        <div class="tf-lang-wrap">
-          <button id="lang-menu-btn" class="tf-lang-btn" onclick="toggleLangMenu()" aria-label="Choisir la langue">
-            <span id="current-lang-code">FR</span>
-            <span style="font-size:9px;opacity:0.7;">▼</span>
-          </button>
-          <div id="lang-dropdown-menu" class="tf-lang-dropdown">
-            <div class="tf-lang-item" onclick="setLanguage('fr')">🇫🇷 Français (FR)</div>
-            <div class="tf-lang-item" onclick="setLanguage('en')">🇬🇧 English (EN)</div>
-            <div class="tf-lang-item" onclick="setLanguage('de')">🇩🇪 Deutsch (DE)</div>
-            <div class="tf-lang-item" onclick="setLanguage('it')">🇮🇹 Italiano (IT)</div>
-            <div class="tf-lang-item" onclick="setLanguage('es')">🇪🇸 Español (ES)</div>
-            <div class="tf-lang-item" onclick="setLanguage('nl')">🇳🇱 Nederlands (NL)</div>
-          </div>
-        </div>
-
-        <a href="/brand-console/" class="tf-nav-signin">Sign in</a>
-        <button onclick="openDemoModal()" class="tf-nav-cta">Request a demo</button>
-      </div>
-    </div>
-  </header>
-
-  <!-- ==========================================================================
-       MONUMENTAL IMMERSIVE HERO
-       Know your product. Know your supply chain. Prove it.
-       ========================================================================== -->
-  <section class="tf-hero-stage">
-    <!-- Subtle Textile Mesh Ambient Glow -->
-    <div class="tf-ambient-mesh"></div>
-
-    <div class="tf-hero-lead-shell">
-      <div class="tf-eyebrow-capsule">
-        <span class="tf-capsule-beacon"></span>
-        <span class="tf-capsule-text">EUROPEAN TEXTILE DATA INFRASTRUCTURE</span>
-      </div>
-
-      <h1 class="tf-hero-monumental-h1">
-        <span>Know your product.</span>
-        <span>Know your supply chain.</span>
-        <span class="tf-h1-accent">Prove it.</span>
-      </h1>
-
-      <p class="tf-hero-sub-statement">
-        TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product Passport readiness in one intelligent infrastructure.
-      </p>
-
-      <div class="tf-hero-cta-group">
-        <a href="/brand-console/" class="tf-btn-hero-primary">Explore TRACEFAB</a>
-        <button onclick="openDemoModal()" class="tf-btn-hero-secondary">Request a demo</button>
-      </div>
-    </div>
-
-    <!-- HERO VISUAL: TRACEFAB DATA CORE INTERACTIVE GRAPH -->
-    <div class="tf-hero-core-canvas">
-      <div class="tf-canvas-control-header">
-        <div class="tf-canvas-title-box">
-          <span class="tf-live-indicator"></span>
-          <strong>TRACEFAB LIVING DATA CORE</strong>
-          <span class="tf-version-pill">CIRPASS 1.2 · ESPR 2027</span>
-        </div>
-        <div class="tf-canvas-metrics-summary">
-          <div class="tf-metric-cell">
-            <span class="tf-metric-label">CONNECTED PRODUCTS</span>
-            <span class="tf-metric-val">1,248</span>
-          </div>
-          <div class="tf-metric-cell">
-            <span class="tf-metric-label">TIER 1–4 PROVENANCE</span>
-            <span class="tf-metric-val">100%</span>
-          </div>
-          <div class="tf-metric-cell">
-            <span class="tf-metric-label">EVIDENCE INTEGRITY</span>
-            <span class="tf-metric-val" style="color:#10b981;">SHA-256 SEALED</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Core Interactive Radial Flow Container -->
-      <div class="tf-radial-core-grid">
-        <!-- 7 Layered Interactive Nodes -->
-        <div class="tf-core-node" onclick="inspectCoreNode(0)">
-          <div class="tf-node-badge">LAYER 01</div>
-          <div class="tf-node-title">SUPPLIERS</div>
-          <div class="tf-node-meta">Tier 1–4 Verified Vault</div>
-          <div class="tf-node-pulse-line"></div>
-        </div>
-
-        <div class="tf-core-node" onclick="inspectCoreNode(1)">
-          <div class="tf-node-badge">LAYER 02</div>
-          <div class="tf-node-title">MATERIALS</div>
-          <div class="tf-node-meta">100% Reconciled BOM</div>
-          <div class="tf-node-pulse-line"></div>
-        </div>
-
-        <div class="tf-core-node" onclick="inspectCoreNode(2)">
-          <div class="tf-node-badge">LAYER 03</div>
-          <div class="tf-node-title">EVIDENCE</div>
-          <div class="tf-node-meta">GOTS · ZDHC · OEKO-TEX</div>
-          <div class="tf-node-pulse-line"></div>
-        </div>
-
-        <div class="tf-core-node tf-core-centerpiece">
-          <div class="tf-center-logo">tf</div>
-          <div class="tf-center-title">TRACEFAB</div>
-          <div class="tf-center-caption">Mission Control Engine</div>
-        </div>
-
-        <div class="tf-core-node" onclick="inspectCoreNode(3)">
-          <div class="tf-node-badge">LAYER 04</div>
-          <div class="tf-node-title">DATA QUALITY</div>
-          <div class="tf-node-meta">6-Tier Explanable Score</div>
-          <div class="tf-node-pulse-line"></div>
-        </div>
-
-        <div class="tf-core-node" onclick="inspectCoreNode(4)">
-          <div class="tf-node-badge">LAYER 05</div>
-          <div class="tf-node-title">TRACEABILITY</div>
-          <div class="tf-node-meta">Fiber to Finished Garment</div>
-          <div class="tf-node-pulse-line"></div>
-        </div>
-
-        <div class="tf-core-node" onclick="inspectCoreNode(5)">
-          <div class="tf-node-badge">LAYER 07</div>
-          <div class="tf-node-title">DPP READY</div>
-          <div class="tf-node-meta">GS1 Digital Link · AGEC</div>
-          <div class="tf-node-pulse-line"></div>
-        </div>
-      </div>
-
-      <!-- Real-time transmission status bar -->
-      <div class="tf-canvas-footer-strip">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 10px #10b981;"></span>
-          <span style="font-family:var(--font-mono);font-size:11.5px;color:rgba(255,255,255,0.8);">LIVE TRANSMISSION : ALL 7 LAYERS SYNCHRONIZED</span>
-        </div>
-        <div style="font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,0.5);">
-          ISO 17025 LAB CHECKS · FRENCH AGEC ART. 13 · CSRD READY
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       SECTION WOW: YOUR ENTIRE TEXTILE ECOSYSTEM. ONE CONNECTED DATA FOUNDATION.
-       Interactive Deep Node Inspector (FIBER ➔ DPP)
-       ========================================================================== -->
-  <section class="tf-wow-section" id="wow-ecosystem">
-    <div class="tf-section-shell">
-      <div class="tf-wow-header">
-        <div class="tf-wow-eyebrow">THE LIVING SUPPLY CHAIN GRAPH</div>
-        <h2 class="tf-wow-h2">
-          Your entire textile ecosystem.<br>One connected data foundation.
-        </h2>
-        <p class="tf-wow-lead">
-          Hover or click on any custody echelon below to inspect verified factory GPS coordinates, active compliance certificates, and real-time data completeness.
-        </p>
-      </div>
-
-      <!-- Horizontal Multi-Echelon Pipeline Bar -->
-      <div class="tf-chain-pipeline-scroll">
-        <div class="tf-chain-node active" onmouseenter="showChainNode(0)">
-          <div class="tf-step-order">01</div>
-          <div class="tf-step-name">FIBER</div>
-          <div class="tf-step-type">Organic Cotton Farm</div>
-          <div class="tf-step-status verified">✓ GOTS Certified</div>
-        </div>
-
-        <div class="tf-chain-node" onmouseenter="showChainNode(1)">
-          <div class="tf-step-order">02</div>
-          <div class="tf-step-name">SPINNING</div>
-          <div class="tf-step-type">Ring Spun Yarn Mill</div>
-          <div class="tf-step-status verified">✓ Mass-Balance</div>
-        </div>
-
-        <div class="tf-chain-node" onmouseenter="showChainNode(2)">
-          <div class="tf-step-order">03</div>
-          <div class="tf-step-name">WEAVING</div>
-          <div class="tf-step-type">Twill Loom Atelier</div>
-          <div class="tf-step-status verified">✓ 100% Polygon GPS</div>
-        </div>
-
-        <div class="tf-chain-node" onmouseenter="showChainNode(3)">
-          <div class="tf-step-order">04</div>
-          <div class="tf-step-name">DYEING</div>
-          <div class="tf-step-type">Wet Processing House</div>
-          <div class="tf-step-status verified">✓ ZDHC Level 3</div>
-        </div>
-
-        <div class="tf-chain-node" onmouseenter="showChainNode(4)">
-          <div class="tf-step-order">05</div>
-          <div class="tf-step-name">CUT & SEW</div>
-          <div class="tf-step-type">Garment Manufacturing</div>
-          <div class="tf-step-status verified">✓ SMETA 4-Pillar</div>
-        </div>
-
-        <div class="tf-chain-node" onmouseenter="showChainNode(5)">
-          <div class="tf-step-order">06</div>
-          <div class="tf-step-name">PRODUCT</div>
-          <div class="tf-step-type">Finished Overshirt</div>
-          <div class="tf-step-status verified">✓ 98.4 Quality</div>
-        </div>
-
-        <div class="tf-chain-node" onmouseenter="showChainNode(6)">
-          <div class="tf-step-order">07</div>
-          <div class="tf-step-name">DPP</div>
-          <div class="tf-step-type">GS1 Consumer Passport</div>
-          <div class="tf-step-status verified" style="color:#10b981;font-weight:800;">✓ Public QR Ready</div>
-        </div>
-      </div>
-
-      <!-- WOW Deep Inspector Card Display -->
-      <div class="tf-inspector-card-shell" id="inspector-display-card">
-        <div class="tf-inspector-left">
-          <div class="tf-inspector-badge" id="insp-tier">TIER 2 SUPPLIER FACILITY</div>
-          <h3 class="tf-inspector-title" id="insp-name">Portugal Textile Mill & Weaving House</h3>
-          <div class="tf-inspector-location" id="insp-loc">📍 Guimarães, Northern Portugal · Polygon GPS Verified</div>
-          <p class="tf-inspector-desc" id="insp-desc">
-            Equipped with modern high-speed looms and closed-loop water effluent recycling. Full custody transfer certificates audited and validated for Tier 1 garment assembly.
-          </p>
-          <div class="tf-inspector-tags" id="insp-tags">
-            <span class="tf-insp-tag">GOTS 6.0</span>
-            <span class="tf-insp-tag">OEKO-TEX Standard 100</span>
-            <span class="tf-insp-tag">ZDHC Roadmap to Zero</span>
-          </div>
-        </div>
-
-        <div class="tf-inspector-right">
-          <div class="tf-stat-box">
-            <div class="tf-stat-title">DATA QUALITY INDEX</div>
-            <div class="tf-stat-num" id="insp-quality">87%</div>
-            <div class="tf-stat-sub">Grade A · Zero Incomplete Declarations</div>
-          </div>
-          <div class="tf-stat-box">
-            <div class="tf-stat-title">ASSOCIATED STYLES</div>
-            <div class="tf-stat-num" id="insp-styles">12 Products</div>
-            <div class="tf-stat-sub">Active in AW26 & SS27 Collections</div>
-          </div>
-          <div class="tf-stat-box">
-            <div class="tf-stat-title">EVIDENCE STATUS</div>
-            <div class="tf-stat-num" style="color:#10b981;" id="insp-proof">Verified Evidence</div>
-            <div class="tf-stat-sub">Cryptographic Hash Validated on Neon</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       SECTION 2: PLAN SMARTER TRIPS IN SECONDS → TRACK SMARTER SUPPLY CHAINS IN SECONDS
-       ========================================================================== -->
-  <section class="section-editorial-row" id="why">
-    <div class="container">
-      <div class="editorial-header-flex">
-        <div>
-          <div class="section-eyebrow-chip" data-i18n="sec2_eyebrow">VITESSE OPÉRATIONNELLE</div>
-          <h2 class="editorial-headline" data-i18n="sec2_title">Planifiez des Chaînes Textiles Plus Intelligentes<br>En Quelques Secondes</h2>
-        </div>
-        <a href="/brand-console/" class="btn-pill-dark" data-i18n="sec2_btn">Explorer les Fonctionnalités</a>
-      </div>
-
-      <!-- 3 Asymmetric Photo/Graphic Cards with Floating White Overlay Boxes -->
-      <div class="editorial-grid-three">
-        <!-- Card 1 -->
-        <div class="editorial-photo-card">
-          <div class="card-photo-bg bg-textile-1"></div>
-          <div class="floating-white-box">
-            <h4 data-i18n="sec2_c1_title">Importateur Universel BOM & Lots</h4>
-            <p data-i18n="sec2_c1_desc">Importez vos fichiers Excel, CSV ou PLM avec validation immédiate à 100% des compositions matières et réconciliation des fibres.</p>
-            <div class="tag-row">
-              <span class="tiny-chip">EXCEL / CSV</span>
-              <span class="tiny-chip">VALIDATION 100%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 2 -->
-        <div class="editorial-photo-card">
-          <div class="card-photo-bg bg-textile-2"></div>
-          <div class="floating-white-box">
-            <h4 data-i18n="sec2_c2_title">OCR Intelligent de Certificats</h4>
-            <p data-i18n="sec2_c2_desc">Automatisez la vérification des portées d'audit GOTS, OEKO-TEX et ZDHC sans vérifications manuelles dans des tableurs.</p>
-            <div class="tag-row">
-              <span class="tiny-chip">EXTRACTION AUTO</span>
-              <span class="tiny-chip">VEILLE EXPIRATION</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="editorial-photo-card">
-          <div class="card-photo-bg bg-textile-3"></div>
-          <div class="floating-white-box">
-            <h4 data-i18n="sec2_c3_title">Coffre-Fort & Secret d'Affaires</h4>
-            <p data-i18n="sec2_c3_desc">Protégez les secrets industriels et les prix fournisseurs tout en partageant des preuves cryptographiques de conformité.</p>
-            <div class="tag-row">
-              <span class="tiny-chip">ZERO-LEAK</span>
-              <span class="tiny-chip">AES-256</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       SECTION 3: EVERYTHING YOU NEED TO PERFECT PLAN → EVERYTHING YOU NEED FOR DPP COMPLIANCE
-       ========================================================================== -->
-  <section class="section-centered-flow" id="platform">
-    <div class="container">
-      <div class="centered-header-block">
-        <div class="centered-eyebrow" data-i18n="sec3_eyebrow">PLATEFORME COMPLÈTE</div>
-        <h2 class="centered-title-big" data-i18n="sec3_title">
-          Tout <span class="icon-inline-pill">⚡</span> Ce Dont Vous Avez Besoin Pour Créer Le Passeport Idéal
-        </h2>
-        <p class="centered-lead" data-i18n="sec3_lead">
-          De la récolte des fibres jusqu'au QR code en boutique : transformez des déclarations dispersées en passeports numériques auditables.
-        </p>
-      </div>
-
-      <div class="three-dash-cards">
-        <div class="dash-widget-card">
-          <div class="widget-mini-ui">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">PORTAIL FOURNISSEUR</span>
-              <span style="font-size:11px;font-weight:700;color:#10b981;">EN DIRECT</span>
-            </div>
-            <div class="widget-stat-num" data-i18n="sec3_w1_stat">0% Friction</div>
-            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;" data-i18n="sec3_w1_sub">Aucun compte fournisseur requis pour déposer des lots</div>
-          </div>
-          <h3 class="widget-title" data-i18n="sec3_w1_title">Onboarding Fournisseur Sans Friction</h3>
-          <p class="widget-desc" data-i18n="sec3_w1_desc">Des liens directs permettent aux filatures et aux confectionneurs de soumettre leurs preuves et BOMs en quelques clics.</p>
-        </div>
-
-        <div class="dash-widget-card">
-          <div class="widget-mini-ui">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">INDICE QUALITÉ DONNÉES</span>
-              <span style="font-size:11px;font-weight:700;color:#10b981;">NOTE A</span>
-            </div>
-            <div class="widget-stat-num" data-i18n="sec3_w2_stat">98.4 / 100</div>
-            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;" data-i18n="sec3_w2_sub">Défendable auprès des audits douaniers européens</div>
-          </div>
-          <h3 class="widget-title" data-i18n="sec3_w2_title">Centre de Qualité Dynamique</h3>
-          <p class="widget-desc" data-i18n="sec3_w2_desc">Score explicable à 6 niveaux vérifiant l'authenticité documentaire, la cohérence des lots et le bilan massique.</p>
-        </div>
-
-        <div class="dash-widget-card">
-          <div class="widget-mini-ui">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span style="font-size:11px;font-family:var(--font-mono);color:var(--tf-text-muted);">PASSERELLE EUROPÉENNE</span>
-              <span style="font-size:11px;font-weight:700;color:#10b981;">ESPR 2027</span>
-            </div>
-            <div class="widget-stat-num" data-i18n="sec3_w3_stat">JSON-LD CIRPASS</div>
-            <div style="font-size:11px;color:var(--tf-text-muted);margin-top:4px;" data-i18n="sec3_w3_sub">Schéma de données sémantique ouvert et standardisé</div>
-          </div>
-          <h3 class="widget-title" data-i18n="sec3_w3_title">Génération Instantanée de DPP</h3>
-          <p class="widget-desc" data-i18n="sec3_w3_desc">Publiez des passeports QR conformes aux exigences européennes, incluant la loi AGEC Art. 13 et les métriques de circularité.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       SECTION 4: PLAN THE WORLD'S FAVORITE DESTINATIONS → KEY TEXTILE HUBS
-       ========================================================================== -->
-  <section class="section-hubs" id="supply-chain">
-    <div class="container">
-      <div class="centered-header-block">
-        <div class="centered-eyebrow">HUBS MONDIAUX</div>
-        <h2 class="centered-title-big" data-i18n="sec4_title">
-          Cartographiez Les Grands <span class="icon-inline-pill">🌍</span> Hubs Textiles
-        </h2>
-        <p class="centered-lead" data-i18n="sec4_lead">
-          Reliez vos sièges de création européens directement aux filatures, teintureries et ateliers de confection mondiaux.
-        </p>
-      </div>
-
-      <div class="hubs-grid-three">
-        <div class="hub-card">
-          <div class="hub-cover-img cover-portugal">
-            <span class="hub-badge">HUB RANG 1 & 2</span>
-            <span data-i18n="hub1_country">PORTUGAL</span>
-          </div>
-          <div class="hub-content">
-            <div class="hub-country-tag" data-i18n="hub1_city">PORTO & GUIMARÃES</div>
-            <h4 data-i18n="hub1_title">Ateliers de Tricotage & Finition</h4>
-            <p data-i18n="hub1_desc">Jersey 100% biologique certifié GOTS, filatures et ateliers de coupe entièrement cartographiés par GPS.</p>
-          </div>
-        </div>
-
-        <div class="hub-card">
-          <div class="hub-cover-img cover-italy">
-            <span class="hub-badge">TISSAGE DE LUXE</span>
-            <span data-i18n="hub2_country">ITALY</span>
-          </div>
-          <div class="hub-content">
-            <div class="hub-country-tag" data-i18n="hub2_city">BIELLA & PRATO</div>
-            <h4 data-i18n="hub2_title">Provenance Laine & Soie</h4>
-            <p data-i18n="hub2_desc">Filature fine traçable, ennoblissement conforme ZDHC et certificats de fibres recyclées en boucle fermée.</p>
-          </div>
-        </div>
-
-        <div class="hub-card">
-          <div class="hub-cover-img cover-france">
-            <span class="hub-badge">LIN EUROPÉEN</span>
-            <span data-i18n="hub3_country">FRANCE</span>
-          </div>
-          <div class="hub-content">
-            <div class="hub-country-tag" data-i18n="hub3_city">NORMANDY & HAUTS-DE-FRANCE</div>
-            <h4 data-i18n="hub3_title">Teillage & Filature de Lin</h4>
-            <p data-i18n="hub3_desc">Lots agricoles complets du champ au fil, garantissant la conformité stricte aux exigences de traçabilité AGEC.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       FOOTER
-       ========================================================================== -->
-  <footer class="clean-footer">
-    <div class="container">
-      <div class="footer-brand-title">TRACEFAB</div>
-      <p style="margin-bottom: 24px;" data-i18n="footer_desc">European Textile Data & Passeport Produit Numérique Infrastructure</p>
-      <div style="display:flex;justify-content:center;gap:24px;font-size:12px;color:var(--tf-text-subtle);">
-        <a href="#why">Why TRACEFAB</a>
-        <a href="#platform" data-i18n="nav_platform" data-i18n="nav_platform">Plateforme</a>
-        <a href="#supply-chain" data-i18n="nav_supply_chain" data-i18n="nav_supply_chain">Chaîne d'approvisionnement</a>
-        <a href="/brand-console/">Brand Console</a>
-        <a href="/supplier-portal/">Supplier Portal</a>
-        <a href="/dpp/">DPP Consumer View</a>
-      </div>
-      <div style="margin-top:24px;font-size:11px;color:var(--tf-text-subtle);">
-        <span data-i18n="footer_rights">© 2026 TRACEFAB. All rights reserved.</span>
-      </div>
-    </div>
-  </footer>
-
-  <!-- ==========================================================================
-       CLIENT SCRIPT FOR MULTILINGUAL NATIVE SUPPORT
-       ========================================================================== -->
-  <script>
-    const translations = {
-      en: {
-        headline: "Rendez Votre Chaîne Textile Réellement Vérifiable.",
-        lead: "Collectez les preuves de matières premières, réconciliez les certificats de lots fournisseurs Rang 1 à 4, et générez des passeports DPP en quelques secondes."
-      },
-      fr: {
-        headline: "Rendez Votre Chaîne Textile Réellement Vérifiable.",
-        lead: "Collectez les preuves de matières premières, réconciliez les certificats de lots fournisseurs Rang 1 à 4, et générez des passeports DPP en quelques secondes."
-      },
-      de: {
-        headline: "Machen Sie Ihre textile Lieferkette nachweisbar verifizierbar.",
-        lead: "Rohstoffnachweise erfassen, Lieferantenzertifikate der Stufen 1–4 abgleichen und in Sekundenschnelle DPP-fähige Daten generieren."
-      },
-      it: {
-        headline: "Rendiamo la tua filiera tessile veramente verificabile.",
-        lead: "Raccogli le prove delle materie prime, riconcilia i certificati dei lotti di livello 1–4 e genera passaporti digitali in pochi secondi."
-      },
-      es: {
-        headline: "Hagamos que su cadena textil sea verdaderamente verificable.",
-        lead: "Recopile pruebas de materias primas, concilie certificados de lotes de nivel 1 a 4 y genere pasaportes digitales en segundos."
-      },
-      nl: {
-        headline: "Maak uw textieltoeleveringsketen echt verifieerbaar.",
-        lead: "Verzamel grondstofbewijzen, reconcilieer leverancierscertificaten van Tier 1–4 en genereer binnen enkele seconden DPP-inzichten."
-      },
-      pt: {
-        headline: "Torne a sua cadeia têxtil verdadeiramente verificável.",
-        lead: "Recolha evidências de matérias-primas, reconcilie certificados de lotes de fornecedores Nível 1–4 e gere dados prontos para DPP em segundos."
-      }
-    };
-
-    function toggleLangMenu() {
-      const menu = document.getElementById('lang-dropdown-menu');
-      if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    }
-
-    function setLanguage(lang) {
-      if (typeof window.applyLanguage === 'function') {
-        window.applyLanguage(lang);
-      }
-      const code = document.getElementById('current-lang-code');
-      if (code) code.textContent = lang.toUpperCase();
-      localStorage.setItem('tracefab_lang', lang);
-      document.documentElement.lang = lang;
-      const menu = document.getElementById('lang-dropdown-menu');
-      if (menu) menu.style.display = 'none';
-    }
-
-    function changeLanguage(lang) {
-      setLanguage(lang);
-    }
-
-    (function initLang() {
-      const savedLang = localStorage.getItem('tracefab_lang') || 'fr';
-      const code = document.getElementById('current-lang-code');
-      if (code) code.textContent = savedLang.toUpperCase();
-      setLanguage(savedLang);
-    })();
+  <!-- Axe variable, pas cinq instances statiques. Le design system declare
+       huit graisses (400, 480, 500, 520, 540, 560, 600, 620) ; en statique les
+       cinq instances servies les ecrasaient sur trois rendus seulement. La
+       graisse 300 n'est utilisee nulle part sur cette page. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-site.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "TRACEFAB",
+    "applicationCategory": "BusinessApplication",
+    "description": "Textile supply chain data, evidence, quality, traceability and Digital Product Passport readiness infrastructure.",
+    "operatingSystem": "Web",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+  }
   </script>
+</head>
 
-  <!-- Interactive Demo Request Modal -->
-  <div id="demo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:200;display:none;place-items:center;padding:20px;">
-    <div style="background:#ffffff;border-radius:24px;max-width:540px;width:100%;padding:36px;box-shadow:0 24px 60px rgba(0,0,0,0.3);position:relative;">
-      <button onclick="closeDemoModal()" style="position:absolute;top:20px;right:20px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--tf-text-muted);">×</button>
-      <div style="font-size:11px;font-family:var(--font-mono);font-weight:700;color:var(--tf-forest-accent);text-transform:uppercase;margin-bottom:8px;">TRACEFAB ENTERPRISE</div>
-      <h3 style="font-size:24px;font-weight:800;color:var(--tf-text-dark);margin-bottom:12px;">Demander une démonstration</h3>
-      <p style="font-size:14px;color:var(--tf-text-muted);line-height:1.5;margin-bottom:24px;">Découvrez comment TRACEFAB structure vos données de filière textile et génère des passeports numériques conformes ESPR.</p>
-      
-      <form onsubmit="handleDemoSubmit(event)">
-        <div style="margin-bottom:14px;">
-          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--tf-text-dark);">Nom complet</label>
-          <input type="text" required placeholder="Marie Dupont" style="width:100%;padding:12px 14px;border:1px solid var(--tf-border);border-radius:10px;font-size:14px;outline:none;">
+<body>
+<a class="tf-skip" href="#main" data-i18n="common.skip">Skip to main content</a>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     HEADER
+     ══════════════════════════════════════════════════════════════════ -->
+<header class="tf-header">
+  <div class="tf-header__shell">
+    <a href="/" class="tf-brand" aria-label="TRACEFAB">
+      <svg class="tf-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="4" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.3"/>
+        <path d="M3 11h26M3 16h26M3 21h26" stroke="currentColor" stroke-opacity=".26" stroke-width="1"/>
+        <path d="M8 25.5l5-6.5 6 3 5-15.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>
+        <span class="tf-brand__word">TRACEFAB</span>
+        <span class="tf-brand__sub">DATA × TEXTILE × TRUST</span>
+      </span>
+    </a>
+
+    <nav class="tf-nav" aria-label="Primary">
+      <a href="#why" data-i18n="nav.why">Why TRACEFAB</a>
+      <a href="#platform" data-i18n="nav.platform">Platform</a>
+      <a href="#supply-chain" data-i18n="nav.supplyChain">Supply Chain</a>
+      <a href="#layer-02" data-i18n="nav.productIntel">Product Intelligence</a>
+      <a href="#layer-07" data-i18n="nav.dpp">DPP</a>
+      <a href="#resources" data-i18n="nav.resources">Resources</a>
+    </nav>
+
+    <div class="tf-header__actions">
+      <div class="tf-lang">
+        <button type="button" id="lang-menu-btn" class="tf-lang__btn" aria-expanded="false" aria-haspopup="true"
+                data-i18n-attr="aria-label:nav.language" aria-label="Language">
+          <span data-tf-lang-code>EN</span>
+          <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
+        <div class="tf-lang__menu" role="menu"></div>
+      </div>
+
+      <a href="/brand-console/" class="tf-btn tf-btn--ghost-dark tf-btn--sm" data-i18n="nav.signIn">Sign in</a>
+      <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-tf-open-demo data-i18n="nav.demo">Request a demo</button>
+
+      <button type="button" class="tf-burger" aria-expanded="false" aria-controls="tf-drawer"
+              data-i18n-attr="aria-label:nav.openMenu" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+  <div class="tf-progress" aria-hidden="true"><span class="tf-progress__fill"></span></div>
+</header>
+
+<div class="tf-drawer" id="tf-drawer">
+  <a class="tf-drawer__link" href="#supply-chain"><span data-i18n="nav.supplyChain">Supply Chain</span><b class="tf-drawer__num">01</b></a>
+  <a class="tf-drawer__link" href="#platform"><span data-i18n="nav.platform">Platform</span><b class="tf-drawer__num">02</b></a>
+  <a class="tf-drawer__link tf-drawer__link--sub" href="#layer-02"><span data-i18n="nav.productIntel">Product Intelligence</span><b class="tf-drawer__num"></b></a>
+  <a class="tf-drawer__link tf-drawer__link--sub" href="#layer-07"><span data-i18n="nav.dpp">DPP</span><b class="tf-drawer__num"></b></a>
+  <a class="tf-drawer__link" href="#why"><span data-i18n="nav.why">Why TRACEFAB</span><b class="tf-drawer__num">03</b></a>
+  <a class="tf-drawer__link" href="#resources"><span data-i18n="nav.resources">Resources</span><b class="tf-drawer__num"></b></a>
+  <div class="tf-drawer__actions">
+    <a href="/brand-console/" class="tf-btn tf-btn--ghost-dark tf-btn--block" data-i18n="nav.signIn">Sign in</a>
+    <button type="button" class="tf-btn tf-btn--primary tf-btn--block" data-tf-open-demo data-i18n="nav.demo">Request a demo</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px" data-tf-lang-row></div>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       HERO
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="tf-hero tf-on-dark" id="top">
+    <div class="tf-weave" aria-hidden="true"></div>
+    <div class="tf-aurora tf-hero__glow-a" aria-hidden="true"></div>
+    <div class="tf-aurora tf-hero__glow-b" aria-hidden="true"></div>
+    <div class="tf-grid-rules" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+    <div class="tf-container">
+      <div class="tf-hero__lead">
+        <span class="tf-capsule" data-tf-reveal>
+          <i class="tf-beacon" aria-hidden="true"></i>
+          <span data-i18n="hero.label">European textile data infrastructure</span>
+        </span>
+
+        <h1 class="tf-hero__title" data-tf-reveal data-tf-delay="60">
+          <span data-i18n="hero.line1">Know your product.</span>
+          <span data-i18n="hero.line2">Know your supply chain.</span>
+          <span class="tf-accent" data-i18n="hero.line3">Prove it.</span>
+        </h1>
+
+        <p class="tf-hero__sub" data-tf-reveal data-tf-delay="140" data-i18n="hero.sub">
+          TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product
+          Passport readiness in one intelligent infrastructure.
+        </p>
+
+        <div class="tf-hero__cta" data-tf-reveal data-tf-delay="200">
+          <a href="#supply-chain" class="tf-btn tf-btn--primary" data-i18n="hero.ctaPrimary">Explore TRACEFAB</a>
+          <button type="button" class="tf-btn tf-btn--ghost-dark" data-tf-open-demo data-i18n="hero.ctaSecondary">Request a demo</button>
         </div>
-        <div style="margin-bottom:14px;">
-          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--tf-text-dark);">Email professionnel</label>
-          <input type="email" required placeholder="m.dupont@marque-mode.fr" style="width:100%;padding:12px 14px;border:1px solid var(--tf-border);border-radius:10px;font-size:14px;outline:none;">
+
+        <span class="tf-hero__scroll" data-tf-reveal data-tf-delay="320">
+          <span data-i18n="hero.scroll">Unfold the system</span>
+          <i aria-hidden="true"></i>
+        </span>
+      </div>
+
+      <!-- HERO VISUAL — the data core -->
+      <div class="tf-core" id="tf-core">
+        <div class="tf-core__frame">
+          <div class="tf-core__bar">
+            <div class="tf-core__bar-left">
+              <i class="tf-beacon" aria-hidden="true"></i>
+              <span class="tf-core__bar-title" data-i18n="core.title">Living data core</span>
+              <span class="tf-demo-tag" data-i18n="common.demoData">Demonstration data</span>
+            </div>
+            <div class="tf-core__bar-right">
+              <span class="tf-core__stat"><b data-tf-count data-i18n="core.stat1">1,248</b><em data-i18n="core.stat1Label">Connected products</em></span>
+              <span class="tf-core__stat"><b data-tf-count data-i18n="core.stat2">214</b><em data-i18n="core.stat2Label">Facilities mapped</em></span>
+              <span class="tf-core__stat"><b class="is-accent" data-tf-count data-i18n="core.stat3">92.4%</b><em data-i18n="core.stat3Label">Data quality</em></span>
+            </div>
+          </div>
+
+          <div class="tf-core__stage">
+            <div class="tf-core__inspect" role="status" aria-live="polite"></div>
+          </div>
+          <div class="tf-core__list"></div>
+
+          <div class="tf-core__bar" style="border-bottom:0;border-top:1px solid var(--tf-line-dark-faint)">
+            <div class="tf-core__bar-left">
+              <i class="tf-beacon" aria-hidden="true"></i>
+              <span class="tf-label tf-label--xs" data-i18n="core.footLeft">All seven layers synchronised</span>
+            </div>
+            <span class="tf-label tf-label--xs" data-i18n="core.footRight">ESPR · AGEC Art. 13 · CSRD · GS1 Digital Link</span>
+          </div>
         </div>
-        <div style="margin-bottom:20px;">
-          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--tf-text-dark);">Nom de la marque ou atelier</label>
-          <input type="text" required placeholder="Maison de Couture / Fabricant" style="width:100%;padding:12px 14px;border:1px solid var(--tf-border);border-radius:10px;font-size:14px;outline:none;">
-        </div>
-        <div style="display:flex;gap:12px;justify-content:flex-end;">
-          <button type="button" onclick="closeDemoModal()" style="padding:12px 20px;border:1px solid var(--tf-border);background:transparent;border-radius:9999px;font-size:13.5px;font-weight:700;cursor:pointer;">Annuler</button>
-          <button type="submit" style="padding:12px 26px;background:var(--tf-forest-deep);color:#ffffff;border:none;border-radius:9999px;font-size:13.5px;font-weight:700;cursor:pointer;">Envoyer ma demande</button>
-        </div>
-      </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       TICKER — Europe → World
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="tf-ticker tf-on-dark" aria-hidden="true">
+    <div class="tf-ticker__track">
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i1">France</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i2">Portugal</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i3">Italy</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i13">ESPR 2024/1781</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i4">Germany</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i5">Türkiye</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i17">GOTS</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i6">Morocco</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i7">Tunisia</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i14">AGEC Article 13</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i8">India</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i18">GRS</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i9">Bangladesh</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i10">Vietnam</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i15">CSRD</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i11">China</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i19">OEKO-TEX</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i12">United States</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i16">GS1 Digital Link</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i20">ZDHC MRSL</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i21">CIRPASS</span></span>
+      <!-- duplicated for a seamless loop -->
+      <span class="tf-ticker__item"><i></i>France</span>
+      <span class="tf-ticker__item"><i></i>Portugal</span>
+      <span class="tf-ticker__item"><i></i>Italy</span>
+      <span class="tf-ticker__item"><i></i>ESPR 2024/1781</span>
+      <span class="tf-ticker__item"><i></i>Germany</span>
+      <span class="tf-ticker__item"><i></i>Türkiye</span>
+      <span class="tf-ticker__item"><i></i>GOTS</span>
+      <span class="tf-ticker__item"><i></i>Morocco</span>
+      <span class="tf-ticker__item"><i></i>Tunisia</span>
+      <span class="tf-ticker__item"><i></i>AGEC Article 13</span>
+      <span class="tf-ticker__item"><i></i>India</span>
+      <span class="tf-ticker__item"><i></i>GRS</span>
+      <span class="tf-ticker__item"><i></i>Bangladesh</span>
+      <span class="tf-ticker__item"><i></i>Vietnam</span>
+      <span class="tf-ticker__item"><i></i>CSRD</span>
+      <span class="tf-ticker__item"><i></i>China</span>
+      <span class="tf-ticker__item"><i></i>OEKO-TEX</span>
+      <span class="tf-ticker__item"><i></i>United States</span>
+      <span class="tf-ticker__item"><i></i>GS1 Digital Link</span>
+      <span class="tf-ticker__item"><i></i>ZDHC MRSL</span>
+      <span class="tf-ticker__item"><i></i>CIRPASS</span>
     </div>
   </div>
 
+  <!-- ════════════════════════════════════════════════════════════════════
+       THE WOW MOMENT — your entire textile ecosystem
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="tf-section tf-eco tf-on-dark" id="supply-chain">
+    <div class="tf-warp" aria-hidden="true"></div>
+    <div class="tf-grid-rules" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
 
+    <div class="tf-container">
+      <div class="tf-eco__head">
+        <div data-tf-reveal>
+          <span class="tf-eyebrow"><span data-i18n="eco.index">01</span> — <span data-i18n="eco.label">The connected foundation</span></span>
+          <h2 class="tf-eco__title" style="margin-top:20px">
+            <span data-i18n="eco.line1">Your entire textile ecosystem.</span>
+            <span data-i18n="eco.line2">One connected data foundation.</span>
+          </h2>
+        </div>
+        <div data-tf-reveal data-tf-delay="120">
+          <p class="tf-lead tf-inv" data-i18n="eco.lead">
+            A textile chain is not a list of suppliers. It is a sequence of transformations, each with
+            its own company, site, certificate, document and level of proof. TRACEFAB holds all of it
+            in one continuous model — and lets you read it one dimension at a time, or all at once.
+          </p>
+        </div>
+      </div>
+
+      <div class="tf-chain" id="tf-chain" data-tf-reveal data-tf-delay="60">
+        <div class="tf-chain__toolbar">
+          <div class="tf-chain__lenses" data-tf-lenses></div>
+          <span class="tf-demo-tag" data-i18n="common.demoData">Demonstration data</span>
+        </div>
+
+        <div class="tf-chain__scroll">
+          <div class="tf-chain__grid" data-tf-grid></div>
+        </div>
+
+        <div class="tf-chain__vertical" data-tf-vertical></div>
+
+        <div class="tf-dossier" data-tf-dossier></div>
+
+        <div class="tf-chain__foot">
+          <span class="tf-label tf-label--xs" data-i18n="chain.footLeft">Demonstration chain · Organic Cotton T-Shirt AW26-0248</span>
+          <span class="tf-label tf-label--xs" data-i18n="chain.footRight">9 stages · 4 tiers · 3 countries</span>
+        </div>
+      </div>
+
+      <p class="tf-label" style="margin-top:18px" data-i18n="eco.hint">
+        Select a stage to open its dossier. Toggle dimensions to read the same chain through a different lens.
+      </p>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       LAYER SPINE — the architecture
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="tf-section tf-spine tf-on-light" id="platform">
+    <div class="tf-grid-rules" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+    <div class="tf-container">
+      <div class="tf-spine__head">
+        <div data-tf-reveal>
+          <span class="tf-eyebrow"><span data-i18n="spine.index">02</span> — <span data-i18n="spine.label">Platform architecture</span></span>
+          <h2 class="tf-display-1" style="margin-top:20px">
+            <span style="display:block" data-i18n="spine.line1">Seven layers.</span>
+            <span style="display:block" data-i18n="spine.line2">One continuous chain of proof.</span>
+          </h2>
+        </div>
+        <div data-tf-reveal data-tf-delay="120">
+          <p class="tf-lead" data-i18n="spine.lead">
+            Simple to understand. Deep to explore. Powerful to operate. Each layer answers one
+            question, and hands its answer to the next.
+          </p>
+        </div>
+      </div>
+
+      <div class="tf-spine__list">
+
+        <div class="tf-layer" id="layer-01" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l1.num">Layer 01</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l1.out">Network</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l1.name">Supply Chain</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l1.q">Who makes what?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l1.desc">Suppliers, factories, sites, materials and processes mapped across every tier — not a vendor list, a production network.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l1.chips">Suppliers · Factories · Sites · Materials · Processes</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l1.value">214</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l1.valueLabel">Facilities mapped</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-02" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l2.num">Layer 02</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l2.out">Product</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l2.name">Product Data</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l2.q">What is the product?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l2.desc">Composition, components, materials and identifiers resolved to the percentage, versioned on every revision.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l2.chips">Products · Composition · Materials · Components · Identifiers</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l2.value">1,248</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l2.valueLabel">Products connected</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-03" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l3.num">Layer 03</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l3.out">Proof</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l3.name">Evidence</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l3.q">Can we prove it?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l3.desc">Documents, certificates, declarations, audits and test reports stored with issuer, scope, validity and integrity seal.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l3.chips">Documents · Certificates · Declarations · Audits · Tests</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l3.value">9,847</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l3.valueLabel">Evidence items</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-04" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l4.num">Layer 04</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l4.out">Trust level</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l4.name">Data Quality</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l4.q">Can we trust it?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l4.desc">Every value carries a level: declared, documented, verified, certified, needs review or missing. Trust becomes measurable.</p>
+            <div class="tf-layer__chips" style="gap:6px">
+              <span class="tf-trust" data-level="missing" data-i18n="chain.status.missing">Missing</span>
+              <span class="tf-trust" data-level="review" data-i18n="chain.status.review">Needs review</span>
+              <span class="tf-trust" data-level="declared" data-i18n="chain.status.declared">Declared</span>
+              <span class="tf-trust" data-level="documented" data-i18n="chain.status.documented">Documented</span>
+              <span class="tf-trust" data-level="verified" data-i18n="chain.status.verified">Verified</span>
+              <span class="tf-trust" data-level="certified" data-i18n="chain.status.certified">Certified</span>
+            </div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l4.value">92.4%</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l4.valueLabel">Data quality</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-05" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l5.num">Layer 05</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l5.out">Chain</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l5.name">Traceability</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l5.q">Where did it come from?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l5.desc">Fibre to material to processing to manufacturing to product — a continuous custody chain, not disconnected claims.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l5.chips">Fibre → Material → Processing → Manufacturing → Product</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l5.value">91%</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l5.valueLabel">Products traceable</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-06" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l6.num">Layer 06</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l6.out">Signals</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l6.name">Intelligence</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l6.q">What does the data tell us?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l6.desc">Risk, gaps, supplier performance, product readiness and regulatory readiness computed from your own data — never invented.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l6.chips">Risk · Gaps · Quality · Supplier performance · Readiness</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l6.value">42</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l6.valueLabel">Open signals</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-07" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail" data-tf-terminal>
+            <span class="tf-layer__num" data-i18n="spine.layers.l7.num">Layer 07</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l7.out">Passport</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l7.name">DPP</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l7.q">What can we publish?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l7.desc">A readiness indicator, a product passport and a public consumer experience. A readiness score, never a legal certification.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l7.chips">DPP readiness · Product passport · Public data · Consumer view</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l7.value">88%</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l7.valueLabel">DPP readiness</span>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="tf-body-sm" style="margin-top:20px" data-i18n="common.demoNote">
+        All figures on this page are demonstration data.
+      </p>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       PROMISE BAND
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="tf-section tf-section--tight tf-promise tf-on-dark" id="why">
+    <div class="tf-weave" aria-hidden="true"></div>
+    <div class="tf-container">
+      <div data-tf-reveal>
+        <span class="tf-eyebrow"><span data-i18n="promise.index">03</span> — <span data-i18n="promise.label">Why TRACEFAB</span></span>
+        <h2 class="tf-display-2" style="margin:20px 0 40px;max-width:20ch">
+          <span style="display:block" data-i18n="promise.line1">The intelligence layer</span>
+          <span style="display:block;color:var(--tf-ink-inv-soft)" data-i18n="promise.line2">for the global textile supply chain.</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="tf-container" style="padding-inline:0">
+      <div class="tf-promise__grid">
+        <div class="tf-promise__cell" data-tf-reveal>
+          <span class="tf-promise__verb" data-i18n="promise.c1Verb">See it.</span>
+          <p class="tf-promise__txt" data-i18n="promise.c1Txt">Every supplier, site, material and transformation in one connected model — including the tiers you have never been able to reach.</p>
+        </div>
+        <div class="tf-promise__cell" data-tf-reveal data-tf-delay="90">
+          <span class="tf-promise__verb" data-i18n="promise.c2Verb">Structure it.</span>
+          <p class="tf-promise__txt" data-i18n="promise.c2Txt">Spreadsheets and PDFs become structured data points, bound to products, versioned and comparable across your whole catalogue.</p>
+        </div>
+        <div class="tf-promise__cell" data-tf-reveal data-tf-delay="180">
+          <span class="tf-promise__verb" data-i18n="promise.c3Verb">Verify it.</span>
+          <p class="tf-promise__txt" data-i18n="promise.c3Txt">Every value carries a level of proof, from a simple declaration to a third-party certificate, with expiry and integrity tracked.</p>
+        </div>
+        <div class="tf-promise__cell" data-tf-reveal data-tf-delay="270">
+          <span class="tf-promise__verb" style="color:var(--tf-emerald)" data-i18n="promise.c4Verb">Prove it.</span>
+          <p class="tf-promise__txt" data-i18n="promise.c4Txt">Regulatory readiness, audit packs and Digital Product Passport preparation generated from the data you already hold.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tf-container" style="margin-top:clamp(32px,4vw,56px)">
+      <p class="tf-display-3" data-tf-reveal data-i18n="promise.kicker" style="max-width:30ch">
+        See it. Structure it. Verify it. Trace it. Prove it.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px" data-tf-reveal data-tf-delay="90">
+        <button type="button" class="tf-btn tf-btn--primary" data-tf-open-demo data-i18n="nav.demo">Request a demo</button>
+        <a href="/dpp/" class="tf-btn tf-btn--ghost-dark" data-i18n="footer.platform4">Public DPP</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     FOOTER
+     ══════════════════════════════════════════════════════════════════ -->
+<footer class="tf-footer tf-on-dark" id="resources">
+  <div class="tf-grid-rules" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="tf-container">
+    <div class="tf-footer__top">
+      <div>
+        <a href="/" class="tf-brand" aria-label="TRACEFAB">
+          <svg class="tf-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="4" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.3"/>
+            <path d="M3 11h26M3 16h26M3 21h26" stroke="currentColor" stroke-opacity=".26" stroke-width="1"/>
+            <path d="M8 25.5l5-6.5 6 3 5-15.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>
+            <span class="tf-brand__word">TRACEFAB</span>
+            <span class="tf-brand__sub">DATA × TEXTILE × TRUST</span>
+          </span>
+        </a>
+        <p class="tf-footer__statement" data-i18n="footer.statement">
+          The intelligence layer for the global textile supply chain.
+        </p>
+        <span class="tf-label tf-label--xs" data-i18n="footer.europe">European by design · Global by architecture</span>
+      </div>
+
+      <div>
+        <h3 data-i18n="footer.colPlatform">Platform</h3>
+        <ul>
+          <li><a href="/brand-console/" data-i18n="footer.platform1">Brand Console</a></li>
+          <li><a href="/supplier-portal/" data-i18n="footer.platform2">Supplier Portal</a></li>
+          <li><a href="/quality-center/" data-i18n="footer.platform3">Quality Center</a></li>
+          <li><a href="/dpp/" data-i18n="footer.platform4">Public DPP</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 data-i18n="footer.colDomains">Domains</h3>
+        <ul>
+          <li><a href="#layer-01" data-i18n="footer.domains1">Supply chain mapping</a></li>
+          <li><a href="#layer-03" data-i18n="footer.domains2">Evidence &amp; certifications</a></li>
+          <li><a href="#layer-04" data-i18n="footer.domains3">Data quality</a></li>
+          <li><a href="#layer-05" data-i18n="footer.domains4">Traceability</a></li>
+          <li><a href="#layer-07" data-i18n="footer.domains5">DPP readiness</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 data-i18n="footer.colResources">Resources</h3>
+        <ul>
+          <li><a href="/docs/architecture/01-system-context.md" data-i18n="footer.resources1">Platform architecture</a></li>
+          <li><a href="/docs/DESIGN_SYSTEM.md" data-i18n="footer.resources2">Design system</a></li>
+          <li><a href="/docs/architecture/15-product-api.md" data-i18n="footer.resources3">API reference</a></li>
+          <li><a href="/docs/architecture/02-multi-tenancy-and-security.md" data-i18n="footer.resources4">Security &amp; multi-tenancy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tf-footer__bottom">
+      <span class="tf-label tf-label--xs" data-i18n="footer.rights">© 2026 TRACEFAB. All rights reserved.</span>
+      <span class="tf-label tf-label--xs" data-i18n="footer.legal">DPP readiness is a preparation indicator, not a legal certification.</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     DEMO MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="tf-modal" id="tf-demo-modal" role="dialog" aria-modal="true" aria-labelledby="tf-demo-title">
+  <div class="tf-modal__panel">
+    <span class="tf-eyebrow" data-i18n="modal.eyebrow">Request a demo</span>
+    <h2 id="tf-demo-title" data-i18n="modal.title">See TRACEFAB on your own supply chain.</h2>
+    <p class="tf-body-sm" style="color:var(--tf-ink-inv-muted);margin-bottom:24px" data-i18n="modal.lead">
+      Tell us a little about your organisation and we will prepare a walkthrough using a chain that looks like yours.
+    </p>
+
+    <form novalidate>
+      <div class="tf-field">
+        <label for="tf-f-name" data-i18n="modal.name">Full name</label>
+        <input id="tf-f-name" name="name" type="text" autocomplete="name" required>
+      </div>
+      <div class="tf-field">
+        <label for="tf-f-email" data-i18n="modal.email">Work email</label>
+        <input id="tf-f-email" name="email" type="email" autocomplete="email" required>
+      </div>
+      <div class="tf-field">
+        <label for="tf-f-company" data-i18n="modal.company">Company</label>
+        <input id="tf-f-company" name="company" type="text" autocomplete="organization">
+      </div>
+      <div class="tf-field">
+        <label for="tf-f-role" data-i18n="modal.role">Role</label>
+        <select id="tf-f-role" name="role">
+          <option data-i18n="modal.roleBrand">Brand / Manufacturer</option>
+          <option data-i18n="modal.roleSupplier">Supplier</option>
+          <option data-i18n="modal.roleConsultant">Consultant / Auditor</option>
+          <option data-i18n="modal.roleOther">Other</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:22px">
+        <button type="submit" class="tf-btn tf-btn--primary" data-i18n="modal.submit">Request a demo</button>
+        <button type="button" class="tf-btn tf-btn--ghost-dark" data-tf-close-demo data-i18n="modal.cancel">Cancel</button>
+      </div>
+    </form>
+
+    <div data-tf-demo-success hidden>
+      <h3 class="tf-display-3" style="margin-bottom:10px" data-i18n="modal.successTitle">Request recorded.</h3>
+      <p class="tf-body-sm" style="color:var(--tf-ink-inv-muted);margin-bottom:22px" data-i18n="modal.successTxt">
+        This demonstration form is not connected to a mailbox yet. Nothing was transmitted.
+      </p>
+      <button type="button" class="tf-btn tf-btn--ghost-dark" data-tf-close-demo data-i18n="modal.close">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/i18n/en.js"></script>
+<script src="/assets/js/tf-i18n.js"></script>
   <script>
-    function openDemoModal() {
-      const m = document.getElementById('demo-modal');
-      if (m) m.style.display = 'grid';
-    }
-    function closeDemoModal() {
-      const m = document.getElementById('demo-modal');
-      if (m) m.style.display = 'none';
-    }
-    function handleDemoSubmit(e) {
-      e.preventDefault();
-      alert('Merci ! Votre demande de démo a bien été enregistrée. Notre équipe vous contactera dans les 24h.');
-      closeDemoModal();
-    }
-
-    const mockupData = [
-      {
-        tag: "INTELLIGENCE SUPPLY CHAIN",
-        sku: "COTTON TWILL OVERSHIRT #4289",
-        title: "Cartographie GPS Polygonale & Réconciliation 100% sur 4 Rangs",
-        c1Head: "TRAÇABILITÉ RANG 1–4", c1Val: "100%", c1Title: "Chaîne de Provenance", c1Desc: "Filature et tissage au Portugal vérifiés",
-        c2Head: "SÉCURITÉ CHIMIQUE", c2Val: "CONFORME", c2Title: "ZDHC MRSL Niveau 3", c2Desc: "Zéro rejet liquide de substances dangereuses",
-        c3Head: "ÉLIGIBILITÉ DPP", c3Val: "88%", c3Title: "Passeport Produit Numérique", c3Desc: "Lien GS1 Digital Link prêt pour impression QR"
-      },
-      {
-        tag: "NOMENCLATURE MATIÈRES & LOTS",
-        sku: "DENIM JACKET SELVEDGE #1042",
-        title: "Bilan Massique & 100% Décomposition Fibres Recyclées",
-        c1Head: "COMPOSITION MATIÈRE", c1Val: "100%", c1Title: "BOM Validé", c1Desc: "85% Coton Biologique · 15% Coton Recyclé",
-        c2Head: "CONTÔLE PERTES", c2Val: "2.4%", c2Title: "Mass-Balance Guard", c2Desc: "Conservation des volumes filés vérifiée",
-        c3Head: "IMPORTATEUR UNIVERSEL", c3Val: "CSV / PLM", c3Title: "Connecteur Direct", c3Desc: "Centric PLM & Lectra synchronisés"
-      },
-      {
-        tag: "REGISTRE DES PREUVES D'AUDIT",
-        sku: "FINE MERINO KNITWEAR #7701",
-        title: "Certificats GOTS, OEKO-TEX & SMETA Scellés par Cryptographie",
-        c1Head: "CERTIFICATS ACTIFS", c1Val: "4 Valides", c1Title: "Scope & Validité", c1Desc: "Aucun certificat expiré sur la collection",
-        c2Head: "EXTRACTION OCR", c2Val: "99.8%", c2Title: "Vérification Auto", c2Desc: "Données de laboratoire extraites sans saisie",
-        c3Head: "SECRET INDUSTRIEL", c3Val: "PROTÉGÉ", c3Title: "Data Vault Shield", c3Desc: "Marges et sous-traitants confidentiels"
-      },
-      {
-        tag: "CENTRE QUALITÉ & AUDITABILITÉ",
-        sku: "ORGANIC POPLIN SHIRT #3312",
-        title: "Indice Qualité Global : Note A (98.4 / 100) Sans Déclaration Verbale",
-        c1Head: "INDICE DE QUALITÉ", c1Val: "98.4 / 100", c1Title: "Score Explicable", c1Desc: "6 niveaux d'audit conformes CSRD",
-        c2Head: "ACTIONS CORRECTIVES", c2Val: "0 Bloquant", c2Title: "Plans d'Action CAP", c2Desc: "Toutes les non-conformités résolues",
-        c3Head: "DOUANES EUROPÉENNES", c3Val: "AUDIT-PROOF", c3Title: "Dossier Complet", c3Desc: "Pack de conformité téléchargeable en 1 clic"
-      },
-      {
-        tag: "PASSEPORT PRODUIT NUMÉRIQUE CIRPASS",
-        sku: "LINEN SUMMER TROUSERS #5520",
-        title: "Passeport DPP Conforme ESPR 2027 & French AGEC Art. 13",
-        c1Head: "GS1 DIGITAL LINK", c1Val: "ACTIF", c1Title: "QR Code Sécurisé", c1Desc: "Résolution dynamique marque & consommateur",
-        c2Head: "RÉPARABILITÉ", c2Val: "8.8 / 10", c2Title: "Indice Circularité", c2Desc: "Guide d'entretien et service de réparation",
-        c3Head: "EMPREINTE PEF", c3Val: "GRADE B", c3Title: "Eco-Score Textile", c3Desc: "Calcul PEF échelon 3 certifié"
-      }
-    ];
-
-    function switchMockupTab(idx) {
-      document.querySelectorAll('.rail-icon').forEach((el, i) => {
-        el.classList.toggle('active', i === idx);
-      });
-      const data = mockupData[idx];
-      if (!data) return;
-
-      const bannerTag = document.querySelector('.panorama-tag');
-      const bannerTitle = document.querySelector('.panorama-title');
-      if (bannerTag) bannerTag.textContent = data.tag;
-      if (bannerTitle) bannerTitle.textContent = data.title;
-
-      const cards = document.querySelectorAll('.t-card');
-      if (cards.length >= 3) {
-        // Card 1
-        cards[0].querySelector('.t-card-head span:first-child').textContent = data.c1Head;
-        cards[0].querySelector('.t-card-head span:last-child').textContent = data.c1Val;
-        cards[0].querySelector('.t-card-title').textContent = data.c1Title;
-        cards[0].querySelector('div:last-child').textContent = data.c1Desc;
-        // Card 2
-        cards[1].querySelector('.t-card-head span:first-child').textContent = data.c2Head;
-        cards[1].querySelector('.t-card-head span:last-child').textContent = data.c2Val;
-        cards[1].querySelector('.t-card-title').textContent = data.c2Title;
-        cards[1].querySelector('div:last-child').textContent = data.c2Desc;
-        // Card 3
-        cards[2].querySelector('.t-card-head span:first-child').textContent = data.c3Head;
-        cards[2].querySelector('.t-card-head span:last-child').textContent = data.c3Val;
-        cards[2].querySelector('.t-card-title').textContent = data.c3Title;
-        cards[2].querySelector('div:last-child').textContent = data.c3Desc;
-      }
-    }
+    // Pont global stable : TF_I18N.setLanguage est l'implementation, mais
+    // window.setLanguage reste l'API publique documentee de la landing
+    // (utilisee par le menu #lang-menu-btn et par les tests de contrat).
+    window.setLanguage = function (lang) {
+      return window.TF_I18N && window.TF_I18N.setLanguage(lang);
+    };
   </script>
-
-
-  <script>
-    const chainNodesData = [
-      {
-        tier: "TIER 4 AGRICULTURAL PROVENANCE",
-        name: "Elysian Organic Cotton Collective",
-        loc: "📍 Izmir Agricultural Basin, Turkey · Field Polygon #482",
-        desc: "Strictly non-GMO organic cotton harvest certified under GOTS Scope Certificate CU-881294. Verified water stewardship and zero synthetic pesticides.",
-        tags: ["GOTS Organic", "Regenerative Cotton", "Water Footprint -45%"],
-        quality: "96.2%",
-        styles: "14 Collections",
-        proof: "GOTS Transaction Cert #889"
-      },
-      {
-        tier: "TIER 3 RING SPINNING MILL",
-        name: "Filature de Haute-Vienne",
-        loc: "📍 Guimarães / Porto Industrial Valley · Polygon Verified",
-        desc: "Ring spinning facility producing combed compact yarns (Count Ne 30/1). Continuous mass-balance records with digital custody transfers.",
-        tags: ["OEKO-TEX Step", "Zero Slub Index", "Mass-Balance Conserved"],
-        quality: "94.8%",
-        styles: "28 Styles",
-        proof: "Batch Ledger Hash 0x9b1f"
-      },
-      {
-        tier: "TIER 2 WEAVING & KNITTING HOUSE",
-        name: "Portugal Textile Mill & Loom House",
-        loc: "📍 Santo Tirso, Northern Portugal · Polygon GPS Mapped",
-        desc: "Specialized in 185g/m² single jersey and 3/1 cotton twills. ISO 17025 accredited laboratory test reports on burst strength and shrinkage.",
-        tags: ["GOTS 6.0", "ISO 17025 Certified", "Zero Flame Retardants"],
-        quality: "98.4%",
-        styles: "42 Styles",
-        proof: "Lab Audit Dossier #302"
-      },
-      {
-        tier: "TIER 2 WET PROCESSING & DYEING",
-        name: "EcoDye Ennoblissement Aquitaine",
-        loc: "📍 Castres Textile Hub, France · Facility #8891",
-        desc: "Closed-loop water recycling with zero discharge of hazardous chemicals. Full conformance with ZDHC MRSL Level 3 standards.",
-        tags: ["ZDHC MRSL Level 3", "Bluesign System", "Effluent Recycled 92%"],
-        quality: "99.1%",
-        styles: "18 Styles",
-        proof: "Effluent Lab Report Valid"
-      },
-      {
-        tier: "TIER 1 GARMENT MANUFACTURING",
-        name: "Atelier Confection & Tailoring SAS",
-        loc: "📍 Barcelos, Portugal · Facility GPS Polygon",
-        desc: "Automated precision cutting and ethical garment assembly. Audited under SMETA 4-Pillar with verified living wage benchmarks (Anker formula).",
-        tags: ["SMETA 4-Pillar", "SA8000 Ethical", "Living Wage Verified"],
-        quality: "100%",
-        styles: "42 Styles",
-        proof: "Social Audit Grade A"
-      },
-      {
-        tier: "PRODUCT RECONCILIATION LAYER",
-        name: "Essentiel Cotton Overshirt #4289",
-        loc: "📍 Paris Design HQ & Central European Logistics",
-        desc: "Finished textile piece reconciling 100% mass-balance composition. Complete Tier 1 to 4 traceability chain verified and locked for regulatory audit.",
-        tags: ["ESPR Ready", "French AGEC Art. 13", "100% Reconciled"],
-        quality: "98.4%",
-        styles: "Stock SKU AT-ESS-001",
-        proof: "Immutable SHA-256 Seal"
-      },
-      {
-        tier: "LAYER 07 PUBLIC PASSPORT",
-        name: "Digital Product Passport Gateway",
-        loc: "📍 GS1 Resolver Node · CIRPASS 1.2 Compliant",
-        desc: "Public consumer QR passport delivering transparent origin, repair instructions, and recycling take-back data without disclosing upstream trade secrets.",
-        tags: ["GS1 Digital Link", "JSON-LD Semantic", "Take-Back Active"],
-        quality: "100%",
-        styles: "Live Public QR",
-        proof: "Cryptographic Seal Active"
-      }
-    ];
-
-    function showChainNode(idx) {
-      document.querySelectorAll('.tf-chain-node').forEach((el, i) => {
-        el.classList.toggle('active', i === idx);
-      });
-      const d = chainNodesData[idx];
-      if (!d) return;
-
-      document.getElementById('insp-tier').textContent = d.tier;
-      document.getElementById('insp-name').textContent = d.name;
-      document.getElementById('insp-loc').textContent = d.loc;
-      document.getElementById('insp-desc').textContent = d.desc;
-      document.getElementById('insp-quality').textContent = d.quality;
-      document.getElementById('insp-styles').textContent = d.styles;
-      document.getElementById('insp-proof').textContent = d.proof;
-
-      const tagsContainer = document.getElementById('insp-tags');
-      if (tagsContainer) {
-        tagsContainer.innerHTML = d.tags.map(t => `<span class="tf-insp-tag">${t}</span>`).join('');
-      }
-    }
-
-    function inspectCoreNode(layerIdx) {
-      const wowElem = document.getElementById('wow-ecosystem');
-      if (wowElem) {
-        wowElem.scrollIntoView({ behavior: 'smooth' });
-        showChainNode(layerIdx);
-      }
-    }
-  </script>
-
+<script src="/assets/js/tf-landing.js" defer></script>
 </body>
 </html>
