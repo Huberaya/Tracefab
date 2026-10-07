@@ -22,6 +22,7 @@ async function main() {
   await prisma.$executeRawUnsafe(`CREATE ROLE ${role} NOLOGIN`);
   await prisma.$executeRawUnsafe(`GRANT ${role} TO CURRENT_USER`);
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO ${role}`);
+  await prisma.$executeRawUnsafe(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${role}`);
 
   await prisma.user.createMany({
     data: [
@@ -102,6 +103,7 @@ try {
     });
   } finally {
     try {
+      await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`REVOKE ${role} FROM CURRENT_USER`);
       await prisma.$executeRawUnsafe(`REVOKE USAGE ON SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`DROP ROLE IF EXISTS ${role}`);
