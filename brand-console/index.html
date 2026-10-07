@@ -750,6 +750,7 @@
         selectedProduct: null,
         selectedProductDetail: null,
         selectedSupplier: null,
+        documents: [],
         quality: null,
         supplyChain: null,
         selectedSupplyChainProduct: null,
@@ -760,6 +761,7 @@
         cirpassDetail: null,
         modal: null,
         modalIssueId: null,
+        issueFilter: null,
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
         supplierImport: { filename: '', content: '', preview: null, job: null, delivery: null, loading: false },
         toast: null,
@@ -804,6 +806,13 @@
       const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
       const date = (value) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value)) : '—';
       const moneyless = (value) => Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+
+      /* Une action qui n'est pas reliée au serveur ne doit pas annoncer un succès.
+         `pendingAction` dit l'état réel : l'opération n'a pas eu lieu. Remplace les
+         Les boîtes de dialogue qui simulaient une réussite sans rien exécuter. */
+      function pendingAction(label) {
+        notify(`${label} — action non reliée au serveur, rien n'a été effectué.`, true);
+      }
 
       function notify(message, isError = false) {
         state.toast = { message, isError };
@@ -1091,8 +1100,8 @@
         state.loading = true; render();
         try {
           if (state.demo) { demoData(); state.loading = false; render(); return; }
-          const [me, orgs, supplierPayload, materials, products, requests, questionnaires, schemas] = await Promise.all([
-            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product')
+          const [me, orgs, supplierPayload, materials, products, requests, questionnaires, schemas, documents] = await Promise.all([
+            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product'), api('/api/documents')
           ]);
           state.user = me.user;
           state.memberships = me.memberships || [];
@@ -1102,6 +1111,7 @@
           state.products = products.products || [];
           state.requests = requests.requests || [];
           state.questionnaires = questionnaires.questionnaires || [];
+          state.documents = documents.documents || [];
           state.schemaCatalog = schemas.schemas || [];
           const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
           state.activeOrganizationId = state.activeOrganizationId || brands[0]?.organization_id || null;
@@ -1123,6 +1133,27 @@
         return membership?.organizations?.display_name || membership?.organizations?.legal_name || supplier?.organizations?.display_name || supplier?.organizations?.legal_name || id?.slice(0, 8) || '—';
       }
       
+      /* Vérification réelle : GET /api/documents/{id}/verification-report renvoie le
+         rapport calculé par le serveur. Rien n'est affirmé sans cette réponse. */
+      async function verifyDocument(documentId) {
+        if (state.demo) { notify('Mode démonstration : aucun document réel à vérifier.', true); return; }
+        try {
+          const payload = await api(`/api/documents/${encodeURIComponent(documentId)}/verification-report`);
+          downloadTextFile(`tracefab-verification-${documentId}.json`, JSON.stringify(payload.report, null, 2), 'application/json;charset=utf-8');
+          notify('Rapport de vérification téléchargé.');
+        } catch (e) {
+          notify(`Vérification impossible : ${e.message}`, true);
+        }
+      }
+
+      /* Pilotage du filtre de sévérité du centre de qualité. Les cinq onglets
+         appelaient cette fonction, qui n'existait nulle part : ils levaient une
+         ReferenceError au clic depuis toujours. */
+      function filterIssues(severity) {
+        state.issueFilter = severity;
+        render();
+      }
+
       function filterRequestsByStatus(st) {
         const select = document.getElementById('request-filter');
         if (select) {
@@ -1509,7 +1540,7 @@
             <p>Concevez et déployez des questionnaires sur-mesure pour vos fournisseurs : exigences documentaires, extraction OCR, règles de validation et conformité CSRD.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Catalogue des gabarits standards exporté au format JSON.')">Exporter Gabarits (JSON)</button>
+            <button class="btn btn-secondary" onclick="exportQuestionnaireTemplates()">Exporter Gabarits (JSON)</button>
             <button class="btn btn-primary" onclick="state.modal='new-questionnaire';render();">+ Créer un questionnaire</button>
           </div>
         </div>
@@ -1552,7 +1583,7 @@
                       <button class="btn btn-primary btn-small" data-action="new-request" onclick="state.modal='new-request';state.selectedQuestionnairePreset='${esc(q.key)}';render();">
                         ↗ Lancer une collecte avec ce modèle
                       </button>
-                      <button class="btn btn-secondary btn-small" onclick="alert('Édition du protocole ${esc(q.title)} : ajout de nouvelles règles de preuve.')">
+                      <button class="btn btn-secondary btn-small" onclick="pendingAction('Édition du protocole')">
                         Modifier le protocole
                       </button>
                     </div>
@@ -1601,8 +1632,8 @@
             <p>Suivez l'origine des fibres, les procédés de filature, les certifications de bilan massique et les fournisseurs Rang 3–4.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Exportation CSV générée.')">Exporter CSV</button>
-            <button class="btn btn-primary" onclick="alert('Nouveau matériau enregistré.')">+ Ajouter un matériau</button>
+            <button class="btn btn-secondary" onclick="exportMaterialsCsv()">Exporter CSV</button>
+            <button class="btn btn-primary" onclick="pendingAction('Ajout de matériau')">+ Ajouter un matériau</button>
           </div>
         </div>
         <div class="card panel">
@@ -1619,7 +1650,7 @@
                   <td><strong>${esc(m.recycledContent || '0%')}</strong></td>
                   <td>${(m.certifications || ['GOTS']).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')}</td>
                   <td><span class="badge-tier">${esc(m.tier || 'Tier 4')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Détails du matériau ${esc(m.name)}')">Inspecter</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="pendingAction('Inspection du matériau')">Inspecter</button></td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -1653,7 +1684,7 @@
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Ouvrir Vue Consommateur DPP ↗</button>
-            <button class="btn btn-primary" onclick="alert('Rapport complet de traçabilité exporté.')">Exporter Audit Complet</button>
+            <button class="btn btn-primary" onclick="exportAudit()">Exporter Audit Complet</button>
           </div>
         </div>
 
@@ -1818,7 +1849,7 @@
                         <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · Téléversé le ${esc(f.date)}</div>
                       </div>
                     </div>
-                    <button class="btn btn-secondary btn-small" onclick="alert('Inspection de la preuve ${esc(f.name)} scellée avec hash.')">Inspecter</button>
+                    <button class="btn btn-secondary btn-small" onclick="pendingAction('Inspection de la preuve')">Inspecter</button>
                   </div>
                 `).join('')}
               </div>
@@ -1871,8 +1902,8 @@
             <p>Auditez, scellez et vérifiez les preuves réelles de votre supply chain textile : certificats de transaction, rapports d'essais ISO 17025, audits sociaux SMETA et déclarations REACH.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Registre d\'audit cryptographique téléchargé (Format JSON-LD).')">📥 Télécharger le registre scellé</button>
-            <button class="btn btn-primary" onclick="alert('Formulaire de dépôt de preuve ouvert.')">+ Déposer une nouvelle preuve</button>
+            <button class="btn btn-secondary" onclick="pendingAction('Téléchargement du registre scellé')">📥 Télécharger le registre scellé</button>
+            <button class="btn btn-primary" onclick="pendingAction('Dépôt de preuve')">+ Déposer une nouvelle preuve</button>
           </div>
         </div>
 
@@ -1913,7 +1944,7 @@
         <div class="card panel">
           <div class="panel-head">
             <h2>Preuves documentaires actives & scellées (${docs.length})</h2>
-            <span class="meta" style="color:#0b7656;font-weight:750;">✓ Contrôle d'intégrité Neon & Document AI validé</span>
+            <span class="meta">${docs.length ? `${docs.filter((d) => d.latestVerificationStatus).length} vérification(s) enregistrée(s) sur ${docs.length}` : 'Aucune vérification enregistrée'}</span>
           </div>
 
           <div class="table-wrap">
@@ -1931,46 +1962,16 @@
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td><strong>Certificat de Transaction GOTS 2026</strong><div class="meta">Lot Coton Biologique #089-A</div></td>
-                  <td><span class="badge badge-verified">TC GOTS</span></td>
-                  <td>Control Union Certifications</td>
-                  <td>Filature de Haute-Vienne</td>
-                  <td>14/01/2026</td>
-                  <td>14/01/2027</td>
-                  <td><span class="status status-approved">✓ SHA-256 Scellé</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Preuve inspectée avec succès.')">Vérifier</button></td>
-                </tr>
-                <tr>
-                  <td><strong>Rapport Laboratoire ZDHC MRSL Level 3</strong><div class="meta">Analyses eaux usées & métaux lourds</div></td>
-                  <td><span class="badge badge-verified">ZDHC Test</span></td>
-                  <td>SGS Textile Testing Services</td>
-                  <td>EcoDye Aquitaine</td>
-                  <td>02/03/2026</td>
-                  <td>02/03/2027</td>
-                  <td><span class="status status-approved">✓ Validé ISO 17025</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Rapport de laboratoire conforme.')">Vérifier</button></td>
-                </tr>
-                <tr>
-                  <td><strong>Audit Social SMETA 4-Pillar (Grade A)</strong><div class="meta">Santé, sécurité & rémunération équitable</div></td>
-                  <td><span class="badge badge-verified">SMETA Audit</span></td>
-                  <td>Intertek Ethical Services</td>
-                  <td>Atelier Confection & Tailoring</td>
-                  <td>10/11/2025</td>
-                  <td>10/11/2026</td>
-                  <td><span class="status status-approved">✓ Conforme OIT</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Audit social approuvé sans non-conformité.')">Vérifier</button></td>
-                </tr>
-                <tr>
-                  <td><strong>Certificat OEKO-TEX Standard 100</strong><div class="meta">Classe 1 (Contact direct avec la peau)</div></td>
-                  <td><span class="badge badge-verified">OEKO-TEX</span></td>
-                  <td>CITEVE Portugal</td>
-                  <td>Portugal Textile Mill</td>
-                  <td>18/02/2026</td>
-                  <td>18/02/2027</td>
-                  <td><span class="status status-approved">✓ Valide</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Certificat vérifié.')">Vérifier</button></td>
-                </tr>
+                ${docs.length ? docs.map((d) => `<tr>
+                  <td><strong>${esc(d.originalFilename || 'Sans nom')}</strong></td>
+                  <td>${esc(d.kind || 'autre')}</td>
+                  <td>${esc(d.ownerOrganizationName || '—')}</td>
+                  <td>—</td>
+                  <td>${esc(d.createdAt ? new Date(d.createdAt).toLocaleDateString('fr-FR') : '—')}</td>
+                  <td>${esc(d.expiresAt ? new Date(d.expiresAt).toLocaleDateString('fr-FR') : 'sans échéance')}</td>
+                  <td>${esc(d.latestVerificationStatus || 'non vérifié')}${d.sha256 ? ` · <code style="font-size:10px;">${esc(String(d.sha256).slice(0, 12))}</code>` : ''}</td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="verifyDocument('${esc(d.id)}')">Vérifier</button></td>
+                </tr>`).join('') : `<tr><td colspan="8"><div class="empty"><div class="empty-icon">▤</div><strong>Aucune preuve documentaire</strong><p class="meta">Les preuves rattachées à votre organisation apparaîtront ici. Aucune ligne n'est simulée.</p></div></td></tr>`}
               </tbody>
             </table>
           </div>
@@ -1986,7 +1987,7 @@
             <p>Active multi-facility certifications: GOTS, GRS, OEKO-TEX, and ISO 14001.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Nouveau certificat déclaré.')">+ Déclarer un certificat</button>
+            <button class="btn btn-primary" onclick="pendingAction('Déclaration de certificat')">+ Déclarer un certificat</button>
           </div>
         </div>
         <div class="grid split">
@@ -2030,7 +2031,7 @@
             <p>Générez les extraits de données pour les auditeurs CSRD (ESRS E1, E4, E5), Loi AGEC et LkSG.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Rapport CSRD exporté avec succès.')">Générer le rapport CSRD</button>
+            <button class="btn btn-primary" onclick="pendingAction('Génération du rapport CSRD')">Générer le rapport CSRD</button>
           </div>
         </div>
         <div class="grid split">
@@ -2042,14 +2043,14 @@
                   <strong>Export Réglementaire CSRD (ESRS E5 Circularité)</strong>
                   <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Composition certifiée, recyclabilité, et taux de matières recyclées.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Export CSRD lancé.')">Télécharger XLSX</button>
+                <button class="btn btn-secondary btn-small" onclick="pendingAction('Export XLSX')">Télécharger XLSX</button>
               </div>
               <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
                 <div>
                   <strong>Fiche Conformité Loi AGEC (France - Article 13)</strong>
                   <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Traçabilité des opérations de tissage, teinture et confection.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Fiche AGEC générée.')">Télécharger PDF</button>
+                <button class="btn btn-secondary btn-small" onclick="pendingAction('Fiche AGEC')">Télécharger PDF</button>
               </div>
             </div>
           </div>
@@ -2068,7 +2069,7 @@
             <p>Paramètres de l'organisation, intégrations API, clés d'accès et politiques de conformité.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Paramètres sauvegardés.')">Enregistrer</button>
+            <button class="btn btn-primary" onclick="pendingAction('Enregistrement des paramètres')">Enregistrer</button>
           </div>
         </div>
         <div class="card panel">
@@ -2605,6 +2606,18 @@
         const pct = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Math.round(Number(v)));
         const shown = (v) => { const n = pct(v); return n === null ? 'Non mesuré' : n + '%'; };
         const qReadiness = { not_started: 'Données non démarrées', in_progress: 'Données en cours', data_ready: 'Données prêtes', needs_review: 'À revoir' }[prod.dataReadiness] || 'État non déclaré';
+        /* Les anomalies viennent du score réel ; `issueFilter` est piloté par filterIssues(). */
+        const allIssues = q?.issues || [];
+        const matchesFilter = (issue, filter) => (filter === 'resolved'
+          ? ['resolved', 'waived'].includes(issue.status)
+          : issue.severity === filter);
+        const filteredIssues = state.issueFilter && state.issueFilter !== 'all'
+          ? allIssues.filter((issue) => matchesFilter(issue, state.issueFilter))
+          : allIssues;
+        /* Compteurs des onglets calculés sur les anomalies réelles. Les valeurs
+           `info`, `warning` et `blocking` sont celles de l'enum Prisma
+           quality_issue_severity ; `resolved` regroupe resolved et waived. */
+        const countFor = (filter) => allIssues.filter((issue) => matchesFilter(issue, filter)).length;
 
         return `${complianceContractPanel()}${capContractPanel()}
         <div class="page-head">
@@ -2662,27 +2675,28 @@
           </div>
         </div>
 
-        <!-- Severity Action Filter Tabs : CRITICAL | WARNING | REVIEW | RESOLVED -->
+        <!-- Onglets de sévérité : valeurs de l'enum Prisma quality_issue_severity,
+             compteurs calculés sur les anomalies réelles -->
         <div class="eq-severity-tabs">
-          <div class="eq-sev-tab active" onclick="filterIssues('all')">
+          <div class="eq-sev-tab ${!state.issueFilter || state.issueFilter === 'all' ? 'active' : ''}" onclick="filterIssues('all')">
             <span>Toutes les anomalies</span>
-            <span class="sev-pill-count">3</span>
+            <span class="sev-pill-count">${allIssues.length}</span>
           </div>
-          <div class="eq-sev-tab" onclick="filterIssues('critical')">
-            <span style="color:#b91c1c;">● Bloquant (CRITICAL)</span>
-            <span class="sev-pill-count" style="color:#b91c1c;">0</span>
+          <div class="eq-sev-tab ${state.issueFilter === 'blocking' ? 'active' : ''}" onclick="filterIssues('blocking')">
+            <span style="color:#b91c1c;">● Bloquant</span>
+            <span class="sev-pill-count" style="color:#b91c1c;">${countFor('blocking')}</span>
           </div>
-          <div class="eq-sev-tab" onclick="filterIssues('warning')">
-            <span style="color:#b45309;">▲ Avertissement (WARNING)</span>
-            <span class="sev-pill-count" style="color:#b45309;">1</span>
+          <div class="eq-sev-tab ${state.issueFilter === 'warning' ? 'active' : ''}" onclick="filterIssues('warning')">
+            <span style="color:#b45309;">▲ Avertissement</span>
+            <span class="sev-pill-count" style="color:#b45309;">${countFor('warning')}</span>
           </div>
-          <div class="eq-sev-tab" onclick="filterIssues('review')">
-            <span style="color:#1d4ed8;">ℹ À réviser (REVIEW)</span>
-            <span class="sev-pill-count" style="color:#1d4ed8;">2</span>
+          <div class="eq-sev-tab ${state.issueFilter === 'info' ? 'active' : ''}" onclick="filterIssues('info')">
+            <span style="color:#1d4ed8;">ℹ Information</span>
+            <span class="sev-pill-count" style="color:#1d4ed8;">${countFor('info')}</span>
           </div>
-          <div class="eq-sev-tab" onclick="filterIssues('resolved')">
-            <span style="color:#0b7656;">✓ Résolues (RESOLVED)</span>
-            <span class="sev-pill-count" style="color:#0b7656;">14</span>
+          <div class="eq-sev-tab ${state.issueFilter === 'resolved' ? 'active' : ''}" onclick="filterIssues('resolved')">
+            <span style="color:#0b7656;">✓ Résolues ou dérogées</span>
+            <span class="sev-pill-count" style="color:#0b7656;">${countFor('resolved')}</span>
           </div>
         </div>
 
@@ -2690,47 +2704,11 @@
         <div class="card panel">
           <div class="panel-head">
             <h2>Points d'attention actifs pour : ${esc(prod.name)}</h2>
-            <span class="meta">${q ? q.issues.length : 3} anomalie(s) identifiée(s)</span>
+            <span class="meta">${allIssues.length} anomalie(s) identifiée(s)${state.issueFilter && state.issueFilter !== 'all' ? ` · ${filteredIssues.length} affichée(s)` : ''}</span>
           </div>
 
           <div class="issue-list" id="quality-issue-container">
-            <!-- Simulated High-Impact Actionable Issues -->
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
-              <div>
-                <span class="status status-changes_requested" style="margin-right:8px;">WARNING</span>
-                <strong>Rapport d'essais RSL manquant pour le lot de teinture #089</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">Règle : <code>ZDHC_EFFLUENT_TEST_REPORT</code> · Détectée par Document AI · Tolérance : 12 mois</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Action suggérée : Téléverser le rapport SGS ou relancer la teinturerie EcoDye Aquitaine</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='requests';render();">Relancer l'usine</button>
-                <button class="btn btn-primary btn-small" onclick="state.view='documents';render();">Déposer la preuve</button>
-              </div>
-            </div>
-
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
-              <div>
-                <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
-                <strong>Certificat GOTS CU-881294 expirant dans 42 jours</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">Règle : <code>CERTIFICATE_EXPIRATION_GATE</code> · Portée : Coton biologique peigné</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Action suggérée : Réceptionner le certificat Scope GOTS 2027 avant expédition douanière</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='certifications';render();">Gérer le certificat</button>
-              </div>
-            </div>
-
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;">
-              <div>
-                <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
-                <strong>Coordonnées GPS de l'atelier de découpe non verrouillées</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">Règle : <code>POLYGON_FACILITY_REGISTRY</code> · Atelier de Barcelos</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Action suggérée : Valider le polygone GPS de l'usine dans le registre des sites</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='supplyChain';render();">Inspecter sur la carte</button>
-              </div>
-            </div>
+            ${filteredIssues.length ? filteredIssues.map(issueCard).join('') : `<div class="empty"><div class="empty-icon">◒</div><strong>${(q?.issues || []).length ? 'Aucune anomalie pour ce filtre' : 'Aucune anomalie calculée'}</strong><p class="meta">${(q?.issues || []).length ? 'Changez de filtre de sévérité.' : 'Le score de qualité est calculé produit par produit : sélectionnez un produit pour l’obtenir.'}</p></div>`}
           </div>
         </div>`;
       }
@@ -2782,7 +2760,7 @@
               <p>Reconstitution scientifique du parcours physique de la matière, depuis la parcelle agricole jusqu'au centre de distribution européen.</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary" onclick="alert('Rapport de Chaîne de Garde généré (Norme ISO 22095).')">📥 Exporter le rapport forensique</button>
+              <button class="btn btn-secondary" onclick="pendingAction('Export du rapport de chaîne de garde')">📥 Exporter le rapport forensique</button>
               <button class="btn btn-secondary" data-action="select-supply-chain-product">Changer de produit</button>
               <button class="btn btn-secondary" data-action="generate-baseline-chain">Générer la chaîne de référence</button>
               <button class="btn btn-secondary" data-action="new-chain-link">+ Ajouter une liaison</button>
@@ -3109,7 +3087,7 @@
             ${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}
             ${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary" data-action="remind-request" data-reminder-request-id="${esc(r.id)}">Relancer le fournisseur</button>` : ''}
             ${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}
-            <button class="btn btn-primary" onclick="alert('Rapport complet de revue RSE exporté.')">Exporter Synthèse</button>
+            <button class="btn btn-primary" onclick="exportRequestSummary()">Exporter Synthèse</button>
           </div>
         </div>
 
@@ -3147,7 +3125,7 @@
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
                           <span class="badge-ocr">OCR 99% Valide</span>
-                          <button class="btn btn-secondary btn-small" onclick="alert('Inspection visuelle de ${esc(item.documentName)} ouverte.')">Inspecter Document</button>
+                          <button class="btn btn-secondary btn-small" onclick="pendingAction('Inspection du document')">Inspecter Document</button>
                         </div>
                       </div>
                     ` : ''}
@@ -3206,7 +3184,7 @@
             <div class="card panel">
               <div class="panel-head"><h2>Actions Rapides</h2></div>
               <div style="display:grid;gap:8px;">
-                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="alert('Rappel email envoyé à Rui Silva (Nhãn Textile).')">
+                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="pendingAction('Rappel au fournisseur')">
                   ✉️ Relancer le fournisseur par email
                 </button>
                 <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="window.open('/dpp/', '_blank')">
@@ -3335,6 +3313,38 @@
         anchor.download = filename;
         anchor.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      /* Export réel des gabarits de questionnaire présents dans l'état. */
+      function exportQuestionnaireTemplates() {
+        const templates = state.questionnaires || [];
+        if (!templates.length) { notify('Aucun gabarit à exporter.', true); return; }
+        downloadTextFile('tracefab-questionnaire-templates.json', JSON.stringify(templates, null, 2), 'application/json;charset=utf-8');
+        notify(`${templates.length} gabarit(s) exporté(s).`);
+      }
+
+      /* Export réel des matières présentes dans l'état. */
+      function exportMaterialsCsv() {
+        const materials = state.materials || [];
+        if (!materials.length) { notify('Aucune matière à exporter.', true); return; }
+        const headers = ['id', 'name', 'normalized_name', 'materialType', 'originCountryCode'];
+        const cell = (v) => { const t = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+        const rows = materials.map((m) => headers.map((h) => cell(m[h])).join(','));
+        downloadTextFile('tracefab-materials.csv', `\uFEFF${[headers.join(','), ...rows].join('\r\n')}\r\n`);
+        notify(`${materials.length} matière(s) exportée(s).`);
+      }
+
+      /* Export réel de la demande sélectionnée : la synthèse ne contient que ses données. */
+      function exportRequestSummary() {
+        const request = state.selectedRequest;
+        if (!request) { notify('Aucune demande sélectionnée.', true); return; }
+        const supplier = (state.suppliers || []).find((s) => s.organization_id === request.supplierOrganizationId);
+        downloadTextFile(
+          `tracefab-demande-${request.id}.json`,
+          JSON.stringify({ demande: request, fournisseur: supplier?.organizations || null, exporteLe: new Date().toISOString() }, null, 2),
+          'application/json;charset=utf-8',
+        );
+        notify('Synthèse de la demande exportée.');
       }
 
       function demoCatalogCsv() {
@@ -4177,6 +4187,28 @@
           await sync();
         }
       }
+      /* Les gestionnaires `onclick` inline du HTML s'exécutent HORS de cette IIFE :
+         un identifiant qu'ils référencent et qui n'est pas exposé lève une
+         ReferenceError au clic. Les boîtes de dialogue natives fonctionnaient par
+         accident, parce qu'elles sont des globales du navigateur — d'où 22 fausses
+         annonces de succès qui « marchaient ».
+         On expose ici exactement les identifiants utilisés par ces gestionnaires. */
+      Object.assign(window, {
+        state,
+        render,
+        notify,
+        pendingAction,
+        esc,
+        filterRequestsByStatus,
+        filterIssues,
+        exportAudit,
+        exportCatalog,
+        exportMaterialsCsv,
+        exportQuestionnaireTemplates,
+        exportRequestSummary,
+        verifyDocument,
+      });
+
       window.tracefabBrandConsole = { state, sync };
       boot();
     })();

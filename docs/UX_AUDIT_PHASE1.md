@@ -1598,3 +1598,105 @@ Les trois domaines de la Phase 5 sont livrés : **Dashboard** (centre de pilotag
 Chantier 15), **Overview** (idem) et **Product Intelligence** (lignée réelle Chantier 14,
 formulaire et exploration Chantier 16). Les 11 domaines de navigation du brief étaient déjà tous
 présents — mesuré : 16 entrées `navButton`, 18 vues dans le routeur ternaire, aucune vue sans cible.
+
+---
+
+## Chantier 17 — Les 22 fausses annonces de succès, et 54 gestionnaires de clic qui ne faisaient rien
+
+### Ce que la mesure a établi
+
+Les 22 `alert()` n'étaient pas des traces de débogage : c'étaient des **annonces de succès pour
+des opérations jamais exécutées**.
+
+| Bouton | Ce qu'il affichait | Ce qu'il faisait |
+|---|---|---|
+| Exporter CSV | « Exportation CSV générée. » | rien |
+| + Ajouter un matériau | « Nouveau matériau enregistré. » | rien |
+| Vérifier (×4) | « Certificat vérifié. », « Rapport de laboratoire conforme. », « Audit social approuvé sans non-conformité. », « Preuve inspectée avec succès. » | rien |
+| Générer le rapport CSRD | « Rapport CSRD exporté avec succès. » | rien |
+| Télécharger XLSX / PDF | « Export CSRD lancé. », « Fiche AGEC générée. » | rien |
+| Enregistrer (paramètres) | « Paramètres sauvegardés. » | rien |
+| Rappel fournisseur | « Rappel email envoyé à Rui Silva (Nhãn Textile). » | rien — et la personne est inventée |
+
+### La cause, plus large que les 22 boutons
+
+Le script de la console est une IIFE : `(() => { 'use strict'; … })()`. Un gestionnaire
+`onclick` **inline** s'exécute hors de cette portée. Sur **59 `onclick` inline**, seuls
+**5** référençaient un global du navigateur (`window.open`) : les **54 autres levaient une
+`ReferenceError` au clic**, silencieusement.
+
+Les 22 `alert()` « fonctionnaient » **par accident** : `alert` est une globale du navigateur.
+C'est précisément pourquoi les fausses annonces de succès marchaient pendant que les vrais
+gestionnaires, eux, échouaient. Parmi les 32 préexistants cassés : `state.view='…';render();`,
+`state.selectedChainNode='…';render();`, `filterRequestsByStatus('…')`, `filterIssues('…')`.
+
+### Corrections
+
+1. **Exposition des identifiants** utilisés par les gestionnaires inline (`state`, `render`,
+   `notify`, `esc`, `pendingAction`, `filterIssues`, `filterRequestsByStatus`, les fonctions
+   d'export, `verifyDocument`). Un seul point de correction règle les 54.
+2. **`pendingAction(label)`** — une action non reliée au serveur affiche
+   « … — action non reliée au serveur, rien n'a été effectué. » (toast d'erreur) au lieu d'un
+   succès. Aucun fichier n'est produit.
+3. **Trois exports rendus réels**, en réutilisant `downloadTextFile()` déjà présent :
+   gabarits de questionnaire en JSON, matières en CSV, synthèse de la demande en JSON.
+   `Exporter Audit Complet` est câblé sur `exportAudit()` (endpoint réel existant).
+4. **`filterIssues()` n'existait nulle part** — les cinq onglets de sévérité du centre de
+   qualité appelaient une fonction absente. Elle est implémentée, pilotée par
+   `state.issueFilter`.
+5. **Les onglets portaient des valeurs hors enum.** Ils filtraient sur `critical` et `review`,
+   alors que l'enum Prisma `quality_issue_severity` vaut `info`, `warning`, `blocking`.
+   Réécrits sur l'enum réel, avec **compteurs calculés** au lieu de `3, 0, 1, 2, 14` codés en dur.
+6. **`issueCard()` était défini mais jamais appelé.** Le conteneur
+   `#quality-issue-container` contenait 39 lignes de « Simulated High-Impact Actionable Issues »
+   (`ZDHC_EFFLUENT_TEST_REPORT`, « lot de teinture #089 », « Document AI », « teinturerie
+   EcoDye Aquitaine »), avec un compteur `${q ? q.issues.length : 3}` retombant sur 3.
+   Le renderer réel est maintenant utilisé.
+7. **`state.documents` n'était ni déclaré ni assigné** — `documentsConsoleView` rendait un
+   tableau de 42 lignes codées en dur (SGS, Control Union, Intertek, CITEVE, Portugal Textile
+   Mill, Filature de Haute-Vienne, EcoDye Aquitaine) sous un badge
+   « ✓ Contrôle d'intégrité Neon & Document AI validé ». `GET /api/documents` existe pourtant
+   et renvoie `{documents, count, byKind, byStatus, byVerification, expiringWithin90Days}`.
+   La vue est câblée sur ce contrat, avec un état vide honnête, et **« Vérifier » appelle
+   réellement `GET /api/documents/{id}/verification-report`** et télécharge le rapport.
+
+### Mesures
+
+Sonde jsdom sur `?demo=1` :
+
+```
+alert() dans le source        : 0
+export gabarits               : tracefab-questionnaire-templates.json, 4 gabarits, JSON valide
+export matières               : tracefab-materials.csv
+                                id,name,normalized_name,materialType,originCountryCode
+                                demo-material-1,Coton biologique,,fiber,PT
+Générer le rapport CSRD       : aucun fichier produit
+                                toast « … — action non reliée au serveur, rien n'a été effectué. »
+Enregistrer (paramètres)      : aucun fichier produit, même toast
+onglets qualité               : 2 | 1 bloquant | 1 avertissement | 0 info | 0 résolues  (= 2 réelles)
+filtre « Bloquant »           : issueFilter=blocking, 1 carte
+filtre « Avertissement »      : issueFilter=warning, 1 carte
+retour « Toutes »             : issueFilter=all, 2 cartes
+centre de preuves             : 0 document, état vide honnête, aucune preuve inventée
+erreurs                       : aucune
+```
+
+`test:console:actions` — **64 contrôles, 0 échec**. Il asserte l'absence des 22 annonces,
+vérifie que **chaque `onclick` inline résout** (aucun identifiant non exposé), capture le blob
+réellement produit par les exports et compare son contenu aux listes réelles, vérifie qu'une
+action non reliée ne produit **aucun fichier**, que les compteurs d'onglets somment au total
+réel, et que le centre de preuves ne contient plus aucune ligne inventée.
+
+Portails (12) : brand-console, console:actions 64/0, product:intelligence 36/0,
+dashboard:overview 37/0, supplychain:surface 76/0, supplychain:chantier3, dpp-readiness 83/0,
+route-registry, landing 95/0, quality-center 69/0, i18n 75/0, supplier-portal.
+Balayage : **42 PASS / 18 FAIL** (était 37 / 19 au début de ces travaux), aucun nouvel échec.
+
+### Ce qui reste
+
+- Le bouton **+ Déposer une nouvelle preuve** et **+ Déclarer un certificat** signalent
+  honnêtement qu'ils ne font rien, mais `POST /api/documents/upload-intent` existe : ils
+  peuvent être câblés.
+- `fallback-data.ts` sert toujours une chaîne inventée en dernier recours.
+- Le bug `|| true` de `api/_lib/dpp.ts` (~192) rend toute exigence DPP bloquante en permanence.
+- Les cinq dictionnaires i18n ne sont pas unifiés ; `passport/` n'a aucun i18n.
