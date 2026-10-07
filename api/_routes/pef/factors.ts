@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { prisma } from '../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { TEXTILE_EMISSION_FACTORS } from '../../_lib/pef/pef-factors.js';

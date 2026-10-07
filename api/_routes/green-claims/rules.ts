@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { prisma } from '../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { STATIC_GREEN_CLAIMS_RULES } from '../../_lib/green-claims/rules.js';

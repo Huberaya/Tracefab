@@ -51,26 +51,31 @@
     "build": "npm run db:generate && npm run typecheck && npm run api:typecheck && npm run schema:static"
   },
   "devDependencies": {
-    "@prisma/client": "^6.19.0",
+    "@prisma/client": "^6.19.3",
     "@types/archiver": "^8.0.0",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/react": "^18.3.31",
-    "@types/react-dom": "^18.3.7",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "playwright": "^1.63.0",
-    "prisma": "^6.19.0",
+    "prisma": "^6.19.3",
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@clerk/backend": "^3.18.1",
-    "@vercel/node": "^13.0.2",
+    "@clerk/backend": "^3.23.0",
+    "@tailwindcss/postcss": "^4.3.3",
     "archiver": "^8.0.0",
     "autoprefixer": "^10.6.1",
     "jsonwebtoken": "^9.0.3",
-    "next": "^14.2.35",
+    "next": "^16.4.0",
     "postcss": "^8.5.29",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "tailwindcss": "^3.4.19"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3"
   },
-  "type": "module"
+  "type": "module",
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "effect": "3.20.0"
+  }
 }
