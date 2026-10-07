@@ -992,7 +992,7 @@ function render() {
                   <div style="color:var(--muted);margin-top:2px;">Exige le dépôt d'un fichier PDF scellé avec extraction automatique des dates de validité.</div>
                 </div>
                 <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid #0284c7;">
-                  <strong>Nomenclature Matière (Bill of Materials)</strong>
+                  <strong>Nomenclature Matière (Nomenclature Matières (BOM))</strong>
                   <div style="color:var(--muted);margin-top:2px;">Tableau multi-colonnes vérifiant que la somme des pourcentages égale exactement 100%.</div>
                 </div>
                 <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid #6366f1;">
@@ -1016,9 +1016,9 @@ function render() {
         const mats = state.materials || [];
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Materials & Fibers</div>
-            <h1>Raw Materials Catalog</h1>
-            <p>Track fiber origins, spinning types, mass-balance certifications, and Tier 3–4 suppliers.</p>
+            <div class="eyebrow">Matières & Fibres</div>
+            <h1>Catalogue des Matières Premières</h1>
+            <p>Suivez l'origine des fibres, les procédés de filature, les certifications de bilan massique et les fournisseurs Rang 3–4.</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="alert('Exportation CSV générée.')">Exporter CSV</button>
@@ -1067,8 +1067,8 @@ function render() {
 
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Full Custody Mapping & Forensic Traceability</div>
-            <h1>Supply Chain Visualization & Node Inspector</h1>
+            <div class="eyebrow">Cartographie de Traçabilité & Chaîne de Contrôle</div>
+            <h1>Visualisation de la Chaîne d'Approvisionnement & Inspecteur de Nœuds</h1>
             <p>Cartographie interactive multi-échelons : cliquez sur un nœud industriel pour inspecter les coordonnées GPS, bilans massiques et preuves d'audit scellées.</p>
           </div>
           <div class="actions">
@@ -1174,7 +1174,7 @@ function render() {
                 <text x="16" y="78" font-size="10.5" fill="#56675e">Atelier Demo</text>
                 <text x="16" y="98" font-size="9.5" fill="#0284c7">Passeport Numérique</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e0f2fe"/>
-                <text x="20" y="116" font-size="8.5" font-weight="700" fill="#0284c7">ESPR Cirpass Ready</text>
+                <text x="20" y="116" font-size="8.5" font-weight="700" fill="#0284c7">Conforme ESPR CIRPASS</text>
               </g>
             </svg>
           </div>
@@ -1286,9 +1286,9 @@ function render() {
         const docs = state.documents || [];
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Evidence Vault</div>
-            <h1>Document Verification Center</h1>
-            <p>Audit and verify transaction certificates, lab reports, social audits, and chemical testing files.</p>
+            <div class="eyebrow">Coffre-fort de Preuves</div>
+            <h1>Centre de Vérification des Documents</h1>
+            <p>Auditez et vérifiez les certificats de transaction, rapports d'essais en laboratoire, audits sociaux et conformités chimiques.</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="alert('Rapport de vérification téléchargé.')">Télécharger le registre</button>
