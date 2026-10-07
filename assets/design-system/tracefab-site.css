@@ -34,6 +34,31 @@
   border-bottom-color: var(--tf-line-dark-soft);
 }
 
+.tf-progress {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity var(--tf-dur-base) var(--tf-ease-out);
+  pointer-events: none;
+}
+.tf-header.is-stuck .tf-progress { opacity: 1; }
+.tf-progress__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--tf-emerald);
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+.tf-progress i {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: var(--tf-forest-950);
+}
+
 .tf-header__shell {
   max-width: var(--tf-max);
   margin-inline: auto;
@@ -128,7 +153,7 @@
   position: fixed;
   inset: 62px 0 auto 0;
   z-index: calc(var(--tf-z-header) - 1);
-  background: rgba(4, 11, 8, 0.97);
+  background: #040b08;
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--tf-line-dark-soft);
   padding: var(--tf-s5) var(--tf-gutter) var(--tf-s7);
@@ -148,7 +173,33 @@
   color: var(--tf-ink-inv);
   display: flex; justify-content: space-between; align-items: center;
 }
-.tf-drawer a.tf-drawer__link span { font-family: var(--tf-font-mono); font-size: var(--tf-size-3xs); color: var(--tf-ink-inv-faint); }
+.tf-drawer a.tf-drawer__link .tf-drawer__num {
+  font-family: var(--tf-font-mono);
+  font-size: var(--tf-size-3xs);
+  font-weight: 400;
+  letter-spacing: var(--tf-track-wider);
+  color: var(--tf-ink-inv-faint);
+  min-width: 22px;
+  text-align: right;
+}
+/* Les deux liens qui pointent a l'interieur du chapitre 02 sont subordonnes :
+   ils en dependent, ils ne sont pas des chapitres. Le filet reprend le
+   vocabulaire du rail des sept couches. */
+.tf-drawer a.tf-drawer__link--sub {
+  padding-left: 18px;
+  font-size: 0.9375rem;
+  color: var(--tf-ink-inv-soft);
+  position: relative;
+}
+.tf-drawer a.tf-drawer__link--sub::before {
+  content: '';
+  position: absolute;
+  left: 3px; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--tf-line-dark-soft);
+}
+.tf-drawer a.tf-drawer__link.is-active { color: var(--tf-emerald-bri); }
+.tf-drawer a.tf-drawer__link.is-active .tf-drawer__num { color: var(--tf-emerald-bri); }
 .tf-drawer__actions { display: flex; flex-direction: column; gap: 10px; margin-top: var(--tf-s5); }
 
 /* ── 02 · LANGUAGE MENU ─────────────────────────────────────────────────── */

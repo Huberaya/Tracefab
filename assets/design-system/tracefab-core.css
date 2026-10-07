@@ -59,6 +59,7 @@
   --tf-surface-light:        var(--tf-bone-100);
   --tf-surface-light-raised: #ffffff;
   --tf-surface-light-sunken: var(--tf-bone-200);
+  --tf-surface-light-hover:  var(--tf-bone-200);
   --tf-surface-dark:         var(--tf-forest-950);
   --tf-surface-dark-raised:  var(--tf-forest-850);
   --tf-surface-dark-sunken:  #020605;
@@ -108,6 +109,7 @@
   --tf-size-d2: clamp(2rem, 4.1vw, 3.4rem);     /* sub title */
   --tf-size-d3: clamp(1.5rem, 2.5vw, 2.1rem);   /* block title */
   --tf-size-xl: 1.3125rem;
+  --tf-size-2xl: 1.625rem;      /* attendu par 3 regles console/portail */
   --tf-size-lg: 1.125rem;
   --tf-size-md: 1rem;
   --tf-size-sm: 0.9375rem;

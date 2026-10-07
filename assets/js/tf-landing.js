@@ -45,14 +45,57 @@
     var header = $('.tf-header');
     if (!header) return;
 
+    /* Rail de progression. Sur une page de 6179px en desktop et 9473px sur
+       telephone, rien ne disait ou l'on en etait ni combien il restait. Le
+       surlignage du menu ne peut pas l'ecrire : l'ordre du menu ne suit pas
+       celui de la page, donc l'actif bondit en arriere, et sur telephone le
+       menu dort dans un tiroir ferme. Le rail, lui, avance toujours.
+       Une seule propriete composee (scaleX), une seule frame par defilement. */
+    var fill = $('.tf-progress__fill');
+    var rail = $('.tf-progress');
+    var enVol = false;
+
+    var poserEncoches = function () {
+      if (!rail) return;
+      var doc = document.documentElement.scrollHeight;
+      if (doc <= 0) return;
+      $$('i', rail).forEach(function (n) { n.remove(); });
+      var vue = window.innerHeight;
+      var course = doc - vue;
+      if (course <= 0) return;
+      $$('main > section[id]').forEach(function (sec, i) {
+        if (i === 0) return;                       // pas d'encoche au depart
+        var haut = sec.getBoundingClientRect().top + window.scrollY;
+        var part = Math.min(1, Math.max(0, haut / course));
+        var n = el('i');
+        n.style.left = (part * 100).toFixed(2) + '%';
+        rail.appendChild(n);
+      });
+    };
+
+    var majRail = function () {
+      if (!fill) return;
+      var course = document.documentElement.scrollHeight - window.innerHeight;
+      var part = course > 0 ? Math.min(1, Math.max(0, window.scrollY / course)) : 0;
+      fill.style.transform = 'scaleX(' + part.toFixed(4) + ')';
+    };
+
     var onScroll = function () {
       header.classList.toggle('is-stuck', window.scrollY > 24);
+      if (enVol) return;
+      enVol = true;
+      window.requestAnimationFrame(function () { majRail(); enVol = false; });
     };
     onScroll();
+    majRail();
     window.addEventListener('scroll', onScroll, { passive: true });
 
+    poserEncoches();
+    window.addEventListener('resize', function () { poserEncoches(); majRail(); }, { passive: true });
+    window.addEventListener('load', poserEncoches);
+
     // Active section highlighting
-    var links = $$('.tf-nav a[href^="#"]');
+    var links = $$('.tf-nav a[href^="#"], .tf-drawer a[href^="#"]');
     var targets = links
       .map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); })
       .filter(Boolean);

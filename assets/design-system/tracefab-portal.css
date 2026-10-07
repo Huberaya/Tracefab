@@ -49,7 +49,7 @@
   font-size: var(--tf-size-3xs);
   letter-spacing: var(--tf-track-widest);
   text-transform: uppercase;
-  color: var(--tf-emerald-bright);
+  color: var(--tf-emerald-bri);
 }
 .sp-hero__title {
   margin: var(--tf-s3) 0 0;
@@ -74,7 +74,7 @@
   line-height: 0.92;
   letter-spacing: var(--tf-track-tighter);
   font-variant-numeric: tabular-nums;
-  color: var(--tf-emerald-bright);
+  color: var(--tf-emerald-bri);
 }
 .sp-gauge__k {
   margin-top: var(--tf-s2);
@@ -233,7 +233,7 @@
   font-weight: 300;
   letter-spacing: var(--tf-track-tighter);
   font-variant-numeric: tabular-nums;
-  color: var(--tf-emerald-bright);
+  color: var(--tf-emerald-bri);
 }
 .vault-stat-item span {
   font-family: var(--tf-font-mono);
