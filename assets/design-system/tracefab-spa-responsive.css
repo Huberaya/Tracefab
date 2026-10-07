@@ -1,0 +1,99 @@
+/* ==========================================================================
+   TRACEFAB — Couche corrective responsive pour les SPA (Brand Console,
+   Supplier Portal).
+
+   POURQUOI CE FICHIER EXISTE
+   --------------------------
+   Les deux SPA embarquent leur propre CSS inline (34 ko console / 16 ko
+   portail) qui style la totalite de leurs vues, y compris les primitives
+   .mc-*, .dc-* et .sp-*. Aucune classe utilisee n'est orpheline : il ne faut
+   donc PAS leur injecter les couches tracefab-core/console/portal.css, qui
+   feraient doublon et entreraient en conflit.
+
+   Le seul defaut mesure et reproductible est un debordement horizontal sur
+   mobile, present a l'identique sur origin/main (donc anterieur a ce travail) :
+
+     viewport 390 px     scrollWidth   elements debordants
+     brand-console          734 px            12
+     supplier-portal        527 px            15
+
+   Ce fichier corrige uniquement cela. Il est charge APRES le <style> inline
+   (pour gagner la cascade a specificite egale) et tout est enferme dans une
+   media query : au-dessus de 860 px, il n'a strictement aucun effet.
+   ========================================================================== */
+
+@media (max-width: 860px) {
+  /* --- 1. Autoriser les enfants flex/grid a retrecir ---------------------
+     Par defaut min-width vaut auto : un enfant refuse de passer sous la
+     largeur de son contenu et pousse la page. C'est la cause racine du
+     .card.panel a 716 px. */
+  .card,
+  .panel,
+  .table-wrap,
+  .quick-grid,
+  .grid > *,
+  main,
+  .main,
+  .content,
+  .view {
+    min-width: 0;
+  }
+
+  /* --- 2. Barre d'actions : passer a la ligne ----------------------------
+     .top-actions mesurait 406 px (console) / 404 px (portail) dans un
+     viewport de 390 px. */
+  .top-actions {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  /* --- 3. Tableaux larges : defiler DANS leur conteneur ------------------
+     Un tableau de donnees ne se replie pas proprement en colonne sans
+     perdre la lecture ligne a ligne. On le laisse a sa largeur naturelle
+     mais on confine le defilement au bloc, au lieu de laisser la page
+     entiere deborder. */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* indique visuellement qu'il reste du contenu a droite */
+    background:
+      linear-gradient(to right, var(--tf-surface, #fff) 30%, transparent),
+      linear-gradient(to right, transparent, var(--tf-surface, #fff) 70%) 100% 0,
+      radial-gradient(farthest-side at 0 50%, rgba(10, 12, 11, 0.14), transparent),
+      radial-gradient(farthest-side at 100% 50%, rgba(10, 12, 11, 0.14), transparent) 100% 0;
+    background-repeat: no-repeat;
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+
+  /* --- 4. Grilles a colonnes figees ---------------------------------------
+     Deux cas mesures :
+       .quick-grid (console)      tenait 668 px — minmax() trop large
+       .sp-actions-grid (portail) imposait 4 colonnes fixes = 508 px dans
+                                  un conteneur de 354 px, seule et unique
+                                  cause du scrollWidth 527 px du portail.
+     auto-fit + minmax laisse 2 colonnes a 390 px et bascule a 1 colonne
+     sur les tres petits ecrans, au lieu d'imposer betement 1 colonne. */
+  .quick-grid,
+  .sp-actions-grid,
+  .kpi-grid,
+  .stat-grid,
+  .cards-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  /* --- 5. Filet de securite ----------------------------------------------
+     Les media/pre/code sont les autres sources classiques de debordement. */
+  img,
+  svg,
+  canvas,
+  video,
+  pre {
+    max-width: 100%;
+    height: auto;
+  }
+
+  pre {
+    overflow-x: auto;
+  }
+}
