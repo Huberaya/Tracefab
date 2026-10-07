@@ -1700,3 +1700,93 @@ Balayage : **42 PASS / 18 FAIL** (était 37 / 19 au début de ces travaux), aucu
 - `fallback-data.ts` sert toujours une chaîne inventée en dernier recours.
 - Le bug `|| true` de `api/_lib/dpp.ts` (~192) rend toute exigence DPP bloquante en permanence.
 - Les cinq dictionnaires i18n ne sont pas unifiés ; `passport/` n'a aucun i18n.
+
+---
+
+## Chantier 18 — La tautologie `|| true` de la préparation DPP
+
+### Le bug
+
+`api/_lib/dpp.ts:196` :
+
+```ts
+const isBlocking = blockingList.some((b) => b.key === key) || true;
+```
+
+`X || true` vaut **toujours** `true`. Les neuf exigences standard étaient donc toutes déclarées
+bloquantes — y compris celles qui étaient satisfaites — et `blockingList` n'était jamais consulté.
+
+### Portée réelle, mesurée
+
+| Consommateur | Lit `items[].blocking` ? |
+|---|---|
+| `brand-console` `renderPillarCard` (l. 3056) | non — lit `it.met` et `it.label` |
+| `brand-console` panneau « Ce qui bloque » (l. 2935–2942) | non — itère `dpp.missingFields`, dont le `blocking` vient correctement de l'enregistrement |
+| `dpp/index.html` | non — aucune occurrence de `blocking` |
+| **`GET /api/gs1/digital-link/{gtin}`** | **oui — publie `pillars` intégralement** |
+
+Aucune page TRACEFAB n'était trompée, mais **le champ faux était publié aux tiers** par la route
+GS1 : toute exigence y était annoncée bloquante.
+
+### Modèle réel, lu dans la migration
+
+`supabase/migrations/20260922070000_tracefab_dpp_readiness.sql` :
+
+- le profil vit dans la **table** `dpp_requirement_profiles(profile_key, profile_version, definition)` ;
+  `textile_readiness_mvp` / `1.0` déclare `"blocking": true` pour les 9 exigences (l. 77–85) ;
+- `requirement_results[]` ne porte que `{key, met}` (l. 236–240) — **pas** `blocking` ;
+- `missing_fields[]` porte `{key, label, blocking}`, **seulement pour les exigences non satisfaites**,
+  avec `'blocking', COALESCE((v_requirement ->> 'blocking')::boolean, true)` (l. 244–249) ;
+- `blocking_issues[]` ne reçoit une entrée que si l'exigence est bloquante **et** non satisfaite.
+
+Le caractère bloquant est donc une **propriété du profil**, pas un état courant — et il ne survit
+dans l'enregistrement que pour les exigences non satisfaites.
+
+### Correction
+
+1. **`fetchDppRequirementProfile(tx, profileKey, profileVersion)`** lit
+   `dpp_requirement_profiles.definition -> 'requirements'`. La base reste l'unique source de
+   vérité ; le module ne duplique pas le profil.
+2. **`buildDppSummary` accepte un `profile` optionnel** (4ᵉ paramètre) : les quatre appelants
+   existants continuent de compiler et de fonctionner sans modification.
+3. **Résolution dans l'ordre du SQL** : déclaration du profil, puis valeur persistée dans
+   `missing_fields`, puis `true` — exactement `COALESCE(…, true)`.
+4. **Les deux routes qui publient le champ sont câblées** :
+   `api/_routes/products/[productId]/dpp.ts` (POST calcul et GET lecture) lit le profil avec la
+   clé et la version demandées ; `api/_routes/gs1/digital-link/[gtin].ts` le lit avec
+   `requirement_profile_key` / `requirement_profile_version` de l'enregistrement.
+
+`blockingCount` et `blockingIssues` étaient déjà corrects (`blockingList.length`) : inchangés.
+
+### Mesures
+
+`npm run api:typecheck` : **98 erreurs avant, 98 après, aucune nouvelle**. Les 98 sont
+préexistantes et toutes dues au client Prisma non généré dans cet environnement. **Mes trois
+fichiers (`api/_lib/dpp.ts`, les deux routes) ne produisent aucune erreur.**
+
+`test:dpp-blocking` — **23 contrôles, 0 échec**. Il **compile le vrai `api/_lib/dpp.ts` et appelle
+la vraie `buildDppSummary`** ; il ne réimplémente pas la logique. Il vérifie :
+
+- sans profil, les neuf exigences sont bloquantes (défaut du SQL) ;
+- un profil déclarant deux exigences `blocking: false` est **respecté** — ce que `|| true` rendait
+  impossible — et les autres retombent sur `true` ;
+- la valeur persistée dans `missing_fields` est respectée ;
+- en cas de conflit, **le profil prime** sur la valeur persistée ;
+- `blockingCount`, `blockingIssues`, `totalRequirements`, `metRequirements` et la somme des piliers
+  sont inchangés ;
+- le champ publié peut désormais exprimer « recommandé ».
+
+**Contre-épreuve** : le bug réintroduit temporairement, le test échoue de **7 façons**, dont
+« une exigence déclarée recommandée n'est plus bloquante » et « la valeur persistée par la fonction
+SQL prime ». Le test épingle donc bien le comportement, pas seulement le texte.
+
+Portails (12) verts, dont `dpp-readiness` 83/0 et `dpp-chantier4` (passe en direct ; non
+enregistré dans `package.json`). Balayage : **43 PASS / 18 FAIL** (était 37 / 19 au début de ces
+travaux), aucun nouvel échec.
+
+### Ce que ce correctif ne change pas aujourd'hui
+
+Le profil `textile_readiness_mvp` déclare les 9 exigences bloquantes : la sortie observable est
+donc identique **pour ce profil**. Ce qui change, c'est que la valeur n'est plus une tautologie :
+elle exprime la règle réelle, respecte le profil dès qu'une exigence devient recommandée, et n'est
+plus contradictoire avec `blockingCount`.

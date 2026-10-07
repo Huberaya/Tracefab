@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.j
 import { prisma } from '../../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { validateGtin, buildGs1DigitalLink } from '../../../_lib/plm-erp/gtin-engine.js';
-import { fetchLatestDppRecord, buildDppSummary } from '../../../_lib/dpp.js';
+import { fetchLatestDppRecord, fetchDppRequirementProfile, buildDppSummary } from '../../../_lib/dpp.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -94,7 +94,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Default: Digital Product Passport (gs1:dpp)
   const latestDpp = await fetchLatestDppRecord(prisma, product.id);
-  const dppSummary = buildDppSummary(latestDpp, product.id, product.version);
+  /* Le caractère bloquant d'une exigence vient du profil, pas d'une supposition :
+     ce champ est publié aux tiers par cette route. */
+  const dppProfile = latestDpp
+    ? await fetchDppRequirementProfile(
+        prisma,
+        latestDpp.requirement_profile_key,
+        latestDpp.requirement_profile_version,
+      )
+    : null;
+  const dppSummary = buildDppSummary(latestDpp, product.id, product.version, dppProfile);
   const acceptHeader = req.headers.accept || '';
 
   if (acceptHeader.includes('text/html') && !req.query.format) {
