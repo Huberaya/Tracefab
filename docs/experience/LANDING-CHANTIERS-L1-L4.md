@@ -1,6 +1,6 @@
-# Landing — chantiers L1 à L3
+# Landing — chantiers L1 à L4
 
-Branche `merge/experience` · commits `3b84bc0`, `d176660`, `7da777f` · poussés sur `origin`.
+Branche `merge/experience` · commits `3b84bc0`, `d176660`, `7da777f`, `98e1321` · poussés sur `origin`.
 
 ---
 
@@ -189,11 +189,84 @@ CEO 6/6 · Conformité 4/4 · Fournisseur 4/4.**
 
 ---
 
+## L4 — Dire où l'on est
+
+**Le surlignage du menu ne pouvait pas le dire.** L'ordre du menu est fixé par le
+cahier des charges — Why / Platform / Supply Chain / Product Intelligence / DPP /
+Resources — et il ne suit pas l'ordre de la page, qui est hero → supply-chain →
+platform → why. Mesuré au défilement, l'élément actif **bondissait en arrière** :
+position 3 → 2 → 4 → 5 → 1 → 6. Et sur téléphone le menu dort dans un tiroir fermé.
+
+Je n'ai touché ni à l'ordre du menu (il est dans le brief) ni à l'ordre des sections
+(le brief impose que la section WOW suive immédiatement le héros). Le conflit est
+structurel : j'ai donc ajouté un repère qui, lui, **avance toujours**.
+
+**Un rail de progression** collé au bas de l'en-tête, avec des encoches aux vraies
+frontières de section. Il n'apparaît qu'une fois la page quittée du haut. Une seule
+propriété composée (`scaleX`), un seul calcul par frame, encoches replacées au
+redimensionnement.
+
+**Le tiroir mobile devient une vraie table des matières.** Il numérotait
+« Why TRACEFAB = 01 » alors que la page affiche « 01 — THE CONNECTED FOUNDATION » sur
+Supply Chain : deux « 01 » différents. Il suit maintenant l'ordre de la page, porte
+les numéros que la page affiche elle-même, laisse sans numéro ce qui n'est pas un
+chapitre, et marque les deux liens internes à Platform comme subordonnés. **Parce
+qu'il suit l'ordre de la page, le repère n'y recule jamais.**
+
+### Trois défauts préexistants trouvés en chemin
+
+**1. La navigation mobile était typographiée comme une note de bas de page.** Le
+sélecteur `.tf-drawer__link span` visait le numéro mais frappait les deux enfants :
+le libellé, déclaré à 17 px / poids 500, retombait à 11 px de mono gris.
+
+**2. Quatorze références `var(--tf-…)` visaient des tokens inexistants**, sans valeur
+de repli, dans les trois feuilles du design system. Un `var()` introuvable rend la
+déclaration invalide et la propriété retombe en héritage : **l'échec est totalement
+silencieux** — ni erreur console, ni règle barrée dans l'inspecteur.
+
+| token appelé | réalité | conséquence |
+|---|---|---|
+| `--tf-emerald-bright` ×5 | s'appelle `--tf-emerald-bri` | le lien actif du tiroir calculait `rgb(10,12,11)` : du noir sur du noir |
+| `--tf-size-2xl` ×3 | défini nulle part | trois titres console/portail retombaient à la taille héritée |
+| `--tf-surface-light-hover` ×6 | défini nulle part | six survols console et portail ne faisaient rien du tout |
+
+Les deux tokens manquants sont définis, les cinq références renommées. Console et
+portail vérifiés après coup : aucune régression.
+
+**3. Le tiroir à 0,97 d'opacité** laissait transparaître la section claire qui défile
+derrière. Il devient opaque.
+
+### Une alerte que j'ai eu tort de croire
+
+J'ai cru voir une bande délavée derrière les deux sous-entrées du tiroir. J'ai
+échantillonné les pixels : uniformément `(4, 11, 8)`, le fond du tiroir. **La bande
+n'existait pas** — artefact de rendu. Mesurer avant de corriger m'a évité de
+« réparer » une couleur parfaitement correcte.
+
+---
+
+## État mesuré après L4
+
+| | desktop 1440 | tablette 834 | mobile 390 | petit 320 |
+|---|---:|---:|---:|---:|
+| Hauteur de page | 6 179 px | 7 888 px | 9 473 px | 10 712 px |
+| Débordement horizontal | 0 | 0 | 0 | 0 |
+| Texte sous 11 px | 0 | 0 | 0 | 0 |
+| Rail en bas de page | 100 % | 100 % | 100 % | 100 % |
+| Encoches de chapitre | 3 | 3 | 3 | 3 |
+
+**39 tests verts / 1 échec** (`test:supplychain:chantier3`, identique sur
+`origin/main`). `build` et `typecheck` verts. **CEO 6/6 · Conformité 4/4 ·
+Fournisseur 4/4.**
+
+Troisième garde-fou : `npm run test:landing-reperage`, 23 assertions, chaîné dans
+`build`. Vérifié qu'il échoue en réintroduisant le token mort et la fausse
+numérotation.
+
+---
+
 ## Ce que je fais ensuite
 
-- **L4 — repérage sur une page longue.** 9 473 px sur mobile sans indicateur de
-  progression ni ancrage : on ne sait jamais où l'on en est. Le rail de L2 donne déjà
-  le vocabulaire visuel pour le faire.
 - **L5 — performance.** Polices, chargement différé, poids des SVG, suppression du
   mort (`locales/` pèse 84 Ko et n'est plus lu).
 
