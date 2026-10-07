@@ -5,103 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tracefab — Supplier Portal</title>
   <meta name="description" content="Tracefab Supplier Portal — maintenir son profil et répondre aux demandes de données.">
-  <style>
-    :root { --ink:#17231f; --muted:#71807a; --paper:#f7f8f4; --panel:#fff; --line:#e2e8df; --green:#0b7656; --green-dark:#07523e; --green-soft:#e4f3ec; --yellow:#d79621; --yellow-soft:#fff3d8; --red:#bd514e; --red-soft:#ffebea; --shadow:0 16px 45px rgba(20,42,34,.08); --radius:18px; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--paper); }
-    * { box-sizing:border-box; } body { margin:0; background:var(--paper); } button,input,select,textarea { font:inherit; } button { cursor:pointer; }
-    .app { display:grid; grid-template-columns:256px minmax(0,1fr); min-height:100vh; } .sidebar { background:#112b23; color:#eff8f2; padding:25px 16px; display:flex; flex-direction:column; }
-    .brand { display:flex; align-items:center; gap:11px; padding:0 11px 31px; } .brand-mark { width:36px; height:36px; border-radius:12px; background:#d7f3e4; color:var(--green-dark); display:grid; place-items:center; font-weight:900; letter-spacing:-.08em; } .brand-name { font-weight:780; letter-spacing:-.03em; font-size:18px; } .brand-name small { display:block; color:#a9c4b6; font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; margin-top:2px; }
-    .nav { display:grid; gap:6px; } .nav button { appearance:none; border:0; color:#b8cec2; background:transparent; border-radius:12px; display:flex; align-items:center; gap:12px; padding:12px 13px; text-align:left; font-size:13px; font-weight:650; } .nav button:hover,.nav button.active { background:rgba(255,255,255,.1); color:white; } .nav-icon { width:19px; text-align:center; opacity:.9; }
-    .sidebar-bottom { margin-top:auto; border-top:1px solid rgba(255,255,255,.12); padding:18px 10px 2px; } .user-mini { display:flex; gap:10px; align-items:center; color:#c5d8cd; font-size:12px; min-width:0; } .avatar { flex:0 0 auto; width:32px; height:32px; border-radius:50%; background:#9edec0; color:#124936; display:grid; place-items:center; font-weight:800; font-size:12px; } .user-mini strong,.user-mini span { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .user-mini strong { color:white; } .user-mini span { max-width:160px; }
-    .link-button { border:0; background:transparent; color:inherit; padding:0; font-size:12px; text-decoration:underline; opacity:.85; } .main { min-width:0; } .topbar { min-height:76px; padding:0 40px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.7); display:flex; align-items:center; justify-content:space-between; gap:20px; } .crumb { color:var(--muted); font-size:13px; font-weight:650; } .crumb strong { color:var(--ink); } .top-actions { display:flex; align-items:center; gap:12px; }
-    .content { max-width:1420px; margin:0 auto; padding:42px 40px 70px; } .eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:.13em; color:var(--green); font-weight:800; margin-bottom:11px; } h1 { margin:0; font-size:clamp(27px,3vw,42px); line-height:1.06; letter-spacing:-.055em; } h2 { margin:0; font-size:22px; letter-spacing:-.035em; } h3 { margin:0; font-size:16px; letter-spacing:-.02em; } p { color:var(--muted); line-height:1.6; }
-    .page-head,.detail-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:31px; } .page-head p { margin:10px 0 0; max-width:680px; font-size:14px; } .actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; } .btn { border:1px solid transparent; border-radius:11px; padding:10px 15px; font-weight:750; font-size:13px; transition:transform .15s,box-shadow .15s,background .15s; } .btn:hover { transform:translateY(-1px); } .btn-primary { color:white; background:var(--green); box-shadow:0 7px 16px rgba(11,118,86,.18); } .btn-primary:hover { background:var(--green-dark); } .btn-secondary { background:white; color:var(--ink); border-color:var(--line); } .btn-danger { background:var(--red-soft); color:var(--red); border-color:#f7cbc8; } .btn-small { padding:7px 10px; font-size:12px; }
-    .grid { display:grid; gap:17px; } .kpis { grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:22px; } .split { grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr); align-items:start; } .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); } .kpi { padding:20px; position:relative; overflow:hidden; } .kpi::after { content:""; width:90px; height:90px; border-radius:50%; position:absolute; right:-30px; bottom:-44px; background:var(--green-soft); } .kpi-label { color:var(--muted); font-size:12px; font-weight:700; } .kpi-value { font-size:30px; font-weight:800; letter-spacing:-.06em; margin:13px 0 3px; } .kpi-note { font-size:11px; color:var(--muted); }
-    .panel { padding:23px; } .panel-head { display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:18px; } .table-wrap { overflow-x:auto; } table { width:100%; border-collapse:collapse; min-width:650px; } th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.1em; text-align:left; padding:0 12px 12px; font-weight:800; } td { border-top:1px solid #edf0eb; padding:14px 12px; font-size:13px; vertical-align:middle; } td:first-child,th:first-child { padding-left:0; } td:last-child,th:last-child { padding-right:0; text-align:right; } .clickable { cursor:pointer; } .clickable:hover td { background:#fbfcfa; }
-    .status { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 9px; font-size:11px; font-weight:800; background:#edf1ed; color:#5b6962; } .status::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; } .status-sent,.status-in_progress { background:#e8f1ff; color:#3970b3; } .status-submitted { background:var(--yellow-soft); color:#9a680e; } .status-approved,.status-verified_by_reviewer { background:var(--green-soft); color:var(--green); } .status-changes_requested,.status-needs_review { background:var(--red-soft); color:var(--red); } .status-draft { background:#f0f1f0; color:#69766e; }
-    .progress { height:7px; background:#e9eee9; border-radius:99px; overflow:hidden; min-width:82px; } .progress>span { display:block; height:100%; background:var(--green); border-radius:inherit; } .progress-line { display:flex; align-items:center; gap:9px; } .progress-line small { color:var(--muted); font-weight:700; min-width:32px; }
-    .empty { padding:44px 20px; text-align:center; color:var(--muted); } .empty-icon { width:44px; height:44px; display:grid; place-items:center; margin:0 auto 13px; border-radius:14px; background:var(--green-soft); color:var(--green); font-size:20px; } .meta { color:var(--muted); font-size:12px; } .notice { padding:13px 15px; border-radius:12px; background:var(--yellow-soft); color:#795719; font-size:12px; line-height:1.5; } .success-note { padding:13px 15px; border-radius:12px; background:var(--green-soft); color:var(--green-dark); font-size:12px; line-height:1.5; }
-    .input,.select,.textarea { width:100%; border:1px solid #d8e1d8; border-radius:10px; padding:11px 12px; background:white; color:var(--ink); outline:none; } .input:focus,.select:focus,.textarea:focus { border-color:#58a887; box-shadow:0 0 0 3px rgba(88,168,135,.13); } label { display:grid; gap:7px; color:#53625a; font-size:12px; font-weight:750; } .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; } .field-full { grid-column:1/-1; } .form-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:21px; }
-    .request-card { padding:18px; border:1px solid var(--line); border-radius:14px; display:grid; gap:13px; } .request-card+.request-card { margin-top:11px; } .request-card-head { display:flex; justify-content:space-between; gap:15px; align-items:flex-start; } .request-card h3 { font-size:15px; } .request-card p { margin:5px 0 0; font-size:12px; } .detail-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px; }
-    .item-list { display:grid; gap:13px; } .invitation-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid rgba(121,87,25,.18); font-size:12px; } .invitation-row:first-child { border-top:0; } .item { padding:17px; border:1px solid var(--line); border-radius:14px; } .item-head { display:flex; justify-content:space-between; gap:15px; align-items:flex-start; } .item h3 { font-size:14px; } .item p { margin:5px 0 0; font-size:12px; } .response-box { margin-top:14px; padding:13px; background:#f8faf7; border-radius:12px; } .response-box .form-actions { margin-top:13px; } .response-state { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:7px; }
-    .toast { position:fixed; right:25px; bottom:25px; z-index:50; color:white; background:#19372d; border-radius:12px; padding:13px 16px; box-shadow:0 12px 35px rgba(0,0,0,.2); font-size:13px; max-width:360px; } .toast.error { background:#8e3d3b; } .auth-screen { min-height:100vh; display:grid; place-items:center; padding:25px; background:radial-gradient(circle at 10% 0%,#d9f1e4,transparent 32%),var(--paper); } .auth-card { width:min(950px,100%); display:grid; grid-template-columns:1fr 1fr; overflow:hidden; border-radius:24px; background:white; box-shadow:var(--shadow); border:1px solid var(--line); } .auth-copy { padding:52px; background:#112b23; color:white; } .auth-copy h1 { font-size:38px; margin-top:75px; } .auth-copy p { color:#bdd2c7; max-width:370px; } .auth-copy ul { color:#d7e9df; padding-left:19px; line-height:2; font-size:13px; } .auth-box { padding:38px; min-height:480px; } .config-error { max-width:600px; background:white; padding:35px; border-radius:20px; box-shadow:var(--shadow); } .demo-banner { background:var(--yellow-soft); border-bottom:1px solid #f2ddb0; padding:8px 15px; text-align:center; font-size:11px; color:#8f6417; font-weight:750; }
-    @media (max-width:1050px) { .kpis{grid-template-columns:repeat(2,1fr)} .split{grid-template-columns:1fr} } @media (max-width:760px) { .app{display:block} .sidebar{min-height:auto;padding:15px} .brand{padding-bottom:16px} .nav{display:flex;overflow-x:auto} .nav button{white-space:nowrap} .sidebar-bottom{display:none} .topbar{padding:0 18px;min-height:64px} .content{padding:28px 18px 50px} .page-head,.detail-hero{display:block} .actions{justify-content:flex-start;margin-top:17px} .auth-card{grid-template-columns:1fr} .auth-copy{display:none} .auth-box{min-height:500px} .form-grid{grid-template-columns:1fr} .field-full{grid-column:auto} }
-  
-    /* Evidence Vault, Reusability & NDA Enhancements (Chantier 3) */
-    .vault-hero {
-      background: linear-gradient(135deg, #0d251d 0%, #163e31 100%);
-      color: #ffffff;
-      border-radius: 18px;
-      padding: 24px;
-      margin-bottom: 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 8px 25px rgba(11,118,86,0.15);
-    }
-    .vault-stats {
-      display: flex;
-      gap: 24px;
-    }
-    .vault-stat-item strong {
-      display: block;
-      font-size: 22px;
-      font-weight: 800;
-      color: #34d399;
-    }
-    .vault-stat-item span {
-      font-size: 11px;
-      color: #a3bfb2;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    .nda-shield-box {
-      background: #ffffff;
-      border: 1px solid #d0ded4;
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      box-shadow: 0 2px 8px rgba(13,37,29,0.04);
-    }
-    .nda-shield-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: #e4f3ec;
-      color: #0b7656;
-      display: grid;
-      place-items: center;
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-    .client-coverage-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 8px;
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      color: #166534;
-      border-radius: 6px;
-      font-size: 10.5px;
-      font-weight: 700;
-      margin-top: 4px;
-    }
-    .lang-switcher-select {
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: 600;
-      background: #ffffff;
-      color: var(--ink);
-      cursor: pointer;
-    }
-
-  </style>
-  <script src="/auto-translate.js"></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040b08'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230fb97c' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M8 25l5-6 6 3 5-15' fill='none' stroke='%230fb97c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#040b08">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-console.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-portal.css">
+  <!-- The legacy auto-translate.js DOM rewriter was removed here: it read the
+       same localStorage key as this app ("tracefab_lang") but defaulted to "en"
+       while the app defaults to "fr", so on a first visit it rewrote only the
+       glossary-matched strings and produced a half-translated UI. This page owns
+       its own complete catalogue. -->
 </head>
 <body>
   <div id="app"></div>
@@ -112,6 +28,55 @@
       
       const translations = {
         fr: {
+          rqEmptyTitle: "Aucune demande à traiter",
+          rqEmptyBody: "Les demandes envoyées par vos marques apparaîtront ici.",
+          rqQuestionnaire: "Questionnaire",
+          rqDue: "Échéance :",
+          stDraft: "Brouillon",
+          stSent: "Envoyée",
+          stInProgress: "En cours",
+          stSubmitted: "Soumise",
+          stChangesRequested: "À corriger",
+          stApproved: "Approuvée",
+          stCancelled: "Annulée",
+          stNeedsReview: "À revoir",
+          stVerified: "Vérifiée",
+          stNotStarted: "À commencer",
+          stUploaded: "Enregistré",
+          stScanning: "Contrôle en cours",
+          stAvailable: "Disponible",
+          stRejected: "Rejeté",
+          stDeleted: "Supprimé",
+          stDeclared: "Déclarée",
+          stDocumented: "Documentée",
+          stSuspended: "Suspendu",
+          stRevoked: "Révoqué",
+          spEyebrow: "Espace fournisseur",
+          spTitle: "Vos données. Votre profil. Réutilisables chez tous vos clients.",
+          spLead: "Remplissez une seule fois. Chaque marque avec qui vous travaillez puise dans la même fiche : vous ne répondez jamais deux fois à la même question.",
+          spCompletion: "Profil complété",
+          spNextRequestsT: "demandes attendent votre réponse",
+          spNextRequestsD: "Répondez depuis le portail — vos preuves déjà déposées sont rattachées automatiquement.",
+          spNextUrgentD: "Dont {n} à échéance sous 7 jours.",
+          spNextProfileT: "de votre profil reste à compléter",
+          spNextProfileD: "Un profil complet, ce sont moins de questions de vos clients plus tard.",
+          spNextDoneT: "Vous êtes à jour",
+          spNextDoneD: "Aucune demande ouverte et votre profil est complet. Nous vous préviendrons dès qu’il y a du nouveau.",
+          spRespond: "Répondre maintenant",
+          spCompleteProfile: "Compléter mon profil",
+          spOpenProfile: "Ouvrir mon profil",
+          spSharedWith: "Partagé avec",
+          spNoShares: "Aucun client connecté pour l’instant",
+          spChecklist: "Ce qu’il reste à faire",
+          spCheckProfile: "Profil entreprise",
+          spCheckSites: "Sites de production",
+          spCheckMaterials: "Matières et fils",
+          spCheckCerts: "Certificats",
+          spCheckDocs: "Documents justificatifs",
+          spDone: "Fait",
+          spTodo: "À faire",
+          spRequestsTitle: "Demandes qui vous attendent",
+          spViewAll: "Tout voir",
           overview: "Vue d’ensemble",
           requests: "Demandes de données",
           sites: "Sites de production",
@@ -139,6 +104,55 @@
           signOut: "Se déconnecter"
         },
         en: {
+          rqEmptyTitle: "Nothing to answer",
+          rqEmptyBody: "Requests sent by your brands will appear here.",
+          rqQuestionnaire: "Questionnaire",
+          rqDue: "Due:",
+          stDraft: "Draft",
+          stSent: "Sent",
+          stInProgress: "In progress",
+          stSubmitted: "Submitted",
+          stChangesRequested: "Changes requested",
+          stApproved: "Approved",
+          stCancelled: "Cancelled",
+          stNeedsReview: "Needs review",
+          stVerified: "Verified",
+          stNotStarted: "To start",
+          stUploaded: "Saved",
+          stScanning: "Scanning",
+          stAvailable: "Available",
+          stRejected: "Rejected",
+          stDeleted: "Deleted",
+          stDeclared: "Declared",
+          stDocumented: "Documented",
+          stSuspended: "Suspended",
+          stRevoked: "Revoked",
+          spEyebrow: "Supplier workspace",
+          spTitle: "Your data. Your profile. Reusable across your customers.",
+          spLead: "Fill it in once. Every brand you work with draws from the same record, so you never answer the same question twice.",
+          spCompletion: "Profile complete",
+          spNextRequestsT: "requests are waiting for your response",
+          spNextRequestsD: "Answer them in the portal — your existing evidence is attached automatically.",
+          spNextUrgentD: "{n} of them are due within 7 days.",
+          spNextProfileT: "of your profile is still missing",
+          spNextProfileD: "A complete profile means fewer questions from your customers later.",
+          spNextDoneT: "You are up to date",
+          spNextDoneD: "No open request, and your profile is complete. We will tell you when something arrives.",
+          spRespond: "Respond now",
+          spCompleteProfile: "Complete my profile",
+          spOpenProfile: "Open my profile",
+          spSharedWith: "Shared with",
+          spNoShares: "No customer connected yet",
+          spChecklist: "What is left",
+          spCheckProfile: "Company profile",
+          spCheckSites: "Production sites",
+          spCheckMaterials: "Materials and yarns",
+          spCheckCerts: "Certificates",
+          spCheckDocs: "Supporting documents",
+          spDone: "Done",
+          spTodo: "To do",
+          spRequestsTitle: "Requests waiting for you",
+          spViewAll: "View all",
           overview: "Overview",
           requests: "Data Requests",
           sites: "Production Facilities",
@@ -166,6 +180,55 @@
           signOut: "Sign out"
         },
                 de: {
+                  rqEmptyTitle: "Nichts zu beantworten",
+                  rqEmptyBody: "Anfragen Ihrer Marken erscheinen hier.",
+                  rqQuestionnaire: "Fragebogen",
+                  rqDue: "Frist:",
+                  stDraft: "Entwurf",
+                  stSent: "Gesendet",
+                  stInProgress: "In Bearbeitung",
+                  stSubmitted: "Eingereicht",
+                  stChangesRequested: "Korrektur nötig",
+                  stApproved: "Genehmigt",
+                  stCancelled: "Storniert",
+                  stNeedsReview: "Prüfung nötig",
+                  stVerified: "Verifiziert",
+                  stNotStarted: "Zu beginnen",
+                  stUploaded: "Gespeichert",
+                  stScanning: "Wird geprüft",
+                  stAvailable: "Verfügbar",
+                  stRejected: "Abgelehnt",
+                  stDeleted: "Gelöscht",
+                  stDeclared: "Erklärt",
+                  stDocumented: "Dokumentiert",
+                  stSuspended: "Ausgesetzt",
+                  stRevoked: "Widerrufen",
+                  spEyebrow: "Lieferantenbereich",
+                  spTitle: "Ihre Daten. Ihr Profil. Wiederverwendbar bei allen Kunden.",
+                  spLead: "Einmal ausfüllen. Jede Marke, mit der Sie arbeiten, greift auf denselben Datensatz zu — dieselbe Frage beantworten Sie nie zweimal.",
+                  spCompletion: "Profil vollständig",
+                  spNextRequestsT: "Anfragen warten auf Ihre Antwort",
+                  spNextRequestsD: "Antworten Sie im Portal — Ihre vorhandenen Nachweise werden automatisch angehängt.",
+                  spNextUrgentD: "Davon {n} mit Frist innerhalb von 7 Tagen.",
+                  spNextProfileT: "Ihres Profils fehlen noch",
+                  spNextProfileD: "Ein vollständiges Profil bedeutet später weniger Rückfragen Ihrer Kunden.",
+                  spNextDoneT: "Sie sind auf dem aktuellen Stand",
+                  spNextDoneD: "Keine offene Anfrage, Ihr Profil ist vollständig. Wir melden uns, sobald etwas eintrifft.",
+                  spRespond: "Jetzt antworten",
+                  spCompleteProfile: "Profil vervollständigen",
+                  spOpenProfile: "Mein Profil öffnen",
+                  spSharedWith: "Geteilt mit",
+                  spNoShares: "Noch kein Kunde verbunden",
+                  spChecklist: "Was noch offen ist",
+                  spCheckProfile: "Unternehmensprofil",
+                  spCheckSites: "Produktionsstandorte",
+                  spCheckMaterials: "Materialien und Garne",
+                  spCheckCerts: "Zertifikate",
+                  spCheckDocs: "Belegdokumente",
+                  spDone: "Erledigt",
+                  spTodo: "Offen",
+                  spRequestsTitle: "Anfragen, die auf Sie warten",
+                  spViewAll: "Alle ansehen",
           overview: "Übersicht",
           requests: "Datenanfragen",
           sites: "Produktionsstätten",
@@ -193,6 +256,55 @@
           signOut: "Abmelden"
         },
         es: {
+          rqEmptyTitle: "Nada que responder",
+          rqEmptyBody: "Las solicitudes enviadas por tus marcas aparecerán aquí.",
+          rqQuestionnaire: "Cuestionario",
+          rqDue: "Vencimiento:",
+          stDraft: "Borrador",
+          stSent: "Enviada",
+          stInProgress: "En curso",
+          stSubmitted: "Entregada",
+          stChangesRequested: "Por corregir",
+          stApproved: "Aprobada",
+          stCancelled: "Cancelada",
+          stNeedsReview: "Por revisar",
+          stVerified: "Verificada",
+          stNotStarted: "Por empezar",
+          stUploaded: "Guardado",
+          stScanning: "Comprobando",
+          stAvailable: "Disponible",
+          stRejected: "Rechazado",
+          stDeleted: "Eliminado",
+          stDeclared: "Declarada",
+          stDocumented: "Documentada",
+          stSuspended: "Suspendido",
+          stRevoked: "Revocado",
+          spEyebrow: "Espacio del proveedor",
+          spTitle: "Tus datos. Tu perfil. Reutilizables con todos tus clientes.",
+          spLead: "Rellénalo una sola vez. Cada marca con la que trabajas consulta la misma ficha: nunca respondes dos veces a la misma pregunta.",
+          spCompletion: "Perfil completado",
+          spNextRequestsT: "solicitudes esperan tu respuesta",
+          spNextRequestsD: "Responde desde el portal — tus pruebas ya cargadas se adjuntan automáticamente.",
+          spNextUrgentD: "De las cuales {n} vencen en menos de 7 días.",
+          spNextProfileT: "de tu perfil está sin completar",
+          spNextProfileD: "Un perfil completo significa menos preguntas de tus clientes más adelante.",
+          spNextDoneT: "Estás al día",
+          spNextDoneD: "Ninguna solicitud abierta y tu perfil está completo. Te avisaremos en cuanto llegue algo.",
+          spRespond: "Responder ahora",
+          spCompleteProfile: "Completar mi perfil",
+          spOpenProfile: "Abrir mi perfil",
+          spSharedWith: "Compartido con",
+          spNoShares: "Ningún cliente conectado todavía",
+          spChecklist: "Lo que queda",
+          spCheckProfile: "Perfil de empresa",
+          spCheckSites: "Centros de producción",
+          spCheckMaterials: "Materiales e hilos",
+          spCheckCerts: "Certificados",
+          spCheckDocs: "Documentos justificativos",
+          spDone: "Hecho",
+          spTodo: "Pendiente",
+          spRequestsTitle: "Solicitudes que te esperan",
+          spViewAll: "Ver todas",
           overview: "Resumen",
           requests: "Solicitudes de datos",
           sites: "Centros de producción",
@@ -220,6 +332,55 @@
           signOut: "Cerrar sesión"
         },
         nl: {
+          rqEmptyTitle: "Niets te beantwoorden",
+          rqEmptyBody: "Aanvragen van uw merken verschijnen hier.",
+          rqQuestionnaire: "Vragenlijst",
+          rqDue: "Vervaldatum:",
+          stDraft: "Concept",
+          stSent: "Verzonden",
+          stInProgress: "Loopt",
+          stSubmitted: "Ingediend",
+          stChangesRequested: "Correctie nodig",
+          stApproved: "Goedgekeurd",
+          stCancelled: "Geannuleerd",
+          stNeedsReview: "Beoordeling nodig",
+          stVerified: "Geverifieerd",
+          stNotStarted: "Te starten",
+          stUploaded: "Opgeslagen",
+          stScanning: "Wordt gecontroleerd",
+          stAvailable: "Beschikbaar",
+          stRejected: "Afgewezen",
+          stDeleted: "Verwijderd",
+          stDeclared: "Opgegeven",
+          stDocumented: "Gedocumenteerd",
+          stSuspended: "Opgeschort",
+          stRevoked: "Ingetrokken",
+          spEyebrow: "Leveranciersomgeving",
+          spTitle: "Uw gegevens. Uw profiel. Herbruikbaar bij al uw klanten.",
+          spLead: "Eén keer invullen. Elk merk waarmee u werkt put uit hetzelfde dossier, dus u beantwoordt dezelfde vraag nooit twee keer.",
+          spCompletion: "Profiel compleet",
+          spNextRequestsT: "aanvragen wachten op uw antwoord",
+          spNextRequestsD: "Beantwoord ze in het portaal — uw bestaande bewijs wordt automatisch meegestuurd.",
+          spNextUrgentD: "Waarvan {n} binnen 7 dagen verlopen.",
+          spNextProfileT: "van uw profiel ontbreekt nog",
+          spNextProfileD: "Een compleet profiel betekent later minder vragen van uw klanten.",
+          spNextDoneT: "U bent bij",
+          spNextDoneD: "Geen openstaande aanvraag en uw profiel is compleet. We laten het weten zodra er iets binnenkomt.",
+          spRespond: "Nu antwoorden",
+          spCompleteProfile: "Mijn profiel afmaken",
+          spOpenProfile: "Mijn profiel openen",
+          spSharedWith: "Gedeeld met",
+          spNoShares: "Nog geen klant verbonden",
+          spChecklist: "Wat er nog is",
+          spCheckProfile: "Bedrijfsprofiel",
+          spCheckSites: "Productielocaties",
+          spCheckMaterials: "Materialen en garens",
+          spCheckCerts: "Certificaten",
+          spCheckDocs: "Bewijsstukken",
+          spDone: "Klaar",
+          spTodo: "Te doen",
+          spRequestsTitle: "Aanvragen die op u wachten",
+          spViewAll: "Alles bekijken",
           overview: "Overzicht",
           requests: "Gegevensaanvragen",
           sites: "Productielocaties",
@@ -274,6 +435,55 @@
           signOut: "Terminar sessão"
         },
         it: {
+          rqEmptyTitle: "Nulla da rispondere",
+          rqEmptyBody: "Le richieste inviate dai tuoi marchi appariranno qui.",
+          rqQuestionnaire: "Questionario",
+          rqDue: "Scadenza:",
+          stDraft: "Bozza",
+          stSent: "Inviata",
+          stInProgress: "In corso",
+          stSubmitted: "Inviata",
+          stChangesRequested: "Da correggere",
+          stApproved: "Approvata",
+          stCancelled: "Annullata",
+          stNeedsReview: "Da rivedere",
+          stVerified: "Verificata",
+          stNotStarted: "Da iniziare",
+          stUploaded: "Salvato",
+          stScanning: "Controllo in corso",
+          stAvailable: "Disponibile",
+          stRejected: "Respinto",
+          stDeleted: "Eliminato",
+          stDeclared: "Dichiarata",
+          stDocumented: "Documentata",
+          stSuspended: "Sospeso",
+          stRevoked: "Revocato",
+          spEyebrow: "Area fornitore",
+          spTitle: "I tuoi dati. Il tuo profilo. Riutilizzabili presso tutti i tuoi clienti.",
+          spLead: "Compila una volta sola. Ogni marchio con cui lavori attinge alla stessa scheda: non rispondi mai due volte alla stessa domanda.",
+          spCompletion: "Profilo completato",
+          spNextRequestsT: "richieste attendono la tua risposta",
+          spNextRequestsD: "Rispondi dal portale — le prove già caricate vengono allegate automaticamente.",
+          spNextUrgentD: "Di cui {n} in scadenza entro 7 giorni.",
+          spNextProfileT: "del tuo profilo è ancora da completare",
+          spNextProfileD: "Un profilo completo significa meno domande dai tuoi clienti in seguito.",
+          spNextDoneT: "Sei in regola",
+          spNextDoneD: "Nessuna richiesta aperta e il tuo profilo è completo. Ti avviseremo appena arriva qualcosa.",
+          spRespond: "Rispondi ora",
+          spCompleteProfile: "Completa il profilo",
+          spOpenProfile: "Apri il mio profilo",
+          spSharedWith: "Condiviso con",
+          spNoShares: "Nessun cliente ancora collegato",
+          spChecklist: "Cosa manca",
+          spCheckProfile: "Profilo azienda",
+          spCheckSites: "Siti produttivi",
+          spCheckMaterials: "Materiali e filati",
+          spCheckCerts: "Certificati",
+          spCheckDocs: "Documenti giustificativi",
+          spDone: "Fatto",
+          spTodo: "Da fare",
+          spRequestsTitle: "Richieste che ti aspettano",
+          spViewAll: "Vedi tutte",
           overview: "Panoramica",
           requests: "Richieste Dati",
           sites: "Stabilimenti Produttivi",
@@ -362,13 +572,38 @@
       }
 
       const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'fr', demo:new URLSearchParams(location.search).has('demo') };
-      const labels = { draft:'Brouillon', sent:'Envoyée', in_progress:'En cours', submitted:'Soumise', changes_requested:'À corriger', approved:'Approuvée', cancelled:'Annulée', needs_review:'À revoir', verified_by_reviewer:'Vérifiée', not_started:'À commencer', uploaded:'Enregistré', scanning:'Contrôle en cours', available:'Disponible', rejected:'Rejeté', deleted:'Supprimé', declared:'Déclarée', documented:'Documentée', suspended:'Suspendu', revoked:'Révoqué' };
+      // Status chips used to read French in every language because this was a
+  // hardcoded map. They now resolve through the portal catalogue.
+  const STATUS_KEYS = {
+    "draft": "stDraft",
+    "sent": "stSent",
+    "in_progress": "stInProgress",
+    "submitted": "stSubmitted",
+    "changes_requested": "stChangesRequested",
+    "approved": "stApproved",
+    "cancelled": "stCancelled",
+    "needs_review": "stNeedsReview",
+    "verified_by_reviewer": "stVerified",
+    "not_started": "stNotStarted",
+    "uploaded": "stUploaded",
+    "scanning": "stScanning",
+    "available": "stAvailable",
+    "rejected": "stRejected",
+    "deleted": "stDeleted",
+    "declared": "stDeclared",
+    "documented": "stDocumented",
+    "suspended": "stSuspended",
+    "revoked": "stRevoked"
+  };
+  const statusLabel = (value) => value ? t(STATUS_KEYS[value] || value) : '—';
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0,2).toUpperCase() || 'TF';
-      const status = (value) => `<span class="status status-${esc(value)}">${esc(labels[value] || value || '—')}</span>`;
+      const status = (value) => `<span class="status status-${esc(value)}">${esc(statusLabel(value) || '—')}</span>`;
       const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
-      const date = (value) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle:'medium' }).format(new Date(value)) : '—';
-      const moneyless = (value) => Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits:0 });
+      const BCP47 = { fr:'fr-FR', en:'en-GB', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT', tr:'tr-TR', zh:'zh-CN' };
+  const locale = () => BCP47[state.lang] || 'en-GB';
+  const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle:'medium' }).format(new Date(value)) : '—';
+      const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits:0 });
       function notify(message, isError = false) { state.toast = { message, isError }; render(); setTimeout(() => { state.toast = null; render(); }, 3500); }
       async function api(path, options = {}) { const headers = { 'Content-Type':'application/json', ...(options.headers || {}) }; if (!state.demo && state.selectedOrganizationId) headers['X-Tracefab-Organization-Id'] = state.selectedOrganizationId; if (!state.demo && state.clerk?.session) { const token = await state.clerk.session.getToken(); if (token) headers.Authorization = `Bearer ${token}`; } const response = await fetch(path, { ...options, headers }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`); return payload; }
 
@@ -523,12 +758,101 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
       }
 
       function overview() {
-        const dueSoon = openRequests().filter((request) => request.dueAt && new Date(request.dueAt).getTime() - Date.now() < 7*86400000);
-        return `<div class="page-head"><div><div class="eyebrow">Espace fournisseur</div><h1>Bonjour ${esc((state.user?.fullName || 'équipe').split(' ')[0])}.</h1><p>Retrouvez vos demandes actives et maintenez les informations partagées avec vos marques clientes.</p></div><div class="actions"><button class="btn btn-secondary" data-view="profile">Mettre à jour le profil</button><button class="btn btn-primary" data-view="requests">Voir les demandes</button></div></div><div class="grid kpis"><div class="card kpi"><div class="kpi-label">Profil fournisseur</div><div class="kpi-value">${moneyless(state.profile?.profileCompletion)}%</div><div class="kpi-note">${esc(labels[state.profile?.onboardingStatus] || state.profile?.onboardingStatus || '—')}</div></div><div class="card kpi"><div class="kpi-label">Demandes ouvertes</div><div class="kpi-value">${moneyless(openRequests().length)}</div><div class="kpi-note">hors demandes clôturées</div></div><div class="card kpi"><div class="kpi-label">Échéances proches</div><div class="kpi-value">${moneyless(dueSoon.length)}</div><div class="kpi-note">dans les 7 prochains jours</div></div><div class="card kpi"><div class="kpi-label">Réponses soumises</div><div class="kpi-value">${moneyless(state.requests.filter((request) => request.status === 'submitted').length)}</div><div class="kpi-note">en attente de revue marque</div></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Demandes à traiter</h2><button class="btn btn-secondary btn-small" data-view="requests">Tout voir</button></div>${requestList(openRequests().slice(0,4))}</div><div class="card panel"><div class="panel-head"><h2>Profil</h2>${status(state.profile?.onboardingStatus)}</div><div class="progress-line" style="margin:18px 0 12px"><div class="progress" style="flex:1"><span style="width:${pct(state.profile?.profileCompletion)}%"></span></div><small>${moneyless(state.profile?.profileCompletion)}%</small></div><p style="font-size:13px">Un profil complet aide vos marques clientes à comprendre votre activité et vos capacités.</p><button class="btn btn-primary btn-small" data-view="profile">Ouvrir mon profil</button></div></div>`;
+        const open = openRequests();
+        const dueSoon = open.filter((r) => r.dueAt && new Date(r.dueAt).getTime() - Date.now() < 7 * 86400000);
+        const done = Math.max(0, Math.min(100, Number(state.profile?.profileCompletion) || 0));
+
+        // One action. The supplier should never have to work out what is next.
+        let next;
+        if (open.length) {
+          next = {
+            n: open.length,
+            title: t('spNextRequestsT'),
+            desc: dueSoon.length
+              ? t('spNextUrgentD').replace('{n}', String(dueSoon.length)) + ' ' + t('spNextRequestsD')
+              : t('spNextRequestsD'),
+            cta: t('spRespond'),
+            view: 'requests',
+            tone: dueSoon.length ? 'urgent' : ''
+          };
+        } else if (done < 100) {
+          next = { n: (100 - done) + '%', title: t('spNextProfileT'), desc: t('spNextProfileD'),
+                   cta: t('spCompleteProfile'), view: 'profile', tone: 'calm' };
+        } else {
+          next = { n: '✓', title: t('spNextDoneT'), desc: t('spNextDoneD'),
+                   cta: t('spOpenProfile'), view: 'profile', tone: 'calm' };
+        }
+
+        const brands = (state.shares || [])
+          .filter((s) => s && s.status === 'active')
+          .map((s) => s.granteeOrganization?.display_name || s.granteeOrganization?.displayName)
+          .filter(Boolean);
+
+        const checklist = [
+          { k: 'spCheckProfile', ok: done >= 100, view: 'profile' },
+          { k: 'spCheckSites', ok: (state.sites || []).length > 0, view: 'sites' },
+          { k: 'spCheckMaterials', ok: (state.materials || []).length > 0, view: 'materials' },
+          { k: 'spCheckCerts', ok: (state.certifications || []).length > 0, view: 'certifications' },
+          { k: 'spCheckDocs', ok: (state.documents || []).length > 0, view: 'documents' }
+        ];
+
+        return `<section class="sp-hero">
+            <div>
+              <div class="sp-hero__eyebrow">${esc(t('spEyebrow'))}</div>
+              <h1 class="sp-hero__title">${esc(t('spTitle'))}</h1>
+              <p class="sp-hero__lead">${esc(t('spLead'))}</p>
+            </div>
+            <div class="sp-gauge">
+              <div class="sp-gauge__v">${moneyless(done)}%</div>
+              <div class="sp-gauge__k">${esc(t('spCompletion'))}</div>
+              <div class="sp-gauge__bar"><i style="width:${pct(done)}%"></i></div>
+            </div>
+          </section>
+
+          <div style="height:22px"></div>
+
+          <div class="sp-next" data-tone="${esc(next.tone)}">
+            <div class="sp-next__n">${esc(String(next.n))}</div>
+            <div>
+              <div class="sp-next__t">${esc(next.title)}</div>
+              <div class="sp-next__d">${esc(next.desc)}</div>
+            </div>
+            <button class="btn btn-primary" data-view="${esc(next.view)}">${esc(next.cta)}</button>
+          </div>
+
+          <div style="height:14px"></div>
+
+          <div class="sp-reuse">
+            <span class="sp-reuse__k">${esc(t('spSharedWith'))}</span>
+            ${brands.length
+              ? brands.map((b) => `<span class="sp-brandchip">${esc(b)}</span>`).join('')
+              : `<span class="meta" style="text-transform:none;letter-spacing:0">${esc(t('spNoShares'))}</span>`}
+          </div>
+
+          <div style="height:22px"></div>
+
+          <div class="grid split">
+            <div class="card panel">
+              <div class="panel-head"><h2>${esc(t('spRequestsTitle'))}</h2>
+                <button class="btn btn-secondary btn-small" data-view="requests">${esc(t('spViewAll'))}</button>
+              </div>
+              ${requestList(open.slice(0, 4))}
+            </div>
+            <div class="card panel">
+              <div class="panel-head"><h2>${esc(t('spChecklist'))}</h2></div>
+              <div class="sp-check">
+                ${checklist.map((c) => `<button class="sp-check__row" data-done="${c.ok ? 'yes' : 'no'}" data-view="${esc(c.view)}">
+                    <span class="sp-check__i">${c.ok ? '✓' : '⚠'}</span>
+                    <span class="sp-check__t">${esc(t(c.k))}</span>
+                    <span class="sp-check__go">${esc(c.ok ? t('spDone') : t('spTodo'))}</span>
+                  </button>`).join('')}
+              </div>
+            </div>
+          </div>`;
       }
       function requestList(items) {
-        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande à traiter</strong><p>Les demandes envoyées par vos marques apparaîtront ici.</p></div>`;
-        return `<div class="grid">${items.map((request) => `<div class="request-card clickable" data-request-id="${esc(request.id)}"><div class="request-card-head"><div><h3>${esc(request.title)}</h3><p>Questionnaire ${esc(request.questionnaireKey || '—')} · v${esc(request.questionnaireVersion || '—')}</p></div>${status(request.status)}</div><div class="progress-line"><div class="progress" style="flex:1"><span style="width:${pct(request.completionPercentage)}%"></span></div><small>${moneyless(request.completionPercentage)}%</small></div><div class="meta">Échéance : ${date(request.dueAt)}</div></div>`).join('')}</div>`;
+        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>${esc(t('rqEmptyTitle'))}</strong><p>${esc(t('rqEmptyBody'))}</p></div>`;
+        return `<div class="grid">${items.map((request) => `<div class="request-card clickable" data-request-id="${esc(request.id)}"><div class="request-card-head"><div><h3>${esc(request.title)}</h3><p>${esc(t('rqQuestionnaire'))} ${esc(request.questionnaireKey || '—')} · v${esc(request.questionnaireVersion || '—')}</p></div>${status(request.status)}</div><div class="progress-line"><div class="progress" style="flex:1"><span style="width:${pct(request.completionPercentage)}%"></span></div><small>${moneyless(request.completionPercentage)}%</small></div><div class="meta">${esc(t('rqDue'))} ${date(request.dueAt)}</div></div>`).join('')}</div>`;
       }
       function requestsView() { return `<div class="page-head"><div><div class="eyebrow">Collecte de données</div><h1>Demandes de données</h1><p>Répondez item par item, sauvegardez vos réponses versionnées puis soumettez la demande à la marque.</p></div></div><div class="card panel">${requestList(state.requests)}</div>`; }
       function profileView() {
@@ -939,6 +1263,15 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
       function bind() {
         document.querySelectorAll('[data-view]').forEach((element) => element.addEventListener('click', () => { state.view = element.dataset.view; if (state.view !== 'requestDetail') state.selectedRequest = null; render(); }));
         document.getElementById('organization-switcher')?.addEventListener('change', (event) => switchOrganization(event.currentTarget.value).catch((error) => notify(error.message, true)));
+        // The language <select> was rendered but never wired to anything: the
+        // portal relied on the legacy DOM rewriter, so it was never actually
+        // translatable. Its own catalogue is the source of truth.
+        document.getElementById('lang-switch')?.addEventListener('change', (event) => {
+          state.lang = event.currentTarget.value;
+          try { localStorage.setItem('tracefab_lang', state.lang); } catch (error) { /* noop */ }
+          document.documentElement.lang = state.lang;
+          render();
+        });
         document.querySelectorAll('[data-action]').forEach((element) => element.addEventListener('click', async () => { try { const action = element.dataset.action; if (action === 'retry') { state.configError = null; boot(); } if (action === 'signout' && state.clerk) await state.clerk.signOut(); if (action === 'refresh-request') await refreshRequest(); if (action === 'submit-request') await submitRequest(); if (action === 'submit-profile') await submitProfile(); if (action === 'compute-quality') await computeQuality(); if (action === 'review-passport-request') { notify('Demande de passeport revue en mode démonstration.'); } } catch (error) { notify(error.message, true); } }));
         document.querySelectorAll('[data-request-id]').forEach((element) => element.addEventListener('click', () => openRequest(element.dataset.requestId).catch((error) => notify(error.message, true))));
         document.querySelectorAll('.response-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); saveResponse(event.currentTarget).catch((error) => notify(error.message, true)); }));
@@ -998,11 +1331,4 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
     })();
   </script>
 </body>
-</html>
-  </script>
-</body>
-</html>
-body>
-</html>
-body>
 </html>
