@@ -345,7 +345,8 @@
         "desc": "Fornitori, stabilimenti, siti, materiali e processi mappati su tutti i tier — non un elenco di fornitori, ma una rete produttiva.",
         "chips": "Fornitori · Stabilimenti · Siti · Materiali · Processi",
         "value": "214",
-        "valueLabel": "Siti mappati"
+        "valueLabel": "Siti mappati",
+        "out": "Rete"
       },
       "l2": {
         "num": "Livello 02",
@@ -354,7 +355,8 @@
         "desc": "Composizione, componenti, materiali e identificativi risolti in percentuale e versionati a ogni revisione.",
         "chips": "Prodotti · Composizione · Materiali · Componenti · Identificativi",
         "value": "1.248",
-        "valueLabel": "Prodotti collegati"
+        "valueLabel": "Prodotti collegati",
+        "out": "Prodotto"
       },
       "l3": {
         "num": "Livello 03",
@@ -363,7 +365,8 @@
         "desc": "Documenti, certificati, dichiarazioni, audit e rapporti di prova archiviati con emittente, ambito, validità e sigillo di integrità.",
         "chips": "Documenti · Certificati · Dichiarazioni · Audit · Prove",
         "value": "9.847",
-        "valueLabel": "Elementi di evidenza"
+        "valueLabel": "Elementi di evidenza",
+        "out": "Prove"
       },
       "l4": {
         "num": "Livello 04",
@@ -372,7 +375,8 @@
         "desc": "Ogni valore porta un livello: dichiarato, documentato, verificato, certificato, da rivedere o mancante. La fiducia diventa misurabile.",
         "chips": "Dichiarato · Documentato · Verificato · Certificato · Da rivedere · Mancante",
         "value": "92,4%",
-        "valueLabel": "Qualità dei dati"
+        "valueLabel": "Qualità dei dati",
+        "out": "Livello di fiducia"
       },
       "l5": {
         "num": "Livello 05",
@@ -381,7 +385,8 @@
         "desc": "Dalla fibra al materiale, alla lavorazione, alla produzione, al prodotto — una catena di custodia continua, non affermazioni isolate.",
         "chips": "Fibra → Materiale → Lavorazione → Produzione → Prodotto",
         "value": "91%",
-        "valueLabel": "Prodotti tracciabili"
+        "valueLabel": "Prodotti tracciabili",
+        "out": "Catena"
       },
       "l6": {
         "num": "Livello 06",
@@ -390,7 +395,8 @@
         "desc": "Rischi, lacune, performance fornitore, maturità di prodotto e prontezza normativa calcolati sui tuoi dati reali — mai inventati.",
         "chips": "Rischio · Lacune · Qualità · Performance fornitore · Maturità",
         "value": "42",
-        "valueLabel": "Segnali aperti"
+        "valueLabel": "Segnali aperti",
+        "out": "Segnali"
       },
       "l7": {
         "num": "Livello 07",
@@ -399,7 +405,8 @@
         "desc": "Un indicatore di prontezza, un passaporto di prodotto e un’esperienza pubblica per il consumatore. Un indicatore di prontezza, mai una certificazione legale.",
         "chips": "Prontezza DPP · Passaporto prodotto · Dati pubblici · Vista consumatore",
         "value": "88%",
-        "valueLabel": "Prontezza DPP"
+        "valueLabel": "Prontezza DPP",
+        "out": "Passaporto"
       }
     }
   },

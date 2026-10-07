@@ -61,14 +61,15 @@
     "db:status": "prisma migrate status",
     "db:migrations:check": "npx tsx scripts/check_migrations.ts",
     "db:pull": "prisma db pull",
-    "build": "npm run db:generate && npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:routes && npm run test:i18n && npm run test:chantier3-risk && npm run test:chantier4-demo && npm run test:chantier5-portail && npm run test:landing-lisibilite",
+    "build": "npm run db:generate && npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:routes && npm run test:i18n && npm run test:chantier3-risk && npm run test:chantier4-demo && npm run test:chantier5-portail && npm run test:landing-lisibilite && npm run test:landing-spine",
     "test:routes": "node scripts/test_route_registry.mjs",
     "test:i18n": "node scripts/test_i18n_consolidation.mjs",
     "i18n:build": "node scripts/build_app_i18n.mjs",
     "test:chantier3-risk": "node scripts/test_chantier3_risk.mjs",
     "test:chantier4-demo": "node scripts/test_chantier4_demo.mjs",
     "test:chantier5-portail": "node scripts/test_chantier5_portail_mobile.mjs",
-    "test:landing-lisibilite": "node scripts/test_landing_lisibilite.mjs"
+    "test:landing-lisibilite": "node scripts/test_landing_lisibilite.mjs",
+    "test:landing-spine": "node scripts/test_landing_spine.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",

@@ -675,6 +675,27 @@
   function initSpine() {
     var layers = $$('.tf-layer');
     if (!layers.length) return;
+
+    /* Remplissage du rail. La couche s'allume quand elle franchit le milieu de
+       l'ecran, et le reste : la chaine de preuve s'accumule, elle ne clignote
+       pas. Toutes les couches au-dessus sont allumees d'office, sinon un
+       rechargement en milieu de page laisserait un rail troue. */
+    function light(layer) {
+      if (layer.classList.contains('is-live')) return;
+      var idx = layers.indexOf(layer);
+      for (var i = 0; i <= idx; i++) { layers[i].classList.add('is-live'); }
+    }
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+      layers.forEach(function (l) { l.classList.add('is-live'); });
+    } else {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { light(e.target); io.unobserve(e.target); }
+        });
+      }, { rootMargin: '0px 0px -45% 0px', threshold: 0 });
+      layers.forEach(function (l) { io.observe(l); });
+    }
+
     layers.forEach(function (layer) {
       layer.addEventListener('mouseenter', function () {
         layers.forEach(function (l) { l.classList.remove('is-open'); });

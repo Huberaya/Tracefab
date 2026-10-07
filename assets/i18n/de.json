@@ -345,7 +345,8 @@
         "desc": "Lieferanten, Werke, Standorte, Materialien und Prozesse über alle Tiers hinweg erfasst — keine Lieferantenliste, sondern ein Produktionsnetz.",
         "chips": "Lieferanten · Werke · Standorte · Materialien · Prozesse",
         "value": "214",
-        "valueLabel": "Erfasste Standorte"
+        "valueLabel": "Erfasste Standorte",
+        "out": "Netzwerk"
       },
       "l2": {
         "num": "Schicht 02",
@@ -354,7 +355,8 @@
         "desc": "Zusammensetzung, Komponenten, Materialien und Identifikatoren, prozentgenau aufgelöst und bei jeder Revision versioniert.",
         "chips": "Produkte · Zusammensetzung · Materialien · Komponenten · Identifikatoren",
         "value": "1.248",
-        "valueLabel": "Verbundene Produkte"
+        "valueLabel": "Verbundene Produkte",
+        "out": "Produkt"
       },
       "l3": {
         "num": "Schicht 03",
@@ -363,7 +365,8 @@
         "desc": "Dokumente, Zertifikate, Erklärungen, Audits und Prüfberichte mit Aussteller, Geltungsbereich, Gültigkeit und Integritätssiegel.",
         "chips": "Dokumente · Zertifikate · Erklärungen · Audits · Prüfberichte",
         "value": "9.847",
-        "valueLabel": "Nachweiselemente"
+        "valueLabel": "Nachweiselemente",
+        "out": "Nachweis"
       },
       "l4": {
         "num": "Schicht 04",
@@ -372,7 +375,8 @@
         "desc": "Jeder Wert trägt ein Niveau: erklärt, dokumentiert, verifiziert, zertifiziert, zu prüfen oder fehlend. Vertrauen wird messbar.",
         "chips": "Erklärt · Dokumentiert · Verifiziert · Zertifiziert · Zu prüfen · Fehlend",
         "value": "92,4 %",
-        "valueLabel": "Datenqualität"
+        "valueLabel": "Datenqualität",
+        "out": "Vertrauensniveau"
       },
       "l5": {
         "num": "Schicht 05",
@@ -381,7 +385,8 @@
         "desc": "Von der Faser zum Material, zur Verarbeitung, zur Fertigung, zum Produkt — eine durchgängige Übergabekette statt isolierter Aussagen.",
         "chips": "Faser → Material → Verarbeitung → Fertigung → Produkt",
         "value": "91 %",
-        "valueLabel": "Rückverfolgbare Produkte"
+        "valueLabel": "Rückverfolgbare Produkte",
+        "out": "Kette"
       },
       "l6": {
         "num": "Schicht 06",
@@ -390,7 +395,8 @@
         "desc": "Risiken, Lücken, Lieferantenleistung, Produktreife und regulatorische Bereitschaft — berechnet aus Ihren eigenen Daten, nie erfunden.",
         "chips": "Risiko · Lücken · Qualität · Lieferantenleistung · Reife",
         "value": "42",
-        "valueLabel": "Offene Signale"
+        "valueLabel": "Offene Signale",
+        "out": "Signale"
       },
       "l7": {
         "num": "Schicht 07",
@@ -399,7 +405,8 @@
         "desc": "Ein Reifeindikator, ein Produktpass und eine öffentliche Verbraucheransicht. Ein Reifeindikator, nie eine rechtliche Zertifizierung.",
         "chips": "DPP-Reife · Produktpass · Öffentliche Daten · Verbraucheransicht",
         "value": "88 %",
-        "valueLabel": "DPP-Reife"
+        "valueLabel": "DPP-Reife",
+        "out": "Pass"
       }
     }
   },

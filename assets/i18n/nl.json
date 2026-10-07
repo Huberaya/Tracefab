@@ -345,7 +345,8 @@
         "desc": "Leveranciers, fabrieken, locaties, materialen en processen in kaart over alle tiers — geen leverancierslijst, maar een productienetwerk.",
         "chips": "Leveranciers · Fabrieken · Locaties · Materialen · Processen",
         "value": "214",
-        "valueLabel": "Gekarteerde locaties"
+        "valueLabel": "Gekarteerde locaties",
+        "out": "Netwerk"
       },
       "l2": {
         "num": "Laag 02",
@@ -354,7 +355,8 @@
         "desc": "Samenstelling, componenten, materialen en identificatoren tot op de procent herleid en bij elke revisie geversioneerd.",
         "chips": "Producten · Samenstelling · Materialen · Componenten · Identificatoren",
         "value": "1.248",
-        "valueLabel": "Verbonden producten"
+        "valueLabel": "Verbonden producten",
+        "out": "Product"
       },
       "l3": {
         "num": "Laag 03",
@@ -363,7 +365,8 @@
         "desc": "Documenten, certificaten, verklaringen, audits en testrapporten, opgeslagen met uitgever, scope, geldigheid en integriteitszegel.",
         "chips": "Documenten · Certificaten · Verklaringen · Audits · Tests",
         "value": "9.847",
-        "valueLabel": "Bewijsstukken"
+        "valueLabel": "Bewijsstukken",
+        "out": "Bewijs"
       },
       "l4": {
         "num": "Laag 04",
@@ -372,7 +375,8 @@
         "desc": "Elke waarde draagt een niveau: verklaard, gedocumenteerd, geverifieerd, gecertificeerd, te beoordelen of ontbrekend. Vertrouwen wordt meetbaar.",
         "chips": "Verklaard · Gedocumenteerd · Geverifieerd · Gecertificeerd · Te beoordelen · Ontbreekt",
         "value": "92,4%",
-        "valueLabel": "Datakwaliteit"
+        "valueLabel": "Datakwaliteit",
+        "out": "Vertrouwensniveau"
       },
       "l5": {
         "num": "Laag 05",
@@ -381,7 +385,8 @@
         "desc": "Van vezel naar materiaal, naar verwerking, naar productie, naar product — één doorlopende keten van overdracht in plaats van losse claims.",
         "chips": "Vezel → Materiaal → Verwerking → Productie → Product",
         "value": "91%",
-        "valueLabel": "Traceerbare producten"
+        "valueLabel": "Traceerbare producten",
+        "out": "Keten"
       },
       "l6": {
         "num": "Laag 06",
@@ -390,7 +395,8 @@
         "desc": "Risico, hiaten, leveranciersprestaties, productvolwassenheid en regelgevingsgereedheid, berekend op je eigen data — nooit verzonnen.",
         "chips": "Risico · Hiaten · Kwaliteit · Leveranciersprestaties · Volwassenheid",
         "value": "42",
-        "valueLabel": "Open signalen"
+        "valueLabel": "Open signalen",
+        "out": "Signalen"
       },
       "l7": {
         "num": "Laag 07",
@@ -399,7 +405,8 @@
         "desc": "Een gereedheidsindicator, een productpaspoort en een publieke consumentenervaring. Een gereedheidsindicator, nooit een juridische certificering.",
         "chips": "DPP-gereedheid · Productpaspoort · Publieke data · Consumentweergave",
         "value": "88%",
-        "valueLabel": "DPP-gereedheid"
+        "valueLabel": "DPP-gereedheid",
+        "out": "Paspoort"
       }
     }
   },

@@ -345,7 +345,8 @@
         "desc": "Fornecedores, fábricas, locais, materiais e processos mapeados em todos os níveis — não uma lista de fornecedores, mas uma rede de produção.",
         "chips": "Fornecedores · Fábricas · Locais · Materiais · Processos",
         "value": "214",
-        "valueLabel": "Unidades mapeadas"
+        "valueLabel": "Unidades mapeadas",
+        "out": "Rede"
       },
       "l2": {
         "num": "Camada 02",
@@ -354,7 +355,8 @@
         "desc": "Composição, componentes, materiais e identificadores resolvidos ao nível da percentagem, versionados a cada revisão.",
         "chips": "Produtos · Composição · Materiais · Componentes · Identificadores",
         "value": "1.248",
-        "valueLabel": "Produtos ligados"
+        "valueLabel": "Produtos ligados",
+        "out": "Produto"
       },
       "l3": {
         "num": "Camada 03",
@@ -363,7 +365,8 @@
         "desc": "Documentos, certificados, declarações, auditorias e relatórios de ensaio guardados com emissor, âmbito, validade e selo de integridade.",
         "chips": "Documentos · Certificados · Declarações · Auditorias · Ensaios",
         "value": "9.847",
-        "valueLabel": "Elementos de prova"
+        "valueLabel": "Elementos de prova",
+        "out": "Provas"
       },
       "l4": {
         "num": "Camada 04",
@@ -372,7 +375,8 @@
         "desc": "Cada valor tem um nível: declarado, documentado, verificado, certificado, a rever ou em falta. A confiança torna-se mensurável.",
         "chips": "Declarado · Documentado · Verificado · Certificado · A rever · Em falta",
         "value": "92,4 %",
-        "valueLabel": "Qualidade dos dados"
+        "valueLabel": "Qualidade dos dados",
+        "out": "Nível de confiança"
       },
       "l5": {
         "num": "Camada 05",
@@ -381,7 +385,8 @@
         "desc": "Da fibra ao material, do processamento ao fabrico e ao produto — uma cadeia de custódia contínua, e não alegações soltas.",
         "chips": "Fibra → Material → Processamento → Fabrico → Produto",
         "value": "91 %",
-        "valueLabel": "Produtos rastreáveis"
+        "valueLabel": "Produtos rastreáveis",
+        "out": "Cadeia"
       },
       "l6": {
         "num": "Camada 06",
@@ -390,7 +395,8 @@
         "desc": "Risco, lacunas, desempenho dos fornecedores, maturidade do produto e preparação regulamentar calculados a partir dos seus próprios dados — nunca inventados.",
         "chips": "Risco · Lacunas · Qualidade · Desempenho dos fornecedores · Preparação",
         "value": "42",
-        "valueLabel": "Sinais em aberto"
+        "valueLabel": "Sinais em aberto",
+        "out": "Sinais"
       },
       "l7": {
         "num": "Camada 07",
@@ -399,7 +405,8 @@
         "desc": "Um indicador de preparação, um passaporte de produto e uma experiência pública para o consumidor. Um indicador de preparação, nunca uma certificação legal.",
         "chips": "Preparação DPP · Passaporte de produto · Dados públicos · Vista do consumidor",
         "value": "88 %",
-        "valueLabel": "Preparação DPP"
+        "valueLabel": "Preparação DPP",
+        "out": "Passaporte"
       }
     }
   },

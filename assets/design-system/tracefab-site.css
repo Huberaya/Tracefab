@@ -883,7 +883,8 @@
   grid-template-columns: 104px minmax(0, 0.82fr) minmax(0, 1.3fr) 164px;
   gap: var(--tf-s5) var(--tf-s6);
   align-items: start;
-  padding: clamp(22px, 2.6vw, 34px) 0;
+  --tf-layer-pad: clamp(22px, 2.6vw, 34px);
+  padding: var(--tf-layer-pad) 0;
   border-bottom: 1px solid var(--tf-line-light);
   transition: background-color var(--tf-dur-base) var(--tf-ease-out);
   cursor: pointer;
@@ -901,7 +902,43 @@
 }
 .tf-layer:hover::before, .tf-layer.is-open::before { background: rgba(15, 185, 124, 0.045); }
 
+/* Le rail. La section affirme « each layer answers one question, and hands its
+   answer to the next » : le rail rend cette phrase litterale. Une ligne unique
+   traverse les sept rangees — chaque rangee porte son propre segment, et les
+   segments se touchent, donc la ligne est continue. Un noeud marque la couche,
+   un relais nomme ce qu'elle transmet a la suivante. Le segment vert se
+   remplit au defilement : la chaine de preuve s'accumule sous les yeux. */
+.tf-layer__rail {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  padding-left: 20px;
+}
+.tf-layer__rail::before,
+.tf-layer__rail::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  width: 1px;
+  top: 0; bottom: calc(var(--tf-layer-pad, 28px) * -2 - 1px);
+}
+.tf-layer__rail::before { background: var(--tf-line-light); }
+.tf-layer__rail::after {
+  background: var(--tf-emerald);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 760ms var(--tf-ease-out);
+}
+.tf-layer.is-live .tf-layer__rail::after { transform: scaleY(1); }
+.tf-spine__list > .tf-layer:first-child .tf-layer__rail::before,
+.tf-spine__list > .tf-layer:first-child .tf-layer__rail::after { top: 14px; }
+/* La derniere couche ne transmet rien : la ligne s'arrete sur son marqueur. */
+.tf-layer__rail[data-tf-terminal]::before,
+.tf-layer__rail[data-tf-terminal]::after { bottom: 7px; }
+
 .tf-layer__num {
+  position: relative;
   font-family: var(--tf-font-mono);
   font-size: var(--tf-size-2xs);
   letter-spacing: var(--tf-track-wider);
@@ -910,7 +947,57 @@
   padding-top: 7px;
   transition: color var(--tf-dur-base);
 }
+/* Le noeud de la couche, pose sur le rail. */
+.tf-layer__num::before {
+  content: '';
+  position: absolute;
+  left: -20px; top: 11px;
+  width: 7px; height: 7px;
+  background: var(--tf-surface-light);
+  border: 1px solid var(--tf-ink-faint);
+  transform: rotate(45deg);
+  transition: background-color var(--tf-dur-base), border-color var(--tf-dur-base), transform var(--tf-dur-base);
+}
+.tf-layer.is-live .tf-layer__num::before { border-color: var(--tf-emerald-deep); background: var(--tf-emerald); }
+.tf-layer:hover .tf-layer__num::before,
+.tf-layer.is-open .tf-layer__num::before { transform: rotate(45deg) scale(1.45); background: var(--tf-emerald-deep); border-color: var(--tf-emerald-deep); }
 .tf-layer:hover .tf-layer__num, .tf-layer.is-open .tf-layer__num { color: var(--tf-emerald-deep); }
+
+/* Le relais : ce que la couche transmet a la suivante. */
+.tf-layer__pass {
+  position: relative;
+  margin-top: auto;
+  padding-top: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-family: var(--tf-font-mono);
+  font-size: var(--tf-size-3xs);
+  letter-spacing: var(--tf-track-wide);
+  text-transform: uppercase;
+  color: var(--tf-ink-faint);
+  transition: color var(--tf-dur-base);
+}
+.tf-layer__pass-mark {
+  position: absolute;
+  left: -20px; top: 21px;
+  width: 7px; height: 7px;
+  border-right: 1px solid var(--tf-ink-faint);
+  border-bottom: 1px solid var(--tf-ink-faint);
+  transform: rotate(45deg);
+  transition: border-color var(--tf-dur-base);
+}
+.tf-layer__rail[data-tf-terminal] .tf-layer__pass-mark {
+  border: 1px solid var(--tf-emerald-deep);
+  background: var(--tf-emerald);
+  transform: rotate(45deg) scale(0.85);
+}
+.tf-layer.is-live .tf-layer__pass { color: var(--tf-emerald-deep); }
+.tf-layer.is-live .tf-layer__pass-mark { border-color: var(--tf-emerald-deep); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-layer__rail::after { transition: none; }
+}
 
 .tf-layer__name {
   font-family: var(--tf-font-display);
@@ -922,13 +1009,15 @@
 }
 .tf-layer__q {
   display: block;
-  margin-top: 7px;
+  margin-top: 9px;
   font-family: var(--tf-font-mono);
-  font-size: var(--tf-size-2xs);
+  font-size: var(--tf-size-xs);
   letter-spacing: var(--tf-track-wide);
   text-transform: uppercase;
-  color: var(--tf-ink-faint);
+  color: var(--tf-ink-muted);
+  transition: color var(--tf-dur-base);
 }
+.tf-layer:hover .tf-layer__q, .tf-layer.is-open .tf-layer__q { color: var(--tf-ink); }
 .tf-layer__desc { font-size: var(--tf-size-sm); line-height: 1.6; color: var(--tf-ink-soft); max-width: 48ch; padding-top: 5px; }
 .tf-layer__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
 .tf-layer__chip {
@@ -1100,8 +1189,17 @@
   .tf-footer__top { grid-template-columns: 1fr 1fr; }
 
   .tf-layer { grid-template-columns: 64px minmax(0, 1fr); }
-  .tf-layer__aside { grid-column: 2; }
-  .tf-layer__desc { grid-column: 2; max-width: none; }
+  .tf-layer__rail { padding-left: 16px; }
+  .tf-layer__num::before { left: -16px; }
+  .tf-layer__pass-mark { left: -16px; }
+  .tf-layer__pass { gap: 0; padding-top: 14px; }
+  .tf-layer__pass > span:not(.tf-layer__pass-mark) {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .tf-layer__rail { grid-column: 1; grid-row: 1 / span 3; }
+  .tf-layer__head, .tf-layer__body, .tf-layer__aside { grid-column: 2; }
+  .tf-layer__desc { max-width: none; }
 }
 
 @media (max-width: 860px) {
@@ -1122,4 +1220,11 @@
   .tf-footer__top { grid-template-columns: 1fr; }
   .tf-promise__cell { border-right: 0; }
   .tf-core__stat em { font-size: var(--tf-size-3xs); }
+}
+
+@media (max-width: 559px) {
+  .tf-brand__sub {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
 }

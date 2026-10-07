@@ -345,7 +345,8 @@
         "desc": "Proveedores, plantas, centros, materiales y procesos mapeados en todos los niveles — no una lista de proveedores, sino una red de producción.",
         "chips": "Proveedores · Plantas · Centros · Materiales · Procesos",
         "value": "214",
-        "valueLabel": "Centros mapeados"
+        "valueLabel": "Centros mapeados",
+        "out": "Red"
       },
       "l2": {
         "num": "Capa 02",
@@ -354,7 +355,8 @@
         "desc": "Composición, componentes, materiales e identificadores resueltos al porcentaje y versionados en cada revisión.",
         "chips": "Productos · Composición · Materiales · Componentes · Identificadores",
         "value": "1.248",
-        "valueLabel": "Productos conectados"
+        "valueLabel": "Productos conectados",
+        "out": "Producto"
       },
       "l3": {
         "num": "Capa 03",
@@ -363,7 +365,8 @@
         "desc": "Documentos, certificados, declaraciones, auditorías e informes de ensayo almacenados con emisor, alcance, validez y sello de integridad.",
         "chips": "Documentos · Certificados · Declaraciones · Auditorías · Ensayos",
         "value": "9.847",
-        "valueLabel": "Elementos de evidencia"
+        "valueLabel": "Elementos de evidencia",
+        "out": "Pruebas"
       },
       "l4": {
         "num": "Capa 04",
@@ -372,7 +375,8 @@
         "desc": "Cada valor lleva un nivel: declarado, documentado, verificado, certificado, por revisar o ausente. La confianza se vuelve medible.",
         "chips": "Declarado · Documentado · Verificado · Certificado · Por revisar · Falta",
         "value": "92,4 %",
-        "valueLabel": "Calidad de datos"
+        "valueLabel": "Calidad de datos",
+        "out": "Nivel de confianza"
       },
       "l5": {
         "num": "Capa 05",
@@ -381,7 +385,8 @@
         "desc": "De la fibra al material, al procesado, a la fabricación, al producto — una cadena de custodia continua, no afirmaciones sueltas.",
         "chips": "Fibra → Material → Procesado → Fabricación → Producto",
         "value": "91 %",
-        "valueLabel": "Productos trazables"
+        "valueLabel": "Productos trazables",
+        "out": "Cadena"
       },
       "l6": {
         "num": "Capa 06",
@@ -390,7 +395,8 @@
         "desc": "Riesgo, brechas, desempeño de proveedores, madurez de producto y preparación normativa calculados sobre tus propios datos — nunca inventados.",
         "chips": "Riesgo · Brechas · Calidad · Desempeño de proveedores · Madurez",
         "value": "42",
-        "valueLabel": "Señales abiertas"
+        "valueLabel": "Señales abiertas",
+        "out": "Señales"
       },
       "l7": {
         "num": "Capa 07",
@@ -399,7 +405,8 @@
         "desc": "Un indicador de preparación, un pasaporte de producto y una experiencia pública para el consumidor. Un indicador de preparación, nunca una certificación legal.",
         "chips": "Preparación DPP · Pasaporte de producto · Datos públicos · Vista consumidor",
         "value": "88 %",
-        "valueLabel": "Preparación DPP"
+        "valueLabel": "Preparación DPP",
+        "out": "Pasaporte"
       }
     }
   },

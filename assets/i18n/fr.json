@@ -345,7 +345,8 @@
         "desc": "Fournisseurs, usines, sites, matières et procédés cartographiés sur tous les rangs — pas une liste de fournisseurs, un réseau de production.",
         "chips": "Fournisseurs · Usines · Sites · Matières · Procédés",
         "value": "214",
-        "valueLabel": "Sites cartographiés"
+        "valueLabel": "Sites cartographiés",
+        "out": "Réseau"
       },
       "l2": {
         "num": "Couche 02",
@@ -354,7 +355,8 @@
         "desc": "Composition, composants, matières et identifiants résolus au pourcentage, versionnés à chaque révision.",
         "chips": "Produits · Composition · Matières · Composants · Identifiants",
         "value": "1 248",
-        "valueLabel": "Produits connectés"
+        "valueLabel": "Produits connectés",
+        "out": "Produit"
       },
       "l3": {
         "num": "Couche 03",
@@ -363,7 +365,8 @@
         "desc": "Documents, certificats, déclarations, audits et rapports d’essai stockés avec émetteur, portée, validité et sceau d’intégrité.",
         "chips": "Documents · Certificats · Déclarations · Audits · Essais",
         "value": "9 847",
-        "valueLabel": "Éléments de preuve"
+        "valueLabel": "Éléments de preuve",
+        "out": "Preuves"
       },
       "l4": {
         "num": "Couche 04",
@@ -372,7 +375,8 @@
         "desc": "Chaque valeur porte un niveau : déclaré, documenté, vérifié, certifié, à revoir ou manquant. La confiance devient mesurable.",
         "chips": "Déclaré · Documenté · Vérifié · Certifié · À revoir · Manquant",
         "value": "92,4 %",
-        "valueLabel": "Qualité des données"
+        "valueLabel": "Qualité des données",
+        "out": "Niveau de confiance"
       },
       "l5": {
         "num": "Couche 05",
@@ -381,7 +385,8 @@
         "desc": "De la fibre à la matière, puis à la transformation, à la fabrication et au produit — une chaîne de garde continue, pas des allégations isolées.",
         "chips": "Fibre → Matière → Transformation → Fabrication → Produit",
         "value": "91 %",
-        "valueLabel": "Produits traçables"
+        "valueLabel": "Produits traçables",
+        "out": "Chaîne"
       },
       "l6": {
         "num": "Couche 06",
@@ -390,7 +395,8 @@
         "desc": "Risques, lacunes, performance fournisseur, maturité produit et préparation réglementaire calculés à partir de vos propres données — jamais inventées.",
         "chips": "Risque · Lacunes · Qualité · Performance fournisseur · Maturité",
         "value": "42",
-        "valueLabel": "Signaux ouverts"
+        "valueLabel": "Signaux ouverts",
+        "out": "Signaux"
       },
       "l7": {
         "num": "Couche 07",
@@ -399,7 +405,8 @@
         "desc": "Un indicateur de préparation, un passeport produit et une expérience consommateur publique. Un indicateur de préparation, jamais une certification juridique.",
         "chips": "Préparation DPP · Passeport produit · Données publiques · Vue consommateur",
         "value": "88 %",
-        "valueLabel": "Préparation DPP"
+        "valueLabel": "Préparation DPP",
+        "out": "Passeport"
       }
     }
   },
