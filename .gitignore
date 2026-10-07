@@ -22,3 +22,7 @@ uploads/
 .visual/
 .gh_token
 *.token
+
+# Caches Python des scripts utilitaires
+__pycache__/
+*.pyc
