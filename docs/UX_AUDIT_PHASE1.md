@@ -1101,3 +1101,108 @@ impossible ici, donc `GET|POST /api/products/:id/dpp`, `POST …/dpp/publish-rev
 `POST /api/dpp/validate` n'ont jamais été exécutés contre Neon. La procédure stockée
 `tracefab_compute_dpp_readiness` n'a pas pu être inspectée non plus : seule sa signature, lue
 dans la route, est connue.
+
+---
+
+# Chantier 11 — Passeport Numérique public
+
+## Le passeport consommateur ne lisait aucune donnée
+
+La mesure donne trois faits, tous vérifiés dans le code :
+
+1. **`dpp/index.html` (1 312 lignes) n'appelait aucune route de données.** Ses seuls appels
+   étaient les deux boutons Wallet, avec un GTIN figé `3760123456789`. Tout le contenu —
+   produit, composition, chaîne, empreinte, preuves — était écrit en dur.
+2. **`GET /api/dpp/{identifiant}`, la seule route qui renvoie un vrai passeport, n'était
+   appelée par personne.** Elle figurait dans les routes déclarées mais non appelées.
+3. **Les routes Wallet n'interrogeaient jamais la base.** `apple-wallet.ts` et
+   `google-wallet.ts` appelaient `getFallbackDppData(gtinOrRef)` de façon inconditionnelle,
+   quel que soit le GTIN demandé. Chaque passeport Apple/Google Wallet distribué était donc
+   fabriqué, avec une chaîne d'approvisionnement inventée
+   (« Ferme Izmir (TR) ➔ Filature Haute-Vienne (FR) ➔ Tricotage Barcelos (PT) ➔ Confection
+   Braga (PT) ➔ Hub Lyon (FR) »).
+
+Le `<head>` contenait en outre un JSON-LD se déclarant « CIRPASS / ESPR Compliant », portant
+une `verificationSignature` attribuée à « TRACEFAB Cryptographic Ledger » dont l'`evidenceHash`
+était `sha256-e3b0c44…` — l'empreinte de la chaîne vide — et des URL de réparation
+`atelier-demo.fr`. Ce bloc est lisible par les machines : il était faux de bout en bout.
+
+## Le repli du resolver rendait la fabrication invisible
+
+`resolveDppPassData` (`api/_lib/wallet/dpp-data-resolver.ts`) substitue une valeur constante à
+toute donnée absente : `100% Coton peigné`, `Filature ➔ Tissage ➔ Ennoblissement ➔ Confection
+auditée`, `'PT'`, `'FR'`, `250` g, `pefScore 78`, `grade 'B'`, `3.42` kg CO₂e, `0.85` m³ d'eau,
+`circularityScore 85`, et un texte d'entretien identique pour tous les produits.
+
+Le problème n'est pas seulement la valeur : **le repli est destructif d'information.** Une fois
+`pef ? Number(pef.pef_eco_score) : 78` évalué, aucun appelant ne peut distinguer une mesure
+d'un chiffre par défaut. Aucune interface ne peut donc être honnête sans modifier cette
+fonction.
+
+Correction retenue, additive et non cassante : un champ optionnel `dataGaps: string[]` liste
+désormais chaque substitution (12 cas). Les valeurs continuent d'être renvoyées — aucun
+consommateur existant ne casse — mais l'absence de donnée réelle est déclarée.
+
+Les routes Wallet tentent maintenant la base d'abord et ne recourent au jeu statique que si le
+produit est introuvable ou la base injoignable. Le changement est strictement dominant :
+auparavant le repli était systématique.
+
+## Deux rubriques n'ont aucune source de données
+
+Sur les onze rubriques du brief, deux ne peuvent pas être servies :
+
+| Rubrique | Source | Rendu |
+| --- | --- | --- |
+| Réparation | aucun champ de réparabilité dans le schéma | « Réparabilité non publiée » + la raison |
+| Preuves | la route ne joint aucun document | « Aucune preuve publiée » + la raison |
+
+Les preuves existent côté marque (`evidence/`, Chantier 8) ; c'est leur publication
+consommateur qui n'est pas câblée. La page le dit au lieu d'afficher un panneau vide ou, pire,
+des documents plausibles.
+
+Les rubriques servies le sont depuis le contrat réel : identité, pays déclarés, matières de la
+nomenclature, composition avec barres proportionnelles aux pourcentages réels, étapes issues
+des nœuds de chaîne rattachés, certificat de transaction issu du bilan de masse, identifiants
+GS1. Chaque valeur issue d'un repli s'affiche « Non mesuré » ou « Texte générique », jamais
+comme une mesure — le test vérifie que `3,42` et `0,85` n'apparaissent pas.
+
+Le CSS premium existant (585 lignes, 54 classes) est conservé : seule la couche de données est
+remplacée. Le lien court `/p/{gtin}` que génère le resolver — celui des QR codes — pointe
+désormais sur des données réelles.
+
+## Une assertion de test modifiée, et pourquoi
+
+`test:pef:chantier3` vérifiait la présence de deux littéraux dans le passeport. Le premier,
+« Éco-Score Textile Européen », est un libellé légitime : il a été restauré, en nommant la
+méthode réelle (`(PEF)`).
+
+Le second exigeait la chaîne **« Conforme Loi AGEC & ESPR »**. Cette allégation est
+factuellement fausse : le Chantier 10 a établi que le schéma ne contient aucun champ AGEC
+Art. 13 (`grep` renvoie 0 pour `agec`, `tissage`, `teinture`, `confection`). Aucun produit ne
+peut donc être déclaré conforme à l'AGEC au travers de TRACEFAB.
+
+La règle suivie jusqu'ici — ne jamais réécrire un test pour l'adapter à un nouveau markup —
+s'applique aux contrats de structure. Elle ne peut pas conduire à maintenir une allégation de
+conformité légale fausse sur une page consommateur. L'assertion a donc été remplacée par ce
+qu'elle cherchait réellement à garantir : la page nomme les cadres AGEC et ESPR, et
+**n'en revendique pas la conformité**. C'est la seule assertion modifiée de tout l'audit.
+
+## Portails
+
+```
+test:public-dpp        69 / 0   NOUVEAU
+test:pef:chantier3            PASS (assertion de conformité corrigée)
+test:route-registry           PASS (121 motifs, 9 surfaces, 110 appels, 36 routes non appelées)
+test:dpp-readiness     83 / 0 · test:traceability 82 / 0 · test:evidence 65 / 0
+test:quality-center    69 / 0 · test:supplier-portal:surface 78 / 0
+test:brand-console            PASS · test:landing 95 / 0
+Balayage des 55 scripts test:* : 36 PASS / 19 FAIL — exactement les 19 préexistants
+```
+
+## Toujours non vérifié
+
+**Aucune capture d'écran.** Et **aucun appel réel à la base** : `prisma generate` est
+impossible ici, donc `GET /api/dpp/{identifiant}`, `resolveDppPassData` et les deux routes
+Wallet n'ont jamais été exécutés contre Neon. Le changement « base d'abord, repli ensuite »
+des routes Wallet est le plus exposé : il est strictement dominant par construction, mais il
+reste à observer sur un environnement connecté.

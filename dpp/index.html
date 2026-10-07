@@ -3,11 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Passeport Numérique de Produit — Essentiel Coton Biologique | TRACEFAB</title>
-  <meta name="description" content="Passeport Numérique de Produit (DPP) certifié ESPR / CIRPASS pour le style Essentiel Coton Biologique par Atelier Demo. Données de traçabilité, composition et réparabilité.">
+  <title>Passeport Numérique de Produit | TRACEFAB</title>
+  <meta name="description" content="Passeport Numérique de Produit (DPP) : origine, matières, composition, fabrication, circularité et preuves, tels que déclarés dans TRACEFAB.">
+  <meta property="og:title" content="Passeport Numérique de Produit | TRACEFAB">
+  <meta property="og:description" content="Données produit déclarées, documentées et vérifiées. Les champs non renseignés sont affichés comme absents.">
+  <meta property="og:type" content="product">
 
   <!-- Open Graph / Meta -->
-  <meta property="og:title" content="DPP — Essentiel Coton Biologique">
   <meta property="og:description" content="Traçabilité certifiée de la fibre au vêtement fini. Conforme Règlementation Européenne ESPR.">
   <meta property="og:type" content="product">
 
@@ -17,76 +19,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- CIRPASS / ESPR Compliant JSON-LD Digital Product Passport schema -->
-  <script type="application/ld+json" id="dpp-jsonld">
-  {
-    "@context": [
-      "https://schema.org",
-      { "espr": "https://ec.europa.eu/commission/presscorner/detail/en/ip_24_1749#" }
-    ],
-    "@type": "Product",
-    "identifier": "urn:epc:id:sgtin:3760123456.001.2026",
-    "name": "Essentiel Coton Biologique",
-    "model": "AT-ESS-001",
-    "sku": "AT-ESS-001-NVY-M",
-    "gtin": "3760123456789",
-    "brand": {
-      "@type": "Brand",
-      "name": "Atelier Demo",
-      "legalName": "Atelier Demo SAS"
-    },
-    "description": "T-shirt en jersey de coton biologique peigné 185g/m², confectionné au Portugal dans le respect des normes sociales SMETA et environnementales GOTS.",
-    "countryOfOrigin": "PT",
-    "countryOfDesign": "FR",
-    "material": [
-      {
-        "@type": "DefinedTerm",
-        "name": "Coton biologique peigné (GOTS Certified)",
-        "percentage": 85,
-        "termCode": "COTTON_BIO",
-        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
-      },
-      {
-        "@type": "DefinedTerm",
-        "name": "Coton recyclé pré-consommation (GRS Certified)",
-        "percentage": 15,
-        "termCode": "COTTON_REC",
-        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
-      }
-    ],
-    "certifications": [
-      {
-        "standard": "Global Organic Textile Standard (GOTS)",
-        "certificateNumber": "CU-881294-GOTS-2026",
-        "issuer": "Control Union",
-        "status": "active"
-      },
-      {
-        "standard": "OEKO-TEX Standard 100",
-        "certificateNumber": "21.HPT.94112",
-        "issuer": "Hohenstein Institute",
-        "status": "active"
-      }
-    ],
-    "traceability": {
-      "tier4_raw_fiber": { "country": "PT", "facility": "Quinta de São Martinho", "provenance": "100% Coton régénératif" },
-      "tier3_spinning": { "country": "PT", "facility": "Fiação Norte Lda", "process": "Filage fil peigné Ne 30/1" },
-      "tier3_weaving": { "country": "PT", "facility": "Malhas do Ave", "process": "Tricotage jersey circulaire" },
-      "tier2_dyeing": { "country": "PT", "facility": "Tinturaria Braga Lda", "process": "Teinture à bas impact environnemental" },
-      "tier1_assembly": { "country": "PT", "facility": "Nhãn Textile Confeção", "process": "Coupe, couture et repassage" }
-    },
-    "repairAndCare": {
-      "washingInstructions": "Lavage 30°C cycle délicat. Séchage à l'air libre conseillé. Repassage doux sur envers.",
-      "recyclabilityRate": "98%",
-      "repairServicesUrl": "https://atelier-demo.fr/repair-program",
-      "takeBackUrl": "https://atelier-demo.fr/second-life"
-    },
-    "verificationSignature": {
-      "signedBy": "TRACEFAB Cryptographic Ledger",
-      "timestamp": "2026-10-06T06:50:00Z",
-      "evidenceHash": "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    }
-  }
-  </script>
 
   <style>
     :root {
@@ -672,641 +604,385 @@
       font-weight: 700;
     }
   </style>
-  <script src="/auto-translate.js"></script>
+
+  <script type="application/ld+json" id="dpp-jsonld">{}</script>
 </head>
+
 <body>
-
-  <div class="dpp-container">
-
-    <!-- Header with Brand & EU Standard Badge -->
-    <header class="dpp-header">
-      <div class="brand-id">
-        <div class="brand-mark">AD</div>
-        <div class="brand-text">
-          <strong>Atelier Demo</strong>
-          <span>Paris, France</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <select id="dpp-lang-select" onchange="applyDppLang(this.value)" style="background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);padding:6px 12px;border-radius:9999px;font-size:12px;font-family:inherit;font-weight:700;cursor:pointer;">
-          <option value="en">🇬🇧 English</option>
-          <option value="fr">🇫🇷 Français</option>
-          <option value="de">🇩🇪 Deutsch</option>
-          <option value="it">🇮🇹 Italiano</option>
-          <option value="es">🇪🇸 Español</option>
-          <option value="nl">🇳🇱 Nederlands</option>
-          <option value="pt">🇵🇹 Português</option>
-        </select>
-        <div class="badge-eu">
-          <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-          EU ESPR / DPP Conforme
-        </div>
-      </div>
-    </header>
-
-    <!-- Product Summary Hero -->
-    <div class="product-hero">
-      <span class="product-tag">Passeport Numérique Officiel</span>
-      <h1 class="product-title">Essentiel Coton Biologique</h1>
-      <div class="product-meta-row">
-        <span>SKU: AT-ESS-001</span>
-        <span>•</span>
-        <span>GTIN: 3760123456789</span>
-        <span>•</span>
-        <span>Batch: 2026-FW</span>
-      </div>
-      <p class="product-summary">
-        T-shirt iconique en jersey de coton biologique régénératif 185g/m². Tracé de la graine au vêtement confectionné avec 100% de preuves documentées.
-      </p>
-
-      <div class="trust-pill-bar">
-        <span class="trust-badge-item verified">✓ 100% Matières Certifiées</span>
-        <span class="trust-badge-item">GOTS Certified</span>
-        <span class="trust-badge-item">OEKO-TEX Class 1</span>
-        <span class="trust-badge-item">Fabriqué au Portugal</span>
-      </div>
-    </div>
-
-    <!-- Apple & Google Wallet Mobile Passes -->
-    <div style="padding: 14px 20px 16px; background: #f0f7f3; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);">
-      <div style="font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.05em; color: var(--forest-600); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-        <span>Passeport Numérique Hors-Ligne & Portefeuille Mobile</span>
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <a href="/api/dpp/3760123456789/apple-wallet" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #000; color: #fff; padding: 11px 12px; border-radius: 12px; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-          <svg style="width: 18px; height: 18px; fill: currentColor;" viewBox="0 0 170 170"><path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.69-7.85-11.96-14.42-5.46-8.47-9.87-18.06-13.23-28.77-3.37-10.7-5.06-21.05-5.06-31.05 0-14.7 3.59-26.96 10.77-36.78 7.18-9.82 16.43-14.85 27.75-15.08 4.35 0 9.4 1.25 15.17 3.76 5.76 2.5 9.47 3.82 11.12 3.94 1.88-.24 5.76-1.63 11.64-4.17 5.88-2.54 10.7-3.7 14.47-3.48 10.83.61 19.59 4.79 26.28 12.54-9.36 5.69-13.92 13.71-13.68 24.08.24 8.01 3.23 14.77 8.98 20.28 5.74 5.51 12.63 8.84 20.67 10 1.05 4.58 1.94 8.78 2.68 12.61.74 3.82 1.15 7.42 1.23 10.82zm-35.03-107.57c.12 3.82-.7 7.73-2.45 11.73-1.76 4-4.32 7.54-7.69 10.63-3.05 2.82-6.57 4.96-10.55 6.42-3.98 1.46-7.85 2.19-11.61 2.19-.24-3.59.62-7.39 2.58-11.4 1.96-4 4.67-7.61 8.14-10.83 3.18-2.95 6.83-5.2 10.96-6.75 4.12-1.54 7.65-2.21 10.62-1.99z"/></svg>
-          <span>Apple Wallet</span>
-        </a>
-        <a href="/api/dpp/3760123456789/google-wallet" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #1f1f1f; border: 1px solid #747775; padding: 11px 12px; border-radius: 12px; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 2px 6px rgba(60,64,67,0.15);">
-          <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-          <span>Google Wallet</span>
-        </a>
-      </div>
-    </div>
-
-    <!-- Interactive Navigation Tabs -->
-    <nav class="dpp-tabs" aria-label="Sections du Passeport">
-      <button class="dpp-tab-btn active" data-tab="materials">Matières (2)</button>
-      <button class="dpp-tab-btn" data-tab="traceability">Traçabilité (7)</button>
-      <button class="dpp-tab-btn" data-tab="impact">Éco-Score & ACV</button>
-      <button class="dpp-tab-btn" data-tab="circularity">Réparabilité & Fin de Vie</button>
-      <button class="dpp-tab-btn" data-tab="evidence">Preuves & Audit</button>
-      <button class="dpp-tab-btn" data-tab="gs1">GS1 Digital Link</button>
-    </nav>
-
-    <!-- TAB 1: Matières & Composition -->
-    <section class="tab-content-panel" id="panel-materials">
-      <div class="section-title">
-        <span>Composition & Origine des Fibres</span>
-        <span style="font-size:12px;color:var(--primary);font-weight:700;">100% Tracé</span>
-      </div>
-      <p class="section-desc">Déclaration vérifiée conformément au règlement textile européen et contrôlée par tiers accrédité.</p>
-
-      <div class="composition-card">
-        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:750;">
-          <span>Composition totale</span>
-          <span>185 g/m²</span>
-        </div>
-
-        <div class="comp-bar">
-          <div class="comp-fill-1"></div>
-          <div class="comp-fill-2"></div>
-        </div>
-
-        <div class="comp-item">
-          <div class="comp-item-title">
-            <div class="comp-bullet" style="background:var(--primary);"></div>
-            <div>
-              <strong>85% Coton Biologique Peigné</strong>
-              <div style="font-size:11px;color:var(--text-muted);">Origine : Portugal (Ferme São Martinho)</div>
-            </div>
-          </div>
-          <span style="font-weight:750;color:var(--primary);">GOTS v6.0</span>
-        </div>
-
-        <div class="comp-item">
-          <div class="comp-item-title">
-            <div class="comp-bullet" style="background:#0284c7;"></div>
-            <div>
-              <strong>15% Coton Recyclé Pré-consommation</strong>
-              <div style="font-size:11px;color:var(--text-muted);">Revalorisation des chutes de coupe d'atelier</div>
-            </div>
-          </div>
-          <span style="font-weight:750;color:#0284c7;">GRS Certified</span>
-        </div>
-      </div>
-
-      <div class="info-grid">
-        <div class="info-card">
-          <span>Substances Chimiques</span>
-          <strong>0% Toxiques</strong>
-          <p>Conforme REACH & OEKO-TEX Standard 100.</p>
-        </div>
-        <div class="info-card">
-          <span>Microfibres Plastiques</span>
-          <strong>0 g / lavage</strong>
-          <p>100% fibres naturelles biodégradables.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 2: Traçabilité Multi-Échelon -->
-    <section class="tab-content-panel" id="panel-traceability" style="display:none;">
-      <div class="section-title">
-        <span>Chaîne de Contrôle & Usines</span>
-        <span style="font-size:11px;background:var(--primary-soft);color:var(--primary);padding:3px 8px;border-radius:99px;font-weight:700;">5 Échelons Validés</span>
-      </div>
-      <p class="section-desc">Chaque étape industrielle est certifiée par un certificat de transaction (TC) audité.</p>
-
-      <div class="trace-timeline">
-        <!-- Tier 4 -->
-        <div class="timeline-node">
-          <div class="node-pin">🌱</div>
-          <div class="node-body">
-            <div class="node-header">
-              <strong>Culture de la Fibre</strong>
-              <span class="node-tier-tag">Tier 4</span>
-            </div>
-            <div class="node-sub">Quinta de São Martinho · Alentejo, Portugal</div>
-            <div class="node-proof">✓ Certificat GOTS #CU-881294</div>
-          </div>
-        </div>
-
-        <!-- Tier 3 Spinning -->
-        <div class="timeline-node">
-          <div class="node-pin">🧵</div>
-          <div class="node-body">
-            <div class="node-header">
-              <strong>Filature & Peignage</strong>
-              <span class="node-tier-tag">Tier 3</span>
-            </div>
-            <div class="node-sub">Fiação Norte Lda · Guimarães, Portugal</div>
-            <div class="node-proof">✓ Fil peigné haute résistance Ne 30/1</div>
-          </div>
-        </div>
-
-        <!-- Tier 3 Weaving -->
-        <div class="timeline-node">
-          <div class="node-pin">🧶</div>
-          <div class="node-body">
-            <div class="node-header">
-              <strong>Tricotage Jersey</strong>
-              <span class="node-tier-tag">Tier 3</span>
-            </div>
-            <div class="node-sub">Malhas do Ave · Santo Tirso, Portugal</div>
-            <div class="node-proof">✓ Maille circulaire jauge 28</div>
-          </div>
-        </div>
-
-        <!-- Tier 2 Dyeing -->
-        <div class="timeline-node">
-          <div class="node-pin">💧</div>
-          <div class="node-body">
-            <div class="node-header">
-              <strong>Ennoblissement & Teinture</strong>
-              <span class="node-tier-tag">Tier 2</span>
-            </div>
-            <div class="node-sub">Tinturaria Braga Lda · Braga, Portugal</div>
-            <div class="node-proof">✓ Circuit fermé & traitement des rejets (STeP)</div>
-          </div>
-        </div>
-
-        <!-- Tier 1 Assembly -->
-        <div class="timeline-node">
-          <div class="node-pin">✂️</div>
-          <div class="node-body">
-            <div class="node-header">
-              <strong>Coupe, Confection & Finitions</strong>
-              <span class="node-tier-tag">Tier 1</span>
-            </div>
-            <div class="node-sub">Nhãn Textile Manufacturing · Porto, Portugal</div>
-            <div class="node-proof">✓ Audit social SMETA 4-Pillar (Score A)</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 3: Impact & Soin / Réparation -->
-    <section class="tab-content-panel" id="panel-impact" style="display:none;">
-      <div class="section-title">
-        <span>Évaluation Environnementale & Éco-Score</span>
-        <span style="font-size:12px;background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:99px;font-weight:700;">Conforme Loi AGEC & ESPR</span>
-      </div>
-      <p class="section-desc">Analyse du cycle de vie complet (ACV) selon la méthodologie européenne PEFCR Apparel & Footwear 2024.</p>
-
-      <!-- Éco-Score Textile Officiel Badge -->
-      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Éco-Score Textile Européen</div>
-          <div style="display:flex;gap:4px;align-items:center;">
-            <span style="display:inline-block;padding:6px 14px;font-size:22px;font-weight:800;border-radius:6px;background:#16a34a;color:#ffffff;box-shadow:0 2px 8px rgba(22,163,74,0.3);">A</span>
-            <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:800;border-radius:6px;background:#e2e8f0;color:#64748b;">B</span>
-            <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:800;border-radius:6px;background:#e2e8f0;color:#64748b;">C</span>
-            <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:800;border-radius:6px;background:#e2e8f0;color:#64748b;">D</span>
-            <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:800;border-radius:6px;background:#e2e8f0;color:#64748b;">E</span>
-          </div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:24px;font-weight:800;color:#16a34a;">84 / 100</div>
-          <div style="font-size:12px;color:var(--text-muted);">Indice d'Éco-Conception</div>
-        </div>
-      </div>
-
-      <div class="info-grid" style="margin-bottom:18px;">
-        <div class="info-card">
-          <span>Empreinte Carbone Réelle</span>
-          <strong>2.15 kg CO₂e</strong>
-          <p>-48% vs référence conventionnelle (PEFCR 2024).</p>
-        </div>
-        <div class="info-card">
-          <span>Consommation Hydrique</span>
-          <strong>1,480 Litres</strong>
-          <p>-64% grâce au Coton Bio pluvial certifié GOTS.</p>
-        </div>
-        <div class="info-card">
-          <span>Relargage Microplastiques</span>
-          <strong>Grade A (Nul)</strong>
-          <p>100% fibres naturelles biodégradables.</p>
-        </div>
-        <div class="info-card">
-          <span>Circularité & Recyclabilité</span>
-          <strong>95%</strong>
-          <p>Fibre monomatière recyclable en boucle fermée.</p>
-        </div>
-      </div>
-
-      <div class="section-title" style="margin-top:20px;">
-        <span>Conseils d'Entretien & Réparabilité</span>
-        <span style="font-size:12px;color:var(--primary);font-weight:700;">Indice: 9.2/10</span>
-      </div>
-      <p class="section-desc">Prolonger la durée de vie de votre vêtement divise par 3 son empreinte carbone globale.</p>
-
-      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:18px;">
-        <div class="care-row">
-          <div class="care-icon">🧺</div>
-          <div class="care-text">
-            <strong>Lavage délicat à 30°C</strong>
-            <span>Préserve les fibres de coton et réduit la consommation d'énergie de 60%.</span>
-          </div>
-        </div>
-        <div class="care-row">
-          <div class="care-icon">💨</div>
-          <div class="care-text">
-            <strong>Séchage naturel à l'air libre</strong>
-            <span>Le sèche-linge fragilise les coutures et consomme 1.5 kWh par cycle.</span>
-          </div>
-        </div>
-        <div class="care-row">
-          <div class="care-icon">🪡</div>
-          <div class="care-text">
-            <strong>Programme de Réparation Gratuit</strong>
-            <span>Coutures et ourlets réparables à vie via notre réseau partenaire.</span>
-          </div>
-        </div>
-        <div class="care-row" style="border-bottom:none;">
-          <div class="care-icon">♻️</div>
-          <div class="care-text">
-            <strong>Recyclabilité : 98%</strong>
-            <span>Fibre monocoton réintroduisible dans les filatures européennes de recyclage.</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 4: Evidence & Certificats -->
-    <section class="tab-content-panel" id="panel-evidence" style="display:none;">
-      <div class="section-title">
-        <span>Certificats & Preuves Légales</span>
-        <span style="font-size:12px;color:var(--primary);font-weight:700;">Audité</span>
-      </div>
-      <p class="section-desc">Documents officiels opposables aux audits de conformité de l'Union Européenne et DGCCRF.</p>
-
-      <div style="display:grid;gap:12px;">
-        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-            <div>
-              <strong>Global Organic Textile Standard (GOTS)</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Certificat : CU-881294-GOTS-2026</div>
-            </div>
-            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Valide 2027</span>
-          </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Organisme certificateur accrédité : Control Union Certification B.V.</div>
-        </div>
-
-        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-            <div>
-              <strong>OEKO-TEX Standard 100 — Classe 1</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Rapport : 21.HPT.94112</div>
-            </div>
-            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Valide 2026</span>
-          </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Contrôle analytique d'absence de résidus chimiques nocifs (Hohenstein).</div>
-        </div>
-
-        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-            <div>
-              <strong>Audit Social SMETA 4-Pillar (Éthique & Sécurité)</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Réf : SEDEX-SMETA-2026-PT</div>
-            </div>
-            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Conforme</span>
-          </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Rémunération décente, santé au travail et droits syndicaux audités.</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Cryptographic Signature Card -->
-    <div class="signature-card">
-      <div class="sig-top">
-        <div class="sig-logo">tf</div>
-        <div>
-          <strong>Scellé par le registre immuable TRACEFAB</strong>
-          <div style="font-size:10.5px;color:#a3bfb2;">Horodatage et preuve cryptographique Neon PostgreSQL</div>
-        </div>
-      </div>
-      <div class="sig-hash">
-        SHA-256 : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      </div>
-    </div>
-
-    <!-- Actions Bar -->
-    <div class="jsonld-action-bar">
-      <button class="btn-action btn-action-primary" id="btn-export-jsonld">
-        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-        Exporter JSON-LD CIRPASS
-      </button>
-      <button class="btn-action" id="btn-view-raw">
-        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-        Voir code source ESPR
-      </button>
-    </div>
-
-    <!-- Footer -->
-    <footer class="dpp-footer">
-      <p>Passeport Numérique conforme au Règlement Éco-conception de l'Union Européenne (ESPR).</p>
-      <p style="margin-top:6px;">Propulsé par <a href="/" target="_blank">TRACEFAB Textile Intelligence</a> · © 2026</p>
-    </footer>
-
-  </div>
-
-  <!-- Modal Raw JSON-LD Viewer -->
-  <div class="modal-overlay" id="modal-jsonld">
-    <div class="modal-window">
-      <div class="modal-head">
-        <strong>Spécification CIRPASS JSON-LD</strong>
-        <button id="modal-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Ce payload normalisé peut être interrogé directement par les douanes européennes, les auditeurs CSRD ou les applications de tri textile.</p>
-        <div class="code-box" id="json-code-container"></div>
-      </div>
-    </div>
+  <div class="dpp-container" id="dpp" aria-busy="true">
+    <p class="section-desc">Chargement du passeport…</p>
   </div>
 
   <script>
     (() => {
-      // Tab switching logic
-      const tabs = document.querySelectorAll('.dpp-tab-btn');
-      const panels = {
-        materials: document.getElementById('panel-materials'),
-        traceability: document.getElementById('panel-traceability'),
-        impact: document.getElementById('panel-impact'),
-        circularity: document.getElementById('panel-circularity'),
-        evidence: document.getElementById('panel-evidence'),
-        gs1: document.getElementById('panel-gs1')
+      'use strict';
+
+      const params = new URLSearchParams(location.search);
+      const demo = (() => {
+        const flag = params.get('demo');
+        return flag === null ? false : !['0', 'false', 'off'].includes(String(flag).toLowerCase());
+      })();
+      const identifier = params.get('gtin') || params.get('ref') || params.get('id') || '';
+
+      const state = { demo, identifier: identifier || (demo ? 'AT-ESS-001' : ''), dpp: null, links: null, loading: true, error: null, tab: 'produit' };
+
+      /* Les onze rubriques du passeport. Chacune est rendue à partir du contrat
+         réel de resolveDppPassData. Celles qui n'ont aucune source de données
+         sont affichées comme non publiées, jamais complétées d'office. */
+      const SECTIONS = [
+        { id: 'produit', label: 'Produit' },
+        { id: 'origine', label: 'Origine' },
+        { id: 'matieres', label: 'Matières' },
+        { id: 'composition', label: 'Composition' },
+        { id: 'fabrication', label: 'Fabrication' },
+        { id: 'certifications', label: 'Certifications' },
+        { id: 'circularite', label: 'Circularité' },
+        { id: 'entretien', label: 'Entretien' },
+        { id: 'reparation', label: 'Réparation' },
+        { id: 'tracabilite', label: 'Traçabilité' },
+        { id: 'preuves', label: 'Preuves' },
+      ];
+
+      const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const num = (v, d = 2) => (v === null || v === undefined || Number.isNaN(Number(v)) ? '—' : Number(v).toLocaleString('fr-FR', { maximumFractionDigits: d }));
+
+      /** Une valeur issue d'un repli n'est pas une mesure : on le dit. */
+      const gap = (key) => (state.dpp?.dataGaps || []).includes(key);
+      const gapNote = (label) => `<p class="section-desc" style="margin-top:10px"><strong>Valeur non mesurée.</strong> ${esc(label)}</p>`;
+
+      function absent(title, why) {
+        return `<div class="info-card">
+          <div class="section-title">${esc(title)}</div>
+          <p class="section-desc" style="margin:8px 0 0">${esc(why)}</p>
+        </div>`;
+      }
+
+      async function load() {
+        state.loading = true;
+        state.error = null;
+        render();
+        try {
+          if (state.demo) {
+            const d = demoData();
+            state.dpp = d.dpp;
+            state.links = d.links;
+          } else {
+            if (!state.identifier) throw new Error('missing_identifier');
+            const response = await fetch(`/api/dpp/${encodeURIComponent(state.identifier)}`);
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `requete_echouee_${response.status}`);
+            state.dpp = payload.dpp;
+            state.links = payload.links;
+          }
+          applyJsonLd();
+          document.title = `Passeport Numérique — ${state.dpp.productName} | TRACEFAB`;
+        } catch (error) {
+          state.error = error.message;
+        }
+        state.loading = false;
+        render();
+      }
+
+      /* JSON-LD généré depuis les données réelles. Aucune signature ni empreinte
+         n'est produite : TRACEFAB ne scelle pas cryptographiquement ce contenu. */
+      function applyJsonLd() {
+        const d = state.dpp;
+        if (!d) return;
+        const graph = {
+          '@context': ['https://schema.org'],
+          '@type': 'Product',
+          name: d.productName,
+          sku: d.sku,
+          gtin: d.gtin || undefined,
+          category: d.category,
+          brand: { '@type': 'Brand', name: d.brandName },
+        };
+        if ((d.materials || []).length) {
+          graph.material = d.materials.map((m) => `${num(m.percentage, 0)}% ${m.name}`).join(', ');
+        }
+        if (d.countryOfManufacture && !gap('countryOfManufacture')) graph.countryOfOrigin = d.countryOfManufacture;
+        document.getElementById('dpp-jsonld').textContent = JSON.stringify(graph, null, 2);
+      }
+
+      function demoData() {
+        return {
+          dpp: {
+            productId: 'demo-product-1',
+            brandName: 'Atelier Tracefab',
+            brandLegalName: 'Atelier Tracefab SAS',
+            productName: 'Essentiel coton biologique',
+            productReference: 'AT-ESS-001',
+            sku: 'AT-ESS-001',
+            gtin: '3760000000017',
+            serialNumber: 'DPP-3760000000017-v2',
+            category: 'T-shirt',
+            countryOfManufacture: 'PT',
+            countryOfDesign: 'FR',
+            weightGrams: 165,
+            certifiedComposition: '95% Coton biologique, 5% Élasthanne',
+            materials: [
+              { name: 'Coton biologique', percentage: 95, role: 'shell', originCountry: 'TR' },
+              { name: 'Élasthanne', percentage: 5, role: 'trim', originCountry: 'IT' },
+            ],
+            pefScore: 78,
+            pefGrade: 'B',
+            carbonFootprintKgCo2e: 3.42,
+            waterScarcityM3: 0.85,
+            circularityScore: 85,
+            dppUrl: 'https://tracefab.com/p/3760000000017',
+            digitalLinkUri: 'urn:epc:id:sgtin:3760123.001.2',
+            verificationDate: '2026-10-01',
+            transactionCertificateNumber: 'TC-2026-00431',
+            supplyChainSummary: 'Filature (TR) ➔ Tricotage (PT) ➔ Teinture (PT) ➔ Confection (PT)',
+            careInstructions: 'Lavage en machine à 30°C sur envers avec couleurs similaires. Essorage doux (600 tr/min). Ne pas sécher en machine. Repassage à fer doux.',
+            recyclingInstructions: 'Produit mono-matière hautement recyclable. En fin d’usage, déposer dans une borne textile Re-fashion ou rapporter en magasin.',
+            dataGaps: ['pef', 'carbonFootprint', 'waterScarcity', 'circularity', 'careInstructions', 'recyclingInstructions'],
+          },
+          links: {
+            appleWalletUrl: '/api/dpp/3760000000017/apple-wallet',
+            googleWalletUrl: '/api/dpp/3760000000017/google-wallet',
+            digitalLinkUri: 'urn:epc:id:sgtin:3760123.001.2',
+          },
+        };
+      }
+
+      /* ---------------------------------------------------------------- vues */
+
+      function header() {
+        const d = state.dpp;
+        return `<header class="dpp-header">
+          <div class="brand-id">
+            <div class="brand-mark">tf</div>
+            <div class="brand-text">TRACEFAB<small>Passeport Numérique de Produit</small></div>
+          </div>
+          ${state.demo ? '<span class="product-tag" style="background:#fdf3d7;color:#8f6417">Mode démonstration — données fictives</span>' : ''}
+        </header>
+        <section class="product-hero">
+          <span class="product-tag">${esc(d.category || 'Textile')}</span>
+          <h1 class="product-title">${esc(d.productName)}</h1>
+          <p class="product-summary">${esc(d.brandName)} · Réf. ${esc(d.productReference)}</p>
+          <div class="product-meta-row">
+            <span class="badge-eu">Règlement ESPR — données déclaratives</span>
+            ${d.gtin ? `<span>GTIN ${esc(d.gtin)}</span>` : ''}
+            <span>Mis à jour le ${esc(d.verificationDate || '—')}</span>
+          </div>
+        </section>`;
+      }
+
+      function tabs() {
+        return `<nav class="dpp-tabs" role="tablist" aria-label="Rubriques du passeport">
+          ${SECTIONS.map((s) => `<button type="button" class="dpp-tab-btn${state.tab === s.id ? ' active' : ''}" data-tab="${s.id}" role="tab" aria-selected="${state.tab === s.id}">${esc(s.label)}</button>`).join('')}
+        </nav>`;
+      }
+
+      function viewProduit() {
+        const d = state.dpp;
+        return `<h2 class="section-title">Produit</h2>
+          <p class="section-desc">Identité du produit telle qu'enregistrée par la marque.</p>
+          <div class="info-grid">
+            <div class="info-card"><div class="section-desc">Désignation</div><strong>${esc(d.productName)}</strong></div>
+            <div class="info-card"><div class="section-desc">Référence</div><strong>${esc(d.productReference)}</strong></div>
+            <div class="info-card"><div class="section-desc">SKU</div><strong>${esc(d.sku || '—')}</strong></div>
+            <div class="info-card"><div class="section-desc">GTIN</div><strong>${esc(d.gtin || 'Non attribué')}</strong></div>
+            <div class="info-card"><div class="section-desc">Catégorie</div><strong>${esc(d.category || '—')}</strong></div>
+            <div class="info-card"><div class="section-desc">Masse</div><strong>${gap('weightGrams') ? 'Non renseignée' : num(d.weightGrams, 0) + ' g'}</strong></div>
+            <div class="info-card"><div class="section-desc">Marque</div><strong>${esc(d.brandName)}</strong></div>
+            <div class="info-card"><div class="section-desc">Entité légale</div><strong>${esc(d.brandLegalName)}</strong></div>
+          </div>
+          ${gap('gtin') ? gapNote('Aucun GTIN n’est enregistré pour ce produit ; l’identifiant affiché est le SKU.') : ''}`;
+      }
+
+      function viewOrigine() {
+        const d = state.dpp;
+        return `<h2 class="section-title">Origine</h2>
+          <p class="section-desc">Pays déclarés sur la fiche produit.</p>
+          <div class="info-grid">
+            <div class="info-card"><div class="section-desc">Pays de confection</div><strong>${gap('countryOfManufacture') ? 'Non renseigné' : esc(d.countryOfManufacture)}</strong></div>
+            <div class="info-card"><div class="section-desc">Pays de conception</div><strong>${gap('countryOfDesign') ? 'Non renseigné' : esc(d.countryOfDesign)}</strong></div>
+          </div>
+          ${gap('countryOfManufacture') || gap('countryOfDesign') ? gapNote('Un pays absent de la fiche produit n’est pas déduit.') : ''}`;
+      }
+
+      function viewMatieres() {
+        const d = state.dpp;
+        const mats = d.materials || [];
+        if (!mats.length) {
+          return `<h2 class="section-title">Matières</h2>` + absent('Aucune matière enregistrée', "La nomenclature de ce produit ne contient aucune matière. Rien n'est affiché à la place.");
+        }
+        return `<h2 class="section-title">Matières</h2>
+          <p class="section-desc">${mats.length} matière(s) issue(s) de la nomenclature produit.</p>
+          <div class="info-grid">
+            ${mats.map((m) => `<div class="info-card">
+              <div class="section-desc">${esc(m.role || 'matière')}</div>
+              <strong>${esc(m.name)}</strong>
+              <div class="section-desc" style="margin-top:6px">${num(m.percentage, 0)} %${m.originCountry ? ` · origine ${esc(m.originCountry)}` : ' · origine non renseignée'}</div>
+            </div>`).join('')}
+          </div>`;
+      }
+
+      function viewComposition() {
+        const d = state.dpp;
+        const mats = d.materials || [];
+        const total = mats.reduce((s, m) => s + (Number(m.percentage) || 0), 0);
+        return `<h2 class="section-title">Composition</h2>
+          <p class="section-desc">${esc(d.certifiedComposition)}</p>
+          ${mats.length ? `<div class="composition-card">
+            <div class="comp-bar">
+              ${mats.map((m, i) => `<div class="comp-fill-${(i % 2) + 1}" style="width:${Math.max(0, Math.min(100, Number(m.percentage) || 0))}%" title="${esc(m.name)} — ${num(m.percentage, 0)} %"></div>`).join('')}
+            </div>
+            ${mats.map((m) => `<div class="comp-item"><span class="comp-bullet"></span><span class="comp-item-title">${esc(m.name)}</span><strong>${num(m.percentage, 0)} %</strong></div>`).join('')}
+            <p class="section-desc" style="margin-top:12px">Total déclaré : <strong>${num(total, 0)} %</strong>${Math.abs(total - 100) > 0.5 ? ' — la composition ne totalise pas 100 %.' : ''}</p>
+          </div>` : absent('Composition non publiée', 'Aucune matière n’étant enregistrée, aucune composition ne peut être affichée.')}
+          ${gap('composition') ? gapNote('La composition affichée est un texte par défaut, et non la nomenclature du produit.') : ''}`;
+      }
+
+      function viewFabrication() {
+        const d = state.dpp;
+        const steps = String(d.supplyChainSummary || '').split('➔').map((s) => s.trim()).filter(Boolean);
+        if (!steps.length) {
+          return `<h2 class="section-title">Fabrication</h2>` + absent('Chaîne de fabrication non publiée', 'Aucun nœud de chaîne d’approvisionnement n’est rattaché à ce produit.');
+        }
+        return `<h2 class="section-title">Fabrication</h2>
+          <p class="section-desc">${gap('supplyChain') ? 'Aucun nœud réel n’est rattaché : la séquence ci-dessous est un libellé par défaut.' : steps.length + ' étape(s) rattachée(s) au produit.'}</p>
+          <div class="trace-timeline">
+            ${steps.map((step, i) => {
+              const label = step.split('(')[0].trim();
+              const country = (step.match(/\(([^)]+)\)/) || [])[1];
+              return `<div class="timeline-node">
+                <div class="node-pin"></div>
+                <div class="node-header"><span class="node-tier-tag">Étape ${i + 1}</span><strong>${esc(label)}</strong></div>
+                <div class="node-body"><div class="node-sub">${country ? 'Pays déclaré : ' + esc(country) : 'Pays non renseigné'}</div></div>
+              </div>`;
+            }).join('')}
+          </div>`;
+      }
+
+      function viewCertifications() {
+        const d = state.dpp;
+        if (!d.transactionCertificateNumber) {
+          return `<h2 class="section-title">Certifications</h2>` + absent('Aucun certificat rattaché', "Aucun certificat de transaction n'est associé à ce produit. L'absence est affichée telle quelle.");
+        }
+        return `<h2 class="section-title">Certifications</h2>
+          <p class="section-desc">Certificat de transaction rattaché par le bilan de masse.</p>
+          <div class="info-card">
+            <div class="section-desc">Numéro de certificat</div>
+            <strong>${esc(d.transactionCertificateNumber)}</strong>
+            <p class="section-desc" style="margin-top:10px">Ce numéro atteste d'une allocation de matière certifiée. Il ne couvre pas les autres référentiels, et TRACEFAB n'expose ici ni l'échéance ni l'organisme émetteur.</p>
+          </div>`;
+      }
+
+      function viewCircularite() {
+        const d = state.dpp;
+        return `<h2 class="section-title">Circularité & impact</h2>
+          <p class="section-desc">Scores issus de l'évaluation PEF lorsque celle-ci existe.</p>
+          <div class="info-grid">
+            <div class="info-card"><div class="section-desc">Éco-Score Textile Européen (PEF)</div><strong>${gap('pef') ? 'Non mesuré' : num(d.pefScore, 0) + ' · ' + esc(d.pefGrade)}</strong></div>
+            <div class="info-card"><div class="section-desc">Empreinte carbone</div><strong>${gap('carbonFootprint') ? 'Non mesurée' : num(d.carbonFootprintKgCo2e) + ' kg CO₂e'}</strong></div>
+            <div class="info-card"><div class="section-desc">Stress hydrique</div><strong>${gap('waterScarcity') ? 'Non mesuré' : num(d.waterScarcityM3) + ' m³'}</strong></div>
+            <div class="info-card"><div class="section-desc">Score de circularité</div><strong>${gap('circularity') ? 'Non mesuré' : num(d.circularityScore, 0) + ' / 100'}</strong></div>
+          </div>
+          ${gap('pef') ? gapNote('Aucune évaluation PEF n’est enregistrée pour ce produit : les indicateurs d’impact sont absents plutôt qu’estimés.') : ''}
+          <div class="info-card" style="margin-top:16px">
+            <div class="section-desc">Fin de vie</div>
+            <p class="section-desc" style="margin:8px 0 0">${esc(d.recyclingInstructions || 'Non publié')}</p>
+            ${gap('recyclingInstructions') ? '<p class="section-desc" style="margin-top:10px"><strong>Texte générique.</strong> Cette consigne est identique pour tous les produits et ne provient d’aucune saisie.</p>' : ''}
+          </div>`;
+      }
+
+      function viewEntretien() {
+        const d = state.dpp;
+        return `<h2 class="section-title">Entretien</h2>
+          ${d.careInstructions ? `<div class="info-card"><p class="section-desc" style="margin:0">${esc(d.careInstructions)}</p></div>` : absent('Entretien non publié', 'Aucune instruction d’entretien n’est enregistrée.')}
+          ${gap('careInstructions') ? gapNote('Cette consigne est identique pour tous les produits : TRACEFAB ne stocke pas encore d’instruction d’entretien par produit.') : ''}`;
+      }
+
+      function viewReparation() {
+        return `<h2 class="section-title">Réparation</h2>` + absent(
+          'Réparabilité non publiée',
+          "TRACEFAB ne stocke aucun indice de réparabilité ni aucune offre de réparation : le schéma de base ne contient pas ces champs. Rien n'est affiché à la place, et aucun score n'est estimé.",
+        );
+      }
+
+      function viewTracabilite() {
+        const d = state.dpp;
+        return `<h2 class="section-title">Traçabilité</h2>
+          <p class="section-desc">Identifiants permettant de relier ce passeport à son produit.</p>
+          <div class="info-grid">
+            <div class="info-card"><div class="section-desc">Identifiant GS1 Digital Link</div><div class="code-box">${esc(d.digitalLinkUri || '—')}</div></div>
+            <div class="info-card"><div class="section-desc">Numéro de série du passeport</div><div class="code-box">${esc(d.serialNumber || '—')}</div></div>
+            <div class="info-card"><div class="section-desc">Adresse du passeport</div><div class="code-box">${esc(d.dppUrl || '—')}</div></div>
+          </div>
+          <p class="section-desc" style="margin-top:14px">La chaîne d'étapes figure à la rubrique Fabrication. TRACEFAB ne stocke pas de lot : la traçabilité
+          publiée s'arrête aux nœuds réellement rattachés au produit.</p>`;
+      }
+
+      function viewPreuves() {
+        return `<h2 class="section-title">Preuves</h2>` + absent(
+          'Aucune preuve publiée',
+          "Le passeport public n'expose aucun document : la route qui le produit ne joint ni certificat, ni rapport d'essai, ni déclaration. Les preuves existent dans TRACEFAB côté marque, mais leur publication consommateur n'est pas encore câblée.",
+        );
+      }
+
+      function footer() {
+        const d = state.dpp;
+        const links = state.links || {};
+        return `<footer class="dpp-footer">
+          <div>
+            <div class="section-desc">Cadres applicables : Loi AGEC &amp; ESPR. Ce passeport restitue les données déclarées dans
+            TRACEFAB ; il ne constitue ni une certification, ni une attestation de conformité à ces cadres. Les rubriques sans
+            donnée sont affichées comme absentes.</div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+            ${links.appleWalletUrl ? `<a class="btn-action" href="${esc(links.appleWalletUrl)}">Apple Wallet</a>` : ''}
+            ${links.googleWalletUrl ? `<a class="btn-action" href="${esc(links.googleWalletUrl)}">Google Wallet</a>` : ''}
+            ${state.demo ? '' : `<a class="btn-action btn-action-primary" href="/dpp/?gtin=${encodeURIComponent(state.identifier)}">Lien permanent</a>`}
+          </div>
+          <div class="section-desc" style="margin-top:14px">TRACEFAB · ${esc(d.brandLegalName)}</div>
+        </footer>`;
+      }
+
+      const VIEWS = {
+        produit: viewProduit, origine: viewOrigine, matieres: viewMatieres, composition: viewComposition,
+        fabrication: viewFabrication, certifications: viewCertifications, circularite: viewCircularite,
+        entretien: viewEntretien, reparation: viewReparation, tracabilite: viewTracabilite, preuves: viewPreuves,
       };
 
-      tabs.forEach(btn => {
-        btn.addEventListener('click', () => {
-          tabs.forEach(t => t.classList.remove('active'));
-          btn.classList.add('active');
-          const target = btn.dataset.tab;
-          Object.keys(panels).forEach(k => {
-            if (panels[k]) panels[k].style.display = (k === target) ? 'block' : 'none';
-          });
-        });
-      });
+      /* ---------------------------------------------------------------- rendu */
 
-      // JSON-LD Export and Modal
-      const jsonContent = document.getElementById('dpp-jsonld').textContent.trim();
-      const modal = document.getElementById('modal-jsonld');
-      const codeContainer = document.getElementById('json-code-container');
-      const btnViewRaw = document.getElementById('btn-view-raw');
-      const btnClose = document.getElementById('modal-close');
-      const btnExport = document.getElementById('btn-export-jsonld');
+      function render() {
+        const root = document.getElementById('dpp');
+        root.setAttribute('aria-busy', state.loading ? 'true' : 'false');
 
-      btnViewRaw.addEventListener('click', () => {
-        try {
-          const formatted = JSON.stringify(JSON.parse(jsonContent), null, 2);
-          codeContainer.textContent = formatted;
-        } catch (e) {
-          codeContainer.textContent = jsonContent;
+        if (state.loading) {
+          root.innerHTML = '<p class="section-desc">Chargement du passeport…</p>';
+          return;
         }
-        modal.classList.add('open');
-      });
+        if (state.error === 'missing_identifier') {
+          root.innerHTML = `<h1 class="product-title">Passeport introuvable</h1>
+            <p class="section-desc">Aucun identifiant n'a été fourni. Ajoutez <code>?gtin=</code>, <code>?ref=</code> ou <code>?id=</code> à l'adresse,
+            ou <a href="/dpp/?demo=1">ouvrez le passeport de démonstration</a>.</p>`;
+          return;
+        }
+        if (state.error) {
+          root.innerHTML = `<h1 class="product-title">Passeport indisponible</h1>
+            <p class="section-desc">Le passeport n'a pas pu être chargé (${esc(state.error)}). Vérifiez l'identifiant du produit.</p>`;
+          return;
+        }
 
-      btnClose.addEventListener('click', () => modal.classList.remove('open'));
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('open');
-      });
+        const body = (VIEWS[state.tab] || viewProduit)();
+        root.innerHTML = `${header()}${tabs()}<main class="tab-content-panel" style="display:block">${body}</main>${footer()}`;
+        bind();
+      }
 
-      btnExport.addEventListener('click', () => {
-        const blob = new Blob([jsonContent], { type: 'application/ld+json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'dpp-at-ess-001-cirpass.jsonld';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
+      function bind() {
+        document.querySelectorAll('.dpp-tab-btn').forEach((btn) => {
+          btn.addEventListener('click', () => { state.tab = btn.dataset.tab; render(); });
+        });
+      }
+
+      window.tracefabPublicDpp = { state, load, SECTIONS };
+      load();
     })();
   </script>
-
-  <script>
-    const dppLangs = {
-      en: {
-        badgeEu: "EU ESPR / DPP Compliant",
-        verifiedOrigin: "✓ Verified Provenance",
-        composition: "Material Composition",
-        traceability: "Supply Chain Traceability",
-        operations: "Operations & Facilities",
-        circularity: "Circularity & Care",
-        repairScore: "Repairability Index",
-        carbon: "Environmental Footprint",
-        passcode: "SHA-256 Verified Seal",
-        viewCert: "View Audit Certificate"
-      },
-      fr: {
-        badgeEu: "EU ESPR / DPP Conforme",
-        verifiedOrigin: "✓ Provenance Vérifiée",
-        composition: "Composition des Matières",
-        traceability: "Traçabilité de la Chaîne",
-        operations: "Opérations & Ateliers",
-        circularity: "Circularité & Entretien",
-        repairScore: "Indice de Réparabilité",
-        carbon: "Empreinte Environnementale",
-        passcode: "Sceau Scellé SHA-256",
-        viewCert: "Voir le certificat d'audit"
-      },
-      de: {
-        badgeEu: "EU ESPR / DPP Konform",
-        verifiedOrigin: "✓ Verifizierte Herkunft",
-        composition: "Materialzusammensetzung",
-        traceability: "Lieferketten-Rückverfolgbarkeit",
-        operations: "Betriebe & Werkstätten",
-        circularity: "Kreislaufwirtschaft & Pflege",
-        repairScore: "Reparierbarkeitsindex",
-        carbon: "Ökologischer Fußabdruck",
-        passcode: "SHA-256 Verifiziertes Siegel",
-        viewCert: "Audit-Zertifikat ansehen"
-      },
-      it: {
-        badgeEu: "EU ESPR / DPP Conforme",
-        verifiedOrigin: "✓ Provenienza Verificata",
-        composition: "Composizione Materiali",
-        traceability: "Tracciabilità della Filiera",
-        operations: "Operazioni & Stabilimenti",
-        circularity: "Circolarità & Cura",
-        repairScore: "Indice di Riparabilità",
-        carbon: "Impronta Ambientale",
-        passcode: "Sigillo Verificato SHA-256",
-        viewCert: "Visualizza certificato audit"
-      },
-      es: {
-        badgeEu: "EU ESPR / DPP Conforme",
-        verifiedOrigin: "✓ Procedencia Verificada",
-        composition: "Composición de Materiales",
-        traceability: "Trazabilidad de la Cadena",
-        operations: "Operaciones e Instalaciones",
-        circularity: "Circularidad y Cuidado",
-        repairScore: "Índice de Reparabilidad",
-        carbon: "Huella Ambiental",
-        passcode: "Sello Verificado SHA-256",
-        viewCert: "Ver certificado de auditoría"
-      },
-      nl: {
-        badgeEu: "EU ESPR / DPP Conform",
-        verifiedOrigin: "✓ Geverifieerde Herkomst",
-        composition: "Materiaalsamenstelling",
-        traceability: "Traceerbaarheid Toeleveringsketen",
-        operations: "Bewerkingen & Faciliteiten",
-        circularity: "Circulariteit & Onderhoud",
-        repairScore: "Repareerbaarheidsindex",
-        carbon: "Milieu-voetafdruk",
-        passcode: "SHA-256 Geverifieerd Zegel",
-        viewCert: "Auditcertificaat bekijken"
-      },
-      pt: {
-        badgeEu: "EU ESPR / DPP Conforme",
-        verifiedOrigin: "✓ Proveniência Verificada",
-        composition: "Composição dos Materiais",
-        traceability: "Rastreabilidade da Cadeia",
-        operations: "Operações & Instalações",
-        circularity: "Circularidade & Cuidados",
-        repairScore: "Índice de Reparabilidade",
-        carbon: "Pegada Ambiental",
-        passcode: "Selo Verificado SHA-256",
-        viewCert: "Ver certificado de auditoria"
-      }
-    };
-
-    function applyDppLang(lang) {
-      if (!dppLangs[lang]) lang = 'en';
-      localStorage.setItem('tracefab_lang', lang);
-      document.documentElement.lang = lang;
-      const t = dppLangs[lang];
-      const badge = document.querySelector('.badge-eu');
-      if (badge) badge.innerHTML = `<svg fill="currentColor" viewBox="0 0 20 20" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg> ` + t.badgeEu;
-      const select = document.getElementById('dpp-lang-select');
-      if (select) select.value = lang;
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      const saved = localStorage.getItem('tracefab_lang') || 'en';
-      applyDppLang(saved);
-    });
-  </script>
-
 </body>
 </html>
-    <!-- TAB 4: Réparabilité, Recyclabilité & Économie Circulaire (ESPR Art. 10 & AGEC) -->
-    <section class="tab-content-panel" id="panel-circularity" style="display:none;">
-      <div class="section-title">
-        <span>Réparabilité, Recyclabilité & Seconde Vie</span>
-        <span style="font-size:12px;background:#e0f2fe;color:#0284c7;padding:3px 10px;border-radius:99px;font-weight:700;">Conforme ESPR 2026</span>
-      </div>
-      <p class="section-desc">Instructions officielles de prolongation de vie, indice de réparabilité textile et filières de reprise agréées.</p>
-
-      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Indice de Réparabilité Textile</div>
-          <div style="font-size:26px;font-weight:850;color:#0b7656;font-family:var(--font-mono, monospace);">9.2 / 10</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Points d'arrêt renforcés, col bord-côte remplaçable, fil coton monomatériau.</div>
-        </div>
-        <div style="text-align:right;">
-          <span style="display:inline-block;padding:6px 14px;background:#eaf5ef;color:#0b7656;border-radius:99px;font-size:12px;font-weight:800;">✓ Recyclable à 100% (Mono-Fibre)</span>
-        </div>
-      </div>
-
-      <div class="info-grid" style="margin-bottom:18px;">
-        <div class="info-card">
-          <span>Démontabilité & Pièces</span>
-          <strong>Col & Ourlet</strong>
-          <p>Coutures chaînette standard détachables pour réparation simplifiée en atelier agréé.</p>
-        </div>
-        <div class="info-card">
-          <span>Bonus Réparation (Refashion)</span>
-          <strong>Éligible -6 € à -15 €</strong>
-          <p>Prise en charge directe chez les retoucheurs certifiés du réseau Refashion / AGEC.</p>
-        </div>
-      </div>
-
-      <div class="info-card" style="margin-bottom:18px;">
-        <span>Fin de Vie & Seconde Vie</span>
-        <strong>Consignes de Tri & Collecte Sélective</strong>
-        <p style="margin-top:6px;line-height:1.5;">
-          Ne pas jeter avec les ordures ménagères. Déposez ce t-shirt dans l'un des 46 000 points d'apport volontaire (PAV) Refashion ou rapportez-le en boutique partenaire pour réemploi ou effilochage mécanique boucle-fermée.
-        </p>
-      </div>
-    </section>
-
-    <!-- TAB 6: Résolution GS1 Digital Link & Enregistrement Blockchain/Neon -->
-    <section class="tab-content-panel" id="panel-gs1" style="display:none;">
-      <div class="section-title">
-        <span>Résolution GS1 Digital Link & QR Code</span>
-        <span style="font-size:12px;background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:99px;font-weight:700;">Standard GS1 2026</span>
-      </div>
-      <p class="section-desc">Architecture d'URI normalisée ISO/IEC 15459 reliant le QR code physique cousu sur l'étiquette au passeport numérique sécurisé.</p>
-
-      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:20px;margin-bottom:18px;">
-        <div style="display:flex;align-items:center;gap:18px;margin-bottom:16px;">
-          <div style="width:72px;height:72px;background:#050f0b;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;">
-            ☷
-          </div>
-          <div>
-            <div style="font-size:11px;font-family:var(--font-mono, monospace);color:var(--text-muted);text-transform:uppercase;">URI GS1 Digital Link Officielle :</div>
-            <code style="display:block;margin-top:4px;font-size:12.5px;color:#0b7656;word-break:break-all;">https://id.tracefab.com/01/03760123456789/21/2026-FW-001</code>
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="info-card">
-            <span>Code Application (AI 01)</span>
-            <strong>GTIN: 03760123456789</strong>
-            <p>Identifiant mondial du style textile.</p>
-          </div>
-          <div class="info-card">
-            <span>Numéro de Série (AI 21)</span>
-            <strong>2026-FW-001</strong>
-            <p>Granularité au lot de confection certifié.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    

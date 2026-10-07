@@ -30,6 +30,13 @@ export interface DppPassData {
   supplyChainSummary?: string;
   careInstructions?: string;
   recyclingInstructions?: string;
+  /**
+   * Valeurs substituées par un repli faute de donnée en base. Additif et
+   * optionnel : les consommateurs existants continuent de compiler. Toute
+   * interface grand public doit traiter ces champs comme absents, jamais comme
+   * mesurés — un chiffre de repli n'est pas une mesure.
+   */
+  dataGaps?: string[];
 }
 
 export interface AppleWalletOptions {

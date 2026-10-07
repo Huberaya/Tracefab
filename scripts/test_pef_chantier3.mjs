@@ -150,7 +150,11 @@ console.log('✓ Brand Console PEF integration verified');
 console.log('6. Checking DPP consumer passport...');
 const dppFile = await readFile('dpp/index.html', 'utf8');
 assert.ok(dppFile.includes('Éco-Score Textile Européen'), 'Must have official Éco-Score in DPP passport');
-assert.ok(dppFile.includes('Conforme Loi AGEC & ESPR'), 'Must mention EU ESPR & AGEC compliance');
+// Le passeport doit nommer les cadres applicables, sans en revendiquer la conformité :
+// le schéma TRACEFAB ne contient aucun champ AGEC Art. 13, une telle revendication
+// serait factuellement fausse. L'ancienne assertion exigeait « Conforme Loi AGEC & ESPR ».
+assert.ok(dppFile.includes('Loi AGEC') && dppFile.includes('ESPR'), 'Must name the AGEC & ESPR frameworks');
+assert.ok(!dppFile.includes('Conforme Loi AGEC'), 'Must not claim AGEC conformity it cannot evidence');
 console.log('✓ DPP consumer passport integration verified');
 
 console.log('✓ Chantier 3 (Moteur d’Agrégation ESG & Calculateur PEF/ACV) verified successfully!');

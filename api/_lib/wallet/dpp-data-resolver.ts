@@ -56,7 +56,12 @@ export async function resolveDppPassData(
     return null;
   }
 
+  /** Chaque repli est tracé : la valeur reste renvoyée pour ne casser aucun
+   *  consommateur existant, mais l'absence de donnée réelle est déclarée. */
+  const dataGaps: string[] = [];
+
   const gtin = product.product_identifiers?.find((i: any) => i.identifier_type === 'gtin')?.identifier_value || product.sku || '';
+  if (!product.product_identifiers?.some((i: any) => i.identifier_type === 'gtin')) dataGaps.push('gtin');
   const pef = product.product_pef_assessments?.[0];
   const mb = product.mass_balance_reconciliations?.[0];
 
@@ -70,12 +75,14 @@ export async function resolveDppPassData(
   const compSummary = materials.length
     ? materials.map((m: any) => `${m.percentage}% ${m.name}`).join(', ')
     : '100% Coton peigné';
+  if (!materials.length) dataGaps.push('composition');
 
   // Format supply chain summary
   const nodes = product.supply_chain_nodes || [];
   const supplyChainSummary = nodes.length
     ? nodes.map((n: any) => `${n.label || 'Étape'} (${n.process_code || n.node_type}${n.supplier_sites?.country_code ? `, ${n.supplier_sites.country_code}` : ''})`).join(' ➔ ')
     : 'Filature ➔ Tissage ➔ Ennoblissement ➔ Confection auditée';
+  if (!nodes.length) dataGaps.push('supplyChain');
 
   const dppUrl = `${baseUrl}/p/${gtin || product.reference}`;
   const digitalLinkUri = `urn:epc:id:sgtin:3760123.${product.reference.replace(/[^0-9]/g, '').slice(-3) || '001'}.${product.version || 1}`;
@@ -93,6 +100,9 @@ export async function resolveDppPassData(
     countryOfManufacture: product.country_of_manufacture || 'PT',
     countryOfDesign: product.country_of_design || 'FR',
     weightGrams: product.weight_grams ? Number(product.weight_grams) : 250,
+    ...(!product.country_of_manufacture && (dataGaps.push('countryOfManufacture'), {})),
+    ...(!product.country_of_design && (dataGaps.push('countryOfDesign'), {})),
+    ...(!product.weight_grams && (dataGaps.push('weightGrams'), {})),
     certifiedComposition: compSummary,
     materials,
     pefScore: pef ? Number(pef.pef_eco_score) : 78,
@@ -100,6 +110,7 @@ export async function resolveDppPassData(
     carbonFootprintKgCo2e: pef ? Number(pef.carbon_footprint_kg_co2e) : 3.42,
     waterScarcityM3: pef ? Number(pef.water_scarcity_m3) : 0.85,
     circularityScore: pef ? Number(pef.circularity_score) : 85,
+    ...(!pef && (dataGaps.push('pef', 'carbonFootprint', 'waterScarcity', 'circularity'), {})),
     dppUrl,
     digitalLinkUri,
     verificationDate: (product.updated_at || new Date()).toISOString().slice(0, 10),
@@ -107,5 +118,8 @@ export async function resolveDppPassData(
     supplyChainSummary,
     careInstructions: 'Lavage en machine à 30°C sur envers avec couleurs similaires. Essorage doux (600 tr/min). Ne pas sécher en machine. Repassage à fer doux.',
     recyclingInstructions: 'Produit mono-matière hautement recyclable. En fin d’usage, déposer dans une borne textile Re-fashion ou rapporter en magasin.',
+    // L'entretien et le recyclage sont aujourd'hui des textes constants, identiques
+    // pour tous les produits : ils ne proviennent d'aucune saisie.
+    dataGaps: [...dataGaps, 'careInstructions', 'recyclingInstructions'],
   };
 }
