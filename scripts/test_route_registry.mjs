@@ -53,6 +53,7 @@ const SURFACES = [
   'dpp/index.html',
   'passport/index.html',
   'evidence/index.html',
+  'traceability/index.html',
 ];
 
 const surfaceCalls = new Map();

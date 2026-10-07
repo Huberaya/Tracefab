@@ -1,0 +1,1520 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRACEFAB — Traceability</title>
+  <meta name="description" content="Traçabilité TRACEFAB : bilan de masse certifié contre production réelle, intégrité de la chaîne d'audit et audit de chaîne de lots.">
+  <style>
+/* TF:DS:BEGIN */
+/* ==========================================================================
+   TRACEFAB DESIGN SYSTEM — v3.0
+   « Simple to understand. Deep to explore. Powerful to operate. »
+
+   SOURCE OF TRUTH. Do not hand-edit the copy inlined in the static surfaces:
+   edit this file, then run `npm run ds:sync` to propagate it.
+   `npm run ds:check` fails if a surface drifted from this file.
+
+   Layers
+     0. Reset & primitives
+     1. Tokens (color, type, space, radius, shadow, motion, z, trust levels)
+     2. Surface contexts (light / dark) — components read context vars only
+     3. Typography
+     4. Layout primitives
+     5. Components (button, card, badge, metric, nav, chip, rule)
+     6. Textile textures
+     7. Motion + accessibility
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. RESET
+   -------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* --------------------------------------------------------------------------
+   1. TOKENS
+   -------------------------------------------------------------------------- */
+:root {
+  /* --- Charcoal / ink: the neutral spine. The design must hold up in
+         near-monochrome; colour is information, never decoration. --- */
+  --tf-ink-900: #0a0f0c;
+  --tf-ink-800: #111815;
+  --tf-ink-700: #1b2420;
+  --tf-ink-600: #2b3732;
+  --tf-ink-500: #46544d;
+  --tf-ink-400: #5a6860;
+  --tf-ink-300: #647264;   /* dimmest TEXT level — 4.56:1 on paper-2. #97a49d was 2.33:1. */
+
+  /* --- Deep forest: institutional anchor --- */
+  --tf-forest-900: #06120d;
+  --tf-forest-800: #0a1f16;
+  --tf-forest-700: #0f2e20;
+  --tf-forest-600: #16402d;
+  --tf-forest-500: #1c5a3e;
+  --tf-forest-400: #2a7a55;
+
+  /* --- Off white / paper --- */
+  --tf-paper:      #fafaf7;
+  --tf-paper-2:    #f3f3ee;
+  --tf-paper-3:    #ebeae3;
+  --tf-paper-line: #e0dfd6;
+  --tf-white:      #ffffff;
+
+  /* --- Emerald accent. Sparing: reserved for "verified / live / primary". --- */
+  --tf-emerald-700: #07523e;
+  --tf-emerald-600: #0b7656;
+  --tf-emerald-500: #10b981;
+  --tf-emerald-400: #34d399;
+  --tf-emerald-100: #d9f3e8;
+
+  /* --- Trust scale (6 regulatory levels, per docs/DESIGN_SYSTEM.md §2) --- */
+  --tf-certified:    #047857;  --tf-certified-bg:    #d7f2e6;
+  --tf-verified:     #0b7656;  --tf-verified-bg:     #dff2ea;
+  --tf-documented:   #3f4f8f;  --tf-documented-bg:   #e8ebf8;
+  --tf-declared:     #1f6f9c;  --tf-declared-bg:     #e2f0f8;
+  --tf-review:       #8a5607;  --tf-review-bg:       #fbeed4;
+  --tf-missing:      #b3261e;  --tf-missing-bg:      #fbe4e2;
+
+  /* --- Type --- */
+  --tf-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --tf-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Editorial scale — very large titles, very large numbers, tiny tech labels */
+  --tf-text-display-1: clamp(52px, 8.4vw, 124px);
+  --tf-text-display-2: clamp(40px, 6.2vw, 86px);
+  --tf-text-display-3: clamp(32px, 4.4vw, 58px);
+  --tf-text-h1:        clamp(28px, 3.4vw, 44px);
+  --tf-text-h2:        clamp(23px, 2.5vw, 33px);
+  --tf-text-h3:        clamp(19px, 1.7vw, 22px);
+  --tf-text-lead:      clamp(16px, 1.35vw, 20px);
+  --tf-text-body:      15px;
+  --tf-text-small:     13px;
+  --tf-text-label:     11px;
+  --tf-text-metric-xl: clamp(46px, 6.6vw, 92px);
+  --tf-text-metric-lg: clamp(32px, 4vw, 52px);
+  --tf-text-metric-md: clamp(24px, 2.6vw, 32px);
+
+  --tf-tracking-tight: -0.045em;
+  --tf-tracking-snug:  -0.025em;
+  --tf-tracking-label:  0.14em;
+  --tf-leading-display: 0.98;
+  --tf-leading-tight:   1.14;
+  --tf-leading-body:    1.62;
+
+  /* --- Space (8pt base, editorial rhythm) --- */
+  --tf-space-1: 4px;   --tf-space-2: 8px;   --tf-space-3: 12px;
+  --tf-space-4: 16px;  --tf-space-5: 24px;  --tf-space-6: 32px;
+  --tf-space-7: 48px;  --tf-space-8: 64px;  --tf-space-9: 96px;
+  --tf-space-10: 128px; --tf-space-11: 160px;
+  --tf-section-y: clamp(72px, 10vw, 148px);
+  --tf-gutter: clamp(20px, 5vw, 64px);
+  --tf-shell: 1320px;
+  --tf-shell-wide: 1520px;
+
+  /* --- Radius: precise, architectural — small radii read as engineered --- */
+  --tf-radius-xs: 4px;
+  --tf-radius-sm: 8px;
+  --tf-radius-md: 12px;
+  --tf-radius-lg: 18px;
+  --tf-radius-xl: 26px;
+  --tf-radius-pill: 999px;
+
+  /* --- Shadow --- */
+  --tf-shadow-xs: 0 1px 2px rgba(10, 15, 12, 0.05);
+  --tf-shadow-sm: 0 2px 8px rgba(10, 15, 12, 0.06);
+  --tf-shadow-md: 0 10px 30px -12px rgba(10, 15, 12, 0.16);
+  --tf-shadow-lg: 0 28px 64px -24px rgba(10, 15, 12, 0.26);
+  --tf-shadow-glow: 0 0 0 1px rgba(16, 185, 129, 0.28), 0 12px 40px -12px rgba(16, 185, 129, 0.35);
+
+  /* --- Motion: every animation must explain something --- */
+  --tf-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --tf-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --tf-dur-fast: 140ms;
+  --tf-dur: 260ms;
+  --tf-dur-slow: 520ms;
+  --tf-dur-flow: 3600ms;   /* data-flow along connectors */
+
+  /* --- Z --- */
+  --tf-z-base: 0;
+  --tf-z-sticky: 100;
+  --tf-z-nav: 150;
+  --tf-z-overlay: 200;
+  --tf-z-toast: 300;
+}
+
+/* --------------------------------------------------------------------------
+   2. SURFACE CONTEXTS
+   Components read ONLY the context vars, so the same component markup works
+   on light and dark grounds without duplication.
+   -------------------------------------------------------------------------- */
+.tf-surface,
+:root {
+  --tf-sf-bg:        var(--tf-paper);
+  --tf-sf-bg-alt:    var(--tf-paper-2);
+  --tf-sf-raised:    var(--tf-white);
+  --tf-sf-line:      var(--tf-paper-line);
+  --tf-sf-line-soft: rgba(10, 15, 12, 0.08);
+  --tf-sf-text:      var(--tf-ink-800);
+  --tf-sf-text-mute: var(--tf-ink-400);
+  --tf-sf-text-dim:  var(--tf-ink-300);
+  --tf-sf-accent:    var(--tf-emerald-600);
+  --tf-sf-accent-hi: var(--tf-emerald-500);
+  --tf-sf-shadow:    var(--tf-shadow-sm);
+}
+
+.tf-surface--dark {
+  --tf-sf-bg:        var(--tf-forest-900);
+  --tf-sf-bg-alt:    var(--tf-forest-800);
+  --tf-sf-raised:    rgba(255, 255, 255, 0.045);
+  --tf-sf-line:      rgba(255, 255, 255, 0.12);
+  --tf-sf-line-soft: rgba(255, 255, 255, 0.07);
+  --tf-sf-text:      #f2f6f3;
+  --tf-sf-text-mute: #a8bdb2;
+  --tf-sf-text-dim:  #7d9488;
+  --tf-sf-accent:    var(--tf-emerald-400);
+  --tf-sf-accent-hi: var(--tf-emerald-400);
+  --tf-sf-shadow:    0 10px 40px -18px rgba(0, 0, 0, 0.8);
+
+  background-color: var(--tf-sf-bg);
+  color: var(--tf-sf-text);
+}
+
+.tf-surface--light {
+  background-color: var(--tf-sf-bg);
+  color: var(--tf-sf-text);
+}
+
+/* --------------------------------------------------------------------------
+   3. TYPOGRAPHY
+   -------------------------------------------------------------------------- */
+body {
+  margin: 0;
+  font-family: var(--tf-font-sans);
+  font-size: var(--tf-text-body);
+  line-height: var(--tf-leading-body);
+  color: var(--tf-sf-text);
+  background-color: var(--tf-sf-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.tf-display-1, .tf-display-2, .tf-display-3, .tf-h1, .tf-h2, .tf-h3 {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: var(--tf-tracking-tight);
+  line-height: var(--tf-leading-display);
+  text-wrap: balance;
+}
+.tf-display-1 { font-size: var(--tf-text-display-1); font-weight: 820; }
+.tf-display-2 { font-size: var(--tf-text-display-2); }
+.tf-display-3 { font-size: var(--tf-text-display-3); }
+.tf-h1 { font-size: var(--tf-text-h1); line-height: var(--tf-leading-tight); }
+.tf-h2 { font-size: var(--tf-text-h2); line-height: var(--tf-leading-tight); letter-spacing: var(--tf-tracking-snug); }
+.tf-h3 { font-size: var(--tf-text-h3); font-weight: 700; letter-spacing: var(--tf-tracking-snug); line-height: 1.3; }
+
+.tf-lead {
+  margin: 0;
+  font-size: var(--tf-text-lead);
+  line-height: 1.6;
+  color: var(--tf-sf-text-mute);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+.tf-body { font-size: var(--tf-text-body); line-height: var(--tf-leading-body); color: var(--tf-sf-text-mute); }
+.tf-small { font-size: var(--tf-text-small); color: var(--tf-sf-text-mute); }
+
+/* Technical label — the small caps mono voice of the system */
+.tf-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--tf-font-mono);
+  font-size: var(--tf-text-label);
+  font-weight: 600;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-text-mute);
+}
+.tf-label--accent { color: var(--tf-sf-accent); }
+
+/* Numbers: tabular, so dashboards do not jitter */
+.tf-metric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: var(--tf-tracking-tight);
+  line-height: 0.9;
+  font-weight: 800;
+  margin: 0;
+}
+.tf-metric--xl { font-size: var(--tf-text-metric-xl); }
+.tf-metric--lg { font-size: var(--tf-text-metric-lg); }
+.tf-metric--md { font-size: var(--tf-text-metric-md); }
+
+.tf-code {
+  font-family: var(--tf-font-mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  padding: 2px 7px;
+  border-radius: var(--tf-radius-xs);
+  background: var(--tf-sf-line-soft);
+  border: 1px solid var(--tf-sf-line);
+  color: var(--tf-sf-text);
+  white-space: nowrap;
+}
+
+.tf-accent { color: var(--tf-sf-accent); }
+
+/* --------------------------------------------------------------------------
+   4. LAYOUT PRIMITIVES
+   -------------------------------------------------------------------------- */
+.tf-shell {
+  width: min(var(--tf-shell), 100% - (var(--tf-gutter) * 2));
+  margin-inline: auto;
+}
+.tf-shell--wide { width: min(var(--tf-shell-wide), 100% - (var(--tf-gutter) * 2)); }
+
+.tf-section { padding-block: var(--tf-section-y); position: relative; }
+
+.tf-stack { display: flex; flex-direction: column; }
+.tf-stack-2 { gap: var(--tf-space-2); }
+.tf-stack-3 { gap: var(--tf-space-3); }
+.tf-stack-4 { gap: var(--tf-space-4); }
+.tf-stack-5 { gap: var(--tf-space-5); }
+.tf-stack-6 { gap: var(--tf-space-6); }
+.tf-stack-7 { gap: var(--tf-space-7); }
+
+.tf-row { display: flex; align-items: center; }
+.tf-row--gap-3 { gap: var(--tf-space-3); }
+.tf-row--gap-4 { gap: var(--tf-space-4); }
+.tf-row--between { justify-content: space-between; }
+.tf-row--wrap { flex-wrap: wrap; }
+
+.tf-grid { display: grid; gap: var(--tf-space-5); }
+.tf-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tf-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tf-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.tf-rule {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: var(--tf-sf-line);
+}
+
+/* Section heading block: tiny label, monumental title, measured lead */
+.tf-heading { display: flex; flex-direction: column; gap: var(--tf-space-5); max-width: 900px; }
+.tf-heading--center { margin-inline: auto; text-align: center; align-items: center; }
+.tf-heading--center .tf-lead { margin-inline: auto; }
+
+/* --------------------------------------------------------------------------
+   5. COMPONENTS
+   -------------------------------------------------------------------------- */
+
+/* --- Buttons ---------------------------------------------------------- */
+.tf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 24px;
+  border-radius: var(--tf-radius-pill);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--tf-dur) var(--tf-ease),
+              color var(--tf-dur) var(--tf-ease),
+              border-color var(--tf-dur) var(--tf-ease),
+              transform var(--tf-dur-fast) var(--tf-ease),
+              box-shadow var(--tf-dur) var(--tf-ease);
+}
+.tf-btn:hover { transform: translateY(-1px); }
+.tf-btn:active { transform: translateY(0); }
+.tf-btn:focus-visible {
+  outline: 2px solid var(--tf-sf-accent-hi);
+  outline-offset: 3px;
+}
+
+.tf-btn--primary {
+  background: var(--tf-emerald-600);
+  color: #ffffff;
+  box-shadow: 0 8px 24px -10px rgba(11, 118, 86, 0.7);
+}
+.tf-btn--primary:hover { background: var(--tf-emerald-700); }
+
+.tf-btn--dark {
+  background: var(--tf-ink-800);
+  color: #ffffff;
+}
+.tf-btn--dark:hover { background: var(--tf-ink-900); }
+
+.tf-btn--ghost {
+  background: transparent;
+  color: var(--tf-sf-text);
+  border-color: var(--tf-sf-line);
+}
+.tf-btn--ghost:hover { border-color: var(--tf-sf-text-mute); background: var(--tf-sf-line-soft); }
+
+.tf-btn--quiet {
+  background: transparent;
+  color: var(--tf-sf-text);
+  padding-inline: 4px;
+}
+.tf-btn--quiet:hover { color: var(--tf-sf-accent); }
+
+.tf-btn--lg { padding: 16px 30px; font-size: 15px; }
+.tf-btn--sm { padding: 9px 16px; font-size: 13px; }
+
+/* --- Cards ------------------------------------------------------------ */
+.tf-card {
+  background: var(--tf-sf-raised);
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-lg);
+  box-shadow: var(--tf-sf-shadow);
+  padding: var(--tf-space-6);
+  transition: border-color var(--tf-dur) var(--tf-ease),
+              box-shadow var(--tf-dur) var(--tf-ease),
+              transform var(--tf-dur) var(--tf-ease);
+}
+.tf-card--hover:hover {
+  border-color: var(--tf-sf-text-dim);
+  box-shadow: var(--tf-shadow-md);
+  transform: translateY(-2px);
+}
+.tf-card--flush { padding: 0; overflow: hidden; }
+.tf-card--accent { border-left: 3px solid var(--tf-sf-accent); }
+
+/* --- Badges / trust pills --------------------------------------------- */
+.tf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--tf-radius-pill);
+  font-family: var(--tf-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tf-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.tf-badge--plain::before { display: none; }
+
+.tf-badge--certified   { background: var(--tf-certified-bg);   color: var(--tf-certified); }
+.tf-badge--verified    { background: var(--tf-verified-bg);    color: var(--tf-verified); }
+.tf-badge--documented  { background: var(--tf-documented-bg);  color: var(--tf-documented); }
+.tf-badge--declared    { background: var(--tf-declared-bg);    color: var(--tf-declared); }
+.tf-badge--review      { background: var(--tf-review-bg);      color: var(--tf-review); }
+.tf-badge--missing     { background: var(--tf-missing-bg);     color: var(--tf-missing); }
+.tf-badge--neutral     { background: var(--tf-sf-line-soft);   color: var(--tf-sf-text-mute); }
+
+/* --- Metric block: very large number + tiny technical label ------------ */
+.tf-metric-block { display: flex; flex-direction: column; gap: 10px; }
+.tf-metric-block .tf-label { margin-top: 2px; }
+
+/* --- Chip -------------------------------------------------------------- */
+.tf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--tf-radius-xs);
+  border: 1px solid var(--tf-sf-line);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tf-sf-text-mute);
+  background: var(--tf-sf-line-soft);
+}
+
+/* --- Eyebrow capsule (hero label) -------------------------------------- */
+.tf-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  border-radius: var(--tf-radius-pill);
+  border: 1px solid var(--tf-sf-line);
+  background: var(--tf-sf-line-soft);
+  font-family: var(--tf-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-accent);
+}
+.tf-capsule__beacon {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tf-sf-accent-hi);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tf-sf-accent-hi) 22%, transparent);
+}
+
+/* --- Demo-data marker: demonstration values must never be mistaken
+         for production data (brief §8). ---------------------------------- */
+.tf-demo-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: var(--tf-radius-xs);
+  border: 1px dashed var(--tf-sf-line);
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tf-sf-text-mute);
+}
+
+/* --------------------------------------------------------------------------
+   5b. APPLICATION LAYER
+   The marketing system above is editorial: monumental type, generous air.
+   A console is the opposite — dense, scannable, keyboard-fast. Same tokens,
+   different density. Every app surface reads from here so Brand Console,
+   Supplier Portal, Quality Center and Operations cannot drift apart.
+   -------------------------------------------------------------------------- */
+
+/* --- brand mark (shared by the marketing header and the app chrome) ------- */
+.tf-wordmark { display: inline-flex; align-items: center; gap: 10px; flex: none; }
+.tf-wordmark__mark {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-emerald-600);
+  color: #fff;
+  font-family: var(--tf-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.tf-wordmark__name {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* --- app shell ----------------------------------------------------------- */
+.tf-app {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--tf-sf-bg);
+  color: var(--tf-sf-text);
+}
+.tf-app__side {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-5);
+  padding: var(--tf-space-5) var(--tf-space-4);
+  border-right: 1px solid var(--tf-sf-line);
+  background: var(--tf-sf-bg-alt);
+}
+.tf-app__main { min-width: 0; display: flex; flex-direction: column; }
+
+.tf-app__topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--tf-z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-4);
+  padding: var(--tf-space-4) var(--tf-space-6);
+  border-bottom: 1px solid var(--tf-sf-line);
+  background: color-mix(in srgb, var(--tf-sf-bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+.tf-app__body { padding: var(--tf-space-6); display: flex; flex-direction: column; gap: var(--tf-space-6); }
+
+/* --- side navigation ----------------------------------------------------- */
+.tf-sidenav { display: flex; flex-direction: column; gap: 2px; }
+.tf-sidenav__group {
+  margin-top: var(--tf-space-4);
+  margin-bottom: var(--tf-space-2);
+  font-family: var(--tf-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-text-dim);
+}
+.tf-sidenav__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--tf-radius-sm);
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--tf-sf-text-mute);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  transition: background-color var(--tf-dur-fast) var(--tf-ease), color var(--tf-dur-fast) var(--tf-ease);
+}
+.tf-sidenav__link:hover { background: var(--tf-sf-line-soft); color: var(--tf-sf-text); }
+.tf-sidenav__link.is-on {
+  background: var(--tf-sf-line-soft);
+  color: var(--tf-sf-text);
+  font-weight: 700;
+  box-shadow: inset 2px 0 0 var(--tf-sf-accent);
+}
+.tf-sidenav__count {
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-sf-text-dim);
+}
+
+/* --- dense metric tile --------------------------------------------------- */
+.tf-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--tf-space-4);
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-sf-raised);
+}
+.tf-tile__v {
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: var(--tf-tracking-tight);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.tf-tile--alert { border-color: color-mix(in srgb, var(--tf-missing) 45%, var(--tf-sf-line)); }
+.tf-tile--alert .tf-tile__v { color: var(--tf-missing); }
+.tf-tile--warn { border-color: color-mix(in srgb, var(--tf-review) 45%, var(--tf-sf-line)); }
+.tf-tile--warn .tf-tile__v { color: var(--tf-review); }
+.tf-tilegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: var(--tf-space-3);
+}
+
+/* --- data table ---------------------------------------------------------- */
+.tf-tablewrap { overflow-x: auto; border: 1px solid var(--tf-sf-line); border-radius: var(--tf-radius-md); background: var(--tf-sf-raised); }
+.tf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tf-table th {
+  position: sticky; top: 0;
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--tf-sf-bg-alt);
+  border-bottom: 1px solid var(--tf-sf-line);
+  font-family: var(--tf-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-text-mute);
+  white-space: nowrap;
+}
+.tf-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tf-sf-line-soft);
+  vertical-align: top;
+  color: var(--tf-sf-text-mute);
+}
+.tf-table tbody tr:last-child td { border-bottom: 0; }
+.tf-table tbody tr { transition: background-color var(--tf-dur-fast) var(--tf-ease); }
+.tf-table tbody tr:hover { background: var(--tf-sf-line-soft); }
+.tf-table strong { color: var(--tf-sf-text); font-weight: 650; }
+.tf-table .tf-sub { display: block; margin-top: 3px; font-size: 11px; color: var(--tf-sf-text-dim); }
+.tf-table .tf-num { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; color: var(--tf-sf-text); }
+
+/* --- filters & form controls --------------------------------------------- */
+.tf-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tf-space-3); }
+.tf-field-inline { display: flex; flex-direction: column; gap: 5px; }
+.tf-select, .tf-input, .tf-textarea {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-sf-raised);
+  color: var(--tf-sf-text);
+  min-width: 150px;
+}
+.tf-textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+.tf-select:focus-visible, .tf-input:focus-visible, .tf-textarea:focus-visible {
+  outline: 2px solid var(--tf-sf-accent-hi);
+  outline-offset: 1px;
+}
+
+/* --- workflow status ----------------------------------------------------- */
+.tf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: var(--tf-radius-pill);
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tf-status--requested { background: var(--tf-declared-bg); color: var(--tf-declared); }
+.tf-status--submitted { background: var(--tf-documented-bg); color: var(--tf-documented); }
+.tf-status--approved  { background: var(--tf-certified-bg); color: var(--tf-certified); }
+.tf-status--rejected  { background: var(--tf-missing-bg); color: var(--tf-missing); }
+.tf-status--closed    { background: var(--tf-sf-line-soft); color: var(--tf-sf-text-mute); }
+
+/* --- score bars ---------------------------------------------------------- */
+.tf-bar { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(70px, 2fr) 40px; gap: 10px; align-items: center; font-size: 11.5px; color: var(--tf-sf-text-mute); }
+.tf-bar__track { height: 6px; border-radius: var(--tf-radius-pill); background: var(--tf-sf-line); overflow: hidden; }
+.tf-bar__fill { display: block; height: 100%; border-radius: var(--tf-radius-pill); background: var(--tf-sf-accent); transition: width var(--tf-dur-slow) var(--tf-ease); }
+.tf-bar__fill.is-low { background: var(--tf-review); }
+.tf-bar__fill.is-critical { background: var(--tf-missing); }
+.tf-bar__v { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--tf-sf-text); }
+
+/* --- empty / loading / notice -------------------------------------------- */
+.tf-empty {
+  padding: var(--tf-space-7) var(--tf-space-5);
+  text-align: center;
+  border: 1px dashed var(--tf-sf-line);
+  border-radius: var(--tf-radius-md);
+  color: var(--tf-sf-text-mute);
+  font-size: 13px;
+}
+.tf-notice {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--tf-radius-sm);
+  border: 1px solid var(--tf-sf-line);
+  background: var(--tf-sf-line-soft);
+  font-size: 13px;
+  color: var(--tf-sf-text);
+}
+.tf-notice--ok { border-color: color-mix(in srgb, var(--tf-verified) 40%, var(--tf-sf-line)); background: var(--tf-verified-bg); color: var(--tf-verified); }
+.tf-notice--err { border-color: color-mix(in srgb, var(--tf-missing) 40%, var(--tf-sf-line)); background: var(--tf-missing-bg); color: var(--tf-missing); }
+
+/* --- panel / drawer ------------------------------------------------------ */
+.tf-panel {
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-sf-raised);
+  padding: var(--tf-space-5);
+}
+.tf-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--tf-space-4);
+}
+
+/* --- app responsive ------------------------------------------------------ */
+@media (max-width: 1024px) {
+  .tf-app { grid-template-columns: minmax(0, 1fr); }
+  .tf-app__side {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    border-right: 0;
+    border-bottom: 1px solid var(--tf-sf-line);
+  }
+  .tf-sidenav { flex-direction: row; flex-wrap: wrap; }
+  .tf-sidenav__group { display: none; }
+  .tf-sidenav__link { width: auto; }
+  .tf-app__body { padding: var(--tf-space-4); }
+}
+
+/* --------------------------------------------------------------------------
+   6. TEXTILE TEXTURES
+   Woven structures rendered as inline SVG at very low opacity. Technology
+   stays dominant; the textile world is felt, not photographed.
+   -------------------------------------------------------------------------- */
+.tf-tex {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Plain weave: warp over weft */
+.tf-tex--weave {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M0 6h24M0 18h24M6 0v24M18 0v24' stroke='%2310b981' stroke-width='0.5' fill='none' opacity='0.22'/%3E%3C/svg%3E");
+  background-size: 24px 24px;
+  mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 72%);
+}
+
+/* Twill: the diagonal of denim */
+.tf-tex--twill {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M-4 4l8-8M0 16L16 0M12 20l8-8' stroke='%23ffffff' stroke-width='0.6' fill='none' opacity='0.16'/%3E%3C/svg%3E");
+  background-size: 16px 16px;
+}
+
+/* Jersey: fine knit columns */
+.tf-tex--jersey {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14'%3E%3Cpath d='M0 7q2.5-7 5 0t5 0' stroke='%2310b981' stroke-width='0.5' fill='none' opacity='0.18'/%3E%3C/svg%3E");
+  background-size: 10px 14px;
+}
+
+/* Warp threads: vertical fibre field */
+.tf-tex--warp {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 0v8M5 0v8' stroke='%23ffffff' stroke-width='0.4' fill='none' opacity='0.12'/%3E%3C/svg%3E");
+  background-size: 8px 8px;
+}
+
+/* --------------------------------------------------------------------------
+   7. MOTION + ACCESSIBILITY
+   -------------------------------------------------------------------------- */
+
+/* Data flowing along a connector: dash offset travel */
+.tf-flow {
+  stroke-dasharray: 5 9;
+  animation: tf-flow var(--tf-dur-flow) linear infinite;
+}
+@keyframes tf-flow {
+  to { stroke-dashoffset: -140; }
+}
+
+/* Scroll reveal — opt-in via [data-reveal]; progressive disclosure */
+.tf-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--tf-dur-slow) var(--tf-ease), transform var(--tf-dur-slow) var(--tf-ease);
+}
+.tf-reveal.is-in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tf-flow { stroke-dasharray: none; }
+  .tf-reveal { opacity: 1; transform: none; }
+}
+
+/* Keyboard focus is never decorative */
+:focus-visible {
+  outline: 2px solid var(--tf-sf-accent-hi);
+  outline-offset: 3px;
+  border-radius: var(--tf-radius-xs);
+}
+
+.tf-visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE
+   Supply-chain graphs collapse to interactive vertical stacks (§28).
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .tf-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tf-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .tf-grid--2,
+  .tf-grid--3,
+  .tf-grid--4 { grid-template-columns: minmax(0, 1fr); }
+  .tf-row--wrap-mobile { flex-direction: column; align-items: stretch; }
+  :root {
+    --tf-space-9: 64px;
+    --tf-space-10: 80px;
+    --tf-space-11: 96px;
+  }
+}
+/* TF:DS:END */
+    body { margin: 0; background: var(--tf-sf-bg); color: var(--tf-ink-900); font-family: var(--tf-font-sans); }
+
+    /* Bilan de masse : la barre montre la part de matière certifiée couvrant la
+       production théorique. Le déficit est figuré, pas seulement chiffré. */
+    .mb-bar { position: relative; height: 26px; border-radius: var(--tf-radius-sm); background: var(--tf-sf-bg-alt); overflow: hidden; border: 1px solid var(--tf-sf-line); }
+    .mb-bar__fill { position: absolute; inset: 0 auto 0 0; background: var(--tf-verified); opacity: .85; }
+    .mb-bar__fill.is-partial { background: #b7791f; }
+    .mb-bar__fill.is-deficit { background: var(--tf-missing); }
+    .mb-bar__label { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; height: 100%; padding: 0 10px; font-size: 11px; font-weight: 800; letter-spacing: .04em; color: var(--tf-ink-900); }
+
+    /* Chaîne de lots : chaque maillon réel est un bouton, chaque maillon absent
+       est explicitement marqué comme non stocké. Rien n'est dessiné sans donnée. */
+    .chain { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+    .chain__node { flex: 1 1 150px; min-width: 150px; border: 1px solid var(--tf-sf-line); border-radius: var(--tf-radius-md); background: var(--tf-sf-raised); padding: 12px; text-align: left; font: inherit; }
+    .chain__node--absent { border-style: dashed; background: transparent; color: var(--tf-ink-300); }
+    .chain__node strong { display: block; font-size: 13px; font-weight: 800; }
+    .chain__node span { display: block; margin-top: 4px; font-size: 11px; color: var(--tf-ink-300); }
+    .chain__arrow { align-self: center; color: var(--tf-ink-300); font-size: 14px; flex: none; }
+
+    .tr-verdict { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .tr-verdict::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+    .tr-verdict--ok   { color: var(--tf-verified); }
+    .tr-verdict--warn { color: #b7791f; }
+    .tr-verdict--bad  { color: var(--tf-missing); }
+
+    .tr-kv { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 13px; }
+    .tr-kv dt { color: var(--tf-ink-300); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .tr-kv dd { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body class="tf-surface tf-surface--light">
+  <div id="app" class="tf-app" aria-busy="true"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const state = {
+        demo: (() => {
+          const flag = new URLSearchParams(location.search).get('demo');
+          return flag === null ? false : !['0', 'false', 'off'].includes(String(flag).toLowerCase());
+        })(),
+        loading: true,
+        view: 'overview',
+        notice: null,
+        error: null,
+        certificates: [],
+        products: [],
+        selectedProductId: null,
+        summary: null,
+        auditChain: null,
+        lineage: null,
+        lineageDraft: '',
+        /* Entrées du calculateur de bilan par étape. Ce sont des saisies de
+           l'utilisateur, pas des données TRACEFAB : le calcul est celui du
+           serveur (reconcileMassBalance). */
+        stages: [
+          { stageName: 'Filature', inputQuantityKg: 1200, outputQuantityKg: 1150, lossTolerancePercent: 5 },
+          { stageName: 'Tissage', inputQuantityKg: 1150, outputQuantityKg: 1082, lossTolerancePercent: 6 },
+          { stageName: 'Teinture', inputQuantityKg: 1082, outputQuantityKg: 1049, lossTolerancePercent: 5 },
+          { stageName: 'Confection', inputQuantityKg: 1049, outputQuantityKg: 830, lossTolerancePercent: 12 },
+        ],
+        stageReport: null,
+      };
+
+      /* Les quatre verdicts réels de l'enum ReconciliationVerdict. */
+      const VERDICTS = {
+        fully_covered: { label: 'Couverture totale', cls: 'ok', tone: 'ok' },
+        partially_covered: { label: 'Couverture partielle', cls: 'warn', tone: 'warn' },
+        severe_deficit: { label: 'Déficit sévère', cls: 'bad', tone: 'bad' },
+        unsupported: { label: 'Non étayé', cls: 'bad', tone: 'bad' },
+      };
+
+      /* Les huit maillons que le brief demande. TRACEFAB ne stocke aujourd'hui
+         ni lot, ni généalogie : seule l'allocation certificat -> produit est
+         réelle. Les maillons sans source sont affichés comme absents, jamais
+         inventés. */
+      const CHAIN_STEPS = [
+        { key: 'fiber', label: 'Fibre', source: null },
+        { key: 'spinner', label: 'Filature', source: null },
+        { key: 'yarn', label: 'Fil', source: null },
+        { key: 'fabric', label: 'Tissage', source: null },
+        { key: 'dyeing', label: 'Teinture', source: null },
+        { key: 'manufacturing', label: 'Confection', source: null },
+        { key: 'product', label: 'Produit fini', source: 'product' },
+        { key: 'dpp', label: 'DPP', source: null },
+      ];
+
+      const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const num = (v, digits = 1) => (v === null || v === undefined || Number.isNaN(Number(v)) ? '—' : Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: digits }));
+      const fmtDate = (v) => (v ? new Date(v).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `requete_echouee_${response.status}`);
+        return payload;
+      }
+
+      /* ------------------------------------------------------- données démo */
+
+      function demoData() {
+        return {
+          certificates: [
+            { id: 'demo-tc-1', tcNumber: 'TC-2026-00431', standard: 'GOTS', issuerName: 'Control Union', certifiedMaterialName: 'Coton biologique peigné', totalCertifiedWeightKg: 12400, allocatedWeightKg: 9800 },
+            { id: 'demo-tc-2', tcNumber: 'TC-2026-00518', standard: 'GRS', issuerName: 'ICEA', certifiedMaterialName: 'Polyester recyclé', totalCertifiedWeightKg: 3100, allocatedWeightKg: 3100 },
+          ],
+          products: [
+            { id: 'demo-product-1', name: 'Organic Cotton T-Shirt', reference: 'AW26-0248' },
+            { id: 'demo-product-2', name: 'Recycled Hoodie', reference: 'AW26-0311' },
+          ],
+          summaries: {
+            'demo-product-1': {
+              latestReconciliation: { id: 'demo-rec-1', productId: 'demo-product-1', batchReference: 'GLOBAL_PRODUCTION', productionVolumeUnits: 42000, unitWeightGrams: 165, cuttingWastePct: 12, theoreticalRequiredKg: 7761.6, allocatedCertifiedKg: 6900, deficitKg: 861.6, coverageRatioPct: 88.9, verdict: 'partially_covered', fraudRiskScore: 34, summary: '861,6 kg de matière certifiée manquent pour couvrir la production déclarée.', blockingIssueCreated: true, qualityIssueId: 'demo-quality-issue-1' },
+              allocations: [
+                { id: 'demo-alloc-1', allocatedWeightKg: 6900, transactionCertificates: { tcNumber: 'TC-2026-00431', standard: 'GOTS', issuerName: 'Control Union', certifiedMaterialName: 'Coton biologique peigné', totalCertifiedWeightKg: 12400 } },
+              ],
+              totalAllocatedKg: 6900,
+            },
+            'demo-product-2': {
+              latestReconciliation: { id: 'demo-rec-2', productId: 'demo-product-2', batchReference: 'GLOBAL_PRODUCTION', productionVolumeUnits: 8000, unitWeightGrams: 480, cuttingWastePct: 12, theoreticalRequiredKg: 4300.8, allocatedCertifiedKg: 3100, deficitKg: 1200.8, coverageRatioPct: 72.1, verdict: 'severe_deficit', fraudRiskScore: 71, summary: 'Écart important entre la production déclarée et la matière certifiée allouée.', blockingIssueCreated: true, qualityIssueId: 'demo-quality-issue-2' },
+              allocations: [
+                { id: 'demo-alloc-2', allocatedWeightKg: 3100, transactionCertificates: { tcNumber: 'TC-2026-00518', standard: 'GRS', issuerName: 'ICEA', certifiedMaterialName: 'Polyester recyclé', totalCertifiedWeightKg: 3100 } },
+              ],
+              totalAllocatedKg: 3100,
+            },
+          },
+          auditChain: { isChainValid: true, totalEntries: 1284, brokenAtEntryId: null },
+        };
+      }
+
+      async function load() {
+        state.loading = true;
+        state.error = null;
+        render();
+        try {
+          if (state.demo) {
+            const d = demoData();
+            state.certificates = d.certificates;
+            state.products = d.products;
+            state.auditChain = d.auditChain;
+            state.demoSummaries = d.summaries;
+            state.selectedProductId = state.selectedProductId || d.products[0].id;
+            state.summary = d.summaries[state.selectedProductId];
+            state.stageReport = balanceStages(state.stages);
+          } else {
+            const certs = await api('/api/mass-balance/certificates');
+            state.certificates = certs.certificates || [];
+            const chain = await api('/api/traceability/audit-chain');
+            state.auditChain = chain;
+            const products = await api('/api/products');
+            state.products = (products.products || []).slice(0, 50);
+            state.selectedProductId = state.selectedProductId || (state.products[0] && state.products[0].id) || null;
+            if (state.selectedProductId) state.summary = await api(`/api/products/${encodeURIComponent(state.selectedProductId)}/mass-balance`);
+          }
+        } catch (error) {
+          state.error = error.message;
+        }
+        state.loading = false;
+        render();
+      }
+
+      async function selectProduct(id) {
+        state.selectedProductId = id;
+        state.notice = null;
+        try {
+          if (state.demo) state.summary = (state.demoSummaries || {})[id] || null;
+          else state.summary = await api(`/api/products/${encodeURIComponent(id)}/mass-balance`);
+        } catch (error) { state.notice = 'Bilan indisponible : ' + error.message; state.summary = null; }
+        render();
+      }
+
+      async function reconcile() {
+        state.notice = null;
+        const form = document.getElementById('reconcile-form');
+        if (!form) return;
+        const data = Object.fromEntries(new FormData(form));
+        const body = { productionVolumeUnits: Number(data.productionVolumeUnits), cuttingWastePct: data.cuttingWastePct === '' ? undefined : Number(data.cuttingWastePct) };
+        try {
+          if (state.demo) {
+            const units = Number(data.productionVolumeUnits) || 0;
+            const grams = (state.summary && state.summary.latestReconciliation && state.summary.latestReconciliation.unitWeightGrams) || 165;
+            const waste = body.cuttingWastePct === undefined ? 12 : body.cuttingWastePct;
+            const required = (units * grams / 1000) * (1 + waste / 100);
+            const allocated = (state.summary && state.summary.totalAllocatedKg) || 0;
+            const coverage = required > 0 ? (allocated / required) * 100 : 0;
+            const verdict = coverage >= 99.5 ? 'fully_covered' : coverage >= 85 ? 'partially_covered' : coverage > 0 ? 'severe_deficit' : 'unsupported';
+            state.summary = { latestReconciliation: { batchReference: 'GLOBAL_PRODUCTION', productionVolumeUnits: units, unitWeightGrams: grams, cuttingWastePct: waste, theoreticalRequiredKg: required, allocatedCertifiedKg: allocated, deficitKg: Math.max(0, required - allocated), coverageRatioPct: coverage, verdict, fraudRiskScore: Math.max(0, Math.min(100, Math.round(100 - coverage))), summary: 'Recalcul en mode démonstration.', blockingIssueCreated: false }, allocations: (state.summary && state.summary.allocations) || [], totalAllocatedKg: allocated };
+            state.notice = 'Bilan recalculé (mode démonstration).';
+          } else {
+            state.summary = await api(`/api/products/${encodeURIComponent(state.selectedProductId)}/mass-balance`, { method: 'POST', body: JSON.stringify(body) });
+            state.notice = 'Bilan de masse recalculé.';
+          }
+        } catch (error) { state.notice = 'Recalcul impossible : ' + error.message; }
+        render();
+      }
+
+      async function verifyChain() {
+        state.notice = null;
+        try {
+          if (state.demo) { state.notice = 'Vérification simulée en mode démonstration.'; render(); return; }
+          state.auditChain = await api('/api/traceability/audit-chain');
+          state.notice = 'Chaîne d’audit vérifiée.';
+        } catch (error) { state.notice = 'Vérification impossible : ' + error.message; }
+        render();
+      }
+
+      async function balanceStagesAction() {
+        state.notice = null;
+        const stages = state.stages.map((st, i) => ({
+          stageId: 'stage-' + (i + 1),
+          tier: 'TIER_' + Math.min(4, i + 1),
+          stageName: st.stageName || 'Étape ' + (i + 1),
+          facilityName: 'Non renseigné',
+          facilityCountry: 'Non renseigné',
+          inputQuantityKg: Number(st.inputQuantityKg) || 0,
+          outputQuantityKg: Number(st.outputQuantityKg) || 0,
+          lossTolerancePercent: Number(st.lossTolerancePercent) || 0,
+        }));
+        if (!stages.length) { state.notice = 'Ajoutez au moins une étape.'; render(); return; }
+        try {
+          if (state.demo) {
+            state.stageReport = balanceStages(stages);
+            state.notice = 'Bilan par étape calculé (mode démonstration).';
+          } else {
+            const r = await api('/api/traceability/mass-balance', {
+              method: 'POST',
+              body: JSON.stringify({ productId: state.selectedProductId, stages }),
+            });
+            state.stageReport = {
+              stages: (r.report || []).map((row) => ({ stageName: row.stageName, result: row.result })),
+              totalInputKg: r.totalInputKg,
+              totalOutputKg: r.totalOutputKg,
+              overallLossPercent: r.overallLossPercent,
+              isFullyBalanced: r.isFullyBalanced,
+            };
+            state.notice = 'Bilan par étape calculé par le serveur.';
+          }
+        } catch (error) { state.notice = 'Calcul impossible : ' + error.message; }
+        render();
+      }
+
+      async function auditLineage() {
+        state.notice = null;
+        let nodes;
+        try {
+          nodes = JSON.parse(state.lineageDraft || '[]');
+        } catch (e) {
+          state.notice = 'JSON invalide : ' + e.message;
+          render();
+          return;
+        }
+        try {
+          if (state.demo) {
+            state.lineage = { productId: state.selectedProductId || 'demo-product-1', totalDepth: 2, isContinuousChain: false, defectsCount: 2, defects: ['Chaîne discontinue : maillon manquant entre le lot racine et le produit.', 'Aucun lot de teinture déclaré.'], totalNodes: 2 };
+            state.notice = 'Audit de chaîne simulé (mode démonstration).';
+          } else {
+            state.lineage = await api('/api/traceability/lineage-graph', { method: 'POST', body: JSON.stringify({ productId: state.selectedProductId, nodes }) });
+            state.notice = 'Chaîne auditée.';
+          }
+        } catch (error) { state.notice = 'Audit impossible : ' + error.message; }
+        render();
+      }
+
+      /**
+       * Miroir fidèle de reconcileMassBalance (api/_lib/mass-balance.ts) et de
+       * l'agrégation de POST /api/traceability/mass-balance. En démonstration le
+       * calcul s'exécute ici avec la même arithmétique et les mêmes statuts.
+       */
+      function reconcileStage(stage) {
+        const inputQuantityKg = Number(stage.inputQuantityKg) || 0;
+        const outputQuantityKg = Number(stage.outputQuantityKg) || 0;
+        const lossTolerancePercent = Number(stage.lossTolerancePercent) || 0;
+        if (inputQuantityKg <= 0) {
+          return { isBalanced: false, inputTotalKg: inputQuantityKg, outputTotalKg: outputQuantityKg, lossKg: 0, lossPercent: 0, maxAllowedLossPercent: lossTolerancePercent, anomalyDetected: true, status: 'SUSPECT_DISCREPANCY' };
+        }
+        if (outputQuantityKg > inputQuantityKg) {
+          const surplusKg = outputQuantityKg - inputQuantityKg;
+          return { isBalanced: false, inputTotalKg: inputQuantityKg, outputTotalKg: outputQuantityKg, lossKg: -surplusKg, lossPercent: -Number(((surplusKg / inputQuantityKg) * 100).toFixed(2)), maxAllowedLossPercent: lossTolerancePercent, anomalyDetected: true, status: 'OVER_EXTRACTION' };
+        }
+        const lossKg = Number((inputQuantityKg - outputQuantityKg).toFixed(3));
+        const lossPercent = Number(((lossKg / inputQuantityKg) * 100).toFixed(2));
+        const within = lossPercent <= lossTolerancePercent;
+        const status = !within ? 'SUSPECT_DISCREPANCY' : lossPercent > 0 ? 'WITHIN_TOLERANCE' : 'RECONCILED';
+        return { isBalanced: within, inputTotalKg: inputQuantityKg, outputTotalKg: outputQuantityKg, lossKg, lossPercent, maxAllowedLossPercent: lossTolerancePercent, anomalyDetected: !within, status };
+      }
+
+      const STAGE_STATUS = {
+        RECONCILED: { label: 'Équilibré', cls: 'ok' },
+        WITHIN_TOLERANCE: { label: 'Dans la tolérance', cls: 'ok' },
+        SUSPECT_DISCREPANCY: { label: 'Écart suspect', cls: 'bad' },
+        OVER_EXTRACTION: { label: 'Sur-extraction', cls: 'bad' },
+      };
+
+      function balanceStages(stages) {
+        const rows = stages.map((st) => ({ stageName: st.stageName || 'Étape', result: reconcileStage(st) }));
+        const totalInputKg = rows.reduce((a, r) => a + (Number(r.result.inputTotalKg) || 0), 0);
+        const totalOutputKg = rows.reduce((a, r) => a + (Number(r.result.outputTotalKg) || 0), 0);
+        return {
+          stages: rows,
+          totalInputKg,
+          totalOutputKg,
+          overallLossPercent: totalInputKg > 0 ? Number((((totalInputKg - totalOutputKg) / totalInputKg) * 100).toFixed(2)) : 0,
+          isFullyBalanced: !rows.some((r) => r.result.anomalyDetected),
+        };
+      }
+
+      /* --------------------------------------------------------------- vues */
+
+      function notice() {
+        if (state.error) return `<div class="tf-notice tf-notice--err">Chargement impossible : ${esc(state.error)}</div>`;
+        if (state.notice) return `<div class="tf-notice">${esc(state.notice)}</div>`;
+        return '';
+      }
+
+      function topbar(title, sub) {
+        return `<header class="tf-app__topbar">
+          <div>
+            <span class="tf-label">Traceability</span>
+            <h1 class="tf-h2" style="margin-top:4px">${esc(title)}</h1>
+            ${sub ? `<p class="tf-sub" style="margin-top:4px">${esc(sub)}</p>` : ''}
+          </div>
+          <div>${state.demo ? '<span class="tf-demo-mark">Données de démonstration</span>' : ''}</div>
+        </header>`;
+      }
+
+      function productPicker() {
+        if (!state.products.length) return '';
+        return `<label class="tf-field-inline"><span class="tf-label">Produit</span>
+          <select class="tf-select" data-product>
+            ${state.products.map((p) => `<option value="${esc(p.id)}"${p.id === state.selectedProductId ? ' selected' : ''}>${esc(p.name || p.reference || p.id)}</option>`).join('')}
+          </select>
+        </label>`;
+      }
+
+      function tile(label, value, modifier, note) {
+        return `<div class="tf-tile${modifier ? ' ' + modifier : ''}">
+          <span class="tf-label">${esc(label)}</span>
+          <span class="tf-tile__v">${esc(String(value))}</span>
+          ${note ? `<span class="tf-sub">${esc(note)}</span>` : ''}
+        </div>`;
+      }
+
+      function viewOverview() {
+        const rec = state.summary && state.summary.latestReconciliation;
+        const chain = state.auditChain;
+        const certs = state.certificates.length;
+        const certifiedKg = state.certificates.reduce((sum, c) => sum + Number(c.totalCertifiedWeightKg || 0), 0);
+        return `
+          ${topbar('Traçabilité', 'Ce que la matière certifiée couvre réellement, et si la chaîne d’audit tient.')}
+          <div class="tf-app__body">
+            ${notice()}
+            <div class="tf-tilegrid">
+              ${tile('Certificats de transaction', certs, null, certs === 1 ? 'TC enregistré' : 'TC enregistrés')}
+              ${tile('Matière certifiée', num(certifiedKg, 0) + ' kg')}
+              ${tile('Couverture du produit', rec ? num(rec.coverageRatioPct) + ' %' : '—', rec && rec.coverageRatioPct < 85 ? 'tf-tile--alert' : null, rec ? (VERDICTS[rec.verdict] || {}).label : 'aucun bilan')}
+              ${tile('Score de risque', rec ? rec.fraudRiskScore : '—', rec && rec.fraudRiskScore >= 60 ? 'tf-tile--alert' : rec && rec.fraudRiskScore >= 30 ? 'tf-tile--warn' : null, rec ? 'sur 100' : 'aucun bilan')}
+              ${tile('Entrées d’audit', chain ? num(chain.totalEntries ?? chain.totalAuditEntries, 0) : '—')}
+              ${tile('Chaîne d’audit', chain ? (chain.isChainValid ? 'Intacte' : 'Rompu') : '—', chain && !chain.isChainValid ? 'tf-tile--alert' : null, chain && !chain.isChainValid ? 'intégrité compromise' : chain ? 'aucune rupture' : 'non vérifiée')}
+            </div>
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head">
+                <h2 class="tf-h3">Ce que cette surface prouve — et ce qu’elle ne prouve pas</h2>
+              </div>
+              <p class="tf-sub" style="max-width:78ch;">Le bilan de masse compare la matière certifiée allouée à la production déclarée : c’est un contrôle
+              arithmétique sur des quantités réelles. L’intégrité de la chaîne d’audit vérifie que le journal n’a pas été altéré.
+              Ni l’un ni l’autre ne constituent une certification, et aucun des deux ne vaut vérification physique sur site.</p>
+            </div>
+          </div>`;
+      }
+
+      function viewMassBalance() {
+        const s = state.summary;
+        const rec = s && s.latestReconciliation;
+        const allocations = (s && s.allocations) || [];
+        const coverage = rec ? Math.min(100, Number(rec.coverageRatioPct) || 0) : 0;
+        const fillCls = !rec ? '' : rec.verdict === 'fully_covered' ? '' : rec.verdict === 'partially_covered' ? ' is-partial' : ' is-deficit';
+        return `
+          ${topbar('Bilan de masse', 'La matière certifiée couvre-t-elle la production déclarée ?')}
+          <div class="tf-app__body">
+            ${notice()}
+            <div class="tf-toolbar">${productPicker()}
+              <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="verify-chain">Vérifier la chaîne d’audit</button>
+            </div>
+            ${rec ? `
+            <div class="tf-panel" style="margin-top:var(--tf-space-5)">
+              <div class="tf-panel__head">
+                <h2 class="tf-h3">${esc(state.products.find((p) => p.id === state.selectedProductId)?.name || 'Produit')}</h2>
+                <span class="tr-verdict tr-verdict--${(VERDICTS[rec.verdict] || {}).cls || 'warn'}">${esc((VERDICTS[rec.verdict] || {}).label || rec.verdict)}</span>
+              </div>
+              <div class="mb-bar">
+                <div class="mb-bar__fill${fillCls}" style="width:${coverage}%"></div>
+                <div class="mb-bar__label"><span>${num(rec.allocatedCertifiedKg)} kg certifiés</span><span>${num(rec.coverageRatioPct)} %</span></div>
+              </div>
+              <dl class="tr-kv" style="margin-top:18px;">
+                <dt>Lot / référence</dt><dd>${esc(rec.batchReference || '—')}</dd>
+                <dt>Production déclarée</dt><dd>${num(rec.productionVolumeUnits, 0)} unités × ${num(rec.unitWeightGrams, 0)} g</dd>
+                <dt>Perte de coupe</dt><dd>${num(rec.cuttingWastePct)} %</dd>
+                <dt>Matière théorique requise</dt><dd>${num(rec.theoreticalRequiredKg)} kg</dd>
+                <dt>Matière certifiée allouée</dt><dd>${num(rec.allocatedCertifiedKg)} kg</dd>
+                <dt>Déficit</dt><dd>${num(rec.deficitKg)} kg</dd>
+                <dt>Score de risque</dt><dd>${num(rec.fraudRiskScore, 0)} / 100</dd>
+                ${rec.qualityIssueId ? `<dt>Issue qualité liée</dt><dd>${esc(rec.qualityIssueId)}</dd>` : ''}
+              </dl>
+              ${rec.summary ? `<p class="tf-sub" style="margin-top:14px;max-width:78ch;">${esc(rec.summary)}</p>` : ''}
+            </div>` : '<div class="tf-panel" style="margin-top:var(--tf-space-5)"><p class="tf-empty">Aucun bilan de masse pour ce produit.</p></div>'}
+
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head"><h2 class="tf-h3">Allocations par certificat</h2><span class="tf-badge tf-badge--neutral">${allocations.length}</span></div>
+              ${allocations.length ? `<div class="tf-tablewrap"><table class="tf-table">
+                <thead><tr><th scope="col">Certificat</th><th scope="col">Référentiel</th><th scope="col">Matière</th><th scope="col">Émis par</th><th scope="col">Certifié</th><th scope="col">Alloué</th></tr></thead>
+                <tbody>${allocations.map((a) => {
+                  const tc = a.transactionCertificates || a.transaction_certificates || {};
+                  return `<tr>
+                    <td>${esc(tc.tcNumber || '—')}</td>
+                    <td>${esc(tc.standard || '—')}</td>
+                    <td>${esc(tc.certifiedMaterialName || tc.certified_material_name || '—')}</td>
+                    <td>${esc(tc.issuerName || tc.issuer_name || '—')}</td>
+                    <td class="tf-num">${num(tc.totalCertifiedWeightKg ?? tc.total_certified_weight_kg, 0)} kg</td>
+                    <td class="tf-num">${num(a.allocatedWeightKg ?? a.allocated_weight_kg, 0)} kg</td>
+                  </tr>`;
+                }).join('')}</tbody></table></div>` : '<p class="tf-empty">Aucune allocation enregistrée.</p>'}
+            </div>
+
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head">
+                <h2 class="tf-h3">Bilan par étape de transformation</h2>
+                <span class="tf-badge tf-badge--neutral">${state.stages.length}</span>
+              </div>
+              <p class="tf-sub" style="max-width:78ch;">Saisissez ce qui entre et ce qui sort de chaque étape : la perte, la tolérance
+              et l'écart sont calculés par la même règle que le serveur. Ces quantités sont des saisies de démonstration,
+              ${esc(state.demo ? 'elles ne proviennent pas de TRACEFAB' : 'elles ne sont pas enregistrées')}.</p>
+              <div class="tf-tablewrap"><table class="tf-table">
+                <thead><tr>
+                  <th scope="col">Étape</th><th scope="col">Entrée (kg)</th><th scope="col">Sortie (kg)</th>
+                  <th scope="col">Tolérance (%)</th><th scope="col"></th>
+                </tr></thead>
+                <tbody>${state.stages.map((st, i) => `<tr>
+                  <td><input class="tf-input" type="text" data-stage="${i}" data-field="stageName" value="${esc(st.stageName)}" aria-label="Nom de l'étape ${i + 1}"></td>
+                  <td><input class="tf-input tf-num" type="number" min="0" step="1" data-stage="${i}" data-field="inputQuantityKg" value="${esc(st.inputQuantityKg)}" aria-label="Entrée en kg, ${esc(st.stageName)}"></td>
+                  <td><input class="tf-input tf-num" type="number" min="0" step="1" data-stage="${i}" data-field="outputQuantityKg" value="${esc(st.outputQuantityKg)}" aria-label="Sortie en kg, ${esc(st.stageName)}"></td>
+                  <td><input class="tf-input tf-num" type="number" min="0" step="0.1" data-stage="${i}" data-field="lossTolerancePercent" value="${esc(st.lossTolerancePercent)}" aria-label="Tolérance de perte en pourcentage, ${esc(st.stageName)}"></td>
+                  <td><button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="remove-stage" data-stage="${i}" aria-label="Retirer l'étape ${esc(st.stageName)}">Retirer</button></td>
+                </tr>`).join('')}</tbody>
+              </table></div>
+              <div class="tf-toolbar" style="margin-top:var(--tf-space-4)">
+                <button type="button" class="tf-btn tf-btn--dark" data-action="balance-stages">Calculer le bilan</button>
+                <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="add-stage">Ajouter une étape</button>
+              </div>
+              ${state.stageReport ? stageReportView() : ''}
+            </div>
+
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head"><h2 class="tf-h3">Recalculer</h2></div>
+              <form id="reconcile-form">
+                <div class="tf-toolbar">
+                  <label class="tf-field-inline"><span class="tf-label">Unités produites</span>
+                    <input class="tf-input" name="productionVolumeUnits" type="number" min="0" step="1" value="${rec ? rec.productionVolumeUnits : ''}" aria-label="Unités produites">
+                  </label>
+                  <label class="tf-field-inline"><span class="tf-label">Perte de coupe (%)</span>
+                    <input class="tf-input" name="cuttingWastePct" type="number" min="0" max="100" step="0.1" value="${rec ? rec.cuttingWastePct : 12}" aria-label="Perte de coupe en pourcentage">
+                  </label>
+                  <button type="submit" class="tf-btn tf-btn--dark">Recalculer le bilan</button>
+                </div>
+              </form>
+            </div>
+          </div>`;
+      }
+
+      function stageReportView() {
+        const r = state.stageReport;
+        return `
+          <div class="tf-tilegrid" style="margin-top:var(--tf-space-5)">
+            ${tile('Entrée totale', num(r.totalInputKg) + ' kg')}
+            ${tile('Sortie totale', num(r.totalOutputKg) + ' kg')}
+            ${tile('Perte globale', num(r.overallLossPercent) + ' %')}
+            ${tile('Verdict du bilan', r.isFullyBalanced ? 'Équilibré' : 'Anomalie', r.isFullyBalanced ? null : 'tf-tile--alert', r.isFullyBalanced ? 'aucun écart suspect' : 'au moins un écart suspect')}
+          </div>
+          <div class="tf-tablewrap"><table class="tf-table">
+            <thead><tr>
+              <th scope="col">Étape</th><th scope="col">Entrée</th><th scope="col">Sortie</th>
+              <th scope="col">Perte</th><th scope="col">Perte (%)</th><th scope="col">Tolérance</th><th scope="col">État</th>
+            </tr></thead>
+            <tbody>${r.stages.map((row) => {
+              const res = row.result;
+              const st = STAGE_STATUS[res.status] || { label: res.status, cls: 'warn' };
+              return `<tr>
+                <td>${esc(row.stageName)}</td>
+                <td class="tf-num">${num(res.inputTotalKg)} kg</td>
+                <td class="tf-num">${num(res.outputTotalKg)} kg</td>
+                <td class="tf-num">${num(res.lossKg)} kg</td>
+                <td class="tf-num">${num(res.lossPercent)} %</td>
+                <td class="tf-num">${num(res.maxAllowedLossPercent)} %</td>
+                <td><span class="tr-verdict tr-verdict--${st.cls}">${esc(st.label)}</span></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table></div>`;
+      }
+
+      function viewChain() {
+        const s = state.summary;
+        const allocations = (s && s.allocations) || [];
+        const product = state.products.find((p) => p.id === state.selectedProductId);
+        const realLinks = [];
+        allocations.forEach((a) => {
+          const tc = a.transactionCertificates || a.transaction_certificates || {};
+          if (tc.certifiedMaterialName || tc.certified_material_name) {
+            realLinks.push({ label: tc.certifiedMaterialName || tc.certified_material_name, sub: `${tc.tcNumber || 'TC'} · ${num(a.allocatedWeightKg ?? a.allocated_weight_kg, 0)} kg` });
+          }
+        });
+        const lineage = state.lineage;
+        return `
+          ${topbar('Chaîne de traçabilité', 'Les maillons réellement stockés, et l’audit des chaînes fournies.')}
+          <div class="tf-app__body">
+            ${notice()}
+            <div class="tf-toolbar">${productPicker()}</div>
+
+            <div class="tf-panel" style="margin-top:var(--tf-space-5)">
+              <div class="tf-panel__head"><h2 class="tf-h3">Maillons attendus</h2></div>
+              <div class="chain">
+                ${CHAIN_STEPS.map((step, i) => {
+                  const present = step.source === 'product' && !!product;
+                  return `${i ? '<span class="chain__arrow" aria-hidden="true">→</span>' : ''}
+                    ${present
+                      ? `<button type="button" class="chain__node" data-nav="mass-balance"><strong>${esc(step.label)}</strong><span>${esc(product.name || product.reference || '')}</span></button>`
+                      : `<div class="chain__node chain__node--absent"><strong>${esc(step.label)}</strong><span>aucune donnée de lot stockée</span></div>`}`;
+                }).join('')}
+              </div>
+              <p class="tf-sub" style="margin-top:14px;max-width:80ch;">TRACEFAB ne stocke aujourd’hui ni lot ni généalogie multi-niveaux : seul le produit fini et la matière
+              certifiée qui lui est allouée sont tracés en base. Les maillons en pointillé ne sont pas « manquants chez le fournisseur » — ils ne sont
+              pas encore modélisés. Aucun maillon n’est affiché sans donnée derrière.</p>
+            </div>
+
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head"><h2 class="tf-h3">Ce qui est réellement tracé</h2></div>
+              ${realLinks.length ? `<div class="chain">${realLinks.map((l, i) => `${i ? '<span class="chain__arrow" aria-hidden="true">→</span>' : ''}<div class="chain__node"><strong>${esc(l.label)}</strong><span>${esc(l.sub)}</span></div>`).join('')}<span class="chain__arrow" aria-hidden="true">→</span><div class="chain__node"><strong>${esc(product ? (product.name || product.reference) : 'Produit')}</strong><span>allocation enregistrée</span></div></div>`
+                : '<p class="tf-empty">Aucune allocation : la chaîne réelle de ce produit est vide.</p>'}
+            </div>
+
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head"><h2 class="tf-h3">Auditer une chaîne de lots</h2></div>
+              <p class="tf-sub" style="max-width:80ch;">La route <code>/api/traceability/lineage-graph</code> vérifie une chaîne fournie : continuité, racines,
+              feuilles, défauts. Elle ne lit pas de lots en base — c’est un auditeur, pas une source.</p>
+              <label class="tf-field-inline" style="margin-top:12px;align-items:flex-start;flex-direction:column;gap:6px;">
+                <span class="tf-label">Chaîne au format JSON (tableau de nœuds)</span>
+                <textarea class="tf-textarea" rows="5" data-lineage-draft aria-label="Chaîne de lots au format JSON">[{"nodeId":"n1","lotId":"LOT-A118","tier":"TIER_4","activityType":"fiber","supplierName":"Cooperativa Algodão","facilityLocation":"PT","quantityKg":1200,"components":[]}]</textarea>
+              </label>
+              <div class="tf-toolbar" style="margin-top:10px;"><button type="button" class="tf-btn tf-btn--dark" data-action="audit-lineage">Auditer la chaîne</button></div>
+              ${lineage ? `<div class="tf-notice ${lineage.isContinuousChain ? 'tf-notice--ok' : ''}" style="margin-top:14px;">
+                Profondeur ${esc(String(lineage.totalDepth))} · ${esc(String(lineage.totalNodes))} nœud(s) ·
+                chaîne ${lineage.isContinuousChain ? 'continue' : 'discontinue'} ·
+                ${esc(String(lineage.defectsCount))} défaut(s)
+                ${(lineage.defects || []).length ? '<ul style="margin:8px 0 0 18px;padding:0;">' + lineage.defects.map((d) => `<li>${esc(d)}</li>`).join('') + '</ul>' : ''}
+              </div>` : ''}
+            </div>
+          </div>`;
+      }
+
+      function viewAudit() {
+        const chain = state.auditChain;
+        return `
+          ${topbar('Intégrité de la chaîne d’audit', 'Le journal de la plateforme a-t-il été altéré ?')}
+          <div class="tf-app__body">
+            ${notice()}
+            <div class="tf-toolbar"><button type="button" class="tf-btn tf-btn--dark" data-action="verify-chain">Vérifier maintenant</button></div>
+            ${chain ? `<div class="tf-panel" style="margin-top:var(--tf-space-5)">
+              <div class="tf-panel__head">
+                <h2 class="tf-h3">Résultat</h2>
+                <span class="tr-verdict tr-verdict--${chain.isChainValid ? 'ok' : 'bad'}">${chain.isChainValid ? 'Chaîne intacte' : 'Chaîne rompue'}</span>
+              </div>
+              <dl class="tr-kv">
+                <dt>Entrées vérifiées</dt><dd>${num(chain.totalEntries ?? chain.totalAuditEntries, 0)}</dd>
+                <dt>Rupture détectée</dt><dd>${chain.brokenAtEntryId ? esc(chain.brokenAtEntryId) : 'aucune'}</dd>
+                ${chain.verifiedAt ? `<dt>Vérifié le</dt><dd>${fmtDate(chain.verifiedAt)}</dd>` : ''}
+              </dl>
+              <p class="tf-sub" style="margin-top:14px;max-width:78ch;">Une chaîne intacte signifie que les entrées d’audit se succèdent sans altération détectable.
+              Cela ne prouve pas que les données saisies sont exactes — seulement que le journal n’a pas été modifié après coup.</p>
+            </div>` : '<p class="tf-empty">Aucune vérification effectuée.</p>'}
+          </div>`;
+      }
+
+      /* ------------------------------------------------------------ chrome */
+
+      function sidenav() {
+        const links = [['overview', 'Vue d’ensemble'], ['mass-balance', 'Bilan de masse'], ['chain', 'Chaîne'], ['audit', 'Intégrité d’audit']];
+        return `<aside class="tf-app__side">
+          <a href="/" class="tf-wordmark" aria-label="TRACEFAB">
+            <span class="tf-wordmark__mark" aria-hidden="true">tf</span>
+            <span class="tf-wordmark__name">TRACEFAB</span>
+          </a>
+          <nav class="tf-sidenav" aria-label="Traceability">
+            <div class="tf-sidenav__group">Traçabilité</div>
+            ${links.map(([id, label]) => `
+              <button type="button" class="tf-sidenav__link${state.view === id ? ' is-on' : ''}" data-nav="${id}" aria-current="${state.view === id ? 'page' : 'false'}">
+                <span>${label}</span>
+              </button>`).join('')}
+          </nav>
+          <nav class="tf-sidenav" aria-label="Autres surfaces" style="margin-top:auto">
+            <div class="tf-sidenav__group">Surfaces</div>
+            <a class="tf-sidenav__link" href="/evidence/">Evidence Center</a>
+            <a class="tf-sidenav__link" href="/quality-center/">Quality Center</a>
+            <a class="tf-sidenav__link" href="/brand-console/">Brand Console</a>
+          </nav>
+        </aside>`;
+      }
+
+      function render() {
+        const app = document.getElementById('app');
+        const body = { overview: viewOverview, 'mass-balance': viewMassBalance, chain: viewChain, audit: viewAudit }[state.view] || viewOverview;
+        app.setAttribute('aria-busy', state.loading ? 'true' : 'false');
+        app.innerHTML = `${sidenav()}<main class="tf-app__main">${body()}</main>`;
+        bind();
+      }
+
+      function bind() {
+        document.querySelectorAll('[data-nav]').forEach((el) => {
+          el.onclick = () => { state.view = el.dataset.nav; state.notice = null; render(); };
+        });
+        const picker = document.querySelector('[data-product]');
+        if (picker) picker.onchange = () => selectProduct(picker.value);
+        document.querySelectorAll('[data-action="verify-chain"]').forEach((el) => { el.onclick = verifyChain; });
+        document.querySelectorAll('[data-action="audit-lineage"]').forEach((el) => { el.onclick = auditLineage; });
+        const draft = document.querySelector('[data-lineage-draft]');
+        if (draft) draft.oninput = () => { state.lineageDraft = draft.value; };
+        if (draft) state.lineageDraft = draft.value;
+        const form = document.getElementById('reconcile-form');
+        if (form) form.onsubmit = (event) => { event.preventDefault(); reconcile(); };
+        document.querySelectorAll('[data-action="balance-stages"]').forEach((el) => { el.onclick = balanceStagesAction; });
+        document.querySelectorAll('[data-action="add-stage"]').forEach((el) => {
+          el.onclick = () => {
+            state.stages.push({ stageName: 'Nouvelle étape', inputQuantityKg: 0, outputQuantityKg: 0, lossTolerancePercent: 5 });
+            state.stageReport = state.demo ? balanceStages(state.stages) : null;
+            render();
+          };
+        });
+        document.querySelectorAll('[data-action="remove-stage"]').forEach((el) => {
+          el.onclick = () => {
+            const i = Number(el.dataset.stage);
+            if (state.stages.length > 1) state.stages.splice(i, 1);
+            state.stageReport = state.demo ? balanceStages(state.stages) : null;
+            render();
+          };
+        });
+        document.querySelectorAll('input[data-stage]').forEach((el) => {
+          el.oninput = () => {
+            const i = Number(el.dataset.stage);
+            if (!state.stages[i]) return;
+            state.stages[i][el.dataset.field] = el.dataset.field === 'stageName' ? el.value : Number(el.value || 0);
+          };
+        });
+      }
+
+      window.tracefabTraceability = { state, load, VERDICTS, CHAIN_STEPS, STAGE_STATUS, balanceStages };
+      load();
+    })();
+  </script>
+</body>
+</html>

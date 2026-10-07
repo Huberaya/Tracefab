@@ -45,6 +45,10 @@ await new Promise((r) => setTimeout(r, 60));
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
+/** Texte du conteneur rendu uniquement : document.body inclut le source du <script>,
+ *  ce qui faisait passer des assertions sur des chaînes présentes dans le code. */
+const appText = () => (document.getElementById('app') || {}).textContent || '';
+
 const click = (el) => el.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 const settle = () => new Promise((r) => setTimeout(r, 25));
 const nav = async (view) => { click($(`[data-nav="${view}"]`)); await settle(); };
@@ -82,7 +86,7 @@ assert(
   'indicateur d’échéance calculé sur expiresAt',
 );
 assert(
-  !document.body.textContent.includes('undefined') && !document.body.textContent.includes('NaN'),
+  !appText().includes('undefined') && !appText().includes('NaN'),
   'aucune valeur undefined/NaN affichée',
 );
 
@@ -164,8 +168,8 @@ assert(
 
 console.log('\nJ. Échéances');
 await nav('expiring');
-assert(document.body.textContent.includes('Expirent sous 90 jours'), 'section des échéances proches');
-assert(document.body.textContent.includes('Déjà périmés'), 'section des documents périmés');
+assert(appText().includes('Expirent sous 90 jours'), 'section des échéances proches');
+assert(appText().includes('Déjà périmés'), 'section des documents périmés');
 
 console.log('\nK. Accessibilité');
 eq($$('th').length, $$('th[scope="col"]').length, 'chaque th porte scope="col"');

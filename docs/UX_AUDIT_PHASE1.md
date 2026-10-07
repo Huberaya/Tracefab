@@ -893,3 +893,103 @@ impossible ici (`binaries.prisma.sh` hors liste blanche), donc `GET /api/documen
 jamais été exécuté contre Neon. Sa requête SQL est écrite contre des colonnes et une fonction
 vérifiées dans le schéma et les migrations, mais elle reste à valider sur un environnement
 connecté.
+
+---
+
+# Chantier 9 — Traçabilité
+
+## Ce que les données permettent, et ce qu'elles ne permettent pas
+
+Le brief demande une chaîne en huit maillons, de la fibre au DPP, chaque étape cliquable.
+La mesure du dépôt donne trois capacités de nature très différente :
+
+| Capacité demandée | Source réelle | Verdict |
+| --- | --- | --- |
+| Bilan de masse | `mass_balance_allocations`, `mass_balance_reconciliations` | **réelle, en base** |
+| Intégrité de la chaîne d'audit | `verifyAuditChainIntegrity` | **réelle** |
+| Chaîne fibre → DPP en 8 étapes | aucune table de lot ni de généalogie | **impossible sans inventer** |
+
+`grep` sur `prisma/schema.prisma` ne renvoie **aucune** table de lot, de traçabilité ou de
+généalogie. Seules les deux tables de bilan de masse existent. Le seul lien réellement stocké
+est *matière certifiée (TC) → produit*, via les allocations.
+
+Conséquence assumée : `CHAIN_STEPS` nomme bien les huit maillons du brief, mais les six qui
+n'ont aucune source sont rendus en pointillés (`chain__node--absent`) avec la mention
+« aucune donnée de lot stockée », et un paragraphe énonce la limite au lieu de la masquer.
+Fabriquer six étapes sur huit aurait violé l'interdiction d'inventer des données.
+
+## Deux routes sont des auditeurs, pas des sources
+
+`traceability/lineage-graph` et `traceability/mass-balance` ne lisent pas la base : ils
+reçoivent les données du client et les vérifient. Les exposer comme s'ils produisaient une
+chaîne aurait été trompeur. Ils sont donc présentés pour ce qu'ils sont :
+
+- **Auditeur de chaîne** — l'utilisateur colle une chaîne JSON, le serveur renvoie
+  profondeur, continuité et défauts. La page le dit explicitement : « un auditeur, pas une
+  source ».
+- **Bilan par étape** — l'utilisateur saisit entrée, sortie et tolérance de chaque étape ;
+  le calcul reproduit fidèlement `reconcileMassBalance` (`api/_lib/mass-balance.ts`), y
+  compris les quatre statuts réels `RECONCILED`, `WITHIN_TOLERANCE`, `SUSPECT_DISCREPANCY`,
+  `OVER_EXTRACTION` et la règle `anomalie = perte > tolérance`. En démonstration le calcul
+  s'exécute côté client avec la même arithmétique ; en production il appelle le serveur.
+
+## Routes enregistrées
+
+Trois handlers étaient présents sur disque mais absents du routeur : `traceability/audit-chain`,
+`traceability/lineage-graph`, `traceability/mass-balance`. Enregistrés dans `api/index.ts` →
+**120 motifs** (contre 117). Les cinq handlers orphelins restants sont inchangés
+(`dpp/validate`, `integrations/plm`, `quality/audit-pack`, `quality/calculate-index`,
+`supplier/certifications/ocr-extract`).
+
+Routes désormais appelées qui ne l'étaient par aucune surface :
+`/api/traceability/audit-chain`, `/api/traceability/lineage-graph`,
+`/api/traceability/mass-balance`, `/api/mass-balance/certificates`,
+`/api/products/{id}/mass-balance` — **+5**, soit 78 → 83 routes appelées sur 120.
+
+## Une erreur évitée de justesse
+
+Le premier jet appelait `/api/catalog/products`, qui **n'existe pas** : `catalog/products/*`
+n'a que des sous-routes `import`/`export`. La route de liste enregistrée est `/api/products`
+(celle qu'utilise la Brand Console). C'est `test:route-registry` qui l'aurait attrapée ;
+elle a été corrigée avant.
+
+## Un défaut de méthode corrigé dans trois tests
+
+`document.body.textContent` inclut le **source du `<script>`** sous jsdom. Les assertions
+textuelles passaient donc même si la vue n'était pas rendue — la chaîne cherchée existait
+dans le code. Onze assertions de `test:traceability`, quatre de `test:evidence` et une de
+`test:supplier-portal:surface` ont été bornées au conteneur rendu (`#app`). Les trois tests
+passent toujours après resserrement : les assertions étaient justes, elles n'étaient pas
+prouvées.
+
+De même, le « `tf-8` undefined » signalé à plusieurs reprises vient de `<meta charset="utf-8">`
+: le motif `tf-[A-Za-z0-9_-]+` le capture. Ce n'est pas une classe. Les audits de classes
+doivent exclure `utf-`.
+
+## Portails
+
+```
+ds:check                        PASS  (5 surfaces, traceability incluse)
+check:landing          69 / 0   inchangé
+test:landing           95 / 0   inchangé
+test:quality-center    69 / 0   inchangé
+test:supplier-portal:surface 78 / 0  inchangé après resserrement
+test:evidence          65 / 0   inchangé après resserrement
+test:traceability      82 / 0   NOUVEAU
+test:route-registry           PASS  (120 motifs, 9 surfaces, 107 appels, 37 routes non appelées)
+Balayage des 53 scripts test:* : 34 PASS / 19 FAIL — exactement les 19 préexistants
+```
+
+`test:traceability` exécute le vrai script de la page : les quatre verdicts réels de
+`ReconciliationVerdict` et aucun autre, largeur de barre égale au taux de couverture réel,
+déficit cohérent avec requise − allouée, recalcul qui modifie réellement l'état, huit maillons
+dont au moins six marqués absents avec la mention explicite, audit de chaîne qui refuse un JSON
+invalide, et pour chaque ligne du bilan par étape `perte = entrée − sortie`,
+`perte % = perte / entrée` et `anomalie = perte > tolérance`.
+
+## Toujours non vérifié
+
+**Aucune capture d'écran** — aucun navigateur sans tête n'est installable ici. Et **aucun
+appel réel à la base** : `prisma generate` est impossible (`binaries.prisma.sh` hors liste
+blanche), donc `audit-chain`, `lineage-graph`, `mass-balance` et `mass-balance/certificates`
+n'ont jamais été exécutés contre Neon. Leurs contrats sont lus dans le code, pas observés.

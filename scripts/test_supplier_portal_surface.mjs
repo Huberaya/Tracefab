@@ -46,6 +46,10 @@ await new Promise((r) => setTimeout(r, 60));
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
+/** Texte du conteneur rendu uniquement : document.body inclut le source du <script>,
+ *  ce qui faisait passer des assertions sur des chaînes présentes dans le code. */
+const appText = () => (document.getElementById('app') || {}).textContent || '';
+
 const click = (el) => el.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 const settle = () => new Promise((r) => setTimeout(r, 20));
 const nav = async (view) => { click($(`[data-view="${view}"]`)); await settle(); };
@@ -239,7 +243,7 @@ console.log('\nK. Stockage');
 assert(!!state.storage, 'les données de stockage sont chargées');
 assert($('.progress') !== null, 'la jauge de stockage est rendue');
 assert(
-  document.body.textContent.includes(String(state.storage.documentCount)),
+  appText().includes(String(state.storage.documentCount)),
   'le nombre réel de documents est affiché',
 );
 
