@@ -2,9 +2,9 @@
 
 ## État de l'audit du 7 octobre 2026
 
-Le dépôt et `origin/main` sont synchronisés sur `2075161`. Le dépôt contient 23 migrations Prisma et `prisma migrate status` confirme qu'elles sont appliquées sur Neon.
+Le dépôt et `origin/main` sont synchronisés sur le commit de sécurité P0 courant. Après l'arrivée des chantiers fonctionnels amont, le dépôt contient 31 migrations Prisma et `prisma migrate status` confirme qu'elles sont appliquées sur Neon.
 
-Neon contient toutefois 30 lignes dans `_prisma_migrations`. Les sept lignes suivantes sont déjà terminées dans Neon mais leur répertoire SQL n'existe pas dans le dépôt :
+L'audit initial avait détecté sept migrations déjà exécutées dans Neon mais absentes du checkout local :
 
 - `20261006200000_document_ai_automated_verification`
 - `20261006210000_plm_erp_gs1_interoperability`
@@ -14,7 +14,7 @@ Neon contient toutefois 30 lignes dans `_prisma_migrations`. Les sept lignes sui
 - `20261006250000_universal_supplier_passport`
 - `20261006260000_mass_balance_anti_fraud_engine`
 
-Ces migrations ne sont pas supprimées ni recréées artificiellement. Leur SQL source doit être récupéré auprès de la source qui les a déployées, puis archivé dans Git ou remplacé par une baseline documentée après revue de schéma.
+Ces sources SQL sont désormais présentes dans le checkout amont intégré. Le contrôle direct confirme `31` migrations sur disque, `31` migrations enregistrées dans Neon, aucune migration manquante et aucune migration DB-only. Elles ne doivent plus être supprimées ou recréées artificiellement.
 
 ## Contrôles Neon observés
 
@@ -33,9 +33,12 @@ La migration `20261007100000_security_definer_execute_hardening` :
 
 Le rôle propriétaire de la migration conserve ses privilèges implicites. La séparation ultérieure avec un rôle runtime devra ajouter des grants explicites et limités, dans une migration séparée et revue.
 
-## Sortie attendue
+## Sortie vérifiée
 
 - `npm run db:status` retourne `Database schema is up to date!`.
-- aucune fonction `SECURITY DEFINER` n'est exécutable par `PUBLIC` sans exception documentée ;
-- `npm run test:neon:security` passe et vérifie l'isolation tenant et le refus d'une mutation par rôle insuffisant ;
-- les sept migrations historiques DB-only disposent d'une provenance et d'une source SQL archivée.
+- 31 migrations sur disque correspondent aux 31 migrations terminées dans Neon.
+- aucune fonction `SECURITY DEFINER` n'est exécutable par `PUBLIC` ;
+- les 103 fonctions `SECURITY DEFINER` ont un `search_path` fixé ;
+- `npm run test:neon:security` passe et vérifie l'isolation tenant et le refus d'une mutation par rôle insuffisant.
+
+Le script de contrôle de migrations doit rester dynamique et afficher le nombre réellement découvert ; il ne doit pas conserver un nombre codé en dur.

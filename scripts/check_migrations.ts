@@ -45,7 +45,7 @@ async function main() {
 
   console.log('\n--- MIGRATION STATUS SUMMARY ---');
   if (missingInDb.length === 0) {
-    console.log('✓ All 25 disk migrations are fully applied and recorded in Neon DB!');
+    console.log(`✓ All ${diskMigrations.length} disk migrations are fully applied and recorded in Neon DB!`);
   } else {
     console.log(`⚠️ ${missingInDb.length} migration(s) missing from Neon DB:`, missingInDb);
   }

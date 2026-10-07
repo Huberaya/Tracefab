@@ -28,7 +28,7 @@ npm audit --audit-level=moderate
 
 Les deux commandes `npm audit` doivent terminer avec **0 vulnérabilité**. Ne pas utiliser `npm audit fix --force` sans revue : cela pourrait changer le runtime Vercel ou le client Prisma par une montée majeure non validée.
 
-Le projet conserve Prisma 6 pour préserver le schéma et le mode de connexion existants ; les versions corrigées de `deepmerge-ts` et `effect` sont verrouillées par `overrides` et validées par `prisma generate`, le build et les tests. Les handlers API utilisent des types locaux (`api/_lib/vercel-types.ts`) : le package de build `@vercel/node`, qui introduisait une chaîne de dépendances vulnérable uniquement pour des imports de types, n’est pas embarqué dans l’application.
+Le projet conserve Prisma 6 pour préserver le schéma et le mode de connexion existants. Le dépôt contient désormais aussi l’application Next.js et les chantiers fonctionnels amont ; `@vercel/node`, Next.js et Tailwind doivent donc être inclus dans chaque audit. Le contrôle P0 Neon ne remplace pas le chantier séparé de mise à niveau des dépendances : aucune mise en production ne doit être autorisée tant que `npm audit --omit=dev` et l’audit complet ne retournent pas zéro vulnérabilité.
 
 ## Variables Vercel — production
 
