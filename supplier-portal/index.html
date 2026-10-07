@@ -1109,7 +1109,7 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
           else { const invitation = state.memberInvitations.find((entry) => entry.id === invitationId); if (invitation) invitation.expiresAt = new Date(Date.now() + 7 * 86400000).toISOString(); }
           notify(action === 'revoke' ? 'Invitation révoquée en mode démonstration.' : 'Invitation renvoyée en mode démonstration.'); render(); return;
         }
-        const result = await api(`/api/supplier/member-incodeURIComponent(invitationId)}`, { method: action === 'revoke' ? 'DELETE' : 'POST' });
+        const result = await api(`/api/supplier/member-invitations/${encodeURIComponent(invitationId)}`, { method: action === 'revoke' ? 'DELETE' : 'POST' });
         await refreshTeam();
         notify(action === 'revoke' ? 'Invitation révoquée.' : result.invitationToken ? `Invitation renvoyée. Token à transmettre une seule fois : ${result.invitationToken}` : 'Invitation renvoyée.');
       }

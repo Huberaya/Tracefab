@@ -488,3 +488,75 @@ et `test:supplychain:chantier3` — le litige en attente d'arbitrage.
 comportementales et déclaratives. L'équilibre visuel des quatre vues, la lisibilité réelle
 des tables denses à 13 px et le rendu du point de rupture 1024 px restent à valider dans un
 navigateur.
+
+---
+
+# Chantier 6 — préparation : intégrité du registre de routes
+
+Avant de toucher au Supplier Portal, mesure réelle de son exposition. Deux corrections
+à mes propres notes d'audit :
+
+- « supplier-portal = 2 vues » : **faux**. Le fichier fait 1 272 lignes / 134 414 octets et
+  expose **10 vues** — overview, profile, sites, materials, documents, certifications,
+  quality, passport, members, requests. Même erreur de méthode que pour le Quality Center :
+  il faut lire le code, pas compter les lignes.
+- « 12 routes supplier sur 22 atteintes » : **faux aussi**, artefact de ma logique
+  d'appariement (`{id}` comparé à `${...}`). Appariement exact : **16/22**.
+
+## Un bug systémique trouvé en chemin
+
+`api/_routes/` contient **124 handlers** ; `api/index.ts` n'en déclarait que **114**.
+Dix fichiers de routes entièrement écrits renvoyaient donc 404 :
+
+| Handler | Taille | Appelé par une interface ? |
+| --- | --- | --- |
+| `supplier/shares` | 3 092 o | **oui — Supplier Portal, à chaque chargement** |
+| `data-requests/[requestId]/remind` | 2 749 o | **oui — Brand Console** |
+| `supplier/certifications/ocr-extract` | 1 524 o | non |
+| `quality/audit-pack` | 1 872 o | non |
+| `quality/calculate-index` | 1 957 o | non |
+| `dpp/validate` | 1 447 o | non (phase 10) |
+| `integrations/plm` | 2 521 o | non |
+| `traceability/audit-chain` | 2 595 o | non (phase 9) |
+| `traceability/lineage-graph` | 1 800 o | non (phase 9) |
+| `traceability/mass-balance` | 2 148 o | non (phase 9) |
+
+Les deux premiers ont été déclarés dans le dispatcher. Les huit autres restent orphelins :
+trois d'entre eux (`traceability/*`) sont le socle de la phase 9, `dpp/validate` celui de la
+phase 10 — à traiter dans leur chantier, pas avant.
+
+`supplier/shares` était invisible parce que l'appel est dans un `Promise.allSettled` : le 404
+partait dans `state.optionalErrors` et `state.shares` restait vide. La vue de partage du
+portail s'affichait donc vide depuis toujours, sans erreur en console.
+
+## Un littéral cassé dans le Supplier Portal
+
+Ligne 1112 de `supplier-portal/index.html`, dans `manageInvitation` :
+
+```js
+await api(`/api/supplier/member-incodeURIComponent(invitationId)}`, { ... })
+```
+
+Un rechercher/remplacer a mangé `vitations/${en`. Conséquence : l'URL est un littéral,
+l'identifiant n'est jamais interpolé, et Renvoyer / Révoquer une invitation renvoient 404.
+Le bug était invisible en mode démonstration, qui sort de la fonction avant l'appel.
+Corrigé en `/api/supplier/member-invitations/${encodeURIComponent(invitationId)}` — méthode
+et forme de réponse vérifiées dans le handler.
+
+## Nouveau portail de test
+
+`scripts/test_route_registry.mjs` (`npm run test:route-registry`) verrouille l'invariant :
+**tout `/api/*` appelé par une interface doit résoudre vers une route déclarée.** Il balaie
+7 surfaces et 90 appels distincts. Les handlers orphelins restants sont signalés en
+avertissement, pas en échec — une route peut légitimement précéder son interface.
+
+Ce test aurait attrapé `supplier/shares`, `data-requests/:id/remind` **et** le littéral
+cassé de `manageInvitation`.
+
+## Portails
+
+```
+test:route-registry   PASS  (116 motifs, 90 appels résolus, 8 orphelins signalés)
+Balayage des 50 scripts test:* : 31 PASS / 19 FAIL — les 19 échecs préexistants, inchangés
+tsc sur api/index.ts : aucune erreur de syntaxe (uniquement des TS2792 dus à --noResolve)
+```
