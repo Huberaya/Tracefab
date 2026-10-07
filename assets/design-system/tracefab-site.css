@@ -1050,6 +1050,12 @@
   .tf-layer__rail::after { transition: none; }
 }
 
+/* ── Mise en veille des animations hors champ ───────────────────────────── */
+.tf-offscreen.tf-offscreen,
+.tf-offscreen.tf-offscreen *,
+.tf-offscreen.tf-offscreen *::before,
+.tf-offscreen.tf-offscreen *::after { animation-play-state: paused; }
+
 .tf-layer__name {
   font-family: var(--tf-font-display);
   font-size: clamp(1.5rem, 2.8vw, 2.25rem);

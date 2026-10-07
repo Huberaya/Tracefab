@@ -751,6 +751,36 @@
     });
   }
 
+  /* ── 06b · MISE EN VEILLE DES ANIMATIONS HORS CHAMP ──────────────────── */
+
+  /* La page compte sept animations CSS infinies et dix animations SMIL. Elles
+     tournaient toutes en permanence, y compris lorsque leur section etait a
+     cinq mille pixels du champ de vision. La marge de 300px reveille la
+     section avant qu'elle n'entre, pour qu'aucune apparition ne soit figee. */
+  function initVeille() {
+    if (!('IntersectionObserver' in window)) return;
+    var sections = $$('main > *');
+    if (!sections.length) return;
+
+    var smil = function (section, enVeille) {
+      $$('svg', section).forEach(function (s) {
+        if (!s.querySelector('animate, animateMotion, animateTransform')) return;
+        if (typeof s.pauseAnimations !== 'function') return;
+        if (enVeille) { s.pauseAnimations(); } else { s.unpauseAnimations(); }
+      });
+    };
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        var dehors = !e.isIntersecting;
+        e.target.classList.toggle('tf-offscreen', dehors);
+        smil(e.target, dehors);
+      });
+    }, { rootMargin: '300px 0px 300px 0px', threshold: 0 });
+
+    sections.forEach(function (s) { io.observe(s); });
+  }
+
   /* ── 07 · DEMO MODAL ─────────────────────────────────────────────────── */
 
   function initModal() {
@@ -796,6 +826,7 @@
     initReveal();
     initBars();
     initSpine();
+    initVeille();
     initModal();
 
     var start = function () {

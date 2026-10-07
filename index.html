@@ -28,7 +28,11 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <!-- Axe variable, pas cinq instances statiques. Le design system declare
+       huit graisses (400, 480, 500, 520, 540, 560, 600, 620) ; en statique les
+       cinq instances servies les ecrasaient sur trois rendus seulement. La
+       graisse 300 n'est utilisee nulle part sur cette page. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
 
   <link rel="stylesheet" href="/assets/design-system/tracefab-core.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-site.css">
