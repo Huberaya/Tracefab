@@ -261,7 +261,12 @@
     }
 
   </style>
-  <script src="/auto-translate.js"></script>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-spa-responsive.css">
+  <!-- The legacy auto-translate.js DOM rewriter was removed here: it reads the
+       same localStorage key as this app ("tracefab_lang") but defaults to "en"
+       while the app defaults to "fr", so on a first visit it rewrote only the
+       glossary-matched strings and produced a half-translated UI. This page owns
+       its own complete catalogue. -->
 </head>
 <body>
   <div id="app"></div>
@@ -272,6 +277,36 @@
       
       const translations = {
         fr: {
+          stDraft: "Brouillon",
+          stSent: "Envoyée",
+          stInProgress: "En cours",
+          stSubmitted: "Soumise",
+          stChangesRequested: "À corriger",
+          stApproved: "Approuvée",
+          stCancelled: "Annulée",
+          stVerified: "Vérifiée",
+          stNeedsReview: "À revoir",
+          stOpen: "Ouverte",
+          stAcknowledged: "Acquittée",
+          stWaived: "Dérogation",
+          stResolved: "Résolue",
+          stNotStarted: "Non démarré",
+          stDataReady: "Prêt pour validation",
+          stReadyToPublish: "Validé & prêt à publier",
+          stReviewRequired: "Revue requise",
+          stActive: "Actif",
+          stCompleted: "Terminée",
+          stInvited: "Invité",
+          stDeclared: "Déclaré",
+          stDocumented: "Documenté",
+          stUploaded: "Enregistré",
+          stScanning: "Contrôle en cours",
+          stAvailable: "Disponible",
+          stRejected: "Rejeté",
+          stDeleted: "Supprimé",
+          stSuspended: "Suspendu",
+          stRevoked: "Révoqué",
+          demoUnavailable: "Indisponible en mode démonstration — connectez les API TRACEFAB pour exécuter cette action.",
           overview: "Vue d’ensemble",
           requests: "Demandes de données",
           sites: "Sites de production",
@@ -299,6 +334,36 @@
           signOut: "Se déconnecter"
         },
         en: {
+          stDraft: "Draft",
+          stSent: "Sent",
+          stInProgress: "In progress",
+          stSubmitted: "Submitted",
+          stChangesRequested: "Changes requested",
+          stApproved: "Approved",
+          stCancelled: "Cancelled",
+          stVerified: "Verified",
+          stNeedsReview: "Needs review",
+          stOpen: "Open",
+          stAcknowledged: "Acknowledged",
+          stWaived: "Waived",
+          stResolved: "Resolved",
+          stNotStarted: "Not started",
+          stDataReady: "Ready for validation",
+          stReadyToPublish: "Ready to publish",
+          stReviewRequired: "Review required",
+          stActive: "Active",
+          stCompleted: "Completed",
+          stInvited: "Invited",
+          stDeclared: "Declared",
+          stDocumented: "Documented",
+          stUploaded: "Saved",
+          stScanning: "Scanning",
+          stAvailable: "Available",
+          stRejected: "Rejected",
+          stDeleted: "Deleted",
+          stSuspended: "Suspended",
+          stRevoked: "Revoked",
+          demoUnavailable: "Not available in demonstration mode — connect the TRACEFAB APIs to run this action.",
           overview: "Overview",
           requests: "Data Requests",
           sites: "Production Facilities",
@@ -326,6 +391,36 @@
           signOut: "Sign out"
         },
                 de: {
+                  stDraft: "Entwurf",
+                  stSent: "Gesendet",
+                  stInProgress: "In Bearbeitung",
+                  stSubmitted: "Eingereicht",
+                  stChangesRequested: "Korrektur nötig",
+                  stApproved: "Genehmigt",
+                  stCancelled: "Storniert",
+                  stVerified: "Verifiziert",
+                  stNeedsReview: "Prüfung nötig",
+                  stOpen: "Offen",
+                  stAcknowledged: "Bestätigt",
+                  stWaived: "Ausnahme",
+                  stResolved: "Gelöst",
+                  stNotStarted: "Nicht begonnen",
+                  stDataReady: "Bereit zur Validierung",
+                  stReadyToPublish: "Freigegeben & publikationsbereit",
+                  stReviewRequired: "Prüfung erforderlich",
+                  stActive: "Aktiv",
+                  stCompleted: "Abgeschlossen",
+                  stInvited: "Eingeladen",
+                  stDeclared: "Erklärt",
+                  stDocumented: "Dokumentiert",
+                  stUploaded: "Gespeichert",
+                  stScanning: "Wird geprüft",
+                  stAvailable: "Verfügbar",
+                  stRejected: "Abgelehnt",
+                  stDeleted: "Gelöscht",
+                  stSuspended: "Ausgesetzt",
+                  stRevoked: "Widerrufen",
+                  demoUnavailable: "Im Demonstrationsmodus nicht verfügbar — verbinden Sie die TRACEFAB-APIs, um diese Aktion auszuführen.",
           overview: "Übersicht",
           requests: "Datenanfragen",
           sites: "Produktionsstätten",
@@ -353,6 +448,36 @@
           signOut: "Abmelden"
         },
         es: {
+          stDraft: "Borrador",
+          stSent: "Enviada",
+          stInProgress: "En curso",
+          stSubmitted: "Entregada",
+          stChangesRequested: "Por corregir",
+          stApproved: "Aprobada",
+          stCancelled: "Cancelada",
+          stVerified: "Verificada",
+          stNeedsReview: "Por revisar",
+          stOpen: "Abierta",
+          stAcknowledged: "Confirmada",
+          stWaived: "Exención",
+          stResolved: "Resuelta",
+          stNotStarted: "Sin empezar",
+          stDataReady: "Lista para validación",
+          stReadyToPublish: "Validada y lista para publicar",
+          stReviewRequired: "Revisión requerida",
+          stActive: "Activo",
+          stCompleted: "Completada",
+          stInvited: "Invitado",
+          stDeclared: "Declarado",
+          stDocumented: "Documentado",
+          stUploaded: "Guardado",
+          stScanning: "Comprobando",
+          stAvailable: "Disponible",
+          stRejected: "Rechazado",
+          stDeleted: "Eliminado",
+          stSuspended: "Suspendido",
+          stRevoked: "Revocado",
+          demoUnavailable: "No disponible en modo demostración — conecta las API de TRACEFAB para ejecutar esta acción.",
           overview: "Resumen",
           requests: "Solicitudes de datos",
           sites: "Centros de producción",
@@ -380,6 +505,36 @@
           signOut: "Cerrar sesión"
         },
         nl: {
+          stDraft: "Concept",
+          stSent: "Verzonden",
+          stInProgress: "Loopt",
+          stSubmitted: "Ingediend",
+          stChangesRequested: "Correctie nodig",
+          stApproved: "Goedgekeurd",
+          stCancelled: "Geannuleerd",
+          stVerified: "Geverifieerd",
+          stNeedsReview: "Beoordeling nodig",
+          stOpen: "Open",
+          stAcknowledged: "Bevestigd",
+          stWaived: "Ontheffing",
+          stResolved: "Opgelost",
+          stNotStarted: "Niet gestart",
+          stDataReady: "Klaar voor validatie",
+          stReadyToPublish: "Gevalideerd en publicatieklaar",
+          stReviewRequired: "Beoordeling vereist",
+          stActive: "Actief",
+          stCompleted: "Afgerond",
+          stInvited: "Uitgenodigd",
+          stDeclared: "Opgegeven",
+          stDocumented: "Gedocumenteerd",
+          stUploaded: "Opgeslagen",
+          stScanning: "Wordt gecontroleerd",
+          stAvailable: "Beschikbaar",
+          stRejected: "Afgewezen",
+          stDeleted: "Verwijderd",
+          stSuspended: "Opgeschort",
+          stRevoked: "Ingetrokken",
+          demoUnavailable: "Niet beschikbaar in demonstratiemodus — verbind de TRACEFAB-API's om deze actie uit te voeren.",
           overview: "Overzicht",
           requests: "Gegevensaanvragen",
           sites: "Productielocaties",
@@ -434,6 +589,36 @@
           signOut: "Terminar sessão"
         },
         it: {
+          stDraft: "Bozza",
+          stSent: "Inviata",
+          stInProgress: "In corso",
+          stSubmitted: "Inviata",
+          stChangesRequested: "Da correggere",
+          stApproved: "Approvata",
+          stCancelled: "Annullata",
+          stVerified: "Verificata",
+          stNeedsReview: "Da rivedere",
+          stOpen: "Aperta",
+          stAcknowledged: "Presa in carico",
+          stWaived: "Deroga",
+          stResolved: "Risolta",
+          stNotStarted: "Non avviato",
+          stDataReady: "Pronto per la validazione",
+          stReadyToPublish: "Validato e pronto alla pubblicazione",
+          stReviewRequired: "Revisione richiesta",
+          stActive: "Attivo",
+          stCompleted: "Completata",
+          stInvited: "Invitato",
+          stDeclared: "Dichiarato",
+          stDocumented: "Documentato",
+          stUploaded: "Salvato",
+          stScanning: "Controllo in corso",
+          stAvailable: "Disponibile",
+          stRejected: "Respinto",
+          stDeleted: "Eliminato",
+          stSuspended: "Sospeso",
+          stRevoked: "Revocato",
+          demoUnavailable: "Non disponibile in modalità dimostrativa — collega le API TRACEFAB per eseguire questa azione.",
           overview: "Panoramica",
           requests: "Richieste Dati",
           sites: "Stabilimenti Produttivi",
@@ -522,13 +707,49 @@
       }
 
       const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'fr', demo:new URLSearchParams(location.search).has('demo') };
-      const labels = { draft:'Brouillon', sent:'Envoyée', in_progress:'En cours', submitted:'Soumise', changes_requested:'À corriger', approved:'Approuvée', cancelled:'Annulée', needs_review:'À revoir', verified_by_reviewer:'Vérifiée', not_started:'À commencer', uploaded:'Enregistré', scanning:'Contrôle en cours', available:'Disponible', rejected:'Rejeté', deleted:'Supprimé', declared:'Déclarée', documented:'Documentée', suspended:'Suspendu', revoked:'Révoqué' };
+  // Status chips used to read French in every language because this was a
+  // hardcoded map. They now resolve through the catalogue.
+  const STATUS_KEYS = {
+    "draft": "stDraft",
+    "sent": "stSent",
+    "in_progress": "stInProgress",
+    "submitted": "stSubmitted",
+    "changes_requested": "stChangesRequested",
+    "approved": "stApproved",
+    "cancelled": "stCancelled",
+    "verified_by_reviewer": "stVerified",
+    "needs_review": "stNeedsReview",
+    "open": "stOpen",
+    "acknowledged": "stAcknowledged",
+    "waived": "stWaived",
+    "resolved": "stResolved",
+    "not_started": "stNotStarted",
+    "data_ready": "stDataReady",
+    "ready_to_publish": "stReadyToPublish",
+    "review_required": "stReviewRequired",
+    "active": "stActive",
+    "completed": "stCompleted",
+    "invited": "stInvited",
+    "declared": "stDeclared",
+    "documented": "stDocumented",
+    "uploaded": "stUploaded",
+    "scanning": "stScanning",
+    "available": "stAvailable",
+    "rejected": "stRejected",
+    "deleted": "stDeleted",
+    "suspended": "stSuspended",
+    "revoked": "stRevoked"
+  };
+  const statusLabel = (value) => value ? t(STATUS_KEYS[value] || value) : '—';
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0,2).toUpperCase() || 'TF';
-      const status = (value) => `<span class="status status-${esc(value)}">${esc(labels[value] || value || '—')}</span>`;
+      const status = (value) => `<span class="status status-${esc(value)}">${esc(statusLabel(value) || '—')}</span>`;
       const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
-      const date = (value) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle:'medium' }).format(new Date(value)) : '—';
-      const moneyless = (value) => Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits:0 });
+      // Dates and numbers used to render French whatever the chosen language.
+      const BCP47 = { fr:'fr-FR', en:'en-GB', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT', tr:'tr-TR', zh:'zh-CN' };
+      const locale = () => BCP47[state.lang] || 'en-GB';
+      const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle:'medium' }).format(new Date(value)) : '—';
+      const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits:0 });
       function notify(message, isError = false) { state.toast = { message, isError }; render(); setTimeout(() => { state.toast = null; render(); }, 3500); }
       async function api(path, options = {}) { const headers = { 'Content-Type':'application/json', ...(options.headers || {}) }; if (!state.demo && state.selectedOrganizationId) headers['X-Tracefab-Organization-Id'] = state.selectedOrganizationId; if (!state.demo && state.clerk?.session) { const token = await state.clerk.session.getToken(); if (token) headers.Authorization = `Bearer ${token}`; } const response = await fetch(path, { ...options, headers }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`); return payload; }
 
@@ -839,7 +1060,7 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
               <p>${esc(t('vaultDesc'))}</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary btn-small" onclick="alert('Registre d\'inventaire exporté.')">Exporter Registre Vault</button>
+              <button class="btn btn-secondary btn-small" data-demo-action="1">Exporter Registre Vault</button>
             </div>
           </div>
 
@@ -1201,6 +1422,19 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
       window.previewBomCsv = previewBomCsv;
 
       function bind() {
+
+        // Buttons that used to alert() a fake success now say what is actually true.
+        document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
+          event.preventDefault(); notify(t('demoUnavailable'));
+        }));
+        // The language <select> was rendered but wired to nothing: this page relied
+        // on the legacy rewriter, so it was never actually translatable.
+        document.getElementById('lang-switch')?.addEventListener('change', (event) => {
+          state.lang = event.currentTarget.value;
+          try { localStorage.setItem('tracefab_lang', state.lang); } catch (error) { /* noop */ }
+          document.documentElement.lang = state.lang;
+          render();
+        });
         document.querySelectorAll('[data-view]').forEach((element) => element.addEventListener('click', () => { state.view = element.dataset.view; if (state.view !== 'requestDetail') state.selectedRequest = null; render(); }));
         document.getElementById('organization-switcher')?.addEventListener('change', (event) => switchOrganization(event.currentTarget.value).catch((error) => notify(error.message, true)));
         document.querySelectorAll('[data-action]').forEach((element) => element.addEventListener('click', async () => { try { const action = element.dataset.action; if (action === 'retry') { state.configError = null; boot(); } if (action === 'open-bom-import') { state.modal = 'import-bom'; render(); return; } if (action === 'close-modal') { state.modal = null; render(); return; } if (action === 'signout' && state.clerk) await state.clerk.signOut(); if (action === 'refresh-request') await refreshRequest(); if (action === 'submit-request') await submitRequest(); if (action === 'submit-profile') await submitProfile(); if (action === 'compute-quality') await computeQuality(); if (action === 'review-passport-request') { notify('Demande de passeport revue en mode démonstration.'); } } catch (error) { notify(error.message, true); } }));

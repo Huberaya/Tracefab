@@ -937,7 +937,12 @@
     }
 
   </style>
-  <script src="/auto-translate.js"></script>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-spa-responsive.css">
+  <!-- The legacy auto-translate.js DOM rewriter was removed here: it reads the
+       same localStorage key as this app ("tracefab_lang") but defaults to "en"
+       while the app defaults to "fr", so on a first visit it rewrote only the
+       glossary-matched strings and produced a half-translated UI. This page owns
+       its own complete catalogue. -->
 </head>
 <body>
   <div id="app"></div>
@@ -994,18 +999,49 @@
         packaging: 'Conditionnement (Packaging)',
       };
 
-      const labels = {
-        draft: 'Brouillon', sent: 'Envoyée', in_progress: 'En cours', submitted: 'Soumise',
-        changes_requested: 'À corriger', approved: 'Approuvée', cancelled: 'Annulée',
-        verified_by_reviewer: 'Vérifiée', needs_review: 'À revoir', open: 'Ouverte', acknowledged: 'Acquittée', waived: 'Dérogation', resolved: 'Résolue',
-        not_started: 'Non démarré', data_ready: 'Prêt pour validation', ready_to_publish: 'Validé & Prêt à publier', review_required: 'Revue requise'
+      // Status chips used to read French in every language because this was a
+      // hardcoded map. They now resolve through the catalogue.
+      const STATUS_KEYS = {
+        "draft": "stDraft",
+        "sent": "stSent",
+        "in_progress": "stInProgress",
+        "submitted": "stSubmitted",
+        "changes_requested": "stChangesRequested",
+        "approved": "stApproved",
+        "cancelled": "stCancelled",
+        "verified_by_reviewer": "stVerified",
+        "needs_review": "stNeedsReview",
+        "open": "stOpen",
+        "acknowledged": "stAcknowledged",
+        "waived": "stWaived",
+        "resolved": "stResolved",
+        "not_started": "stNotStarted",
+        "data_ready": "stDataReady",
+        "ready_to_publish": "stReadyToPublish",
+        "review_required": "stReviewRequired",
+        "active": "stActive",
+        "completed": "stCompleted",
+        "invited": "stInvited",
+        "declared": "stDeclared",
+        "documented": "stDocumented",
+        "uploaded": "stUploaded",
+        "scanning": "stScanning",
+        "available": "stAvailable",
+        "rejected": "stRejected",
+        "deleted": "stDeleted",
+        "suspended": "stSuspended",
+        "revoked": "stRevoked"
       };
+      const statusLabel = (value) => value ? bt(STATUS_KEYS[value] || value) : '—';
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TF';
-      const status = (value) => `<span class="status status-${esc(value)}">${esc(labels[value] || value || '—')}</span>`;
+      const status = (value) => `<span class="status status-${esc(value)}">${esc(statusLabel(value) || '—')}</span>`;
       const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
-      const date = (value) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value)) : '—';
-      const moneyless = (value) => Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+      // Dates and numbers used to render French whatever the chosen language.
+      const BCP47 = { fr:'fr-FR', en:'en-GB', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT', tr:'tr-TR', zh:'zh-CN' };
+      const locale = () => BCP47[state.lang] || 'en-GB';
+      const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle: 'medium' }).format(new Date(value)) : '—';
+      const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits: 0 });
 
       function notify(message, isError = false) {
         state.toast = { message, isError };
@@ -1401,6 +1437,36 @@
       
       const brandTranslations = {
         fr: {
+          stDraft: "Brouillon",
+          stSent: "Envoyée",
+          stInProgress: "En cours",
+          stSubmitted: "Soumise",
+          stChangesRequested: "À corriger",
+          stApproved: "Approuvée",
+          stCancelled: "Annulée",
+          stVerified: "Vérifiée",
+          stNeedsReview: "À revoir",
+          stOpen: "Ouverte",
+          stAcknowledged: "Acquittée",
+          stWaived: "Dérogation",
+          stResolved: "Résolue",
+          stNotStarted: "Non démarré",
+          stDataReady: "Prêt pour validation",
+          stReadyToPublish: "Validé & prêt à publier",
+          stReviewRequired: "Revue requise",
+          stActive: "Actif",
+          stCompleted: "Terminée",
+          stInvited: "Invité",
+          stDeclared: "Déclaré",
+          stDocumented: "Documenté",
+          stUploaded: "Enregistré",
+          stScanning: "Contrôle en cours",
+          stAvailable: "Disponible",
+          stRejected: "Rejeté",
+          stDeleted: "Supprimé",
+          stSuspended: "Suspendu",
+          stRevoked: "Révoqué",
+          demoUnavailable: "Indisponible en mode démonstration — connectez les API TRACEFAB pour exécuter cette action.",
           navMain: "Console Principale",
           overview: "Vue d’ensemble",
           products: "Produits",
@@ -1428,6 +1494,36 @@
           dppDesc: "Vérifiez l'éligibilité de vos collections aux normes européennes ESPR et CIRPASS 1.2."
         },
         en: {
+          stDraft: "Draft",
+          stSent: "Sent",
+          stInProgress: "In progress",
+          stSubmitted: "Submitted",
+          stChangesRequested: "Changes requested",
+          stApproved: "Approved",
+          stCancelled: "Cancelled",
+          stVerified: "Verified",
+          stNeedsReview: "Needs review",
+          stOpen: "Open",
+          stAcknowledged: "Acknowledged",
+          stWaived: "Waived",
+          stResolved: "Resolved",
+          stNotStarted: "Not started",
+          stDataReady: "Ready for validation",
+          stReadyToPublish: "Ready to publish",
+          stReviewRequired: "Review required",
+          stActive: "Active",
+          stCompleted: "Completed",
+          stInvited: "Invited",
+          stDeclared: "Declared",
+          stDocumented: "Documented",
+          stUploaded: "Saved",
+          stScanning: "Scanning",
+          stAvailable: "Available",
+          stRejected: "Rejected",
+          stDeleted: "Deleted",
+          stSuspended: "Suspended",
+          stRevoked: "Revoked",
+          demoUnavailable: "Not available in demonstration mode — connect the TRACEFAB APIs to run this action.",
           navMain: "Main Console",
           overview: "Overview",
           products: "Products",
@@ -1455,6 +1551,36 @@
           dppDesc: "Verify your collection readiness against European ESPR and CIRPASS 1.2 standards."
         },
         de: {
+          stDraft: "Entwurf",
+          stSent: "Gesendet",
+          stInProgress: "In Bearbeitung",
+          stSubmitted: "Eingereicht",
+          stChangesRequested: "Korrektur nötig",
+          stApproved: "Genehmigt",
+          stCancelled: "Storniert",
+          stVerified: "Verifiziert",
+          stNeedsReview: "Prüfung nötig",
+          stOpen: "Offen",
+          stAcknowledged: "Bestätigt",
+          stWaived: "Ausnahme",
+          stResolved: "Gelöst",
+          stNotStarted: "Nicht begonnen",
+          stDataReady: "Bereit zur Validierung",
+          stReadyToPublish: "Freigegeben & publikationsbereit",
+          stReviewRequired: "Prüfung erforderlich",
+          stActive: "Aktiv",
+          stCompleted: "Abgeschlossen",
+          stInvited: "Eingeladen",
+          stDeclared: "Erklärt",
+          stDocumented: "Dokumentiert",
+          stUploaded: "Gespeichert",
+          stScanning: "Wird geprüft",
+          stAvailable: "Verfügbar",
+          stRejected: "Abgelehnt",
+          stDeleted: "Gelöscht",
+          stSuspended: "Ausgesetzt",
+          stRevoked: "Widerrufen",
+          demoUnavailable: "Im Demonstrationsmodus nicht verfügbar — verbinden Sie die TRACEFAB-APIs, um diese Aktion auszuführen.",
           navMain: "Hauptkonsole",
           overview: "Übersicht",
           products: "Produkte",
@@ -1482,6 +1608,36 @@
           dppDesc: "Überprüfen Sie die Konformität Ihrer Kollektionen gemäß europäischen ESPR- und CIRPASS 1.2-Normen."
         },
         it: {
+          stDraft: "Bozza",
+          stSent: "Inviata",
+          stInProgress: "In corso",
+          stSubmitted: "Inviata",
+          stChangesRequested: "Da correggere",
+          stApproved: "Approvata",
+          stCancelled: "Annullata",
+          stVerified: "Verificata",
+          stNeedsReview: "Da rivedere",
+          stOpen: "Aperta",
+          stAcknowledged: "Presa in carico",
+          stWaived: "Deroga",
+          stResolved: "Risolta",
+          stNotStarted: "Non avviato",
+          stDataReady: "Pronto per la validazione",
+          stReadyToPublish: "Validato e pronto alla pubblicazione",
+          stReviewRequired: "Revisione richiesta",
+          stActive: "Attivo",
+          stCompleted: "Completata",
+          stInvited: "Invitato",
+          stDeclared: "Dichiarato",
+          stDocumented: "Documentato",
+          stUploaded: "Salvato",
+          stScanning: "Controllo in corso",
+          stAvailable: "Disponibile",
+          stRejected: "Respinto",
+          stDeleted: "Eliminato",
+          stSuspended: "Sospeso",
+          stRevoked: "Revocato",
+          demoUnavailable: "Non disponibile in modalità dimostrativa — collega le API TRACEFAB per eseguire questa azione.",
           navMain: "Console Principale",
           overview: "Panoramica",
           products: "Prodotti",
@@ -1509,6 +1665,36 @@
           dppDesc: "Verifica l'idoneità delle tue collezioni rispetto agli standard europei ESPR e CIRPASS 1.2."
         },
         es: {
+          stDraft: "Borrador",
+          stSent: "Enviada",
+          stInProgress: "En curso",
+          stSubmitted: "Entregada",
+          stChangesRequested: "Por corregir",
+          stApproved: "Aprobada",
+          stCancelled: "Cancelada",
+          stVerified: "Verificada",
+          stNeedsReview: "Por revisar",
+          stOpen: "Abierta",
+          stAcknowledged: "Confirmada",
+          stWaived: "Exención",
+          stResolved: "Resuelta",
+          stNotStarted: "Sin empezar",
+          stDataReady: "Lista para validación",
+          stReadyToPublish: "Validada y lista para publicar",
+          stReviewRequired: "Revisión requerida",
+          stActive: "Activo",
+          stCompleted: "Completada",
+          stInvited: "Invitado",
+          stDeclared: "Declarado",
+          stDocumented: "Documentado",
+          stUploaded: "Guardado",
+          stScanning: "Comprobando",
+          stAvailable: "Disponible",
+          stRejected: "Rechazado",
+          stDeleted: "Eliminado",
+          stSuspended: "Suspendido",
+          stRevoked: "Revocado",
+          demoUnavailable: "No disponible en modo demostración — conecta las API de TRACEFAB para ejecutar esta acción.",
           navMain: "Consola Principal",
           overview: "Resumen",
           products: "Productos",
@@ -1536,6 +1722,36 @@
           dppDesc: "Verifique la preparación de sus colecciones frente a los estándares europeos ESPR y CIRPASS 1.2."
         },
         nl: {
+          stDraft: "Concept",
+          stSent: "Verzonden",
+          stInProgress: "Loopt",
+          stSubmitted: "Ingediend",
+          stChangesRequested: "Correctie nodig",
+          stApproved: "Goedgekeurd",
+          stCancelled: "Geannuleerd",
+          stVerified: "Geverifieerd",
+          stNeedsReview: "Beoordeling nodig",
+          stOpen: "Open",
+          stAcknowledged: "Bevestigd",
+          stWaived: "Ontheffing",
+          stResolved: "Opgelost",
+          stNotStarted: "Niet gestart",
+          stDataReady: "Klaar voor validatie",
+          stReadyToPublish: "Gevalideerd en publicatieklaar",
+          stReviewRequired: "Beoordeling vereist",
+          stActive: "Actief",
+          stCompleted: "Afgerond",
+          stInvited: "Uitgenodigd",
+          stDeclared: "Opgegeven",
+          stDocumented: "Gedocumenteerd",
+          stUploaded: "Opgeslagen",
+          stScanning: "Wordt gecontroleerd",
+          stAvailable: "Beschikbaar",
+          stRejected: "Afgewezen",
+          stDeleted: "Verwijderd",
+          stSuspended: "Opgeschort",
+          stRevoked: "Ingetrokken",
+          demoUnavailable: "Niet beschikbaar in demonstratiemodus — verbind de TRACEFAB-API's om deze actie uit te voeren.",
           navMain: "Hoofdconsole",
           overview: "Overzicht",
           products: "Producten",
@@ -1614,6 +1830,15 @@
         document.documentElement.lang = lang;
         render();
       }
+
+      // Le script de la console est encapsule dans une IIFE : les fonctions
+      // declarees ici ne sont pas globales. Les attributs HTML inline
+      // (onchange="setBrandLang(...)", onclick="...render()") sont evalues
+      // dans la portee globale et levaient "X is not defined".
+      // On expose uniquement les deux fonctions reellement referencees.
+      window.setBrandLang = setBrandLang;
+      window.render = render;
+      window.state = state;
 
 
       function intelligenceView() {
@@ -1798,7 +2023,7 @@
             <p>Concevez et déployez des questionnaires sur-mesure pour vos fournisseurs : exigences documentaires, extraction OCR, règles de validation et conformité CSRD.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Catalogue des gabarits standards exporté au format JSON.')">Exporter Gabarits (JSON)</button>
+            <button class="btn btn-secondary" data-demo-action="1">Exporter Gabarits (JSON)</button>
             <button class="btn btn-primary" onclick="state.modal='new-questionnaire';render();">+ Créer un questionnaire</button>
           </div>
         </div>
@@ -1841,7 +2066,7 @@
                       <button class="btn btn-primary btn-small" data-action="new-request" onclick="state.modal='new-request';state.selectedQuestionnairePreset='${esc(q.key)}';render();">
                         ↗ Lancer une collecte avec ce modèle
                       </button>
-                      <button class="btn btn-secondary btn-small" onclick="alert('Édition du protocole ${esc(q.title)} : ajout de nouvelles règles de preuve.')">
+                      <button class="btn btn-secondary btn-small" data-demo-action="1">
                         Modifier le protocole
                       </button>
                     </div>
@@ -1890,8 +2115,8 @@
             <p>Suivez l'origine des fibres, les procédés de filature, les certifications de bilan massique et les fournisseurs Rang 3–4.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Exportation CSV générée.')">Exporter CSV</button>
-            <button class="btn btn-primary" onclick="alert('Nouveau matériau enregistré.')">+ Ajouter un matériau</button>
+            <button class="btn btn-secondary" data-demo-action="1">Exporter CSV</button>
+            <button class="btn btn-primary" data-demo-action="1">+ Ajouter un matériau</button>
           </div>
         </div>
         <div class="card panel">
@@ -1908,7 +2133,7 @@
                   <td><strong>${esc(m.recycledContent || '0%')}</strong></td>
                   <td>${(m.certifications || ['GOTS']).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')}</td>
                   <td><span class="badge-tier">${esc(m.tier || 'Tier 4')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Détails du matériau ${esc(m.name)}')">Inspecter</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter</button></td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -1942,7 +2167,7 @@
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Ouvrir Vue Consommateur DPP ↗</button>
-            <button class="btn btn-primary" onclick="alert('Rapport complet de traçabilité exporté.')">Exporter Audit Complet</button>
+            <button class="btn btn-primary" data-demo-action="1">Exporter Audit Complet</button>
           </div>
         </div>
 
@@ -2107,7 +2332,7 @@
                         <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · Téléversé le ${esc(f.date)}</div>
                       </div>
                     </div>
-                    <button class="btn btn-secondary btn-small" onclick="alert('Inspection de la preuve ${esc(f.name)} scellée avec hash.')">Inspecter</button>
+                    <button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter</button>
                   </div>
                 `).join('')}
               </div>
@@ -2160,8 +2385,8 @@
             <p>Auditez, scellez et vérifiez les preuves réelles de votre supply chain textile : certificats de transaction, rapports d'essais ISO 17025, audits sociaux SMETA et déclarations REACH.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Registre d\'audit cryptographique téléchargé (Format JSON-LD).')">📥 Télécharger le registre scellé</button>
-            <button class="btn btn-primary" onclick="alert('Formulaire de dépôt de preuve ouvert.')">+ Déposer une nouvelle preuve</button>
+            <button class="btn btn-secondary" data-demo-action="1">📥 Télécharger le registre scellé</button>
+            <button class="btn btn-primary" data-demo-action="1">+ Déposer une nouvelle preuve</button>
           </div>
         </div>
 
@@ -2228,7 +2453,7 @@
                   <td>14/01/2026</td>
                   <td>14/01/2027</td>
                   <td><span class="status status-approved">✓ SHA-256 Scellé</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Preuve inspectée avec succès.')">Vérifier</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
                 </tr>
                 <tr>
                   <td><strong>Rapport Laboratoire ZDHC MRSL Level 3</strong><div class="meta">Analyses eaux usées & métaux lourds</div></td>
@@ -2238,7 +2463,7 @@
                   <td>02/03/2026</td>
                   <td>02/03/2027</td>
                   <td><span class="status status-approved">✓ Validé ISO 17025</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Rapport de laboratoire conforme.')">Vérifier</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
                 </tr>
                 <tr>
                   <td><strong>Audit Social SMETA 4-Pillar (Grade A)</strong><div class="meta">Santé, sécurité & rémunération équitable</div></td>
@@ -2248,7 +2473,7 @@
                   <td>10/11/2025</td>
                   <td>10/11/2026</td>
                   <td><span class="status status-approved">✓ Conforme OIT</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Audit social approuvé sans non-conformité.')">Vérifier</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
                 </tr>
                 <tr>
                   <td><strong>Certificat OEKO-TEX Standard 100</strong><div class="meta">Classe 1 (Contact direct avec la peau)</div></td>
@@ -2258,7 +2483,7 @@
                   <td>18/02/2026</td>
                   <td>18/02/2027</td>
                   <td><span class="status status-approved">✓ Valide</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Certificat vérifié.')">Vérifier</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
                 </tr>
               </tbody>
             </table>
@@ -2275,7 +2500,7 @@
             <p>Active multi-facility certifications: GOTS, GRS, OEKO-TEX, and ISO 14001.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Nouveau certificat déclaré.')">+ Déclarer un certificat</button>
+            <button class="btn btn-primary" data-demo-action="1">+ Déclarer un certificat</button>
           </div>
         </div>
         <div class="grid split">
@@ -2320,7 +2545,7 @@
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Exporter JSON-LD (CIRPASS) ↗</button>
-            <button class="btn btn-primary" onclick="alert('Tous les scores DPP ont été recalculés.')">Recalculer les scores DPP</button>
+            <button class="btn btn-primary" data-demo-action="1">Recalculer les scores DPP</button>
           </div>
         </div>
 
@@ -2399,7 +2624,7 @@
             <p>Générez les extraits de données pour les auditeurs CSRD (ESRS E1, E4, E5), Loi AGEC et LkSG.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Rapport CSRD exporté avec succès.')">Générer le rapport CSRD</button>
+            <button class="btn btn-primary" data-demo-action="1">Générer le rapport CSRD</button>
           </div>
         </div>
         <div class="grid split">
@@ -2411,14 +2636,14 @@
                   <strong>Export Réglementaire CSRD (ESRS E5 Circularité)</strong>
                   <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Composition certifiée, recyclabilité, et taux de matières recyclées.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Export CSRD lancé.')">Télécharger XLSX</button>
+                <button class="btn btn-secondary btn-small" data-demo-action="1">Télécharger XLSX</button>
               </div>
               <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
                 <div>
                   <strong>Fiche Conformité Loi AGEC (France - Article 13)</strong>
                   <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Traçabilité des opérations de tissage, teinture et confection.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Fiche AGEC générée.')">Télécharger PDF</button>
+                <button class="btn btn-secondary btn-small" data-demo-action="1">Télécharger PDF</button>
               </div>
             </div>
           </div>
@@ -2437,7 +2662,7 @@
             <p>Paramètres de l'organisation, intégrations API, clés d'accès et politiques de conformité.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Paramètres sauvegardés.')">Enregistrer</button>
+            <button class="btn btn-primary" data-demo-action="1">Enregistrer</button>
           </div>
         </div>
         <div class="card panel">
@@ -2752,31 +2977,31 @@
           </div>
 
           <div class="lineage-pipeline-flow">
-            <div class="lineage-step-card active" onclick="alert('Échelon Fibre : Coton Biologique certifié GOTS (Ferme Izmir, Turquie)')">
+            <div class="lineage-step-card active" data-demo-action="1">
               <div class="lineage-step-label">01. FIBRE</div>
               <div class="lineage-step-sub">Ferme GOTS</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Filature : Filature de Haute-Vienne (Combed Ring Spun Ne 30/1)')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">02. FILATURE</div>
               <div class="lineage-step-sub">Bilan Massique</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Tissage/Tricotage : Portugal Textile Mill (Jersey 185g/m²)')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">03. TRICOTAGE</div>
               <div class="lineage-step-sub">Guimarães PT</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Teinture : EcoDye Aquitaine (ZDHC Level 3, Zéro Rejet Dangereux)')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">04. TEINTURE</div>
               <div class="lineage-step-sub">ZDHC Level 3</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Confection : Atelier Confection SAS (Barcelos, SMETA 4-Pillar)')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">05. CONFECTION</div>
               <div class="lineage-step-sub">Atelier Certifié</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Produit Fini : Référence AT-ESS-001 réconciliée à 100%')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">06. PRODUIT</div>
               <div class="lineage-step-sub">BOM 100%</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Éco-Score : Calcul PEF Échelon 3 - 3.42 kg CO2e / pièce')">
+            <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">07. PEF ÉCO</div>
               <div class="lineage-step-sub">Score A (PEF)</div>
             </div>
@@ -2865,7 +3090,7 @@
       function supplierDetailView() {
         const supplier = state.selectedSupplier;
         if (!supplier) return `<div class="empty"><div class="empty-icon">◎</div><strong>Fournisseur introuvable</strong><button class="btn btn-secondary" data-view="suppliers">Retour aux fournisseurs</button></div>`;
-        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">← Retour aux fournisseurs</button><div class="eyebrow" style="margin-top:20px">Fournisseur</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || 'Pays non renseigné')} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">Nouvelle demande</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(labels[supplier.profile?.onboardingStatus] || supplier.profile?.onboardingStatus || 'Non chargé')}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">Complétude</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">Activités</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">Résumé</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : '<div class="empty"><p>Profil non disponible pour cette organisation.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
+        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">← Retour aux fournisseurs</button><div class="eyebrow" style="margin-top:20px">Fournisseur</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || 'Pays non renseigné')} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">Nouvelle demande</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || 'Non chargé')}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">Complétude</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">Activités</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">Résumé</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : '<div class="empty"><p>Profil non disponible pour cette organisation.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
       }
 
       function capContractPanel() {
@@ -3027,7 +3252,7 @@
             <span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span>
             <div>
               <strong>${esc(issue.message)}</strong>
-              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(labels[issue.status] || issue.status)}</span> · <span class="meta">Détectée le ${date(issue.detectedAt)}</span></p>
+              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(statusLabel(issue.status))}</span> · <span class="meta">Détectée le ${date(issue.detectedAt)}</span></p>
               ${isWaived && waiverReason ? `
                 <div class="item-response" style="margin-top:7px;background:#edf7f0;border:1px solid #cce8d5;border-radius:8px;font-size:11px;color:#285e42">
                   <strong>Dérogation accordée :</strong> ${esc(waiverReason)}
@@ -3064,7 +3289,7 @@
               <p>Reconstitution scientifique du parcours physique de la matière, depuis la parcelle agricole jusqu'au centre de distribution européen.</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary" onclick="alert('Rapport de Chaîne de Garde généré (Norme ISO 22095).')">📥 Exporter le rapport forensique</button>
+              <button class="btn btn-secondary" data-demo-action="1">📥 Exporter le rapport forensique</button>
               <button class="btn btn-secondary" data-action="select-supply-chain-product">Changer de produit</button>
               <button class="btn btn-primary" data-action="new-chain-node">+ Ajouter un jalon vérifié</button>
             </div>
@@ -3362,7 +3587,7 @@
             ${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}
             ${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary" data-action="remind-request" data-reminder-request-id="${esc(r.id)}">Relancer le fournisseur</button>` : ''}
             ${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}
-            <button class="btn btn-primary" onclick="alert('Rapport complet de revue RSE exporté.')">Exporter Synthèse</button>
+            <button class="btn btn-primary" data-demo-action="1">Exporter Synthèse</button>
           </div>
         </div>
 
@@ -3400,7 +3625,7 @@
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
                           <span class="badge-ocr">OCR 99% Valide</span>
-                          <button class="btn btn-secondary btn-small" onclick="alert('Inspection visuelle de ${esc(item.documentName)} ouverte.')">Inspecter Document</button>
+                          <button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter Document</button>
                         </div>
                       </div>
                     ` : ''}
@@ -3412,7 +3637,7 @@
                             <strong style="font-size:11px;color:var(--muted);text-transform:uppercase;">Donnée Déclarée par le Fournisseur :</strong>
                             <div style="font-size:13px;font-weight:750;margin-top:2px;">${esc(response.value)}</div>
                           </div>
-                          <span class="status status-${esc(response.status)}">${esc(labels[response.status] || response.status)}</span>
+                          <span class="status status-${esc(response.status)}">${esc(statusLabel(response.status))}</span>
                         </div>
 
                         ${response.reviewerNote ? `
@@ -3459,7 +3684,7 @@
             <div class="card panel">
               <div class="panel-head"><h2>Actions Rapides</h2></div>
               <div style="display:grid;gap:8px;">
-                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="alert('Rappel email envoyé à Rui Silva (Nhãn Textile).')">
+                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" data-demo-action="1">
                   ✉️ Relancer le fournisseur par email
                 </button>
                 <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="window.open('/dpp/', '_blank')">
@@ -4164,6 +4389,11 @@
       }
 
       function bind() {
+
+        // Buttons that used to alert() a fake success now say what is actually true.
+        document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
+          event.preventDefault(); notify(bt('demoUnavailable'));
+        }));
         document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => { state.view = el.dataset.view; state.selectedRequest = null; render(); }));
         document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async (event) => {
           const action = el.dataset.action;
