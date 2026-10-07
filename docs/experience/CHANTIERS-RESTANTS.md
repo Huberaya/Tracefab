@@ -17,7 +17,7 @@ Market Readiness sont appliqués et ne figurent plus ici.
 | 3 | Vue **Risk** absente de la console | Cahier des charges | **P0** | vue complète |
 | 4 | `dpp` et `certifications` en état vide | Persona | P1 | données démo |
 | 5 | Portail mobile sans action au 1ᵉʳ écran | Persona | P1 | mise en page |
-| 6 | Trois systèmes i18n concurrents | Architecture | **P0** | **Fait** |
+| 6 | Catalogues i18n concurrents | Architecture | **P0** | **Partiel — 4 pages sur 7** |
 | 7 | Copie métier en dur dans les 3 SPA | Cahier des charges | P1 | ~754 chaînes |
 | 8 | Pousser le commit et ouvrir la PR | Livraison | P1 | manuel |
 | 9 | Phases 9 à 12 sans validation formelle | Process | P2 | revue |
@@ -93,7 +93,7 @@ ne voit que des onglets. Sur desktop le critère passe (progression
 
 ## 6. Trois systèmes i18n concurrents · P0 · **fait**
 
-> Consolidé. Le détail est dans
+> **Partiellement consolidé — 4 des 7 pages livrées.** Le détail est dans
 > `docs/experience/CONSOLIDATION-I18N.md`. Résumé : les dictionnaires inline
 > de la console et du portail ont été fusionnés dans `assets/i18n/`, servi
 > par le runtime existant `tf-i18n.js`. Deux défauts visibles par
@@ -101,8 +101,25 @@ ne voit que des onglets. Sur desktop le critère passe (progression
 > vitrine et l'application (deux clés de stockage), et le portail repliait
 > en français les clés absentes en turc, portugais et chinois.
 >
-> Reste un fragment : l'arbre `locales/`, que je n'ai pas supprimé — voir
-> le point 10 ci-dessous.
+> **Ce qui reste**, et que mon relevé initial avait manqué — il ne couvrait
+> que 4 pages alors que le dépôt en livre 7 :
+>
+> | Page | État | Liée depuis |
+> |---|---|---|
+> | `index.html` | catalogue partagé | — |
+> | `product-intelligence/` | catalogue partagé | nav |
+> | `brand-console/` | catalogue partagé | nav |
+> | `supplier-portal/` | catalogue partagé | nav |
+> | `dpp/` | **dictionnaire inline `dppLangs`, 7 langues** | nav |
+> | `quality-center/` | **aucune i18n, copie française en dur** | **3 pages** |
+> | `passport/`, `operations/` | aucune i18n | 0 page (orphelines) |
+>
+> `quality-center/` est le constat le plus gênant : elle est atteignable
+> depuis trois pages, entièrement en français codé en dur, et ne possède
+> aucun mécanisme de traduction — un utilisateur allemand ou italien y
+> tombe sur une page française sans recours.
+>
+> Reste aussi l'arbre `locales/` — voir le point 10.
 
 ### Constat d'origine
 
