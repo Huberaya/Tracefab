@@ -82,6 +82,8 @@ La page Produits expose :
 ```bash
 npm run test:p1-catalog
 npm run test:brand-console
+npm run test:p1:browser
+npm run test:p1:staging
 npm run typecheck
 npm run api:typecheck
 npm run schema:static

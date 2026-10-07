@@ -85,6 +85,7 @@ Les credentials sont injectés uniquement dans les variables Vercel/staging. Ils
 ```bash
 npm run build
 npm run test:p2:certification-catalog
+npm run test:p2:readiness
 npm run test:private-storage
 npm run test:notification-observability
 npm run test:p2:staging
