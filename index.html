@@ -76,7 +76,7 @@
 
     <div class="tf-header__actions">
       <div class="tf-lang">
-        <button type="button" class="tf-lang__btn" aria-expanded="false" aria-haspopup="true"
+        <button type="button" id="lang-menu-btn" class="tf-lang__btn" aria-expanded="false" aria-haspopup="true"
                 data-i18n-attr="aria-label:nav.language" aria-label="Language">
           <span data-tf-lang-code>EN</span>
           <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -600,6 +600,14 @@
 
 <script src="/assets/i18n/en.js"></script>
 <script src="/assets/js/tf-i18n.js"></script>
+  <script>
+    // Pont global stable : TF_I18N.setLanguage est l'implementation, mais
+    // window.setLanguage reste l'API publique documentee de la landing
+    // (utilisee par le menu #lang-menu-btn et par les tests de contrat).
+    window.setLanguage = function (lang) {
+      return window.TF_I18N && window.TF_I18N.setLanguage(lang);
+    };
+  </script>
 <script src="/assets/js/tf-landing.js" defer></script>
 </body>
 </html>
