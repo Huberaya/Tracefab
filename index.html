@@ -789,8 +789,8 @@
         <a href="#why" data-i18n="nav_why" data-i18n="nav_why">Pourquoi</a>
         <a href="#platform" data-i18n="nav_platform" data-i18n="nav_platform">Plateforme</a>
         <a href="#supply-chain" data-i18n="nav_supply_chain" data-i18n="nav_supply_chain">Chaîne d'approvisionnement</a>
-        <a href="#product-intelligence" data-i18n="nav_intelligence" data-i18n="nav_intelligence">Intelligence</a>
-        <a href="#dpp" data-i18n="nav_dpp" data-i18n="nav_dpp">Passeport DPP</a>
+        <a href="#platform" data-i18n="nav_intelligence" data-i18n="nav_intelligence">Intelligence</a>
+        <a href="/dpp/" target="_blank" data-i18n="nav_dpp" data-i18n="nav_dpp">Passeport DPP</a>
       </nav>
 
       <div class="nav-right-actions">
@@ -846,11 +846,11 @@
       <div class="tablet-inner-layout">
         <!-- Left Icon Rail -->
         <div class="tablet-icon-rail">
-          <div class="rail-icon active" title="Supply Chain">❖</div>
-          <div class="rail-icon" title="BOM Lots">▦</div>
-          <div class="rail-icon" title="Certificates">✓</div>
-          <div class="rail-icon" title="Quality Scores">◈</div>
-          <div class="rail-icon" title="DPP Passports">◉</div>
+          <div class="rail-icon active" onclick="switchMockupTab(0)" title="Supply Chain">❖</div>
+          <div class="rail-icon" onclick="switchMockupTab(1)" title="BOM Lots">▦</div>
+          <div class="rail-icon" onclick="switchMockupTab(2)" title="Certificates">✓</div>
+          <div class="rail-icon" onclick="switchMockupTab(3)" title="Quality Scores">◈</div>
+          <div class="rail-icon" onclick="switchMockupTab(4)" title="DPP Passports">◉</div>
         </div>
 
         <!-- Main Mockup Viewport -->
@@ -1155,5 +1155,127 @@
       setLanguage(savedLang);
     })();
   </script>
+
+  <!-- Interactive Demo Request Modal -->
+  <div id="demo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:200;display:none;place-items:center;padding:20px;">
+    <div style="background:#ffffff;border-radius:24px;max-width:540px;width:100%;padding:36px;box-shadow:0 24px 60px rgba(0,0,0,0.3);position:relative;">
+      <button onclick="closeDemoModal()" style="position:absolute;top:20px;right:20px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--tf-text-muted);">×</button>
+      <div style="font-size:11px;font-family:var(--font-mono);font-weight:700;color:var(--tf-forest-accent);text-transform:uppercase;margin-bottom:8px;">TRACEFAB ENTERPRISE</div>
+      <h3 style="font-size:24px;font-weight:800;color:var(--tf-text-dark);margin-bottom:12px;">Demander une démonstration</h3>
+      <p style="font-size:14px;color:var(--tf-text-muted);line-height:1.5;margin-bottom:24px;">Découvrez comment TRACEFAB structure vos données de filière textile et génère des passeports numériques conformes ESPR.</p>
+      
+      <form onsubmit="handleDemoSubmit(event)">
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--tf-text-dark);">Nom complet</label>
+          <input type="text" required placeholder="Marie Dupont" style="width:100%;padding:12px 14px;border:1px solid var(--tf-border);border-radius:10px;font-size:14px;outline:none;">
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--tf-text-dark);">Email professionnel</label>
+          <input type="email" required placeholder="m.dupont@marque-mode.fr" style="width:100%;padding:12px 14px;border:1px solid var(--tf-border);border-radius:10px;font-size:14px;outline:none;">
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--tf-text-dark);">Nom de la marque ou atelier</label>
+          <input type="text" required placeholder="Maison de Couture / Fabricant" style="width:100%;padding:12px 14px;border:1px solid var(--tf-border);border-radius:10px;font-size:14px;outline:none;">
+        </div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+          <button type="button" onclick="closeDemoModal()" style="padding:12px 20px;border:1px solid var(--tf-border);background:transparent;border-radius:9999px;font-size:13.5px;font-weight:700;cursor:pointer;">Annuler</button>
+          <button type="submit" style="padding:12px 26px;background:var(--tf-forest-deep);color:#ffffff;border:none;border-radius:9999px;font-size:13.5px;font-weight:700;cursor:pointer;">Envoyer ma demande</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <script>
+    function openDemoModal() {
+      const m = document.getElementById('demo-modal');
+      if (m) m.style.display = 'grid';
+    }
+    function closeDemoModal() {
+      const m = document.getElementById('demo-modal');
+      if (m) m.style.display = 'none';
+    }
+    function handleDemoSubmit(e) {
+      e.preventDefault();
+      alert('Merci ! Votre demande de démo a bien été enregistrée. Notre équipe vous contactera dans les 24h.');
+      closeDemoModal();
+    }
+
+    const mockupData = [
+      {
+        tag: "INTELLIGENCE SUPPLY CHAIN",
+        sku: "COTTON TWILL OVERSHIRT #4289",
+        title: "Cartographie GPS Polygonale & Réconciliation 100% sur 4 Rangs",
+        c1Head: "TRAÇABILITÉ RANG 1–4", c1Val: "100%", c1Title: "Chaîne de Provenance", c1Desc: "Filature et tissage au Portugal vérifiés",
+        c2Head: "SÉCURITÉ CHIMIQUE", c2Val: "CONFORME", c2Title: "ZDHC MRSL Niveau 3", c2Desc: "Zéro rejet liquide de substances dangereuses",
+        c3Head: "ÉLIGIBILITÉ DPP", c3Val: "88%", c3Title: "Passeport Produit Numérique", c3Desc: "Lien GS1 Digital Link prêt pour impression QR"
+      },
+      {
+        tag: "NOMENCLATURE MATIÈRES & LOTS",
+        sku: "DENIM JACKET SELVEDGE #1042",
+        title: "Bilan Massique & 100% Décomposition Fibres Recyclées",
+        c1Head: "COMPOSITION MATIÈRE", c1Val: "100%", c1Title: "BOM Validé", c1Desc: "85% Coton Biologique · 15% Coton Recyclé",
+        c2Head: "CONTÔLE PERTES", c2Val: "2.4%", c2Title: "Mass-Balance Guard", c2Desc: "Conservation des volumes filés vérifiée",
+        c3Head: "IMPORTATEUR UNIVERSEL", c3Val: "CSV / PLM", c3Title: "Connecteur Direct", c3Desc: "Centric PLM & Lectra synchronisés"
+      },
+      {
+        tag: "REGISTRE DES PREUVES D'AUDIT",
+        sku: "FINE MERINO KNITWEAR #7701",
+        title: "Certificats GOTS, OEKO-TEX & SMETA Scellés par Cryptographie",
+        c1Head: "CERTIFICATS ACTIFS", c1Val: "4 Valides", c1Title: "Scope & Validité", c1Desc: "Aucun certificat expiré sur la collection",
+        c2Head: "EXTRACTION OCR", c2Val: "99.8%", c2Title: "Vérification Auto", c2Desc: "Données de laboratoire extraites sans saisie",
+        c3Head: "SECRET INDUSTRIEL", c3Val: "PROTÉGÉ", c3Title: "Data Vault Shield", c3Desc: "Marges et sous-traitants confidentiels"
+      },
+      {
+        tag: "CENTRE QUALITÉ & AUDITABILITÉ",
+        sku: "ORGANIC POPLIN SHIRT #3312",
+        title: "Indice Qualité Global : Note A (98.4 / 100) Sans Déclaration Verbale",
+        c1Head: "INDICE DE QUALITÉ", c1Val: "98.4 / 100", c1Title: "Score Explicable", c1Desc: "6 niveaux d'audit conformes CSRD",
+        c2Head: "ACTIONS CORRECTIVES", c2Val: "0 Bloquant", c2Title: "Plans d'Action CAP", c2Desc: "Toutes les non-conformités résolues",
+        c3Head: "DOUANES EUROPÉENNES", c3Val: "AUDIT-PROOF", c3Title: "Dossier Complet", c3Desc: "Pack de conformité téléchargeable en 1 clic"
+      },
+      {
+        tag: "PASSEPORT PRODUIT NUMÉRIQUE CIRPASS",
+        sku: "LINEN SUMMER TROUSERS #5520",
+        title: "Passeport DPP Conforme ESPR 2027 & French AGEC Art. 13",
+        c1Head: "GS1 DIGITAL LINK", c1Val: "ACTIF", c1Title: "QR Code Sécurisé", c1Desc: "Résolution dynamique marque & consommateur",
+        c2Head: "RÉPARABILITÉ", c2Val: "8.8 / 10", c2Title: "Indice Circularité", c2Desc: "Guide d'entretien et service de réparation",
+        c3Head: "EMPREINTE PEF", c3Val: "GRADE B", c3Title: "Eco-Score Textile", c3Desc: "Calcul PEF échelon 3 certifié"
+      }
+    ];
+
+    function switchMockupTab(idx) {
+      document.querySelectorAll('.rail-icon').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+      });
+      const data = mockupData[idx];
+      if (!data) return;
+
+      const bannerTag = document.querySelector('.panorama-tag');
+      const bannerTitle = document.querySelector('.panorama-title');
+      if (bannerTag) bannerTag.textContent = data.tag;
+      if (bannerTitle) bannerTitle.textContent = data.title;
+
+      const cards = document.querySelectorAll('.t-card');
+      if (cards.length >= 3) {
+        // Card 1
+        cards[0].querySelector('.t-card-head span:first-child').textContent = data.c1Head;
+        cards[0].querySelector('.t-card-head span:last-child').textContent = data.c1Val;
+        cards[0].querySelector('.t-card-title').textContent = data.c1Title;
+        cards[0].querySelector('div:last-child').textContent = data.c1Desc;
+        // Card 2
+        cards[1].querySelector('.t-card-head span:first-child').textContent = data.c2Head;
+        cards[1].querySelector('.t-card-head span:last-child').textContent = data.c2Val;
+        cards[1].querySelector('.t-card-title').textContent = data.c2Title;
+        cards[1].querySelector('div:last-child').textContent = data.c2Desc;
+        // Card 3
+        cards[2].querySelector('.t-card-head span:first-child').textContent = data.c3Head;
+        cards[2].querySelector('.t-card-head span:last-child').textContent = data.c3Val;
+        cards[2].querySelector('.t-card-title').textContent = data.c3Title;
+        cards[2].querySelector('div:last-child').textContent = data.c3Desc;
+      }
+    }
+  </script>
+
 </body>
 </html>
