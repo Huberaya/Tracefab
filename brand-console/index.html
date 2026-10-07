@@ -1541,7 +1541,7 @@
 
       function requestTable(items) {
         if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>Créez votre première demande fournisseur.</p><button class="btn btn-primary btn-small" data-action="new-request">Créer une demande</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>Échéance</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button></td></tr>`).join('')}</tbody></table></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>Échéance</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}">Relancer</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
       }
 
       function requestsView() {
@@ -2818,6 +2818,13 @@
         await api(`/api/organizations/${encodeURIComponent(data.organizationId)}/invitations`, { method: 'POST', body: JSON.stringify(data) });
         state.modal = null; await sync(); notify('Invitation fournisseur créée.');
       }
+      async function remindRequest(requestId) {
+        if (!requestId) return;
+        if (state.demo) { notify('Relance fournisseur mise en file en mode démonstration.'); return; }
+        await api(`/api/data-requests/${encodeURIComponent(requestId)}/remind`, { method: 'POST' });
+        notify('Relance fournisseur mise en file.');
+      }
+
       async function createRequest(form) {
         const data = Object.fromEntries(new FormData(form));
         const questionnaire = state.questionnaires.find((q) => q.key === data.questionnaireKey);

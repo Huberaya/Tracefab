@@ -12,6 +12,7 @@ const routes: Route[] = [
   { pattern: /^catalog\/export\/audit\-dossier$/, params: [], load: () => import('./_routes/catalog/export/audit-dossier.js') },
   { pattern: /^catalog\/questionnaires$/, params: [], load: () => import('./_routes/catalog/questionnaires.js') },
   { pattern: /^catalog\/schemas$/, params: [], load: () => import('./_routes/catalog/schemas.js') },
+  { pattern: /^catalog\/certification\-standards$/, params: [], load: () => import('./_routes/catalog/certification-standards.js') },
   { pattern: /^config$/, params: [], load: () => import('./_routes/config.js') },
   { pattern: /^data\-request\-items\/([^\/]+)\/response$/, params: ['itemId'], load: () => import('./_routes/data-request-items/[itemId]/response.js') },
   { pattern: /^data\-requests\/([^\/]+)\/items\/from\-template$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items/from-template.js') },
