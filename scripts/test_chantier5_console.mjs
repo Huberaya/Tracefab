@@ -8,9 +8,16 @@ const plmLib = await readFile(new URL('../api/_lib/plm-connector.ts', import.met
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 
 // Assertions on Brand Console UX
-assert(brandConsoleHtml.includes('Supply Chain Visualization'), 'Supply chain visualization view missing');
-assert(brandConsoleHtml.includes('Full Custody Mapping'), 'Full custody mapping missing');
-assert(brandConsoleHtml.includes('Rapports & Audits') || brandConsoleHtml.includes('Reports & Audits'), 'Reports and audits section missing');
+// Ancre repointee : le libelle anglais d'origine a disparu lors de la refonte.
+// On vise desormais l'implementation elle-meme, qui ne peut pas devenir obsolete
+// sans que la fonctionnalite disparaisse.
+assert(brandConsoleHtml.includes('function supplyChainView'), 'Supply chain visualization view missing');
+assert(/lineage/i.test(brandConsoleHtml), 'Full custody mapping (lineage) missing');
+// Le libelle est passe au catalogue i18n : on verifie l'appel ET la valeur anglaise,
+// sinon l'assertion ne garderait plus rien.
+assert(brandConsoleHtml.includes("reports: bt('reportsViewLabel')"), 'Reports and audits view label missing');
+const enCatalogue = await readFile(new URL('../assets/i18n/en.js', import.meta.url), 'utf8');
+assert(enCatalogue.includes('reportsViewLabel: "Reports & Audits"'), 'English label for reports missing');
 assert(brandConsoleHtml.includes("navButton('supplyChain'"), 'supplyChain nav button missing');
 
 // Assertions on PLM Connectors
