@@ -971,6 +971,9 @@
         selectedSupplyChainProduct: null,
         dpp: null,
         selectedDppProduct: null,
+        cirpass: null,
+        cirpassLoading: false,
+        cirpassDetail: null,
         modal: null,
         modalIssueId: null,
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
@@ -1616,6 +1619,42 @@
       }
 
 
+      /**
+       * La couche Intelligence n'est pas encore reliée à une source de données.
+       * `intelligenceView()` ci-dessous est une maquette rédigée à la main : elle
+       * affiche des SKU, des fournisseurs et des empreintes de certificats qui
+       * n'existent dans aucune table. Elle n'est donc volontairement pas branchée.
+       * Cette vue dit la vérité et renvoie vers ce qui répond déjà sur données réelles.
+       */
+      function intelligenceUnavailableView() {
+        return `<div class="page-head">
+            <div>
+              <div class="eyebrow">TRACEFAB Intelligence</div>
+              <h1>Couche non disponible</h1>
+              <p>Le questionnement en langage naturel exige un moteur de requêtes adossé aux tables
+              TRACEFAB. Il n'est pas encore câblé, et aucune réponse de démonstration n'est affichée :
+              une réponse non étayée par la base ne serait pas vérifiable.</p>
+            </div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><h2>Ce qui répond déjà sur des données réelles</h2></div>
+            <div class="item-list">
+              <div class="item">
+                <div><h3>Qualité & plans d'action</h3><p class="meta">Anomalies, sévérités et boucles CAP issues de la base.</p></div>
+                <div><button class="btn btn-secondary" data-view="quality">Ouvrir</button></div>
+              </div>
+              <div class="item">
+                <div><h3>Préparation DPP</h3><p class="meta">Exigences manquantes par produit, avec l'action qui les résout.</p></div>
+                <div><button class="btn btn-secondary" data-view="dpp">Ouvrir</button></div>
+              </div>
+              <div class="item">
+                <div><h3>Bilan de masse</h3><p class="meta">Couverture de la matière certifiée face à la production déclarée.</p></div>
+                <div><button class="btn btn-secondary" data-view="massBalance">Ouvrir</button></div>
+              </div>
+            </div>
+          </div>`;
+      }
+
       function intelligenceView() {
         const query = state.activeIntelQuery || "Quels produits contiennent du coton non certifié GOTS dans la collection AW26 ?";
         const currentAnswer = state.activeIntelAnswer || {
@@ -1778,6 +1817,7 @@
           state.view === 'settings' ? settingsConsoleView() :
           state.view === 'productDetail' ? productDetailView() :
           state.view === 'supplierDetail' ? supplierDetailView() :
+          state.view === 'intelligence' ? intelligenceUnavailableView() :
           requestDetailView();
         app.innerHTML = shell(content); bind();
       }
@@ -2305,86 +2345,6 @@
               <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);">
                 <strong style="color:var(--green-dark);">Règle de conformité continue</strong>
                 <div style="font-size:11px;margin-top:4px;">Tracefab alerte automatiquement les fournisseurs 90 jours avant l'expiration d'un certificat d'exploitation.</div>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }
-
-      function dppConsoleView() {
-        return `<div class="page-head">
-          <div>
-            <div class="eyebrow">EU ESPR Compliance Engine</div>
-            <h1>Digital Product Passport (DPP) Readiness</h1>
-            <p>Score de préparation au Passeport Numérique des Produits de l'Union Européenne.</p>
-          </div>
-          <div class="actions">
-            <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Exporter JSON-LD (CIRPASS) ↗</button>
-            <button class="btn btn-primary" onclick="alert('Tous les scores DPP ont été recalculés.')">Recalculer les scores DPP</button>
-          </div>
-        </div>
-
-        <div class="grid kpis">
-          <div class="card kpi">
-            <div class="kpi-label">Score Global DPP</div>
-            <div class="kpi-value" style="color:var(--green)">88%</div>
-            <div class="kpi-note">Prêt pour émission QR</div>
-          </div>
-          <div class="card kpi">
-            <div class="kpi-label">Styles Prêts (Eligible)</div>
-            <div class="kpi-value">42 / 48</div>
-            <div class="kpi-note">87.5% de la collection</div>
-          </div>
-          <div class="card kpi">
-            <div class="kpi-label">Preuves Manquantes</div>
-            <div class="kpi-value" style="color:#d97706">6</div>
-            <div class="kpi-note">2 demandes en cours</div>
-          </div>
-          <div class="card kpi">
-            <div class="kpi-label">Conformité ESPR</div>
-            <div class="kpi-value" style="color:var(--green)">100%</div>
-            <div class="kpi-note">Schéma textile v2.1</div>
-          </div>
-        </div>
-
-        <div class="grid split">
-          <div class="card panel">
-            <div class="panel-head"><h2>Matrice d'éligibilité par Produit</h2></div>
-            <table class="mockup-table">
-              <thead>
-                <tr><th>Référence</th><th>Nom du produit</th><th>Matières</th><th>Traçabilité</th><th>Score DPP</th><th>Statut</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><code>AT-ESS-001</code></td>
-                  <td><strong>Essentiel coton</strong></td>
-                  <td>100% Coton bio</td>
-                  <td>Tier 1 à 4</td>
-                  <td><strong style="color:var(--green)">94%</strong></td>
-                  <td><span class="status status-approved">Prêt pour QR</span></td>
-                </tr>
-                <tr>
-                  <td><code>AT-LIN-004</code></td>
-                  <td><strong>Ligne lin naturel</strong></td>
-                  <td>100% Lin FR</td>
-                  <td>Tier 1 à 3</td>
-                  <td><strong style="color:#d97706">76%</strong></td>
-                  <td><span class="status status-submitted">Preuve en attente</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="card panel">
-            <div class="panel-head"><h2>Aperçu du Passeport Public (Consumer QR)</h2></div>
-            <div style="background:#f8faf8;border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center;">
-              <div style="width:110px;height:110px;background:white;border:1px solid #d0ded4;border-radius:12px;margin:0 auto 14px;display:grid;place-items:center;">
-                <div style="font-size:11px;font-family:var(--font-mono);font-weight:700;color:var(--ink);">[QR DPP LIVE]</div>
-              </div>
-              <strong style="font-size:14px;display:block;">Essentiel Coton Biologique</strong>
-              <span style="font-size:11px;color:var(--muted);"><a href="/dpp/" target="_blank" style="color:var(--green);font-weight:700;">https://dpp.tracefab.com/p/at-ess-001 ↗</a></span>
-              <div style="margin-top:14px;display:flex;justify-content:center;gap:8px;">
-                <button class="btn btn-secondary btn-small" onclick="window.open('/dpp/', '_blank')">Ouvrir la page publique</button>
               </div>
             </div>
           </div>
@@ -3274,6 +3234,14 @@
             </div>
           </div>
 
+          <div class="card panel" style="margin-bottom:20px;padding:14px 18px;border-left:3px solid var(--muted)">
+            <p class="meta" style="margin:0;line-height:1.55"><strong>Indicateur interne de préparation.</strong>
+            Ce score mesure la complétude des données du produit au regard du profil
+            <code>${esc(dpp.profileKey || 'textile_readiness_mvp')} v${esc(dpp.profileVersion || '1.0')}</code>.
+            Il ne constitue ni une certification, ni une attestation de conformité au règlement européen ESPR,
+            et ne remplace pas l'évaluation d'un organisme notifié.</p>
+          </div>
+
           <div class="dpp-pillars">
             ${renderPillarCard(pillars.identification, '🏷️', '1. Identification & Caractéristiques')}
             ${renderPillarCard(pillars.composition, '🧵', '2. Composition Matières')}
@@ -3281,12 +3249,28 @@
             ${renderPillarCard(pillars.quality, '🛡️', '4. Qualité & Preuves')}
           </div>
 
+          ${dppBlockingPanel(dpp)}
+
+          <div class="card panel" style="margin-top:20px">
+            <div class="panel-head">
+              <div>
+                <h2>Validation structurelle CIRPASS 1.2</h2>
+                <p class="meta" style="margin:4px 0 0">Contrôle la forme d'un payload DPP construit à partir des données
+                réellement présentes sur ce produit. Ce contrôle ne vaut pas conformité légale.</p>
+              </div>
+              <button class="btn btn-secondary" data-action="validate-cirpass">${state.cirpassLoading ? 'Évaluation…' : 'Évaluer la structure'}</button>
+            </div>
+            ${state.cirpass ? cirpassReport(state.cirpass) : `<p class="meta" style="margin:0">Aucune évaluation pour l'instant. Le payload est assemblé depuis
+              les identifiants, la composition et les instructions d'entretien du produit ; les champs que TRACEFAB ne stocke pas
+              (bloc AGEC Art. 13, indice de réparabilité) sont laissés absents et signalés comme tels.</p>`}
+          </div>
+
           ${dpp.missingFields && dpp.missingFields.length ? `
             <div class="card panel">
               <div class="panel-head">
                 <div>
                   <h2>Exigences Restantes à Compléter (${dpp.missingFields.length})</h2>
-                  <p class="meta" style="margin:4px 0 0">Actions requises avant de pouvoir certifier le passeport en statut Prêt pour validation.</p>
+                  <p class="meta" style="margin:4px 0 0">Ce qui bloque le passage au statut « Prêt pour validation », et l'action qui le résout.</p>
                 </div>
                 <span class="status status-changes_requested">${dpp.blockingCount} bloquant(s)</span>
               </div>
@@ -3297,8 +3281,9 @@
                       <h3>${esc(m.label || m.key)} ${m.blocking ? '<span style="color:var(--red)">*</span>' : ''}</h3>
                       <p class="meta">Code d’exigence : <code>${esc(m.key)}</code> · ${m.blocking ? 'Obligatoire pour la publication' : 'Recommandé'}</p>
                     </div>
-                    <div>
+                    <div style="display:flex;align-items:center;gap:10px">
                       <span class="severity ${m.blocking ? 'severity-blocking' : 'severity-info'}">${m.blocking ? 'Bloquant' : 'Recommandé'}</span>
+                      ${dppActionFor(m.key, p.id)}
                     </div>
                   </div>
                 `).join('')}
@@ -3313,6 +3298,89 @@
             </div>
           `}
         `;
+      }
+
+      /**
+       * Action qui résout réellement une exigence DPP manquante. Chaque cible est
+       * une vue ou une modale qui existe dans cette console : rien n'est décoratif.
+       * Un bouton n'utilise jamais data-product-id ET data-view (double déclenchement).
+       */
+      function dppActionFor(key, productId) {
+        const k = String(key || '');
+        if (k.startsWith('composition.') || k.startsWith('material.') || k.startsWith('evidence.')) {
+          return `<button class="btn btn-secondary" data-action="product-new-request" data-product-id="${esc(productId)}">Demander la donnée</button>`;
+        }
+        if (k.startsWith('traceability.') || k.startsWith('supply_chain.')) {
+          return `<button class="btn btn-secondary" data-action="select-supply-chain-product" data-product-id="${esc(productId)}">Ouvrir la chaîne</button>`;
+        }
+        if (k.startsWith('quality.')) {
+          return `<button class="btn btn-secondary" data-action="select-quality-product" data-product-id="${esc(productId)}">Ouvrir la qualité</button>`;
+        }
+        return `<button class="btn btn-secondary" data-product-id="${esc(productId)}">Ouvrir le produit</button>`;
+      }
+
+      function cirpassReport(r) {
+        const std = r.standardsPassed || {};
+        const stdRow = [
+          ['CIRPASS JSON-LD', std.cirpassJsonLd],
+          ['EU ESPR', std.euEspr],
+          ['AGEC Art. 13 (FR)', std.frenchAgecArt13],
+          ['LkSG (DE)', std.germanLkSg],
+        ];
+        return `
+          <div class="dpp-hero" style="margin-bottom:16px">
+            <div class="dpp-gauge-box">
+              <div class="dpp-gauge-val" style="color:${r.isValid ? 'var(--green)' : 'var(--red)'}">${moneyless(r.readinessScore)}%</div>
+              <div class="dpp-gauge-label">Score structurel</div>
+              <div style="margin-top:10px">${r.isValid
+                ? '<span class="status status-approved">Structure valide</span>'
+                : '<span class="status status-changes_requested">Structure incomplète</span>'}</div>
+            </div>
+            <div>
+              <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:8px 16px">
+                ${stdRow.map(([label, ok]) => `<div class="meta"><span class="check-icon ${ok ? 'met' : 'unmet'}">${ok ? '✓' : '✗'}</span> ${esc(label)}</div>`).join('')}
+              </div>
+              <p class="meta" style="margin:12px 0 0;line-height:1.5">
+                ${r.isPublishable
+                  ? 'Structure publiable au regard des règles de forme. La publication légale reste conditionnée à la responsabilité de la marque.'
+                  : 'Structure non publiable en l\u2019état : au moins une donnée obligatoire manque.'}
+              </p>
+            </div>
+          </div>
+          ${(r.blockingErrors || []).length ? `
+            <div class="item-list">
+              ${r.blockingErrors.map((e) => `<div class="item"><div><h3 style="color:var(--red)">Bloquant</h3><p class="meta">${esc(e)}</p></div></div>`).join('')}
+            </div>` : ''}
+          ${(r.warnings || []).length ? `
+            <div class="item-list" style="margin-top:10px">
+              ${r.warnings.map((w) => `<div class="item"><div><h3>Avertissement</h3><p class="meta">${esc(w)}</p></div></div>`).join('')}
+            </div>` : ''}`;
+      }
+
+      function dppBlockingPanel(dpp) {
+        const issues = dpp.blockingIssues || [];
+        if (!issues.length) return '';
+        return `
+          <div class="card panel" style="margin-top:20px">
+            <div class="panel-head">
+              <div>
+                <h2>Anomalies bloquantes (${issues.length})</h2>
+                <p class="meta" style="margin:4px 0 0">Motifs renvoyés par le calcul de préparation, tels quels.</p>
+              </div>
+              <span class="status status-changes_requested">Bloquant</span>
+            </div>
+            <div class="item-list">
+              ${issues.map((b) => `
+                <div class="item">
+                  <div>
+                    <h3>${esc(b.label || b.key)}</h3>
+                    <p class="meta">Code : <code>${esc(b.key)}</code>${b.reason ? ` · ${esc(b.reason)}` : ''}</p>
+                  </div>
+                  <div>${dppActionFor(b.key, dpp.productId)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>`;
       }
 
       function renderPillarCard(pillar, defaultIcon, defaultTitle) {
@@ -4025,15 +4093,20 @@
           productVersion: p?.version || 1,
           profileKey: 'textile_readiness_mvp',
           profileVersion: '1.0',
-          readinessStatus: 'data_ready',
-          statusLabel: 'Prêt pour validation',
-          completionScore: 100,
+          readinessStatus: 'in_progress',
+          statusLabel: 'Données incomplètes',
+          completionScore: 78,
           totalRequirements: 9,
-          metRequirements: 9,
-          blockingCount: 0,
-          missingFields: [],
-          blockingIssues: [],
-          canMarkReadyToPublish: true,
+          metRequirements: 7,
+          blockingCount: 1,
+          missingFields: [
+            { key: 'composition.complete', label: 'Composition matière exhaustive (total 100%)', blocking: true },
+            { key: 'traceability.graph', label: 'Graphe de traçabilité multi-rangs actif', blocking: true },
+          ],
+          blockingIssues: [
+            { key: 'composition.complete', label: 'Composition matière exhaustive (total 100%)', reason: 'La composition déclarée totalise 98 % au lieu de 100 %.' },
+          ],
+          canMarkReadyToPublish: false,
           isReadyToPublish: false,
           computedAt: new Date().toISOString(),
           reviewedAt: null,
@@ -4059,9 +4132,9 @@
               name: 'Composition Matières',
               description: 'Répartition exhaustive et validée à 100% des fibres et matériaux.',
               icon: '🧵',
-              score: 100, total: 1, met: 1, metPercent: 100,
+              score: 0, total: 1, met: 0, metPercent: 0,
               items: [
-                { key: 'composition.complete', label: 'Composition matière exhaustive (total 100%)', met: true, blocking: true },
+                { key: 'composition.complete', label: 'Composition matière exhaustive (total 100%)', met: false, blocking: true },
               ],
             },
             traceability: {
@@ -4069,9 +4142,9 @@
               name: 'Traçabilité Supply Chain',
               description: 'Graphe multi-rangs reliant les matières, filatures, ateliers et sites.',
               icon: '☍',
-              score: 100, total: 1, met: 1, metPercent: 100,
+              score: 0, total: 1, met: 0, metPercent: 0,
               items: [
-                { key: 'traceability.graph', label: 'Graphe de traçabilité multi-rangs actif', met: true, blocking: true },
+                { key: 'traceability.graph', label: 'Graphe de traçabilité multi-rangs actif', met: false, blocking: true },
               ],
             },
             quality: {
@@ -4088,10 +4161,138 @@
         };
       }
 
+      /**
+       * Payload CIRPASS construit uniquement à partir de données TRACEFAB réelles.
+       * Le schéma ne contient ni bloc AGEC Art. 13 (tissage / teinture / confection),
+       * ni indice de réparabilité, ni déclaration microfibres : ces champs sont
+       * laissés absents afin que le validateur les signale, plutôt que d'être inventés.
+       */
+      function buildCirpassPayload(detail, dpp) {
+        const product = (detail && detail.product) || {};
+        const identifiers = (detail && detail.identifiers) || [];
+        const materials = (detail && detail.materials) || [];
+        const gtinEntry = identifiers.find((i) => /gtin|ean/i.test(String(i.type || '')));
+        const gtin = (gtinEntry && gtinEntry.value) || '';
+        const care = product.careInstructions;
+        const wash = Array.isArray(care) ? care : (care && Array.isArray(care.wash) ? care.wash : []);
+        const payload = {
+          '@context': ['https://schema.org', 'https://cirpassproject.eu/schema/1.2'],
+          '@type': 'Product',
+          identifier: gtin ? 'https://id.gs1.org/01/' + gtin : '',
+          gtin: gtin,
+          sku: product.sku || product.reference || '',
+          name: product.name || '',
+          materialComposition: materials
+            .filter((m) => m && m.material)
+            .map((m) => ({
+              materialName: m.material.name || m.material.normalized_name || 'Non renseigné',
+              percentage: Number(m.percentage || 0),
+            })),
+          issuanceMetadata: {
+            issuedAt: new Date().toISOString(),
+            dppReadinessScore: (dpp && dpp.completionScore) || 0,
+            isLegallyPublishable: false,
+          },
+        };
+        if (wash.length) payload.circularityAndCare = { washCareInstructions: wash };
+        return payload;
+      }
+
+      /** Miroir de validateDppCompliance (api/_lib/dpp-validator.ts) pour le mode démo. */
+      function validateCirpassLocal(payload) {
+        const blockingErrors = [];
+        const warnings = [];
+        if (!payload.gtin || String(payload.gtin).trim().length < 8) blockingErrors.push('GTIN / EAN barcode identifier is missing or malformed.');
+        if (!payload.sku) blockingErrors.push('Product SKU is required for unique lot serialization.');
+        if (!payload.name) blockingErrors.push('Product trade name is required.');
+        if (!Array.isArray(payload.materialComposition) || !payload.materialComposition.length) {
+          blockingErrors.push('Material composition must contain at least one fiber breakdown.');
+        } else {
+          const total = payload.materialComposition.reduce((sum, m) => sum + (m.percentage || 0), 0);
+          if (Math.abs(total - 100) > 0.5) blockingErrors.push(`Material composition totals ${total}%, expected 100%.`);
+        }
+        const agec = payload.frenchAgecArticle13;
+        if (!agec) {
+          blockingErrors.push('French AGEC Article 13 geographical data block is missing.');
+        } else {
+          if (!agec.tissageTricotage || agec.tissageTricotage.length < 2) blockingErrors.push('AGEC Art. 13: Country of Weaving/Knitting (Tissage/Tricotage) is mandatory.');
+          if (!agec.teintureImpression || agec.teintureImpression.length < 2) blockingErrors.push('AGEC Art. 13: Country of Dyeing/Printing (Teinture/Impression) is mandatory.');
+          if (!agec.confection || agec.confection.length < 2) blockingErrors.push('AGEC Art. 13: Country of Assembly (Confection) is mandatory.');
+        }
+        if (agec && agec.microfibresPlastiques === undefined) warnings.push('AGEC Art. 13: Microfiber shedding disclosure should be explicitly declared (true/false).');
+        const circ = payload.circularityAndCare;
+        if (!circ) warnings.push('Circularity and repairability instructions are recommended for EU ESPR score.');
+        else if (circ.repairabilityIndex === undefined || circ.repairabilityIndex < 0 || circ.repairabilityIndex > 10) warnings.push('Repairability index should be graded on a 0 to 10 scale.');
+        const totalChecks = 8;
+        const readinessScore = Math.max(0, Math.round(((totalChecks - blockingErrors.length) / totalChecks) * 100));
+        const isPublishable = blockingErrors.length === 0 && readinessScore >= 85;
+        return {
+          isValid: blockingErrors.length === 0,
+          readinessScore,
+          isPublishable,
+          blockingErrors,
+          warnings,
+          standardsPassed: {
+            cirpassJsonLd: !!payload.identifier && !!payload.gtin,
+            euEspr: isPublishable,
+            frenchAgecArt13: !!agec && !!agec.tissageTricotage && !!agec.teintureImpression && !!agec.confection,
+            germanLkSg: !!payload.supplyChainProvenance && !!payload.supplyChainProvenance.rawMaterialOrigin,
+          },
+        };
+      }
+
+      /** Détail produit de démonstration : mêmes champs réels, valeurs fictives. */
+      function demoProductDetail() {
+        const p = state.selectedDppProduct || state.products[0] || {};
+        return {
+          product: {
+            id: p.id || 'demo-p1',
+            reference: p.reference || 'AT-ESS-001',
+            sku: p.sku || null,
+            name: p.name || 'Essentiel coton biologique',
+            category: p.category || 'T-Shirt',
+            countryOfManufacture: 'PT',
+            careInstructions: { wash: ['Lavage 30°', 'Ne pas javelliser'] },
+          },
+          identifiers: [{ id: 'demo-id-1', type: 'GTIN', value: '3760000000017', isPrimary: true }],
+          materials: [
+            { materialId: 'demo-m1', role: 'shell', percentage: '95', unit: 'percent', material: { id: 'demo-m1', name: 'Coton biologique', normalized_name: 'coton biologique' } },
+            { materialId: 'demo-m2', role: 'trim', percentage: '3', unit: 'percent', material: { id: 'demo-m2', name: 'Élasthanne', normalized_name: 'elasthanne' } },
+          ],
+        };
+      }
+
+      async function validateCirpass() {
+        if (!state.selectedDppProduct) return;
+        state.cirpassLoading = true;
+        render();
+        try {
+          if (!state.cirpassDetail) {
+            if (state.demo) state.cirpassDetail = demoProductDetail();
+            else state.cirpassDetail = await api(`/api/products/${encodeURIComponent(state.selectedDppProduct.id)}`);
+          }
+          const payload = buildCirpassPayload(state.cirpassDetail, state.dpp);
+          state.cirpassPayload = payload;
+          if (state.demo) {
+            state.cirpass = validateCirpassLocal(payload);
+            notify('Structure CIRPASS évaluée en mode démonstration.');
+          } else {
+            state.cirpass = await api('/api/dpp/validate', { method: 'POST', body: JSON.stringify({ payload }) });
+            notify('Structure CIRPASS évaluée par le serveur.');
+          }
+        } catch (e) {
+          notify(e.message, true);
+        }
+        state.cirpassLoading = false;
+        render();
+      }
+
       async function loadDpp(productId) {
         state.selectedDppProduct = state.products.find((p) => p.id === productId) || null;
         state.view = 'dpp';
         state.dpp = null;
+        state.cirpass = null;
+        state.cirpassDetail = null;
         render();
         if (state.demo) {
           state.dpp = demoDpp();
@@ -4192,6 +4393,7 @@
             if (action === 'select-supply-chain-product') { state.selectedSupplyChainProduct = null; state.supplyChain = null; render(); }
             if (action === 'select-dpp-product') { state.selectedDppProduct = null; state.dpp = null; render(); }
             if (action === 'compute-quality') await computeQuality();
+            if (action === 'validate-cirpass') await validateCirpass();
             if (action === 'compute-dpp') await computeDpp();
             if (action === 'publish-dpp') await publishDpp();
             if (action === 'generate-baseline-chain') await generateBaselineChain();

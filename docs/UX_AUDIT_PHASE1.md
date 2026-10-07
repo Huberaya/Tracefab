@@ -993,3 +993,111 @@ invalide, et pour chaque ligne du bilan par étape `perte = entrée − sortie`,
 appel réel à la base** : `prisma generate` est impossible (`binaries.prisma.sh` hors liste
 blanche), donc `audit-chain`, `lineage-graph`, `mass-balance` et `mass-balance/certificates`
 n'ont jamais été exécutés contre Neon. Leurs contrats sont lus dans le code, pas observés.
+
+---
+
+# Chantier 10 — Préparation DPP
+
+## Ce qui existait déjà
+
+Contrairement aux chantiers précédents, la préparation DPP existait partiellement. La mesure
+donne trois surfaces liées au DPP, aux rôles distincts :
+
+| Surface | Rôle réel | Rendait la préparation ? |
+| --- | --- | --- |
+| `dpp/index.html` (1 312 l.) | DPP public produit (« Essentiel Coton Biologique ») | non |
+| `passport/index.html` (788 l.) | Passeport fournisseur universel | non |
+| `brand-console/index.html` | Console marque, vue `dppView()` | **oui, sur données réelles** |
+
+`dppView()` consommait déjà correctement `buildDppSummary` : score, quatre piliers, neuf
+exigences, champs manquants, bouton de recalcul et de validation. Le chantier n'était donc pas
+de créer une surface mais de combler ce qui manquait.
+
+## Quatre manques mesurés, quatre corrections
+
+**1. `blockingIssues` n'était jamais affiché.** L'API renvoie `{key, label, reason}` ; la vue
+n'affichait qu'un compteur « 2 bloquant(s) » sans les motifs. Le `reason` est précisément le
+« What is missing? » du brief. Un panneau dédié rend maintenant chaque blocage avec son motif
+tel que renvoyé par le calcul.
+
+**2. Aucune action sur les exigences manquantes.** Le brief demande explicitement des actions.
+`dppActionFor(key, productId)` mappe chaque code d'exigence vers une cible qui existe déjà :
+`composition.*` / `material.*` / `evidence.*` → modale de demande de données scopée au produit,
+`traceability.*` / `supply_chain.*` → chaîne d'approvisionnement, `quality.*` → qualité,
+`product.*` → fiche produit. Aucune cible inventée ; le test dérive la liste des vues
+autorisées du `switch` de rendu au lieu de la coder en dur.
+
+**3. Le score était présenté avec un vocabulaire de certification.** La phrase « avant de
+pouvoir **certifier** le passeport » contredisait la consigne selon laquelle la préparation
+n'est jamais une certification légale. Un encart énonce désormais : indicateur interne,
+profil nommé, « ne constitue ni une certification, ni une attestation de conformité au
+règlement européen ESPR, et ne remplace pas l'évaluation d'un organisme notifié ».
+
+**4. `dpp/validate` était orpheline.** Le validateur CIRPASS (`validateDppCompliance`) n'était
+ni enregistré ni appelé. Enregistré dans `api/index.ts` **avant** `dpp/([^/]+)`, sans quoi
+`[gtin]` aurait capturé « validate » → **121 motifs**, orphelines 5 → 4.
+
+## Un résultat qui dérange, et qu'il faut garder visible
+
+Le validateur exige un bloc AGEC Art. 13 (pays de tissage, teinture, confection) et un indice
+de réparabilité. Or `prisma/schema.prisma` ne contient **aucun** de ces champs : `grep` renvoie
+0 pour `agec`, `repairab`, `tissage`, `teinture`, `confection`, `microfib`, `reach`, `svhc`.
+`tracefab_products` n'a que `country_of_design` et `country_of_manufacture`.
+
+Conséquence : **aucun produit TRACEFAB ne peut aujourd'hui produire un payload CIRPASS
+conforme.** Le panneau ne le masque pas — il construit le payload depuis les identifiants, la
+composition et les instructions d'entretien réellement présents, laisse absents les champs que
+la plateforme ne stocke pas, et affiche les erreurs bloquantes qui en découlent. Combler cet
+écart est un chantier de schéma, pas d'interface.
+
+## Deux maquettes fabriquées trouvées en route
+
+**`dppConsoleView()` — supprimée.** 80 lignes de chiffres inventés (« 88% », « 42 / 48 »,
+« 94% », « Conformité ESPR 100% ») et un bouton qui faisait `alert('Tous les scores DPP ont
+été recalculés.')`. Référencée une seule fois : sa propre définition. Code mort, mais du code
+mort fabriqué.
+
+**`intelligenceView()` — laissée en place, non branchée.** Même nature, en pire : SKU,
+fournisseurs et empreintes SHA-256 de certificats inventés, sous un bandeau « ZERO HALLUCINATION ·
+Aucune donnée inventée ». La brancher aurait violé l'interdiction d'inventer des données.
+
+Elle révélait un défaut réel : la navigation proposait `TRACEFAB Intelligence`
+(`navButton('intelligence')`) alors que le `switch` de rendu n'a **pas** de cas `intelligence`.
+Le clic tombait donc sur la branche par défaut `requestDetailView()`, qui sans demande
+sélectionnée affiche « Demande introuvable ». L'entrée de navigation n'a pas été supprimée :
+elle affiche maintenant un état véridique — couche non câblée, aucune réponse de démonstration
+— et renvoie vers les trois surfaces qui répondent déjà sur données réelles.
+
+`supplyChainConsoleView()` est la troisième vue morte (mêmes symptômes). Non touchée : elle
+relève du chantier Chaîne d'approvisionnement.
+
+## Portails
+
+```
+test:dpp-readiness     83 / 0   NOUVEAU
+test:brand-console            PASS (contrat statique, inchangé)
+test:route-registry           PASS (121 motifs, 9 surfaces, 109 appels, 36 routes non appelées)
+ds:check                      PASS (5 surfaces — brand-console a sa propre charte)
+check:landing        69 / 0 · test:landing 95 / 0 · test:quality-center 69 / 0
+test:supplier-portal:surface 78 / 0 · test:evidence 65 / 0 · test:traceability 82 / 0
+Balayage des 54 scripts test:* : 35 PASS / 19 FAIL — exactement les 19 préexistants
+```
+
+`test:dpp-readiness` démarre la vraie console en mode démo et pilote la vue par le DOM :
+score égal au ratio réel, somme des piliers égale au total, pourcentage de chaque pilier
+recalculé, au moins une action par manque pointant le bon produit, motif de blocage affiché,
+payload CIRPASS vérifié champ par champ contre le produit source, deux erreurs bloquantes
+(composition à 98 %, bloc AGEC absent), score structurel égal à (8 − erreurs) / 8, et
+`dpp/validate` déclarée avant `dpp/[gtin]`.
+
+Les données de démonstration de la vue DPP ont été rendues cohérentes et incomplètes
+(7 exigences sur 9, deux manques, un blocage motivé) afin que la nouvelle interface soit
+démontrable ; elles restent sous la bannière « Mode démonstration ».
+
+## Toujours non vérifié
+
+**Aucune capture d'écran.** Et **aucun appel réel à la base** : `prisma generate` est
+impossible ici, donc `GET|POST /api/products/:id/dpp`, `POST …/dpp/publish-review` et
+`POST /api/dpp/validate` n'ont jamais été exécutés contre Neon. La procédure stockée
+`tracefab_compute_dpp_readiness` n'a pas pu être inspectée non plus : seule sa signature, lue
+dans la route, est connue.

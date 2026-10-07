@@ -185,6 +185,7 @@ npm run test:quality-center     # Quality Center: 69 assertions incl. the full C
 npm run test:supplier-portal:surface # Supplier Portal: 78 assertions, passport + review loop
 npm run test:evidence           # Evidence Center: 65 assertions on the trust scale
 npm run test:traceability       # Traceability: 82 assertions incl. the stage mass balance
+npm run test:dpp-readiness      # DPP Readiness: 83 assertions incl. the CIRPASS structure check
 npm run test:route-registry     # every /api/* a surface calls must resolve to a declared route
 ```
 
