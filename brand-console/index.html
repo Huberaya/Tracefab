@@ -2355,6 +2355,14 @@
         const detail = state.selectedProductDetail;
         if (!detail?.product) return `<div class="empty"><div class="empty-icon">◇</div><strong>Produit introuvable</strong><button class="btn btn-secondary" data-view="products">Retour aux produits</button></div>`;
         const p = detail.product;
+        /* Lignée construite uniquement à partir de ce que la fiche renvoie réellement
+           (GET /api/products/{id} -> { product, identifiers, materials }). Les échelons
+           de transformation ne figurent pas dans ce contrat : ils sont signalés comme
+           non renseignés ici et renvoyés vers le graphe de traçabilité, qui les porte. */
+        const lineageMaterials = Array.isArray(detail.materials) ? detail.materials : [];
+        const readinessLabels = { not_started: 'Données non démarrées', in_progress: 'Données en cours', data_ready: 'Données prêtes', needs_review: 'À revoir' };
+        const readinessLabel = readinessLabels[p.dataReadiness] || 'État non déclaré';
+        const completionPct = Math.round(Number(p.dataCompletion) || 0);
         const materialOptions = state.materials.map((material) => `<option value="${esc(material.id)}">${esc(material.name)}${material.materialType ? ` · ${esc(material.materialType)}` : ''}</option>`).join('');
 
         return `<div class="page-head">
@@ -2362,7 +2370,7 @@
             <button class="link-button" data-view="products">← Retour au catalogue produits</button>
             <div class="eyebrow" style="margin-top:16px;">Intelligence Produit · Réf. ${esc(p.reference || 'AW26-0248')} · Version ${esc(p.version || '1.0')}</div>
             <h1>${esc(p.name || 'Organic Cotton T-Shirt')}</h1>
-            <p>${esc(p.category || 'T-Shirt & Maille')} · Confection responsable certifiée · Indice Qualité : <strong>${p.score ?? 0} / 100</strong></p>
+            <p>${esc(p.category || 'T-Shirt & Maille')} · Complétude des données : <strong>${Math.round(Number(p.dataCompletion) || 0)}%</strong></p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">Graphe de traçabilité</button>
@@ -2372,48 +2380,42 @@
           </div>
         </div>
 
-        <!-- PRODUCT LINEAGE PIPELINE (Organic Cotton T-Shirt ➔ DPP) -->
+        <!-- LIGNÉE PRODUIT — matières réelles rattachées à ce produit -->
         <div class="lineage-shell">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
             <div>
-              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;letter-spacing:0.1em;text-transform:uppercase;">PRODUCT LINEAGE & CUSTODY CHAIN</div>
-              <h3 style="font-size:18px;font-weight:800;color:#17231f;margin:4px 0 0;">Lignée Complète de Transformation</h3>
+              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;letter-spacing:0.1em;text-transform:uppercase;">Lignée produit</div>
+              <h3 style="font-size:18px;font-weight:800;color:#17231f;margin:4px 0 0;">Lignée de transformation</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">✓ 100% Vérifié & Scellé</span>
+            <span class="badge ${p.dataReadiness === 'data_ready' ? 'badge-verified' : 'badge-warning'}" style="font-weight:750;">${esc(readinessLabel)} · Complétude ${completionPct}%</span>
           </div>
 
           <div class="lineage-pipeline-flow">
-            <div class="lineage-step-card active" onclick="alert('Échelon Fibre : Coton Biologique certifié GOTS (Ferme Izmir, Turquie)')">
-              <div class="lineage-step-label">01. FIBRE</div>
-              <div class="lineage-step-sub">Ferme GOTS</div>
+            ${lineageMaterials.length === 0 ? `
+              <div class="lineage-step-card active">
+                <div class="lineage-step-label">MATIÈRES</div>
+                <div class="lineage-step-sub">Aucune matière rattachée</div>
+                <div style="font-size:10.5px;color:#5d6b64;margin-top:2px;">Rattachez une matière pour ouvrir la lignée</div>
+              </div>` : lineageMaterials.map((m, idx) => `
+              <div class="lineage-step-card${idx === 0 ? ' active' : ''}">
+                <div class="lineage-step-label">${esc(m.role || 'MATIÈRE')}</div>
+                <div class="lineage-step-sub">${esc(m.material?.name || m.materialId)}</div>
+                <div style="font-size:10.5px;color:#5d6b64;margin-top:2px;">${m.percentage ? esc(m.percentage) + '% · ' : ''}${esc(m.material?.origin_country_code || 'origine non déclarée')}</div>
+              </div>`).join('')}
+            <div class="lineage-step-card" data-action="product-supply-chain-from-detail" style="cursor:pointer;">
+              <div class="lineage-step-label">TRANSFORMATION</div>
+              <div class="lineage-step-sub">Filature · Tissage · Teinture · Confection</div>
+              <div style="font-size:10.5px;color:#5d6b64;margin-top:2px;">Non renseignée dans cette fiche — ouvrir le graphe</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Filature : Filature de Haute-Vienne (Combed Ring Spun Ne 30/1)')">
-              <div class="lineage-step-label">02. FILATURE</div>
-              <div class="lineage-step-sub">Bilan Massique</div>
+            <div class="lineage-step-card">
+              <div class="lineage-step-label">PRODUIT</div>
+              <div class="lineage-step-sub">${esc(p.reference || 'sans référence')}</div>
+              <div style="font-size:10.5px;color:#5d6b64;margin-top:2px;">${esc(p.countryOfManufacture || 'lieu de fabrication non déclaré')}</div>
             </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Tissage/Tricotage : Portugal Textile Mill (Jersey 185g/m²)')">
-              <div class="lineage-step-label">03. TRICOTAGE</div>
-              <div class="lineage-step-sub">Guimarães PT</div>
-            </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Teinture : EcoDye Aquitaine (ZDHC Level 3, Zéro Rejet Dangereux)')">
-              <div class="lineage-step-label">04. TEINTURE</div>
-              <div class="lineage-step-sub">ZDHC Level 3</div>
-            </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Confection : Atelier Confection SAS (Barcelos, SMETA 4-Pillar)')">
-              <div class="lineage-step-label">05. CONFECTION</div>
-              <div class="lineage-step-sub">Atelier Certifié</div>
-            </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Produit Fini : Référence AT-ESS-001 réconciliée à 100%')">
-              <div class="lineage-step-label">06. PRODUIT</div>
-              <div class="lineage-step-sub">BOM 100%</div>
-            </div>
-            <div class="lineage-step-card" onclick="alert('Échelon Éco-Score : Calcul PEF Échelon 3 - 3.42 kg CO2e / pièce')">
-              <div class="lineage-step-label">07. PEF ÉCO</div>
-              <div class="lineage-step-sub">Score A (PEF)</div>
-            </div>
-            <div class="lineage-step-card" onclick="window.open('/dpp/', '_blank')">
-              <div class="lineage-step-label" style="color:#0b7656;">08. DPP QR</div>
-              <div class="lineage-step-sub">GS1 Link</div>
+            <div class="lineage-step-card" onclick="window.open('/dpp/', '_blank')" style="cursor:pointer;">
+              <div class="lineage-step-label" style="color:#0b7656;">DPP</div>
+              <div class="lineage-step-sub">Passeport public</div>
+              <div style="font-size:10.5px;color:#5d6b64;margin-top:2px;">${lineageMaterials.length} matière(s) déclarée(s)</div>
             </div>
           </div>
         </div>
@@ -2516,8 +2518,15 @@
       }
 
             function qualityView() {
-        const prod = state.selectedProduct || state.products[0] || { name: 'Organic Cotton T-Shirt', reference: 'AW26-0248' };
+        const prod = state.selectedProduct || state.products[0] || {};
         const q = state.quality;
+        /* serializeQualityScore (api/_lib/quality.ts) renvoie completeness, freshness,
+           documentationCoverage et consistency sous forme de chaînes. Tout ce qui n'est
+           pas dans ce contrat est affiché « Non mesuré » plutôt qu'estimé. */
+        const qs = q?.score || null;
+        const pct = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Math.round(Number(v)));
+        const shown = (v) => { const n = pct(v); return n === null ? 'Non mesuré' : n + '%'; };
+        const qReadiness = { not_started: 'Données non démarrées', in_progress: 'Données en cours', data_ready: 'Données prêtes', needs_review: 'À revoir' }[prod.dataReadiness] || 'État non déclaré';
 
         return `${complianceContractPanel()}${capContractPanel()}
         <div class="page-head">
@@ -2539,38 +2548,38 @@
               <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">MATRICE D'EXCELLENCE DE LA DONNÉE</div>
               <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">Analyse Pré-Audit Douanes Européennes & CSRD</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">NOTE GLOBALE : ${p.score >= 90 ? 'GRADE A' : p.score >= 75 ? 'GRADE B' : 'GRADE C'} (${p.score}%)</span>
+            <span class="badge ${prod.dataReadiness === 'data_ready' ? 'badge-verified' : 'badge-warning'}" style="font-size:12px;font-weight:750;">ÉTAT : ${esc(qReadiness)} · COMPLÉTUDE ${shown(prod.dataCompletion)}</span>
           </div>
 
           <div class="eq-score-strip">
             <div class="eq-score-card">
               <div class="eq-score-label">COMPLÉTUDE DONNÉES</div>
-              <div class="eq-score-num" style="color:#0b7656;">96.8%</div>
-              <div class="eq-score-desc">BOM 100% mass-balance</div>
+              <div class="eq-score-num" style="color:#0b7656;">${shown(qs?.completeness)}</div>
+              <div class="eq-score-desc">score.completeness</div>
             </div>
 
             <div class="eq-score-card">
               <div class="eq-score-label">COUVERTURE PREUVES</div>
-              <div class="eq-score-num" style="color:#0b7656;">92.0%</div>
-              <div class="eq-score-desc">Rapports d'essais joints</div>
+              <div class="eq-score-num" style="color:#0b7656;">${shown(qs?.documentationCoverage)}</div>
+              <div class="eq-score-desc">score.documentationCoverage</div>
             </div>
 
             <div class="eq-score-card">
               <div class="eq-score-label">TAUX VÉRIFICATION</div>
-              <div class="eq-score-num" style="color:#1d4ed8;">88.5%</div>
-              <div class="eq-score-desc">Audité par tiers accrédité</div>
+              <div class="eq-score-num" style="color:#1d4ed8;">Non mesuré</div>
+              <div class="eq-score-desc">hors du contrat de score qualité</div>
             </div>
 
             <div class="eq-score-card">
               <div class="eq-score-label">QUALITÉ FOURNISSEUR</div>
-              <div class="eq-score-num" style="color:#0b7656;">94.2%</div>
-              <div class="eq-score-desc">Fournisseurs Rang 1–4 validés</div>
+              <div class="eq-score-num" style="color:#0b7656;">Non mesuré</div>
+              <div class="eq-score-desc">voir Fournisseurs</div>
             </div>
 
             <div class="eq-score-card">
               <div class="eq-score-label">RÉGULARITÉ ESPR</div>
-              <div class="eq-score-num" style="color:#b45309;">88.0%</div>
-              <div class="eq-score-desc">Passeport DPP éligible</div>
+              <div class="eq-score-num" style="color:#b45309;">Non mesuré</div>
+              <div class="eq-score-desc">voir Prêt pour le DPP</div>
             </div>
           </div>
         </div>

@@ -1385,3 +1385,75 @@ rendent sans erreur sous jsdom.
 - **`fallback-data.ts`** fournit toujours une chaîne inventée en dernier recours, sans marqueur de démonstration.
 - Le score de qualité produit n'est qu'une moyenne de scores de lignes ; les trois personnes
   distinctes de la fiche produit rendent le même score.
+
+---
+
+## Chantier 14 — Lignée de la fiche produit rendue réelle, et matrice de qualité alignée sur son contrat
+
+### Ce que la mesure a établi
+
+`productDetailView()` (142 lignes) rendait un bloc « Lignée Complète de Transformation » de
+**45 lignes, 8 échelons codés en dur**, dont **7 `alert()`** affichant du contenu absent de toute
+table : `Ferme Izmir, Turquie`, `Filature de Haute-Vienne (Combed Ring Spun Ne 30/1)`,
+`Portugal Textile Mill (Jersey 185g/m²)`, `EcoDye Aquitaine (ZDHC Level 3)`,
+`Atelier Confection SAS (Barcelos, SMETA 4-Pillar)`, `AT-ESS-001 réconciliée à 100%`,
+`3.42 kg CO2e / pièce`, sous un badge `✓ 100% Vérifié & Scellé`.
+
+Le contrat réel `GET /api/products/{id}` renvoie `{ product, identifiers, materials }`, où
+`materials[]` porte `{materialId, role, percentage, unit, productVersion, material: {name,
+material_type, origin_country_code, normalized_name}}`. **Aucun échelon de transformation n'y
+figure** : la lignée complète fibre→DPP ne peut pas être construite depuis cette fiche.
+
+### Découverte : un correctif précédent était faux
+
+`serializeProduct` (`api/_lib/products.ts:32`) **ne renvoie pas `score`**. Le remplacement de
+« Indice Qualité : 98.4 / 100 » par `${p.score ?? 0}` affichait donc `0 / 100` sur données réelles
+— un zéro honnête, mais présenté comme une mesure qui n'existe pas. Le contrat expose en revanche
+`dataCompletion` et `dataReadiness` (`enum product_data_readiness`: `not_started`, `in_progress`,
+`data_ready`, `needs_review`). Les deux affichages utilisent désormais ces champs.
+
+### Bug de portée introduit puis corrigé
+
+Le remplacement de « NOTE GLOBALE : GRADE A (98.4%) » ciblait la ligne 2542, qui appartient à
+**`qualityView()`** et non à `productDetailView()` : les constantes `readinessLabel` et
+`completionPct` n'y sont pas définies, ce qui aurait levé une `ReferenceError` au rendu.
+`qualityView()` calcule maintenant ses propres valeurs depuis `prod` et `state.quality`.
+
+### Ce qui a été fait
+
+1. **Lignée réelle** — une carte par matière réellement rattachée (rôle, nom, pourcentage, pays
+   d'origine), ou une carte « Aucune matière rattachée » si la liste est vide ; un échelon
+   « TRANSFORMATION » qui dit « Non renseignée dans cette fiche » et renvoie vers le graphe de
+   traçabilité ; un échelon produit (référence et lieu de fabrication réels) ; un échelon DPP.
+   Les 7 `alert()` et le badge « ✓ 100% Vérifié & Scellé » sont supprimés.
+2. **Complétude réelle** — « Indice Qualité : X / 100 » et « NOTE GLOBALE : GRADE A » deviennent
+   « Complétude des données : X% » et « ÉTAT : <état réel> », depuis `dataCompletion` et
+   `dataReadiness`.
+3. **Matrice de qualité alignée sur `serializeQualityScore`** (`api/_lib/quality.ts:48`), qui
+   renvoie `completeness`, `freshness`, `documentationCoverage` et `consistency` en chaînes.
+   COMPLÉTUDE DONNÉES et COUVERTURE PREUVES affichent les valeurs réelles ; TAUX VÉRIFICATION,
+   QUALITÉ FOURNISSEUR et RÉGULARITÉ ESPR affichent **« Non mesuré »** au lieu de `88.5%`,
+   `94.2%` et `88.0%`, car ces indicateurs ne figurent pas dans le contrat. `96.8%` et `92.0%`
+   sont remplacés de même.
+
+### Mesures
+
+`test:supplychain:surface` passe de 56 à **76 contrôles, 0 échec** (sections H et I ajoutées :
+lignée de la fiche produit, centre de qualité). Balayage : **39 PASS / 18 FAIL**, aucun nouvel échec.
+
+Sonde jsdom : fiche produit → lignée réelle, 4 cartes, « Complétude 82% », aucun lieu inventé ;
+qualité → 5 « Non mesuré », « ÉTAT : À revoir », 0 erreur.
+
+### Ce qui reste fabriqué ailleurs dans la console (mesuré, non corrigé)
+
+| Ligne | Contenu | Vue |
+|---|---|---|
+| 1719, 1733 | `Jersey 185g/m²`, `ZDHC Level 3` dans un SVG | diagramme |
+| 1938, 1948 | `Filature de Haute-Vienne`, `EcoDye Aquitaine` dans un tableau | à identifier |
+| 2158, 2160 | `88.0%` « Passeports prêts » | `mc-stat-huge` |
+| 2625, 2649 | `teinturerie EcoDye`, `Atelier de Barcelos` | `qualityView` |
+
+`brand-console/index.html` contient encore **22 `alert()`** réparties sur 8 vues
+(`documentsConsoleView` 6, `materialsConsoleView` 3, `reportsConsoleView` 3, `requestDetailView` 3,
+`questionnairesBuilderView` 2, `supplyChainConsoleView` 2, `certificationsConsoleView` 1,
+`settingsConsoleView` 1, `supplyChainView` 1).

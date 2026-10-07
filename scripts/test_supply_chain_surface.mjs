@@ -127,7 +127,42 @@ for (const fabricated of ['ZERO HALLUCINATION', 'SGS-LAB-098', 'SMETA-BRAGA-26',
   assert(!html.includes(fabricated), `maquette supprimée : ${fabricated}`);
 }
 
-console.log('\nH. Intégrité de la feuille de style');
+console.log('\nH. La lignée de la fiche produit est réelle');
+click($('[data-view="products"]'));
+await settle();
+click($('[data-product-id]'));
+await settle();
+const detailText = appText();
+assert(detailText.includes('Lignée de transformation'), 'la lignée est rendue');
+const lineageCards = $$('.lineage-step-card');
+assert(lineageCards.length >= 3, `au moins trois échelons (obtenu ${lineageCards.length})`);
+const detail = window.tracefabBrandConsole.state.selectedProductDetail || {};
+const realMaterials = Array.isArray(detail.materials) ? detail.materials : [];
+/* Une carte par matière réelle (ou une carte « aucune matière » si la liste est vide),
+   puis transformation + produit + DPP. */
+eq(lineageCards.length, Math.max(realMaterials.length, 1) + 3, 'une carte par matière réelle, plus trois échelons fixes');
+assert(
+  realMaterials.length > 0 || detailText.includes('Aucune matière rattachée'),
+  'une fiche sans matière le dit explicitement',
+);
+assert(detailText.includes('ouvrir le graphe'), 'les échelons absents du contrat renvoient vers le graphe');
+assert(/Complétude \d+%/.test(detailText), 'la complétude affichée vient du produit réel');
+for (const fabricated of ['Ferme Izmir', 'Haute-Vienne', 'EcoDye Aquitaine', 'Barcelos', '3.42 kg', '100% Vérifié & Scellé', 'Ne 30/1']) {
+  assert(!detailText.includes(fabricated), `aucun contenu inventé dans la lignée : ${fabricated}`);
+}
+assert(!html.includes("alert('Échelon"), 'les alert() codées en dur ont disparu');
+
+console.log('\nI. Le centre de qualité n\'affiche que ce qu\'il mesure');
+click($('[data-view="quality"]'));
+await settle();
+const qualityText = appText();
+assert(qualityText.includes('Non mesuré'), 'les indicateurs hors contrat sont dits non mesurés');
+for (const fake of ['96.8%', '92.0%', '88.5%', '94.2%']) {
+  assert(!qualityText.includes(fake), `pourcentage codé en dur retiré : ${fake}`);
+}
+assert(/ÉTAT : /.test(qualityText), 'l\'état vient du produit réel');
+
+console.log('\nJ. Intégrité de la feuille de style');
 const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
 eq(css.split('{').length, css.split('}').length, 'les accolades CSS sont équilibrées');
 for (const dead of ['.intel-', '.tc-echelon', '.tc-reconcil']) {
