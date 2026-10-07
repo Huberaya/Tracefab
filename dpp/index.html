@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Passeport Numérique de Produit — Essentiel Coton Biologique | TRACEFAB</title>
-  <meta name="description" content="Passeport Numérique de Produit (DPP) au format ESPR / CIRPASS pour le style Essentiel Coton Biologique par Atelier Demo. Données de traçabilité, composition et réparabilité.">
+  <title data-i18n="dpp.metaTitle">Digital Product Passport — Organic Cotton Essential | TRACEFAB</title>
+  <meta name="description" content="Digital Product Passport (DPP) in ESPR / CIRPASS format for the Organic Cotton Essential style by Atelier Demo. Traceability, composition and repairability data." data-i18n-attr="content:dpp.metaDesc">
 
   <!-- Open Graph / Meta -->
-  <meta property="og:title" content="DPP — Essentiel Coton Biologique">
-  <meta property="og:description" content="Traçabilité documentée de la fibre au vêtement fini, au format du Règlement européen ESPR. Indicateur de préparation, pas une certification.">
+  <meta property="og:title" content="DPP — Organic Cotton Essential">
+  <meta property="og:description" content="Documented traceability from fibre to finished garment, in the format of the European ESPR regulation. A readiness indicator, not a certification." data-i18n-attr="content:dpp.ogDesc">
   <meta property="og:type" content="product">
 
   <!-- Google Fonts -->
@@ -25,7 +25,7 @@
     ],
     "@type": "Product",
     "identifier": "urn:epc:id:sgtin:3760123456.001.2026",
-    "name": "Essentiel Coton Biologique",
+    "name": "Organic Cotton Essential",
     "model": "AT-ESS-001",
     "sku": "AT-ESS-001-NVY-M",
     "gtin": "3760123456789",
@@ -34,20 +34,20 @@
       "name": "Atelier Demo",
       "legalName": "Atelier Demo SAS"
     },
-    "description": "T-shirt en jersey de coton biologique peigné 185g/m², confectionné au Portugal dans le respect des normes sociales SMETA et environnementales GOTS.",
+    "description": "Combed organic cotton jersey T-shirt, 185 gsm, made in Portugal in compliance with SMETA social standards and GOTS environmental standards.",
     "countryOfOrigin": "PT",
     "countryOfDesign": "FR",
     "material": [
       {
         "@type": "DefinedTerm",
-        "name": "Coton biologique peigné (GOTS Certified)",
+        "name": "Combed organic cotton (GOTS certified)",
         "percentage": 85,
         "termCode": "COTTON_BIO",
         "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
       },
       {
         "@type": "DefinedTerm",
-        "name": "Coton recyclé pré-consommation (GRS Certified)",
+        "name": "Pre-consumer recycled cotton (GRS certified)",
         "percentage": 15,
         "termCode": "COTTON_REC",
         "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
@@ -68,14 +68,14 @@
       }
     ],
     "traceability": {
-      "tier4_raw_fiber": { "country": "PT", "facility": "Quinta de São Martinho", "provenance": "100% Coton régénératif" },
-      "tier3_spinning": { "country": "PT", "facility": "Fiação Norte Lda", "process": "Filage fil peigné Ne 30/1" },
-      "tier3_weaving": { "country": "PT", "facility": "Malhas do Ave", "process": "Tricotage jersey circulaire" },
-      "tier2_dyeing": { "country": "PT", "facility": "Tinturaria Braga Lda", "process": "Teinture à bas impact environnemental" },
-      "tier1_assembly": { "country": "PT", "facility": "Nhãn Textile Confeção", "process": "Coupe, couture et repassage" }
+      "tier4_raw_fiber": { "country": "PT", "facility": "Quinta de São Martinho", "provenance": "100% regenerative cotton" },
+      "tier3_spinning": { "country": "PT", "facility": "Fiação Norte Lda", "process": "Combed yarn spinning Ne 30/1" },
+      "tier3_weaving": { "country": "PT", "facility": "Malhas do Ave", "process": "Circular jersey knitting" },
+      "tier2_dyeing": { "country": "PT", "facility": "Tinturaria Braga Lda", "process": "Low-environmental-impact dyeing" },
+      "tier1_assembly": { "country": "PT", "facility": "Nhãn Textile Confeção", "process": "Cutting, sewing and pressing" }
     },
     "repairAndCare": {
-      "washingInstructions": "Lavage 30°C cycle délicat. Séchage à l'air libre conseillé. Repassage doux sur envers.",
+      "washingInstructions": "Wash at 30°C on a delicate cycle. Open-air drying recommended. Iron gently on the reverse.",
       "recyclabilityRate": "98%",
       "repairServicesUrl": "https://atelier-demo.fr/repair-program",
       "takeBackUrl": "https://atelier-demo.fr/second-life"
@@ -671,6 +671,47 @@
       text-decoration: none;
       font-weight: 700;
     }
+    /* ------------------------------------------------------------------
+       Couche responsive — chantier 7.
+
+       Le DPP public est la page la plus certainement consultee au
+       telephone : on l'atteint en scannant le QR cousu sur l'etiquette.
+       Elle ne comportait pourtant aucune media query. Les six onglets,
+       en flex:1, ont min-width:auto par defaut : ils ne peuvent pas se
+       comprimer sous la largeur de leur libelle et poussaient donc le
+       document hors cadre — 20 px en francais deja, 29 px en anglais,
+       133 px en allemand. On fait defiler la barre d'onglets plutot que
+       la page entiere.
+       ------------------------------------------------------------------ */
+    @media (max-width: 760px) {
+      .dpp-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .dpp-tabs::-webkit-scrollbar { display: none; }
+      .dpp-tab-btn {
+        flex: 0 0 auto;
+        padding: 13px 15px;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 520px) {
+      /* L'en-tete passe sur deux rangees. Il perd son ancrage colle pour
+         que la barre d'onglets, elle, puisse se coller en haut du cadre
+         sans avoir a connaitre une hauteur d'en-tete devenue variable. */
+      .dpp-header {
+        position: static;
+        flex-wrap: wrap;
+        row-gap: 10px;
+        padding: 12px 16px;
+      }
+      .dpp-tabs { top: 0; }
+      .brand-id { flex: 1 1 auto; min-width: 0; }
+      .badge-eu { flex: 1 1 100%; justify-content: center; }
+      .tab-content-panel { padding: 22px 16px; }
+    }
   </style>
   <script src="/auto-translate.js"></script>
     <!-- i18n : catalogue unique /assets/i18n. Page grand public : titre et
@@ -702,17 +743,17 @@
           <option value="nl">🇳🇱 Nederlands</option>
           <option value="pt">🇵🇹 Português</option>
         </select>
-        <div class="badge-eu" title="Le format de ce passeport suit le modèle de données ESPR / CIRPASS. Il s'agit d'un indicateur de préparation, et non d'une certification réglementaire.">
+        <div class="badge-eu" title="This passport follows the ESPR / CIRPASS data model. It is a readiness indicator, not a regulatory certification." data-i18n-attr="title:dpp.ftReadiness">
           <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-          Format DPP aligné ESPR
+          ESPR-aligned DPP format
         </div>
       </div>
     </header>
 
     <!-- Product Summary Hero -->
     <div class="product-hero">
-      <span class="product-tag">Passeport Numérique Officiel</span>
-      <h1 class="product-title">Essentiel Coton Biologique</h1>
+      <span class="product-tag" data-i18n="dpp.hdrOfficial">Official Digital Product Passport</span>
+      <h1 class="product-title">Organic Cotton Essential</h1>
       <div class="product-meta-row">
         <span>SKU: AT-ESS-001</span>
         <span>•</span>
@@ -720,15 +761,14 @@
         <span>•</span>
         <span>Batch: 2026-FW</span>
       </div>
-      <p class="product-summary">
-        T-shirt iconique en jersey de coton biologique régénératif 185g/m². Tracé de la graine au vêtement confectionné avec 100% de preuves documentées.
+      <p class="product-summary" data-i18n="dpp.heroDesc">Iconic T-shirt in 185 gsm regenerative organic cotton jersey. Traced from seed to finished garment with 100% documented evidence.
       </p>
 
       <div class="trust-pill-bar">
-        <span class="trust-badge-item verified">✓ 100% Matières Certifiées</span>
+        <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ 100% certified materials</span>
         <span class="trust-badge-item">GOTS Certified</span>
         <span class="trust-badge-item">OEKO-TEX Class 1</span>
-        <span class="trust-badge-item">Fabriqué au Portugal</span>
+        <span class="trust-badge-item" data-i18n="dpp.heroMadeIn">Made in Portugal</span>
       </div>
     </div>
 
@@ -736,7 +776,7 @@
     <div style="padding: 14px 20px 16px; background: #f0f7f3; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);">
       <div style="font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.05em; color: var(--forest-600); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-        <span>Passeport Numérique Hors-Ligne & Portefeuille Mobile</span>
+        <span data-i18n="dpp.offlineWallet">Offline digital passport and mobile wallet</span>
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <a href="/api/dpp/3760123456789/apple-wallet" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #000; color: #fff; padding: 11px 12px; border-radius: 12px; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
@@ -751,26 +791,26 @@
     </div>
 
     <!-- Interactive Navigation Tabs -->
-    <nav class="dpp-tabs" aria-label="Sections du Passeport">
-      <button class="dpp-tab-btn active" data-tab="materials">Matières (2)</button>
-      <button class="dpp-tab-btn" data-tab="traceability">Traçabilité (7)</button>
-      <button class="dpp-tab-btn" data-tab="impact">Éco-Score & ACV</button>
-      <button class="dpp-tab-btn" data-tab="circularity">Réparabilité & Fin de Vie</button>
-      <button class="dpp-tab-btn" data-tab="evidence">Preuves & Audit</button>
+    <nav class="dpp-tabs" aria-label="Passport sections" data-i18n-attr="aria-label:dpp.tabsAria">
+      <button class="dpp-tab-btn active" data-tab="materials" data-i18n="dpp.tabMaterials">Materials (2)</button>
+      <button class="dpp-tab-btn" data-tab="traceability" data-i18n="dpp.tabTraceability">Traceability (7)</button>
+      <button class="dpp-tab-btn" data-tab="impact" data-i18n="dpp.tabImpact">Eco-score and LCA</button>
+      <button class="dpp-tab-btn" data-tab="circularity" data-i18n="dpp.tabCircularity">Repairability and end of life</button>
+      <button class="dpp-tab-btn" data-tab="evidence" data-i18n="dpp.tabEvidence">Evidence and audit</button>
       <button class="dpp-tab-btn" data-tab="gs1">GS1 Digital Link</button>
     </nav>
 
     <!-- TAB 1: Matières & Composition -->
     <section class="tab-content-panel" id="panel-materials">
       <div class="section-title">
-        <span>Composition & Origine des Fibres</span>
-        <span style="font-size:12px;color:var(--primary);font-weight:700;">100% Tracé</span>
+        <span data-i18n="dpp.matTitle">Fibre composition and origin</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.matTraced">100% traced</span>
       </div>
-      <p class="section-desc">Déclaration vérifiée conformément au règlement textile européen et contrôlée par tiers accrédité.</p>
+      <p class="section-desc" data-i18n="dpp.matDesc">Declaration verified in line with the European textile regulation and checked by an accredited third party.</p>
 
       <div class="composition-card">
         <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:750;">
-          <span>Composition totale</span>
+          <span data-i18n="dpp.matTotalComposition">Total composition</span>
           <span>185 g/m²</span>
         </div>
 
@@ -783,8 +823,8 @@
           <div class="comp-item-title">
             <div class="comp-bullet" style="background:var(--primary);"></div>
             <div>
-              <strong>85% Coton Biologique Peigné</strong>
-              <div style="font-size:11px;color:var(--text-muted);">Origine : Portugal (Ferme São Martinho)</div>
+              <strong data-i18n="dpp.matCombed">85% combed organic cotton</strong>
+              <div style="font-size:11px;color:var(--text-muted);" data-i18n="dpp.matOrigin">Origin: Portugal (São Martinho farm)</div>
             </div>
           </div>
           <span style="font-weight:750;color:var(--primary);">GOTS v6.0</span>
@@ -794,8 +834,8 @@
           <div class="comp-item-title">
             <div class="comp-bullet" style="background:#0284c7;"></div>
             <div>
-              <strong>15% Coton Recyclé Pré-consommation</strong>
-              <div style="font-size:11px;color:var(--text-muted);">Revalorisation des chutes de coupe d'atelier</div>
+              <strong data-i18n="dpp.matRecycled">15% pre-consumer recycled cotton</strong>
+              <div style="font-size:11px;color:var(--text-muted);" data-i18n="dpp.matRecycledDesc">Recovery of workshop cutting offcuts</div>
             </div>
           </div>
           <span style="font-weight:750;color:#0284c7;">GRS Certified</span>
@@ -804,14 +844,14 @@
 
       <div class="info-grid">
         <div class="info-card">
-          <span>Substances Chimiques</span>
-          <strong>0% Toxiques</strong>
-          <p>Conforme REACH & OEKO-TEX Standard 100.</p>
+          <span data-i18n="dpp.matChemicals">Chemical substances</span>
+          <strong data-i18n="dpp.matNonToxic">0% toxic</strong>
+          <p data-i18n="dpp.matReach">Complies with REACH and OEKO-TEX Standard 100.</p>
         </div>
         <div class="info-card">
-          <span>Microfibres Plastiques</span>
-          <strong>0 g / lavage</strong>
-          <p>100% fibres naturelles biodégradables.</p>
+          <span data-i18n="dpp.matMicrofibres">Plastic microfibres</span>
+          <strong data-i18n="dpp.matMicrofibresValue">0 g per wash</strong>
+          <p data-i18n="dpp.matBiodeg">100% biodegradable natural fibres.</p>
         </div>
       </div>
     </section>
@@ -819,10 +859,10 @@
     <!-- TAB 2: Traçabilité Multi-Échelon -->
     <section class="tab-content-panel" id="panel-traceability" style="display:none;">
       <div class="section-title">
-        <span>Chaîne de Contrôle & Usines</span>
-        <span style="font-size:11px;background:var(--primary-soft);color:var(--primary);padding:3px 8px;border-radius:99px;font-weight:700;">5 Échelons Validés</span>
+        <span data-i18n="dpp.chainTitle">Chain of custody and factories</span>
+        <span style="font-size:11px;background:var(--primary-soft);color:var(--primary);padding:3px 8px;border-radius:99px;font-weight:700;" data-i18n="dpp.chainTiers">5 validated tiers</span>
       </div>
-      <p class="section-desc">Chaque étape industrielle est certifiée par un certificat de transaction (TC) audité.</p>
+      <p class="section-desc" data-i18n="dpp.chainDesc">Every industrial step is certified by an audited transaction certificate (TC).</p>
 
       <div class="trace-timeline">
         <!-- Tier 4 -->
@@ -830,11 +870,11 @@
           <div class="node-pin">🌱</div>
           <div class="node-body">
             <div class="node-header">
-              <strong>Culture de la Fibre</strong>
+              <strong data-i18n="dpp.chainFibre">Fibre cultivation</strong>
               <span class="node-tier-tag">Tier 4</span>
             </div>
             <div class="node-sub">Quinta de São Martinho · Alentejo, Portugal</div>
-            <div class="node-proof">✓ Certificat GOTS #CU-881294</div>
+            <div class="node-proof" data-i18n="dpp.chainGotsCert">✓ GOTS certificate #CU-881294</div>
           </div>
         </div>
 
@@ -843,11 +883,11 @@
           <div class="node-pin">🧵</div>
           <div class="node-body">
             <div class="node-header">
-              <strong>Filature & Peignage</strong>
+              <strong data-i18n="dpp.chainSpinning">Spinning and combing</strong>
               <span class="node-tier-tag">Tier 3</span>
             </div>
             <div class="node-sub">Fiação Norte Lda · Guimarães, Portugal</div>
-            <div class="node-proof">✓ Fil peigné haute résistance Ne 30/1</div>
+            <div class="node-proof" data-i18n="dpp.chainYarn">✓ High-tenacity combed yarn Ne 30/1</div>
           </div>
         </div>
 
@@ -856,11 +896,11 @@
           <div class="node-pin">🧶</div>
           <div class="node-body">
             <div class="node-header">
-              <strong>Tricotage Jersey</strong>
+              <strong data-i18n="dpp.chainKnitting">Jersey knitting</strong>
               <span class="node-tier-tag">Tier 3</span>
             </div>
             <div class="node-sub">Malhas do Ave · Santo Tirso, Portugal</div>
-            <div class="node-proof">✓ Maille circulaire jauge 28</div>
+            <div class="node-proof" data-i18n="dpp.chainGauge">✓ Circular knit, 28 gauge</div>
           </div>
         </div>
 
@@ -869,11 +909,11 @@
           <div class="node-pin">💧</div>
           <div class="node-body">
             <div class="node-header">
-              <strong>Ennoblissement & Teinture</strong>
+              <strong data-i18n="dpp.chainDyeing">Finishing and dyeing</strong>
               <span class="node-tier-tag">Tier 2</span>
             </div>
             <div class="node-sub">Tinturaria Braga Lda · Braga, Portugal</div>
-            <div class="node-proof">✓ Circuit fermé & traitement des rejets (STeP)</div>
+            <div class="node-proof" data-i18n="dpp.chainClosed">✓ Closed loop and effluent treatment (STeP)</div>
           </div>
         </div>
 
@@ -882,11 +922,11 @@
           <div class="node-pin">✂️</div>
           <div class="node-body">
             <div class="node-header">
-              <strong>Coupe, Confection & Finitions</strong>
+              <strong data-i18n="dpp.chainAssembly">Cutting, making-up and finishing</strong>
               <span class="node-tier-tag">Tier 1</span>
             </div>
             <div class="node-sub">Nhãn Textile Manufacturing · Porto, Portugal</div>
-            <div class="node-proof">✓ Audit social SMETA 4-Pillar (Score A)</div>
+            <div class="node-proof" data-i18n="dpp.chainSmeta">✓ SMETA 4-Pillar social audit (score A)</div>
           </div>
         </div>
       </div>
@@ -895,15 +935,15 @@
     <!-- TAB 3: Impact & Soin / Réparation -->
     <section class="tab-content-panel" id="panel-impact" style="display:none;">
       <div class="section-title">
-        <span>Évaluation Environnementale & Éco-Score</span>
-        <span style="font-size:12px;background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:99px;font-weight:700;">Méthodologie Loi AGEC &amp; ESPR</span>
+        <span data-i18n="dpp.impTitle">Environmental assessment and eco-score</span>
+        <span style="font-size:12px;background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.impMethod">AGEC Act and ESPR methodology</span>
       </div>
-      <p class="section-desc">Analyse du cycle de vie complet (ACV) selon la méthodologie européenne PEFCR Apparel & Footwear 2024.</p>
+      <p class="section-desc" data-i18n="dpp.impDesc">Full life-cycle assessment (LCA) following the European PEFCR Apparel & Footwear 2024 methodology.</p>
 
       <!-- Éco-Score Textile Officiel Badge -->
       <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
         <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Éco-Score Textile Européen</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;" data-i18n="dpp.impEcoScore">European textile eco-score</div>
           <div style="display:flex;gap:4px;align-items:center;">
             <span style="display:inline-block;padding:6px 14px;font-size:22px;font-weight:800;border-radius:6px;background:#16a34a;color:#ffffff;box-shadow:0 2px 8px rgba(22,163,74,0.3);">A</span>
             <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:800;border-radius:6px;background:#e2e8f0;color:#64748b;">B</span>
@@ -914,66 +954,66 @@
         </div>
         <div style="text-align:right;">
           <div style="font-size:24px;font-weight:800;color:#16a34a;">84 / 100</div>
-          <div style="font-size:12px;color:var(--text-muted);">Indice d'Éco-Conception</div>
+          <div style="font-size:12px;color:var(--text-muted);" data-i18n="dpp.impEcoDesign">Eco-design index</div>
         </div>
       </div>
 
       <div class="info-grid" style="margin-bottom:18px;">
         <div class="info-card">
-          <span>Empreinte Carbone Réelle</span>
+          <span data-i18n="dpp.impCarbon">Actual carbon footprint</span>
           <strong>2.15 kg CO₂e</strong>
-          <p>-48% vs référence conventionnelle (PEFCR 2024).</p>
+          <p data-i18n="dpp.impVsRef">-48% versus the conventional baseline (PEFCR 2024).</p>
         </div>
         <div class="info-card">
-          <span>Consommation Hydrique</span>
-          <strong>1,480 Litres</strong>
-          <p>-64% grâce au Coton Bio pluvial certifié GOTS.</p>
+          <span data-i18n="dpp.impWater">Water consumption</span>
+          <strong data-i18n="dpp.impWaterValue">1,480 litres</strong>
+          <p data-i18n="dpp.impThanksTo">-64% thanks to GOTS-certified rain-fed organic cotton.</p>
         </div>
         <div class="info-card">
-          <span>Relargage Microplastiques</span>
-          <strong>Grade A (Nul)</strong>
-          <p>100% fibres naturelles biodégradables.</p>
+          <span data-i18n="dpp.impMicroplastics">Microplastic release</span>
+          <strong data-i18n="dpp.impMicroValue">Grade A (none)</strong>
+          <p data-i18n="dpp.matBiodeg">100% biodegradable natural fibres.</p>
         </div>
         <div class="info-card">
-          <span>Circularité & Recyclabilité</span>
+          <span data-i18n="dpp.impCircular">Circularity and recyclability</span>
           <strong>95%</strong>
-          <p>Fibre monomatière recyclable en boucle fermée.</p>
+          <p data-i18n="dpp.impMonoFibre">Single-material fibre, recyclable in a closed loop.</p>
         </div>
       </div>
 
       <div class="section-title" style="margin-top:20px;">
-        <span>Conseils d'Entretien & Réparabilité</span>
-        <span style="font-size:12px;color:var(--primary);font-weight:700;">Indice: 9.2/10</span>
+        <span data-i18n="dpp.careTitle">Care advice and repairability</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.cirIndexValue">Index: 9.2/10</span>
       </div>
-      <p class="section-desc">Prolonger la durée de vie de votre vêtement divise par 3 son empreinte carbone globale.</p>
+      <p class="section-desc" data-i18n="dpp.careIntro">Extending the life of your garment divides its overall carbon footprint by three.</p>
 
       <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:18px;">
         <div class="care-row">
           <div class="care-icon">🧺</div>
           <div class="care-text">
-            <strong>Lavage délicat à 30°C</strong>
-            <span>Préserve les fibres de coton et réduit la consommation d'énergie de 60%.</span>
+            <strong data-i18n="dpp.careWash">Delicate wash at 30°C</strong>
+            <span data-i18n="dpp.careWashDesc">Preserves the cotton fibres and cuts energy use by 60%.</span>
           </div>
         </div>
         <div class="care-row">
           <div class="care-icon">💨</div>
           <div class="care-text">
-            <strong>Séchage naturel à l'air libre</strong>
-            <span>Le sèche-linge fragilise les coutures et consomme 1.5 kWh par cycle.</span>
+            <strong data-i18n="dpp.careDry">Natural open-air drying</strong>
+            <span data-i18n="dpp.careDryDesc">Tumble drying weakens the seams and uses 1.5 kWh per cycle.</span>
           </div>
         </div>
         <div class="care-row">
           <div class="care-icon">🪡</div>
           <div class="care-text">
-            <strong>Programme de Réparation Gratuit</strong>
-            <span>Coutures et ourlets réparables à vie via notre réseau partenaire.</span>
+            <strong data-i18n="dpp.careRepair">Free repair programme</strong>
+            <span data-i18n="dpp.careRepairDesc">Seams and hems repairable for life through our partner network.</span>
           </div>
         </div>
         <div class="care-row" style="border-bottom:none;">
           <div class="care-icon">♻️</div>
           <div class="care-text">
-            <strong>Recyclabilité : 98%</strong>
-            <span>Fibre monocoton réintroduisible dans les filatures européennes de recyclage.</span>
+            <strong data-i18n="dpp.careRecyclability">Recyclability: 98%</strong>
+            <span data-i18n="dpp.careRecyclDesc">Single-cotton fibre that can re-enter European recycling spinning mills.</span>
           </div>
         </div>
       </div>
@@ -982,43 +1022,117 @@
     <!-- TAB 4: Evidence & Certificats -->
     <section class="tab-content-panel" id="panel-evidence" style="display:none;">
       <div class="section-title">
-        <span>Certificats & Preuves Légales</span>
-        <span style="font-size:12px;color:var(--primary);font-weight:700;">Audité</span>
+        <span data-i18n="dpp.evTitle">Certificates and legal evidence</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.evAudited">Audited</span>
       </div>
-      <p class="section-desc">Documents officiels opposables aux audits de conformité de l'Union Européenne et DGCCRF.</p>
+      <p class="section-desc" data-i18n="dpp.evDesc">Official documents admissible in European Union and DGCCRF compliance audits.</p>
 
       <div style="display:grid;gap:12px;">
         <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
               <strong>Global Organic Textile Standard (GOTS)</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Certificat : CU-881294-GOTS-2026</div>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evGotsRef">Certificate: CU-881294-GOTS-2026</div>
             </div>
-            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Valide 2027</span>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evValid2027">Valid 2027</span>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Organisme certificateur accrédité : Control Union Certification B.V.</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" data-i18n="dpp.evIssuer">Accredited certification body: Control Union Certification B.V.</div>
         </div>
 
         <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
-              <strong>OEKO-TEX Standard 100 — Classe 1</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Rapport : 21.HPT.94112</div>
+              <strong data-i18n="dpp.evOekotex">OEKO-TEX Standard 100 — Class 1</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evOekotexRef">Report: 21.HPT.94112</div>
             </div>
-            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Valide 2026</span>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evValid2026">Valid 2026</span>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Contrôle analytique d'absence de résidus chimiques nocifs (Hohenstein).</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" data-i18n="dpp.evChem">Analytical check for the absence of harmful chemical residues (Hohenstein).</div>
         </div>
 
         <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
-              <strong>Audit Social SMETA 4-Pillar (Éthique & Sécurité)</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Réf : SEDEX-SMETA-2026-PT</div>
+              <strong data-i18n="dpp.evSmeta">SMETA 4-Pillar social audit (ethics and safety)</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evSmetaRef">Ref.: SEDEX-SMETA-2026-PT</div>
             </div>
-            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;">Conforme</span>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evCompliant">Compliant</span>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Rémunération décente, santé au travail et droits syndicaux audités.</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" data-i18n="dpp.evSmetaDesc">Decent pay, occupational health and union rights audited.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Réparabilité, Recyclabilité & Économie Circulaire (ESPR Art. 10 & AGEC) -->
+    <section class="tab-content-panel" id="panel-circularity" style="display:none;">
+      <div class="section-title">
+        <span data-i18n="dpp.cirTitle">Repairability, recyclability and second life</span>
+        <span style="font-size:12px;background:#e0f2fe;color:#0284c7;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.cirEsprFormat">ESPR 2026 data model</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.cirDesc">Official life-extension instructions, textile repairability index and approved take-back channels.</p>
+
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;" data-i18n="dpp.cirIndex">Textile repairability index</div>
+          <div style="font-size:26px;font-weight:850;color:#0b7656;font-family:var(--font-mono, monospace);">9.2 / 10</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" data-i18n="dpp.cirIndexDesc">Reinforced bartacks, replaceable rib collar, single-material cotton thread.</div>
+        </div>
+        <div style="text-align:right;">
+          <span style="display:inline-block;padding:6px 14px;background:#eaf5ef;color:#0b7656;border-radius:99px;font-size:12px;font-weight:800;" data-i18n="dpp.cirRecyclable">✓ 100% recyclable (single fibre)</span>
+        </div>
+      </div>
+
+      <div class="info-grid" style="margin-bottom:18px;">
+        <div class="info-card">
+          <span data-i18n="dpp.cirDisassembly">Disassembly and parts</span>
+          <strong data-i18n="dpp.cirCollarHem">Collar and hem</strong>
+          <p data-i18n="dpp.cirDisassemblyDesc">Standard detachable chain-stitch seams for simplified repair in an approved workshop.</p>
+        </div>
+        <div class="info-card">
+          <span data-i18n="dpp.cirBonus">Repair bonus (Refashion)</span>
+          <strong data-i18n="dpp.cirBonusAmount">Eligible for -€6 to -€15</strong>
+          <p data-i18n="dpp.cirBonusDesc">Direct coverage at certified menders in the Refashion / AGEC network.</p>
+        </div>
+      </div>
+
+      <div class="info-card" style="margin-bottom:18px;">
+        <span data-i18n="dpp.cirEol">End of life and second life</span>
+        <strong data-i18n="dpp.cirSorting">Sorting and separate collection instructions</strong>
+        <p style="margin-top:6px;line-height:1.5;" data-i18n="dpp.cirSortingDesc">Do not discard with household waste. Drop this T-shirt at one of the 46,000 Refashion collection points, or return it to a partner store for reuse or closed-loop mechanical shredding.
+        </p>
+      </div>
+    </section>
+
+    <!-- TAB 6: Résolution GS1 Digital Link & Enregistrement Blockchain/Neon -->
+    <section class="tab-content-panel" id="panel-gs1" style="display:none;">
+      <div class="section-title">
+        <span data-i18n="dpp.gs1Title">GS1 Digital Link resolution and QR code</span>
+        <span style="font-size:12px;background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.gs1Standard">GS1 standard 2026</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.gs1Desc">ISO/IEC 15459 standardised URI architecture linking the physical QR code sewn into the label to the secured digital passport.</p>
+
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:20px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:18px;margin-bottom:16px;">
+          <div style="width:72px;height:72px;background:#050f0b;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;">
+            ☷
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:var(--font-mono, monospace);color:var(--text-muted);text-transform:uppercase;" data-i18n="dpp.gs1Uri">Official GS1 Digital Link URI:</div>
+            <code style="display:block;margin-top:4px;font-size:12.5px;color:#0b7656;word-break:break-all;">https://id.tracefab.com/01/03760123456789/21/2026-FW-001</code>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="info-card">
+            <span data-i18n="dpp.gs1Ai01">Application identifier (AI 01)</span>
+            <strong>GTIN: 03760123456789</strong>
+            <p data-i18n="dpp.gs1Gtin">Global identifier of the textile style.</p>
+          </div>
+          <div class="info-card">
+            <span data-i18n="dpp.gs1Serial">Serial number (AI 21)</span>
+            <strong>2026-FW-001</strong>
+            <p data-i18n="dpp.gs1SerialDesc">Granularity down to the certified making-up batch.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -1028,8 +1142,8 @@
       <div class="sig-top">
         <div class="sig-logo">tf</div>
         <div>
-          <strong>Scellé par le registre immuable TRACEFAB</strong>
-          <div style="font-size:10.5px;color:#a3bfb2;">Horodatage et preuve cryptographique Neon PostgreSQL</div>
+          <strong data-i18n="dpp.sigSealed">Sealed by the immutable TRACEFAB registry</strong>
+          <div style="font-size:10.5px;color:#a3bfb2;" data-i18n="dpp.sigTimestamp">Timestamping and cryptographic proof on Neon PostgreSQL</div>
         </div>
       </div>
       <div class="sig-hash">
@@ -1041,18 +1155,18 @@
     <div class="jsonld-action-bar">
       <button class="btn-action btn-action-primary" id="btn-export-jsonld">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-        Exporter JSON-LD CIRPASS
+        <span data-i18n="dpp.jsonExport">Export CIRPASS JSON-LD</span>
       </button>
       <button class="btn-action" id="btn-view-raw">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-        Voir code source ESPR
+        <span data-i18n="dpp.sigViewSource">View ESPR source code</span>
       </button>
     </div>
 
     <!-- Footer -->
     <footer class="dpp-footer">
-      <p>Passeport Numérique conforme au Règlement Éco-conception de l'Union Européenne (ESPR).</p>
-      <p style="margin-top:6px;">Propulsé par <a href="/" target="_blank">TRACEFAB Textile Intelligence</a> · © 2026</p>
+      <p data-i18n="dpp.ftCompliant">Digital passport aligned with the European Union Ecodesign Regulation (ESPR).</p>
+      <p style="margin-top:6px;"><span data-i18n="dpp.ftPoweredBy">Powered by</span> <a href="/" target="_blank">TRACEFAB Textile Intelligence</a> · © 2026</p>
     </footer>
 
   </div>
@@ -1061,11 +1175,11 @@
   <div class="modal-overlay" id="modal-jsonld">
     <div class="modal-window">
       <div class="modal-head">
-        <strong>Spécification CIRPASS JSON-LD</strong>
+        <strong data-i18n="dpp.jsonTitle">CIRPASS JSON-LD specification</strong>
         <button id="modal-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Ce payload normalisé peut être interrogé directement par les douanes européennes, les auditeurs CSRD ou les applications de tri textile.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="dpp.jsonDesc">This standardised payload can be queried directly by European customs, CSRD auditors or textile sorting applications.</p>
         <div class="code-box" id="json-code-container"></div>
       </div>
     </div>
@@ -1175,79 +1289,3 @@
 
 </body>
 </html>
-    <!-- TAB 4: Réparabilité, Recyclabilité & Économie Circulaire (ESPR Art. 10 & AGEC) -->
-    <section class="tab-content-panel" id="panel-circularity" style="display:none;">
-      <div class="section-title">
-        <span>Réparabilité, Recyclabilité & Seconde Vie</span>
-        <span style="font-size:12px;background:#e0f2fe;color:#0284c7;padding:3px 10px;border-radius:99px;font-weight:700;">Conforme ESPR 2026</span>
-      </div>
-      <p class="section-desc">Instructions officielles de prolongation de vie, indice de réparabilité textile et filières de reprise agréées.</p>
-
-      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Indice de Réparabilité Textile</div>
-          <div style="font-size:26px;font-weight:850;color:#0b7656;font-family:var(--font-mono, monospace);">9.2 / 10</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Points d'arrêt renforcés, col bord-côte remplaçable, fil coton monomatériau.</div>
-        </div>
-        <div style="text-align:right;">
-          <span style="display:inline-block;padding:6px 14px;background:#eaf5ef;color:#0b7656;border-radius:99px;font-size:12px;font-weight:800;">✓ Recyclable à 100% (Mono-Fibre)</span>
-        </div>
-      </div>
-
-      <div class="info-grid" style="margin-bottom:18px;">
-        <div class="info-card">
-          <span>Démontabilité & Pièces</span>
-          <strong>Col & Ourlet</strong>
-          <p>Coutures chaînette standard détachables pour réparation simplifiée en atelier agréé.</p>
-        </div>
-        <div class="info-card">
-          <span>Bonus Réparation (Refashion)</span>
-          <strong>Éligible -6 € à -15 €</strong>
-          <p>Prise en charge directe chez les retoucheurs certifiés du réseau Refashion / AGEC.</p>
-        </div>
-      </div>
-
-      <div class="info-card" style="margin-bottom:18px;">
-        <span>Fin de Vie & Seconde Vie</span>
-        <strong>Consignes de Tri & Collecte Sélective</strong>
-        <p style="margin-top:6px;line-height:1.5;">
-          Ne pas jeter avec les ordures ménagères. Déposez ce t-shirt dans l'un des 46 000 points d'apport volontaire (PAV) Refashion ou rapportez-le en boutique partenaire pour réemploi ou effilochage mécanique boucle-fermée.
-        </p>
-      </div>
-    </section>
-
-    <!-- TAB 6: Résolution GS1 Digital Link & Enregistrement Blockchain/Neon -->
-    <section class="tab-content-panel" id="panel-gs1" style="display:none;">
-      <div class="section-title">
-        <span>Résolution GS1 Digital Link & QR Code</span>
-        <span style="font-size:12px;background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:99px;font-weight:700;">Standard GS1 2026</span>
-      </div>
-      <p class="section-desc">Architecture d'URI normalisée ISO/IEC 15459 reliant le QR code physique cousu sur l'étiquette au passeport numérique sécurisé.</p>
-
-      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:20px;margin-bottom:18px;">
-        <div style="display:flex;align-items:center;gap:18px;margin-bottom:16px;">
-          <div style="width:72px;height:72px;background:#050f0b;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;">
-            ☷
-          </div>
-          <div>
-            <div style="font-size:11px;font-family:var(--font-mono, monospace);color:var(--text-muted);text-transform:uppercase;">URI GS1 Digital Link Officielle :</div>
-            <code style="display:block;margin-top:4px;font-size:12.5px;color:#0b7656;word-break:break-all;">https://id.tracefab.com/01/03760123456789/21/2026-FW-001</code>
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="info-card">
-            <span>Code Application (AI 01)</span>
-            <strong>GTIN: 03760123456789</strong>
-            <p>Identifiant mondial du style textile.</p>
-          </div>
-          <div class="info-card">
-            <span>Numéro de Série (AI 21)</span>
-            <strong>2026-FW-001</strong>
-            <p>Granularité au lot de confection certifié.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    

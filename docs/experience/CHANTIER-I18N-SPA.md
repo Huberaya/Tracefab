@@ -510,3 +510,105 @@ fichier hôte, pas `readFile`.
 - Contrôles de locale : FR `Équipe fournisseur` / `Lecteur`, DE `Lieferantenteam`
   / `Leser`, ZH `供应商团队` / `查看者`.
 - Personas CEO 6/6 · Conformité 4/4 · Fournisseur 4/4.
+
+---
+
+## Fait — tranche 7 : le DPP public
+
+Dernière surface non internationalisée. Le passeport public passe de
+**10 clés `dpp`, dont une seule réellement lue**, à **122 clés × 7 langues**,
+et le balisage bascule en anglais source comme le reste du site.
+
+### Ce qui a été corrigé avant de traduire
+
+**Deux onglets morts.** 74 lignes de balisage (`#panel-circularity`,
+`#panel-gs1`) étaient placées **après `</html>`**. Le navigateur les
+rapatrie dans `<body>`, si bien qu'une sonde DOM les voyait présentes —
+mais le script de commutation s'exécute pendant l'analyse du document et
+recevait `null`, que le garde `if (panels[k])` avalait en silence. Cliquer
+ces deux onglets ne faisait rien, sans la moindre erreur. Bloc déplacé
+après `</section>` de `#panel-evidence` ; les 6 onglets répondent.
+
+**`scripts/e2e_audit.py` échouait déjà sur 3 fichiers sur 4** avant cette
+tranche — séquelle des tranches 4 à 6, invisible car l'audit n'est câblé
+dans aucun script npm. Marqueurs repointés sur des identifiants et des
+clés plutôt que sur de la copie, donc indépendants de la langue : 4/4.
+
+### Internationalisation
+
+Les clés sont ajoutées dans la table `T` de `scripts/build_dpp_i18n.mjs`,
+qui **possède** la portée `dpp` : il efface par expression régulière la
+région `// --- DPP public ---` de `en.js` et réécrit la racine `dpp` de
+chaque JSON. Éditer le catalogue à la main serait effacé au build suivant.
+
+Trois cas ont demandé un traitement particulier :
+
+- **Nœud texte voisin d'une icône.** `applyTo()` écrit `textContent` :
+  poser `data-i18n` sur `.badge-eu` ou `#btn-view-raw` aurait supprimé leur
+  `<svg>`. Le fragment traduisible est enveloppé dans un `<span>`.
+- **Le badge appartient au JavaScript.** `renderDppLang` réécrit
+  `.badge-eu` en `innerHTML` à chaque rendu : le `<span data-i18n>` qu'on y
+  avait posé était détruit dès le chargement. Vérifié à la sonde
+  (`spans data-i18n: 0`). Le balisage n'y garde qu'un texte anglais de
+  peinture pré-JS.
+- **Entité HTML dans le catalogue.** La source portait
+  `Méthodologie Loi AGEC &amp; ESPR`. Stockée telle quelle, l'entité se
+  serait affichée littéralement, puisque le catalogue contient du texte et
+  non du balisage. Ramenée à `&`.
+
+La charge utile JSON-LD CIRPASS, lisible par les douanes et les auditeurs
+CSRD, est de la donnée de démonstration : passée en anglais sans clé.
+
+### Deux défauts de fond trouvés en chemin
+
+**Le garde-fou « préparation ≠ certification » était contourné.** Le test
+`test_pef_chantier3.mjs` interdit `DPP Conforme|DPP Compliant|certifié ESPR`
+dans `dpp/index.html` depuis le 7 octobre. Mais la copie vit désormais dans
+le catalogue : la clé `badgeEu` rendait **« EU ESPR / DPP Compliant »** à
+l'écran pendant que le fichier HTML, lui, passait le test. Le libellé est
+reformulé sur les 7 langues (« EU ESPR / DPP format »), et l'assertion
+balaie maintenant les 7 catalogues clé par clé, pas seulement le balisage.
+
+**Le DPP public n'avait aucune `@media`.** C'est pourtant la page la plus
+certainement consultée au téléphone : on l'atteint en scannant le QR cousu
+sur l'étiquette. Les six onglets, en `flex:1`, ont `min-width:auto` par
+défaut et ne peuvent pas se comprimer sous la largeur de leur libellé ; ils
+poussaient le document hors cadre — **20 px en français déjà**, 29 px en
+anglais, 133 px en allemand. La barre d'onglets défile désormais à la place
+de la page, et l'en-tête passe sur deux rangées sous 520 px. Mesuré à 0 px
+de débordement sur 360 / 390 / 768 / 1440 px × 7 langues.
+
+### Leçon de méthode
+
+La première passe cherchait le français par accents et mots-outils. Elle a
+laissé passer tout ce qui n'en comporte pas — « Composition totale »,
+« Substances Chimiques », « Valide 2027 » — soit **32 chaînes sur 112**,
+révélées par une capture d'écran en allemand. Le filet correct est
+l'inverse : énumérer chaque nœud texte visible et retenir ceux qu'**aucune
+clé ne couvre**, puis trier à la main. Un détecteur de langue est un
+raccourci ; l'inventaire de couverture est une preuve.
+
+Corollaire déjà rencontré : une table de remplacement dédoublonnée ne
+remplace que la **première** occurrence. `100% fibres naturelles
+biodégradables.` apparaissait dans deux panneaux ; le second est resté
+français jusqu'au contrôle de comptage.
+
+### Vérifications
+
+- 6 onglets testés au clic, `display` calculé — un panneau visible chacun.
+- 162 nœuds texte distincts, **50 sans clé**, tous légitimes : noms propres
+  (Fiação Norte Lda, Quinta de São Martinho), identifiants, emoji, nombres.
+- 7 langues résolues sur le corps, le `<title>`, `meta[name=description]`,
+  `og:description` et l'attribut `title` du badge. 0 `pageerror`.
+- Tests repointés avec contrôle négatif prouvé : `test_pef_chantier3.mjs`
+  (`impEcoScore`, `impMethod`, `badgeEu` sur 7 catalogues),
+  `scripts/e2e_audit.py` (`dpp.metaTitle`, `dpp.cirIndex`).
+- Barrière : **45/45**, `build` OK, `tsc --noEmit` OK, `e2e_audit.py` 4/4,
+  personas 6/6 · 4/4 · 4/4.
+
+### Reste à traiter
+
+Hors périmètre de cette tranche, inchangé : `dppConsoleView` est du code
+mort (~34 chaînes françaises) et mérite une suppression plutôt qu'une
+traduction ; `certificationsConsoleView` affiche `certJours(c)` en
+littéral ; les fixtures `Coton biologique` de la console restent françaises.

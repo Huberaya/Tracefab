@@ -151,17 +151,38 @@ console.log('✓ Brand Console PEF integration verified');
 // 6. Verify DPP Consumer Passport
 console.log('6. Checking DPP consumer passport...');
 const dppFile = await readFile('dpp/index.html', 'utf8');
-assert.ok(dppFile.includes('Éco-Score Textile Européen'), 'Must have official Éco-Score in DPP passport');
+// Chantier 7 : la copie du DPP public est passee au catalogue i18n. On verifie
+// desormais la cle dans le balisage ET la copie francaise dans fr.json.
+const dppFr = JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).dpp;
+assert.ok(dppFile.includes('data-i18n="dpp.impEcoScore"'), 'Must have official Éco-Score in DPP passport');
+assert.strictEqual(dppFr.impEcoScore, 'Éco-Score Textile Européen', 'la copie FR de l’Éco-Score doit rester au catalogue');
 // Reformule le 7 octobre 2026. Cette assertion verrouillait le mot
 // « Conforme », qui presentait le passeport comme certifie au regard de la Loi
 // AGEC et du reglement ESPR. La regle du projet est explicite : la preparation
 // n'est pas une certification. Le referentiel doit rester cite — c'est l'objet
 // du test — mais sans affirmer la conformite.
-assert.ok(dppFile.includes('Méthodologie Loi AGEC &amp; ESPR'), 'Must cite the EU ESPR & AGEC frameworks');
+assert.ok(dppFile.includes('data-i18n="dpp.impMethod"'), 'Must cite the EU ESPR & AGEC frameworks');
+assert.strictEqual(dppFr.impMethod, 'Méthodologie Loi AGEC & ESPR', 'la copie FR du referentiel doit rester au catalogue');
 assert.ok(
   !/DPP Conforme|DPP Compliant|certifié ESPR/.test(dppFile),
   'DPP must never claim regulatory certification',
 );
+// Etendu au chantier 7. Verifier le seul balisage ne suffisait plus : la copie
+// du DPP vit desormais dans le catalogue i18n, et la cle badgeEu y rendait
+// « DPP Compliant » a l'ecran alors que le fichier HTML, lui, passait le test.
+for (const lang of ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt']) {
+  const nom = lang === 'en' ? null : `../assets/i18n/${lang}.json`;
+  const scope = nom
+    ? JSON.parse(await readFile(new URL(nom, import.meta.url), 'utf8')).dpp
+    : null;
+  if (!scope) continue;
+  for (const [cle, valeur] of Object.entries(scope)) {
+    assert.ok(
+      !/DPP Conforme|DPP Compliant|DPP Konform|DPP Conform\b|certifié ESPR/.test(valeur),
+      `la copie ${lang}.dpp.${cle} ne doit pas revendiquer une certification : ${valeur}`,
+    );
+  }
+}
 console.log('✓ DPP consumer passport integration verified');
 
 console.log('✓ Chantier 3 (Moteur d’Agrégation ESG & Calculateur PEF/ACV) verified successfully!');
