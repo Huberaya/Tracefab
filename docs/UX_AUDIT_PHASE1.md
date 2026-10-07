@@ -2397,3 +2397,97 @@ n'est donc **pas** couverte ici — le bundle est structurellement valide, pas s
 
 Et les 90 erreurs restantes bloquent toujours `npm test` à l'étape 2 : les 85 Prisma ne
 disparaîtront qu'avec `npx prisma generate`, injoignable d'ici.
+
+---
+
+## Chantier 26 — Les onze onglets produit, dont quatre déclarent n'avoir aucune source
+
+### L'inventaire avant la construction
+
+Le brief demande onze onglets ; `data-tab` était à **0 occurrence** dans tout le dépôt. La
+fiche produit était une page de 178 lignes à trois sections, sans onglet.
+
+Avant de construire quoi que ce soit, chaque onglet a été confronté à une source réelle.
+Construire un onglet sans source est précisément ce qui produit de la donnée inventée.
+
+| Onglet | Source | Verdict |
+|---|---|---|
+| Vue d'ensemble | `GET /api/products/{id}` (déjà chargé) | alimenté |
+| Composition | champ `materials` du même contrat | alimenté |
+| Matières | `GET /api/products/{id}/materials` | alimenté |
+| Chaîne d'approvisionnement | `GET /api/products/{id}/supply-chain` | alimenté |
+| **Fabrication** | aucun endpoint ne décrit les sites de fabrication | **sans source** |
+| Fournisseurs | sites portés par les nœuds de `supply-chain` | alimenté (dérivé) |
+| **Preuves** | `GET /api/documents` filtre par `kind` et `status`, **pas par produit** | **sans source** |
+| **Certifications** | aucune table ne rattache une certification à un produit | **sans source** |
+| Qualité | `GET /api/quality/products/{id}` | alimenté |
+| DPP | `GET /api/products/{id}/dpp` | alimenté |
+| **Historique** | `POST /api/products/{id}/revision` crée ; rien ne liste | **sans source** |
+
+**Sept sur onze ont une source réelle, quatre n'en ont aucune.** Les vérifications :
+`api/_routes/documents.ts:54-58` ne lit que `kind`, `status` et `limit` ;
+`api/_routes/products/[productId]/revision.ts:16` n'accepte que `POST`.
+
+### La décision sur les quatre
+
+Ni supprimés, ni inventés. **Conservés et déclarés.** Un onglet absent masquerait la lacune ;
+un onglet rempli de contenu plausible la mentirait. Chacun affiche « Aucune source de données »
+avec la raison précise et distincte, et porte un repère visuel plus un `title` explicite.
+
+### Trois fabrications trouvées dans la vue en la restructurant
+
+- **Composition inventée présentée comme vérifiée.** Quand `detail.materials` était vide, la
+  vue affichait en dur « Coton Biologique Peigné (GOTS) · Fibre principale · Turquie / Grèce »
+  avec `<span class="badge badge-verified">85%</span>`, et « Coton Recyclé Pré-consommation
+  (GRS) · 15% ». Un produit sans matière rattachée affichait donc une composition **certifiée
+  à 85/15**. Remplacé par un état vide véridique.
+- **Repli d'identité dans l'en-tête** : `p.reference || 'AW26-0248'`,
+  `p.name || 'Organic Cotton T-Shirt'`, `p.category || 'T-Shirt & Maille'`. Un produit sans
+  référence s'appelait `AW26-0248`. Remplacés par « non renseignée », « Produit sans nom »,
+  « Catégorie non déclarée ».
+- **Option inventée dans un `<select>`** : `<option value="">Lin biologique français</option>`
+  quand le catalogue était vide — une valeur soumissible qui ne correspond à aucune matière
+  existante. Remplacée par « Aucune matière au catalogue ».
+
+Une quatrième, dans `supplyChainView()` : `|| { name: 'Organic Cotton T-Shirt', reference:
+'AW26-0248' }` quand aucun produit n'est sélectionné. Remplacée par un objet vide, et le titre
+affiche « Aucun produit sélectionné » au lieu de « · Réf. ».
+
+### Ce qui a été construit
+
+- `PRODUCT_TABS` : les onze onglets avec, pour chacun, sa source **ou `null`**.
+- Barre `role="tablist"`, onglets `role="tab"` avec `aria-selected` et `aria-controls`,
+  panneau `role="tabpanel"` identifié — navigation clavier et lecteurs d'écran compris.
+- **Chargement paresseux** : `selectProductTab()` n'appelle l'endpoint qu'à l'ouverture et met
+  le résultat en cache. La composition ne fait **aucune** requête : elle vient du contrat déjà
+  chargé.
+- `openProduct()` réinitialise `state.productTab` et `state.productTabData` : conserver
+  l'onglet précédent aurait affiché les données d'un autre produit.
+- En mode démonstration, les onglets à endpoint disent « Mode démonstration : cet endpoint
+  n'est pas appelé » au lieu d'afficher un contenu plausible.
+
+### Vérification
+
+`npm run test:product:tabs` (nouveau) — **64 contrôles, 0 échec**. Il charge la console réelle
+sous jsdom, ouvre un produit, puis : compte les onze onglets et vérifie leurs clés **dans
+l'ordre du brief** ; contrôle `tablist`/`tab`/`aria-selected`/`aria-controls` ; clique les
+quatre onglets sans source et vérifie que leurs **quatre raisons sont distinctes** ; parcourt
+les sept alimentés ; vérifie l'absence des six contenus fabriqués ; et vérifie qu'ouvrir un
+autre produit remet l'onglet à « Vue d'ensemble ».
+
+**Contre-épreuve** : l'onglet `history` retiré de `PRODUCT_TABS` → **9 échecs, exit 1**
+(« onze onglets sont rendus », « les onze clés correspondent au brief », « l'onglet history est
+présent ») ; restauré → **64/64, exit 0**.
+
+`test:product:intelligence` **36/36** et `test:supplychain:surface` **87/87** inchangés.
+`api:typecheck` **90 = 90**. Suite complète **PASS 47 · SKIP 18 · FAIL 0 sur 65**.
+
+### Ce que cela ne règle pas
+
+Les quatre onglets sans source restent **sans source**. Les combler demande du backend :
+un filtre `productId` sur `GET /api/documents`, une table de rattachement
+produit ↔ certification, un endpoint de liste des révisions, et une modélisation des sites de
+fabrication distincte des nœuds de traçabilité.
+
+Et les sept onglets alimentés ne sont vérifiés ici **qu'en mode démonstration**, où les
+endpoints ne sont pas appelés : le rendu sur données réelles reste à confirmer contre Neon.

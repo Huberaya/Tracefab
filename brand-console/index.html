@@ -692,6 +692,22 @@
       margin-bottom: 8px;
     }
 
+    /* Onglets de la fiche produit (Chantier 26). Un onglet sans source porte un
+       point discret : il reste visible pour rendre la lacune explicite. */
+    .tabs-strip {
+      display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 18px;
+      border-bottom: 1px solid var(--line, #e2e8e4); padding-bottom: 8px;
+    }
+    .tab-btn {
+      appearance: none; border: 1px solid transparent; background: none; cursor: pointer;
+      padding: 7px 13px; border-radius: 8px; font: inherit; font-size: 12.5px; font-weight: 600;
+      color: var(--muted, #56675e); transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { background: #f2f6f3; color: #17231f; }
+    .tab-btn.active { background: #ffffff; border-color: #0b7656; color: #0b7656; }
+    .tab-btn:focus-visible { outline: 2px solid #0b7656; outline-offset: 2px; }
+    .tab-nosource { margin-left: 6px; color: #b08900; font-weight: 800; }
+
     .tc-forensic-title {
       font-size: 26px;
       font-weight: 850;
@@ -2049,8 +2065,253 @@
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || 'Matériau'; }
       function materialType(material) { return material?.materialType || material?.material_type || ''; }
+      /**
+       * Onglets de la fiche produit.
+       *
+       * Chaque onglet est rattaché à une source réelle ou déclare explicitement
+       * qu'il n'en a pas. Les quatre sans source ne sont pas supprimés : un onglet
+       * qui dit « aucune source dans TRACEFAB » informe le propriétaire du produit,
+       * là où un onglet absent masquerait la lacune.
+       */
+      const PRODUCT_TABS = [
+        { key: 'overview', label: "Vue d'ensemble", source: 'GET /api/products/{id}' },
+        { key: 'composition', label: 'Composition', source: 'GET /api/products/{id} · materials' },
+        { key: 'materials', label: 'Matières', source: 'GET /api/products/{id}/materials' },
+        { key: 'supply-chain', label: "Chaîne d'approvisionnement", source: 'GET /api/products/{id}/supply-chain' },
+        { key: 'manufacturing', label: 'Fabrication', source: null },
+        { key: 'suppliers', label: 'Fournisseurs', source: 'GET /api/products/{id}/supply-chain · sites' },
+        { key: 'evidence', label: 'Preuves', source: null },
+        { key: 'certifications', label: 'Certifications', source: null },
+        { key: 'quality', label: 'Qualité', source: 'GET /api/quality/products/{id}' },
+        { key: 'dpp', label: 'DPP', source: 'GET /api/products/{id}/dpp' },
+        { key: 'history', label: 'Historique', source: null },
+      ];
+
+      function productTabStrip() {
+        const current = state.productTab || 'overview';
+        return `<div class="tabs-strip" role="tablist" aria-label="Onglets de la fiche produit">
+          ${PRODUCT_TABS.map((tab) => {
+            const selected = tab.key === current;
+            return `<button type="button" role="tab" class="tab-btn${selected ? ' active' : ''}"
+              data-tab="${esc(tab.key)}" id="ptab-${esc(tab.key)}"
+              aria-selected="${selected ? 'true' : 'false'}"
+              aria-controls="ptabpanel-${esc(tab.key)}"
+              title="${tab.source ? 'Source : ' + esc(tab.source) : 'Aucune source de données dans TRACEFAB pour cet onglet'}"
+            >${esc(tab.label)}${tab.source ? '' : '<span class="tab-nosource" aria-hidden="true">•</span>'}</button>`;
+          }).join('')}
+        </div>`;
+      }
+
+      /** Panneau honnête pour les onglets sans source de données. */
+      function noSourcePanel(tab) {
+        const reasons = {
+          manufacturing: "Aucun endpoint ne décrit les sites de fabrication d'un produit. Les nœuds de traçabilité portent des étapes, pas des ateliers de production.",
+          evidence: "GET /api/documents filtre par type et par statut, pas par produit : aucune requête ne renvoie les preuves d'un produit donné.",
+          certifications: "Aucune table ne rattache une certification à un produit. Le catalogue porte les référentiels, pas les certifications obtenues par produit.",
+          history: "POST /api/products/{id}/revision crée une révision ; aucun endpoint ne liste les révisions antérieures ni les modifications.",
+        };
+        return `<div class="card panel"><div class="panel-head"><h2>${esc(tab.label)}</h2></div>
+          <div class="empty"><div class="empty-icon">◇</div>
+            <strong>Aucune source de données</strong>
+            <p class="meta" style="max-width:62ch;margin:8px auto 0">${esc(reasons[tab.key] || 'Aucune source disponible.')}</p>
+            <p class="meta" style="margin-top:10px">Cet onglet est conservé visible pour rendre la lacune explicite plutôt que de la masquer.</p>
+          </div></div>`;
+      }
+
+      function productTabLoading(tab) {
+        return `<div class="card panel"><div class="panel-head"><h2>${esc(tab.label)}</h2></div>
+          <div class="empty"><div class="empty-icon">⟳</div><strong>Chargement…</strong>
+          <p class="meta" style="margin-top:6px">${esc(tab.source || '')}</p></div></div>`;
+      }
+
+      function productTabError(tab, message) {
+        return `<div class="card panel"><div class="panel-head"><h2>${esc(tab.label)}</h2></div>
+          <div class="empty"><div class="empty-icon">⚠</div><strong>Source indisponible</strong>
+          <p class="meta" style="margin-top:6px">${esc(message || 'Erreur inconnue')}</p>
+          <p class="meta">Endpoint attendu : ${esc(tab.source || '—')}</p></div></div>`;
+      }
+
+      /**
+       * Rendu des onglets autres que « Vue d'ensemble ».
+       * Chaque onglet lit une source réelle ; sans source, il le déclare.
+       */
+      function productTabPanel(key) {
+        const tab = PRODUCT_TABS.find((t) => t.key === key) || PRODUCT_TABS[0];
+        if (!tab.source) return noSourcePanel(tab);
+
+        const data = (state.productTabData || {})[key];
+        if (!data) return productTabLoading(tab);
+        if (data.__error) return productTabError(tab, data.__error);
+
+        switch (key) {
+          case 'composition': return compositionPanel(data);
+          case 'materials': return materialsTabPanel(data);
+          case 'supply-chain': return supplyChainTabPanel(data);
+          case 'suppliers': return suppliersTabPanel(data);
+          case 'quality': return qualityTabPanel(data);
+          case 'dpp': return dppTabPanel(data);
+          default: return noSourcePanel(tab);
+        }
+      }
+
+      /** Composition : uniquement les matières réellement rattachées. */
+      function compositionPanel(data) {
+        const materials = Array.isArray(data.materials) ? data.materials : [];
+        const parts = materials.map((m) => Number(m.percentage)).filter((n) => Number.isFinite(n));
+        const total = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0)) : null;
+        return `<div class="card panel"><div class="panel-head">
+            <div><h2>Composition</h2><p class="meta" style="margin:4px 0 0">Source : le champ materials du contrat GET /api/products/:id.</p></div>
+            <span class="meta">${materials.length} matière(s)</span>
+          </div>
+          ${materials.length ? `<div class="item-list">${materials.map((m) => `<div class="item">
+              <div><strong>${esc(materialName(m.material))}</strong>
+                <div class="meta">${esc(m.role || 'Rôle non déclaré')} · ${esc(materialType(m.material) || 'Type non déclaré')}</div></div>
+              <div class="actions"><span class="badge">${esc(m.percentage === null || m.percentage === undefined ? 'part non déclarée' : m.percentage + '%')}</span></div>
+            </div>`).join('')}</div>
+            <p class="meta" style="margin-top:12px">${total === null ? 'Aucune part déclarée : la somme ne peut pas être calculée.' : `Somme des parts déclarées : <strong>${total}%</strong>${total === 100 ? '' : ' (différent de 100%)'}`}</p>`
+            : `<div class="empty" style="padding:12px 0 18px"><p>Aucune matière rattachée à ce produit.</p></div>`}
+        </div>`;
+      }
+
+      /** Matières : catalogue rattaché via GET /api/products/{id}/materials. */
+      function materialsTabPanel(data) {
+        const list = Array.isArray(data.materials) ? data.materials : (Array.isArray(data) ? data : []);
+        return `<div class="card panel"><div class="panel-head">
+            <div><h2>Matières</h2><p class="meta" style="margin:4px 0 0">Source : GET /api/products/:id/materials.</p></div>
+            <span class="meta">${list.length} entrée(s)</span>
+          </div>
+          ${list.length ? `<div class="item-list">${list.map((m) => `<div class="item">
+              <div><strong>${esc(materialName(m.material) || m.name || 'Matière sans nom')}</strong>
+                <div class="meta">${esc(m.role || m.materialType || 'Non déclaré')}</div></div>
+              <div class="actions"><span class="badge">${esc(m.percentage === undefined || m.percentage === null ? '—' : m.percentage + '%')}</span></div>
+            </div>`).join('')}</div>`
+            : `<div class="empty" style="padding:12px 0 18px"><p>Aucune matière renvoyée par l'endpoint.</p></div>`}
+        </div>`;
+      }
+
+      /** Chaîne : nœuds et bilan réellement calculés. */
+      function supplyChainTabPanel(data) {
+        const summary = data.summary || {};
+        const nodes = (data.graph && data.graph.nodes) || [];
+        const links = (data.graph && data.graph.links) || [];
+        return `<div class="card panel"><div class="panel-head">
+            <div><h2>Chaîne d'approvisionnement</h2><p class="meta" style="margin:4px 0 0">Source : GET /api/products/:id/supply-chain.</p></div>
+            <span class="meta">${summary.nodeCount ?? nodes.length} nœud(s) · ${summary.linkCount ?? links.length} liaison(s)</span>
+          </div>
+          <div class="quick-grid" style="margin-bottom:14px">
+            <div class="quick"><span class="quick-icon">▤</span><span><strong>${esc(String(summary.documentationRate ?? '—'))}${summary.documentationRate === undefined ? '' : '%'}</strong><span>Couverture documentaire calculée</span></span></div>
+            <div class="quick"><span class="quick-icon">◈</span><span><strong>${esc(String(summary.documentedNodeCount ?? '—'))} / ${esc(String(summary.nodeCount ?? '—'))}</strong><span>Nœuds documentés</span></span></div>
+            <div class="quick"><span class="quick-icon">≡</span><span><strong>${esc(String(summary.stagesCoveredCount ?? '—'))}</strong><span>Échelons couverts</span></span></div>
+          </div>
+          ${nodes.length ? `<div class="item-list">${nodes.map((n) => `<div class="item">
+              <div><strong>${esc(n.label || 'Nœud sans libellé')}</strong>
+                <div class="meta">${esc(n.node_type || 'type inconnu')}${n.process_code ? ` · ${esc(n.process_code)}` : ''}${n.site_country ? ` · ${esc(n.site_country)}` : ''}</div></div>
+              <div class="actions"><span class="status ${n.status === 'verified_by_reviewer' ? 'status-approved' : 'status-pending'}">${esc(n.status || 'non déclaré')}</span></div>
+            </div>`).join('')}</div>`
+            : `<div class="empty" style="padding:12px 0 18px"><p>Aucun nœud de traçabilité rattaché à ce produit.</p></div>`}
+        </div>`;
+      }
+
+      /** Fournisseurs : déduits des sites portés par les nœuds, jamais inventés. */
+      function suppliersTabPanel(data) {
+        const nodes = (data.graph && data.graph.nodes) || [];
+        const bySite = new Map();
+        for (const node of nodes) {
+          if (!node.site_name && !node.site_country) continue;
+          const key = node.site_name || node.site_country;
+          const entry = bySite.get(key) || { name: node.site_name || 'Site sans nom', country: node.site_country || null, nodes: 0 };
+          entry.nodes += 1;
+          bySite.set(key, entry);
+        }
+        const sites = [...bySite.values()];
+        return `<div class="card panel"><div class="panel-head">
+            <div><h2>Fournisseurs</h2><p class="meta" style="margin:4px 0 0">Sites déduits des nœuds de traçabilité rattachés au produit.</p></div>
+            <span class="meta">${sites.length} site(s)</span>
+          </div>
+          ${sites.length ? `<div class="item-list">${sites.map((site) => `<div class="item">
+              <div><strong>${esc(site.name)}</strong>
+                <div class="meta">${esc(site.country || 'Pays non déclaré')} · ${site.nodes} nœud(s)</div></div>
+            </div>`).join('')}</div>`
+            : `<div class="empty" style="padding:12px 0 18px"><p>Aucun nœud ne porte de site : aucun fournisseur ne peut être déduit de la chaîne.</p></div>`}
+        </div>`;
+      }
+
+      /** Qualité : rapport réel de GET /api/quality/products/{id}. */
+      function qualityTabPanel(data) {
+        const rows = Array.isArray(data.issues) ? data.issues : [];
+        const score = data.score ?? data.qualityScore ?? data.index;
+        return `<div class="card panel"><div class="panel-head">
+            <div><h2>Qualité des données</h2><p class="meta" style="margin:4px 0 0">Source : GET /api/quality/products/:id.</p></div>
+            <span class="meta">${score === undefined || score === null ? 'Indice non renvoyé' : `Indice ${esc(String(score))}`}</span>
+          </div>
+          ${Object.keys(data).length ? `<pre class="meta" style="white-space:pre-wrap;max-height:320px;overflow:auto">${esc(JSON.stringify(data, null, 2))}</pre>`
+            : `<div class="empty" style="padding:12px 0 18px"><p>L'endpoint n'a renvoyé aucune donnée de qualité.</p></div>`}
+          ${rows.length ? `<p class="meta" style="margin-top:10px">${rows.length} anomalie(s) signalée(s).</p>` : ''}
+        </div>`;
+      }
+
+      /** DPP : readiness réellement calculée. */
+      function dppTabPanel(data) {
+        const dpp = data.dpp || data;
+        const missing = Array.isArray(dpp.missingFields) ? dpp.missingFields : [];
+        const pillars = dpp.pillars ? Object.entries(dpp.pillars) : [];
+        return `<div class="card panel"><div class="panel-head">
+            <div><h2>Préparation au passeport numérique</h2><p class="meta" style="margin:4px 0 0">Source : GET /api/products/:id/dpp. Indicateur de préparation, pas une certification.</p></div>
+            <span class="meta">${esc(String(dpp.readinessStatus || dpp.status || 'état non renvoyé'))}</span>
+          </div>
+          ${pillars.length ? `<div class="item-list">${pillars.map(([key, pillar]) => {
+              const items = Array.isArray(pillar.items) ? pillar.items : [];
+              const blocking = items.filter((i) => i.blocking === true).length;
+              return `<div class="item"><div><strong>${esc(pillar.label || key)}</strong>
+                <div class="meta">${items.length} exigence(s) · ${blocking} bloquante(s)</div></div></div>`;
+            }).join('')}</div>` : ''}
+          <p class="meta" style="margin-top:12px">${missing.length
+            ? `Champs manquants : <strong>${esc(missing.join(', '))}</strong>.`
+            : 'Aucun champ manquant signalé.'}</p>
+        </div>`;
+      }
+
+      /**
+       * Chargement paresseux : un onglet n'appelle son endpoint qu'à l'ouverture,
+       * et le résultat est mis en cache pour ne pas re-rejouer la requête.
+       */
+      async function selectProductTab(key) {
+        state.productTab = key;
+        const tab = PRODUCT_TABS.find((t) => t.key === key);
+        if (!tab || !tab.source || !state.selectedProductDetail?.product) { render(); return; }
+        state.productTabData = state.productTabData || {};
+        /* La composition vient du contrat déjà chargé : pas de requête supplémentaire. */
+        if (key === 'composition') {
+          state.productTabData.composition = state.selectedProductDetail;
+          render();
+          return;
+        }
+        if (state.productTabData[key]) { render(); return; }
+        render();
+        if (state.demo) {
+          state.productTabData[key] = { __error: 'Mode démonstration : cet endpoint n’est pas appelé.' };
+          render();
+          return;
+        }
+        const id = encodeURIComponent(state.selectedProductDetail.product.id);
+        const endpoints = {
+          materials: `/api/products/${id}/materials`,
+          'supply-chain': `/api/products/${id}/supply-chain`,
+          suppliers: `/api/products/${id}/supply-chain`,
+          quality: `/api/quality/products/${id}`,
+          dpp: `/api/products/${id}/dpp`,
+        };
+        try {
+          state.productTabData[key] = await api(endpoints[key]);
+        } catch (error) {
+          state.productTabData[key] = { __error: error.message };
+        }
+        render();
+      }
+
             function productDetailView() {
         const detail = state.selectedProductDetail;
+        const currentTab = state.productTab || 'overview';
         if (!detail?.product) return `<div class="empty"><div class="empty-icon">◇</div><strong>Produit introuvable</strong><button class="btn btn-secondary" data-view="products">Retour aux produits</button></div>`;
         const p = detail.product;
         /* Lignée construite uniquement à partir de ce que la fiche renvoie réellement
@@ -2071,9 +2332,9 @@
         return `<div class="page-head">
           <div>
             <button class="link-button" data-view="products">← Retour au catalogue produits</button>
-            <div class="eyebrow" style="margin-top:16px;">Intelligence Produit · Réf. ${esc(p.reference || 'AW26-0248')} · Version ${esc(p.version || '1.0')}</div>
-            <h1>${esc(p.name || 'Organic Cotton T-Shirt')}</h1>
-            <p>${esc(p.category || 'T-Shirt & Maille')} · Complétude des données : <strong>${Math.round(Number(p.dataCompletion) || 0)}%</strong></p>
+            <div class="eyebrow" style="margin-top:16px;">Intelligence Produit · Réf. ${esc(p.reference || 'non renseignée')} · Version ${esc(p.version || '1')}</div>
+            <h1>${esc(p.name || 'Produit sans nom')}</h1>
+            <p>${esc(p.category || 'Catégorie non déclarée')} · Complétude des données : <strong>${Math.round(Number(p.dataCompletion) || 0)}%</strong></p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">Graphe de traçabilité</button>
@@ -2084,6 +2345,9 @@
           </div>
         </div>
 
+        ${productTabStrip()}
+        <div class="tabpanel" role="tabpanel" id="ptabpanel-${esc(currentTab)}" aria-labelledby="ptab-${esc(currentTab)}">
+        ${currentTab === 'overview' ? `
         <!-- Périmètre réel de cette fiche : le contrat GET /api/products/{id} renvoie
              { product, identifiers, materials }. Fournisseurs, preuves, certifications et
              historique ne s'y trouvent pas : ils sont annoncés comme tels plutôt qu'illustrés. -->
@@ -2191,20 +2455,11 @@
                 <button class="btn btn-secondary btn-small" type="submit">Valider</button>
               </div>
             </form>`).join('')}</div>` : `
-            <div class="item-list">
-              <div class="item">
-                <div><strong>Coton Biologique Peigné (GOTS)</strong><div class="meta">Fibre principale · Turquie / Grèce</div></div>
-                <div class="actions"><span class="badge badge-verified">85%</span></div>
-              </div>
-              <div class="item">
-                <div><strong>Coton Recyclé Pré-consommation (GRS)</strong><div class="meta">Chutes de filature réincorporées</div></div>
-                <div class="actions"><span class="badge badge-verified">15%</span></div>
-              </div>
-            </div>`}
+            <div class="empty" style="padding:12px 0 18px"><p>Aucune matière rattachée à cette version du produit.</p></div>`}
 
             <form id="material-form" class="form-grid" style="margin-top:18px">
               <label class="field-full">Ajouter un composant matière
-                <select class="select" name="materialId">${materialOptions || '<option value="">Lin biologique français</option>'}</select>
+                <select class="select" name="materialId">${materialOptions || '<option value="">Aucune matière au catalogue</option>'}</select>
               </label>
               <label>Part (%)<input class="input" name="percentage" type="number" min="0" max="100" placeholder="15"></label>
               <label>Rôle<input class="input" name="materialRole" value="secondary"></label>
@@ -2225,7 +2480,8 @@
             </div>
             ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">Créé le ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">Enregistrer</button></div></form>`).join('')}</div>` : '<div class="empty" style="padding:12px 0 18px"><p>Aucun identifiant renseigné pour cette version.</p></div>'}
             <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>Type<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> Définir comme principal</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">Ajouter l’identifiant</button></div></form>
-          </div>`;
+          </div>` : productTabPanel(currentTab)}
+        </div>`;
       }
 
       function supplierDetailView() {
@@ -2402,7 +2658,9 @@
       }
 
             function supplyChainView() {
-        const p = state.selectedSupplyChainProduct || state.products[0] || { name: 'Organic Cotton T-Shirt', reference: 'AW26-0248' };
+        /* Aucun produit de repli inventé : sans sélection, le nom et la référence sont
+           déclarés absents plutôt que remplacés par un T-Shirt et une référence fictifs. */
+        const p = state.selectedSupplyChainProduct || state.products[0] || { name: '', reference: '' };
         const sc = state.supplyChain || { graph: { nodes: [], links: [] }, summary: { nodeCount: 0, linkCount: 0, documentedNodeCount: 0, documentedLinkCount: 0, documentationRate: 0, stagesCoveredCount: 0, isCompleteChain: false }, stages: { tier4_raw_materials: [], tier3_spinning: [], tier2_fabric: [], tier1_assembly: [], tier0_product: [], other_nodes: [] } };
         const summary = sc.summary || { nodeCount: 0, linkCount: 0, documentedNodeCount: 0, documentedLinkCount: 0, documentationRate: 0, stagesCoveredCount: 0, isCompleteChain: false };
 
@@ -2425,7 +2683,7 @@
           <!-- Forensic Hero Banner -->
           <div class="tc-forensic-strip">
             <div class="tc-forensic-badge">CHAÎNE DE GARDE · RÉFÉRENTIEL ISO 22095</div>
-            <h2 class="tc-forensic-title">${esc(p.name)} · Réf. ${esc(p.reference)}</h2>
+            <h2 class="tc-forensic-title">${esc(p.name || 'Aucun produit sélectionné')}${p.reference ? ` · Réf. ${esc(p.reference)}` : ''}</h2>
             <p class="tc-forensic-desc">
               Chaque maillon industriel ci-dessous est audité et scellé avec son modèle de garde associé (Ségrégation d'Identité ou Bilan Massique Réconcilié). Zéro déclaration sans preuve documentaire ou polygonale.
             </p>
@@ -3143,6 +3401,10 @@
       async function openProduct(id) {
         state.view = 'productDetail';
         state.selectedProduct = state.products.find((p) => p.id === id) || null;
+        /* Un nouveau produit repart de l'onglet d'accueil avec un cache vide :
+           conserver l'onglet précédent ferait afficher les données d'un autre produit. */
+        state.productTab = 'overview';
+        state.productTabData = {};
         if (state.demo) {
           state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] };
           state.schemaBindings = [];
@@ -3825,6 +4087,7 @@
           } catch (error) { notify(error.message, true); }
         }));
         document.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openRequest(el.dataset.requestId); }));
+        document.querySelectorAll('[data-tab]').forEach((el) => el.addEventListener('click', () => selectProductTab(el.dataset.tab)));
         document.querySelectorAll('[data-quality-product]').forEach((el) => el.addEventListener('click', () => loadQuality(el.dataset.qualityProduct)));
         document.querySelectorAll('[data-dpp-product]').forEach((el) => el.addEventListener('click', () => loadDpp(el.dataset.dppProduct)));
         document.querySelectorAll('[data-product-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openProduct(el.dataset.productId); }));
