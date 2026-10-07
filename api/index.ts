@@ -38,6 +38,7 @@ const routes: Route[] = [
   { pattern: /^internal\/notification\-outbox\/process$/, params: [], load: () => import('./_routes/internal/notification-outbox/process.js') },
   { pattern: /^internal\/notification\-outbox\/reminders$/, params: [], load: () => import('./_routes/internal/notification-outbox/reminders.js') },
   { pattern: /^internal\/notification\-outbox\/schedule$/, params: [], load: () => import('./_routes/internal/notification-outbox/schedule.js') },
+  { pattern: /^internal\/p2\/readiness$/, params: [], load: () => import('./_routes/internal/p2-readiness.js') },
   { pattern: /^operations\/overview$/, params: [], load: () => import('./_routes/operations/overview.js') },
   { pattern: /^organization\/storage\/usage$/, params: [], load: () => import('./_routes/organization/storage/usage.js') },
   { pattern: /^integrations\/ingest$/, params: [], load: () => import('./_routes/integrations/ingest.js') },

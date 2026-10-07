@@ -14,8 +14,10 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.goto(`http://127.0.0.1:${port}/brand-console/?demo=1`, { waitUntil: 'domcontentloaded' });
 
+  // Exercise the French native UI explicitly; the console defaults to English when no preference exists.
+  await page.locator('#brand-lang-select').selectOption('fr');
   await page.getByRole('heading', { name: 'Bonjour Camille.' }).waitFor();
-  await page.getByRole('button', { name: 'Produits' }).click();
+  await page.locator('button[data-view="products"]').click();
   await page.locator('[data-product-id="demo-product-1"]').click();
   await page.getByRole('heading', { name: 'Essentiel coton' }).waitFor();
 
@@ -29,7 +31,7 @@ try {
   await page.locator('#identifier-form button[type="submit"]').click();
   await page.getByText('EAN').first().waitFor();
 
-  await page.getByRole('button', { name: 'Fournisseurs' }).click();
+  await page.locator('button[data-view="suppliers"]').click();
   await page.locator('[data-supplier-id-view="demo-supplier-record"]').click();
   await page.getByRole('heading', { name: 'Nhãn Textile' }).waitFor();
 
