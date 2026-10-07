@@ -88,11 +88,26 @@ sorties partout d'un coup.
 Mesuré sur les quatre vues, en anglais, allemand et espagnol : **0 chaîne
 française résiduelle, 0 erreur JavaScript**.
 
+### Fait — tranche 4a
+
+84 clés × 7 langues + 17 chaînes de démonstration passées en anglais.
+Couvre `requestsView`, `requestDetailView` et `questionnairesBuilderView` —
+le parcours Data Collection du cahier des charges, avec ses états
+Missing / Requested / Submitted / Under Review / Accepted / Rejected.
+
+Mesuré sur les **six** vues désormais traitées, en anglais, allemand et
+néerlandais : **0 chaîne française résiduelle, 0 erreur JavaScript**.
+
+La vue Supply Chain est reportée en tranche 4b : 149 chaînes dont une forte
+majorité de données de démonstration (noms d'usines, numéros de lot,
+tonnages par échelon), qui relèvent de la réécriture en anglais et non du
+catalogue.
+
 ### Reste à faire
 
 | Tranche | Cible | Chaînes |
 |---|---|---:|
-| 4 | Brand Console — Supply Chain, Requests, Questionnaires | ~110 |
+| 4b | Brand Console — Supply Chain (2 vues) | ~149 |
 | 5 | Brand Console — Documents, Certifications, Quality, DPP, Reports, Settings | ~130 |
 | 6 | Supplier Portal | ~170 |
 | 7 | DPP public | ~72 |

@@ -1507,16 +1507,16 @@
           {
             key: 'product-data-core',
             version: '1.0',
-            title: 'Audit Cœur de Produit (Core)',
-            category: 'Général',
-            description: 'Données produit, composition matière et ateliers de confection.',
+            title: 'Core Product Audit',
+            category: 'General',
+            description: 'Product data, material composition and assembly workshops.',
             itemCount: 5,
             requiredItemCount: 4,
             fields: [
-              { id: 'f-1', key: 'product_composition', label: 'Composition exacte des matières (%)', type: 'composition_table', required: true, helpText: 'Détail de chaque fibre avec son pourcentage massique' },
-              { id: 'f-2', key: 'country_of_spinning', label: 'Pays de filature / filage', type: 'country_code', required: true, helpText: 'Code pays ISO 3166-1 alpha-2' },
-              { id: 'f-3', key: 'facility_registration', label: 'Site de production principal', type: 'facility_select', required: true, helpText: 'Sélectionner parmi les sites enregistrés au portail' },
-              { id: 'f-4', key: 'care_instructions', label: 'Consignes de lavage et d\'entretien', type: 'text_multiline', required: false, helpText: 'Symboles GINETEX ou texte explicatif' }
+              { id: 'f-1', key: 'product_composition', label: 'Exact material composition (%)', type: 'composition_table', required: true, helpText: 'Détail de chaque fibre avec son pourcentage massique' },
+              { id: 'f-2', key: 'country_of_spinning', label: 'Country of spinning', type: 'country_code', required: true, helpText: 'Code pays ISO 3166-1 alpha-2' },
+              { id: 'f-3', key: 'facility_registration', label: 'Main production site', type: 'facility_select', required: true, helpText: 'Sélectionner parmi les sites enregistrés au portail' },
+              { id: 'f-4', key: 'care_instructions', label: 'Washing and care instructions', type: 'text_multiline', required: false, helpText: 'Symboles GINETEX ou texte explicatif' }
             ]
           },
           {
@@ -1524,13 +1524,13 @@
             version: '2.1',
             title: 'Chemical & Dyeing Compliance (REACH / ZDHC)',
             category: 'Chimie & Rejets',
-            description: 'Audit des intrants chimiques, métaux lourds et analyse des effluents d\'eau de teinture.',
+            description: 'Audit of chemical inputs, heavy metals and analysis of dyeing water effluents.',
             itemCount: 4,
             requiredItemCount: 3,
             fields: [
               { id: 'c-1', key: 'rsl_test_report', label: 'Rapport d\'essais laboratoire RSL (< 12 mois)', type: 'document_proof', required: true, helpText: 'Analyse accréditée ISO 17025 (SGS, Intertek, CITEVE)' },
               { id: 'c-2', key: 'zdhc_level', label: 'Niveau d\'attestation ZDHC MRSL', type: 'select_single', required: true, helpText: 'Level 1, Level 2 ou Level 3' },
-              { id: 'c-3', key: 'closed_loop_water', label: 'Pourcentage de recyclage des eaux de teinture', type: 'percentage_number', required: false, helpText: 'Taux de réutilisation en boucle fermée' }
+              { id: 'c-3', key: 'closed_loop_water', label: 'Dyeing water recycling rate', type: 'percentage_number', required: false, helpText: 'Taux de réutilisation en boucle fermée' }
             ]
           },
           {
@@ -1538,30 +1538,30 @@
             version: '1.5',
             title: 'Audit Social & Droits Humains (SMETA / SA8000)',
             category: 'Social & RSE',
-            description: 'Vérification du respect des conventions OIT, sécurité incendie et salaire décent.',
+            description: 'Verification of ILO convention compliance, fire safety and decent wages.',
             itemCount: 4,
             requiredItemCount: 4,
             fields: [
               { id: 's-1', key: 'social_audit_file', label: 'Rapport complet d\'audit social tierce partie', type: 'document_proof', required: true, helpText: 'SMETA 4-Pillar, BSCI ou SA8000 en cours de validité' },
               { id: 's-2', key: 'audit_score_letter', label: 'Notation globale obtenue', type: 'text_short', required: true, helpText: 'Score A, B ou Zero Critical Non-Conformity' },
-              { id: 's-3', key: 'living_wage_attestation', label: 'Attestation de salaire vital (Living Wage)', type: 'document_proof', required: true, helpText: 'Calcul basé sur les benchmarks Anker / Global Living Wage' }
+              { id: 's-3', key: 'living_wage_attestation', label: 'Living Wage attestation', type: 'document_proof', required: true, helpText: 'Calcul basé sur les benchmarks Anker / Global Living Wage' }
             ]
           },
           {
             key: 'carbon-pef-footprint',
             version: '1.0',
             title: 'Carbon Footprint & PEF Tier 3',
-            category: 'Environnement',
-            description: 'Consommation électrique et combustible des métiers à tisser et filatures.',
+            category: 'Environment',
+            description: 'Electricity and fuel consumption of looms and spinning mills.',
             itemCount: 3,
             requiredItemCount: 2,
             fields: [
-              { id: 'e-1', key: 'kwh_per_kg', label: 'Énergie électrique consommée (kWh/kg de maille)', type: 'decimal_number', required: true, helpText: 'Compteurs divisionnaires de l\'atelier' },
-              { id: 'e-2', key: 'renewable_energy_ratio', label: 'Part d\'électricité d\'origine renouvelable (%)', type: 'percentage_number', required: false, helpText: 'Garanties d\'origine ou panneaux solaires sur site' }
+              { id: 'e-1', key: 'kwh_per_kg', label: 'Electricity consumed (kWh/kg of knit)', type: 'decimal_number', required: true, helpText: 'Compteurs divisionnaires de l\'atelier' },
+              { id: 'e-2', key: 'renewable_energy_ratio', label: 'Share of renewable electricity (%)', type: 'percentage_number', required: false, helpText: 'Garanties d\'origine ou panneaux solaires sur site' }
             ]
           }
         ];
-        state.schemaCatalog = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Faits produit versionnés.', subjectTypes: ['product', 'data_request'], fields: [] }];
+        state.schemaCatalog = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Versioned product facts.', subjectTypes: ['product', 'data_request'], fields: [] }];
         state.schemaBindings = [];
 
         // --- Chantier 4 : ces deux vues atterrissaient sur un etat vide ---
@@ -1985,8 +1985,8 @@
             <p>Concevez et déployez des questionnaires sur-mesure pour vos fournisseurs : exigences documentaires, extraction OCR, règles de validation et conformité CSRD.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" data-demo-action="1">Exporter Gabarits (JSON)</button>
-            <button class="btn btn-primary" onclick="state.modal='new-questionnaire';render();">+ Créer un questionnaire</button>
+            <button class="btn btn-secondary" data-demo-action="1">${bt('qbExport')}</button>
+            <button class="btn btn-primary" onclick="state.modal='new-questionnaire';render();">${bt('qbCreate')}</button>
           </div>
         </div>
 
@@ -1995,7 +1995,7 @@
           <div class="card panel">
             <div class="panel-head">
               <h2>Protocoles d'Audit Actifs (${qList.length})</h2>
-              <span class="meta">Schémas validés Neon</span>
+              <span class="meta">${bt('qbSchemas')}</span>
             </div>
             <div class="item-list">
               ${qList.map((q) => `
@@ -2012,7 +2012,7 @@
 
                     <!-- Preview of Fields in Builder -->
                     <div style="background:#f8faf8;border:1px solid #edf0eb;border-radius:10px;padding:12px;">
-                      <div style="font-size:11px;font-weight:750;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Champs & Types configurés :</div>
+                      <div style="font-size:11px;font-weight:750;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${bt('qbFields')}</div>
                       <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         ${(q.fields || []).map(f => `
                           <span style="font-size:11px;background:#ffffff;border:1px solid var(--line);padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
@@ -2020,16 +2020,16 @@
                             <span style="color:var(--green);font-family:var(--font-mono);font-size:10px;">[${esc(f.type)}]</span>
                             ${f.required ? '<span style="color:var(--red)">*</span>' : ''}
                           </span>
-                        `).join('') || '<span style="font-size:11px;color:var(--muted);">Gabarit préconfiguré avec extraction OCR</span>'}
+                        `).join('') || `<span style="font-size:11px;color:var(--muted);">${bt('qbOcrTemplate')}</span>`}
                       </div>
                     </div>
 
                     <div class="actions" style="justify-content:flex-start;margin-top:14px;gap:8px;">
                       <button class="btn btn-primary btn-small" data-action="new-request" onclick="state.modal='new-request';state.selectedQuestionnairePreset='${esc(q.key)}';render();">
-                        ↗ Lancer une collecte avec ce modèle
+                        ${bt('qbLaunch')}
                       </button>
                       <button class="btn btn-secondary btn-small" data-demo-action="1">
-                        Modifier le protocole
+                        ${bt('qbEditProtocol')}
                       </button>
                     </div>
                   </div>
@@ -2041,27 +2041,27 @@
           <!-- Studio Configuration Helper -->
           <div style="display:grid;gap:18px;">
             <div class="card panel">
-              <div class="panel-head"><h2>Types de Champs Disponibles</h2></div>
+              <div class="panel-head"><h2>${bt('qbFieldTypes')}</h2></div>
               <div style="display:grid;gap:10px;font-size:12px;">
                 <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid var(--green);">
-                  <strong>Preuve Documentaire + Détection OCR</strong>
-                  <div style="color:var(--muted);margin-top:2px;">Exige le dépôt d'un fichier PDF scellé avec extraction automatique des dates de validité.</div>
+                  <strong>${bt('qbDocEvidence')}</strong>
+                  <div style="color:var(--muted);margin-top:2px;">${bt('qbSealedPdf')}</div>
                 </div>
                 <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid #0284c7;">
-                  <strong>Nomenclature Matière (Nomenclature Matières (BOM))</strong>
-                  <div style="color:var(--muted);margin-top:2px;">Tableau multi-colonnes vérifiant que la somme des pourcentages égale exactement 100%.</div>
+                  <strong>${bt('qbNomenclature')}</strong>
+                  <div style="color:var(--muted);margin-top:2px;">${bt('qbSum100')}</div>
                 </div>
                 <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid #6366f1;">
-                  <strong>Sélecteur d'Usines & Coordonnées GPS</strong>
-                  <div style="color:var(--muted);margin-top:2px;">Associe directement le site certifié du profil fournisseur à la fiche produit.</div>
+                  <strong>${bt('qbFacility')}</strong>
+                  <div style="color:var(--muted);margin-top:2px;">${bt('qbSiteLink')}</div>
                 </div>
               </div>
             </div>
 
             <div class="card panel">
-              <div class="panel-head"><h2>Conformité Réglementaire Automatisée</h2></div>
+              <div class="panel-head"><h2>${bt('qbAutoCompliance')}</h2></div>
               <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-                Chaque questionnaire créé dans TRACEFAB génère automatiquement un mapping vers le standard européen <strong>CIRPASS JSON-LD</strong> et les points de contrôle de la <strong>Loi AGEC</strong>.
+                Chaque questionnaire créé dans TRACEFAB génère automatiquement un mapping vers le standard européen <strong>CIRPASS JSON-LD</strong> et les points de contrôle de la <strong>${bt('qbAgec')}</strong>.
               </p>
             </div>
           </div>
@@ -2077,7 +2077,7 @@
             <p>Suivez l'origine des fibres, les procédés de filature, les certifications de bilan massique et les fournisseurs Rang 3–4.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" data-demo-action="1">Exporter CSV</button>
+            <button class="btn btn-secondary" data-demo-action="1">${bt('exportCsv')}</button>
             <button class="btn btn-primary" data-demo-action="1">${bt('mtAdd')}</button>
           </div>
         </div>
@@ -2674,7 +2674,7 @@
             </div>
             <div style="display:flex;gap:12px;">
               <button class="btn btn-secondary" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);" data-action="invite-supplier">Inviter un fournisseur</button>
-              <button class="btn btn-primary" style="background:#10b981;color:#05140e;font-weight:800;border:none;" data-action="new-request">+ Nouvelle demande</button>
+              <button class="btn btn-primary" style="background:#10b981;color:#05140e;font-weight:800;border:none;" data-action="new-request">${bt('ovNewRequest')}</button>
             </div>
           </div>
 
@@ -2785,7 +2785,7 @@
               <div class="quick-grid">
                 <button class="quick" data-action="new-request">
                   <span class="quick-icon">↗</span>
-                  <span><strong>Lancer une collecte</strong><span>${bt('ovDeployQuestionnaire')}</span></span>
+                  <span><strong>${bt('ovLaunchCollection')}</strong><span>${bt('ovDeployQuestionnaire')}</span></span>
                 </button>
                 <button class="quick" data-action="new-product">
                   <span class="quick-icon">◇</span>
@@ -2807,20 +2807,20 @@
 
       function requestTable(items) {
         if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>Créez votre première demande fournisseur.</p><button class="btn btn-primary btn-small" data-action="new-request">Créer une demande</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">Relancer</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">Relancer</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
             function requestsView() {
         const counts = requestCounts();
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Collecte de Données Structurées · Layer 01–04</div>
-            <h1>Pilotage de la Collecte Fournisseur</h1>
+            <div class="eyebrow">${bt('rqEyebrow')}</div>
+            <h1>${bt('rqPilotage')}</h1>
             <p>TRACEFAB ne demande pas de simples fichiers : chaque demande transforme les déclarations amont en données structurées, reliées au produit et auditables.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="state.view='questionnaires';render();">Créateur de Questionnaires</button>
-            <button class="btn btn-primary" data-action="new-request">+ Nouvelle demande de données</button>
+            <button class="btn btn-secondary" onclick="state.view='questionnaires';render();">${bt('rqQbuilder')}</button>
+            <button class="btn btn-primary" data-action="new-request">${bt('rqNew')}</button>
           </div>
         </div>
 
@@ -2829,46 +2829,46 @@
           <div class="dc-pipeline-head">
             <div class="dc-pipeline-title">
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0b7656;"></span>
-              <span>Cycle de Transformation de la Donnée Fournisseur</span>
+              <span>${bt('rqCycle')}</span>
             </div>
             <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:700;">Zero Data Silos · Full Audit Trail</span>
           </div>
 
           <div class="dc-lifecycle-strip">
             <div class="dc-step-card active">
-              <div class="dc-step-num">ÉTAPE 01</div>
-              <div class="dc-step-label">MARQUE (BRAND)</div>
-              <div class="dc-step-sub">Spécification du besoin</div>
+              <div class="dc-step-num">${bt('rqStep01')}</div>
+              <div class="dc-step-label">${bt('rqBrand')}</div>
+              <div class="dc-step-sub">${bt('rqSpec')}</div>
             </div>
             <div class="dc-step-card active">
-              <div class="dc-step-num">ÉTAPE 02</div>
-              <div class="dc-step-label">FOURNISSEUR</div>
-              <div class="dc-step-sub">Invitation sans friction</div>
+              <div class="dc-step-num">${bt('rqStep02')}</div>
+              <div class="dc-step-label">${bt('rqSupplier')}</div>
+              <div class="dc-step-sub">${bt('rqInvite')}</div>
             </div>
             <div class="dc-step-card active">
-              <div class="dc-step-num">ÉTAPE 03</div>
-              <div class="dc-step-label">PRODUIT (STYLE)</div>
-              <div class="dc-step-sub">Rattachement SKU & BOM</div>
+              <div class="dc-step-num">${bt('rqStep03')}</div>
+              <div class="dc-step-label">${bt('rqProductStyle')}</div>
+              <div class="dc-step-sub">${bt('rqSkuBom')}</div>
             </div>
             <div class="dc-step-card active">
-              <div class="dc-step-num">ÉTAPE 04</div>
-              <div class="dc-step-label">DONNÉES REQUISES</div>
-              <div class="dc-step-sub">Champs typés & ratios</div>
+              <div class="dc-step-num">${bt('rqStep04')}</div>
+              <div class="dc-step-label">${bt('rqRequiredData')}</div>
+              <div class="dc-step-sub">${bt('rqTypedFields')}</div>
             </div>
             <div class="dc-step-card active">
-              <div class="dc-step-num">ÉTAPE 05</div>
-              <div class="dc-step-label">PREUVES & VAULT</div>
-              <div class="dc-step-sub">Certificats scellés OCR</div>
+              <div class="dc-step-num">${bt('rqStep05')}</div>
+              <div class="dc-step-label">${bt('rqEvidenceVault')}</div>
+              <div class="dc-step-sub">${bt('rqOcrCerts')}</div>
             </div>
             <div class="dc-step-card active">
-              <div class="dc-step-num">ÉTAPE 06</div>
-              <div class="dc-step-label">REVUE & CONTRÔLE</div>
-              <div class="dc-step-sub">Annotations & tolérances</div>
+              <div class="dc-step-num">${bt('rqStep06')}</div>
+              <div class="dc-step-label">${bt('rqReview')}</div>
+              <div class="dc-step-sub">${bt('rqAnnotations')}</div>
             </div>
             <div class="dc-step-card active" style="background:#0b7656;color:#ffffff;border-color:#07523e;">
-              <div class="dc-step-num" style="color:#ffffff;">ÉTAPE 07</div>
-              <div class="dc-step-label" style="color:#ffffff;">DONNÉES VÉRIFIÉES</div>
-              <div class="dc-step-sub" style="color:rgba(255,255,255,0.8);">Conforme ESPR / DPP</div>
+              <div class="dc-step-num" style="color:#ffffff;">${bt('rqStep07')}</div>
+              <div class="dc-step-label" style="color:#ffffff;">${bt('rqVerifiedData')}</div>
+              <div class="dc-step-sub" style="color:rgba(255,255,255,0.8);">${bt('rqEsprOk')}</div>
             </div>
           </div>
         </div>
@@ -2876,41 +2876,41 @@
         <!-- Status Filter Filter Bar (Missing, Requested, Submitted, Under Review, Accepted, Rejected) -->
         <div class="dc-status-pills-row">
           <div class="dc-status-pill active" onclick="filterRequestsByStatus('all')">
-            <span>Toutes les demandes</span>
+            <span>${bt('rqAllRequests')}</span>
             <span class="dc-pill-badge">${state.requests.length}</span>
           </div>
           <div class="dc-status-pill" onclick="filterRequestsByStatus('sent')">
-            <span style="color:#b45309;">● Demandées (Missing)</span>
+            <span style="color:#b45309;">${bt('rqMissingDot')}</span>
             <span class="dc-pill-badge">${state.requests.filter(r => ['sent','in_progress'].includes(r.status)).length}</span>
           </div>
           <div class="dc-status-pill" onclick="filterRequestsByStatus('submitted')">
-            <span style="color:#1d4ed8;">● Soumises (Submitted)</span>
+            <span style="color:#1d4ed8;">${bt('rqSubmittedDot')}</span>
             <span class="dc-pill-badge">${counts.submitted}</span>
           </div>
           <div class="dc-status-pill" onclick="filterRequestsByStatus('changes_requested')">
-            <span style="color:#d97706;">● En revue (Under Review)</span>
+            <span style="color:#d97706;">${bt('rqUnderReview')}</span>
             <span class="dc-pill-badge">${state.requests.filter(r => r.status === 'changes_requested').length}</span>
           </div>
           <div class="dc-status-pill" onclick="filterRequestsByStatus('approved')">
-            <span style="color:#0b7656;">● Acceptées (Verified)</span>
+            <span style="color:#0b7656;">${bt('rqAccepted')}</span>
             <span class="dc-pill-badge">${state.requests.filter(r => r.status === 'approved').length}</span>
           </div>
           <div class="dc-status-pill" onclick="filterRequestsByStatus('cancelled')">
-            <span style="color:#b91c1c;">● Rejetées / Clôturées</span>
+            <span style="color:#b91c1c;">${bt('rqRejectedClosed')}</span>
             <span class="dc-pill-badge">${state.requests.filter(r => r.status === 'cancelled').length}</span>
           </div>
         </div>
 
         <div class="card panel">
           <div class="filters">
-            <input class="input" id="request-search" placeholder="Rechercher par titre, matière, SKU ou fournisseur…">
+            <input class="input" id="request-search" placeholder="${bt('rqSearch')}">
             <select class="select" id="request-filter" style="max-width:200px">
-              <option value="all">Tous les statuts</option>
-              <option value="sent">Demandées (Missing)</option>
-              <option value="in_progress">En cours de saisie</option>
-              <option value="submitted">Soumises pour revue</option>
-              <option value="approved">Vérifiées & Approuvées</option>
-              <option value="cancelled">Rejetées</option>
+              <option value="all">${bt('rqAllStatuses')}</option>
+              <option value="sent">${bt('rqMissing')}</option>
+              <option value="in_progress">${bt('rqFilling')}</option>
+              <option value="submitted">${bt('rqSubmittedRev')}</option>
+              <option value="approved">${bt('rqVerifiedApproved')}</option>
+              <option value="cancelled">${bt('rqRejected')}</option>
             </select>
           </div>
           <div id="request-list">${requestTable(state.requests)}</div>
@@ -2918,11 +2918,11 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">Importer CSV</button><button class="btn btn-secondary" data-action="catalog-export">Exporter CSV</button><button class="btn btn-secondary" data-action="audit-export">Exporter audit</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">Importer CSV</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">Importer CSV</button><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>${bt('spRole')}</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">Importer CSV</button><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || 'Matériau'; }
@@ -3785,10 +3785,10 @@
 
       function requestDetailView() {
         const r = state.selectedRequest;
-        if (!r) return `<div class="empty"><div class="empty-icon">↗</div><strong>Demande introuvable</strong><button class="btn btn-secondary" data-view="requests">Retour aux demandes</button></div>`;
+        if (!r) return `<div class="empty"><div class="empty-icon">↗</div><strong>${bt('rdNotFound')}</strong><button class="btn btn-secondary" data-view="requests">${bt('rdBack')}</button></div>`;
         return `<div class="detail-hero">
           <div>
-            <button class="link-button" data-view="requests">← Retour aux demandes</button>
+            <button class="link-button" data-view="requests">${bt('rdBackArrow')}</button>
             <div class="eyebrow" style="margin-top:20px">${esc(orgName(r.supplierOrganizationId))}</div>
             <h1>${esc(r.title)}</h1>
             <div class="detail-meta">
@@ -3796,14 +3796,14 @@
               <span class="meta">${esc(r.questionnaireKey)} · v${esc(r.questionnaireVersion)}</span>
               <span class="meta">Échéance : ${date(r.dueAt)}</span>
               ${r.productId ? `<span class="meta">Produit : <strong><button class="link-button" data-product-id="${esc(r.productId)}" style="display:inline;padding:0;font-size:inherit">${esc(state.products.find((p) => p.id === r.productId)?.name || r.productId)}</button></strong></span>` : ''}
-              <span class="cert-pill">Piste d'audit Neon active</span>
+              <span class="cert-pill">${bt('rdAuditTrail')}</span>
             </div>
           </div>
           <div class="actions">
-            ${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}
-            ${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary" data-action="remind-request" data-reminder-request-id="${esc(r.id)}">Relancer le fournisseur</button>` : ''}
-            ${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}
-            <button class="btn btn-primary" data-demo-action="1">Exporter Synthèse</button>
+            ${r.status === 'draft' ? `<button class="btn btn-primary" data-action="send-request">${bt('rdSend')}</button>` : ''}
+            ${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary" data-action="remind-request" data-reminder-request-id="${esc(r.id)}">${bt('rdFollowUp')}</button>` : ''}
+            ${['submitted','in_progress'].includes(r.status) ? `<button class="btn btn-secondary" data-action="refresh-detail">${bt('rdRefresh')}</button>` : ''}
+            <button class="btn btn-primary" data-demo-action="1">${bt('rdExport')}</button>
           </div>
         </div>
 
@@ -3811,8 +3811,8 @@
           <div class="card panel">
             <div class="panel-head">
               <div>
-                <h2>Points de Preuve & Réponses Fournisseur</h2>
-                <span class="meta">Vérification documentaire opposable</span>
+                <h2>${bt('rdEvidencePoints')}</h2>
+                <span class="meta">${bt('rdDocVerif')}</span>
               </div>
               <div class="progress-line">
                 <div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div>
@@ -3840,8 +3840,8 @@
                           </div>
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
-                          <span class="badge-ocr">OCR 99% Valide</span>
-                          <button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter Document</button>
+                          <span class="badge-ocr">${bt('rdOcrValid')}</span>
+                          <button class="btn btn-secondary btn-small" data-demo-action="1">${bt('rdInspectDoc')}</button>
                         </div>
                       </div>
                     ` : ''}
@@ -3865,46 +3865,46 @@
 
                         <div class="actions" style="justify-content:flex-start;margin-top:12px;gap:8px;">
                           <button class="btn btn-primary btn-small" data-review-response="${esc(response.id)}" data-review-status="verified_by_reviewer">
-                            ✓ Valider la preuve
+                            ${bt('rdValidate')}
                           </button>
                           <button class="btn btn-danger btn-small" data-review-response="${esc(response.id)}" data-review-status="needs_review">
-                            ✕ Demander une correction
+                            ${bt('rdRequestFix')}
                           </button>
                         </div>
                       </div>
-                    `).join('') || '<div class="item-response" style="margin-top:10px;font-size:12px;color:var(--muted);">En attente de réponse fournisseur.</div>'}
+                    `).join('') || `<div class="item-response" style="margin-top:10px;font-size:12px;color:var(--muted);">${bt('rdAwaiting')}</div>`}
                   </div>
                 </div>
-              `).join('') || '<div class="empty">Aucun item de questionnaire rattaché.</div>'}
+              `).join('') || `<div class="empty">${bt('rdNoItem')}</div>`}
             </div>
           </div>
 
           <div style="display:grid;gap:18px;">
             <div class="card panel">
-              <div class="panel-head"><h2>Protocole d'Audit de Preuve</h2></div>
+              <div class="panel-head"><h2>${bt('rdProtocol')}</h2></div>
               <p style="font-size:12px;color:var(--muted);line-height:1.6;">
                 Chaque validation génère un enregistrement immuable sur Neon PostgreSQL opposable aux audits de certification.
               </p>
               <div style="display:grid;gap:12px;margin-top:14px;font-size:12px;">
                 <div style="padding:10px;background:#f8faf8;border-left:3px solid var(--green);border-radius:8px;">
-                  <strong>Certificats de transaction (TC)</strong>
-                  <div style="color:var(--muted);margin-top:2px;">Vérification de concordance du numéro de lot avec la facture d'achat.</div>
+                  <strong>${bt('rdTc')}</strong>
+                  <div style="color:var(--muted);margin-top:2px;">${bt('rdLotCheck')}</div>
                 </div>
                 <div style="padding:10px;background:#f8faf8;border-left:3px solid #0284c7;border-radius:8px;">
-                  <strong>Contrôle RSL & Chimie</strong>
-                  <div style="color:var(--muted);margin-top:2px;">Rapport de test accrédité de moins de 12 mois requis.</div>
+                  <strong>${bt('rdRsl')}</strong>
+                  <div style="color:var(--muted);margin-top:2px;">${bt('rdTestReport')}</div>
                 </div>
               </div>
             </div>
 
             <div class="card panel">
-              <div class="panel-head"><h2>Actions Rapides</h2></div>
+              <div class="panel-head"><h2>${bt('rdQuickActions')}</h2></div>
               <div style="display:grid;gap:8px;">
                 <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" data-demo-action="1">
                   ✉️ Relancer le fournisseur par email
                 </button>
                 <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="window.open('/dpp/', '_blank')">
-                  ▣ Prévisualiser le passeport DPP correspondant
+                  ${bt('rdPreviewDpp')}
                 </button>
               </div>
             </div>
@@ -3915,14 +3915,14 @@
         const preview = state.supplierImport.preview;
         if (!preview) return '<p class="meta" style="margin-top:14px">Prévisualisez le fichier pour valider les emails et éviter les invitations en double.</p>';
         const issues = (preview.errors || []).slice(0, 12);
-        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>Résultat de validation</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : '<span class="status status-changes_requested">À corriger</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">Lignes</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">Invitations</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">Rejetées</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">Aucune erreur de validation détectée.</p>'}</div>`;
+        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>Résultat de validation</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : '<span class="status status-changes_requested">À corriger</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">Lignes</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">Invitations</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('rqRejected')}</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">Aucune erreur de validation détectée.</p>'}</div>`;
       }
 
       function catalogImportPreview() {
         const preview = state.catalogImport.preview;
         if (!preview) return '<p class="meta" style="margin-top:14px">Prévisualisez le fichier pour obtenir les erreurs par ligne avant de lancer l’import.</p>';
         const issues = (preview.errors || []).slice(0, 12);
-        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>Résultat de validation</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : '<span class="status status-changes_requested">À corriger</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">Lignes</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">Acceptées</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">Rejetées</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">Aucune erreur de validation détectée.</p>'}${(preview.warnings || []).length ? `<p class="meta" style="margin-top:10px">${moneyless(preview.warnings.length)} avertissement(s) non bloquant(s).</p>` : ''}</div>`;
+        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>Résultat de validation</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : '<span class="status status-changes_requested">À corriger</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">Lignes</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">Acceptées</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('rqRejected')}</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">Aucune erreur de validation détectée.</p>'}${(preview.warnings || []).length ? `<p class="meta" style="margin-top:10px">${moneyless(preview.warnings.length)} avertissement(s) non bloquant(s).</p>` : ''}</div>`;
       }
 
       function modal(type) {
