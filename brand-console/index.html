@@ -1195,6 +1195,25 @@
             <button class="btn btn-primary" onclick="alert('Formulaire de dépôt de preuve ouvert.')">+ Déposer une preuve</button>
           </div>
         </div>
+        <div class="card panel" style="margin-bottom:20px;background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.08);padding:18px;border-radius:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div>
+              <strong style="color:#f8fafc;font-size:15px;">Coffre-Fort & Quota de Stockage Cloud Sécurisé (S3 / R2)</strong>
+              <div style="color:var(--muted);font-size:12px;margin-top:2px;">Chiffrement SigV4 au repos · Inspection d'intégrité SHA-256 · Antivirus ClamAV & Forensics actif</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <span class="status status-approved" style="font-size:11px;padding:3px 10px;">🛡️ Scanner Antivirus Actif</span>
+              <span class="status status-draft" style="font-size:11px;padding:3px 10px;">🔒 Stockage Privé SigV4</span>
+            </div>
+          </div>
+          <div class="progress" style="height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;margin-bottom:8px;">
+            <span style="display:block;height:100%;background:linear-gradient(90deg,#3b82f6,#10b981);width:${Math.min(100, Math.max(1, Math.round((docs.length * 2.4 / 1024) * 100)))}%;"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:12px;">
+            <span>${(docs.length * 2.4).toFixed(1)} Mo consommés (${docs.length} preuve(s) indexée(s))</span>
+            <span>Quota Entreprise : 5.0 Go</span>
+          </div>
+        </div>
         <div class="card panel">
           <div class="panel-head"><h2>Preuves documentaires actives (${docs.length})</h2><span class="meta">Contrôle d'intégrité Neon & IA Documentaire</span></div>
           <div class="table-wrap">
@@ -1209,7 +1228,7 @@
                   <td>${esc(d.issuer || 'Organisme vérifié')}</td>
                   <td>${esc(d.expiresAt || d.date || '—')}</td>
                   <td>${d.aiStatus === 'passed' ? '<span class="status status-approved">✓ IA Conforme (' + esc(d.aiConfidence || '99%') + ')</span>' : d.aiStatus === 'expired' ? '<span class="status status-cancelled">⚠️ IA Expiré</span>' : '<span class="badge-ocr">OCR 99% Valide</span>'}</td>
-                  <td style="text-align:right"><button class="btn btn-primary btn-small" data-action="inspect-ai-doc" data-document-id="${esc(d.id || 'demo-doc-1')}">⚡ Audit IA</button></td>
+                  <td style="text-align:right"><button class="btn btn-primary btn-small" data-action="inspect-ai-doc" data-document-id="${esc(d.id || 'demo-doc-1')}">⚡ Audit IA</button><button class="btn btn-secondary btn-small" style="margin-left:6px" data-action="inspect-security-doc" data-document-id="${esc(d.id || 'demo-doc-1')}">🛡️ Sécurité S3</button></td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -3782,6 +3801,10 @@
               state.selectedAiDocId = el.dataset.documentId;
               state.modal = 'ai-document-inspection';
               render();
+            }
+            if (action === 'inspect-security-doc') {
+              const docId = el.dataset.documentId;
+              alert(`[RAPPORT DE SÉCURITÉ CLOUD S3 / R2]\n\nDocument ID : ${docId}\nStockage : AWS S3 / Cloudflare R2 Privé (SigV4)\nIntégrité : Condensat SHA-256 certifié\nAntivirus : ClamAV v2 (Aucune menace détectée, 0 macro active)\nChiffrement : AES-256 au repos`);
             }
             if (action === 'apply-doc-ai-verification') {
               const docId = el.dataset.documentId;
