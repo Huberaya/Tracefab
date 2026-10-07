@@ -953,6 +953,15 @@
     .risk-dim__val { font-size:17px; font-weight:850; font-variant-numeric:tabular-nums; }
     .risk-dim__val.is-muted { font-size:12px; font-weight:650; color:var(--muted); }
     /* l ornement d angle de .kpi passe par-dessus le libelle a 390px */
+    .cert-table .status { white-space: nowrap; }
+    @media (max-width: 720px) {
+      .dpp-hero { grid-template-columns: 1fr; gap: 16px; }
+      .dpp-hero > * { min-width: 0; }
+      .dpp-pillars { grid-template-columns: 1fr; }
+      .dpp-gauge-box { border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+      .pillar-head { flex-wrap: wrap; gap: 4px; }
+      .item .meta code { overflow-wrap: anywhere; }
+    }
     .risk-kpis .kpi-value, .risk-kpis .kpi-label, .risk-kpis .kpi-note { position:relative; z-index:1; }
     .risk-basis { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
 
@@ -1350,6 +1359,74 @@
         ];
         state.schemaCatalog = [{ key: 'product-data-core', version: '1.0', title: 'Product data core', description: 'Faits produit versionnés.', subjectTypes: ['product', 'data_request'], fields: [] }];
         state.schemaBindings = [];
+
+        // --- Chantier 4 : ces deux vues atterrissaient sur un etat vide ---
+        // L'etat vide est legitime en production. En demonstration il prive
+        // le visiteur des deux vues qui portent justement la promesse
+        // reglementaire. Donnees de DEMONSTRATION : le bandeau en haut de
+        // page les identifie comme telles, et les echeances sont calculees
+        // en relatif pour ne jamais perimer.
+        const dans = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+        state.certifications = [
+          { standard: 'GOTS 7.0', number: 'CU-GOTS-884213', issuer: 'Control Union', expires: dans(412) },
+          { standard: 'OEKO-TEX STANDARD 100', number: 'SH025-174412-TESTEX', issuer: 'TESTEX', expires: dans(31) },
+          { standard: 'GRS 4.0', number: 'CU-GRS-771904', issuer: 'Control Union', expires: dans(58) },
+          { standard: 'ISO 14001:2015', number: 'FR-14001-20264', issuer: 'Bureau Veritas', expires: dans(233) },
+          { standard: 'SMETA 4-Pillar', number: 'SMETA-BRAGA-2026-118', issuer: 'SGS', expires: dans(176) },
+        ];
+
+        // Preparation DPP : 88%, coherent avec le KPI de la vue d'ensemble.
+        // 7 exigences sur 9, dont une bloquante restante — un score volontiers
+        // imparfait, pour que la vue montre aussi ce qui manque.
+        state.selectedDppProduct = state.products[0];
+        state.dpp = {
+          readinessStatus: 'in_progress',
+          completionScore: 88,
+          totalRequirements: 9,
+          metRequirements: 7,
+          blockingCount: 1,
+          profileKey: 'textile_readiness_mvp',
+          profileVersion: '1.0',
+          canMarkReadyToPublish: false,
+          isReadyToPublish: false,
+          pillars: {
+            identification: { icon: '\ud83c\udff7\ufe0f', name: '1. Identification & Caractéristiques', metPercent: 100,
+              description: 'Identifiants commerciaux et administratifs du modèle.',
+              items: [
+                { label: 'GTIN / EAN-13', met: true },
+                { label: 'Référence interne du modèle', met: true },
+                { label: 'Catégorie produit', met: true },
+                { label: 'Marque et entité responsable', met: true },
+              ] },
+            composition: { icon: '\ud83e\uddf5', name: '2. Composition Matières', metPercent: 100,
+              description: 'Composition fibreuse déclarée et vérifiée.',
+              items: [
+                { label: 'Composition fibre à fibre (%)', met: true },
+                { label: 'Part de matière recyclée', met: true },
+                { label: 'Origine géographique des matières', met: true },
+              ] },
+            traceability: { icon: '\u260d', name: '3. Traçabilité Supply Chain', metPercent: 75,
+              description: 'Chaîne reconstituée du rang 1 au rang 4.',
+              items: [
+                { label: 'Rang 1 \u2014 Confection', met: true },
+                { label: 'Rang 2 \u2014 Tissage / tricotage', met: true },
+                { label: 'Rang 3 \u2014 Filature', met: true },
+                { label: 'Rang 4 \u2014 Matière première', met: false },
+              ] },
+            quality: { icon: '\ud83d\udee1\ufe0f', name: '4. Qualité & Preuves', metPercent: 67,
+              description: 'Preuves documentaires attachées et vérifiées.',
+              items: [
+                { label: 'Certificats fournisseurs valides', met: true },
+                { label: 'Certificat de transaction (TC)', met: true },
+                { label: "Rapport d'essai laboratoire", met: false },
+              ] },
+          },
+          missingFields: [
+            { key: 'supply_chain.tier4_origin', label: 'Origine de la matière première (rang 4)', blocking: true },
+            { key: 'quality.lab_test_report', label: "Rapport d'essai laboratoire (REACH / ZDHC)", blocking: false },
+          ],
+          blockingIssues: [],
+        };
       }
 
       async function sync() {
@@ -2172,45 +2249,63 @@
         </div>`;
       }
 
+      // Jours restants avant echeance, et pastille correspondante. La veille
+      // des expirations derive desormais de ces donnees : la version
+      // precedente affirmait en dur qu'aucun certificat n'expirait, ce qui
+      // devenait faux des que la vue etait alimentee.
+      const certJours = (c) => Math.ceil((Date.parse(c.expires) - Date.now()) / 86400000);
+      function certStatut(c) {
+        const j = certJours(c);
+        if (j < 0) return `<span class="status status-changes_requested">${esc(bt('certExpired'))}</span>`;
+        if (j <= 90) return `<span class="status status-needs_review">${esc(bt('certExpiringSoon'))}</span>`;
+        return `<span class="status status-approved">${esc(bt('certValid'))}</span>`;
+      }
+
       function certificationsConsoleView() {
         const certs = state.certifications || [];
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Standard Compliance</div>
-            <h1>Certifications & Audit Standards</h1>
-            <p>Active multi-facility certifications: GOTS, GRS, OEKO-TEX, and ISO 14001.</p>
+            <div class="eyebrow">${esc(bt('certEyebrow'))}</div>
+            <h1>${esc(bt('certTitle'))}</h1>
+            <p>${esc(bt('certLead'))}</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" data-demo-action="1">+ Déclarer un certificat</button>
+            <button class="btn btn-primary" data-demo-action="1">+ ${esc(bt('certDeclare'))}</button>
           </div>
         </div>
         <div class="grid split">
           <div class="card panel">
-            <div class="panel-head"><h2>Certificats en vigueur</h2></div>
-            <div class="table-wrap">
+            <div class="panel-head"><h2>${esc(bt('certActiveTitle'))}</h2></div>
+            <div class="table-wrap cert-table">
               <table>
                 <thead>
-                  <tr><th>Norme / Standard</th><th>Numéro de certificat</th><th>Organisme</th><th>Expiration</th><th>Statut</th></tr>
+                  <tr><th>${esc(bt('certColStandard'))}</th><th>${esc(bt('certColNumber'))}</th><th>${esc(bt('certColIssuer'))}</th><th>${esc(bt('certColExpiry'))}</th><th>${esc(bt('certColStatus'))}</th></tr>
                 </thead>
                 <tbody>
-                  ${certs.map((c) => `<tr>
+                  ${certs.length ? certs.map((c) => `<tr>
                     <td><strong>${esc(c.standard)}</strong></td>
                     <td><code>${esc(c.number)}</code></td>
                     <td>${esc(c.issuer)}</td>
                     <td>${esc(c.expires)}</td>
-                    <td><span class="status status-approved">Valide</span></td>
-                  </tr>`).join('')}
+                    <td>${certStatut(c)}</td>
+                  </tr>`).join('') : `<tr><td colspan="5" class="empty">${esc(bt('certNone'))}</td></tr>`}
                 </tbody>
               </table>
             </div>
           </div>
           <div class="card panel">
-            <div class="panel-head"><h2>Veille des Expirations</h2></div>
+            <div class="panel-head"><h2>${esc(bt('certWatchTitle'))}</h2></div>
             <div style="font-size:12.5px;color:var(--muted);display:grid;gap:12px;">
-              <p>Aucun certificat n’expire dans les 60 prochains jours. Prochain renouvellement prévu : <strong>OEKO-TEX Standard 100</strong> (Décembre 2026).</p>
+              ${(() => {
+                const bientot = certs.filter((c) => certJours(c) <= 90).sort((a, b) => certJours(a) - certJours(b));
+                if (!bientot.length) return `<p>${esc(bt('certWatchNone'))}</p>`;
+                const t = bientot[0];
+                return `<p><strong>${bientot.length}</strong> ${esc(bt('certWatchCount'))}<br>
+                  ${esc(bt('certNextRenewal'))} : <strong>${esc(t.standard)}</strong> — ${certJours(t)} ${esc(bt('certDaysLeft'))}.</p>`;
+              })()}
               <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);">
-                <strong style="color:var(--green-dark);">Règle de conformité continue</strong>
-                <div style="font-size:11px;margin-top:4px;">Tracefab alerte automatiquement les fournisseurs 90 jours avant l'expiration d'un certificat d'exploitation.</div>
+                <strong style="color:var(--green-dark);">${esc(bt('certRuleTitle'))}</strong>
+                <div style="font-size:11px;margin-top:4px;">${esc(bt('certRuleBody'))}</div>
               </div>
             </div>
           </div>
@@ -3424,7 +3519,7 @@
               <div class="panel-head">
                 <div>
                   <h2>Exigences Restantes à Compléter (${dpp.missingFields.length})</h2>
-                  <p class="meta" style="margin:4px 0 0">Actions requises avant de pouvoir certifier le passeport en statut Prêt pour validation.</p>
+                  <p class="meta" style="margin:4px 0 0">Actions requises avant de pouvoir passer le passeport en statut Prêt pour validation. La préparation est un indicateur opérationnel, pas une certification.</p>
                 </div>
                 <span class="status status-changes_requested">${dpp.blockingCount} bloquant(s)</span>
               </div>

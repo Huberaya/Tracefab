@@ -147,27 +147,22 @@ let enSrc = readFileSync(enPath, 'utf8');
 const iDebut = enSrc.indexOf(DEBUT);
 if (iDebut !== -1) {
   const iFin = enSrc.indexOf(FIN, iDebut);
-  if (iFin === -1) throw new Error('marqueur de fin Risk absent : en.js est dans un etat incoherent');
-  // on remonte jusqu'a la virgule qui precede la region, pour ne pas laisser
-  // de virgule orpheline derriere soi
-  let debutCoupe = enSrc.lastIndexOf(',', iDebut);
-  if (debutCoupe === -1) debutCoupe = iDebut;
-  enSrc = enSrc.slice(0, debutCoupe) + enSrc.slice(iFin + FIN.length);
+  if (iFin === -1) throw new Error('marqueur de fin absent : en.js est dans un etat incoherent');
+  enSrc = enSrc.slice(0, iDebut) + enSrc.slice(iFin + FIN.length + 1);
 }
 
-// bornes du bloc console: { ... }
+// Insertion en TETE du bloc console, pas avant son accolade fermante.
+// Raison : en fin de bloc il faut garantir une virgule apres l'entree
+// precedente, et si celle-ci est une ligne de commentaire (la region posee
+// par l'autre generateur), la virgule se retrouve avalee par le commentaire
+// et en.js casse. En tete, chaque ligne inseree porte sa propre virgule et
+// l'insertion est valide quel que soit le contenu existant.
 const ouverture = enSrc.indexOf('\n  console: {');
 if (ouverture === -1) throw new Error("bloc 'console' introuvable dans en.js");
-let profondeur = 0; let fermeture = -1;
-for (let i = enSrc.indexOf('{', ouverture); i < enSrc.length; i += 1) {
-  if (enSrc[i] === '{') profondeur += 1;
-  else if (enSrc[i] === '}') { profondeur -= 1; if (profondeur === 0) { fermeture = i; break; } }
-}
-if (fermeture === -1) throw new Error("fin du bloc 'console' introuvable");
+const apresAccolade = enSrc.indexOf('{', ouverture) + 1;
 
-const corps = keys.map((k) => `    ${k}: ${JSON.stringify(T[k][0])}`).join(',\n');
-const avant = enSrc.slice(0, fermeture).replace(/,?\s*$/, '');
-enSrc = `${avant},\n\n${DEBUT}\n${corps}\n${FIN}\n  ${enSrc.slice(fermeture)}`;
+const corps = keys.map((k) => `    ${k}: ${JSON.stringify(T[k][0])},`).join('\n');
+enSrc = `${enSrc.slice(0, apresAccolade)}\n${DEBUT}\n${corps}\n${FIN}${enSrc.slice(apresAccolade)}`;
 writeFileSync(enPath, enSrc);
 console.log('\n  ecrit  assets/i18n/en.js');
 

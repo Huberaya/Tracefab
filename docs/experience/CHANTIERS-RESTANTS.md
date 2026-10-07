@@ -81,7 +81,7 @@ estimé, d'où le reclassement.
 > 55 clés `console.risk*` × 7 langues (`scripts/build_risk_i18n.mjs`).
 > Nouveau test `test:chantier3-risk`, câblé dans `build`.
 
-## 4. Deux vues clés atterrissent en état vide · P1
+## 4. Deux vues clés atterrissent en état vide · P1 · **fait**
 
 | Vue | Contenu à l'arrivée |
 |---|---|
@@ -94,6 +94,26 @@ estimé, d'où le reclassement.
 L'état vide est un comportement légitime en production. Mais en démonstration,
 atterrir dessus prive le visiteur de la démonstration de profondeur, et ce
 sont précisément les deux vues qui portent la promesse réglementaire.
+
+> **Fait.** `demoData()` sème `selectedDppProduct`, `dpp` (88 %, 7/9 exigences,
+> 1 bloquant, 4 piliers) et 5 certificats aux **échéances relatives à
+> `Date.now()`**, pour qu'elles ne périment jamais. `dpp` passe de 357 à
+> **1 745 car. / 5 blocs**.
+>
+> La veille des expirations **dérive désormais des données** : elle affirmait en
+> dur qu'aucun certificat n'expirait sous 60 jours, ce qui devenait faux dès
+> qu'on semait, et contredisait le « 8 Certificates Expiring » du cahier des
+> charges. Statut par certificat et compte des échéances calculés à partir de
+> `certJours()`, seuil 90 jours aligné sur la règle affichée dans la même vue.
+>
+> Les 13 chaînes de chrome de la vue ont été externalisées en même temps
+> (**21 clés `cert*` × 7 langues**) : traduire les statuts sans traduire les
+> titres aurait donné un écran mi-français mi-anglais. Débordement mobile de la
+> vue DPP corrigé (133 px → 0). Formulation « certifier le passeport »
+> remplacée, la préparation n'étant pas une certification.
+>
+> `npm run test:chantier4-demo` — 33 assertions, chaîné dans `build`. Rapport :
+> `docs/experience/CHANTIER-4-DEMO-DPP-CERTIFICATIONS.md`.
 
 ## 5. Portail fournisseur mobile sans action au premier écran · P1
 
@@ -249,6 +269,23 @@ Deux voies, au choix :
 L'identité git et l'URL du remote ont dû être restaurées à chaque tour, et le
 seront probablement à nouveau — le script s'en charge.
 
+## 11. Le jeu de démonstration est d'une autre échelle que les KPI annoncés · P2
+
+Relevé en traitant le point 4. `demoData()` sème **1 fournisseur, 2 produits,
+1 matière**. Le cahier des charges affiche en vue d'ensemble **1 248 produits,
+86 fournisseurs, 214 sites, 18 pays**.
+
+Un responsable conformité qui passe de la vue d'ensemble à la liste des
+fournisseurs lit 86 d'un côté et 1 de l'autre. Aucune vue n'est en état vide —
+le point 4 l'a réglé — mais l'écart se voit, et c'est exactement le persona qui
+scrute la cohérence des chiffres.
+
+Deux issues possibles : étoffer le jeu de démonstration jusqu'à un ordre de
+grandeur crédible, ou dériver les KPI de la vue d'ensemble des données
+réellement chargées. La seconde est plus honnête et moins coûteuse à maintenir,
+mais elle s'écarte des valeurs littérales demandées par le cahier des charges.
+**Arbitrage utilisateur requis.**
+
 ## 10. Sort de l'arbre `locales/` · P2 · décision
 
 Seul fragment i18n restant. 7 langues, ~65 Ko, aucun consommateur à
@@ -284,7 +321,9 @@ routes et de l'API.
    vers trois dictionnaires concurrents serait du travail à refaire.
 2. **Point 3** (vue Risk) : plus gros écart au cahier des charges, et il
    débloque le persona Conformité.
-3. **Points 4 et 5** : peu coûteux, ils ferment les deux personas restants.
+3. **Point 4** (vues vides) : *fait*. **Point 5** (portail mobile) : suivant —
+   il ferme le persona Fournisseur.
 4. **Point 2** (`tsx`) : une ligne, fiabilise toute la matrice de tests.
 5. **Point 1** : décision de votre part, pas de développement.
 6. **Point 9** : revue de rattrapage une fois le reste stabilisé.
+7. **Point 11** : arbitrage sur l'échelle du jeu de démonstration.
