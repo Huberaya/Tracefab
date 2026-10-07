@@ -32,9 +32,11 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   let pathname = decodeURIComponent(url.pathname);
 
-  if (pathname === '/') {
-    pathname = '/brand-console/index.html';
-  }
+  // Mirror vercel.json so the preview matches production routing.
+  if (pathname === '/') pathname = '/index.html';
+  else if (pathname === '/i18n-engine.js') pathname = '/public/i18n-engine.js';
+  else if (pathname === '/auto-translate.js') pathname = '/public/auto-translate.js';
+  else if (pathname === '/translations_deep.json') pathname = '/public/translations_deep.json';
 
   const filePath = path.join(ROOT, pathname);
 

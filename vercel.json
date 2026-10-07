@@ -8,6 +8,14 @@
     {
       "src": "**/*.html",
       "use": "@vercel/static"
+    },
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets/**/*",
+      "use": "@vercel/static"
     }
   ],
   "headers": [
@@ -70,6 +78,18 @@
     {
       "src": "/operations(?:/)?",
       "dest": "/operations/index.html"
+    },
+    {
+      "src": "/i18n-engine.js",
+      "dest": "/public/i18n-engine.js"
+    },
+    {
+      "src": "/auto-translate.js",
+      "dest": "/public/auto-translate.js"
+    },
+    {
+      "src": "/translations_deep.json",
+      "dest": "/public/translations_deep.json"
     },
     {
       "handle": "filesystem"
