@@ -8,9 +8,9 @@ ligne « fait » ci-dessous a un test de garde qui passe à l'instant du relevé
 chaque ligne « ouvert » a été vérifiée par une commande, pas supposée.
 
 > **La réponse courte : non, tout n'est pas fait.** Neuf chantiers sont livrés,
-> neuf restent ouverts. Et surtout : **rien n'est fusionné.** Les 29 commits
-> vivent sur une branche, le dépôt ne porte **aucune pull request**, tous états
-> confondus. Qui regarde `main` ne voit rien de ce travail.
+> huit restent ouverts. La **PR #1 est ouverte** depuis le 7 octobre 18:32 UTC
+> (`merge/experience` → `main`, 30 commits, état `clean`, aucun conflit). Elle
+> attend la fusion.
 
 ---
 
@@ -39,22 +39,36 @@ verts.
 
 ---
 
-## 2. Ouverts — 9
+## 2. Ouverts — 8, plus une réconciliation de branches
+
+### ~~A. Ouvrir la PR~~ — **fait le 7 octobre**
+
+**PR #1 ouverte** : <https://github.com/Huberaya/Tracefab/pull/1> ·
+`merge/experience` → `main` · 30 commits · 79 fichiers · +24 917 / −2 762 ·
+`mergeable: true`, état `clean`.
+
+Elle avait été créée avec le titre automatique « Merge/experience » et un
+**corps vide** ; titre et corps ont été corrigés depuis, le jeton ayant
+désormais le droit `Pull requests: write`. Le corps précédent datait d'avant
+L1–L5 et ne décrivait que 6 des 30 commits.
+
+**Il reste à la fusionner** — et à trancher d'abord la question de la branche
+parallèle ci-dessous.
 
 ### Ce qui bloque la livraison
 
-**A. La PR n'est pas ouverte.** *P1 · un clic · le plus conséquent.*
+**A bis. Deux branches divergentes, non réconciliées.** *P0 de fait.*
 
-Vérifié par l'API GitHub : le dépôt porte **0 pull request**, états ouverts et
-fermés confondus. Les 29 commits sont poussés sur `origin/merge/experience` et
-n'ont aucun chemin vers `main`.
+`arena/e72cecf4-tracefab`, poussée le 7 octobre, part du même commit que la
+nôtre et porte 6 commits (~11 000 lignes) : Evidence Center, boucle de revue de
+la collecte, 23/23 routes du portail, workflow CAP, rythme de la landing.
 
-Le jeton fourni est *fine-grained* avec `Pull requests: Read` — il lit les PR,
-il ne peut pas en créer. C'est pourquoi ce point n'a jamais pu être fait de mon
-côté.
-
-- <https://github.com/Huberaya/Tracefab/pull/new/merge/experience>
-- corps prêt à coller : `docs/experience/PR-merge-experience.md`
+**Huit fichiers sont modifiés des deux côtés** — `index.html`,
+`supplier-portal/index.html`, `quality-center/index.html`, `api/index.ts`,
+`package.json`, `package-lock.json`, `vercel.json`,
+`scripts/test_route_registry.mjs` — et une fusion à blanc remonte **7
+conflits**. Fusionner la PR #1 rendra l'intégration de l'autre branche
+manuelle, et réciproquement. **À trancher avant de fusionner.**
 
 ### Ce qui demande une décision de votre part — 4
 
