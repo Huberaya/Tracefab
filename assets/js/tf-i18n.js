@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  var SUPPORTED = ['en', 'fr', 'de', 'it', 'es', 'nl'];
+  var SUPPORTED = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
   var DEFAULT = 'en';
   var STORAGE_KEY = 'tracefab.lang';
   var BASE = '/assets/i18n/';

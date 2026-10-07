@@ -12,7 +12,7 @@ const args = process.argv.slice(2);
 const arg = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
 const BASE = arg('--base', 'http://127.0.0.1:3000');
 const OUT = arg('--out', '.visual/i18n');
-const LANGS = (arg('--langs', 'en,fr,de,it,es,nl')).split(',');
+const LANGS = (arg('--langs', 'en,fr,de,it,es,nl,pt')).split(',');
 const MOBILE = args.includes('--mobile');
 const VP = MOBILE ? { width: 390, height: 844 } : { width: 1440, height: 900 };
 const DSF = MOBILE ? 2 : 1;

@@ -492,6 +492,7 @@ window.TF_I18N_BUNDLES.en = {
     de: 'Deutsch',
     it: 'Italiano',
     es: 'Español',
-    nl: 'Nederlands'
+    nl: 'Nederlands',
+    pt: 'Português',
   }
 };
