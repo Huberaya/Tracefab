@@ -164,3 +164,52 @@ en « SUPPLİER PORTAL », avec le i point suspendu. Le comportement est
 typographiquement correct pour du turc, mais il s'applique ici à un nom
 propre anglais. À corriger par un `text-transform: none` ciblé sur les
 éléments de marque si le rendu vous gêne.
+
+---
+
+## Addendum — `dpp/`, `quality-center/` et le quatrième moteur
+
+### Ce qui a été fait
+
+- **`quality-center/`** : migrée. Portée `quality.*` (44 clés) + `shared.*`.
+  Générateur idempotent `scripts/build_quality_i18n.mjs`.
+- **`dpp/`** : le dictionnaire inline `dppLangs` (3 462 octets) est supprimé.
+  Portée `dpp.*` (10 clés). Générateur `scripts/build_dpp_i18n.mjs`.
+  `applyDppLang()` ne fait plus que déléguer à `T.setLanguage()` ; le rendu
+  est isolé dans `renderDppLang()`, branché sur `tf:languagechange`.
+
+### Le piège : `public/auto-translate.js`
+
+Un **quatrième** système, absent du relevé initial, tournait en parallèle sur
+`dpp/`, `quality-center/` et `operations/`. Il ne lit aucun catalogue : il
+parcourt les nœuds texte et les substitue depuis un glossaire **à source
+française** de 101 entrées, se réapplique à chaque mutation du DOM via un
+`MutationObserver`, et garde sa langue **en cache depuis le chargement**
+(ancienne clé `tracefab_lang`), sans qu'aucune page n'appelle son API
+`window.setTracefabGlobalLanguage()`.
+
+Conséquence mesurée : **89 valeurs françaises du catalogue partagé sont aussi
+des clés de ce glossaire**. Toute chaîne française rendue par `tf-i18n` était
+donc susceptible d'être repeinte dans la langue en cache du moteur.
+
+Décisions, selon la dépendance réelle de chaque page :
+
+| Page | Décision |
+|---|---|
+| `quality-center/` | **retiré** — copie visible entièrement portée par `q()`/`s()` |
+| `dpp/` | **conservé et synchronisé** — son corps reste en français en dur |
+| `operations/` | inchangé — orpheline, non migrée |
+
+### Leçon de méthode
+
+Le diagnostic a été long parce que **toutes les mesures locales étaient
+bonnes** : le catalogue sur disque, le catalogue servi en HTTP, le bundle en
+mémoire, et `t()` évalué à l'instant même du rendu renvoyaient tous la bonne
+valeur française. Seul le DOM final était faux.
+
+Ce qui a tranché : **piéger les écritures sur l'élément lui-même** plutôt que
+d'observer le résultat. Une seule écriture a été capturée, portant la bonne
+valeur — donc le coupable n'écrivait ni via `innerHTML` ni via `textContent`
+sur ce nœud, mais mutait ses nœuds texte enfants. À retenir : quand la valeur
+écrite est correcte et la valeur lue ne l'est pas, chercher un **second
+écrivain**, pas une erreur de résolution.

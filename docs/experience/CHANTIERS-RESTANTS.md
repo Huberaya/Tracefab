@@ -17,7 +17,7 @@ Market Readiness sont appliqués et ne figurent plus ici.
 | 3 | Vue **Risk** absente de la console | Cahier des charges | **P0** | vue complète |
 | 4 | `dpp` et `certifications` en état vide | Persona | P1 | données démo |
 | 5 | Portail mobile sans action au 1ᵉʳ écran | Persona | P1 | mise en page |
-| 6 | Catalogues i18n concurrents | Architecture | **P0** | **Partiel — 4 pages sur 7** |
+| 6 | Catalogues i18n concurrents | Architecture | **P0** | **Fait — 6 pages sur 7** |
 | 7 | Copie métier en dur dans les 3 SPA | Cahier des charges | P1 | ~754 chaînes |
 | 8 | Pousser le commit et ouvrir la PR | Livraison | P1 | manuel |
 | 9 | Phases 9 à 12 sans validation formelle | Process | P2 | revue |
@@ -91,35 +91,85 @@ persona Fournisseur doit « savoir immédiatement quoi faire » — sur mobile i
 ne voit que des onglets. Sur desktop le critère passe (progression
 « 72 % complété » visible sans défilement).
 
-## 6. Trois systèmes i18n concurrents · P0 · **fait**
+## 6. Systèmes i18n concurrents · P0 · **fait**
 
-> **Partiellement consolidé — 4 des 7 pages livrées.** Le détail est dans
-> `docs/experience/CONSOLIDATION-I18N.md`. Résumé : les dictionnaires inline
-> de la console et du portail ont été fusionnés dans `assets/i18n/`, servi
-> par le runtime existant `tf-i18n.js`. Deux défauts visibles par
-> l'utilisateur sont corrigés au passage : la langue était perdue entre la
-> vitrine et l'application (deux clés de stockage), et le portail repliait
-> en français les clés absentes en turc, portugais et chinois.
+> **Consolidé — 6 des 7 pages livrées.** Le détail est dans
+> `docs/experience/CONSOLIDATION-I18N.md`. Les dictionnaires inline de la
+> console, du portail et du DPP public ont été fusionnés dans `assets/i18n/`,
+> servi par le runtime existant `tf-i18n.js`, et `quality-center/` — qui
+> n'avait aucune traduction malgré trois liens entrants — a été migrée.
 >
-> **Ce qui reste**, et que mon relevé initial avait manqué — il ne couvrait
-> que 4 pages alors que le dépôt en livre 7 :
+> **Cinq défauts visibles par l'utilisateur ont été corrigés au passage :**
 >
-> | Page | État | Liée depuis |
-> |---|---|---|
-> | `index.html` | catalogue partagé | — |
-> | `product-intelligence/` | catalogue partagé | nav |
-> | `brand-console/` | catalogue partagé | nav |
-> | `supplier-portal/` | catalogue partagé | nav |
-> | `dpp/` | **dictionnaire inline `dppLangs`, 7 langues** | nav |
-> | `quality-center/` | **aucune i18n, copie française en dur** | **3 pages** |
-> | `passport/`, `operations/` | aucune i18n | 0 page (orphelines) |
->
-> `quality-center/` est le constat le plus gênant : elle est atteignable
-> depuis trois pages, entièrement en français codé en dur, et ne possède
-> aucun mécanisme de traduction — un utilisateur allemand ou italien y
-> tombe sur une page française sans recours.
->
-> Reste aussi l'arbre `locales/` — voir le point 10.
+> 1. la langue était perdue entre la vitrine et l'application (deux clés de
+>    stockage distinctes) ;
+> 2. le portail repliait en **français** les clés absentes en turc, portugais
+>    et chinois — il replie désormais en anglais, et les 30 clés manquantes
+>    ont été traduites ;
+> 3. un changement de langue venu d'un autre onglet ne redessinait jamais la
+>    page ;
+> 4. `quality-center/` n'avait aucune i18n ;
+> 5. **le badge du DPP public ne se traduisait pas** en `fr`, `it`, `es` et
+>    `pt` — voir ci-dessous, c'est le quatrième système.
+
+### Le quatrième système : `public/auto-translate.js`
+
+Mon relevé initial en annonçait trois. Il y en avait **quatre**. Ce moteur de
+25 Ko, chargé par `dpp/`, `quality-center/` et `operations/`, ne lit aucun
+catalogue : il **parcourt les nœuds texte du DOM** et les remplace à partir
+d'un glossaire de 101 entrées **à source française**.
+
+Trois propriétés le rendent incompatible avec une couche i18n propre :
+
+- il met sa langue courante **en cache au chargement**, depuis l'ancienne clé
+  `tracefab_lang`, et ne la rafraîchit jamais sauf appel explicite à
+  `window.setTracefabGlobalLanguage()` — qu'**aucune page n'appelait** ;
+- il se réapplique à **chaque mutation du DOM**, via un `MutationObserver` sur
+  le `body` : il écrase donc tout rendu produit après lui ;
+- sa clé de glossaire étant la chaîne **française**, il ne reconnaît une
+  chaîne que si elle est en français.
+
+D'où le symptôme, longtemps incompréhensible : le badge du DPP se traduisait
+en `de` et `nl` mais pas en `fr`, `it`, `es`, `pt`. `tf-i18n` écrivait bien la
+bonne valeur — mesurée à l'instant du rendu — puis le moteur la repeignait.
+Les deux langues épargnées sont exactement celles dont la valeur
+(« Konform », « Conform ») n'est **pas** une clé du glossaire français ;
+les quatre autres partagent la valeur « EU ESPR / DPP Conforme », qui en est
+une, et étaient donc retraduites vers la langue en cache (`en`).
+
+**89 valeurs françaises du catalogue sont des clés de ce glossaire** — le
+conflit était donc latent bien au-delà du badge.
+
+Traitement, différencié selon la dépendance réelle de chaque page :
+
+| Page | Décision | Raison |
+|---|---|---|
+| `brand-console/`, `supplier-portal/` | déjà retiré avant ce chantier | précédent établi, commentaire en place |
+| `quality-center/` | **retiré** | sa copie visible passe désormais entièrement par `q()`/`s()` |
+| `dpp/` | **conservé et synchronisé** | son corps est presque entièrement en français en dur : le retirer rendrait la page monolingue |
+| `operations/` | laissé tel quel | page orpheline, non migrée, 0 lien entrant |
+
+Pour `dpp/`, `renderDppLang()` appelle maintenant
+`window.setTracefabGlobalLanguage(lang)` avant de peindre : les deux moteurs
+partagent la même langue, et l'observateur du moteur historique se désarme de
+lui-même en français. Vérifié **14/14** (7 langues × 2 parcours : sélecteur de
+la page et chargement direct `?lang=`), sans erreur console.
+
+### État par page
+
+| Page | État | Liée depuis |
+|---|---|---|
+| `index.html` | catalogue partagé | — |
+| `product-intelligence/` | catalogue partagé | nav |
+| `brand-console/` | catalogue partagé | nav |
+| `supplier-portal/` | catalogue partagé | nav |
+| `dpp/` | **catalogue partagé** (`dpp.*`) + moteur historique synchronisé | nav |
+| `quality-center/` | **catalogue partagé** (`quality.*` + `shared.*`) | **3 pages** |
+| `passport/`, `operations/` | aucune i18n | 0 page (orphelines) |
+
+**Ce qui reste** : `passport/` et `operations/`, toutes deux orphelines — aucun
+lien entrant. Leur migration n'a de sens qu'une fois tranché leur sort
+(supprimer ou rebrancher). Reste aussi l'arbre `locales/` — voir le point 10.
 
 ### Constat d'origine
 
