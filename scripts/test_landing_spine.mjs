@@ -98,18 +98,42 @@ ok(!/\.tf-layer__desc\s*\{[^}]*grid-column/.test(css),
 ok(/\.tf-layer__rail\s*\{[^}]*grid-row:\s*1\s*\/\s*span 3/.test(bloc1080),
   'mobile : le rail couvre les trois rangees de la couche');
 
-/* --- 4. le rail est une ligne continue, pas sept traits ----------------- */
+/* --- 4. la geometrie du rail reste correcte, meme neutralisee ----------
+   Les regles du rail sont conservees dans la feuille mais desactivees par le
+   bloc de neutralisation (section 9). On continue de verifier leur geometrie
+   pour qu'une reactivation redonne une ligne continue, pas sept traits. */
 ok(/\.tf-layer__rail::before[\s\S]{0,400}?bottom:\s*calc\(var\(--tf-layer-pad[^)]*\)\s*\*\s*-2/.test(css),
-  'le segment franchit les deux gouttieres entre rangees (sinon la ligne est pointillee)');
+  'la regle du rail franchit les deux gouttieres (geometrie prete a reactiver)');
 ok(/--tf-layer-pad:/.test(css), 'le pas de gouttiere est une variable, lisible par le rail');
 
-/* --- 5. le remplissage explique quelque chose et reste accessible ------- */
+/* --- 5. le mecanisme de remplissage reste en place, reactivable --------- */
 ok(/is-live/.test(js) && /IntersectionObserver/.test(js),
-  'le rail se remplit au defilement');
+  'le mecanisme de remplissage au defilement reste cable (reactivable)');
 ok(/reduceMotion[\s\S]{0,200}?is-live/.test(js),
   'mouvement reduit : les couches sont allumees d\'emblee, sans animation');
 ok(/prefers-reduced-motion[\s\S]{0,200}?\.tf-layer__rail::after\s*\{\s*transition:\s*none/.test(css),
   'mouvement reduit : la transition du rail est neutralisee en CSS aussi');
+
+/* --- 9. retour a l'aspect d'avant L2 : les trois ajouts sont neutralises --
+   L'utilisateur a demande la section telle qu'elle etait avant le chantier L2.
+   L2 avait ajoute trois choses VISUELLES : le rail vertical, le losange sur le
+   numero, et le mot de relais. Elles sont neutralisees par un bloc unique en
+   fin de feuille. Ces assertions sont la garde de ce choix : si le bloc saute,
+   le rail revient et le test doit le dire. Le correctif de grille mobile de L2,
+   lui, est conserve - il repare un bug anterieur (section 3). */
+const neutre = css.slice(css.indexOf('L2 neutralise sur demande'));
+ok(css.includes('L2 neutralise sur demande'),
+  'le bloc de neutralisation de L2 est present');
+ok(/\.tf-layer__rail::before,\s*\n\.tf-layer__rail::after\s*\{\s*display:\s*none/.test(neutre),
+  'avant L2 : la ligne du rail est masquee');
+ok(/\.tf-layer__num::before\s*\{\s*display:\s*none/.test(neutre),
+  'avant L2 : le losange du numero est masque');
+ok(/\.tf-layer__pass\s*\{\s*display:\s*none/.test(neutre),
+  'avant L2 : le mot de relais est masque');
+ok(/\.tf-layer__rail\s*\{\s*padding-left:\s*0/.test(neutre),
+  'avant L2 : le rail ne reserve plus sa gouttiere de 20px');
+ok(css.lastIndexOf('.tf-layer__pass {') > css.indexOf('.tf-layer__pass {'),
+  "la neutralisation passe apres la regle d'origine (elle gagne la cascade)");
 
 /* --- 6. i18n : le relais parle les 6 langues de la phase 1 -------------- */
 const en = readFileSync(join(ROOT, 'assets/i18n/en.js'), 'utf8');

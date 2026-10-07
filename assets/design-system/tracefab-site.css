@@ -1288,3 +1288,19 @@
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
   }
 }
+
+/* ── L2 neutralise sur demande ──────────────────────────────────────────────
+   Retour a l'aspect d'avant le chantier L2 pour la section des sept couches.
+   L2 avait ajoute trois choses visuelles : un rail vertical continu, un noeud
+   en losange sur chaque couche, et un relais nomme sous chaque numero
+   (NETWORK, PRODUCT, PROOF...). Elles sont neutralisees ici, en un seul bloc,
+   pour que le retour en arriere soit une suppression de bloc et rien d'autre.
+   Ce qui est conserve volontairement : la grille corrigee de .tf-layer, qui
+   reparait un bug mobile preexistant ou chaque description tombait a un mot
+   par ligne — 341px de haut au lieu de 101. Ce correctif n'est pas visible
+   sur desktop et n'a rien a voir avec le rail. */
+.tf-layer__rail::before,
+.tf-layer__rail::after { display: none; }
+.tf-layer__num::before { display: none; }
+.tf-layer__pass { display: none; }
+.tf-layer__rail { padding-left: 0; }
