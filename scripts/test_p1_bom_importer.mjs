@@ -8,7 +8,14 @@ const bomImportLib = await readFile(new URL('../api/_lib/bom-importer.ts', impor
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 
 // Assertions on Supplier Portal UI
-assert(supplierPortalHtml.includes('Importer Excel / CSV (BOM & Lots)'), 'BOM import button missing in supplier portal');
+// La copie n'est plus en dur : le balisage appelle la cle, et le catalogue
+// francais conserve le libelle d'origine.
+assert(supplierPortalHtml.includes("t('spMatImportBtn')"), 'BOM import button missing in supplier portal');
+assert(
+  JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8'))
+    .portal?.spMatImportBtn === 'Importer Excel / CSV (BOM & Lots)',
+  'fr.json portal.spMatImportBtn must keep the original French wording'
+);
 assert(supplierPortalHtml.includes('data-action="open-bom-import"'), 'BOM import action must use the bound event path');
 assert(!supplierPortalHtml.includes("onclick=\"state.modal='import-bom';render();\""), 'BOM import must not depend on inaccessible inline lexical state');
 assert(supplierPortalHtml.includes('handleBomImportSubmit'), 'handleBomImportSubmit missing in supplier portal');
