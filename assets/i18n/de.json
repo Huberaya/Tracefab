@@ -1,695 +1,777 @@
 {
- "meta": {
-  "title": "TRACEFAB — Die Intelligenzschicht der globalen Textil-Lieferkette",
-  "description": "TRACEFAB verbindet Lieferantendaten, Nachweise, Qualität, Rückverfolgbarkeit und DPP-Reife in einer einzigen intelligenten Infrastruktur."
- },
- "common": {
-  "demoData": "Demonstrationsdaten",
-  "demoNote": "Alle Zahlen auf dieser Seite sind Demonstrationsdaten.",
-  "skip": "Zum Hauptinhalt springen"
- },
- "nav": {
-  "why": "Warum TRACEFAB",
-  "platform": "Plattform",
-  "supplyChain": "Lieferkette",
-  "productIntel": "Produktintelligenz",
-  "dpp": "DPP",
-  "resources": "Ressourcen",
-  "signIn": "Anmelden",
-  "demo": "Demo anfragen",
-  "openMenu": "Menü öffnen",
-  "language": "Sprache"
- },
- "hero": {
-  "label": "Europäische Textildaten-Infrastruktur",
-  "line1": "Kennen Sie Ihr Produkt.",
-  "line2": "Kennen Sie Ihre Lieferkette.",
-  "line3": "Beweisen Sie es.",
-  "sub": "TRACEFAB verbindet Lieferantendaten, Nachweise, Qualität, Rückverfolgbarkeit und die Reife für den Digitalen Produktpass in einer einzigen intelligenten Infrastruktur.",
-  "ctaPrimary": "TRACEFAB erkunden",
-  "ctaSecondary": "Demo anfragen",
-  "scroll": "System entfalten"
- },
- "core": {
-  "title": "Lebender Datenkern",
-  "hub": "TRACEFAB",
-  "hubSub": "DATEN × TEXTIL × VERTRAUEN",
-  "stat1": "1.248",
-  "stat1Label": "Verbundene Produkte",
-  "stat2": "214",
-  "stat2Label": "Erfasste Standorte",
-  "stat3": "92,4 %",
-  "stat3Label": "Datenqualität",
-  "footLeft": "Alle sieben Schichten synchronisiert",
-  "footRight": "ESPR · AGEC Art. 13 · CSRD · GS1 Digital Link",
-  "inspectHint": "Entität ansteuern",
-  "nodes": {
-   "suppliers": {
-    "label": "Lieferanten",
-    "meta": "Tier 1 bis Tier 4",
-    "value": "86",
-    "kind": "Lieferkette · Schicht 01",
-    "r1k": "Aktive Lieferanten",
-    "r1v": "86",
-    "r2k": "Länder",
-    "r2v": "18",
-    "r3k": "Durchschnittsqualität",
-    "r3v": "87 %"
-   },
-   "products": {
-    "label": "Produkte",
-    "meta": "Modelle und Artikel",
-    "value": "1.248",
-    "kind": "Produktdaten · Schicht 02",
-    "r1k": "Aktive Produkte",
-    "r1v": "1.248",
-    "r2k": "Vollständige Stückliste",
-    "r2v": "1.094",
-    "r3k": "Erfasste Revisionen",
-    "r3v": "4.310"
-   },
-   "materials": {
-    "label": "Materialien",
-    "meta": "Fasern, Garne, Gewebe",
-    "value": "3.106",
-    "kind": "Produktdaten · Schicht 02",
-    "r1k": "Materialdatensätze",
-    "r1v": "3.106",
-    "r2k": "Zertifizierte Inputs",
-    "r2v": "71 %",
-    "r3k": "Zusammensetzung aufgelöst",
-    "r3v": "94 %"
-   },
-   "facilities": {
-    "label": "Standorte",
-    "meta": "Werke und Prozesse",
-    "value": "214",
-    "kind": "Lieferkette · Schicht 01",
-    "r1k": "Erfasste Standorte",
-    "r1v": "214",
-    "r2k": "Georeferenziert",
-    "r2v": "188",
-    "r3k": "In 24 Monaten auditiert",
-    "r3v": "132"
-   },
-   "documents": {
-    "label": "Dokumente",
-    "meta": "Nachweis-Tresor",
-    "value": "9.847",
-    "kind": "Nachweise · Schicht 03",
-    "r1k": "Gespeicherte Dokumente",
-    "r1v": "9.847",
-    "r2k": "Maschinell gelesen",
-    "r2v": "6.220",
-    "r3k": "Produkt zugeordnet",
-    "r3v": "84 %"
-   },
-   "certifications": {
-    "label": "Zertifizierungen",
-    "meta": "Standards und Geltungsbereiche",
-    "value": "612",
-    "kind": "Nachweise · Schicht 03",
-    "r1k": "Gültige Zertifikate",
-    "r1v": "612",
-    "r2k": "Laufen in 90 Tagen ab",
-    "r2v": "8",
-    "r3k": "Abgedeckte Standards",
-    "r3v": "21"
-   },
-   "evidence": {
-    "label": "Nachweise",
-    "meta": "Nachweisabdeckung",
-    "value": "84 %",
-    "kind": "Nachweise · Schicht 03",
-    "r1k": "Nachweisabdeckung",
-    "r1v": "84 %",
-    "r2k": "Verifizierte Elemente",
-    "r2v": "78 %",
-    "r3k": "Integrität versiegelt",
-    "r3v": "SHA-256"
-   },
-   "quality": {
-    "label": "Qualität",
-    "meta": "Sechsstufige Vertrauensskala",
-    "value": "92,4 %",
-    "kind": "Datenqualität · Schicht 04",
-    "r1k": "Vollständigkeit",
-    "r1v": "92,4 %",
-    "r2k": "Verifizierungsquote",
-    "r2v": "78 %",
-    "r3k": "Offene Abweichungen",
-    "r3v": "42"
-   },
-   "traceability": {
-    "label": "Rückverfolgbarkeit",
-    "meta": "Von der Faser zum Produkt",
-    "value": "91 %",
-    "kind": "Rückverfolgbarkeit · Schicht 05",
-    "r1k": "Rückverfolgbare Produkte",
-    "r1v": "91 %",
-    "r2k": "Ketten bis Tier 4",
-    "r2v": "63 %",
-    "r3k": "Durchschnittliche Tiefe",
-    "r3v": "7 Stufen"
-   },
-   "dpp": {
-    "label": "DPP",
-    "meta": "Passreife",
-    "value": "88 %",
-    "kind": "DPP · Schicht 07",
-    "r1k": "DPP-Reife",
-    "r1v": "88 %",
-    "r2k": "Veröffentlichungsbereit",
-    "r2v": "1.098",
-    "r3k": "Durch Nachweis blockiert",
-    "r3v": "150"
-   }
-  }
- },
- "ticker": {
-  "i1": "Frankreich",
-  "i2": "Portugal",
-  "i3": "Italien",
-  "i4": "Deutschland",
-  "i5": "Türkiye",
-  "i6": "Marokko",
-  "i7": "Tunesien",
-  "i8": "Indien",
-  "i9": "Bangladesch",
-  "i10": "Vietnam",
-  "i11": "China",
-  "i12": "Vereinigte Staaten",
-  "i13": "ESPR 2024/1781",
-  "i14": "AGEC Artikel 13",
-  "i15": "CSRD",
-  "i16": "GS1 Digital Link",
-  "i17": "GOTS",
-  "i18": "GRS",
-  "i19": "OEKO-TEX",
-  "i20": "ZDHC MRSL",
-  "i21": "CIRPASS"
- },
- "eco": {
-  "label": "Das verbundene Fundament",
-  "index": "01",
-  "line1": "Ihr gesamtes Textil-Ökosystem.",
-  "line2": "Ein verbundenes Datenfundament.",
-  "lead": "Eine Textillieferkette ist keine Lieferantenliste. Sie ist eine Folge von Transformationen — jede mit eigenem Unternehmen, Standort, Zertifikat, Dokument und Nachweisniveau. TRACEFAB führt alles in einem durchgängigen Modell zusammen und lässt Sie dieselbe Kette Dimension für Dimension oder in Gänze lesen.",
-  "hint": "Wählen Sie eine Stufe, um ihr Dossier zu öffnen. Schalten Sie Dimensionen zu, um dieselbe Kette neu zu lesen."
- },
- "chain": {
-  "dimensionsLabel": "Dimensionen",
-  "stageLabel": "Stufe",
-  "footLeft": "Demo-Kette · Bio-Baumwoll-T-Shirt AW26-0248",
-  "footRight": "9 Stufen · 4 Tiers · 3 Länder",
-  "verticalHint": "Stufe antippen für Details",
-  "dims": {
-   "supplier": "Lieferant",
-   "country": "Land",
-   "facility": "Standort",
-   "certificate": "Zertifikat",
-   "document": "Dokument",
-   "quality": "Qualität",
-   "status": "Status"
+  "meta": {
+    "title": "TRACEFAB — Die Intelligenzschicht der globalen Textil-Lieferkette",
+    "description": "TRACEFAB verbindet Lieferantendaten, Nachweise, Qualität, Rückverfolgbarkeit und DPP-Reife in einer einzigen intelligenten Infrastruktur."
   },
-  "status": {
-   "verified": "Verifiziert",
-   "certified": "Zertifiziert",
-   "documented": "Dokumentiert",
-   "review": "Zu prüfen",
-   "declared": "Erklärt",
-   "missing": "Fehlend"
+  "common": {
+    "demoData": "Demonstrationsdaten",
+    "demoNote": "Alle Zahlen auf dieser Seite sind Demonstrationsdaten.",
+    "skip": "Zum Hauptinhalt springen"
   },
-  "metricLabels": {
-   "quality": "Datenqualität",
-   "certificates": "Zertifikate",
-   "products": "Produkte",
-   "evidence": "Nachweise",
-   "sites": "Standorte",
-   "tier": "Tier"
-  },
-  "stages": {
-   "fiber": {
-    "name": "Faser",
-    "tier": "Tier 4",
-    "supplier": "Algodão Vivo Kooperative",
-    "country": "Portugal",
-    "facility": "Betriebe im Baixo Alentejo",
-    "certificate": "GOTS 6.0 Geltungsbereich",
-    "document": "Transaktionszertifikat",
-    "dossierName": "Algodão Vivo Kooperative",
-    "desc": "Kooperative von Bio-Baumwollbetrieben, die Rohfaser mit chargenbezogenen Transaktionszertifikaten liefert, abgeglichen mit der Massenbilanz."
-   },
-   "material": {
-    "name": "Material",
-    "tier": "Tier 4",
-    "supplier": "Fibrha Material Lab",
-    "country": "Portugal",
-    "facility": "Materiallabor Porto",
-    "certificate": "GRS 4.0",
-    "document": "Materialerklärung",
-    "dossierName": "Fibrha Material Lab",
-    "desc": "Materialcharakterisierung und Mischungserklärung. Die Zusammensetzung ist prozentgenau aufgelöst und mit der Produktstückliste verknüpft."
-   },
-   "spinning": {
-    "name": "Spinnerei",
-    "tier": "Tier 3",
-    "supplier": "Guimarães Ring Spinners",
-    "country": "Portugal",
-    "facility": "Spinnerei Guimarães",
-    "certificate": "OEKO-TEX Standard 100",
-    "document": "Laborprüfbericht",
-    "dossierName": "Guimarães Ring Spinners",
-    "desc": "Ringspinnerei für gekämmtes Bio-Garn. Prüfberichte liegen bei, die Drittverifizierung steht für zwei Garnnummern noch aus."
-   },
-   "weaving": {
-    "name": "Weberei",
-    "tier": "Tier 2",
-    "supplier": "Portugal Textile Mill",
-    "country": "Portugal",
-    "facility": "Weberei Guimarães",
-    "certificate": "GOTS 6.0",
-    "document": "Produktionsnachweis",
-    "dossierName": "Portugal Textile Mill",
-    "desc": "Jersey-Strick und Weberei mit geschlossenem Wasserkreislauf. Übergabenachweise werden für jede Charge erfasst."
-   },
-   "dyeing": {
-    "name": "Färberei",
-    "tier": "Tier 2",
-    "supplier": "Adriatic Dye House",
-    "country": "Italien",
-    "facility": "Veredelungswerk Prato",
-    "certificate": "ZDHC MRSL Level 3",
-    "document": "Abwasseranalyse",
-    "dossierName": "Adriatic Dye House",
-    "desc": "Reaktivfärbung und Ausrüstung. Der jüngste Abwasserbericht liegt außerhalb des Zwölfmonatsfensters — die Stufe ist zur Prüfung markiert."
-   },
-   "cutting": {
-    "name": "Zuschnitt",
-    "tier": "Tier 1",
-    "supplier": "Atelier Milano — Zuschnitt",
-    "country": "Italien",
-    "facility": "Zuschneiderei Mailand",
-    "certificate": "ISO 9001",
-    "document": "Produktionsnachweis",
-    "dossierName": "Atelier Milano — Zuschnitt",
-    "desc": "Automatisierter Zuschnitt mit Verschnitt-Rückgewinnung, die in den im Pass ausgewiesenen Rezyklatanteil einfließt."
-   },
-   "assembly": {
-    "name": "Konfektion",
-    "tier": "Tier 1",
-    "supplier": "Atelier Milano",
-    "country": "Italien",
-    "facility": "Konfektionsstandort Mailand",
-    "certificate": "SA8000",
-    "document": "Sozialaudit-Bericht",
-    "dossierName": "Atelier Milano",
-    "desc": "Tier-1-Hersteller. Sozial- und Qualitätsaudits sind aktuell, die Rückmeldequote ist hoch, zwei Abweichungen werden bearbeitet."
-   },
-   "product": {
-    "name": "Produkt",
-    "tier": "Marke",
-    "supplier": "Atelier Demo",
-    "country": "Frankreich",
-    "facility": "Design-Studio Paris",
-    "certificate": "Product Data Core 1.0",
-    "document": "Produktdatenblatt",
-    "dossierName": "Bio-Baumwoll-T-Shirt · AW26-0248",
-    "desc": "Der fertige Artikel. Zusammensetzung, Identifikatoren, Lieferkette und Nachweise laufen in einem prüffähigen Produktdatensatz zusammen."
-   },
-   "dpp": {
-    "name": "DPP",
-    "tier": "Pass",
-    "supplier": "TRACEFAB",
-    "country": "Europäische Union",
-    "facility": "Öffentlicher Pass-Endpunkt",
-    "certificate": "GS1 Digital Link",
-    "document": "Pass-Datensatz",
-    "dossierName": "Digitaler Produktpass",
-    "desc": "Reifeindikator für die Veröffentlichung. Identität, Zusammensetzung, Materialien, Lieferanten und Fertigung sind vollständig; zwei Nachweise fehlen noch."
-   }
-  }
- },
- "spine": {
-  "label": "Plattformarchitektur",
-  "index": "02",
-  "line1": "Sieben Schichten.",
-  "line2": "Eine durchgängige Beweiskette.",
-  "lead": "Einfach zu verstehen. Tief zu erkunden. Stark im Betrieb. Jede Schicht beantwortet eine Frage und reicht die Antwort an die nächste weiter.",
-  "openHint": "Schicht erkunden",
-  "layers": {
-   "l1": {
-    "num": "Schicht 01",
-    "name": "Lieferkette",
-    "q": "Wer stellt was her?",
-    "desc": "Lieferanten, Werke, Standorte, Materialien und Prozesse über alle Tiers hinweg erfasst — keine Lieferantenliste, sondern ein Produktionsnetz.",
-    "chips": "Lieferanten · Werke · Standorte · Materialien · Prozesse",
-    "value": "214",
-    "valueLabel": "Erfasste Standorte"
-   },
-   "l2": {
-    "num": "Schicht 02",
-    "name": "Produktdaten",
-    "q": "Was ist das Produkt?",
-    "desc": "Zusammensetzung, Komponenten, Materialien und Identifikatoren, prozentgenau aufgelöst und bei jeder Revision versioniert.",
-    "chips": "Produkte · Zusammensetzung · Materialien · Komponenten · Identifikatoren",
-    "value": "1.248",
-    "valueLabel": "Verbundene Produkte"
-   },
-   "l3": {
-    "num": "Schicht 03",
-    "name": "Nachweise",
-    "q": "Lässt es sich belegen?",
-    "desc": "Dokumente, Zertifikate, Erklärungen, Audits und Prüfberichte mit Aussteller, Geltungsbereich, Gültigkeit und Integritätssiegel.",
-    "chips": "Dokumente · Zertifikate · Erklärungen · Audits · Prüfberichte",
-    "value": "9.847",
-    "valueLabel": "Nachweiselemente"
-   },
-   "l4": {
-    "num": "Schicht 04",
-    "name": "Datenqualität",
-    "q": "Kann man den Daten trauen?",
-    "desc": "Jeder Wert trägt ein Niveau: erklärt, dokumentiert, verifiziert, zertifiziert, zu prüfen oder fehlend. Vertrauen wird messbar.",
-    "chips": "Erklärt · Dokumentiert · Verifiziert · Zertifiziert · Zu prüfen · Fehlend",
-    "value": "92,4 %",
-    "valueLabel": "Datenqualität"
-   },
-   "l5": {
-    "num": "Schicht 05",
-    "name": "Rückverfolgbarkeit",
-    "q": "Woher stammt es?",
-    "desc": "Von der Faser zum Material, zur Verarbeitung, zur Fertigung, zum Produkt — eine durchgängige Übergabekette statt isolierter Aussagen.",
-    "chips": "Faser → Material → Verarbeitung → Fertigung → Produkt",
-    "value": "91 %",
-    "valueLabel": "Rückverfolgbare Produkte"
-   },
-   "l6": {
-    "num": "Schicht 06",
-    "name": "Intelligenz",
-    "q": "Was sagen die Daten?",
-    "desc": "Risiken, Lücken, Lieferantenleistung, Produktreife und regulatorische Bereitschaft — berechnet aus Ihren eigenen Daten, nie erfunden.",
-    "chips": "Risiko · Lücken · Qualität · Lieferantenleistung · Reife",
-    "value": "42",
-    "valueLabel": "Offene Signale"
-   },
-   "l7": {
-    "num": "Schicht 07",
-    "name": "DPP",
-    "q": "Was lässt sich veröffentlichen?",
-    "desc": "Ein Reifeindikator, ein Produktpass und eine öffentliche Verbraucheransicht. Ein Reifeindikator, nie eine rechtliche Zertifizierung.",
-    "chips": "DPP-Reife · Produktpass · Öffentliche Daten · Verbraucheransicht",
-    "value": "88 %",
-    "valueLabel": "DPP-Reife"
-   }
-  }
- },
- "promise": {
-  "label": "Warum TRACEFAB",
-  "index": "03",
-  "line1": "Die Intelligenzschicht",
-  "line2": "der globalen Textil-Lieferkette.",
-  "c1Verb": "Sehen.",
-  "c1Txt": "Jeder Lieferant, Standort, Werkstoff und Verarbeitungsschritt in einem verbundenen Modell — auch die Tiers, die bisher unerreichbar waren.",
-  "c2Verb": "Strukturieren.",
-  "c2Txt": "Tabellen und PDFs werden zu strukturierten Daten: produktbezogen, versioniert und über Ihr gesamtes Sortiment vergleichbar.",
-  "c3Verb": "Verifizieren.",
-  "c3Txt": "Jeder Wert trägt ein Nachweisniveau, von der Selbstauskunft bis zum Drittzertifikat, mit Ablauf und Integrität im Blick.",
-  "c4Verb": "Beweisen.",
-  "c4Txt": "Regulatorische Bereitschaft, Auditpakete und DPP-Reife — erzeugt aus den Daten, die Sie bereits besitzen.",
-  "kicker": "Sehen. Strukturieren. Verifizieren. Verfolgen. Beweisen."
- },
- "footer": {
-  "statement": "Die Intelligenzschicht der globalen Textil-Lieferkette.",
-  "europe": "In Europa gedacht · Global in der Architektur",
-  "colPlatform": "Plattform",
-  "colDomains": "Domänen",
-  "colResources": "Ressourcen",
-  "platform1": "Brand Console",
-  "platform2": "Lieferantenportal",
-  "platform3": "Quality Center",
-  "platform4": "Öffentlicher DPP",
-  "domains1": "Lieferkettenkartierung",
-  "domains2": "Nachweise und Zertifizierungen",
-  "domains3": "Datenqualität",
-  "domains4": "Rückverfolgbarkeit",
-  "domains5": "DPP-Reife",
-  "resources1": "Plattformarchitektur",
-  "resources2": "Design-System",
-  "resources3": "API-Referenz",
-  "resources4": "Sicherheit und Mandantenfähigkeit",
-  "rights": "© 2026 TRACEFAB. Alle Rechte vorbehalten.",
-  "legal": "Die DPP-Reife ist ein Reifeindikator, keine rechtliche Zertifizierung."
- },
- "modal": {
-  "eyebrow": "Demo anfragen",
-  "title": "Erleben Sie TRACEFAB an Ihrer eigenen Lieferkette.",
-  "lead": "Sagen Sie uns kurz, wer Sie sind — wir bereiten eine Präsentation mit einer Lieferkette vor, die Ihrer ähnelt.",
-  "name": "Vollständiger Name",
-  "email": "Geschäftliche E-Mail",
-  "company": "Unternehmen",
-  "role": "Rolle",
-  "roleBrand": "Marke / Hersteller",
-  "roleSupplier": "Lieferant",
-  "roleConsultant": "Berater / Auditor",
-  "roleOther": "Sonstige",
-  "submit": "Demo anfragen",
-  "cancel": "Abbrechen",
-  "close": "Schließen",
-  "successTitle": "Anfrage erfasst.",
-  "successTxt": "Dieses Demonstrationsformular ist noch nicht mit einem Postfach verbunden. Es wurde nichts übermittelt."
- },
- "pi": {
-  "demoBanner": "Demonstrationsdatensatz — jede Zahl auf dieser Seite ist eine Demonstrationsangabe.",
-  "console": "product intelligence",
-  "demoUser": "Demonstrations-Arbeitsbereich",
   "nav": {
-   "main": "Hauptkonsole",
-   "overview": "Übersicht",
-   "products": "Produkte",
-   "suppliers": "Lieferanten",
-   "materials": "Materialien",
-   "supplyChain": "Lieferkette",
-   "collection": "Erhebung & Compliance",
-   "dataCollection": "Datenerhebung",
-   "evidence": "Nachweise",
-   "certifications": "Zertifizierungen",
-   "quality": "Qualität",
-   "risk": "Risiko",
-   "dpp": "DPP",
-   "governance": "Governance",
-   "reports": "Berichte",
-   "settings": "Einstellungen"
+    "why": "Warum TRACEFAB",
+    "platform": "Plattform",
+    "supplyChain": "Lieferkette",
+    "productIntel": "Produktintelligenz",
+    "dpp": "DPP",
+    "resources": "Ressourcen",
+    "signIn": "Anmelden",
+    "demo": "Demo anfragen",
+    "openMenu": "Menü öffnen",
+    "language": "Sprache"
   },
-  "product": {
-   "name": "T-Shirt aus Bio-Baumwolle",
-   "ref": "AW26-0248",
-   "collection": "Herbst / Winter 2026",
-   "lead": "Jeder Wert unten trägt einen Nachweisgrad. Nichts wird ohne Beleg behauptet."
+  "hero": {
+    "label": "Europäische Textildaten-Infrastruktur",
+    "line1": "Kennen Sie Ihr Produkt.",
+    "line2": "Kennen Sie Ihre Lieferkette.",
+    "line3": "Beweisen Sie es.",
+    "sub": "TRACEFAB verbindet Lieferantendaten, Nachweise, Qualität, Rückverfolgbarkeit und die Reife für den Digitalen Produktpass in einer einzigen intelligenten Infrastruktur.",
+    "ctaPrimary": "TRACEFAB erkunden",
+    "ctaSecondary": "Demo anfragen",
+    "scroll": "System entfalten"
   },
-  "actions": {
-   "viewPassport": "Öffentlichen Pass ansehen",
-   "requestData": "Daten anfordern"
+  "core": {
+    "title": "Lebender Datenkern",
+    "hub": "TRACEFAB",
+    "hubSub": "DATEN × TEXTIL × VERTRAUEN",
+    "stat1": "1.248",
+    "stat1Label": "Verbundene Produkte",
+    "stat2": "214",
+    "stat2Label": "Erfasste Standorte",
+    "stat3": "92,4 %",
+    "stat3Label": "Datenqualität",
+    "footLeft": "Alle sieben Schichten synchronisiert",
+    "footRight": "ESPR · AGEC Art. 13 · CSRD · GS1 Digital Link",
+    "inspectHint": "Entität ansteuern",
+    "nodes": {
+      "suppliers": {
+        "label": "Lieferanten",
+        "meta": "Tier 1 bis Tier 4",
+        "value": "86",
+        "kind": "Lieferkette · Schicht 01",
+        "r1k": "Aktive Lieferanten",
+        "r1v": "86",
+        "r2k": "Länder",
+        "r2v": "18",
+        "r3k": "Durchschnittsqualität",
+        "r3v": "87 %"
+      },
+      "products": {
+        "label": "Produkte",
+        "meta": "Modelle und Artikel",
+        "value": "1.248",
+        "kind": "Produktdaten · Schicht 02",
+        "r1k": "Aktive Produkte",
+        "r1v": "1.248",
+        "r2k": "Vollständige Stückliste",
+        "r2v": "1.094",
+        "r3k": "Erfasste Revisionen",
+        "r3v": "4.310"
+      },
+      "materials": {
+        "label": "Materialien",
+        "meta": "Fasern, Garne, Gewebe",
+        "value": "3.106",
+        "kind": "Produktdaten · Schicht 02",
+        "r1k": "Materialdatensätze",
+        "r1v": "3.106",
+        "r2k": "Zertifizierte Inputs",
+        "r2v": "71 %",
+        "r3k": "Zusammensetzung aufgelöst",
+        "r3v": "94 %"
+      },
+      "facilities": {
+        "label": "Standorte",
+        "meta": "Werke und Prozesse",
+        "value": "214",
+        "kind": "Lieferkette · Schicht 01",
+        "r1k": "Erfasste Standorte",
+        "r1v": "214",
+        "r2k": "Georeferenziert",
+        "r2v": "188",
+        "r3k": "In 24 Monaten auditiert",
+        "r3v": "132"
+      },
+      "documents": {
+        "label": "Dokumente",
+        "meta": "Nachweis-Tresor",
+        "value": "9.847",
+        "kind": "Nachweise · Schicht 03",
+        "r1k": "Gespeicherte Dokumente",
+        "r1v": "9.847",
+        "r2k": "Maschinell gelesen",
+        "r2v": "6.220",
+        "r3k": "Produkt zugeordnet",
+        "r3v": "84 %"
+      },
+      "certifications": {
+        "label": "Zertifizierungen",
+        "meta": "Standards und Geltungsbereiche",
+        "value": "612",
+        "kind": "Nachweise · Schicht 03",
+        "r1k": "Gültige Zertifikate",
+        "r1v": "612",
+        "r2k": "Laufen in 90 Tagen ab",
+        "r2v": "8",
+        "r3k": "Abgedeckte Standards",
+        "r3v": "21"
+      },
+      "evidence": {
+        "label": "Nachweise",
+        "meta": "Nachweisabdeckung",
+        "value": "84 %",
+        "kind": "Nachweise · Schicht 03",
+        "r1k": "Nachweisabdeckung",
+        "r1v": "84 %",
+        "r2k": "Verifizierte Elemente",
+        "r2v": "78 %",
+        "r3k": "Integrität versiegelt",
+        "r3v": "SHA-256"
+      },
+      "quality": {
+        "label": "Qualität",
+        "meta": "Sechsstufige Vertrauensskala",
+        "value": "92,4 %",
+        "kind": "Datenqualität · Schicht 04",
+        "r1k": "Vollständigkeit",
+        "r1v": "92,4 %",
+        "r2k": "Verifizierungsquote",
+        "r2v": "78 %",
+        "r3k": "Offene Abweichungen",
+        "r3v": "42"
+      },
+      "traceability": {
+        "label": "Rückverfolgbarkeit",
+        "meta": "Von der Faser zum Produkt",
+        "value": "91 %",
+        "kind": "Rückverfolgbarkeit · Schicht 05",
+        "r1k": "Rückverfolgbare Produkte",
+        "r1v": "91 %",
+        "r2k": "Ketten bis Tier 4",
+        "r2v": "63 %",
+        "r3k": "Durchschnittliche Tiefe",
+        "r3v": "7 Stufen"
+      },
+      "dpp": {
+        "label": "DPP",
+        "meta": "Passreife",
+        "value": "88 %",
+        "kind": "DPP · Schicht 07",
+        "r1k": "DPP-Reife",
+        "r1v": "88 %",
+        "r2k": "Veröffentlichungsbereit",
+        "r2v": "1.098",
+        "r3k": "Durch Nachweis blockiert",
+        "r3v": "150"
+      }
+    }
   },
-  "sections": {
-   "signals": "Produktsignale",
-   "identity": "Identität",
-   "timeline": "Letzte Aktivität",
-   "composition": "Zusammensetzung",
-   "materials": "Materialien",
-   "lineage": "Produktherkunft",
-   "manufacturing": "Fertigung",
-   "suppliers": "Lieferanten",
-   "evidence": "Nachweise",
-   "certifications": "Zertifizierungen",
-   "quality": "Datenqualität",
-   "issues": "Offene Punkte",
-   "dpp": "DPP-Reife",
-   "history": "Vollständige Historie"
+  "ticker": {
+    "i1": "Frankreich",
+    "i2": "Portugal",
+    "i3": "Italien",
+    "i4": "Deutschland",
+    "i5": "Türkiye",
+    "i6": "Marokko",
+    "i7": "Tunesien",
+    "i8": "Indien",
+    "i9": "Bangladesch",
+    "i10": "Vietnam",
+    "i11": "China",
+    "i12": "Vereinigte Staaten",
+    "i13": "ESPR 2024/1781",
+    "i14": "AGEC Artikel 13",
+    "i15": "CSRD",
+    "i16": "GS1 Digital Link",
+    "i17": "GOTS",
+    "i18": "GRS",
+    "i19": "OEKO-TEX",
+    "i20": "ZDHC MRSL",
+    "i21": "CIRPASS"
   },
-  "metrics": {
-   "quality": "Datenqualität",
-   "evidence": "Nachweisabdeckung",
-   "traceability": "Rückverfolgbarkeit",
-   "dpp": "DPP-Reife"
+  "eco": {
+    "label": "Das verbundene Fundament",
+    "index": "01",
+    "line1": "Ihr gesamtes Textil-Ökosystem.",
+    "line2": "Ein verbundenes Datenfundament.",
+    "lead": "Eine Textillieferkette ist keine Lieferantenliste. Sie ist eine Folge von Transformationen — jede mit eigenem Unternehmen, Standort, Zertifikat, Dokument und Nachweisniveau. TRACEFAB führt alles in einem durchgängigen Modell zusammen und lässt Sie dieselbe Kette Dimension für Dimension oder in Gänze lesen.",
+    "hint": "Wählen Sie eine Stufe, um ihr Dossier zu öffnen. Schalten Sie Dimensionen zu, um dieselbe Kette neu zu lesen."
   },
-  "tabs": {
-   "overview": "Übersicht",
-   "composition": "Zusammensetzung",
-   "materials": "Materialien",
-   "supplyChain": "Lieferkette",
-   "manufacturing": "Fertigung",
-   "suppliers": "Lieferanten",
-   "evidence": "Nachweise",
-   "certifications": "Zertifizierungen",
-   "quality": "Qualität",
-   "dpp": "DPP",
-   "history": "Historie"
+  "chain": {
+    "dimensionsLabel": "Dimensionen",
+    "stageLabel": "Stufe",
+    "footLeft": "Demo-Kette · Bio-Baumwoll-T-Shirt AW26-0248",
+    "footRight": "9 Stufen · 4 Tiers · 3 Länder",
+    "verticalHint": "Stufe antippen für Details",
+    "dims": {
+      "supplier": "Lieferant",
+      "country": "Land",
+      "facility": "Standort",
+      "certificate": "Zertifikat",
+      "document": "Dokument",
+      "quality": "Qualität",
+      "status": "Status"
+    },
+    "status": {
+      "verified": "Verifiziert",
+      "certified": "Zertifiziert",
+      "documented": "Dokumentiert",
+      "review": "Zu prüfen",
+      "declared": "Erklärt",
+      "missing": "Fehlend"
+    },
+    "metricLabels": {
+      "quality": "Datenqualität",
+      "certificates": "Zertifikate",
+      "products": "Produkte",
+      "evidence": "Nachweise",
+      "sites": "Standorte",
+      "tier": "Tier"
+    },
+    "stages": {
+      "fiber": {
+        "name": "Faser",
+        "tier": "Tier 4",
+        "supplier": "Algodão Vivo Kooperative",
+        "country": "Portugal",
+        "facility": "Betriebe im Baixo Alentejo",
+        "certificate": "GOTS 6.0 Geltungsbereich",
+        "document": "Transaktionszertifikat",
+        "dossierName": "Algodão Vivo Kooperative",
+        "desc": "Kooperative von Bio-Baumwollbetrieben, die Rohfaser mit chargenbezogenen Transaktionszertifikaten liefert, abgeglichen mit der Massenbilanz."
+      },
+      "material": {
+        "name": "Material",
+        "tier": "Tier 4",
+        "supplier": "Fibrha Material Lab",
+        "country": "Portugal",
+        "facility": "Materiallabor Porto",
+        "certificate": "GRS 4.0",
+        "document": "Materialerklärung",
+        "dossierName": "Fibrha Material Lab",
+        "desc": "Materialcharakterisierung und Mischungserklärung. Die Zusammensetzung ist prozentgenau aufgelöst und mit der Produktstückliste verknüpft."
+      },
+      "spinning": {
+        "name": "Spinnerei",
+        "tier": "Tier 3",
+        "supplier": "Guimarães Ring Spinners",
+        "country": "Portugal",
+        "facility": "Spinnerei Guimarães",
+        "certificate": "OEKO-TEX Standard 100",
+        "document": "Laborprüfbericht",
+        "dossierName": "Guimarães Ring Spinners",
+        "desc": "Ringspinnerei für gekämmtes Bio-Garn. Prüfberichte liegen bei, die Drittverifizierung steht für zwei Garnnummern noch aus."
+      },
+      "weaving": {
+        "name": "Weberei",
+        "tier": "Tier 2",
+        "supplier": "Portugal Textile Mill",
+        "country": "Portugal",
+        "facility": "Weberei Guimarães",
+        "certificate": "GOTS 6.0",
+        "document": "Produktionsnachweis",
+        "dossierName": "Portugal Textile Mill",
+        "desc": "Jersey-Strick und Weberei mit geschlossenem Wasserkreislauf. Übergabenachweise werden für jede Charge erfasst."
+      },
+      "dyeing": {
+        "name": "Färberei",
+        "tier": "Tier 2",
+        "supplier": "Adriatic Dye House",
+        "country": "Italien",
+        "facility": "Veredelungswerk Prato",
+        "certificate": "ZDHC MRSL Level 3",
+        "document": "Abwasseranalyse",
+        "dossierName": "Adriatic Dye House",
+        "desc": "Reaktivfärbung und Ausrüstung. Der jüngste Abwasserbericht liegt außerhalb des Zwölfmonatsfensters — die Stufe ist zur Prüfung markiert."
+      },
+      "cutting": {
+        "name": "Zuschnitt",
+        "tier": "Tier 1",
+        "supplier": "Atelier Milano — Zuschnitt",
+        "country": "Italien",
+        "facility": "Zuschneiderei Mailand",
+        "certificate": "ISO 9001",
+        "document": "Produktionsnachweis",
+        "dossierName": "Atelier Milano — Zuschnitt",
+        "desc": "Automatisierter Zuschnitt mit Verschnitt-Rückgewinnung, die in den im Pass ausgewiesenen Rezyklatanteil einfließt."
+      },
+      "assembly": {
+        "name": "Konfektion",
+        "tier": "Tier 1",
+        "supplier": "Atelier Milano",
+        "country": "Italien",
+        "facility": "Konfektionsstandort Mailand",
+        "certificate": "SA8000",
+        "document": "Sozialaudit-Bericht",
+        "dossierName": "Atelier Milano",
+        "desc": "Tier-1-Hersteller. Sozial- und Qualitätsaudits sind aktuell, die Rückmeldequote ist hoch, zwei Abweichungen werden bearbeitet."
+      },
+      "product": {
+        "name": "Produkt",
+        "tier": "Marke",
+        "supplier": "Atelier Demo",
+        "country": "Frankreich",
+        "facility": "Design-Studio Paris",
+        "certificate": "Product Data Core 1.0",
+        "document": "Produktdatenblatt",
+        "dossierName": "Bio-Baumwoll-T-Shirt · AW26-0248",
+        "desc": "Der fertige Artikel. Zusammensetzung, Identifikatoren, Lieferkette und Nachweise laufen in einem prüffähigen Produktdatensatz zusammen."
+      },
+      "dpp": {
+        "name": "DPP",
+        "tier": "Pass",
+        "supplier": "TRACEFAB",
+        "country": "Europäische Union",
+        "facility": "Öffentlicher Pass-Endpunkt",
+        "certificate": "GS1 Digital Link",
+        "document": "Pass-Datensatz",
+        "dossierName": "Digitaler Produktpass",
+        "desc": "Reifeindikator für die Veröffentlichung. Identität, Zusammensetzung, Materialien, Lieferanten und Fertigung sind vollständig; zwei Nachweise fehlen noch."
+      }
+    }
   },
-  "trust": {
-   "missing": "Fehlt",
-   "review": "Prüfen",
-   "declared": "Erklärt",
-   "documented": "Dokumentiert",
-   "verified": "Verifiziert",
-   "certified": "Zertifiziert"
+  "spine": {
+    "label": "Plattformarchitektur",
+    "index": "02",
+    "line1": "Sieben Schichten.",
+    "line2": "Eine durchgängige Beweiskette.",
+    "lead": "Einfach zu verstehen. Tief zu erkunden. Stark im Betrieb. Jede Schicht beantwortet eine Frage und reicht die Antwort an die nächste weiter.",
+    "openHint": "Schicht erkunden",
+    "layers": {
+      "l1": {
+        "num": "Schicht 01",
+        "name": "Lieferkette",
+        "q": "Wer stellt was her?",
+        "desc": "Lieferanten, Werke, Standorte, Materialien und Prozesse über alle Tiers hinweg erfasst — keine Lieferantenliste, sondern ein Produktionsnetz.",
+        "chips": "Lieferanten · Werke · Standorte · Materialien · Prozesse",
+        "value": "214",
+        "valueLabel": "Erfasste Standorte"
+      },
+      "l2": {
+        "num": "Schicht 02",
+        "name": "Produktdaten",
+        "q": "Was ist das Produkt?",
+        "desc": "Zusammensetzung, Komponenten, Materialien und Identifikatoren, prozentgenau aufgelöst und bei jeder Revision versioniert.",
+        "chips": "Produkte · Zusammensetzung · Materialien · Komponenten · Identifikatoren",
+        "value": "1.248",
+        "valueLabel": "Verbundene Produkte"
+      },
+      "l3": {
+        "num": "Schicht 03",
+        "name": "Nachweise",
+        "q": "Lässt es sich belegen?",
+        "desc": "Dokumente, Zertifikate, Erklärungen, Audits und Prüfberichte mit Aussteller, Geltungsbereich, Gültigkeit und Integritätssiegel.",
+        "chips": "Dokumente · Zertifikate · Erklärungen · Audits · Prüfberichte",
+        "value": "9.847",
+        "valueLabel": "Nachweiselemente"
+      },
+      "l4": {
+        "num": "Schicht 04",
+        "name": "Datenqualität",
+        "q": "Kann man den Daten trauen?",
+        "desc": "Jeder Wert trägt ein Niveau: erklärt, dokumentiert, verifiziert, zertifiziert, zu prüfen oder fehlend. Vertrauen wird messbar.",
+        "chips": "Erklärt · Dokumentiert · Verifiziert · Zertifiziert · Zu prüfen · Fehlend",
+        "value": "92,4 %",
+        "valueLabel": "Datenqualität"
+      },
+      "l5": {
+        "num": "Schicht 05",
+        "name": "Rückverfolgbarkeit",
+        "q": "Woher stammt es?",
+        "desc": "Von der Faser zum Material, zur Verarbeitung, zur Fertigung, zum Produkt — eine durchgängige Übergabekette statt isolierter Aussagen.",
+        "chips": "Faser → Material → Verarbeitung → Fertigung → Produkt",
+        "value": "91 %",
+        "valueLabel": "Rückverfolgbare Produkte"
+      },
+      "l6": {
+        "num": "Schicht 06",
+        "name": "Intelligenz",
+        "q": "Was sagen die Daten?",
+        "desc": "Risiken, Lücken, Lieferantenleistung, Produktreife und regulatorische Bereitschaft — berechnet aus Ihren eigenen Daten, nie erfunden.",
+        "chips": "Risiko · Lücken · Qualität · Lieferantenleistung · Reife",
+        "value": "42",
+        "valueLabel": "Offene Signale"
+      },
+      "l7": {
+        "num": "Schicht 07",
+        "name": "DPP",
+        "q": "Was lässt sich veröffentlichen?",
+        "desc": "Ein Reifeindikator, ein Produktpass und eine öffentliche Verbraucheransicht. Ein Reifeindikator, nie eine rechtliche Zertifizierung.",
+        "chips": "DPP-Reife · Produktpass · Öffentliche Daten · Verbraucheransicht",
+        "value": "88 %",
+        "valueLabel": "DPP-Reife"
+      }
+    }
   },
-  "labels": {
-   "reference": "Referenz",
-   "gtin": "GTIN",
-   "sku": "SKU",
-   "category": "Kategorie",
-   "collection": "Kollektion",
-   "madeIn": "Hergestellt in",
-   "status": "Status",
-   "material": "Material",
-   "share": "Anteil",
-   "standard": "Standard",
-   "proof": "Nachweis",
-   "type": "Typ",
-   "supplier": "Lieferant",
-   "origin": "Herkunft",
-   "step": "Schritt",
-   "facility": "Standort",
-   "country": "Land",
-   "tier": "Stufe",
-   "dataQuality": "Datenqualität",
-   "certificates": "Zertifikate",
-   "document": "Dokument",
-   "issuer": "Aussteller",
-   "issued": "Ausgestellt",
-   "expires": "Läuft ab",
-   "verification": "Verifizierung",
-   "certificate": "Zertifikat",
-   "scope": "Geltungsbereich",
-   "holder": "Inhaber",
-   "fix": "Beheben"
+  "promise": {
+    "label": "Warum TRACEFAB",
+    "index": "03",
+    "line1": "Die Intelligenzschicht",
+    "line2": "der globalen Textil-Lieferkette.",
+    "c1Verb": "Sehen.",
+    "c1Txt": "Jeder Lieferant, Standort, Werkstoff und Verarbeitungsschritt in einem verbundenen Modell — auch die Tiers, die bisher unerreichbar waren.",
+    "c2Verb": "Strukturieren.",
+    "c2Txt": "Tabellen und PDFs werden zu strukturierten Daten: produktbezogen, versioniert und über Ihr gesamtes Sortiment vergleichbar.",
+    "c3Verb": "Verifizieren.",
+    "c3Txt": "Jeder Wert trägt ein Nachweisniveau, von der Selbstauskunft bis zum Drittzertifikat, mit Ablauf und Integrität im Blick.",
+    "c4Verb": "Beweisen.",
+    "c4Txt": "Regulatorische Bereitschaft, Auditpakete und DPP-Reife — erzeugt aus den Daten, die Sie bereits besitzen.",
+    "kicker": "Sehen. Strukturieren. Verifizieren. Verfolgen. Beweisen."
   },
-  "values": {
-   "category": "Jersey-Strickware — kurzarm",
-   "collection": "Herbst / Winter 2026",
-   "madeIn": "Italien",
-   "status": "Aktiv — Veröffentlichung ausstehend"
+  "footer": {
+    "statement": "Die Intelligenzschicht der globalen Textil-Lieferkette.",
+    "europe": "In Europa gedacht · Global in der Architektur",
+    "colPlatform": "Plattform",
+    "colDomains": "Domänen",
+    "colResources": "Ressourcen",
+    "platform1": "Brand Console",
+    "platform2": "Lieferantenportal",
+    "platform3": "Quality Center",
+    "platform4": "Öffentlicher DPP",
+    "domains1": "Lieferkettenkartierung",
+    "domains2": "Nachweise und Zertifizierungen",
+    "domains3": "Datenqualität",
+    "domains4": "Rückverfolgbarkeit",
+    "domains5": "DPP-Reife",
+    "resources1": "Plattformarchitektur",
+    "resources2": "Design-System",
+    "resources3": "API-Referenz",
+    "resources4": "Sicherheit und Mandantenfähigkeit",
+    "rights": "© 2026 TRACEFAB. Alle Rechte vorbehalten.",
+    "legal": "Die DPP-Reife ist ein Reifeindikator, keine rechtliche Zertifizierung."
   },
-  "fibers": {
-   "organicCotton": "Bio-Baumwolle",
-   "recycledElastane": "Recyceltes Elasthan",
-   "sewingThread": "Nähgarn"
+  "modal": {
+    "eyebrow": "Demo anfragen",
+    "title": "Erleben Sie TRACEFAB an Ihrer eigenen Lieferkette.",
+    "lead": "Sagen Sie uns kurz, wer Sie sind — wir bereiten eine Präsentation mit einer Lieferkette vor, die Ihrer ähnelt.",
+    "name": "Vollständiger Name",
+    "email": "Geschäftliche E-Mail",
+    "company": "Unternehmen",
+    "role": "Rolle",
+    "roleBrand": "Marke / Hersteller",
+    "roleSupplier": "Lieferant",
+    "roleConsultant": "Berater / Auditor",
+    "roleOther": "Sonstige",
+    "submit": "Demo anfragen",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "successTitle": "Anfrage erfasst.",
+    "successTxt": "Dieses Demonstrationsformular ist noch nicht mit einem Postfach verbunden. Es wurde nichts übermittelt."
   },
-  "types": {
-   "yarn": "Garn",
-   "fabric": "Stoff",
-   "chemical": "Chemikalie",
-   "trim": "Zubehör"
+  "pi": {
+    "demoBanner": "Demonstrationsdatensatz — jede Zahl auf dieser Seite ist eine Demonstrationsangabe.",
+    "console": "product intelligence",
+    "demoUser": "Demonstrations-Arbeitsbereich",
+    "nav": {
+      "main": "Hauptkonsole",
+      "overview": "Übersicht",
+      "products": "Produkte",
+      "suppliers": "Lieferanten",
+      "materials": "Materialien",
+      "supplyChain": "Lieferkette",
+      "collection": "Erhebung & Compliance",
+      "dataCollection": "Datenerhebung",
+      "evidence": "Nachweise",
+      "certifications": "Zertifizierungen",
+      "quality": "Qualität",
+      "risk": "Risiko",
+      "dpp": "DPP",
+      "governance": "Governance",
+      "reports": "Berichte",
+      "settings": "Einstellungen"
+    },
+    "product": {
+      "name": "T-Shirt aus Bio-Baumwolle",
+      "ref": "AW26-0248",
+      "collection": "Herbst / Winter 2026",
+      "lead": "Jeder Wert unten trägt einen Nachweisgrad. Nichts wird ohne Beleg behauptet."
+    },
+    "actions": {
+      "viewPassport": "Öffentlichen Pass ansehen",
+      "requestData": "Daten anfordern"
+    },
+    "sections": {
+      "signals": "Produktsignale",
+      "identity": "Identität",
+      "timeline": "Letzte Aktivität",
+      "composition": "Zusammensetzung",
+      "materials": "Materialien",
+      "lineage": "Produktherkunft",
+      "manufacturing": "Fertigung",
+      "suppliers": "Lieferanten",
+      "evidence": "Nachweise",
+      "certifications": "Zertifizierungen",
+      "quality": "Datenqualität",
+      "issues": "Offene Punkte",
+      "dpp": "DPP-Reife",
+      "history": "Vollständige Historie"
+    },
+    "metrics": {
+      "quality": "Datenqualität",
+      "evidence": "Nachweisabdeckung",
+      "traceability": "Rückverfolgbarkeit",
+      "dpp": "DPP-Reife"
+    },
+    "tabs": {
+      "overview": "Übersicht",
+      "composition": "Zusammensetzung",
+      "materials": "Materialien",
+      "supplyChain": "Lieferkette",
+      "manufacturing": "Fertigung",
+      "suppliers": "Lieferanten",
+      "evidence": "Nachweise",
+      "certifications": "Zertifizierungen",
+      "quality": "Qualität",
+      "dpp": "DPP",
+      "history": "Historie"
+    },
+    "trust": {
+      "missing": "Fehlt",
+      "review": "Prüfen",
+      "declared": "Erklärt",
+      "documented": "Dokumentiert",
+      "verified": "Verifiziert",
+      "certified": "Zertifiziert"
+    },
+    "labels": {
+      "reference": "Referenz",
+      "gtin": "GTIN",
+      "sku": "SKU",
+      "category": "Kategorie",
+      "collection": "Kollektion",
+      "madeIn": "Hergestellt in",
+      "status": "Status",
+      "material": "Material",
+      "share": "Anteil",
+      "standard": "Standard",
+      "proof": "Nachweis",
+      "type": "Typ",
+      "supplier": "Lieferant",
+      "origin": "Herkunft",
+      "step": "Schritt",
+      "facility": "Standort",
+      "country": "Land",
+      "tier": "Stufe",
+      "dataQuality": "Datenqualität",
+      "certificates": "Zertifikate",
+      "document": "Dokument",
+      "issuer": "Aussteller",
+      "issued": "Ausgestellt",
+      "expires": "Läuft ab",
+      "verification": "Verifizierung",
+      "certificate": "Zertifikat",
+      "scope": "Geltungsbereich",
+      "holder": "Inhaber",
+      "fix": "Beheben"
+    },
+    "values": {
+      "category": "Jersey-Strickware — kurzarm",
+      "collection": "Herbst / Winter 2026",
+      "madeIn": "Italien",
+      "status": "Aktiv — Veröffentlichung ausstehend"
+    },
+    "fibers": {
+      "organicCotton": "Bio-Baumwolle",
+      "recycledElastane": "Recyceltes Elasthan",
+      "sewingThread": "Nähgarn"
+    },
+    "types": {
+      "yarn": "Garn",
+      "fabric": "Stoff",
+      "chemical": "Chemikalie",
+      "trim": "Zubehör"
+    },
+    "steps": {
+      "spinning": "Spinnen",
+      "knitting": "Stricken",
+      "dyeing": "Färben",
+      "cutting": "Zuschnitt",
+      "assembly": "Konfektion",
+      "finishing": "Ausrüstung"
+    },
+    "lineage": {
+      "nodes": {
+        "fiber": "Faser",
+        "spinner": "Spinnerei",
+        "yarn": "Garn",
+        "fabric": "Stoff",
+        "dyehouse": "Färberei",
+        "manufacturer": "Hersteller",
+        "product": "Fertigprodukt",
+        "dpp": "DPP"
+      },
+      "detail": {
+        "fiber": "Rohe Bio-Baumwolle mit Transaktionszertifikaten je Partie, abgeglichen mit der Massenbilanz.",
+        "spinner": "Ringspinnen gekämmten Bio-Garns. Für zwei Garnnummern steht die Drittverifizierung noch aus.",
+        "yarn": "Garnpartien mit der Produktstückliste verknüpft, lückenlose Chain of Custody.",
+        "fabric": "Single-Jersey-Strickerei mit geschlossener Wasseraufbereitung in Guimarães.",
+        "dyehouse": "Reaktivfärbung und Ausrüstung. Der letzte Abwasserbericht liegt außerhalb des Zwölfmonatsfensters.",
+        "manufacturer": "Konfektion Stufe 1. Sozial- und Qualitätsaudits aktuell, zwei Feststellungen in Bearbeitung.",
+        "product": "Der fertige Artikel. Zusammensetzung, Kennungen, Kette und Nachweise konsolidiert.",
+        "dpp": "Indikator der Veröffentlichungsreife. Zwei Nachweise fehlen noch."
+      }
+    },
+    "docs": {
+      "transactionCert": "Transaktionszertifikat",
+      "labReport": "Laborprüfbericht",
+      "socialAudit": "Sozialauditbericht",
+      "wastewater": "Abwasseranalyse",
+      "productionRecord": "Produktionsnachweis",
+      "materialDeclaration": "Materialerklärung"
+    },
+    "scopes": {
+      "scopeFiberFabric": "Faser bis Stoff",
+      "scopeRecycled": "Rezyklatanteil",
+      "scopeChemical": "Chemikaliensicherheit",
+      "scopeSocial": "Sozialstandards",
+      "scopeWastewater": "Abwassereinleitung"
+    },
+    "quality": {
+      "completeness": "Vollständigkeit",
+      "evidenceCoverage": "Nachweisabdeckung",
+      "verificationRate": "Verifizierungsquote",
+      "supplyChainDepth": "Lieferkettentiefe"
+    },
+    "issues": {
+      "issueWastewater": {
+        "t": "Abwasseranalyse veraltet",
+        "d": "Adriatic Dye House — letzter Bericht überschreitet das Zwölfmonatsfenster"
+      },
+      "issueOekoTex": {
+        "t": "OEKO-TEX-Zertifikat läuft ab",
+        "d": "Guimarães Ring Spinners — weniger als 90 Tage gültig"
+      },
+      "issueSpinnerVerify": {
+        "t": "Spinnereidaten warten auf Verifizierung",
+        "d": "Zwei Garnnummern erklärt, aber nicht drittverifiziert"
+      }
+    },
+    "dpp": {
+      "title": "Reife des digitalen Produktpasses",
+      "lead": "Was dieses Produkt heute veröffentlichen könnte und was dafür noch fehlt.",
+      "legal": "Ein Reifeindikator, niemals eine rechtliche Zertifizierung.",
+      "score": "Reife",
+      "ready": "Bereit zur Veröffentlichung",
+      "missing": "Was fehlt?",
+      "items": {
+        "dppIdentity": "Produktidentität und Kennungen",
+        "dppComposition": "Zusammensetzung auf das Prozent genau",
+        "dppMaterials": "Materialien und ihre Herkunft",
+        "dppSuppliers": "Lieferanten über vier Stufen",
+        "dppManufacturing": "Fertigungsschritte und Standorte",
+        "dppCare": "Pflege- und Wartungshinweise",
+        "dppCircularity": "Kreislauffähigkeit und Rezyklatanteil",
+        "dppGapWastewater": "Aktuelle Abwasseranalyse der Färberei",
+        "dppGapRepair": "Reparatur- und Ersatzteilinformationen"
+      }
+    },
+    "history": {
+      "hDppRecomputed": "DPP-Reife neu berechnet — 88 %",
+      "hProductionRecord": "Produktionsnachweis von Atelier Milano angehängt",
+      "hDyeFlagged": "Färberei zur Prüfung markiert — Abwasserbericht abgelaufen",
+      "hLabReport": "Laborprüfbericht von Intertek verifiziert",
+      "hComposition": "Zusammensetzungserklärung auf das Prozent genau aufgelöst",
+      "hGotsLinked": "GOTS-6.0-Transaktionszertifikat verknüpft",
+      "hSocialAudit": "SA8000-Sozialaudit angenommen",
+      "hCreated": "Produkt im Arbeitsbereich angelegt"
+    },
+    "notes": {
+      "composition": "Die Prozentsätze werden gegen die Stückliste aufgelöst und mit den Faser-Transaktionszertifikaten abgeglichen.",
+      "lineage": "Wählen Sie eine Stufe, um die dahinterstehende Organisation zu prüfen. Jeder Schritt trägt seinen eigenen Nachweisgrad.",
+      "evidence": "Jedes Dokument wird mit Aussteller, Geltungsbereich, Gültigkeitsfenster und SHA-256-Integritätssiegel gespeichert.",
+      "issues": "Jeder Punkt führt zu dem Bildschirm, der ihn löst",
+      "otherRef": "Angeforderte Referenz {ref} — gezeigt wird der Demonstrationsdatensatz."
+    }
   },
-  "steps": {
-   "spinning": "Spinnen",
-   "knitting": "Stricken",
-   "dyeing": "Färben",
-   "cutting": "Zuschnitt",
-   "assembly": "Konfektion",
-   "finishing": "Ausrüstung"
+  "lang": {
+    "en": "English",
+    "fr": "Français",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "es": "Español",
+    "nl": "Nederlands",
+    "pt": "Português"
   },
-  "lineage": {
-   "nodes": {
-    "fiber": "Faser",
-    "spinner": "Spinnerei",
-    "yarn": "Garn",
-    "fabric": "Stoff",
-    "dyehouse": "Färberei",
-    "manufacturer": "Hersteller",
-    "product": "Fertigprodukt",
-    "dpp": "DPP"
-   },
-   "detail": {
-    "fiber": "Rohe Bio-Baumwolle mit Transaktionszertifikaten je Partie, abgeglichen mit der Massenbilanz.",
-    "spinner": "Ringspinnen gekämmten Bio-Garns. Für zwei Garnnummern steht die Drittverifizierung noch aus.",
-    "yarn": "Garnpartien mit der Produktstückliste verknüpft, lückenlose Chain of Custody.",
-    "fabric": "Single-Jersey-Strickerei mit geschlossener Wasseraufbereitung in Guimarães.",
-    "dyehouse": "Reaktivfärbung und Ausrüstung. Der letzte Abwasserbericht liegt außerhalb des Zwölfmonatsfensters.",
-    "manufacturer": "Konfektion Stufe 1. Sozial- und Qualitätsaudits aktuell, zwei Feststellungen in Bearbeitung.",
-    "product": "Der fertige Artikel. Zusammensetzung, Kennungen, Kette und Nachweise konsolidiert.",
-    "dpp": "Indikator der Veröffentlichungsreife. Zwei Nachweise fehlen noch."
-   }
+  "shared": {
+    "stDraft": "Entwurf",
+    "stSent": "Gesendet",
+    "stInProgress": "In Bearbeitung",
+    "stSubmitted": "Eingereicht",
+    "stChangesRequested": "Korrektur nötig",
+    "stApproved": "Genehmigt",
+    "stCancelled": "Storniert",
+    "stVerified": "Verifiziert",
+    "stNeedsReview": "Prüfung nötig",
+    "stOpen": "Offen",
+    "stAcknowledged": "Bestätigt",
+    "stWaived": "Ausnahme",
+    "stResolved": "Gelöst",
+    "stNotStarted": "Nicht begonnen",
+    "stDataReady": "Bereit zur Validierung",
+    "stReadyToPublish": "Freigegeben & publikationsbereit",
+    "stReviewRequired": "Prüfung erforderlich",
+    "stActive": "Aktiv",
+    "stCompleted": "Abgeschlossen",
+    "stInvited": "Eingeladen",
+    "stDeclared": "Erklärt",
+    "stDocumented": "Dokumentiert",
+    "stUploaded": "Gespeichert",
+    "stScanning": "Wird geprüft",
+    "stAvailable": "Verfügbar",
+    "stRejected": "Abgelehnt",
+    "stDeleted": "Gelöscht",
+    "stSuspended": "Ausgesetzt",
+    "stRevoked": "Widerrufen",
+    "demoUnavailable": "Im Demonstrationsmodus nicht verfügbar — verbinden Sie die TRACEFAB-APIs, um diese Aktion auszuführen.",
+    "overview": "Übersicht",
+    "requests": "Datenanfragen",
+    "certifications": "Zertifikate",
+    "signOut": "Abmelden"
   },
-  "docs": {
-   "transactionCert": "Transaktionszertifikat",
-   "labReport": "Laborprüfbericht",
-   "socialAudit": "Sozialauditbericht",
-   "wastewater": "Abwasseranalyse",
-   "productionRecord": "Produktionsnachweis",
-   "materialDeclaration": "Materialerklärung"
+  "console": {
+    "navMain": "Hauptkonsole",
+    "products": "Produkte",
+    "suppliers": "Lieferanten",
+    "materials": "Materialien",
+    "supplyChain": "Rückverfolgbarkeit",
+    "navCollection": "Erfassung & Konformität",
+    "questionnaires": "Fragebögen",
+    "documents": "Dokumente",
+    "quality": "Qualität & Konformität",
+    "dpp": "DPP-Pass",
+    "navGov": "Governance",
+    "reports": "Berichte & Audits",
+    "settings": "Einstellungen",
+    "newRequest": "+ Neue Anfrage",
+    "openRequests": "Offene Anfragen",
+    "dueSoon": "Fällig bald (< 7T)",
+    "submitted": "Antworten erhalten",
+    "quickActions": "Schnellaktionen",
+    "createRequest": "Datenanfrage erstellen",
+    "dppReadiness": "Digitaler Produktpass (DPP)",
+    "dppDesc": "Überprüfen Sie die Konformität Ihrer Kollektionen gemäß europäischen ESPR- und CIRPASS 1.2-Normen."
   },
-  "scopes": {
-   "scopeFiberFabric": "Faser bis Stoff",
-   "scopeRecycled": "Rezyklatanteil",
-   "scopeChemical": "Chemikaliensicherheit",
-   "scopeSocial": "Sozialstandards",
-   "scopeWastewater": "Abwassereinleitung"
-  },
-  "quality": {
-   "completeness": "Vollständigkeit",
-   "evidenceCoverage": "Nachweisabdeckung",
-   "verificationRate": "Verifizierungsquote",
-   "supplyChainDepth": "Lieferkettentiefe"
-  },
-  "issues": {
-   "issueWastewater": {
-    "t": "Abwasseranalyse veraltet",
-    "d": "Adriatic Dye House — letzter Bericht überschreitet das Zwölfmonatsfenster"
-   },
-   "issueOekoTex": {
-    "t": "OEKO-TEX-Zertifikat läuft ab",
-    "d": "Guimarães Ring Spinners — weniger als 90 Tage gültig"
-   },
-   "issueSpinnerVerify": {
-    "t": "Spinnereidaten warten auf Verifizierung",
-    "d": "Zwei Garnnummern erklärt, aber nicht drittverifiziert"
-   }
-  },
-  "dpp": {
-   "title": "Reife des digitalen Produktpasses",
-   "lead": "Was dieses Produkt heute veröffentlichen könnte und was dafür noch fehlt.",
-   "legal": "Ein Reifeindikator, niemals eine rechtliche Zertifizierung.",
-   "score": "Reife",
-   "ready": "Bereit zur Veröffentlichung",
-   "missing": "Was fehlt?",
-   "items": {
-    "dppIdentity": "Produktidentität und Kennungen",
-    "dppComposition": "Zusammensetzung auf das Prozent genau",
-    "dppMaterials": "Materialien und ihre Herkunft",
-    "dppSuppliers": "Lieferanten über vier Stufen",
-    "dppManufacturing": "Fertigungsschritte und Standorte",
-    "dppCare": "Pflege- und Wartungshinweise",
-    "dppCircularity": "Kreislauffähigkeit und Rezyklatanteil",
-    "dppGapWastewater": "Aktuelle Abwasseranalyse der Färberei",
-    "dppGapRepair": "Reparatur- und Ersatzteilinformationen"
-   }
-  },
-  "history": {
-   "hDppRecomputed": "DPP-Reife neu berechnet — 88 %",
-   "hProductionRecord": "Produktionsnachweis von Atelier Milano angehängt",
-   "hDyeFlagged": "Färberei zur Prüfung markiert — Abwasserbericht abgelaufen",
-   "hLabReport": "Laborprüfbericht von Intertek verifiziert",
-   "hComposition": "Zusammensetzungserklärung auf das Prozent genau aufgelöst",
-   "hGotsLinked": "GOTS-6.0-Transaktionszertifikat verknüpft",
-   "hSocialAudit": "SA8000-Sozialaudit angenommen",
-   "hCreated": "Produkt im Arbeitsbereich angelegt"
-  },
-  "notes": {
-   "composition": "Die Prozentsätze werden gegen die Stückliste aufgelöst und mit den Faser-Transaktionszertifikaten abgeglichen.",
-   "lineage": "Wählen Sie eine Stufe, um die dahinterstehende Organisation zu prüfen. Jeder Schritt trägt seinen eigenen Nachweisgrad.",
-   "evidence": "Jedes Dokument wird mit Aussteller, Geltungsbereich, Gültigkeitsfenster und SHA-256-Integritätssiegel gespeichert.",
-   "issues": "Jeder Punkt führt zu dem Bildschirm, der ihn löst",
-   "otherRef": "Angeforderte Referenz {ref} — gezeigt wird der Demonstrationsdatensatz."
+  "portal": {
+    "sites": "Produktionsstätten",
+    "materials": "Materialien & Garne",
+    "documents": "Nachweis-Tresor (Vault)",
+    "dataPoints": "Strukturierte Daten",
+    "members": "Team & Berechtigungen",
+    "quality": "Qualitätsindex",
+    "profile": "Unternehmensprofil",
+    "requestDetail": "Auf Anfrage antworten",
+    "vaultDesc": "Laden Sie Ihre Prüfzertifikate einmal hoch und teilen Sie sie sofort mit all Ihren Marken.",
+    "uploadEvidence": "Nachweis zum Vault hinzufügen",
+    "ndaTitle": "Schutz von Geschäftsgeheimnissen",
+    "ndaDesc": "Geschützte Rezepturen, Preise und Margen bleiben streng vertraulich. Nur Prüfungs-Hashes werden geteilt.",
+    "hello": "Hallo",
+    "pendingRequests": "Offene Anfragen",
+    "sitesRegistered": "Registrierte Stätten",
+    "validCerts": "Aktive Zertifikate",
+    "qualityIndex": "Vollständigkeitsgrad",
+    "submitToBrand": "An Marke übermitteln",
+    "saveDraft": "Entwurf speichern",
+    "responseRecorded": "Antwort erfolgreich gespeichert.",
+    "requestSubmitted": "Anfrage an Auftraggeber übermittelt."
   }
- },
- "lang": {
-  "en": "English",
-  "fr": "Français",
-  "de": "Deutsch",
-  "it": "Italiano",
-  "es": "Español",
-  "nl": "Nederlands",
-  "pt": "Português"
- }
 }

@@ -17,10 +17,11 @@ Market Readiness sont appliqués et ne figurent plus ici.
 | 3 | Vue **Risk** absente de la console | Cahier des charges | **P0** | vue complète |
 | 4 | `dpp` et `certifications` en état vide | Persona | P1 | données démo |
 | 5 | Portail mobile sans action au 1ᵉʳ écran | Persona | P1 | mise en page |
-| 6 | Trois systèmes i18n concurrents | Architecture | **P0** | consolidation |
+| 6 | Trois systèmes i18n concurrents | Architecture | **P0** | **Fait** |
 | 7 | Copie métier en dur dans les 3 SPA | Cahier des charges | P1 | ~754 chaînes |
 | 8 | Pousser le commit et ouvrir la PR | Livraison | P1 | manuel |
 | 9 | Phases 9 à 12 sans validation formelle | Process | P2 | revue |
+| 10 | Sort de l'arbre `locales/` | Décision | P2 | 1 décision |
 
 Les points 3 et 6 sont requalifiés en P0 : le premier est une exigence
 explicite du cahier des charges, le second est un défaut d'architecture qui
@@ -90,7 +91,20 @@ persona Fournisseur doit « savoir immédiatement quoi faire » — sur mobile i
 ne voit que des onglets. Sur desktop le critère passe (progression
 « 72 % complété » visible sans défilement).
 
-## 6. Trois systèmes i18n concurrents · P0
+## 6. Trois systèmes i18n concurrents · P0 · **fait**
+
+> Consolidé. Le détail est dans
+> `docs/experience/CONSOLIDATION-I18N.md`. Résumé : les dictionnaires inline
+> de la console et du portail ont été fusionnés dans `assets/i18n/`, servi
+> par le runtime existant `tf-i18n.js`. Deux défauts visibles par
+> l'utilisateur sont corrigés au passage : la langue était perdue entre la
+> vitrine et l'application (deux clés de stockage), et le portail repliait
+> en français les clés absentes en turc, portugais et chinois.
+>
+> Reste un fragment : l'arbre `locales/`, que je n'ai pas supprimé — voir
+> le point 10 ci-dessous.
+
+### Constat d'origine
 
 C'est le constat qui requalifie le chantier : **l'i18n n'est pas à faire,
 elle est faite trois fois, de trois manières incompatibles.**
@@ -142,6 +156,22 @@ https://github.com/Huberaya/Tracefab/pull/new/merge/experience
 À noter : `.git/config` est exclu des snapshots de l'espace de travail.
 L'identité git et l'URL du remote ont dû être restaurées ce tour-ci, et le
 seront probablement à nouveau.
+
+## 10. Sort de l'arbre `locales/` · P2 · décision
+
+Seul fragment i18n restant. 7 langues, ~65 Ko, aucun consommateur à
+l'exécution : c'est le dictionnaire de l'**ancienne** landing, antérieure à
+la refonte — ses sections (`mockup`, `signature`, `problem`) n'existent plus.
+
+Je ne l'ai pas supprimé parce que `scripts/test_p1_i18n.mjs`, qui n'est pas
+de moi, en verrouille le contenu et vérifie trois accroches de
+positionnement. Le supprimer casserait ce test ; le garder laisse du poids
+mort déployé par `vercel.json`. C'est un arbitrage qui vous revient :
+
+- **le retirer** : supprimer `locales/`, l'entrée de `vercel.json`, et
+  repointer les trois assertions de `test_p1_i18n.mjs` sur `assets/i18n/` ;
+- **le garder** : au minimum le sortir de `vercel.json` pour cesser de le
+  livrer.
 
 ## 9. Phases 9 à 12 sans validation formelle · P2
 

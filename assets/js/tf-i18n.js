@@ -19,9 +19,16 @@
 (function () {
   'use strict';
 
-  var SUPPORTED = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
+  // La landing expose les 7 locales de la phase 1. Le portail fournisseur
+  // sert aussi des fournisseurs turcs et chinois : une page peut donc
+  // elargir l'ensemble via window.TF_I18N_SUPPORTED, declare avant ce script.
+  var SUPPORTED = window.TF_I18N_SUPPORTED || ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
   var DEFAULT = 'en';
   var STORAGE_KEY = 'tracefab.lang';
+  // Les SPA ecrivaient 'tracefab_lang' tandis que la landing ecrivait
+  // 'tracefab.lang' : le choix de langue etait perdu au passage de l'une a
+  // l'autre. Cle unique desormais, avec reprise de l'ancienne valeur.
+  var LEGACY_STORAGE_KEY = 'tracefab_lang';
   var BASE = '/assets/i18n/';
 
   var flatCache = {};
@@ -53,6 +60,11 @@
     try {
       var stored = window.localStorage.getItem(STORAGE_KEY);
       if (stored && SUPPORTED.indexOf(stored) !== -1) return stored;
+      var legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy && SUPPORTED.indexOf(legacy) !== -1) {
+        window.localStorage.setItem(STORAGE_KEY, legacy);
+        return legacy;
+      }
     } catch (e) { /* storage blocked */ }
     var navLangs = navigator.languages || [navigator.language || DEFAULT];
     for (var i = 0; i < navLangs.length; i++) {
@@ -100,6 +112,11 @@
 
   function applyDocumentMeta() {
     document.documentElement.setAttribute('lang', current);
+    // Les SPA (console, portail, DPP public) possedent leur propre titre et
+    // leur propre description. Sans ce garde-fou, elles heriteraient du
+    // titre de la landing des le premier changement de langue — c'est le
+    // genre d'effet de bord qui avait fait retirer l'ancien auto-translate.js.
+    if (window.TF_I18N_SKIP_META) return;
     var title = t('meta.title', null);
     if (title) document.title = title;
     var desc = t('meta.description', null);
@@ -128,7 +145,13 @@
     if (SUPPORTED.indexOf(lang) === -1) lang = DEFAULT;
     return loadLocale(lang).then(function (ok) {
       current = ok ? lang : DEFAULT;
-      try { window.localStorage.setItem(STORAGE_KEY, current); } catch (e) { /* noop */ }
+      try {
+        window.localStorage.setItem(STORAGE_KEY, current);
+        // Miroir transitoire : garantit qu'un eventuel lecteur de l'ancienne
+        // cle encore non migre reste coherent. A retirer une fois la
+        // migration confirmee en production.
+        window.localStorage.setItem(LEGACY_STORAGE_KEY, current);
+      } catch (e) { /* noop */ }
       applyDocumentMeta();
       applyTo(document);
       document.dispatchEvent(new CustomEvent('tf:languagechange', { detail: { lang: current } }));

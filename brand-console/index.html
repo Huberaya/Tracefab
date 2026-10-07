@@ -943,6 +943,12 @@
        while the app defaults to "fr", so on a first visit it rewrote only the
        glossary-matched strings and produced a half-translated UI. This page owns
        its own complete catalogue. -->
+    <!-- i18n consolide : catalogue unique /assets/i18n, servi par le runtime
+         partage tf-i18n.js. TF_I18N_SKIP_META protege le titre propre de
+         cette page : sans lui elle heriterait du titre de la landing. -->
+    <script>window.TF_I18N_SKIP_META = true;</script>
+    <script src="/assets/i18n/en.js"></script>
+    <script src="/assets/js/tf-i18n.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -1435,381 +1441,16 @@
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
       
-      const brandTranslations = {
-        fr: {
-          stDraft: "Brouillon",
-          stSent: "Envoyée",
-          stInProgress: "En cours",
-          stSubmitted: "Soumise",
-          stChangesRequested: "À corriger",
-          stApproved: "Approuvée",
-          stCancelled: "Annulée",
-          stVerified: "Vérifiée",
-          stNeedsReview: "À revoir",
-          stOpen: "Ouverte",
-          stAcknowledged: "Acquittée",
-          stWaived: "Dérogation",
-          stResolved: "Résolue",
-          stNotStarted: "Non démarré",
-          stDataReady: "Prêt pour validation",
-          stReadyToPublish: "Validé & prêt à publier",
-          stReviewRequired: "Revue requise",
-          stActive: "Actif",
-          stCompleted: "Terminée",
-          stInvited: "Invité",
-          stDeclared: "Déclaré",
-          stDocumented: "Documenté",
-          stUploaded: "Enregistré",
-          stScanning: "Contrôle en cours",
-          stAvailable: "Disponible",
-          stRejected: "Rejeté",
-          stDeleted: "Supprimé",
-          stSuspended: "Suspendu",
-          stRevoked: "Révoqué",
-          demoUnavailable: "Indisponible en mode démonstration — connectez les API TRACEFAB pour exécuter cette action.",
-          navMain: "Console Principale",
-          overview: "Vue d’ensemble",
-          products: "Produits",
-          suppliers: "Fournisseurs",
-          materials: "Matières",
-          supplyChain: "Traçabilité",
-          navCollection: "Collecte & Conformité",
-          requests: "Demandes de données",
-          questionnaires: "Questionnaires",
-          documents: "Documents",
-          certifications: "Certifications",
-          quality: "Qualité & Conformité",
-          dpp: "Passeport DPP",
-          navGov: "Gouvernance",
-          reports: "Rapports & Audits",
-          settings: "Paramètres",
-          newRequest: "+ Nouvelle demande",
-          signOut: "Déconnexion",
-          openRequests: "Demandes ouvertes",
-          dueSoon: "Échéances proches (< 7j)",
-          submitted: "Réponses reçues",
-          quickActions: "Actions Rapides",
-          createRequest: "Créer une demande de données",
-          dppReadiness: "Passeport Produit Numérique (DPP)",
-          dppDesc: "Vérifiez l'éligibilité de vos collections aux normes européennes ESPR et CIRPASS 1.2."
-        },
-        en: {
-          stDraft: "Draft",
-          stSent: "Sent",
-          stInProgress: "In progress",
-          stSubmitted: "Submitted",
-          stChangesRequested: "Changes requested",
-          stApproved: "Approved",
-          stCancelled: "Cancelled",
-          stVerified: "Verified",
-          stNeedsReview: "Needs review",
-          stOpen: "Open",
-          stAcknowledged: "Acknowledged",
-          stWaived: "Waived",
-          stResolved: "Resolved",
-          stNotStarted: "Not started",
-          stDataReady: "Ready for validation",
-          stReadyToPublish: "Ready to publish",
-          stReviewRequired: "Review required",
-          stActive: "Active",
-          stCompleted: "Completed",
-          stInvited: "Invited",
-          stDeclared: "Declared",
-          stDocumented: "Documented",
-          stUploaded: "Saved",
-          stScanning: "Scanning",
-          stAvailable: "Available",
-          stRejected: "Rejected",
-          stDeleted: "Deleted",
-          stSuspended: "Suspended",
-          stRevoked: "Revoked",
-          demoUnavailable: "Not available in demonstration mode — connect the TRACEFAB APIs to run this action.",
-          navMain: "Main Console",
-          overview: "Overview",
-          products: "Products",
-          suppliers: "Suppliers",
-          materials: "Materials",
-          supplyChain: "Traceability",
-          navCollection: "Collection & Compliance",
-          requests: "Data Requests",
-          questionnaires: "Questionnaires",
-          documents: "Documents",
-          certifications: "Certifications",
-          quality: "Quality & Compliance",
-          dpp: "DPP Passport",
-          navGov: "Governance",
-          reports: "Reports & Audits",
-          settings: "Settings",
-          newRequest: "+ New request",
-          signOut: "Sign out",
-          openRequests: "Open requests",
-          dueSoon: "Due soon (< 7d)",
-          submitted: "Responses received",
-          quickActions: "Quick Actions",
-          createRequest: "Create data request",
-          dppReadiness: "Digital Product Passport (DPP)",
-          dppDesc: "Verify your collection readiness against European ESPR and CIRPASS 1.2 standards."
-        },
-        de: {
-          stDraft: "Entwurf",
-          stSent: "Gesendet",
-          stInProgress: "In Bearbeitung",
-          stSubmitted: "Eingereicht",
-          stChangesRequested: "Korrektur nötig",
-          stApproved: "Genehmigt",
-          stCancelled: "Storniert",
-          stVerified: "Verifiziert",
-          stNeedsReview: "Prüfung nötig",
-          stOpen: "Offen",
-          stAcknowledged: "Bestätigt",
-          stWaived: "Ausnahme",
-          stResolved: "Gelöst",
-          stNotStarted: "Nicht begonnen",
-          stDataReady: "Bereit zur Validierung",
-          stReadyToPublish: "Freigegeben & publikationsbereit",
-          stReviewRequired: "Prüfung erforderlich",
-          stActive: "Aktiv",
-          stCompleted: "Abgeschlossen",
-          stInvited: "Eingeladen",
-          stDeclared: "Erklärt",
-          stDocumented: "Dokumentiert",
-          stUploaded: "Gespeichert",
-          stScanning: "Wird geprüft",
-          stAvailable: "Verfügbar",
-          stRejected: "Abgelehnt",
-          stDeleted: "Gelöscht",
-          stSuspended: "Ausgesetzt",
-          stRevoked: "Widerrufen",
-          demoUnavailable: "Im Demonstrationsmodus nicht verfügbar — verbinden Sie die TRACEFAB-APIs, um diese Aktion auszuführen.",
-          navMain: "Hauptkonsole",
-          overview: "Übersicht",
-          products: "Produkte",
-          suppliers: "Lieferanten",
-          materials: "Materialien",
-          supplyChain: "Rückverfolgbarkeit",
-          navCollection: "Erfassung & Konformität",
-          requests: "Datenanfragen",
-          questionnaires: "Fragebögen",
-          documents: "Dokumente",
-          certifications: "Zertifikate",
-          quality: "Qualität & Konformität",
-          dpp: "DPP-Pass",
-          navGov: "Governance",
-          reports: "Berichte & Audits",
-          settings: "Einstellungen",
-          newRequest: "+ Neue Anfrage",
-          signOut: "Abmelden",
-          openRequests: "Offene Anfragen",
-          dueSoon: "Fällig bald (< 7T)",
-          submitted: "Antworten erhalten",
-          quickActions: "Schnellaktionen",
-          createRequest: "Datenanfrage erstellen",
-          dppReadiness: "Digitaler Produktpass (DPP)",
-          dppDesc: "Überprüfen Sie die Konformität Ihrer Kollektionen gemäß europäischen ESPR- und CIRPASS 1.2-Normen."
-        },
-        it: {
-          stDraft: "Bozza",
-          stSent: "Inviata",
-          stInProgress: "In corso",
-          stSubmitted: "Inviata",
-          stChangesRequested: "Da correggere",
-          stApproved: "Approvata",
-          stCancelled: "Annullata",
-          stVerified: "Verificata",
-          stNeedsReview: "Da rivedere",
-          stOpen: "Aperta",
-          stAcknowledged: "Presa in carico",
-          stWaived: "Deroga",
-          stResolved: "Risolta",
-          stNotStarted: "Non avviato",
-          stDataReady: "Pronto per la validazione",
-          stReadyToPublish: "Validato e pronto alla pubblicazione",
-          stReviewRequired: "Revisione richiesta",
-          stActive: "Attivo",
-          stCompleted: "Completata",
-          stInvited: "Invitato",
-          stDeclared: "Dichiarato",
-          stDocumented: "Documentato",
-          stUploaded: "Salvato",
-          stScanning: "Controllo in corso",
-          stAvailable: "Disponibile",
-          stRejected: "Respinto",
-          stDeleted: "Eliminato",
-          stSuspended: "Sospeso",
-          stRevoked: "Revocato",
-          demoUnavailable: "Non disponibile in modalità dimostrativa — collega le API TRACEFAB per eseguire questa azione.",
-          navMain: "Console Principale",
-          overview: "Panoramica",
-          products: "Prodotti",
-          suppliers: "Fornitori",
-          materials: "Materiali",
-          supplyChain: "Tracciabilità",
-          navCollection: "Raccolta & Conformità",
-          requests: "Richieste dati",
-          questionnaires: "Questionari",
-          documents: "Documenti",
-          certifications: "Certificazioni",
-          quality: "Qualità & Conformità",
-          dpp: "Passaporto DPP",
-          navGov: "Governance",
-          reports: "Rapporti & Audit",
-          settings: "Impostazioni",
-          newRequest: "+ Nuova richiesta",
-          signOut: "Disconnetti",
-          openRequests: "Richieste aperte",
-          dueSoon: "In scadenza (< 7gg)",
-          submitted: "Risposte ricevute",
-          quickActions: "Azioni Rapide",
-          createRequest: "Crea richiesta dati",
-          dppReadiness: "Passaporto Digitale del Prodotto (DPP)",
-          dppDesc: "Verifica l'idoneità delle tue collezioni rispetto agli standard europei ESPR e CIRPASS 1.2."
-        },
-        es: {
-          stDraft: "Borrador",
-          stSent: "Enviada",
-          stInProgress: "En curso",
-          stSubmitted: "Entregada",
-          stChangesRequested: "Por corregir",
-          stApproved: "Aprobada",
-          stCancelled: "Cancelada",
-          stVerified: "Verificada",
-          stNeedsReview: "Por revisar",
-          stOpen: "Abierta",
-          stAcknowledged: "Confirmada",
-          stWaived: "Exención",
-          stResolved: "Resuelta",
-          stNotStarted: "Sin empezar",
-          stDataReady: "Lista para validación",
-          stReadyToPublish: "Validada y lista para publicar",
-          stReviewRequired: "Revisión requerida",
-          stActive: "Activo",
-          stCompleted: "Completada",
-          stInvited: "Invitado",
-          stDeclared: "Declarado",
-          stDocumented: "Documentado",
-          stUploaded: "Guardado",
-          stScanning: "Comprobando",
-          stAvailable: "Disponible",
-          stRejected: "Rechazado",
-          stDeleted: "Eliminado",
-          stSuspended: "Suspendido",
-          stRevoked: "Revocado",
-          demoUnavailable: "No disponible en modo demostración — conecta las API de TRACEFAB para ejecutar esta acción.",
-          navMain: "Consola Principal",
-          overview: "Resumen",
-          products: "Productos",
-          suppliers: "Proveedores",
-          materials: "Materiales",
-          supplyChain: "Trazabilidad",
-          navCollection: "Recopilación y Cumplimiento",
-          requests: "Solicitudes de datos",
-          questionnaires: "Cuestionarios",
-          documents: "Documentos",
-          certifications: "Certificaciones",
-          quality: "Calidad y Cumplimiento",
-          dpp: "Pasaporte DPP",
-          navGov: "Gobernanza",
-          reports: "Informes y Auditorías",
-          settings: "Configuración",
-          newRequest: "+ Nueva solicitud",
-          signOut: "Cerrar sesión",
-          openRequests: "Solicitudes abiertas",
-          dueSoon: "Próximas a vencer (< 7d)",
-          submitted: "Respuestas recibidas",
-          quickActions: "Acciones Rápidas",
-          createRequest: "Crear solicitud de datos",
-          dppReadiness: "Pasaporte Digital de Producto (DPP)",
-          dppDesc: "Verifique la preparación de sus colecciones frente a los estándares europeos ESPR y CIRPASS 1.2."
-        },
-        nl: {
-          stDraft: "Concept",
-          stSent: "Verzonden",
-          stInProgress: "Loopt",
-          stSubmitted: "Ingediend",
-          stChangesRequested: "Correctie nodig",
-          stApproved: "Goedgekeurd",
-          stCancelled: "Geannuleerd",
-          stVerified: "Geverifieerd",
-          stNeedsReview: "Beoordeling nodig",
-          stOpen: "Open",
-          stAcknowledged: "Bevestigd",
-          stWaived: "Ontheffing",
-          stResolved: "Opgelost",
-          stNotStarted: "Niet gestart",
-          stDataReady: "Klaar voor validatie",
-          stReadyToPublish: "Gevalideerd en publicatieklaar",
-          stReviewRequired: "Beoordeling vereist",
-          stActive: "Actief",
-          stCompleted: "Afgerond",
-          stInvited: "Uitgenodigd",
-          stDeclared: "Opgegeven",
-          stDocumented: "Gedocumenteerd",
-          stUploaded: "Opgeslagen",
-          stScanning: "Wordt gecontroleerd",
-          stAvailable: "Beschikbaar",
-          stRejected: "Afgewezen",
-          stDeleted: "Verwijderd",
-          stSuspended: "Opgeschort",
-          stRevoked: "Ingetrokken",
-          demoUnavailable: "Niet beschikbaar in demonstratiemodus — verbind de TRACEFAB-API's om deze actie uit te voeren.",
-          navMain: "Hoofdconsole",
-          overview: "Overzicht",
-          products: "Producten",
-          suppliers: "Leveranciers",
-          materials: "Materialen",
-          supplyChain: "Traceerbaarheid",
-          navCollection: "Verzameling & Naleving",
-          requests: "Gegevensaanvragen",
-          questionnaires: "Vragenlijsten",
-          documents: "Documenten",
-          certifications: "Certificeringen",
-          quality: "Kwaliteit & Naleving",
-          dpp: "DPP-Paspoort",
-          navGov: "Governance",
-          reports: "Rapporten & Audits",
-          settings: "Instellingen",
-          newRequest: "+ Nieuwe aanvraag",
-          signOut: "Uitloggen",
-          openRequests: "Openstaande aanvragen",
-          dueSoon: "Binnenkort verwacht (< 7d)",
-          submitted: "Ontvangen antwoorden",
-          quickActions: "Snelle Acties",
-          createRequest: "Gegevensaanvraag aanmaken",
-          dppReadiness: "Digitaal Productpaspoort (DPP)",
-          dppDesc: "Controleer de conformiteit van uw collecties met de Europese normen ESPR en CIRPASS 1.2."
-        },
-        pt: {
-          navMain: "Consola Principal",
-          overview: "Visão geral",
-          products: "Produtos",
-          suppliers: "Fornecedores",
-          materials: "Materiais",
-          supplyChain: "Rastreabilidade",
-          navCollection: "Recolha & Conformidade",
-          requests: "Pedidos de dados",
-          questionnaires: "Questionários",
-          documents: "Documentos",
-          certifications: "Certificações",
-          quality: "Qualidade & Conformidade",
-          dpp: "Passaporte DPP",
-          navGov: "Governança",
-          reports: "Relatórios & Auditorias",
-          settings: "Definições",
-          newRequest: "+ Novo pedido",
-          signOut: "Terminar sessão",
-          openRequests: "Pedidos abertos",
-          dueSoon: "A expirar brevemente (< 7d)",
-          submitted: "Respostas recebidas",
-          quickActions: "Ações Rápidas",
-          createRequest: "Criar pedido de dados",
-          dppReadiness: "Passaporte Digital de Produto (DPP)",
-          dppDesc: "Verifique a conformidade das suas coleções com as normas europeias ESPR e CIRPASS 1.2."
-        }
-      };
+      // Le dictionnaire inline de cette page a ete fusionne dans le
+        // catalogue unique /assets/i18n (portees 'shared' et 'brandTranslations').
+        // Regenerable par scripts/build_app_i18n.mjs.
 
       function bt(key) {
-        const lang = state.lang || 'en';
-        return brandTranslations[lang]?.[key] || brandTranslations['en']?.[key] || brandTranslations['fr']?.[key] || key;
+        const T = window.TF_I18N;
+        if (!T) return key;
+        // Portee console d'abord, puis le fonds commun. Le repli anglais
+        // est assure par le runtime : plus aucun repli francais implicite.
+        return T.t('console.' + key, null) || T.t('shared.' + key, key);
       }
 
       function brandLangSwitcher() {
@@ -1825,11 +1466,26 @@
       }
 
       function setBrandLang(lang) {
+        const T = window.TF_I18N;
+        // setLanguage ecrit les deux cles de stockage, charge la locale puis
+        // emet tf:languagechange, qui declenche le rendu ci-dessous.
+        if (T) { T.setLanguage(lang); return; }
         state.lang = lang;
-        localStorage.setItem('tracefab_lang', lang);
         document.documentElement.lang = lang;
         render();
       }
+
+      // Un changement de langue ne vient pas forcement du selecteur de cette
+      // page : il peut venir de la landing ou d'un autre onglet. On re-rend
+      // sur l'evenement du runtime, ce qui donne un chemin unique quelle que
+      // soit l'origine. Le drapeau evite un double rendu a l'amorcage.
+      let i18nReady = false;
+      document.addEventListener('tf:languagechange', (event) => {
+        state.lang = event.detail.lang;
+        document.documentElement.lang = state.lang;
+        if (i18nReady) render();
+      });
+
 
       // Le script de la console est encapsule dans une IIFE : les fonctions
       // declarees ici ne sont pas globales. Les attributs HTML inline
@@ -4525,7 +4181,11 @@
         }
       }
       window.tracefabBrandConsole = { state, sync };
-      boot();
+      // Le catalogue doit etre charge dans la langue de l'application avant
+      // le premier rendu.
+      (window.TF_I18N ? window.TF_I18N.setLanguage(state.lang) : Promise.resolve())
+        .then(() => { i18nReady = true; }, () => { i18nReady = true; })
+        .then(boot, boot);
     })();
   </script>
 </body>
