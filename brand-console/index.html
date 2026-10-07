@@ -5,224 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tracefab — Brand Console</title>
   <meta name="description" content="Tracefab Brand Console — collecter, revoir et améliorer les données fournisseurs.">
-  <style>
-    :root {
-      --ink: #17231f;
-      --muted: #71807a;
-      --paper: #f7f8f4;
-      --panel: #ffffff;
-      --line: #e2e8df;
-      --green: #0b7656;
-      --green-dark: #07523e;
-      --green-soft: #e4f3ec;
-      --yellow: #d79621;
-      --yellow-soft: #fff3d8;
-      --red: #bd514e;
-      --red-soft: #ffebea;
-      --shadow: 0 16px 45px rgba(20, 42, 34, .08);
-      --radius: 18px;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--ink);
-      background: var(--paper);
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--paper); }
-    button, input, select, textarea { font: inherit; }
-    button { cursor: pointer; }
-    .app { display: grid; grid-template-columns: 256px minmax(0, 1fr); min-height: 100vh; }
-    .sidebar { background: #112b23; color: #eff8f2; padding: 25px 16px; display: flex; flex-direction: column; }
-    .brand { display: flex; align-items: center; gap: 11px; padding: 0 11px 31px; }
-    .brand-mark { width: 36px; height: 36px; border-radius: 12px; background: #d7f3e4; color: var(--green-dark); display: grid; place-items: center; font-weight: 900; letter-spacing: -.08em; }
-    .brand-name { font-weight: 780; letter-spacing: -.03em; font-size: 18px; }
-    .brand-name small { display: block; color: #a9c4b6; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin-top: 2px; }
-    .nav { display: grid; gap: 6px; }
-    .nav button { appearance: none; border: 0; color: #b8cec2; background: transparent; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 12px 13px; text-align: left; font-size: 13px; font-weight: 650; }
-    .nav button:hover, .nav button.active { background: rgba(255,255,255,.1); color: white; }
-    .nav-icon { width: 19px; text-align: center; opacity: .9; }
-    .sidebar-bottom { margin-top: auto; border-top: 1px solid rgba(255,255,255,.12); padding: 18px 10px 2px; }
-    .user-mini { display: flex; gap: 10px; align-items: center; color: #c5d8cd; font-size: 12px; min-width: 0; }
-    .avatar { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; background: #9edec0; color: #124936; display: grid; place-items: center; font-weight: 800; font-size: 12px; }
-    .user-mini strong { display: block; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .user-mini span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
-    .link-button { border: 0; background: transparent; color: inherit; padding: 0; font-size: 12px; text-decoration: underline; opacity: .85; }
-    .main { min-width: 0; }
-    .topbar { height: 76px; padding: 0 40px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.7); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-    .crumb { color: var(--muted); font-size: 13px; font-weight: 650; }
-    .crumb strong { color: var(--ink); }
-    .top-actions { display: flex; align-items: center; gap: 12px; }
-    .org-select { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; color: var(--ink); background: white; max-width: 220px; }
-    .content { max-width: 1420px; margin: 0 auto; padding: 42px 40px 70px; }
-    .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .13em; color: var(--green); font-weight: 800; margin-bottom: 11px; }
-    h1 { margin: 0; font-size: clamp(27px, 3vw, 42px); line-height: 1.06; letter-spacing: -.055em; }
-    h2 { margin: 0; font-size: 22px; letter-spacing: -.035em; }
-    h3 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
-    p { color: var(--muted); line-height: 1.6; }
-    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 31px; }
-    .page-head p { margin: 10px 0 0; max-width: 640px; font-size: 14px; }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-    .btn { border: 1px solid transparent; border-radius: 11px; padding: 10px 15px; font-weight: 750; font-size: 13px; transition: transform .15s, box-shadow .15s, background .15s; }
-    .btn:hover { transform: translateY(-1px); }
-    .btn-primary { color: white; background: var(--green); box-shadow: 0 7px 16px rgba(11,118,86,.18); }
-    .btn-primary:hover { background: var(--green-dark); }
-    .btn-secondary { background: white; color: var(--ink); border-color: var(--line); }
-    .btn-danger { background: var(--red-soft); color: var(--red); border-color: #f7cbc8; }
-    .btn-small { padding: 7px 10px; font-size: 12px; }
-    .grid { display: grid; gap: 17px; }
-    .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 22px; }
-    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
-    .kpi { padding: 20px; position: relative; overflow: hidden; }
-    .kpi::after { content: ""; width: 90px; height: 90px; border-radius: 50%; position: absolute; right: -30px; bottom: -44px; background: var(--green-soft); }
-    .kpi-label { color: var(--muted); font-size: 12px; font-weight: 700; }
-    .kpi-value { font-size: 30px; font-weight: 800; letter-spacing: -.06em; margin: 13px 0 3px; }
-    .kpi-note { font-size: 11px; color: var(--muted); }
-    .split { grid-template-columns: minmax(0, 1.55fr) minmax(300px, .85fr); align-items: start; }
-    .panel { padding: 23px; }
-    .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 18px; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 610px; }
-    th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; text-align: left; padding: 0 12px 12px; font-weight: 800; }
-    td { border-top: 1px solid #edf0eb; padding: 14px 12px; font-size: 13px; vertical-align: middle; }
-    td:first-child, th:first-child { padding-left: 0; }
-    td:last-child, th:last-child { padding-right: 0; text-align: right; }
-    .clickable { cursor: pointer; }
-    .clickable:hover td { background: #fbfcfa; }
-    .status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 800; background: #edf1ed; color: #5b6962; }
-    .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-    .status-sent, .status-in_progress { background: #e8f1ff; color: #3970b3; }
-    .status-submitted { background: var(--yellow-soft); color: #9a680e; }
-    .status-approved, .status-verified_by_reviewer { background: var(--green-soft); color: var(--green); }
-    .status-changes_requested, .status-needs_review { background: var(--red-soft); color: var(--red); }
-    .status-draft { background: #f0f1f0; color: #69766e; }
-    .progress { height: 7px; background: #e9eee9; border-radius: 99px; overflow: hidden; min-width: 82px; }
-    .progress > span { display: block; height: 100%; background: var(--green); border-radius: inherit; }
-    .progress-line { display: flex; align-items: center; gap: 9px; }
-    .progress-line small { color: var(--muted); font-weight: 700; min-width: 32px; }
-    .quick-grid { display: grid; gap: 10px; }
-    .quick { display: flex; align-items: center; gap: 12px; padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: #fcfdfa; text-align: left; color: var(--ink); }
-    .quick:hover { border-color: #afd8c4; background: var(--green-soft); }
-    .quick-icon { width: 33px; height: 33px; display: grid; place-items: center; background: var(--green-soft); border-radius: 10px; color: var(--green); font-weight: 900; }
-    .quick strong { display: block; font-size: 13px; }
-    .quick span { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
-    .empty { padding: 44px 20px; text-align: center; color: var(--muted); }
-    .empty-icon { width: 44px; height: 44px; display: grid; place-items: center; margin: 0 auto 13px; border-radius: 14px; background: var(--green-soft); color: var(--green); font-size: 20px; }
-    .filters { display: flex; gap: 10px; margin-bottom: 17px; flex-wrap: wrap; }
-    .input, .select, .textarea { width: 100%; border: 1px solid #d8e1d8; border-radius: 10px; padding: 11px 12px; background: white; color: var(--ink); outline: none; }
-    .input:focus, .select:focus, .textarea:focus { border-color: #58a887; box-shadow: 0 0 0 3px rgba(88,168,135,.13); }
-    .filters .input { max-width: 300px; }
-    label { display: grid; gap: 7px; color: #53625a; font-size: 12px; font-weight: 750; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .field-full { grid-column: 1 / -1; }
-    .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 21px; }
-    .modal-backdrop { position: fixed; inset: 0; background: rgba(13,30,24,.42); display: grid; place-items: center; padding: 20px; z-index: 20; }
-    .modal { width: min(630px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 80px rgba(0,0,0,.22); }
-    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 20px; }
-    .close { border: 0; background: #f2f4f1; color: var(--muted); width: 31px; height: 31px; border-radius: 9px; font-size: 18px; }
-    .detail-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 23px; }
-    .detail-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
-    .meta { color: var(--muted); font-size: 12px; }
-    .item-list { display: grid; gap: 11px; }
-    .item { padding: 16px; border: 1px solid var(--line); border-radius: 13px; display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: center; }
-    .item h3 { font-size: 14px; }
-    .item p { margin: 5px 0 0; font-size: 12px; }
-    .item-response { margin-top: 11px; padding: 10px 11px; background: #f7faf6; border-radius: 10px; font-size: 12px; color: #44544b; }
-    .item-response strong { color: var(--ink); }
-    .score-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 20px; }
-    .score { padding: 18px; }
-    .score-name { color: var(--muted); font-size: 11px; font-weight: 750; }
-    .score-value { font-size: 26px; font-weight: 800; letter-spacing: -.06em; margin: 10px 0; }
-    .issue { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding: 15px 0; border-top: 1px solid #edf0eb; }
-    .severity { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 850; padding: 5px 7px; border-radius: 6px; background: var(--yellow-soft); color: #9a680e; }
-    .severity-blocking { background: var(--red-soft); color: var(--red); }
-    .severity-info { background: var(--green-soft); color: var(--green); }
-    .issue strong { display: block; font-size: 13px; }
-    .issue p { margin: 4px 0 0; font-size: 12px; }
-    .pipeline { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 15px; margin-top: 15px; }
-    .dpp-hero { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: center; padding: 24px; background: white; border: 1px solid var(--line); border-radius: 18px; margin-bottom: 22px; }
-    .dpp-gauge-box { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-right: 1px solid #edf0eb; padding-right: 20px; }
-    .dpp-gauge-val { font-size: 48px; font-weight: 850; letter-spacing: -.06em; line-height: 1; }
-    .dpp-gauge-label { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-top: 6px; letter-spacing: .06em; }
-    .dpp-pillars { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 22px; }
-    .pillar-card { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
-    .pillar-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-    .pillar-name { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-    .pillar-score { font-size: 18px; font-weight: 850; }
-    .pillar-bar-bg { width: 100%; height: 6px; background: #edf2ee; border-radius: 3px; overflow: hidden; margin-bottom: 12px; }
-    .pillar-bar-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width .3s ease; }
-    .pillar-items { display: grid; gap: 6px; }
-    .pillar-item { display: flex; align-items: center; justify-content: space-between; font-size: 12px; padding: 5px 0; border-top: 1px solid #f4f6f3; }
-    .pillar-item-label { display: flex; align-items: center; gap: 7px; color: #37473d; }
-    .check-icon { font-weight: 800; font-size: 12px; }
-    .check-icon.met { color: var(--green); }
-    .check-icon.unmet { color: var(--red); }
-    .tier-column { background: #fbfdfa; border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 11px; min-height: 240px; }
-    .tier-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #edf0eb; padding-bottom: 8px; }
-    .tier-title { font-size: 11px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; color: var(--green); }
-    .tier-badge { font-size: 10px; background: var(--green-soft); color: var(--green); padding: 2px 7px; border-radius: 6px; font-weight: 800; }
-    .node-card { background: white; border: 1px solid #e1e7e2; border-radius: 11px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.03); display: grid; gap: 7px; position: relative; }
-    .node-card:hover { border-color: #4da87d; box-shadow: 0 4px 12px rgba(88,168,135,.15); }
-    .node-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
-    .node-type-pill { font-size: 9px; text-transform: uppercase; font-weight: 850; padding: 2px 6px; border-radius: 4px; background: #eef3ef; color: #44544b; }
-    .node-label { font-size: 13px; font-weight: 750; color: var(--ink); line-height: 1.3; }
-    .node-meta { font-size: 11px; color: var(--muted); }
-    .node-connector { display: flex; justify-content: center; align-items: center; color: #8ba093; font-size: 16px; margin: -4px 0; }
-    .toast { position: fixed; right: 25px; bottom: 25px; z-index: 50; color: white; background: #19372d; border-radius: 12px; padding: 13px 16px; box-shadow: 0 12px 35px rgba(0,0,0,.2); font-size: 13px; max-width: 360px; }
-    .toast.error { background: #8e3d3b; }
-    .auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 25px; background: radial-gradient(circle at 10% 0%, #d9f1e4, transparent 32%), var(--paper); }
-    .auth-card { width: min(950px, 100%); display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border-radius: 24px; background: white; box-shadow: var(--shadow); border: 1px solid var(--line); }
-    .auth-copy { padding: 52px; background: #112b23; color: white; }
-    .auth-copy h1 { font-size: 38px; margin-top: 75px; }
-    .auth-copy p { color: #bdd2c7; max-width: 370px; }
-    .auth-copy ul { color: #d7e9df; padding-left: 19px; line-height: 2; font-size: 13px; }
-    .auth-box { padding: 38px; min-height: 480px; }
-    .config-error { max-width: 600px; background: white; padding: 35px; border-radius: 20px; box-shadow: var(--shadow); }
-    .demo-banner { background: var(--yellow-soft); border-bottom: 1px solid #f2ddb0; padding: 8px 15px; text-align: center; font-size: 11px; color: #8f6417; font-weight: 750; }
-    @media (max-width: 1050px) { .kpis { grid-template-columns: repeat(2, 1fr); } .split { grid-template-columns: 1fr; } }
-    @media (max-width: 760px) { .app { display: block; } .sidebar { min-height: auto; padding: 15px; } .brand { padding-bottom: 16px; } .nav { display: flex; overflow-x: auto; } .nav button { white-space: nowrap; } .sidebar-bottom { display: none; } .topbar { padding: 0 18px; height: 64px; } .content { padding: 28px 18px 50px; } .page-head, .detail-hero { display: block; } .actions { justify-content: flex-start; margin-top: 17px; } .org-select { max-width: 150px; } .auth-card { grid-template-columns: 1fr; } .auth-copy { display: none; } .auth-box { min-height: 500px; } .form-grid { grid-template-columns: 1fr; } .field-full { grid-column: auto; } .score-grid { grid-template-columns: repeat(2, 1fr); } }
-  
-    /* Review Workflow & Document Annotations (Chantier 4) */
-    .annotation-panel {
-      background: #fbfdfc;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 14px;
-      margin-top: 12px;
-    }
-    .doc-preview-strip {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      background: #ffffff;
-      border: 1px solid #dce6e0;
-      border-radius: 10px;
-      margin-top: 8px;
-    }
-    .badge-ocr {
-      background: #ede9fe;
-      color: #6d28d9;
-      font-size: 10px;
-      font-weight: 750;
-      padding: 2px 7px;
-      border-radius: 6px;
-      font-family: var(--font-mono);
-    }
-    .annotation-bubble {
-      background: #fffbeb;
-      border-left: 3px solid #d97706;
-      padding: 10px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      color: #78350f;
-      margin-top: 10px;
-    }
-    .annotation-bubble.verified {
-      background: #f0fdf4;
-      border-left-color: #10b981;
-      color: #065f46;
-    }
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040b08'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230fb97c' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M8 25l5-6 6 3 5-15' fill='none' stroke='%230fb97c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#040b08">
 
-  </style>
-  <script src="/auto-translate.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+  <!-- TRACEFAB v3 design system. The console SPA below is untouched: these two
+       sheets re-skin its existing class names. -->
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-console.css">
+  <!-- The legacy auto-translate.js DOM rewriter was removed here: it read the
+       same localStorage key as this app ("tracefab_lang") but defaulted to "en"
+       while the app defaults to "fr", so on a first visit it rewrote only the
+       glossary-matched strings and produced a half-translated UI. This page owns
+       its own complete catalogue. -->
 </head>
 <body>
   <div id="app"></div>
@@ -279,18 +77,57 @@
         packaging: 'Conditionnement (Packaging)',
       };
 
-      const labels = {
-        draft: 'Brouillon', sent: 'Envoyée', in_progress: 'En cours', submitted: 'Soumise',
-        changes_requested: 'À corriger', approved: 'Approuvée', cancelled: 'Annulée',
-        verified_by_reviewer: 'Vérifiée', needs_review: 'À revoir', open: 'Ouverte', acknowledged: 'Acquittée', waived: 'Dérogation', resolved: 'Résolue',
-        not_started: 'Non démarré', data_ready: 'Prêt pour validation', ready_to_publish: 'Validé & Prêt à publier', review_required: 'Revue requise'
+      // ── PHASE 7 — collection vocabulary ──────────────────────────────────
+      // Status chips used to read French in every language because `labels`
+      // was a hardcoded map. They now resolve through the catalogue.
+      const STATUS_KEYS = {
+        "draft": "stDraft",
+        "sent": "stSent",
+        "in_progress": "stInProgress",
+        "submitted": "stSubmitted",
+        "changes_requested": "stChangesRequested",
+        "approved": "stApproved",
+        "cancelled": "stCancelled",
+        "verified_by_reviewer": "stVerified",
+        "needs_review": "stNeedsReview",
+        "open": "stOpen",
+        "acknowledged": "stAcknowledged",
+        "waived": "stWaived",
+        "resolved": "stResolved",
+        "not_started": "stNotStarted",
+        "data_ready": "stDataReady",
+        "ready_to_publish": "stReadyToPublish",
+        "review_required": "stReviewRequired",
+        "active": "stActive",
+        "completed": "stCompleted",
+        "invited": "stInvited",
+        "declared": "stDeclared",
+        "documented": "stDocumented"
       };
+      const statusLabel = (value) => value ? bt(STATUS_KEYS[value] || value) : '—';
+
+      // The brief's six collection states, derived from the request statuses
+      // the API already produces. One request maps to exactly one state.
+      const DC_STATES = ['missing', 'requested', 'submitted', 'underReview', 'accepted', 'rejected'];
+      const DC_MAP = {
+        draft: 'missing', not_started: 'missing',
+        sent: 'requested', in_progress: 'requested', open: 'requested', invited: 'requested',
+        submitted: 'submitted', data_ready: 'submitted',
+        needs_review: 'underReview', review_required: 'underReview', acknowledged: 'underReview',
+        approved: 'accepted', verified_by_reviewer: 'accepted', completed: 'accepted',
+        ready_to_publish: 'accepted', resolved: 'accepted', active: 'accepted',
+        changes_requested: 'rejected', cancelled: 'rejected', waived: 'rejected'
+      };
+      const dcState = (status) => DC_MAP[status] || 'requested';
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TF';
-      const status = (value) => `<span class="status status-${esc(value)}">${esc(labels[value] || value || '—')}</span>`;
+      const status = (value) => `<span class="status status-${esc(value)}">${esc(statusLabel(value) || '—')}</span>`;
       const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
-      const date = (value) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value)) : '—';
-      const moneyless = (value) => Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+      // Dates and numbers used to render French whatever the chosen language.
+      const BCP47 = { fr: 'fr-FR', en: 'en-GB', de: 'de-DE', it: 'it-IT', es: 'es-ES', nl: 'nl-NL', pt: 'pt-PT' };
+      const locale = () => BCP47[state.lang] || 'en-GB';
+      const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle: 'medium' }).format(new Date(value)) : '—';
+      const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits: 0 });
 
       function notify(message, isError = false) {
         state.toast = { message, isError };
@@ -619,7 +456,7 @@
         const brand = currentBrand();
         const userName = state.user?.fullName || state.user?.email || 'Utilisateur';
         const brandOptions = brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('');
-        return `${state.demo ? '<div class="demo-banner">Mode démonstration — ajoutez ?demo=0 et configurez Clerk pour connecter les APIs Tracefab.</div>' : ''}
+        return `${state.demo ? `<div class="demo-banner">${esc(bt('mcDemoBanner'))}</div>` : ''}
           <div class="app">
             <aside class="sidebar">
               <div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div>
@@ -636,14 +473,15 @@
                 ${navButton('documents', '▤', bt('documents'))}
                 ${navButton('certifications', '✓', bt('certifications'))}
                 ${navButton('quality', '◒', bt('quality'))}
-                ${navButton('massBalance', '⚖', 'Bilan Massique (TC)')}
-                ${navButton('integrations', '⇄', 'Intégrations')}
-                ${navButton('dpp', '📋', bt('dpp'))}
+                ${navButton('risk', '⚠', bt('risk'))}
+                ${navButton('massBalance', '⚖', bt('massBalance'))}
+                ${navButton('integrations', '⇄', bt('integrations'))}
+                ${navButton('dpp', '▣', bt('dpp'))}
                 <div class="nav-section-title">${esc(bt('navGov'))}</div>
                 ${navButton('reports', '☷', bt('reports'))}
                 ${navButton('settings', '⚙', bt('settings'))}
               </nav>
-              <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">Se déconnecter</button></div></div></div>
+              <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">${esc(bt("signOut"))}</button></div></div></div>
             </aside>
             <main class="main">
               <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">${esc(bt("newRequest"))}</button></div></header>
@@ -653,39 +491,265 @@
           ${state.modal ? modal(state.modal) : ''}
           ${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
-      function viewLabel() { return ({
-        overview: 'Vue d’ensemble',
-        products: 'Produits',
-        suppliers: 'Fournisseurs',
-        materials: 'Matières & Fibres',
-        supplyChain: 'Supply Chain & Traçabilité',
-        requests: 'Demandes de données',
-        questionnaires: 'Créateur de Questionnaires',
-        documents: 'Preuves & Documents',
-        certifications: 'Certifications',
-        quality: 'Qualité & Conformité',
-        dpp: 'Passeport Numérique (DPP Readiness)',
-        reports: 'Rapports & Audits',
-        settings: 'Paramètres',
-        requestDetail: 'Détail de la demande',
-        productDetail: 'Détail du produit',
-        supplierDetail: 'Détail du fournisseur'
-      })[state.view] || 'Vue d’ensemble'; }
+      function viewLabel() {
+        // Same keys the nav buttons use, so a label can never drift from its
+        // menu entry — and nothing here is hardcoded in one language.
+        const k = ({
+          overview: 'overview', products: 'products', suppliers: 'suppliers',
+          materials: 'materials', supplyChain: 'supplyChain', requests: 'requests',
+          questionnaires: 'questionnaires', documents: 'documents',
+          certifications: 'certifications', quality: 'quality', risk: 'risk',
+          massBalance: 'massBalance', integrations: 'integrations', dpp: 'dpp',
+          reports: 'reports', settings: 'settings',
+          requestDetail: 'requestDetail', productDetail: 'productDetail',
+          supplierDetail: 'supplierDetail'
+        })[state.view] || 'overview';
+        return bt(k);
+      }
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
       
       const brandTranslations = {
         fr: {
+          qcView: "Voir",
+          evEyebrow: "Preuves",
+          evTitle: "Centre de preuves",
+          evLead: "Chaque affirmation ramenée au document qui la prouve. Source, émetteur, date et expiration sur chaque pièce.",
+          evAll: "Toutes les preuves",
+          evRegister: "Registre des preuves",
+          evTrustScale: "Classées sur l’échelle de confiance",
+          evExpired: "expirées et encore référencées",
+          evExpiringSoon: "expirent sous 90 jours",
+          evNoExpiry: "Sans expiration",
+          evEmpty: "Aucune preuve enregistrée",
+          evT_document: "Documents",
+          evT_certificate: "Certificats",
+          evT_testReport: "Rapports d’essai",
+          evT_declaration: "Déclarations",
+          evT_audit: "Audits",
+          evT_invoice: "Factures",
+          evT_productionRecord: "Relevés de production",
+          evC_item: "Preuve",
+          evC_type: "Type",
+          evC_issuer: "Émetteur",
+          evC_source: "Source",
+          evC_product: "Produit",
+          evC_supplier: "Fournisseur",
+          evC_date: "Émise le",
+          evC_expires: "Expire le",
+          evC_status: "Confiance",
+          evC_verification: "Vérification",
+          evSrc_supplierUpload: "Dépôt fournisseur",
+          evSrc_labDirect: "Laboratoire direct",
+          evSrc_auditBody: "Organisme d’audit",
+          evSrc_erpSync: "Synchro ERP",
+          evV_thirdParty: "Tierce partie",
+          evV_brandReviewed: "Revue marque",
+          evV_selfDeclared: "Auto-déclarée",
+          evV_pending: "En attente",
+          evV_expired: "Expirée",
+          evTrust_missing: "Manquante",
+          evTrust_review: "À revoir",
+          evTrust_declared: "Déclarée",
+          evTrust_documented: "Documentée",
+          evTrust_verified: "Vérifiée",
+          evTrust_certified: "Certifiée",
+          qcEyebrow: "Qualité des données",
+          qcTitle: "Pouvez-vous faire confiance à vos données ?",
+          qcLead: "Cinq mesures répondent à cette question. En dessous, chaque anomalie ouverte porte le bouton qui la règle.",
+          qcMCompleteness: "Complétude des données",
+          qcMEvidence: "Couverture des preuves",
+          qcMVerification: "Taux de vérification",
+          qcMSupplier: "Qualité fournisseur",
+          qcMProduct: "Qualité produit",
+          qcIssues: "Anomalies ouvertes",
+          qcB_critical: "Critique",
+          qcB_warning: "Avertissement",
+          qcB_review: "À revoir",
+          qcB_resolved: "Résolue",
+          qcDetected: "détectée le",
+          qcFix: "Corriger",
+          qcNoIssues: "Aucune anomalie ouverte",
+          qcNoIssuesD: "Les règles qualité ne remontent aucun blocage.",
+          qcI1: "Le certificat GOTS du composant principal est expiré.",
+          qcI2: "Une déclaration REACH SVHC périmée est encore référencée par un produit.",
+          qcI3: "Certaines données produit n’ont aucune preuve rattachée.",
+          qcI4: "Les données fournisseur n’ont pas été rafraîchies depuis plus de 12 mois.",
+          qcI5: "Un certificat GRS attend sa vérification.",
+          qcI6: "Les pourcentages de composition ne totalisaient pas 100 %.",
+          qcPerProduct: "Score par produit",
+          qcProduct: "Produit",
+          qcChoose: "Choisir un produit…",
+          qcChangeProduct: "Changer de produit",
+          qcRecompute: "Recalculer le score",
+          qcNoScore: "Score non calculé",
+          qcNoScoreD: "Lancez un premier calcul qualité pour ce produit.",
+          qcComputeNow: "Calculer maintenant",
+          qcCompleteness: "Complétude",
+          qcFreshness: "Fraîcheur",
+          qcEvidence: "Preuves",
+          qcConsistency: "Cohérence",
+          qcNotCert: "Le score décrit l’état de préparation des données. Il ne constitue pas une certification.",
+          demoUnavailable: "Indisponible en mode démonstration — connectez les API TRACEFAB pour exécuter cette action.",
+          dcTblRequest: "Demande",
+          dcTblSupplier: "Fournisseur",
+          dcTblStatus: "Statut",
+          dcTblProgress: "Avancement",
+          dcTblDue: "Échéance",
+          dcOpen: "Ouvrir",
+          dcRemind: "Relancer",
+          dcRemindTitle: "Mettre en file une relance fournisseur",
+          dcEmptyTitle: "Aucune demande",
+          dcEmptyBody: "Créez votre première demande fournisseur.",
+          dcCreate: "Créer une demande",
+          stDraft: "Brouillon",
+          stSent: "Envoyée",
+          stInProgress: "En cours",
+          stSubmitted: "Soumise",
+          stChangesRequested: "À corriger",
+          stApproved: "Approuvée",
+          stCancelled: "Annulée",
+          stVerified: "Vérifiée",
+          stNeedsReview: "À revoir",
+          stOpen: "Ouverte",
+          stAcknowledged: "Acquittée",
+          stWaived: "Dérogation",
+          stResolved: "Résolue",
+          stNotStarted: "Non démarré",
+          stDataReady: "Prêt pour validation",
+          stReadyToPublish: "Validé & prêt à publier",
+          stReviewRequired: "Revue requise",
+          stActive: "Actif",
+          stCompleted: "Terminée",
+          stInvited: "Invité",
+          stDeclared: "Déclaré",
+          stDocumented: "Documenté",
+          dcEyebrow: "Collecte & conformité",
+          dcTitle: "Collecte de données",
+          dcLead: "De la question de la marque à la donnée vérifiée. Chaque élément porte un état, et chaque état a un responsable.",
+          dcPipeline: "Le circuit de collecte",
+          dcS1: "Marque",
+          dcS2: "Fournisseur",
+          dcS3: "Produit",
+          dcS4: "Données requises",
+          dcS5: "Preuves",
+          dcS6: "Revue",
+          dcS7: "Données vérifiées",
+          dcS1d: "demande",
+          dcS2d: "répondent",
+          dcS3d: "concernés",
+          dcS4d: "points de donnée",
+          dcS5d: "rattachées",
+          dcS6d: "en attente",
+          dcS7d: "acceptées",
+          dcStates: "Où en est chaque chose",
+          dcMissing: "Manquant",
+          dcRequested: "Demandé",
+          dcSubmitted: "Soumis",
+          dcUnderReview: "En revue",
+          dcAccepted: "Accepté",
+          dcRejected: "Rejeté",
+          dcMissingD: "Jamais demandé",
+          dcRequestedD: "En attente du fournisseur",
+          dcSubmittedD: "Revenu du fournisseur",
+          dcUnderReviewD: "Sur votre bureau",
+          dcAcceptedD: "Vérifié et réutilisable",
+          dcRejectedD: "Renvoyé pour correction",
+          dcAll: "Tous les états",
+          dcSearch: "Rechercher une demande…",
+          dcNewRequest: "+ Nouvelle demande",
+          dcRequests: "Demandes",
+          dcFilterNote: "Sélectionnez un état pour filtrer la liste",
+          dcOwnerYou: "Vous",
+          dcOwnerSupplier: "Fournisseur",
+          dcOwnerNobody: "Personne encore",
+          pvEyebrow: "Catalogue produit",
+          pvTitle: "Produits",
+          pvLead: "Suivez la complétude de vos références, puis ouvrez n’importe quel produit en profondeur.",
+          pvImport: "Importer CSV",
+          pvExport: "Exporter CSV",
+          pvAudit: "Exporter audit",
+          pvNew: "+ Nouveau produit",
+          pvProduct: "Produit",
+          pvCategory: "Catégorie",
+          pvStatus: "Statut",
+          pvCompleteness: "Complétude",
+          pvReadiness: "Maturité",
+          pvOpen: "Ouvrir",
+          pvIntel: "Intelligence",
+          pvEmptyTitle: "Votre catalogue est vide",
+          pvEmptyBody: "Créez votre première référence produit.",
+          pvIntelHint: "Ouvrir la fiche complète — composition, lignage, preuves et maturité DPP.",
+          requestDetail: "Détail de la demande",
+          productDetail: "Détail du produit",
+          supplierDetail: "Détail du fournisseur",
+          risk: "Risque",
+          massBalance: "Bilan massique (TC)",
+          integrations: "Intégrations",
+          riskTitle: "Risque",
+          riskLead: "Où la chaîne est exposée, et ce qui est déjà engagé pour y répondre.",
+          riskSuppliersReview: "Fournisseurs à revoir",
+          riskCertsExpiring: "Certificats expirants",
+          riskCountriesWatch: "Pays sous surveillance",
+          riskCriticalFindings: "Constats critiques",
+          riskRegister: "Registre des risques",
+          riskSupplier: "Fournisseur",
+          riskCountry: "Pays",
+          riskTier: "Rang",
+          riskType: "Risque",
+          riskSeverity: "Gravité",
+          riskStatus: "Statut",
+          riskTypeCert: "Certificat",
+          riskTypeData: "Donnée manquante",
+          riskTypeAudit: "Constat d’audit",
+          riskTypeGeo: "Géographique",
+          riskSevCritical: "Critique",
+          riskSevWarning: "Avertissement",
+          riskSevReview: "À revoir",
+          riskOpen: "Ouvert",
+          riskMitigating: "En traitement",
+          riskExposure: "Exposition par rang",
+          riskNote: "La gravité découle de l’ancienneté des preuves, de la validité des certificats et des constats d’audit. C’est un signal opérationnel, pas un verdict de conformité.",
+          riskNoneTitle: "Aucun risque ouvert",
+          riskNoneBody: "Rien n’est actuellement signalé dans cet espace.",
+          mcDemoBanner: "Espace de démonstration — tous les chiffres sont des données de démonstration. Ajoutez ?demo=0 et configurez Clerk pour connecter les API TRACEFAB.",
+          mcScale: "Échelle",
+          mcFacilities: "Sites",
+          mcCountries: "Pays",
+          mcTrust: "Confiance & préparation",
+          mcDataQuality: "Qualité des données",
+          mcEvidence: "Couverture des preuves",
+          mcVerified: "Vérifié",
+          mcTraceable: "Traçable",
+          mcDppReadiness: "Préparation DPP",
+          mcDppNote: "La préparation DPP est un indicateur de maturité, jamais une certification juridique.",
+          mcAttention: "Attention",
+          mcAttentionSub: "Chaque ligne mène à sa correction",
+          mcMissing: "Données manquantes",
+          mcMissingD: "Points de données requis sans soumission",
+          mcExpiring: "Certificats à expirer",
+          mcExpiringD: "Valides moins de 90 jours",
+          mcReview: "Fournisseurs à revoir",
+          mcReviewD: "Données soumises en attente de vérification",
+          mcIncomplete: "Produits incomplets",
+          mcIncompleteD: "Sous le seuil de publication",
+          mcOpen: "Ouvrir",
+          mcOps: "Opérations",
+          mcDemoData: "Données de démonstration",
+          mcGreeting: "Voici l’état de vos données de chaîne et ce qui mérite votre attention.",
+          mcRecent: "Demandes récentes",
+          mcSeeAll: "Tout voir",
+          mcInvite: "Inviter un fournisseur",
           navMain: "Console Principale",
           overview: "Vue d’ensemble",
           products: "Produits",
           suppliers: "Fournisseurs",
           materials: "Matières",
-          supplyChain: "Traçabilité",
+          supplyChain: "Chaîne d’approvisionnement",
           navCollection: "Collecte & Conformité",
-          requests: "Demandes de données",
+          requests: "Collecte de données",
           questionnaires: "Questionnaires",
-          documents: "Documents",
+          documents: "Preuves",
           certifications: "Certifications",
           quality: "Qualité & Conformité",
           dpp: "Passeport DPP",
@@ -703,16 +767,245 @@
           dppDesc: "Vérifiez l'éligibilité de vos collections aux normes européennes ESPR et CIRPASS 1.2."
         },
         en: {
+          qcView: "View",
+          evEyebrow: "Evidence",
+          evTitle: "Evidence Center",
+          evLead: "Every claim, traced back to the document that proves it. Source, issuer, date and expiry on every record.",
+          evAll: "All evidence",
+          evRegister: "Evidence register",
+          evTrustScale: "Ranked on the trust scale",
+          evExpired: "expired and still referenced",
+          evExpiringSoon: "expiring within 90 days",
+          evNoExpiry: "No expiry",
+          evEmpty: "No evidence recorded yet",
+          evT_document: "Documents",
+          evT_certificate: "Certificates",
+          evT_testReport: "Test reports",
+          evT_declaration: "Declarations",
+          evT_audit: "Audits",
+          evT_invoice: "Invoices",
+          evT_productionRecord: "Production records",
+          evC_item: "Evidence",
+          evC_type: "Type",
+          evC_issuer: "Issuer",
+          evC_source: "Source",
+          evC_product: "Product",
+          evC_supplier: "Supplier",
+          evC_date: "Issued",
+          evC_expires: "Expires",
+          evC_status: "Trust",
+          evC_verification: "Verification",
+          evSrc_supplierUpload: "Supplier upload",
+          evSrc_labDirect: "Lab direct",
+          evSrc_auditBody: "Audit body",
+          evSrc_erpSync: "ERP sync",
+          evV_thirdParty: "Third party",
+          evV_brandReviewed: "Brand reviewed",
+          evV_selfDeclared: "Self-declared",
+          evV_pending: "Pending",
+          evV_expired: "Expired",
+          evTrust_missing: "Missing",
+          evTrust_review: "Review",
+          evTrust_declared: "Declared",
+          evTrust_documented: "Documented",
+          evTrust_verified: "Verified",
+          evTrust_certified: "Certified",
+          qcEyebrow: "Data quality",
+          qcTitle: "Can you trust your data?",
+          qcLead: "Five measures answer that question. Below them, every open issue carries the button that fixes it.",
+          qcMCompleteness: "Data completeness",
+          qcMEvidence: "Evidence coverage",
+          qcMVerification: "Verification rate",
+          qcMSupplier: "Supplier quality",
+          qcMProduct: "Product quality",
+          qcIssues: "Open issues",
+          qcB_critical: "Critical",
+          qcB_warning: "Warning",
+          qcB_review: "Review",
+          qcB_resolved: "Resolved",
+          qcDetected: "detected",
+          qcFix: "Fix this",
+          qcNoIssues: "No open issue",
+          qcNoIssuesD: "Quality rules report nothing blocking.",
+          qcI1: "GOTS certificate on the main component has expired.",
+          qcI2: "A REACH SVHC statement past its expiry date is still referenced by a product.",
+          qcI3: "Some product data has no supporting evidence attached.",
+          qcI4: "Supplier data has not been refreshed in over 12 months.",
+          qcI5: "A GRS scope certificate is awaiting verification.",
+          qcI6: "Composition percentages did not add up to 100%.",
+          qcPerProduct: "Per-product score",
+          qcProduct: "Product",
+          qcChoose: "Choose a product…",
+          qcChangeProduct: "Change product",
+          qcRecompute: "Recompute score",
+          qcNoScore: "Score not computed",
+          qcNoScoreD: "Run a first quality computation for this product.",
+          qcComputeNow: "Compute now",
+          qcCompleteness: "Completeness",
+          qcFreshness: "Freshness",
+          qcEvidence: "Evidence",
+          qcConsistency: "Consistency",
+          qcNotCert: "The score describes data readiness. It is not a certification.",
+          demoUnavailable: "Not available in demonstration mode — connect the TRACEFAB APIs to run this action.",
+          dcTblRequest: "Request",
+          dcTblSupplier: "Supplier",
+          dcTblStatus: "Status",
+          dcTblProgress: "Progress",
+          dcTblDue: "Due",
+          dcOpen: "Open",
+          dcRemind: "Remind",
+          dcRemindTitle: "Queue a reminder to the supplier",
+          dcEmptyTitle: "No request yet",
+          dcEmptyBody: "Create your first supplier request.",
+          dcCreate: "Create a request",
+          stDraft: "Draft",
+          stSent: "Sent",
+          stInProgress: "In progress",
+          stSubmitted: "Submitted",
+          stChangesRequested: "Changes requested",
+          stApproved: "Approved",
+          stCancelled: "Cancelled",
+          stVerified: "Verified",
+          stNeedsReview: "Needs review",
+          stOpen: "Open",
+          stAcknowledged: "Acknowledged",
+          stWaived: "Waived",
+          stResolved: "Resolved",
+          stNotStarted: "Not started",
+          stDataReady: "Ready for validation",
+          stReadyToPublish: "Ready to publish",
+          stReviewRequired: "Review required",
+          stActive: "Active",
+          stCompleted: "Completed",
+          stInvited: "Invited",
+          stDeclared: "Declared",
+          stDocumented: "Documented",
+          dcEyebrow: "Collection & compliance",
+          dcTitle: "Data collection",
+          dcLead: "From the brand's question to verified data. Every item carries a state, and every state has an owner.",
+          dcPipeline: "The collection pipeline",
+          dcS1: "Brand",
+          dcS2: "Supplier",
+          dcS3: "Product",
+          dcS4: "Required data",
+          dcS5: "Evidence",
+          dcS6: "Review",
+          dcS7: "Verified data",
+          dcS1d: "asks",
+          dcS2d: "answers",
+          dcS3d: "in scope",
+          dcS4d: "data points",
+          dcS5d: "attached",
+          dcS6d: "awaiting",
+          dcS7d: "accepted",
+          dcStates: "Where everything stands",
+          dcMissing: "Missing",
+          dcRequested: "Requested",
+          dcSubmitted: "Submitted",
+          dcUnderReview: "Under review",
+          dcAccepted: "Accepted",
+          dcRejected: "Rejected",
+          dcMissingD: "Never asked for",
+          dcRequestedD: "Waiting on the supplier",
+          dcSubmittedD: "Back from the supplier",
+          dcUnderReviewD: "On your desk",
+          dcAcceptedD: "Verified and reusable",
+          dcRejectedD: "Sent back for correction",
+          dcAll: "All states",
+          dcSearch: "Search a request…",
+          dcNewRequest: "+ New request",
+          dcRequests: "Requests",
+          dcFilterNote: "Select a state to filter the list",
+          dcOwnerYou: "You",
+          dcOwnerSupplier: "Supplier",
+          dcOwnerNobody: "Nobody yet",
+          pvEyebrow: "Product catalogue",
+          pvTitle: "Products",
+          pvLead: "Track completeness across your references, then open any product in full depth.",
+          pvImport: "Import CSV",
+          pvExport: "Export CSV",
+          pvAudit: "Export audit",
+          pvNew: "+ New product",
+          pvProduct: "Product",
+          pvCategory: "Category",
+          pvStatus: "Status",
+          pvCompleteness: "Completeness",
+          pvReadiness: "Readiness",
+          pvOpen: "Open",
+          pvIntel: "Intelligence",
+          pvEmptyTitle: "Your catalogue is empty",
+          pvEmptyBody: "Create your first product reference.",
+          pvIntelHint: "Open the full product record — composition, lineage, evidence and DPP readiness.",
+          requestDetail: "Request detail",
+          productDetail: "Product detail",
+          supplierDetail: "Supplier detail",
+          risk: "Risk",
+          massBalance: "Mass balance (TC)",
+          integrations: "Integrations",
+          riskTitle: "Risk",
+          riskLead: "Where the supply chain is exposed, and what is already being done about it.",
+          riskSuppliersReview: "Suppliers need review",
+          riskCertsExpiring: "Certificates expiring",
+          riskCountriesWatch: "Countries on watch",
+          riskCriticalFindings: "Critical findings",
+          riskRegister: "Risk register",
+          riskSupplier: "Supplier",
+          riskCountry: "Country",
+          riskTier: "Tier",
+          riskType: "Risk",
+          riskSeverity: "Severity",
+          riskStatus: "Status",
+          riskTypeCert: "Certificate",
+          riskTypeData: "Data gap",
+          riskTypeAudit: "Audit finding",
+          riskTypeGeo: "Geographic",
+          riskSevCritical: "Critical",
+          riskSevWarning: "Warning",
+          riskSevReview: "Review",
+          riskOpen: "Open",
+          riskMitigating: "Mitigating",
+          riskExposure: "Exposure by tier",
+          riskNote: "Severity is derived from evidence age, certificate validity and audit findings. It is an operational signal, not a compliance verdict.",
+          riskNoneTitle: "No open risk",
+          riskNoneBody: "Nothing in this workspace is currently flagged.",
+          mcDemoBanner: "Demonstration workspace — all figures are demonstration data. Add ?demo=0 and configure Clerk to connect the TRACEFAB APIs.",
+          mcScale: "Scale",
+          mcFacilities: "Facilities",
+          mcCountries: "Countries",
+          mcTrust: "Trust & readiness",
+          mcDataQuality: "Data quality",
+          mcEvidence: "Evidence coverage",
+          mcVerified: "Verified",
+          mcTraceable: "Traceable",
+          mcDppReadiness: "DPP readiness",
+          mcDppNote: "DPP readiness is a maturity indicator, never a legal certification.",
+          mcAttention: "Attention",
+          mcAttentionSub: "Every item links to its fix",
+          mcMissing: "Missing data",
+          mcMissingD: "Required data points with no submission",
+          mcExpiring: "Certificates expiring",
+          mcExpiringD: "Valid for less than 90 days",
+          mcReview: "Suppliers need review",
+          mcReviewD: "Submitted data awaiting verification",
+          mcIncomplete: "Products incomplete",
+          mcIncompleteD: "Below the publication threshold",
+          mcOpen: "Open",
+          mcOps: "Operations",
+          mcDemoData: "Demonstration data",
+          mcGreeting: "Here is the state of your supply-chain data and what deserves your attention.",
+          mcRecent: "Recent requests",
+          mcSeeAll: "See all",
+          mcInvite: "Invite a supplier",
           navMain: "Main Console",
           overview: "Overview",
           products: "Products",
           suppliers: "Suppliers",
           materials: "Materials",
-          supplyChain: "Traceability",
+          supplyChain: "Supply chain",
           navCollection: "Collection & Compliance",
-          requests: "Data Requests",
+          requests: "Data collection",
           questionnaires: "Questionnaires",
-          documents: "Documents",
+          documents: "Evidence",
           certifications: "Certifications",
           quality: "Quality & Compliance",
           dpp: "DPP Passport",
@@ -730,16 +1023,245 @@
           dppDesc: "Verify your collection readiness against European ESPR and CIRPASS 1.2 standards."
         },
         de: {
+          qcView: "Ansehen",
+          evEyebrow: "Nachweise",
+          evTitle: "Nachweiszentrum",
+          evLead: "Jede Aussage zurückgeführt auf das Dokument, das sie belegt. Quelle, Aussteller, Datum und Ablauf bei jedem Eintrag.",
+          evAll: "Alle Nachweise",
+          evRegister: "Nachweisregister",
+          evTrustScale: "Eingeordnet auf der Vertrauensskala",
+          evExpired: "abgelaufen und weiterhin referenziert",
+          evExpiringSoon: "laufen in 90 Tagen ab",
+          evNoExpiry: "Ohne Ablauf",
+          evEmpty: "Noch kein Nachweis erfasst",
+          evT_document: "Dokumente",
+          evT_certificate: "Zertifikate",
+          evT_testReport: "Prüfberichte",
+          evT_declaration: "Erklärungen",
+          evT_audit: "Audits",
+          evT_invoice: "Rechnungen",
+          evT_productionRecord: "Produktionsnachweise",
+          evC_item: "Nachweis",
+          evC_type: "Typ",
+          evC_issuer: "Aussteller",
+          evC_source: "Quelle",
+          evC_product: "Produkt",
+          evC_supplier: "Lieferant",
+          evC_date: "Ausgestellt",
+          evC_expires: "Läuft ab",
+          evC_status: "Vertrauen",
+          evC_verification: "Verifizierung",
+          evSrc_supplierUpload: "Lieferanten-Upload",
+          evSrc_labDirect: "Labor direkt",
+          evSrc_auditBody: "Auditstelle",
+          evSrc_erpSync: "ERP-Sync",
+          evV_thirdParty: "Dritte Partei",
+          evV_brandReviewed: "Von der Marke geprüft",
+          evV_selfDeclared: "Selbsterklärt",
+          evV_pending: "Ausstehend",
+          evV_expired: "Abgelaufen",
+          evTrust_missing: "Fehlt",
+          evTrust_review: "Zu prüfen",
+          evTrust_declared: "Erklärt",
+          evTrust_documented: "Dokumentiert",
+          evTrust_verified: "Verifiziert",
+          evTrust_certified: "Zertifiziert",
+          qcEyebrow: "Datenqualität",
+          qcTitle: "Können Sie Ihren Daten vertrauen?",
+          qcLead: "Fünf Kennzahlen beantworten diese Frage. Darunter trägt jeder offene Befund die Schaltfläche, die ihn behebt.",
+          qcMCompleteness: "Datenvollständigkeit",
+          qcMEvidence: "Nachweisabdeckung",
+          qcMVerification: "Verifizierungsquote",
+          qcMSupplier: "Lieferantenqualität",
+          qcMProduct: "Produktqualität",
+          qcIssues: "Offene Befunde",
+          qcB_critical: "Kritisch",
+          qcB_warning: "Warnung",
+          qcB_review: "Zu prüfen",
+          qcB_resolved: "Behoben",
+          qcDetected: "erkannt am",
+          qcFix: "Beheben",
+          qcNoIssues: "Kein offener Befund",
+          qcNoIssuesD: "Die Qualitätsregeln melden nichts Blockierendes.",
+          qcI1: "Das GOTS-Zertifikat der Hauptkomponente ist abgelaufen.",
+          qcI2: "Eine abgelaufene REACH-SVHC-Erklärung wird noch von einem Produkt referenziert.",
+          qcI3: "Für einige Produktdaten ist kein Nachweis hinterlegt.",
+          qcI4: "Lieferantendaten wurden seit über 12 Monaten nicht aktualisiert.",
+          qcI5: "Ein GRS-Zertifikat wartet auf Verifizierung.",
+          qcI6: "Die Zusammensetzungsanteile ergaben nicht 100 %.",
+          qcPerProduct: "Score je Produkt",
+          qcProduct: "Produkt",
+          qcChoose: "Produkt wählen…",
+          qcChangeProduct: "Produkt wechseln",
+          qcRecompute: "Score neu berechnen",
+          qcNoScore: "Score nicht berechnet",
+          qcNoScoreD: "Starten Sie eine erste Qualitätsberechnung für dieses Produkt.",
+          qcComputeNow: "Jetzt berechnen",
+          qcCompleteness: "Vollständigkeit",
+          qcFreshness: "Aktualität",
+          qcEvidence: "Nachweise",
+          qcConsistency: "Konsistenz",
+          qcNotCert: "Der Score beschreibt die Datenreife. Er ist keine Zertifizierung.",
+          demoUnavailable: "Im Demonstrationsmodus nicht verfügbar — verbinden Sie die TRACEFAB-APIs, um diese Aktion auszuführen.",
+          dcTblRequest: "Anfrage",
+          dcTblSupplier: "Lieferant",
+          dcTblStatus: "Status",
+          dcTblProgress: "Fortschritt",
+          dcTblDue: "Frist",
+          dcOpen: "Öffnen",
+          dcRemind: "Erinnern",
+          dcRemindTitle: "Erinnerung an den Lieferanten einreihen",
+          dcEmptyTitle: "Noch keine Anfrage",
+          dcEmptyBody: "Erstellen Sie Ihre erste Lieferantenanfrage.",
+          dcCreate: "Anfrage erstellen",
+          stDraft: "Entwurf",
+          stSent: "Gesendet",
+          stInProgress: "In Bearbeitung",
+          stSubmitted: "Eingereicht",
+          stChangesRequested: "Korrektur nötig",
+          stApproved: "Genehmigt",
+          stCancelled: "Storniert",
+          stVerified: "Verifiziert",
+          stNeedsReview: "Prüfung nötig",
+          stOpen: "Offen",
+          stAcknowledged: "Bestätigt",
+          stWaived: "Ausnahme",
+          stResolved: "Gelöst",
+          stNotStarted: "Nicht begonnen",
+          stDataReady: "Bereit zur Validierung",
+          stReadyToPublish: "Freigegeben & publikationsbereit",
+          stReviewRequired: "Prüfung erforderlich",
+          stActive: "Aktiv",
+          stCompleted: "Abgeschlossen",
+          stInvited: "Eingeladen",
+          stDeclared: "Erklärt",
+          stDocumented: "Dokumentiert",
+          dcEyebrow: "Erhebung & Compliance",
+          dcTitle: "Datenerhebung",
+          dcLead: "Von der Frage der Marke bis zur verifizierten Angabe. Jedes Element hat einen Status, und jeder Status hat einen Verantwortlichen.",
+          dcPipeline: "Der Erhebungsweg",
+          dcS1: "Marke",
+          dcS2: "Lieferant",
+          dcS3: "Produkt",
+          dcS4: "Erforderliche Daten",
+          dcS5: "Nachweise",
+          dcS6: "Prüfung",
+          dcS7: "Verifizierte Daten",
+          dcS1d: "fragt",
+          dcS2d: "antworten",
+          dcS3d: "betroffen",
+          dcS4d: "Datenpunkte",
+          dcS5d: "angehängt",
+          dcS6d: "ausstehend",
+          dcS7d: "angenommen",
+          dcStates: "Wo alles steht",
+          dcMissing: "Fehlt",
+          dcRequested: "Angefragt",
+          dcSubmitted: "Eingereicht",
+          dcUnderReview: "In Prüfung",
+          dcAccepted: "Angenommen",
+          dcRejected: "Abgelehnt",
+          dcMissingD: "Nie angefragt",
+          dcRequestedD: "Wartet auf den Lieferanten",
+          dcSubmittedD: "Vom Lieferanten zurück",
+          dcUnderReviewD: "Auf Ihrem Tisch",
+          dcAcceptedD: "Verifiziert und wiederverwendbar",
+          dcRejectedD: "Zur Korrektur zurückgeschickt",
+          dcAll: "Alle Status",
+          dcSearch: "Anfrage suchen…",
+          dcNewRequest: "+ Neue Anfrage",
+          dcRequests: "Anfragen",
+          dcFilterNote: "Status wählen, um die Liste zu filtern",
+          dcOwnerYou: "Sie",
+          dcOwnerSupplier: "Lieferant",
+          dcOwnerNobody: "Noch niemand",
+          pvEyebrow: "Produktkatalog",
+          pvTitle: "Produkte",
+          pvLead: "Verfolgen Sie die Vollständigkeit Ihrer Artikel und öffnen Sie jedes Produkt in voller Tiefe.",
+          pvImport: "CSV importieren",
+          pvExport: "CSV exportieren",
+          pvAudit: "Audit exportieren",
+          pvNew: "+ Neues Produkt",
+          pvProduct: "Produkt",
+          pvCategory: "Kategorie",
+          pvStatus: "Status",
+          pvCompleteness: "Vollständigkeit",
+          pvReadiness: "Reife",
+          pvOpen: "Öffnen",
+          pvIntel: "Intelligence",
+          pvEmptyTitle: "Ihr Katalog ist leer",
+          pvEmptyBody: "Legen Sie Ihr erstes Produkt an.",
+          pvIntelHint: "Vollständigen Produktdatensatz öffnen — Zusammensetzung, Herkunftskette, Nachweise und DPP-Reife.",
+          requestDetail: "Anfragedetail",
+          productDetail: "Produktdetail",
+          supplierDetail: "Lieferantendetail",
+          risk: "Risiko",
+          massBalance: "Massenbilanz (TC)",
+          integrations: "Integrationen",
+          riskTitle: "Risiko",
+          riskLead: "Wo die Lieferkette exponiert ist und was bereits dagegen läuft.",
+          riskSuppliersReview: "Lieferanten zu prüfen",
+          riskCertsExpiring: "Ablaufende Zertifikate",
+          riskCountriesWatch: "Länder unter Beobachtung",
+          riskCriticalFindings: "Kritische Feststellungen",
+          riskRegister: "Risikoregister",
+          riskSupplier: "Lieferant",
+          riskCountry: "Land",
+          riskTier: "Stufe",
+          riskType: "Risiko",
+          riskSeverity: "Schweregrad",
+          riskStatus: "Status",
+          riskTypeCert: "Zertifikat",
+          riskTypeData: "Datenlücke",
+          riskTypeAudit: "Audit-Feststellung",
+          riskTypeGeo: "Geografisch",
+          riskSevCritical: "Kritisch",
+          riskSevWarning: "Warnung",
+          riskSevReview: "Prüfen",
+          riskOpen: "Offen",
+          riskMitigating: "In Bearbeitung",
+          riskExposure: "Exposition nach Stufe",
+          riskNote: "Der Schweregrad ergibt sich aus Nachweisalter, Zertifikatsgültigkeit und Audit-Feststellungen. Ein operatives Signal, kein Compliance-Urteil.",
+          riskNoneTitle: "Kein offenes Risiko",
+          riskNoneBody: "In diesem Arbeitsbereich ist derzeit nichts markiert.",
+          mcDemoBanner: "Demonstrationsbereich — alle Zahlen sind Demonstrationsdaten. Fügen Sie ?demo=0 hinzu und konfigurieren Sie Clerk, um die TRACEFAB-APIs zu verbinden.",
+          mcScale: "Umfang",
+          mcFacilities: "Standorte",
+          mcCountries: "Länder",
+          mcTrust: "Vertrauen & Reife",
+          mcDataQuality: "Datenqualität",
+          mcEvidence: "Nachweisabdeckung",
+          mcVerified: "Verifiziert",
+          mcTraceable: "Rückverfolgbar",
+          mcDppReadiness: "DPP-Reife",
+          mcDppNote: "Die DPP-Reife ist ein Reifeindikator, nie eine rechtliche Zertifizierung.",
+          mcAttention: "Achtung",
+          mcAttentionSub: "Jeder Eintrag führt zur Behebung",
+          mcMissing: "Fehlende Daten",
+          mcMissingD: "Erforderliche Datenpunkte ohne Eingabe",
+          mcExpiring: "Ablaufende Zertifikate",
+          mcExpiringD: "Weniger als 90 Tage gültig",
+          mcReview: "Lieferanten prüfen",
+          mcReviewD: "Eingereichte Daten warten auf Verifizierung",
+          mcIncomplete: "Unvollständige Produkte",
+          mcIncompleteD: "Unter der Veröffentlichungsschwelle",
+          mcOpen: "Öffnen",
+          mcOps: "Betrieb",
+          mcDemoData: "Demonstrationsdaten",
+          mcGreeting: "Hier ist der Zustand Ihrer Lieferkettendaten und was Ihre Aufmerksamkeit verdient.",
+          mcRecent: "Letzte Anfragen",
+          mcSeeAll: "Alle ansehen",
+          mcInvite: "Lieferant einladen",
           navMain: "Hauptkonsole",
           overview: "Übersicht",
           products: "Produkte",
           suppliers: "Lieferanten",
           materials: "Materialien",
-          supplyChain: "Rückverfolgbarkeit",
+          supplyChain: "Lieferkette",
           navCollection: "Erfassung & Konformität",
-          requests: "Datenanfragen",
+          requests: "Datenerhebung",
           questionnaires: "Fragebögen",
-          documents: "Dokumente",
+          documents: "Nachweise",
           certifications: "Zertifikate",
           quality: "Qualität & Konformität",
           dpp: "DPP-Pass",
@@ -757,16 +1279,245 @@
           dppDesc: "Überprüfen Sie die Konformität Ihrer Kollektionen gemäß europäischen ESPR- und CIRPASS 1.2-Normen."
         },
         it: {
+          qcView: "Vedi",
+          evEyebrow: "Prove",
+          evTitle: "Centro prove",
+          evLead: "Ogni affermazione ricondotta al documento che la dimostra. Fonte, emittente, data e scadenza su ogni voce.",
+          evAll: "Tutte le prove",
+          evRegister: "Registro delle prove",
+          evTrustScale: "Classificate sulla scala di fiducia",
+          evExpired: "scadute e ancora referenziate",
+          evExpiringSoon: "scadono entro 90 giorni",
+          evNoExpiry: "Senza scadenza",
+          evEmpty: "Nessuna prova registrata",
+          evT_document: "Documenti",
+          evT_certificate: "Certificati",
+          evT_testReport: "Rapporti di prova",
+          evT_declaration: "Dichiarazioni",
+          evT_audit: "Audit",
+          evT_invoice: "Fatture",
+          evT_productionRecord: "Registri di produzione",
+          evC_item: "Prova",
+          evC_type: "Tipo",
+          evC_issuer: "Emittente",
+          evC_source: "Fonte",
+          evC_product: "Prodotto",
+          evC_supplier: "Fornitore",
+          evC_date: "Emessa il",
+          evC_expires: "Scade il",
+          evC_status: "Fiducia",
+          evC_verification: "Verifica",
+          evSrc_supplierUpload: "Caricamento fornitore",
+          evSrc_labDirect: "Laboratorio diretto",
+          evSrc_auditBody: "Ente di audit",
+          evSrc_erpSync: "Sincronizzazione ERP",
+          evV_thirdParty: "Terza parte",
+          evV_brandReviewed: "Rivista dal marchio",
+          evV_selfDeclared: "Autodichiarata",
+          evV_pending: "In attesa",
+          evV_expired: "Scaduta",
+          evTrust_missing: "Mancante",
+          evTrust_review: "Da rivedere",
+          evTrust_declared: "Dichiarata",
+          evTrust_documented: "Documentata",
+          evTrust_verified: "Verificata",
+          evTrust_certified: "Certificata",
+          qcEyebrow: "Qualità dei dati",
+          qcTitle: "Puoi fidarti dei tuoi dati?",
+          qcLead: "Cinque misure rispondono a questa domanda. Sotto, ogni anomalia aperta porta il pulsante che la risolve.",
+          qcMCompleteness: "Completezza dei dati",
+          qcMEvidence: "Copertura delle prove",
+          qcMVerification: "Tasso di verifica",
+          qcMSupplier: "Qualità fornitore",
+          qcMProduct: "Qualità prodotto",
+          qcIssues: "Anomalie aperte",
+          qcB_critical: "Critica",
+          qcB_warning: "Avviso",
+          qcB_review: "Da rivedere",
+          qcB_resolved: "Risolta",
+          qcDetected: "rilevata il",
+          qcFix: "Risolvi",
+          qcNoIssues: "Nessuna anomalia aperta",
+          qcNoIssuesD: "Le regole di qualità non segnalano blocchi.",
+          qcI1: "Il certificato GOTS del componente principale è scaduto.",
+          qcI2: "Una dichiarazione REACH SVHC scaduta è ancora referenziata da un prodotto.",
+          qcI3: "Alcuni dati di prodotto non hanno prove allegate.",
+          qcI4: "I dati del fornitore non vengono aggiornati da oltre 12 mesi.",
+          qcI5: "Un certificato GRS attende la verifica.",
+          qcI6: "Le percentuali di composizione non raggiungevano il 100%.",
+          qcPerProduct: "Punteggio per prodotto",
+          qcProduct: "Prodotto",
+          qcChoose: "Scegli un prodotto…",
+          qcChangeProduct: "Cambia prodotto",
+          qcRecompute: "Ricalcola il punteggio",
+          qcNoScore: "Punteggio non calcolato",
+          qcNoScoreD: "Avvia un primo calcolo qualità per questo prodotto.",
+          qcComputeNow: "Calcola ora",
+          qcCompleteness: "Completezza",
+          qcFreshness: "Freschezza",
+          qcEvidence: "Prove",
+          qcConsistency: "Coerenza",
+          qcNotCert: "Il punteggio descrive la prontezza dei dati. Non è una certificazione.",
+          demoUnavailable: "Non disponibile in modalità dimostrativa — collega le API TRACEFAB per eseguire questa azione.",
+          dcTblRequest: "Richiesta",
+          dcTblSupplier: "Fornitore",
+          dcTblStatus: "Stato",
+          dcTblProgress: "Avanzamento",
+          dcTblDue: "Scadenza",
+          dcOpen: "Apri",
+          dcRemind: "Sollecita",
+          dcRemindTitle: "Metti in coda un sollecito al fornitore",
+          dcEmptyTitle: "Nessuna richiesta",
+          dcEmptyBody: "Crea la tua prima richiesta al fornitore.",
+          dcCreate: "Crea una richiesta",
+          stDraft: "Bozza",
+          stSent: "Inviata",
+          stInProgress: "In corso",
+          stSubmitted: "Inviata dal fornitore",
+          stChangesRequested: "Da correggere",
+          stApproved: "Approvata",
+          stCancelled: "Annullata",
+          stVerified: "Verificata",
+          stNeedsReview: "Da rivedere",
+          stOpen: "Aperta",
+          stAcknowledged: "Presa in carico",
+          stWaived: "Deroga",
+          stResolved: "Risolta",
+          stNotStarted: "Non avviato",
+          stDataReady: "Pronto per la validazione",
+          stReadyToPublish: "Validato e pronto alla pubblicazione",
+          stReviewRequired: "Revisione richiesta",
+          stActive: "Attivo",
+          stCompleted: "Completata",
+          stInvited: "Invitato",
+          stDeclared: "Dichiarato",
+          stDocumented: "Documentato",
+          dcEyebrow: "Raccolta e conformità",
+          dcTitle: "Raccolta dati",
+          dcLead: "Dalla domanda del marchio al dato verificato. Ogni elemento ha uno stato, e ogni stato ha un responsabile.",
+          dcPipeline: "Il percorso di raccolta",
+          dcS1: "Marchio",
+          dcS2: "Fornitore",
+          dcS3: "Prodotto",
+          dcS4: "Dati richiesti",
+          dcS5: "Prove",
+          dcS6: "Revisione",
+          dcS7: "Dati verificati",
+          dcS1d: "chiede",
+          dcS2d: "rispondono",
+          dcS3d: "coinvolti",
+          dcS4d: "punti dato",
+          dcS5d: "allegate",
+          dcS6d: "in attesa",
+          dcS7d: "accettati",
+          dcStates: "A che punto è tutto",
+          dcMissing: "Mancante",
+          dcRequested: "Richiesto",
+          dcSubmitted: "Inviato",
+          dcUnderReview: "In revisione",
+          dcAccepted: "Accettato",
+          dcRejected: "Respinto",
+          dcMissingD: "Mai richiesto",
+          dcRequestedD: "In attesa del fornitore",
+          dcSubmittedD: "Tornato dal fornitore",
+          dcUnderReviewD: "Sulla tua scrivania",
+          dcAcceptedD: "Verificato e riutilizzabile",
+          dcRejectedD: "Rimandato per correzione",
+          dcAll: "Tutti gli stati",
+          dcSearch: "Cerca una richiesta…",
+          dcNewRequest: "+ Nuova richiesta",
+          dcRequests: "Richieste",
+          dcFilterNote: "Seleziona uno stato per filtrare l’elenco",
+          dcOwnerYou: "Tu",
+          dcOwnerSupplier: "Fornitore",
+          dcOwnerNobody: "Ancora nessuno",
+          pvEyebrow: "Catalogo prodotti",
+          pvTitle: "Prodotti",
+          pvLead: "Monitora la completezza dei tuoi articoli, poi apri qualsiasi prodotto in profondità.",
+          pvImport: "Importa CSV",
+          pvExport: "Esporta CSV",
+          pvAudit: "Esporta audit",
+          pvNew: "+ Nuovo prodotto",
+          pvProduct: "Prodotto",
+          pvCategory: "Categoria",
+          pvStatus: "Stato",
+          pvCompleteness: "Completezza",
+          pvReadiness: "Prontezza",
+          pvOpen: "Apri",
+          pvIntel: "Intelligence",
+          pvEmptyTitle: "Il catalogo è vuoto",
+          pvEmptyBody: "Crea il tuo primo prodotto.",
+          pvIntelHint: "Apri la scheda completa — composizione, filiera, prove e prontezza DPP.",
+          requestDetail: "Dettaglio richiesta",
+          productDetail: "Dettaglio prodotto",
+          supplierDetail: "Dettaglio fornitore",
+          risk: "Rischio",
+          massBalance: "Bilancio di massa (TC)",
+          integrations: "Integrazioni",
+          riskTitle: "Rischio",
+          riskLead: "Dove la filiera è esposta e cosa è già in corso per rispondervi.",
+          riskSuppliersReview: "Fornitori da rivedere",
+          riskCertsExpiring: "Certificati in scadenza",
+          riskCountriesWatch: "Paesi sotto osservazione",
+          riskCriticalFindings: "Rilievi critici",
+          riskRegister: "Registro dei rischi",
+          riskSupplier: "Fornitore",
+          riskCountry: "Paese",
+          riskTier: "Livello",
+          riskType: "Rischio",
+          riskSeverity: "Gravità",
+          riskStatus: "Stato",
+          riskTypeCert: "Certificato",
+          riskTypeData: "Dato mancante",
+          riskTypeAudit: "Rilievo di audit",
+          riskTypeGeo: "Geografico",
+          riskSevCritical: "Critico",
+          riskSevWarning: "Avviso",
+          riskSevReview: "Da rivedere",
+          riskOpen: "Aperto",
+          riskMitigating: "In gestione",
+          riskExposure: "Esposizione per livello",
+          riskNote: "La gravità deriva dall’età delle prove, dalla validità dei certificati e dai rilievi di audit. È un segnale operativo, non un verdetto di conformità.",
+          riskNoneTitle: "Nessun rischio aperto",
+          riskNoneBody: "Al momento nulla è segnalato in questo spazio.",
+          mcDemoBanner: "Spazio dimostrativo — tutte le cifre sono dati dimostrativi. Aggiungi ?demo=0 e configura Clerk per collegare le API TRACEFAB.",
+          mcScale: "Scala",
+          mcFacilities: "Siti",
+          mcCountries: "Paesi",
+          mcTrust: "Fiducia e prontezza",
+          mcDataQuality: "Qualità dei dati",
+          mcEvidence: "Copertura evidenze",
+          mcVerified: "Verificato",
+          mcTraceable: "Tracciabile",
+          mcDppReadiness: "Prontezza DPP",
+          mcDppNote: "La prontezza DPP è un indicatore di maturità, mai una certificazione legale.",
+          mcAttention: "Attenzione",
+          mcAttentionSub: "Ogni voce porta alla sua correzione",
+          mcMissing: "Dati mancanti",
+          mcMissingD: "Punti dati richiesti senza invio",
+          mcExpiring: "Certificati in scadenza",
+          mcExpiringD: "Validi per meno di 90 giorni",
+          mcReview: "Fornitori da rivedere",
+          mcReviewD: "Dati inviati in attesa di verifica",
+          mcIncomplete: "Prodotti incompleti",
+          mcIncompleteD: "Sotto la soglia di pubblicazione",
+          mcOpen: "Apri",
+          mcOps: "Operazioni",
+          mcDemoData: "Dati dimostrativi",
+          mcGreeting: "Ecco lo stato dei dati di filiera e ciò che merita la tua attenzione.",
+          mcRecent: "Richieste recenti",
+          mcSeeAll: "Vedi tutto",
+          mcInvite: "Invita un fornitore",
           navMain: "Console Principale",
           overview: "Panoramica",
           products: "Prodotti",
           suppliers: "Fornitori",
           materials: "Materiali",
-          supplyChain: "Tracciabilità",
+          supplyChain: "Filiera",
           navCollection: "Raccolta & Conformità",
-          requests: "Richieste dati",
+          requests: "Raccolta dati",
           questionnaires: "Questionari",
-          documents: "Documenti",
+          documents: "Prove",
           certifications: "Certificazioni",
           quality: "Qualità & Conformità",
           dpp: "Passaporto DPP",
@@ -784,16 +1535,245 @@
           dppDesc: "Verifica l'idoneità delle tue collezioni rispetto agli standard europei ESPR e CIRPASS 1.2."
         },
         es: {
+          qcView: "Ver",
+          evEyebrow: "Pruebas",
+          evTitle: "Centro de pruebas",
+          evLead: "Cada afirmación remitida al documento que la demuestra. Fuente, emisor, fecha y caducidad en cada registro.",
+          evAll: "Todas las pruebas",
+          evRegister: "Registro de pruebas",
+          evTrustScale: "Clasificadas en la escala de confianza",
+          evExpired: "caducadas y aún referenciadas",
+          evExpiringSoon: "caducan en 90 días",
+          evNoExpiry: "Sin caducidad",
+          evEmpty: "Ninguna prueba registrada",
+          evT_document: "Documentos",
+          evT_certificate: "Certificados",
+          evT_testReport: "Informes de ensayo",
+          evT_declaration: "Declaraciones",
+          evT_audit: "Auditorías",
+          evT_invoice: "Facturas",
+          evT_productionRecord: "Registros de producción",
+          evC_item: "Prueba",
+          evC_type: "Tipo",
+          evC_issuer: "Emisor",
+          evC_source: "Fuente",
+          evC_product: "Producto",
+          evC_supplier: "Proveedor",
+          evC_date: "Emitida",
+          evC_expires: "Caduca",
+          evC_status: "Confianza",
+          evC_verification: "Verificación",
+          evSrc_supplierUpload: "Carga del proveedor",
+          evSrc_labDirect: "Laboratorio directo",
+          evSrc_auditBody: "Organismo auditor",
+          evSrc_erpSync: "Sincronización ERP",
+          evV_thirdParty: "Tercera parte",
+          evV_brandReviewed: "Revisada por la marca",
+          evV_selfDeclared: "Autodeclarada",
+          evV_pending: "Pendiente",
+          evV_expired: "Caducada",
+          evTrust_missing: "Falta",
+          evTrust_review: "Por revisar",
+          evTrust_declared: "Declarada",
+          evTrust_documented: "Documentada",
+          evTrust_verified: "Verificada",
+          evTrust_certified: "Certificada",
+          qcEyebrow: "Calidad de los datos",
+          qcTitle: "¿Puedes confiar en tus datos?",
+          qcLead: "Cinco medidas responden a esa pregunta. Debajo, cada incidencia abierta lleva el botón que la resuelve.",
+          qcMCompleteness: "Integridad de los datos",
+          qcMEvidence: "Cobertura de pruebas",
+          qcMVerification: "Tasa de verificación",
+          qcMSupplier: "Calidad del proveedor",
+          qcMProduct: "Calidad del producto",
+          qcIssues: "Incidencias abiertas",
+          qcB_critical: "Crítica",
+          qcB_warning: "Aviso",
+          qcB_review: "Por revisar",
+          qcB_resolved: "Resuelta",
+          qcDetected: "detectada el",
+          qcFix: "Resolver",
+          qcNoIssues: "Ninguna incidencia abierta",
+          qcNoIssuesD: "Las reglas de calidad no reportan bloqueos.",
+          qcI1: "El certificado GOTS del componente principal ha caducado.",
+          qcI2: "Una declaración REACH SVHC caducada sigue referenciada por un producto.",
+          qcI3: "Algunos datos de producto no tienen prueba adjunta.",
+          qcI4: "Los datos del proveedor no se han actualizado en más de 12 meses.",
+          qcI5: "Un certificado GRS está pendiente de verificación.",
+          qcI6: "Los porcentajes de composición no sumaban 100 %.",
+          qcPerProduct: "Puntuación por producto",
+          qcProduct: "Producto",
+          qcChoose: "Elegir un producto…",
+          qcChangeProduct: "Cambiar de producto",
+          qcRecompute: "Recalcular la puntuación",
+          qcNoScore: "Puntuación no calculada",
+          qcNoScoreD: "Lanza un primer cálculo de calidad para este producto.",
+          qcComputeNow: "Calcular ahora",
+          qcCompleteness: "Integridad",
+          qcFreshness: "Frescura",
+          qcEvidence: "Pruebas",
+          qcConsistency: "Coherencia",
+          qcNotCert: "La puntuación describe la preparación de los datos. No es una certificación.",
+          demoUnavailable: "No disponible en modo demostración — conecta las API de TRACEFAB para ejecutar esta acción.",
+          dcTblRequest: "Solicitud",
+          dcTblSupplier: "Proveedor",
+          dcTblStatus: "Estado",
+          dcTblProgress: "Avance",
+          dcTblDue: "Vencimiento",
+          dcOpen: "Abrir",
+          dcRemind: "Recordar",
+          dcRemindTitle: "Poner en cola un recordatorio al proveedor",
+          dcEmptyTitle: "Ninguna solicitud",
+          dcEmptyBody: "Crea tu primera solicitud al proveedor.",
+          dcCreate: "Crear una solicitud",
+          stDraft: "Borrador",
+          stSent: "Enviada",
+          stInProgress: "En curso",
+          stSubmitted: "Entregada",
+          stChangesRequested: "Por corregir",
+          stApproved: "Aprobada",
+          stCancelled: "Cancelada",
+          stVerified: "Verificada",
+          stNeedsReview: "Por revisar",
+          stOpen: "Abierta",
+          stAcknowledged: "Confirmada",
+          stWaived: "Exención",
+          stResolved: "Resuelta",
+          stNotStarted: "Sin empezar",
+          stDataReady: "Lista para validación",
+          stReadyToPublish: "Validada y lista para publicar",
+          stReviewRequired: "Revisión requerida",
+          stActive: "Activo",
+          stCompleted: "Completada",
+          stInvited: "Invitado",
+          stDeclared: "Declarado",
+          stDocumented: "Documentado",
+          dcEyebrow: "Recogida y cumplimiento",
+          dcTitle: "Recogida de datos",
+          dcLead: "De la pregunta de la marca al dato verificado. Cada elemento tiene un estado, y cada estado tiene un responsable.",
+          dcPipeline: "El circuito de recogida",
+          dcS1: "Marca",
+          dcS2: "Proveedor",
+          dcS3: "Producto",
+          dcS4: "Datos requeridos",
+          dcS5: "Pruebas",
+          dcS6: "Revisión",
+          dcS7: "Datos verificados",
+          dcS1d: "pregunta",
+          dcS2d: "responden",
+          dcS3d: "afectados",
+          dcS4d: "puntos de dato",
+          dcS5d: "adjuntas",
+          dcS6d: "en espera",
+          dcS7d: "aceptados",
+          dcStates: "Dónde está cada cosa",
+          dcMissing: "Falta",
+          dcRequested: "Solicitado",
+          dcSubmitted: "Entregado",
+          dcUnderReview: "En revisión",
+          dcAccepted: "Aceptado",
+          dcRejected: "Rechazado",
+          dcMissingD: "Nunca solicitado",
+          dcRequestedD: "A la espera del proveedor",
+          dcSubmittedD: "Devuelto por el proveedor",
+          dcUnderReviewD: "En tu mesa",
+          dcAcceptedD: "Verificado y reutilizable",
+          dcRejectedD: "Devuelto para corrección",
+          dcAll: "Todos los estados",
+          dcSearch: "Buscar una solicitud…",
+          dcNewRequest: "+ Nueva solicitud",
+          dcRequests: "Solicitudes",
+          dcFilterNote: "Selecciona un estado para filtrar la lista",
+          dcOwnerYou: "Tú",
+          dcOwnerSupplier: "Proveedor",
+          dcOwnerNobody: "Nadie todavía",
+          pvEyebrow: "Catálogo de productos",
+          pvTitle: "Productos",
+          pvLead: "Sigue la completitud de tus referencias y abre cualquier producto en profundidad.",
+          pvImport: "Importar CSV",
+          pvExport: "Exportar CSV",
+          pvAudit: "Exportar auditoría",
+          pvNew: "+ Nuevo producto",
+          pvProduct: "Producto",
+          pvCategory: "Categoría",
+          pvStatus: "Estado",
+          pvCompleteness: "Completitud",
+          pvReadiness: "Preparación",
+          pvOpen: "Abrir",
+          pvIntel: "Intelligence",
+          pvEmptyTitle: "Tu catálogo está vacío",
+          pvEmptyBody: "Crea tu primera referencia de producto.",
+          pvIntelHint: "Abrir la ficha completa — composición, trazado, pruebas y preparación DPP.",
+          requestDetail: "Detalle de la solicitud",
+          productDetail: "Detalle del producto",
+          supplierDetail: "Detalle del proveedor",
+          risk: "Riesgo",
+          massBalance: "Balance de masa (TC)",
+          integrations: "Integraciones",
+          riskTitle: "Riesgo",
+          riskLead: "Dónde está expuesta la cadena y qué se está haciendo ya al respecto.",
+          riskSuppliersReview: "Proveedores por revisar",
+          riskCertsExpiring: "Certificados por vencer",
+          riskCountriesWatch: "Países en vigilancia",
+          riskCriticalFindings: "Hallazgos críticos",
+          riskRegister: "Registro de riesgos",
+          riskSupplier: "Proveedor",
+          riskCountry: "País",
+          riskTier: "Nivel",
+          riskType: "Riesgo",
+          riskSeverity: "Gravedad",
+          riskStatus: "Estado",
+          riskTypeCert: "Certificado",
+          riskTypeData: "Dato faltante",
+          riskTypeAudit: "Hallazgo de auditoría",
+          riskTypeGeo: "Geográfico",
+          riskSevCritical: "Crítico",
+          riskSevWarning: "Advertencia",
+          riskSevReview: "Por revisar",
+          riskOpen: "Abierto",
+          riskMitigating: "En tratamiento",
+          riskExposure: "Exposición por nivel",
+          riskNote: "La gravedad se deriva de la antigüedad de las pruebas, la validez de los certificados y los hallazgos de auditoría. Es una señal operativa, no un veredicto de conformidad.",
+          riskNoneTitle: "Sin riesgo abierto",
+          riskNoneBody: "Actualmente no hay nada marcado en este espacio.",
+          mcDemoBanner: "Espacio de demostración — todas las cifras son datos de demostración. Añada ?demo=0 y configure Clerk para conectar las API de TRACEFAB.",
+          mcScale: "Escala",
+          mcFacilities: "Centros",
+          mcCountries: "Países",
+          mcTrust: "Confianza y preparación",
+          mcDataQuality: "Calidad de datos",
+          mcEvidence: "Cobertura de evidencias",
+          mcVerified: "Verificado",
+          mcTraceable: "Trazable",
+          mcDppReadiness: "Preparación DPP",
+          mcDppNote: "La preparación DPP es un indicador de madurez, nunca una certificación legal.",
+          mcAttention: "Atención",
+          mcAttentionSub: "Cada línea lleva a su corrección",
+          mcMissing: "Datos ausentes",
+          mcMissingD: "Puntos de datos requeridos sin envío",
+          mcExpiring: "Certificados por caducar",
+          mcExpiringD: "Válidos menos de 90 días",
+          mcReview: "Proveedores por revisar",
+          mcReviewD: "Datos enviados pendientes de verificación",
+          mcIncomplete: "Productos incompletos",
+          mcIncompleteD: "Por debajo del umbral de publicación",
+          mcOpen: "Abrir",
+          mcOps: "Operaciones",
+          mcDemoData: "Datos de demostración",
+          mcGreeting: "Este es el estado de los datos de su cadena y lo que merece su atención.",
+          mcRecent: "Solicitudes recientes",
+          mcSeeAll: "Ver todo",
+          mcInvite: "Invitar a un proveedor",
           navMain: "Consola Principal",
           overview: "Resumen",
           products: "Productos",
           suppliers: "Proveedores",
           materials: "Materiales",
-          supplyChain: "Trazabilidad",
+          supplyChain: "Cadena de suministro",
           navCollection: "Recopilación y Cumplimiento",
-          requests: "Solicitudes de datos",
+          requests: "Recogida de datos",
           questionnaires: "Cuestionarios",
-          documents: "Documentos",
+          documents: "Pruebas",
           certifications: "Certificaciones",
           quality: "Calidad y Cumplimiento",
           dpp: "Pasaporte DPP",
@@ -811,16 +1791,245 @@
           dppDesc: "Verifique la preparación de sus colecciones frente a los estándares europeos ESPR y CIRPASS 1.2."
         },
         nl: {
+          qcView: "Bekijken",
+          evEyebrow: "Bewijs",
+          evTitle: "Bewijscentrum",
+          evLead: "Elke bewering herleid tot het document dat haar aantoont. Bron, uitgever, datum en vervaldatum bij elk item.",
+          evAll: "Al het bewijs",
+          evRegister: "Bewijsregister",
+          evTrustScale: "Gerangschikt op de vertrouwensschaal",
+          evExpired: "verlopen en nog steeds gebruikt",
+          evExpiringSoon: "verlopen binnen 90 dagen",
+          evNoExpiry: "Geen vervaldatum",
+          evEmpty: "Nog geen bewijs vastgelegd",
+          evT_document: "Documenten",
+          evT_certificate: "Certificaten",
+          evT_testReport: "Testrapporten",
+          evT_declaration: "Verklaringen",
+          evT_audit: "Audits",
+          evT_invoice: "Facturen",
+          evT_productionRecord: "Productieregistraties",
+          evC_item: "Bewijs",
+          evC_type: "Type",
+          evC_issuer: "Uitgever",
+          evC_source: "Bron",
+          evC_product: "Product",
+          evC_supplier: "Leverancier",
+          evC_date: "Afgegeven",
+          evC_expires: "Verloopt",
+          evC_status: "Vertrouwen",
+          evC_verification: "Verificatie",
+          evSrc_supplierUpload: "Upload leverancier",
+          evSrc_labDirect: "Lab direct",
+          evSrc_auditBody: "Auditinstantie",
+          evSrc_erpSync: "ERP-synchronisatie",
+          evV_thirdParty: "Derde partij",
+          evV_brandReviewed: "Door merk beoordeeld",
+          evV_selfDeclared: "Zelf opgegeven",
+          evV_pending: "In afwachting",
+          evV_expired: "Verlopen",
+          evTrust_missing: "Ontbreekt",
+          evTrust_review: "Te beoordelen",
+          evTrust_declared: "Opgegeven",
+          evTrust_documented: "Gedocumenteerd",
+          evTrust_verified: "Geverifieerd",
+          evTrust_certified: "Gecertificeerd",
+          qcEyebrow: "Datakwaliteit",
+          qcTitle: "Kunt u uw gegevens vertrouwen?",
+          qcLead: "Vijf maatstaven beantwoorden die vraag. Daaronder draagt elk open punt de knop die het oplost.",
+          qcMCompleteness: "Volledigheid van gegevens",
+          qcMEvidence: "Bewijsdekking",
+          qcMVerification: "Verificatiegraad",
+          qcMSupplier: "Leverancierskwaliteit",
+          qcMProduct: "Productkwaliteit",
+          qcIssues: "Open punten",
+          qcB_critical: "Kritiek",
+          qcB_warning: "Waarschuwing",
+          qcB_review: "Te beoordelen",
+          qcB_resolved: "Opgelost",
+          qcDetected: "gedetecteerd op",
+          qcFix: "Oplossen",
+          qcNoIssues: "Geen open punt",
+          qcNoIssuesD: "De kwaliteitsregels melden niets blokkerends.",
+          qcI1: "Het GOTS-certificaat van het hoofdbestanddeel is verlopen.",
+          qcI2: "Een verlopen REACH SVHC-verklaring wordt nog door een product gebruikt.",
+          qcI3: "Bij sommige productgegevens ontbreekt bewijs.",
+          qcI4: "Leveranciersgegevens zijn al meer dan 12 maanden niet bijgewerkt.",
+          qcI5: "Een GRS-certificaat wacht op verificatie.",
+          qcI6: "De samenstellingspercentages kwamen niet op 100% uit.",
+          qcPerProduct: "Score per product",
+          qcProduct: "Product",
+          qcChoose: "Kies een product…",
+          qcChangeProduct: "Ander product",
+          qcRecompute: "Score herberekenen",
+          qcNoScore: "Score niet berekend",
+          qcNoScoreD: "Start een eerste kwaliteitsberekening voor dit product.",
+          qcComputeNow: "Nu berekenen",
+          qcCompleteness: "Volledigheid",
+          qcFreshness: "Actualiteit",
+          qcEvidence: "Bewijs",
+          qcConsistency: "Consistentie",
+          qcNotCert: "De score beschrijft de datagereedheid. Het is geen certificering.",
+          demoUnavailable: "Niet beschikbaar in demonstratiemodus — verbind de TRACEFAB-API's om deze actie uit te voeren.",
+          dcTblRequest: "Aanvraag",
+          dcTblSupplier: "Leverancier",
+          dcTblStatus: "Status",
+          dcTblProgress: "Voortgang",
+          dcTblDue: "Vervaldatum",
+          dcOpen: "Openen",
+          dcRemind: "Herinneren",
+          dcRemindTitle: "Een herinnering aan de leverancier inplannen",
+          dcEmptyTitle: "Nog geen aanvraag",
+          dcEmptyBody: "Maak uw eerste leveranciersaanvraag.",
+          dcCreate: "Aanvraag maken",
+          stDraft: "Concept",
+          stSent: "Verzonden",
+          stInProgress: "Loopt",
+          stSubmitted: "Ingediend",
+          stChangesRequested: "Correctie nodig",
+          stApproved: "Goedgekeurd",
+          stCancelled: "Geannuleerd",
+          stVerified: "Geverifieerd",
+          stNeedsReview: "Beoordeling nodig",
+          stOpen: "Open",
+          stAcknowledged: "Bevestigd",
+          stWaived: "Ontheffing",
+          stResolved: "Opgelost",
+          stNotStarted: "Niet gestart",
+          stDataReady: "Klaar voor validatie",
+          stReadyToPublish: "Gevalideerd en publicatieklaar",
+          stReviewRequired: "Beoordeling vereist",
+          stActive: "Actief",
+          stCompleted: "Afgerond",
+          stInvited: "Uitgenodigd",
+          stDeclared: "Opgegeven",
+          stDocumented: "Gedocumenteerd",
+          dcEyebrow: "Verzameling & naleving",
+          dcTitle: "Gegevensverzameling",
+          dcLead: "Van de vraag van het merk tot het geverifieerde gegeven. Elk item heeft een status, en elke status heeft een eigenaar.",
+          dcPipeline: "Het verzameltraject",
+          dcS1: "Merk",
+          dcS2: "Leverancier",
+          dcS3: "Product",
+          dcS4: "Vereiste gegevens",
+          dcS5: "Bewijs",
+          dcS6: "Beoordeling",
+          dcS7: "Geverifieerde gegevens",
+          dcS1d: "vraagt",
+          dcS2d: "antwoorden",
+          dcS3d: "betrokken",
+          dcS4d: "gegevenspunten",
+          dcS5d: "bijgevoegd",
+          dcS6d: "in afwachting",
+          dcS7d: "geaccepteerd",
+          dcStates: "Hoe alles ervoor staat",
+          dcMissing: "Ontbreekt",
+          dcRequested: "Opgevraagd",
+          dcSubmitted: "Ingediend",
+          dcUnderReview: "In beoordeling",
+          dcAccepted: "Geaccepteerd",
+          dcRejected: "Afgewezen",
+          dcMissingD: "Nooit opgevraagd",
+          dcRequestedD: "Wacht op de leverancier",
+          dcSubmittedD: "Terug van de leverancier",
+          dcUnderReviewD: "Op uw bureau",
+          dcAcceptedD: "Geverifieerd en herbruikbaar",
+          dcRejectedD: "Teruggestuurd ter correctie",
+          dcAll: "Alle statussen",
+          dcSearch: "Zoek een aanvraag…",
+          dcNewRequest: "+ Nieuwe aanvraag",
+          dcRequests: "Aanvragen",
+          dcFilterNote: "Kies een status om de lijst te filteren",
+          dcOwnerYou: "U",
+          dcOwnerSupplier: "Leverancier",
+          dcOwnerNobody: "Nog niemand",
+          pvEyebrow: "Productcatalogus",
+          pvTitle: "Producten",
+          pvLead: "Volg de volledigheid van je referenties en open elk product in volle diepte.",
+          pvImport: "CSV importeren",
+          pvExport: "CSV exporteren",
+          pvAudit: "Audit exporteren",
+          pvNew: "+ Nieuw product",
+          pvProduct: "Product",
+          pvCategory: "Categorie",
+          pvStatus: "Status",
+          pvCompleteness: "Volledigheid",
+          pvReadiness: "Gereedheid",
+          pvOpen: "Openen",
+          pvIntel: "Intelligence",
+          pvEmptyTitle: "Je catalogus is leeg",
+          pvEmptyBody: "Maak je eerste productreferentie aan.",
+          pvIntelHint: "Open het volledige productdossier — samenstelling, keten, bewijs en DPP-gereedheid.",
+          requestDetail: "Aanvraagdetail",
+          productDetail: "Productdetail",
+          supplierDetail: "Leveranciersdetail",
+          risk: "Risico",
+          massBalance: "Massabalans (TC)",
+          integrations: "Integraties",
+          riskTitle: "Risico",
+          riskLead: "Waar de keten blootstaat, en wat er al aan gedaan wordt.",
+          riskSuppliersReview: "Leveranciers te beoordelen",
+          riskCertsExpiring: "Verlopende certificaten",
+          riskCountriesWatch: "Landen onder toezicht",
+          riskCriticalFindings: "Kritieke bevindingen",
+          riskRegister: "Risicoregister",
+          riskSupplier: "Leverancier",
+          riskCountry: "Land",
+          riskTier: "Niveau",
+          riskType: "Risico",
+          riskSeverity: "Ernst",
+          riskStatus: "Status",
+          riskTypeCert: "Certificaat",
+          riskTypeData: "Ontbrekend gegeven",
+          riskTypeAudit: "Auditbevinding",
+          riskTypeGeo: "Geografisch",
+          riskSevCritical: "Kritiek",
+          riskSevWarning: "Waarschuwing",
+          riskSevReview: "Beoordelen",
+          riskOpen: "Open",
+          riskMitigating: "In behandeling",
+          riskExposure: "Blootstelling per niveau",
+          riskNote: "De ernst volgt uit de ouderdom van bewijs, de geldigheid van certificaten en auditbevindingen. Een operationeel signaal, geen nalevingsoordeel.",
+          riskNoneTitle: "Geen open risico",
+          riskNoneBody: "Er is momenteel niets gemarkeerd in deze werkruimte.",
+          mcDemoBanner: "Demonstratieomgeving — alle cijfers zijn demonstratiegegevens. Voeg ?demo=0 toe en configureer Clerk om de TRACEFAB-API's te verbinden.",
+          mcScale: "Omvang",
+          mcFacilities: "Locaties",
+          mcCountries: "Landen",
+          mcTrust: "Vertrouwen en gereedheid",
+          mcDataQuality: "Datakwaliteit",
+          mcEvidence: "Bewijsdekking",
+          mcVerified: "Geverifieerd",
+          mcTraceable: "Traceerbaar",
+          mcDppReadiness: "DPP-gereedheid",
+          mcDppNote: "DPP-gereedheid is een volwassenheidsindicator, nooit een juridische certificering.",
+          mcAttention: "Aandacht",
+          mcAttentionSub: "Elke regel leidt naar de oplossing",
+          mcMissing: "Ontbrekende data",
+          mcMissingD: "Vereiste datapunten zonder aanlevering",
+          mcExpiring: "Verlopende certificaten",
+          mcExpiringD: "Minder dan 90 dagen geldig",
+          mcReview: "Leveranciers beoordelen",
+          mcReviewD: "Aangeleverde data wacht op verificatie",
+          mcIncomplete: "Onvolledige producten",
+          mcIncompleteD: "Onder de publicatiedrempel",
+          mcOpen: "Openen",
+          mcOps: "Operatie",
+          mcDemoData: "Demonstratiegegevens",
+          mcGreeting: "Dit is de staat van je ketendata en wat je aandacht verdient.",
+          mcRecent: "Recente aanvragen",
+          mcSeeAll: "Alles tonen",
+          mcInvite: "Leverancier uitnodigen",
           navMain: "Hoofdconsole",
           overview: "Overzicht",
           products: "Producten",
           suppliers: "Leveranciers",
           materials: "Materialen",
-          supplyChain: "Traceerbaarheid",
+          supplyChain: "Toeleveringsketen",
           navCollection: "Verzameling & Naleving",
-          requests: "Gegevensaanvragen",
+          requests: "Gegevensverzameling",
           questionnaires: "Vragenlijsten",
-          documents: "Documenten",
+          documents: "Bewijs",
           certifications: "Certificeringen",
           quality: "Kwaliteit & Naleving",
           dpp: "DPP-Paspoort",
@@ -838,16 +2047,33 @@
           dppDesc: "Controleer de conformiteit van uw collecties met de Europese normen ESPR en CIRPASS 1.2."
         },
         pt: {
+          pvEyebrow: "Product catalogue",
+          pvTitle: "Products",
+          pvLead: "Track completeness across your references, then open any product in full depth.",
+          pvImport: "Import CSV",
+          pvExport: "Export CSV",
+          pvAudit: "Export audit",
+          pvNew: "+ New product",
+          pvProduct: "Product",
+          pvCategory: "Category",
+          pvStatus: "Status",
+          pvCompleteness: "Completeness",
+          pvReadiness: "Readiness",
+          pvOpen: "Open",
+          pvIntel: "Intelligence",
+          pvEmptyTitle: "Your catalogue is empty",
+          pvEmptyBody: "Create your first product reference.",
+          pvIntelHint: "Open the full product record — composition, lineage, evidence and DPP readiness.",
           navMain: "Consola Principal",
           overview: "Visão geral",
           products: "Produtos",
           suppliers: "Fornecedores",
           materials: "Materiais",
-          supplyChain: "Rastreabilidade",
+          supplyChain: "Cadeia de fornecimento",
           navCollection: "Recolha & Conformidade",
-          requests: "Pedidos de dados",
+          requests: "Recolha de dados",
           questionnaires: "Questionários",
-          documents: "Documentos",
+          documents: "Provas",
           certifications: "Certificações",
           quality: "Qualidade & Conformidade",
           dpp: "Passaporte DPP",
@@ -890,6 +2116,57 @@
         render();
       }
 
+
+      function riskView() {
+        // Demonstration mode shows the briefed figures. Connected mode derives
+        // everything from live state and prints an em dash rather than guessing.
+        const demo = state.demo;
+        const sup = suppliers() || [];
+        const counts = requestCounts ? requestCounts() : {};
+
+        const rows = demo ? [
+          { s: 'Adriatic Dye House', c: 'Italy', t: 2, k: 'riskTypeCert', sev: 'critical', st: 'riskOpen' },
+          { s: 'Anatolia Weaving', c: 'Türkiye', t: 2, k: 'riskTypeAudit', sev: 'critical', st: 'riskMitigating' },
+          { s: 'Guimarães Ring Spinners', c: 'Portugal', t: 3, k: 'riskTypeCert', sev: 'warning', st: 'riskOpen' },
+          { s: 'Dhaka Knit Works', c: 'Bangladesh', t: 2, k: 'riskTypeGeo', sev: 'warning', st: 'riskMitigating' },
+          { s: 'Coimbra Trims', c: 'Portugal', t: 3, k: 'riskTypeData', sev: 'review', st: 'riskOpen' },
+          { s: 'Atelier Milano', c: 'Italy', t: 1, k: 'riskTypeData', sev: 'review', st: 'riskMitigating' }
+        ] : [];
+
+        const cells = [
+          [demo ? 5 : (sup.length ? String(sup.filter(x => (x.dataQuality || 0) < 70).length) : '—'), 'riskSuppliersReview'],
+          [demo ? 8 : '—', 'riskCertsExpiring'],
+          [demo ? 3 : '—', 'riskCountriesWatch'],
+          [demo ? 2 : (rows.filter(r => r.sev === 'critical').length || '—'), 'riskCriticalFindings']
+        ];
+
+        const band = `<div class="mc-band mc-band--4 is-dark">${cells.map(function (c, i) {
+          return `<div class="mc-cell"><div class="mc-cell__k">${esc(bt(c[1]))}</div>`
+            + `<div class="mc-cell__v${i === 3 ? ' is-alert' : ''}">${esc(String(c[0]))}</div></div>`;
+        }).join('')}</div>`;
+
+        const table = rows.length ? `<div class="card panel"><div class="panel-head"><h2>${esc(bt('riskRegister'))}</h2>`
+          + `<span class="meta">${esc(bt('riskNote'))}</span></div>`
+          + `<div class="table-wrap"><table><thead><tr>`
+          + `<th>${esc(bt('riskSupplier'))}</th><th>${esc(bt('riskCountry'))}</th><th>${esc(bt('riskTier'))}</th>`
+          + `<th>${esc(bt('riskType'))}</th><th>${esc(bt('riskSeverity'))}</th><th>${esc(bt('riskStatus'))}</th>`
+          + `</tr></thead><tbody>${rows.map(function (r) {
+            const sevKey = r.sev === 'critical' ? 'riskSevCritical' : r.sev === 'warning' ? 'riskSevWarning' : 'riskSevReview';
+            return `<tr><td><strong>${esc(r.s)}</strong></td><td>${esc(r.c)}</td>`
+              + `<td><span class="tier-badge">${esc(bt('riskTier'))} ${r.t}</span></td>`
+              + `<td>${esc(bt(r.k))}</td>`
+              + `<td><span class="mc-sev" data-sev="${r.sev}">${esc(bt(sevKey))}</span></td>`
+              + `<td><span class="meta">${esc(bt(r.st))}</span></td></tr>`;
+          }).join('')}</tbody></table></div></div>`
+          : `<div class="card panel"><div class="empty-state"><h3>${esc(bt('riskNoneTitle'))}</h3>`
+            + `<p>${esc(bt('riskNoneBody'))}</p></div></div>`;
+
+        return `<div class="page-head"><div><div class="eyebrow">${esc(bt('navCollection'))}</div>`
+          + `<h1>${esc(bt('riskTitle'))}</h1><p>${esc(bt('riskLead'))}</p></div>`
+          + `<div class="actions">${demo ? `<span class="mc-demo">${esc(bt('mcDemoData'))}</span>` : ''}</div></div>`
+          + band + `<div style="height:24px"></div>` + table;
+      }
+
 function render() {
         if (state.configError && !state.demo && !state.user) {
           app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>Connexion indisponible</h1><p>${esc(state.configError)}. Vérifiez Clerk et la configuration de l’API, ou ouvrez <code>?demo=1</code> pour parcourir l’interface.</p><button class="btn btn-secondary" data-action="retry">Réessayer</button></div></div>`; bind(); return;
@@ -901,6 +2178,7 @@ function render() {
           state.view === 'questionnaires' ? questionnairesBuilderView() :
           state.view === 'products' ? productsView() :
           state.view === 'quality' ? qualityView() :
+          state.view === 'risk' ? riskView() :
           state.view === 'massBalance' ? massBalanceConsoleView() :
           state.view === 'integrations' ? integrationsView() :
           state.view === 'suppliers' ? suppliersView() :
@@ -933,7 +2211,7 @@ function render() {
             <p>Concevez et déployez des questionnaires sur-mesure pour vos fournisseurs : exigences documentaires, extraction OCR, règles de validation et conformité CSRD.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Catalogue des gabarits standards exporté au format JSON.')">Exporter Gabarits (JSON)</button>
+            <button class="btn btn-secondary" data-demo-action="1">Exporter Gabarits (JSON)</button>
             <button class="btn btn-primary" onclick="state.modal='new-questionnaire';render();">+ Créer un questionnaire</button>
           </div>
         </div>
@@ -976,7 +2254,7 @@ function render() {
                       <button class="btn btn-primary btn-small" data-action="new-request" onclick="state.modal='new-request';state.selectedQuestionnairePreset='${esc(q.key)}';render();">
                         ↗ Lancer une collecte avec ce modèle
                       </button>
-                      <button class="btn btn-secondary btn-small" onclick="alert('Édition du protocole ${esc(q.title)} : ajout de nouvelles règles de preuve.')">
+                      <button class="btn btn-secondary btn-small" data-demo-action="1">
                         Modifier le protocole
                       </button>
                     </div>
@@ -1025,8 +2303,8 @@ function render() {
             <p>Suivez l'origine des fibres, les procédés de filature, les certifications de bilan massique et les fournisseurs Rang 3–4.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Exportation CSV générée.')">Exporter CSV</button>
-            <button class="btn btn-primary" onclick="alert('Nouveau matériau enregistré.')">+ Ajouter un matériau</button>
+            <button class="btn btn-secondary" data-demo-action="1">Exporter CSV</button>
+            <button class="btn btn-primary" data-demo-action="1">+ Ajouter un matériau</button>
           </div>
         </div>
         <div class="card panel">
@@ -1043,7 +2321,7 @@ function render() {
                   <td><strong>${esc(m.recycledContent || '0%')}</strong></td>
                   <td>${(m.certifications || ['GOTS']).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')}</td>
                   <td><span class="badge-tier">${esc(m.tier || 'Tier 4')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Détails du matériau ${esc(m.name)}')">Inspecter</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter</button></td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -1077,7 +2355,7 @@ function render() {
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Ouvrir Vue Consommateur DPP ↗</button>
-            <button class="btn btn-primary" onclick="alert('Rapport complet de traçabilité exporté.')">Exporter Audit Complet</button>
+            <button class="btn btn-primary" data-demo-action="1">Exporter Audit Complet</button>
           </div>
         </div>
 
@@ -1242,7 +2520,7 @@ function render() {
                         <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · Téléversé le ${esc(f.date)}</div>
                       </div>
                     </div>
-                    <button class="btn btn-secondary btn-small" onclick="alert('Inspection de la preuve ${esc(f.name)} scellée avec hash.')">Inspecter</button>
+                    <button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter</button>
                   </div>
                 `).join('')}
               </div>
@@ -1286,42 +2564,119 @@ function render() {
         </div>`;
       }
 
-      function documentsConsoleView() {
-        const docs = state.documents || [];
-        return `<div class="page-head">
-          <div>
-            <div class="eyebrow">Coffre-fort de Preuves</div>
-            <h1>Centre de Vérification des Documents</h1>
-            <p>Auditez et vérifiez les certificats de transaction, rapports d'essais en laboratoire, audits sociaux et conformités chimiques.</p>
-          </div>
-          <div class="actions">
-            <button class="btn btn-secondary" onclick="alert('Rapport de vérification téléchargé.')">Télécharger le registre</button>
-            <button class="btn btn-primary" onclick="alert('Formulaire de dépôt de preuve ouvert.')">+ Déposer une preuve</button>
-          </div>
-        </div>
-        <div class="card panel">
-          <div class="panel-head"><h2>Preuves documentaires actives (${docs.length})</h2><span class="meta">Contrôle d'intégrité Neon</span></div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Titre du document</th><th>Type</th><th>Fournisseur</th><th>Couverture</th><th>Date d'émission</th><th>Statut de revue</th><th style="text-align:right">Action</th></tr>
-              </thead>
-              <tbody>
-                ${docs.map((d) => `<tr>
-                  <td><strong>${esc(d.title)}</strong></td>
-                  <td><span class="status status-draft">${esc(d.type)}</span></td>
-                  <td>${esc(d.supplier)}</td>
-                  <td><code>${esc(d.coverage)}</code></td>
-                  <td>${esc(d.date)}</td>
-                  <td><span class="status ${d.status === 'verified' ? 'status-approved' : 'status-changes_requested'}">${esc(d.status === 'verified' ? 'Vérifié' : 'À revoir')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" onclick="alert('Document ${esc(d.title)} ouvert pour inspection.')">Vérifier</button></td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>`;
+
+      // ── PHASE 8 — demonstration evidence ────────────────────────────────
+      // Seven evidence types from the brief. Every record carries the eight
+      // attributes an auditor asks for. Demonstration data, flagged as such.
+      function demoEvidence() {
+        return [
+          { id:'ev-01', type:'certificate', title:'GOTS Scope Certificate', ref:'CU-881294',
+            issuer:'Control Union', source:'supplierUpload', date:'2026-03-14', expires:'2027-03-13',
+            product:'AW26-0248', supplier:'Atelier Milano', trust:'certified', verification:'thirdParty' },
+          { id:'ev-02', type:'testReport', title:'OEKO-TEX Standard 100 test report', ref:'SH-2026-4471',
+            issuer:'Hohenstein', source:'labDirect', date:'2026-02-02', expires:'2027-02-01',
+            product:'AW26-0248', supplier:'Lisboa Dyeworks', trust:'verified', verification:'thirdParty' },
+          { id:'ev-03', type:'audit', title:'SA8000 social audit — Porto facility', ref:'AUD-2025-882',
+            issuer:'SGS', source:'auditBody', date:'2025-11-19', expires:'2026-11-18',
+            product:'—', supplier:'Porto Knitwear', trust:'verified', verification:'thirdParty' },
+          { id:'ev-04', type:'declaration', title:'ZDHC MRSL conformity declaration', ref:'DEC-4410',
+            issuer:'Lisboa Dyeworks', source:'supplierUpload', date:'2026-01-08', expires:'2026-12-31',
+            product:'AW26-0248', supplier:'Lisboa Dyeworks', trust:'declared', verification:'selfDeclared' },
+          { id:'ev-05', type:'productionRecord', title:'Dye lot production record — batch 2026-114', ref:'PR-2026-114',
+            issuer:'Lisboa Dyeworks', source:'erpSync', date:'2026-04-02', expires:'',
+            product:'AW26-0248', supplier:'Lisboa Dyeworks', trust:'documented', verification:'brandReviewed' },
+          { id:'ev-06', type:'invoice', title:'Transaction certificate — organic cotton yarn', ref:'TC-77210',
+            issuer:'Control Union', source:'supplierUpload', date:'2026-02-21', expires:'',
+            product:'AW26-0248', supplier:'Izmir Spinning', trust:'certified', verification:'thirdParty' },
+          { id:'ev-07', type:'document', title:'Supplier code of conduct — signed', ref:'DOC-1182',
+            issuer:'Atelier Milano', source:'supplierUpload', date:'2025-09-30', expires:'',
+            product:'—', supplier:'Atelier Milano', trust:'documented', verification:'brandReviewed' },
+          { id:'ev-08', type:'certificate', title:'GRS Scope Certificate', ref:'CU-902118',
+            issuer:'Control Union', source:'supplierUpload', date:'2025-10-22', expires:'2026-10-21',
+            product:'AW26-0311', supplier:'Izmir Spinning', trust:'review', verification:'pending' },
+          { id:'ev-09', type:'testReport', title:'Fibre composition analysis', ref:'LAB-2026-0097',
+            issuer:'Intertek', source:'labDirect', date:'2026-03-28', expires:'',
+            product:'AW26-0311', supplier:'Izmir Spinning', trust:'verified', verification:'thirdParty' },
+          { id:'ev-10', type:'declaration', title:'REACH SVHC statement', ref:'DEC-5521',
+            issuer:'Porto Knitwear', source:'supplierUpload', date:'2024-12-15', expires:'2025-12-14',
+            product:'AW26-0402', supplier:'Porto Knitwear', trust:'missing', verification:'expired' }
+        ];
       }
 
+      const EV_TYPES = ['document', 'certificate', 'testReport', 'declaration', 'audit', 'invoice', 'productionRecord'];
+      const evidenceRecords = () => (state.documents && state.documents.length)
+        ? state.documents
+        : (state.demo ? demoEvidence() : []);
+      // An expiry inside 90 days is worth saying out loud.
+      const evExpiringSoon = (rec) => {
+        if (!rec.expires) return false;
+        const d = new Date(rec.expires).getTime() - Date.now();
+        return d > 0 && d < 90 * 86400000;
+      };
+      const evExpired = (rec) => !!rec.expires && new Date(rec.expires).getTime() < Date.now();
+
+      function documentsConsoleView() {
+        const recs = evidenceRecords();
+        const counts = {};
+        EV_TYPES.forEach((t) => { counts[t] = recs.filter((r) => r.type === t).length; });
+        const expiring = recs.filter(evExpiringSoon);
+        const expired = recs.filter(evExpired);
+
+        const typeBand = `<div class="ev-types">
+          <button class="ev-type is-on" data-ev-type="all">
+            <span class="ev-type__v">${moneyless(recs.length)}</span>
+            <span class="ev-type__n">${esc(bt('evAll'))}</span></button>
+          ${EV_TYPES.map((t) => `<button class="ev-type" data-ev-type="${t}">
+            <span class="ev-type__v">${moneyless(counts[t])}</span>
+            <span class="ev-type__n">${esc(bt('evT_' + t))}</span></button>`).join('')}
+        </div>`;
+
+        const alertBar = (expired.length || expiring.length) ? `<div class="ev-alert">
+          ${expired.length ? `<span class="ev-alert__i" data-sev="critical">${moneyless(expired.length)}</span>
+            <span>${esc(bt('evExpired'))}</span>` : ''}
+          ${expiring.length ? `<span class="ev-alert__i" data-sev="warning">${moneyless(expiring.length)}</span>
+            <span>${esc(bt('evExpiringSoon'))}</span>` : ''}
+        </div>` : '';
+
+        const rows = recs.map((r) => {
+          const soon = evExpiringSoon(r), gone = evExpired(r);
+          return `<tr data-ev-row="${esc(r.type)}">
+            <td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.ref || '—')}</div></td>
+            <td>${esc(bt('evT_' + r.type))}</td>
+            <td>${esc(r.issuer || '—')}</td>
+            <td><span class="meta">${esc(bt('evSrc_' + (r.source || 'supplierUpload')))}</span></td>
+            <td>${esc(r.product || '—')}</td>
+            <td>${esc(r.supplier || '—')}</td>
+            <td>${date(r.date)}</td>
+            <td>${r.expires
+              ? `<span class="ev-exp${gone ? ' is-gone' : (soon ? ' is-soon' : '')}">${date(r.expires)}</span>`
+              : `<span class="meta">${esc(bt('evNoExpiry'))}</span>`}</td>
+            <td><span class="tf-trust" data-level="${esc(r.trust)}">${esc(bt('evTrust_' + r.trust))}</span></td>
+            <td><span class="meta">${esc(bt('evV_' + (r.verification || 'selfDeclared')))}</span></td>
+          </tr>`;
+        }).join('');
+
+        return `<div class="page-head"><div>
+            <div class="eyebrow">${esc(bt('evEyebrow'))}</div>
+            <h1>${esc(bt('evTitle'))}</h1><p>${esc(bt('evLead'))}</p></div>
+            <div class="actions">${state.demo ? `<span class="mc-demo">${esc(bt('mcDemoData'))}</span>` : ''}</div>
+          </div>
+
+          ${typeBand}
+          ${alertBar}
+
+          <div style="height:22px"></div>
+          <div class="card panel">
+            <div class="panel-head"><h2>${esc(bt('evRegister'))}</h2>
+              <span class="meta">${esc(bt('evTrustScale'))}</span></div>
+            <div class="table-wrap"><table><thead><tr>
+              <th>${esc(bt('evC_item'))}</th><th>${esc(bt('evC_type'))}</th><th>${esc(bt('evC_issuer'))}</th>
+              <th>${esc(bt('evC_source'))}</th><th>${esc(bt('evC_product'))}</th><th>${esc(bt('evC_supplier'))}</th>
+              <th>${esc(bt('evC_date'))}</th><th>${esc(bt('evC_expires'))}</th>
+              <th>${esc(bt('evC_status'))}</th><th>${esc(bt('evC_verification'))}</th>
+            </tr></thead><tbody>${rows || `<tr><td colspan="10"><div class="empty"><strong>${esc(bt('evEmpty'))}</strong></div></td></tr>`}</tbody></table></div>
+          </div>`;
+      }
       function certificationsConsoleView() {
         const certs = state.certifications || [];
         return `<div class="page-head">
@@ -1331,7 +2686,7 @@ function render() {
             <p>Active multi-facility certifications: GOTS, GRS, OEKO-TEX, and ISO 14001.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Nouveau certificat déclaré.')">+ Déclarer un certificat</button>
+            <button class="btn btn-primary" data-demo-action="1">+ Déclarer un certificat</button>
           </div>
         </div>
         <div class="grid split">
@@ -1376,7 +2731,7 @@ function render() {
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Exporter JSON-LD (CIRPASS) ↗</button>
-            <button class="btn btn-primary" onclick="alert('Tous les scores DPP ont été recalculés.')">Recalculer les scores DPP</button>
+            <button class="btn btn-primary" data-demo-action="1">Recalculer les scores DPP</button>
           </div>
         </div>
 
@@ -1455,7 +2810,7 @@ function render() {
             <p>Générez les extraits de données pour les auditeurs CSRD (ESRS E1, E4, E5), Loi AGEC et LkSG.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Rapport CSRD exporté avec succès.')">Générer le rapport CSRD</button>
+            <button class="btn btn-primary" data-demo-action="1">Générer le rapport CSRD</button>
           </div>
         </div>
         <div class="grid split">
@@ -1467,14 +2822,14 @@ function render() {
                   <strong>Export Réglementaire CSRD (ESRS E5 Circularité)</strong>
                   <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Composition certifiée, recyclabilité, et taux de matières recyclées.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Export CSRD lancé.')">Télécharger XLSX</button>
+                <button class="btn btn-secondary btn-small" data-demo-action="1">Télécharger XLSX</button>
               </div>
               <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
                 <div>
                   <strong>Fiche Conformité Loi AGEC (France - Article 13)</strong>
                   <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Traçabilité des opérations de tissage, teinture et confection.</div>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="alert('Fiche AGEC générée.')">Télécharger PDF</button>
+                <button class="btn btn-secondary btn-small" data-demo-action="1">Télécharger PDF</button>
               </div>
             </div>
           </div>
@@ -1493,7 +2848,7 @@ function render() {
             <p>Paramètres de l'organisation, intégrations API, clés d'accès et politiques de conformité.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" onclick="alert('Paramètres sauvegardés.')">Enregistrer</button>
+            <button class="btn btn-primary" data-demo-action="1">Enregistrer</button>
           </div>
         </div>
         <div class="card panel">
@@ -1509,24 +2864,163 @@ function render() {
 
       function overview() {
         const counts = requestCounts(); const brand = currentBrand();
-        return `<div class="page-head"><div><div class="eyebrow">${esc(brand?.display_name || 'Votre organisation')}</div><h1>Bonjour ${esc((state.user?.fullName || 'équipe').split(' ')[0])}.</h1><p>Voici l’état de vos données fournisseurs et les actions qui méritent votre attention.</p></div><div class="actions"><button class="btn btn-secondary" data-action="invite-supplier">Inviter un fournisseur</button><button class="btn btn-primary" data-action="new-request">+ Nouvelle demande</button></div></div>
-          <div class="grid kpis"><div class="card kpi"><div class="kpi-label">Produits actifs</div><div class="kpi-value">${moneyless(state.products.filter((p) => p.status === 'active').length)}</div><div class="kpi-note">${state.products.length} produits dans l’espace</div></div><div class="card kpi"><div class="kpi-label">Demandes ouvertes</div><div class="kpi-value">${moneyless(counts.open)}</div><div class="kpi-note">${counts.submitted} en attente de revue</div></div><div class="card kpi"><div class="kpi-label">Échéances proches</div><div class="kpi-value">${moneyless(counts.dueSoon)}</div><div class="kpi-note">dans les 7 prochains jours</div></div><div class="card kpi"><div class="kpi-label">Fournisseurs actifs</div><div class="kpi-value">${moneyless(suppliers().length)}</div><div class="kpi-note">relations disponibles</div></div></div>
-          <div class="grid split"><div class="card panel"><div class="panel-head"><h2>Demandes récentes</h2><button class="btn btn-secondary btn-small" data-view="requests">Tout voir</button></div>${requestTable(state.requests.slice(0, 5))}</div><div class="card panel"><div class="panel-head"><h2>Actions rapides</h2></div><div class="quick-grid"><button class="quick" data-action="new-request"><span class="quick-icon">↗</span><span><strong>Demander des données</strong><span>Lancer un questionnaire fournisseur</span></span></button><button class="quick" data-action="new-product"><span class="quick-icon">◇</span><span><strong>Créer un produit</strong><span>Ajouter une référence au catalogue</span></span></button><button class="quick" data-action="invite-supplier"><span class="quick-icon">◎</span><span><strong>Inviter un fournisseur</strong><span>Créer une nouvelle relation active</span></span></button></div></div></div>`;
+        const demo = !!state.demo;
+        /* Mission control. In demo mode these are the reference demonstration
+           dataset from the TRACEFAB experience spec and are labelled as such.
+           Connected to Clerk/Neon, every figure is computed from live state and
+           anything the workspace cannot yet answer renders as an em dash rather
+           than an invented number. */
+        const liveProducts = state.products.length;
+        const liveSuppliers = suppliers().length;
+        const scale = demo
+          ? [['1,248', bt('products')], ['86', bt('suppliers')], ['214', bt('mcFacilities')], ['18', bt('mcCountries')]]
+          : [[moneyless(liveProducts), bt('products')], [moneyless(liveSuppliers), bt('suppliers')], ['—', bt('mcFacilities')], ['—', bt('mcCountries')]];
+        const trust = demo
+          ? [['92.4%', bt('mcDataQuality'), 92.4], ['84%', bt('mcEvidence'), 84], ['78%', bt('mcVerified'), 78], ['91%', bt('mcTraceable'), 91], ['88%', bt('mcDppReadiness'), 88]]
+          : [['—', bt('mcDataQuality'), 0], ['—', bt('mcEvidence'), 0], ['—', bt('mcVerified'), 0], ['—', bt('mcTraceable'), 0], ['—', bt('mcDppReadiness'), 0]];
+        const alerts = demo
+          ? [['critical', 17, bt('mcMissing'), bt('mcMissingD'), 'requests'],
+             ['warning', 8, bt('mcExpiring'), bt('mcExpiringD'), 'certifications'],
+             ['review', 5, bt('mcReview'), bt('mcReviewD'), 'suppliers'],
+             ['warning', 12, bt('mcIncomplete'), bt('mcIncompleteD'), 'products']]
+          : [['critical', counts.open, bt('mcMissing'), bt('mcMissingD'), 'requests'],
+             ['review', counts.submitted, bt('mcReview'), bt('mcReviewD'), 'suppliers'],
+             ['warning', counts.dueSoon, bt('mcIncomplete'), bt('mcIncompleteD'), 'products']];
+
+        const band = (mod, cells) => `<div class="mc-band ${mod}">${cells}</div>`;
+        const cell = (v, k, note, bar, accent) => `<div class="mc-cell"><div class="mc-cell__k">${esc(k)}</div><div class="mc-cell__v${accent ? ' is-accent' : ''}">${esc(v)}</div>${note ? `<div class="mc-cell__n">${esc(note)}</div>` : ''}${bar !== undefined ? `<div class="mc-cell__bar"><i style="width:${pct(bar)}%"></i></div>` : ''}</div>`;
+
+        return `<div class="page-head"><div><div class="eyebrow">${esc(brand?.display_name || 'TRACEFAB')}</div><h1>${esc(bt('overview'))}</h1><p>${esc(bt('mcGreeting'))}</p></div><div class="actions">${demo ? `<span class="mc-demo">${esc(bt('mcDemoData'))}</span>` : ''}<button class="btn btn-secondary" data-action="invite-supplier">${esc(bt('mcInvite'))}</button><button class="btn btn-primary" data-action="new-request">${esc(bt('newRequest'))}</button></div></div>
+
+          <div class="eyebrow" style="margin-bottom:10px">${esc(bt('mcScale'))}</div>
+          ${band('mc-band--4', scale.map(([v, k]) => cell(v, k)).join(''))}
+
+          <div class="eyebrow" style="margin:22px 0 10px">${esc(bt('mcTrust'))}</div>
+          ${band('mc-band--5 is-dark', trust.map(([v, k, b], i) => cell(v, k, undefined, b, i === 4)).join(''))}
+          <p class="meta" style="margin:9px 0 0;text-transform:none;letter-spacing:0">${esc(bt('mcDppNote'))}</p>
+
+          <div class="grid split" style="margin-top:26px">
+            <div class="card panel">
+              <div class="panel-head"><h2>${esc(bt('mcAttention'))}</h2><span class="meta">${esc(bt('mcAttentionSub'))}</span></div>
+              <div class="mc-attention">
+                ${alerts.map(([sev, n, title, desc, view]) => `<button class="mc-alert" data-sev="${sev}" data-view="${view}"><span class="mc-alert__n">${moneyless(n)}</span><span><span class="mc-alert__t">${esc(title)}</span><br><span class="mc-alert__d">${esc(desc)}</span></span><span class="mc-alert__go">${esc(bt('mcOpen'))} →</span></button>`).join('')}
+              </div>
+            </div>
+            <div class="card panel">
+              <div class="panel-head"><h2>${esc(bt('mcOps'))}</h2></div>
+              <div class="mc-band mc-band--3" style="border:0;border-radius:0;margin:0">
+                ${cell(moneyless(counts.open), bt('openRequests'))}
+                ${cell(moneyless(counts.dueSoon), bt('dueSoon'))}
+                ${cell(moneyless(counts.submitted), bt('submitted'))}
+              </div>
+            </div>
+          </div>
+
+          <div class="grid split" style="margin-top:17px"><div class="card panel"><div class="panel-head"><h2>${esc(bt('mcRecent'))}</h2><button class="btn btn-secondary btn-small" data-view="requests">${esc(bt('mcSeeAll'))}</button></div>${requestTable(state.requests.slice(0, 5))}</div><div class="card panel"><div class="panel-head"><h2>${esc(bt('quickActions'))}</h2></div><div class="quick-grid"><button class="quick" data-action="new-request"><span class="quick-icon">↗</span><span><strong>${esc(bt('createRequest'))}</strong><span>${esc(bt('requests'))}</span></span></button><button class="quick" data-action="new-product"><span class="quick-icon">◇</span><span><strong>${esc(bt('products'))}</strong><span>${esc(bt('mcScale'))}</span></span></button><button class="quick" data-action="invite-supplier"><span class="quick-icon">◎</span><span><strong>${esc(bt('mcInvite'))}</strong><span>${esc(bt('suppliers'))}</span></span></button></div></div></div>`;
       }
 
       function requestTable(items) {
-        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>Créez votre première demande fournisseur.</p><button class="btn btn-primary btn-small" data-action="new-request">Créer une demande</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>Échéance</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">Relancer</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>${esc(bt('dcEmptyTitle'))}</strong><p>${esc(bt('dcEmptyBody'))}</p><button class="btn btn-primary btn-small" data-action="new-request">${esc(bt('dcCreate'))}</button></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>${esc(bt('dcTblRequest'))}</th><th>${esc(bt('dcTblSupplier'))}</th><th>${esc(bt('dcTblStatus'))}</th><th>${esc(bt('dcTblProgress'))}</th><th>${esc(bt('dcTblDue'))}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">${esc(bt('dcOpen'))}</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('dcRemindTitle'))}">${esc(bt('dcRemind'))}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
-
       function requestsView() {
-        return `<div class="page-head"><div><div class="eyebrow">Pilotage fournisseur</div><h1>Demandes de données</h1><p>Créez, envoyez et révisez les informations demandées à vos fournisseurs.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request">+ Nouvelle demande</button></div></div><div class="card panel"><div class="filters"><input class="input" id="request-search" placeholder="Rechercher une demande…"><select class="select" id="request-filter" style="max-width:190px"><option value="all">Tous les statuts</option><option value="draft">Brouillons</option><option value="in_progress">En cours</option><option value="submitted">À revoir</option><option value="approved">Approuvées</option></select></div><div id="request-list">${requestTable(state.requests)}</div></div>`;
-      }
+        const demo = state.demo;
+        const reqs = state.requests || [];
 
+        // Demonstration mode shows the briefed workspace figures; connected mode
+        // counts what is really there and prints an em dash when it cannot.
+        const counts = {};
+        DC_STATES.forEach((s) => { counts[s] = 0; });
+        reqs.forEach((r) => { counts[dcState(r.status)] += 1; });
+        const demoCounts = { missing: 17, requested: 64, submitted: 23, underReview: 12, accepted: 1186, rejected: 5 };
+
+        const supplierCount = demo ? 86 : new Set(reqs.map((r) => r.supplierOrganizationId).filter(Boolean)).size;
+        const productCount = demo ? 1248 : (state.products || []).length;
+
+        const stages = [
+          { k: 'dcS1', d: 'dcS1d', v: demo ? 1 : (currentBrand() ? 1 : '—') },
+          { k: 'dcS2', d: 'dcS2d', v: supplierCount || '—' },
+          { k: 'dcS3', d: 'dcS3d', v: productCount || '—' },
+          { k: 'dcS4', d: 'dcS4d', v: demo ? 14208 : '—' },
+          { k: 'dcS5', d: 'dcS5d', v: demo ? 9847 : '—' },
+          { k: 'dcS6', d: 'dcS6d', v: demo ? demoCounts.underReview : counts.underReview },
+          { k: 'dcS7', d: 'dcS7d', v: demo ? demoCounts.accepted : counts.accepted }
+        ];
+
+        const flow = `<div class="dc-flow">${stages.map((s, i) => `
+            <div class="dc-stage"${i === stages.length - 1 ? ' data-final="yes"' : ''}>
+              <div class="dc-stage__i">${String(i + 1).padStart(2, '0')}</div>
+              <div class="dc-stage__v">${typeof s.v === 'number' ? moneyless(s.v) : esc(String(s.v))}</div>
+              <div class="dc-stage__n">${esc(bt(s.k))}</div>
+              <div class="dc-stage__d">${esc(bt(s.d))}</div>
+            </div>`).join('')}</div>`;
+
+        const board = `<div class="dc-states">${DC_STATES.map((s) => `
+            <button class="dc-state" data-state="${s}" data-dc-filter="${s}">
+              <span class="dc-state__v">${moneyless(demo ? demoCounts[s] : counts[s])}</span>
+              <span class="dc-state__n">${esc(bt('dc' + s.charAt(0).toUpperCase() + s.slice(1)))}</span>
+              <span class="dc-state__d">${esc(bt('dc' + s.charAt(0).toUpperCase() + s.slice(1) + 'D'))}</span>
+            </button>`).join('')}</div>`;
+
+        return `<div class="page-head"><div><div class="eyebrow">${esc(bt('dcEyebrow'))}</div>
+            <h1>${esc(bt('dcTitle'))}</h1><p>${esc(bt('dcLead'))}</p></div>
+            <div class="actions">${demo ? `<span class="mc-demo">${esc(bt('mcDemoData'))}</span>` : ''}
+            <button class="btn btn-primary" data-action="new-request">${esc(bt('dcNewRequest'))}</button></div></div>
+
+          <div class="eyebrow" style="margin-bottom:10px">${esc(bt('dcPipeline'))}</div>
+          ${flow}
+
+          <div style="height:26px"></div>
+          <div class="eyebrow" style="margin-bottom:10px">${esc(bt('dcStates'))}
+            <span class="dc-hint">${esc(bt('dcFilterNote'))}</span></div>
+          ${board}
+
+          <div style="height:26px"></div>
+          <div class="card panel">
+            <div class="panel-head"><h2>${esc(bt('dcRequests'))}</h2></div>
+            <div class="filters">
+              <input class="input" id="request-search" placeholder="${esc(bt('dcSearch'))}">
+              <select class="select" id="request-filter" style="max-width:210px">
+                <option value="all">${esc(bt('dcAll'))}</option>
+                ${DC_STATES.map((s) => `<option value="${s}">${esc(bt('dc' + s.charAt(0).toUpperCase() + s.slice(1)))}</option>`).join('')}
+              </select>
+            </div>
+            <div id="request-list">${requestTable(state.requests)}</div>
+          </div>`;
+      }
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">Catalogue produit</div><h1>Produits</h1><p>Suivez la complétude de vos références et lancez une collecte de données.</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">Importer CSV</button><button class="btn btn-secondary" data-action="catalog-export">Exporter CSV</button><button class="btn btn-secondary" data-action="audit-export">Exporter audit</button><button class="btn btn-primary" data-action="new-product">+ Nouveau produit</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Statut</th><th>Complétude</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">Qualité</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>Créez votre première référence produit.</p><button class="btn btn-primary btn-small" data-action="new-product">Créer un produit</button></div>`}</div>`;
-      }
+        const t = bt;
+        const rows = state.products.map((p) => `<tr>`
+          + `<td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td>`
+          + `<td>${esc(p.category || '—')}</td>`
+          + `<td>${status(p.status)}</td>`
+          + `<td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td>`
+          + `<td>${status(p.dataReadiness || 'in_progress')}</td>`
+          + `<td><div class="actions" style="justify-content:flex-end">`
+          + `<a class="btn btn-primary btn-small" href="/product-intelligence/?ref=${encodeURIComponent(p.reference || p.id)}" title="${esc(t('pvIntelHint'))}">${esc(t('pvIntel'))}</a>`
+          + `<button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${esc(t('pvOpen'))}</button>`
+          + `<button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">${esc(t('dpp'))}</button>`
+          + `<button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${esc(t('quality'))}</button>`
+          + `</div></td></tr>`).join('');
 
+        return `<div class="page-head"><div><div class="eyebrow">${esc(t('pvEyebrow'))}</div>`
+          + `<h1>${esc(t('pvTitle'))}</h1><p>${esc(t('pvLead'))}</p></div>`
+          + `<div class="actions">`
+          + `<button class="btn btn-secondary" data-action="catalog-import">${esc(t('pvImport'))}</button>`
+          + `<button class="btn btn-secondary" data-action="catalog-export">${esc(t('pvExport'))}</button>`
+          + `<button class="btn btn-secondary" data-action="audit-export">${esc(t('pvAudit'))}</button>`
+          + `<button class="btn btn-primary" data-action="new-product">${esc(t('pvNew'))}</button>`
+          + `</div></div>`
+          + `<div class="card panel">${state.products.length
+            ? `<div class="table-wrap"><table><thead><tr>`
+              + `<th>${esc(t('pvProduct'))}</th><th>${esc(t('pvCategory'))}</th><th>${esc(t('pvStatus'))}</th>`
+              + `<th>${esc(t('pvCompleteness'))}</th><th>${esc(t('pvReadiness'))}</th><th></th>`
+              + `</tr></thead><tbody>${rows}</tbody></table></div>`
+            : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(t('pvEmptyTitle'))}</strong>`
+              + `<p>${esc(t('pvEmptyBody'))}</p>`
+              + `<button class="btn btn-primary btn-small" data-action="new-product">${esc(t('pvNew'))}</button></div>`
+          }</div>`;
+      }
       function suppliersView() {
         return `<div class="page-head"><div><div class="eyebrow">Écosystème fournisseur</div><h1>Fournisseurs</h1><p>Invitez et suivez les organisations qui alimentent vos données.</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">Importer CSV</button><button class="btn btn-primary" data-action="invite-supplier">+ Inviter un fournisseur</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Rôle</th><th>Demandes ouvertes</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">Demander des données</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>Aucun fournisseur connecté</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">Inviter un fournisseur</button></div>`}</div>`;
       }
@@ -1538,7 +3032,7 @@ function render() {
         if (!detail?.product) return `<div class="empty"><div class="empty-icon">◇</div><strong>Produit introuvable</strong><button class="btn btn-secondary" data-view="products">Retour aux produits</button></div>`;
         const p = detail.product;
         const materialOptions = state.materials.map((material) => `<option value="${esc(material.id)}">${esc(material.name)}${material.materialType ? ` · ${esc(material.materialType)}` : ''}</option>`).join('');
-        return `<div class="page-head"><div><button class="link-button" data-view="products">← Retour aux produits</button><div class="eyebrow" style="margin-top:20px">Produit · v${esc(p.version)}</div><h1>${esc(p.name)}</h1><p>${esc(p.reference)} · ${esc(p.category || 'Catégorie non renseignée')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="product-new-request" data-product-id="${esc(p.id)}">+ Demande fournisseur</button><button class="btn btn-secondary" data-action="product-supply-chain-from-detail">Graphe de traçabilité</button><button class="btn btn-secondary" data-action="product-dpp-from-detail">📋 Passeport DPP</button><button class="btn btn-secondary" data-action="product-revision">Créer une révision</button><button class="btn btn-primary" data-action="product-quality-from-detail">Ouvrir la qualité</button></div></div>
+        return `<div class="page-head"><div><button class="link-button" data-view="products">← Retour aux produits</button><div class="eyebrow" style="margin-top:20px">Produit · v${esc(p.version)}</div><h1>${esc(p.name)}</h1><p>${esc(p.reference)} · ${esc(p.category || 'Catégorie non renseignée')}</p></div><div class="actions">${state.product && state.product.reference ? `<a class="btn btn-primary btn-small" href="/product-intelligence/?ref=${encodeURIComponent(state.product.reference)}">${esc(bt('pvIntel'))}</a>` : ''}<button class="btn btn-secondary" data-action="product-new-request" data-product-id="${esc(p.id)}">+ Demande fournisseur</button><button class="btn btn-secondary" data-action="product-supply-chain-from-detail">Graphe de traçabilité</button><button class="btn btn-secondary" data-action="product-dpp-from-detail">📋 Passeport DPP</button><button class="btn btn-secondary" data-action="product-revision">Créer une révision</button><button class="btn btn-primary" data-action="product-quality-from-detail">Ouvrir la qualité</button></div></div>
           <div class="grid split">
             <div class="card panel"><div class="panel-head"><h2>Données produit</h2><span class="meta">Les champs calculés restent contrôlés par Neon</span></div><form id="product-detail-form"><div class="form-grid"><label>Référence<input class="input" name="reference" value="${esc(p.reference)}" required></label><label>Nom<input class="input" name="name" value="${esc(p.name)}" required></label><label>Catégorie<input class="input" name="category" value="${esc(p.category || '')}"></label><label>SKU<input class="input" name="sku" value="${esc(p.sku || '')}"></label><label>Description<textarea class="textarea field-full" name="description" rows="4">${esc(p.description || '')}</textarea></label><label>Famille produit<input class="input" name="productFamily" value="${esc(p.productFamily || '')}"></label><label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || '')}"></label><label>Pays de conception<input class="input" name="countryOfDesign" maxlength="2" value="${esc(p.countryOfDesign || '')}"></label><label>Pays de fabrication<input class="input" name="countryOfManufacture" maxlength="2" value="${esc(p.countryOfManufacture || '')}"></label><label>Poids en grammes<input class="input" name="weightGrams" type="number" min="0" step="0.1" value="${esc(p.weightGrams || '')}"></label><label>Tailles<input class="input" name="sizeRange" value="${esc((p.sizeRange || []).join(', '))}" placeholder="S, M, L"></label></div><div class="form-actions"><button class="btn btn-primary">Enregistrer les données</button></div></form></div>
             <div class="card panel"><div class="panel-head"><div><h2>Composition</h2><p class="meta" style="margin:5px 0 0">Version courante · matériaux partagés par votre organisation</p></div><span class="status status-${state.materials.length ? 'approved' : 'draft'}">${state.materials.length} matériau(x)</span></div>
@@ -1556,7 +3050,7 @@ function render() {
       function supplierDetailView() {
         const supplier = state.selectedSupplier;
         if (!supplier) return `<div class="empty"><div class="empty-icon">◎</div><strong>Fournisseur introuvable</strong><button class="btn btn-secondary" data-view="suppliers">Retour aux fournisseurs</button></div>`;
-        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">← Retour aux fournisseurs</button><div class="eyebrow" style="margin-top:20px">Fournisseur</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || 'Pays non renseigné')} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">Nouvelle demande</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(labels[supplier.profile?.onboardingStatus] || supplier.profile?.onboardingStatus || 'Non chargé')}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">Complétude</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">Activités</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">Résumé</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : '<div class="empty"><p>Profil non disponible pour cette organisation.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
+        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">← Retour aux fournisseurs</button><div class="eyebrow" style="margin-top:20px">Fournisseur</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || 'Pays non renseigné')} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">Nouvelle demande</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || supplier.profile?.onboardingStatus || 'Non chargé')}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">Complétude</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">Activités</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">Résumé</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : '<div class="empty"><p>Profil non disponible pour cette organisation.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
       }
 
       function capContractPanel() {
@@ -1576,9 +3070,115 @@ function render() {
       }
 
       function qualityView() {
-        if (!state.selectedProduct) return `<div class="page-head"><div><div class="eyebrow">Quality Center</div><h1>Qualité produit</h1><p>Sélectionnez un produit pour calculer et consulter son score qualité explicable.</p></div></div>${complianceContractPanel()}${capContractPanel()}<div class="card panel"><label>Produit<select class="select" id="quality-product-select"><option value="">Choisir un produit…</option>${state.products.map((p) => `<option value="${esc(p.id)}">${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label></div>`;
-        const q = state.quality; const score = q?.score;
-        return `${complianceContractPanel()}${capContractPanel()}<div class="page-head"><div><div class="eyebrow">Quality Center</div><h1>${esc(state.selectedProduct.name)}</h1><p>Le score décrit l’état de préparation des données. Il ne constitue pas une certification.</p></div><div class="actions"><button class="btn btn-secondary" data-action="select-quality-product">Changer de produit</button><button class="btn btn-primary" data-action="compute-quality">Recalculer le score</button></div></div>${score ? `<div class="grid score-grid">${scoreCard('Complétude', score.completeness)}${scoreCard('Fraîcheur', score.freshness)}${scoreCard('Preuves', score.documentationCoverage)}${scoreCard('Cohérence', score.consistency)}</div>` : `<div class="card empty"><div class="empty-icon">◒</div><strong>Score non calculé</strong><p>Lancez un premier calcul qualité pour ce produit.</p><button class="btn btn-primary btn-small" data-action="compute-quality">Calculer maintenant</button></div>`}${q ? `<div class="card panel"><div class="panel-head"><h2>Issues ouvertes</h2><span class="meta">${q.issues.length} issue(s)</span></div>${q.issues.length ? q.issues.map(issueCard).join('') : '<div class="empty"><strong>Aucune issue ouverte</strong><p>Les règles qualité ne remontent aucun blocage actif.</p></div>'}</div>` : ''}`;
+        const recs = evidenceRecords();
+        const q = state.quality;
+
+        // Workspace-level answer first. Demonstration figures match the Overview.
+        const m = state.demo
+          ? { completeness: 92.4, evidence: 84, verification: 78, supplier: 87, product: 91 }
+          : {
+              completeness: q?.score?.completeness ?? null,
+              evidence: q?.score?.documentationCoverage ?? null,
+              verification: recs.length ? Math.round(recs.filter((r) => r.verification === 'thirdParty').length / recs.length * 100) : null,
+              supplier: null,
+              product: q?.score?.consistency ?? null
+            };
+        const metric = (key, value, accent) => `<div class="qc-metric">
+            <div class="qc-metric__v${accent ? ' is-accent' : ''}">${value === null ? '—' : (Number(value).toLocaleString(locale(), { maximumFractionDigits: 1 }) + '%')}</div>
+            <div class="qc-metric__k">${esc(bt(key))}</div>
+            <div class="qc-metric__bar"><i style="width:${pct(value || 0)}%"></i></div>
+          </div>`;
+
+        // CRITICAL / WARNING / REVIEW / RESOLVED, derived from the issue feed.
+        const issues = (q?.issues || []).map((i) => ({ ...i, band: qcBand(i) }));
+        const demoIssues = state.demo ? [
+          { id: 'q1', band: 'critical', ruleKey: 'product_expired_certification', message: bt('qcI1'), view: 'certifications', detectedAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+          { id: 'q2', band: 'critical', ruleKey: 'evidence_expired', message: bt('qcI2'), view: 'documents', detectedAt: new Date(Date.now() - 5 * 86400000).toISOString() },
+          { id: 'q3', band: 'warning', ruleKey: 'product_missing_evidence', message: bt('qcI3'), view: 'documents', detectedAt: new Date(Date.now() - 9 * 86400000).toISOString() },
+          { id: 'q4', band: 'warning', ruleKey: 'supplier_data_stale', message: bt('qcI4'), view: 'suppliers', detectedAt: new Date(Date.now() - 14 * 86400000).toISOString() },
+          { id: 'q5', band: 'review', ruleKey: 'evidence_pending_verification', message: bt('qcI5'), view: 'documents', detectedAt: new Date(Date.now() - 3 * 86400000).toISOString() },
+          { id: 'q6', band: 'resolved', ruleKey: 'product_incomplete_composition', message: bt('qcI6'), view: 'products', detectedAt: new Date(Date.now() - 21 * 86400000).toISOString() }
+        ] : [];
+        const all = issues.concat(demoIssues);
+        const bands = ['critical', 'warning', 'review', 'resolved'];
+        const bandCount = {};
+        bands.forEach((b) => { bandCount[b] = all.filter((i) => i.band === b).length; });
+
+        const board = `<div class="qc-board">${bands.map((b) => `
+          <div class="qc-band" data-band="${b}">
+            <div class="qc-band__v">${moneyless(bandCount[b])}</div>
+            <div class="qc-band__n">${esc(bt('qcB_' + b))}</div>
+          </div>`).join('')}</div>`;
+
+        const list = all.length ? all.map((i) => `<div class="qc-issue" data-band="${esc(i.band)}">
+            <span class="qc-issue__sev" data-band="${esc(i.band)}">${esc(bt('qcB_' + i.band))}</span>
+            <div class="qc-issue__b">
+              <strong>${esc(i.message)}</strong>
+              <p class="meta">${esc(i.ruleKey)} · ${esc(bt('qcDetected'))} ${date(i.detectedAt)}</p>
+            </div>
+            <button class="btn btn-secondary btn-small" data-view="${esc(qcFixView(i))}">${esc(bt(i.band === 'resolved' ? 'qcView' : 'qcFix'))}</button>
+          </div>`).join('')
+          : `<div class="empty"><strong>${esc(bt('qcNoIssues'))}</strong><p>${esc(bt('qcNoIssuesD'))}</p></div>`;
+
+        const productPanel = state.selectedProduct
+          ? `<div class="card panel"><div class="panel-head">
+               <div><h2>${esc(state.selectedProduct.name)}</h2>
+               <p class="meta">${esc(bt('qcNotCert'))}</p></div>
+               <div class="actions">
+                 <button class="btn btn-secondary btn-small" data-action="select-quality-product">${esc(bt('qcChangeProduct'))}</button>
+                 <button class="btn btn-primary btn-small" data-action="compute-quality">${esc(bt('qcRecompute'))}</button>
+               </div></div>
+             ${q?.score ? `<div class="grid score-grid">${scoreCard(bt('qcCompleteness'), q.score.completeness)}${scoreCard(bt('qcFreshness'), q.score.freshness)}${scoreCard(bt('qcEvidence'), q.score.documentationCoverage)}${scoreCard(bt('qcConsistency'), q.score.consistency)}</div>`
+               : `<div class="empty"><div class="empty-icon">◒</div><strong>${esc(bt('qcNoScore'))}</strong><p>${esc(bt('qcNoScoreD'))}</p><button class="btn btn-primary btn-small" data-action="compute-quality">${esc(bt('qcComputeNow'))}</button></div>`}
+             </div>`
+          : `<div class="card panel"><div class="panel-head"><h2>${esc(bt('qcPerProduct'))}</h2></div>
+             <label>${esc(bt('qcProduct'))}<select class="select" id="quality-product-select">
+               <option value="">${esc(bt('qcChoose'))}</option>
+               ${state.products.map((p) => `<option value="${esc(p.id)}">${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}
+             </select></label></div>`;
+
+        return `<div class="page-head"><div>
+            <div class="eyebrow">${esc(bt('qcEyebrow'))}</div>
+            <h1>${esc(bt('qcTitle'))}</h1><p>${esc(bt('qcLead'))}</p></div>
+            <div class="actions">${state.demo ? `<span class="mc-demo">${esc(bt('mcDemoData'))}</span>` : ''}</div>
+          </div>
+
+          <div class="qc-metrics">
+            ${metric('qcMCompleteness', m.completeness, true)}
+            ${metric('qcMEvidence', m.evidence)}
+            ${metric('qcMVerification', m.verification)}
+            ${metric('qcMSupplier', m.supplier)}
+            ${metric('qcMProduct', m.product)}
+          </div>
+
+          <div style="height:26px"></div>
+          <div class="eyebrow" style="margin-bottom:10px">${esc(bt('qcIssues'))}</div>
+          ${board}
+          <div style="height:14px"></div>
+          <div class="card panel">${list}</div>
+
+          <div style="height:26px"></div>
+          ${productPanel}
+          ${complianceContractPanel()}${capContractPanel()}`;
+      }
+
+      // Existing severities/statuses mapped onto the brief's four bands.
+      function qcBand(issue) {
+        if (issue.status === 'resolved' || issue.status === 'waived') return 'resolved';
+        if (issue.status === 'acknowledged') return 'review';
+        if (issue.severity === 'blocking' || issue.severity === 'critical') return 'critical';
+        if (issue.severity === 'warning') return 'warning';
+        return 'review';
+      }
+
+      // Every issue has to land on the screen that fixes it.
+      function qcFixView(issue) {
+        if (issue.view) return issue.view;
+        const k = issue.ruleKey || '';
+        if (k.indexOf('certification') >= 0) return 'certifications';
+        if (k.indexOf('evidence') >= 0 || k.indexOf('document') >= 0) return 'documents';
+        if (k.indexOf('supplier') >= 0) return 'suppliers';
+        return 'products';
       }
       function scoreCard(label, value) { return `<div class="card score"><div class="score-name">${label}</div><div class="score-value">${moneyless(value)}%</div><div class="progress"><span style="width:${pct(value)}%"></span></div></div>`; }
       function issueCard(issue) {
@@ -1590,7 +3190,7 @@ function render() {
             <span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span>
             <div>
               <strong>${esc(issue.message)}</strong>
-              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(labels[issue.status] || issue.status)}</span> · <span class="meta">Détectée le ${date(issue.detectedAt)}</span></p>
+              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(statusLabel(issue.status))}</span> · <span class="meta">Détectée le ${date(issue.detectedAt)}</span></p>
               ${isWaived && waiverReason ? `
                 <div class="item-response" style="margin-top:7px;background:#edf7f0;border:1px solid #cce8d5;border-radius:8px;font-size:11px;color:#285e42">
                   <strong>Dérogation accordée :</strong> ${esc(waiverReason)}
@@ -1633,7 +3233,7 @@ function render() {
           return `<div class="node-card" data-node-id="${esc(node.id)}">
             <div class="node-card-head">
               <span class="node-type-pill">${esc(node.node_type)}</span>
-              <span class="status status-${esc(node.status)}">${esc(labels[node.status] || node.status)}</span>
+              <span class="status status-${esc(node.status)}">${esc(statusLabel(node.status))}</span>
             </div>
             <strong class="node-label">${esc(node.label)}</strong>
             ${processLabel ? `<div class="node-meta">⚙ ${esc(processLabel)}</div>` : ''}
@@ -1732,7 +3332,7 @@ function render() {
                         <td><strong>${esc(src?.label || link.source_node_id)}</strong><div class="meta">${esc(src?.node_type || '')}</div></td>
                         <td><span class="node-type-pill">${esc(link.link_type)}</span></td>
                         <td><strong>${esc(tgt?.label || link.target_node_id)}</strong><div class="meta">${esc(tgt?.node_type || '')}</div></td>
-                        <td><span class="status status-${esc(link.status)}">${esc(labels[link.status] || link.status)}</span></td>
+                        <td><span class="status status-${esc(link.status)}">${esc(statusLabel(link.status))}</span></td>
                         <td>${link.evidence_document_id ? `<a href="/api/documents/${encodeURIComponent(link.evidence_document_id)}/download" target="_blank" class="link-button">📄 Preuve</a>` : '<span class="meta">—</span>'}</td>
                         <td style="text-align:right"><button class="btn btn-danger btn-small" data-delete-chain-link="${esc(link.id)}">Supprimer</button></td>
                       </tr>`;
@@ -1898,7 +3498,7 @@ function render() {
             ${r.status === 'draft' ? '<button class="btn btn-primary" data-action="send-request">Envoyer la demande</button>' : ''}
             ${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary" data-action="remind-request" data-reminder-request-id="${esc(r.id)}">Relancer le fournisseur</button>` : ''}
             ${['submitted','in_progress'].includes(r.status) ? '<button class="btn btn-secondary" data-action="refresh-detail">Actualiser</button>' : ''}
-            <button class="btn btn-primary" onclick="alert('Rapport complet de revue RSE exporté.')">Exporter Synthèse</button>
+            <button class="btn btn-primary" data-demo-action="1">Exporter Synthèse</button>
           </div>
         </div>
 
@@ -1936,7 +3536,7 @@ function render() {
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
                           <span class="badge-ocr">OCR 99% Valide</span>
-                          <button class="btn btn-secondary btn-small" onclick="alert('Inspection visuelle de ${esc(item.documentName)} ouverte.')">Inspecter Document</button>
+                          <button class="btn btn-secondary btn-small" data-demo-action="1">Inspecter Document</button>
                         </div>
                       </div>
                     ` : ''}
@@ -1948,7 +3548,7 @@ function render() {
                             <strong style="font-size:11px;color:var(--muted);text-transform:uppercase;">Donnée Déclarée par le Fournisseur :</strong>
                             <div style="font-size:13px;font-weight:750;margin-top:2px;">${esc(response.value)}</div>
                           </div>
-                          <span class="status status-${esc(response.status)}">${esc(labels[response.status] || response.status)}</span>
+                          <span class="status status-${esc(response.status)}">${esc(statusLabel(response.status))}</span>
                         </div>
 
                         ${response.reviewerNote ? `
@@ -1995,7 +3595,7 @@ function render() {
             <div class="card panel">
               <div class="panel-head"><h2>Actions Rapides</h2></div>
               <div style="display:grid;gap:8px;">
-                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="alert('Rappel email envoyé à Rui Silva (Nhãn Textile).')">
+                <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" data-demo-action="1">
                   ✉️ Relancer le fournisseur par email
                 </button>
                 <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="window.open('/dpp/', '_blank')">
@@ -2751,8 +4351,26 @@ function render() {
         document.querySelectorAll('[data-action="open-waive-modal"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); state.modal = 'waive-issue'; state.modalIssueId = el.dataset.issueId; render(); }));
         const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => { state.activeOrganizationId = org.value; sync(); });
         const search = document.getElementById('request-search'); const filter = document.getElementById('request-filter');
-        const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); list?.querySelectorAll('[data-action="remind-request"]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); remindRequest(el.dataset.reminderRequestId).catch((error) => notify(error.message, true)); })); };
+        const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value || dcState(r.status) === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); list?.querySelectorAll('[data-action="remind-request"]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); remindRequest(el.dataset.reminderRequestId).catch((error) => notify(error.message, true)); })); };
         search?.addEventListener('input', filterRequests); filter?.addEventListener('change', filterRequests);
+        document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
+          event.preventDefault();
+          notify(bt('demoUnavailable'));
+        }));
+        document.querySelectorAll('[data-ev-type]').forEach((el) => el.addEventListener('click', () => {
+          const want = el.dataset.evType;
+          document.querySelectorAll('[data-ev-type]').forEach((b) => b.classList.toggle('is-on', b === el));
+          document.querySelectorAll('[data-ev-row]').forEach((row) => {
+            row.hidden = want !== 'all' && row.dataset.evRow !== want;
+          });
+        }));
+        document.querySelectorAll('[data-dc-filter]').forEach((el) => el.addEventListener('click', () => {
+          if (!filter) return;
+          const next = filter.value === el.dataset.dcFilter ? 'all' : el.dataset.dcFilter;
+          filter.value = next;
+          document.querySelectorAll('[data-dc-filter]').forEach((b) => b.classList.toggle('is-on', b.dataset.dcFilter === next));
+          filterRequests();
+        }));
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('supply-chain-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadSupplyChain(e.target.value); });
         document.getElementById('dpp-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadDpp(e.target.value); });
@@ -2831,6 +4449,10 @@ function render() {
         }
       }
       window.tracefabBrandConsole = { state, sync };
+      // The SPA runs inside an IIFE, so the inline onchange on the language
+      // <select> could never reach setBrandLang — the console language
+      // switcher was a no-op. Expose it explicitly.
+      window.setBrandLang = setBrandLang;
       boot();
     })();
   </script>
