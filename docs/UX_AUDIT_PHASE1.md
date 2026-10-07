@@ -1790,3 +1790,90 @@ Le profil `textile_readiness_mvp` déclare les 9 exigences bloquantes : la sorti
 donc identique **pour ce profil**. Ce qui change, c'est que la valeur n'est plus une tautologie :
 elle exprime la règle réelle, respecte le profil dès qu'une exigence devient recommandée, et n'est
 plus contradictoire avec `blockingCount`.
+
+---
+
+## Chantier 19 — Les 18 « échecs » de la suite étaient des blocages d'environnement, et un runner pour le dire
+
+### Correction d'une affirmation fausse
+
+J'avais écrit que les 18 tests en échec étaient « pour l'essentiel des scripts non enregistrés dans
+`package.json` ». **C'est faux, et la mesure le contredit** : les **18 sont enregistrés**, aucun ne
+manque.
+
+### Causes réelles, mesurées une par une
+
+| Cause | Nb | Message réel |
+|---|---|---|
+| Client Prisma non généré | 5 | `@prisma/client did not initialize yet. Please run "prisma generate"` |
+| Base Neon requise | 6 | `DATABASE_URL is required` |
+| Navigateur Playwright absent | 4 | `Executable doesn't exist at …/ms-playwright/chromium_headless_shell-1243/…` |
+| Environnement de staging requis | 3 | `requires TRACEFAB_STAGING_URL … ; no mock/demo fallback is allowed` |
+
+Les deux premières tentatives de réparation ont été **mesurées, pas supposées** :
+
+```
+$ npx prisma generate
+Error: request to https://binaries.prisma.sh/all_commits/…/schema-engine.sha256 failed
+
+$ npx playwright install chromium-headless-shell
+Error: Download failure — host: 'cdn.playwright.dev'  code: 'ECONNRESET'
+```
+
+Ni `binaries.prisma.sh` ni `cdn.playwright.dev` ne font partie des hôtes joignables depuis cet
+environnement. La catégorie « staging » est un **choix assumé du dépôt** : le message dit
+explicitement qu'aucun repli mock ou démo n'est autorisé.
+
+**Aucune des 18 n'est un défaut de code.**
+
+### Découverte connexe : `npm test` ne s'exécute jamais
+
+`npm test` enchaîne **25 étapes** avec `&&`. Mesuré : il s'arrête à l'**étape 2** (`api:typecheck`,
+98 erreurs de types Prisma préexistantes). Les étapes 3 à 25 — dont 19 suites de tests — **ne sont
+jamais exécutées** dans cet environnement.
+
+### Ce qui a été fait
+
+`scripts/run_test_suite.mjs` (`npm run test:suite`) exécute les **61 scripts `test:*`**
+indépendamment et classe chaque résultat :
+
+- **PASS** — le script a tourné et réussi ;
+- **SKIP** — le script n'a pas pu tourner, et la cause correspond à un motif **mesuré** (les
+  quatre du tableau ci-dessus), avec la raison et le remède affichés ;
+- **FAIL** — tout le reste. **Un motif non reconnu est un échec**, jamais un SKIP.
+
+Le code de sortie n'est non nul qu'en présence d'un FAIL. Options : `--only <sous-chaîne>`,
+`--json`, `TRACEFAB_TEST_TIMEOUT_MS`.
+
+Deux pièges corrigés en cours de construction :
+
+1. **`npm run` lance un node enfant** : tuer `npm` seul laissait l'enfant tenir les pipes ouverts
+   et le runner attendait indéfiniment. Corrigé par `detached: true` + `process.kill(-pid)`.
+   Un dépassement de délai est classé **FAIL**, jamais SKIP.
+2. **`test:suite` est lui-même un `test:*`** : le premier lancement s'est exécuté récursivement et
+   ne s'est jamais terminé. Le runner s'exclut désormais lui-même.
+
+### Mesures
+
+```
+PASS 43 · SKIP 18 · FAIL 0 — sur 61 scripts
+
+  4 × browser        cdn.playwright.dev injoignable
+  5 × prisma-engine  binaries.prisma.sh injoignable
+  6 × database       DATABASE_URL non défini
+  3 × staging        environnement de staging requis (par conception)
+```
+
+**Zéro échec réel.** Les 43 scripts qui peuvent tourner ici tournent et passent.
+
+**Contre-épreuve** : un échec réel injecté dans `test:route-registry` (sortie `FAILED` +
+`process.exit(1)`) est bien classé **FAIL** avec un code de sortie **1**, et non avalé en SKIP.
+Le fichier a ensuite été restauré : `npm run test:route-registry` repasse (exit 0) et
+`git diff` sur ce fichier est vide.
+
+### Ce que cela ne règle pas
+
+Les 18 SKIP restent **non exécutés**. Ce chantier les rend lisibles et distinguables d'une
+régression ; il ne les fait pas tourner. Pour les exécuter il faut, selon la catégorie :
+`npx prisma generate`, un `DATABASE_URL` de test, `npx playwright install chromium`, ou un
+environnement de staging avec ses jetons.
