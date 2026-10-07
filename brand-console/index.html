@@ -467,6 +467,117 @@
       }
     }
 
+  
+    /* ==========================================================================
+       DATA COLLECTION LIFECYCLE PIPELINE (Phase 7)
+       Brand ➔ Supplier ➔ Product ➔ Required Data ➔ Evidence ➔ Review ➔ Verified Data
+       ========================================================================== */
+    .dc-pipeline-container {
+      background: #ffffff;
+      border: 1px solid #e1e8e2;
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+    }
+
+    .dc-pipeline-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .dc-pipeline-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #17231f;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dc-lifecycle-strip {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .dc-step-card {
+      background: #f7f9f7;
+      border: 1px solid #e1e8e2;
+      border-radius: 12px;
+      padding: 12px 10px;
+      text-align: center;
+      position: relative;
+    }
+
+    .dc-step-card.active {
+      background: #eaf5ef;
+      border-color: #0b7656;
+    }
+
+    .dc-step-num {
+      font-family: var(--font-mono, monospace);
+      font-size: 9.5px;
+      color: #71807a;
+      font-weight: 750;
+      margin-bottom: 4px;
+    }
+
+    .dc-step-card.active .dc-step-num {
+      color: #0b7656;
+    }
+
+    .dc-step-label {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #17231f;
+      margin-bottom: 2px;
+    }
+
+    .dc-step-sub {
+      font-size: 10px;
+      color: #71807a;
+    }
+
+    /* Statuses Pills Row */
+    .dc-status-pills-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .dc-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid #e5ebe6;
+      background: #ffffff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .dc-status-pill.active {
+      border-color: #0b7656;
+      background: #eaf5ef;
+      color: #0b7656;
+    }
+
+    .dc-pill-badge {
+      font-family: var(--font-mono, monospace);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
   </style>
   <script src="/auto-translate.js"></script>
 </head>
@@ -855,6 +966,15 @@
         const supplier = suppliers().find((s) => s.organization_id === id);
         return membership?.organizations?.display_name || membership?.organizations?.legal_name || supplier?.organizations?.display_name || supplier?.organizations?.legal_name || id?.slice(0, 8) || '—';
       }
+      
+      function filterRequestsByStatus(st) {
+        const select = document.getElementById('request-filter');
+        if (select) {
+          select.value = st;
+          select.dispatchEvent(new Event('change'));
+        }
+      }
+
       function requestCounts() {
         const open = state.requests.filter((r) => !['approved', 'cancelled'].includes(r.status));
         const dueSoon = open.filter((r) => r.dueAt && new Date(r.dueAt).getTime() - Date.now() < 7 * 86400000);
@@ -1905,8 +2025,111 @@ function render() {
         return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>Échéance</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">Relancer</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
-      function requestsView() {
-        return `<div class="page-head"><div><div class="eyebrow">Pilotage fournisseur</div><h1>Demandes de données</h1><p>Créez, envoyez et révisez les informations demandées à vos fournisseurs.</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request">+ Nouvelle demande</button></div></div><div class="card panel"><div class="filters"><input class="input" id="request-search" placeholder="Rechercher une demande…"><select class="select" id="request-filter" style="max-width:190px"><option value="all">Tous les statuts</option><option value="draft">Brouillons</option><option value="in_progress">En cours</option><option value="submitted">À revoir</option><option value="approved">Approuvées</option></select></div><div id="request-list">${requestTable(state.requests)}</div></div>`;
+            function requestsView() {
+        const counts = requestCounts();
+        return `<div class="page-head">
+          <div>
+            <div class="eyebrow">Collecte de Données Structurées · Layer 01–04</div>
+            <h1>Pilotage de la Collecte Fournisseur</h1>
+            <p>TRACEFAB ne demande pas de simples fichiers : chaque demande transforme les déclarations amont en données structurées, reliées au produit et auditables.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="state.view='questionnaires';render();">Créateur de Questionnaires</button>
+            <button class="btn btn-primary" data-action="new-request">+ Nouvelle demande de données</button>
+          </div>
+        </div>
+
+        <!-- 7-Stage Structured Data Collection Lifecycle -->
+        <div class="dc-pipeline-container">
+          <div class="dc-pipeline-head">
+            <div class="dc-pipeline-title">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0b7656;"></span>
+              <span>Cycle de Transformation de la Donnée Fournisseur</span>
+            </div>
+            <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:700;">Zero Data Silos · Full Audit Trail</span>
+          </div>
+
+          <div class="dc-lifecycle-strip">
+            <div class="dc-step-card active">
+              <div class="dc-step-num">ÉTAPE 01</div>
+              <div class="dc-step-label">MARQUE (BRAND)</div>
+              <div class="dc-step-sub">Spécification du besoin</div>
+            </div>
+            <div class="dc-step-card active">
+              <div class="dc-step-num">ÉTAPE 02</div>
+              <div class="dc-step-label">FOURNISSEUR</div>
+              <div class="dc-step-sub">Invitation sans friction</div>
+            </div>
+            <div class="dc-step-card active">
+              <div class="dc-step-num">ÉTAPE 03</div>
+              <div class="dc-step-label">PRODUIT (STYLE)</div>
+              <div class="dc-step-sub">Rattachement SKU & BOM</div>
+            </div>
+            <div class="dc-step-card active">
+              <div class="dc-step-num">ÉTAPE 04</div>
+              <div class="dc-step-label">DONNÉES REQUISES</div>
+              <div class="dc-step-sub">Champs typés & ratios</div>
+            </div>
+            <div class="dc-step-card active">
+              <div class="dc-step-num">ÉTAPE 05</div>
+              <div class="dc-step-label">PREUVES & VAULT</div>
+              <div class="dc-step-sub">Certificats scellés OCR</div>
+            </div>
+            <div class="dc-step-card active">
+              <div class="dc-step-num">ÉTAPE 06</div>
+              <div class="dc-step-label">REVUE & CONTRÔLE</div>
+              <div class="dc-step-sub">Annotations & tolérances</div>
+            </div>
+            <div class="dc-step-card active" style="background:#0b7656;color:#ffffff;border-color:#07523e;">
+              <div class="dc-step-num" style="color:#ffffff;">ÉTAPE 07</div>
+              <div class="dc-step-label" style="color:#ffffff;">DONNÉES VÉRIFIÉES</div>
+              <div class="dc-step-sub" style="color:rgba(255,255,255,0.8);">Conforme ESPR / DPP</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Filter Filter Bar (Missing, Requested, Submitted, Under Review, Accepted, Rejected) -->
+        <div class="dc-status-pills-row">
+          <div class="dc-status-pill active" onclick="filterRequestsByStatus('all')">
+            <span>Toutes les demandes</span>
+            <span class="dc-pill-badge">${state.requests.length}</span>
+          </div>
+          <div class="dc-status-pill" onclick="filterRequestsByStatus('sent')">
+            <span style="color:#b45309;">● Demandées (Missing)</span>
+            <span class="dc-pill-badge">${state.requests.filter(r => ['sent','in_progress'].includes(r.status)).length}</span>
+          </div>
+          <div class="dc-status-pill" onclick="filterRequestsByStatus('submitted')">
+            <span style="color:#1d4ed8;">● Soumises (Submitted)</span>
+            <span class="dc-pill-badge">${counts.submitted}</span>
+          </div>
+          <div class="dc-status-pill" onclick="filterRequestsByStatus('changes_requested')">
+            <span style="color:#d97706;">● En revue (Under Review)</span>
+            <span class="dc-pill-badge">${state.requests.filter(r => r.status === 'changes_requested').length}</span>
+          </div>
+          <div class="dc-status-pill" onclick="filterRequestsByStatus('approved')">
+            <span style="color:#0b7656;">● Acceptées (Verified)</span>
+            <span class="dc-pill-badge">${state.requests.filter(r => r.status === 'approved').length}</span>
+          </div>
+          <div class="dc-status-pill" onclick="filterRequestsByStatus('cancelled')">
+            <span style="color:#b91c1c;">● Rejetées / Clôturées</span>
+            <span class="dc-pill-badge">${state.requests.filter(r => r.status === 'cancelled').length}</span>
+          </div>
+        </div>
+
+        <div class="card panel">
+          <div class="filters">
+            <input class="input" id="request-search" placeholder="Rechercher par titre, matière, SKU ou fournisseur…">
+            <select class="select" id="request-filter" style="max-width:200px">
+              <option value="all">Tous les statuts</option>
+              <option value="sent">Demandées (Missing)</option>
+              <option value="in_progress">En cours de saisie</option>
+              <option value="submitted">Soumises pour revue</option>
+              <option value="approved">Vérifiées & Approuvées</option>
+              <option value="cancelled">Rejetées</option>
+            </select>
+          </div>
+          <div id="request-list">${requestTable(state.requests)}</div>
+        </div>`;
       }
 
       function productsView() {
