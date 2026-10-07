@@ -1528,7 +1528,7 @@
             itemCount: 4,
             requiredItemCount: 3,
             fields: [
-              { id: 'c-1', key: 'rsl_test_report', label: 'Rapport d\'essais laboratoire RSL (< 12 mois)', type: 'document_proof', required: true, helpText: 'Analyse accréditée ISO 17025 (SGS, Intertek, CITEVE)' },
+              { id: 'c-1', key: 'rsl_test_report', label: 'RSL laboratory test report (< 12 months)', type: 'document_proof', required: true, helpText: 'Analyse accréditée ISO 17025 (SGS, Intertek, CITEVE)' },
               { id: 'c-2', key: 'zdhc_level', label: 'Niveau d\'attestation ZDHC MRSL', type: 'select_single', required: true, helpText: 'Level 1, Level 2 ou Level 3' },
               { id: 'c-3', key: 'closed_loop_water', label: 'Dyeing water recycling rate', type: 'percentage_number', required: false, helpText: 'Taux de réutilisation en boucle fermée' }
             ]
@@ -1542,7 +1542,7 @@
             itemCount: 4,
             requiredItemCount: 4,
             fields: [
-              { id: 's-1', key: 'social_audit_file', label: 'Rapport complet d\'audit social tierce partie', type: 'document_proof', required: true, helpText: 'SMETA 4-Pillar, BSCI ou SA8000 en cours de validité' },
+              { id: 's-1', key: 'social_audit_file', label: 'Full third-party social audit report', type: 'document_proof', required: true, helpText: 'SMETA 4-Pillar, BSCI ou SA8000 en cours de validité' },
               { id: 's-2', key: 'audit_score_letter', label: 'Notation globale obtenue', type: 'text_short', required: true, helpText: 'Score A, B ou Zero Critical Non-Conformity' },
               { id: 's-3', key: 'living_wage_attestation', label: 'Living Wage attestation', type: 'document_proof', required: true, helpText: 'Calcul basé sur les benchmarks Anker / Global Living Wage' }
             ]
@@ -2342,13 +2342,13 @@
         const docs = state.documents || [];
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Coffre-fort de Preuves & Intelligence Documentaire · Layer 03</div>
-            <h1>Centre de Preuves & Intégrité des Documents</h1>
+            <div class="eyebrow">${bt('evVault')}</div>
+            <h1>${bt('evCentre')}</h1>
             <p>Auditez, scellez et vérifiez les preuves réelles de votre supply chain textile : certificats de transaction, rapports d'essais ISO 17025, audits sociaux SMETA et déclarations REACH.</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" data-demo-action="1">📥 Télécharger le registre scellé</button>
-            <button class="btn btn-primary" data-demo-action="1">+ Déposer une nouvelle preuve</button>
+            <button class="btn btn-secondary" data-demo-action="1">${bt('evDownload')}</button>
+            <button class="btn btn-primary" data-demo-action="1">${bt('evUpload')}</button>
           </div>
         </div>
 
@@ -2356,96 +2356,96 @@
         <div class="eq-overview-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">SYSTÈME DE PREUVE SOUVERAIN (EVIDENCE INTELLIGENCE)</div>
-              <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">Preuves Documentaires Scellées par Hachage SHA-256</h3>
+              <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('evSovereign')}</div>
+              <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('evSha')}</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">142 PREUVES VALIDÉES SUR NEON DB</span>
+            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">142 EVIDENCE ITEMS VALIDATED ON NEON DB</span>
           </div>
 
           <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-top:16px;">
             <div class="eq-score-card">
-              <div class="eq-score-label">CERTIFICATS TRANSACTION</div>
+              <div class="eq-score-label">${bt('evTransCerts')}</div>
               <div class="eq-score-num">48</div>
-              <div class="eq-score-desc">Bilan massique GOTS / GRS</div>
+              <div class="eq-score-desc">${bt('evMassBalance')}</div>
             </div>
             <div class="eq-score-card">
-              <div class="eq-score-label">RAPPORTS ESSAIS LABO</div>
+              <div class="eq-score-label">${bt('evLabReports')}</div>
               <div class="eq-score-num">36</div>
-              <div class="eq-score-desc">Analyses RSL accréditées</div>
+              <div class="eq-score-desc">${bt('evRsl')}</div>
             </div>
             <div class="eq-score-card">
-              <div class="eq-score-label">AUDITS SOCIAUX (SMETA)</div>
+              <div class="eq-score-label">${bt('evSocialAudits')}</div>
               <div class="eq-score-num">24</div>
-              <div class="eq-score-desc">Droits humains & salaires décents</div>
+              <div class="eq-score-desc">${bt('evHumanRights')}</div>
             </div>
             <div class="eq-score-card">
-              <div class="eq-score-label">RELEVES DE PRODUCTION</div>
+              <div class="eq-score-label">${bt('evProdRecords')}</div>
               <div class="eq-score-num">34</div>
-              <div class="eq-score-desc">Bons de livraison & lots filés</div>
+              <div class="eq-score-desc">${bt('evDelivery')}</div>
             </div>
           </div>
         </div>
 
         <div class="card panel">
           <div class="panel-head">
-            <h2>Preuves documentaires actives & scellées (${docs.length})</h2>
-            <span class="meta" style="color:#0b7656;font-weight:750;">✓ Contrôle d'intégrité Neon & Document AI validé</span>
+            <h2>${bt('evActiveDocs')} (${docs.length})</h2>
+            <span class="meta" style="color:#0b7656;font-weight:750;">${bt('evIntegrityOk')}</span>
           </div>
 
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Titre de la preuve</th>
-                  <th>Type & Standard</th>
-                  <th>Émetteur / Tiers</th>
-                  <th>Fournisseur rattaché</th>
-                  <th>Date d'émission</th>
-                  <th>Validité</th>
-                  <th>Statut d'intégrité</th>
-                  <th style="text-align:right">Action</th>
+                  <th>${bt('evTitle')}</th>
+                  <th>${bt('evTypeStd')}</th>
+                  <th>${bt('evIssuer')}</th>
+                  <th>${bt('evLinkedSupplier')}</th>
+                  <th>${bt('evIssueDate')}</th>
+                  <th>${bt('evValidity')}</th>
+                  <th>${bt('evIntegrityStatus')}</th>
+                  <th style="text-align:right">${bt('evAction')}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>Certificat de Transaction GOTS 2026</strong><div class="meta">Lot Coton Biologique #089-A</div></td>
+                  <td><strong>GOTS 2026 Transaction Certificate</strong><div class="meta">Organic Cotton Lot #089-A</div></td>
                   <td><span class="badge badge-verified">TC GOTS</span></td>
                   <td>Control Union Certifications</td>
                   <td>Filature de Haute-Vienne</td>
                   <td>14/01/2026</td>
                   <td>14/01/2027</td>
-                  <td><span class="status status-approved">✓ SHA-256 Scellé</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
+                  <td><span class="status status-approved">${bt('evSealed')}</span></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Rapport Laboratoire ZDHC MRSL Level 3</strong><div class="meta">Analyses eaux usées & métaux lourds</div></td>
+                  <td><strong>ZDHC MRSL Level 3 Laboratory Report</strong><div class="meta">${bt('evWastewater')}</div></td>
                   <td><span class="badge badge-verified">ZDHC Test</span></td>
                   <td>SGS Textile Testing Services</td>
                   <td>EcoDye Aquitaine</td>
                   <td>02/03/2026</td>
                   <td>02/03/2027</td>
-                  <td><span class="status status-approved">✓ Validé ISO 17025</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
+                  <td><span class="status status-approved">${bt('evIso')}</span></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Audit Social SMETA 4-Pillar (Grade A)</strong><div class="meta">Santé, sécurité & rémunération équitable</div></td>
+                  <td><strong>SMETA 4-Pillar Social Audit (Grade A)</strong><div class="meta">${bt('evHealthSafety')}</div></td>
                   <td><span class="badge badge-verified">SMETA Audit</span></td>
                   <td>Intertek Ethical Services</td>
-                  <td>Atelier Confection & Tailoring</td>
+                  <td>Assembly & Tailoring Workshop</td>
                   <td>10/11/2025</td>
                   <td>10/11/2026</td>
-                  <td><span class="status status-approved">✓ Conforme OIT</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
+                  <td><span class="status status-approved">${bt('evIlo')}</span></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Certificat OEKO-TEX Standard 100</strong><div class="meta">Classe 1 (Contact direct avec la peau)</div></td>
+                  <td><strong>OEKO-TEX Standard 100 Certificate</strong><div class="meta">${bt('evClass1')}</div></td>
                   <td><span class="badge badge-verified">OEKO-TEX</span></td>
                   <td>CITEVE Portugal</td>
                   <td>Portugal Textile Mill</td>
                   <td>18/02/2026</td>
                   <td>18/02/2027</td>
-                  <td><span class="status status-approved">✓ Valide</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">Vérifier</button></td>
+                  <td><span class="status status-approved">${bt('evValid')}</span></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
                 </tr>
               </tbody>
             </table>
@@ -2807,7 +2807,7 @@
 
       function requestTable(items) {
         if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>Créez votre première demande fournisseur.</p><button class="btn btn-primary btn-small" data-action="new-request">Créer une demande</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">Relancer</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
             function requestsView() {
@@ -3330,13 +3330,13 @@
         return `${complianceContractPanel()}${capContractPanel()}
         <div class="page-head">
           <div>
-            <div class="eyebrow">Centre de Confiance & Audits Réglementaires · Layer 04</div>
-            <h1>Pouvez-vous faire confiance à vos données ?</h1>
+            <div class="eyebrow">${bt('qcEyebrow')}</div>
+            <h1>${bt('qcTrustQuestion')}</h1>
             <p>Score explicable à 6 niveaux vérifiant l'authenticité documentaire, la non-altération des preuves et la cohérence de masse de vos collections textiles.</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="select-quality-product">${bt('scChangeProduct')}</button>
-            <button class="btn btn-primary" data-action="compute-quality">⚡ Recalculer l'intégrité du produit</button>
+            <button class="btn btn-primary" data-action="compute-quality">${bt('qcRecalc')}</button>
           </div>
         </div>
 
@@ -3344,41 +3344,41 @@
         <div class="eq-overview-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">MATRICE D'EXCELLENCE DE LA DONNÉE</div>
-              <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">Analyse Pré-Audit Douanes Européennes & CSRD</h3>
+              <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('qcMatrix')}</div>
+              <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('qcPreAudit')}</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">NOTE GLOBALE : GRADE A (98.4%)</span>
+            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">OVERALL GRADE: A (98.4%)</span>
           </div>
 
           <div class="eq-score-strip">
             <div class="eq-score-card">
-              <div class="eq-score-label">COMPLÉTUDE DONNÉES</div>
+              <div class="eq-score-label">${bt('qcCompleteness')}</div>
               <div class="eq-score-num" style="color:#0b7656;">96.8%</div>
               <div class="eq-score-desc">BOM 100% mass-balance</div>
             </div>
 
             <div class="eq-score-card">
-              <div class="eq-score-label">COUVERTURE PREUVES</div>
+              <div class="eq-score-label">${bt('qcEvidenceCov')}</div>
               <div class="eq-score-num" style="color:#0b7656;">92.0%</div>
-              <div class="eq-score-desc">Rapports d'essais joints</div>
+              <div class="eq-score-desc">${bt('qcTestReports')}</div>
             </div>
 
             <div class="eq-score-card">
-              <div class="eq-score-label">TAUX VÉRIFICATION</div>
+              <div class="eq-score-label">${bt('qcVerifRate')}</div>
               <div class="eq-score-num" style="color:#1d4ed8;">88.5%</div>
-              <div class="eq-score-desc">Audité par tiers accrédité</div>
+              <div class="eq-score-desc">${bt('qcThirdParty')}</div>
             </div>
 
             <div class="eq-score-card">
-              <div class="eq-score-label">QUALITÉ FOURNISSEUR</div>
+              <div class="eq-score-label">${bt('qcSupplierQuality')}</div>
               <div class="eq-score-num" style="color:#0b7656;">94.2%</div>
-              <div class="eq-score-desc">Fournisseurs Rang 1–4 validés</div>
+              <div class="eq-score-desc">${bt('qcTiersOk')}</div>
             </div>
 
             <div class="eq-score-card">
-              <div class="eq-score-label">RÉGULARITÉ ESPR</div>
+              <div class="eq-score-label">${bt('qcEsprConformity')}</div>
               <div class="eq-score-num" style="color:#b45309;">88.0%</div>
-              <div class="eq-score-desc">Passeport DPP éligible</div>
+              <div class="eq-score-desc">${bt('qcDppEligible')}</div>
             </div>
           </div>
         </div>
@@ -3386,23 +3386,23 @@
         <!-- Severity Action Filter Tabs : CRITICAL | WARNING | REVIEW | RESOLVED -->
         <div class="eq-severity-tabs">
           <div class="eq-sev-tab active" onclick="filterIssues('all')">
-            <span>Toutes les anomalies</span>
+            <span>${bt('qcAllIssues')}</span>
             <span class="sev-pill-count">3</span>
           </div>
           <div class="eq-sev-tab" onclick="filterIssues('critical')">
-            <span style="color:#b91c1c;">● Bloquant (CRITICAL)</span>
+            <span style="color:#b91c1c;">${bt('qcCritical')}</span>
             <span class="sev-pill-count" style="color:#b91c1c;">0</span>
           </div>
           <div class="eq-sev-tab" onclick="filterIssues('warning')">
-            <span style="color:#b45309;">▲ Avertissement (WARNING)</span>
+            <span style="color:#b45309;">${bt('qcWarning')}</span>
             <span class="sev-pill-count" style="color:#b45309;">1</span>
           </div>
           <div class="eq-sev-tab" onclick="filterIssues('review')">
-            <span style="color:#1d4ed8;">ℹ À réviser (REVIEW)</span>
+            <span style="color:#1d4ed8;">${bt('qcReview')}</span>
             <span class="sev-pill-count" style="color:#1d4ed8;">2</span>
           </div>
           <div class="eq-sev-tab" onclick="filterIssues('resolved')">
-            <span style="color:#0b7656;">✓ Résolues (RESOLVED)</span>
+            <span style="color:#0b7656;">${bt('qcResolved')}</span>
             <span class="sev-pill-count" style="color:#0b7656;">14</span>
           </div>
         </div>
@@ -3419,37 +3419,37 @@
             <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
               <div>
                 <span class="status status-changes_requested" style="margin-right:8px;">WARNING</span>
-                <strong>Rapport d'essais RSL manquant pour le lot de teinture #089</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">Règle : <code>ZDHC_EFFLUENT_TEST_REPORT</code> · Détectée par Document AI · Tolérance : 12 mois</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Action suggérée : Téléverser le rapport SGS ou relancer la teinturerie EcoDye Aquitaine</div>
+                <strong>RSL test report missing for dye lot #089</strong>
+                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>ZDHC_EFFLUENT_TEST_REPORT</code> · Detected by Document AI · Tolerance: 12 months</p>
+                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Upload the SGS report or follow up with the EcoDye Aquitaine dye house</div>
               </div>
               <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='requests';render();">Relancer l'usine</button>
-                <button class="btn btn-primary btn-small" onclick="state.view='documents';render();">Déposer la preuve</button>
+                <button class="btn btn-secondary btn-small" onclick="state.view='requests';render();">${bt('qcFollowFacility')}</button>
+                <button class="btn btn-primary btn-small" onclick="state.view='documents';render();">${bt('qcUploadEv')}</button>
               </div>
             </div>
 
             <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
               <div>
                 <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
-                <strong>Certificat GOTS CU-881294 expirant dans 42 jours</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">Règle : <code>CERTIFICATE_EXPIRATION_GATE</code> · Portée : Coton biologique peigné</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Action suggérée : Réceptionner le certificat Scope GOTS 2027 avant expédition douanière</div>
+                <strong>GOTS certificate CU-881294 expiring in 42 days</strong>
+                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>CERTIFICATE_EXPIRATION_GATE</code> · Scope: Combed organic cotton</p>
+                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Receive the GOTS 2027 Scope certificate before customs shipment</div>
               </div>
               <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='certifications';render();">Gérer le certificat</button>
+                <button class="btn btn-secondary btn-small" onclick="state.view='certifications';render();">${bt('qcManageCert')}</button>
               </div>
             </div>
 
             <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;">
               <div>
                 <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
-                <strong>Coordonnées GPS de l'atelier de découpe non verrouillées</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">Règle : <code>POLYGON_FACILITY_REGISTRY</code> · Atelier de Barcelos</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Action suggérée : Valider le polygone GPS de l'usine dans le registre des sites</div>
+                <strong>GPS coordinates of the cutting workshop not locked</strong>
+                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>POLYGON_FACILITY_REGISTRY</code> · Barcelos workshop</p>
+                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Validate the facility's GPS polygon in the site registry</div>
               </div>
               <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='supplyChain';render();">Inspecter sur la carte</button>
+                <button class="btn btn-secondary btn-small" onclick="state.view='supplyChain';render();">${bt('qcInspectMap')}</button>
               </div>
             </div>
           </div>

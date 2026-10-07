@@ -180,3 +180,54 @@ n'écrit aucun fichier si une seule chaîne attendue est introuvable. La tranche
 s'est arrêtée ainsi sur `Score de complétude` : le `<` littéral de
 `Score de complétude < 80%` avait tronqué la capture initiale. Sans cette
 garde, la chaîne serait restée en français sans que rien ne le signale.
+
+## Fait — tranche 5a (Centre de Preuves + Centre de Qualité)
+
+Vues couvertes : `documentsConsoleView`, `certificationsConsoleView`, `qualityView`.
+
+- **57 clés d'interface × 7 langues** (préfixes `ev*` pour l'Evidence Center,
+  `qc*` pour le Quality Center) et **19 chaînes de démonstration** réécrites en
+  anglais. 81 remplacements. Catalogue : 1 038 → **1 089 clés**.
+- La ligne du cahier des charges « Can you trust your data? » est désormais
+  portée par la clé `qcTrustQuestion`, et le jeu de filtres
+  CRITICAL / WARNING / REVIEW / RESOLVED par `qcCritical` … `qcResolved`.
+
+### Noms propres préservés (règle 3 de la triade de tri)
+
+Non traduits, dans aucune langue : CITEVE Portugal, Control Union
+Certifications, EcoDye Aquitaine, Filature de Haute-Vienne, Intertek Ethical
+Services, OEKO-TEX, Portugal Textile Mill, SGS Textile Testing Services,
+SMETA Audit, TC GOTS, ZDHC Test. Idem pour les identifiants de règle en
+SCREAMING_SNAKE (`CERTIFICATE_EXPIRATION_GATE`, `POLYGON_FACILITY_REGISTRY`,
+`ZDHC_EFFLUENT_TEST_REPORT`), qui sont des clés techniques et non de la copie.
+
+### Deux pièges rencontrés
+
+1. **Apostrophes échappées.** Deux libellés de démonstration du questionnaire
+   (`Rapport d\'essais laboratoire RSL`, `Rapport complet d\'audit social`)
+   étaient invisibles à une recherche sur le texte nu : la source contient
+   `d\'essais`. Toute recherche de français résiduel doit couvrir la forme
+   échappée.
+2. **Nœud de texte interpolé.** `Preuves documentaires actives & scellées
+   (${docs.length})` ne pouvait pas être remplacé par le motif `>FR<` habituel,
+   le nœud se terminant par une interpolation. Remplacement ciblé sur le
+   fragment littéral seul.
+
+### Vérifications
+
+7 → **10 vues sur 17** propres. Sonde Playwright sur 10 vues × en/de/nl :
+**0 résidu, 0 erreur JS**. Matrice **41/41**, build et `tsc --noEmit` verts,
+personas **6/6 · 4/4 · 4/4**.
+
+### Anomalie relevée, non corrigée ici
+
+`certificationsConsoleView` affiche le texte littéral `certJours(c)` : un appel
+de fonction rendu tel quel, vraisemblablement une interpolation `${…}`
+manquante. Ce n'est pas une question de traduction ; laissé en l'état pour un
+correctif dédié.
+
+### Reste à faire
+
+5b queue console (~94 chaînes : dpp 34, intelligence 17, reports 12,
+integrations 10, massBalance 8, settings 8, shell 5) · 5c `modal()` (128) ·
+tranche 6 portail fournisseur (~170) · tranche 7 DPP public (~72).
