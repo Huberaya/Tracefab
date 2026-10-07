@@ -61,7 +61,8 @@
     "db:status": "prisma migrate status",
     "db:migrations:check": "npx tsx scripts/check_migrations.ts",
     "db:pull": "prisma db pull",
-    "build": "npm run db:generate && npm run typecheck && npm run api:typecheck && npm run schema:static"
+    "build": "npm run db:generate && npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:routes",
+    "test:routes": "node scripts/test_route_registry.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",
