@@ -112,8 +112,14 @@
   --tf-size-md: 1rem;
   --tf-size-sm: 0.9375rem;
   --tf-size-xs: 0.8125rem;
-  --tf-size-2xs: 0.6875rem;
-  --tf-size-3xs: 0.625rem;
+  --tf-size-2xs: 0.75rem;
+  /* Plancher typographique : 11px.
+     Sous ce seuil, le mono gris sur fond sombre cesse d'etre lu et devient
+     une texture. Le cahier des charges demande de « petits labels
+     techniques » — pas des labels illisibles. Aucune regle ne doit
+     declarer de font-size en px brut sous cette valeur ; le test
+     test_landing_lisibilite.mjs le verifie. */
+  --tf-size-3xs: 0.6875rem;
 
   /* Numeric displays */
   --tf-size-n0: clamp(3rem, 7vw, 6rem);
