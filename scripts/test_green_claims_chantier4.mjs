@@ -81,7 +81,8 @@ console.log('✓ API endpoints properly wired');
 // 5. Verify Brand Console UI Integration
 console.log('5. Checking Brand Console UI implementation...');
 const brandConsole = await readFile('brand-console/index.html', 'utf8');
-assert.ok(brandConsole.includes('Bouclier Anti-Greenwashing & Allégations Vertes'), 'Must have Green Claims section');
+assert.ok(brandConsole.includes("bt('qcGreenShield')"), 'Must have Green Claims section');
+assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.qcGreenShield, 'Bouclier Anti-Greenwashing & Allégations Vertes', 'la copie FR doit rester au catalogue');
 assert.ok(brandConsole.includes('data-action="audit-green-claims"'), 'Must have audit-green-claims button');
 assert.ok(brandConsole.includes('id="green-claim-form"'), 'Must have claim registration form');
 assert.ok(brandConsole.includes('greenClaimsAudit'), 'Must bind audit results');
