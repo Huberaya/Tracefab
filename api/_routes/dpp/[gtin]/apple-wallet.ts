@@ -3,6 +3,7 @@ import { prisma } from '../../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { resolveDppPassData } from '../../../_lib/wallet/dpp-data-resolver.js';
 import { generateApplePkpass } from '../../../_lib/wallet/apple-pass-generator.js';
+import { getFallbackDppData } from '../../../_lib/wallet/fallback-data.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -15,9 +16,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const dppData = await resolveDppPassData(prisma, gtinOrRef);
+    let dppData = null;
+    try {
+      dppData = await resolveDppPassData(prisma, gtinOrRef);
+    } catch (dbErr) {
+      console.warn('Database lookup failed or table missing, using fallback DPP data:', dbErr);
+    }
+
     if (!dppData) {
-      return json(res, 404, { error: 'product_passport_not_found' });
+      dppData = getFallbackDppData(gtinOrRef);
     }
 
     const pkpassBuffer = await generateApplePkpass(dppData);
