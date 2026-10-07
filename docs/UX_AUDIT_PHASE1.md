@@ -1514,3 +1514,87 @@ assertés absents.
 Portails : brand-console, dashboard:overview 37/0, supplychain:surface 76/0,
 supplychain:chantier3, dpp-readiness 83/0, route-registry, landing 95/0, quality-center 69/0,
 i18n 75/0. Balayage : **40 PASS / 18 FAIL** (était 37 / 19 au début), aucun nouvel échec.
+
+---
+
+## Chantier 16 — Phase 5 : intelligence produit, et un formulaire qui n'écrivait plus de fausses données
+
+### Bug de corruption de données trouvé et corrigé
+
+La « Fiche Technique & Attributs Réglementaires » pré-remplissait ses `<input>` avec des valeurs
+inventées :
+
+```
+name="colorName"            value="${esc(p.colorName || 'Navy Deep')}"
+name="countryOfSpinning"    value="${esc(p.countryOfSpinning || 'PT')}"
+name="countryOfManufacture" value="${esc(p.countryOfManufacture || 'PT')}"
+name="weightGrams"          value="${esc(p.weightGrams || '185')}"
+name="sizeRange"            value="${esc((p.sizeRange || ['XS','S','M','L','XL']).join(', '))}"
+name="category"             value="${esc(p.category || 'Prêt-à-porter')}"
+```
+
+`saveProduct()` envoie `...data` (tous les champs du formulaire) au PATCH
+`api/_routes/products/[productId].ts`, qui **accepte et valide** `colorName`, `sizeRange`,
+`countryOfDesign`, `countryOfManufacture`, `weightGrams` et `careInstructions` (l. 113–147).
+Ouvrir un produit dont ces champs sont vides puis cliquer sur « Mettre à jour la fiche produit »
+**écrivait donc `Navy Deep`, `PT`, `185` et `XS, S, M, L, XL` dans l'enregistrement réel**.
+`countryCode()` validait `'PT'` sans difficulté.
+
+Ce n'était pas cosmétique : c'était une écriture de données fabriquées dans la base.
+
+### Corrections
+
+1. **Plus aucune valeur par défaut inventée** — un champ absent de la donnée reste vide, avec un
+   `placeholder` explicite (« Non renseignée », « Code ISO, ex. FR »). La soumission ne peut plus
+   fabriquer de valeur.
+2. **Champ fantôme supprimé** — `countryOfSpinning` n'existe dans aucun contrat : ni dans
+   `serializeProduct` (`api/_lib/products.ts:32`), ni dans la liste de champs acceptés par le PATCH.
+   Il est remplacé par `countryOfDesign`, qui existe réellement.
+3. **Total de nomenclature calculé** — le badge `100% Reconcilié` ne sommait rien. Il affiche
+   maintenant `Somme des parts : N%` calculé sur `detail.materials[].percentage`, ou
+   « Aucune matière rattachée » si la liste est vide. `bomTotal` vaut `null` sans matière : aucun
+   total n'est décrété.
+4. **Repli de type de matière** — `materialType(m.material) || 'Fibre certifiée'` devenait
+   `|| 'Type non déclaré'` : une matière sans type n'est pas une fibre certifiée.
+5. **Fonctionnalité morte exposée** — le gestionnaire `product-quality-from-detail` existait
+   (dispatcheur l. 4054) **sans aucun bouton** : la qualité n'était pas atteignable depuis la fiche
+   produit. Le bouton est ajouté, et un clic bascule bien vers la vue qualité (vérifié).
+6. **Périmètre explicite** — un bandeau « Explorer ce produit » regroupe les quatre actions réelles
+   (chaîne, qualité, préparation DPP, demande de preuve) et **dit ce que la fiche ne porte pas** :
+   fournisseurs rattachés, preuves, certifications et historique ne figurent pas dans
+   `GET /api/products/{id}`, et sont renvoyés vers les vues documents, certifications et demandes.
+
+### Mesures
+
+Sonde jsdom sur `?demo=1`, produit `demo-product-1` (couleur, pays, poids et tailles absents) :
+
+```
+name                 = "Essentiel coton"     <- réel
+reference            = "AT-ESS-001"          <- réel
+category             = "T-shirt"             <- réel
+colorName            = ""                    <- vide, comme la donnée
+countryOfDesign      = ""
+countryOfManufacture = ""
+weightGrams          = ""
+sizeRange            = ""
+badge BOM            = "Aucune matière rattachée"
+```
+
+Clic sur « Qualité des données » → `state.view === 'quality'`. 0 erreur.
+
+`test:product:intelligence` — **36 contrôles, 0 échec**. Il compare chaque champ du formulaire à
+la donnée réelle, asserte l'absence des six valeurs fabriquées, recalcule le total de nomenclature
+indépendamment, vérifie que les quatre actions ont à la fois un bouton **et** un gestionnaire, et
+que le clic qualité bascule réellement de vue.
+
+Portails (11) : brand-console, product:intelligence 36/0, dashboard:overview 37/0,
+supplychain:surface 76/0, supplychain:chantier3, dpp-readiness 83/0, route-registry, landing 95/0,
+quality-center 69/0, i18n 75/0, supplier-portal. Balayage : **41 PASS / 18 FAIL**
+(était 37 / 19 au début de ces travaux), aucun nouvel échec.
+
+### Phase 5 — état
+
+Les trois domaines de la Phase 5 sont livrés : **Dashboard** (centre de pilotage calculé,
+Chantier 15), **Overview** (idem) et **Product Intelligence** (lignée réelle Chantier 14,
+formulaire et exploration Chantier 16). Les 11 domaines de navigation du brief étaient déjà tous
+présents — mesuré : 16 entrées `navButton`, 18 vues dans le routeur ternaire, aucune vue sans cible.

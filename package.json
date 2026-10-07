@@ -22,6 +22,7 @@
     "api:typecheck": "tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --skipLibCheck --esModuleInterop --types node --lib ES2020,DOM $(find api -name '*.ts' -print)",
     "test:security:chantier1": "node scripts/test_security_chantier1.mjs",
     "test:bridge:chantier2": "node scripts/test_collection_bridge_chantier2.mjs",
+    "test:product:intelligence": "node scripts/test_product_intelligence.mjs",
     "test:dashboard:overview": "node scripts/test_dashboard_overview.mjs",
     "test:supplychain:surface": "node scripts/test_supply_chain_surface.mjs",
     "test:supplychain:chantier3": "node scripts/test_supply_chain_chantier3.mjs",

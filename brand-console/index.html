@@ -2406,6 +2406,11 @@
         const readinessLabels = { not_started: 'Données non démarrées', in_progress: 'Données en cours', data_ready: 'Données prêtes', needs_review: 'À revoir' };
         const readinessLabel = readinessLabels[p.dataReadiness] || 'État non déclaré';
         const completionPct = Math.round(Number(p.dataCompletion) || 0);
+        /* Somme réelle des parts de la nomenclature : null si aucune matière n'est
+           rattachée, sinon le total arrondi. Aucun total n'est décrété à 100%. */
+        const bomParts = (Array.isArray(detail.materials) ? detail.materials : [])
+          .map((m) => Number(m.percentage)).filter((n) => Number.isFinite(n));
+        const bomTotal = bomParts.length ? Math.round(bomParts.reduce((a, b) => a + b, 0)) : null;
         const materialOptions = state.materials.map((material) => `<option value="${esc(material.id)}">${esc(material.name)}${material.materialType ? ` · ${esc(material.materialType)}` : ''}</option>`).join('');
 
         return `<div class="page-head">
@@ -2417,10 +2422,40 @@
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">Graphe de traçabilité</button>
+            <button class="btn btn-secondary" data-action="product-quality-from-detail">Qualité des données</button>
             <button class="btn btn-secondary" data-action="product-dpp-from-detail">Préparer le DPP</button>
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">📋 Passeport DPP Public</button>
             <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}">+ Demande de preuve</button>
           </div>
+        </div>
+
+        <!-- Périmètre réel de cette fiche : le contrat GET /api/products/{id} renvoie
+             { product, identifiers, materials }. Fournisseurs, preuves, certifications et
+             historique ne s'y trouvent pas : ils sont annoncés comme tels plutôt qu'illustrés. -->
+        <div class="card panel" style="margin-bottom:18px;">
+          <div class="panel-head"><h2>Explorer ce produit</h2></div>
+          <div class="quick-grid">
+            <button class="quick" data-action="product-supply-chain-from-detail">
+              <span class="quick-icon">☍</span>
+              <span><strong>Chaîne d'approvisionnement</strong><span>Nœuds, liaisons et bilan de traçabilité</span></span>
+            </button>
+            <button class="quick" data-action="product-quality-from-detail">
+              <span class="quick-icon">◒</span>
+              <span><strong>Qualité des données</strong><span>Complétude, fraîcheur, couverture documentaire</span></span>
+            </button>
+            <button class="quick" data-action="product-dpp-from-detail">
+              <span class="quick-icon">📋</span>
+              <span><strong>Préparation DPP</strong><span>Exigences, manques et degré de préparation</span></span>
+            </button>
+            <button class="quick" data-action="product-new-request" data-product-id="${esc(p.id)}">
+              <span class="quick-icon">↗</span>
+              <span><strong>Demander une preuve</strong><span>Collecte structurée auprès du fournisseur</span></span>
+            </button>
+          </div>
+          <p class="meta" style="margin:14px 0 0;line-height:1.6;">Fournisseurs rattachés, preuves, certifications et historique ne figurent pas dans la fiche produit :
+            ils sont consultables depuis <button class="link-button" data-view="documents">les documents</button>,
+            <button class="link-button" data-view="certifications">les certifications</button> et
+            <button class="link-button" data-view="requests">les demandes</button>.</p>
         </div>
 
         <!-- LIGNÉE PRODUIT — matières réelles rattachées à ce produit -->
@@ -2469,12 +2504,12 @@
             <form id="product-detail-form" class="form-grid">
               <label>Nom du style<input class="input" name="name" value="${esc(p.name)}"></label>
               <label>Référence SKU<input class="input" name="reference" value="${esc(p.reference)}"></label>
-              <label>Catégorie textile<input class="input" name="category" value="${esc(p.category || 'Prêt-à-porter')}"></label>
-              <label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || 'Navy Deep')}"></label>
-              <label>Pays de filature<input class="input" name="countryOfSpinning" value="${esc(p.countryOfSpinning || 'PT')}"></label>
-              <label>Pays de fabrication<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || 'PT')}"></label>
-              <label>Poids unitaire (g)<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams || '185')}"></label>
-              <label>Tailles<input class="input" name="sizeRange" value="${esc((p.sizeRange || ['XS','S','M','L','XL']).join(', '))}"></label>
+              <label>Catégorie textile<input class="input" name="category" value="${esc(p.category || '')}" placeholder="Non renseignée"></label>
+              <label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || '')}" placeholder="Non renseignée"></label>
+              <label>Pays de conception<input class="input" name="countryOfDesign" value="${esc(p.countryOfDesign || '')}" placeholder="Code ISO, ex. FR"></label>
+              <label>Pays de fabrication<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || '')}" placeholder="Code ISO, ex. PT"></label>
+              <label>Poids unitaire (g)<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams || '')}" placeholder="Non renseigné"></label>
+              <label>Tailles<input class="input" name="sizeRange" value="${esc((p.sizeRange || []).join(', '))}" placeholder="Séparées par des virgules"></label>
               <div class="form-actions field-full">
                 <button class="btn btn-primary" type="submit">Mettre à jour la fiche produit</button>
               </div>
@@ -2487,14 +2522,14 @@
                 <h2>Nomenclature & Bilan Massique (BOM)</h2>
                 <p class="meta" style="margin:4px 0 0;">Exigence ESPR : décomposition stricte sommant à 100%</p>
               </div>
-              <span class="status status-approved">100% Reconcilié</span>
+              <span class="status ${bomTotal === 100 ? 'status-approved' : 'status-pending'}">${bomTotal === null ? 'Aucune matière rattachée' : 'Somme des parts : ' + bomTotal + '%'}</span>
             </div>
 
             ${detail.materials?.length ? `<div class="item-list">${detail.materials.map((m) => `<form class="item material-edit-form" data-material-product-id="${esc(p.id)}">
               <input type="hidden" name="materialId" value="${esc(m.materialId)}">
               <div>
                 <strong>${esc(materialName(m.material))}</strong>
-                <div class="meta">${esc(m.role || 'Principal')} · ${esc(materialType(m.material) || 'Fibre certifiée')}</div>
+                <div class="meta">${esc(m.role || 'Principal')} · ${esc(materialType(m.material) || 'Type non déclaré')}</div>
               </div>
               <div class="actions">
                 <label class="meta">Part %<input class="input" name="percentage" type="number" value="${esc(m.percentage || 100)}" style="width:75px"></label>
