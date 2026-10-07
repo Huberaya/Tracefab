@@ -231,3 +231,76 @@ correctif dédié.
 5b queue console (~94 chaînes : dpp 34, intelligence 17, reports 12,
 integrations 10, massBalance 8, settings 8, shell 5) · 5c `modal()` (128) ·
 tranche 6 portail fournisseur (~170) · tranche 7 DPP public (~72).
+
+## Fait — tranche 5b (queue console)
+
+Vues couvertes : `dppView`, `reportsConsoleView`, `settingsConsoleView`,
+`intelligenceView`, `massBalanceConsoleView`, `integrationsView`, `shell`,
+plus deux panneaux partagés découverts en route (`complianceContractPanel`,
+`capContractPanel`) et le reliquat de tranches antérieures.
+
+- **132 clés d'interface × 7 langues** (préfixes `dp*`, `rp*`, `st*`, `ia*`,
+  `mb*`, `ig*`, `sh*`, plus des compléments `ov*`, `mt*`, `sc*`, `qc*`) et
+  **18 chaînes de démonstration** anglicisées. 161 remplacements.
+  Catalogue : 1 089 → **1 221 clés** (539 sous `console`).
+- La ligne du cahier des charges « Aucune donnée inventée · réponses justifiées
+  par des preuves » est portée par `iaNoInvented`, et l'avertissement « la
+  préparation est un indicateur opérationnel, pas une certification » par
+  `dpGapsIntro`.
+
+### Correctif de fond : les fixtures suivaient la langue de démarrage
+
+`demoData()` et `demoDpp()` ne sont **pas** rejoués au changement de langue
+(le gestionnaire `tf:languagechange` appelle seulement `render()`). Y écrire un
+`bt()` aurait figé les libellés dans la langue du chargement initial.
+
+Les fixtures portent désormais une **clé** et non un texte — `nameKey`,
+`descKey`, `labelKey` — résolue au rendu par `renderPillarCard()` et par la
+liste des écarts. Les champs `name` / `description` / `label` restent prioritaires
+quand ils viennent de l'API, donc le comportement en mode connecté est inchangé.
+Vérifié en conditions réelles : bascule fr → en sur la vue DPP, les quatre
+piliers *et* leurs items basculent.
+
+### Anomalies trouvées, non corrigées ici
+
+- **`dppConsoleView` est du code mort** : définie ligne 2519, jamais appelée.
+  Le routeur utilise `dppView`. Elle porte ~34 chaînes françaises qui n'ont
+  donc pas été traduites — les traduire aurait été du travail pur perte.
+  À supprimer dans une passe de nettoyage dédiée.
+- `certJours(c)` dans `certificationsConsoleView` (déjà signalé en 5a).
+
+### Quatre pièges rencontrés
+
+1. **Les noms de fonctions se devinent mal.** `reportsView`, `settingsView`,
+   `massBalanceView` n'existent pas ; ce sont des `*ConsoleView`. Lister les
+   définitions réelles avant d'extraire.
+2. **L'échappement JSON de la sortie d'outil se cumule à celui de `repr()`.**
+   Un `\"` affiché peut être un `"` nu dans le fichier. Vérifier sur les octets.
+3. **Un backtick est interdit dans un fragment déjà inclus dans un template
+   literal** : il fermerait le template. La conversion se fait par concaténation
+   (`'<div>' + bt('cle') + '</div>'`), pas par passage en template.
+4. **Le détecteur par accents est aveugle au français sans accent.**
+   `Conforme`, `Manquant`, `Score Global DPP`, `Bloquant` sont passés au travers
+   de trois sondes successives.
+
+### Vérifications
+
+10 → **17 vues sur 17** propres. Sonde stricte (tout caractère accentué est
+suspect) en anglais sur les 17 vues : **2 résidus, tous deux des noms propres**
+(`İzmir, Türkiye`, `Filature du Sud-Ouest`), **0 erreur JS**. En français,
+1 522 chaînes accentuées et **0 clé brute affichée**. Matrice **41/41**, build et
+`tsc --noEmit` verts, personas **6/6 · 4/4 · 4/4**.
+
+### Cinq tests repointés
+
+`test_pef_chantier3`, `test_green_claims_chantier4`,
+`test_plm_erp_gs1_chantier2`, `test_mass_balance_chantier7` verrouillaient la
+copie française en dur ; `test_chantier4_demo` comptait un champ `label:`
+renommé en `labelKey:`. Chaque assertion vise maintenant la clé **et** vérifie
+que la valeur française est toujours au catalogue — une garantie plus forte
+qu'avant. Contrôle négatif effectué : vider la clé fait bien rougir le test.
+
+### Reste à faire
+
+5c `modal()` (128 chaînes, la plus grosse fonction du fichier) · tranche 6
+portail fournisseur (~170) · tranche 7 DPP public (~72).

@@ -100,6 +100,7 @@ assert(brandConsoleHtml.includes('Centric Software'), 'Must display Centric Soft
 assert(brandConsoleHtml.includes('Lectra (Kubix Link)'), 'Must display Lectra');
 assert(brandConsoleHtml.includes('SAP S/4HANA Fashion'), 'Must display SAP S/4HANA');
 assert(brandConsoleHtml.includes('GS1 EPCIS 2.0'), 'Must display GS1 EPCIS');
-assert(brandConsoleHtml.includes('Identité Numérique GS1 & Digital Link'), 'Must display GS1 Digital Link section');
+assert(brandConsoleHtml.includes("bt('igGs1Title')"), 'Must display GS1 Digital Link section');
+assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.igGs1Title, 'Identité Numérique GS1 & Digital Link', 'la copie FR doit rester au catalogue');
 
 console.log('✓ Chantier 2 (Interopérabilité PLM/ERP & GS1) verified successfully!');

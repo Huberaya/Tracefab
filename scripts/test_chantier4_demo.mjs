@@ -66,7 +66,7 @@ const score = nb(/completionScore:\s*(\d+)/);
 const total = nb(/totalRequirements:\s*(\d+)/);
 const atteintes = nb(/metRequirements:\s*(\d+)/);
 const bloquantes = nb(/blockingCount:\s*(\d+)/);
-const manquants = [...demo.matchAll(/\{\s*key:\s*'[^']+',\s*label:/g)].length;
+const manquants = [...demo.matchAll(/\{\s*key:\s*'[^']+',\s*label(?:Key)?:/g)].length;
 const blocTrue = [...demo.matchAll(/blocking:\s*true/g)].length;
 
 ok(score === 88, 'score DPP = 88 %, valeur annoncee par le KPI de la vue d\'ensemble', `trouve ${score}`);

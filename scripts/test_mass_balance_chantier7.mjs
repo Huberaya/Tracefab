@@ -45,7 +45,8 @@ const brandConsole = fs.readFileSync(brandConsolePath, 'utf8');
 
 assert.ok(brandConsole.includes("navButton('massBalance'"), 'Brand Console must have massBalance in navigation');
 assert.ok(brandConsole.includes('massBalanceConsoleView'), 'Brand Console must implement massBalanceConsoleView');
-assert.ok(brandConsole.includes('Moteur Mass-Balance & Anti-Fraude Volumétrique'), 'Brand Console product detail must include Mass-Balance section');
+assert.ok(brandConsole.includes("bt('mbTitle')"), 'Brand Console product detail must include Mass-Balance section');
+assert.strictEqual(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/i18n/fr.json'), 'utf8')).console.mbTitle, 'Moteur Mass-Balance & Anti-Fraude Volumétrique', 'la copie FR de la section Mass-Balance doit rester au catalogue');
 assert.ok(brandConsole.includes('reconcile-mass-balance-form'), 'Brand Console must have mass-balance reconciliation form');
 assert.ok(brandConsole.includes('allocate-tc-form'), 'Brand Console must have TC allocation form');
 assert.ok(brandConsole.includes('tc-form'), 'Brand Console must have TC registration form');

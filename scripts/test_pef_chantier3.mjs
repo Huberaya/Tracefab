@@ -140,9 +140,11 @@ console.log('✓ API endpoints properly wired');
 // 5. Verify Brand Console UI
 console.log('5. Checking Brand Console UI implementation...');
 const brandConsole = await readFile('brand-console/index.html', 'utf8');
-assert.ok(brandConsole.includes('Évaluation Environnementale & Empreinte PEF'), 'Must have PEF section in Brand Console');
+assert.ok(brandConsole.includes("bt('qcPefTitle')"), 'Must have PEF section in Brand Console');
+assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.qcPefTitle, 'Évaluation Environnementale & Empreinte PEF', 'la copie FR doit rester au catalogue');
 assert.ok(brandConsole.includes('data-action="calculate-pef"'), 'Must have calculate-pef button action');
-assert.ok(brandConsole.includes('Éco-Score Textile'), 'Must have Éco-Score badge in Brand Console');
+assert.ok(brandConsole.includes("bt('qcEcoScore')"), 'Must have Éco-Score badge in Brand Console');
+assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.qcEcoScore, 'Éco-Score Textile', 'la copie FR du badge Eco-Score doit rester au catalogue');
 assert.ok(brandConsole.includes('pefAssessment'), 'Must bind pefAssessment to state');
 console.log('✓ Brand Console PEF integration verified');
 
