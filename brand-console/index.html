@@ -1315,7 +1315,7 @@
         ];
         demoEchelle();
         state.requests = [
-          { id: 'demo-request-1', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Données produit — collection automne', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'in_progress', dueAt: new Date(Date.now() + 5 * 86400000).toISOString(), completionPercentage: '64', lastActivityAt: new Date().toISOString() },
+          { id: 'demo-request-1', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Product data — Autumn collection', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'in_progress', dueAt: new Date(Date.now() + 5 * 86400000).toISOString(), completionPercentage: '64', lastActivityAt: new Date().toISOString() },
           {
           id: 'demo-request-2',
           brandOrganizationId: 'demo-brand',
@@ -1522,7 +1522,7 @@
           {
             key: 'textile-chemical-reach',
             version: '2.1',
-            title: 'Conformité Chimique & Teinture (REACH / ZDHC)',
+            title: 'Chemical & Dyeing Compliance (REACH / ZDHC)',
             category: 'Chimie & Rejets',
             description: 'Audit des intrants chimiques, métaux lourds et analyse des effluents d\'eau de teinture.',
             itemCount: 4,
@@ -1550,7 +1550,7 @@
           {
             key: 'carbon-pef-footprint',
             version: '1.0',
-            title: 'Empreinte Carbone & PEF Échelon 3',
+            title: 'Carbon Footprint & PEF Tier 3',
             category: 'Environnement',
             description: 'Consommation électrique et combustible des métiers à tisser et filatures.',
             itemCount: 3,
@@ -1713,7 +1713,7 @@
                 ${navButton('reports', '☷', bt('reports'))}
                 ${navButton('settings', '⚙', bt('settings'))}
               </nav>
-              <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">Se déconnecter</button></div></div></div>
+              <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">${bt('signOut')}</button></div></div></div>
             </aside>
             <main class="main">
               <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">${esc(bt("newRequest"))}</button></div></header>
@@ -1724,24 +1724,24 @@
           ${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
       function viewLabel() { return ({
-        overview: 'Vue d’ensemble',
-        products: 'Produits',
-        suppliers: 'Fournisseurs',
-        materials: 'Matières & Fibres',
-        supplyChain: 'Supply Chain & Traçabilité',
-        requests: 'Demandes de données',
-        questionnaires: 'Créateur de Questionnaires',
-        documents: 'Preuves & Documents',
-        certifications: 'Certifications',
-        quality: 'Qualité & Conformité',
+        overview: bt('overviewViewLabel'),
+        products: bt('productsViewLabel'),
+        suppliers: bt('suppliersViewLabel'),
+        materials: bt('materialsViewLabel'),
+        supplyChain: bt('supplyChainViewLabel'),
+        requests: bt('requestsViewLabel'),
+        questionnaires: bt('questionnairesViewLabel'),
+        documents: bt('documentsViewLabel'),
+        certifications: bt('certificationsViewLabel'),
+        quality: bt('qualityViewLabel'),
           risk: bt('riskViewLabel'),
-        dpp: 'Passeport Numérique (DPP Readiness)',
-        reports: 'Rapports & Audits',
-        settings: 'Paramètres',
-        requestDetail: 'Détail de la demande',
-        productDetail: 'Détail du produit',
-        supplierDetail: 'Détail du fournisseur'
-      })[state.view] || 'Vue d’ensemble'; }
+        dpp: bt('dppViewLabel'),
+        reports: bt('reportsViewLabel'),
+        settings: bt('settingsViewLabel'),
+        requestDetail: bt('requestDetailViewLabel'),
+        productDetail: bt('productDetailViewLabel'),
+        supplierDetail: bt('supplierDetailViewLabel')
+      })[state.view] || bt('overviewViewLabel'); }
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
       
@@ -2669,7 +2669,7 @@
           <div class="mc-hero-strip">
             <div>
               <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#34d399;font-weight:700;letter-spacing:0.12em;margin-bottom:6px;">MISSION CONTROL CENTER · LAYER 01–07</div>
-              <h1 class="mc-headline">Centre de Pilotage Opérationnel</h1>
+              <h1 class="mc-headline">${bt('ovEyebrow')}</h1>
               <p class="mc-subline">Surveillance en temps réel de votre écosystème textile : complétude documentaire, traçabilité des lots et conformité ESPR / AGEC.</p>
             </div>
             <div style="display:flex;gap:12px;">
@@ -2688,9 +2688,9 @@
               </div>
               <div class="mc-stat-huge">${prodCount}</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Produits référencés</span><strong>${ag.produits.toLocaleString('fr-FR')}</strong></div>
-                <div class="mc-stat-subitem"><span>Fournisseurs Rang 1–4</span><strong>${ag.fournisseurs}</strong></div>
-                <div class="mc-stat-subitem"><span>Sites & Usines audités</span><strong>${ag.sites}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovProducts')}</span><strong>${ag.produits.toLocaleString('fr-FR')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovSuppliers')}</span><strong>${ag.fournisseurs}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovFacilities')}</span><strong>${ag.sites}</strong></div>
                 <div class="mc-stat-subitem"><span>Pays de production</span><strong>${ag.pays} pays</strong></div>
               </div>
             </div>
@@ -2703,10 +2703,10 @@
               </div>
               <div class="mc-stat-huge" style="color:#0b7656;">${ag.qualite}%</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Score qualité global</span><strong>${ag.qualite}%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${ag.qualite}%</strong></div>
                 <div class="mc-stat-subitem"><span>Couverture de preuves</span><strong>${ag.preuves}%</strong></div>
-                <div class="mc-stat-subitem"><span>Données vérifiées par tiers</span><strong>${ag.verifies}%</strong></div>
-                <div class="mc-stat-subitem"><span>Certificats scellés</span><strong>${ag.certificats}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovVerified')}</span><strong>${ag.verifies}%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovCertificates')}</span><strong>${ag.certificats}</strong></div>
               </div>
             </div>
 
@@ -2718,10 +2718,10 @@
               </div>
               <div class="mc-stat-huge" style="color:#1d4ed8;">${ag.tracables}%</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Produits 100% traçables</span><strong>${ag.tracables}%</strong></div>
-                <div class="mc-stat-subitem"><span>Lignée fibre à vêtement</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>Polygones GPS vérifiés</span><strong>214 sites</strong></div>
-                <div class="mc-stat-subitem"><span>Bilan massique équilibré</span><strong>97.6%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovTraceable')}</span><strong>${ag.tracables}%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovLineage')}</span><strong>100%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovGpsPolygons')}</span><strong>214 sites</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovMassBalanced')}</span><strong>97.6%</strong></div>
               </div>
             </div>
 
@@ -2733,10 +2733,10 @@
               </div>
               <div class="mc-stat-huge" style="color:#b45309;">${ag.dpp}%</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Passeports prêts</span><strong>88.0%</strong></div>
-                <div class="mc-stat-subitem"><span>Résolution GS1 active</span><strong>1 098 styles</strong></div>
-                <div class="mc-stat-subitem"><span>Conformité AGEC Art. 13</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>Calculs PEF validés</span><strong>Échelon 3</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovDpp')}</span><strong>88.0%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>1 098 styles</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovAgec')}</span><strong>100%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovPefValidated')}</span><strong>Échelon 3</strong></div>
               </div>
             </div>
           </div>
@@ -2746,14 +2746,14 @@
             <div class="mc-attention-head">
               <div class="mc-attention-title">
                 <span style="font-size:16px;">⚠️</span>
-                <span>Points d'Attention & Actions Prioritaires Recommandées</span>
+                <span>${bt('ovAttentionTitle')}</span>
               </div>
-              <span class="meta" style="color:#b45309;font-weight:700;">Résolution guidée en 1 clic</span>
+              <span class="meta" style="color:#b45309;font-weight:700;">${bt('ovGuidedFix')}</span>
             </div>
             <div class="mc-attention-grid">
               <div class="mc-attention-pill clickable" onclick="state.view=\'requests\';render();">
                 <div class="mc-attention-num">17</div>
-                <div><strong>Données manquantes</strong><br><small>Fournisseurs en attente</small></div>
+                <div><strong>${bt('ovMissingData')}</strong><br><small>${bt('ovSuppliersPending')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" onclick="state.view=\'certifications\';render();">
                 <div class="mc-attention-num">8</div>
@@ -2761,11 +2761,11 @@
               </div>
               <div class="mc-attention-pill clickable" onclick="state.view=\'suppliers\';render();">
                 <div class="mc-attention-num">5</div>
-                <div><strong>Fournisseurs à revoir</strong><br><small>Score de complétude < 80%</small></div>
+                <div><strong>${bt('ovSuppliersReview')}</strong><br><small>${bt('ovCompleteness')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" onclick="state.view=\'products\';render();">
                 <div class="mc-attention-num">12</div>
-                <div><strong>Produits incomplets</strong><br><small>BOM non équilibré à 100%</small></div>
+                <div><strong>${bt('ovProductsIncomplete')}</strong><br><small>${bt('ovBomUnbalanced')}</small></div>
               </div>
             </div>
           </div>
@@ -2774,8 +2774,8 @@
           <div class="grid split">
             <div class="card panel">
               <div class="panel-head">
-                <h2>Demandes de données récentes</h2>
-                <button class="btn btn-secondary btn-small" data-view="requests">Tout voir</button>
+                <h2>${bt('ovRecentRequests')}</h2>
+                <button class="btn btn-secondary btn-small" data-view="requests">${bt('ovSeeAll')}</button>
               </div>
               ${requestTable(state.requests.slice(0, 5))}
             </div>
@@ -2785,19 +2785,19 @@
               <div class="quick-grid">
                 <button class="quick" data-action="new-request">
                   <span class="quick-icon">↗</span>
-                  <span><strong>Lancer une collecte</strong><span>Déployer un questionnaire ciblé</span></span>
+                  <span><strong>Lancer une collecte</strong><span>${bt('ovDeployQuestionnaire')}</span></span>
                 </button>
                 <button class="quick" data-action="new-product">
                   <span class="quick-icon">◇</span>
-                  <span><strong>Créer une référence</strong><span>Ajouter un style au catalogue</span></span>
+                  <span><strong>${bt('ovCreateRef')}</strong><span>${bt('ovAddStyle')}</span></span>
                 </button>
                 <button class="quick" data-action="invite-supplier">
                   <span class="quick-icon">◎</span>
-                  <span><strong>Onboarder un partenaire</strong><span>Lien sécurisé sans création de compte</span></span>
+                  <span><strong>Onboarder un partenaire</strong><span>${bt('ovSecureLink')}</span></span>
                 </button>
                 <button class="quick" onclick="window.open(\'/dpp/\', \'_blank\')">
                   <span class="quick-icon">📋</span>
-                  <span><strong>Simuler le Passeport DPP</strong><span>Voir l'expérience consommateur QR</span></span>
+                  <span><strong>Simuler le Passeport DPP</strong><span>${bt('ovQrExperience')}</span></span>
                 </button>
               </div>
             </div>
@@ -2807,7 +2807,7 @@
 
       function requestTable(items) {
         if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>Créez votre première demande fournisseur.</p><button class="btn btn-primary btn-small" data-action="new-request">Créer une demande</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>Échéance</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">Relancer</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>Demande</th><th>Fournisseur</th><th>Statut</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">Relancer</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
             function requestsView() {
