@@ -1,0 +1,52 @@
+{
+  "app": {
+    "brand": "TRACEFAB",
+    "action": "Actie",
+    "certificate": "Certificaat",
+    "close": "Sluiten",
+    "date": "Datum",
+    "demo": "Demonstratiemodus — fictieve gegevens",
+    "empty": "Geen gegevens",
+    "loading": "Laden…",
+    "material": "Materiaal",
+    "product": "Product",
+    "reference": "Referentie",
+    "status": "Status"
+  },
+  "nav": {
+    "documents": "Documenten",
+    "evidence": "Bewijs",
+    "overview": "Overzicht",
+    "quality": "Kwaliteit",
+    "traceability": "Traceerbaarheid"
+  },
+  "tr": {
+    "addStage": "Stap toevoegen",
+    "audit": "Audit",
+    "calculate": "Berekenen",
+    "chain": "Keten",
+    "input": "Invoer",
+    "loss": "Verlies",
+    "massBalance": "Massabalans",
+    "output": "Uitvoer",
+    "remove": "Verwijderen",
+    "stage": "Stap",
+    "tolerance": "Tolerantie"
+  },
+  "dpp": {
+    "care": "Onderhoud",
+    "certifications": "Certificeringen",
+    "circularity": "Circulariteit",
+    "composition": "Samenstelling",
+    "evidence": "Bewijs",
+    "manufacturing": "Productie",
+    "materials": "Materialen",
+    "origin": "Herkomst",
+    "product": "Product",
+    "repair": "Reparatie",
+    "traceability": "Traceerbaarheid"
+  },
+  "ev": {
+    "expiring": "Vervaldatums"
+  }
+}

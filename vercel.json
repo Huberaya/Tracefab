@@ -88,6 +88,10 @@
       "dest": "/traceability/index.html"
     },
     {
+      "src": "/i18n-core.js",
+      "dest": "/public/i18n-core.js"
+    },
+    {
       "src": "/i18n-engine.js",
       "dest": "/public/i18n-engine.js"
     },

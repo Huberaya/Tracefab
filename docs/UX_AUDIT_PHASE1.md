@@ -1206,3 +1206,94 @@ impossible ici, donc `GET /api/dpp/{identifiant}`, `resolveDppPassData` et les d
 Wallet n'ont jamais été exécutés contre Neon. Le changement « base d'abord, repli ensuite »
 des routes Wallet est le plus exposé : il est strictement dominant par construction, mais il
 reste à observer sur un environnement connecté.
+
+---
+
+# Chantier 12 — Internationalisation
+
+## Inventaire mesuré : cinq dictionnaires, aucun lien entre eux
+
+| # | Source | Taille | Langues | Chargé par |
+| --- | --- | --- | --- | --- |
+| 1 | `locales/{lang}/translation.json` | 7 × ~10 Ko | 7 | **rien** (seul un test les lit) |
+| 2 | `public/i18n-engine.js` (`UI_DICTIONARY`) | 33 Ko | 7 | la landing |
+| 3 | `public/auto-translate.js` (glossaire) | 26 Ko | 7 | brand-console, supplier-portal, quality-center, operations |
+| 4 | `brandTranslations` (inline dans le HTML) | — | 7 | brand-console |
+| 5 | `public/translations_deep.json` | 23 Ko | — | **rien** |
+
+Environ 110 Ko de traductions, sept langues partout, mais aucune source commune. Ajouter une
+langue imposait d'éditer du JavaScript dans plusieurs fichiers — l'inverse d'une architecture
+extensible, qui est ce que la consigne demande.
+
+Deux mesures ont cadré le chantier :
+
+**Le moteur de la landing fonctionne.** Un premier test jsdom faisait apparaître
+`window.setLanguage` comme `undefined` : c'était un artefact, jsdom ne récupère pas les scripts
+externes. En injectant réellement `i18n-engine.js`, les cinq langues cibles traduisent
+correctement (`Pourquoi`, `Warum`, `Perché`, `Por qué`, `Waarum`). Rien à réparer de ce côté.
+
+**Le glossaire ne couvre pas les surfaces récentes.** `auto-translate.js` traduit par
+remplacement de chaînes françaises : 101 entrées, dont 4 à 7 seulement apparaissent dans
+`evidence`, `traceability` et `dpp`. L'ajouter à ces surfaces aurait traduit environ 5 % du
+texte — cosmétique, pas de l'internationalisation.
+
+Conséquence : quatre surfaces n'avaient **aucune** traduction (`evidence`, `traceability`,
+`dpp`, `passport`), dont trois construites pendant cet audit.
+
+## Ce qui a été construit
+
+**`public/i18n-core.js`** — runtime partagé, sans dépendance, qui fait de
+`locales/{lang}/{scope}.json` la source vive. Trois garanties, toutes vérifiées par un test :
+
+- une clé absente ne vide jamais l'interface : le texte rédigé dans le markup reste affiché et
+  la clé est listée dans `TracefabI18n.missing`. Rien n'est masqué ;
+- une langue absente retombe sur la langue de repli déclarée, puis sur le texte rédigé ;
+- aucun appel réseau ne bloque le premier rendu : le texte s'affiche dans sa langue rédigée et
+  est mis à jour à l'arrivée du dictionnaire.
+
+**`locales/{lang}/app.json`** — 40 chaînes × 7 langues (EN, FR, DE, IT, ES, NL, PT), jeu de
+clés strictement identique d'une langue à l'autre, vérifié par assertion. Aucune chaîne vide,
+et chaque langue est réellement traduite plutôt que copiée (contrôlé sur l'allemand et le
+néerlandais).
+
+**Trois surfaces câblées** — `traceability`, `evidence`, `dpp` — avec un sélecteur de langue
+qui énumère `TracefabI18n.LANGS` : aucun bouton de langue codé en dur, ajouter une langue reste
+ajouter un dossier.
+
+## Un oubli rattrapé avant livraison
+
+`/i18n-core.js` renvoyait 404 : chaque fichier de `public/` exige sa route explicite dans
+`vercel.json`, comme `/i18n-engine.js` et `/auto-translate.js` ont la leur. Sans cette route,
+les trois surfaces se seraient chargées en français en production — proprement, grâce au repli,
+mais sans traduction. Route ajoutée : **16 routes**, JSON revalidé.
+
+## Ce qui n'est pas fait
+
+Les cinq dictionnaires ne sont **pas** unifiés. La landing conserve `i18n-engine.js`,
+brand-console conserve `brandTranslations` et le glossaire, `passport` n'a toujours aucune
+traduction. Le runtime est en place et trois surfaces le prouvent ; migrer les autres est un
+travail de contenu (extraire les chaînes, les traduire) et non d'architecture. `locales/` et
+`translations_deep.json` restent chargés par rien d'autre que ce runtime pour le premier.
+
+## Portails
+
+```
+test:i18n              75 / 0   NOUVEAU
+test:p1-i18n                  PASS (contrat existant sur 7 langues, inchangé)
+test:traceability      82 / 0 · test:evidence 65 / 0 · test:public-dpp 69 / 0
+test:dpp-readiness     83 / 0 · test:route-registry PASS
+test:landing           95 / 0 · check:landing 69 / 0
+Balayage des 56 scripts test:* : 37 PASS / 19 FAIL — exactement les 19 préexistants
+```
+
+`test:i18n` charge le vrai runtime et les vrais fichiers JSON, puis vérifie : les 7 langues
+présentes, le même jeu de clés partout, le changement de langue modifie réellement le texte
+rendu dans les 7 langues, `<html lang>` suit, tous les onglets sont traduits et pas seulement
+le premier, une clé inconnue laisse le texte rédigé intact et se signale, et les trois surfaces
+traduisent dans le DOM rendu avec aucun élément resté en français alors que sa clé existe.
+
+## Toujours non vérifié
+
+**Aucune capture d'écran.** Le rendu des langues à caractères spéciaux (umlauts allemands,
+`ij` néerlandais) et le comportement du sélecteur au clic réel restent à confirmer visuellement
+: `jsdom` ne calcule aucune mise en page.

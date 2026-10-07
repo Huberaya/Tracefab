@@ -1,0 +1,52 @@
+{
+  "app": {
+    "brand": "TRACEFAB",
+    "action": "Action",
+    "certificate": "Certificat",
+    "close": "Fermer",
+    "date": "Date",
+    "demo": "Mode démonstration — données fictives",
+    "empty": "Aucune donnée",
+    "loading": "Chargement…",
+    "material": "Matière",
+    "product": "Produit",
+    "reference": "Référence",
+    "status": "Statut"
+  },
+  "nav": {
+    "documents": "Documents",
+    "evidence": "Preuves",
+    "overview": "Vue d’ensemble",
+    "quality": "Qualité",
+    "traceability": "Traçabilité"
+  },
+  "tr": {
+    "addStage": "Ajouter une étape",
+    "audit": "Audit",
+    "calculate": "Calculer",
+    "chain": "Chaîne",
+    "input": "Entrée",
+    "loss": "Perte",
+    "massBalance": "Bilan de masse",
+    "output": "Sortie",
+    "remove": "Retirer",
+    "stage": "Étape",
+    "tolerance": "Tolérance"
+  },
+  "dpp": {
+    "care": "Entretien",
+    "certifications": "Certifications",
+    "circularity": "Circularité",
+    "composition": "Composition",
+    "evidence": "Preuves",
+    "manufacturing": "Fabrication",
+    "materials": "Matières",
+    "origin": "Origine",
+    "product": "Produit",
+    "repair": "Réparation",
+    "traceability": "Traçabilité"
+  },
+  "ev": {
+    "expiring": "Échéances"
+  }
+}

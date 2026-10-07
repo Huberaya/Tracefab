@@ -35,6 +35,7 @@
     "test:brand-console": "node scripts/test_brand_console.mjs",
     "test:brand-console:browser": "node scripts/test_brand_console_browser.mjs",
     "test:evidence": "node scripts/test_evidence_surface.mjs",
+    "test:i18n": "node scripts/test_i18n.mjs",
     "test:public-dpp": "node scripts/test_public_dpp.mjs",
     "test:dpp-readiness": "node scripts/test_dpp_readiness.mjs",
     "test:traceability": "node scripts/test_traceability_surface.mjs",

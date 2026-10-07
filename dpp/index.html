@@ -613,6 +613,7 @@
     <p class="section-desc">Chargement du passeport…</p>
   </div>
 
+  <script src="/i18n-core.js"></script>
   <script>
     (() => {
       'use strict';
@@ -629,18 +630,20 @@
       /* Les onze rubriques du passeport. Chacune est rendue à partir du contrat
          réel de resolveDppPassData. Celles qui n'ont aucune source de données
          sont affichées comme non publiées, jamais complétées d'office. */
+      /* Le libellé français reste le repli rédigé : si une clé manque au
+         dictionnaire, l'onglet affiche ce texte et la clé est signalée. */
       const SECTIONS = [
-        { id: 'produit', label: 'Produit' },
-        { id: 'origine', label: 'Origine' },
-        { id: 'matieres', label: 'Matières' },
-        { id: 'composition', label: 'Composition' },
-        { id: 'fabrication', label: 'Fabrication' },
-        { id: 'certifications', label: 'Certifications' },
-        { id: 'circularite', label: 'Circularité' },
-        { id: 'entretien', label: 'Entretien' },
-        { id: 'reparation', label: 'Réparation' },
-        { id: 'tracabilite', label: 'Traçabilité' },
-        { id: 'preuves', label: 'Preuves' },
+        { id: 'produit', label: 'Produit', key: 'dpp.product' },
+        { id: 'origine', label: 'Origine', key: 'dpp.origin' },
+        { id: 'matieres', label: 'Matières', key: 'dpp.materials' },
+        { id: 'composition', label: 'Composition', key: 'dpp.composition' },
+        { id: 'fabrication', label: 'Fabrication', key: 'dpp.manufacturing' },
+        { id: 'certifications', label: 'Certifications', key: 'dpp.certifications' },
+        { id: 'circularite', label: 'Circularité', key: 'dpp.circularity' },
+        { id: 'entretien', label: 'Entretien', key: 'dpp.care' },
+        { id: 'reparation', label: 'Réparation', key: 'dpp.repair' },
+        { id: 'tracabilite', label: 'Traçabilité', key: 'dpp.traceability' },
+        { id: 'preuves', label: 'Preuves', key: 'dpp.evidence' },
       ];
 
       const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -771,7 +774,7 @@
 
       function tabs() {
         return `<nav class="dpp-tabs" role="tablist" aria-label="Rubriques du passeport">
-          ${SECTIONS.map((s) => `<button type="button" class="dpp-tab-btn${state.tab === s.id ? ' active' : ''}" data-tab="${s.id}" role="tab" aria-selected="${state.tab === s.id}">${esc(s.label)}</button>`).join('')}
+          ${SECTIONS.map((s) => `<button type="button" class="dpp-tab-btn${state.tab === s.id ? ' active' : ''}" data-tab="${s.id}" role="tab" aria-selected="${state.tab === s.id}" data-i18n="${s.key}">${esc(s.label)}</button>`).join('')}
         </nav>`;
       }
 
@@ -971,6 +974,7 @@
 
         const body = (VIEWS[state.tab] || viewProduit)();
         root.innerHTML = `${header()}${tabs()}<main class="tab-content-panel" style="display:block">${body}</main>${footer()}`;
+        if (window.TracefabI18n) window.TracefabI18n.apply(root);
         bind();
       }
 
@@ -981,7 +985,8 @@
       }
 
       window.tracefabPublicDpp = { state, load, SECTIONS };
-      load();
+      if (window.TracefabI18n) window.TracefabI18n.init({ scope: 'app', fallback: 'fr' }).then(() => load());
+      else load();
     })();
   </script>
 </body>

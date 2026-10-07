@@ -893,6 +893,7 @@ a { color: inherit; text-decoration: none; }
 <body class="tf-surface tf-surface--light">
   <div id="app" class="tf-app" aria-busy="true"></div>
 
+  <script src="/i18n-core.js"></script>
   <script>
     (function () {
       'use strict';
@@ -1444,18 +1445,32 @@ a { color: inherit; text-decoration: none; }
       /* ------------------------------------------------------------ chrome */
 
       function sidenav() {
-        const links = [['overview', 'Vue d’ensemble'], ['mass-balance', 'Bilan de masse'], ['chain', 'Chaîne'], ['audit', 'Intégrité d’audit']];
+        const links = [
+          ['overview', 'Vue d’ensemble', 'nav.overview'],
+          ['mass-balance', 'Bilan de masse', 'tr.massBalance'],
+          ['chain', 'Chaîne', 'tr.chain'],
+          ['audit', 'Intégrité d’audit', 'tr.audit'],
+        ];
+        const i18n = window.TracefabI18n;
+        const lang = i18n ? i18n.language : 'fr';
         return `<aside class="tf-app__side">
           <a href="/" class="tf-wordmark" aria-label="TRACEFAB">
             <span class="tf-wordmark__mark" aria-hidden="true">tf</span>
             <span class="tf-wordmark__name">TRACEFAB</span>
           </a>
           <nav class="tf-sidenav" aria-label="Traceability">
-            <div class="tf-sidenav__group">Traçabilité</div>
-            ${links.map(([id, label]) => `
+            <div class="tf-sidenav__group" data-i18n="nav.traceability">Traçabilité</div>
+            ${links.map(([id, label, key]) => `
               <button type="button" class="tf-sidenav__link${state.view === id ? ' is-on' : ''}" data-nav="${id}" aria-current="${state.view === id ? 'page' : 'false'}">
-                <span>${label}</span>
+                <span data-i18n="${key}">${label}</span>
               </button>`).join('')}
+          </nav>
+          <nav class="tf-sidenav" aria-label="Langue" style="margin-top:auto">
+            <div class="tf-sidenav__group" data-i18n="app.close" hidden>Langue</div>
+            <div class="tf-sidenav__group">Langue · Language</div>
+            <div class="tf-row" role="group" aria-label="Langue de l'interface">
+              ${(i18n ? i18n.LANGS : ['fr']).map((code) => `<button type="button" class="tf-btn tf-btn--ghost tf-btn--sm${code === lang ? ' tf-btn--dark' : ''}" data-lang="${code}" aria-pressed="${code === lang}">${code.toUpperCase()}</button>`).join('')}
+            </div>
           </nav>
           <nav class="tf-sidenav" aria-label="Autres surfaces" style="margin-top:auto">
             <div class="tf-sidenav__group">Surfaces</div>
@@ -1471,10 +1486,17 @@ a { color: inherit; text-decoration: none; }
         const body = { overview: viewOverview, 'mass-balance': viewMassBalance, chain: viewChain, audit: viewAudit }[state.view] || viewOverview;
         app.setAttribute('aria-busy', state.loading ? 'true' : 'false');
         app.innerHTML = `${sidenav()}<main class="tf-app__main">${body()}</main>`;
+        if (window.TracefabI18n) window.TracefabI18n.apply(app);
         bind();
       }
 
       function bind() {
+        document.querySelectorAll('[data-lang]').forEach((el) => {
+          el.onclick = () => {
+            if (!window.TracefabI18n) return;
+            window.TracefabI18n.setLanguage(el.dataset.lang).then(render);
+          };
+        });
         document.querySelectorAll('[data-nav]').forEach((el) => {
           el.onclick = () => { state.view = el.dataset.nav; state.notice = null; render(); };
         });
@@ -1513,7 +1535,13 @@ a { color: inherit; text-decoration: none; }
       }
 
       window.tracefabTraceability = { state, load, VERDICTS, CHAIN_STEPS, STAGE_STATUS, balanceStages };
-      load();
+      if (window.TracefabI18n) {
+        /* Une clé absente ne vide jamais l'interface : le texte rédigé reste affiché
+           et la clé est listée dans TracefabI18n.missing. */
+        window.TracefabI18n.init({ scope: 'app', fallback: 'fr' }).then(() => load());
+      } else {
+        load();
+      }
     })();
   </script>
 </body>

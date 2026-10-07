@@ -187,6 +187,7 @@ npm run test:evidence           # Evidence Center: 65 assertions on the trust sc
 npm run test:traceability       # Traceability: 82 assertions incl. the stage mass balance
 npm run test:dpp-readiness      # DPP Readiness: 83 assertions incl. the CIRPASS structure check
 npm run test:public-dpp         # Public DPP: 69 assertions on the absent-data contract
+npm run test:i18n               # i18n: 75 assertions, 7 languages, missing-key fallback
 npm run test:route-registry     # every /api/* a surface calls must resolve to a declared route
 ```
 
