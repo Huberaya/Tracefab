@@ -47,6 +47,7 @@
     "test:p1-quality": "node scripts/test_p1_quality.mjs",
     "test:p1": "npm run test:p1-catalog && npm run test:p1-bom && npm run test:p1-i18n && npm run test:p1-quality",
     "test:p2:certification-catalog": "node scripts/test_p2_certification_catalog.mjs",
+    "test:p2:readiness": "npx tsx scripts/test_p2_readiness.ts",
     "test:p2:staging": "node scripts/test_p2_staging.mjs",
     "test:p2": "npm run test:p2:certification-catalog && npm run test:p2:staging",
     "test:email": "node scripts/test_email_delivery.mjs",

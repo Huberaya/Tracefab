@@ -14,7 +14,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.goto(`http://127.0.0.1:${port}/supplier-portal/?demo=1`, { waitUntil: 'domcontentloaded' });
 
-  await page.getByRole('heading', { name: 'Bonjour Rui.' }).waitFor();
+  await page.locator('h1.sp-hero-h1').waitFor();
   await page.locator('button[data-view="profile"]').first().click();
   await page.locator('#profile-form input[name="contactPhone"]').fill('+351 211 222 333');
   await page.locator('#profile-form button[type="submit"]').click();
@@ -36,6 +36,13 @@ try {
   await page.locator('#material-form input[name="materialType"]').fill('fiber');
   await page.locator('#material-form button[type="submit"]').click();
   await page.getByText('Matériau ajouté en mode démonstration.').waitFor();
+
+  await page.getByRole('button', { name: /Importer Excel \/ CSV/ }).click();
+  await page.locator('#bom-csv-input').fill('Matiere; Pourcentage; Type; Pays; Standard; NumeroLicence; LotFournisseur\nCoton Bio; 85%; fiber; PT; GOTS; CU-881294; LOT-2026-089\nCoton Recyclé; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11');
+  await page.getByRole('button', { name: /Vérifier la nomenclature/ }).click();
+  await page.getByText('Somme de composition calculée : 100%').waitFor();
+  await page.getByRole('button', { name: /Importer & Enregistrer/ }).click();
+  await page.getByText('Importation BOM réussie en mode démo : 2 composants ajoutés au catalogue.').waitFor();
 
   await page.locator('button[data-view="documents"]').first().click();
   await page.locator('#document-form input[name="file"]').setInputFiles({ name:'audit-note.txt', mimeType:'text/plain', buffer:Buffer.from('private evidence demo') });

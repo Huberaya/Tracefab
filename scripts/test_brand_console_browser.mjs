@@ -16,7 +16,7 @@ try {
 
   // Exercise the French native UI explicitly; the console defaults to English when no preference exists.
   await page.locator('#brand-lang-select').selectOption('fr');
-  await page.getByRole('heading', { name: 'Bonjour Camille.' }).waitFor();
+  await page.locator('h1.mc-headline').waitFor();
   await page.locator('button[data-view="products"]').click();
   await page.locator('[data-product-id="demo-product-1"]').click();
   await page.getByRole('heading', { name: 'Essentiel coton' }).waitFor();

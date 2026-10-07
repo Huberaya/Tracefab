@@ -9,6 +9,8 @@ const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf
 
 // Assertions on Supplier Portal UI
 assert(supplierPortalHtml.includes('Importer Excel / CSV (BOM & Lots)'), 'BOM import button missing in supplier portal');
+assert(supplierPortalHtml.includes('data-action="open-bom-import"'), 'BOM import action must use the bound event path');
+assert(!supplierPortalHtml.includes("onclick=\"state.modal='import-bom';render();\""), 'BOM import must not depend on inaccessible inline lexical state');
 assert(supplierPortalHtml.includes('handleBomImportSubmit'), 'handleBomImportSubmit missing in supplier portal');
 assert(supplierPortalHtml.includes('previewBomCsv'), 'previewBomCsv missing in supplier portal');
 assert(indexTs.includes('supplier/materials/import-bom'), 'import-bom route missing in api/index.ts');
