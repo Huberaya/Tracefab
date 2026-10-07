@@ -1,6 +1,6 @@
 # Landing — chantiers L1 à L5
 
-Branche `merge/experience` · commits `3b84bc0`, `d176660`, `7da777f`, `98e1321` · poussés sur `origin`.
+Branche `merge/experience` · commits `3b84bc0`, `d176660`, `7da777f`, `98e1321`, `f340dc6` · poussés sur `origin`.
 
 ---
 
