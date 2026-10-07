@@ -685,3 +685,103 @@ auto-vérification d'un certificat, analyse de document, stockage, tokens DS, ac
 **Aucune capture d'écran.** Les 69 assertions sont structurelles, comportementales et
 mathématiques (contraste). L'équilibre visuel des huit cartes, le rendu de la jauge et le
 comportement au point de rupture 760 px restent à valider dans un navigateur.
+
+---
+
+# Chantier 7 — Data Collection
+
+## Troisième correction à mes propres notes
+
+Ma roadmap indiquait : « phase 7 Data Collection — pas de flux Missing → … → Rejected ».
+**C'était faux.** Mesuré par exécution, pas par lecture :
+
+- 8 routes `data-request*` déclarées, **7 déjà appelées** par une surface.
+- La Brand Console implémente déjà « Pilotage de la Collecte Fournisseur » avec le cycle en
+  sept étapes MARQUE → FOURNISSEUR → PRODUIT → DONNÉES REQUISES → certificats OCR →
+  DONNÉES VÉRIFIÉES, et les filtres de statuts (Toutes / Tous les statuts / Demandées
+  (Missing) / En cours de saisie / Soumises pour revue / Rejetées).
+- La revue par réponse est câblée : `POST /api/data-responses/:id/review`, appelée par la
+  Brand Console avec `status` et `reviewComment`.
+- Le portail fournisseur affiche ses demandes en cartes avec statut et progression
+  (40 % / 100 % sur les données de démo), sans erreur de page.
+
+Le cycle de vie réel est porté par deux enums Postgres, pas par les six mots du brief :
+
+| Niveau | Enum | Valeurs |
+| --- | --- | --- |
+| demande | `data_request_status` | draft, sent, in_progress, submitted, changes_requested, approved, cancelled |
+| item | `data_request_item_status` | pending, answered, needs_review, accepted, rejected |
+
+Les six états du brief (Missing / Requested / Submitted / Under Review / Accepted / Rejected)
+sont une couche de présentation sur ces deux enums — c'est ainsi qu'ils sont rendus, jamais
+comme un état stocké supplémentaire.
+
+## Les deux vrais défauts
+
+**1. La boucle de revue était cassée.** La marque envoie `reviewComment` à la revue ;
+`grep -c reviewComment supplier-portal/index.html` renvoyait **0**. Le fournisseur voyait
+« Rejeté » sans jamais savoir pourquoi, alors que l'API serialise `reviewComment`,
+`reviewedAt` et `reviewedBy`. La chaîne du brief s'arrête à « Review » : sans motif, le
+fournisseur ne peut pas corriger à bon escient.
+
+Corrigé par `reviewNote(response)` : le commentaire est restitué tel quel, daté, dans un
+encart ambre « Correction demandée par la marque » quand le statut est `rejected`,
+`changes_requested` ou `needs_review`, et vert pour une validation. `role="note"`.
+
+**2. Trois statuts d'item sur cinq n'avaient pas de libellé.** La table `labels` couvrait
+`needs_review` et `rejected` mais pas `pending`, `answered`, `accepted` : l'enum anglais brut
+fuitait dans l'interface française. Trois libellés ajoutés, plus les styles
+`.status-pending`, `.status-answered`, `.status-accepted`.
+
+## Contrastes
+
+Les couleurs de la note de relecture ont été mesurées, et mon premier commentaire CSS citait
+le mauvais couple (`#e4f3ec`, l'ancienne valeur de `--green-soft`, et 8.02:1) : corrigé avec
+les valeurs réelles.
+
+| Couple | Ratio |
+| --- | --- |
+| titre rejeté `#5b3d05` sur `#fff3d8` | 9.02:1 |
+| texte rejeté `#4a3c12` | 9.80:1 |
+| titre accepté `#07523e` sur `--tf-emerald-100 #d9f3e8` | 7.85:1 |
+| texte accepté `#1d3b2e` | 10.44:1 |
+| `.status-pending` / `.status-answered` `#5b6962` sur `#f0f1f0` | 5.09:1 |
+
+## `/api/data-requests/:id/items` : pas un défaut
+
+Seule route `data-request*` qu'aucune surface n'appelle. Ce n'est pas un oubli : les items
+sont instanciés depuis un questionnaire via `/items/from-template` (la Brand Console a un
+constructeur de questionnaires), et le GET est couvert par `/api/data-requests/:id` qui
+renvoie déjà `data_request_items`. C'est un primitive de bas niveau, documenté comme tel.
+
+## Le portail de test voit maintenant dans les deux sens
+
+`test:route-registry` vérifiait « tout appel d'interface aboutit à une route déclarée ».
+Il signale désormais aussi l'inverse : **43 routes déclarées qu'aucune surface n'appelle**,
+en avertissement. C'est la carte des chantiers restants — `documents/:id/verify-ai`,
+`documents/:id/security-report`, `dpp/:id`, `gs1/digital-link/:id`, `integrations/*`,
+`mass-balance/certificates`, `green-claims/rules`. Une route que personne n'appelle doit
+rester visible : c'est exactement ainsi que les cinq endpoints CAP ont attendu la phase 8.
+
+## Portails
+
+```
+ds:check                        PASS  (3 surfaces)
+check:landing          67 / 0   inchangé
+test:landing           95 / 0   inchangé
+test:quality-center    69 / 0   inchangé
+test:supplier-portal          PASS  (contrat de 33 éléments préservé)
+test:supplier-portal:surface 78 / 0  (+9 : boucle de revue)
+test:route-registry           PASS  (116 motifs, 95 appels, 43 routes non appelées signalées)
+test:universal-passport:chantier6  PASS
+Balayage des 51 scripts test:* : 32 PASS / 19 FAIL — liste identique aux 19 préexistants
+```
+
+Les neuf assertions ajoutées vérifient : aucun enum brut ne fuite, le motif du relecteur est
+restitué tel quel, une correction demandée est distinguée visuellement d'une validation, et
+l'encart est exposé en `role="note"`.
+
+## Toujours non vérifié
+
+**Aucune capture d'écran.** L'encart de relecture est prouvé présent, correctement classé et
+accessible ; son rendu visuel réel reste à juger dans un navigateur.

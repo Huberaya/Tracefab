@@ -184,6 +184,57 @@ assert(!!scanBtn, 'bouton « Analyser » présent');
 assert(!!scanBtn.dataset.scanId, 'identifiant dédié : pas de collision avec le téléchargement');
 assert(!scanBtn.dataset.documentId, 'aucun data-document-id : le téléchargement n’est pas déclenché');
 
+console.log('\nJ2. Boucle de revue : le motif parvient au fournisseur');
+// Aucun enum brut ne doit apparaître : les 5 statuts d'item (pending, answered,
+// needs_review, accepted, rejected) et les 7 statuts de demande doivent tous
+// avoir un libellé français, sinon l'interface affiche « accepted » tel quel.
+await nav('requests');
+const firstRequest = $('[data-request-id]');
+assert(!!firstRequest, 'au moins une demande est listée');
+click(firstRequest);
+await settle();
+const detailStatuses = $$('.status').map((e) => e.textContent.trim());
+assert(detailStatuses.length > 0, 'des statuts sont rendus dans le détail');
+eq(
+  detailStatuses.filter((t) => /^[a-z_]+$/.test(t)).length,
+  0,
+  'aucun enum brut ne fuite dans l’interface',
+  detailStatuses.join(', '),
+);
+
+// Une réponse rejetée avec motif, telle que l'API la renvoie après revue.
+const reviewedRequest = state.requests[0];
+const reviewedItem = reviewedRequest.items[0];
+reviewedItem.responses = [{
+  id: 'test-response-1', isCurrent: true, status: 'rejected', value: '85',
+  reviewComment: 'Le pourcentage ne correspond pas au certificat GOTS CU-881294 (87%).',
+  reviewedAt: new Date().toISOString(),
+}];
+click($('[data-view="requests"]'));
+await settle();
+click($('[data-request-id]'));
+await settle();
+const note = $('.review-note');
+assert(!!note, 'le motif de relecture est affiché');
+assert(note.classList.contains('is-rejected'), 'une correction demandée est signalée visuellement');
+assert(
+  note.textContent.includes('CU-881294'),
+  'le commentaire du relecteur est restitué tel quel',
+  note.textContent.replace(/\s+/g, ' ').trim(),
+);
+assert(note.getAttribute('role') === 'note', 'exposé aux technologies d’assistance');
+
+// Même mechanisme pour une validation : le ton doit différer.
+reviewedItem.responses[0].status = 'accepted';
+reviewedItem.responses[0].reviewComment = 'Preuve inspectée et conforme.';
+click($('[data-view="requests"]'));
+await settle();
+click($('[data-request-id]'));
+await settle();
+const okNote = $('.review-note');
+assert(!!okNote, 'une note de validation est affichée aussi');
+assert(!okNote.classList.contains('is-rejected'), 'une validation n’a pas le style d’un rejet');
+
 console.log('\nK. Stockage');
 assert(!!state.storage, 'les données de stockage sont chargées');
 assert($('.progress') !== null, 'la jauge de stockage est rendue');

@@ -141,6 +141,37 @@ if (phantom.length === 0) {
   bad('le registre pointe vers des fichiers absents', phantom.join('\n        '));
 }
 
+/* ------------------------------------------ routes déclarées, jamais appelées -- */
+
+/**
+ * L'inverse du contrôle 1 : une route peut exister sans interface. Ce n'est pas
+ * un échec — `/api/data-requests/:id/items` est un primitive de bas niveau, les
+ * items étant instanciés depuis un questionnaire via `/items/from-template`, et
+ * son GET est couvert par `/api/data-requests/:id`. Mais une route que personne
+ * n'appelle doit rester visible, pas disparaître du radar : c'est ainsi que les
+ * cinq endpoints CAP ont attendu la phase 8.
+ */
+console.log('\n3. Routes déclarées mais appelées par aucune surface');
+const neverCalled = routeMatchers
+  .filter(({ re }) => {
+    for (const calls of surfaceCalls.values()) {
+      for (const call of calls) {
+        const { sample, unterminated } = analyze(call);
+        if (re.test(sample) || (unterminated && re.test(`${sample}SEGMENT`))) return false;
+      }
+    }
+    return true;
+  })
+  .map(({ route }) => `/api/${route.replace(/\(\[\^\/\]\+\)/g, '{id}')}`);
+if (neverCalled.length) {
+  console.warn(
+    `\n  À SUIVRE — ${neverCalled.length} route(s) déclarée(s) qu'aucune surface n'appelle :\n` +
+      neverCalled.sort().map((r) => `        ${r}`).join('\n'),
+  );
+} else {
+  ok('toutes les routes déclarées sont appelées');
+}
+
 /* ------------------------------------------------------------- résultat -- */
 
 console.log(`\n${'='.repeat(64)}`);
