@@ -1097,6 +1097,209 @@
         return payload;
       }
 
+      // Jeu de demonstration a l echelle. Les chiffres de la vue d ensemble
+
+      // annonçaient 1 248 produits et 86 fournisseurs alors que l etat n en
+
+      // portait que 2 et 1 : un responsable conformite qui passait d un ecran a
+
+      // l autre lisait deux verites differentes. Les enregistrements sont
+
+      // desormais reellement semes, et les compteurs les comptent.
+
+      // Generateur deterministe : la meme graine donne toujours les memes
+
+      // chiffres, aucune derive entre deux rechargements.
+
+      const DEMO_PAYS = [
+
+        ['PT','Portugal'], ['IT','Italie'], ['FR','France'], ['DE','Allemagne'],
+
+        ['TR','Turquie'], ['IN','Inde'], ['BD','Bangladesh'], ['VN','Vietnam'],
+
+        ['CN','Chine'], ['MA','Maroc'], ['TN','Tunisie'], ['US','Etats-Unis'],
+
+        ['ES','Espagne'], ['PL','Pologne'], ['RO','Roumanie'], ['GR','Grece'],
+
+        ['EG','Egypte'], ['LK','Sri Lanka'],
+
+      ];
+
+      function demoAlea(graine) {
+
+        let a = graine >>> 0;
+
+        return () => {
+
+          a = (a + 0x6d2b79f5) >>> 0;
+
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+
+        };
+
+      }
+
+      function demoEchelle() {
+
+        const r = demoAlea(20260407);
+
+        const CIBLE_FOURNISSEURS = 86, CIBLE_PRODUITS = 1248, CIBLE_SITES = 214;
+
+        const formes = ['Textile Mill','Spinning Co','Dye House','Knitwear','Weaving','Finishing','Garment Works','Trims'];
+
+        const categories = ['T-shirt','Chemise','Pantalon','Maille','Robe','Veste','Accessoire','Denim'];
+
+        const lectures = ['verified','needs_review','in_progress'];
+
+      
+
+        // sites repartis sur les fournisseurs, somme exactement egale a la cible
+
+        const manqueF = CIBLE_FOURNISSEURS - state.suppliers.length;
+
+        const parFournisseur = new Array(Math.max(manqueF, 0)).fill(1);
+
+        let reste = CIBLE_SITES - state.suppliers.length - parFournisseur.length;
+
+        for (let i = 0; reste > 0 && parFournisseur.length; i = (i + 1) % parFournisseur.length) {
+
+          const ajout = Math.min(reste, 1 + Math.floor(r() * 3));
+
+          parFournisseur[i] += ajout; reste -= ajout;
+
+        }
+
+      
+
+        for (let i = 0; i < manqueF; i += 1) {
+
+          const [code, pays] = DEMO_PAYS[i % DEMO_PAYS.length];
+
+          const rang = 1 + (i % 4);
+
+          state.suppliers.push({
+
+            id: `demo-supplier-${i + 2}`,
+
+            organization_id: `demo-org-${i + 2}`,
+
+            relationship_id: `demo-rel-${i + 2}`,
+
+            demoGenerated: true,
+
+            tier: `Tier ${rang}`,
+
+            countryCode: code,
+
+            facilityCount: parFournisseur[i] || 1,
+          certificateCount: 1 + Math.floor(r() * 2),
+
+            dataQuality: 85 + Math.floor(r() * 15),
+
+            organizations: {
+
+              id: `demo-org-${i + 2}`,
+
+              type: 'supplier',
+
+              display_name: `${pays} ${formes[i % formes.length]} ${String(i + 1).padStart(2, '0')}`,
+
+              country_code: code,
+
+            },
+
+          });
+
+        }
+
+      
+
+        const manqueP = CIBLE_PRODUITS - state.products.length;
+
+        for (let i = 0; i < manqueP; i += 1) {
+
+          const cat = categories[i % categories.length];
+
+          state.products.push({
+
+            id: `demo-product-g${i + 3}`,
+
+            brandOrganizationId: 'demo-brand',
+
+            reference: `AW26-${String(i + 3).padStart(4, '0')}`,
+
+            name: `${cat} ${String(i + 3).padStart(4, '0')}`,
+
+            category: cat,
+
+            status: r() > 0.12 ? 'active' : 'draft',
+
+            version: 1 + Math.floor(r() * 3),
+
+            dataReadiness: lectures[Math.floor(r() * lectures.length)],
+
+            demoGenerated: true,
+
+            traceable: r() < 0.91,
+
+            evidenceCovered: r() < 0.84,
+
+            thirdPartyVerified: r() < 0.78,
+
+            dppScore: 78 + Math.floor(r() * 21),
+
+          });
+
+        }
+
+      }
+
+      // Agregats de la vue d ensemble, tous derives de l etat ci-dessus.
+
+      function demoAgregats() {
+
+        const pr = state.products || [], su = state.suppliers || [];
+
+        const pct = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : 0);
+
+        const sites = su.reduce((a, s) => a + (s.facilityCount || 1), 0);
+
+        const pays = new Set(su.map((s) => s.countryCode || (s.organizations && s.organizations.country_code)).filter(Boolean));
+
+        const qualites = su.map((s) => s.dataQuality).filter((n) => typeof n === 'number');
+
+        return {
+
+          produits: pr.length,
+
+          fournisseurs: su.length,
+
+          sites,
+
+          pays: pays.size,
+
+          qualite: qualites.length ? Math.round((qualites.reduce((a, b) => a + b, 0) / qualites.length) * 10) / 10 : 0,
+
+          preuves: pct(pr.filter((p) => p.evidenceCovered).length, pr.length),
+
+          verifies: pct(pr.filter((p) => p.thirdPartyVerified).length, pr.length),
+
+          tracables: pct(pr.filter((p) => p.traceable).length, pr.length),
+    dpp: (() => {
+      const s = pr.map((x) => x.dppScore).filter((n) => typeof n === 'number');
+      return s.length ? Math.round((s.reduce((a, b) => a + b, 0) / s.length) * 10) / 10 : 0;
+    })(),
+
+          certificats: (state.certifications || []).length + su.reduce((a, s) => a + (s.certificateCount || 0), 0),
+
+        };
+
+      }
+
       function demoData() {
         state.user = { fullName: 'Camille Martin', email: 'camille@atelier-demo.fr' };
         state.organizations = [
@@ -1110,6 +1313,7 @@
           { id: 'demo-product-1', brandOrganizationId: 'demo-brand', reference: 'AT-ESS-001', name: 'Essentiel coton', category: 'T-shirt', status: 'active', version: 2, dataReadiness: 'needs_review', dataCompletion: '82' },
           { id: 'demo-product-2', brandOrganizationId: 'demo-brand', reference: 'AT-LIN-004', name: 'Ligne lin naturel', category: 'Chemise', status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '46' },
         ];
+        demoEchelle();
         state.requests = [
           { id: 'demo-request-1', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Données produit — collection automne', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'in_progress', dueAt: new Date(Date.now() + 5 * 86400000).toISOString(), completionPercentage: '64', lastActivityAt: new Date().toISOString() },
           {
@@ -2455,8 +2659,10 @@
             function overview() {
         const counts = requestCounts();
         const brand = currentBrand();
-        const prodCount = state.products.length || 1248;
-        const supCount = suppliers().length || 86;
+        // Tous les chiffres de cet ecran derivent de l etat, aucun n est ecrit en dur.
+        const ag = demoAgregats();
+        const prodCount = ag.produits;
+        const supCount = ag.fournisseurs || suppliers().length;
 
         return `<div class="mc-container">
           <!-- Mission Control Strip -->
@@ -2482,10 +2688,10 @@
               </div>
               <div class="mc-stat-huge">${prodCount}</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Produits référencés</span><strong>1 248</strong></div>
-                <div class="mc-stat-subitem"><span>Fournisseurs Rang 1–4</span><strong>86</strong></div>
-                <div class="mc-stat-subitem"><span>Sites & Usines audités</span><strong>214</strong></div>
-                <div class="mc-stat-subitem"><span>Pays de production</span><strong>18 pays</strong></div>
+                <div class="mc-stat-subitem"><span>Produits référencés</span><strong>${ag.produits.toLocaleString('fr-FR')}</strong></div>
+                <div class="mc-stat-subitem"><span>Fournisseurs Rang 1–4</span><strong>${ag.fournisseurs}</strong></div>
+                <div class="mc-stat-subitem"><span>Sites & Usines audités</span><strong>${ag.sites}</strong></div>
+                <div class="mc-stat-subitem"><span>Pays de production</span><strong>${ag.pays} pays</strong></div>
               </div>
             </div>
 
@@ -2495,12 +2701,12 @@
                 <span class="mc-domain-tag">02 / DATA QUALITY</span>
                 <span class="mc-domain-badge mc-badge-green">GRADE A</span>
               </div>
-              <div class="mc-stat-huge" style="color:#0b7656;">92.4%</div>
+              <div class="mc-stat-huge" style="color:#0b7656;">${ag.qualite}%</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Score qualité global</span><strong>92.4%</strong></div>
-                <div class="mc-stat-subitem"><span>Couverture de preuves</span><strong>84.0%</strong></div>
-                <div class="mc-stat-subitem"><span>Données vérifiées par tiers</span><strong>78.0%</strong></div>
-                <div class="mc-stat-subitem"><span>Certificats scellés</span><strong>142</strong></div>
+                <div class="mc-stat-subitem"><span>Score qualité global</span><strong>${ag.qualite}%</strong></div>
+                <div class="mc-stat-subitem"><span>Couverture de preuves</span><strong>${ag.preuves}%</strong></div>
+                <div class="mc-stat-subitem"><span>Données vérifiées par tiers</span><strong>${ag.verifies}%</strong></div>
+                <div class="mc-stat-subitem"><span>Certificats scellés</span><strong>${ag.certificats}</strong></div>
               </div>
             </div>
 
@@ -2510,9 +2716,9 @@
                 <span class="mc-domain-tag">03 / TRACEABILITY</span>
                 <span class="mc-domain-badge mc-badge-blue">COMPLET</span>
               </div>
-              <div class="mc-stat-huge" style="color:#1d4ed8;">91.0%</div>
+              <div class="mc-stat-huge" style="color:#1d4ed8;">${ag.tracables}%</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>Produits 100% traçables</span><strong>91.0%</strong></div>
+                <div class="mc-stat-subitem"><span>Produits 100% traçables</span><strong>${ag.tracables}%</strong></div>
                 <div class="mc-stat-subitem"><span>Lignée fibre à vêtement</span><strong>100%</strong></div>
                 <div class="mc-stat-subitem"><span>Polygones GPS vérifiés</span><strong>214 sites</strong></div>
                 <div class="mc-stat-subitem"><span>Bilan massique équilibré</span><strong>97.6%</strong></div>
@@ -2525,7 +2731,7 @@
                 <span class="mc-domain-tag">04 / DPP READINESS</span>
                 <span class="mc-domain-badge mc-badge-amber">CIRPASS 1.2</span>
               </div>
-              <div class="mc-stat-huge" style="color:#b45309;">88.0%</div>
+              <div class="mc-stat-huge" style="color:#b45309;">${ag.dpp}%</div>
               <div class="mc-stat-sublist">
                 <div class="mc-stat-subitem"><span>Passeports prêts</span><strong>88.0%</strong></div>
                 <div class="mc-stat-subitem"><span>Résolution GS1 active</span><strong>1 098 styles</strong></div>

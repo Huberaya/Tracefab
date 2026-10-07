@@ -134,3 +134,20 @@ ok(genRisk.includes('apresAccolade'), 'les deux generateurs inserent en tete de 
 
 console.log(ko === 0 ? '\n  chantier 4 : vues DPP et Certifications alimentees.' : `\n  chantier 4 : ${ko} echec(s).`);
 process.exit(ko === 0 ? 0 : 1);
+
+// --- Arbitrage du 7 octobre 2026 : les KPI derivent des donnees ---
+// La vue d ensemble annoncait 1 248 produits et 86 fournisseurs quand l etat
+// n en portait que 2 et 1. Les enregistrements sont desormais reellement
+// semes et les compteurs les comptent. Ces assertions empechent le retour en
+// arriere vers des litteraux.
+ok(/function demoEchelle\(\)/.test(page), 'le generateur a l echelle existe');
+ok(/function demoAgregats\(\)/.test(page), 'les agregats derives existent');
+ok(/const ag = demoAgregats\(\);/.test(page), 'la vue d ensemble lit les agregats');
+ok(/CIBLE_FOURNISSEURS = 86, CIBLE_PRODUITS = 1248, CIBLE_SITES = 214/.test(page),
+  'les cibles du cahier des charges sont nommees une fois, pas dispersees');
+for (const litteral of ['<strong>1 248</strong>', '<strong>86</strong>', '<strong>214</strong>',
+                        '<strong>18 pays</strong>', '<strong>92.4%</strong>', '<strong>142</strong>']) {
+  ok(!page.includes(litteral), `aucun KPI ecrit en dur : ${litteral}`);
+}
+ok(/demoAlea\(20260407\)/.test(page), 'le generateur est deterministe, graine fixe');
+
