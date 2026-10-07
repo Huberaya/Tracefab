@@ -748,9 +748,11 @@
     <!-- Interactive Navigation Tabs -->
     <nav class="dpp-tabs" aria-label="Sections du Passeport">
       <button class="dpp-tab-btn active" data-tab="materials">Matières (2)</button>
-      <button class="dpp-tab-btn" data-tab="traceability">Traçabilité (5)</button>
-      <button class="dpp-tab-btn" data-tab="impact">Impact & Soin</button>
-      <button class="dpp-tab-btn" data-tab="evidence">Audit & Certificats</button>
+      <button class="dpp-tab-btn" data-tab="traceability">Traçabilité (7)</button>
+      <button class="dpp-tab-btn" data-tab="impact">Éco-Score & ACV</button>
+      <button class="dpp-tab-btn" data-tab="circularity">Réparabilité & Fin de Vie</button>
+      <button class="dpp-tab-btn" data-tab="evidence">Preuves & Audit</button>
+      <button class="dpp-tab-btn" data-tab="gs1">GS1 Digital Link</button>
     </nav>
 
     <!-- TAB 1: Matières & Composition -->
@@ -1072,7 +1074,9 @@
         materials: document.getElementById('panel-materials'),
         traceability: document.getElementById('panel-traceability'),
         impact: document.getElementById('panel-impact'),
-        evidence: document.getElementById('panel-evidence')
+        circularity: document.getElementById('panel-circularity'),
+        evidence: document.getElementById('panel-evidence'),
+        gs1: document.getElementById('panel-gs1')
       };
 
       tabs.forEach(btn => {
@@ -1230,3 +1234,79 @@
 
 </body>
 </html>
+    <!-- TAB 4: Réparabilité, Recyclabilité & Économie Circulaire (ESPR Art. 10 & AGEC) -->
+    <section class="tab-content-panel" id="panel-circularity" style="display:none;">
+      <div class="section-title">
+        <span>Réparabilité, Recyclabilité & Seconde Vie</span>
+        <span style="font-size:12px;background:#e0f2fe;color:#0284c7;padding:3px 10px;border-radius:99px;font-weight:700;">Conforme ESPR 2026</span>
+      </div>
+      <p class="section-desc">Instructions officielles de prolongation de vie, indice de réparabilité textile et filières de reprise agréées.</p>
+
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Indice de Réparabilité Textile</div>
+          <div style="font-size:26px;font-weight:850;color:#0b7656;font-family:var(--font-mono, monospace);">9.2 / 10</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Points d'arrêt renforcés, col bord-côte remplaçable, fil coton monomatériau.</div>
+        </div>
+        <div style="text-align:right;">
+          <span style="display:inline-block;padding:6px 14px;background:#eaf5ef;color:#0b7656;border-radius:99px;font-size:12px;font-weight:800;">✓ Recyclable à 100% (Mono-Fibre)</span>
+        </div>
+      </div>
+
+      <div class="info-grid" style="margin-bottom:18px;">
+        <div class="info-card">
+          <span>Démontabilité & Pièces</span>
+          <strong>Col & Ourlet</strong>
+          <p>Coutures chaînette standard détachables pour réparation simplifiée en atelier agréé.</p>
+        </div>
+        <div class="info-card">
+          <span>Bonus Réparation (Refashion)</span>
+          <strong>Éligible -6 € à -15 €</strong>
+          <p>Prise en charge directe chez les retoucheurs certifiés du réseau Refashion / AGEC.</p>
+        </div>
+      </div>
+
+      <div class="info-card" style="margin-bottom:18px;">
+        <span>Fin de Vie & Seconde Vie</span>
+        <strong>Consignes de Tri & Collecte Sélective</strong>
+        <p style="margin-top:6px;line-height:1.5;">
+          Ne pas jeter avec les ordures ménagères. Déposez ce t-shirt dans l'un des 46 000 points d'apport volontaire (PAV) Refashion ou rapportez-le en boutique partenaire pour réemploi ou effilochage mécanique boucle-fermée.
+        </p>
+      </div>
+    </section>
+
+    <!-- TAB 6: Résolution GS1 Digital Link & Enregistrement Blockchain/Neon -->
+    <section class="tab-content-panel" id="panel-gs1" style="display:none;">
+      <div class="section-title">
+        <span>Résolution GS1 Digital Link & QR Code</span>
+        <span style="font-size:12px;background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:99px;font-weight:700;">Standard GS1 2026</span>
+      </div>
+      <p class="section-desc">Architecture d'URI normalisée ISO/IEC 15459 reliant le QR code physique cousu sur l'étiquette au passeport numérique sécurisé.</p>
+
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:20px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:18px;margin-bottom:16px;">
+          <div style="width:72px;height:72px;background:#050f0b;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;">
+            ☷
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:var(--font-mono, monospace);color:var(--text-muted);text-transform:uppercase;">URI GS1 Digital Link Officielle :</div>
+            <code style="display:block;margin-top:4px;font-size:12.5px;color:#0b7656;word-break:break-all;">https://id.tracefab.com/01/03760123456789/21/2026-FW-001</code>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="info-card">
+            <span>Code Application (AI 01)</span>
+            <strong>GTIN: 03760123456789</strong>
+            <p>Identifiant mondial du style textile.</p>
+          </div>
+          <div class="info-card">
+            <span>Numéro de Série (AI 21)</span>
+            <strong>2026-FW-001</strong>
+            <p>Granularité au lot de confection certifié.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    
