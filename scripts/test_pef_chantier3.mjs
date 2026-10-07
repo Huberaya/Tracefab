@@ -150,7 +150,16 @@ console.log('✓ Brand Console PEF integration verified');
 console.log('6. Checking DPP consumer passport...');
 const dppFile = await readFile('dpp/index.html', 'utf8');
 assert.ok(dppFile.includes('Éco-Score Textile Européen'), 'Must have official Éco-Score in DPP passport');
-assert.ok(dppFile.includes('Conforme Loi AGEC & ESPR'), 'Must mention EU ESPR & AGEC compliance');
+// Reformule le 7 octobre 2026. Cette assertion verrouillait le mot
+// « Conforme », qui presentait le passeport comme certifie au regard de la Loi
+// AGEC et du reglement ESPR. La regle du projet est explicite : la preparation
+// n'est pas une certification. Le referentiel doit rester cite — c'est l'objet
+// du test — mais sans affirmer la conformite.
+assert.ok(dppFile.includes('Méthodologie Loi AGEC &amp; ESPR'), 'Must cite the EU ESPR & AGEC frameworks');
+assert.ok(
+  !/DPP Conforme|DPP Compliant|certifié ESPR/.test(dppFile),
+  'DPP must never claim regulatory certification',
+);
 console.log('✓ DPP consumer passport integration verified');
 
 console.log('✓ Chantier 3 (Moteur d’Agrégation ESG & Calculateur PEF/ACV) verified successfully!');

@@ -732,7 +732,7 @@ window.TF_I18N_BUNDLES.en = {
 
   // --- DPP public --------------------------------------------------------
   dpp: {
-    badgeEu: "EU ESPR / DPP Compliant",
+    badgeEu: "ESPR-aligned DPP format",
     verifiedOrigin: "✓ Verified Provenance",
     composition: "Material Composition",
     traceability: "Supply Chain Traceability",

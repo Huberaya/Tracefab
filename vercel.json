@@ -20,10 +20,6 @@
     {
       "src": "public/**",
       "use": "@vercel/static"
-    },
-    {
-      "src": "locales/**",
-      "use": "@vercel/static"
     }
   ],
   "headers": [
