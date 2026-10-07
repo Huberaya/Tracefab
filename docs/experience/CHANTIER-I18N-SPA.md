@@ -304,3 +304,62 @@ qu'avant. Contrôle négatif effectué : vider la clé fait bien rougir le test.
 
 5c `modal()` (128 chaînes, la plus grosse fonction du fichier) · tranche 6
 portail fournisseur (~170) · tranche 7 DPP public (~72).
+
+## Fait — tranche 5c (modal) — chantier SPA console terminé
+
+`modal()` et ses 12 branches : `new-product`, `supplier-import`,
+`catalog-import`, `invite-supplier`, `new-questionnaire`, `new-request`,
+`new-chain-node`, `new-chain-link`, `create-cap`, `review-cap`, `cap-message`,
+`waive-issue`. Plus les quatre helpers d'aperçu d'import
+(`supplierImportPreview`, `catalogImportPreview`, `previewSupplierImport`,
+`previewCatalogImport`) et les deux générateurs de démonstration associés.
+
+- **123 clés d'interface × 7 langues** (préfixe `md*`) et **3 chaînes de
+  démonstration** anglicisées. 149 remplacements.
+  Catalogue : 1 221 → **1 344 clés** (662 sous `console`).
+- Les libellés de procédés textiles conservent leur terme anglais entre
+  parenthèses dans toutes les langues — `Filature (Spinning)`,
+  `Teinture (Dyeing)`, `Ennoblissement (Finishing)` — parce que la valeur
+  entre parenthèses est l'identifiant métier, pas de la copie.
+  Même logique pour les types de relation : `Étape suivante (next_step)`.
+
+### Le périmètre annoncé était faux, dans les deux sens
+
+L'estimation de 128 chaînes venait d'un motif d'extraction trop lâche. Le
+premier passage n'en trouvait que 68 — parce que mon détecteur reposait sur les
+accents et les mots-outils français. Un second balayage, sans filtre
+linguistique, a révélé **57 chaînes de plus** : `Nom`, `Pays`, `Titre`,
+`Annuler`, `Verdict`, `Approuver`, `Instructions`, toute la liste des procédés
+textiles. Le total réel est 123.
+
+### Vérification : les modales ne s'affichent pas toutes seules
+
+Une sonde qui se contente de charger les vues ne voit **aucune** modale. La
+console expose `window.state` et `window.render` : la sonde force
+`state.modal = '<branche>'` puis rappelle `render()`, pour les 12 branches, et
+simule en plus les deux états d'aperçu d'import (avec erreurs, puis sans) afin
+d'atteindre les branches conditionnelles `À corriger` / `Aucune erreur`.
+
+### Vérifications
+
+17 vues + 12 modales, sonde stricte en anglais : **2 résidus, tous deux des
+noms propres** (`İzmir, Türkiye`, `Filature du Sud-Ouest`), **0 erreur JS**.
+En français, 33 chaînes accentuées dans les modales et **0 clé brute affichée**.
+Matrice **41/41**, build et `tsc --noEmit` verts, personas **6/6 · 4/4 · 4/4**.
+
+`test_collection_bridge_chantier2` verrouillait `Produit associé` en dur :
+repointé sur `bt('mdLinkedProduct')` avec vérification que la copie française
+reste au catalogue, et contrôle négatif effectué.
+
+### État du chantier SPA console
+
+**Terminé.** 17 vues sur 17 et les 12 modales sont exemptes de copie codée en
+dur. Restent les deux chantiers hors console : tranche 6 portail fournisseur
+(~170 chaînes) et tranche 7 DPP public (~72).
+
+### Dette signalée, non traitée
+
+- `dppConsoleView` : code mort, ~34 chaînes françaises, jamais appelée.
+- `certJours(c)` : interpolation manquante dans `certificationsConsoleView`.
+
+Les deux méritent une passe de nettoyage dédiée, sans rapport avec l'i18n.

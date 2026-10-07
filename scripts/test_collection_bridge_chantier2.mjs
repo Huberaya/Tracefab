@@ -100,7 +100,8 @@ assert(
   'Brand Console product detail must have a shortcut button to initiate data collection',
 );
 assert(
-  brandConsoleHtml.includes('Produit associé'),
+  brandConsoleHtml.includes("bt('mdLinkedProduct')")
+    && JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.mdLinkedProduct === 'Produit associé (optionnel)',
   'Brand Console request detail must display associated product',
 );
 
