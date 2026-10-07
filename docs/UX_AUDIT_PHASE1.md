@@ -2313,3 +2313,87 @@ des écrans est un chantier distinct — et il faudra alors vérifier que chaque
 Les 98 erreurs de typage sont inchangées et se répartissent : **90 Prisma** (client non généré,
 `binaries.prisma.sh` injoignable) et **8 `@types/node`** (`Buffer`/`zlib` : le dépôt déclare
 `^20.0.0` alors que le runtime est Node v22).
+
+---
+
+## Chantier 25 — Le .pkpass est valide, et le runtime qui le produit est désormais déclaré
+
+### Le point de départ n'était pas celui annoncé
+
+Les « 8 erreurs `@types/node` » étaient présentées comme de la simple dette de types. En
+vérifiant, elles portaient sur `api/_lib/wallet/apple-pass-generator.ts` — **le générateur de
+pass Apple Wallet signé**, et précisément sur son générateur ZIP écrit à la main, sans
+dépendance npm. Deux questions distinctes en découlaient :
+
+1. **Ce ZIP maison est-il réellement valide ?** Jamais vérifié. Un ZIP artisanal est le cas
+   d'école du défaut silencieux : le serveur répond 200, Apple rejette le pass.
+2. **Le runtime est-il garanti ?** `crc32` est importé de `node:zlib` (ligne 2, utilisé ligne
+   155). Mesuré : `package.json` ne déclare **aucun** champ `engines`, et `vercel.json` ne
+   précise **aucun** `runtime` (`"use": "@vercel/node"`, sans version). Le déploiement hérite
+   donc du Node par défaut, sans contrainte.
+
+### Ce qui a été mesuré
+
+**Le ZIP est valide.** Exécuté ici sur Node v22.22.3, puis relu par un lecteur indépendant :
+
+- signature `PK\x03\x04` en tête, EOCD présent, **7 entrées** au répertoire central ;
+- `pass.json`, `manifest.json`, `signature`, `icon.png`, `icon@2x.png`, `logo.png`,
+  `logo@2x.png` — toutes présentes, toutes compressées (deflate) ;
+- **tous les SHA-1 de `manifest.json` correspondent au contenu réel** — c'est ce qu'Apple
+  vérifie en premier ;
+- `pass.json` : `formatVersion: 1`, `passTypeIdentifier` `pass.com.tracefab.dpp`,
+  `serialNumber` `DPP-3760123456789`, `teamIdentifier`, `organizationName`, **exactement une**
+  clé de style (`storeCard`) avec champs primaires, `barcode` pointant sur le Digital Link.
+
+**Deux fausses alertes de ma propre sonde, corrigées** : je cherchais une clé de style
+`generic` (le pass utilise `storeCard`, tout aussi valide) et un champ
+`organizationPassStyleVersion` qui **n'existe pas** dans le format Apple. Ni l'un ni l'autre ne
+sont des défauts du code.
+
+### Ce qui a été fait
+
+**`engines.node: ">=22"`** ajouté à `package.json`. Avec `@vercel/node`, c'est ce champ qui
+détermine la version de Node du build **et** de l'exécution : un seul endroit à tenir. La borne
+est celle du runtime **effectivement vérifié ici**.
+
+> Honnêteté sur la borne : je n'ai pas pu vérifier dans cet environnement à partir de quelle
+> version exacte `zlib.crc32` existe (pas d'accès à la documentation Node). `>=22` couvre le
+> runtime mesuré ; une borne plus basse reposerait sur une affirmation non vérifiée.
+
+**`@types/node` passé de `^20.0.0` à `^22`** — le dépôt déclarait des types Node 20 pour un
+runtime Node 22. Résultat : **98 → 90 erreurs**, les 8 d'`apple-pass-generator` disparues.
+
+**`scripts/test_pkpass_bundle.mjs`** (nouveau) — **41 vérifications**. Il compile et exécute le
+vrai `generateApplePkpass()`, puis relit l'archive avec un lecteur **indépendant** : en-têtes
+locaux, répertoire central, EOCD parcourus par le test, et un **CRC-32 recalculé par une table
+propre au test** — pas `zlib.crc32`, qui est la fonction même employée par le générateur et ne
+prouverait donc rien.
+
+### Vérification
+
+`npm run test:pkpass:bundle` **41/41**.
+
+**Contre-épreuve** : `crc32(buf)` remplacé par `(crc32(buf) + 1) >>> 0` dans le générateur →
+`ÉCHEC — 40/41`, avec le détail par fichier (`pass.json : CRC déclaré 609c7680, recalculé
+609c767f`), **exit 1**. Générateur restauré → **41/41**, `git diff` vide.
+
+Une première injection plus brutale (`^ 0xff`) produisait un entier négatif et faisait crasher
+`writeUInt32LE` en `ERR_OUT_OF_RANGE` plutôt que d'échouer proprement — d'où le choix d'un CRC
+valide mais faux, qui est le défaut réaliste.
+
+**Diff des erreurs de typage avant/après le bump : aucune erreur nouvelle.** Les 90 restantes
+se répartissent en **85 Prisma** (client non généré) et **5 préexistantes**
+(`catalog/audit-export.ts` ×4 sur un type `unknown`, `documents.ts` ×1 appel non typé).
+
+`typecheck` racine (étape 1 de `npm test`) passe toujours, exit 0. Suite complète
+**PASS 46 · SKIP 18 · FAIL 0 sur 64**.
+
+### Ce que cela ne règle pas
+
+Le pass est testé **sans certificat** : en l'absence d'`APPLE_PASS_CERTIFICATE_PEM` et
+`APPLE_PASS_KEY_PEM`, le générateur produit une signature de développement
+(`PKCS7_DEV_SIGNATURE_…`). La signature PKCS#7 réelle, celle qu'Apple exige en production,
+n'est donc **pas** couverte ici — le bundle est structurellement valide, pas signable tel quel.
+
+Et les 90 erreurs restantes bloquent toujours `npm test` à l'étape 2 : les 85 Prisma ne
+disparaîtront qu'avec `npx prisma generate`, injoignable d'ici.
