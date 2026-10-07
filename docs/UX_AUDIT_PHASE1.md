@@ -560,3 +560,128 @@ test:route-registry   PASS  (116 motifs, 90 appels résolus, 8 orphelins signal�
 Balayage des 50 scripts test:* : 31 PASS / 19 FAIL — les 19 échecs préexistants, inchangés
 tsc sur api/index.ts : aucune erreur de syntaxe (uniquement des TS2792 dus à --noResolve)
 ```
+
+---
+
+# Chantier 6 — Supplier Portal
+
+## Périmètre
+
+`api/_lib/supplier-passport/types.ts` porte l'en-tête « Chantier 6: Write Once, Share
+Everywhere & Supplier-First Virality » : le passeport fournisseur est le cœur du chantier,
+ce qui recoupe le brief (« Vos données. Votre profil. Réutilisables chez tous vos clients. »).
+
+Le portail existant est solide : 1 272 lignes, 10 vues, 60 fonctions, un contrat de test de
+33 éléments. **Il n'a donc pas été réécrit** — une réécriture aurait cassé 33 contrats et
+60 fonctions pour un gain nul. Le chantier a consisté à combler ses trous.
+
+## Résultat principal
+
+| | avant | après |
+| --- | --- | --- |
+| routes `supplier/*` déclarées | 22 | 23 |
+| atteignables depuis le portail | 18 | **23 / 23** |
+| actions exposées sur l'accueil | 4 | **8** |
+
+## Les cinq routes rendues atteignables
+
+| Route | Ce que l'interface fait maintenant |
+| --- | --- |
+| `GET/PATCH /api/supplier/passport` | réglages réels : titre, régime de secret d'affaires (3 modes), 6 sections divulguables, visibilité |
+| `GET/POST /api/supplier/passport/access-requests` | demandes d'accès listées, **Accorder / Refuser** avec verdict |
+| `GET /api/supplier/storage/usage` | jauge d'espace, octets et nombre de documents réels |
+| `POST /api/supplier/certifications/:id/auto-verify` | bouton « Vérifier automatiquement » |
+| `POST /api/supplier/documents/:id/scan` | bouton « Analyser » |
+
+`review-passport-request` n'était qu'un stub : il affichait « revue en mode démonstration »
+même en mode réel, sans aucun appel réseau.
+
+## Les huit actions
+
+Compléter le profil · Ajouter des sites · Ajouter des matériaux · Ajouter des produits ·
+Téléverser des preuves · Gérer les certificats · Répondre aux demandes · Soumettre les données.
+Chaque carte affiche un compteur lu dans l'état et mène à l'écran qui la résout.
+« Ajouter des produits » pointe sur les données structurées : c'est là que les données produit
+sont réellement saisies côté fournisseur (les items de demande sont `product_description`,
+`country_of_manufacture`, `main_material_percentage`, `material_composition`).
+
+## Données inventées supprimées
+
+La barre de préparation était fausse à trois endroits :
+
+```js
+const completionPct = state.profile?.profileCompletion || 82;   // repli codé en dur
+```
+
+et quatre pills statiques : « ✓ Fiche Entreprise (100%) », « ✓ Sites de Production GPS (100%) »,
+« ✓ Certificats GOTS & OEKO-TEX (100%) », « ⏳ 1 Rapport d'essais RSL à renouveler » — affichées
+à l'identique quelles que soient les données.
+
+Remplacées par `readiness()` : sept conditions évaluées sur l'état réel, chacune citant son
+nombre. Le pourcentage affiché est celui de l'API quand il existe, sinon il est dérivé du
+compte d'étapes — et la source est indiquée à l'utilisateur.
+
+## Trois bugs corrigés
+
+- **`?demo=0` activait le mode démonstration.** `new URLSearchParams(location.search).has('demo')`
+  ignore la valeur. Le bandeau invitait pourtant à ouvrir `?demo=0` pour connecter Clerk.
+  Corrigé : `0`, `false` et `off` désactivent.
+- **`manageInvitation` appelait une URL cassée** (voir la section précédente) — Renvoyer et
+  Révoquer une invitation renvoyaient 404 en mode réel.
+- **Le sélecteur de langue n'avait pas de nom accessible** (`title` seul). `aria-label` ajouté.
+
+## Deux collisions évitées
+
+Les boutons d'accès au passeport portaient `data-request-id`, déjà branché sur `openRequest` :
+un clic sur « Accorder » aurait aussi ouvert une demande de données. Idem pour l'analyse de
+document, qui aurait déclenché le téléchargement via `[data-document-id]`. Attributs dédiés
+`data-passport-request-id` et `data-scan-id`. Le test vérifie leur absence mutuelle.
+
+## Design system et accessibilité
+
+Le portail est inscrit dans `SURFACES` et reçoit le DS canonique. Ses tokens sont mappés sur
+ceux du DS — ses verts (`#0b7656`, `#07523e`) étaient déjà identiques au pixel à
+`--tf-emerald-600/700`.
+
+Trois échecs WCAG AA corrigés, mesurés et non estimés :
+
+| Couple | avant | après |
+| --- | --- | --- |
+| `--muted #71807a` sur `--paper` | 3.88:1 | **4.86:1** (`--tf-ink-300 #647264`) |
+| `--muted #71807a` sur carte blanche | 4.14:1 | **5.08:1** |
+| `.status-in_progress #3970b3` | 4.46:1 | **4.58:1** (`#386eb1`) |
+| `.status-submitted #9a680e` | 4.37:1 | **4.58:1** (`#96650d`) |
+
+Le séparateur de lignes `#edf0eb` (1.25:1) n'est **pas** corrigé : c'est une bordure
+décorative qui ne porte aucune information, exemptée du 1.4.11.
+
+## Une régression introduite, puis corrigée
+
+Le balayage des 51 scripts a révélé `test:universal-passport:chantier6` en échec : ma
+réécriture du titre avait supprimé « 1-Clic », littéral exigé par le contrat. Le titre a été
+restauré — le test n'a pas été modifié.
+
+## Portails
+
+```
+ds:check                        PASS  (3 surfaces)
+check:landing          67 / 0   inchangé
+test:landing           95 / 0   inchangé
+test:quality-center    69 / 0   inchangé
+test:supplier-portal          PASS  (contrat de 33 éléments préservé)
+test:supplier-portal:surface 69 / 0  NOUVEAU
+test:route-registry           PASS  (116 motifs, 95 appels résolus)
+test:universal-passport:chantier6  PASS
+Balayage des 51 scripts test:* : 32 PASS / 19 FAIL — les 19 préexistants, liste identique
+```
+
+`test:supplier-portal:surface` exécute le vrai script de la page dans un DOM et parcourt :
+démarrage, paramètre `demo`, navigation, calcul de préparation, huit actions, enregistrement
+du passeport (état réellement modifié), accord d'une demande d'accès (la bonne, retirée),
+auto-vérification d'un certificat, analyse de document, stockage, tokens DS, accessibilité.
+
+## Toujours non vérifié
+
+**Aucune capture d'écran.** Les 69 assertions sont structurelles, comportementales et
+mathématiques (contraste). L'équilibre visuel des huit cartes, le rendu de la jauge et le
+comportement au point de rupture 760 px restent à valider dans un navigateur.

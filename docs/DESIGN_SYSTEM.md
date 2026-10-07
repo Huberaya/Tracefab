@@ -181,7 +181,9 @@ The architecture is the visual spine of the product, not a marketing afterthough
 npm run ds:check        # surfaces match the canonical stylesheet
 npm run check:landing   # contrast, anchors, duplicate attrs, token leaks, cascade, routes
 npm run test:landing        # landing: 95 behavioural assertions on the real page JS
-npm run test:quality-center # Quality Center: 69 assertions incl. the full CAP loop
+npm run test:quality-center     # Quality Center: 69 assertions incl. the full CAP loop
+npm run test:supplier-portal:surface # Supplier Portal: 69 assertions incl. the passport loop
+npm run test:route-registry     # every /api/* a surface calls must resolve to a declared route
 ```
 
 `check:landing` measures WCAG contrast for **both** surface contexts separately. Measuring them
