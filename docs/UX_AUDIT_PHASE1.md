@@ -2061,3 +2061,77 @@ Comme au Chantier 18, le profil semé déclare les neuf exigences bloquantes : l
 observable ne change donc pas encore. Le correctif supprime une divergence latente qui se
 manifestera dès qu'un profil non bloquant sera semé. Et la saisie AGEC reste à construire —
 c'est une collecte de données, pas une migration.
+
+---
+
+## Chantier 22 — 346 lignes de chaîne d'approvisionnement inventée que personne ne voyait
+
+### La demande portait sur deux chaînes ; le problème était plus vaste
+
+L'objectif annoncé était `Jersey 185g/m²` (l. 1750) et `ZDHC Level 3` (l. 1764), présentés
+comme « les dernières fabrications de `supplyChainConsoleView` ». Les deux étaient bien là.
+Mais elles n'étaient pas isolées : **tout le diagramme SVG de six nœuds était codé en dur** —
+`São Martinho` / `GOTS v6.0 Audité`, `Fiação Norte` / `Fil peigné 30/1` / `OEKO-TEX 100`,
+`Malhas do Ave` / `BCI & GOTS Mill`, `Tinturaria Braga` / `Circuit fermé STeP`, `Nhãn Textile`
+/ `SMETA 4-Pillar` — plus une barre d'outils affirmant « Chaîne de confiance active (6 échelons
+audités) » et un nœud par défaut portant des coordonnées GPS (`38.0151° N, 7.8632° W`), un
+numéro de lot (`LOT-PT-2026-CTN-089`), un auditeur (`Control Union`) et un score
+(`100% Conforme`).
+
+### La découverte qui change l'action à mener
+
+`supplyChainConsoleView()` n'est appelée **par aucun dispatcher**. Ses occurrences dans
+`brand-console/index.html` se réduisaient à **une seule : sa propre déclaration**, ligne 1662.
+
+Le rendu de la vue « Supply Chain » passe par la ligne 1514 :
+`state.view === 'supplyChain' ? supplyChainView() : …` — une **autre** fonction (l. 2750), qui
+elle consomme bien `state.supplyChain`, alimenté par `loadSupplyChain()` via
+`GET /api/products/:productId/supply-chain`. J'ai vérifié l'absence de dispatch dynamique : la
+seule expression `[state.view]` du fichier (l. 1227) est une carte de **titres de page**, pas
+un sélecteur de fonction.
+
+La console avait donc **deux surfaces chaîne** : l'une réelle et testée, l'autre entièrement
+fabriquée et **morte**. `state.chainNodes` (l. 926-1036) n'alimentait que la fonction morte.
+
+**Conséquence sur la décision** : réécrire 233 lignes de code mort pour les rendre honnêtes
+aurait été du travail perdu, et aurait laissé en place un diagramme de six fournisseurs
+inventés, prêt à être rebranché par accident. La bonne action était la **suppression**.
+
+### Ce qui a été fait
+
+- `supplyChainConsoleView()` supprimée (l. 1662-1894, 233 lignes).
+- `state.chainNodes` et `state.selectedChainNode` supprimés (l. 925-1036, 112 lignes).
+- **346 lignes retirées**, `4218 → 3872`. Références résiduelles aux trois identifiants : **0**.
+- `supplyChainView()` — la vue réelle — **intacte** : le test de surface continue de vérifier
+  qu'elle affiche le ratio `documentedNodeCount / nodeCount` et le `documentationRate` calculés,
+  et non des valeurs fixes.
+
+### Garde
+
+Onze chaînes ajoutées à la section F de `test:supplychain:surface` : les trois identifiants
+(`supplyChainConsoleView`, `state.chainNodes`, `selectedChainNode`) et huit contenus fabriqués.
+**87 contrôles, 0 échec** (76 auparavant).
+
+**Contre-épreuve** : fichier d'origine restauré → **11 échecs, exit 1** ; version corrigée →
+**87/87, exit 0**.
+
+### Vérification
+
+Suite complète **PASS 44 · SKIP 18 · FAIL 0 sur 62** — aucune régression malgré 346 lignes
+retirées d'un fichier de 4 218 lignes.
+
+### Ce que cela ne règle pas, et une leçon
+
+**Aucun utilisateur ne voyait ces fabrications.** Elles étaient du code mort. Ce chantier
+supprime un risque latent, pas un mensonge affiché — il faut le dire tel quel plutôt que le
+présenter comme un assainissement visible.
+
+Les données de démonstration restantes (`demoSupplyChain()`, `demoProductDetail()`, le jeu
+seedé l. 839-970) **subsistent volontairement** : elles sont dans des fonctions explicitement
+documentées comme fictives et ne servent que lorsque `state.demo` est vrai. Conformément à la
+contrainte « les valeurs de démonstration doivent être clairement identifiées ».
+
+**Leçon enregistrée** : pendant la contre-épreuve, un `git checkout -- brand-console/index.html`
+a restauré la version **commitée** et annulé ma suppression, qui n'était pas encore commitée.
+Le test a alors échoué sur la « version corrigée ». Toujours restaurer depuis une copie
+explicite (`/tmp/bc.fixed`), jamais depuis git, tant que le travail n'est pas commité.

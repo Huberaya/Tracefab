@@ -113,6 +113,17 @@ console.log('\nF. Les maquettes fabriquées ne reviennent pas');
 for (const fabricated of ['Ege Birlik', 'TC-CU-881294', 'tc-echelon-card', 'tc-reconcil-card', 'ÉCHELON 01', '98.4%']) {
   assert(!html.includes(fabricated), `contenu fabriqué absent du source : ${fabricated}`);
 }
+/* Chantier 22 : supplyChainConsoleView() n'était appelée par aucun dispatcher — le
+   rendu passe par supplyChainView(), qui consomme state.supplyChain. La fonction
+   morte et l'objet codé en dur qui l'alimentait sont supprimés : un diagramme de
+   six fournisseurs inventés ne doit pas pouvoir être rebranché par accident. */
+for (const fabricated of [
+  'supplyChainConsoleView', 'state.chainNodes', 'selectedChainNode',
+  'Jersey 185g', 'ZDHC Level 3', 'Malhas do Ave', 'Tinturaria Braga',
+  'Circuit fermé STeP', 'BCI & GOTS Mill', 'LOT-PT-2026-CTN-089', '38.0151',
+]) {
+  assert(!html.includes(fabricated), `maquette de chaîne morte supprimée : ${fabricated}`);
+}
 click($('[data-view="supplyChain"]'));
 await settle();
 assert(!appText().includes('Izmir'), 'aucune ferme inventée dans la vue chaîne');
