@@ -936,6 +936,27 @@
       color: #ffffff;
     }
 
+    /* ── Risk & exposure ─────────────────────────────────────────────────
+       Les classes mc-badge-* n'apportent que des couleurs, sans geometrie :
+       seules, elles rendent un texte nu. On pose ici les quelques regles
+       propres a la vue Risk, alignees sur les tokens existants. */
+    .risk-note { display:inline-block; padding:4px 11px; border-radius:999px; background:#f1f5f4; color:#37473d; font-size:11.5px; font-weight:750; white-space:nowrap; }
+    .risk-pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:800; letter-spacing:.01em; }
+    .risk-pill--critical { background:#fee2e2; color:#b91c1c; }
+    .risk-pill--high     { background:#ffedd5; color:#c2410c; }
+    .risk-pill--medium   { background:#fef3c7; color:#b45309; }
+    .risk-pill--low      { background:#eff6ff; color:#1d4ed8; }
+    .risk-dim { display:grid; gap:7px; padding:11px 0; border-bottom:1px solid var(--line); }
+    .risk-dim:last-child { border-bottom:0; }
+    .risk-dim__row { display:flex; align-items:baseline; justify-content:space-between; gap:14px; }
+    .risk-dim__name { font-size:13.5px; font-weight:750; color:#37473d; }
+    .risk-dim__val { font-size:17px; font-weight:850; font-variant-numeric:tabular-nums; }
+    .risk-dim__val.is-muted { font-size:12px; font-weight:650; color:var(--muted); }
+    /* l ornement d angle de .kpi passe par-dessus le libelle a 390px */
+    .risk-kpis .kpi-value, .risk-kpis .kpi-label, .risk-kpis .kpi-note { position:relative; z-index:1; }
+    .risk-basis { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+
+
   </style>
   <link rel="stylesheet" href="/assets/design-system/tracefab-spa-responsive.css">
   <!-- The legacy auto-translate.js DOM rewriter was removed here: it reads the
@@ -1402,6 +1423,7 @@
                 ${navButton('documents', '▤', bt('documents'))}
                 ${navButton('certifications', '✓', bt('certifications'))}
                 ${navButton('quality', '◒', bt('quality'))}
+                ${navButton('risk', '⚠', bt('risk'))}
                 ${navButton('massBalance', '⚖', 'Bilan Massique (TC)')}
                 ${navButton('integrations', '⇄', 'Intégrations')}
                 ${navButton('intelligence', '✦', 'TRACEFAB Intelligence')}
@@ -1431,6 +1453,7 @@
         documents: 'Preuves & Documents',
         certifications: 'Certifications',
         quality: 'Qualité & Conformité',
+          risk: bt('riskViewLabel'),
         dpp: 'Passeport Numérique (DPP Readiness)',
         reports: 'Rapports & Audits',
         settings: 'Paramètres',
@@ -1647,6 +1670,8 @@
           state.view === 'questionnaires' ? questionnairesBuilderView() :
           state.view === 'products' ? productsView() :
           state.view === 'quality' ? qualityView() :
+            state.view === 'risk' ? riskView() :
+            state.view === 'intelligence' ? intelligenceView() :
           state.view === 'massBalance' ? massBalanceConsoleView() :
           state.view === 'integrations' ? integrationsView() :
           state.view === 'suppliers' ? suppliersView() :
@@ -2763,6 +2788,238 @@
 
       function complianceContractPanel() {
         return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>Évaluation Environnementale & Empreinte PEF</h2><p class="meta">Éco-Score Textile : ${esc(state.pefAssessment?.pefGrade || '—')} · Audit greenClaimsAudit : ${esc(state.greenClaimsAudit?.status || 'à lancer')}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">Calculer le score PEF</button></div><div class="panel-head" style="margin-top:14px"><div><h2>Bouclier Anti-Greenwashing & Allégations Vertes</h2><p class="meta">Toute allégation doit rester documentée et auditée.</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">Auditer les allégations</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">Allégation<textarea class="textarea" name="claimText" rows="2" placeholder="Coton biologique certifié…"></textarea></label></form></div>`;
+      }
+
+
+      /* ── Risk & exposure ──────────────────────────────────────────────
+         Vue exigee par le cahier des charges (nav : Quality, Risk, DPP) et
+         absente de la console jusqu'ici.
+
+         Principe : aucune notation externe, aucune donnee inventee. Chaque
+         signal est derive des enregistrements deja charges dans state
+         (fournisseurs, produits, matieres, demandes). Une dimension sans
+         enregistrement vaut 0 et l'affiche comme telle, plutot que de
+         simuler un score. L'indice global est un indicateur operationnel
+         destine a prioriser le travail : ce n'est jamais une certification.
+      */
+      function riskSignals() {
+        const sup = state.suppliers || [];
+        const prods = state.products || [];
+        const reqs = state.requests || [];
+        const mats = state.materials || [];
+        const now = Date.now();
+        const org = (s) => s.organizations || {};
+        const nom = (o, s) => o.display_name || o.legal_name || s.id || '—';
+        const SEUIL = 70;          // completude produit jugee suffisante
+        const rows = [];
+
+        // 1. Concentration : part du pays le plus represente
+        const parPays = {};
+        sup.forEach((s) => { const c = org(s).country_code || ''; parPays[c] = (parPays[c] || 0) + 1; });
+        const pays = Object.entries(parPays).sort((a, b) => b[1] - a[1]);
+        const partMax = sup.length ? Math.round((pays[0][1] / sup.length) * 100) : 0;
+        if (sup.length > 1 && partMax >= 50) {
+          rows.push({ sev: partMax >= 80 ? 'High' : 'Medium', cat: 'riskCatGeography',
+            subject: pays[0][0] || bt('riskGeoUnknown'), sig: 'riskSigConcentration',
+            extra: partMax + '%', view: 'suppliers' });
+        }
+
+        // 2. Fournisseurs : relation inactive, pays non declare
+        sup.forEach((s) => {
+          const o = org(s);
+          if (o.status && o.status !== 'active') {
+            rows.push({ sev: 'High', cat: 'riskCatSupplier', subject: nom(o, s),
+              sig: 'riskSigInactive', extra: o.status, view: 'suppliers' });
+          }
+          if (!o.country_code) {
+            rows.push({ sev: 'Medium', cat: 'riskCatSupplier', subject: nom(o, s),
+              sig: 'riskSigNoCountry', extra: '', view: 'suppliers' });
+          }
+        });
+
+        // 3. Produits : completude sous le seuil, sinon donnees non validees
+        prods.forEach((p) => {
+          const c = Number(p.dataCompletion);
+          const label = [p.reference, p.name].filter(Boolean).join(' · ') || p.id;
+          if (Number.isFinite(c) && c < SEUIL) {
+            rows.push({ sev: c < 50 ? 'Critical' : 'High', cat: 'riskCatProduct', subject: label,
+              sig: 'riskSigIncomplete', extra: c + '%', view: 'products' });
+          } else if (p.dataReadiness && p.dataReadiness !== 'ready') {
+            rows.push({ sev: 'Medium', cat: 'riskCatProduct', subject: label,
+              sig: 'riskSigNotReady', extra: String(p.dataReadiness).replace(/_/g, ' '), view: 'products' });
+          }
+        });
+
+        // 4. Collecte : demandes echues, puis demandes en retard de completion
+        const clos = (r) => ['approved', 'completed', 'accepted'].includes(r.status);
+        reqs.forEach((r) => {
+          if (clos(r)) return;
+          const due = r.dueAt ? Date.parse(r.dueAt) : NaN;
+          const pct = Number(r.completionPercentage);
+          if (Number.isFinite(due) && due < now) {
+            const jours = Math.max(1, Math.round((now - due) / 86400000));
+            rows.push({ sev: 'Critical', cat: 'riskCatCollection', subject: r.title || r.id,
+              sig: 'riskSigOverdue', extra: '+' + jours + 'd', view: 'requests' });
+          } else if (Number.isFinite(pct) && pct < 50) {
+            rows.push({ sev: 'Medium', cat: 'riskCatCollection', subject: r.title || r.id,
+              sig: 'riskSigStalled', extra: pct + '%', view: 'requests' });
+          }
+        });
+
+        // 5. Matieres sans pays d'origine
+        mats.forEach((m) => {
+          if (!m.originCountryCode) {
+            rows.push({ sev: 'Medium', cat: 'riskCatMaterial', subject: m.name || m.id,
+              sig: 'riskSigNoOrigin', extra: '', view: 'materials' });
+          }
+        });
+
+        // Dimensions : part des enregistrements porteurs d'un signal.
+        const part = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+        const dims = [
+          { key: 'riskDimConcentration', n: sup.length,
+            score: sup.length > 1 ? Math.max(0, partMax - 20) : 0 },
+          { key: 'riskDimGeography', n: sup.length,
+            score: part(sup.filter((s) => !org(s).country_code).length, sup.length) },
+          { key: 'riskDimData', n: prods.length,
+            score: part(prods.filter((p) => Number(p.dataCompletion) < SEUIL
+              || (p.dataReadiness && p.dataReadiness !== 'ready')).length, prods.length) },
+          { key: 'riskDimCollection', n: reqs.length,
+            score: part(reqs.filter((r) => !clos(r) && ((r.dueAt && Date.parse(r.dueAt) < now)
+              || Number(r.completionPercentage) < 50)).length, reqs.length) },
+          { key: 'riskDimTraceability', n: mats.length,
+            score: part(mats.filter((m) => !m.originCountryCode).length, mats.length) },
+        ];
+        // Seules les dimensions reellement alimentees entrent dans l'indice :
+        // moyenner un zero issu d'une absence de donnees ferait baisser le
+        // score pour la mauvaise raison.
+        const vivantes = dims.filter((d) => d.n > 0);
+        const index = vivantes.length
+          ? Math.round(vivantes.reduce((a, d) => a + d.score, 0) / vivantes.length) : 0;
+
+        const rang = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+        rows.sort((a, b) => rang[a.sev] - rang[b.sev]);
+        return { rows, dims, index, pays, nbSup: sup.length, nbProd: prods.length };
+      }
+
+      function riskView() {
+        const r = riskSignals();
+        const bande = r.index >= 70 ? 'riskBandHigh' : r.index >= 45 ? 'riskBandElevated'
+          : r.index >= 20 ? 'riskBandModerate' : 'riskBandLow';
+        const pastille = { Critical: 'risk-pill risk-pill--critical', High: 'risk-pill risk-pill--high',
+          Medium: 'risk-pill risk-pill--medium', Low: 'risk-pill risk-pill--low' };
+        const sevKey = { Critical: 'riskSevCritical', High: 'riskSevHigh',
+          Medium: 'riskSevMedium', Low: 'riskSevLow' };
+        const critiques = r.rows.filter((x) => x.sev === 'Critical').length;
+        const fournSignales = new Set(r.rows.filter((x) => x.cat === 'riskCatSupplier')
+          .map((x) => x.subject)).size;
+        const produitsExposes = new Set(r.rows.filter((x) => x.cat === 'riskCatProduct')
+          .map((x) => x.subject)).size;
+
+        const lignes = r.rows.map((x) => `
+          <tr>
+            <td><span class="${pastille[x.sev]}">${esc(bt(sevKey[x.sev]))}</span></td>
+            <td>${esc(bt(x.cat))}</td>
+            <td><strong>${esc(x.subject)}</strong></td>
+            <td>${esc(bt(x.sig))}${x.extra ? ` <span class="meta">· ${esc(x.extra)}</span>` : ''}</td>
+            <td style="text-align:right">
+              <button class="btn btn-secondary btn-small" onclick="state.view='${x.view}';render();">
+                ${esc(bt('riskOpen'))}
+              </button>
+            </td>
+          </tr>`).join('');
+
+        return `
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">${esc(bt('riskEyebrow'))}</div>
+              <h1>${esc(bt('riskTitle'))}</h1>
+              <p>${esc(bt('riskLead'))}</p>
+            </div>
+            <div class="actions">
+              <span class="risk-note">${esc(bt('riskNotCertification'))}</span>
+              <button class="btn btn-secondary" onclick="render();">${esc(bt('riskRecompute'))}</button>
+            </div>
+          </div>
+
+          <div class="grid kpis risk-kpis">
+            <div class="card kpi">
+              <div class="kpi-value">${r.index}</div>
+              <div class="kpi-label">${esc(bt('riskIndex'))}</div>
+              <div class="kpi-note">${esc(bt(bande))} · ${esc(bt('riskOutOf100'))}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-value">${critiques}</div>
+              <div class="kpi-label">${esc(bt('riskCriticalSignals'))}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-value">${fournSignales}</div>
+              <div class="kpi-label">${esc(bt('riskSuppliersAtRisk'))}</div>
+              <div class="kpi-note">/ ${r.nbSup}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-value">${produitsExposes}</div>
+              <div class="kpi-label">${esc(bt('riskProductsExposed'))}</div>
+              <div class="kpi-note">/ ${r.nbProd}</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>${esc(bt('riskDimTitle'))}</h2></div>
+            <div>
+              ${r.dims.map((d) => `
+                <div class="risk-dim">
+                  <div class="risk-dim__row">
+                    <span class="risk-dim__name">${esc(bt(d.key))}</span>
+                    <span class="risk-dim__val${d.n ? '' : ' is-muted'}">${d.n ? d.score + '%' : esc(bt('riskNoRecords'))}</span>
+                  </div>
+                  <div class="pillar-bar-bg"><div class="pillar-bar-fill" style="width:${d.n ? d.score : 0}%"></div></div>
+                </div>`).join('')}
+            </div>
+            <p class="meta risk-basis">
+              <strong>${esc(bt('riskBasisTitle'))}.</strong> ${esc(bt('riskBasisBody'))}
+            </p>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>${esc(bt('riskRegisterTitle'))}</h2>
+              <span class="meta">${esc(bt('riskRegisterNote'))}</span>
+            </div>
+            ${r.rows.length ? `<div class="table-wrap"><table>
+              <thead><tr>
+                <th>${esc(bt('riskColSeverity'))}</th>
+                <th>${esc(bt('riskColCategory'))}</th>
+                <th>${esc(bt('riskColSubject'))}</th>
+                <th>${esc(bt('riskColSignal'))}</th>
+                <th style="text-align:right">${esc(bt('riskColAction'))}</th>
+              </tr></thead>
+              <tbody>${lignes}</tbody>
+            </table></div>` : `<div class="empty">
+              <div class="empty-icon">○</div>
+              <strong>${esc(bt('riskEmpty'))}</strong>
+              <p class="meta">${esc(bt('riskEmptyNote'))}</p>
+            </div>`}
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>${esc(bt('riskGeoTitle'))}</h2>
+              <span class="meta">${esc(bt('riskGeoNote'))}</span>
+            </div>
+            ${r.pays.length ? `<div>
+              ${r.pays.map(([code, n]) => {
+                const pc = r.nbSup ? Math.round((n / r.nbSup) * 100) : 0;
+                return `<div class="risk-dim">
+                  <div class="risk-dim__row">
+                    <span class="risk-dim__name">${esc(code || bt('riskGeoUnknown'))}</span>
+                    <span class="risk-dim__val">${pc}%<span class="meta" style="font-weight:650"> · ${n}</span></span>
+                  </div>
+                  <div class="pillar-bar-bg"><div class="pillar-bar-fill" style="width:${pc}%"></div></div>
+                </div>`;
+              }).join('')}
+            </div>` : `<div class="empty"><div class="empty-icon">○</div><strong>${esc(bt('riskEmpty'))}</strong></div>`}
+          </div>`;
       }
 
             function qualityView() {

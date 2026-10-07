@@ -4,9 +4,10 @@ _Mise à jour : 7 octobre 2026. Branche `merge/experience`, commit `8c82a87`._
 
 ## En une phrase
 
-Le chantier 6 (consolidation i18n) est **terminé**, et il a révélé un
-quatrième moteur de traduction caché qui corrompait silencieusement le DPP
-public. Il reste **9 chantiers**, dont **un seul P0**.
+Les chantiers 6 (consolidation i18n) et 3 (vue Risk) sont **terminés**. Le
+premier a révélé un quatrième moteur de traduction caché qui corrompait le
+DPP public ; le second, une vue entière déclarée dans la navigation mais
+injoignable. Il reste **8 chantiers**, et **plus aucun P0**.
 
 ---
 
@@ -15,6 +16,7 @@ public. Il reste **9 chantiers**, dont **un seul P0**.
 | # | Chantier | Résultat |
 |---|---|---|
 | **6** | **Catalogues i18n concurrents** · P0 | **6 des 7 pages sur le catalogue unique.** Reste `passport/` et `operations/`, toutes deux orphelines (0 lien entrant) : leur migration n'a de sens qu'une fois leur sort tranché. |
+| **3** | **Vue Risk absente de la console** · P0 | **Livrée**, entre Qualité et DPP. Signaux dérivés des données déjà chargées, jamais inventés. Chaque ligne mène à sa correction. Score explicitement écarté de toute certification. A aussi révélé que la vue `intelligence` était injoignable — corrigée. Détail : `CHANTIER-3-VUE-RISK.md`. |
 
 Rappel des chantiers déjà soldés avant celui-ci : les 8 fiches de l'audit sont
 toutes corrigées, les 10 routes orphelines sont enregistrées (124/124, 0
@@ -73,11 +75,10 @@ Traitement différencié, selon ce dont chaque page dépend réellement :
 
 ---
 
-## Ce qui reste — 9 chantiers
+## Ce qui reste — 8 chantiers
 
 | # | Chantier | Priorité | Nature |
 |---|---|---|---|
-| **3** | **Vue Risk absente de la console** | **P0** | vue complète à construire — exigence explicite du cahier des charges |
 | 1 | Arbitrer `test:supplychain:chantier3` | P1 | décision |
 | 2 | Déclarer `tsx` en devDependency | P1 | 1 ligne (8 scripts passent par `npx`) |
 | 4 | `dpp` et `certifications` atterrissent en état vide | P1 | données de démonstration |

@@ -14,7 +14,7 @@ Market Readiness sont appliqués et ne figurent plus ici.
 |---|---|---|---|---|
 | 1 | Arbitrer `test:supplychain:chantier3` | Dette | P1 | décision |
 | 2 | Déclarer `tsx` en devDependency | Dette | P1 | 1 ligne |
-| 3 | Vue **Risk** absente de la console | Cahier des charges | **P0** | vue complète |
+| 3 | Vue **Risk** absente de la console | Cahier des charges | **P0** | **Fait** |
 | 4 | `dpp` et `certifications` en état vide | Persona | P1 | données démo |
 | 5 | Portail mobile sans action au 1ᵉʳ écran | Persona | P1 | mise en page |
 | 6 | Catalogues i18n concurrents | Architecture | **P0** | **Fait — 6 pages sur 7** |
@@ -59,15 +59,27 @@ tests impossibles hors ligne, version non épinglée, et en CI un
 téléchargement réseau à chaque exécution. Plus sérieux que le P2 initialement
 estimé, d'où le reclassement.
 
-## 3. Vue Risk absente de la console · P0
+## 3. Vue Risk absente de la console · P0 · **fait**
 
-Le cahier des charges impose la navigation : Overview, Products, Suppliers,
-Materials, Supply Chain, Data Collection, Evidence, Certifications, Quality,
-**Risk**, DPP, Reports, Settings.
-
-La console compte 16 vues, **Risk n'en fait pas partie** (1 seule occurrence
-du mot dans tout le fichier). C'est le principal écart du persona
-Responsable Conformité, bloqué à 3/5.
+> **Livrée.** Détail dans `docs/experience/CHANTIER-3-VUE-RISK.md`.
+>
+> La vue s'insère entre Qualité et DPP, à la place fixée par le cahier des
+> charges. Elle ne s'appuie sur aucune notation externe : chaque signal est
+> dérivé des enregistrements déjà chargés (fournisseurs, produits, matières,
+> demandes). Une dimension sans enregistrement vaut zéro et l'affiche, et
+> seules les dimensions alimentées entrent dans l'indice.
+>
+> Chaque ligne du registre mène à la vue où elle se corrige. Le score est
+> explicitement écarté de toute valeur de certification, dans le chapô et par
+> un badge dédié — les deux sont verrouillés par le test.
+>
+> **Second défaut corrigé au passage :** `intelligence` était déclarée dans la
+> navigation mais absente du dispatch — la vue existait et n'était pas
+> atteignable. Le test énumère désormais toutes les entrées de nav et exige
+> que chacune ait sa branche.
+>
+> 55 clés `console.risk*` × 7 langues (`scripts/build_risk_i18n.mjs`).
+> Nouveau test `test:chantier3-risk`, câblé dans `build`.
 
 ## 4. Deux vues clés atterrissent en état vide · P1
 
