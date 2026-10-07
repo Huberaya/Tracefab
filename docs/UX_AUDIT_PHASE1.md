@@ -2135,3 +2135,101 @@ contrainte « les valeurs de démonstration doivent être clairement identifiée
 a restauré la version **commitée** et annulé ma suppression, qui n'était pas encore commitée.
 Le test a alors échoué sur la « version corrigée ». Toujours restaurer depuis une copie
 explicite (`/tmp/bc.fixed`), jamais depuis git, tant que le travail n'est pas commité.
+
+---
+
+## Chantier 23 — La géographie AGEC article 13 se déduit de la chaîne, sans migration
+
+### Le constat mesuré
+
+Le Chantier 21 avait établi que `frenchAgecArt13` est **satisfaisable** — le validateur
+travaille sur un payload fourni par l'appelant. Restait à savoir pourquoi il n'était jamais
+satisfait. Réponse vérifiée : **personne ne construisait le bloc**.
+
+- `buildCirpassPayload()` (console) assemble `circularityAndCare` mais **jamais**
+  `frenchAgecArticle13` ;
+- aucun fichier de `api/` ne construit ce bloc non plus — les seules occurrences de
+  `frenchAgecArticle13` sont sa déclaration de type et sa lecture par le validateur.
+
+Conséquence mesurée sur le validateur réel : **toute** validation DPP poussait une erreur
+bloquante AGEC, quelle que soit la chaîne du produit.
+
+> Précision corrigée en cours de chantier : j'annonçais « trois erreurs bloquantes ». Mesure
+> réelle — bloc **absent** → **une** erreur générique (`geographical data block is missing`) ;
+> bloc **présent mais partiel** → une erreur **par étape manquante**, donc plus précise. Le
+> test épingle les deux comportements.
+
+### La décision : déduire, pas stocker
+
+La leçon du Chantier 21 excluait d'ajouter des colonnes. Elle s'est révélée inutile : les trois
+pays exigés par l'article 13 **sont déjà dans le modèle**.
+
+`api/_lib/supply-chain.ts:202-206` classe déjà les nœuds par `process_code`
+(`weaving`, `knitting`, `dyeing`, `printing`, `cutting`, `sewing`, `assembly`…), et
+`supplier_sites.country_code` est une colonne **obligatoire** (`VarChar(2)`). Les trois
+déclarations AGEC s'en déduisent donc directement :
+
+| Champ AGEC | `process_code` | Pays |
+|---|---|---|
+| `tissageTricotage` | `weaving`, `knitting` | `supplier_sites.country_code` |
+| `teintureImpression` | `dyeing`, `printing` | idem |
+| `confection` | `cutting`, `sewing`, `assembly` | idem |
+
+Et le mécanisme de **saisie** existe déjà : le modal `new-chain-node` envoie `processCode`,
+`supplierSiteId` et `metadata` à `POST /api/products/:id/supply-chain/nodes`, validés par
+`validateNodeInput()`. Ce qui manquait n'était pas la collecte, c'était la **dérivation**.
+
+### Ce qui a été fait
+
+**`api/_lib/agec.ts` (nouveau, pur).** `deriveAgecArticle13(nodes)` renvoie
+`{ agec, gaps, derivedFrom }`. Règles :
+
+- un pays n'est retenu que s'il est **univoque**. Deux nœuds de la même étape donnant deux pays
+  → champ vide + lacune `ambiguous_country` **avec les deux valeurs**. Arbitrer serait inventer ;
+- étape sans nœud → `no_node` ; nœuds sans pays déterminable → `no_country` ;
+- `nodeCountry()` accepte `site_country`, puis `metadata.country_code`, puis `metadata.country`,
+  et **rejette** tout ce qui n'est pas un code ISO 3166-1 alpha-2 (`'Portugal'` et `'PRT'`
+  donnent `null`) ;
+- les trois champs sans source de traçabilité (`microfibresPlastiques`,
+  `substancesDangereusesReachSvhc`, `primesOuPenalitesEcoOrganisme`) remontent toujours en
+  `requires_declaration`.
+
+**`GET /api/products/:productId/dpp/agec-article13`** (nouvelle route, 122 motifs au routeur) :
+lit les nœuds du produit avec leur site, dérive, renvoie `{ agec, gaps, derivedFrom, complete,
+nodeCount }`. 404 si le produit n'est pas accessible.
+
+**Console** : `validateCirpass()` appelle la route et fusionne le bloc dérivé dans le payload
+avant validation ; `agecPanel()` affiche chaque étape avec son pays, les identifiants des nœuds
+qui l'ont établi, ou la raison exacte de l'absence. La dérivation reste **côté serveur** : une
+seule implémentation, pas de copie cliente.
+
+### Vérification
+
+`npm run test:agec:chantier23` — **54/54**. Il compile et exécute `api/_lib/agec.ts` **et**
+`api/_lib/dpp-validator.ts` réels. La section G est la preuve de bout en bout :
+
+| payload | erreurs AGEC | `frenchAgecArt13` | score |
+|---|---|---|---|
+| sans bloc | 1 (générique) | `false` | 63 |
+| bloc déduit complet | **0** | **`true`** | **75** |
+| bloc partiel (1 pays) | 2 (nommant l'étape) | `false` | — |
+
+**Contre-épreuve** : module modifié pour inventer `'FR'` quand le pays est indéterminable →
+**3 échecs d'assertion, exit 1** ; module restauré → **54/54, exit 0**. Une première injection
+plus brutale (`if (false)`) faisait crasher le test en `TypeError` plutôt que d'échouer proprement
+— d'où l'ajout de deux assertions directes (« aucun pays n'est inventé », « aucune provenance
+fictive »).
+
+`api:typecheck` **98 = 98**, aucune erreur sur `agec.ts`. `test:route-registry` passe.
+`test:brand-console` et `test:console:actions` (64) passent. Suite complète
+**PASS 45 · SKIP 18 · FAIL 0 sur 63**.
+
+### Ce que cela ne règle pas
+
+Les trois champs `requires_declaration` restent à saisir par un humain : ils n'ont **aucune**
+source dans le modèle, et les stocker demanderait une vraie colonne. Ce chantier dit clairement
+qu'ils manquent au lieu de les laisser produire une erreur générique ; il ne les collecte pas.
+
+Non vérifié ici, faute de base : que `tracefab_get_product_traceability()` peuple bien
+`site_country`. La route ne dépend pas de cette fonction — elle interroge `supply_chain_nodes`
+avec sa jointure `supplier_sites` — mais le comportement réel sur Neon reste à confirmer.

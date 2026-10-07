@@ -75,6 +75,7 @@ const routes: Route[] = [
   { pattern: /^dpp\/([^\/]+)$/, params: ['gtin'], load: () => import('./_routes/dpp/[gtin].js') },
   { pattern: /^green\-claims\/rules$/, params: [], load: () => import('./_routes/green-claims/rules.js') },
   { pattern: /^products\/([^\/]+)\/dpp\/publish\-review$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/publish-review.js') },
+  { pattern: /^products\/([^\/]+)\/dpp\/agec\-article13$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/agec-article13.js') },
   { pattern: /^products\/([^\/]+)\/dpp$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp.js') },
   { pattern: /^products\/([^\/]+)\/wallet\/apple$/, params: ['productId'], load: () => import('./_routes/products/[productId]/wallet/apple.js') },
   { pattern: /^products\/([^\/]+)\/wallet\/google$/, params: ['productId'], load: () => import('./_routes/products/[productId]/wallet/google.js') },

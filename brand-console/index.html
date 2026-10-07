@@ -2572,8 +2572,10 @@
               <button class="btn btn-secondary" data-action="validate-cirpass">${state.cirpassLoading ? 'Évaluation…' : 'Évaluer la structure'}</button>
             </div>
             ${state.cirpass ? cirpassReport(state.cirpass) : `<p class="meta" style="margin:0">Aucune évaluation pour l'instant. Le payload est assemblé depuis
-              les identifiants, la composition et les instructions d'entretien du produit ; les champs que TRACEFAB ne stocke pas
-              (bloc AGEC Art. 13, indice de réparabilité) sont laissés absents et signalés comme tels.</p>`}
+              les identifiants, la composition et les instructions d'entretien du produit. Le bloc AGEC Art. 13 est déduit des nœuds de
+              traçabilité du produit (panneau ci-dessous) ; les champs sans aucune source, comme l'indice de réparabilité, sont laissés
+              absents et signalés comme tels.</p>`}
+            ${state.cirpass ? agecPanel() : ''}
           </div>
 
           ${dpp.missingFields && dpp.missingFields.length ? `
@@ -2628,6 +2630,60 @@
           return `<button class="btn btn-secondary" data-action="select-quality-product" data-product-id="${esc(productId)}">Ouvrir la qualité</button>`;
         }
         return `<button class="btn btn-secondary" data-product-id="${esc(productId)}">Ouvrir le produit</button>`;
+      }
+
+      /**
+       * Déclaration géographique AGEC article 13 : ce qui est déduit de la chaîne,
+       * ce qui ne l'est pas, et pourquoi. Aucune valeur n'est complétée ici — le
+       * serveur renvoie soit un pays établi, soit une lacune qualifiée.
+       */
+      function agecPanel() {
+        const a = state.agec;
+        if (!a) {
+          return `<div class="card panel"><div class="panel-head"><div><h2>AGEC article 13 · Géographie</h2></div></div>
+            <p class="meta" style="margin:0">Non évaluée en mode démonstration : la déduction se fait côté serveur, à partir des nœuds de traçabilité réellement rattachés au produit.</p></div>`;
+        }
+        if (a.error) {
+          return `<div class="card panel"><div class="panel-head"><div><h2>AGEC article 13 · Géographie</h2></div></div>
+            <p class="meta" style="margin:0">Dérivation indisponible : ${esc(a.error)}</p></div>`;
+        }
+        const agec = a.agec || {};
+        const gaps = a.gaps || [];
+        const geoFields = [
+          ['tissageTricotage', 'Tissage / Tricotage'],
+          ['teintureImpression', 'Teinture / Impression'],
+          ['confection', 'Confection'],
+        ];
+        const gapFor = (field) => gaps.find((g) => g.field === field);
+        const declared = gaps.filter((g) => g.reason === 'requires_declaration');
+
+        return `<div class="card panel">
+          <div class="panel-head">
+            <div>
+              <h2>AGEC article 13 · Géographie</h2>
+              <p class="meta" style="margin:4px 0 0">Déduite des nœuds de traçabilité du produit (${a.nodeCount ?? 0} nœud(s)). Aucune valeur n'est complétée par défaut.</p>
+            </div>
+            <span class="meta">${a.complete ? 'Géographie complète' : 'Géographie incomplète'}</span>
+          </div>
+          <table class="table">
+            <thead><tr><th>Étape</th><th>Pays déclaré</th><th>Source</th></tr></thead>
+            <tbody>
+              ${geoFields.map(([field, label]) => {
+                const country = agec[field];
+                const from = (a.derivedFrom || []).find((d) => d.field === field);
+                if (country) {
+                  return `<tr><td>${esc(label)}</td><td><strong>${esc(country)}</strong></td>
+                    <td class="meta">${esc((from && from.nodeIds || []).join(', '))}</td></tr>`;
+                }
+                const gap = gapFor(field);
+                return `<tr><td>${esc(label)}</td>
+                  <td><span class="status status-changes_requested">Non établi</span></td>
+                  <td class="meta">${esc(gap ? gap.detail : 'Aucune donnée')}</td></tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          ${declared.length ? `<p class="meta" style="margin:10px 0 0">Restent à déclarer, sans source de traçabilité : ${esc(declared.map((g) => g.label).join(' · '))}.</p>` : ''}
+        </div>`;
       }
 
       function cirpassReport(r) {
@@ -3617,6 +3673,23 @@
             else state.cirpassDetail = await api(`/api/products/${encodeURIComponent(state.selectedDppProduct.id)}`);
           }
           const payload = buildCirpassPayload(state.cirpassDetail, state.dpp);
+          /* AGEC article 13 : les trois pays sont déduits de la chaîne de traçabilité
+             par le serveur (api/_lib/agec.ts), une seule implémentation. Ce qui ne
+             peut pas être établi remonte dans `gaps` et reste affiché comme tel. */
+          state.agec = null;
+          if (!state.demo) {
+            try {
+              state.agec = await api(
+                `/api/products/${encodeURIComponent(state.selectedDppProduct.id)}/dpp/agec-article13`,
+              );
+            } catch (e) {
+              state.agec = { agec: {}, gaps: [], error: e.message };
+            }
+            const derived = (state.agec && state.agec.agec) || {};
+            if (Object.keys(derived).length) {
+              payload.frenchAgecArticle13 = { ...(payload.frenchAgecArticle13 || {}), ...derived };
+            }
+          }
           state.cirpassPayload = payload;
           if (state.demo) {
             state.cirpass = validateCirpassLocal(payload);
