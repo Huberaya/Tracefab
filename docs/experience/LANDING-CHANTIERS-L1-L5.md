@@ -1,4 +1,4 @@
-# Landing — chantiers L1 à L4
+# Landing — chantiers L1 à L5
 
 Branche `merge/experience` · commits `3b84bc0`, `d176660`, `7da777f`, `98e1321` · poussés sur `origin`.
 
@@ -274,3 +274,82 @@ Deux points attendent toujours votre arbitrage, hors landing : le badge
 `EU ESPR / DPP Compliant` du DPP public, qui affirme une conformité là où le reste du
 produit parle de *readiness* ; et le jeu de démonstration de la console (1 fournisseur,
 2 produits) qui contredit les 86 / 1 248 affichés en Overview.
+
+---
+
+## L5 — Performance
+
+Deux défauts, mesurés avant d'être corrigés.
+
+### Le premier : la typographie ne rendait pas ce qu'elle écrivait
+
+Le design system dessine huit graisses — 400, 480, 500, 520, 540, 560, 600, 620 — réparties sur vingt-six déclarations. La page n'en demandait que cinq, et en instances statiques : 300, 400, 500, 600, 700.
+
+Une instance statique ne s'interpole pas. Demander 520 quand le navigateur n'a que 500 et 600 en magasin ne produit pas un 520 : il prend le plus proche. J'ai mesuré la largeur rendue de « Know your supply chain » à 64 px, graisse par graisse.
+
+| graisse demandée | 400 | 480 | 500 | 520 | 540 | 560 | 600 | 620 | 700 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **avant** (5 statiques) | 653 | **670** | **670** | **689** | **689** | **689** | **689** | **700** | 700 |
+| **après** (axe 400..700) | 653 | 665 | 670 | 672 | 675 | 678 | 689 | 690 | 700 |
+
+Huit graisses dessinées s'écrasaient sur trois rendus. Seize déclarations sur vingt-six étaient décoratives : elles existaient dans le CSS, elles ne changeaient rien à l'écran. Aucune erreur nulle part — c'est le genre de dégradation qui ne se voit que si on la mesure.
+
+Le passage à l'axe variable `wght@400..700` répare les neuf valeurs, et pèse moins lourd au passage, parce qu'un axe variable tient dans un seul fichier là où chaque instance statique en demandait un :
+
+| | avant | après |
+|---|---:|---:|
+| fichiers latin Inter Tight | 4 | **1** |
+| octets latin | 90 040 | **44 872** (−50 %) |
+| CSS de police | 12 390 | **2 506** (−80 %) |
+| requêtes de police | 5 | **2** |
+| **total transféré** | | **−55 052 octets** |
+
+La graisse 300 était demandée et n'est utilisée nulle part sur cette page : un fichier téléchargé pour rien.
+
+Je n'ai pas pour autant resserré la borne haute à 620, bien que rien ne rende au-dessus. J'ai vérifié : Google sert **exactement le même woff2** pour `400..620` et pour `400..700` — 44 872 octets dans les deux cas. Les bornes d'un axe variable ne coûtent rien, contrairement aux instances statiques. Resserrer n'aurait rien gagné et aurait écrêté tout usage futur de `<b>` ou `<strong>`, qui valent 700 par défaut. Mon propre test de garde affirmait le contraire ; la mesure l'a contredit, j'ai corrigé le test.
+
+### Le second : les animations tournaient hors champ
+
+Quinze animations CSS infinies et dix animations SMIL tournaient en permanence, y compris à cinq mille pixels du champ de vision. Elles se mettent maintenant en veille quand leur bloc sort de l'écran, et reprennent au retour.
+
+| | haut de page | bas de page | retour en haut |
+|---|---:|---:|---:|
+| animations CSS actives | 14 | **0** | 14 |
+| en veille | 1 | **15** | 1 |
+| SVG SMIL | actif | **suspendu** | actif |
+
+Identique à 1 440 et à 390. La marge de réveil est de 300 px : une section se rallume avant d'entrer, jamais une apparition figée.
+
+Deux pièges méritent d'être notés, parce qu'ils sont invisibles au premier essai. D'abord, `animation-play-state` **perd contre la propriété raccourcie `animation`** à égalité de spécificité : le raccourci remet `running`. La classe de veille est donc doublée — `.tf-offscreen.tf-offscreen` — pour peser (0,2,0). Ensuite, j'avais d'abord visé les `<section>` : le ticker, 48 s en boucle et le plus gros consommateur de la page, n'est pas dans une section mais enfant direct de `<main>`. Il a continué de tourner pendant que je croyais l'avoir arrêté. L'observateur porte maintenant sur tous les enfants directs de `<main>`.
+
+### Ce que je n'ai pas touché, et pourquoi
+
+Trois choses qui ressemblaient à du travail de performance et n'en sont pas.
+
+Les scripts sont déjà en fin de `<body>` et `tf-landing.js` est déjà différé. Ajouter `defer` aux deux autres n'apporterait presque rien et introduirait un risque réel sur l'ordre d'amorçage.
+
+`locales/` pèse 84 Ko morts. Mais ce dossier n'est servi à aucun navigateur : c'est du poids de dépôt, pas du poids de page. Gain de performance nul. Il reste sur la liste d'arbitrage, pas sur celle-ci.
+
+Les paddings de section sont le parti pris éditorial validé en PHASE 4. Ce n'est pas du gras.
+
+### Découvert en chemin, non corrigé
+
+Le produit embarque **deux polices d'affichage différentes** : Inter Tight sur la landing, Plus Jakarta Sans sur quatre pages dont le DPP public. Trois requêtes Google Fonts distinctes, aucun partage de cache entre les pages. C'est un écart au design system déclaré, qui dépasse le cadre de ce chantier : je l'ai mis sur la liste d'arbitrage plutôt que d'unifier unilatéralement une identité typographique.
+
+### Vérification
+
+| | 320 | 390 | 1440 |
+|---|---:|---:|---:|
+| hauteur de page | 10 671 | 9 473 | 6 144 |
+| débordement horizontal | 0 | 0 | 0 |
+| texte sous 11 px | 0 | 0 | 0 |
+| animations actives en bas | **0** | **0** | **0** |
+| erreurs console | 0 | 0 | 0 |
+
+`document.fonts` ne rapporte plus qu'une face variable `Inter Tight : 400 700` au lieu de quatre faces statiques.
+
+**39 tests verts / 1 échec** — `test:supplychain:chantier3`, identique sur `origin/main`, toujours en attente d'arbitrage. `build` et `typecheck` verts. Personas **CEO 6/6 · Conformité 4/4 · Fournisseur 4/4**.
+
+Le garde-fou `scripts/test_landing_performance.mjs` (19 assertions) est chaîné dans `build`. J'ai vérifié qu'il sait échouer : en remettant les instances statiques et en re-restreignant l'observateur aux sections, il signale les deux régressions.
+
+**Commit `f340dc6`**, poussé.
