@@ -15,6 +15,13 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
   const passTypeIdentifier = options?.passTypeIdentifier || process.env.APPLE_PASS_TYPE_IDENTIFIER || 'pass.com.tracefab.dpp';
   const teamIdentifier = options?.teamIdentifier || process.env.APPLE_TEAM_IDENTIFIER || 'TRACEFAB01';
 
+  /* Un pass Apple Wallet est signé et remis au consommateur : une valeur absente doit
+     s'afficher comme non mesurée, jamais être remplacée par une affirmation. */
+  const na = 'Non mesuré';
+  const notDeclared = 'Non déclaré';
+  const num = (v: number | undefined, unit: string) =>
+    v === undefined || Number.isNaN(v) ? na : `${v} ${unit}`;
+
   return {
     formatVersion: 1,
     passTypeIdentifier,
@@ -38,7 +45,7 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
       primaryFields: [
         {
           key: 'product_name',
-          label: 'MODÈLE CERTIFIÉ',
+          label: 'MODÈLE',
           value: data.productName,
         },
       ],
@@ -46,20 +53,20 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
         {
           key: 'pef_grade',
           label: 'ÉCO-SCORE PEF',
-          value: `Grade ${data.pefGrade} (${data.carbonFootprintKgCo2e} kg CO₂e)`,
+          value: data.pefGrade ? `Grade ${data.pefGrade}` : na,
         },
         {
           key: 'origin',
           label: 'CONFECTION',
-          value: data.countryOfManufacture || 'UE',
+          value: data.countryOfManufacture || notDeclared,
           textAlignment: 'PKTextAlignmentRight',
         },
       ],
       auxiliaryFields: [
         {
           key: 'composition',
-          label: 'COMPOSITION 100%',
-          value: data.certifiedComposition || 'Fibres naturelles certifiées',
+          label: 'COMPOSITION',
+          value: data.certifiedComposition || 'Non déclarée',
         },
         {
           key: 'gtin',
@@ -77,7 +84,7 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
         {
           key: 'espr_notice',
           label: 'CADRE RÉGLEMENTAIRE EUROPÉEN',
-          value: 'Ce passeport produit est certifié conforme au Règlement Écoconception ESPR 2024/1781 et à la loi AGEC article 13.',
+          value: 'Passeport produit numérique préparé au format du Règlement Écoconception ESPR 2024/1781. Ce document ne constitue pas une certification de conformité.',
         },
         {
           key: 'product_id',
@@ -86,35 +93,35 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
         },
         {
           key: 'materials_detail',
-          label: 'DÉCOMPOSITION DES MATIÈRES CERTIFIÉES',
+          label: 'DÉCOMPOSITION DES MATIÈRES',
           value: data.materials?.length
             ? data.materials.map((m) => `• ${m.percentage}% ${m.name}${m.originCountry ? ` (Origine: ${m.originCountry})` : ''}`).join('\n')
-            : data.certifiedComposition,
+            : 'Aucune matière rattachée',
         },
         {
           key: 'pef_detail',
           label: 'BILAN ENVIRONNEMENTAL (ACV PEF)',
-          value: `• Empreinte carbone: ${data.carbonFootprintKgCo2e} kg CO₂e\n• Consommation en eau: ${data.waterScarcityM3} m³\n• Score de circularité: ${data.circularityScore}/100`,
+          value: `• Empreinte carbone: ${num(data.carbonFootprintKgCo2e, 'kg CO₂e')}\n• Consommation en eau: ${num(data.waterScarcityM3, 'm³')}\n• Score de circularité: ${data.circularityScore === undefined ? na : `${data.circularityScore}/100`}`,
         },
         {
           key: 'supply_chain',
           label: 'TRAÇABILITÉ SUPPLY CHAIN (TIER 1 À 4)',
-          value: data.supplyChainSummary || 'Traçabilité complète des étapes de filature, tissage, teinture et confection auditée.',
+          value: data.supplyChainSummary || 'Aucun nœud de traçabilité rattaché',
         },
         {
           key: 'tc_ref',
           label: 'TRANSACTION CERTIFICATE (TC)',
-          value: data.transactionCertificateNumber || 'Validé sous registre bilanciel anti-double dépense',
+          value: data.transactionCertificateNumber || 'Aucun certificat transactionnel rattaché',
         },
         {
           key: 'care_instructions',
           label: "CONSEILS D'ENTRETIEN & DURABILITÉ",
-          value: data.careInstructions || 'Lavage à 30°C sur envers. Séchage à l’air libre. Réparable via notre réseau partenaire.',
+          value: data.careInstructions || 'Non renseigné',
         },
         {
           key: 'recycling',
           label: 'FIN DE VIE & RECYCLAGE',
-          value: data.recyclingInstructions || 'Déposer dans une borne textile Re-fashion ou rapporter en boutique pour recyclage mécanique des fibres.',
+          value: data.recyclingInstructions || 'Non renseigné',
         },
       ],
     },

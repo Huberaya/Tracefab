@@ -43,6 +43,7 @@
     "test:i18n": "node scripts/test_i18n.mjs",
     "test:public-dpp": "node scripts/test_public_dpp.mjs",
     "test:dpp-blocking": "node scripts/test_dpp_blocking.mjs",
+    "test:wallet:honesty": "node scripts/test_wallet_pass_honesty.mjs",
     "test:dpp-readiness": "node scripts/test_dpp_readiness.mjs",
     "test:traceability": "node scripts/test_traceability_surface.mjs",
     "test:route-registry": "node scripts/test_route_registry.mjs",

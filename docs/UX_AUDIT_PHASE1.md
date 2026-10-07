@@ -1877,3 +1877,98 @@ Les 18 SKIP restent **non exécutés**. Ce chantier les rend lisibles et disting
 régression ; il ne les fait pas tourner. Pour les exécuter il faut, selon la catégorie :
 `npx prisma generate`, un `DATABASE_URL` de test, `npx playwright install chromium`, ou un
 environnement de staging avec ses jetons.
+
+---
+
+## Chantier 20 — Un pass Wallet signé n'a jamais affirmé une mesure inventée
+
+### Ce qui a été trouvé
+
+Trois couches de fabrication se superposaient, et non une seule comme signalé.
+
+**1. `api/_lib/wallet/fallback-data.ts` (36 lignes, supprimé)** — un `DppPassData`
+entièrement inventé : `pefScore: 84`, `pefGrade: 'A'`, `carbonFootprintKgCo2e: 2.15`,
+`waterScarcityM3: 1.48`, `circularityScore: 92`, `transactionCertificateNumber:
+'TC-CU-881294-GOTS-2026'`, une chaîne d'approvisionnement à 5 nœuds, `certifiedComposition:
+'100% Coton Biologique Régénératif'`, et un texte d'entretien affirmant un « Bonus Refashion
+éligible ».
+
+**2. `api/_lib/wallet/dpp-data-resolver.ts` — le résolveur « réel » inventait aussi.**
+`pefScore: 78`, `pefGrade: 'B'`, `carbonFootprintKgCo2e: 3.42`, `waterScarcityM3: 0.85`,
+`circularityScore: 85`, `weightGrams: 250`, `countryOfManufacture || 'PT'`,
+`countryOfDesign || 'FR'`, `'100% Coton peigné'` en composition de repli, `'Filature ➔ Tissage
+➔ Ennoblissement ➔ Confection auditée'` en chaîne de repli, et deux textes constants
+affirmant une recyclabilité. Il consignait pourtant honnêtement ces lacunes dans `dataGaps[]`
+— mais les valeurs inventées partaient quand même dans le pass.
+
+**3. Les deux générateurs ajoutaient la leur.** Apple : `certifiedComposition || 'Fibres
+naturelles certifiées'`, `supplyChainSummary || 'Traçabilité complète … confection auditée.'`,
+`transactionCertificateNumber || 'Validé sous registre bilanciel anti-double dépense'`,
+`countryOfManufacture || 'UE'`. Google : `'Fibres certifiées'`, `'Nœuds certifiés GOTS/GRS
+auditables.'`, `|| 'UE'`.
+
+**La plus grave était une déclaration légale.** Le pass Apple portait : *« Ce passeport produit
+est certifié conforme au Règlement Écoconception ESPR 2024/1781 et à la loi AGEC article 13. »*
+Le pass Google portait un module `CONFORMITÉ — ESPR UE 2024 / Loi AGEC Art. 13`. Or
+`api/_lib/dpp-validator.ts:134` calcule `frenchAgecArt13` à partir de colonnes `agec.*`
+absentes de `prisma/schema.prisma` : le critère est structurellement toujours faux. Le pass
+affirmait donc une conformité que le système ne peut pas établir.
+
+Enfin, les deux routes `api/_routes/dpp/[gtin]/{apple,google}-wallet.ts` faisaient
+`resolved || getFallbackDppData(gtinOrRef)` puis **généraient un pass signé et répondaient
+200** — Google redirigeait même le navigateur vers l'URL d'enregistrement. Les deux prenaient
+`gtinOrRef` par défaut à `'3760123456789'` codé en dur. Leurs propres routes sœurs
+(`products/[productId]/wallet/{apple,google}.ts` et `dpp/[gtin].ts`) faisaient déjà
+correctement 400/404 : la divergence était un défaut, pas un choix.
+
+### Ce qui a été décidé et appliqué
+
+- Les 5 champs environnementaux de `DppPassData` passent **optionnels**. C'est leur caractère
+  obligatoire qui contraignait le résolveur à inventer — alors que son propre commentaire
+  disait « un chiffre de repli n'est pas une mesure ».
+- Le résolveur **omet** au lieu d'inventer, et conserve `dataGaps[]`. `careInstructions` est
+  servi depuis la vraie colonne `care_instructions` ; `recyclingInstructions` n'a aucune
+  source et n'est plus émis.
+- Les deux générateurs affichent **« Non mesuré » / « Non déclaré »** et perdent tous leurs
+  replis `||` affirmatifs.
+- La déclaration de conformité devient factuelle : *« préparé au format du Règlement
+  Écoconception ESPR 2024/1781 — ce document ne constitue pas une certification de
+  conformité. »*
+- Les deux routes répondent **404 `product_passport_not_found`** quand la résolution échoue et
+  **400 `missing_identifier`** sans GTIN. **Aucun pass de repli n'est plus signé.**
+- `fallback-data.ts` est supprimé (ses deux seuls importeurs étaient ces deux routes).
+
+### Vérification
+
+`npm run test:wallet:honesty` — `scripts/test_wallet_pass_honesty.mjs`, **82/82**. Il compile
+et exécute les deux générateurs réels, sans base :
+
+- données **trouées** → aucune valeur inventée, aucune déclaration de conformité, chaque champ
+  environnemental contrôlé **par son libellé** vaut « Non mesuré » ;
+- données **mesurées** → les valeurs réelles sont restituées (Grade C, 7,4 kg CO₂e, 12,9 m³,
+  41/100, PT, TC-2026-00042) et aucune n'est masquée : le correctif n'a pas simplement tout
+  remplacé par « Non mesuré ».
+
+**Contre-épreuve** : avec le code d'origine restauré depuis git, le test tombe à **43/82,
+exit 1**. Avec le correctif, **82/82, exit 0**.
+
+`api:typecheck` **98 = 98** (référence Chantier 18) — aucune erreur nouvelle ; les 8 erreurs
+du wallet sont les types `Buffer`/`zlib` de `@types/node ^20` sur Node 22, préexistantes et
+situées dans le code ZIP, pas dans le contenu. Suite complète : **PASS 44 · SKIP 18 · FAIL 0
+sur 62**.
+
+### Deux pièges de test rencontrés
+
+- Une recherche de chiffres nus sur le JSON produit des faux positifs : le GTIN
+  `3760123456789` **et** le numéro du règlement **ESPR 2024/1781** contiennent « 78 ». Les
+  contrôles portent désormais sur des motifs contextuels (`3.42 kg`, `Grade A`, `84/100`).
+- Le répertoire de compilation doit rester **dans** le projet : le générateur Google importe
+  `jsonwebtoken`, que Node ne résout pas depuis `/tmp`. Compilation dans `.cache/` (ignoré par
+  git), supprimé en fin de test.
+
+### Ce que cela ne règle pas
+
+Le pass n'affirme plus rien de faux, mais il n'affirme **rien** tant que l'ACV n'est pas
+saisie : la plupart des produits réels produiront un pass entièrement « Non mesuré ». Combler
+cela demande une saisie PEF, pas un correctif. Et le critère `frenchAgecArt13` reste
+structurellement insatisfaisable tant que les 8 colonnes AGEC manquent au schéma.

@@ -40,7 +40,7 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
     subheader: {
       defaultValue: {
         language: 'fr',
-        value: `Éco-Score PEF Grade ${data.pefGrade}`,
+        value: data.pefGrade ? `Éco-Score PEF Grade ${data.pefGrade}` : 'Bilan environnemental non mesuré',
       },
     },
     barcode: {
@@ -63,28 +63,31 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
     textModulesData: [
       {
         id: 'compliance',
-        header: 'CONFORMITÉ',
-        body: 'ESPR UE 2024 / Loi AGEC Art. 13',
+        header: 'CADRE RÉGLEMENTAIRE',
+        body: 'Passeport produit numérique préparé au format ESPR 2024/1781. Ne constitue pas une certification de conformité.',
       },
       {
         id: 'composition',
-        header: 'COMPOSITION 100%',
-        body: data.certifiedComposition || 'Fibres certifiées',
+        header: 'COMPOSITION',
+        body: data.certifiedComposition || 'Non déclarée',
       },
       {
         id: 'pef',
         header: 'EMPREINTE CARBONE',
-        body: `${data.carbonFootprintKgCo2e} kg CO₂e (${data.waterScarcityM3} m³ eau)`,
+        body:
+          data.carbonFootprintKgCo2e === undefined
+            ? 'Non mesuré'
+            : `${data.carbonFootprintKgCo2e} kg CO₂e${data.waterScarcityM3 === undefined ? '' : ` (${data.waterScarcityM3} m³ eau)`}`,
       },
       {
         id: 'origin',
         header: 'CONFECTION',
-        body: data.countryOfManufacture || 'UE',
+        body: data.countryOfManufacture || 'Non déclaré',
       },
       {
         id: 'traceability',
         header: 'TRAÇABILITÉ SUPPLY CHAIN',
-        body: data.supplyChainSummary || 'Nœuds certifiés GOTS/GRS auditables.',
+        body: data.supplyChainSummary || 'Aucun nœud de traçabilité rattaché',
       },
     ],
     linksModuleData: {

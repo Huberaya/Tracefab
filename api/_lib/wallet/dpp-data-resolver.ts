@@ -74,14 +74,14 @@ export async function resolveDppPassData(
 
   const compSummary = materials.length
     ? materials.map((m: any) => `${m.percentage}% ${m.name}`).join(', ')
-    : '100% Coton peigné';
+    : undefined;
   if (!materials.length) dataGaps.push('composition');
 
   // Format supply chain summary
   const nodes = product.supply_chain_nodes || [];
   const supplyChainSummary = nodes.length
     ? nodes.map((n: any) => `${n.label || 'Étape'} (${n.process_code || n.node_type}${n.supplier_sites?.country_code ? `, ${n.supplier_sites.country_code}` : ''})`).join(' ➔ ')
-    : 'Filature ➔ Tissage ➔ Ennoblissement ➔ Confection auditée';
+    : undefined;
   if (!nodes.length) dataGaps.push('supplyChain');
 
   const dppUrl = `${baseUrl}/p/${gtin || product.reference}`;
@@ -97,29 +97,31 @@ export async function resolveDppPassData(
     gtin,
     serialNumber: `DPP-${gtin || product.reference}-v${product.version}`,
     category: product.category || 'Textile',
-    countryOfManufacture: product.country_of_manufacture || 'PT',
-    countryOfDesign: product.country_of_design || 'FR',
-    weightGrams: product.weight_grams ? Number(product.weight_grams) : 250,
+    countryOfManufacture: product.country_of_manufacture || undefined,
+    countryOfDesign: product.country_of_design || undefined,
+    weightGrams: product.weight_grams ? Number(product.weight_grams) : undefined,
     ...(!product.country_of_manufacture && (dataGaps.push('countryOfManufacture'), {})),
     ...(!product.country_of_design && (dataGaps.push('countryOfDesign'), {})),
     ...(!product.weight_grams && (dataGaps.push('weightGrams'), {})),
     certifiedComposition: compSummary,
     materials,
-    pefScore: pef ? Number(pef.pef_eco_score) : 78,
-    pefGrade: (pef ? pef.pef_grade : 'B') as any,
-    carbonFootprintKgCo2e: pef ? Number(pef.carbon_footprint_kg_co2e) : 3.42,
-    waterScarcityM3: pef ? Number(pef.water_scarcity_m3) : 0.85,
-    circularityScore: pef ? Number(pef.circularity_score) : 85,
+    pefScore: pef ? Number(pef.pef_eco_score) : undefined,
+    pefGrade: pef ? (pef.pef_grade as string) : undefined,
+    carbonFootprintKgCo2e: pef ? Number(pef.carbon_footprint_kg_co2e) : undefined,
+    waterScarcityM3: pef ? Number(pef.water_scarcity_m3) : undefined,
+    circularityScore: pef ? Number(pef.circularity_score) : undefined,
     ...(!pef && (dataGaps.push('pef', 'carbonFootprint', 'waterScarcity', 'circularity'), {})),
     dppUrl,
     digitalLinkUri,
     verificationDate: (product.updated_at || new Date()).toISOString().slice(0, 10),
     transactionCertificateNumber: mb ? `TC-VERIFIED-MB-${mb.id.slice(0, 8)}` : undefined,
     supplyChainSummary,
-    careInstructions: 'Lavage en machine à 30°C sur envers avec couleurs similaires. Essorage doux (600 tr/min). Ne pas sécher en machine. Repassage à fer doux.',
-    recyclingInstructions: 'Produit mono-matière hautement recyclable. En fin d’usage, déposer dans une borne textile Re-fashion ou rapporter en magasin.',
-    // L'entretien et le recyclage sont aujourd'hui des textes constants, identiques
-    // pour tous les produits : ils ne proviennent d'aucune saisie.
-    dataGaps: [...dataGaps, 'careInstructions', 'recyclingInstructions'],
+    /* care_instructions existe dans le schéma : on le sert tel quel. recyclingInstructions
+       n'a aucune colonne ni saisie derrière lui, et le texte précédent affirmait une
+       recyclabilité que rien ne mesure : le champ est omis faute de source. */
+    careInstructions: product.care_instructions || undefined,
+    recyclingInstructions: undefined,
+    ...(!product.care_instructions && (dataGaps.push('careInstructions'), {})),
+    dataGaps: [...dataGaps, 'recyclingInstructions'],
   };
 }

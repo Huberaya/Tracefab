@@ -8,21 +8,24 @@ export interface DppPassData {
   gtin: string;
   serialNumber: string;
   category: string;
-  countryOfManufacture: string;
-  countryOfDesign: string;
-  weightGrams: number;
-  certifiedComposition: string;
+  /* Optionnels : un champ absent signifie « non mesuré », jamais une valeur par
+     défaut. Ces valeurs finissent signées dans un pass remis au consommateur —
+     un chiffre de repli y devient une affirmation environnementale fausse. */
+  countryOfManufacture?: string;
+  countryOfDesign?: string;
+  weightGrams?: number;
+  certifiedComposition?: string;
   materials: Array<{
     name: string;
     percentage: number;
     role?: string;
     originCountry?: string;
   }>;
-  pefScore: number;
-  pefGrade: string; // 'A' | 'B' | 'C' | 'D' | 'E'
-  carbonFootprintKgCo2e: number;
-  waterScarcityM3: number;
-  circularityScore: number;
+  pefScore?: number;
+  pefGrade?: string; // 'A' | 'B' | 'C' | 'D' | 'E'
+  carbonFootprintKgCo2e?: number;
+  waterScarcityM3?: number;
+  circularityScore?: number;
   dppUrl: string;
   digitalLinkUri: string;
   verificationDate: string;
