@@ -1,4 +1,4 @@
-# TRACEFAB Design System — v3.0
+# TRACEFAB Design System — v3.1
 
 > **Simple to understand. Deep to explore. Powerful to operate.**
 
@@ -180,9 +180,43 @@ The architecture is the visual spine of the product, not a marketing afterthough
 ```bash
 npm run ds:check        # surfaces match the canonical stylesheet
 npm run check:landing   # contrast, anchors, duplicate attrs, token leaks, cascade, routes
-npm run test:landing    # executes the page's real JS in a DOM: 71 behavioural assertions
+npm run test:landing        # landing: 95 behavioural assertions on the real page JS
+npm run test:quality-center # Quality Center: 69 assertions incl. the full CAP loop
 ```
 
 `check:landing` measures WCAG contrast for **both** surface contexts separately. Measuring them
 through one merged token map silently scores light-section text against dark values and reports
 passes that are not real — that mistake is how the v2 `#why` section shipped at 1.08:1.
+
+## 12. The application layer (v3.1)
+
+The marketing system above is editorial: monumental type, generous air, one idea per screen.
+A console is the opposite — dense, scannable, keyboard-fast. Same tokens, different density.
+Everything lives in `5b. APPLICATION LAYER` of `assets/design-system/tracefab-ds.css`, so
+Brand Console, Supplier Portal, Quality Center and Operations cannot drift apart.
+
+| Concern | Class |
+| --- | --- |
+| Shell | `.tf-app`, `.tf-app__side`, `.tf-app__main`, `.tf-app__topbar`, `.tf-app__body` |
+| Navigation | `.tf-sidenav`, `.tf-sidenav__group`, `.tf-sidenav__link` (`.is-on`), `.tf-sidenav__count` |
+| Metrics | `.tf-tilegrid`, `.tf-tile`, `.tf-tile__v`, `.tf-tile--alert`, `.tf-tile--warn` |
+| Data | `.tf-tablewrap`, `.tf-table`, `.tf-table .tf-sub`, `.tf-table .tf-num` |
+| Controls | `.tf-toolbar`, `.tf-field-inline`, `.tf-select`, `.tf-input`, `.tf-textarea` |
+| Lifecycle | `.tf-status--requested` / `--submitted` / `--approved` / `--rejected` / `--closed` |
+| Progress | `.tf-bar`, `.tf-bar__track`, `.tf-bar__fill` (`.is-low`, `.is-critical`), `.tf-bar__v` |
+| Feedback | `.tf-notice` (`.tf-notice--ok`, `.tf-notice--err`), `.tf-empty` |
+| Grouping | `.tf-panel`, `.tf-panel__head` |
+
+**Density rules.** Body copy drops to 13 px inside `.tf-table`; tiles lead with a large
+tabular figure over a 11 px technical label, the same "92.4% over DATA QUALITY" hierarchy as
+the landing, compressed. The emerald accent stays restricted to the active nav state, primary
+actions and healthy values — never decoration.
+
+**Responsive.** At `max-width: 1024px` the 248 px sidebar collapses into a single-column shell
+with the nav as a wrapping horizontal strip (group headings hidden). Dense tables are never
+re-flowed into cards: `.tf-tablewrap` scrolls horizontally, which preserves column semantics
+for screen readers. `.tf-tilegrid` is `auto-fit minmax(158px, 1fr)` and needs no breakpoint.
+
+**Brand mark.** `.tf-wordmark`, `.tf-wordmark__mark` and `.tf-wordmark__name` are shared by the
+marketing header and the app chrome. They were promoted out of `index.html` in v3.1 — Quality
+Center used them while only the landing defined them, so the mark rendered unstyled there.

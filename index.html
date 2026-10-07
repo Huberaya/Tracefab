@@ -508,6 +508,275 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* --------------------------------------------------------------------------
+   5b. APPLICATION LAYER
+   The marketing system above is editorial: monumental type, generous air.
+   A console is the opposite — dense, scannable, keyboard-fast. Same tokens,
+   different density. Every app surface reads from here so Brand Console,
+   Supplier Portal, Quality Center and Operations cannot drift apart.
+   -------------------------------------------------------------------------- */
+
+/* --- brand mark (shared by the marketing header and the app chrome) ------- */
+.tf-wordmark { display: inline-flex; align-items: center; gap: 10px; flex: none; }
+.tf-wordmark__mark {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-emerald-600);
+  color: #fff;
+  font-family: var(--tf-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.tf-wordmark__name {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* --- app shell ----------------------------------------------------------- */
+.tf-app {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--tf-sf-bg);
+  color: var(--tf-sf-text);
+}
+.tf-app__side {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-5);
+  padding: var(--tf-space-5) var(--tf-space-4);
+  border-right: 1px solid var(--tf-sf-line);
+  background: var(--tf-sf-bg-alt);
+}
+.tf-app__main { min-width: 0; display: flex; flex-direction: column; }
+
+.tf-app__topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--tf-z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-4);
+  padding: var(--tf-space-4) var(--tf-space-6);
+  border-bottom: 1px solid var(--tf-sf-line);
+  background: color-mix(in srgb, var(--tf-sf-bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+.tf-app__body { padding: var(--tf-space-6); display: flex; flex-direction: column; gap: var(--tf-space-6); }
+
+/* --- side navigation ----------------------------------------------------- */
+.tf-sidenav { display: flex; flex-direction: column; gap: 2px; }
+.tf-sidenav__group {
+  margin-top: var(--tf-space-4);
+  margin-bottom: var(--tf-space-2);
+  font-family: var(--tf-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-text-dim);
+}
+.tf-sidenav__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--tf-radius-sm);
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--tf-sf-text-mute);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  transition: background-color var(--tf-dur-fast) var(--tf-ease), color var(--tf-dur-fast) var(--tf-ease);
+}
+.tf-sidenav__link:hover { background: var(--tf-sf-line-soft); color: var(--tf-sf-text); }
+.tf-sidenav__link.is-on {
+  background: var(--tf-sf-line-soft);
+  color: var(--tf-sf-text);
+  font-weight: 700;
+  box-shadow: inset 2px 0 0 var(--tf-sf-accent);
+}
+.tf-sidenav__count {
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-sf-text-dim);
+}
+
+/* --- dense metric tile --------------------------------------------------- */
+.tf-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--tf-space-4);
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-sf-raised);
+}
+.tf-tile__v {
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: var(--tf-tracking-tight);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.tf-tile--alert { border-color: color-mix(in srgb, var(--tf-missing) 45%, var(--tf-sf-line)); }
+.tf-tile--alert .tf-tile__v { color: var(--tf-missing); }
+.tf-tile--warn { border-color: color-mix(in srgb, var(--tf-review) 45%, var(--tf-sf-line)); }
+.tf-tile--warn .tf-tile__v { color: var(--tf-review); }
+.tf-tilegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: var(--tf-space-3);
+}
+
+/* --- data table ---------------------------------------------------------- */
+.tf-tablewrap { overflow-x: auto; border: 1px solid var(--tf-sf-line); border-radius: var(--tf-radius-md); background: var(--tf-sf-raised); }
+.tf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tf-table th {
+  position: sticky; top: 0;
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--tf-sf-bg-alt);
+  border-bottom: 1px solid var(--tf-sf-line);
+  font-family: var(--tf-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-text-mute);
+  white-space: nowrap;
+}
+.tf-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tf-sf-line-soft);
+  vertical-align: top;
+  color: var(--tf-sf-text-mute);
+}
+.tf-table tbody tr:last-child td { border-bottom: 0; }
+.tf-table tbody tr { transition: background-color var(--tf-dur-fast) var(--tf-ease); }
+.tf-table tbody tr:hover { background: var(--tf-sf-line-soft); }
+.tf-table strong { color: var(--tf-sf-text); font-weight: 650; }
+.tf-table .tf-sub { display: block; margin-top: 3px; font-size: 11px; color: var(--tf-sf-text-dim); }
+.tf-table .tf-num { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; color: var(--tf-sf-text); }
+
+/* --- filters & form controls --------------------------------------------- */
+.tf-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tf-space-3); }
+.tf-field-inline { display: flex; flex-direction: column; gap: 5px; }
+.tf-select, .tf-input, .tf-textarea {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-sf-raised);
+  color: var(--tf-sf-text);
+  min-width: 150px;
+}
+.tf-textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+.tf-select:focus-visible, .tf-input:focus-visible, .tf-textarea:focus-visible {
+  outline: 2px solid var(--tf-sf-accent-hi);
+  outline-offset: 1px;
+}
+
+/* --- workflow status ----------------------------------------------------- */
+.tf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: var(--tf-radius-pill);
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tf-status--requested { background: var(--tf-declared-bg); color: var(--tf-declared); }
+.tf-status--submitted { background: var(--tf-documented-bg); color: var(--tf-documented); }
+.tf-status--approved  { background: var(--tf-certified-bg); color: var(--tf-certified); }
+.tf-status--rejected  { background: var(--tf-missing-bg); color: var(--tf-missing); }
+.tf-status--closed    { background: var(--tf-sf-line-soft); color: var(--tf-sf-text-mute); }
+
+/* --- score bars ---------------------------------------------------------- */
+.tf-bar { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(70px, 2fr) 40px; gap: 10px; align-items: center; font-size: 11.5px; color: var(--tf-sf-text-mute); }
+.tf-bar__track { height: 6px; border-radius: var(--tf-radius-pill); background: var(--tf-sf-line); overflow: hidden; }
+.tf-bar__fill { display: block; height: 100%; border-radius: var(--tf-radius-pill); background: var(--tf-sf-accent); transition: width var(--tf-dur-slow) var(--tf-ease); }
+.tf-bar__fill.is-low { background: var(--tf-review); }
+.tf-bar__fill.is-critical { background: var(--tf-missing); }
+.tf-bar__v { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--tf-sf-text); }
+
+/* --- empty / loading / notice -------------------------------------------- */
+.tf-empty {
+  padding: var(--tf-space-7) var(--tf-space-5);
+  text-align: center;
+  border: 1px dashed var(--tf-sf-line);
+  border-radius: var(--tf-radius-md);
+  color: var(--tf-sf-text-mute);
+  font-size: 13px;
+}
+.tf-notice {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--tf-radius-sm);
+  border: 1px solid var(--tf-sf-line);
+  background: var(--tf-sf-line-soft);
+  font-size: 13px;
+  color: var(--tf-sf-text);
+}
+.tf-notice--ok { border-color: color-mix(in srgb, var(--tf-verified) 40%, var(--tf-sf-line)); background: var(--tf-verified-bg); color: var(--tf-verified); }
+.tf-notice--err { border-color: color-mix(in srgb, var(--tf-missing) 40%, var(--tf-sf-line)); background: var(--tf-missing-bg); color: var(--tf-missing); }
+
+/* --- panel / drawer ------------------------------------------------------ */
+.tf-panel {
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-sf-raised);
+  padding: var(--tf-space-5);
+}
+.tf-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--tf-space-4);
+}
+
+/* --- app responsive ------------------------------------------------------ */
+@media (max-width: 1024px) {
+  .tf-app { grid-template-columns: minmax(0, 1fr); }
+  .tf-app__side {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    border-right: 0;
+    border-bottom: 1px solid var(--tf-sf-line);
+  }
+  .tf-sidenav { flex-direction: row; flex-wrap: wrap; }
+  .tf-sidenav__group { display: none; }
+  .tf-sidenav__link { width: auto; }
+  .tf-app__body { padding: var(--tf-space-4); }
+}
+
+/* --------------------------------------------------------------------------
    6. TEXTILE TEXTURES
    Woven structures rendered as inline SVG at very low opacity. Technology
    stays dominant; the textile world is felt, not photographed.
@@ -653,24 +922,6 @@ a { color: inherit; text-decoration: none; }
       align-items: center;
       gap: var(--tf-space-6);
       height: 72px;
-    }
-
-    .tf-wordmark { display: inline-flex; align-items: center; gap: 10px; flex: none; }
-    .tf-wordmark__mark {
-      width: 30px; height: 30px;
-      display: grid; place-items: center;
-      border-radius: var(--tf-radius-sm);
-      background: var(--tf-emerald-600);
-      color: #fff;
-      font-family: var(--tf-font-mono);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-    .tf-wordmark__name {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
     }
 
     .tf-nav__list {

@@ -394,3 +394,97 @@ l'initialisation GPU/viz malgré `--disable-gpu`, SwiftShader et les polices du 
 **La validation visuelle reste à faire dans un navigateur.** Ce qui est prouvé : structure,
 comportement, contraste, ancres, cascade, accessibilité déclarative. Ce qui ne l'est pas :
 l'équilibre des masses, le rythme réel au scroll, le rendu typographique.
+
+---
+
+# Phase 8 — Evidence & Quality : le Quality Center
+
+## Ce que j'avais écrit de faux
+
+L'audit Phase 1 qualifiait le Quality Center de « coquille de 49 lignes ». **C'était faux.**
+Le fichier est écrit en lignes denses : 49 lignes = 14 918 octets d'application fonctionnelle
+(bootstrap Clerk, mode démo, vue d'ensemble, acquittement, waiver, scores). Compter les lignes
+d'un fichier minifié ne dit rien ; il faut compter les octets et chercher les comportements.
+
+## Le vrai manque
+
+Le workflow CAP (Corrective Action Plan) existait **côté serveur, appelé par rien** :
+
+| Route API | Implémentée | Appelée par l'UI |
+| --- | --- | --- |
+| `GET /api/quality/caps` | oui | **0** |
+| `POST /api/quality/issues/:id/cap` | oui | **0** |
+| `GET|POST /api/quality/caps/:id/messages` | oui | **0** |
+| `POST /api/quality/caps/:id/submit-remediation` | oui | **0** |
+| `POST /api/quality/caps/:id/review` | oui | **0** |
+
+Le cycle `requested → submitted → approved|rejected`, ses deux procédures stockées et ses
+gardes RLS étaient en production et inatteignables. La Phase 8 n'a donc pas ajouté de
+fonctionnalité : elle a rendu visible une fonctionnalité déjà écrite.
+
+## Ce qui a été construit
+
+Quatre vues : **Overview** (8 indicateurs de confiance + issues critiques), **Issues**
+(regroupées Critique / Avertissement / À revoir, filtres gravité et statut, Acquitter /
+Waiver / créer un plan), **Plans d'action** (liste, détail, correction, revue, fil de
+discussion), **Scores** (4 dimensions réelles par sujet).
+
+**Aucune métrique inventée.** `GET /api/quality/overview` renvoie `completeness`,
+`freshness`, `documentationCoverage`, `consistency` et six compteurs d'issues. Le brief
+demandait un « taux de vérification » : l'API n'en fournit aucun. Il n'a donc pas été
+affiché, et le test `test:quality-center` vérifie explicitement que la chaîne
+« taux de vérification » n'apparaît nulle part. Les valeurs agrégées sont calculées depuis
+les scores renvoyés, pas saisies en dur.
+
+## Couche applicative du design system
+
+Le DS v3.0 ne décrivait que la couche marketing. Une section `5b. APPLICATION LAYER`
+(~250 lignes) a été ajoutée : shell, sidenav, tuiles denses, table de données, filtres,
+statuts de cycle de vie, barres de score, états vides, notices, panneaux, point de rupture
+1024 px. `quality-center/index.html` est inscrit dans `SURFACES` de `sync_design_system.mjs`.
+
+Deux défauts ont été trouvés et corrigés en route :
+
+- `.tf-wordmark*` était défini uniquement en CSS local de `index.html`, alors que le shell
+  applicatif s'en sert. Le mark s'affichait donc non stylé dans le Quality Center. Promu dans
+  le DS, doublon supprimé de la landing. `check:landing` et `test:landing` inchangés (67/95).
+- `<th>` sans `scope` : les lecteurs d'écran ne pouvaient pas relier en-têtes et cellules.
+  Le DOM rendu en affichait 10, aucun avec `scope`. Les 20 `<th>` de la source (4 en-têtes de
+  5 colonnes, répartis sur les vues) portent désormais `scope="col"`, et la colonne d'actions
+  vide a un nom via `.tf-visually-hidden`.
+
+## Portails
+
+```
+ds:check                      PASS  (2 surfaces synchronisées)
+check:landing        67 / 0   inchangé
+test:landing         95 / 0   inchangé
+test:p1-quality             PASS  (littéraux Acquitter / Waiver / certification / explicables conservés)
+test:quality-center  69 / 0   NOUVEAU
+test:quality-actions:chantier5  PASS
+test:p1-i18n                PASS
+```
+
+`test:quality-center` exécute le vrai script de la page dans un DOM et parcourt la boucle
+complète : acquitter une issue → ouvrir un plan → soumettre la correction → constater
+`submitted` → poster un message → approuver → constater `approved`. Les transitions sont
+lues dans l'état réel de l'application, pas supposées.
+
+## Régression
+
+Balayage des **49** scripts `test:*` avec et sans les modifications :
+
+- avec les changements : 30 PASS / 19 FAIL
+- à HEAD (modifications stashées) : **19 FAIL, mêmes noms**
+
+Zéro régression. Les 19 échecs sont préexistants et tous expliqués : 5 × `prisma generate`
+impossible (`binaries.prisma.sh` hors liste blanche), 6 × `test:neon:*` (base Neon requise),
+4 × `:browser` (Playwright non installable), 3 × staging E2E (variables d'environnement),
+et `test:supplychain:chantier3` — le litige en attente d'arbitrage.
+
+## Toujours non vérifié
+
+**Aucune capture d'écran du Quality Center.** Les 69 assertions sont structurelles,
+comportementales et déclaratives. L'équilibre visuel des quatre vues, la lisibilité réelle
+des tables denses à 13 px et le rendu du point de rupture 1024 px restent à valider dans un
+navigateur.
