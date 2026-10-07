@@ -1,351 +1,141 @@
-# Chantiers restants
+# Chantiers — état vérifié
 
-État au 7 octobre 2026 · branche `merge/experience` · 11 commits d'avance sur
-`main` · arbre propre.
+État au 7 octobre 2026 · branche `merge/experience` · **29 commits d'avance sur
+`origin/main`** · arbre propre · HEAD `502d57f`.
 
-Relevé depuis le dépôt, pas de mémoire. Les deux correctifs P0 de l'audit
-Market Readiness sont appliqués et ne figurent plus ici.
+Relevé en exécutant le dépôt, pas en relisant les en-têtes des rapports. Chaque
+ligne « fait » ci-dessous a un test de garde qui passe à l'instant du relevé ;
+chaque ligne « ouvert » a été vérifiée par une commande, pas supposée.
 
----
-
-## Synthèse
-
-| # | Chantier | Catégorie | Priorité | Effort |
-|---|---|---|---|---|
-| 1 | Arbitrer `test:supplychain:chantier3` | Dette | P1 | décision |
-| 2 | Déclarer `tsx` en devDependency | Dette | P1 | 1 ligne |
-| 3 | Vue **Risk** absente de la console | Cahier des charges | **P0** | **Fait** |
-| 4 | `dpp` et `certifications` en état vide | Persona | P1 | données démo |
-| 5 | Portail mobile sans action au 1ᵉʳ écran | Persona | P1 | mise en page |
-| 6 | Catalogues i18n concurrents | Architecture | **P0** | **Fait — 6 pages sur 7** |
-| 7 | Copie métier en dur dans les 3 SPA | Cahier des charges | P1 | ~754 chaînes |
-| 8 | Ouvrir la PR (push **fait**) | Livraison | P1 | 1 clic |
-| 9 | Phases 9 à 12 sans validation formelle | Process | P2 | revue |
-| 10 | Sort de l'arbre `locales/` | Décision | P2 | 1 décision |
-
-Les points 3 et 6 sont requalifiés en P0 : le premier est une exigence
-explicite du cahier des charges, le second est un défaut d'architecture qui
-rendra tout travail i18n ultérieur plus coûteux.
+> **La réponse courte : non, tout n'est pas fait.** Neuf chantiers sont livrés,
+> neuf restent ouverts. Et surtout : **rien n'est fusionné.** Les 29 commits
+> vivent sur une branche, le dépôt ne porte **aucune pull request**, tous états
+> confondus. Qui regarde `main` ne voit rien de ce travail.
 
 ---
 
-## 1. Arbitrer `test:supplychain:chantier3` · P1
+## 1. Livrés — 9
 
-Seul échec produit de la matrice (31 tests sur 33 passent). Il exige le
-littéral `'Tier 4 · Matières'` puis Tier 3/2/1/0 dans la console.
+Vérifiés par exécution : `npm run test:<nom>` passe pour chacun.
 
-Vérifié : **il échoue à l'identique sur `origin/main`**, même assertion
-`Brand console must display Tier 4 stage`. Pré-existant, non introduit par la
-refonte.
+| # | Chantier | Garde-fou | État |
+|---|---|---|---|
+| 3 | Vue **Risk** absente de la console (P0, exigence du cahier des charges) | `test:chantier3-risk` | **OK** |
+| 4 | `dpp` et `certifications` atterrissaient en état vide | `test:chantier4-demo` | **OK** |
+| 5 | Portail fournisseur sans action au premier écran mobile | `test:chantier5-portail` | **OK** |
+| 6 | Catalogues i18n concurrents (P0) — **6 pages sur 7** | `test:i18n` | **OK** |
+| L1 | Lisibilité : 218 textes sous 11 px → 0 | `test:landing-lisibilite` | **OK** |
+| L2 | Colonne vertébrale des 7 couches + bug mobile préexistant | `test:landing-spine` | **OK** |
+| L3 | Densité mobile : page 11 141 → 9 473 px | `test:landing-lisibilite` (l. 94, 100) | **OK** |
+| L4 | Repérage : rail de progression + sommaire du tiroir | `test:landing-reperage` | **OK** |
+| L5 | Performance : axe variable, animations en veille | `test:landing-performance` | **OK** |
 
-Trois issues possibles, à votre main :
+Le chantier 5, dont vous m'avez joint le rapport, est bien **fait** : son test
+de 40 assertions passe, et les trois personas qu'il débloquait passent
+(CEO 6/6 · Conformité 4/4 · Fournisseur 4/4).
 
-- adapter le test au nouveau vocabulaire de la refonte ;
-- réintroduire la nomenclature Tier 4…0 dans la vue Supply Chain ;
-- marquer le test comme obsolète et le retirer de la matrice.
-
-Je recommande la première : le test protège une exigence réelle (la
-profondeur de chaîne doit rester lisible), c'est son libellé qui a vieilli.
-
-## 2. Déclarer `tsx` en devDependency · P1
-
-`tsx` est **absent de `package.json`** alors que **8 scripts** en dépendent :
-`test:bulk:chantier8`, `test:neon:bulk:chantier8`, `test:wallet:chantier9`,
-`test:neon:wallet:chantier9`, `test:storage:chantier10`,
-`test:neon:storage:chantier10`, `test:p2:readiness`, `db:migrations:check`.
-
-`npx` le télécharge à l'exécution. Conséquences : build non reproductible,
-tests impossibles hors ligne, version non épinglée, et en CI un
-téléchargement réseau à chaque exécution. Plus sérieux que le P2 initialement
-estimé, d'où le reclassement.
-
-## 3. Vue Risk absente de la console · P0 · **fait**
-
-> **Livrée.** Détail dans `docs/experience/CHANTIER-3-VUE-RISK.md`.
->
-> La vue s'insère entre Qualité et DPP, à la place fixée par le cahier des
-> charges. Elle ne s'appuie sur aucune notation externe : chaque signal est
-> dérivé des enregistrements déjà chargés (fournisseurs, produits, matières,
-> demandes). Une dimension sans enregistrement vaut zéro et l'affiche, et
-> seules les dimensions alimentées entrent dans l'indice.
->
-> Chaque ligne du registre mène à la vue où elle se corrige. Le score est
-> explicitement écarté de toute valeur de certification, dans le chapô et par
-> un badge dédié — les deux sont verrouillés par le test.
->
-> **Second défaut corrigé au passage :** `intelligence` était déclarée dans la
-> navigation mais absente du dispatch — la vue existait et n'était pas
-> atteignable. Le test énumère désormais toutes les entrées de nav et exige
-> que chacune ait sa branche.
->
-> 55 clés `console.risk*` × 7 langues (`scripts/build_risk_i18n.mjs`).
-> Nouveau test `test:chantier3-risk`, câblé dans `build`.
-
-## 4. Deux vues clés atterrissent en état vide · P1 · **fait**
-
-| Vue | Contenu à l'arrivée |
-|---|---|
-| `supplyChain` | 2 391 car. · 10 blocs |
-| `quality` | 2 253 car. · 3 blocs |
-| `documents` | 1 791 car. · 6 blocs |
-| **`dpp`** | **532 car. · 1 bloc** — « Sélectionnez un produit… » |
-| **`certifications`** | **683 car. · 3 blocs** — état vide |
-
-L'état vide est un comportement légitime en production. Mais en démonstration,
-atterrir dessus prive le visiteur de la démonstration de profondeur, et ce
-sont précisément les deux vues qui portent la promesse réglementaire.
-
-> **Fait.** `demoData()` sème `selectedDppProduct`, `dpp` (88 %, 7/9 exigences,
-> 1 bloquant, 4 piliers) et 5 certificats aux **échéances relatives à
-> `Date.now()`**, pour qu'elles ne périment jamais. `dpp` passe de 357 à
-> **1 745 car. / 5 blocs**.
->
-> La veille des expirations **dérive désormais des données** : elle affirmait en
-> dur qu'aucun certificat n'expirait sous 60 jours, ce qui devenait faux dès
-> qu'on semait, et contredisait le « 8 Certificates Expiring » du cahier des
-> charges. Statut par certificat et compte des échéances calculés à partir de
-> `certJours()`, seuil 90 jours aligné sur la règle affichée dans la même vue.
->
-> Les 13 chaînes de chrome de la vue ont été externalisées en même temps
-> (**21 clés `cert*` × 7 langues**) : traduire les statuts sans traduire les
-> titres aurait donné un écran mi-français mi-anglais. Débordement mobile de la
-> vue DPP corrigé (133 px → 0). Formulation « certifier le passeport »
-> remplacée, la préparation n'étant pas une certification.
->
-> `npm run test:chantier4-demo` — 33 assertions, chaîné dans `build`. Rapport :
-> `docs/experience/CHANTIER-4-DEMO-DPP-CERTIFICATIONS.md`.
-
-## 5. Portail fournisseur mobile sans action au premier écran · P1 · **fait**
-
-En 390 × 844, les **12 éléments cliquables au-dessus de la ligne de
-flottaison sont tous dans la navigation** : aucune action de contenu. Le
-persona Fournisseur doit « savoir immédiatement quoi faire » — sur mobile il
-ne voit que des onglets. Sur desktop le critère passe (progression
-« 72 % complété » visible sans défilement).
-
-> **Fait. Les trois personas passent désormais** (CEO 6/6 · Conformité 4/4 ·
-> Fournisseur 4/4), ce qui clôt le test d'acceptation du cahier des charges.
->
-> Le panneau de progression affirmait en dur trois « 100 % » à côté d'un total
-> de 72 %, et parlait de « 3 étapes » en n'en montrant qu'une. Le remonter tel
-> quel aurait aggravé le défaut : il **dérive désormais de
-> `state.quality.score`**, désigne le point faible par calcul (couverture
-> documentaire, 25 %) et porte un bouton qui y mène.
->
-> Chrome dégraissé sur mobile : barre supérieure 110 → 51 px, accroche
-> 265 → 148 px. Le panneau passe de y = 579 à y = 395, le bouton d'action est
-> entièrement visible. **0 action de contenu → 5.**
->
-> Trois défauts trouvés en chemin : le portail forçait `'fr'` et ignorait
-> `?lang=` ; `missingFields: ['active_site']` contredisait un site actif
-> existant ; le sélecteur de l'audit des personas ne comptait pas
-> `.pillar-card`, faisant passer la vue DPP pour squelettique.
->
-> 17 clés × **9 langues** (turc et chinois inclus, le portail les sert).
-> `npm run test:chantier5-portail` — 40 assertions, chaîné dans `build`.
-> Rapport : `docs/experience/CHANTIER-5-PORTAIL-MOBILE.md`.
-
-## 6. Systèmes i18n concurrents · P0 · **fait**
-
-> **Consolidé — 6 des 7 pages livrées.** Le détail est dans
-> `docs/experience/CONSOLIDATION-I18N.md`. Les dictionnaires inline de la
-> console, du portail et du DPP public ont été fusionnés dans `assets/i18n/`,
-> servi par le runtime existant `tf-i18n.js`, et `quality-center/` — qui
-> n'avait aucune traduction malgré trois liens entrants — a été migrée.
->
-> **Cinq défauts visibles par l'utilisateur ont été corrigés au passage :**
->
-> 1. la langue était perdue entre la vitrine et l'application (deux clés de
->    stockage distinctes) ;
-> 2. le portail repliait en **français** les clés absentes en turc, portugais
->    et chinois — il replie désormais en anglais, et les 30 clés manquantes
->    ont été traduites ;
-> 3. un changement de langue venu d'un autre onglet ne redessinait jamais la
->    page ;
-> 4. `quality-center/` n'avait aucune i18n ;
-> 5. **le badge du DPP public ne se traduisait pas** en `fr`, `it`, `es` et
->    `pt` — voir ci-dessous, c'est le quatrième système.
-
-### Le quatrième système : `public/auto-translate.js`
-
-Mon relevé initial en annonçait trois. Il y en avait **quatre**. Ce moteur de
-25 Ko, chargé par `dpp/`, `quality-center/` et `operations/`, ne lit aucun
-catalogue : il **parcourt les nœuds texte du DOM** et les remplace à partir
-d'un glossaire de 101 entrées **à source française**.
-
-Trois propriétés le rendent incompatible avec une couche i18n propre :
-
-- il met sa langue courante **en cache au chargement**, depuis l'ancienne clé
-  `tracefab_lang`, et ne la rafraîchit jamais sauf appel explicite à
-  `window.setTracefabGlobalLanguage()` — qu'**aucune page n'appelait** ;
-- il se réapplique à **chaque mutation du DOM**, via un `MutationObserver` sur
-  le `body` : il écrase donc tout rendu produit après lui ;
-- sa clé de glossaire étant la chaîne **française**, il ne reconnaît une
-  chaîne que si elle est en français.
-
-D'où le symptôme, longtemps incompréhensible : le badge du DPP se traduisait
-en `de` et `nl` mais pas en `fr`, `it`, `es`, `pt`. `tf-i18n` écrivait bien la
-bonne valeur — mesurée à l'instant du rendu — puis le moteur la repeignait.
-Les deux langues épargnées sont exactement celles dont la valeur
-(« Konform », « Conform ») n'est **pas** une clé du glossaire français ;
-les quatre autres partagent la valeur « EU ESPR / DPP Conforme », qui en est
-une, et étaient donc retraduites vers la langue en cache (`en`).
-
-**89 valeurs françaises du catalogue sont des clés de ce glossaire** — le
-conflit était donc latent bien au-delà du badge.
-
-Traitement, différencié selon la dépendance réelle de chaque page :
-
-| Page | Décision | Raison |
-|---|---|---|
-| `brand-console/`, `supplier-portal/` | déjà retiré avant ce chantier | précédent établi, commentaire en place |
-| `quality-center/` | **retiré** | sa copie visible passe désormais entièrement par `q()`/`s()` |
-| `dpp/` | **conservé et synchronisé** | son corps est presque entièrement en français en dur : le retirer rendrait la page monolingue |
-| `operations/` | laissé tel quel | page orpheline, non migrée, 0 lien entrant |
-
-Pour `dpp/`, `renderDppLang()` appelle maintenant
-`window.setTracefabGlobalLanguage(lang)` avant de peindre : les deux moteurs
-partagent la même langue, et l'observateur du moteur historique se désarme de
-lui-même en français. Vérifié **14/14** (7 langues × 2 parcours : sélecteur de
-la page et chargement direct `?lang=`), sans erreur console.
-
-### État par page
-
-| Page | État | Liée depuis |
-|---|---|---|
-| `index.html` | catalogue partagé | — |
-| `product-intelligence/` | catalogue partagé | nav |
-| `brand-console/` | catalogue partagé | nav |
-| `supplier-portal/` | catalogue partagé | nav |
-| `dpp/` | **catalogue partagé** (`dpp.*`) + moteur historique synchronisé | nav |
-| `quality-center/` | **catalogue partagé** (`quality.*` + `shared.*`) | **3 pages** |
-| `passport/`, `operations/` | aucune i18n | 0 page (orphelines) |
-
-**Ce qui reste** : `passport/` et `operations/`, toutes deux orphelines — aucun
-lien entrant. Leur migration n'a de sens qu'une fois tranché leur sort
-(supprimer ou rebrancher). Reste aussi l'arbre `locales/` — voir le point 10.
-
-### Constat d'origine
-
-C'est le constat qui requalifie le chantier : **l'i18n n'est pas à faire,
-elle est faite trois fois, de trois manières incompatibles.**
-
-| Système | Contenu | Consommateur réel |
-|---|---|---|
-| `assets/i18n/` | 549 clés × 7 locales, 0 écart | `index.html`, `product-intelligence/` |
-| `locales/<lang>/translation.json` | 7 langues, ~9 Ko chacune | **aucune page** — seulement `test_p1_i18n.mjs`, et déployé par `vercel.json` |
-| Dictionnaires inline | `brandTranslations`, `translations`, 1 anonyme — 7 langues chacun | les 3 SPA, chacune la sienne |
-
-Deux anomalies à traiter :
-
-- l'arbre `locales/` est **du poids mort livré en production** : aucune page
-  ne le charge, mais `vercel.json` le déploie et un test en verrouille le
-  contenu. Soit on le branche, soit on le retire — en l'état il donne une
-  fausse impression de couverture ;
-- chaque SPA embarque son propre dictionnaire, donc une clé commune se
-  traduit et se corrige à trois endroits.
-
-Cible : une source unique, les SPA consommant `assets/i18n/`.
-
-## 7. Copie métier en dur dans les SPA · P1
-
-| Fichier | Chaînes UI distinctes dans le JS | `data-i18n` |
-|---|---|---|
-| `brand-console/index.html` | ~379 (231 Ko de script) | 0 |
-| `supplier-portal/index.html` | ~304 (122 Ko) | 0 |
-| `dpp/index.html` | ~71 (9 Ko) | 0 |
-| `index.html` (landing) | — | 178 |
-
-Seule la landing respecte la règle « aucune copie métier en dur dans les
-composants ». Point d'attention supplémentaire : la console contient
-**246 marqueurs lexicaux français** contre 551 anglais, et le portail 133
-contre 358. Or la décision retenue était un **source en anglais** avec la
-couche i18n par-dessus. Le flux parallèle fusionné a introduit de la copie
-française en dur, et des tests verrouillent désormais des chaînes françaises
-(par exemple « Partages actifs »). À arbitrer avec le point 6.
-
-## 8. Pousser et ouvrir la PR · P1 · **poussé, PR à ouvrir**
-
-**Push effectué** le 7 octobre 2026 : `df11a5d` → `c9b1afb`, 6 commits.
-`origin/merge/experience` est à jour, **16 commits en avance sur `main`**.
-
-**La PR reste à ouvrir.** Le second jeton porte bien `admin`/`push` sur le
-dépôt, mais l'API répond `403` à la création d'une PR, avec l'en-tête :
-
-    x-accepted-github-permissions: pull_requests=write
-
-Le jeton est *fine-grained* et n'accorde que `Pull requests: Read` — d'où la
-lecture des PR qui fonctionne et l'écriture qui échoue.
-
-Deux voies, au choix :
-
-1. **Ouvrir la PR à la main** — un clic, aucun jeton requis :
-   <https://github.com/Huberaya/Tracefab/pull/new/merge/experience>
-   Le corps de PR prêt à coller est dans
-   `docs/experience/PR-merge-experience.md`.
-2. **Régénérer le jeton** avec *Pull requests → Read and write*, puis
-   relancer `bash /home/user/push_and_pr.sh <fichier-token>` (le script est
-   idempotent : le push sera un no-op et il enchaînera sur la PR).
-
-À noter : `.git/config` est exclu des snapshots de l'espace de travail.
-L'identité git et l'URL du remote ont dû être restaurées à chaque tour, et le
-seront probablement à nouveau — le script s'en charge.
-
-## 11. Le jeu de démonstration est d'une autre échelle que les KPI annoncés · P2
-
-Relevé en traitant le point 4. `demoData()` sème **1 fournisseur, 2 produits,
-1 matière**. Le cahier des charges affiche en vue d'ensemble **1 248 produits,
-86 fournisseurs, 214 sites, 18 pays**.
-
-Un responsable conformité qui passe de la vue d'ensemble à la liste des
-fournisseurs lit 86 d'un côté et 1 de l'autre. Aucune vue n'est en état vide —
-le point 4 l'a réglé — mais l'écart se voit, et c'est exactement le persona qui
-scrute la cohérence des chiffres.
-
-Deux issues possibles : étoffer le jeu de démonstration jusqu'à un ordre de
-grandeur crédible, ou dériver les KPI de la vue d'ensemble des données
-réellement chargées. La seconde est plus honnête et moins coûteuse à maintenir,
-mais elle s'écarte des valeurs littérales demandées par le cahier des charges.
-**Arbitrage utilisateur requis.**
-
-## 10. Sort de l'arbre `locales/` · P2 · décision
-
-Seul fragment i18n restant. 7 langues, ~65 Ko, aucun consommateur à
-l'exécution : c'est le dictionnaire de l'**ancienne** landing, antérieure à
-la refonte — ses sections (`mockup`, `signature`, `problem`) n'existent plus.
-
-Je ne l'ai pas supprimé parce que `scripts/test_p1_i18n.mjs`, qui n'est pas
-de moi, en verrouille le contenu et vérifie trois accroches de
-positionnement. Le supprimer casserait ce test ; le garder laisse du poids
-mort déployé par `vercel.json`. C'est un arbitrage qui vous revient :
-
-- **le retirer** : supprimer `locales/`, l'entrée de `vercel.json`, et
-  repointer les trois assertions de `test_p1_i18n.mjs` sur `assets/i18n/` ;
-- **le garder** : au minimum le sortir de `vercel.json` pour cesser de le
-  livrer.
-
-## 9. Phases 9 à 12 sans validation formelle · P2
-
-Rapports présents : phases 1, 4, 5, 6, 7, 8. **Absents : 9 (Traçabilité),
-10 (DPP), 11 (DPP public), 12 (i18n).**
-
-Leur contenu existe dans l'application, mais il provient du flux parallèle
-fusionné en option A, pas de mon cycle phase → test → validation. Ces quatre
-phases n'ont donc jamais reçu la batterie convenue : build, TypeScript,
-tests, responsive, régression, accessibilité, performance, vérification des
-routes et de l'API.
+**Matrice complète à l'instant : 39 OK / 1 échec.** `build` et `typecheck`
+verts.
 
 ---
 
-## Ordre d'exécution proposé
+## 2. Ouverts — 9
 
-1. **Point 6** (consolidation i18n) avant le point 7 : extraire les chaînes
-   vers trois dictionnaires concurrents serait du travail à refaire.
-2. **Point 3** (vue Risk) : plus gros écart au cahier des charges, et il
-   débloque le persona Conformité.
-3. **Points 4 et 5** : *faits*. Le persona Fournisseur est validé, et les
-   trois personas passent.
-4. **Point 2** (`tsx`) : une ligne, fiabilise toute la matrice de tests.
-5. **Point 1** : décision de votre part, pas de développement.
-6. **Point 9** : revue de rattrapage une fois le reste stabilisé.
-7. **Point 11** : arbitrage sur l'échelle du jeu de démonstration.
+### Ce qui bloque la livraison
+
+**A. La PR n'est pas ouverte.** *P1 · un clic · le plus conséquent.*
+
+Vérifié par l'API GitHub : le dépôt porte **0 pull request**, états ouverts et
+fermés confondus. Les 29 commits sont poussés sur `origin/merge/experience` et
+n'ont aucun chemin vers `main`.
+
+Le jeton fourni est *fine-grained* avec `Pull requests: Read` — il lit les PR,
+il ne peut pas en créer. C'est pourquoi ce point n'a jamais pu être fait de mon
+côté.
+
+- <https://github.com/Huberaya/Tracefab/pull/new/merge/experience>
+- corps prêt à coller : `docs/experience/PR-merge-experience.md`
+
+### Ce qui demande une décision de votre part — 4
+
+**B. Arbitrer `test:supplychain:chantier3`.** *P1 · décision, pas de code.*
+Seul échec de la matrice. Il exige le littéral `'Tier 4 · Matières'`. **Il
+échoue à l'identique sur `origin/main`** : préexistant, non introduit par la
+refonte. Trois issues — adapter le libellé au nouveau vocabulaire
+(recommandé), réintroduire la nomenclature Tier 4…0, ou retirer le test.
+
+**C. Échelle du jeu de démonstration.** *P2 · proposé trois fois, sans réponse.*
+`demoData()` sème 1 fournisseur, 2 produits, 1 matière. La vue d'ensemble
+affiche 1 248 produits / 86 fournisseurs / 214 sites / 18 pays. Un responsable
+conformité qui passe de l'une à l'autre lit 86 d'un côté et 1 de l'autre.
+Étoffer le jeu, ou dériver les KPI des données chargées — la seconde est plus
+honnête, mais s'écarte des valeurs littérales du cahier des charges.
+
+**D. Sort de l'arbre `locales/`.** *P2.* 84 Ko, zéro consommateur à l'exécution,
+mais déployé par `vercel.json` et verrouillé par `test_p1_i18n.mjs`. Poids mort
+livré en production. Aucun impact sur la performance des pages — c'est de
+l'hygiène de dépôt.
+
+**E. Le badge du DPP public.** *Signalé deux fois, sans réponse.* Il affiche
+`EU ESPR / DPP Compliant`, ce qui contredit votre propre règle : la préparation
+n'est pas une certification. Les 76 lignes orphelines après `</html>` dans
+`dpp/index.html` (onglet Réparabilité / Recyclabilité / Économie circulaire)
+attendent le même arbitrage — préexistantes sur `origin/main`.
+
+### Ce qui demande du travail — 4
+
+**F. Copie métier en dur dans les SPA.** *P1 · le plus gros poste restant.*
+Mesuré à l'instant :
+
+| Fichier | Appels au résolveur i18n | Marqueurs français en dur |
+|---|---:|---:|
+| `brand-console/index.html` | 71 | **268** |
+| `supplier-portal/index.html` | 28 | **187** |
+| `dpp/index.html` | 1 | **9** |
+
+Le cahier des charges demande « aucune copie métier en dur dans les
+composants ». Seule la landing respecte la règle (178 `data-i18n`). Les
+chantiers 3 à 6 ont externalisé les écrans qu'ils touchaient ; le reste tient.
+
+**G. `tsx` non déclaré.** *P1 · une ligne.* Vérifié absent de `package.json`
+alors que **8 scripts** en dépendent. `npx` le télécharge à l'exécution : build
+non reproductible, tests impossibles hors ligne, version non épinglée.
+
+**H. Phases 9 à 12 sans validation formelle.** *P2.* Rapports présents : 1, 4,
+5, 6, 7, 8. Absents : **9 (Traçabilité), 10 (DPP), 11 (DPP public),
+12 (i18n)** — vérifié. Leur contenu existe dans l'application mais provient du
+flux parallèle fusionné, pas du cycle phase → test → validation que vous aviez
+fixé. Ces quatre phases n'ont jamais reçu la batterie convenue.
+
+**I. Deux pages orphelines sans i18n.** *P2.* `passport/` et `operations/` :
+0 référence i18n, 0 lien entrant. Leur migration n'a de sens qu'une fois tranché
+leur sort — supprimer ou rebrancher.
+
+---
+
+## 3. Relevés en chemin, non traités — 2
+
+Trouvés pendant L5, hors de son périmètre, volontairement non corrigés.
+
+**J. Deux polices d'affichage dans le même produit.** Inter Tight sur la
+landing, **Plus Jakarta Sans** sur quatre pages dont le DPP public. Trois
+requêtes Google Fonts distinctes, aucun partage de cache entre les pages. C'est
+un écart au design system déclaré ; unifier une identité typographique est une
+décision de marque, pas un correctif de performance.
+
+**K. 27 cibles tactiles sous 40 px** sur desktop (3 sur tactile). Sous le seuil
+d'accessibilité recommandé.
+
+---
+
+## 4. Ordre proposé
+
+1. **A — ouvrir la PR.** Un clic. Tant qu'elle n'est pas ouverte, les neuf
+   chantiers livrés n'existent pour personne d'autre que cette branche.
+2. **G — `tsx`.** Une ligne, fiabilise toute la matrice.
+3. **B, C, D, E — vos quatre arbitrages.** Aucun développement, ils débloquent
+   la suite.
+4. **F — externalisation des chaînes.** Le plus gros poste, à faire après B–E
+   pour ne pas externaliser des chaînes qui vont changer.
+5. **H — rattrapage des phases 9 à 12.**
+6. **I, J, K** en dernier.
