@@ -132,9 +132,6 @@ ok(gen.includes('Veille des certificats') && !gen.includes('Risk & exposure'),
 const genRisk = readFileSync(join(ROOT, 'scripts/build_risk_i18n.mjs'), 'utf8');
 ok(genRisk.includes('apresAccolade'), 'les deux generateurs inserent en tete de bloc (cohabitation sure)');
 
-console.log(ko === 0 ? '\n  chantier 4 : vues DPP et Certifications alimentees.' : `\n  chantier 4 : ${ko} echec(s).`);
-process.exit(ko === 0 ? 0 : 1);
-
 // --- Arbitrage du 7 octobre 2026 : les KPI derivent des donnees ---
 // La vue d ensemble annoncait 1 248 produits et 86 fournisseurs quand l etat
 // n en portait que 2 et 1. Les enregistrements sont desormais reellement
@@ -151,3 +148,5 @@ for (const litteral of ['<strong>1 248</strong>', '<strong>86</strong>', '<stron
 }
 ok(/demoAlea\(20260407\)/.test(page), 'le generateur est deterministe, graine fixe');
 
+console.log(ko === 0 ? '\n  chantier 4 : vues DPP et Certifications alimentees.' : `\n  chantier 4 : ${ko} echec(s).`);
+process.exit(ko === 0 ? 0 : 1);
