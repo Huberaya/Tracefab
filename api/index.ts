@@ -5,6 +5,12 @@ type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;
 type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default: RouteHandler }> };
 
 const routes: Route[] = [
+  { pattern: /^catalog\/products\/import$/, params: [], load: () => import('./_routes/catalog/products/import.js') },
+  { pattern: /^catalog\/products\/export$/, params: [], load: () => import('./_routes/catalog/products/export.js') },
+  { pattern: /^catalog\/products\/import\-jobs\/([^\/]+)$/, params: ['jobId'], load: () => import('./_routes/catalog/products/import-jobs/[jobId].js') },
+  { pattern: /^catalog\/suppliers\/import$/, params: [], load: () => import('./_routes/catalog/suppliers/import.js') },
+  { pattern: /^catalog\/audit\-export$/, params: [], load: () => import('./_routes/catalog/audit-export.js') },
+  { pattern: /^supplier\/materials\/import\-bom$/, params: [], load: () => import('./_routes/supplier/materials/import-bom.js') },
   { pattern: /^catalog\/import\/products$/, params: [], load: () => import('./_routes/catalog/import/products.js') },
   { pattern: /^catalog\/import\/suppliers$/, params: [], load: () => import('./_routes/catalog/import/suppliers.js') },
   { pattern: /^catalog\/export\/products$/, params: [], load: () => import('./_routes/catalog/export/products.js') },
