@@ -1,8 +1,4 @@
-// TRACEFAB Universal Real-Time Translation Engine
-// Full multi-language dictionary for EN, FR, DE, IT, ES, NL, PT
-
-(function () {
-  const GLOSSARY = {
+{
   "Vue d’ensemble": {
     "en": "Overview",
     "de": "Übersicht",
@@ -811,79 +807,4 @@
     "nl": "Auditcertificaat bekijken",
     "pt": "Ver certificado de auditoria"
   }
-};
-
-  function translateDom(lang) {
-    if (!lang || lang === 'fr') return; // Base source is FR
-
-    const walker = document.createTreeWalker(
-      document.body,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode: function(node) {
-          if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-          const parent = node.parentElement;
-          if (!parent) return NodeFilter.FILTER_REJECT;
-          const tag = parent.tagName.toLowerCase();
-          if (['script', 'style', 'code', 'pre', 'textarea'].includes(tag)) return NodeFilter.FILTER_REJECT;
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      }
-    );
-
-    let node;
-    const textNodes = [];
-    while (node = walker.nextNode()) {
-      textNodes.push(node);
-    }
-
-    textNodes.forEach(n => {
-      const trimmed = n.nodeValue.trim();
-      if (GLOSSARY[trimmed] && GLOSSARY[trimmed][lang]) {
-        n.nodeValue = n.nodeValue.replace(trimmed, GLOSSARY[trimmed][lang]);
-      } else {
-        // Check for substring replacement for recurring tokens
-        for (const [frKey, map] of Object.entries(GLOSSARY)) {
-          if (trimmed === frKey && map[lang]) {
-            n.nodeValue = map[lang];
-            break;
-          }
-        }
-      }
-    });
-
-    // Also translate button labels and placeholders
-    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(input => {
-      const p = input.getAttribute('placeholder');
-      if (GLOSSARY[p] && GLOSSARY[p][lang]) {
-        input.setAttribute('placeholder', GLOSSARY[p][lang]);
-      }
-    });
-  }
-
-  let currentLanguage = localStorage.getItem('tracefab_lang') || 'en';
-  let observer = null;
-
-  function setupObserver() {
-    if (observer) observer.disconnect();
-    observer = new MutationObserver(() => {
-      if (currentLanguage !== 'fr') {
-        translateDom(currentLanguage);
-      }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
-
-  window.setTracefabGlobalLanguage = function(lang) {
-    currentLanguage = lang;
-    localStorage.setItem('tracefab_lang', lang);
-    document.documentElement.lang = lang;
-    translateDom(lang);
-  };
-
-  document.addEventListener('DOMContentLoaded', () => {
-    currentLanguage = localStorage.getItem('tracefab_lang') || 'en';
-    setupObserver();
-    translateDom(currentLanguage);
-  });
-})();
+}
