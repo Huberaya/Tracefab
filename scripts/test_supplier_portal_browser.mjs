@@ -12,7 +12,9 @@ try {
   await delay(350);
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await page.goto(`http://127.0.0.1:${port}/supplier-portal/?demo=1`, { waitUntil: 'domcontentloaded' });
+  // Ce scenario verifie des libelles francais : la locale par defaut du site
+  // est l'anglais depuis la couche i18n, donc on force la langue.
+  await page.goto(`http://127.0.0.1:${port}/supplier-portal/?demo=1&lang=fr`, { waitUntil: 'domcontentloaded' });
 
   await page.locator('h1.sp-hero-h1').waitFor();
   await page.locator('button[data-view="profile"]').first().click();
@@ -73,7 +75,7 @@ try {
 
   await page.locator('button[data-view="requests"]').first().click();
   await page.locator('[data-request-id="demo-supplier-request-1"]').click();
-  await page.getByRole('heading', { name: 'Données produit — collection automne' }).waitFor();
+  await page.getByRole('heading', { name: 'Product data — autumn collection' }).waitFor();
 
   await page.locator('[data-item-id="demo-item-1"] textarea[name="responseValue"]').fill('A cotton garment manufactured in Portugal.');
   await page.locator('[data-item-id="demo-item-1"] button[type="submit"]').click();
