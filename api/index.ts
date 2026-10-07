@@ -30,6 +30,7 @@ const routes: Route[] = [
   { pattern: /^data\-requests$/, params: [], load: () => import('./_routes/data-requests.js') },
   { pattern: /^data\-responses\/([^\/]+)\/review$/, params: ['responseId'], load: () => import('./_routes/data-responses/[responseId]/review.js') },
   { pattern: /^documents\/upload\-intent$/, params: [], load: () => import('./_routes/documents/upload-intent.js') },
+  { pattern: /^documents$/, params: [], load: () => import('./_routes/documents.js') },
   { pattern: /^documents\/([^\/]+)\/security\-report$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/security-report.js') },
   { pattern: /^documents\/([^\/]+)\/download$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/download.js') },
   { pattern: /^documents\/([^\/]+)\/verify\-ai$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/verify-ai.js') },

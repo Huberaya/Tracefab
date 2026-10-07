@@ -52,15 +52,20 @@ const SURFACES = [
   'operations/index.html',
   'dpp/index.html',
   'passport/index.html',
+  'evidence/index.html',
 ];
 
 const surfaceCalls = new Map();
+const missingSurfaces = [];
 for (const surface of SURFACES) {
   let html;
   try {
     html = await readFile(new URL(surface, root), 'utf8');
   } catch {
-    continue; // surface absente : rien à vérifier
+    // Une surface déclarée mais absente doit se voir : c'est ainsi qu'une
+    // nouvelle interface peut rester hors du radar du contrôle.
+    missingSurfaces.push(surface);
+    continue;
   }
   const literals = new Set();
   for (const m of html.matchAll(/['"`]\/api\/[^'"`\s]*/g)) {
@@ -71,6 +76,9 @@ for (const surface of SURFACES) {
 }
 const totalCalls = [...surfaceCalls.values()].reduce((a, c) => a + c.length, 0);
 console.log(`Surfaces : ${surfaceCalls.size} fichier(s), ${totalCalls} appel(s) /api/* distinct(s)`);
+if (missingSurfaces.length) {
+  console.warn(`\n  ATTENTION — surface(s) déclarée(s) mais introuvable(s) : ${missingSurfaces.join(', ')}`);
+}
 
 /**
  * A literal may embed `${...}` (one path segment) and a query string, and nested

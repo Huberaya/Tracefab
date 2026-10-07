@@ -19,7 +19,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 const CANON = new URL('../assets/design-system/tracefab-ds.css', import.meta.url);
 
 /** Surfaces that carry the inlined design system. Paths are relative to the repo root. */
-const SURFACES = ['index.html', 'quality-center/index.html', 'supplier-portal/index.html'];
+const SURFACES = ['index.html', 'quality-center/index.html', 'supplier-portal/index.html', 'evidence/index.html'];
 
 const BEGIN = '/* TF:DS:BEGIN */';
 const END = '/* TF:DS:END */';

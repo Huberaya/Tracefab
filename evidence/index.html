@@ -1,0 +1,1360 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRACEFAB — Evidence Center</title>
+  <meta name="description" content="Centre de preuves TRACEFAB : documents, certificats, rapports d'audit et factures, avec leur source, leur statut, leur vérification et leur échéance.">
+  <style>
+/* TF:DS:BEGIN */
+/* ==========================================================================
+   TRACEFAB DESIGN SYSTEM — v3.0
+   « Simple to understand. Deep to explore. Powerful to operate. »
+
+   SOURCE OF TRUTH. Do not hand-edit the copy inlined in the static surfaces:
+   edit this file, then run `npm run ds:sync` to propagate it.
+   `npm run ds:check` fails if a surface drifted from this file.
+
+   Layers
+     0. Reset & primitives
+     1. Tokens (color, type, space, radius, shadow, motion, z, trust levels)
+     2. Surface contexts (light / dark) — components read context vars only
+     3. Typography
+     4. Layout primitives
+     5. Components (button, card, badge, metric, nav, chip, rule)
+     6. Textile textures
+     7. Motion + accessibility
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. RESET
+   -------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* --------------------------------------------------------------------------
+   1. TOKENS
+   -------------------------------------------------------------------------- */
+:root {
+  /* --- Charcoal / ink: the neutral spine. The design must hold up in
+         near-monochrome; colour is information, never decoration. --- */
+  --tf-ink-900: #0a0f0c;
+  --tf-ink-800: #111815;
+  --tf-ink-700: #1b2420;
+  --tf-ink-600: #2b3732;
+  --tf-ink-500: #46544d;
+  --tf-ink-400: #5a6860;
+  --tf-ink-300: #647264;   /* dimmest TEXT level — 4.56:1 on paper-2. #97a49d was 2.33:1. */
+
+  /* --- Deep forest: institutional anchor --- */
+  --tf-forest-900: #06120d;
+  --tf-forest-800: #0a1f16;
+  --tf-forest-700: #0f2e20;
+  --tf-forest-600: #16402d;
+  --tf-forest-500: #1c5a3e;
+  --tf-forest-400: #2a7a55;
+
+  /* --- Off white / paper --- */
+  --tf-paper:      #fafaf7;
+  --tf-paper-2:    #f3f3ee;
+  --tf-paper-3:    #ebeae3;
+  --tf-paper-line: #e0dfd6;
+  --tf-white:      #ffffff;
+
+  /* --- Emerald accent. Sparing: reserved for "verified / live / primary". --- */
+  --tf-emerald-700: #07523e;
+  --tf-emerald-600: #0b7656;
+  --tf-emerald-500: #10b981;
+  --tf-emerald-400: #34d399;
+  --tf-emerald-100: #d9f3e8;
+
+  /* --- Trust scale (6 regulatory levels, per docs/DESIGN_SYSTEM.md §2) --- */
+  --tf-certified:    #047857;  --tf-certified-bg:    #d7f2e6;
+  --tf-verified:     #0b7656;  --tf-verified-bg:     #dff2ea;
+  --tf-documented:   #3f4f8f;  --tf-documented-bg:   #e8ebf8;
+  --tf-declared:     #1f6f9c;  --tf-declared-bg:     #e2f0f8;
+  --tf-review:       #8a5607;  --tf-review-bg:       #fbeed4;
+  --tf-missing:      #b3261e;  --tf-missing-bg:      #fbe4e2;
+
+  /* --- Type --- */
+  --tf-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --tf-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Editorial scale — very large titles, very large numbers, tiny tech labels */
+  --tf-text-display-1: clamp(52px, 8.4vw, 124px);
+  --tf-text-display-2: clamp(40px, 6.2vw, 86px);
+  --tf-text-display-3: clamp(32px, 4.4vw, 58px);
+  --tf-text-h1:        clamp(28px, 3.4vw, 44px);
+  --tf-text-h2:        clamp(23px, 2.5vw, 33px);
+  --tf-text-h3:        clamp(19px, 1.7vw, 22px);
+  --tf-text-lead:      clamp(16px, 1.35vw, 20px);
+  --tf-text-body:      15px;
+  --tf-text-small:     13px;
+  --tf-text-label:     11px;
+  --tf-text-metric-xl: clamp(46px, 6.6vw, 92px);
+  --tf-text-metric-lg: clamp(32px, 4vw, 52px);
+  --tf-text-metric-md: clamp(24px, 2.6vw, 32px);
+
+  --tf-tracking-tight: -0.045em;
+  --tf-tracking-snug:  -0.025em;
+  --tf-tracking-label:  0.14em;
+  --tf-leading-display: 0.98;
+  --tf-leading-tight:   1.14;
+  --tf-leading-body:    1.62;
+
+  /* --- Space (8pt base, editorial rhythm) --- */
+  --tf-space-1: 4px;   --tf-space-2: 8px;   --tf-space-3: 12px;
+  --tf-space-4: 16px;  --tf-space-5: 24px;  --tf-space-6: 32px;
+  --tf-space-7: 48px;  --tf-space-8: 64px;  --tf-space-9: 96px;
+  --tf-space-10: 128px; --tf-space-11: 160px;
+  --tf-section-y: clamp(72px, 10vw, 148px);
+  --tf-gutter: clamp(20px, 5vw, 64px);
+  --tf-shell: 1320px;
+  --tf-shell-wide: 1520px;
+
+  /* --- Radius: precise, architectural — small radii read as engineered --- */
+  --tf-radius-xs: 4px;
+  --tf-radius-sm: 8px;
+  --tf-radius-md: 12px;
+  --tf-radius-lg: 18px;
+  --tf-radius-xl: 26px;
+  --tf-radius-pill: 999px;
+
+  /* --- Shadow --- */
+  --tf-shadow-xs: 0 1px 2px rgba(10, 15, 12, 0.05);
+  --tf-shadow-sm: 0 2px 8px rgba(10, 15, 12, 0.06);
+  --tf-shadow-md: 0 10px 30px -12px rgba(10, 15, 12, 0.16);
+  --tf-shadow-lg: 0 28px 64px -24px rgba(10, 15, 12, 0.26);
+  --tf-shadow-glow: 0 0 0 1px rgba(16, 185, 129, 0.28), 0 12px 40px -12px rgba(16, 185, 129, 0.35);
+
+  /* --- Motion: every animation must explain something --- */
+  --tf-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --tf-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --tf-dur-fast: 140ms;
+  --tf-dur: 260ms;
+  --tf-dur-slow: 520ms;
+  --tf-dur-flow: 3600ms;   /* data-flow along connectors */
+
+  /* --- Z --- */
+  --tf-z-base: 0;
+  --tf-z-sticky: 100;
+  --tf-z-nav: 150;
+  --tf-z-overlay: 200;
+  --tf-z-toast: 300;
+}
+
+/* --------------------------------------------------------------------------
+   2. SURFACE CONTEXTS
+   Components read ONLY the context vars, so the same component markup works
+   on light and dark grounds without duplication.
+   -------------------------------------------------------------------------- */
+.tf-surface,
+:root {
+  --tf-sf-bg:        var(--tf-paper);
+  --tf-sf-bg-alt:    var(--tf-paper-2);
+  --tf-sf-raised:    var(--tf-white);
+  --tf-sf-line:      var(--tf-paper-line);
+  --tf-sf-line-soft: rgba(10, 15, 12, 0.08);
+  --tf-sf-text:      var(--tf-ink-800);
+  --tf-sf-text-mute: var(--tf-ink-400);
+  --tf-sf-text-dim:  var(--tf-ink-300);
+  --tf-sf-accent:    var(--tf-emerald-600);
+  --tf-sf-accent-hi: var(--tf-emerald-500);
+  --tf-sf-shadow:    var(--tf-shadow-sm);
+}
+
+.tf-surface--dark {
+  --tf-sf-bg:        var(--tf-forest-900);
+  --tf-sf-bg-alt:    var(--tf-forest-800);
+  --tf-sf-raised:    rgba(255, 255, 255, 0.045);
+  --tf-sf-line:      rgba(255, 255, 255, 0.12);
+  --tf-sf-line-soft: rgba(255, 255, 255, 0.07);
+  --tf-sf-text:      #f2f6f3;
+  --tf-sf-text-mute: #a8bdb2;
+  --tf-sf-text-dim:  #7d9488;
+  --tf-sf-accent:    var(--tf-emerald-400);
+  --tf-sf-accent-hi: var(--tf-emerald-400);
+  --tf-sf-shadow:    0 10px 40px -18px rgba(0, 0, 0, 0.8);
+
+  background-color: var(--tf-sf-bg);
+  color: var(--tf-sf-text);
+}
+
+.tf-surface--light {
+  background-color: var(--tf-sf-bg);
+  color: var(--tf-sf-text);
+}
+
+/* --------------------------------------------------------------------------
+   3. TYPOGRAPHY
+   -------------------------------------------------------------------------- */
+body {
+  margin: 0;
+  font-family: var(--tf-font-sans);
+  font-size: var(--tf-text-body);
+  line-height: var(--tf-leading-body);
+  color: var(--tf-sf-text);
+  background-color: var(--tf-sf-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.tf-display-1, .tf-display-2, .tf-display-3, .tf-h1, .tf-h2, .tf-h3 {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: var(--tf-tracking-tight);
+  line-height: var(--tf-leading-display);
+  text-wrap: balance;
+}
+.tf-display-1 { font-size: var(--tf-text-display-1); font-weight: 820; }
+.tf-display-2 { font-size: var(--tf-text-display-2); }
+.tf-display-3 { font-size: var(--tf-text-display-3); }
+.tf-h1 { font-size: var(--tf-text-h1); line-height: var(--tf-leading-tight); }
+.tf-h2 { font-size: var(--tf-text-h2); line-height: var(--tf-leading-tight); letter-spacing: var(--tf-tracking-snug); }
+.tf-h3 { font-size: var(--tf-text-h3); font-weight: 700; letter-spacing: var(--tf-tracking-snug); line-height: 1.3; }
+
+.tf-lead {
+  margin: 0;
+  font-size: var(--tf-text-lead);
+  line-height: 1.6;
+  color: var(--tf-sf-text-mute);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+.tf-body { font-size: var(--tf-text-body); line-height: var(--tf-leading-body); color: var(--tf-sf-text-mute); }
+.tf-small { font-size: var(--tf-text-small); color: var(--tf-sf-text-mute); }
+
+/* Technical label — the small caps mono voice of the system */
+.tf-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--tf-font-mono);
+  font-size: var(--tf-text-label);
+  font-weight: 600;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-text-mute);
+}
+.tf-label--accent { color: var(--tf-sf-accent); }
+
+/* Numbers: tabular, so dashboards do not jitter */
+.tf-metric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: var(--tf-tracking-tight);
+  line-height: 0.9;
+  font-weight: 800;
+  margin: 0;
+}
+.tf-metric--xl { font-size: var(--tf-text-metric-xl); }
+.tf-metric--lg { font-size: var(--tf-text-metric-lg); }
+.tf-metric--md { font-size: var(--tf-text-metric-md); }
+
+.tf-code {
+  font-family: var(--tf-font-mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  padding: 2px 7px;
+  border-radius: var(--tf-radius-xs);
+  background: var(--tf-sf-line-soft);
+  border: 1px solid var(--tf-sf-line);
+  color: var(--tf-sf-text);
+  white-space: nowrap;
+}
+
+.tf-accent { color: var(--tf-sf-accent); }
+
+/* --------------------------------------------------------------------------
+   4. LAYOUT PRIMITIVES
+   -------------------------------------------------------------------------- */
+.tf-shell {
+  width: min(var(--tf-shell), 100% - (var(--tf-gutter) * 2));
+  margin-inline: auto;
+}
+.tf-shell--wide { width: min(var(--tf-shell-wide), 100% - (var(--tf-gutter) * 2)); }
+
+.tf-section { padding-block: var(--tf-section-y); position: relative; }
+
+.tf-stack { display: flex; flex-direction: column; }
+.tf-stack-2 { gap: var(--tf-space-2); }
+.tf-stack-3 { gap: var(--tf-space-3); }
+.tf-stack-4 { gap: var(--tf-space-4); }
+.tf-stack-5 { gap: var(--tf-space-5); }
+.tf-stack-6 { gap: var(--tf-space-6); }
+.tf-stack-7 { gap: var(--tf-space-7); }
+
+.tf-row { display: flex; align-items: center; }
+.tf-row--gap-3 { gap: var(--tf-space-3); }
+.tf-row--gap-4 { gap: var(--tf-space-4); }
+.tf-row--between { justify-content: space-between; }
+.tf-row--wrap { flex-wrap: wrap; }
+
+.tf-grid { display: grid; gap: var(--tf-space-5); }
+.tf-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tf-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tf-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.tf-rule {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: var(--tf-sf-line);
+}
+
+/* Section heading block: tiny label, monumental title, measured lead */
+.tf-heading { display: flex; flex-direction: column; gap: var(--tf-space-5); max-width: 900px; }
+.tf-heading--center { margin-inline: auto; text-align: center; align-items: center; }
+.tf-heading--center .tf-lead { margin-inline: auto; }
+
+/* --------------------------------------------------------------------------
+   5. COMPONENTS
+   -------------------------------------------------------------------------- */
+
+/* --- Buttons ---------------------------------------------------------- */
+.tf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 24px;
+  border-radius: var(--tf-radius-pill);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--tf-dur) var(--tf-ease),
+              color var(--tf-dur) var(--tf-ease),
+              border-color var(--tf-dur) var(--tf-ease),
+              transform var(--tf-dur-fast) var(--tf-ease),
+              box-shadow var(--tf-dur) var(--tf-ease);
+}
+.tf-btn:hover { transform: translateY(-1px); }
+.tf-btn:active { transform: translateY(0); }
+.tf-btn:focus-visible {
+  outline: 2px solid var(--tf-sf-accent-hi);
+  outline-offset: 3px;
+}
+
+.tf-btn--primary {
+  background: var(--tf-emerald-600);
+  color: #ffffff;
+  box-shadow: 0 8px 24px -10px rgba(11, 118, 86, 0.7);
+}
+.tf-btn--primary:hover { background: var(--tf-emerald-700); }
+
+.tf-btn--dark {
+  background: var(--tf-ink-800);
+  color: #ffffff;
+}
+.tf-btn--dark:hover { background: var(--tf-ink-900); }
+
+.tf-btn--ghost {
+  background: transparent;
+  color: var(--tf-sf-text);
+  border-color: var(--tf-sf-line);
+}
+.tf-btn--ghost:hover { border-color: var(--tf-sf-text-mute); background: var(--tf-sf-line-soft); }
+
+.tf-btn--quiet {
+  background: transparent;
+  color: var(--tf-sf-text);
+  padding-inline: 4px;
+}
+.tf-btn--quiet:hover { color: var(--tf-sf-accent); }
+
+.tf-btn--lg { padding: 16px 30px; font-size: 15px; }
+.tf-btn--sm { padding: 9px 16px; font-size: 13px; }
+
+/* --- Cards ------------------------------------------------------------ */
+.tf-card {
+  background: var(--tf-sf-raised);
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-lg);
+  box-shadow: var(--tf-sf-shadow);
+  padding: var(--tf-space-6);
+  transition: border-color var(--tf-dur) var(--tf-ease),
+              box-shadow var(--tf-dur) var(--tf-ease),
+              transform var(--tf-dur) var(--tf-ease);
+}
+.tf-card--hover:hover {
+  border-color: var(--tf-sf-text-dim);
+  box-shadow: var(--tf-shadow-md);
+  transform: translateY(-2px);
+}
+.tf-card--flush { padding: 0; overflow: hidden; }
+.tf-card--accent { border-left: 3px solid var(--tf-sf-accent); }
+
+/* --- Badges / trust pills --------------------------------------------- */
+.tf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--tf-radius-pill);
+  font-family: var(--tf-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tf-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.tf-badge--plain::before { display: none; }
+
+.tf-badge--certified   { background: var(--tf-certified-bg);   color: var(--tf-certified); }
+.tf-badge--verified    { background: var(--tf-verified-bg);    color: var(--tf-verified); }
+.tf-badge--documented  { background: var(--tf-documented-bg);  color: var(--tf-documented); }
+.tf-badge--declared    { background: var(--tf-declared-bg);    color: var(--tf-declared); }
+.tf-badge--review      { background: var(--tf-review-bg);      color: var(--tf-review); }
+.tf-badge--missing     { background: var(--tf-missing-bg);     color: var(--tf-missing); }
+.tf-badge--neutral     { background: var(--tf-sf-line-soft);   color: var(--tf-sf-text-mute); }
+
+/* --- Metric block: very large number + tiny technical label ------------ */
+.tf-metric-block { display: flex; flex-direction: column; gap: 10px; }
+.tf-metric-block .tf-label { margin-top: 2px; }
+
+/* --- Chip -------------------------------------------------------------- */
+.tf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--tf-radius-xs);
+  border: 1px solid var(--tf-sf-line);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tf-sf-text-mute);
+  background: var(--tf-sf-line-soft);
+}
+
+/* --- Eyebrow capsule (hero label) -------------------------------------- */
+.tf-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  border-radius: var(--tf-radius-pill);
+  border: 1px solid var(--tf-sf-line);
+  background: var(--tf-sf-line-soft);
+  font-family: var(--tf-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-accent);
+}
+.tf-capsule__beacon {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tf-sf-accent-hi);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tf-sf-accent-hi) 22%, transparent);
+}
+
+/* --- Demo-data marker: demonstration values must never be mistaken
+         for production data (brief §8). ---------------------------------- */
+.tf-demo-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: var(--tf-radius-xs);
+  border: 1px dashed var(--tf-sf-line);
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tf-sf-text-mute);
+}
+
+/* --------------------------------------------------------------------------
+   5b. APPLICATION LAYER
+   The marketing system above is editorial: monumental type, generous air.
+   A console is the opposite — dense, scannable, keyboard-fast. Same tokens,
+   different density. Every app surface reads from here so Brand Console,
+   Supplier Portal, Quality Center and Operations cannot drift apart.
+   -------------------------------------------------------------------------- */
+
+/* --- brand mark (shared by the marketing header and the app chrome) ------- */
+.tf-wordmark { display: inline-flex; align-items: center; gap: 10px; flex: none; }
+.tf-wordmark__mark {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-emerald-600);
+  color: #fff;
+  font-family: var(--tf-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.tf-wordmark__name {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* --- app shell ----------------------------------------------------------- */
+.tf-app {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--tf-sf-bg);
+  color: var(--tf-sf-text);
+}
+.tf-app__side {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-5);
+  padding: var(--tf-space-5) var(--tf-space-4);
+  border-right: 1px solid var(--tf-sf-line);
+  background: var(--tf-sf-bg-alt);
+}
+.tf-app__main { min-width: 0; display: flex; flex-direction: column; }
+
+.tf-app__topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--tf-z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-4);
+  padding: var(--tf-space-4) var(--tf-space-6);
+  border-bottom: 1px solid var(--tf-sf-line);
+  background: color-mix(in srgb, var(--tf-sf-bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+.tf-app__body { padding: var(--tf-space-6); display: flex; flex-direction: column; gap: var(--tf-space-6); }
+
+/* --- side navigation ----------------------------------------------------- */
+.tf-sidenav { display: flex; flex-direction: column; gap: 2px; }
+.tf-sidenav__group {
+  margin-top: var(--tf-space-4);
+  margin-bottom: var(--tf-space-2);
+  font-family: var(--tf-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-text-dim);
+}
+.tf-sidenav__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--tf-radius-sm);
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--tf-sf-text-mute);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  transition: background-color var(--tf-dur-fast) var(--tf-ease), color var(--tf-dur-fast) var(--tf-ease);
+}
+.tf-sidenav__link:hover { background: var(--tf-sf-line-soft); color: var(--tf-sf-text); }
+.tf-sidenav__link.is-on {
+  background: var(--tf-sf-line-soft);
+  color: var(--tf-sf-text);
+  font-weight: 700;
+  box-shadow: inset 2px 0 0 var(--tf-sf-accent);
+}
+.tf-sidenav__count {
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-sf-text-dim);
+}
+
+/* --- dense metric tile --------------------------------------------------- */
+.tf-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--tf-space-4);
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-sf-raised);
+}
+.tf-tile__v {
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: var(--tf-tracking-tight);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.tf-tile--alert { border-color: color-mix(in srgb, var(--tf-missing) 45%, var(--tf-sf-line)); }
+.tf-tile--alert .tf-tile__v { color: var(--tf-missing); }
+.tf-tile--warn { border-color: color-mix(in srgb, var(--tf-review) 45%, var(--tf-sf-line)); }
+.tf-tile--warn .tf-tile__v { color: var(--tf-review); }
+.tf-tilegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: var(--tf-space-3);
+}
+
+/* --- data table ---------------------------------------------------------- */
+.tf-tablewrap { overflow-x: auto; border: 1px solid var(--tf-sf-line); border-radius: var(--tf-radius-md); background: var(--tf-sf-raised); }
+.tf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tf-table th {
+  position: sticky; top: 0;
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--tf-sf-bg-alt);
+  border-bottom: 1px solid var(--tf-sf-line);
+  font-family: var(--tf-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: var(--tf-tracking-label);
+  text-transform: uppercase;
+  color: var(--tf-sf-text-mute);
+  white-space: nowrap;
+}
+.tf-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tf-sf-line-soft);
+  vertical-align: top;
+  color: var(--tf-sf-text-mute);
+}
+.tf-table tbody tr:last-child td { border-bottom: 0; }
+.tf-table tbody tr { transition: background-color var(--tf-dur-fast) var(--tf-ease); }
+.tf-table tbody tr:hover { background: var(--tf-sf-line-soft); }
+.tf-table strong { color: var(--tf-sf-text); font-weight: 650; }
+.tf-table .tf-sub { display: block; margin-top: 3px; font-size: 11px; color: var(--tf-sf-text-dim); }
+.tf-table .tf-num { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; color: var(--tf-sf-text); }
+
+/* --- filters & form controls --------------------------------------------- */
+.tf-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tf-space-3); }
+.tf-field-inline { display: flex; flex-direction: column; gap: 5px; }
+.tf-select, .tf-input, .tf-textarea {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-sf-raised);
+  color: var(--tf-sf-text);
+  min-width: 150px;
+}
+.tf-textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+.tf-select:focus-visible, .tf-input:focus-visible, .tf-textarea:focus-visible {
+  outline: 2px solid var(--tf-sf-accent-hi);
+  outline-offset: 1px;
+}
+
+/* --- workflow status ----------------------------------------------------- */
+.tf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: var(--tf-radius-pill);
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tf-status--requested { background: var(--tf-declared-bg); color: var(--tf-declared); }
+.tf-status--submitted { background: var(--tf-documented-bg); color: var(--tf-documented); }
+.tf-status--approved  { background: var(--tf-certified-bg); color: var(--tf-certified); }
+.tf-status--rejected  { background: var(--tf-missing-bg); color: var(--tf-missing); }
+.tf-status--closed    { background: var(--tf-sf-line-soft); color: var(--tf-sf-text-mute); }
+
+/* --- score bars ---------------------------------------------------------- */
+.tf-bar { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(70px, 2fr) 40px; gap: 10px; align-items: center; font-size: 11.5px; color: var(--tf-sf-text-mute); }
+.tf-bar__track { height: 6px; border-radius: var(--tf-radius-pill); background: var(--tf-sf-line); overflow: hidden; }
+.tf-bar__fill { display: block; height: 100%; border-radius: var(--tf-radius-pill); background: var(--tf-sf-accent); transition: width var(--tf-dur-slow) var(--tf-ease); }
+.tf-bar__fill.is-low { background: var(--tf-review); }
+.tf-bar__fill.is-critical { background: var(--tf-missing); }
+.tf-bar__v { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--tf-sf-text); }
+
+/* --- empty / loading / notice -------------------------------------------- */
+.tf-empty {
+  padding: var(--tf-space-7) var(--tf-space-5);
+  text-align: center;
+  border: 1px dashed var(--tf-sf-line);
+  border-radius: var(--tf-radius-md);
+  color: var(--tf-sf-text-mute);
+  font-size: 13px;
+}
+.tf-notice {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--tf-radius-sm);
+  border: 1px solid var(--tf-sf-line);
+  background: var(--tf-sf-line-soft);
+  font-size: 13px;
+  color: var(--tf-sf-text);
+}
+.tf-notice--ok { border-color: color-mix(in srgb, var(--tf-verified) 40%, var(--tf-sf-line)); background: var(--tf-verified-bg); color: var(--tf-verified); }
+.tf-notice--err { border-color: color-mix(in srgb, var(--tf-missing) 40%, var(--tf-sf-line)); background: var(--tf-missing-bg); color: var(--tf-missing); }
+
+/* --- panel / drawer ------------------------------------------------------ */
+.tf-panel {
+  border: 1px solid var(--tf-sf-line);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-sf-raised);
+  padding: var(--tf-space-5);
+}
+.tf-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--tf-space-4);
+}
+
+/* --- app responsive ------------------------------------------------------ */
+@media (max-width: 1024px) {
+  .tf-app { grid-template-columns: minmax(0, 1fr); }
+  .tf-app__side {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    border-right: 0;
+    border-bottom: 1px solid var(--tf-sf-line);
+  }
+  .tf-sidenav { flex-direction: row; flex-wrap: wrap; }
+  .tf-sidenav__group { display: none; }
+  .tf-sidenav__link { width: auto; }
+  .tf-app__body { padding: var(--tf-space-4); }
+}
+
+/* --------------------------------------------------------------------------
+   6. TEXTILE TEXTURES
+   Woven structures rendered as inline SVG at very low opacity. Technology
+   stays dominant; the textile world is felt, not photographed.
+   -------------------------------------------------------------------------- */
+.tf-tex {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Plain weave: warp over weft */
+.tf-tex--weave {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M0 6h24M0 18h24M6 0v24M18 0v24' stroke='%2310b981' stroke-width='0.5' fill='none' opacity='0.22'/%3E%3C/svg%3E");
+  background-size: 24px 24px;
+  mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 72%);
+}
+
+/* Twill: the diagonal of denim */
+.tf-tex--twill {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M-4 4l8-8M0 16L16 0M12 20l8-8' stroke='%23ffffff' stroke-width='0.6' fill='none' opacity='0.16'/%3E%3C/svg%3E");
+  background-size: 16px 16px;
+}
+
+/* Jersey: fine knit columns */
+.tf-tex--jersey {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14'%3E%3Cpath d='M0 7q2.5-7 5 0t5 0' stroke='%2310b981' stroke-width='0.5' fill='none' opacity='0.18'/%3E%3C/svg%3E");
+  background-size: 10px 14px;
+}
+
+/* Warp threads: vertical fibre field */
+.tf-tex--warp {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 0v8M5 0v8' stroke='%23ffffff' stroke-width='0.4' fill='none' opacity='0.12'/%3E%3C/svg%3E");
+  background-size: 8px 8px;
+}
+
+/* --------------------------------------------------------------------------
+   7. MOTION + ACCESSIBILITY
+   -------------------------------------------------------------------------- */
+
+/* Data flowing along a connector: dash offset travel */
+.tf-flow {
+  stroke-dasharray: 5 9;
+  animation: tf-flow var(--tf-dur-flow) linear infinite;
+}
+@keyframes tf-flow {
+  to { stroke-dashoffset: -140; }
+}
+
+/* Scroll reveal — opt-in via [data-reveal]; progressive disclosure */
+.tf-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--tf-dur-slow) var(--tf-ease), transform var(--tf-dur-slow) var(--tf-ease);
+}
+.tf-reveal.is-in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tf-flow { stroke-dasharray: none; }
+  .tf-reveal { opacity: 1; transform: none; }
+}
+
+/* Keyboard focus is never decorative */
+:focus-visible {
+  outline: 2px solid var(--tf-sf-accent-hi);
+  outline-offset: 3px;
+  border-radius: var(--tf-radius-xs);
+}
+
+.tf-visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE
+   Supply-chain graphs collapse to interactive vertical stacks (§28).
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .tf-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tf-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .tf-grid--2,
+  .tf-grid--3,
+  .tf-grid--4 { grid-template-columns: minmax(0, 1fr); }
+  .tf-row--wrap-mobile { flex-direction: column; align-items: stretch; }
+  :root {
+    --tf-space-9: 64px;
+    --tf-space-10: 80px;
+    --tf-space-11: 96px;
+  }
+}
+/* TF:DS:END */
+    /* Compléments propres à cette surface. Tout le reste vient du design system. */
+    body { margin: 0; background: var(--tf-sf-bg); color: var(--tf-ink-900); font-family: var(--tf-font-sans); }
+    .ev-trust { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .ev-trust::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+    /* Échelle de confiance du design system (§2). Contrastes mesurés sur
+       --tf-paper #fafaf7 : verified #0b7656 = 5.62:1, declared #1f6f9c = 5.27:1,
+       missing #b3261e = 6.25:1, ambre #96650d = 4.58:1 sur #fff3d8. */
+    .ev-trust--verified { color: var(--tf-verified); }
+    .ev-trust--declared { color: var(--tf-declared); }
+    .ev-trust--pending  { color: #96650d; }
+    .ev-trust--failed   { color: var(--tf-missing); }
+    .ev-doc { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .ev-doc__ext {
+      flex: none; width: 34px; height: 34px; display: grid; place-items: center;
+      border-radius: var(--tf-radius-sm); background: var(--tf-sf-bg-alt);
+      font-family: var(--tf-font-mono); font-size: 10px; font-weight: 700;
+      letter-spacing: .04em; color: var(--tf-ink-500); text-transform: uppercase;
+    }
+    .ev-doc__name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ev-detail { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+    @media (max-width: 900px) { .ev-detail { grid-template-columns: minmax(0, 1fr); } }
+    .ev-kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 13px; }
+    .ev-kv dt { color: var(--tf-ink-300); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .ev-kv dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body class="tf-surface tf-surface--light">
+  <div id="app" class="tf-app" aria-busy="true"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* ---------------------------------------------------------------- état */
+
+      const state = {
+        demo: (() => {
+          const flag = new URLSearchParams(location.search).get('demo');
+          return flag === null ? false : !['0', 'false', 'off'].includes(String(flag).toLowerCase());
+        })(),
+        loading: true,
+        view: 'overview',
+        notice: null,
+        error: null,
+        data: { documents: [], count: 0, byKind: {}, byStatus: {}, byVerification: {}, expiringWithin90Days: 0, kinds: [], statuses: [] },
+        filterKind: '',
+        filterStatus: '',
+        selectedId: null,
+        detail: null,
+        security: null,
+      };
+
+      /* Le vocabulaire du brief (Documents, Certificats, Rapports d'essais,
+         Déclarations, Audits, Factures, Dossiers de production) ne recoupe pas
+         l'enum réel `document_kind`. On affiche les six valeurs qui existent
+         vraiment : des catégories inventées produiraient des filtres vides. */
+      const KIND_LABELS = {
+        certificate: 'Certificat',
+        technical_spec: 'Spécification technique',
+        origin_proof: "Preuve d'origine",
+        audit_report: "Rapport d'audit",
+        invoice: 'Facture',
+        other: 'Autre document',
+      };
+      const STATUS_LABELS = {
+        uploaded: 'Téléversé',
+        scanning: 'Contrôle en cours',
+        available: 'Disponible',
+        rejected: 'Rejeté',
+      };
+      const VERIFICATION_LABELS = {
+        unverified: 'Non vérifié',
+        pending: 'Vérification en cours',
+        passed: 'Vérifié',
+        failed: 'Échec de vérification',
+        verified: 'Vérifié',
+      };
+
+      const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const fmtDate = (value) => (value ? new Date(value).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+      const fmtBytes = (value) => {
+        const n = Number(value) || 0;
+        if (n >= 1048576) return (n / 1048576).toFixed(1) + ' Mo';
+        if (n >= 1024) return Math.round(n / 1024) + ' Ko';
+        return n + ' o';
+      };
+      const ext = (filename) => (String(filename || '').split('.').pop() || 'doc').slice(0, 4);
+
+      function trustOf(doc) {
+        const status = doc.latestVerificationStatus || 'unverified';
+        if (status === 'passed' || status === 'verified') return { key: 'verified', label: 'Vérifié' };
+        if (status === 'failed') return { key: 'failed', label: 'Échec' };
+        if (status === 'pending') return { key: 'pending', label: 'En cours' };
+        return { key: 'declared', label: 'Déclaré' };
+      }
+
+      function daysUntil(value) {
+        if (!value) return null;
+        return Math.round((new Date(value).getTime() - Date.now()) / 86400000);
+      }
+
+      /* ------------------------------------------------------------------ api */
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `requete_echouee_${response.status}`);
+        return payload;
+      }
+
+      /* ------------------------------------------------------- données démo */
+
+      function demoData() {
+        const now = Date.now();
+        const iso = (days) => new Date(now + days * 86400000).toISOString();
+        return {
+          documents: [
+            { id: 'demo-doc-1', ownerOrganizationId: 'demo-org-1', ownerOrganizationName: 'Nhãn Textile', originalFilename: 'gots-cu-881294-2025.pdf', contentType: 'application/pdf', byteSize: 245760, sha256: 'a1b2c3', kind: 'certificate', status: 'available', visibility: 'shared', expiresAt: iso(64), createdAt: iso(-210), availableAt: iso(-209), updatedAt: iso(-12), metadata: {}, verificationCount: 2, latestVerificationStatus: 'passed' },
+            { id: 'demo-doc-2', ownerOrganizationId: 'demo-org-1', ownerOrganizationName: 'Nhãn Textile', originalFilename: 'oeko-tex-standard-100.pdf', contentType: 'application/pdf', byteSize: 189440, sha256: 'd4e5f6', kind: 'certificate', status: 'available', visibility: 'shared', expiresAt: iso(21), createdAt: iso(-330), availableAt: iso(-329), updatedAt: iso(-40), metadata: {}, verificationCount: 1, latestVerificationStatus: 'passed' },
+            { id: 'demo-doc-3', ownerOrganizationId: 'demo-org-2', ownerOrganizationName: 'Atelier Milano', originalFilename: 'smeta-audit-2026.pdf', contentType: 'application/pdf', byteSize: 1048576, sha256: 'g7h8i9', kind: 'audit_report', status: 'available', visibility: 'private', expiresAt: null, createdAt: iso(-45), availableAt: iso(-44), updatedAt: iso(-44), metadata: {}, verificationCount: 0, latestVerificationStatus: null },
+            { id: 'demo-doc-4', ownerOrganizationId: 'demo-org-2', ownerOrganizationName: 'Atelier Milano', originalFilename: 'fiche-technique-lin.pdf', contentType: 'application/pdf', byteSize: 76288, sha256: 'j1k2l3', kind: 'technical_spec', status: 'available', visibility: 'shared', expiresAt: null, createdAt: iso(-18), availableAt: iso(-18), updatedAt: iso(-18), metadata: {}, verificationCount: 1, latestVerificationStatus: 'pending' },
+            { id: 'demo-doc-5', ownerOrganizationId: 'demo-org-3', ownerOrganizationName: 'Porto Weaving', originalFilename: 'preuve-origine-lot-a118.pdf', contentType: 'application/pdf', byteSize: 51200, sha256: 'm4n5o6', kind: 'origin_proof', status: 'scanning', visibility: 'private', expiresAt: null, createdAt: iso(-1), availableAt: null, updatedAt: iso(-1), metadata: {}, verificationCount: 0, latestVerificationStatus: null },
+            { id: 'demo-doc-6', ownerOrganizationId: 'demo-org-3', ownerOrganizationName: 'Porto Weaving', originalFilename: 'facture-2026-0341.pdf', contentType: 'application/pdf', byteSize: 34816, sha256: 'p7q8r9', kind: 'invoice', status: 'rejected', visibility: 'private', expiresAt: null, createdAt: iso(-7), availableAt: null, updatedAt: iso(-6), metadata: {}, verificationCount: 1, latestVerificationStatus: 'failed' },
+          ],
+          kinds: ['certificate', 'technical_spec', 'origin_proof', 'audit_report', 'invoice', 'other'],
+          statuses: ['uploaded', 'scanning', 'available', 'rejected'],
+        };
+      }
+
+      function aggregate(payload) {
+        const documents = payload.documents || [];
+        const countBy = (pick) => documents.reduce((acc, d) => { const k = pick(d) || 'unknown'; acc[k] = (acc[k] || 0) + 1; return acc; }, {});
+        return {
+          documents,
+          count: documents.length,
+          byKind: payload.byKind || countBy((d) => d.kind),
+          byStatus: payload.byStatus || countBy((d) => d.status),
+          byVerification: payload.byVerification || countBy((d) => d.latestVerificationStatus || 'unverified'),
+          expiringWithin90Days: typeof payload.expiringWithin90Days === 'number'
+            ? payload.expiringWithin90Days
+            : documents.filter((d) => { const n = daysUntil(d.expiresAt); return n !== null && n >= 0 && n <= 90; }).length,
+          kinds: payload.kinds || Object.keys(KIND_LABELS),
+          statuses: payload.statuses || Object.keys(STATUS_LABELS),
+        };
+      }
+
+      async function load() {
+        state.loading = true;
+        state.error = null;
+        render();
+        try {
+          if (state.demo) {
+            state.data = aggregate(demoData());
+          } else {
+            state.data = aggregate(await api('/api/documents'));
+          }
+        } catch (error) {
+          state.error = error.message;
+        }
+        state.loading = false;
+        render();
+      }
+
+      /* ------------------------------------------------------------- actions */
+
+      async function verifyAi(id) {
+        state.notice = null;
+        try {
+          if (state.demo) {
+            const doc = state.data.documents.find((d) => d.id === id);
+            if (doc) { doc.latestVerificationStatus = 'passed'; doc.verificationCount += 1; }
+            state.notice = 'Vérification automatique enregistrée (mode démonstration).';
+            state.data = aggregate(state.data);
+            render();
+            return;
+          }
+          const result = await api(`/api/documents/${encodeURIComponent(id)}/verify-ai`, { method: 'POST', body: JSON.stringify({}) });
+          state.notice = result.verified ? 'Document vérifié automatiquement.' : `Vérification non concluante (${result.status || 'inconnue'}).`;
+          await load();
+        } catch (error) { state.notice = 'Échec : ' + error.message; render(); }
+      }
+
+      async function openSecurity(id) {
+        state.notice = null;
+        try {
+          if (state.demo) {
+            const doc = state.data.documents.find((d) => d.id === id);
+            state.security = { document: doc, securityScan: { clean: doc.status === 'available', status: doc.status === 'available' ? 'clean' : doc.status === 'rejected' ? 'quarantined' : 'pending' }, isAvailable: doc.status === 'available', isQuarantined: doc.status === 'rejected' };
+          } else {
+            const result = await api(`/api/documents/${encodeURIComponent(id)}/security-report`);
+            state.security = result.securityReport;
+          }
+          render();
+        } catch (error) { state.notice = 'Rapport de sécurité indisponible : ' + error.message; render(); }
+      }
+
+      async function openDocument(id) {
+        state.notice = null;
+        state.selectedId = id;
+        state.detail = null;
+        state.security = null;
+        state.view = 'detail';
+        render();
+        try {
+          if (state.demo) {
+            const doc = state.data.documents.find((d) => d.id === id);
+            state.detail = { document: doc, verifications: doc.verificationCount ? [{ id: 'demo-v1', method: 'ai', status: doc.latestVerificationStatus, notes: null, verifiedAt: doc.updatedAt, createdAt: doc.updatedAt }] : [], certifications: [], latestAiStatus: doc.latestVerificationStatus || 'unverified' };
+          } else {
+            state.detail = (await api(`/api/documents/${encodeURIComponent(id)}/verification-report`)).report;
+          }
+        } catch (error) { state.notice = 'Rapport de vérification indisponible : ' + error.message; }
+        render();
+      }
+
+      async function downloadDocument(id) {
+        state.notice = null;
+        try {
+          if (state.demo) { state.notice = 'Téléchargement simulé en mode démonstration.'; render(); return; }
+          const result = await api(`/api/documents/${encodeURIComponent(id)}/download`);
+          if (result.download && result.download.url) { window.open(result.download.url, '_blank', 'noopener'); state.notice = `Lien de téléchargement valable ${result.download.expiresInSeconds || 600} s.`; }
+          else state.notice = 'Aucune URL de téléchargement renvoyée.';
+        } catch (error) { state.notice = 'Téléchargement impossible : ' + error.message; }
+        render();
+      }
+
+      /* --------------------------------------------------------------- vues */
+
+      function filtered() {
+        return state.data.documents.filter((d) =>
+          (!state.filterKind || d.kind === state.filterKind) &&
+          (!state.filterStatus || d.status === state.filterStatus));
+      }
+
+      function tile(label, value, modifier, note) {
+        return `<div class="tf-tile${modifier ? ' ' + modifier : ''}">
+          <span class="tf-label">${esc(label)}</span>
+          <span class="tf-tile__v">${esc(String(value))}</span>
+          ${note ? `<span class="tf-sub">${esc(note)}</span>` : ''}
+        </div>`;
+      }
+
+      function viewOverview() {
+        const d = state.data;
+        const verified = d.byVerification.passed || d.byVerification.verified || 0;
+        const rate = d.count ? Math.round((verified / d.count) * 100) : 0;
+        const rows = filtered().slice(0, 6);
+        return `
+          ${topbar('Centre de preuves', 'Chaque document, sa source, son statut, sa vérification et son échéance.')}
+          <div class="tf-app__body">
+            ${notice()}
+            <div class="tf-tilegrid">
+              ${tile('Documents accessibles', d.count, null, d.count === 1 ? 'document' : 'documents')}
+              ${tile('Vérifiés', verified, null, d.count ? rate + ' % du fonds' : 'aucun document')}
+              ${tile('Certificats', d.byKind.certificate || 0)}
+              ${tile("Rapports d'audit", d.byKind.audit_report || 0)}
+              ${tile('Échéance < 90 jours', d.expiringWithin90Days, d.expiringWithin90Days > 0 ? 'tf-tile--warn' : null, d.expiringWithin90Days > 0 ? 'à renouveler' : 'rien à renouveler')}
+              ${tile('Rejetés', d.byStatus.rejected || 0, d.byStatus.rejected ? 'tf-tile--alert' : null, d.byStatus.rejected ? 'quarantaine' : 'aucun')}
+            </div>
+
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head">
+                <h2 class="tf-h3">Répartition par vérification</h2>
+                <span class="tf-sub">calculée sur les ${d.count} document(s) accessibles</span>
+              </div>
+              ${Object.keys(VERIFICATION_LABELS).length && d.count ? Object.entries(d.byVerification).map(([key, value]) => {
+                const pct = Math.round((value / d.count) * 100);
+                return `<div style="display:grid;grid-template-columns:170px minmax(0,1fr) 56px;gap:12px;align-items:center;margin-bottom:9px;">
+                  <span class="tf-label">${esc(VERIFICATION_LABELS[key] || key)}</span>
+                  <div class="tf-bar"><div class="tf-bar__track"><div class="tf-bar__fill${pct < 25 ? ' is-low' : ''}" style="width:${pct}%"></div></div></div>
+                  <span class="tf-bar__v">${value}</span>
+                </div>`;
+              }).join('') : '<p class="tf-empty">Aucun document accessible pour le moment.</p>'}
+            </div>
+
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head">
+                <h2 class="tf-h3">Échéances les plus proches</h2>
+                <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-nav="documents">Tout voir</button>
+              </div>
+              ${table(rows.filter((r) => r.expiresAt).sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt)).slice(0, 5))}
+            </div>
+          </div>`;
+      }
+
+      function table(rows) {
+        if (!rows.length) return '<p class="tf-empty">Aucun document ne correspond à ce filtre.</p>';
+        return `<div class="tf-tablewrap"><table class="tf-table">
+          <thead><tr>
+            <th scope="col">Document</th>
+            <th scope="col">Source</th>
+            <th scope="col">Nature</th>
+            <th scope="col">Statut</th>
+            <th scope="col">Vérification</th>
+            <th scope="col">Échéance</th>
+            <th scope="col"><span class="tf-visually-hidden">Actions</span></th>
+          </tr></thead>
+          <tbody>${rows.map((doc) => {
+            const trust = trustOf(doc);
+            const days = daysUntil(doc.expiresAt);
+            const expiring = days !== null && days >= 0 && days <= 90;
+            return `<tr>
+              <td><div class="ev-doc"><span class="ev-doc__ext" aria-hidden="true">${esc(ext(doc.originalFilename))}</span><span class="ev-doc__name">${esc(doc.originalFilename)}</span></div><div class="tf-sub">${fmtBytes(doc.byteSize)} · ajouté le ${fmtDate(doc.createdAt)}</div></td>
+              <td>${esc(doc.ownerOrganizationName || '—')}</td>
+              <td>${esc(KIND_LABELS[doc.kind] || doc.kind)}</td>
+              <td><span class="tf-badge tf-badge--neutral">${esc(STATUS_LABELS[doc.status] || doc.status)}</span></td>
+              <td><span class="ev-trust ev-trust--${trust.key}">${esc(trust.label)}</span></td>
+              <td>${doc.expiresAt ? `${fmtDate(doc.expiresAt)}${expiring ? `<div class="tf-sub">dans ${days} j</div>` : ''}` : '<span class="tf-sub">sans échéance</span>'}</td>
+              <td class="tf-num"><button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-open="${esc(doc.id)}">Ouvrir</button></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+
+      function viewDocuments() {
+        const rows = filtered();
+        return `
+          ${topbar('Documents', 'Le fonds de preuves accessible à votre organisation.')}
+          <div class="tf-app__body">
+            ${notice()}
+            <div class="tf-toolbar">
+              <label class="tf-field-inline"><span class="tf-label">Nature</span>
+                <select class="tf-select" data-filter="kind">
+                  <option value="">Toutes</option>
+                  ${state.data.kinds.map((k) => `<option value="${esc(k)}"${state.filterKind === k ? ' selected' : ''}>${esc(KIND_LABELS[k] || k)}</option>`).join('')}
+                </select>
+              </label>
+              <label class="tf-field-inline"><span class="tf-label">Statut</span>
+                <select class="tf-select" data-filter="status">
+                  <option value="">Tous</option>
+                  ${state.data.statuses.map((s) => `<option value="${esc(s)}"${state.filterStatus === s ? ' selected' : ''}>${esc(STATUS_LABELS[s] || s)}</option>`).join('')}
+                </select>
+              </label>
+              <span class="tf-sub">${rows.length} document(s) affiché(s) sur ${state.data.count}</span>
+            </div>
+            ${table(rows)}
+          </div>`;
+      }
+
+      function viewExpiring() {
+        const soon = state.data.documents
+          .filter((d) => { const n = daysUntil(d.expiresAt); return n !== null && n >= 0 && n <= 90; })
+          .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt));
+        const lapsed = state.data.documents.filter((d) => { const n = daysUntil(d.expiresAt); return n !== null && n < 0; });
+        return `
+          ${topbar('Échéances', 'Ce qui expire bientôt et ce qui est déjà périmé.')}
+          <div class="tf-app__body">
+            ${notice()}
+            <div class="tf-panel">
+              <div class="tf-panel__head"><h2 class="tf-h3">Expirent sous 90 jours</h2><span class="tf-badge tf-badge--neutral">${soon.length}</span></div>
+              ${soon.length ? table(soon) : '<p class="tf-empty">Aucune échéance proche. Les documents sans date d’expiration ne sont pas comptés.</p>'}
+            </div>
+            <div class="tf-panel" style="margin-top:var(--tf-space-6)">
+              <div class="tf-panel__head"><h2 class="tf-h3">Déjà périmés</h2><span class="tf-badge tf-badge--neutral">${lapsed.length}</span></div>
+              ${lapsed.length ? table(lapsed) : '<p class="tf-empty">Aucun document périmé.</p>'}
+            </div>
+          </div>`;
+      }
+
+      function viewDetail() {
+        const doc = state.data.documents.find((d) => d.id === state.selectedId);
+        if (!doc) return `${topbar('Document', '')}<div class="tf-app__body"><p class="tf-empty">Document introuvable.</p></div>`;
+        const trust = trustOf(doc);
+        const verifications = (state.detail && state.detail.verifications) || [];
+        const scan = state.security && state.security.securityScan;
+        return `
+          ${topbar(doc.originalFilename, (KIND_LABELS[doc.kind] || doc.kind) + ' · ' + (doc.ownerOrganizationName || 'source inconnue'))}
+          <div class="tf-app__body">
+            ${notice()}
+            <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-nav="documents">← Retour aux documents</button>
+            <div class="ev-detail" style="margin-top:var(--tf-space-4)">
+              <div>
+                <div class="tf-panel">
+                  <div class="tf-panel__head">
+                    <h2 class="tf-h3">Fiche du document</h2>
+                    <span class="ev-trust ev-trust--${trust.key}">${esc(trust.label)}</span>
+                  </div>
+                  <dl class="ev-kv">
+                    <dt>Source</dt><dd>${esc(doc.ownerOrganizationName || '—')}</dd>
+                    <dt>Nature</dt><dd>${esc(KIND_LABELS[doc.kind] || doc.kind)}</dd>
+                    <dt>Statut</dt><dd>${esc(STATUS_LABELS[doc.status] || doc.status)}</dd>
+                    <dt>Ajouté le</dt><dd>${fmtDate(doc.createdAt)}</dd>
+                    <dt>Disponible le</dt><dd>${fmtDate(doc.availableAt)}</dd>
+                    <dt>Échéance</dt><dd>${doc.expiresAt ? fmtDate(doc.expiresAt) : 'sans échéance'}</dd>
+                    <dt>Taille</dt><dd>${fmtBytes(doc.byteSize)}</dd>
+                    <dt>Empreinte</dt><dd>${doc.sha256 ? esc(String(doc.sha256).slice(0, 16)) + '…' : 'non calculée'}</dd>
+                    <dt>Visibilité</dt><dd>${esc(doc.visibility === 'shared' ? 'Partagé' : 'Privé')}</dd>
+                  </dl>
+                </div>
+
+                <div class="tf-panel" style="margin-top:var(--tf-space-5)">
+                  <div class="tf-panel__head"><h2 class="tf-h3">Historique de vérification</h2><span class="tf-badge tf-badge--neutral">${verifications.length}</span></div>
+                  ${state.detail === null ? '<p class="tf-sub">Chargement du rapport…</p>'
+                    : verifications.length ? `<div class="tf-tablewrap"><table class="tf-table">
+                        <thead><tr><th scope="col">Méthode</th><th scope="col">Résultat</th><th scope="col">Date</th><th scope="col">Note</th></tr></thead>
+                        <tbody>${verifications.map((v) => `<tr>
+                          <td>${esc(v.method || '—')}</td>
+                          <td>${esc(VERIFICATION_LABELS[v.status] || v.status || '—')}</td>
+                          <td>${fmtDate(v.verifiedAt || v.createdAt)}</td>
+                          <td>${esc(v.notes || '—')}</td>
+                        </tr>`).join('')}</tbody></table></div>`
+                    : '<p class="tf-empty">Ce document n’a encore fait l’objet d’aucune vérification.</p>'}
+                </div>
+
+                ${scan ? `<div class="tf-panel" style="margin-top:var(--tf-space-5)">
+                  <div class="tf-panel__head"><h2 class="tf-h3">Rapport de sécurité</h2></div>
+                  <div class="tf-notice ${scan.clean ? 'tf-notice--ok' : 'tf-notice--err'}">
+                    ${scan.clean ? 'Analyse antivirus : aucun contenu malveillant détecté.' : `Analyse antivirus : statut « ${esc(scan.status || 'inconnu')} ». Le document est ${state.security.isQuarantined ? 'en quarantaine' : 'en attente de contrôle'}.`}
+                  </div>
+                </div>` : ''}
+              </div>
+
+              <div class="tf-panel">
+                <div class="tf-panel__head"><h2 class="tf-h3">Actions</h2></div>
+                <div style="display:grid;gap:9px;">
+                  <button type="button" class="tf-btn tf-btn--dark" data-verify="${esc(doc.id)}">Vérifier automatiquement</button>
+                  <button type="button" class="tf-btn tf-btn--ghost" data-security="${esc(doc.id)}">Rapport de sécurité</button>
+                  <button type="button" class="tf-btn tf-btn--ghost" data-download="${esc(doc.id)}">Télécharger</button>
+                </div>
+                <p class="tf-sub" style="margin-top:14px;">La vérification automatique produit un indice technique. Elle ne constitue ni une certification ni un avis juridique.</p>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      /* ------------------------------------------------------------ chrome */
+
+      function notice() {
+        if (state.error) return `<div class="tf-notice tf-notice--err">Chargement impossible : ${esc(state.error)}</div>`;
+        if (state.notice) return `<div class="tf-notice tf-notice--ok">${esc(state.notice)}</div>`;
+        return '';
+      }
+
+      function topbar(title, sub) {
+        return `<header class="tf-app__topbar">
+          <div>
+            <span class="tf-label">Evidence Center</span>
+            <h1 class="tf-h2" style="margin-top:4px">${esc(title)}</h1>
+            ${sub ? `<p class="tf-sub" style="margin-top:4px">${esc(sub)}</p>` : ''}
+          </div>
+          <div>${state.demo ? '<span class="tf-demo-mark">Données de démonstration</span>' : ''}</div>
+        </header>`;
+      }
+
+      function sidenav() {
+        const links = [['overview', 'Vue d’ensemble'], ['documents', 'Documents'], ['expiring', 'Échéances']];
+        const counts = { documents: state.data.count, expiring: state.data.expiringWithin90Days };
+        return `<aside class="tf-app__side">
+          <a href="/" class="tf-wordmark" aria-label="TRACEFAB">
+            <span class="tf-wordmark__mark" aria-hidden="true">tf</span>
+            <span class="tf-wordmark__name">TRACEFAB</span>
+          </a>
+          <nav class="tf-sidenav" aria-label="Evidence Center">
+            <div class="tf-sidenav__group">Preuves</div>
+            ${links.map(([id, label]) => `
+              <button type="button" class="tf-sidenav__link${state.view === id ? ' is-on' : ''}" data-nav="${id}" aria-current="${state.view === id ? 'page' : 'false'}">
+                <span>${label}</span>${counts[id] ? `<span class="tf-sidenav__count">${counts[id]}</span>` : ''}
+              </button>`).join('')}
+          </nav>
+          <nav class="tf-sidenav" aria-label="Autres surfaces" style="margin-top:auto">
+            <div class="tf-sidenav__group">Surfaces</div>
+            <a class="tf-sidenav__link" href="/quality-center/">Quality Center</a>
+            <a class="tf-sidenav__link" href="/brand-console/">Brand Console</a>
+            <a class="tf-sidenav__link" href="/supplier-portal/">Supplier Portal</a>
+          </nav>
+        </aside>`;
+      }
+
+      function render() {
+        const app = document.getElementById('app');
+        const body = { overview: viewOverview, documents: viewDocuments, expiring: viewExpiring, detail: viewDetail }[state.view] || viewOverview;
+        app.setAttribute('aria-busy', state.loading ? 'true' : 'false');
+        app.innerHTML = `${sidenav()}<main class="tf-app__main">${body()}</main>`;
+        bind();
+      }
+
+      function bind() {
+        document.querySelectorAll('[data-nav]').forEach((el) => {
+          el.onclick = () => { state.view = el.dataset.nav; state.notice = null; state.security = null; render(); };
+        });
+        document.querySelectorAll('[data-open]').forEach((el) => { el.onclick = () => openDocument(el.dataset.open); });
+        document.querySelectorAll('[data-verify]').forEach((el) => { el.onclick = () => verifyAi(el.dataset.verify); });
+        document.querySelectorAll('[data-security]').forEach((el) => { el.onclick = () => openSecurity(el.dataset.security); });
+        document.querySelectorAll('[data-download]').forEach((el) => { el.onclick = () => downloadDocument(el.dataset.download); });
+        document.querySelectorAll('[data-filter]').forEach((el) => {
+          el.onchange = () => {
+            if (el.dataset.filter === 'kind') state.filterKind = el.value;
+            if (el.dataset.filter === 'status') state.filterStatus = el.value;
+            render();
+          };
+        });
+      }
+
+      window.tracefabEvidenceCenter = { state, load, aggregate, trustOf, daysUntil };
+      load();
+    })();
+  </script>
+</body>
+</html>

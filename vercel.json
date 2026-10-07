@@ -80,6 +80,10 @@
       "dest": "/operations/index.html"
     },
     {
+      "src": "/evidence(?:/)?",
+      "dest": "/evidence/index.html"
+    },
+    {
       "src": "/i18n-engine.js",
       "dest": "/public/i18n-engine.js"
     },

@@ -785,3 +785,111 @@ l'encart est exposé en `role="note"`.
 
 **Aucune capture d'écran.** L'encart de relecture est prouvé présent, correctement classé et
 accessible ; son rendu visuel réel reste à juger dans un navigateur.
+
+---
+
+# Chantier 8 — Evidence Center
+
+Le chantier 8 du brief est « Evidence + Quality ». La moitié Quality (Quality Center) était
+faite ; la moitié **Evidence** ne l'était pas. Corrigé.
+
+## Le manque
+
+| | avant | après |
+| --- | --- | --- |
+| routes `documents/*` côté marque | 5 déclarées | 6 (liste ajoutée) |
+| appelées par une surface | **0** | **5** |
+| surface Evidence Center | inexistante | `evidence/index.html` |
+
+La Brand Console ne contenait **aucun** appel `/api/*document*`. Les cinq routes
+(`upload-intent`, `download`, `verify-ai`, `security-report`, `verification-report`) étaient
+écrites, enregistrées, testées côté serveur — et inatteignables, faute d'un écran capable
+d'énumérer les documents sur lesquels elles opèrent.
+
+## La seule route écrite
+
+`GET /api/documents`. Aucune route de liste n'existait, côté marque, enregistrée ou non : le
+seul `documents.findMany` du dépôt est borné à `owner_organization_id = fournisseur`.
+
+L'autorisation n'est **pas** réinventée : elle est déléguée à la fonction SQL existante
+`tracefab_can_access_document(uuid)`, la même que `verification-report` et `security-report`
+emploient. Cette route ne peut donc pas élargir ce qu'un appelant a le droit de voir ; elle
+énumère ce que cette fonction autorise déjà (membre de l'organisation propriétaire, partage
+explicite via `data_shares`, preuve rattachée à une réponse de collecte, ou document adossé à
+une certification accessible). Lecture seule, sans modification de schéma.
+
+## Les catégories du brief n'existent pas toutes
+
+Le brief cite sept catégories (Documents, Certificates, Test Reports, Declarations, Audits,
+Invoices, Production Records). L'enum réel `document_kind` en a **six** : `certificate`,
+`technical_spec`, `origin_proof`, `audit_report`, `invoice`, `other`. Il n'existe ni
+« test report » ni « declaration » ni « production record ». L'interface affiche les six
+valeurs réelles : des catégories inventées auraient produit des filtres vides.
+
+## Ce qui est rendu
+
+Quatre vues : vue d'ensemble (six indicateurs calculés + répartition par niveau de
+vérification + échéances proches), documents (table filtrable par nature et statut),
+échéances (sous 90 jours / déjà périmés), fiche document.
+
+La fiche porte les huit attributs du brief : source, nature, statut, dates d'ajout et de
+disponibilité, échéance, taille, empreinte SHA-256, visibilité — plus l'historique de
+vérification et le rapport de sécurité.
+
+Les indicateurs sont calculés sur le jeu renvoyé, jamais saisis : le test vérifie que
+« Vérifiés » correspond bien à `byVerification.passed + byVerification.verified` et que le
+compteur d'échéance découle de `expiresAt`.
+
+L'échelle de couleurs reprend celle du design system (§2) : `--tf-verified`, `--tf-declared`,
+`--tf-missing`. Un premier jet utilisait `var(--tf-needs-review, #b04a3f)` — **ce token
+n'existe pas**, le repli codé en dur s'appliquait donc en permanence. Contrastes mesurés sur
+`--tf-paper` : verified 5.62:1, declared 5.27:1, missing 6.25:1, ambre 4.58:1.
+
+La vérification automatique est explicitement présentée comme un indice technique, « ni une
+certification ni un avis juridique ».
+
+## `documents/upload-intent` reste non appelé — volontairement
+
+C'est le téléversement **côté marque**. Le Supplier Portal a son propre
+`supplier/documents/upload-intent`, utilisé. Une marque consomme les preuves, elle ne les
+produit pas : exposer un téléversement marque dans un centre de preuves serait un contresens.
+
+## Le garde-fou corrigé
+
+`test:route-registry` avait une liste de surfaces codée en dur qui n'incluait pas
+`evidence/index.html` : il comptait donc 44 routes non appelées au lieu de 39, aveugle à la
+surface qu'il était censé couvrir. Surface ajoutée, et toute surface déclarée mais absente
+est désormais signalée au lieu d'être ignorée silencieusement — c'est exactement l'omission
+qui venait d'être commise.
+
+## Déploiement
+
+`vercel.json` déclare ses `routes` explicitement. `**/*.html` publie le fichier, et un
+`{"handle":"filesystem"}` sert de repli, mais toutes les autres surfaces ont une route
+explicite : `/evidence(?:/)?` → `/evidence/index.html` a été ajoutée. JSON validé, 14 routes.
+
+## Portails
+
+```
+ds:check                        PASS  (4 surfaces)
+check:landing          67 / 0   inchangé
+test:landing           95 / 0   inchangé
+test:quality-center    69 / 0   inchangé
+test:supplier-portal:surface 78 / 0  inchangé
+test:evidence          65 / 0   NOUVEAU
+test:route-registry           PASS  (117 motifs, 100 appels, 39 routes non appelées)
+Balayage des 52 scripts test:* : 33 PASS / 19 FAIL — exactement les 19 préexistants
+```
+
+`test:evidence` exécute le vrai script de la page et vérifie : agrégats traçables au jeu de
+données, six natures réelles et aucune inventée, filtrage effectif, fiche complète, action de
+vérification qui modifie réellement l'état, rapport de sécurité, accessibilité, et l'absence
+de tout token de design system inexistant.
+
+## Toujours non vérifié
+
+**Aucune capture d'écran**, et surtout **aucun appel réel à la base** : `prisma generate` est
+impossible ici (`binaries.prisma.sh` hors liste blanche), donc `GET /api/documents` n'a
+jamais été exécuté contre Neon. Sa requête SQL est écrite contre des colonnes et une fonction
+vérifiées dans le schéma et les migrations, mais elle reste à valider sur un environnement
+connecté.

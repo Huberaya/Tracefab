@@ -34,6 +34,7 @@
     "test:neon:collection": "node scripts/test_neon_data_collection_flow.mjs",
     "test:brand-console": "node scripts/test_brand_console.mjs",
     "test:brand-console:browser": "node scripts/test_brand_console_browser.mjs",
+    "test:evidence": "node scripts/test_evidence_surface.mjs",
     "test:route-registry": "node scripts/test_route_registry.mjs",
     "test:quality-center": "node scripts/test_quality_center_surface.mjs",
     "test:quality-center:browser": "node scripts/test_quality_center_browser.mjs",
