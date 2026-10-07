@@ -19,7 +19,7 @@ Market Readiness sont appliqués et ne figurent plus ici.
 | 5 | Portail mobile sans action au 1ᵉʳ écran | Persona | P1 | mise en page |
 | 6 | Catalogues i18n concurrents | Architecture | **P0** | **Fait — 6 pages sur 7** |
 | 7 | Copie métier en dur dans les 3 SPA | Cahier des charges | P1 | ~754 chaînes |
-| 8 | Pousser le commit et ouvrir la PR | Livraison | P1 | manuel |
+| 8 | Ouvrir la PR (push **fait**) | Livraison | P1 | 1 clic |
 | 9 | Phases 9 à 12 sans validation formelle | Process | P2 | revue |
 | 10 | Sort de l'arbre `locales/` | Décision | P2 | 1 décision |
 
@@ -210,19 +210,32 @@ couche i18n par-dessus. Le flux parallèle fusionné a introduit de la copie
 française en dur, et des tests verrouillent désormais des chaînes françaises
 (par exemple « Partages actifs »). À arbitrer avec le point 6.
 
-## 8. Pousser et ouvrir la PR · P1
+## 8. Pousser et ouvrir la PR · P1 · **poussé, PR à ouvrir**
 
-**1 commit à pousser** (`df11a5d` → `42acf07`). La PR n'est pas ouverte : le
-jeton fourni n'avait pas le périmètre `Pull requests` (403).
+**Push effectué** le 7 octobre 2026 : `df11a5d` → `c9b1afb`, 6 commits.
+`origin/merge/experience` est à jour, **16 commits en avance sur `main`**.
 
-    bash /home/user/push_and_pr.sh <fichier-token>
+**La PR reste à ouvrir.** Le second jeton porte bien `admin`/`push` sur le
+dépôt, mais l'API répond `403` à la création d'une PR, avec l'en-tête :
 
-puis, si le 403 persiste :
-https://github.com/Huberaya/Tracefab/pull/new/merge/experience
+    x-accepted-github-permissions: pull_requests=write
+
+Le jeton est *fine-grained* et n'accorde que `Pull requests: Read` — d'où la
+lecture des PR qui fonctionne et l'écriture qui échoue.
+
+Deux voies, au choix :
+
+1. **Ouvrir la PR à la main** — un clic, aucun jeton requis :
+   <https://github.com/Huberaya/Tracefab/pull/new/merge/experience>
+   Le corps de PR prêt à coller est dans
+   `docs/experience/PR-merge-experience.md`.
+2. **Régénérer le jeton** avec *Pull requests → Read and write*, puis
+   relancer `bash /home/user/push_and_pr.sh <fichier-token>` (le script est
+   idempotent : le push sera un no-op et il enchaînera sur la PR).
 
 À noter : `.git/config` est exclu des snapshots de l'espace de travail.
-L'identité git et l'URL du remote ont dû être restaurées ce tour-ci, et le
-seront probablement à nouveau.
+L'identité git et l'URL du remote ont dû être restaurées à chaque tour, et le
+seront probablement à nouveau — le script s'en charge.
 
 ## 10. Sort de l'arbre `locales/` · P2 · décision
 

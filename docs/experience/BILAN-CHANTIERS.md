@@ -83,7 +83,7 @@ Traitement différencié, selon ce dont chaque page dépend réellement :
 | 4 | `dpp` et `certifications` atterrissent en état vide | P1 | données de démonstration |
 | 5 | Portail mobile sans action au 1ᵉʳ écran | P1 | mise en page (390 × 844) |
 | 7 | Copie métier en dur dans les SPA | P1 | ~754 chaînes |
-| 8 | Pousser le commit et ouvrir la PR | P1 | manuel — jeton sans la portée requise |
+| 8 | Ouvrir la PR (**push fait**) | P1 | 1 clic — jeton sans `pull_requests=write` |
 | 9 | Phases 9 à 12 sans rapport formel | P2 | revue |
 | 10 | Sort de l'arbre `locales/` | P2 | **décision attendue de votre part** |
 
@@ -120,6 +120,16 @@ le balisage est invalide et un lecteur strict pourrait l'ignorer.
 
 ## État de livraison
 
-5 commits en avance sur `origin/merge/experience`, **non poussés** : le jeton
-disponible n'a pas la portée `Pull requests`. La PR s'ouvre à la main sur
-<https://github.com/Huberaya/Tracefab/pull/new/merge/experience>.
+**Push effectué** : `df11a5d` → `c9b1afb`, 6 commits.
+`origin/merge/experience` est à jour et **16 commits en avance sur `main`**.
+
+**La PR reste à ouvrir.** Le jeton porte `admin` et `push` sur le dépôt, mais
+l'API refuse la création d'une PR avec
+`x-accepted-github-permissions: pull_requests=write` : le jeton *fine-grained*
+n'accorde que `Pull requests: Read`.
+
+Au choix : un clic sur
+<https://github.com/Huberaya/Tracefab/pull/new/merge/experience> (le corps de
+PR prêt à coller est dans `docs/experience/PR-merge-experience.md`), ou un
+jeton régénéré avec *Pull requests → Read and write* puis
+`bash /home/user/push_and_pr.sh <fichier-token>`.
