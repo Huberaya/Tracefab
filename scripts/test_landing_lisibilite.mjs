@@ -78,5 +78,34 @@ const viaToken = (site.match(/font-size:\s*var\(--tf-size-3xs\)/g) || []).length
 ok(viaToken >= 10, 'les libelles techniques consomment le token de plancher',
   `${viaToken} usage(s)`);
 
-console.log(ko === 0 ? `\n  landing : plancher typographique de ${PLANCHER}px tenu.` : `\n  landing : ${ko} echec(s).`);
+/* --- 6. lisibilite mobile ----------------------------------------------
+   Trois reglages que le mobile avait perdus, chacun mesure avant/apres.   */
+
+// Le plancher du clamp d0 vaut 49px : plus large qu'un telephone. Les deux
+// phrases longues du titre se cassaient chacune en deux et « Know your
+// product. » se lisait « Know your / product. » — cinq fragments au lieu de
+// trois phrases. Le heros a donc besoin de son propre plancher sous 640px.
+ok(/\.tf-hero__title\s*\{\s*font-size:\s*clamp\(/.test(site),
+  'le titre du heros a un plancher propre sur mobile');
+const mClamp = site.match(/\.tf-hero__title\s*\{\s*font-size:\s*clamp\(([0-9.]+)rem/);
+ok(mClamp && Number(mClamp[1]) * 16 < 49,
+  'ce plancher est plus bas que celui de d0 (49px), sinon il ne sert a rien',
+  mClamp ? `${Number(mClamp[1]) * 16}px` : 'introuvable');
+ok(/\.tf-hero__title span\s*\{\s*text-wrap:\s*balance/.test(site),
+  'les coupures du titre sont equilibrees, pas subies');
+
+// Empiler les quatre blocs du pied portait celui-ci a 1122px sur mobile contre
+// 409 sur desktop : plus d'un ecran entier pour des liens secondaires.
+const bloc640 = site.slice(site.indexOf('@media (max-width: 640px)'));
+ok(/\.tf-footer__top\s*\{\s*grid-template-columns:\s*1fr 1fr/.test(bloc640.slice(0, bloc640.indexOf('\n}'))),
+  'le pied garde deux colonnes de liens sur mobile');
+ok(/\.tf-footer__top > :first-child\s*\{\s*grid-column:\s*1 \/ -1/.test(bloc640.slice(0, bloc640.indexOf('\n}'))),
+  'le bloc de marque garde la pleine largeur');
+
+// La signature de marque demande 212px ; sous 560px l'en-tete ne les a pas.
+const b559 = site.slice(site.indexOf('@media (max-width: 559px)'));
+ok(/\.tf-brand__sub[\s\S]{0,200}?clip: rect\(0 0 0 0\)/.test(b559.slice(0, 400)),
+  'la signature de marque sort de l\'affichage sous 560px sans quitter le document');
+
+console.log(ko === 0 ? `\n  landing : plancher typographique de ${PLANCHER}px tenu, mobile lisible.` : `\n  landing : ${ko} echec(s).`);
 process.exit(ko === 0 ? 0 : 1);

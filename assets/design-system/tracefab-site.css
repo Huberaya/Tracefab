@@ -1209,6 +1209,8 @@
   .tf-core__bar-right { gap: var(--tf-s4); }
   .tf-hero { min-height: auto; padding-bottom: var(--tf-s7); }
   .tf-hero__scroll { display: none; }
+  .tf-hero__title { font-size: clamp(2.05rem, 10.4vw, 3rem); }
+  .tf-hero__title span { text-wrap: balance; }
 
   .tf-chain__scroll { display: none; }
   .tf-chain__vertical { display: flex; }
@@ -1217,7 +1219,8 @@
 }
 
 @media (max-width: 640px) {
-  .tf-footer__top { grid-template-columns: 1fr; }
+  .tf-footer__top { grid-template-columns: 1fr 1fr; }
+  .tf-footer__top > :first-child { grid-column: 1 / -1; }
   .tf-promise__cell { border-right: 0; }
   .tf-core__stat em { font-size: var(--tf-size-3xs); }
 }
