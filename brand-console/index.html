@@ -707,234 +707,18 @@
     }
 
     /* 7-Echelon Forensic Custody Matrix */
-    .tc-echelons-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
-      margin-bottom: 24px;
-    }
-
-    .tc-echelon-card {
-      background: #ffffff;
-      border: 1px solid #e1e8e2;
-      border-radius: 14px;
-      padding: 14px 10px;
-      text-align: center;
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-
-    .tc-echelon-card:hover {
-      border-color: #0b7656;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 18px rgba(11, 118, 86, 0.08);
-    }
-
-    .tc-ech-num {
-      font-family: var(--font-mono, monospace);
-      font-size: 10px;
-      font-weight: 800;
-      color: #0b7656;
-      margin-bottom: 4px;
-    }
-
-    .tc-ech-title {
-      font-size: 12px;
-      font-weight: 850;
-      color: #17231f;
-      margin-bottom: 4px;
-      line-height: 1.2;
-    }
-
-    .tc-ech-model {
-      font-size: 9.5px;
-      font-family: var(--font-mono, monospace);
-      padding: 2px 5px;
-      border-radius: 4px;
-      background: #eaf5ef;
-      color: #0b7656;
-      display: inline-block;
-      margin-bottom: 6px;
-    }
-
-    .tc-ech-status {
-      font-size: 10px;
-      font-weight: 750;
-      color: #0b7656;
-    }
 
     /* Mass Balance Reconciliation Table */
-    .tc-reconcil-card {
-      background: #ffffff;
-      border: 1px solid #e1e8e2;
-      border-radius: 18px;
-      padding: 22px 24px;
-      margin-bottom: 24px;
-    }
 
   
     /* ==========================================================================
        PHASE 10: TRACEFAB INTELLIGENCE SYSTEM
        Natural Language Query · Cited Evidence Links · Zero Hallucination Guardrail
        ========================================================================== */
-    .intel-hero-card {
-      background: linear-gradient(135deg, #050f0b 0%, #0d281c 50%, #153b2a 100%);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 20px;
-      padding: 28px 32px;
-      color: #ffffff;
-      margin-bottom: 24px;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
-    }
-
-    .intel-hero-card::after {
-      content: "";
-      position: absolute;
-      top: -30%;
-      right: -10%;
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .intel-tag {
-      font-family: var(--font-mono, monospace);
-      font-size: 11px;
-      color: #34d399;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-
-    .intel-title {
-      font-size: 28px;
-      font-weight: 850;
-      letter-spacing: -0.03em;
-      margin-bottom: 8px;
-      line-height: 1.2;
-    }
-
-    .intel-desc {
-      font-size: 14px;
-      color: #b5d5c5;
-      max-width: 720px;
-      line-height: 1.55;
-    }
-
-    .intel-guardrail-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.35);
-      border-radius: 6px;
-      font-size: 11px;
-      font-family: var(--font-mono, monospace);
-      color: #34d399;
-      margin-top: 12px;
-    }
 
     /* Query Box with Chips */
-    .intel-query-panel {
-      background: #ffffff;
-      border: 1px solid #e1e8e2;
-      border-radius: 18px;
-      padding: 22px 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
-    }
-
-    .intel-chips-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-
-    .intel-chip {
-      background: #f4f7f5;
-      border: 1px solid #e1e8e2;
-      border-radius: 9999px;
-      padding: 6px 14px;
-      font-size: 12px;
-      font-weight: 650;
-      color: #17231f;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .intel-chip:hover {
-      background: #eaf5ef;
-      border-color: #0b7656;
-      color: #0b7656;
-    }
-
-    .intel-input-wrap {
-      display: flex;
-      gap: 10px;
-    }
-
-    .intel-input {
-      flex: 1;
-      padding: 14px 18px;
-      border: 1.5px solid #d5ded7;
-      border-radius: 12px;
-      font-size: 14px;
-      color: #17231f;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .intel-input:focus {
-      border-color: #0b7656;
-      box-shadow: 0 0 0 3px rgba(11, 118, 86, 0.12);
-    }
 
     /* Answer Stream Box with Evidence Citations */
-    .intel-answer-box {
-      background: #ffffff;
-      border: 1px solid #e1e8e2;
-      border-radius: 18px;
-      padding: 26px;
-      margin-bottom: 24px;
-    }
-
-    .intel-answer-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid #edf2ee;
-    }
-
-    .intel-cited-badge {
-      font-family: var(--font-mono, monospace);
-      font-size: 10.5px;
-      font-weight: 750;
-      color: #0b7656;
-      background: #eaf5ef;
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid #c2e2d0;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      cursor: pointer;
-      margin-right: 6px;
-      margin-bottom: 6px;
-    }
-
-    .intel-cited-badge:hover {
-      background: #0b7656;
-      color: #ffffff;
-    }
 
   </style>
   <script src="/auto-translate.js"></script>
@@ -1003,6 +787,17 @@
         verified_by_reviewer: 'Vérifiée', needs_review: 'À revoir', open: 'Ouverte', acknowledged: 'Acquittée', waived: 'Dérogation', resolved: 'Résolue',
         not_started: 'Non démarré', data_ready: 'Prêt pour validation', ready_to_publish: 'Validé & Prêt à publier', review_required: 'Revue requise'
       };
+      /* Les cinq niveaux d'approvisionnement, de la matière au produit fini.
+         Les clés correspondent exactement à celles renvoyées par
+         computeTraceabilitySummary / la route supply-chain. */
+      const SC_TIERS = [
+        ['tier4_raw_materials', 'Tier 4 · Matières'],
+        ['tier3_spinning', 'Tier 3 · Filature'],
+        ['tier2_fabric', 'Tier 2 · Tissage'],
+        ['tier1_assembly', 'Tier 1 · Confection'],
+        ['tier0_product', 'Tier 0 · Produit Fini'],
+      ];
+
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TF';
       const status = (value) => `<span class="status status-${esc(value)}">${esc(labels[value] || value || '—')}</span>`;
@@ -1621,10 +1416,12 @@
 
       /**
        * La couche Intelligence n'est pas encore reliée à une source de données.
-       * `intelligenceView()` ci-dessous est une maquette rédigée à la main : elle
-       * affiche des SKU, des fournisseurs et des empreintes de certificats qui
-       * n'existent dans aucune table. Elle n'est donc volontairement pas branchée.
-       * Cette vue dit la vérité et renvoie vers ce qui répond déjà sur données réelles.
+       * Une maquette rédigée à la main occupait cette place : elle affichait des SKU,
+       * des fournisseurs et des empreintes de certificats absents de toute table, sous
+       * un bandeau se réclamant de n'inventer aucune donnée. Elle a été supprimée
+       * plutôt que conservée hors ligne : du contenu fabriqué qui se déclare exact est
+       * un risque, pas une réserve. Cette vue dit la vérité et renvoie vers ce qui
+       * répond déjà sur données réelles.
        */
       function intelligenceUnavailableView() {
         return `<div class="page-head">
@@ -1653,132 +1450,6 @@
               </div>
             </div>
           </div>`;
-      }
-
-      function intelligenceView() {
-        const query = state.activeIntelQuery || "Quels produits contiennent du coton non certifié GOTS dans la collection AW26 ?";
-        const currentAnswer = state.activeIntelAnswer || {
-          summary: "Analyse exhaustive de 1 248 références catalogue : 98.4% de la collection AW26 est couverte par un certificat GOTS valide. Seules 2 références présentent une absence de certificat de transaction scellé.",
-          details: [
-            {
-              sku: "AW26-0812 · Chaussettes Coton Côtelé",
-              issue: "Certificat OEKO-TEX présent mais absence de certificat de transaction (TC) GOTS pour le lot de fil peigné.",
-              supplier: "Filature du Sud-Ouest",
-              evidenceCited: "TC-GOTS-MISSING · Réf. Demande REQ-2026-092",
-              action: "Relance fournisseur émise le 04/10/2026"
-            },
-            {
-              sku: "AW26-0419 · Doublure Veste Trench",
-              issue: "Matière déclarée 'Coton Recyclé' (GRS) sans preuve de balance massique tierce partie vérifiée.",
-              supplier: "Recycled Textiles Europe",
-              evidenceCited: "GRS-CERT-8841 (Statut : Expiré le 15/09/2026)",
-              action: "Blocage de l'export DPP en cours"
-            }
-          ],
-          citations: [
-            { id: "TC-CU-881294", label: "Certificat Transaction Control Union GOTS 2026", hash: "sha256-8a9d...4f21" },
-            { id: "SGS-LAB-098", label: "Rapport Laboratoire ZDHC MRSL Level 3 SGS", hash: "sha256-3b17...9c82" },
-            { id: "SMETA-BRAGA-26", label: "Audit Social SMETA 4-Pillar Atelier Braga", hash: "sha256-7e44...5a19" }
-          ]
-        };
-
-        return `<div>
-          <!-- Hero Banner -->
-          <div class="intel-hero-card">
-            <div class="intel-tag">AGENTIC TEXTILE REASONING ENGINE · ZERO HALLUCINATION</div>
-            <h1 class="intel-title">TRACEFAB Intelligence</h1>
-            <p class="intel-desc">
-              Interrogez l'ensemble de votre base de connaissances textile, vos nomenclatures BOM et vos preuves documentaires en langage naturel. Chaque réponse est étayée par un pointeur cryptographique scellé.
-            </p>
-            <div class="intel-guardrail-badge">
-              <span>🛡️ GARDE-FOU CONTRACTUEL :</span>
-              <span>Aucune donnée inventée · Réponses 100% justifiées par des preuves physiques (Evidence-Backed)</span>
-            </div>
-          </div>
-
-          <!-- Query Panel with Suggested Prompts -->
-          <div class="intel-query-panel">
-            <div style="font-size:12px;font-weight:750;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Suggestions de requêtes stratégiques & conformité :</div>
-            <div class="intel-chips-row">
-              <span class="intel-chip" onclick="askIntel('Quels produits contiennent du coton non certifié GOTS dans la collection AW26 ?')">
-                🌾 Coton sans TC GOTS (AW26)
-              </span>
-              <span class="intel-chip" onclick="askIntel('Quels certificats expirent dans les 45 prochains jours ?')">
-                ⏳ Certificats expirant sous 45 jours
-              </span>
-              <span class="intel-chip" onclick="askIntel('Tous les ateliers de confection respectent-ils les salaires décents SMETA ?')">
-                ⚖️ Conformité salaires décents SMETA
-              </span>
-              <span class="intel-chip" onclick="askIntel('Quel est le taux de préparation pour le Passeport Numérique ESPR ?')">
-                📋 Taux d\'éligibilité DPP CIRPASS
-              </span>
-            </div>
-
-            <div class="intel-input-wrap">
-              <input class="intel-input" id="intel-query-input" value="${esc(query)}" placeholder="Posez une question sur vos fournisseurs, lots, certificats, ou réglementations AGEC/ESPR...">
-              <button class="btn btn-primary" onclick="submitIntelQuery()">Interroger la base de données</button>
-            </div>
-          </div>
-
-          <!-- Answer Box with Verified Evidence Links -->
-          <div class="intel-answer-box">
-            <div class="intel-answer-header">
-              <div>
-                <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:11.5px;font-weight:750;">SYNTHÈSE VÉRIFIÉE PAR LE MOTEUR D'AUDIT</span>
-                <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:4px 0 0;">« ${esc(query)} »</h3>
-              </div>
-              <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;">Temps de réponse : 180ms · Neon DB RLS</span>
-            </div>
-
-            <p style="font-size:14px;color:#17231f;line-height:1.6;margin-bottom:18px;">
-              ${esc(currentAnswer.summary)}
-            </p>
-
-            <!-- Granular Result Table -->
-            <div class="table-wrap" style="margin-bottom:20px;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Référence & Article</th>
-                    <th>Fournisseur & Usine</th>
-                    <th>Anomalie Identifiée</th>
-                    <th>Preuve Citée</th>
-                    <th style="text-align:right">Action Directe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${currentAnswer.details.map(d => `
-                    <tr>
-                      <td><strong>${esc(d.sku)}</strong></td>
-                      <td>${esc(d.supplier)}</td>
-                      <td><span class="status status-changes_requested">${esc(d.issue)}</span></td>
-                      <td><span class="cert-pill">${esc(d.evidenceCited)}</span></td>
-                      <td style="text-align:right">
-                        <button class="btn btn-secondary btn-small" onclick="state.view='requests';render();">
-                          ${esc(d.action)}
-                        </button>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Evidence Citations Section (Zero Hallucination Proof) -->
-            <div style="background:#f8faf8;border:1px solid #edf2ee;border-radius:12px;padding:16px;">
-              <div style="font-size:11.5px;font-weight:800;color:#17231f;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">
-                Preuves documentaires & registres cités (Preuve d'intégrité cryptographique) :
-              </div>
-              <div>
-                ${currentAnswer.citations.map(c => `
-                  <span class="intel-cited-badge" onclick="state.view='documents';render();">
-                    📄 ${esc(c.label)} <code style="color:#0b7656;margin-left:4px;">[${esc(c.hash)}]</code>
-                  </span>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-        </div>`;
       }
 
       function askIntel(q) {
@@ -2691,7 +2362,7 @@
             <button class="link-button" data-view="products">← Retour au catalogue produits</button>
             <div class="eyebrow" style="margin-top:16px;">Intelligence Produit · Réf. ${esc(p.reference || 'AW26-0248')} · Version ${esc(p.version || '1.0')}</div>
             <h1>${esc(p.name || 'Organic Cotton T-Shirt')}</h1>
-            <p>${esc(p.category || 'T-Shirt & Maille')} · Confection responsable certifiée · Indice Qualité : <strong>98.4 / 100</strong></p>
+            <p>${esc(p.category || 'T-Shirt & Maille')} · Confection responsable certifiée · Indice Qualité : <strong>${p.score ?? 0} / 100</strong></p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">Graphe de traçabilité</button>
@@ -2868,7 +2539,7 @@
               <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">MATRICE D'EXCELLENCE DE LA DONNÉE</div>
               <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">Analyse Pré-Audit Douanes Européennes & CSRD</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">NOTE GLOBALE : GRADE A (98.4%)</span>
+            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">NOTE GLOBALE : ${p.score >= 90 ? 'GRADE A' : p.score >= 75 ? 'GRADE B' : 'GRADE C'} (${p.score}%)</span>
           </div>
 
           <div class="eq-score-strip">
@@ -3013,8 +2684,8 @@
 
             function supplyChainView() {
         const p = state.selectedSupplyChainProduct || state.products[0] || { name: 'Organic Cotton T-Shirt', reference: 'AW26-0248' };
-        const sc = state.supplyChain || { graph: { nodes: [], links: [] }, summary: { nodeCount: 14, linkCount: 13, documentationRate: 98, stagesCoveredCount: 7 }, stages: { tier4_raw_materials: [], tier3_spinning: [], tier2_fabric: [], tier1_assembly: [], tier0_product: [], other_nodes: [] } };
-        const summary = sc.summary || { nodeCount: 14, linkCount: 13, documentationRate: 98, stagesCoveredCount: 7 };
+        const sc = state.supplyChain || { graph: { nodes: [], links: [] }, summary: { nodeCount: 0, linkCount: 0, documentedNodeCount: 0, documentedLinkCount: 0, documentationRate: 0, stagesCoveredCount: 0, isCompleteChain: false }, stages: { tier4_raw_materials: [], tier3_spinning: [], tier2_fabric: [], tier1_assembly: [], tier0_product: [], other_nodes: [] } };
+        const summary = sc.summary || { nodeCount: 0, linkCount: 0, documentedNodeCount: 0, documentedLinkCount: 0, documentationRate: 0, stagesCoveredCount: 0, isCompleteChain: false };
 
         return `
           <div class="page-head">
@@ -3026,144 +2697,65 @@
             <div class="actions">
               <button class="btn btn-secondary" onclick="alert('Rapport de Chaîne de Garde généré (Norme ISO 22095).')">📥 Exporter le rapport forensique</button>
               <button class="btn btn-secondary" data-action="select-supply-chain-product">Changer de produit</button>
+              <button class="btn btn-secondary" data-action="generate-baseline-chain">Générer la chaîne de référence</button>
+              <button class="btn btn-secondary" data-action="new-chain-link">+ Ajouter une liaison</button>
               <button class="btn btn-primary" data-action="new-chain-node">+ Ajouter un jalon vérifié</button>
             </div>
           </div>
 
           <!-- Forensic Hero Banner -->
           <div class="tc-forensic-strip">
-            <div class="tc-forensic-badge">CHAÎNE DE GARDE CERTIFIÉE ISO 22095 · RECONCILIATION MASSIQUE 98.4%</div>
+            <div class="tc-forensic-badge">CHAÎNE DE GARDE · RÉFÉRENTIEL ISO 22095</div>
             <h2 class="tc-forensic-title">${esc(p.name)} · Réf. ${esc(p.reference)}</h2>
             <p class="tc-forensic-desc">
               Chaque maillon industriel ci-dessous est audité et scellé avec son modèle de garde associé (Ségrégation d'Identité ou Bilan Massique Réconcilié). Zéro déclaration sans preuve documentaire ou polygonale.
             </p>
           </div>
 
-          <!-- 7-ECHELON CHAIN OF CUSTODY TIMELINE -->
-          <div class="tc-echelons-grid">
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 01</div>
-              <div class="tc-ech-title">CHAMP / FERME</div>
-              <div class="tc-ech-model">Identity Preserved</div>
-              <div class="tc-ech-status">✓ Izmir, Turquie</div>
+          <!-- Pipeline réel à cinq niveaux, issu de state.supplyChain.stages -->
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h2>Chaîne par niveau d’approvisionnement</h2>
+                <p class="meta" style="margin:4px 0 0">Nœuds réellement rattachés à ce produit. Un niveau sans nœud est affiché comme tel.</p>
+              </div>
+              <span class="meta">${summary.nodeCount} nœud(s) · ${summary.linkCount} liaison(s)</span>
             </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 02</div>
-              <div class="tc-ech-title">ÉGRENAGE</div>
-              <div class="tc-ech-model">Segregated</div>
-              <div class="tc-ech-status">✓ Ege Birlik Mill</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 03</div>
-              <div class="tc-ech-title">FILATURE</div>
-              <div class="tc-ech-model">Mass Balance 100%</div>
-              <div class="tc-ech-status">✓ Haute-Vienne, FR</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 04</div>
-              <div class="tc-ech-title">TRICOTAGE</div>
-              <div class="tc-ech-model">Identity Preserved</div>
-              <div class="tc-ech-status">✓ Barcelos, PT</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 05</div>
-              <div class="tc-ech-title">ENNOBLISSEMENT</div>
-              <div class="tc-ech-model">ZDHC Level 3</div>
-              <div class="tc-ech-status">✓ EcoDye Aquitaine</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 06</div>
-              <div class="tc-ech-title">CONFECTION</div>
-              <div class="tc-ech-model">SMETA 4-Pillar</div>
-              <div class="tc-ech-status">✓ Atelier Braga, PT</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">ÉCHELON 07</div>
-              <div class="tc-ech-title">DISTRIBUTION</div>
-              <div class="tc-ech-model">DPP CIRPASS</div>
-              <div class="tc-ech-status">✓ Hub Lyon, FR</div>
+            <div class="pipeline">
+              ${SC_TIERS.map(([key, label]) => {
+                const list = (sc.stages && sc.stages[key]) || [];
+                return `<div class="pillar-card">
+                  <div class="pillar-head">
+                    <div class="pillar-name">${esc(label)}</div>
+                    <div class="pillar-score">${list.length}</div>
+                  </div>
+                  ${list.length
+                    ? `<div class="pillar-items">${list.map((n) => `<div class="pillar-item"><span class="pillar-item-label">${esc(n.label || n.node_type || 'Nœud')}</span><span class="meta">${esc(n.facility_country_code || n.supplier_sites?.country_code || '')}</span></div>`).join('')}</div>`
+                    : '<p class="meta" style="margin:0">Aucun nœud rattaché</p>'}
+                </div>`;
+              }).join('')}
             </div>
           </div>
 
           <!-- Core Score KPIs -->
           <div class="grid score-grid">
-            <div class="card score"><div class="score-name">Étapes scellées</div><div class="score-value">7 / 7</div><div class="node-meta">100% de la chaîne physique</div></div>
-            <div class="card score"><div class="score-name">Polygones GPS vérifiés</div><div class="score-value">100%</div><div class="node-meta">coordonnées satellites cadastrées</div></div>
-            <div class="card score"><div class="score-name">Couverture de preuves</div><div class="score-value">98.4%</div><div class="progress"><span style="width:98.4%"></span></div></div>
+            <div class="card score"><div class="score-name">Nœuds documentés</div><div class="score-value">${summary.documentedNodeCount ?? '—'} / ${summary.nodeCount}</div><div class="node-meta">sur les nœuds rattachés au produit</div></div>
+            <div class="card score"><div class="score-name">Liaisons documentées</div><div class="score-value">${summary.documentedLinkCount ?? '—'} / ${summary.linkCount}</div><div class="node-meta">arêtes de la chaîne étayées</div></div>
+            <div class="card score"><div class="score-name">Couverture documentaire</div><div class="score-value">${summary.documentationRate}%</div><div class="progress"><span style="width:${pct(summary.documentationRate)}%"></span></div></div>
             <div class="card score"><div class="score-name">Modèle de Garde</div><div class="score-value" style="font-size:18px;color:#0b7656;">ISO 22095</div><div class="node-meta">Mass-Balance contrôlé</div></div>
           </div>
 
-          <!-- Mass Balance Reconciliation Breakdown -->
-          <div class="tc-reconcil-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <!-- Le bilan de masse réel vit dans la surface Traçabilité : il s'appuie sur
+               mass_balance_allocations et mass_balance_reconciliations. Aucun volume
+               n'est affiché ici, faute de donnée rattachée à ce produit. -->
+          <div class="card panel">
+            <div class="panel-head">
               <div>
-                <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:0 0 2px;">Réconciliation de la Balance Massique par Jalon</h3>
-                <p class="meta" style="margin:0;">Vérification de la conservation des volumes entrants et sortants pour éliminer tout risque de greenwashing ou dilution frauduleuse.</p>
+                <h2>Bilan de masse</h2>
+                <p class="meta" style="margin:4px 0 0">La réconciliation des volumes certifiés face à la production déclarée
+                est calculée à partir des allocations réelles. Elle est consultable dans la surface Traçabilité.</p>
               </div>
-              <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">DELTA PERTE PROCÉDÉ : 2.4% (CONFORME)</span>
-            </div>
-
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Étape industrielle</th>
-                    <th>Fournisseur & Usine</th>
-                    <th>Volume Entrant (kg)</th>
-                    <th>Volume Sortant (kg)</th>
-                    <th>Rendement / Déchet</th>
-                    <th>Document de Traçabilité</th>
-                    <th style="text-align:right">Statut de Garde</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>01. Égrenage Coton Bio</strong></td>
-                    <td>Ege Birlik Ginning Co.</td>
-                    <td>10 500 kg (Graine)</td>
-                    <td>3 570 kg (Fibre brute)</td>
-                    <td>34.0% (Normal)</td>
-                    <td><code>TC-CU-881294-01</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Segregated</span></td>
-                  </tr>
-                  <tr>
-                    <td><strong>02. Filature Peignée Ne 30/1</strong></td>
-                    <td>Filature de Haute-Vienne</td>
-                    <td>3 570 kg (Fibre brute)</td>
-                    <td>3 285 kg (Bobines)</td>
-                    <td>92.0% (Rendement fil)</td>
-                    <td><code>TC-CU-881294-02</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Identity Preserved</span></td>
-                  </tr>
-                  <tr>
-                    <td><strong>03. Tricotage Jersey 180g</strong></td>
-                    <td>Barcelos Knitting Mill</td>
-                    <td>3 285 kg (Bobines)</td>
-                    <td>3 150 kg (Rouleaux)</td>
-                    <td>95.9% (Normal tricot)</td>
-                    <td><code>BL-PT-2026-904</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Scellé</span></td>
-                  </tr>
-                  <tr>
-                    <td><strong>04. Teinture & Lavage Bio</strong></td>
-                    <td>EcoDye Aquitaine</td>
-                    <td>3 150 kg (Rouleaux)</td>
-                    <td>3 085 kg (Teint)</td>
-                    <td>97.9% (Fixation ZDHC)</td>
-                    <td><code>ZDHC-LOT-089</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Validé</span></td>
-                  </tr>
-                  <tr>
-                    <td><strong>05. Découpe & Confection</strong></td>
-                    <td>Atelier Braga & Co</td>
-                    <td>3 085 kg (Tissu fini)</td>
-                    <td>16 200 Pièces finies</td>
-                    <td>185g / pièce moyenne</td>
-                    <td><code>TC-CU-881294-05</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Réconcilié 100%</span></td>
-                  </tr>
-                </tbody>
-              </table>
+              <a class="btn btn-secondary" href="/traceability/">Ouvrir la traçabilité</a>
             </div>
           </div>
         `;
@@ -3975,6 +3567,8 @@
           summary: {
             nodeCount: 5,
             linkCount: 4,
+            documentedNodeCount: 5,
+            documentedLinkCount: 4,
             documentationRate: 100,
             stagesCoveredCount: 5,
             isCompleteChain: true,

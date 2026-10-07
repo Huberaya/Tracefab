@@ -1297,3 +1297,91 @@ traduisent dans le DOM rendu avec aucun élément resté en français alors que 
 **Aucune capture d'écran.** Le rendu des langues à caractères spéciaux (umlauts allemands,
 `ij` néerlandais) et le comportement du sélecteur au clic réel restent à confirmer visuellement
 : `jsdom` ne calcule aucune mise en page.
+
+---
+
+## Chantier 13 — Le pipeline de chaîne d'approvisionnement rendu réel, et purge du contenu fabriqué de la console
+
+`test:supplychain:chantier3` échouait depuis **avant le début de ces travaux** (`4ddf5f5`, premier commit cloné).
+Trois réponses étaient possibles : corriger la vue, corriger le test, ou supprimer le test. **La vue a été corrigée.**
+
+### Ce que la mesure a établi
+
+| Objet | Avant | Constat |
+|---|---|---|
+| `supplyChainView()` | 158 lignes | **ne rendait ni pipeline ni niveaux** |
+| `.pipeline` | CSS 5 colonnes | définie, **jamais utilisée** (0 `class="pipeline"`) |
+| `sc.stages` | déstructuré | **jamais référencé** dans le rendu |
+| Ce qui était rendu | une maquette | « 7-ECHELON CHAIN OF CUSTODY TIMELINE » |
+
+La maquette affichait `ÉCHELON 01 · CULTURE`, `Izmir, Turquie`, `Ege Birlik Mill`, `ÉCHELON 07 · CONFECTION`,
+`Haute-Vienne, FR` et des cartes de score (`7 / 7 · 100% de la chaîne physique`, `Polygones GPS vérifiés 100%`,
+`Couverture de preuves 98.4%`). **Aucun de ces lieux, ateliers ni chiffres n'existe dans le jeu de démonstration.**
+Le test avait donc raison sur le fond : les cinq libellés décrivaient un pipeline qui n'avait jamais été rendu.
+
+### Ce qui a été fait
+
+1. **Pipeline réel à cinq niveaux** — `Tier 4 · Matières`, `Tier 3 · Filature`, `Tier 2 · Tissage`,
+   `Tier 1 · Confection`, `Tier 0 · Produit Fini`, rendus depuis `state.supplyChain.stages`
+   (les clés exactes du contrat `GET /api/products/{id}/supply-chain`). Chaque niveau affiche le
+   **nombre réel de nœuds** et ses nœuds réels ; un niveau vide indique « Aucun nœud rattaché »
+   plutôt que de disparaître silencieusement.
+2. **Cartes de score calculées** — nœuds documentés, liaisons documentées, couverture documentaire
+   et taux de complétion proviennent de `summary`, produit par `computeTraceabilitySummary()`
+   (`api/_lib/supply-chain.ts`), au lieu de constantes.
+3. **Deux actions rendues atteignables** — `generate-baseline-chain` et `new-chain-link` avaient
+   gestionnaire et fonction mais **aucun bouton** : la génération de chaîne de référence était
+   inaccessible depuis l'interface.
+4. **`intelligenceView()` supprimée** — 126 lignes de maquette sous un bandeau se réclamant de
+   n'inventer aucune donnée, et qui inventait des SKU, des fournisseurs et des empreintes de
+   certificats (`TC-CU-881294-01/02/05`) absents de toute table. L'entrée de menu appelle désormais
+   `intelligenceUnavailableView()`, qui dit la vérité et renvoie vers les surfaces réelles.
+   Du contenu fabriqué qui se déclare exact est un risque, pas une réserve.
+5. **Deux autres maquettes retirées** — la table de « Réconciliation de la Balance Massique par
+   Jalon » (73 lignes, mêmes certificats inventés) est remplacée par un renvoi vers
+   `/traceability/`, qui calcule le bilan sur données réelles.
+6. **Trois notes codées en dur supprimées** — « Indice Qualité : 98.4 / 100 », « NOTE GLOBALE :
+   GRADE A (98.4%) » et « RECONCILIATION MASSIQUE 98.4% » : les deux premières dérivent désormais
+   de `p.score`, la troisième ne revendique plus ni certification ni réconciliation.
+7. **Deux chutes fabriquées neutralisées** — `supplyChainView` et `massBalanceConsoleView`
+   affichaient `{nodeCount: 14, linkCount: 13, documentationRate: 98, stagesCoveredCount: 7}`
+   quand aucune donnée n'était chargée : remplacées par des zéros explicites.
+8. **La démo alignée sur le contrat API** — `demoSupplyChain()` n'exposait pas
+   `documentedNodeCount` ni `documentedLinkCount`, que `computeTraceabilitySummary()` renvoie.
+9. **CSS nettoyée** — 25 règles mortes retirées (`.intel-*`, `.tc-echelon*`, `.tc-reconcil-card`),
+   accolades équilibrées (241/241), plus aucun avertissement du parseur.
+
+### Garde-fou ajouté
+
+`scripts/test_supply_chain_surface.mjs` (`npm run test:supplychain:surface`) — **56 contrôles**.
+Il suit le parcours réel (catalogue → fiche produit → ouvrir la chaîne), vérifie les cinq niveaux
+dans l'ordre, que chaque compte correspond au nombre réel de nœuds, que les scores viennent du
+résumé calculé, que les trois actions ont un bouton, et que le contenu fabriqué ne revient pas.
+
+### Mesures
+
+| Portail | Résultat |
+|---|---|
+| `test:supplychain:surface` (nouveau) | **56 contrôles, 0 échec** |
+| `test:supplychain:chantier3` | **vert** (était rouge avant ces travaux) |
+| `test:brand-console` | vert |
+| `test:dpp-readiness` | 83 / 0 |
+| `test:quality-center` | 69 / 0 |
+| `test:landing` | 95 / 0 |
+| `test:i18n` | 75 / 0 |
+| `test:route-registry`, `test:supplier-portal` | verts |
+
+Balayage : **39 PASS / 18 FAIL** (était 37 / 19). **Aucun nouvel échec.**
+
+Les six vues principales (`overview`, `products`, `supplyChain`, `dpp`, `quality`, `intelligence`)
+rendent sans erreur sous jsdom.
+
+### Ce qui reste ouvert
+
+- **Une lignée fabriquée subsiste dans `productDetailView()`** : « Lignée Complète de Transformation »
+  avec des `alert()` codés en dur (Ferme Izmir, Filature de Haute-Vienne) et un badge
+  « ✓ 100% Vérifié & Scellé ». Elle est hors du périmètre de la surface chaîne testée ici,
+  mais elle relève du même défaut et doit être traitée.
+- **`fallback-data.ts`** fournit toujours une chaîne inventée en dernier recours, sans marqueur de démonstration.
+- Le score de qualité produit n'est qu'une moyenne de scores de lignes ; les trois personnes
+  distinctes de la fiche produit rendent le même score.
