@@ -103,11 +103,30 @@ majorité de données de démonstration (noms d'usines, numéros de lot,
 tonnages par échelon), qui relèvent de la réécriture en anglais et non du
 catalogue.
 
+### Fait — tranche 4b
+
+64 clés × 7 langues + 35 chaînes de démonstration passées en anglais, pour
+107 remplacements. Couvre `supplyChainView` et `supplyChainConsoleView`.
+
+C'est la tranche où le tri interface / démonstration compte le plus : sur
+147 chaînes, 83 étaient du contenu — tonnages par échelon, rendements,
+étapes industrielles nommées. Les noms propres d'usines et de lieux
+(Fiação Norte, Malhas do Ave, São Martinho, **Filature de Haute-Vienne**,
+Tinturaria Braga) sont **volontairement conservés** : ce sont des raisons
+sociales, pas de l'interface. Traduire « Filature de Haute-Vienne » serait
+une faute.
+
+Mesuré sur les **sept** vues traitées, en anglais, allemand et français :
+0 chaîne française résiduelle hors noms propres, 0 erreur JavaScript.
+
+Précaution ajoutée ici : toutes les substitutions visent le nœud texte
+complet `>texte<`, jamais une sous-chaîne — sans quoi « Teinture » aurait
+abîmé « 04. Teinture & Lavage Bio ».
+
 ### Reste à faire
 
 | Tranche | Cible | Chaînes |
 |---|---|---:|
-| 4b | Brand Console — Supply Chain (2 vues) | ~149 |
 | 5 | Brand Console — Documents, Certifications, Quality, DPP, Reports, Settings | ~130 |
 | 6 | Supplier Portal | ~170 |
 | 7 | DPP public | ~72 |
