@@ -77,11 +77,21 @@ Résultat mesuré sur `/brand-console/?lang=en` : **35 → 0**. Les `h1` résolv
 en anglais, allemand et néerlandais ; le français reste français ; 0 clé brute,
 0 erreur console.
 
+### Fait — tranche 3
+
+57 clés × 7 langues + 6 chaînes de démonstration passées en anglais.
+Vues Products, Suppliers, Materials et les deux vues de détail
+(`productDetailView`, `supplierDetailView`). 72 remplacements : sept chaînes
+apparaissaient dans plusieurs vues (« Statut » ×3, « Fournisseur » ×3) et sont
+sorties partout d'un coup.
+
+Mesuré sur les quatre vues, en anglais, allemand et espagnol : **0 chaîne
+française résiduelle, 0 erreur JavaScript**.
+
 ### Reste à faire
 
 | Tranche | Cible | Chaînes |
 |---|---|---:|
-| 3 | Brand Console — vues Products, Suppliers, Materials | ~120 |
 | 4 | Brand Console — Supply Chain, Requests, Questionnaires | ~110 |
 | 5 | Brand Console — Documents, Certifications, Quality, DPP, Reports, Settings | ~130 |
 | 6 | Supplier Portal | ~170 |
@@ -103,6 +113,31 @@ Son assertion sur « Rapports & Audits » acceptait le français ou l'anglais ; 
 libellé étant passé au catalogue, elle vérifie maintenant l'appel `bt()` **et**
 la valeur anglaise dans `en.js`. Contrôle négatif effectué : clé cassée → test
 rouge, code de sortie 1.
+
+## Le piège de la tranche 3 : où atterrit `${bt('clé')}`
+
+Le remplacement de `>texte<` par `>${bt('clé')}<` suppose que le nœud texte
+vit dans un *template literal*. Quand il vit dans une chaîne en apostrophes
+simples, l'apostrophe de la clé **referme la chaîne** et le fichier ne compile
+plus. La console a un cas de ce type.
+
+Une pré-étape générique par expression régulière a été écrite, puis
+**abandonnée** : une regex ne peut pas distinguer une apostrophe qui ouvre un
+littéral d'une qui le ferme. Elle a transformé `'in_progress'` en
+`` 'in_progress` `` et `.join('')` en `` .join(`') ``, en silence.
+
+La parade retenue tient en deux points :
+
+1. une liste **explicite et vérifiée à la main** des littéraux à convertir en
+   backticks avant remplacement ;
+2. une **validation syntaxique du bloc `<script>` avant toute écriture** — le
+   script extrait le bloc, le passe à `node --check`, et n'écrit rien s'il ne
+   compile pas. C'est cette garde qui a nommé les clés fautives au lieu de
+   laisser une console blanche.
+
+Corollaire noté au passage : `repr()` en Python affiche `\'` pour une simple
+apostrophe. Deux diagnostics ont été perdus à croire à des antislashs
+parasites qui n'existaient pas. Vérifier les octets, pas la représentation.
 
 ## Précaution de méthode
 
