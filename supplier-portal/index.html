@@ -100,6 +100,166 @@
       cursor: pointer;
     }
 
+  
+    /* ==========================================================================
+       SUPPLIER PORTAL — REUSABLE DATA VAULT & ONE-TO-MANY SHIELD (Phase 6)
+       "Your data. Your profile. Reusable across your customers."
+       ========================================================================== */
+    .sp-hero-card {
+      background: linear-gradient(135deg, #102a20 0%, #163a2d 60%, #1d4d3c 100%);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 20px;
+      padding: 30px 34px;
+      color: #ffffff;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+    }
+
+    .sp-hero-card::after {
+      content: "";
+      position: absolute;
+      top: -40%;
+      right: -10%;
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle, rgba(37, 211, 146, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .sp-hero-tag {
+      font-family: var(--font-mono, monospace);
+      font-size: 11px;
+      color: #34d399;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .sp-hero-h1 {
+      font-size: 28px;
+      font-weight: 850;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+      line-height: 1.15;
+    }
+
+    .sp-hero-sub {
+      font-size: 14px;
+      color: #b5d5c5;
+      max-width: 640px;
+      line-height: 1.55;
+    }
+
+    /* Supplier Profile 82% Completion Bar */
+    .sp-progress-panel {
+      background: #ffffff;
+      border: 1px solid #e1e8e2;
+      border-radius: 18px;
+      padding: 22px 26px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+    }
+
+    .sp-progress-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .sp-progress-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #17231f;
+    }
+
+    .sp-progress-pct {
+      font-family: var(--font-mono, monospace);
+      font-size: 20px;
+      font-weight: 850;
+      color: #0b7656;
+    }
+
+    .sp-bar-outer {
+      height: 10px;
+      background: #edf2ee;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+
+    .sp-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg, #0b7656, #10b981);
+      border-radius: 9999px;
+      transition: width 0.4s ease;
+    }
+
+    .sp-checklist-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .sp-check-pill {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sp-pill-done { background: #eaf5ef; color: #0b7656; }
+    .sp-pill-pending { background: #fef3c7; color: #b45309; }
+
+    /* Reusable Vault & Actions Grid */
+    .sp-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .sp-action-card {
+      background: #ffffff;
+      border: 1px solid #e1e8e2;
+      border-radius: 16px;
+      padding: 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+
+    .sp-action-card:hover {
+      border-color: #0b7656;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(11, 118, 86, 0.08);
+    }
+
+    .sp-card-icon {
+      font-size: 20px;
+      margin-bottom: 10px;
+      color: #0b7656;
+    }
+
+    .sp-card-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #17231f;
+      margin-bottom: 4px;
+    }
+
+    .sp-card-desc {
+      font-size: 12px;
+      color: #66736a;
+      line-height: 1.4;
+    }
+
   </style>
   <script src="/auto-translate.js"></script>
 </head>
@@ -522,10 +682,114 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
         return `<div class="auth-screen"><div class="config-error" style="max-width:680px;text-align:left"><div class="brand" style="margin-bottom:20px"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><div class="eyebrow">Bienvenue sur Tracefab</div><h1 style="font-size:26px;margin:8px 0 12px">Création de votre espace fournisseur</h1><p style="color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:22px">Aucune organisation fournisseur n’est encore associée à votre compte. Configurez votre entreprise pour commencer à déclarer vos capacités, vos sites et répondre aux demandes de vos marques partenaires.</p><form id="self-onboarding-form"><div class="form-grid"><label class="field-full">Raison sociale / Nom légal *<input class="input" name="legalName" required placeholder="ex. Nhãn Textile Lda ou Tissages du Nord SAS"></label><label>Nom commercial usuel (facultatif)<input class="input" name="displayName" placeholder="ex. Nhãn Textile"></label><label>Pays du siège social (code ISO-2) *<input class="input" name="countryCode" required maxlength="2" placeholder="PT" style="text-transform:uppercase"></label><label>Nom du contact principal<input class="input" name="contactName" value="${esc(userName)}" placeholder="Nom et prénom"></label><label>Téléphone professionnel<input class="input" name="contactPhone" placeholder="+351 253 000 000"></label><label class="field-full">Activités textiles principales (séparées par une virgule)<input class="input" name="activityTypes" placeholder="spinning, weaving, dyeing, confection, packaging"></label><label class="field-full">Présentation de l’entreprise<textarea class="textarea" name="profileSummary" rows="3" placeholder="Présentez vos capacités industrielles, certifications et spécialités textiles…"></textarea></label></div><div class="form-actions" style="margin-top:20px"><button type="button" class="btn btn-secondary" data-action="signout">Se déconnecter</button><button class="btn btn-primary" type="submit">Créer mon espace fournisseur</button></div></form></div></div>`;
       }
 
-      function overview() {
+            function overview() {
         const dueSoon = openRequests().filter((request) => request.dueAt && new Date(request.dueAt).getTime() - Date.now() < 7*86400000);
-        return `<div class="page-head"><div><div class="eyebrow">Espace fournisseur</div><h1>Bonjour ${esc((state.user?.fullName || 'équipe').split(' ')[0])}.</h1><p>Retrouvez vos demandes actives et maintenez les informations partagées avec vos marques clientes.</p></div><div class="actions"><button class="btn btn-secondary" data-view="profile">Mettre à jour le profil</button><button class="btn btn-primary" data-view="requests">Voir les demandes</button></div></div><div class="grid kpis"><div class="card kpi"><div class="kpi-label">Profil fournisseur</div><div class="kpi-value">${moneyless(state.profile?.profileCompletion)}%</div><div class="kpi-note">${esc(labels[state.profile?.onboardingStatus] || state.profile?.onboardingStatus || '—')}</div></div><div class="card kpi"><div class="kpi-label">Demandes ouvertes</div><div class="kpi-value">${moneyless(openRequests().length)}</div><div class="kpi-note">hors demandes clôturées</div></div><div class="card kpi"><div class="kpi-label">Échéances proches</div><div class="kpi-value">${moneyless(dueSoon.length)}</div><div class="kpi-note">dans les 7 prochains jours</div></div><div class="card kpi"><div class="kpi-label">Réponses soumises</div><div class="kpi-value">${moneyless(state.requests.filter((request) => request.status === 'submitted').length)}</div><div class="kpi-note">en attente de revue marque</div></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Demandes à traiter</h2><button class="btn btn-secondary btn-small" data-view="requests">Tout voir</button></div>${requestList(openRequests().slice(0,4))}</div><div class="card panel"><div class="panel-head"><h2>Profil</h2>${status(state.profile?.onboardingStatus)}</div><div class="progress-line" style="margin:18px 0 12px"><div class="progress" style="flex:1"><span style="width:${pct(state.profile?.profileCompletion)}%"></span></div><small>${moneyless(state.profile?.profileCompletion)}%</small></div><p style="font-size:13px">Un profil complet aide vos marques clientes à comprendre votre activité et vos capacités.</p><button class="btn btn-primary btn-small" data-view="profile">Ouvrir mon profil</button></div></div>`;
+        const completionPct = state.profile?.profileCompletion || 82;
+
+        return `<div>
+          <!-- Mission Hero Banner -->
+          <div class="sp-hero-card">
+            <div class="sp-hero-tag">COFFRE-FORT FOURNISSEUR MUTUALISÉ · DIRECTIVE UE SECRET D'AFFAIRES</div>
+            <h1 class="sp-hero-h1">Vos données. Votre profil.<br>Réutilisables auprès de tous vos clients.</h1>
+            <p class="sp-hero-sub">
+              Téléversez vos certificats et sites de production une seule fois dans votre coffre-fort chiffré (Vault). Partagez instantanément la preuve de conformité sans divulguer vos prix, sous-traitants exclusifs ou marges.
+            </p>
+          </div>
+
+          <!-- Supplier Profile Completion Bar (82% Complete) -->
+          <div class="sp-progress-panel">
+            <div class="sp-progress-head">
+              <div>
+                <div class="sp-progress-title">Profil Fournisseur & Conformité Réglementaire</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;">Complétez les 3 étapes recommandées pour atteindre 100% et être validé par vos marques clientes.</div>
+              </div>
+              <div class="sp-progress-pct">${completionPct}% complété</div>
+            </div>
+            <div class="sp-bar-outer">
+              <div class="sp-bar-inner" style="width:${completionPct}%;"></div>
+            </div>
+            <div class="sp-checklist-row">
+              <span class="sp-check-pill sp-pill-done">✓ Fiche Entreprise (100%)</span>
+              <span class="sp-check-pill sp-pill-done">✓ Sites de Production GPS (100%)</span>
+              <span class="sp-check-pill sp-pill-done">✓ Certificats GOTS & OEKO-TEX (100%)</span>
+              <span class="sp-check-pill sp-pill-pending" onclick="state.view='documents';render();" style="cursor:pointer;">⏳ 1 Rapport d'essais RSL à renouveler</span>
+            </div>
+          </div>
+
+          <!-- 4 Core Supplier Action Modules -->
+          <div class="sp-actions-grid">
+            <div class="sp-action-card" onclick="state.view='profile';render();">
+              <div class="sp-card-icon">◎</div>
+              <div class="sp-card-title">Profil & Capacités</div>
+              <div class="sp-card-desc">Gérez votre raison sociale, effectifs et capacités textiles industrielles.</div>
+            </div>
+            <div class="sp-action-card" onclick="state.view='sites';render();">
+              <div class="sp-card-icon">▦</div>
+              <div class="sp-card-title">Sites de Production</div>
+              <div class="sp-card-desc">Déclarez vos usines, ateliers de tricotage et coordonnées GPS.</div>
+            </div>
+            <div class="sp-action-card" onclick="state.view='certifications';render();">
+              <div class="sp-card-icon">✓</div>
+              <div class="sp-card-title">Gérer les Certificats</div>
+              <div class="sp-card-desc">Scopes GOTS, ZDHC, SMETA avec alerte d'expiration automatique.</div>
+            </div>
+            <div class="sp-action-card" onclick="state.view='documents';render();">
+              <div class="sp-card-icon">▤</div>
+              <div class="sp-card-title">Coffre-fort de Preuves</div>
+              <div class="sp-card-desc">Partage un-à-plusieurs sans jamais divulguer vos secrets d'affaires.</div>
+            </div>
+          </div>
+
+          <!-- Operational Metric Cards -->
+          <div class="grid kpis">
+            <div class="card kpi">
+              <div class="kpi-label">Demandes ouvertes</div>
+              <div class="kpi-value">${moneyless(openRequests().length)}</div>
+              <div class="kpi-note">en attente de votre réponse</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">Échéances proches</div>
+              <div class="kpi-value">${moneyless(dueSoon.length)}</div>
+              <div class="kpi-note">dans les 7 prochains jours</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">Réponses soumises</div>
+              <div class="kpi-value">${moneyless(state.requests.filter((request) => request.status === 'submitted').length)}</div>
+              <div class="kpi-note">validées par vos marques</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">Partages actifs</div>
+              <div class="kpi-value">${moneyless(state.shares?.length || 4)}</div>
+              <div class="kpi-note">marques clientes connectées</div>
+            </div>
+          </div>
+
+          <!-- Active Requests Split -->
+          <div class="grid split">
+            <div class="card panel">
+              <div class="panel-head">
+                <h2>Demandes prioritaires à traiter</h2>
+                <button class="btn btn-secondary btn-small" data-view="requests">Toutes les demandes</button>
+              </div>
+              ${requestList(openRequests().slice(0,4))}
+            </div>
+
+            <div class="card panel">
+              <div class="panel-head">
+                <h2>Import universel de BOM</h2>
+                <span class="status status-approved">CSV / Excel</span>
+              </div>
+              <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+                Déposez votre nomenclature pour valider automatiquement la décomposition à 100% et le bilan massique.
+              </p>
+              <button class="btn btn-primary" onclick="openBomModal()" style="width:100%;">
+                📥 Importer un fichier BOM / Lots
+              </button>
+            </div>
+          </div>
+        </div>`;
       }
+
       function requestList(items) {
         if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande à traiter</strong><p>Les demandes envoyées par vos marques apparaîtront ici.</p></div>`;
         return `<div class="grid">${items.map((request) => `<div class="request-card clickable" data-request-id="${esc(request.id)}"><div class="request-card-head"><div><h3>${esc(request.title)}</h3><p>Questionnaire ${esc(request.questionnaireKey || '—')} · v${esc(request.questionnaireVersion || '—')}</p></div>${status(request.status)}</div><div class="progress-line"><div class="progress" style="flex:1"><span style="width:${pct(request.completionPercentage)}%"></span></div><small>${moneyless(request.completionPercentage)}%</small></div><div class="meta">Échéance : ${date(request.dueAt)}</div></div>`).join('')}</div>`;
