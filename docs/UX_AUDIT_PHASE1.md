@@ -2233,3 +2233,83 @@ qu'ils manquent au lieu de les laisser produire une erreur générique ; il ne l
 Non vérifié ici, faute de base : que `tracefab_get_product_traceability()` peuple bien
 `site_country`. La route ne dépend pas de cette fonction — elle interroge `supply_chain_nodes`
 avec sa jointure `supplier_sites` — mais le comportement réel sur Neon reste à confirmer.
+
+---
+
+## Chantier 24 — Quatre API écrites, jamais déclarées, donc inatteignables
+
+### Le constat
+
+`test:route-registry` signalait depuis plusieurs chantiers **4 gestionnaires orphelins** sans
+que ce soit traité. Vérifié : ils sont écrits, complets, adossés à de vrais modules — et
+**aucun motif du registre ne les déclare**. Le routeur unique `api/index.ts` est la seule porte
+d'entrée : non déclaré signifie inatteignable.
+
+| Gestionnaire | Module métier | Lignes |
+|---|---|---|
+| `integrations/plm` | `plm-connector.js` (`ingestPlmProductBom`) | 69 |
+| `quality/audit-pack` | `quality-index.js` + `audit-pack.js` | 54 |
+| `quality/calculate-index` | `quality-index.js` (`calculateDataQualityIndex`) | 51 |
+| `supplier/certifications/ocr-extract` | `certificate-ocr.js` (`parseCertificateOcr`) | 43 |
+
+Deux précisions mesurées avant d'agir :
+
+- **Aucun appelant** nulle part : 0 référence dans les interfaces, 0 dans `api/`. Donc pas de
+  bouton qui échoue en silence — simplement quatre capacités mortes.
+- **L'authentification est réellement appliquée** dans les quatre, pas seulement importée :
+  `requireClerkUser` + `401`, validation `400`, et pour `ocr-extract` le cloisonnement
+  `currentSupplier(tx, auth.user.id, requestedOrganizationId(req))`. `integrations/plm` ajoute
+  un garde-fou `TRACEFAB_PLM_ENABLED` en production.
+
+D'où la décision : **exposer**, pas supprimer. La logique est écrite et ses modules sont
+couverts par `test:plm-erp:chantier2` et `test:docai:chantier1`, qui passaient déjà — seul
+l'aiguillage manquait.
+
+### Le piège d'ordre
+
+Le registre est parcouru dans l'ordre et **le premier motif qui correspond gagne**. Or la ligne
+104 déclarait `/^supplier\/certifications\/([^\/]+)$/` avec `params: ['certificationId']`.
+Ajouter `ocr-extract` après l'aurait rendu **inatteignable** : `ocr-extract` aurait été capturé
+comme un `certificationId`. Il est donc inséré **avant**, ligne 107.
+
+Vérifié par résolution réelle des 126 motifs dans l'ordre :
+
+| Chemin | Résout vers |
+|---|---|
+| `supplier/certifications/ocr-extract` | `supplier/certifications/ocr-extract` |
+| `supplier/certifications/7f3a-uuid` | `supplier/certifications/[certificationId]` |
+| `quality/audit-pack` | `quality/audit-pack` |
+| `quality/calculate-index` | `quality/calculate-index` |
+| `integrations/plm` | `integrations/plm` |
+
+Les trois autres ne présentaient pas de conflit : il n'existe ni `quality/([^/]+)` ni
+`integrations/([^/]+)` générique.
+
+### La garde ajoutée
+
+Section **3** de `test:route-registry` : l'invariant général, pas seulement ces quatre cas.
+Elle reconstruit les 126 motifs dans l'ordre, fabrique pour chacun un chemin d'exemple, et
+signale toute route qu'un **motif antérieur** capterait à sa place. Plus les quatre résolutions
+attendues, et la vérification que `supplier/certifications/{id}` continue d'aller vers
+`[certificationId]`. **10 contrôles, 0 échec** (2 auparavant).
+
+**Contre-épreuve** : `ocr-extract` déplacé après `[certificationId]` →
+`FAIL route(s) inatteignable(s) car masquée(s) — supplier/certifications/ocr-extract masqué par
+supplier/certifications/[certificationId]`, **2 échecs, exit 1**. Ordre restauré → **10/10**.
+
+### Vérification
+
+`test:route-registry` : **« aucun handler orphelin »**, 10/10. `api:typecheck` **98 = 98** —
+les quatre gestionnaires compilaient déjà, seule leur déclaration manquait. Suite complète
+**PASS 45 · SKIP 18 · FAIL 0 sur 63**.
+
+### Ce que cela ne règle pas
+
+Ces quatre API sont désormais **joignables**, pas **utilisées** : aucune interface ne les
+appelle encore. Le PLM reste en outre conditionné à `TRACEFAB_PLM_ENABLED`. Les brancher sur
+des écrans est un chantier distinct — et il faudra alors vérifier que chaque bouton correspond
+à un contrat réel, comme au Chantier 17.
+
+Les 98 erreurs de typage sont inchangées et se répartissent : **90 Prisma** (client non généré,
+`binaries.prisma.sh` injoignable) et **8 `@types/node`** (`Buffer`/`zlib` : le dépôt déclare
+`^20.0.0` alors que le runtime est Node v22).

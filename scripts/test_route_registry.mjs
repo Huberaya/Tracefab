@@ -184,6 +184,71 @@ if (neverCalled.length) {
 /* ------------------------------------------------------------- résultat -- */
 
 console.log(`\n${'='.repeat(64)}`);
+console.log(`\n3. Aucune route n'est masquée par un motif paramétrique antérieur`);
+/* Le registre est parcouru dans l'ordre : le premier motif qui correspond gagne.
+   Une route littérale déclarée APRÈS un motif `([^\/]+)` couvrant le même préfixe
+   est inatteignable — c'était le risque réel pour supplier/certifications/ocr-extract
+   face à supplier/certifications/([^\/]+). */
+const ordered = [];
+for (const m of router.matchAll(
+  /pattern: (\/\^[^\n]*?), params: \[([^\]]*)\], load: \(\) => import\('\.\/_routes\/([^']+)\.js'\)/g,
+)) {
+  let re;
+  try {
+    re = new Function(`return ${m[1]}`)();
+  } catch {
+    continue;
+  }
+  ordered.push({ source: m[1], re, file: m[3] });
+}
+ok(`${ordered.length} motifs analysés dans l'ordre du registre`);
+
+/* Chemin d'exemple pour chaque motif : les groupes deviennent un segment générique. */
+function samplePath(source) {
+  const body = source.replace(/^\/\^/, '').replace(/\$\/$/, '').replace(/\$$/, '');
+  return body
+    .replace(/\(\[\^\\\/\]\+\)/g, 'x1')
+    .replace(/\\\//g, '/')
+    .replace(/\\\-/g, '-');
+}
+
+const shadowed = [];
+ordered.forEach((entry, index) => {
+  const sample = samplePath(entry.source);
+  if (!sample || !entry.re.test(sample)) return;
+  const earlier = ordered.slice(0, index).find((candidate) => candidate.re.test(sample));
+  if (earlier && earlier.file !== entry.file) {
+    shadowed.push(`${entry.file} masqué par ${earlier.file} (chemin ${sample})`);
+  }
+});
+if (shadowed.length === 0) {
+  ok('aucune route masquée');
+} else {
+  bad('route(s) inatteignable(s) car masquée(s)', shadowed.join('\n        '));
+}
+
+/* Les quatre anciens orphelins doivent résoudre vers leur propre gestionnaire. */
+for (const [path, file] of [
+  ['supplier/certifications/ocr-extract', 'supplier/certifications/ocr-extract'],
+  ['quality/audit-pack', 'quality/audit-pack'],
+  ['quality/calculate-index', 'quality/calculate-index'],
+  ['integrations/plm', 'integrations/plm'],
+]) {
+  const hit = ordered.find((e) => e.re.test(path));
+  if (hit && hit.file === file) ok(`${path} résout vers ${file}`);
+  else bad(`${path} ne résout pas vers ${file}`, hit ? `résout vers ${hit.file}` : 'aucune route');
+}
+/* Et le motif paramétrique voisin doit continuer de fonctionner. */
+const byId = ordered.find((e) => e.re.test('supplier/certifications/7f3a'));
+if (byId && byId.file === 'supplier/certifications/[certificationId]') {
+  ok('supplier/certifications/{id} résout toujours vers [certificationId]');
+} else {
+  bad(
+    'supplier/certifications/{id} ne résout plus vers [certificationId]',
+    byId ? `résout vers ${byId.file}` : 'aucune route',
+  );
+}
+
 if (failures) {
   console.error(`test:route-registry FAILED — ${failures} échec(s), ${checks} contrôle(s) réussi(s).`);
   process.exit(1);
