@@ -1,15 +1,18 @@
 # Bilan des chantiers — où nous en sommes
 
-_Mise à jour : 7 octobre 2026. Branche `merge/experience`, commit `db9cc6f`._
+_Mise à jour : 7 octobre 2026. Branche `merge/experience`, commit `9fba792`._
 
 ## En une phrase
 
-Les chantiers 6 (consolidation i18n), 3 (vue Risk) et 4 (vues vides en
-démonstration) sont **terminés**. Le premier a révélé un quatrième moteur de
+Les chantiers 6 (consolidation i18n), 3 (vue Risk), 4 (vues vides en
+démonstration) et 5 (portail mobile) sont **terminés**, et **les trois
+personas passent le test d'acceptation** — CEO 6/6, Conformité 4/4,
+Fournisseur 4/4. Le premier a révélé un quatrième moteur de
 traduction caché qui corrompait le DPP public ; le deuxième, une vue entière
 déclarée dans la navigation mais injoignable ; le troisième, un panneau qui
-affirmait en dur un fait sur des données qu'il n'avait pas encore. Il reste
-**8 chantiers**, et **plus aucun P0**.
+affirmait en dur un fait sur des données qu'il n'avait pas encore ; le
+quatrième, un écran mobile où rien n'était actionnable. Il reste
+**7 chantiers**, et **plus aucun P0**.
 
 ---
 
@@ -20,6 +23,7 @@ affirmait en dur un fait sur des données qu'il n'avait pas encore. Il reste
 | **6** | **Catalogues i18n concurrents** · P0 | **6 des 7 pages sur le catalogue unique.** Reste `passport/` et `operations/`, toutes deux orphelines (0 lien entrant) : leur migration n'a de sens qu'une fois leur sort tranché. |
 | **3** | **Vue Risk absente de la console** · P0 | **Livrée**, entre Qualité et DPP. Signaux dérivés des données déjà chargées, jamais inventés. Chaque ligne mène à sa correction. Score explicitement écarté de toute certification. A aussi révélé que la vue `intelligence` était injoignable — corrigée. Détail : `CHANTIER-3-VUE-RISK.md`. |
 | **4** | **`dpp` et `certifications` vides en démonstration** · P1 | **Les deux vues se remplissent.** `dpp` : 357 → 1 745 car., jauge 88 %, 4 piliers, 1 bloquant restant. `certifications` : 5 certificats aux **échéances relatives**, donc jamais périmées. La veille des expirations **dérive des données** au lieu d'affirmer en dur qu'aucun certificat n'expire. 21 clés × 7 langues. Détail : `CHANTIER-4-DEMO-DPP-CERTIFICATIONS.md`. |
+| **5** | **Portail fournisseur sans action sur mobile** · P1 | **0 action de contenu au-dessus de la ligne → 5.** Le panneau de progression dérivait de rien : trois « 100 % » en dur a cote d'un total de 72 %. Il lit désormais `state.quality.score`, désigne le point faible par calcul et porte un bouton qui y mène. Chrome mobile dégraissé de 176 px. 17 clés x 9 langues. Detail : `CHANTIER-5-PORTAIL-MOBILE.md`. |
 
 Rappel des chantiers déjà soldés avant celui-ci : les 8 fiches de l'audit sont
 toutes corrigées, les 10 routes orphelines sont enregistrées (124/124, 0
@@ -78,13 +82,12 @@ Traitement différencié, selon ce dont chaque page dépend réellement :
 
 ---
 
-## Ce qui reste — 8 chantiers
+## Ce qui reste — 7 chantiers
 
 | # | Chantier | Priorité | Nature |
 |---|---|---|---|
 | 1 | Arbitrer `test:supplychain:chantier3` | P1 | décision |
 | 2 | Déclarer `tsx` en devDependency | P1 | 1 ligne (8 scripts passent par `npx`) |
-| 5 | Portail mobile sans action au 1ᵉʳ écran | P1 | mise en page (390 × 844) |
 | 7 | Copie métier en dur dans les SPA | P1 | ~754 chaînes |
 | 8 | Ouvrir la PR (**push fait**) | P1 | 1 clic — jeton sans `pull_requests=write` |
 | 9 | Phases 9 à 12 sans rapport formel | P2 | revue |

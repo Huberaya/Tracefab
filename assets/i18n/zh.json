@@ -57,6 +57,23 @@
     "submitToBrand": "提交至品牌",
     "saveDraft": "保存草稿",
     "responseRecorded": "回复已成功保存。",
-    "requestSubmitted": "数据已成功提交至品牌商。"
+    "requestSubmitted": "数据已成功提交至品牌商。",
+    "spDemoBanner": "演示模式 — 以下数据仅为演示数据。打开 ?demo=0 以连接 Clerk 和 Tracefab API。",
+    "spHeroTag": "共享供应商保险库 · 欧盟商业秘密指令",
+    "spHeroTitle": "您的数据。您的档案。可供所有客户重复使用。",
+    "spHeroSub": "将证书和生产基地一次性上传到您的加密保险库。即时共享合规证明，无需披露价格、独家分包商或利润率。",
+    "spProfileTitle": "您的合规档案",
+    "spComplete": "已完成",
+    "spWeakest": "最薄弱环节",
+    "spFixNow": "立即修复",
+    "spAllOnTarget": "所有环节均已达标，无需处理。",
+    "spDimCompleteness": "档案完整度",
+    "spDimFreshness": "数据时效性",
+    "spDimDocumentation": "证据覆盖率",
+    "spDimConsistency": "数据一致性",
+    "spMissingField": "缺少",
+    "spFieldRslReport": "一份 RSL 检测报告",
+    "spFieldActiveSite": "一个有效的生产基地",
+    "spNoScore": "提交首批数据后，您的合规评分将在此显示。"
   }
 }

@@ -115,13 +115,35 @@ sont précisément les deux vues qui portent la promesse réglementaire.
 > `npm run test:chantier4-demo` — 33 assertions, chaîné dans `build`. Rapport :
 > `docs/experience/CHANTIER-4-DEMO-DPP-CERTIFICATIONS.md`.
 
-## 5. Portail fournisseur mobile sans action au premier écran · P1
+## 5. Portail fournisseur mobile sans action au premier écran · P1 · **fait**
 
 En 390 × 844, les **12 éléments cliquables au-dessus de la ligne de
 flottaison sont tous dans la navigation** : aucune action de contenu. Le
 persona Fournisseur doit « savoir immédiatement quoi faire » — sur mobile il
 ne voit que des onglets. Sur desktop le critère passe (progression
 « 72 % complété » visible sans défilement).
+
+> **Fait. Les trois personas passent désormais** (CEO 6/6 · Conformité 4/4 ·
+> Fournisseur 4/4), ce qui clôt le test d'acceptation du cahier des charges.
+>
+> Le panneau de progression affirmait en dur trois « 100 % » à côté d'un total
+> de 72 %, et parlait de « 3 étapes » en n'en montrant qu'une. Le remonter tel
+> quel aurait aggravé le défaut : il **dérive désormais de
+> `state.quality.score`**, désigne le point faible par calcul (couverture
+> documentaire, 25 %) et porte un bouton qui y mène.
+>
+> Chrome dégraissé sur mobile : barre supérieure 110 → 51 px, accroche
+> 265 → 148 px. Le panneau passe de y = 579 à y = 395, le bouton d'action est
+> entièrement visible. **0 action de contenu → 5.**
+>
+> Trois défauts trouvés en chemin : le portail forçait `'fr'` et ignorait
+> `?lang=` ; `missingFields: ['active_site']` contredisait un site actif
+> existant ; le sélecteur de l'audit des personas ne comptait pas
+> `.pillar-card`, faisant passer la vue DPP pour squelettique.
+>
+> 17 clés × **9 langues** (turc et chinois inclus, le portail les sert).
+> `npm run test:chantier5-portail` — 40 assertions, chaîné dans `build`.
+> Rapport : `docs/experience/CHANTIER-5-PORTAIL-MOBILE.md`.
 
 ## 6. Systèmes i18n concurrents · P0 · **fait**
 
@@ -321,8 +343,8 @@ routes et de l'API.
    vers trois dictionnaires concurrents serait du travail à refaire.
 2. **Point 3** (vue Risk) : plus gros écart au cahier des charges, et il
    débloque le persona Conformité.
-3. **Point 4** (vues vides) : *fait*. **Point 5** (portail mobile) : suivant —
-   il ferme le persona Fournisseur.
+3. **Points 4 et 5** : *faits*. Le persona Fournisseur est validé, et les
+   trois personas passent.
 4. **Point 2** (`tsx`) : une ligne, fiabilise toute la matrice de tests.
 5. **Point 1** : décision de votre part, pas de développement.
 6. **Point 9** : revue de rattrapage une fois le reste stabilisé.

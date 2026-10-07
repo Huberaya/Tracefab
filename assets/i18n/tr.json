@@ -57,6 +57,23 @@
     "submitToBrand": "Markaya Gönder",
     "saveDraft": "Taslağı Kaydet",
     "responseRecorded": "Yanıt başarıyla kaydedildi.",
-    "requestSubmitted": "Talep markaya gönderildi."
+    "requestSubmitted": "Talep markaya gönderildi.",
+    "spDemoBanner": "Demo modu — aşağıdaki veriler gösterim amaçlıdır. Clerk ve Tracefab API'lerini bağlamak için ?demo=0 adresini açın.",
+    "spHeroTag": "Ortak tedarikçi kasası · AB ticari sırlar direktifi",
+    "spHeroTitle": "Verileriniz. Profiliniz. Tüm müşterileriniz için yeniden kullanılabilir.",
+    "spHeroSub": "Sertifikalarınızı ve üretim tesislerinizi şifreli kasanıza bir kez yükleyin. Fiyatlarınızı, özel taşeronlarınızı veya kâr marjlarınızı açıklamadan uygunluk kanıtını anında paylaşın.",
+    "spProfileTitle": "Uygunluk profiliniz",
+    "spComplete": "tamamlandı",
+    "spWeakest": "En zayıf alan",
+    "spFixNow": "Şimdi düzelt",
+    "spAllOnTarget": "Tüm alanlar hedefte. Dikkatinizi gerektiren bir şey yok.",
+    "spDimCompleteness": "Profil eksiksizliği",
+    "spDimFreshness": "Veri güncelliği",
+    "spDimDocumentation": "Kanıt kapsamı",
+    "spDimConsistency": "Veri tutarlılığı",
+    "spMissingField": "Eksik",
+    "spFieldRslReport": "bir RSL test raporu",
+    "spFieldActiveSite": "aktif bir üretim tesisi",
+    "spNoScore": "Uygunluk puanınız ilk veriler gönderildiğinde görünecek."
   }
 }

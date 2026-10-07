@@ -640,6 +640,25 @@ window.TF_I18N_BUNDLES.en = {
   },
 
   portal: {
+    // --- Premier ecran du portail (chantier 5) ---
+    spDemoBanner: "Demonstration mode — the figures below are demonstration data. Open ?demo=0 to connect Clerk and the Tracefab APIs.",
+    spHeroTag: "Shared supplier vault · EU trade secrets directive",
+    spHeroTitle: "Your data. Your profile. Reusable across all your customers.",
+    spHeroSub: "Upload your certificates and production sites once into your encrypted vault. Share proof of compliance instantly, without disclosing your prices, exclusive subcontractors or margins.",
+    spProfileTitle: "Your compliance profile",
+    spComplete: "complete",
+    spWeakest: "Weakest area",
+    spFixNow: "Fix this now",
+    spAllOnTarget: "Every area is on target. Nothing needs your attention.",
+    spDimCompleteness: "Profile completeness",
+    spDimFreshness: "Data freshness",
+    spDimDocumentation: "Evidence coverage",
+    spDimConsistency: "Data consistency",
+    spMissingField: "Missing",
+    spFieldRslReport: "an RSL test report",
+    spFieldActiveSite: "an active production site",
+    spNoScore: "Your compliance score will appear once your first data has been submitted.",
+    // --- fin premier ecran du portail ---
     sites: "Production Facilities",
     materials: "Materials & Yarns",
     documents: "Evidence Vault (One-to-Many)",

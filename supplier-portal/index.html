@@ -25,6 +25,8 @@
     .item-list { display:grid; gap:13px; } .invitation-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid rgba(121,87,25,.18); font-size:12px; } .invitation-row:first-child { border-top:0; } .item { padding:17px; border:1px solid var(--line); border-radius:14px; } .item-head { display:flex; justify-content:space-between; gap:15px; align-items:flex-start; } .item h3 { font-size:14px; } .item p { margin:5px 0 0; font-size:12px; } .response-box { margin-top:14px; padding:13px; background:#f8faf7; border-radius:12px; } .response-box .form-actions { margin-top:13px; } .response-state { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:7px; }
     .toast { position:fixed; right:25px; bottom:25px; z-index:50; color:white; background:#19372d; border-radius:12px; padding:13px 16px; box-shadow:0 12px 35px rgba(0,0,0,.2); font-size:13px; max-width:360px; } .toast.error { background:#8e3d3b; } .auth-screen { min-height:100vh; display:grid; place-items:center; padding:25px; background:radial-gradient(circle at 10% 0%,#d9f1e4,transparent 32%),var(--paper); } .auth-card { width:min(950px,100%); display:grid; grid-template-columns:1fr 1fr; overflow:hidden; border-radius:24px; background:white; box-shadow:var(--shadow); border:1px solid var(--line); } .auth-copy { padding:52px; background:#112b23; color:white; } .auth-copy h1 { font-size:38px; margin-top:75px; } .auth-copy p { color:#bdd2c7; max-width:370px; } .auth-copy ul { color:#d7e9df; padding-left:19px; line-height:2; font-size:13px; } .auth-box { padding:38px; min-height:480px; } .config-error { max-width:600px; background:white; padding:35px; border-radius:20px; box-shadow:var(--shadow); } .demo-banner { background:var(--yellow-soft); border-bottom:1px solid #f2ddb0; padding:8px 15px; text-align:center; font-size:11px; color:#8f6417; font-weight:750; }
     @media (max-width:1050px) { .kpis{grid-template-columns:repeat(2,1fr)} .split{grid-template-columns:1fr} } @media (max-width:760px) { .app{display:block} .sidebar{min-height:auto;padding:15px} .brand{padding-bottom:16px} .nav{display:flex;overflow-x:auto} .nav button{white-space:nowrap} .sidebar-bottom{display:none} .topbar{padding:0 18px;min-height:64px} .content{padding:28px 18px 50px} .page-head,.detail-hero{display:block} .actions{justify-content:flex-start;margin-top:17px} .auth-card{grid-template-columns:1fr} .auth-copy{display:none} .auth-box{min-height:500px} .form-grid{grid-template-columns:1fr} .field-full{grid-column:auto} }
+
+
   
     /* Evidence Vault, Reusability & NDA Enhancements (Chantier 3) */
     .vault-hero {
@@ -218,6 +220,52 @@
     .sp-pill-pending { background: #fef3c7; color: #b45309; }
 
     /* Reusable Vault & Actions Grid */
+    .sp-progress-lead {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 3px;
+      line-height: 1.45;
+    }
+    .sp-progress-missing {
+      font-size: 11.5px;
+      color: #b45309;
+      margin-top: 4px;
+    }
+    /* La pastille est un bouton : elle mene a la vue qui corrige la
+       dimension. Reset de l'apparence native, le visuel reste celui des
+       anciennes pastilles. */
+    .sp-check-pill {
+      border: 0;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .sp-check-pill:hover { filter: brightness(0.96); }
+    .sp-check-pill:focus-visible { outline: 2px solid #0b7656; outline-offset: 2px; }
+    .sp-focus-btn {
+      margin-top: 14px;
+      width: 100%;
+      border: 0;
+      border-radius: 11px;
+      padding: 13px 18px;
+      background: #0b7656;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .sp-focus-btn:hover { background: #0a6349; }
+    .sp-focus-btn:focus-visible { outline: 2px solid #17231f; outline-offset: 2px; }
+    .sp-progress-pct span {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 650;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: right;
+    }
     .sp-actions-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -260,6 +308,43 @@
       line-height: 1.4;
     }
 
+    /* Chantier 5 — en 390x844, les 14 elements cliquables au-dessus de la
+       ligne de flottaison etaient tous de la navigation. Le fournisseur doit
+       savoir immediatement quoi faire ; il ne voyait que des onglets, deux
+       listes deroulantes de reglage et une accroche. On degraisse le chrome
+       et on comprime l'accroche pour faire remonter le panneau d'action. */
+    @media (max-width: 760px) {
+      /* le fil d'ariane repete l'onglet actif, deja visible dans la nav */
+      .topbar .crumb, .topbar .breadcrumb { display: none; }
+      .topbar { min-height: 0; padding: 10px 18px; gap: 10px; flex-wrap: wrap; }
+      .topbar select { font-size: 12px; padding: 6px 8px; }
+      .topbar label, .topbar .field-label { font-size: 10px; }
+      .content { padding: 16px 18px 50px; }
+
+      .sp-hero-card { padding: 18px 20px; border-radius: 16px; margin-bottom: 16px; }
+      .sp-hero-tag { font-size: 9.5px; letter-spacing: .08em; margin-bottom: 8px; }
+      .sp-hero-h1 { font-size: 20px; line-height: 1.2; }
+      /* La promesse tient dans le titre. Le paragraphe l'explicite : utile
+         sur grand ecran, il coute 150px au-dessus de la ligne sur mobile et
+         repousse la seule chose actionnable hors de l'ecran. */
+      .sp-hero-sub { display: none; }
+
+      .sp-progress-panel { padding: 16px 18px; border-radius: 15px; }
+      .sp-progress-head { gap: 12px; align-items: flex-start; }
+      .sp-progress-pct { font-size: 17px; white-space: nowrap; }
+      .sp-checklist-row { gap: 8px; }
+      .sp-check-pill { font-size: 11px; padding: 5px 10px; }
+
+      /* langue et organisation tiennent sur une seule ligne : ce sont deux
+         reglages poses une fois, ils n'ont pas a couter deux lignes au-dessus
+         de la ligne de flottaison. */
+      .top-actions { width: 100%; gap: 8px; }
+      .top-actions > * { flex: 1 1 0; min-width: 0; }
+      .top-actions label { min-width: 0 !important; }
+      .top-actions select { width: 100%; }
+      .top-actions label .meta { display: none; }
+    }
+
   </style>
   <link rel="stylesheet" href="/assets/design-system/tracefab-spa-responsive.css">
   <!-- The legacy auto-translate.js DOM rewriter was removed here: it reads the
@@ -297,7 +382,7 @@
         return T.t('portal.' + key, null) || T.t('shared.' + key, key);
       }
 
-      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'fr', demo:new URLSearchParams(location.search).has('demo') };
+      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof window !== 'undefined' && window.TF_I18N ? window.TF_I18N.lang : null) || (typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'en', demo:new URLSearchParams(location.search).has('demo') };
   // Status chips used to read French in every language because this was a
   // hardcoded map. They now resolve through the catalogue.
   const STATUS_KEYS = {
@@ -363,7 +448,7 @@
         state.members = [{ id:'demo-member-1', organizationId:'demo-supplier-org', userId:'demo-user-1', role:'owner', status:'active', user:{ fullName:'Rui Costa', email:'rui@nhan-textile.example' } }, { id:'demo-member-2', organizationId:'demo-supplier-org', userId:'demo-user-2', role:'manager', status:'active', user:{ fullName:'Ana Silva', email:'ana@nhan-textile.example' } }];
         state.memberInvitations = [{ id:'demo-invitation-1', email:'production@nhan-textile.example', targetRole:'contributor', expiresAt:new Date(Date.now()+5*86400000).toISOString(), createdAt:new Date().toISOString() }];
         state.canManageMembers = true;
-        state.quality = { score:{ completeness:'72', freshness:'80', documentationCoverage:'25', consistency:'90', missingFields:['active_site'], blockingIssues:[] }, issues:[{ id:'demo-quality-issue-1', severity:'warning', status:'open', ruleKey:'supplier_missing_evidence', message:'La couverture documentaire mérite encore une revue par l’équipe qualité.', detectedAt:new Date().toISOString() }] };
+        state.quality = { score:{ completeness:'72', freshness:'80', documentationCoverage:'25', consistency:'90', missingFields:['rsl_test_report'], blockingIssues:[] }, issues:[{ id:'demo-quality-issue-1', severity:'warning', status:'open', ruleKey:'supplier_missing_evidence', message:'La couverture documentaire mérite encore une revue par l’équipe qualité.', detectedAt:new Date().toISOString() }] };
         state.requests = [
           { id:'demo-supplier-request-1', brandOrganizationId:'demo-brand-org', supplierOrganizationId:'demo-supplier-org', title:'Données produit — collection automne', questionnaireKey:'product-data-core', questionnaireVersion:'1.0', status:'in_progress', dueAt:new Date(Date.now()+5*86400000).toISOString(), completionPercentage:'40', lastActivityAt:new Date().toISOString(), items:[
             { id:'demo-item-1', label:'Product description', fieldKey:'product_description', dataType:'text', required:true, evidenceRequired:false, helpText:'Describe the product and its intended use.', validationRules:{ minLength:10, maxLength:2000 }, responses:[] },
@@ -430,7 +515,7 @@
       function openRequests() { return state.requests.filter((request) => !['approved','cancelled'].includes(request.status)); }
       function shell(content) {
         const userName = state.user?.fullName || state.user?.email || 'Utilisateur';
-        return `${state.demo ? '<div class="demo-banner">Mode démonstration — ouvrez <code>?demo=0</code> pour connecter Clerk et les APIs Tracefab.</div>' : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖','Mass-Balance')}${navButton('passport','✦','Passeport')}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
+        return `${state.demo ? `<div class="demo-banner">${esc(t('spDemoBanner')).replace('?demo=0', '<code>?demo=0</code>')}</div>` : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖','Mass-Balance')}${navButton('passport','✦','Passeport')}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || 'Mode démonstration')}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
 
       function modalView(type) {
@@ -494,39 +579,98 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
         return `<div class="auth-screen"><div class="config-error" style="max-width:680px;text-align:left"><div class="brand" style="margin-bottom:20px"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><div class="eyebrow">Bienvenue sur Tracefab</div><h1 style="font-size:26px;margin:8px 0 12px">Création de votre espace fournisseur</h1><p style="color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:22px">Aucune organisation fournisseur n’est encore associée à votre compte. Configurez votre entreprise pour commencer à déclarer vos capacités, vos sites et répondre aux demandes de vos marques partenaires.</p><form id="self-onboarding-form"><div class="form-grid"><label class="field-full">Raison sociale / Nom légal *<input class="input" name="legalName" required placeholder="ex. Nhãn Textile Lda ou Tissages du Nord SAS"></label><label>Nom commercial usuel (facultatif)<input class="input" name="displayName" placeholder="ex. Nhãn Textile"></label><label>Pays du siège social (code ISO-2) *<input class="input" name="countryCode" required maxlength="2" placeholder="PT" style="text-transform:uppercase"></label><label>Nom du contact principal<input class="input" name="contactName" value="${esc(userName)}" placeholder="Nom et prénom"></label><label>Téléphone professionnel<input class="input" name="contactPhone" placeholder="+351 253 000 000"></label><label class="field-full">Activités textiles principales (séparées par une virgule)<input class="input" name="activityTypes" placeholder="spinning, weaving, dyeing, confection, packaging"></label><label class="field-full">Présentation de l’entreprise<textarea class="textarea" name="profileSummary" rows="3" placeholder="Présentez vos capacités industrielles, certifications et spécialités textiles…"></textarea></label></div><div class="form-actions" style="margin-top:20px"><button type="button" class="btn btn-secondary" data-action="signout">Se déconnecter</button><button class="btn btn-primary" type="submit">Créer mon espace fournisseur</button></div></form></div></div>`;
       }
 
-            function overview() {
+            // Dimensions de conformite reellement calculees, lues dans
+      // state.quality.score. Le panneau les ecrivait en dur : trois pastilles
+      // « (100%) » affichees a cote d'un total de 72 %, et une phrase parlant
+      // de « 3 etapes » quand une seule etait montree. Une pastille qui
+      // affirme un chiffre qu'elle ne lit pas finit toujours par mentir.
+      const SP_DIMENSIONS = [
+        { cle: 'completeness', labelKey: 'spDimCompleteness', vue: 'profile' },
+        { cle: 'freshness', labelKey: 'spDimFreshness', vue: 'dataPoints' },
+        { cle: 'documentationCoverage', labelKey: 'spDimDocumentation', vue: 'documents' },
+        { cle: 'consistency', labelKey: 'spDimConsistency', vue: 'quality' },
+      ];
+      // Seuil au-dela duquel une dimension n'appelle plus d'action.
+      const SP_SEUIL = 70;
+      const SP_CHAMPS = { active_site: 'spFieldActiveSite', rsl_test_report: 'spFieldRslReport' };
+
+      function spDimensions() {
+        const score = state.quality?.score || {};
+        return SP_DIMENSIONS
+          .filter((d) => score[d.cle] !== undefined && score[d.cle] !== null && score[d.cle] !== '')
+          .map((d) => ({ ...d, label: t(d.labelKey), valeur: pct(score[d.cle]) }));
+      }
+
+      // Le francais insere une espace insecable avant le deux-points ; les
+      // autres langues le collent au mot. Sans cela l'anglais rendait
+      // « Weakest area : Evidence coverage ».
+      const sp2pts = () => (state.lang === 'fr' ? '\u00a0: ' : ': ');
+
+      function spProgressPanel() {
+        const dims = spDimensions();
+        const titre = esc(t('spProfileTitle'));
+        if (!dims.length) {
+          return `<div class="sp-progress-panel">
+            <div class="sp-progress-title">${titre}</div>
+            <div class="sp-progress-lead">${esc(t('spNoScore'))}</div>
+          </div>`;
+        }
+
+        const global = pct(state.profile?.profileCompletion ?? state.quality?.score?.completeness ?? 0);
+        const faible = dims.slice().sort((a, b) => a.valeur - b.valeur)[0];
+        const aTraiter = faible.valeur < SP_SEUIL;
+
+        const manquants = (state.quality?.score?.missingFields || [])
+          .map((f) => (SP_CHAMPS[f] ? t(SP_CHAMPS[f]) : f))
+          .filter(Boolean);
+        const ligneManquants = manquants.length
+          ? `<div class="sp-progress-missing">${esc(t('spMissingField'))}${sp2pts()}${esc(manquants.join(', '))}</div>`
+          : '';
+
+        const accroche = aTraiter
+          ? `${esc(t('spWeakest'))}${sp2pts()}<strong>${esc(faible.label)}</strong> — ${faible.valeur}%`
+          : esc(t('spAllOnTarget'));
+
+        const pastilles = dims.map((d) => `<button type="button"
+            class="sp-check-pill ${d.valeur >= SP_SEUIL ? 'sp-pill-done' : 'sp-pill-pending'}"
+            onclick="state.view='${d.vue}';render();">
+            ${d.valeur >= SP_SEUIL ? '✓' : '⏳'} ${esc(d.label)} ${d.valeur}%
+          </button>`).join('');
+
+        const action = aTraiter
+          ? `<button type="button" class="sp-focus-btn" onclick="state.view='${faible.vue}';render();">
+              ${esc(t('spFixNow'))} · ${esc(faible.label)}
+            </button>`
+          : '';
+
+        return `<div class="sp-progress-panel">
+          <div class="sp-progress-head">
+            <div>
+              <div class="sp-progress-title">${titre}</div>
+              <div class="sp-progress-lead">${accroche}</div>
+              ${ligneManquants}
+            </div>
+            <div class="sp-progress-pct">${global}%<span>${esc(t('spComplete'))}</span></div>
+          </div>
+          <div class="sp-bar-outer"><div class="sp-bar-inner" style="width:${global}%;"></div></div>
+          <div class="sp-checklist-row">${pastilles}</div>
+          ${action}
+        </div>`;
+      }
+
+      function overview() {
         const dueSoon = openRequests().filter((request) => request.dueAt && new Date(request.dueAt).getTime() - Date.now() < 7*86400000);
         const completionPct = state.profile?.profileCompletion || 82;
 
         return `<div>
           <!-- Mission Hero Banner -->
           <div class="sp-hero-card">
-            <div class="sp-hero-tag">COFFRE-FORT FOURNISSEUR MUTUALISÉ · DIRECTIVE UE SECRET D'AFFAIRES</div>
-            <h1 class="sp-hero-h1">Vos données. Votre profil.<br>Réutilisables auprès de tous vos clients.</h1>
-            <p class="sp-hero-sub">
-              Téléversez vos certificats et sites de production une seule fois dans votre coffre-fort chiffré (Vault). Partagez instantanément la preuve de conformité sans divulguer vos prix, sous-traitants exclusifs ou marges.
-            </p>
+            <div class="sp-hero-tag">${esc(t('spHeroTag'))}</div>
+            <h1 class="sp-hero-h1">${esc(t('spHeroTitle'))}</h1>
+            <p class="sp-hero-sub">${esc(t('spHeroSub'))}</p>
           </div>
 
-          <!-- Supplier Profile Completion Bar (82% Complete) -->
-          <div class="sp-progress-panel">
-            <div class="sp-progress-head">
-              <div>
-                <div class="sp-progress-title">Profil Fournisseur & Conformité Réglementaire</div>
-                <div style="font-size:12px;color:var(--muted);margin-top:2px;">Complétez les 3 étapes recommandées pour atteindre 100% et être validé par vos marques clientes.</div>
-              </div>
-              <div class="sp-progress-pct">${completionPct}% complété</div>
-            </div>
-            <div class="sp-bar-outer">
-              <div class="sp-bar-inner" style="width:${completionPct}%;"></div>
-            </div>
-            <div class="sp-checklist-row">
-              <span class="sp-check-pill sp-pill-done">✓ Fiche Entreprise (100%)</span>
-              <span class="sp-check-pill sp-pill-done">✓ Sites de Production GPS (100%)</span>
-              <span class="sp-check-pill sp-pill-done">✓ Certificats GOTS & OEKO-TEX (100%)</span>
-              <span class="sp-check-pill sp-pill-pending" onclick="state.view='documents';render();" style="cursor:pointer;">⏳ 1 Rapport d'essais RSL à renouveler</span>
-            </div>
-          </div>
+          ${spProgressPanel()}
 
           <!-- 4 Core Supplier Action Modules -->
           <div class="sp-actions-grid">

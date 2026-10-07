@@ -171,7 +171,13 @@ console.log('\n=== PERSONA 2 — Responsable Conformite (brand console, 1440x900
       await new Promise((r) => setTimeout(r, 700));
       const main = document.querySelector('.content, main, .view') || document.body;
       const txt = main.innerText.replace(/\s+/g, ' ').trim();
-      const rows = main.querySelectorAll('tr, .card, .mc-tile, li').length;
+      // Le selecteur ignorait .pillar-card et .item : ecrit quand la vue DPP
+      // etait vide, il ne connaissait pas les blocs qu'elle rend une fois
+      // alimentee. Elle affiche 4 cartes de pilier et ses exigences
+      // restantes ; n'en compter aucune la faisait passer pour squelettique
+      // avec 1 900 caracteres a l'ecran. On mesure les blocs de contenu
+      // reels, pas une seule de leurs conventions de nommage.
+      const rows = main.querySelectorAll('tr, .card, .mc-tile, li, .pillar-card, .item').length;
       // Un ecran qui invite explicitement a selectionner quelque chose est un
       // etat vide valide, pas une vue incomplete. On le distingue.
       const empty = /s[ée]lectionnez|choisir|choisissez|select a |aucun[e]? /i.test(txt) && txt.length < 800;
