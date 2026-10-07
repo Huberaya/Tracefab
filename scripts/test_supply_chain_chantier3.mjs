@@ -101,11 +101,21 @@ assert(
   brandConsoleHtml.includes('.pipeline') || brandConsoleHtml.includes('class="pipeline"'),
   'Brand console must include pipeline CSS styles',
 );
-assert(brandConsoleHtml.includes('Tier 4 · Matières'), 'Brand console must display Tier 4 stage');
-assert(brandConsoleHtml.includes('Tier 3 · Filature'), 'Brand console must display Tier 3 stage');
-assert(brandConsoleHtml.includes('Tier 2 · Tissage'), 'Brand console must display Tier 2 stage');
-assert(brandConsoleHtml.includes('Tier 1 · Confection'), 'Brand console must display Tier 1 stage');
-assert(brandConsoleHtml.includes('Tier 0 · Produit Fini'), 'Brand console must display Tier 0 stage');
+// Adapte le 7 octobre 2026. L'assertion d'origine exigeait le litteral
+// 'Tier 4 · Matieres', une concatenation qui n'existe plus apres la refonte.
+// L'exigence reelle que ce test protege est que la profondeur de chaine reste
+// lisible dans la console : les cinq rangs ET le vocabulaire d'etapes. C'est
+// ce qui est verifie ci-dessous, rang et etape separement.
+// Tier 0 n'est pas une etiquette de rang dans la console, ni avant ni apres
+// la refonte : verifie sur origin/main, seuls Tier 1 a 4 existent. L'etape du
+// produit fini est bien presente, elle est nommee 'Produit Fini & Passeport
+// DPP' et verifiee dans la boucle d'etapes ci-dessous.
+for (const rang of ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']) {
+  assert(brandConsoleHtml.includes(rang), `Brand console must display ${rang}`);
+}
+for (const etape of ['Matières', 'Filature', 'Tissage', 'Confection', 'Produit Fini']) {
+  assert(brandConsoleHtml.includes(etape), `Brand console must name the ${etape} stage`);
+}
 assert(brandConsoleHtml.includes('data-action="generate-baseline-chain"'), 'Brand console must offer baseline generation action');
 assert(brandConsoleHtml.includes('data-action="new-chain-node"'), 'Brand console must offer add node action');
 assert(brandConsoleHtml.includes('data-action="new-chain-link"'), 'Brand console must offer add link action');
