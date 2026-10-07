@@ -363,3 +363,81 @@ dur. Restent les deux chantiers hors console : tranche 6 portail fournisseur
 - `certJours(c)` : interpolation manquante dans `certificationsConsoleView`.
 
 Les deux méritent une passe de nettoyage dédiée, sans rapport avec l'i18n.
+
+## Fait — tranche 6a (portail fournisseur, premier bloc)
+
+Périmètre : chargement/erreur, page d'authentification, création d'entreprise,
+tableau de bord d'accueil, profil, sites, certificats. Les vues matières,
+données structurées, équipe, coffre de preuves, partage/passeport, TC &
+bilan massique, CAP, qualité et détail de demande restent pour la 6b.
+
+**129 clés × 9 langues** dans la racine `portal` (préfixe `sp*`, distinct du
+`sp*` de la racine `console`) : 107 au premier passage, 21 à la finition,
+plus `spOpenRequests`. La racine `portal` passe de 38 à 167 clés.
+**5 chaînes de démonstration** réécrites en anglais.
+
+### Deux bugs réels trouvés et corrigés
+
+1. **La navigation du tableau de bord était morte.** L'application vit dans une
+   IIFE, mais six attributs `onclick="state.view='…';render()"` s'évaluent dans
+   la portée globale : chaque clic jetait `ReferenceError: state is not defined`.
+   Les quatre tuiles d'action, le bouton du panneau de progression et les
+   pastilles ne menaient nulle part. Corrigé par `window.goView = goView`, au
+   même endroit et selon le même idiome que le `window.handleBomImportSubmit`
+   déjà présent dans le fichier.
+2. **La modale d'import BOM ne pouvait pas s'ouvrir.** `openBomModal()` était
+   cité dans un `onclick` mais n'existait nulle part. Écrite
+   (`state.modal = 'import-bom'; render();`) et exposée.
+
+Le test `test_chantier5_portail_mobile.mjs` épinglait littéralement le motif
+cassé ; il est repointé sur `goView` et reçoit une assertion supplémentaire
+vérifiant que le gestionnaire est joignable depuis la portée globale.
+
+### Les tests navigateur étaient rouges sur `main` et personne ne le voyait
+
+La commande de matrice exclut `*:browser`. Vérification faite dans un worktree
+isolé sur `origin/main` : `test:brand-console:browser` et
+`test:quality-center:browser` étaient **déjà en échec avant cette tranche**,
+cassés par les tranches 5a–5c. Ils épinglaient des libellés français devenus
+anglais. Réparés ici :
+
+- `brand-console`, `quality-center`, `supplier-portal` naviguent désormais avec
+  `?demo=1&lang=fr`, ce qui conserve les assertions françaises **et** teste la
+  locale FR de bout en bout ;
+- deux assertions portaient sur des données de démonstration anglicisées
+  (`Essentiel coton` → `Cotton Essential`, `Données produit — collection
+  automne` → `Product data — autumn collection`) : repointées sur le libellé
+  anglais, car une fixture sans clé est insensible à la locale.
+
+**Désormais, exécuter la matrice sans `--include browser` ne suffit plus.**
+La commande de vérification retire le filtre `browser` : 45 tests au lieu de 41.
+
+### Vérifications
+
+- 45 tests verts (41 matrice + 4 navigateur), `npm run build` OK, `tsc --noEmit` OK.
+- Sonde Playwright, portail en anglais, 13 vues : **0 résiduel français sur les
+  vues 6a**, 0 `pageerror`. Les 65 résiduels restants sont tous dans le
+  périmètre 6b.
+- Les quatre tuiles d'accueil mènent bien à `profile`, `sites`,
+  `certifications`, `documents`.
+- Contrôle FR : `Vue d'ensemble` / `Demandes ouvertes` rendus. Contrôle TR :
+  `Genel bakış` / `Açık talepler`.
+- Personas CEO 6/6, Conformité 4/4, Fournisseur 4/4.
+
+### Pièges rencontrés
+
+- **Le détecteur d'accents a encore sous-compté de moitié.** `Certificats`,
+  `Demandes ouvertes`, `Mon profil`, `Sites de production`, `Vue d'ensemble` ne
+  portent aucune lettre accentuée. Seul le dump non filtré des chaînes rendues
+  les a sortis.
+- **Une matrice lue au `grep` ment.** Les tests écrivent « ECHEC », pas
+  « fail » ; `test:i18n` était rouge et comptabilisé vert. Ne juger qu'au code
+  de sortie.
+- **`tr` et `zh` exigent la racine `portal`**, pas seulement `shared`. Toute
+  clé portail part donc en **9 langues**, pas 7.
+- **Une clé peut exister dans la mauvaise racine.** `spOpenRequests` vivait
+  dans `console` ; le portail aurait affiché la clé brute. Vérifier la racine,
+  pas seulement la présence.
+- **`\"` dans une chaîne de remplacement Python s'écrit littéralement.** Six
+  `onclick` ont reçu des contre-obliques parasites, inoffensives dans un
+  littéral gabarit mais invisibles au test. Compter les `\"` avant/après.

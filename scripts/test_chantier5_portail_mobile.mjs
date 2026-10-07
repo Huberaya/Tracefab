@@ -66,9 +66,14 @@ ok(/SP_SEUIL/.test(panneau) && /const SP_SEUIL = \d+/.test(page), 'le seuil d\'a
 
 /* --- 2. une action de contenu existe et mene quelque part --------------- */
 ok(/sp-focus-btn/.test(panneau), 'le panneau porte un bouton d\'action principal');
-ok(/state\.view='\$\{faible\.vue\}'/.test(panneau), 'le bouton mene a la vue qui corrige le point faible');
-ok(/class="sp-check-pill[^"]*"[\s\S]{0,180}onclick="state\.view='\$\{d\.vue\}'/.test(panneau),
+ok(/goView\('\$\{faible\.vue\}'\)/.test(panneau), 'le bouton mene a la vue qui corrige le point faible');
+ok(/class="sp-check-pill[^"]*"[\s\S]{0,180}onclick="goView\('\$\{d\.vue\}'\)/.test(panneau),
   'chaque pastille est cliquable vers sa vue');
+
+/* Les gestionnaires en ligne s'evaluent dans la portee globale : l'application
+   vit dans une IIFE, donc goView doit y etre expose, sinon le clic jette
+   « ReferenceError: state is not defined » et la navigation est morte. */
+ok(/window\.goView = goView/.test(page), 'goView est expose a la portee globale');
 ok(/<button type="button"/.test(panneau), 'pastilles et action sont de vrais boutons (clavier, lecteur d\'ecran)');
 
 /* --- 3. etat vide : aucune invention quand le score est absent ---------- */

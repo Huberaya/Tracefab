@@ -11,6 +11,13 @@ const syntax = spawnSync(process.execPath, ['--check', temporaryScript], { encod
 await unlink(temporaryScript).catch(() => {});
 assert(syntax.status === 0, syntax.stderr || 'Supplier Portal script syntax is invalid');
 
+// La copie francaise n'est plus en dur dans le markup : elle vit dans le catalogue.
+const frCatalogue = JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8'));
+assert(
+  frCatalogue.portal?.spActiveShares === 'Partages actifs',
+  'fr.json portal.spActiveShares must still read "Partages actifs"'
+);
+
 for (const contract of [
   '/api/config',
   '/api/me',
@@ -24,7 +31,7 @@ for (const contract of [
   '/api/supplier/documents',
   '/api/supplier/documents/upload-intent',
   '/api/supplier/shares',
-  'Partages actifs',
+  "t('spActiveShares')",
   '/api/supplier/documents/',
   '/api/supplier/organizations',
   '/api/supplier/members',

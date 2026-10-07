@@ -12,7 +12,9 @@ try {
   await delay(350);
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await page.goto(`http://127.0.0.1:${port}/quality-center/?demo=1`, { waitUntil: 'domcontentloaded' });
+  // Ce scenario verifie des libelles francais : la locale par defaut du site
+  // est l'anglais depuis la couche i18n, donc on force la langue.
+  await page.goto(`http://127.0.0.1:${port}/quality-center/?demo=1&lang=fr`, { waitUntil: 'domcontentloaded' });
 
   await page.getByRole('heading', { name: 'Décider avec des signaux explicables.' }).waitFor();
   await page.getByText('Les statuts déclaratifs ne sont jamais transformés en certification.').waitFor();
