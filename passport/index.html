@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Passeport Fournisseur Universel | TRACEFAB Verified</title>
-  <meta name="description" content="Passeport Fournisseur Universel vérifié sur Tracefab. Identité industrielle, certifications actives et conformité traçabilité sous protection des secrets d'affaires.">
+  <title data-i18n="passport.metaTitle">Universal Supplier Passport | TRACEFAB Verified</title>
+  <meta name="description" data-i18n-attr="content:passport.metaDesc" content="Universal Supplier Passport verified on Tracefab. Industrial identity, active certifications and traceability compliance under trade secret protection.">
 
   <!-- Open Graph -->
-  <meta property="og:title" content="Passeport Fournisseur Universel — TRACEFAB">
-  <meta property="og:description" content="Identité industrielle, sites certifiés et conformité RSE vérifiée.">
+  <meta property="og:title" data-i18n-attr="content:passport.ogTitle" content="Universal Supplier Passport — TRACEFAB">
+  <meta property="og:description" data-i18n-attr="content:passport.ogDesc" content="Industrial identity, certified sites and verified CSR compliance.">
   <meta property="og:type" content="profile">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -436,7 +436,23 @@
     .checkbox-label input {
       margin-top: 2px;
     }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    #passport-lang-slot select {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    #passport-lang-slot select option { background: #121929; color: var(--ink); }
   </style>
+  <script>window.TF_I18N_SKIP_META = true;</script>
+  <script src="/assets/i18n/en.js"></script>
+  <script src="/assets/js/tf-i18n.js"></script>
 </head>
 <body>
   <div class="container">
@@ -448,14 +464,17 @@
           <small>Universal Supplier Passport</small>
         </div>
       </a>
+      <div class="nav-right">
+        <span id="passport-lang-slot"></span>
       <div class="verified-seal">
-        <span>✓</span> Profil Industriel Vérifié
+        <span>✓</span> <span data-i18n="passport.seal">Verified industrial profile</span>
+      </div>
       </div>
     </header>
 
     <div id="app">
       <div style="text-align:center;padding:80px 20px;color:var(--muted)">
-        Chargement du passeport fournisseur…
+        <span data-i18n="passport.loading">Loading the supplier passport…</span>
       </div>
     </div>
   </div>
@@ -474,12 +493,27 @@
         modalOpen: false
       };
 
+
+      const pt_ = (k) => (window.TF_I18N ? window.TF_I18N.t('passport.' + k, k) : k);
+      const LANG_NAMES = {en:'🇬🇧 English',fr:'🇫🇷 Français',de:'🇩🇪 Deutsch',it:'🇮🇹 Italiano',es:'🇪🇸 Español',nl:'🇳🇱 Nederlands',pt:'🇵🇹 Português'};
+      function langSelect() {
+        const api = window.TF_I18N;
+        if (!api) return '';
+        const opts = api.supported.map((l) => `<option value="${l}"${l === api.lang ? ' selected' : ''}>${LANG_NAMES[l] || l}</option>`).join('');
+        return `<select id="passport-lang-select" aria-label="Language" onchange="window.TF_I18N && window.TF_I18N.setLanguage(this.value)">${opts}</select>`;
+      }
+
+      function mountLangSelect() {
+        const slot = document.getElementById('passport-lang-slot');
+        if (slot) slot.innerHTML = langSelect();
+      }
+
       async function fetchPassport() {
         try {
           const res = await fetch(`/api/passport/${encodeURIComponent(ref)}`);
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || 'Passeport introuvable.');
+            throw new Error(err.error || pt_('errNotFound'));
           }
           state.data = await res.json();
           state.loading = false;
@@ -491,7 +525,7 @@
               id: 'demo-passport-1',
               slug: 'nhan-textile-pt',
               shareToken: 'pass_demo_pt_123',
-              headline: 'Manufacture textile intégrée certifiée GOTS & OEKO-TEX. Filature, tricotage et confection éco-responsable.',
+              headline: 'Integrated textile manufacture certified GOTS & OEKO-TEX. Spinning, knitting and eco-responsible garment making.',
               tradeSecretMode: 'redacted',
               viewsCount: 28,
               lastViewedAt: new Date().toISOString()
@@ -502,15 +536,15 @@
               countryCode: 'PT',
               website: 'https://nhantextile.example.pt',
               activityTypes: ['ginning', 'spinning', 'knitting', 'sewing', 'packaging'],
-              profileSummary: 'Nhãn Textile opère depuis 1998 à Porto un parc industriel de 14 000 m² dédié au jersey circulaire haut de gamme, molleton peigné et confection éthique certifiée.',
+              profileSummary: 'Nhãn Textile has run a 14,000 m² industrial park in Porto since 1998, dedicated to premium circular jersey, combed fleece and certified ethical garment making.',
               employeeCountRange: '251-1000',
               yearEstablished: 1998,
               profileCompletion: 92,
-              contactName: 'Directrice RSE & Qualité'
+              contactName: 'CSR & Quality Director'
             },
             sites: [
-              { id: 's1', name: 'Atelier de Tricotage & Coupe (Porto)', countryCode: 'PT', city: 'Porto', address: '[Secret d’affaires masqué — Accord NDA requis]', activityTypes: ['knitting', 'cutting'], isActive: true },
-              { id: 's2', name: 'Unité de Confection & Finitions (Braga)', countryCode: 'PT', city: 'Braga', address: '[Secret d’affaires masqué — Accord NDA requis]', activityTypes: ['sewing', 'packaging'], isActive: true }
+              { id: 's1', name: 'Knitting & Cutting Workshop (Porto)', countryCode: 'PT', city: 'Porto', address: '[Trade secret redacted — NDA required]', activityTypes: ['knitting', 'cutting'], isActive: true },
+              { id: 's2', name: 'Garment Making & Finishing Unit (Braga)', countryCode: 'PT', city: 'Braga', address: '[Trade secret redacted — NDA required]', activityTypes: ['sewing', 'packaging'], isActive: true }
             ],
             certifications: [
               { id: 'c1', standardName: 'Global Organic Textile Standard (GOTS)', standardCode: 'GOTS 7.0', issuerName: 'Control Union Certifications B.V.', certificateNumber: 'CU812345GOTS-2025-01', issuedAt: '2025-01-15', expiresAt: '2027-01-14', isVerified: true },
@@ -518,8 +552,8 @@
               { id: 'c3', standardName: 'SMETA 4-Pillars Ethical Audit', standardCode: 'SMETA 4P', issuerName: 'Intertek', certificateNumber: 'SMETA-2025-PT', issuedAt: '2025-02-10', expiresAt: '2027-02-09', isVerified: true }
             ],
             materials: [
-              { id: 'm1', name: 'Jersey de Coton Biologique 185g', materialType: 'yarn', originCountryCode: 'PT', composition: { cotton_organic: 95, elastane: 5 } },
-              { id: 'm2', name: 'Molleton Coton Recyclé Pré-conso 320g', materialType: 'fabric', originCountryCode: 'PT', composition: { cotton_recycled: 60, cotton_organic: 40 } }
+              { id: 'm1', name: 'Organic Cotton Jersey 185 gsm', materialType: 'yarn', originCountryCode: 'PT', composition: { cotton_organic: 95, elastane: 5 } },
+              { id: 'm2', name: 'Pre-consumer Recycled Cotton Fleece 320 gsm', materialType: 'fabric', originCountryCode: 'PT', composition: { cotton_recycled: 60, cotton_organic: 40 } }
             ],
             qualityScore: {
               completeness: 92,
@@ -530,7 +564,7 @@
             tradeSecretProtection: {
               exactAddressesMasked: true,
               mode: 'redacted',
-              legalBasis: 'Directive (UE) 2016/943 sur la protection des secrets d\'affaires'
+              legalBasis: 'Directive (EU) 2016/943 on the protection of trade secrets'
             }
           };
           state.loading = false;
@@ -554,37 +588,37 @@
                 <h1>${esc(sup.displayName || sup.legalName)}</h1>
                 <div class="supplier-meta">
                   <span class="badge badge-country">🇵🇹 ${esc(sup.countryCode || 'PT')}</span>
-                  <span>Fondé en <strong>${sup.yearEstablished || '1998'}</strong></span>
+                  <span>${esc(pt_('founded'))} <strong>${sup.yearEstablished || '1998'}</strong></span>
                   <span>·</span>
-                  <span>Effectif : <strong>${sup.employeeCountRange || '251-1000'}</strong></span>
+                  <span>${esc(pt_('employees'))} <strong>${sup.employeeCountRange || '251-1000'}</strong></span>
                   <span>·</span>
-                  <span style="color:#10b981">✓ Profil audité</span>
+                  <span style="color:#10b981">✓ ${esc(pt_('audited'))}</span>
                 </div>
               </div>
               <button class="btn btn-emerald" onclick="openRequestModal()">
-                Demander accès complet (NDA)
+                ${esc(pt_('ctaFullAccessNda'))}
               </button>
             </div>
 
             <div class="headline-text">
-              "${esc(pass.headline || sup.profileSummary || 'Fournisseur textile engagé certifié Tracefab.')}"
+              "${esc(pass.headline || sup.profileSummary || pt_('headlineFallback'))}"
             </div>
 
             <div class="kpi-row">
               <div class="kpi-box">
-                <div class="kpi-label">Complétude Profil</div>
+                <div class="kpi-label">${esc(pt_('kpiCompletion'))}</div>
                 <div class="kpi-val" style="color:#10b981">${moneyless(sup.profileCompletion)}%</div>
               </div>
               <div class="kpi-box">
-                <div class="kpi-label">Preuves Documentaires</div>
+                <div class="kpi-label">${esc(pt_('kpiEvidence'))}</div>
                 <div class="kpi-val" style="color:#38bdf8">${score ? moneyless(score.documentationCoverage) : '100'}%</div>
               </div>
               <div class="kpi-box">
-                <div class="kpi-label">Certifications Actives</div>
+                <div class="kpi-label">${esc(pt_('kpiCerts'))}</div>
                 <div class="kpi-val" style="color:#f59e0b">${d.certifications.length}</div>
               </div>
               <div class="kpi-box">
-                <div class="kpi-label">Sites Déclarés</div>
+                <div class="kpi-label">${esc(pt_('kpiSites'))}</div>
                 <div class="kpi-val" style="color:#a855f7">${d.sites.length}</div>
               </div>
             </div>
@@ -593,8 +627,8 @@
           <div class="nda-banner">
             <div class="nda-icon">🛡️</div>
             <div class="nda-content">
-              <strong>Protection des Secrets d'Affaires Active (Directive UE 2016/943)</strong><br>
-              Les adresses physiques exactes des usines, capacités de production nominales et relations exclusives de sous-traitance sont masquées par défaut. Les marques auditées peuvent formuler une demande d'accès direct pour déverrouiller les pièces justificatives brutes.
+              <strong>${esc(pt_('ndaTitle'))}</strong><br>
+              ${esc(pt_('ndaBody'))}
             </div>
           </div>
 
@@ -602,20 +636,20 @@
             <!-- Certifications -->
             <div class="card">
               <div class="card-head">
-                <h2>🏅 Certifications & Labels Reconnus</h2>
-                <span class="card-badge">${d.certifications.length} actives</span>
+                <h2>🏅 ${esc(pt_('certsTitle'))}</h2>
+                <span class="card-badge">${d.certifications.length} ${esc(pt_('certsActive'))}</span>
               </div>
               <div class="item-list">
                 ${d.certifications.map((c) => `
                   <div class="item-box">
                     <div class="item-top">
                       <strong>${esc(c.standardName)}</strong>
-                      <span class="cert-verified">✓ Vérifié IA</span>
+                      <span class="cert-verified">✓ ${esc(pt_('certVerified'))}</span>
                     </div>
                     <div class="item-desc">
-                      Émetteur : <strong>${esc(c.issuerName || 'Organisme accrédité')}</strong><br>
-                      N° Enregistrement : <code>${esc(c.certificateNumber || 'CU812345')}</code><br>
-                      Valide jusqu’au : <strong>${date(c.expiresAt)}</strong>
+                      ${esc(pt_('certIssuer'))} <strong>${esc(c.issuerName || pt_('certIssuerFallback'))}</strong><br>
+                      ${esc(pt_('certNumber'))} <code>${esc(c.certificateNumber || 'CU812345')}</code><br>
+                      ${esc(pt_('certValidUntil'))} <strong>${date(c.expiresAt)}</strong>
                     </div>
                   </div>
                 `).join('')}
@@ -625,20 +659,20 @@
             <!-- Sites Industriels -->
             <div class="card">
               <div class="card-head">
-                <h2>🏭 Sites de Production Vérifiés</h2>
-                <span class="card-badge">${d.sites.length} site(s)</span>
+                <h2>🏭 ${esc(pt_('sitesTitle'))}</h2>
+                <span class="card-badge">${d.sites.length} ${esc(pt_('sitesCount'))}</span>
               </div>
               <div class="item-list">
                 ${d.sites.map((s) => `
                   <div class="item-box">
                     <div class="item-top">
                       <strong>${esc(s.name)}</strong>
-                      <span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399">Actif</span>
+                      <span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399">${esc(pt_('siteActive'))}</span>
                     </div>
                     <div class="item-desc">
-                      Localisation : <strong>${esc(s.city || 'Portugal')}, ${esc(s.countryCode)}</strong><br>
-                      Adresse : <em style="color:#94a3b8">${esc(s.address)}</em><br>
-                      Activités : ${(s.activityTypes || []).map((a) => `<span class="badge" style="background:rgba(255,255,255,0.06);margin-right:4px">${esc(a)}</span>`).join('')}
+                      ${esc(pt_('siteLocation'))} <strong>${esc(s.city || 'Portugal')}, ${esc(s.countryCode)}</strong><br>
+                      ${esc(pt_('siteAddress'))} <em style="color:#94a3b8">${esc(s.address)}</em><br>
+                      ${esc(pt_('siteActivities'))} ${(s.activityTypes || []).map((a) => `<span class="badge" style="background:rgba(255,255,255,0.06);margin-right:4px">${esc(a)}</span>`).join('')}
                     </div>
                   </div>
                 `).join('')}
@@ -649,19 +683,19 @@
           <!-- Matériaux & Savoir-faire -->
           <div class="card" style="margin-bottom:24px">
             <div class="card-head">
-              <h2>🧵 Matières & Capacités Circulaires Disponibles</h2>
-              <span class="card-badge">${d.materials.length} référence(s)</span>
+              <h2>🧵 ${esc(pt_('matsTitle'))}</h2>
+              <span class="card-badge">${d.materials.length} ${esc(pt_('matsCount'))}</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px">
               ${d.materials.map((m) => `
                 <div class="item-box">
                   <div class="item-top">
                     <strong>${esc(m.name)}</strong>
-                    <span class="badge badge-country">${esc(m.materialType || 'Tissu')}</span>
+                    <span class="badge badge-country">${esc(m.materialType || pt_('matTypeFallback'))}</span>
                   </div>
                   <div class="item-desc" style="margin-top:6px">
-                    Origine fibre : <strong>${esc(m.originCountryCode || 'Portugal')}</strong><br>
-                    ${m.composition ? `Composition : <code>${typeof m.composition === 'string' ? esc(m.composition) : esc(JSON.stringify(m.composition))}</code>` : ''}
+                    ${esc(pt_('matOrigin'))} <strong>${esc(m.originCountryCode || 'Portugal')}</strong><br>
+                    ${m.composition ? `${esc(pt_('matComposition'))} <code>${typeof m.composition === 'string' ? esc(m.composition) : esc(JSON.stringify(m.composition))}</code>` : ''}
                   </div>
                 </div>
               `).join('')}
@@ -671,11 +705,11 @@
           <!-- Sticky Bar for Inbound Conversion -->
           <div class="sticky-bar">
             <div class="sticky-text">
-              <strong>Vous représentez une marque de mode ou un donneur d'ordre ?</strong>
-              <p>Connectez votre console de marque à ce passeport pour importer les données en 1 clic.</p>
+              <strong>${esc(pt_('stickyTitle'))}</strong>
+              <p>${esc(pt_('stickyBody'))}</p>
             </div>
             <button class="btn btn-primary" onclick="openRequestModal()">
-              Demander l’accès complet
+              ${esc(pt_('ctaFullAccess'))}
             </button>
           </div>
         `;
@@ -687,7 +721,7 @@
       }
       function date(d) {
         if (!d) return '—';
-        return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+        return new Date(d).toLocaleDateString((window.TF_I18N && window.TF_I18N.lang) || 'en', { day: '2-digit', month: 'short', year: 'numeric' });
       }
       function moneyless(n) { return Math.round(Number(n) || 0); }
 
@@ -698,40 +732,40 @@
             <div class="modal-box">
               <div class="modal-head">
                 <div>
-                  <div style="font-size:11px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:0.5px">Accès Donneur d'Ordre</div>
-                  <h3>Demander l'accès complet</h3>
+                  <div style="font-size:11px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:0.5px">${esc(pt_('modalEyebrow'))}</div>
+                  <h3>${esc(pt_('modalTitle'))}</h3>
                 </div>
                 <button class="close-btn" onclick="closeRequestModal()">×</button>
               </div>
               <p style="font-size:12.5px;color:var(--muted);margin-bottom:20px;line-height:1.5">
-                Remplissez ce formulaire pour notifier l'équipe qualité de <strong>${esc(state.data?.supplier?.displayName || 'ce fournisseur')}</strong>. Si vous disposez déjà d'un compte marque Tracefab, vos espaces seront interconnectés automatiquement.
+                ${esc(pt_('modalIntroA'))} <strong>${esc(state.data?.supplier?.displayName || pt_('modalSupplierFallback'))}</strong>${esc(pt_('modalIntroB'))}
               </p>
               <form id="access-form" onsubmit="submitAccessRequest(event)">
                 <div class="form-group">
-                  <label>Votre nom & prénom *</label>
-                  <input class="input" name="requesterName" required placeholder="ex. Marie Dupont">
+                  <label>${esc(pt_('fName'))}</label>
+                  <input class="input" name="requesterName" required placeholder="${esc(pt_('fNamePh'))}">
                 </div>
                 <div class="form-group">
-                  <label>Votre email professionnel *</label>
-                  <input class="input" name="requesterEmail" type="email" required placeholder="marie@mamarque.com">
+                  <label>${esc(pt_('fEmail'))}</label>
+                  <input class="input" name="requesterEmail" type="email" required placeholder="marie@mybrand.com">
                 </div>
                 <div class="form-group">
-                  <label>Nom de votre marque / entreprise *</label>
-                  <input class="input" name="requesterCompany" required placeholder="ex. Maison Denim Paris">
+                  <label>${esc(pt_('fCompany'))}</label>
+                  <input class="input" name="requesterCompany" required placeholder="${esc(pt_('fCompanyPh'))}">
                 </div>
                 <div class="form-group">
-                  <label>Message ou périmètre souhaité (facultatif)</label>
-                  <textarea class="textarea" name="message" rows="3" placeholder="Nous souhaitons auditer vos certificats GOTS pour notre collection automne 2026..."></textarea>
+                  <label>${esc(pt_('fMessage'))}</label>
+                  <textarea class="textarea" name="message" rows="3" placeholder="${esc(pt_('fMessagePh'))}"></textarea>
                 </div>
                 <div class="form-group" style="margin-top:14px">
                   <label class="checkbox-label">
                     <input type="checkbox" name="ndaAccepted" required checked>
-                    <span>J’accepte les conditions de confidentialité (NDA) et m’engage à ne pas divulguer les données industrielles de ce fournisseur à des tiers.</span>
+                    <span>${esc(pt_('fNda'))}</span>
                   </label>
                 </div>
                 <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:24px">
-                  <button type="button" class="btn" style="background:rgba(255,255,255,0.08);color:#fff" onclick="closeRequestModal()">Annuler</button>
-                  <button type="submit" class="btn btn-emerald">Envoyer la demande d'accès</button>
+                  <button type="button" class="btn" style="background:rgba(255,255,255,0.08);color:#fff" onclick="closeRequestModal()">${esc(pt_('btnCancel'))}</button>
+                  <button type="submit" class="btn btn-emerald">${esc(pt_('btnSubmit'))}</button>
                 </div>
               </form>
             </div>
@@ -762,26 +796,31 @@
             body: JSON.stringify(body)
           });
           const result = await res.json();
-          if (!res.ok) throw new Error(result.error || 'Erreur lors de l’envoi');
+          if (!res.ok) throw new Error(result.error || pt_('errSend'));
 
           document.getElementById('modal-container').innerHTML = `
             <div class="modal-backdrop" onclick="closeRequestModal()">
               <div class="modal-box" style="text-align:center">
                 <div style="font-size:42px;margin-bottom:12px">🎉</div>
-                <h3 style="font-size:20px;margin-bottom:8px">Demande d'accès transmise !</h3>
+                <h3 style="font-size:20px;margin-bottom:8px">${esc(pt_('okTitle'))}</h3>
                 <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:24px">
-                  ${esc(result.message || 'Le fournisseur a été notifié de votre demande.')}
+                  ${esc(result.message || pt_('okBody'))}
                 </p>
-                <button class="btn btn-primary" onclick="closeRequestModal()">Compris</button>
+                <button class="btn btn-primary" onclick="closeRequestModal()">${esc(pt_('btnGotIt'))}</button>
               </div>
             </div>
           `;
         } catch (err) {
-          alert('Erreur : ' + err.message);
+          alert(pt_('errPrefix') + ' ' + err.message);
         }
       };
 
-      fetchPassport();
+      document.addEventListener('tf:languagechange', () => { mountLangSelect(); if (state.data) render(); });
+      // Charger la locale avant le premier rendu, sinon la page s'affiche en
+      // anglais puis bascule.
+      (window.TF_I18N ? window.TF_I18N.setLanguage(window.TF_I18N.lang) : Promise.resolve())
+        .then(mountLangSelect, mountLangSelect)
+        .then(fetchPassport, fetchPassport);
     })();
   </script>
 </body>

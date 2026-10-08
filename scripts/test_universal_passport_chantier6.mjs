@@ -66,8 +66,19 @@ const publicPassportPath = path.resolve('passport/index.html');
 assert(fs.existsSync(publicPassportPath), 'passport/index.html must exist');
 const publicPassport = fs.readFileSync(publicPassportPath, 'utf8');
 assert(publicPassport.includes('Universal Supplier Passport'), 'Page must contain title');
-assert(publicPassport.includes('Protection des Secrets d\'Affaires Active'), 'Page must state Trade Secret Protection Directive');
-assert(publicPassport.includes('Demander accès complet (NDA)'), 'Page must contain CTA for brands');
+// La copie n'est plus en dur : le balisage appelle la cle et le catalogue
+// francais conserve le libelle d'origine.
+const passportFr = JSON.parse(fs.readFileSync(path.resolve('assets/i18n/fr.json'), 'utf8')).passport;
+assert(publicPassport.includes("pt_('ndaTitle')"), 'Page must state Trade Secret Protection Directive');
+assert(
+  passportFr?.ndaTitle === "Protection des Secrets d'Affaires Active (Directive UE 2016/943)",
+  'fr.json passport.ndaTitle must keep the original French wording'
+);
+assert(publicPassport.includes("pt_('ctaFullAccessNda')"), 'Page must contain CTA for brands');
+assert(
+  passportFr?.ctaFullAccessNda === 'Demander accès complet (NDA)',
+  'fr.json passport.ctaFullAccessNda must keep the original French wording'
+);
 assert(publicPassport.includes('/api/passport/'), 'Page must call passport API');
 console.log('✓ Public Verifiable Passport Viewer (passport/index.html) verified');
 
