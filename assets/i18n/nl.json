@@ -2489,5 +2489,96 @@
       "unlimited": "Zonder einddatum",
       "scopeNone": "Reikwijdte niet gespecificeerd"
     }
+  },
+  "intel": {
+    "tabs": {
+      "overview": "Overzicht",
+      "composition": "Samenstelling",
+      "materials": "Materialen",
+      "supplyChain": "Toeleveringsketen",
+      "manufacturing": "Productie",
+      "suppliers": "Leveranciers",
+      "evidence": "Bewijsstukken",
+      "certifications": "Certificeringen",
+      "quality": "Kwaliteit",
+      "dpp": "DPP-paraatheid",
+      "history": "Geschiedenis"
+    },
+    "head": {
+      "eyebrow": "Productintelligentie",
+      "export": "Productgegevens exporteren (JSON)"
+    },
+    "common": {
+      "empty": "Voor dit onderdeel zijn nog geen gegevens beschikbaar.",
+      "openFull": "Volledige weergave openen",
+      "computedNote": "Berekend uit de gegevens van uw werkruimte — er wordt niets gesimuleerd."
+    },
+    "overview": {
+      "identity": "Identiteit",
+      "schemas": "Geversioneerde dataschema's",
+      "linkSchema": "Schema koppelen",
+      "noSchemas": "Er is nog geen schema aan dit product gekoppeld.",
+      "schemaVersion": "Versie",
+      "attachedOn": "Gekoppeld op",
+      "countryOfDesign": "Land van ontwerp",
+      "newRevision": "Nieuwe revisie aanmaken"
+    },
+    "composition": {
+      "share": "Aandeel",
+      "noComposition": "Nog geen samenstelling opgegeven — voeg materialen toe in het onderdeel Materialen."
+    },
+    "supplyChain": {
+      "openGraph": "Volledige ketengrafiek openen",
+      "noGraph": "Voor dit product is nog geen traceerbaarheidsgrafiek vastgelegd.",
+      "nodes": "Traceerbaarheidsknooppunten",
+      "documentationRate": "Documentatiegraad",
+      "stagesCovered": "Gedekte stadia"
+    },
+    "manufacturing": {
+      "note": "Productievoetafdruk afgeleid van de traceerbaarheidsgrafiek van het product.",
+      "empty": "Nog geen productieknooppunten in de grafiek.",
+      "process": "Proces",
+      "facility": "Locatie",
+      "country": "Land",
+      "status": "Status"
+    },
+    "suppliers": {
+      "note": "Organisaties aanwezig in de traceerbaarheidsgrafiek van het product.",
+      "empty": "Nog geen organisatie in de traceerbaarheidsgrafiek.",
+      "org": "Organisatie",
+      "type": "Knooppunttype"
+    },
+    "evidence": {
+      "plannedTitle": "Bewijs per product — gebundeld in het Bewijscentrum",
+      "plannedNote": "Documentair bewijs bij dit product wordt hier gebundeld door het werkpakket Bewijscentrum. Tot die tijd worden documenten op organisatieniveau beheerd.",
+      "openDocuments": "Documenten openen"
+    },
+    "certifications": {
+      "orgNote": "Certificeringen op organisatieniveau verklaard. Certificaten per product worden nog niet apart vastgelegd.",
+      "openCerts": "Certificeringen openen",
+      "none": "Nog geen certificering opgegeven."
+    },
+    "quality": {
+      "openQuality": "Kwaliteitscentrum openen",
+      "noQuality": "Voor dit product is nog geen kwaliteitsscore berekend.",
+      "issues": "Openstaande kwesties",
+      "severity": "Ernst"
+    },
+    "dpp": {
+      "readinessNote": "Alleen DPP-paraatheid — TRACEFAB beoordeelt geen wettelijke conformiteit.",
+      "noDpp": "Voor dit product is nog geen DPP-paraatheidsrecord aanwezig.",
+      "status": "Paraatheidsstatus",
+      "completion": "Volledigheid",
+      "requirements": "Voldane vereisten"
+    },
+    "history": {
+      "productCreated": "Productrecord aangemaakt",
+      "identifierAdded": "Identificatiecode toegevoegd",
+      "materialAdded": "Materiaal aan het product gekoppeld",
+      "schemaAttached": "Dataschema gekoppeld",
+      "noHistory": "Voor dit product is nog geen gedateerde gebeurtenis vastgelegd.",
+      "event": "Gebeurtenis",
+      "date": "Datum"
+    }
   }
 }

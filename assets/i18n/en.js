@@ -2365,5 +2365,96 @@ window.TF_I18N_BUNDLES.en = {
       "unlimited": "No end date",
       "scopeNone": "No scope detail"
     }
+  },
+  "intel": {
+    "tabs": {
+      "overview": "Overview",
+      "composition": "Composition",
+      "materials": "Materials",
+      "supplyChain": "Supply chain",
+      "manufacturing": "Manufacturing",
+      "suppliers": "Suppliers",
+      "evidence": "Evidence",
+      "certifications": "Certifications",
+      "quality": "Quality",
+      "dpp": "DPP readiness",
+      "history": "History"
+    },
+    "head": {
+      "eyebrow": "Product Intelligence",
+      "export": "Export product data (JSON)"
+    },
+    "common": {
+      "empty": "No data available for this lens yet.",
+      "openFull": "Open the full view",
+      "computedNote": "Computed from your workspace data — nothing is simulated."
+    },
+    "overview": {
+      "identity": "Identity",
+      "schemas": "Versioned data schemas",
+      "linkSchema": "Attach a schema",
+      "noSchemas": "No schema attached to this product yet.",
+      "schemaVersion": "Version",
+      "attachedOn": "Attached on",
+      "countryOfDesign": "Country of design",
+      "newRevision": "Create a new revision"
+    },
+    "composition": {
+      "share": "Share",
+      "noComposition": "No composition declared yet — attach materials in the Materials lens."
+    },
+    "supplyChain": {
+      "openGraph": "Open the full supply chain graph",
+      "noGraph": "No traceability graph recorded for this product yet.",
+      "nodes": "Traceability nodes",
+      "documentationRate": "Documentation rate",
+      "stagesCovered": "Stages covered"
+    },
+    "manufacturing": {
+      "note": "Manufacturing footprint derived from the product traceability graph.",
+      "empty": "No manufacturing node in the graph yet.",
+      "process": "Process",
+      "facility": "Facility",
+      "country": "Country",
+      "status": "Status"
+    },
+    "suppliers": {
+      "note": "Organizations present in the product traceability graph.",
+      "empty": "No organization in the traceability graph yet.",
+      "org": "Organization",
+      "type": "Node type"
+    },
+    "evidence": {
+      "plannedTitle": "Per-product evidence — unified with the Evidence Center",
+      "plannedNote": "Documentary evidence attached to this product will be consolidated here by the Evidence Center workstream. Until then, documents are managed at organization level.",
+      "openDocuments": "Open documents"
+    },
+    "certifications": {
+      "orgNote": "Certifications declared at organization level. Product-scoped certificates are not recorded separately yet.",
+      "openCerts": "Open certifications",
+      "none": "No certification declared yet."
+    },
+    "quality": {
+      "openQuality": "Open the Quality Center",
+      "noQuality": "No quality score computed for this product yet.",
+      "issues": "Open issues",
+      "severity": "Severity"
+    },
+    "dpp": {
+      "readinessNote": "DPP readiness only — TRACEFAB does not qualify legal compliance.",
+      "noDpp": "No DPP readiness record for this product yet.",
+      "status": "Readiness status",
+      "completion": "Completion",
+      "requirements": "Requirements met"
+    },
+    "history": {
+      "productCreated": "Product record created",
+      "identifierAdded": "Identifier added",
+      "materialAdded": "Material attached to the product",
+      "schemaAttached": "Data schema attached",
+      "noHistory": "No timestamped event recorded for this product yet.",
+      "event": "Event",
+      "date": "Date"
+    }
   }
 };

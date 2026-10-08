@@ -2489,5 +2489,96 @@
       "unlimited": "Ohne Enddatum",
       "scopeNone": "Umfang nicht detailliert"
     }
+  },
+  "intel": {
+    "tabs": {
+      "overview": "Übersicht",
+      "composition": "Zusammensetzung",
+      "materials": "Materialien",
+      "supplyChain": "Lieferkette",
+      "manufacturing": "Fertigung",
+      "suppliers": "Lieferanten",
+      "evidence": "Nachweise",
+      "certifications": "Zertifizierungen",
+      "quality": "Qualität",
+      "dpp": "DPP-Bereitschaft",
+      "history": "Verlauf"
+    },
+    "head": {
+      "eyebrow": "Produkt-Intelligenz",
+      "export": "Produktdaten exportieren (JSON)"
+    },
+    "common": {
+      "empty": "Für diese Ansicht liegen noch keine Daten vor.",
+      "openFull": "Vollansicht öffnen",
+      "computedNote": "Aus den Daten Ihres Arbeitsbereichs berechnet — nichts wird simuliert."
+    },
+    "overview": {
+      "identity": "Identität",
+      "schemas": "Versionierte Datenschemata",
+      "linkSchema": "Schema verknüpfen",
+      "noSchemas": "Noch kein Schema mit diesem Produkt verknüpft.",
+      "schemaVersion": "Version",
+      "attachedOn": "Verknüpft am",
+      "countryOfDesign": "Designland",
+      "newRevision": "Neue Revision erstellen"
+    },
+    "composition": {
+      "share": "Anteil",
+      "noComposition": "Noch keine Zusammensetzung erklärt — fügen Sie Materialien in der Materialansicht hinzu."
+    },
+    "supplyChain": {
+      "openGraph": "Vollständigen Lieferketten-Graph öffnen",
+      "noGraph": "Für dieses Produkt wurde noch kein Rückverfolgbarkeits-Graph erfasst.",
+      "nodes": "Rückverfolgbarkeitsknoten",
+      "documentationRate": "Dokumentationsquote",
+      "stagesCovered": "Abgedeckte Stufen"
+    },
+    "manufacturing": {
+      "note": "Fertigungs-Fußabdruck aus dem Rückverfolgbarkeits-Graph des Produkts abgeleitet.",
+      "empty": "Noch kein Fertigungsknoten im Graph.",
+      "process": "Verfahren",
+      "facility": "Stätte",
+      "country": "Land",
+      "status": "Status"
+    },
+    "suppliers": {
+      "note": "Organisationen im Rückverfolgbarkeits-Graph des Produkts.",
+      "empty": "Noch keine Organisation im Rückverfolgbarkeits-Graph.",
+      "org": "Organisation",
+      "type": "Knotentyp"
+    },
+    "evidence": {
+      "plannedTitle": "Produktnachweise — gebündelt im Nachweis-Center",
+      "plannedNote": "Dokumentarische Nachweise zu diesem Produkt werden hier durch das Nachweis-Center-Arbeitspaket zusammengeführt. Bis dahin werden Dokumente auf Organisationsebene verwaltet.",
+      "openDocuments": "Dokumente öffnen"
+    },
+    "certifications": {
+      "orgNote": "Auf Organisationsebene erklärte Zertifizierungen. Zertifikate je Produkt werden noch nicht separat erfasst.",
+      "openCerts": "Zertifizierungen öffnen",
+      "none": "Noch keine Zertifizierung erklärt."
+    },
+    "quality": {
+      "openQuality": "Qualitäts-Center öffnen",
+      "noQuality": "Für dieses Produkt wurde noch kein Qualitätswert berechnet.",
+      "issues": "Offene Probleme",
+      "severity": "Schweregrad"
+    },
+    "dpp": {
+      "readinessNote": "Nur DPP-Bereitschaft — TRACEFAB bewertet keine Rechtskonformität.",
+      "noDpp": "Für dieses Produkt liegt noch kein DPP-Bereitschaftsdatensatz vor.",
+      "status": "Bereitschaftsstatus",
+      "completion": "Vollständigkeit",
+      "requirements": "Erfüllte Anforderungen"
+    },
+    "history": {
+      "productCreated": "Produktdatensatz erstellt",
+      "identifierAdded": "Kennung hinzugefügt",
+      "materialAdded": "Material mit dem Produkt verknüpft",
+      "schemaAttached": "Datenschema verknüpft",
+      "noHistory": "Für dieses Produkt wurde noch kein datiertes Ereignis erfasst.",
+      "event": "Ereignis",
+      "date": "Datum"
+    }
   }
 }

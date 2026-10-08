@@ -2489,5 +2489,96 @@
       "unlimited": "Senza data di fine",
       "scopeNone": "Ambito non dettagliato"
     }
+  },
+  "intel": {
+    "tabs": {
+      "overview": "Panoramica",
+      "composition": "Composizione",
+      "materials": "Materiali",
+      "supplyChain": "Catena di fornitura",
+      "manufacturing": "Produzione",
+      "suppliers": "Fornitori",
+      "evidence": "Prove",
+      "certifications": "Certificazioni",
+      "quality": "Qualità",
+      "dpp": "Preparazione DPP",
+      "history": "Cronologia"
+    },
+    "head": {
+      "eyebrow": "Intelligenza di prodotto",
+      "export": "Esporta i dati prodotto (JSON)"
+    },
+    "common": {
+      "empty": "Nessun dato disponibile per questa lente per ora.",
+      "openFull": "Apri la vista completa",
+      "computedNote": "Calcolato dai dati del tuo spazio di lavoro — nulla è simulato."
+    },
+    "overview": {
+      "identity": "Identità",
+      "schemas": "Schemi dati versionati",
+      "linkSchema": "Collega uno schema",
+      "noSchemas": "Nessuno schema collegato a questo prodotto per ora.",
+      "schemaVersion": "Versione",
+      "attachedOn": "Collegato il",
+      "countryOfDesign": "Paese di progettazione",
+      "newRevision": "Crea una nuova revisione"
+    },
+    "composition": {
+      "share": "Quota",
+      "noComposition": "Nessuna composizione dichiarata per ora — collega i materiali nella lente Materiali."
+    },
+    "supplyChain": {
+      "openGraph": "Apri il grafo completo della catena",
+      "noGraph": "Nessun grafo di tracciabilità registrato per questo prodotto per ora.",
+      "nodes": "Nodi di tracciabilità",
+      "documentationRate": "Tasso di documentazione",
+      "stagesCovered": "Fasi coperte"
+    },
+    "manufacturing": {
+      "note": "Impronta produttiva derivata dal grafo di tracciabilità del prodotto.",
+      "empty": "Nessun nodo produttivo nel grafo per ora.",
+      "process": "Processo",
+      "facility": "Stabilimento",
+      "country": "Paese",
+      "status": "Stato"
+    },
+    "suppliers": {
+      "note": "Organizzazioni presenti nel grafo di tracciabilità del prodotto.",
+      "empty": "Nessuna organizzazione nel grafo di tracciabilità per ora.",
+      "org": "Organizzazione",
+      "type": "Tipo di nodo"
+    },
+    "evidence": {
+      "plannedTitle": "Prove per prodotto — unificate nel Centro prove",
+      "plannedNote": "Le prove documentali collegate a questo prodotto saranno consolidate qui dal cantiere Centro prove. Fino ad allora, i documenti sono gestiti a livello di organizzazione.",
+      "openDocuments": "Apri i documenti"
+    },
+    "certifications": {
+      "orgNote": "Certificazioni dichiarate a livello di organizzazione. I certificati per prodotto non sono ancora registrati separatamente.",
+      "openCerts": "Apri le certificazioni",
+      "none": "Nessuna certificazione dichiarata per ora."
+    },
+    "quality": {
+      "openQuality": "Apri il Centro qualità",
+      "noQuality": "Nessun punteggio qualità calcolato per questo prodotto per ora.",
+      "issues": "Anomalie aperte",
+      "severity": "Gravità"
+    },
+    "dpp": {
+      "readinessNote": "Solo preparazione DPP — TRACEFAB non qualifica la conformità legale.",
+      "noDpp": "Nessun record di preparazione DPP per questo prodotto per ora.",
+      "status": "Stato di preparazione",
+      "completion": "Completezza",
+      "requirements": "Requisiti soddisfatti"
+    },
+    "history": {
+      "productCreated": "Scheda prodotto creata",
+      "identifierAdded": "Identificativo aggiunto",
+      "materialAdded": "Materiale collegato al prodotto",
+      "schemaAttached": "Schema dati collegato",
+      "noHistory": "Nessun evento datato registrato per questo prodotto per ora.",
+      "event": "Evento",
+      "date": "Data"
+    }
   }
 }

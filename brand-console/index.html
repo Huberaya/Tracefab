@@ -988,6 +988,7 @@
     <script src="/assets/js/tf-i18n.js"></script>
   <link rel="stylesheet" href="/assets/design-system/tracefab-shell.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-command.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-intel.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
 </head>
 <body>
@@ -1013,6 +1014,8 @@
         questionnaires: [],
         schemaCatalog: [],
         schemaBindings: [],
+        productIntel: null,
+        productLens: 'overview',
         view: 'overview',
         activeOrganizationId: null,
         selectedRequest: null,
@@ -2856,146 +2859,210 @@
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || bt('cnMaterialLabel'); }
       function materialType(material) { return material?.materialType || material?.material_type || ''; }
+            /* Chantier 07 — Product Intelligence reelle : 11 lentilles.
+               Toutes les valeurs proviennent du detail charge par openProduct
+               (state.selectedProductDetail) et de state.productIntel
+               (supply-chain, dpp, qualite). Les lentilles sans API produit
+               dediee le disent explicitement : aucune donnee n est simulee. */
             function productDetailView() {
         const detail = state.selectedProductDetail;
         if (!detail?.product) return `<div class="empty"><div class="empty-icon">◇</div><strong>${bt('pxNotFound')}</strong><button class="btn btn-secondary" data-view="products">${bt('pxBack')}</button></div>`;
         const p = detail.product;
+        const bit = (key, fb) => (window.TF_I18N ? window.TF_I18N.t('intel.' + key, fb) : fb);
+        const intel = state.productIntel || {};
+        const mats = detail.materials || [];
+        const ids = detail.identifiers || [];
+        const sc = intel.supplyChain || null;
+        const scNodes = sc ? (sc.graph?.nodes || sc.nodes || []) : [];
+        const scLinks = sc ? (sc.graph?.links || sc.links || []) : [];
+        const scSummary = sc?.summary || null;
+        const dpp = intel.dpp || null;
+        const quality = intel.quality || null;
         const materialOptions = state.materials.map((material) => `<option value="${esc(material.id)}">${esc(material.name)}${material.materialType ? ` · ${esc(material.materialType)}` : ''}</option>`).join('');
+
+        const LENSES = ['overview', 'composition', 'materials', 'supplyChain', 'manufacturing', 'suppliers', 'evidence', 'certifications', 'quality', 'dpp', 'history'];
+        const active = LENSES.includes(state.productLens) ? state.productLens : 'overview';
+
+        /* -- lentille Overview : identite + fiche technique + schemas ------- */
+        const sizeRangeText = Array.isArray(p.sizeRange) ? p.sizeRange.join(', ') : (p.sizeRange || '');
+        const bindings = (state.schemaBindings || []).filter((b) => !b.subjectId || b.subjectId === p.id);
+        const schemaOptions = (state.schemaCatalog || []).filter((s) => (s.subjectTypes || []).includes('product')).map((s) => `<option value="${esc(s.key)}|${esc(s.version)}">${esc(s.title)} · v${esc(s.version)}</option>`).join('');
+        const overviewLens = `
+          <div class="grid split">
+            <div class="card panel">
+              <div class="panel-head"><h2>${bit('overview.identity', 'Identity')}</h2><span class="meta">${bit('common.computedNote', '')}</span></div>
+              <dl style="display:grid;gap:14px;margin:0">
+                <div><dt class="meta">${bt('cRef')}</dt><dd style="margin:4px 0 0;font-weight:750">${esc(p.reference || '—')}</dd></div>
+                <div><dt class="meta">GTIN / Identifiants</dt><dd style="margin:4px 0 0;font-weight:750">${ids.length ? ids.map((i) => esc(i.type.toUpperCase() + ' ' + i.value)).join(' · ') : '—'}</dd></div>
+                <div><dt class="meta">${bt('pdCategory')}</dt><dd style="margin:4px 0 0;font-weight:750">${esc(p.category || '—')}</dd></div>
+                <div><dt class="meta">Version</dt><dd style="margin:4px 0 0;font-weight:750">v${esc(p.version || '1')}</dd></div>
+                <div><dt class="meta">${bt('pdStatus')}</dt><dd style="margin:4px 0 0">${status(p.status)}</dd></div>
+                <div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0 0;font-weight:750">${p.dataCompletion != null ? esc(moneyless(p.dataCompletion)) + '%' : '—'}</dd></div>
+              </dl>
+              <div class="actions" style="margin-top:16px"><button class="btn btn-secondary btn-small" data-action="product-revision">${bit('overview.newRevision', 'Create a new revision')}</button></div>
+            </div>
+            <div class="card panel">
+              <div class="panel-head"><h2>${bt('pxTechSheet')}</h2></div>
+              <form id="product-detail-form" class="form-grid">
+                <label>${bt('pxStyleName')}<input class="input" name="name" value="${esc(p.name || '')}"></label>
+                <label>${bt('pxSku')}<input class="input" name="reference" value="${esc(p.reference || '')}"></label>
+                <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || '')}"></label>
+                <label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || '')}"></label>
+                <label>${bit('overview.countryOfDesign', 'Country of design')}<input class="input" name="countryOfDesign" value="${esc(p.countryOfDesign || '')}" maxlength="2"></label>
+                <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || '')}" maxlength="2"></label>
+                <label>Poids unitaire (g)<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams != null ? p.weightGrams : '')}"></label>
+                <label>Tailles<input class="input" name="sizeRange" value="${esc(sizeRangeText)}"></label>
+                <div class="form-actions field-full"><button class="btn btn-primary" type="submit">${bt('pxUpdate')}</button></div>
+              </form>
+            </div>
+          </div>
+          <div class="card panel" style="margin-top:18px">
+            <div class="panel-head"><div><h2>${bit('overview.schemas', 'Versioned data schemas')}</h2></div><span class="meta">${bindings.length}</span></div>
+            ${bindings.length ? `<div class="item-list">${bindings.map((b) => `<div class="item"><div><strong>${esc(b.schemaKey)}</strong><div class="meta">${bit('overview.schemaVersion', 'Version')} ${esc(b.schemaVersion)} · ${bit('overview.attachedOn', 'Attached on')} ${date(b.createdAt)}</div></div></div>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bit('overview.noSchemas', 'No schema attached to this product yet.')}</p></div>`}
+            <form id="schema-binding-form" class="form-grid" style="margin-top:14px">
+              <label class="field-full">${bit('overview.linkSchema', 'Attach a schema')}<select class="select" name="schemaIdentity" required>${schemaOptions || '<option value="">—</option>'}</select></label>
+              <div class="form-actions field-full"><button class="btn btn-primary btn-small" type="submit" ${schemaOptions ? '' : 'disabled'}>${bit('overview.linkSchema', 'Attach a schema')}</button></div>
+            </form>
+          </div>`;
+
+        /* -- lentille Composition : parts reelles des matieres attachees ----- */
+        const compPalette = ['#0b7656', '#10b981', '#1d4ed8', '#b45309', '#7c3aed', '#0f766e'];
+        const compositionLens = mats.length ? `
+          <div class="card" style="padding:20px">
+            <div class="pil-comp-bar">${mats.map((m, i) => `<i style="width:${Math.max(0, Math.min(100, Number(m.percentage) || 0))}%;background:${compPalette[i % compPalette.length]}"></i>`).join('')}</div>
+            <div class="table-wrap"><table><thead><tr><th>${bt('cnMaterialLabel')}</th><th>${bt('spRole')}</th><th>${bit('composition.share', 'Share')}</th></tr></thead><tbody>
+              ${mats.map((m) => `<tr><td><strong>${esc(materialName(m.material))}</strong><div class="meta">${esc(materialType(m.material) || '')}</div></td><td>${esc(m.role || '—')}</td><td style="font-variant-numeric:tabular-nums">${m.percentage != null ? esc(moneyless(m.percentage)) + '%' : '—'}</td></tr>`).join('')}
+            </tbody></table></div>
+          </div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${bit('composition.noComposition', 'No composition declared yet.')}</strong></div>`;
+
+        /* -- lentille Materials : BOM reel (edition + ajout conserves) ------- */
+        const materialsLens = `
+          <div class="card panel">
+            <div class="panel-head"><div><h2>Nomenclature & Bilan Massique (BOM)</h2><p class="meta" style="margin:4px 0 0;">${bt('pxEspr')}</p></div></div>
+            ${mats.length ? `<div class="item-list">${mats.map((m) => `<form class="item material-edit-form" data-material-product-id="${esc(p.id)}">
+              <input type="hidden" name="materialId" value="${esc(m.materialId)}">
+              <div><strong>${esc(materialName(m.material))}</strong><div class="meta">${esc(m.role || '—')} · ${esc(materialType(m.material) || '')}</div></div>
+              <div class="actions">
+                <label class="meta">${bt('pxSharePct')}<input class="input" name="percentage" type="number" value="${esc(m.percentage != null ? m.percentage : '')}" style="width:75px"></label>
+                <button class="btn btn-secondary btn-small" type="submit">Valider</button>
+              </div>
+            </form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bit('composition.noComposition', 'No composition declared yet.')}</p></div>`}
+            <form id="material-form" class="form-grid" style="margin-top:18px">
+              <label class="field-full">${bt('pxAddComponent')}<select class="select" name="materialId">${materialOptions || '<option value="">—</option>'}</select></label>
+              <label>${bt('pxSharePctP')}<input class="input" name="percentage" type="number" min="0" max="100" placeholder="15"></label>
+              <label>${bt('spRole')}<input class="input" name="materialRole" value="secondary"></label>
+              <div class="form-actions field-full"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddBom')}</button></div>
+            </form>
+          </div>
+          <div class="card panel" style="margin-top:18px;">
+            <div class="panel-head"><div><h2>${bt('pxIdentifiers')}</h2><p class="meta">${bt('pxResolveHint')}</p></div><span class="meta">${ids.length}</span></div>
+            ${ids.length ? `<div class="item-list">${ids.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">${esc(bt('cnCreatedOn'))} ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">${bt('pxSave')}</button></div></form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('pxNoId')}</p></div>`}
+            <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
+          </div>`;
+
+        /* -- lentilles Supply chain / Manufacturing / Suppliers : graphe reel */
+        const nodeCard = (n, i) => `<div class="pil-node"><span class="pil-node-idx">${String(i + 1).padStart(2, '0')}</span><div class="pil-node-body"><span class="pil-node-label">${esc(n.label || n.site_name || n.material_name || n.id)}</span><span class="pil-node-meta">${esc(n.node_type || '')}${n.process_code ? ' · ' + esc(n.process_code) : ''}${n.site_country ? ' · ' + esc(n.site_country) : ''}</span></div>${status(n.status)}</div>`;
+        const supplyChainLens = sc ? `
+          <div class="pil-summary-grid">
+            <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.nodeCount ?? scNodes.length}</div><span class="pil-summary-label">${bit('supplyChain.nodes', 'Traceability nodes')}</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.linkCount ?? scLinks.length}</div><span class="pil-summary-label">Liens</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.documentationRate != null ? scSummary.documentationRate + '%' : '—'}</div><span class="pil-summary-label">${bit('supplyChain.documentationRate', 'Documentation rate')}</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.stagesCovered != null ? (Array.isArray(scSummary.stagesCovered) ? scSummary.stagesCovered.length : scSummary.stagesCovered) : '—'}</div><span class="pil-summary-label">${bit('supplyChain.stagesCovered', 'Stages covered')}</span></div>
+          </div>
+          ${scNodes.length ? `<div class="pil-node-list">${scNodes.map(nodeCard).join('')}</div>` : `<div class="empty"><p>${bit('supplyChain.noGraph', 'No traceability graph recorded for this product yet.')}</p></div>`}
+          <div class="actions" style="margin-top:16px"><button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bit('supplyChain.openGraph', 'Open the full supply chain graph')}</button></div>`
+          : `<div class="empty"><div class="empty-icon">☍</div><strong>${bit('supplyChain.noGraph', 'No traceability graph recorded for this product yet.')}</strong><p>${intel.errors?.includes('supply-chain') ? esc(bt('cnNotLoaded')) : ''}</p></div>`;
+
+        const mfgNodes = scNodes.filter((n) => ['process', 'site'].includes(n.node_type));
+        const manufacturingLens = mfgNodes.length ? `
+          <p class="pil-note">${bit('manufacturing.note', '')}</p>
+          <div class="table-wrap"><table><thead><tr><th>${bit('manufacturing.process', 'Process')}</th><th>${bit('manufacturing.facility', 'Facility')}</th><th>${bit('manufacturing.country', 'Country')}</th><th>${bit('manufacturing.status', 'Status')}</th></tr></thead><tbody>
+            ${mfgNodes.map((n) => `<tr><td><strong>${esc(n.process_code || n.node_type)}</strong></td><td>${esc(n.site_name || n.label || '—')}</td><td>${esc(n.site_country || '—')}</td><td>${status(n.status)}</td></tr>`).join('')}
+          </tbody></table></div>`
+          : `<div class="empty"><div class="empty-icon">▦</div><strong>${bit('manufacturing.empty', 'No manufacturing node in the graph yet.')}</strong></div>`;
+
+        const supplierNodes = scNodes.filter((n) => n.node_type === 'site').filter((n, i, arr) => arr.findIndex((x) => (x.site_name || x.label) === (n.site_name || n.label)) === i);
+        const suppliersLens = supplierNodes.length ? `
+          <p class="pil-note">${bit('suppliers.note', '')}</p>
+          <div class="table-wrap"><table><thead><tr><th>${bit('suppliers.org', 'Organization')}</th><th>${bit('manufacturing.country', 'Country')}</th><th>${bit('suppliers.type', 'Node type')}</th><th>${bit('manufacturing.status', 'Status')}</th></tr></thead><tbody>
+            ${supplierNodes.map((n) => `<tr><td><strong>${esc(n.site_name || n.label || '—')}</strong>${n.site_city ? `<div class="meta">${esc(n.site_city)}</div>` : ''}</td><td>${esc(n.site_country || '—')}</td><td>${esc(n.node_type)}</td><td>${status(n.status)}</td></tr>`).join('')}
+          </tbody></table></div>`
+          : `<div class="empty"><div class="empty-icon">◎</div><strong>${bit('suppliers.empty', 'No organization in the traceability graph yet.')}</strong></div>`;
+
+        /* -- lentille Evidence : honnete — unification au chantier 08 -------- */
+        const evidenceLens = `
+          <div class="card panel pil-planned">
+            <div class="panel-head"><h2>${bit('evidence.plannedTitle', '')}</h2></div>
+            <p class="pil-note" style="margin-bottom:14px">${bit('evidence.plannedNote', '')}</p>
+            <button class="btn btn-secondary btn-small" data-view="documents">${bit('evidence.openDocuments', 'Open documents')}</button>
+          </div>`;
+
+        /* -- lentille Certifications : niveau organisation, assume ----------- */
+        const certs = state.certifications || [];
+        const certificationsLens = `
+          <p class="pil-note">${bit('certifications.orgNote', '')}</p>
+          ${certs.length ? `<div class="table-wrap"><table><thead><tr><th>Standard</th><th>Numero</th><th>Emetteur</th><th>Expiration</th></tr></thead><tbody>
+            ${certs.map((c) => `<tr><td><strong>${esc(c.standard)}</strong></td><td class="meta">${esc(c.number || '—')}</td><td>${esc(c.issuer || '—')}</td><td>${date(c.expires)}</td></tr>`).join('')}
+          </tbody></table></div>` : `<div class="empty"><p>${bit('certifications.none', 'No certification declared yet.')}</p></div>`}
+          <div class="actions" style="margin-top:16px"><button class="btn btn-secondary btn-small" data-view="certifications">${bit('certifications.openCerts', 'Open certifications')}</button></div>`;
+
+        /* -- lentille Quality : score reel par produit ------------------------ */
+        const qScore = quality?.score || null;
+        const qIssues = quality?.issues || [];
+        const qualityLens = qScore ? `
+          <div class="pil-summary-grid">
+            ${[['completeness', 'Completude'], ['freshness', 'Fraicheur'], ['documentationCoverage', 'Couverture preuves'], ['consistency', 'Coherence']].map(([k, label]) => `<div class="pil-summary-cell"><div class="pil-summary-num">${qScore[k] != null ? esc(moneyless(qScore[k])) + '%' : '—'}</div><span class="pil-summary-label">${label}</span></div>`).join('')}
+          </div>
+          ${qIssues.length ? `<div class="card panel"><div class="panel-head"><h2>${bit('quality.issues', 'Open issues')}</h2><span class="meta">${qIssues.length}</span></div><div class="item-list">${qIssues.map((iss) => `<div class="item"><div><strong>${esc(iss.ruleKey || iss.id || '')}</strong><div class="meta">${esc(iss.message || '')} · ${date(iss.detectedAt)}</div></div>${status(iss.severity || iss.status || 'open')}</div>`).join('')}</div></div>` : ''}
+          <div class="actions" style="margin-top:16px"><button class="btn btn-secondary" data-action="product-quality-from-detail">${bit('quality.openQuality', 'Open the Quality Center')}</button></div>`
+          : `<div class="empty"><div class="empty-icon">◒</div><strong>${bit('quality.noQuality', 'No quality score computed for this product yet.')}</strong><div class="actions" style="margin-top:12px"><button class="btn btn-primary btn-small" data-action="product-quality-from-detail">${bit('quality.openQuality', 'Open the Quality Center')}</button></div></div>`;
+
+        /* -- lentille DPP : preparation uniquement, jamais de conformite ------ */
+        const dppLens = dpp ? `
+          <div class="notice" style="margin-bottom:14px">${bit('dpp.readinessNote', '')}</div>
+          <div class="pil-summary-grid">
+            <div class="pil-summary-cell"><div class="pil-summary-num">${dpp.completionScore != null ? esc(moneyless(dpp.completionScore)) + '%' : '—'}</div><span class="pil-summary-label">${bit('dpp.completion', 'Completion')}</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num">${dpp.metRequirements != null && dpp.totalRequirements != null ? esc(dpp.metRequirements) + '/' + esc(dpp.totalRequirements) : '—'}</div><span class="pil-summary-label">${bit('dpp.requirements', 'Requirements met')}</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num" style="font-size:14px;padding-top:6px">${status(dpp.readinessStatus || 'in_progress')}</div><span class="pil-summary-label">${bit('dpp.status', 'Readiness status')}</span></div>
+          </div>
+          <div class="actions" style="margin-top:6px"><button class="btn btn-secondary" data-action="product-dpp-from-detail">${bit('common.openFull', 'Open the full view')}</button></div>`
+          : `<div class="empty"><div class="empty-icon">▣</div><strong>${bit('dpp.noDpp', 'No DPP readiness record for this product yet.')}</strong><div class="actions" style="margin-top:12px"><button class="btn btn-primary btn-small" data-action="product-dpp-from-detail">${bit('common.openFull', 'Open the full view')}</button></div></div>`;
+
+        /* -- lentille History : evenements horodates reels -------------------- */
+        const historyEvents = [];
+        if (p.createdAt) historyEvents.push({ d: p.createdAt, label: bit('history.productCreated', 'Product record created') });
+        ids.forEach((i) => { if (i.createdAt) historyEvents.push({ d: i.createdAt, label: bit('history.identifierAdded', 'Identifier added') + ' · ' + i.type.toUpperCase() + ' ' + i.value }); });
+        mats.forEach((m) => { if (m.createdAt) historyEvents.push({ d: m.createdAt, label: bit('history.materialAdded', 'Material attached to the product') + ' · ' + materialName(m.material) }); });
+        bindings.forEach((b) => { if (b.createdAt) historyEvents.push({ d: b.createdAt, label: bit('history.schemaAttached', 'Data schema attached') + ' · ' + b.schemaKey + ' v' + b.schemaVersion }); });
+        historyEvents.sort((a, b) => new Date(b.d) - new Date(a.d));
+        const historyLens = historyEvents.length ? `
+          <div class="card" style="padding:20px"><div class="pil-timeline">
+            ${historyEvents.map((e) => `<div class="pil-event"><span class="pil-event-date">${date(e.d)}</span><span>${esc(e.label)}</span></div>`).join('')}
+          </div></div>`
+          : `<div class="empty"><div class="empty-icon">☷</div><strong>${bit('history.noHistory', 'No timestamped event recorded for this product yet.')}</strong></div>`;
+
+        const lensContent = { overview: overviewLens, composition: compositionLens, materials: materialsLens, supplyChain: supplyChainLens, manufacturing: manufacturingLens, suppliers: suppliersLens, evidence: evidenceLens, certifications: certificationsLens, quality: qualityLens, dpp: dppLens, history: historyLens };
 
         return `<div class="page-head">
           <div>
             <button class="link-button" data-view="products">${bt('pxBackCatalogue')}</button>
-            <div class="eyebrow" style="margin-top:16px;">Intelligence Produit · ${bt('cRef')} ${esc(p.reference || 'AW26-0248')} · Version ${esc(p.version || '1.0')}</div>
-            <h1>${esc(p.name || 'Organic Cotton T-Shirt')}</h1>
-            <p>${esc(p.category || 'T-Shirt & Maille')} · ${esc(bt('cnSxQualityIndex'))} <strong>98.4 / 100</strong></p>
+            <div class="eyebrow" style="margin-top:16px;">${bit('head.eyebrow', 'Product Intelligence')} · ${bt('cRef')} ${esc(p.reference || '—')} · Version ${esc(p.version || '1')}</div>
+            <h1>${esc(p.name || '—')}</h1>
+            <p>${esc(p.category || '—')}${p.dataCompletion != null ? ` · ${bt('pdCompleteness')} ${esc(moneyless(p.dataCompletion))}%` : ''}</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bt('pxTraceGraph')}</button>
             <button class="btn btn-secondary" data-action="product-dpp-from-detail">${bt('pxPrepareDpp')}</button>
-            <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">📋 Passeport DPP Public</button>
-            <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}">+ Demande de preuve</button>
+            <button class="btn btn-secondary" data-action="product-export-intel">${bit('head.export', 'Export product data (JSON)')}</button>
+            <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}">+ ${bt('cnRqCreate')}</button>
           </div>
         </div>
 
-        <!-- PRODUCT LINEAGE PIPELINE (Organic Cotton T-Shirt ➔ DPP) -->
-        <div class="lineage-shell">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;letter-spacing:0.1em;text-transform:uppercase;">PRODUCT LINEAGE & CUSTODY CHAIN</div>
-              <h3 style="font-size:18px;font-weight:800;color:#17231f;margin:4px 0 0;">${bt('pxLineage')}</h3>
-            </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">${bt('pxVerifiedSealed')}</span>
-          </div>
-
-          <div class="lineage-pipeline-flow">
-            <div class="lineage-step-card active" data-demo-action="1">
-              <div class="lineage-step-label">01. FIBRE</div>
-              <div class="lineage-step-sub">Ferme GOTS</div>
-            </div>
-            <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">02. FILATURE</div>
-              <div class="lineage-step-sub">Bilan Massique</div>
-            </div>
-            <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">03. TRICOTAGE</div>
-              <div class="lineage-step-sub">Guimarães PT</div>
-            </div>
-            <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">04. TEINTURE</div>
-              <div class="lineage-step-sub">ZDHC Level 3</div>
-            </div>
-            <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">05. CONFECTION</div>
-              <div class="lineage-step-sub">Certified Workshop</div>
-            </div>
-            <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">06. PRODUIT</div>
-              <div class="lineage-step-sub">BOM 100%</div>
-            </div>
-            <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">${esc(bt('cnGrpPef'))}</div>
-              <div class="lineage-step-sub">Score A (PEF)</div>
-            </div>
-            <div class="lineage-step-card" onclick="window.open('/dpp/', '_blank')">
-              <div class="lineage-step-label" style="color:#0b7656;">08. DPP QR</div>
-              <div class="lineage-step-sub">GS1 Link</div>
-            </div>
-          </div>
+        <div class="pil-tabs" role="tablist" aria-label="${bit('head.eyebrow', 'Product Intelligence')}">
+          ${LENSES.map((id) => `<button type="button" class="pil-tab${id === active ? ' is-active' : ''}" role="tab" aria-selected="${id === active}" data-pi-tab="${id}">${esc(bit('tabs.' + id, id))}</button>`).join('')}
         </div>
 
-        <div class="grid split">
-          <div class="card panel">
-            <div class="panel-head"><h2>${bt('pxTechSheet')}</h2></div>
-            <form id="product-detail-form" class="form-grid">
-              <label>${bt('pxStyleName')}<input class="input" name="name" value="${esc(p.name)}"></label>
-              <label>${bt('pxSku')}<input class="input" name="reference" value="${esc(p.reference)}"></label>
-              <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || 'Ready-to-wear')}"></label>
-              <label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || 'Navy Deep')}"></label>
-              <label>${bt('pxCountrySpin')}<input class="input" name="countryOfSpinning" value="${esc(p.countryOfSpinning || 'PT')}"></label>
-              <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || 'PT')}"></label>
-              <label>Poids unitaire (g)<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams || '185')}"></label>
-              <label>Tailles<input class="input" name="sizeRange" value="${esc((p.sizeRange || ['XS','S','M','L','XL']).join(', '))}"></label>
-              <div class="form-actions field-full">
-                <button class="btn btn-primary" type="submit">${bt('pxUpdate')}</button>
-              </div>
-            </form>
-          </div>
-
-          <div class="card panel">
-            <div class="panel-head">
-              <div>
-                <h2>Nomenclature & Bilan Massique (BOM)</h2>
-                <p class="meta" style="margin:4px 0 0;">${bt('pxEspr')}</p>
-              </div>
-              <span class="status status-approved">${bt('pxReconciled')}</span>
-            </div>
-
-            ${detail.materials?.length ? `<div class="item-list">${detail.materials.map((m) => `<form class="item material-edit-form" data-material-product-id="${esc(p.id)}">
-              <input type="hidden" name="materialId" value="${esc(m.materialId)}">
-              <div>
-                <strong>${esc(materialName(m.material))}</strong>
-                <div class="meta">${esc(m.role || 'Principal')} · ${esc(materialType(m.material) || bt('cnCertifiedFibre'))}</div>
-              </div>
-              <div class="actions">
-                <label class="meta">${bt('pxSharePct')}<input class="input" name="percentage" type="number" value="${esc(m.percentage || 100)}" style="width:75px"></label>
-                <button class="btn btn-secondary btn-small" type="submit">Valider</button>
-              </div>
-            </form>`).join('')}</div>` : `
-            <div class="item-list">
-              <div class="item">
-                <div><strong>Combed Organic Cotton (GOTS)</strong><div class="meta">Primary fibre · Türkiye / Greece</div></div>
-                <div class="actions"><span class="badge badge-verified">85%</span></div>
-              </div>
-              <div class="item">
-                <div><strong>Pre-consumer Recycled Cotton (GRS)</strong><div class="meta">Reincorporated spinning waste</div></div>
-                <div class="actions"><span class="badge badge-verified">15%</span></div>
-              </div>
-            </div>`}
-
-            <form id="material-form" class="form-grid" style="margin-top:18px">
-              <label class="field-full">${bt('pxAddComponent')}
-                <select class="select" name="materialId">${materialOptions || '<option value="">French organic linen</option>'}</select>
-              </label>
-              <label>${bt('pxSharePctP')}<input class="input" name="percentage" type="number" min="0" max="100" placeholder="15"></label>
-              <label>${bt('spRole')}<input class="input" name="materialRole" value="secondary"></label>
-              <div class="form-actions field-full">
-                <button class="btn btn-primary btn-small" type="submit">${bt('pxAddBom')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-          <div class="card panel" style="margin-top:20px;">
-            <div class="panel-head">
-              <div>
-                <h2>${bt('pxIdentifiers')}</h2>
-                <p class="meta">${bt('pxResolveHint')}</p>
-              </div>
-              <span class="meta">${detail.identifiers?.length || 0} identifiant(s) actif(s)</span>
-            </div>
-            ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">${esc(bt('cnCreatedOn'))} ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">${bt('pxSave')}</button></div></form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('pxNoId')}</p></div>`}
-            <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
-          </div>`;
+        ${LENSES.map((id) => `<section class="pil-lens" data-pi-lens="${id}" role="tabpanel" ${id === active ? '' : 'hidden'}>${lensContent[id]}</section>`).join('')}`;
       }
 
       function supplierDetailView() {
@@ -4046,17 +4113,70 @@
         state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(id)}`)).request;
         render();
       }
+      /* Chantier 07 — intelligence produit : chargement parallele des donnees
+         reelles par produit (graphe de tracabilite, preparation DPP, score
+         qualite). En cas d'echec d'un endpoint, la lentille correspondante
+         affiche son etat vide — aucune valeur n'est simulee. */
+      async function loadProductIntel(id) {
+        const intel = { supplyChain: null, dpp: null, quality: null, errors: [] };
+        if (state.demo) {
+          state.selectedSupplyChainProduct = state.products.find((x) => x.id === id) || null;
+          state.selectedDppProduct = state.selectedSupplyChainProduct;
+          intel.supplyChain = demoSupplyChain();
+          intel.dpp = demoDpp();
+          intel.quality = {
+            score: { completeness: 82, freshness: 78, documentationCoverage: 61, consistency: 80 },
+            issues: [
+              { id: 'demo-issue-1', severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', message: 'Some product data does not yet have documentary evidence.', detectedAt: new Date().toISOString() }
+            ]
+          };
+          return intel;
+        }
+        const [scRes, dppRes, qRes] = await Promise.allSettled([
+          api(`/api/products/${encodeURIComponent(id)}/supply-chain`),
+          api(`/api/products/${encodeURIComponent(id)}/dpp`),
+          api(`/api/quality/products/${encodeURIComponent(id)}`)
+        ]);
+        intel.supplyChain = scRes.status === 'fulfilled' ? scRes.value : null;
+        if (scRes.status === 'rejected') intel.errors.push('supply-chain');
+        const dppValue = dppRes.status === 'fulfilled' ? dppRes.value : null;
+        intel.dpp = dppValue ? (dppValue.dpp || dppValue) : null;
+        if (dppRes.status === 'rejected') intel.errors.push('dpp');
+        intel.quality = qRes.status === 'fulfilled' ? qRes.value : null;
+        if (qRes.status === 'rejected') intel.errors.push('quality');
+        return intel;
+      }
+
+      function exportProductIntel() {
+        const detail = state.selectedProductDetail;
+        if (!detail?.product) return;
+        const payload = {
+          exportedAt: new Date().toISOString(),
+          source: state.demo ? 'tracefab-demo-workspace' : 'tracefab-api',
+          product: detail.product,
+          identifiers: detail.identifiers || [],
+          materials: detail.materials || [],
+          schemaBindings: state.schemaBindings || [],
+          intelligence: state.productIntel || null
+        };
+        const ref = String(detail.product.reference || detail.product.id || 'product').replace(/[^a-zA-Z0-9-_]/g, '-');
+        downloadTextFile(`tracefab-product-${ref}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+      }
+
       async function openProduct(id) {
         state.view = 'productDetail';
         state.selectedProduct = state.products.find((p) => p.id === id) || null;
+        state.productLens = 'overview';
         if (state.demo) {
           state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] };
           state.schemaBindings = [];
+          state.productIntel = await loadProductIntel(id);
           render();
           return;
         }
         state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(id)}`);
         state.schemaBindings = (await api(`/api/schema-bindings?subjectType=product&subjectId=${encodeURIComponent(id)}`)).bindings || [];
+        state.productIntel = await loadProductIntel(id);
         render();
       }
       async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: 'Partenaire actif' }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
@@ -4581,6 +4701,17 @@
           window.TFTables.mount(app);
         }
 
+        /* Chantier 07 — lentilles de la fiche produit : bascule sans re-rendu
+           (les formulaires deja binds restent dans le DOM). */
+        document.querySelectorAll('[data-pi-tab]').forEach((tab) => tab.addEventListener('click', () => {
+          state.productLens = tab.dataset.piTab;
+          document.querySelectorAll('[data-pi-tab]').forEach((x) => {
+            x.classList.toggle('is-active', x === tab);
+            x.setAttribute('aria-selected', String(x === tab));
+          });
+          document.querySelectorAll('[data-pi-lens]').forEach((lens) => { lens.hidden = lens.dataset.piLens !== state.productLens; });
+        }));
+
         // Buttons that used to alert() a fake success now say what is actually true.
         document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
           event.preventDefault(); notify(bt('demoUnavailable'));
@@ -4601,6 +4732,7 @@
             if (action === 'commit-supplier-import') await commitSupplierImport();
             if (action === 'new-request') { state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierOrgId || el.dataset.supplierId; state.modalProductId = null; render(); }
             if (action === 'product-new-request') { state.modal = 'new-request'; state.modalProductId = el.dataset.productId; render(); }
+            if (action === 'product-export-intel') exportProductIntel();
             if (action === 'invite-supplier') { state.modal = 'invite-supplier'; render(); }
             if (action === 'open-cap-modal') { state.modal = 'create-cap'; render(); }
             if (action === 'open-review-cap-modal') { state.modal = 'review-cap'; render(); }

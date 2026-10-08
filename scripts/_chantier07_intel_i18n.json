@@ -1,0 +1,639 @@
+{
+  "en": {
+    "tabs": {
+      "overview": "Overview",
+      "composition": "Composition",
+      "materials": "Materials",
+      "supplyChain": "Supply chain",
+      "manufacturing": "Manufacturing",
+      "suppliers": "Suppliers",
+      "evidence": "Evidence",
+      "certifications": "Certifications",
+      "quality": "Quality",
+      "dpp": "DPP readiness",
+      "history": "History"
+    },
+    "head": {
+      "eyebrow": "Product Intelligence",
+      "export": "Export product data (JSON)"
+    },
+    "common": {
+      "empty": "No data available for this lens yet.",
+      "openFull": "Open the full view",
+      "computedNote": "Computed from your workspace data — nothing is simulated."
+    },
+    "overview": {
+      "identity": "Identity",
+      "schemas": "Versioned data schemas",
+      "linkSchema": "Attach a schema",
+      "noSchemas": "No schema attached to this product yet.",
+      "schemaVersion": "Version",
+      "attachedOn": "Attached on",
+      "countryOfDesign": "Country of design",
+      "newRevision": "Create a new revision"
+    },
+    "composition": {
+      "share": "Share",
+      "noComposition": "No composition declared yet — attach materials in the Materials lens."
+    },
+    "supplyChain": {
+      "openGraph": "Open the full supply chain graph",
+      "noGraph": "No traceability graph recorded for this product yet.",
+      "nodes": "Traceability nodes",
+      "documentationRate": "Documentation rate",
+      "stagesCovered": "Stages covered"
+    },
+    "manufacturing": {
+      "note": "Manufacturing footprint derived from the product traceability graph.",
+      "empty": "No manufacturing node in the graph yet.",
+      "process": "Process",
+      "facility": "Facility",
+      "country": "Country",
+      "status": "Status"
+    },
+    "suppliers": {
+      "note": "Organizations present in the product traceability graph.",
+      "empty": "No organization in the traceability graph yet.",
+      "org": "Organization",
+      "type": "Node type"
+    },
+    "evidence": {
+      "plannedTitle": "Per-product evidence — unified with the Evidence Center",
+      "plannedNote": "Documentary evidence attached to this product will be consolidated here by the Evidence Center workstream. Until then, documents are managed at organization level.",
+      "openDocuments": "Open documents"
+    },
+    "certifications": {
+      "orgNote": "Certifications declared at organization level. Product-scoped certificates are not recorded separately yet.",
+      "openCerts": "Open certifications",
+      "none": "No certification declared yet."
+    },
+    "quality": {
+      "openQuality": "Open the Quality Center",
+      "noQuality": "No quality score computed for this product yet.",
+      "issues": "Open issues",
+      "severity": "Severity"
+    },
+    "dpp": {
+      "readinessNote": "DPP readiness only — TRACEFAB does not qualify legal compliance.",
+      "noDpp": "No DPP readiness record for this product yet.",
+      "status": "Readiness status",
+      "completion": "Completion",
+      "requirements": "Requirements met"
+    },
+    "history": {
+      "productCreated": "Product record created",
+      "identifierAdded": "Identifier added",
+      "materialAdded": "Material attached to the product",
+      "schemaAttached": "Data schema attached",
+      "noHistory": "No timestamped event recorded for this product yet.",
+      "event": "Event",
+      "date": "Date"
+    }
+  },
+  "fr": {
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "composition": "Composition",
+      "materials": "Matières",
+      "supplyChain": "Chaîne d'approvisionnement",
+      "manufacturing": "Fabrication",
+      "suppliers": "Fournisseurs",
+      "evidence": "Preuves",
+      "certifications": "Certifications",
+      "quality": "Qualité",
+      "dpp": "Préparation DPP",
+      "history": "Historique"
+    },
+    "head": {
+      "eyebrow": "Intelligence Produit",
+      "export": "Exporter les données produit (JSON)"
+    },
+    "common": {
+      "empty": "Aucune donnée disponible pour cette lentille pour le moment.",
+      "openFull": "Ouvrir la vue complète",
+      "computedNote": "Calculé à partir des données de votre espace — rien n'est simulé."
+    },
+    "overview": {
+      "identity": "Identité",
+      "schemas": "Schémas de données versionnés",
+      "linkSchema": "Attacher un schéma",
+      "noSchemas": "Aucun schéma attaché à ce produit pour le moment.",
+      "schemaVersion": "Version",
+      "attachedOn": "Attaché le",
+      "countryOfDesign": "Pays de conception",
+      "newRevision": "Créer une nouvelle révision"
+    },
+    "composition": {
+      "share": "Part",
+      "noComposition": "Aucune composition déclarée pour le moment — attachez des matières dans la lentille Matières."
+    },
+    "supplyChain": {
+      "openGraph": "Ouvrir le graphe complet de la chaîne",
+      "noGraph": "Aucun graphe de traçabilité enregistré pour ce produit pour le moment.",
+      "nodes": "Nœuds de traçabilité",
+      "documentationRate": "Taux de documentation",
+      "stagesCovered": "Étapes couvertes"
+    },
+    "manufacturing": {
+      "note": "Empreinte de fabrication dérivée du graphe de traçabilité du produit.",
+      "empty": "Aucun nœud de fabrication dans le graphe pour le moment.",
+      "process": "Procédé",
+      "facility": "Site",
+      "country": "Pays",
+      "status": "Statut"
+    },
+    "suppliers": {
+      "note": "Organisations présentes dans le graphe de traçabilité du produit.",
+      "empty": "Aucune organisation dans le graphe de traçabilité pour le moment.",
+      "org": "Organisation",
+      "type": "Type de nœud"
+    },
+    "evidence": {
+      "plannedTitle": "Preuves par produit — unifiées avec le Centre de preuves",
+      "plannedNote": "Les preuves documentaires attachées à ce produit seront consolidées ici par le chantier Centre de preuves. D'ici là, les documents sont gérés au niveau de l'organisation.",
+      "openDocuments": "Ouvrir les documents"
+    },
+    "certifications": {
+      "orgNote": "Certifications déclarées au niveau de l'organisation. Les certificats par produit ne sont pas encore enregistrés séparément.",
+      "openCerts": "Ouvrir les certifications",
+      "none": "Aucune certification déclarée pour le moment."
+    },
+    "quality": {
+      "openQuality": "Ouvrir le Centre qualité",
+      "noQuality": "Aucun score qualité calculé pour ce produit pour le moment.",
+      "issues": "Anomalies ouvertes",
+      "severity": "Sévérité"
+    },
+    "dpp": {
+      "readinessNote": "Préparation DPP uniquement — TRACEFAB ne qualifie pas la conformité légale.",
+      "noDpp": "Aucun enregistrement de préparation DPP pour ce produit pour le moment.",
+      "status": "État de préparation",
+      "completion": "Complétude",
+      "requirements": "Exigences satisfaites"
+    },
+    "history": {
+      "productCreated": "Fiche produit créée",
+      "identifierAdded": "Identifiant ajouté",
+      "materialAdded": "Matière attachée au produit",
+      "schemaAttached": "Schéma de données attaché",
+      "noHistory": "Aucun événement horodaté enregistré pour ce produit pour le moment.",
+      "event": "Événement",
+      "date": "Date"
+    }
+  },
+  "de": {
+    "tabs": {
+      "overview": "Übersicht",
+      "composition": "Zusammensetzung",
+      "materials": "Materialien",
+      "supplyChain": "Lieferkette",
+      "manufacturing": "Fertigung",
+      "suppliers": "Lieferanten",
+      "evidence": "Nachweise",
+      "certifications": "Zertifizierungen",
+      "quality": "Qualität",
+      "dpp": "DPP-Bereitschaft",
+      "history": "Verlauf"
+    },
+    "head": {
+      "eyebrow": "Produkt-Intelligenz",
+      "export": "Produktdaten exportieren (JSON)"
+    },
+    "common": {
+      "empty": "Für diese Ansicht liegen noch keine Daten vor.",
+      "openFull": "Vollansicht öffnen",
+      "computedNote": "Aus den Daten Ihres Arbeitsbereichs berechnet — nichts wird simuliert."
+    },
+    "overview": {
+      "identity": "Identität",
+      "schemas": "Versionierte Datenschemata",
+      "linkSchema": "Schema verknüpfen",
+      "noSchemas": "Noch kein Schema mit diesem Produkt verknüpft.",
+      "schemaVersion": "Version",
+      "attachedOn": "Verknüpft am",
+      "countryOfDesign": "Designland",
+      "newRevision": "Neue Revision erstellen"
+    },
+    "composition": {
+      "share": "Anteil",
+      "noComposition": "Noch keine Zusammensetzung erklärt — fügen Sie Materialien in der Materialansicht hinzu."
+    },
+    "supplyChain": {
+      "openGraph": "Vollständigen Lieferketten-Graph öffnen",
+      "noGraph": "Für dieses Produkt wurde noch kein Rückverfolgbarkeits-Graph erfasst.",
+      "nodes": "Rückverfolgbarkeitsknoten",
+      "documentationRate": "Dokumentationsquote",
+      "stagesCovered": "Abgedeckte Stufen"
+    },
+    "manufacturing": {
+      "note": "Fertigungs-Fußabdruck aus dem Rückverfolgbarkeits-Graph des Produkts abgeleitet.",
+      "empty": "Noch kein Fertigungsknoten im Graph.",
+      "process": "Verfahren",
+      "facility": "Stätte",
+      "country": "Land",
+      "status": "Status"
+    },
+    "suppliers": {
+      "note": "Organisationen im Rückverfolgbarkeits-Graph des Produkts.",
+      "empty": "Noch keine Organisation im Rückverfolgbarkeits-Graph.",
+      "org": "Organisation",
+      "type": "Knotentyp"
+    },
+    "evidence": {
+      "plannedTitle": "Produktnachweise — gebündelt im Nachweis-Center",
+      "plannedNote": "Dokumentarische Nachweise zu diesem Produkt werden hier durch das Nachweis-Center-Arbeitspaket zusammengeführt. Bis dahin werden Dokumente auf Organisationsebene verwaltet.",
+      "openDocuments": "Dokumente öffnen"
+    },
+    "certifications": {
+      "orgNote": "Auf Organisationsebene erklärte Zertifizierungen. Zertifikate je Produkt werden noch nicht separat erfasst.",
+      "openCerts": "Zertifizierungen öffnen",
+      "none": "Noch keine Zertifizierung erklärt."
+    },
+    "quality": {
+      "openQuality": "Qualitäts-Center öffnen",
+      "noQuality": "Für dieses Produkt wurde noch kein Qualitätswert berechnet.",
+      "issues": "Offene Probleme",
+      "severity": "Schweregrad"
+    },
+    "dpp": {
+      "readinessNote": "Nur DPP-Bereitschaft — TRACEFAB bewertet keine Rechtskonformität.",
+      "noDpp": "Für dieses Produkt liegt noch kein DPP-Bereitschaftsdatensatz vor.",
+      "status": "Bereitschaftsstatus",
+      "completion": "Vollständigkeit",
+      "requirements": "Erfüllte Anforderungen"
+    },
+    "history": {
+      "productCreated": "Produktdatensatz erstellt",
+      "identifierAdded": "Kennung hinzugefügt",
+      "materialAdded": "Material mit dem Produkt verknüpft",
+      "schemaAttached": "Datenschema verknüpft",
+      "noHistory": "Für dieses Produkt wurde noch kein datiertes Ereignis erfasst.",
+      "event": "Ereignis",
+      "date": "Datum"
+    }
+  },
+  "it": {
+    "tabs": {
+      "overview": "Panoramica",
+      "composition": "Composizione",
+      "materials": "Materiali",
+      "supplyChain": "Catena di fornitura",
+      "manufacturing": "Produzione",
+      "suppliers": "Fornitori",
+      "evidence": "Prove",
+      "certifications": "Certificazioni",
+      "quality": "Qualità",
+      "dpp": "Preparazione DPP",
+      "history": "Cronologia"
+    },
+    "head": {
+      "eyebrow": "Intelligenza di prodotto",
+      "export": "Esporta i dati prodotto (JSON)"
+    },
+    "common": {
+      "empty": "Nessun dato disponibile per questa lente per ora.",
+      "openFull": "Apri la vista completa",
+      "computedNote": "Calcolato dai dati del tuo spazio di lavoro — nulla è simulato."
+    },
+    "overview": {
+      "identity": "Identità",
+      "schemas": "Schemi dati versionati",
+      "linkSchema": "Collega uno schema",
+      "noSchemas": "Nessuno schema collegato a questo prodotto per ora.",
+      "schemaVersion": "Versione",
+      "attachedOn": "Collegato il",
+      "countryOfDesign": "Paese di progettazione",
+      "newRevision": "Crea una nuova revisione"
+    },
+    "composition": {
+      "share": "Quota",
+      "noComposition": "Nessuna composizione dichiarata per ora — collega i materiali nella lente Materiali."
+    },
+    "supplyChain": {
+      "openGraph": "Apri il grafo completo della catena",
+      "noGraph": "Nessun grafo di tracciabilità registrato per questo prodotto per ora.",
+      "nodes": "Nodi di tracciabilità",
+      "documentationRate": "Tasso di documentazione",
+      "stagesCovered": "Fasi coperte"
+    },
+    "manufacturing": {
+      "note": "Impronta produttiva derivata dal grafo di tracciabilità del prodotto.",
+      "empty": "Nessun nodo produttivo nel grafo per ora.",
+      "process": "Processo",
+      "facility": "Stabilimento",
+      "country": "Paese",
+      "status": "Stato"
+    },
+    "suppliers": {
+      "note": "Organizzazioni presenti nel grafo di tracciabilità del prodotto.",
+      "empty": "Nessuna organizzazione nel grafo di tracciabilità per ora.",
+      "org": "Organizzazione",
+      "type": "Tipo di nodo"
+    },
+    "evidence": {
+      "plannedTitle": "Prove per prodotto — unificate nel Centro prove",
+      "plannedNote": "Le prove documentali collegate a questo prodotto saranno consolidate qui dal cantiere Centro prove. Fino ad allora, i documenti sono gestiti a livello di organizzazione.",
+      "openDocuments": "Apri i documenti"
+    },
+    "certifications": {
+      "orgNote": "Certificazioni dichiarate a livello di organizzazione. I certificati per prodotto non sono ancora registrati separatamente.",
+      "openCerts": "Apri le certificazioni",
+      "none": "Nessuna certificazione dichiarata per ora."
+    },
+    "quality": {
+      "openQuality": "Apri il Centro qualità",
+      "noQuality": "Nessun punteggio qualità calcolato per questo prodotto per ora.",
+      "issues": "Anomalie aperte",
+      "severity": "Gravità"
+    },
+    "dpp": {
+      "readinessNote": "Solo preparazione DPP — TRACEFAB non qualifica la conformità legale.",
+      "noDpp": "Nessun record di preparazione DPP per questo prodotto per ora.",
+      "status": "Stato di preparazione",
+      "completion": "Completezza",
+      "requirements": "Requisiti soddisfatti"
+    },
+    "history": {
+      "productCreated": "Scheda prodotto creata",
+      "identifierAdded": "Identificativo aggiunto",
+      "materialAdded": "Materiale collegato al prodotto",
+      "schemaAttached": "Schema dati collegato",
+      "noHistory": "Nessun evento datato registrato per questo prodotto per ora.",
+      "event": "Evento",
+      "date": "Data"
+    }
+  },
+  "es": {
+    "tabs": {
+      "overview": "Visión general",
+      "composition": "Composición",
+      "materials": "Materiales",
+      "supplyChain": "Cadena de suministro",
+      "manufacturing": "Fabricación",
+      "suppliers": "Proveedores",
+      "evidence": "Pruebas",
+      "certifications": "Certificaciones",
+      "quality": "Calidad",
+      "dpp": "Preparación DPP",
+      "history": "Historial"
+    },
+    "head": {
+      "eyebrow": "Inteligencia de producto",
+      "export": "Exportar los datos del producto (JSON)"
+    },
+    "common": {
+      "empty": "Aún no hay datos disponibles para esta lente.",
+      "openFull": "Abrir la vista completa",
+      "computedNote": "Calculado a partir de los datos de su espacio — nada se simula."
+    },
+    "overview": {
+      "identity": "Identidad",
+      "schemas": "Esquemas de datos versionados",
+      "linkSchema": "Vincular un esquema",
+      "noSchemas": "Aún no hay ningún esquema vinculado a este producto.",
+      "schemaVersion": "Versión",
+      "attachedOn": "Vinculado el",
+      "countryOfDesign": "País de diseño",
+      "newRevision": "Crear una nueva revisión"
+    },
+    "composition": {
+      "share": "Parte",
+      "noComposition": "Aún no se ha declarado ninguna composición — añada materiales en la lente Materiales."
+    },
+    "supplyChain": {
+      "openGraph": "Abrir el grafo completo de la cadena",
+      "noGraph": "Aún no se ha registrado ningún grafo de trazabilidad para este producto.",
+      "nodes": "Nodos de trazabilidad",
+      "documentationRate": "Tasa de documentación",
+      "stagesCovered": "Etapas cubiertas"
+    },
+    "manufacturing": {
+      "note": "Huella de fabricación derivada del grafo de trazabilidad del producto.",
+      "empty": "Aún no hay nodos de fabricación en el grafo.",
+      "process": "Proceso",
+      "facility": "Centro",
+      "country": "País",
+      "status": "Estado"
+    },
+    "suppliers": {
+      "note": "Organizaciones presentes en el grafo de trazabilidad del producto.",
+      "empty": "Aún no hay ninguna organización en el grafo de trazabilidad.",
+      "org": "Organización",
+      "type": "Tipo de nodo"
+    },
+    "evidence": {
+      "plannedTitle": "Pruebas por producto — unificadas con el Centro de pruebas",
+      "plannedNote": "Las pruebas documentales vinculadas a este producto se consolidarán aquí mediante el frente Centro de pruebas. Hasta entonces, los documentos se gestionan a nivel de organización.",
+      "openDocuments": "Abrir los documentos"
+    },
+    "certifications": {
+      "orgNote": "Certificaciones declaradas a nivel de organización. Los certificados por producto aún no se registran por separado.",
+      "openCerts": "Abrir las certificaciones",
+      "none": "Aún no se ha declarado ninguna certificación."
+    },
+    "quality": {
+      "openQuality": "Abrir el Centro de calidad",
+      "noQuality": "Aún no se ha calculado ninguna puntuación de calidad para este producto.",
+      "issues": "Incidencias abiertas",
+      "severity": "Gravedad"
+    },
+    "dpp": {
+      "readinessNote": "Solo preparación DPP — TRACEFAB no califica la conformidad legal.",
+      "noDpp": "Aún no hay ningún registro de preparación DPP para este producto.",
+      "status": "Estado de preparación",
+      "completion": "Completitud",
+      "requirements": "Requisitos cumplidos"
+    },
+    "history": {
+      "productCreated": "Ficha de producto creada",
+      "identifierAdded": "Identificador añadido",
+      "materialAdded": "Material vinculado al producto",
+      "schemaAttached": "Esquema de datos vinculado",
+      "noHistory": "Aún no se ha registrado ningún evento con fecha para este producto.",
+      "event": "Evento",
+      "date": "Fecha"
+    }
+  },
+  "nl": {
+    "tabs": {
+      "overview": "Overzicht",
+      "composition": "Samenstelling",
+      "materials": "Materialen",
+      "supplyChain": "Toeleveringsketen",
+      "manufacturing": "Productie",
+      "suppliers": "Leveranciers",
+      "evidence": "Bewijsstukken",
+      "certifications": "Certificeringen",
+      "quality": "Kwaliteit",
+      "dpp": "DPP-paraatheid",
+      "history": "Geschiedenis"
+    },
+    "head": {
+      "eyebrow": "Productintelligentie",
+      "export": "Productgegevens exporteren (JSON)"
+    },
+    "common": {
+      "empty": "Voor dit onderdeel zijn nog geen gegevens beschikbaar.",
+      "openFull": "Volledige weergave openen",
+      "computedNote": "Berekend uit de gegevens van uw werkruimte — er wordt niets gesimuleerd."
+    },
+    "overview": {
+      "identity": "Identiteit",
+      "schemas": "Geversioneerde dataschema's",
+      "linkSchema": "Schema koppelen",
+      "noSchemas": "Er is nog geen schema aan dit product gekoppeld.",
+      "schemaVersion": "Versie",
+      "attachedOn": "Gekoppeld op",
+      "countryOfDesign": "Land van ontwerp",
+      "newRevision": "Nieuwe revisie aanmaken"
+    },
+    "composition": {
+      "share": "Aandeel",
+      "noComposition": "Nog geen samenstelling opgegeven — voeg materialen toe in het onderdeel Materialen."
+    },
+    "supplyChain": {
+      "openGraph": "Volledige ketengrafiek openen",
+      "noGraph": "Voor dit product is nog geen traceerbaarheidsgrafiek vastgelegd.",
+      "nodes": "Traceerbaarheidsknooppunten",
+      "documentationRate": "Documentatiegraad",
+      "stagesCovered": "Gedekte stadia"
+    },
+    "manufacturing": {
+      "note": "Productievoetafdruk afgeleid van de traceerbaarheidsgrafiek van het product.",
+      "empty": "Nog geen productieknooppunten in de grafiek.",
+      "process": "Proces",
+      "facility": "Locatie",
+      "country": "Land",
+      "status": "Status"
+    },
+    "suppliers": {
+      "note": "Organisaties aanwezig in de traceerbaarheidsgrafiek van het product.",
+      "empty": "Nog geen organisatie in de traceerbaarheidsgrafiek.",
+      "org": "Organisatie",
+      "type": "Knooppunttype"
+    },
+    "evidence": {
+      "plannedTitle": "Bewijs per product — gebundeld in het Bewijscentrum",
+      "plannedNote": "Documentair bewijs bij dit product wordt hier gebundeld door het werkpakket Bewijscentrum. Tot die tijd worden documenten op organisatieniveau beheerd.",
+      "openDocuments": "Documenten openen"
+    },
+    "certifications": {
+      "orgNote": "Certificeringen op organisatieniveau verklaard. Certificaten per product worden nog niet apart vastgelegd.",
+      "openCerts": "Certificeringen openen",
+      "none": "Nog geen certificering opgegeven."
+    },
+    "quality": {
+      "openQuality": "Kwaliteitscentrum openen",
+      "noQuality": "Voor dit product is nog geen kwaliteitsscore berekend.",
+      "issues": "Openstaande kwesties",
+      "severity": "Ernst"
+    },
+    "dpp": {
+      "readinessNote": "Alleen DPP-paraatheid — TRACEFAB beoordeelt geen wettelijke conformiteit.",
+      "noDpp": "Voor dit product is nog geen DPP-paraatheidsrecord aanwezig.",
+      "status": "Paraatheidsstatus",
+      "completion": "Volledigheid",
+      "requirements": "Voldane vereisten"
+    },
+    "history": {
+      "productCreated": "Productrecord aangemaakt",
+      "identifierAdded": "Identificatiecode toegevoegd",
+      "materialAdded": "Materiaal aan het product gekoppeld",
+      "schemaAttached": "Dataschema gekoppeld",
+      "noHistory": "Voor dit product is nog geen gedateerde gebeurtenis vastgelegd.",
+      "event": "Gebeurtenis",
+      "date": "Datum"
+    }
+  },
+  "pt": {
+    "tabs": {
+      "overview": "Visão geral",
+      "composition": "Composição",
+      "materials": "Materiais",
+      "supplyChain": "Cadeia de abastecimento",
+      "manufacturing": "Fabrico",
+      "suppliers": "Fornecedores",
+      "evidence": "Provas",
+      "certifications": "Certificações",
+      "quality": "Qualidade",
+      "dpp": "Preparação DPP",
+      "history": "Histórico"
+    },
+    "head": {
+      "eyebrow": "Inteligência de produto",
+      "export": "Exportar os dados do produto (JSON)"
+    },
+    "common": {
+      "empty": "Ainda não existem dados disponíveis para esta lente.",
+      "openFull": "Abrir a vista completa",
+      "computedNote": "Calculado a partir dos dados do seu espaço — nada é simulado."
+    },
+    "overview": {
+      "identity": "Identidade",
+      "schemas": "Esquemas de dados versionados",
+      "linkSchema": "Associar um esquema",
+      "noSchemas": "Ainda não existe nenhum esquema associado a este produto.",
+      "schemaVersion": "Versão",
+      "attachedOn": "Associado em",
+      "countryOfDesign": "País de conceção",
+      "newRevision": "Criar uma nova revisão"
+    },
+    "composition": {
+      "share": "Parte",
+      "noComposition": "Ainda não foi declarada nenhuma composição — associe materiais na lente Materiais."
+    },
+    "supplyChain": {
+      "openGraph": "Abrir o grafo completo da cadeia",
+      "noGraph": "Ainda não foi registado nenhum grafo de rastreabilidade para este produto.",
+      "nodes": "Nós de rastreabilidade",
+      "documentationRate": "Taxa de documentação",
+      "stagesCovered": "Etapas cobertas"
+    },
+    "manufacturing": {
+      "note": "Pegada de fabrico derivada do grafo de rastreabilidade do produto.",
+      "empty": "Ainda não existem nós de fabrico no grafo.",
+      "process": "Processo",
+      "facility": "Unidade",
+      "country": "País",
+      "status": "Estado"
+    },
+    "suppliers": {
+      "note": "Organizações presentes no grafo de rastreabilidade do produto.",
+      "empty": "Ainda não existe nenhuma organização no grafo de rastreabilidade.",
+      "org": "Organização",
+      "type": "Tipo de nó"
+    },
+    "evidence": {
+      "plannedTitle": "Provas por produto — unificadas no Centro de provas",
+      "plannedNote": "As provas documentais associadas a este produto serão consolidadas aqui pelo estaleiro Centro de provas. Até lá, os documentos são geridos ao nível da organização.",
+      "openDocuments": "Abrir os documentos"
+    },
+    "certifications": {
+      "orgNote": "Certificações declaradas ao nível da organização. Os certificados por produto ainda não são registados separadamente.",
+      "openCerts": "Abrir as certificações",
+      "none": "Ainda não foi declarada nenhuma certificação."
+    },
+    "quality": {
+      "openQuality": "Abrir o Centro de qualidade",
+      "noQuality": "Ainda não foi calculada nenhuma pontuação de qualidade para este produto.",
+      "issues": "Anomalias abertas",
+      "severity": "Gravidade"
+    },
+    "dpp": {
+      "readinessNote": "Apenas preparação DPP — a TRACEFAB não qualifica a conformidade legal.",
+      "noDpp": "Ainda não existe nenhum registo de preparação DPP para este produto.",
+      "status": "Estado de preparação",
+      "completion": "Completude",
+      "requirements": "Requisitos cumpridos"
+    },
+    "history": {
+      "productCreated": "Ficha de produto criada",
+      "identifierAdded": "Identificador adicionado",
+      "materialAdded": "Material associado ao produto",
+      "schemaAttached": "Esquema de dados associado",
+      "noHistory": "Ainda não foi registado nenhum evento com data para este produto.",
+      "event": "Evento",
+      "date": "Data"
+    }
+  }
+}
