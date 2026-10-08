@@ -2491,3 +2491,87 @@ fabrication distincte des nœuds de traçabilité.
 
 Et les sept onglets alimentés ne sont vérifiés ici **qu'en mode démonstration**, où les
 endpoints ne sont pas appelés : le rendu sur données réelles reste à confirmer contre Neon.
+
+---
+
+## Chantier 27 — Brancher les API exposées au Chantier 24, sans fabrication
+
+### Le constat qui ouvre le chantier
+
+Le Chantier 24 a rendu atteignables quatre gestionnaires dormants en vérifiant **leur
+authentification**. Vérifier l'authentification d'un gestionnaire n'est pas vérifier le
+gestionnaire. En lisant cette fois le corps entier de chacun des quatre, deux fabrications
+sont apparues — dont une que le Chantier 24 a lui-même publiée.
+
+### Deux fabrications supprimées
+
+**1. `GET /api/integrations/plm` publiait trois connecteurs inventés.**
+
+La réponse annonçait Centric Software PLM, Lectra Kubix Link et SAP S/4HANA Fashion & Retail,
+tous `status: 'CONNECTED'`, avec `lastSyncedAt` calculé sur `Date.now()`. Aucune table, aucune
+configuration, aucune intégration réelle ne les soutenait. Depuis le Chantier 24 cette réponse
+était joignable en production.
+
+La liste est désormais vide, accompagnée d'une notice explicite. La branche POST, elle, fait un
+travail réel (`ingestPlmProductBom`) et est conservée telle quelle.
+
+**2. `generateAuditPackManifest` inventait la vérification.**
+
+```ts
+verifiedBy: doc.verifiedBy || 'TRACEFAB_ALGORITHMIC_AUDITOR',
+verifiedAt: doc.verifiedAt || new Date().toISOString(),
+```
+
+Dans un manifeste destiné à des auditeurs CSRD, un document non vérifié se voyait attribuer un
+vérificateur et l'heure courante comme date de vérification. Les deux champs sont maintenant
+`string | null` via `?? null` : l'absence reste une absence.
+
+### Deux API branchées, une refusée
+
+| API | décision | raison |
+|---|---|---|
+| `POST /api/quality/audit-pack` | **branchée** | seul `productId` est obligatoire ; sans composants l'indice vaut honnêtement 0 |
+| `POST /api/supplier/certifications/ocr-extract` | **branchée** | `rawText` est fourni par l'utilisateur, qui colle le texte |
+| `POST /api/quality/calculate-index` | **non branchée** | exige `components: ComponentQualityItem[]`, dix champs par composant, qu'aucune source TRACEFAB ne produit |
+| `GET /api/integrations/plm` | corrigée | voir ci-dessus |
+
+`calculate-index` aurait exigé un formulaire où l'utilisateur déclare lui-même
+`hasAccreditedCert`, `hasReviewerApproval`, `anomaliesDetected`… Un indice de qualité calculé
+sur des champs auto-déclarés n'est plus une mesure. Le bouton n'existe donc pas, et cette
+décision est épinglée par le test plutôt que laissée à un commentaire.
+
+**Console de marque** — onglet DPP : bouton « Générer le manifeste », `POST /api/quality/audit-pack`
+avec `{ productId, sku }`, manifeste rendu en JSON. Aucun composant n'est inventé côté client :
+l'indice affiché reflète ce qui est réellement fourni, et le manifeste le déclare lui-même
+(`No components supplied for evaluation.`).
+
+**Portail fournisseur** — vue Certificats : zone de texte pour coller le texte OCR,
+`POST /api/supplier/certifications/ocr-extract`, champs reconnus affichés. L'interface précise
+qu'extraire ne déclare rien : aucun champ n'est écrit sans action de l'utilisateur.
+
+### Vérification
+
+`scripts/test_api_wiring.mjs` — **45/45** (`npm run test:api:wiring`).
+
+La section A ne se contente pas de lire le source : elle **compile `api/_lib/audit-pack.ts` et
+exécute `generateAuditPackManifest`** sur un document sans vérification, puis sur un document
+réellement vérifié. Le premier doit rendre `null`/`null`, le second conserver ses valeurs.
+
+Contre-vérification : réinjection des deux fabrications → **6 échecs, exit 1**, dont les deux
+premiers obtenus en exécutant le module réel. Restauration → 45/45.
+
+### Un test faux réparé au passage
+
+`test:supplier-portal:surface` échouait (section K) — **et échouait déjà aux commits
+`9634d54` et `c5520c1`**, working tree propre. Il assertait que le compteur de stockage
+s'affiche sans jamais naviguer vers `documentsView()`, seule vue qui l'affiche ; il ne passait
+que lorsqu'un « 12 » apparaissait ailleurs par coïncidence. Le compte rendu du Chantier 26
+(« FAIL 0 sur 65 ») était donc inexact sur ce point.
+
+La section K ouvre maintenant la vue `documents`. **78/78**, contre 77 réussis et 1 échec avant.
+
+### Résultats
+
+- `api:typecheck` : **90 = 90** (85 Prisma non généré + 5 préexistants), aucune erreur sur les fichiers touchés
+- `test:suite` : **PASS 49 · SKIP 18 · FAIL 0 sur 67**, exit 0
+- `test:api:wiring` 45/45 · `test:product:tabs` 64/64 · `test:product:intelligence` 36/36 · `test:console:actions` 64/64 · `test:supplier-portal:surface` 78/78

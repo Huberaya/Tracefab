@@ -16,8 +16,10 @@ export interface AuditPackManifest {
     filename: string;
     sha256: string;
     standard: string;
-    verifiedBy: string;
-    verifiedAt: string;
+    /* Nullables : un manifeste d'audit ne peut pas déclarer un vérificateur ni une
+       date de vérification qui n'existent pas. */
+    verifiedBy: string | null;
+    verifiedAt: string | null;
   }>;
   esrsDisclosures: Record<string, { reported: boolean; evidenceRef: string }>;
 }
@@ -44,8 +46,12 @@ export function generateAuditPackManifest(
     filename: doc.filename,
     sha256: doc.sha256,
     standard: doc.standard,
-    verifiedBy: doc.verifiedBy || 'TRACEFAB_ALGORITHMIC_AUDITOR',
-    verifiedAt: doc.verifiedAt || new Date().toISOString(),
+    /* Auparavant : `|| 'TRACEFAB_ALGORITHMIC_AUDITOR'` et `|| new Date()`. Un
+       document sans vérification était présenté comme vérifié par un auditeur
+       algorithmique, à l'instant de l'export. Le manifeste est destiné à des
+       auditeurs CSRD : il déclare null et laisse le vide visible. */
+    verifiedBy: doc.verifiedBy ?? null,
+    verifiedAt: doc.verifiedAt ?? null,
   }));
 
   const esrsDisclosures = {

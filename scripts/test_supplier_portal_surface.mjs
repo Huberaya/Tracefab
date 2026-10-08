@@ -240,6 +240,13 @@ assert(!!okNote, 'une note de validation est affichée aussi');
 assert(!okNote.classList.contains('is-rejected'), 'une validation n’a pas le style d’un rejet');
 
 console.log('\nK. Stockage');
+/*
+ * La jauge de stockage vit dans documentsView() : sans navigation explicite, cette
+ * section vérifiait le détail d'une demande et ne passait que si un « 12 » s'y
+ * trouvait par coïncidence. On ouvre donc la vue qui affiche réellement la jauge.
+ */
+click($('[data-view="documents"]'));
+await settle();
 assert(!!state.storage, 'les données de stockage sont chargées');
 assert($('.progress') !== null, 'la jauge de stockage est rendue');
 assert(

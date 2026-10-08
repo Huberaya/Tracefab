@@ -86,7 +86,8 @@
     "ds:sync": "node scripts/sync_design_system.mjs",
     "ds:check": "node scripts/sync_design_system.mjs --check",
     "check:landing": "node scripts/check_landing.mjs",
-    "test:landing": "node scripts/test_landing_surface.mjs"
+    "test:landing": "node scripts/test_landing_surface.mjs",
+    "test:api:wiring": "node scripts/test_api_wiring.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",

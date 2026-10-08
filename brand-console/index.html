@@ -2268,7 +2268,51 @@
           <p class="meta" style="margin-top:12px">${missing.length
             ? `Champs manquants : <strong>${esc(missing.join(', '))}</strong>.`
             : 'Aucun champ manquant signalé.'}</p>
+          ${auditPackBlock()}
         </div>`;
+      }
+
+      /**
+       * Manifeste d'audit CSRD, branché sur POST /api/quality/audit-pack.
+       *
+       * L'endpoint accepte components et evidenceDocuments en option ; sans eux il
+       * calcule un indice à zéro et déclare « No components supplied for evaluation. ».
+       * C'est ce comportement qui est affiché : aucun composant n'est inventé pour
+       * gonfler l'indice.
+       */
+      function auditPackBlock() {
+        const pack = state.auditPack;
+        const manifest = pack && pack.manifest;
+        return `<div style="margin-top:18px;border-top:1px solid var(--line,#e2e8e4);padding-top:14px">
+          <div class="panel-head" style="margin-bottom:8px">
+            <div><h2 style="font-size:15px">Manifeste d'audit CSRD</h2>
+              <p class="meta" style="margin:4px 0 0">POST /api/quality/audit-pack. Généré sans composants ni preuves : l'indice reflète ce qui est réellement fourni.</p></div>
+            <button class="btn btn-secondary btn-small" data-action="generate-audit-pack">Générer le manifeste</button>
+          </div>
+          ${pack && pack.__error ? `<div class="empty" style="padding:10px 0"><strong>Manifeste indisponible</strong><p class="meta" style="margin-top:6px">${esc(pack.__error)}</p></div>` : ''}
+          ${manifest ? `<pre class="meta" style="white-space:pre-wrap;max-height:340px;overflow:auto">${esc(JSON.stringify(manifest, null, 2))}</pre>` : ''}
+        </div>`;
+      }
+
+      async function generateAuditPack() {
+        const productId = state.selectedProductDetail?.product?.id;
+        if (!productId) { notify('Aucun produit sélectionné.', true); return; }
+        state.auditPack = { __pending: true };
+        render();
+        try {
+          state.auditPack = await api('/api/quality/audit-pack', {
+            method: 'POST',
+            body: JSON.stringify({
+              productId,
+              sku: state.selectedProductDetail.product.sku || state.selectedProductDetail.product.reference || undefined,
+            }),
+          });
+          notify('Manifeste d’audit généré.');
+        } catch (error) {
+          state.auditPack = { __error: error.message };
+          notify(error.message, true);
+        }
+        render();
       }
 
       /**
@@ -3405,6 +3449,7 @@
            conserver l'onglet précédent ferait afficher les données d'un autre produit. */
         state.productTab = 'overview';
         state.productTabData = {};
+        state.auditPack = null;
         if (state.demo) {
           state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] };
           state.schemaBindings = [];
@@ -4050,6 +4095,7 @@
           const action = el.dataset.action;
           try {
             if (action === 'new-product') { state.modal = 'new-product'; render(); }
+            if (action === 'generate-audit-pack') await generateAuditPack();
             if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
             if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
             if (action === 'catalog-export') await exportCatalog();
