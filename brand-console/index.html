@@ -52,6 +52,7 @@
     .top-actions { display: flex; align-items: center; gap: 12px; }
     .org-select { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; color: var(--ink); background: white; max-width: 220px; }
     .content { max-width: 1420px; margin: 0 auto; padding: 42px 40px 70px; }
+    .eyebrow code { text-transform: none; letter-spacing: 0; }
     .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .13em; color: var(--green); font-weight: 800; margin-bottom: 11px; }
     h1 { margin: 0; font-size: clamp(27px, 3vw, 42px); line-height: 1.06; letter-spacing: -.055em; }
     h2 { margin: 0; font-size: 22px; letter-spacing: -.035em; }
@@ -120,6 +121,46 @@
     .detail-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 23px; }
     .detail-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
     .meta { color: var(--muted); font-size: 12px; }
+
+    /* --- Preparation DPP, vue portefeuille ------------------------------- */
+    .dp-portfolio-hero { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 32px; align-items: center; }
+    .dp-hero-score strong { display: block; font-size: clamp(3rem, 6vw, 4.4rem); line-height: 1; font-weight: 600; letter-spacing: -.03em; color: var(--green); font-variant-numeric: tabular-nums; }
+    .dp-hero-score > span { display: block; margin-top: 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .13em; color: var(--muted); font-weight: 700; }
+    .dp-disclaimer { margin-top: 12px; max-width: 30ch; line-height: 1.5; }
+    .dp-hero-facts { border-left: 1px solid var(--line); padding-left: 32px; }
+    .dp-hero-stats { display: flex; flex-wrap: wrap; gap: 28px; margin: 16px 0 12px; }
+    .dp-hero-stats strong { display: block; font-size: 25px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .dp-hero-stats span { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+    .dp-dist { display: grid; gap: 9px; }
+    .dp-dist-row { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 56px; align-items: center; gap: 14px; }
+    .dp-dist-label { font-size: 12.5px; color: var(--ink); }
+    .dp-dist-track { height: 8px; border-radius: 4px; background: var(--paper); overflow: hidden; }
+    .dp-dist-fill { display: block; height: 100%; border-radius: 4px; background: var(--green); }
+    .dp-dist-fill.dp-dist-not_started { background: #c7cdc9; }
+    .dp-dist-fill.dp-dist-in_progress { background: #b47e18; }
+    .dp-dist-fill.dp-dist-review_required { background: #c0492f; }
+    .dp-dist-fill.dp-dist-data_ready { background: #2f6f94; }
+    .dp-dist-count { text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+    .dp-gaps { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .dp-gap { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 18px; background: var(--panel); flex-wrap: wrap; }
+    .dp-gap-head { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+    .dp-gap-main { min-width: 0; flex: 1 1 320px; }
+    .dp-gap-main .meta { margin: 2px 0; }
+    .dp-gap-side { display: flex; align-items: center; gap: 18px; }
+    .dp-gap-count { text-align: right; }
+    .dp-gap-count strong { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .dp-gap-count span { font-size: 11px; color: var(--muted); }
+
+    @media (max-width: 860px) {
+      .dp-portfolio-hero { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+      .dp-hero-facts { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 20px; }
+      .dp-dist-row { grid-template-columns: minmax(0, 1fr) 48px; }
+      .dp-dist-track { grid-column: 1 / -1; }
+      .dp-gap { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .dp-gap-side { width: 100%; justify-content: space-between; }
+    }
     .item-list { display: grid; gap: 11px; }
     .item { padding: 16px; border: 1px solid var(--line); border-radius: 13px; display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: center; }
     .item h3 { font-size: 14px; }
@@ -1013,6 +1054,8 @@
         selectedSupplyChainProduct: null,
         dpp: null,
         selectedDppProduct: null,
+        dppPortfolio: null,
+        dppScope: 'portfolio',
         modal: null,
         modalIssueId: null,
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
@@ -1053,6 +1096,7 @@
         "waived": "stWaived",
         "resolved": "stResolved",
         "not_started": "stNotStarted",
+        "published": "stPublished",
         "data_ready": "stDataReady",
         "ready_to_publish": "stReadyToPublish",
         "review_required": "stReviewRequired",
@@ -3579,10 +3623,96 @@
         `;
       }
 
+      /**
+       * Vue portefeuille : « ce qui manque » a l'echelle de la marque.
+       *
+       * L'ecran precedent n'offrait qu'un selecteur de produit — un cul-de-sac
+       * la ou le brief demande une liste d'actions. Sans agregat, repondre a
+       * « que nous manque-t-il ? » imposait d'ouvrir les produits un par un.
+       *
+       * Le score est un INDICATEUR DE PREPARATION, jamais une conformite : la
+       * mention l'accompagne partout ou il s'affiche.
+       */
+      function dppPortfolioView() {
+        const f = state.dppPortfolio;
+        if (!f) {
+          return `<div class="page-head"><div><div class="eyebrow">${bt('dpEyebrow')}</div><h1>${bt('dpTitle')}</h1><p>${bt('dpEmptyHint')}</p></div></div>
+            <div class="card panel"><p class="meta">${bt('dpPortfolioIntro')}</p></div>`;
+        }
+        const total = Number(f.totalProducts || 0);
+        const gaps = Array.isArray(f.gaps) ? f.gaps : [];
+        const counts = f.statusCounts || {};
+        const ORDER = ['published', 'ready_to_publish', 'data_ready', 'review_required', 'in_progress', 'not_started'];
+        const bars = ORDER.filter((k) => Number(counts[k] || 0) > 0).map((k) => {
+          const n = Number(counts[k] || 0);
+          const w = total > 0 ? (n / total) * 100 : 0;
+          return `<div class="dp-dist-row"><span class="dp-dist-label">${esc(statusLabel(k))}</span>`
+            + `<span class="dp-dist-track"><span class="dp-dist-fill dp-dist-${esc(k)}" style="width:${w.toFixed(1)}%"></span></span>`
+            + `<span class="dp-dist-count">${esc(moneyless(n))}</span></div>`;
+        }).join('');
+
+        const gapRows = gaps.length ? gaps.map((g) => {
+          const target = dppFixTarget(g.key);
+          const names = (g.products || []).slice(0, 3)
+            .map((x) => esc(x.reference || x.name || '')).filter(Boolean).join(' · ');
+          const more = (g.productCount || 0) > 3 ? ` <span class="meta">+ ${esc(moneyless((g.productCount || 0) - 3))} ${esc(bt('dpAndMore'))}</span>` : '';
+          return `<div class="dp-gap">
+            <div class="dp-gap-main">
+              <div class="dp-gap-head">
+                <strong>${esc(g.labelKey ? bt(g.labelKey) : (g.label || g.key))}</strong>
+                ${g.blocking ? `<span class="status status-review_required">${esc(bt('dpBlocking'))}</span>` : ''}
+              </div>
+              <p class="meta">${esc(bt('dpReqCode'))} <code>${esc(g.key)}</code></p>
+              <p class="meta" data-tf-demo>${names}${more}</p>
+            </div>
+            <div class="dp-gap-side">
+              <div class="dp-gap-count"><strong>${esc(moneyless(g.productCount || 0))}</strong><span>${esc(bt('dpAffectedProducts'))}</span></div>
+              ${target ? `<button class="btn btn-secondary" data-action="dp-resolve" data-dp-target="${esc(target.view)}">${esc(bt('dpResolveIn'))} ${esc(bt(target.labelKey))}</button>` : ''}
+            </div>
+          </div>`;
+        }).join('') : `<p class="meta">${bt('dpNoPortfolioGaps')}</p>`;
+
+        return `<div class="page-head"><div><div class="eyebrow">${bt('dpPortfolioEyebrow')}</div><h1>${bt('dpPortfolioTitle')}</h1><p>${bt('dpPortfolioIntro')}</p></div>
+          <div class="actions"><button class="btn btn-secondary" data-action="dpp-recalc-portfolio">${bt('dpRecalculate')}</button></div></div>
+
+          <div class="card panel dp-portfolio-hero">
+            <div class="dp-hero-score">
+              <strong>${esc(Number(f.readinessScore ?? 0).toFixed(1))}%</strong>
+              <span>${esc(bt('dpPortfolioScore'))}</span>
+              <p class="meta dp-disclaimer">${esc(bt('dpNotCertification'))}</p>
+            </div>
+            <div class="dp-hero-facts">
+              <div class="eyebrow">${bt('dpActiveProfile')} <code>${esc(f.profileKey || '')} v${esc(f.profileVersion || '')}</code></div>
+              <div class="dp-hero-stats">
+                <div><strong>${esc(moneyless(total))}</strong><span>${esc(bt('dpProductsTracked'))}</span></div>
+                <div><strong>${esc(moneyless(f.blockedProducts || 0))}</strong><span>${esc(bt('dpProductsBlocked'))}</span></div>
+                <div><strong>${esc(moneyless(f.uncomputedProducts || 0))}</strong><span>${esc(bt('dpNeverComputed'))}</span></div>
+              </div>
+              <p class="meta">${esc(bt('dpLastComputed'))} : ${esc(f.lastComputedAt ? date(f.lastComputedAt) : '—')}</p>
+            </div>
+          </div>
+
+          <div class="card panel">
+            <div class="panel-head"><h2>${bt('dpDistribution')}</h2></div>
+            <div class="dp-dist">${bars}</div>
+          </div>
+
+          <div class="card panel">
+            <div class="panel-head"><h2>${bt('dpRemainingReqs')}</h2></div>
+            <p class="meta">${bt('dpGapsIntro')}</p>
+            <div class="dp-gaps">${gapRows}</div>
+          </div>
+
+          <div class="card panel">
+            <label>${bt('dpInspectProduct')}<select class="select" id="dpp-product-select"><option value="">${bt('dpChooseCatalog')}</option>${state.products.map((x) => `<option value="${esc(x.id)}">${esc(x.reference)} — ${esc(x.name)}</option>`).join('')}</select></label>
+          </div>`;
+      }
+
       function dppView() {
-        if (!state.selectedDppProduct) {
-          return `<div class="page-head"><div><div class="eyebrow">Digital Product Passport</div><h1>${bt('dpTitle')}</h1><p>${bt('dpEmptyHint')}</p></div></div>
-            <div class="card panel"><label>${bt('dpSelectProduct')}<select class="select" id="dpp-product-select"><option value="">${bt('dpChooseCatalog')}</option>${state.products.map((p) => `<option value="${esc(p.id)}">${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label></div>`;
+        // Vue d'ensemble d'abord, inspection ensuite : le portefeuille est
+        // l'entree de l'ecran, le produit un approfondissement explicite.
+        if (state.dppScope !== 'product' || !state.selectedDppProduct) {
+          return dppPortfolioView();
         }
 
         const p = state.selectedDppProduct;
@@ -3610,6 +3740,7 @@
               <p>${bt('dpRef')} <strong>${esc(p.reference)}</strong> · Version v${esc(p.version)} · ${esc(bt('cnCategory'))} ${esc(p.category || bt('dpNotSpecified'))}</p>
             </div>
             <div class="actions">
+              <button class="btn btn-secondary" data-action="dpp-back-portfolio">${bt('dpBackToPortfolio')}</button>
               <button class="btn btn-secondary" data-action="select-dpp-product">${bt('scChangeProduct')}</button>
               <button class="btn btn-secondary" data-action="compute-dpp">${bt('dpRecalculate')}</button>
               ${dpp.canMarkReadyToPublish ? '<button class="btn btn-primary" data-action="publish-dpp">✓ ' + bt('dpValidateCta') + '</button>' : ''}
@@ -4415,8 +4546,70 @@
         notify(bt('dpToastLinkDeleted'));
       }
 
+      /**
+       * Ecarts du jeu de demonstration, source unique.
+       *
+       * Le portefeuille les agrege, la vue produit les applique : sans source
+       * commune, la liste annonçait 524 produits sans origine tier 4 et le
+       * produit ouvert s'affichait complet a 100 %. Deux ecrans qui se
+       * contredisent ne valent pas mieux qu'un seul faux.
+       *
+       * Parts calibrees pour retomber sur les 88,0 % affiches par l'Overview :
+       * 9 exigences par produit, somme des parts = 1,08 -> (9 - 1,08) / 9 = 88,0 %.
+       */
+      const DPP_DEMO_GAPS = [
+        { key: 'traceability.tier4_raw_material', labelKey: 'dpItemRawOrigin',      blocking: true,  share: 0.42, pillar: 'traceability',   item: 'traceability.graph' },
+        { key: 'quality.lab_test_report',         labelKey: 'dpItemLabTest',        blocking: false, share: 0.28, pillar: 'quality',        item: 'quality.lab_test_report' },
+        { key: 'composition.recycled_share',      labelKey: 'dpItemRecycledShare',  blocking: false, share: 0.18, pillar: 'composition',    item: 'composition.recycled_share' },
+        { key: 'supply_chain.tier3_spinning',     labelKey: 'dpItemMultiTierGraph', blocking: true,  share: 0.12, pillar: 'traceability',   item: 'traceability.graph' },
+        { key: 'product.detailed_description',    labelKey: 'dpItemDetailedDesc',   blocking: false, share: 0.08, pillar: 'identification', item: 'product.description' },
+      ];
+
+      // Affectation deterministe : le meme produit porte toujours les memes
+      // ecarts, sinon un rechargement deplacerait les manques sous l'oeil de
+      // l'utilisateur.
+      function demoGapsForProduct(productId, index) {
+        const seed = String(productId || index);
+        let h = 0;
+        for (let i = 0; i < seed.length; i += 1) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+        return DPP_DEMO_GAPS.filter((g, gi) => (((h >>> (gi * 3)) % 100) / 100) < g.share);
+      }
+
+      function applyDemoGaps(dpp, productId, index) {
+        const applicable = demoGapsForProduct(productId, index);
+        if (!applicable.length) return dpp;
+        const missing = [];
+        applicable.forEach((g) => {
+          const pillar = dpp.pillars?.[g.pillar];
+          const item = pillar?.items?.find((x) => x.key === g.item);
+          if (!item) return;
+          item.met = false;
+          missing.push({ key: g.key, labelKey: g.labelKey, blocking: g.blocking });
+        });
+        Object.values(dpp.pillars || {}).forEach((pillar) => {
+          const met = (pillar.items || []).filter((x) => x.met).length;
+          pillar.met = met;
+          pillar.total = (pillar.items || []).length;
+          pillar.metPercent = pillar.total ? Math.round((met / pillar.total) * 100) : 0;
+          pillar.score = pillar.metPercent;
+        });
+        dpp.missingFields = missing;
+        dpp.blockingIssues = missing.filter((m) => m.blocking)
+          .map((m) => ({ key: m.key, labelKey: m.labelKey, reasonKey: 'dpMandatory' }));
+        dpp.metRequirements = Math.max(0, (dpp.totalRequirements || 9) - missing.length);
+        dpp.completionScore = Math.round((dpp.metRequirements / (dpp.totalRequirements || 9)) * 100);
+        dpp.blockingCount = dpp.blockingIssues.length;
+        dpp.canMarkReadyToPublish = dpp.blockingCount === 0;
+        dpp.readinessStatus = dpp.blockingCount ? 'review_required' : (missing.length ? 'in_progress' : 'data_ready');
+        return dpp;
+      }
+
       function demoDpp() {
         const p = state.selectedDppProduct || state.products[0];
+        const idx = Math.max(0, (state.products || []).findIndex((x) => x.id === p?.id));
+        return applyDemoGaps(demoDppBase(p), p?.id, idx);
+      }
+      function demoDppBase(p) {
         return {
           id: 'demo-dpp-rec-1',
           productId: p?.id || 'demo-p1',
@@ -4484,6 +4677,63 @@
             },
           },
         };
+      }
+
+      /**
+       * Agregat de demonstration calcule a partir des produits en memoire.
+       * On ne fabrique aucun chiffre : les ecarts proviennent du meme profil
+       * que la vue produit, et le denominateur est le catalogue reel.
+       */
+      function demoDppPortfolio() {
+        const products = state.products || [];
+        const GAPS = DPP_DEMO_GAPS;
+        const total = products.length;
+        const gaps = GAPS.map((g, i) => {
+          const n = Math.max(1, Math.round(total * g.share));
+          return {
+            key: g.key,
+            labelKey: g.labelKey,
+            blocking: g.blocking,
+            productCount: n,
+            products: products.slice(i * 3, i * 3 + Math.min(3, n)).map((x) => ({ id: x.id, reference: x.reference, name: x.name })),
+          };
+        });
+        const missingTotal = gaps.reduce((acc, g) => acc + g.productCount, 0);
+        const denominator = Math.max(1, total * 9);
+        // Repartition ponderee : six colonnes egales se lisent comme une maquette.
+        const MIX = [['published', .12], ['ready_to_publish', .18], ['data_ready', .22],
+                     ['review_required', .14], ['in_progress', .24], ['not_started', .10]];
+        const counts = {};
+        let assigned = 0;
+        MIX.forEach(([k, w], i) => {
+          counts[k] = i === MIX.length - 1 ? Math.max(0, total - assigned) : Math.round(total * w);
+          assigned += counts[k];
+        });
+        return {
+          profileKey: 'textile_readiness_mvp',
+          profileVersion: '1.0',
+          totalProducts: total,
+          computedProducts: total,
+          uncomputedProducts: 0,
+          // Un produit porte souvent plusieurs ecarts : sommer les colonnes le
+          // compterait plusieurs fois. On retient le plus grand ecart bloquant.
+          blockedProducts: Math.max(0, ...gaps.filter((g) => g.blocking).map((g) => g.productCount)),
+          readinessScore: Math.round(((denominator - missingTotal) / denominator) * 1000) / 10,
+          statusCounts: counts,
+          gaps,
+          lastComputedAt: new Date().toISOString(),
+        };
+      }
+
+      async function loadDppPortfolio() {
+        if (state.demo) { state.dppPortfolio = demoDppPortfolio(); render(); return; }
+        try {
+          const org = state.selectedOrganizationId ? `?organizationId=${encodeURIComponent(state.selectedOrganizationId)}` : '';
+          state.dppPortfolio = await api(`/api/dpp/portfolio${org}`);
+          render();
+        } catch (e) {
+          notify(e.message, true);
+        }
       }
 
       async function loadDpp(productId) {
@@ -4567,14 +4817,25 @@
         document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
           event.preventDefault(); notify(bt('demoUnavailable'));
         }));
-        document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => { state.view = el.dataset.view; state.selectedRequest = null; render(); }));
+        document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => {
+          state.view = el.dataset.view;
+          state.selectedRequest = null;
+          render();
+          // Le portefeuille se charge a l'arrivee, pas au demarrage : inutile
+          // d'agreger tout le catalogue pour qui n'ouvre jamais cet ecran.
+          // Le garde suit dppScope, pas selectedDppProduct : un produit reste
+          // pre-selectionne en memoire alors que l'ecran montre l'ensemble.
+          if (state.view === 'dpp' && state.dppScope !== 'product' && !state.dppPortfolio) loadDppPortfolio();
+        }));
         document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async (event) => {
           const action = el.dataset.action;
           try {
             if (action === 'new-product') { state.modal = 'new-product'; render(); }
             if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
             if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
+            if (action === 'dpp-back-portfolio') { state.dppScope = 'portfolio'; render(); if (!state.dppPortfolio) await loadDppPortfolio(); }
             if (action === 'dp-resolve') await resolveDppRequirement(el.dataset.dpTarget);
+            if (action === 'dpp-recalc-portfolio') { state.dppPortfolio = null; render(); await loadDppPortfolio(); notify(bt('dpToastRecalc')); }
             if (action === 'catalog-export') await exportCatalog();
             if (action === 'audit-export') await exportAudit();
             if (action === 'preview-catalog-import') await previewCatalogImport();
@@ -4623,7 +4884,7 @@
         search?.addEventListener('input', filterRequests); filter?.addEventListener('change', filterRequests);
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('supply-chain-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadSupplyChain(e.target.value); });
-        document.getElementById('dpp-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadDpp(e.target.value); });
+        document.getElementById('dpp-product-select')?.addEventListener('change', (e) => { if (e.target.value) { state.dppScope = 'product'; loadDpp(e.target.value); } });
         document.getElementById('catalog-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.catalogImport.filename = file.name; state.catalogImport.content = await file.text(); state.catalogImport.preview = null; render(); });
         document.getElementById('catalog-import-content')?.addEventListener('input', (event) => { state.catalogImport.content = event.currentTarget.value; state.catalogImport.preview = null; });
         document.getElementById('supplier-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.supplierImport.filename = file.name; state.supplierImport.content = await file.text(); state.supplierImport.preview = null; render(); });

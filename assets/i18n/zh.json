@@ -13,6 +13,7 @@
     "stAcknowledged": "已确认接收",
     "stWaived": "已豁免",
     "stResolved": "已解决",
+    "stPublished": "已发布",
     "stNotStarted": "未开始",
     "stDataReady": "待验证",
     "stReadyToPublish": "可发布",

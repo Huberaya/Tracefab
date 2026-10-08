@@ -127,12 +127,15 @@ const browser = await chromium.launch();
   const ok = await gotoView(page, 'dpp');
   check('10', 'Vue DPP Readiness atteignable', ok, ok ? 'oui' : 'non', 'oui');
 
-  const dp = await page.evaluate(() => {
+  // L'ecran DPP a deux etages : le portefeuille (« que nous manque-t-il ? »)
+  // puis l'inspection d'un produit. On verifie les deux — se contenter du
+  // premier laisserait la vue produit sans garde.
+  const scrape = () => {
     const main = document.querySelector('.content, main') || document.body;
     const txt = main.innerText;
     return {
       chars: txt.replace(/\s+/g, ' ').trim().length,
-      score: /\b(8[0-9]|9[0-9]|7[0-9])\s*%/.test(txt),
+      score: /\b\d{2}([.,]\d)?\s*%/.test(txt),
       hasChecks: (txt.match(/✓/g) || []).length,
       hasGaps: (txt.match(/[⚠✗]/g) || []).length,
       // Le score ne doit JAMAIS etre presente comme une certification legale.
@@ -141,9 +144,34 @@ const browser = await chromium.launch();
       saysIndicator: /(indicateur|indicator|readiness|preparation|pr[ée]paration)/i.test(txt),
       actionList: main.querySelectorAll('button, a[href]').length,
       resolveBtns: main.querySelectorAll('[data-action="dp-resolve"]').length,
-      gapRows: main.querySelectorAll('.item').length,
+      gapRows: main.querySelectorAll('.dp-gap, .item').length,
+      portfolioGaps: main.querySelectorAll('.dp-gap').length,
+      disclaimer: !!main.querySelector('.dp-disclaimer'),
+      profileExposed: /[a-z_]+_(mvp|v\d)|textile_readiness/i.test(txt),
     };
+  };
+
+  const pf = await page.evaluate(scrape);
+  check('13', 'Portefeuille : ecarts agreges listes', pf.portfolioGaps >= 1, pf.portfolioGaps + ' ecart(s)', '>= 1');
+  check('13', 'Portefeuille : chaque ecart mene a sa correction',
+    pf.portfolioGaps >= 1 && pf.resolveBtns === pf.portfolioGaps,
+    pf.resolveBtns + ' boutons / ' + pf.portfolioGaps + ' ecarts', 'un par ecart');
+  check('13', 'Portefeuille : mention indicateur, pas certification', pf.disclaimer && !pf.claimsCert,
+    pf.disclaimer ? 'mention presente' : 'MENTION ABSENTE', 'presente');
+  check('13', 'Portefeuille : version du profil DPP exposee', pf.profileExposed,
+    pf.profileExposed ? 'oui' : 'non', 'oui');
+
+  // Descente vers un produit : la vue detaillee doit rester intacte.
+  await page.evaluate(() => {
+    const sel = document.getElementById('dpp-product-select');
+    if (sel && sel.options.length > 1) {
+      sel.value = sel.options[1].value;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
   });
+  await page.waitForTimeout(1400);
+
+  const dp = await page.evaluate(scrape);
   check('10', 'Vue DPP non squelettique', dp.chars > 1200, dp.chars + ' car.', '> 1200');
   check('10', 'Score de preparation affiche', dp.score, dp.score ? 'oui' : 'non', 'oui');
   check('10', 'Items conformes (✓) presents', dp.hasChecks >= 3, dp.hasChecks + ' marques', '>= 3');

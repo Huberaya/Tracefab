@@ -67,6 +67,7 @@ const routes: Route[] = [
   { pattern: /^products\/([^\/]+)\/green\-claims\/audit$/, params: ['productId'], load: () => import('./_routes/products/[productId]/green-claims/audit.js') },
   { pattern: /^products\/([^\/]+)\/green\-claims$/, params: ['productId'], load: () => import('./_routes/products/[productId]/green-claims.js') },
   { pattern: /^dpp\/validate$/, params: [], load: () => import('./_routes/dpp/validate.js') },
+  { pattern: /^dpp\/portfolio$/, params: [], load: () => import('./_routes/dpp/portfolio.js') },
   { pattern: /^dpp\/([^\/]+)\/apple\-wallet$/, params: ['gtin'], load: () => import('./_routes/dpp/[gtin]/apple-wallet.js') },
   { pattern: /^dpp\/([^\/]+)\/google\-wallet$/, params: ['gtin'], load: () => import('./_routes/dpp/[gtin]/google-wallet.js') },
   { pattern: /^dpp\/([^\/]+)$/, params: ['gtin'], load: () => import('./_routes/dpp/[gtin].js') },
