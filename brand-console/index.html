@@ -737,6 +737,7 @@
     /* Answer Stream Box with Evidence Citations */
 
   </style>
+  <script src="/i18n-core.js"></script>
   <script src="/auto-translate.js"></script>
 </head>
 <body>
@@ -1132,205 +1133,23 @@
       function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
 
       
-      const brandTranslations = {
-        fr: {
-          navMain: "Console Principale",
-          overview: "Vue d’ensemble",
-          products: "Produits",
-          suppliers: "Fournisseurs",
-          materials: "Matières",
-          supplyChain: "Traçabilité",
-          navCollection: "Collecte & Conformité",
-          requests: "Demandes de données",
-          questionnaires: "Questionnaires",
-          documents: "Documents",
-          certifications: "Certifications",
-          quality: "Qualité & Conformité",
-          dpp: "Passeport DPP",
-          navGov: "Gouvernance",
-          reports: "Rapports & Audits",
-          settings: "Paramètres",
-          newRequest: "+ Nouvelle demande",
-          signOut: "Déconnexion",
-          openRequests: "Demandes ouvertes",
-          dueSoon: "Échéances proches (< 7j)",
-          submitted: "Réponses reçues",
-          quickActions: "Actions Rapides",
-          createRequest: "Créer une demande de données",
-          dppReadiness: "Passeport Produit Numérique (DPP)",
-          dppDesc: "Vérifiez l'éligibilité de vos collections aux normes européennes ESPR et CIRPASS 1.2."
-        },
-        en: {
-          navMain: "Main Console",
-          overview: "Overview",
-          products: "Products",
-          suppliers: "Suppliers",
-          materials: "Materials",
-          supplyChain: "Traceability",
-          navCollection: "Collection & Compliance",
-          requests: "Data Requests",
-          questionnaires: "Questionnaires",
-          documents: "Documents",
-          certifications: "Certifications",
-          quality: "Quality & Compliance",
-          dpp: "DPP Passport",
-          navGov: "Governance",
-          reports: "Reports & Audits",
-          settings: "Settings",
-          newRequest: "+ New request",
-          signOut: "Sign out",
-          openRequests: "Open requests",
-          dueSoon: "Due soon (< 7d)",
-          submitted: "Responses received",
-          quickActions: "Quick Actions",
-          createRequest: "Create data request",
-          dppReadiness: "Digital Product Passport (DPP)",
-          dppDesc: "Verify your collection readiness against European ESPR and CIRPASS 1.2 standards."
-        },
-        de: {
-          navMain: "Hauptkonsole",
-          overview: "Übersicht",
-          products: "Produkte",
-          suppliers: "Lieferanten",
-          materials: "Materialien",
-          supplyChain: "Rückverfolgbarkeit",
-          navCollection: "Erfassung & Konformität",
-          requests: "Datenanfragen",
-          questionnaires: "Fragebögen",
-          documents: "Dokumente",
-          certifications: "Zertifikate",
-          quality: "Qualität & Konformität",
-          dpp: "DPP-Pass",
-          navGov: "Governance",
-          reports: "Berichte & Audits",
-          settings: "Einstellungen",
-          newRequest: "+ Neue Anfrage",
-          signOut: "Abmelden",
-          openRequests: "Offene Anfragen",
-          dueSoon: "Fällig bald (< 7T)",
-          submitted: "Antworten erhalten",
-          quickActions: "Schnellaktionen",
-          createRequest: "Datenanfrage erstellen",
-          dppReadiness: "Digitaler Produktpass (DPP)",
-          dppDesc: "Überprüfen Sie die Konformität Ihrer Kollektionen gemäß europäischen ESPR- und CIRPASS 1.2-Normen."
-        },
-        it: {
-          navMain: "Console Principale",
-          overview: "Panoramica",
-          products: "Prodotti",
-          suppliers: "Fornitori",
-          materials: "Materiali",
-          supplyChain: "Tracciabilità",
-          navCollection: "Raccolta & Conformità",
-          requests: "Richieste dati",
-          questionnaires: "Questionari",
-          documents: "Documenti",
-          certifications: "Certificazioni",
-          quality: "Qualità & Conformità",
-          dpp: "Passaporto DPP",
-          navGov: "Governance",
-          reports: "Rapporti & Audit",
-          settings: "Impostazioni",
-          newRequest: "+ Nuova richiesta",
-          signOut: "Disconnetti",
-          openRequests: "Richieste aperte",
-          dueSoon: "In scadenza (< 7gg)",
-          submitted: "Risposte ricevute",
-          quickActions: "Azioni Rapide",
-          createRequest: "Crea richiesta dati",
-          dppReadiness: "Passaporto Digitale del Prodotto (DPP)",
-          dppDesc: "Verifica l'idoneità delle tue collezioni rispetto agli standard europei ESPR e CIRPASS 1.2."
-        },
-        es: {
-          navMain: "Consola Principal",
-          overview: "Resumen",
-          products: "Productos",
-          suppliers: "Proveedores",
-          materials: "Materiales",
-          supplyChain: "Trazabilidad",
-          navCollection: "Recopilación y Cumplimiento",
-          requests: "Solicitudes de datos",
-          questionnaires: "Cuestionarios",
-          documents: "Documentos",
-          certifications: "Certificaciones",
-          quality: "Calidad y Cumplimiento",
-          dpp: "Pasaporte DPP",
-          navGov: "Gobernanza",
-          reports: "Informes y Auditorías",
-          settings: "Configuración",
-          newRequest: "+ Nueva solicitud",
-          signOut: "Cerrar sesión",
-          openRequests: "Solicitudes abiertas",
-          dueSoon: "Próximas a vencer (< 7d)",
-          submitted: "Respuestas recibidas",
-          quickActions: "Acciones Rápidas",
-          createRequest: "Crear solicitud de datos",
-          dppReadiness: "Pasaporte Digital de Producto (DPP)",
-          dppDesc: "Verifique la preparación de sus colecciones frente a los estándares europeos ESPR y CIRPASS 1.2."
-        },
-        nl: {
-          navMain: "Hoofdconsole",
-          overview: "Overzicht",
-          products: "Producten",
-          suppliers: "Leveranciers",
-          materials: "Materialen",
-          supplyChain: "Traceerbaarheid",
-          navCollection: "Verzameling & Naleving",
-          requests: "Gegevensaanvragen",
-          questionnaires: "Vragenlijsten",
-          documents: "Documenten",
-          certifications: "Certificeringen",
-          quality: "Kwaliteit & Naleving",
-          dpp: "DPP-Paspoort",
-          navGov: "Governance",
-          reports: "Rapporten & Audits",
-          settings: "Instellingen",
-          newRequest: "+ Nieuwe aanvraag",
-          signOut: "Uitloggen",
-          openRequests: "Openstaande aanvragen",
-          dueSoon: "Binnenkort verwacht (< 7d)",
-          submitted: "Ontvangen antwoorden",
-          quickActions: "Snelle Acties",
-          createRequest: "Gegevensaanvraag aanmaken",
-          dppReadiness: "Digitaal Productpaspoort (DPP)",
-          dppDesc: "Controleer de conformiteit van uw collecties met de Europese normen ESPR en CIRPASS 1.2."
-        },
-        pt: {
-          navMain: "Consola Principal",
-          overview: "Visão geral",
-          products: "Produtos",
-          suppliers: "Fornecedores",
-          materials: "Materiais",
-          supplyChain: "Rastreabilidade",
-          navCollection: "Recolha & Conformidade",
-          requests: "Pedidos de dados",
-          questionnaires: "Questionários",
-          documents: "Documentos",
-          certifications: "Certificações",
-          quality: "Qualidade & Conformidade",
-          dpp: "Passaporte DPP",
-          navGov: "Governança",
-          reports: "Relatórios & Auditorias",
-          settings: "Definições",
-          newRequest: "+ Novo pedido",
-          signOut: "Terminar sessão",
-          openRequests: "Pedidos abertos",
-          dueSoon: "A expirar brevemente (< 7d)",
-          submitted: "Respostas recebidas",
-          quickActions: "Ações Rápidas",
-          createRequest: "Criar pedido de dados",
-          dppReadiness: "Passaporte Digital de Produto (DPP)",
-          dppDesc: "Verifique a conformidade das suas coleções com as normas europeias ESPR e CIRPASS 1.2."
-        }
-      };
 
+      /**
+       * Traduction deleguee au runtime partage (public/i18n-core.js), qui charge
+       * locales/{lang}/console.json.
+       *
+       * Les 25 chaines x 7 langues vivaient en dur ici. L'ancienne chaine de repli
+       * etait lang -> en -> fr -> cle ; les 7 langues couvrant les 25 cles, l'etape
+       * fr n'etait jamais atteinte : fallback: 'en' reproduit donc le comportement
+       * a l'identique. Une cle absente renvoie la cle, jamais une valeur inventee.
+       */
       function bt(key) {
-        const lang = state.lang || 'en';
-        return brandTranslations[lang]?.[key] || brandTranslations['en']?.[key] || brandTranslations['fr']?.[key] || key;
+        const value = window.TracefabI18n ? window.TracefabI18n.t(key) : null;
+        return value === null || value === undefined ? key : value;
       }
 
       function brandLangSwitcher() {
-        return `<select class="org-select" id="brand-lang-select" onchange="setBrandLang(this.value)" style="margin-right:8px;font-family:inherit;font-weight:700;">
+        return `<select class="org-select" id="brand-lang-select" style="margin-right:8px;font-family:inherit;font-weight:700;">
           <option value="en" ${state.lang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
           <option value="fr" ${state.lang === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
           <option value="de" ${state.lang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch</option>
@@ -1342,10 +1161,13 @@
       }
 
       function setBrandLang(lang) {
-        state.lang = lang;
-        localStorage.setItem('tracefab_lang', lang);
-        document.documentElement.lang = lang;
-        render();
+        return Promise.resolve(window.TracefabI18n ? window.TracefabI18n.setLanguage(lang) : false)
+          .then(() => {
+            state.lang = window.TracefabI18n ? window.TracefabI18n.language : lang;
+            // auto-translate.js lit tracefab_lang ; le runtime ecrit tracefab.lang.
+            try { localStorage.setItem('tracefab_lang', state.lang); } catch (e) { /* mode prive */ }
+            render();
+          });
       }
 
 
@@ -4149,6 +3971,7 @@
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('supply-chain-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadSupplyChain(e.target.value); });
         document.getElementById('dpp-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadDpp(e.target.value); });
+        document.getElementById('brand-lang-select')?.addEventListener('change', (e) => setBrandLang(e.currentTarget.value));
         document.getElementById('catalog-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.catalogImport.filename = file.name; state.catalogImport.content = await file.text(); state.catalogImport.preview = null; render(); });
         document.getElementById('catalog-import-content')?.addEventListener('input', (event) => { state.catalogImport.content = event.currentTarget.value; state.catalogImport.preview = null; });
         document.getElementById('supplier-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.supplierImport.filename = file.name; state.supplierImport.content = await file.text(); state.supplierImport.preview = null; render(); });
@@ -4246,7 +4069,20 @@
       });
 
       window.tracefabBrandConsole = { state, sync };
-      boot();
+      /*
+       * Le rendu attend le dictionnaire : ces vues sont produites en JavaScript,
+       * il n'y a donc aucun texte « auteur » sur lequel se replier pendant le
+       * chargement — sans cette attente, bt() renverrait la cle brute a l'ecran.
+       */
+      (window.TracefabI18n
+        ? window.TracefabI18n.init({ scope: 'console', fallback: 'en', language: state.lang })
+        : Promise.resolve(false)
+      )
+        .catch(() => false)
+        .then(() => {
+          if (window.TracefabI18n) state.lang = window.TracefabI18n.language;
+          return boot();
+        });
     })();
   </script>
 </body>

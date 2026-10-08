@@ -2832,3 +2832,116 @@ les ensembles.
 - `test:typecheck:baseline` 8/8 (nouveau) — `api:typecheck` 90 = 90, inchangé
 - `test:suite` : **PASS 52 · SKIP 18 · FAIL 0 sur 70**, exit 0
 - aucun fichier de `api/` modifié ; `context.ts` restauré à l'identique après l'expérience
+
+---
+
+## Chantier 31 — Les deux consoles traduisent depuis `locales/`, plus depuis leur code
+
+### L'état réel : six mécanismes, pas trois
+
+Le recensement en donne six, dont deux morts :
+
+| mécanisme | surfaces | état |
+|---|---|---|
+| `locales/*.json` + `i18n-core.js` | evidence, dpp, traceability | vivant |
+| `i18n-engine.js` | index.html (landing) | vivant, contrat `[data-i18n]` identique |
+| `auto-translate.js` (889 lignes, scan du DOM) | brand-console, operations, quality-center, supplier-portal | vivant |
+| `brandTranslations` inline (25 clés × 7 langues) | brand-console | **supprimé ici** |
+| `translations` inline (25 clés × 9 langues) | supplier-portal | **supprimé ici** |
+| `translations_deep.json` | aucune | mort |
+
+### Deux sélecteurs de langue étaient morts
+
+Même cause qu'`openBomModal` au Chantier 28 : les deux pages sont des IIFE.
+
+- `brand-console` : `onchange="setBrandLang(this.value)"` appelait une fonction interne, jamais
+  exposée sur `window` → `ReferenceError` silencieuse.
+- `supplier-portal` : le `<select id="lang-switch">` n'avait **aucun** écouteur, et `state.lang`
+  n'était **jamais assigné** (0 occurrence de `state.lang = `). Neuf langues proposées, aucun
+  effet.
+
+Les deux sont maintenant branchés dans le code, et le test le vérifie en dispatchant un
+événement `change` puis en lisant le texte réellement rendu.
+
+### Ce qui a été fait
+
+- **436 lignes de dictionnaires supprimées** des deux HTML (191 + 245), extraites
+  programmatiquement vers `locales/{lang}/console.json` (7 langues) et
+  `locales/{lang}/supplier.json` (9 langues, `tr` et `zh` compris).
+- `bt(key)` et `t(key)` délèguent à `TracefabI18n.t(key)`. Les 18 + 14 points d'appel sont
+  inchangés : une clé absente renvoie la clé, jamais une valeur inventée, et le runtime
+  l'enregistre dans `TracefabI18n.missing`.
+- Le **premier rendu attend le dictionnaire**. Ces vues sont produites en JavaScript : il n'y a
+  aucun texte « auteur » sur lequel se replier pendant le chargement, contrairement au markup
+  `data-i18n`. Sans cette attente, `bt()` renverrait la clé brute à l'écran.
+- `tr` et `zh` sont conservés et **deviennent réellement sélectionnables**, alors qu'ils ne
+  l'ont jamais été.
+
+### Le runtime : une extension optique
+
+`public/i18n-core.js` figeait `LANGS` à 7 langues. Y ajouter `tr` et `zh` en dur aurait fait
+proposer le turc aux trois surfaces qui n'ont aucun dictionnaire turc — offrir une langue qu'on
+ne peut pas servir.
+
+À la place : une variable `langs` initialisée à `LANGS`, que `init({ languages })` peut étendre.
+`LANGS` est exposé comme accesseur renvoyant la liste vive. Sans l'option, rien ne change :
+`evidence`, `dpp` et `traceability` continuent de proposer exactement leurs 7 langues.
+
+### Vérification
+
+`scripts/test_i18n_unified.mjs` — **77/77** (`npm run test:i18n:unified`).
+
+Le test charge chaque console dans jsdom avec un intercepteur qui sert `/i18n-core.js`,
+`/auto-translate.js` **et** les `locales/*.json` depuis le disque — la page s'exécute avec son
+vrai `fetch`, sans réseau. Il vérifie ensuite le texte réellement rendu :
+
+- `fr` → « Vue d'ensemble » et « Traçabilité » ; `en` → « Overview » ;
+- changer le sélecteur sur `de` → l'interface affiche « Übersicht » ;
+- portail en `tr` → « Genel Bakış », en `zh` → « 概览 », sélecteur à 9 options fonctionnel ;
+- aucune clé brute (`navMain`, `navCollection`) ne fuit dans l'interface ;
+- `t('cleInexistante')` renvoie `null` et la clé apparaît dans `missing`.
+
+**Aucune dérive de contenu** : les 16 fichiers générés ont été comparés clé à clé aux
+dictionnaires inline de HEAD — **400 chaînes, toutes identiques**.
+
+Contre-vérifications : `boot()` rendu immédiat → 3 échecs, exit 1 ; écouteur du sélecteur
+retiré → 3 échecs, exit 1. Restaurations → 77/77.
+
+### Deux pièges d'environnement, résolus
+
+- **jsdom 30 n'a plus `ResourceLoader`.** Il exporte `JSDOM, VirtualConsole, CookieJar,
+  requestInterceptor, toughCookie`. Les ressources passent par
+  `resources: { interceptors: [requestInterceptor(...)] }`.
+- **Une fenêtre jsdom n'expose pas `fetch`.** Le runtime levait `ReferenceError: fetch is not
+  defined`. L'intercepteur ne couvre que le chargement des `<script src>`, pas les `fetch` de la
+  page : il faut installer `window.fetch` juste après la construction, avant tout `await` — le
+  runtime l'appelle dans une microtâche.
+- Attendre `TracefabI18n.isReady` et non une longueur de texte : sinon on asserte sur un rendu
+  produit **avant** l'arrivée du dictionnaire, c'est-à-dire sur des clés brutes.
+
+### Le test du Chantier 29 a détecté le changement — et il avait raison
+
+`test:i18n:serving` a échoué dès l'ajout des 16 fichiers : il exigeait `app.json` et
+`translation.json` pour **toutes** les langues de `locales/`, donc pour `tr` et `zh` qui n'ont
+que `supplier.json`.
+
+Le fond était juste, l'invariant trop large. Il lit maintenant dans chaque surface le scope
+**et** les langues qu'elle déclare (`languages: [...]`, sinon les 7 d'origine) et n'exige que
+les fichiers que cette surface peut réellement demander. Il couvre **5 surfaces** au lieu de 3
+et passe de 33 à **50/50**. Les nombres magiques (14 dictionnaires, 7 langues) sont remplacés
+par des assertions structurelles.
+
+### Reporté, avec raisons
+
+- **`index.html` + `i18n-engine.js`** : fonctionne, utilise le même contrat `[data-i18n]`, et la
+  landing a été validée visuellement. Changer son runtime est un risque distinct.
+- **`auto-translate.js`** (889 lignes, traduction par correspondance de texte rendu, 4 surfaces) :
+  mécanisme différent ; le migrer suppose d'auditer chaque entrée du glossaire contre le texte
+  réellement affiché.
+- **`translations_deep.json`** : chargé par personne, candidat à la suppression.
+
+### Résultats
+
+- `test:i18n:unified` 77/77 (nouveau) · `test:i18n:serving` 50/50 (33 avant)
+- `test:suite` : **PASS 53 · SKIP 18 · FAIL 0 sur 71**, exit 0
+- `api:typecheck` 90 = 90, baseline 8/8 — aucun fichier de `api/` touché

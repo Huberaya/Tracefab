@@ -72,7 +72,15 @@ console.log('\nA. Chaque dictionnaire est émis par un build');
 // ---------------------------------------------------------------------------
 
 const localeFiles = (await listFiles('locales')).sort();
-eq(localeFiles.length, 14, '14 dictionnaires présents (7 langues x app + translation)');
+/* Pas de nombre magique : on décrit la structure réellement présente. */
+const scopes = [...new Set(localeFiles.map((f) => f.split('/').pop()))].sort();
+assert(
+  localeFiles.length > 0 && localeFiles.every((f) => /^locales\/[a-z]{2}\/[a-z]+\.json$/.test(f)),
+  `${localeFiles.length} dictionnaires, tous sous locales/{lang}/{scope}.json`,
+  localeFiles.filter((f) => !/^locales\/[a-z]{2}\/[a-z]+\.json$/.test(f)).join(', '),
+);
+assert(scopes.includes('translation.json') && scopes.includes('app.json'),
+  `scopes présents : ${scopes.join(', ')}`);
 
 const buildPatterns = config.builds.map((b) => ({ src: b.src, re: globToRegExp(b.src) }));
 const emittedBy = (file) => buildPatterns.filter((p) => p.re.test(file)).map((p) => p.src);
@@ -121,21 +129,38 @@ assert(
 );
 
 const langs = (await readdir(at('locales'))).sort();
-eq(langs.length, 7, 'sept langues', langs.join(', '));
+const DEFAULT_LANGS = ['de', 'en', 'es', 'fr', 'it', 'nl', 'pt'];
+for (const lang of DEFAULT_LANGS) {
+  assert(langs.includes(lang), `la langue d'origine ${lang} est toujours présente`);
+}
+/* tr et zh n'existent que pour le scope supplier : une langue peut être
+   partielle, mais alors aucune surface ne doit la proposer sans dictionnaire. */
+const extra = langs.filter((l) => !DEFAULT_LANGS.includes(l));
+if (extra.length) ok(`langues supplémentaires, vérifiées par surface : ${extra.join(', ')}`);
 
-/* Le scope réellement demandé par chaque surface qui inclut le runtime. */
-const surfaces = ['evidence/index.html', 'dpp/index.html', 'traceability/index.html'];
+/*
+ * Le scope ET les langues réellement demandés par chaque surface qui inclut le
+ * runtime. Une surface qui ne passe pas `languages` ne peut sélectionner que les
+ * 7 langues d'origine : exiger d'elle un dictionnaire turc serait faux.
+ */
+const surfaces = ['evidence/index.html', 'dpp/index.html', 'traceability/index.html',
+  'brand-console/index.html', 'supplier-portal/index.html'];
 const requested = [];
 for (const surface of surfaces) {
   const html = await readFile(at(surface), 'utf8');
   assert(html.includes('/i18n-core.js'), `${surface} inclut le runtime i18n`);
-  const scope = /TracefabI18n\.init\(\{\s*scope:\s*'([a-z-]+)'/.exec(html)?.[1];
+  const initCall = /TracefabI18n\.init\(\{[\s\S]{0,220}?\}\)/.exec(html)?.[0];
+  const scope = /scope:\s*'([a-z-]+)'/.exec(initCall || '')?.[1];
   assert(!!scope, `${surface} déclare un scope`, 'aucun init({scope}) trouvé');
-  requested.push({ surface, scope });
+  const declared = /languages:\s*\[([^\]]*)\]/.exec(initCall || '')?.[1];
+  const surfaceLangs = declared
+    ? [...declared.matchAll(/'([a-z]{2})'/g)].map((m) => m[1])
+    : DEFAULT_LANGS;
+  requested.push({ surface, scope, surfaceLangs });
 }
 
-for (const { surface, scope } of requested) {
-  for (const lang of langs) {
+for (const { surface, scope, surfaceLangs } of requested) {
+  for (const lang of surfaceLangs) {
     for (const file of [`${scope}.json`, 'translation.json']) {
       const path = `locales/${lang}/${file}`;
       let exists = true;
@@ -144,7 +169,7 @@ for (const { surface, scope } of requested) {
     }
   }
 }
-ok(`toutes les URL demandées par les ${requested.length} surfaces x ${langs.length} langues existent`);
+ok(`toutes les URL demandées par les ${requested.length} surfaces existent pour les langues que chacune propose`);
 checks += 0;
 
 // ---------------------------------------------------------------------------
@@ -185,11 +210,11 @@ for (const surface of surfaces) {
   );
 }
 /* Le JSON doit être valide et non vide, sinon le runtime se replie en silence. */
-for (const lang of langs) {
+for (const lang of DEFAULT_LANGS) {
   const parsed = JSON.parse(await readFile(at(`locales/${lang}/app.json`), 'utf8'));
   if (Object.keys(parsed).length === 0) bad(`locales/${lang}/app.json n’est pas vide`);
 }
-ok('les sept app.json sont des JSON valides et non vides');
+ok(`les ${DEFAULT_LANGS.length} app.json sont des JSON valides et non vides`);
 
 // ---------------------------------------------------------------------------
 console.log('\nE. La CSP autorise le chargement');
@@ -217,7 +242,7 @@ assert(pkg.files === undefined, 'aucun champ "files" ne restreint le contenu pub
 const gitignore = await readFile(at('.gitignore'), 'utf8');
 assert(
   !gitignore.split('\n').some((l) => l.trim() === 'locales' || l.trim() === 'locales/'),
-  '.gitignore n’exclut pas locales/ (les 14 dictionnaires sont donc versionnés)',
+  `.gitignore n’exclut pas locales/ (les ${localeFiles.length} dictionnaires sont donc versionnés)`,
 );
 
 console.log(`\n${failures === 0 ? 'SUCCÈS' : 'ÉCHEC'} — ${checks - failures}/${checks} vérifications`);

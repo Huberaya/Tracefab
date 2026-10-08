@@ -26,6 +26,13 @@
   'use strict';
 
   var LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
+  /*
+   * Langues effectivement proposées par la surface courante. `init({ languages })`
+   * peut l'étendre : le portail fournisseur traduit aussi en tr et zh. On ne
+   * l'ajoute pas à LANGS en dur, sinon les surfaces qui n'ont aucun dictionnaire
+   * turc proposeraient une langue qu'elles ne peuvent pas servir.
+   */
+  var langs = LANGS;
   var STORAGE_KEY = 'tracefab.lang';
 
   var dictionaries = {};
@@ -38,10 +45,10 @@
   function detect() {
     try {
       var stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored && LANGS.indexOf(stored) !== -1) return stored;
+      if (stored && langs.indexOf(stored) !== -1) return stored;
     } catch (e) { /* stockage indisponible (mode privé) */ }
     var nav = (navigator.language || 'fr').slice(0, 2).toLowerCase();
-    return LANGS.indexOf(nav) !== -1 ? nav : fallback;
+    return langs.indexOf(nav) !== -1 ? nav : fallback;
   }
 
   function flatten(source, prefix, target) {
@@ -102,7 +109,7 @@
   }
 
   function setLanguage(lang) {
-    if (LANGS.indexOf(lang) === -1) return Promise.resolve(false);
+    if (langs.indexOf(lang) === -1) return Promise.resolve(false);
     language = lang;
     try { window.localStorage.setItem(STORAGE_KEY, lang); } catch (e) { /* ignore */ }
     return load(lang).then(function () {
@@ -116,13 +123,15 @@
   function init(options) {
     var opts = options || {};
     scope = opts.scope || 'app';
+    if (Array.isArray(opts.languages) && opts.languages.length) langs = opts.languages.slice();
     fallback = opts.fallback || 'fr';
-    language = LANGS.indexOf(opts.language || '') !== -1 ? opts.language : detect();
+    language = langs.indexOf(opts.language || '') !== -1 ? opts.language : detect();
     return setLanguage(language);
   }
 
   window.TracefabI18n = {
-    LANGS: LANGS,
+    /** Liste vive : reflète ce que la surface a déclaré pouvoir servir. */
+    get LANGS() { return langs.slice(); },
     init: init,
     setLanguage: setLanguage,
     apply: apply,

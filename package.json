@@ -90,7 +90,8 @@
     "test:api:wiring": "node scripts/test_api_wiring.mjs",
     "test:vault:register": "node scripts/test_vault_register.mjs",
     "test:i18n:serving": "node scripts/test_i18n_serving.mjs",
-    "test:typecheck:baseline": "node scripts/test_typecheck_baseline.mjs"
+    "test:typecheck:baseline": "node scripts/test_typecheck_baseline.mjs",
+    "test:i18n:unified": "node scripts/test_i18n_unified.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",
