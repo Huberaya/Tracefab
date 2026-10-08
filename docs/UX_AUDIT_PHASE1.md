@@ -2746,3 +2746,89 @@ La sortie réelle du build reste à confirmer au premier déploiement.
 - `api:typecheck` : **90 = 90**
 - `test:suite` : **PASS 51 · SKIP 18 · FAIL 0 sur 69**, exit 0
 - `test:i18n:serving` 36/36 (nouveau)
+
+---
+
+## Chantier 30 — Les « 5 erreurs réelles » n'existaient pas ; rendre tsc utilisable
+
+### La recommandation précédente était fausse
+
+Le Chantier 29 se terminait sur : « les 5 erreurs réelles sont les seules atteignables ». C'était
+une déduction, pas une mesure — j'avais séparé les 90 erreurs en filtrant les lignes contenant
+`.prisma/client`, et appelé « réelles » les 5 qui restaient. Le filtre était trop court : il ne
+captait pas les erreurs **causées** par Prisma mais dont le message n'en parle pas.
+
+Les 5 en question :
+
+```
+catalog/audit-export.ts(63,159|232|265|296)  TS2339  Property 'organization_id'|'reference'|'name'|'version' does not exist on type 'unknown'
+documents.ts(117,7)                          TS2347  Untyped function calls may not accept type arguments
+```
+
+### La démonstration
+
+**Les quatre TS2339.** `tx` est annoté `Prisma.TransactionClient` (`api/_lib/context.ts:30`). Le
+stub `node_modules/.prisma/client` ne déclare pas ce type, donc `tx` est un type d'erreur et le
+paramètre de `products.map((product) => …)` retombe en `unknown`.
+
+Expérience sur le code réel : remplacer cette annotation par un type structurel déclarant
+`$queryRaw<R>(…): Promise<R>` fait **disparaître les quatre erreurs** (diff d'ensembles :
+4 disparues, 0 apparue sur ce fichier). L'expérience en introduit 128 autres, toutes
+`Property 'X' does not exist on type 'ProbeTx'` — normales, ce type de sonde ne déclare pas les
+accesseurs de modèles. `context.ts` a été restauré à l'identique.
+
+**Le TS2347.** `documents.ts:117` ne disparaît **pas** avec ce même correctif : sa cause est une
+étape plus haut. `api/_lib/prisma.ts:5` fait `new PrismaClient()` ; le stub ne déclare pas
+`$transaction`, donc `prisma.$transaction(…)` n'est pas typé, donc
+`withTracefabUserContext` renvoie `Promise<any>`, donc `rows` puis `documents` valent `any`.
+
+Sonde isolée : `reduce<Record<string, number>>` sur un `any` produit **exactement** TS2347 ; le
+même appel sur un tableau typé ne produit **aucune** erreur.
+
+**Généralisation vérifiée.** Le test classe les 79 erreurs distinctes de la baseline : les 79
+correspondent au client Prisma absent. Il n'y a donc **rien à corriger dans le code** — les 90
+disparaîtront d'un bloc au premier `prisma generate` réussi.
+
+### Le vrai problème, et son correctif
+
+90 lignes de bruit noient toute erreur nouvelle : `tsc` ne protégeait plus de rien. C'était ça,
+la dette — pas les cinq lignes.
+
+`scripts/test_typecheck_baseline.mjs` (**8/8**) fige l'ensemble connu et échoue dès qu'il bouge,
+dans les deux sens :
+
+- une erreur **apparue** → échec (c'est la régression) ;
+- une erreur **disparue** → échec aussi, pour qu'une baseline périmée ne masque pas un progrès ;
+- la clé est `fichier | code | message`, **sans numéro de ligne** : ajouter une ligne en tête
+  d'un fichier décalerait toutes les positions et ferait échouer le test à tort ;
+- les occurrences sont comptées, donc deux erreurs identiques d'un même fichier restent
+  distinguables (90 erreurs, 79 clés) ;
+- les chemins absolus des messages sont normalisés en `<root>` — sans ça, la baseline n'aurait
+  été valable que sur la machine qui l'a produite ;
+- garde-fou contre le piège déjà rencontré : un `tsc` introuvable sort en 127 sans aucune ligne
+  `error TS`, ce qui se lirait comme « zéro erreur ».
+
+Contre-vérifications : `const limit: string = Math.min(…)` injecté dans `documents.ts` → **2
+échecs, exit 1** ; entrée fantôme ajoutée à la baseline → **3 échecs, exit 1**. Restaurations →
+8/8 dans les deux cas.
+
+Régénérer après un correctif ou un `prisma generate` réussi :
+`npm run test:typecheck:baseline -- --write`.
+
+### Une erreur de méthode, nommée
+
+Deux fois dans ce chantier j'ai failli conclure sur un compte plutôt que sur un ensemble : le
+premier essai de sonde a touché la **ligne 10** de `context.ts` au lieu de la 30 — deux fonctions
+portent la même signature `callback: (tx: Prisma.TransactionClient) => Promise<T>`, et
+`replace(…, 1)` prend la première. Le compte d'erreurs était resté **exactement 90**, ce qui
+aurait pu passer pour « aucun effet ». Seul le diff d'ensembles a montré que les deux ensembles
+étaient identiques, donc que l'expérience n'avait rien testé.
+
+Règle : un compte d'erreurs qui ne bouge pas ne prouve pas que rien n'a changé — il faut diffier
+les ensembles.
+
+### Résultats
+
+- `test:typecheck:baseline` 8/8 (nouveau) — `api:typecheck` 90 = 90, inchangé
+- `test:suite` : **PASS 52 · SKIP 18 · FAIL 0 sur 70**, exit 0
+- aucun fichier de `api/` modifié ; `context.ts` restauré à l'identique après l'expérience
