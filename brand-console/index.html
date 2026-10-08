@@ -1114,15 +1114,15 @@
 
       const DEMO_PAYS = [
 
-        ['PT','Portugal'], ['IT','Italie'], ['FR','France'], ['DE','Allemagne'],
+        ['PT','Portugal'], ['IT','Italy'], ['FR','France'], ['DE','Germany'],
 
-        ['TR','Turquie'], ['IN','Inde'], ['BD','Bangladesh'], ['VN','Vietnam'],
+        ['TR','Türkiye'], ['IN','India'], ['BD','Bangladesh'], ['VN','Vietnam'],
 
-        ['CN','Chine'], ['MA','Maroc'], ['TN','Tunisie'], ['US','Etats-Unis'],
+        ['CN','China'], ['MA','Morocco'], ['TN','Tunisia'], ['US','United States'],
 
-        ['ES','Espagne'], ['PL','Pologne'], ['RO','Roumanie'], ['GR','Grece'],
+        ['ES','Spain'], ['PL','Poland'], ['RO','Romania'], ['GR','Greece'],
 
-        ['EG','Egypte'], ['LK','Sri Lanka'],
+        ['EG','Egypt'], ['LK','Sri Lanka'],
 
       ];
 
@@ -1152,7 +1152,7 @@
 
         const formes = ['Textile Mill','Spinning Co','Dye House','Knitwear','Weaving','Finishing','Garment Works','Trims'];
 
-        const categories = ['T-shirt','Chemise','Pantalon','Maille','Robe','Veste','Accessoire','Denim'];
+        const categories = ['T-shirt','Shirt','Trousers','Knitwear','Dress','Jacket','Accessory','Denim'];
 
         const lectures = ['verified','needs_review','in_progress'];
 
@@ -1312,7 +1312,7 @@
         state.materials = [{ id: 'demo-material-1', name: 'Organic cotton', materialType: 'fiber', originCountryCode: 'PT' }];
         state.products = [
           { id: 'demo-product-1', brandOrganizationId: 'demo-brand', reference: 'AT-ESS-001', name: 'Cotton Essential', category: 'T-shirt', status: 'active', version: 2, dataReadiness: 'needs_review', dataCompletion: '82' },
-          { id: 'demo-product-2', brandOrganizationId: 'demo-brand', reference: 'AT-LIN-004', name: 'Ligne lin naturel', category: 'Chemise', status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '46' },
+          { id: 'demo-product-2', brandOrganizationId: 'demo-brand', reference: 'AT-LIN-004', name: 'Natural Linen Line', category: 'Shirt', status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '46' },
         ];
         demoEchelle();
         state.requests = [
@@ -1371,7 +1371,7 @@
             },
             {
               id: 'req-item-3',
-              label: 'Audit Social d\'Atelier de Confection (SMETA 4-Pillar)',
+              label: 'Garment Workshop Social Audit (SMETA 4-Pillar)',
               fieldKey: 'smeta_social_audit',
               required: true,
               dataType: 'document_proof',
@@ -1524,13 +1524,13 @@
             key: 'textile-chemical-reach',
             version: '2.1',
             title: 'Chemical & Dyeing Compliance (REACH / ZDHC)',
-            category: 'Chimie & Rejets',
+            category: 'Chemistry & Effluents',
             description: 'Audit of chemical inputs, heavy metals and analysis of dyeing water effluents.',
             itemCount: 4,
             requiredItemCount: 3,
             fields: [
               { id: 'c-1', key: 'rsl_test_report', label: 'RSL laboratory test report (< 12 months)', type: 'document_proof', required: true, helpText: bt('cnHintIso') },
-              { id: 'c-2', key: 'zdhc_level', label: 'Niveau d\'attestation ZDHC MRSL', type: 'select_single', required: true, helpText: bt('cnHintLevel') },
+              { id: 'c-2', key: 'zdhc_level', label: 'ZDHC MRSL conformance level', type: 'select_single', required: true, helpText: bt('cnHintLevel') },
               { id: 'c-3', key: 'closed_loop_water', label: 'Dyeing water recycling rate', type: 'percentage_number', required: false, helpText: bt('cnHintReuse') }
             ]
           },
@@ -1538,13 +1538,13 @@
             key: 'social-fair-wage',
             version: '1.5',
             title: 'Audit Social & Droits Humains (SMETA / SA8000)',
-            category: 'Social & RSE',
+            category: 'Social & CSR',
             description: 'Verification of ILO convention compliance, fire safety and decent wages.',
             itemCount: 4,
             requiredItemCount: 4,
             fields: [
               { id: 's-1', key: 'social_audit_file', label: 'Full third-party social audit report', type: 'document_proof', required: true, helpText: bt('cnHintSmeta') },
-              { id: 's-2', key: 'audit_score_letter', label: 'Notation globale obtenue', type: 'text_short', required: true, helpText: bt('cnHintScore') },
+              { id: 's-2', key: 'audit_score_letter', label: 'Overall audit score', type: 'text_short', required: true, helpText: bt('cnHintScore') },
               { id: 's-3', key: 'living_wage_attestation', label: 'Living Wage attestation', type: 'document_proof', required: true, helpText: bt('cnHintWage') }
             ]
           },
@@ -1621,8 +1621,8 @@
             quality: { icon: '\ud83d\udee1\ufe0f', nameKey: 'dpPillar4', metPercent: 67,
               descriptionKey: 'dpP4Desc',
               items: [
-                { label: 'Certificats fournisseurs valides', met: true },
-                { label: 'Certificat de transaction (TC)', met: true },
+                { labelKey: 'dpItemSupplierCerts', met: true },
+                { labelKey: 'dpItemTransactionCert', met: true },
                 { labelKey: 'dpItemLabTestShort', met: false },
               ] },
           },
@@ -1818,16 +1818,16 @@
               action: "Supplier follow-up issued on 04/10/2026"
             },
             {
-              sku: "AW26-0419 · Doublure Veste Trench",
+              sku: "AW26-0419 · Trench Jacket Lining",
               issue: "Material declared as Recycled Cotton (GRS) without third-party verified mass-balance evidence.",
               supplier: "Recycled Textiles Europe",
               evidenceCited: "GRS-CERT-8841 (Status: expired on 15/09/2026)",
-              action: "Blocage de l'export DPP en cours"
+              action: "DPP export currently blocked"
             }
           ],
           citations: [
             { id: "TC-CU-881294", label: "Certificat Transaction Control Union GOTS 2026", hash: "sha256-8a9d...4f21" },
-            { id: "SGS-LAB-098", label: "Rapport Laboratoire ZDHC MRSL Level 3 SGS", hash: "sha256-3b17...9c82" },
+            { id: "SGS-LAB-098", label: "SGS ZDHC MRSL Level 3 laboratory report", hash: "sha256-3b17...9c82" },
             { id: "SMETA-BRAGA-26", label: "Audit Social SMETA 4-Pillar Atelier Braga", hash: "sha256-7e44...5a19" }
           ]
         };
@@ -1853,13 +1853,13 @@
               <span class="intel-chip" onclick="askIntel('Which products contain non-GOTS-certified cotton in the AW26 collection?')">
                 🌾 Cotton without GOTS TC (AW26)
               </span>
-              <span class="intel-chip" onclick="askIntel('Which certificates expire in the next 45 days?')">
+              <span class="intel-chip" onclick="askIntel('Which certificates expire in the next 45 days?')" data-tf-demo>
                 ⏳ Certificates expiring within 45 days
               </span>
               <span class="intel-chip" onclick="askIntel('Do all garment workshops meet SMETA living-wage requirements?')">
                 ⚖️ SMETA living-wage compliance
               </span>
-              <span class="intel-chip" onclick="askIntel('What is the readiness rate for the ESPR Digital Product Passport?')">
+              <span class="intel-chip" onclick="askIntel('What is the readiness rate for the ESPR Digital Product Passport?')" data-tf-demo>
                 📋 CIRPASS DPP eligibility rate
               </span>
             </div>
@@ -1893,7 +1893,7 @@
                     <th>${bt('scSupplierFacility')}</th>
                     <th>${bt('iaAnomaly')}</th>
                     <th>${bt('iaCitedProof')}</th>
-                    <th style="text-align:right">Action Directe</th>
+                    <th style="text-align:right">${bt('iaDirectAction')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1946,7 +1946,7 @@
 
       function render() {
         if (state.configError && !state.demo && !state.user) {
-          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>Connexion indisponible</h1><p>${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
+          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>${esc(bt('cnAuthUnavailable'))}</h1><p>${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
         }
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>${esc(bt('cnLoadingTitle'))}</h1><p>${esc(bt('cnLoadingSub'))}</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }
@@ -1984,8 +1984,8 @@
         const qList = state.questionnaires || [];
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Form Studio & Custom Compliance Protocols</div>
-            <h1>Questionnaire Builder</h1>
+            <div class="eyebrow" data-tf-demo>Form Studio & Custom Compliance Protocols</div>
+            <h1 data-tf-demo>Questionnaire Builder</h1>
             <p>${esc(bt('cnQnIntro'))}</p>
           </div>
           <div class="actions">
@@ -1998,7 +1998,7 @@
           <!-- Questionnaires Catalog List -->
           <div class="card panel">
             <div class="panel-head">
-              <h2>Protocoles d'Audit Actifs (${qList.length})</h2>
+              <h2>${bt('qbActiveProtocols')} (${qList.length})</h2>
               <span class="meta">${bt('qbSchemas')}</span>
             </div>
             <div class="item-list">
@@ -2010,7 +2010,7 @@
                         <span class="cert-pill" style="margin-bottom:6px;">${esc(q.category || bt('cnGrpCompliance'))} · v${esc(q.version)}</span>
                         <h3 style="font-size:15px;margin-top:2px;">${esc(q.title)}</h3>
                       </div>
-                      <span class="status status-approved">${q.itemCount || q.fields?.length || 4} champs (${q.requiredItemCount || 3} obligatoires)</span>
+                      <span class="status status-approved">${q.itemCount || q.fields?.length || 4} ${bt('qbFieldCount')} (${q.requiredItemCount || 3} ${bt('qbRequired')})</span>
                     </div>
                     <p style="margin:6px 0 12px;font-size:12.5px;color:var(--muted);">${esc(q.description)}</p>
 
@@ -2210,7 +2210,7 @@
                 <text x="16" y="78" font-size="10.5" fill="#56675e">Tinturaria Braga</text>
                 <text x="16" y="98" font-size="9.5" fill="#88988f">${bt('scStep')}</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
-                <text x="24" y="116" font-size="8.5" font-weight="700" fill="#0b7656">ZDHC Level 3</text>
+                <text x="24" y="116" font-size="8.5" font-weight="700" fill="#0b7656" data-tf-demo>ZDHC Level 3</text>
               </g>
 
               <!-- Node 5: Assembly -->
@@ -2231,7 +2231,7 @@
                 <circle cx="24" cy="24" r="6" fill="#0284c7"/>
                 <text x="38" y="28" font-size="10" font-weight="800" fill="#0284c7">${bt('scProductDpp')}</text>
                 <text x="16" y="58" font-size="12" font-weight="800" fill="#13221b">Essentiel Coton</text>
-                <text x="16" y="78" font-size="10.5" fill="#56675e">Atelier Demo</text>
+                <text x="16" y="78" font-size="10.5" fill="#56675e" data-tf-demo>Atelier Demo</text>
                 <text x="16" y="98" font-size="9.5" fill="#0284c7">${bt('scDigitalPassport')}</text>
                 <rect x="14" y="106" width="102" height="14" rx="4" fill="#e0f2fe"/>
                 <text x="20" y="116" font-size="8.5" font-weight="700" fill="#0284c7">${bt('scEsprOk')}</text>
@@ -2412,20 +2412,20 @@
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>GOTS 2026 Transaction Certificate</strong><div class="meta">Organic Cotton Lot #089-A</div></td>
+                  <td><strong>GOTS 2026 Transaction Certificate</strong><div class="meta" data-tf-demo>Organic Cotton Lot #089-A</div></td>
                   <td><span class="badge badge-verified">TC GOTS</span></td>
                   <td>Control Union Certifications</td>
-                  <td>Filature de Haute-Vienne</td>
+                  <td data-tf-demo>Filature de Haute-Vienne</td>
                   <td>14/01/2026</td>
                   <td>14/01/2027</td>
                   <td><span class="status status-approved">${bt('evSealed')}</span></td>
                   <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
                 </tr>
                 <tr>
-                  <td><strong>ZDHC MRSL Level 3 Laboratory Report</strong><div class="meta">${bt('evWastewater')}</div></td>
-                  <td><span class="badge badge-verified">ZDHC Test</span></td>
-                  <td>SGS Textile Testing Services</td>
-                  <td>EcoDye Aquitaine</td>
+                  <td><strong data-tf-demo>ZDHC MRSL Level 3 Laboratory Report</strong><div class="meta">${bt('evWastewater')}</div></td>
+                  <td><span class="badge badge-verified" data-tf-demo>ZDHC Test</span></td>
+                  <td data-tf-demo>SGS Textile Testing Services</td>
+                  <td data-tf-demo>EcoDye Aquitaine</td>
                   <td>02/03/2026</td>
                   <td>02/03/2027</td>
                   <td><span class="status status-approved">${bt('evIso')}</span></td>
@@ -2434,8 +2434,8 @@
                 <tr>
                   <td><strong>SMETA 4-Pillar Social Audit (Grade A)</strong><div class="meta">${bt('evHealthSafety')}</div></td>
                   <td><span class="badge badge-verified">SMETA Audit</span></td>
-                  <td>Intertek Ethical Services</td>
-                  <td>Assembly & Tailoring Workshop</td>
+                  <td data-tf-demo>Intertek Ethical Services</td>
+                  <td data-tf-demo>Assembly & Tailoring Workshop</td>
                   <td>10/11/2025</td>
                   <td>10/11/2026</td>
                   <td><span class="status status-approved">${bt('evIlo')}</span></td>
@@ -2444,8 +2444,8 @@
                 <tr>
                   <td><strong>OEKO-TEX Standard 100 Certificate</strong><div class="meta">${bt('evClass1')}</div></td>
                   <td><span class="badge badge-verified">OEKO-TEX</span></td>
-                  <td>CITEVE Portugal</td>
-                  <td>Portugal Textile Mill</td>
+                  <td data-tf-demo>CITEVE Portugal</td>
+                  <td data-tf-demo>Portugal Textile Mill</td>
                   <td>18/02/2026</td>
                   <td>18/02/2027</td>
                   <td><span class="status status-approved">${bt('evValid')}</span></td>
@@ -2557,7 +2557,7 @@
             </div>
           </div>
           <div class="card panel">
-            <div class="panel-head"><h2>Piste d'audit immuable</h2></div>
+            <div class="panel-head"><h2>${bt('rpAuditTrail')}</h2></div>
             <p style="font-size:12px;color:var(--muted);line-height:1.6;">${bt('rpIntegrityNote')}</p>
           </div>
         </div>`;
@@ -2567,7 +2567,7 @@
         return `<div class="page-head">
           <div>
             <div class="eyebrow">Configuration</div>
-            <h1>Settings & Governance</h1>
+            <h1>${bt('stTitle')}</h1>
             <p>${bt('stIntro')}</p>
           </div>
           <div class="actions">
@@ -2578,7 +2578,7 @@
           <div class="panel-head"><h2>${bt('stOrgBrand')}</h2></div>
           <form class="form-grid">
             <label>${bt('stBrandName')}<input class="input" value="${esc(currentBrand()?.display_name || 'Atelier Demo')}"></label>
-            <label>Identifiant d'organisation Neon<input class="input" value="${esc(state.activeOrganizationId || 'demo-brand')}" readonly></label>
+            <label>${bt('stNeonOrgId')}<input class="input" value="${esc(state.activeOrganizationId || 'demo-brand')}" readonly></label>
             <label>${bt('stDppIdFormat')}<input class="input" value="urn:epc:id:sgtin:3760123"></label>
             <label>${bt('stQualityThreshold')}<input class="input" type="number" value="85"></label>
           </form>
@@ -2735,8 +2735,8 @@
       }
 
       function requestTable(items) {
-        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>${esc(bt('cnRqEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="new-request">${esc(bt('cnRqCreate'))}</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('cnRdQueueReminder'))}">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>${bt('cnRqEmptyTitle')}</strong><p>${esc(bt('cnRqEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="new-request">${esc(bt('cnRqCreate'))}</button></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>${bt('rqProgress')}</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">${bt('rqOpen')}</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('cnRdQueueReminder'))}">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
             function requestsView() {
@@ -2760,7 +2760,7 @@
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0b7656;"></span>
               <span>${bt('rqCycle')}</span>
             </div>
-            <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:700;">Zero Data Silos · Full Audit Trail</span>
+            <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:700;" data-tf-demo>Zero Data Silos · Full Audit Trail</span>
           </div>
 
           <div class="dc-lifecycle-strip">
@@ -2847,11 +2847,11 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">${bt('sxPartnerActive')}</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || bt('cnMaterialLabel'); }
@@ -2867,13 +2867,13 @@
             <button class="link-button" data-view="products">${bt('pxBackCatalogue')}</button>
             <div class="eyebrow" style="margin-top:16px;">Intelligence Produit · ${bt('cRef')} ${esc(p.reference || 'AW26-0248')} · Version ${esc(p.version || '1.0')}</div>
             <h1>${esc(p.name || 'Organic Cotton T-Shirt')}</h1>
-            <p>${esc(p.category || 'T-Shirt & Maille')} · ${esc(bt('cnSxQualityIndex'))} <strong>98.4 / 100</strong></p>
+            <p>${esc(p.category || 'T-Shirt & Knitwear')} · ${esc(bt('cnSxQualityIndex'))} <strong>98.4 / 100</strong></p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bt('pxTraceGraph')}</button>
             <button class="btn btn-secondary" data-action="product-dpp-from-detail">${bt('pxPrepareDpp')}</button>
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">📋 Passeport DPP Public</button>
-            <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}">+ Demande de preuve</button>
+            <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}">${bt('pxNewEvidenceReq')}</button>
           </div>
         </div>
 
@@ -2902,7 +2902,7 @@
             </div>
             <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">04. TEINTURE</div>
-              <div class="lineage-step-sub">ZDHC Level 3</div>
+              <div class="lineage-step-sub" data-tf-demo>ZDHC Level 3</div>
             </div>
             <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">05. CONFECTION</div>
@@ -2994,14 +2994,14 @@
               <span class="meta">${detail.identifiers?.length || 0} identifiant(s) actif(s)</span>
             </div>
             ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">${esc(bt('cnCreatedOn'))} ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">${bt('pxSave')}</button></div></form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('pxNoId')}</p></div>`}
-            <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
+            <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>${bt('pdIdValue')}<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
           </div>`;
       }
 
       function supplierDetailView() {
         const supplier = state.selectedSupplier;
         if (!supplier) return `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('sxNotFound')}</strong><button class="btn btn-secondary" data-view="suppliers">${bt('sxBack')}</button></div>`;
-        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">${bt('sxBackArrow')}</button><div class="eyebrow" style="margin-top:20px">${bt('sxSupplier')}</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || bt('cnCountryUnknown'))} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">${bt('sxNewRequest')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || bt('cnNotLoaded'))}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">${bt('sxActivities')}</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">${bt('sxSummary')}</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : `<div class="empty"><p>${esc(bt('cnNoProfile'))}</p></div>`}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
+        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">${bt('sxBackArrow')}</button><div class="eyebrow" style="margin-top:20px">${bt('sxSupplier')}</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || bt('cnCountryUnknown'))} · ${esc(supplier.role || bt('sxRoleActive'))}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">${bt('sxNewRequest')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${bt('sxProfileTitle')}</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || bt('cnNotLoaded'))}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">${bt('sxContact')}</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">${bt('sxActivities')}</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">${bt('sxSummary')}</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : `<div class="empty"><p>${esc(bt('cnNoProfile'))}</p></div>`}</div><div class="card panel"><div class="panel-head"><h2>${bt('sxRequestsTitle')}</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
       }
 
       function capContractPanel() {
@@ -3013,7 +3013,7 @@
       }
 
       function massBalanceConsoleView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('mbAntiFraud')}</div><h1>${bt('mbTitle')}</h1><p>${bt('mbIntro')}</p></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2></div><form id="tc-form"><input class="input" name="certificateNumber" placeholder="TC-2026-0001" required><input class="input" name="certifiedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbRegisterTc')}</button></form></div><div class="card panel"><form id="allocate-tc-form"><input class="input" name="productId" placeholder="UUID produit" required><input class="input" name="allocatedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbAllocate')}</button></form></div></div><div class="card panel" style="margin-top:18px"><h2>Rapprochement produit</h2><form id="reconcile-mass-balance-form"><input class="input" name="productId" placeholder="UUID produit" required><input class="input" name="productionUnits" type="number" required><input class="input" name="unitWeightGrams" type="number" required><input class="input" name="cuttingWastePct" type="number" required></form></div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('mbAntiFraud')}</div><h1>${bt('mbTitle')}</h1><p>${bt('mbIntro')}</p></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2></div><form id="tc-form"><input class="input" name="certificateNumber" placeholder="TC-2026-0001" required><input class="input" name="certifiedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbRegisterTc')}</button></form></div><div class="card panel"><form id="allocate-tc-form"><input class="input" name="productId" placeholder="UUID produit" required><input class="input" name="allocatedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbAllocate')}</button></form></div></div><div class="card panel" style="margin-top:18px"><h2>${bt('mbReconcile')}</h2><form id="reconcile-mass-balance-form"><input class="input" name="productId" placeholder="UUID produit" required><input class="input" name="productionUnits" type="number" required><input class="input" name="unitWeightGrams" type="number" required><input class="input" name="cuttingWastePct" type="number" required></form></div>`;
       }
 
       function complianceContractPanel() {
@@ -3076,7 +3076,7 @@
               sig: 'riskSigIncomplete', extra: c + '%', view: 'products' });
           } else if (p.dataReadiness && p.dataReadiness !== 'ready') {
             rows.push({ sev: 'Medium', cat: 'riskCatProduct', subject: label,
-              sig: 'riskSigNotReady', extra: String(p.dataReadiness).replace(/_/g, ' '), view: 'products' });
+              sig: 'riskSigNotReady', extra: statusLabel(p.dataReadiness), view: 'products' });
           }
         });
 
@@ -3283,7 +3283,7 @@
             <div class="eq-score-card">
               <div class="eq-score-label">${bt('qcCompleteness')}</div>
               <div class="eq-score-num" style="color:#0b7656;">96.8%</div>
-              <div class="eq-score-desc">BOM 100% mass-balance</div>
+              <div class="eq-score-desc" data-tf-demo>BOM 100% mass-balance</div>
             </div>
 
             <div class="eq-score-card">
@@ -3349,8 +3349,8 @@
               <div>
                 <span class="status status-changes_requested" style="margin-right:8px;">WARNING</span>
                 <strong>RSL test report missing for dye lot #089</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>ZDHC_EFFLUENT_TEST_REPORT</code> · Detected by Document AI · Tolerance: 12 months</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Upload the SGS report or follow up with the EcoDye Aquitaine dye house</div>
+                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>ZDHC_EFFLUENT_TEST_REPORT</code> <span data-tf-demo>· Detected by Document AI · Tolerance: 12 months</span></p>
+                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Upload the SGS report or follow up with the EcoDye Aquitaine dye house</div>
               </div>
               <div class="actions">
                 <button class="btn btn-secondary btn-small" onclick="state.view='requests';render();">${bt('qcFollowFacility')}</button>
@@ -3362,8 +3362,8 @@
               <div>
                 <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
                 <strong>GOTS certificate CU-881294 expiring in 42 days</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>CERTIFICATE_EXPIRATION_GATE</code> · Scope: Combed organic cotton</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Receive the GOTS 2027 Scope certificate before customs shipment</div>
+                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>CERTIFICATE_EXPIRATION_GATE</code> <span data-tf-demo>· Scope: Combed organic cotton</span></p>
+                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Receive the GOTS 2027 Scope certificate before customs shipment</div>
               </div>
               <div class="actions">
                 <button class="btn btn-secondary btn-small" onclick="state.view='certifications';render();">${bt('qcManageCert')}</button>
@@ -3373,9 +3373,9 @@
             <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;">
               <div>
                 <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
-                <strong>GPS coordinates of the cutting workshop not locked</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>POLYGON_FACILITY_REGISTRY</code> · Barcelos workshop</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Validate the facility's GPS polygon in the site registry</div>
+                <strong data-tf-demo>GPS coordinates of the cutting workshop not locked</strong>
+                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>POLYGON_FACILITY_REGISTRY</code> <span data-tf-demo>· Barcelos workshop</span></p>
+                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Validate the facility's GPS polygon in the site registry</div>
               </div>
               <div class="actions">
                 <button class="btn btn-secondary btn-small" onclick="state.view='supplyChain';render();">${bt('qcInspectMap')}</button>
@@ -3454,32 +3454,32 @@
             <div class="tc-echelon-card">
               <div class="tc-ech-num">${bt('scTier01')}</div>
               <div class="tc-ech-title">${bt('scFieldFarm')}</div>
-              <div class="tc-ech-model">Identity Preserved</div>
-              <div class="tc-ech-status">✓ İzmir, Türkiye</div>
+              <div class="tc-ech-model" data-tf-demo>Identity Preserved</div>
+              <div class="tc-ech-status" data-tf-demo>✓ İzmir, Türkiye</div>
             </div>
             <div class="tc-echelon-card">
               <div class="tc-ech-num">${bt('scTier02')}</div>
               <div class="tc-ech-title">${bt('scGinningCaps')}</div>
               <div class="tc-ech-model">Segregated</div>
-              <div class="tc-ech-status">✓ Ege Birlik Mill</div>
+              <div class="tc-ech-status" data-tf-demo>✓ Ege Birlik Mill</div>
             </div>
             <div class="tc-echelon-card">
               <div class="tc-ech-num">${bt('scTier03')}</div>
               <div class="tc-ech-title">${bt('scSpinningCaps')}</div>
-              <div class="tc-ech-model">Mass Balance 100%</div>
-              <div class="tc-ech-status">✓ Haute-Vienne, FR</div>
+              <div class="tc-ech-model" data-tf-demo>Mass Balance 100%</div>
+              <div class="tc-ech-status" data-tf-demo>✓ Haute-Vienne, FR</div>
             </div>
             <div class="tc-echelon-card">
               <div class="tc-ech-num">${bt('scTier04')}</div>
               <div class="tc-ech-title">${bt('scKnittingCaps')}</div>
-              <div class="tc-ech-model">Identity Preserved</div>
-              <div class="tc-ech-status">✓ Barcelos, PT</div>
+              <div class="tc-ech-model" data-tf-demo>Identity Preserved</div>
+              <div class="tc-ech-status" data-tf-demo>✓ Barcelos, PT</div>
             </div>
             <div class="tc-echelon-card">
               <div class="tc-ech-num">${bt('scTier05')}</div>
               <div class="tc-ech-title">${bt('scFinishingCaps')}</div>
-              <div class="tc-ech-model">ZDHC Level 3</div>
-              <div class="tc-ech-status">✓ EcoDye Aquitaine</div>
+              <div class="tc-ech-model" data-tf-demo>ZDHC Level 3</div>
+              <div class="tc-ech-status" data-tf-demo>✓ EcoDye Aquitaine</div>
             </div>
             <div class="tc-echelon-card">
               <div class="tc-ech-num">${bt('scTier06')}</div>
@@ -3491,7 +3491,7 @@
               <div class="tc-ech-num">${bt('scTier07')}</div>
               <div class="tc-ech-title">DISTRIBUTION</div>
               <div class="tc-ech-model">DPP CIRPASS</div>
-              <div class="tc-ech-status">✓ Hub Lyon, FR</div>
+              <div class="tc-ech-status" data-tf-demo>✓ Hub Lyon, FR</div>
             </div>
           </div>
 
@@ -3528,49 +3528,49 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td><strong>01. Organic Cotton Ginning</strong></td>
-                    <td>Ege Birlik Ginning Co.</td>
-                    <td>10,500 kg (Seed)</td>
-                    <td>3,570 kg (Raw fibre)</td>
-                    <td>34.0% (Normal)</td>
+                    <td><strong data-tf-demo>01. Organic Cotton Ginning</strong></td>
+                    <td data-tf-demo>Ege Birlik Ginning Co.</td>
+                    <td data-tf-demo>10,500 kg (Seed)</td>
+                    <td data-tf-demo>3,570 kg (Raw fibre)</td>
+                    <td data-tf-demo>34.0% (Normal)</td>
                     <td><code>TC-CU-881294-01</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Segregated</span></td>
+                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ Segregated</span></td>
                   </tr>
                   <tr>
-                    <td><strong>02. Combed Spinning Ne 30/1</strong></td>
-                    <td>Filature de Haute-Vienne</td>
-                    <td>3,570 kg (Raw fibre)</td>
-                    <td>3,285 kg (Bobbins)</td>
-                    <td>92.0% (Yarn yield)</td>
+                    <td><strong data-tf-demo>02. Combed Spinning Ne 30/1</strong></td>
+                    <td data-tf-demo>Filature de Haute-Vienne</td>
+                    <td data-tf-demo>3,570 kg (Raw fibre)</td>
+                    <td data-tf-demo>3,285 kg (Bobbins)</td>
+                    <td data-tf-demo>92.0% (Yarn yield)</td>
                     <td><code>TC-CU-881294-02</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Identity Preserved</span></td>
+                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ Identity Preserved</span></td>
                   </tr>
                   <tr>
-                    <td><strong>03. Jersey Knitting 180g</strong></td>
-                    <td>Barcelos Knitting Mill</td>
-                    <td>3,285 kg (Bobbins)</td>
-                    <td>3,150 kg (Rolls)</td>
-                    <td>95.9% (Normal knit)</td>
+                    <td><strong data-tf-demo>03. Jersey Knitting 180g</strong></td>
+                    <td data-tf-demo>Barcelos Knitting Mill</td>
+                    <td data-tf-demo>3,285 kg (Bobbins)</td>
+                    <td data-tf-demo>3,150 kg (Rolls)</td>
+                    <td data-tf-demo>95.9% (Normal knit)</td>
                     <td><code>BL-PT-2026-904</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Sealed</span></td>
+                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ Sealed</span></td>
                   </tr>
                   <tr>
-                    <td><strong>04. Organic Dyeing & Washing</strong></td>
-                    <td>EcoDye Aquitaine</td>
-                    <td>3,150 kg (Rolls)</td>
-                    <td>3,085 kg (Dyed)</td>
-                    <td>97.9% (ZDHC fixation)</td>
+                    <td><strong data-tf-demo>04. Organic Dyeing & Washing</strong></td>
+                    <td data-tf-demo>EcoDye Aquitaine</td>
+                    <td data-tf-demo>3,150 kg (Rolls)</td>
+                    <td data-tf-demo>3,085 kg (Dyed)</td>
+                    <td data-tf-demo>97.9% (ZDHC fixation)</td>
                     <td><code>ZDHC-LOT-089</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Validated</span></td>
+                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ Validated</span></td>
                   </tr>
                   <tr>
-                    <td><strong>05. Cutting & Assembly</strong></td>
+                    <td><strong data-tf-demo>05. Cutting & Assembly</strong></td>
                     <td>Atelier Braga & Co</td>
-                    <td>3,085 kg (Finished fabric)</td>
-                    <td>16,200 finished pieces</td>
-                    <td>185g / average piece</td>
+                    <td data-tf-demo>3,085 kg (Finished fabric)</td>
+                    <td data-tf-demo>16,200 finished pieces</td>
+                    <td data-tf-demo>185g / average piece</td>
                     <td><code>TC-CU-881294-05</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ 100% reconciled</span></td>
+                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ 100% reconciled</span></td>
                   </tr>
                 </tbody>
               </table>
@@ -3636,8 +3636,8 @@
             </div>
             <div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <span class="eyebrow">Profil Actif : ${esc(dpp.profileKey || 'textile_readiness_mvp')} v${esc(dpp.profileVersion || '1.0')}</span>
-                <span class="meta">${esc(dpp.metRequirements)} / ${esc(dpp.totalRequirements)} exigences satisfaites</span>
+                <span class="eyebrow">${bt('dpActiveProfile')} : <code>${esc(dpp.profileKey || 'textile_readiness_mvp')}</code> v${esc(dpp.profileVersion || '1.0')}</span>
+                <span class="meta">${esc(dpp.metRequirements)} / ${esc(dpp.totalRequirements)} ${bt('dpReqsMet')}</span>
               </div>
               <div class="progress" style="height:10px;margin-bottom:12px"><span style="width:${pct(dpp.completionScore)}%;background:${scoreColor}"></span></div>
               <p class="meta" style="margin:0;line-height:1.5">${bt('dpMethodology')}</p>
@@ -3658,7 +3658,7 @@
                   <h2>${bt('dpRemainingReqs')} (${dpp.missingFields.length})</h2>
                   <p class="meta" style="margin:4px 0 0">${bt('dpGapsIntro')}</p>
                 </div>
-                <span class="status status-changes_requested">${dpp.blockingCount} bloquant(s)</span>
+                <span class="status status-changes_requested">${dpp.blockingCount} ${bt('dpBlockingN')}</span>
               </div>
               <div class="item-list">
                 ${dpp.missingFields.map((m) => {
@@ -3862,7 +3862,7 @@
         if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdSupplierOnboarding')}</div><h2>${bt('mdBulkInvite')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdRequiredColumns')} <code>email</code>, <code>legalName</code>${bt('mdInviteNote')}</p><label class="field-full">${bt('mdCsvFile')}<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdCreateValidInvites')}</button></div>${supplierImportPreview()}</div></div>`;
         if (type === 'catalog-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h2>${bt('mdImportCatalogue')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdImportNote')}</p><div class="notice" style="margin:14px 0">${bt('mdRequiredColumns')} <code>reference</code>, <code>name</code>${bt('mdExtraColumnsNote')}</div><label class="field-full">${bt('mdCsvFile')}<input class="input" id="catalog-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="catalog-import-content" rows="8" placeholder="reference,name,category,sku\nAT-NEW-001,Sample product,T-shirt,SKU-001">${esc(state.catalogImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-catalog-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-catalog-import" ${state.catalogImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdImportValidRows')}</button></div>${catalogImportPreview()}</div></div>`;
         if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdEcosystem')}</div><h2>${bt('mdInviteSupplier')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdActivationNote')}</p><form id="supplier-form"><div class="form-grid"><label class="field-full">${bt('mdBusinessEmail')}<input class="input" name="email" type="email" required placeholder="contact@supplier.com"></label><label>${bt('mdLegalName')}<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>${bt('mdDisplayName')}<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>${bt('mdCountry')}<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>${bt('mdBrandOrg')}<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdSendInvite')}</button></div></form></div></div>`;
-        if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>${bt('mdCreateAuditProtocol')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">${bt('mdQuestionnaireTitle')}<input class="input" name="title" required placeholder="${bt('mdPhAuditTitle')}"></label><label>${bt('mdUniqueSlug')}<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>${bt('mdEsgCategory')}<select class="select" name="category"><option value="Chimie & Rejets">${bt('mdCatChemistry')}</option><option value="${esc(bt('cnGrpMaterials'))}">${bt('mdCatMaterials')}</option><option value="${esc(bt('cnGrpSocial'))}">${bt('mdCatSocial')}</option><option value="Empreinte Carbone">${bt('mdCatCarbon')}</option></select></label><label class="field-full">${bt('mdAuditDescription')}<textarea class="textarea" name="description" rows="3" required placeholder="${bt('mdPhAuditDesc')}"></textarea></label><label>${bt('mdFirstFieldType')}<select class="select" name="firstFieldType"><option value="document_proof">${bt('mdFieldDocProof')}</option><option value="composition_table">${bt('mdFieldComposition')}</option><option value="facility_select">${bt('mdFieldSitePicker')}</option></select></label><label>${bt('mdRequiredField')}<select class="select" name="required"><option value="true">${bt('mdYesBlocking')}</option><option value="false">${bt('mdOptional')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdPublishQuestionnaire')}</button></div></form></div></div>`;
+        if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>${bt('mdCreateAuditProtocol')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">${bt('mdQuestionnaireTitle')}<input class="input" name="title" required placeholder="${bt('mdPhAuditTitle')}"></label><label>${bt('mdUniqueSlug')}<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>${bt('mdEsgCategory')}<select class="select" name="category"><option value="Chemistry &amp; Effluents">${bt('mdCatChemistry')}</option><option value="${esc(bt('cnGrpMaterials'))}">${bt('mdCatMaterials')}</option><option value="${esc(bt('cnGrpSocial'))}">${bt('mdCatSocial')}</option><option value="Empreinte Carbone">${bt('mdCatCarbon')}</option></select></label><label class="field-full">${bt('mdAuditDescription')}<textarea class="textarea" name="description" rows="3" required placeholder="${bt('mdPhAuditDesc')}"></textarea></label><label>${bt('mdFirstFieldType')}<select class="select" name="firstFieldType"><option value="document_proof">${bt('mdFieldDocProof')}</option><option value="composition_table">${bt('mdFieldComposition')}</option><option value="facility_select">${bt('mdFieldSitePicker')}</option></select></label><label>${bt('mdRequiredField')}<select class="select" name="required"><option value="true">${bt('mdYesBlocking')}</option><option value="false">${bt('mdOptional')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdPublishQuestionnaire')}</button></div></form></div></div>`;
         if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdCollection')}</div><h2>${bt('mdNewDataRequest')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">${bt('mdTitle')}<input class="input" name="title" required placeholder="${bt('mdPhRequestTitle')}"></label><label>${bt('sxSupplier')}<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label class="field-full">${bt('mdLinkedProduct')}<select class="select" name="productId"><option value="">${bt('mdNoLinkedProduct')}</option>${state.products.map((p) => `<option value="${esc(p.id)}" ${state.modalProductId === p.id ? 'selected' : ''}>${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label><label>${bt('mdDueDate')}<input class="input" name="dueAt" type="date"></label><label>${bt('mdBrandOrg')}<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateAndPrepare')}</button></div></form></div></div>`;
         if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdAddNode')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">${bt('mdNodeLabel')}<input class="input" name="label" required placeholder="${bt('mdPhNodeLabel')}"></label><label>${bt('mdNodeType')}<select class="select" name="nodeType" required><option value="process">${bt('mdProcessTransform')}</option><option value="site">${bt('mdSupplierSite')}</option><option value="material">${bt('mdRawMaterial')}</option><option value="organization">${bt('mdPartnerOrg')}</option></select></label><label>${bt('mdTextileProcess')}<select class="select" name="processCode"><option value="">${bt('mdNoneOther')}</option><option value="ginning">${bt('mdGinning')}</option><option value="spinning">${bt('mdSpinning')}</option><option value="weaving">${bt('mdWeaving')}</option><option value="knitting">${bt('mdKnitting')}</option><option value="dyeing">${bt('mdDyeing')}</option><option value="finishing">${bt('mdFinishing')}</option><option value="cutting">${bt('mdCutting')}</option><option value="sewing">${bt('mdSewing')}</option><option value="assembly">${bt('mdAssembly')}</option><option value="packaging">${bt('mdPackaging')}</option></select></label><label class="field-full">${bt('mdLinkedMaterial')}<select class="select" name="materialId"><option value="">${bt('mdNone')}</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">${bt('mdSupplierOrg')}<select class="select" name="organizationId"><option value="">${bt('mdNone')}</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdAddNodeCta')}</button></div></form></div></div>`;
         if (type === 'new-chain-link') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdLinkTwoSteps')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-link-form"><div class="form-grid"><label class="field-full">${bt('mdSourceStep')}<select class="select" name="sourceNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label class="field-full">${bt('mdTargetStep')}<select class="select" name="targetNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label>${bt('mdRelationType')}<select class="select" name="linkType" required><option value="next_step">${bt('mdRelNextStep')}</option><option value="transformed_at">${bt('mdRelTransformedAt')}</option><option value="manufactured_at">${bt('mdRelManufacturedAt')}</option><option value="sourced_from">${bt('mdRelSourcedFrom')}</option><option value="contains">${bt('mdRelContains')}</option></select></label><label>${bt('mdSequenceOrder')}<input class="input" name="sequenceNumber" type="number" min="1" step="1" placeholder="1"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateLink')}</button></div></form></div></div>`;
@@ -4059,7 +4059,7 @@
         state.schemaBindings = (await api(`/api/schema-bindings?subjectType=product&subjectId=${encodeURIComponent(id)}`)).bindings || [];
         render();
       }
-      async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: 'Partenaire actif' }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
+      async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: bt('sxPartnerActive') }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
       async function saveProduct(form) { const data = Object.fromEntries(new FormData(form)); const body = { ...data, sizeRange: String(data.sizeRange || '').split(',').map((x) => x.trim()).filter(Boolean), weightGrams: data.weightGrams ? Number(data.weightGrams) : null }; if (state.demo) { Object.assign(state.selectedProductDetail.product, body); state.selectedProduct = state.selectedProductDetail.product; notify('Produit mis à jour en mode démonstration.'); render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`, { method: 'PATCH', body: JSON.stringify(body) }); await sync(); notify('Données produit enregistrées.'); render(); }
       async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify(bt('cnNRevisionDemo')); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify(bt('cnNRevisionCreated')); render(); }
       async function saveSchemaBinding(form) {
@@ -4257,7 +4257,7 @@
           { id: 'node-raw', node_type: 'material', label: 'GOTS-certified organic cotton', process_code: 'ginning', status: 'documented', material_name: 'Organic cotton', source_document_id: 'demo-doc-1' },
           { id: 'node-spin', node_type: 'process', label: 'Spinning · high-tenacity combed yarn 30/1', process_code: 'spinning', status: 'documented', source_document_id: 'demo-doc-2' },
           { id: 'node-weav', node_type: 'process', label: 'Jersey knitting & OEKO-TEX certified dyeing', process_code: 'weaving', status: 'verified_by_reviewer', source_document_id: 'demo-doc-3' },
-          { id: 'node-site', node_type: 'site', label: 'Atelier de Confection · Nhãn Textile (Barcelos, PT)', process_code: 'sewing', status: 'verified_by_reviewer', site_name: 'Nhãn Textile Factory', site_country: 'PT', site_city: 'Barcelos' },
+          { id: 'node-site', node_type: 'site', label: 'Garment Workshop · Nhãn Textile (Barcelos, PT)', process_code: 'sewing', status: 'verified_by_reviewer', site_name: 'Nhãn Textile Factory', site_country: 'PT', site_city: 'Barcelos' },
           { id: 'node-prod', node_type: 'product', label: `Produit fini · ${p?.name || 'T-Shirt Essentiel'}`, process_code: 'packaging', status: 'documented' },
         ];
         const links = [
@@ -4448,7 +4448,7 @@
                 { key: 'product.name', labelKey: 'dpItemCommercialName', met: true, blocking: true },
                 { key: 'product.description', labelKey: 'dpItemDetailedDesc', met: true, blocking: true },
                 { key: 'product.category', labelKey: 'dpItemTextileCategory', met: true, blocking: true },
-                { key: 'product.country_of_manufacture', label: 'Pays de confection (code ISO-2)', met: true, blocking: true },
+                { key: 'product.country_of_manufacture', label: 'Country of manufacture (ISO-2 code)', met: true, blocking: true },
                 { key: 'product.data_ready', labelKey: 'dpOverallPrep', met: true, blocking: true },
               ],
             },
