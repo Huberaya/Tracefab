@@ -2790,5 +2790,68 @@
       "overallLabel": "Global",
       "delta": "ptos desde o primeiro snapshot"
     }
+  },
+  "supplyGraph": {
+    "summary": {
+      "nodes": "Nós",
+      "links": "Ligações",
+      "documentation": "Taxa de documentação",
+      "stagesCovered": "Etapas cobertas",
+      "empty": "Ainda nenhuma cadeia de abastecimento documentada para este produto.",
+      "emptyHint": "Gere uma cadeia base ou adicione nós e ligações manualmente.",
+      "complete": "Cadeia completa (da matéria ao produto)"
+    },
+    "graph": {
+      "title": "Grafo da cadeia",
+      "hint": "Zoom com a roda, deslocação arrastando, clique num nó para abrir o seu dossier.",
+      "filters": "Tipos de nó",
+      "documented": "Apenas documentados",
+      "reset": "Repor a vista",
+      "empty": "Nenhum nó para apresentar com os filtros atuais."
+    },
+    "types": {
+      "material": "Material",
+      "process": "Processo",
+      "site": "Site",
+      "organization": "Organização",
+      "product": "Produto"
+    },
+    "dossier": {
+      "title": "Dossier do nó",
+      "select": "Selecione um nó no grafo para abrir o seu dossier.",
+      "label": "Rótulo",
+      "type": "Tipo",
+      "stage": "Etapa",
+      "status": "Estado",
+      "process": "Processo",
+      "site": "Site",
+      "org": "Organização fornecedora",
+      "evidence": "Prova de origem",
+      "viewEvidence": "Abrir na Central de evidências",
+      "openSupplier": "Abrir o fornecedor",
+      "openQuality": "Abrir a vista de qualidade",
+      "noEvidence": "Nenhuma prova de origem associada.",
+      "metadata": "Metadados"
+    },
+    "map": {
+      "title": "Mapa geográfico dos sites",
+      "note": "Sites com coordenadas registadas no cadastro de fornecedores; os fluxos seguem a sequência da cadeia.",
+      "empty": "Ainda nenhum site com coordenadas nesta cadeia.",
+      "sites": "site(s) localizado(s)",
+      "flows": "fluxo(s) desenhado(s)",
+      "noCoords": "nó(s) que referenciam um site sem coordenadas"
+    },
+    "stages": {
+      "title": "Etapas cobertas",
+      "tier4": "Matérias-primas",
+      "tier3": "Fiação",
+      "tier2": "Tecido",
+      "tier1": "Confeção",
+      "tier0": "Produto",
+      "other": "Outros nós"
+    },
+    "export": {
+      "cta": "Exportar a cadeia (JSON)"
+    }
   }
 }

@@ -2790,5 +2790,68 @@
       "overallLabel": "Global",
       "delta": "ptos desde la primera instantánea"
     }
+  },
+  "supplyGraph": {
+    "summary": {
+      "nodes": "Nodos",
+      "links": "Enlaces",
+      "documentation": "Tasa de documentación",
+      "stagesCovered": "Etapas cubiertas",
+      "empty": "Aún no hay ninguna cadena de suministro documentada para este producto.",
+      "emptyHint": "Genere una cadena base o añada nodos y enlaces manualmente.",
+      "complete": "Cadena completa (del material al producto)"
+    },
+    "graph": {
+      "title": "Grafo de la cadena",
+      "hint": "Zoom con la rueda, desplazamiento arrastrando, clic en un nodo para abrir su dossier.",
+      "filters": "Tipos de nodo",
+      "documented": "Solo documentados",
+      "reset": "Restablecer la vista",
+      "empty": "Ningún nodo que mostrar con los filtros actuales."
+    },
+    "types": {
+      "material": "Material",
+      "process": "Proceso",
+      "site": "Sitio",
+      "organization": "Organización",
+      "product": "Producto"
+    },
+    "dossier": {
+      "title": "Dossier del nodo",
+      "select": "Seleccione un nodo en el grafo para abrir su dossier.",
+      "label": "Etiqueta",
+      "type": "Tipo",
+      "stage": "Etapa",
+      "status": "Estado",
+      "process": "Proceso",
+      "site": "Sitio",
+      "org": "Organización proveedora",
+      "evidence": "Prueba de origen",
+      "viewEvidence": "Abrir en el Centro de evidencias",
+      "openSupplier": "Abrir el proveedor",
+      "openQuality": "Abrir la vista de calidad",
+      "noEvidence": "Ninguna prueba de origen vinculada.",
+      "metadata": "Metadatos"
+    },
+    "map": {
+      "title": "Mapa geográfico de sitios",
+      "note": "Sitios con coordenadas registradas en el registro de proveedores; los flujos siguen la secuencia de la cadena.",
+      "empty": "Aún ningún sitio con coordenadas en esta cadena.",
+      "sites": "sitio(s) localizado(s)",
+      "flows": "flujo(s) trazado(s)",
+      "noCoords": "nodo(s) que referencian un sitio sin coordenadas"
+    },
+    "stages": {
+      "title": "Etapas cubiertas",
+      "tier4": "Materias primas",
+      "tier3": "Hilatura",
+      "tier2": "Tejido",
+      "tier1": "Confección",
+      "tier0": "Producto",
+      "other": "Otros nodos"
+    },
+    "export": {
+      "cta": "Exportar la cadena (JSON)"
+    }
   }
 }

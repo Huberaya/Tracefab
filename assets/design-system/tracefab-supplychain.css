@@ -1,0 +1,158 @@
+/* ==========================================================================
+   Chantier 11 — Supply Chain Graph & Map : styles du graphe interactif
+   (zoom/pan/filtres), de la carte des sites et du dossier de noeud.
+   Prefixe .scg- pour eviter toute collision avec les vues existantes.
+   ========================================================================== */
+
+.scg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.scg-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scg-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  background: #fff;
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.scg-filter input { accent-color: var(--green); }
+.scg-filter.scg-active { border-color: var(--green); color: var(--green-dark, #07523e); background: #f1f7f4; }
+
+.scg-zoom {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.scg-zoom button {
+  min-width: 38px;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  color: #17231f;
+}
+
+.scg-graph-wrap {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fbfdfb;
+  position: relative;
+}
+
+.scg-svg {
+  display: block;
+  width: 100%;
+  height: 430px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.scg-svg.scg-dragging { cursor: grabbing; }
+
+.scg-link {
+  stroke: #b9c6bd;
+  stroke-width: 1.6;
+  fill: none;
+}
+
+.scg-link.scg-documented { stroke: #0b7656; }
+
+.scg-node { cursor: pointer; }
+.scg-node circle { stroke: #fff; stroke-width: 2; }
+.scg-node.scg-selected circle { stroke: #17231f; stroke-width: 3; }
+.scg-node text {
+  font-size: 11px;
+  fill: #17231f;
+  pointer-events: none;
+}
+
+.scg-node[data-type="material"] circle { fill: #8a5a2b; }
+.scg-node[data-type="process"] circle { fill: #1d4ed8; }
+.scg-node[data-type="site"] circle { fill: #0b7656; }
+.scg-node[data-type="organization"] circle { fill: #7c3aed; }
+.scg-node[data-type="product"] circle { fill: #17231f; }
+.scg-node.scg-declared circle { opacity: 0.45; }
+
+.scg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.scg-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.scg-dossier {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 18px;
+}
+
+.scg-dossier dl { display: grid; gap: 10px; margin: 12px 0 0; }
+.scg-dossier dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.scg-dossier dd { margin: 3px 0 0; font-size: 13px; }
+
+.scg-map-svg {
+  display: block;
+  width: 100%;
+  height: 320px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(160deg, #f3f8f4, #e9f2ec);
+}
+
+.scg-map-flow {
+  stroke: #0b7656;
+  stroke-width: 1.4;
+  stroke-dasharray: 5 4;
+  fill: none;
+  opacity: 0.75;
+}
+
+.scg-map-dot { fill: #0b7656; stroke: #fff; stroke-width: 1.6; cursor: pointer; }
+.scg-map-dot.scg-nogeo { fill: #b9c6bd; }
+
+.scg-map-label { font-size: 10.5px; fill: #17231f; pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scg-svg, .scg-map-svg { transition: none !important; }
+}
+
+@media (max-width: 720px) {
+  .scg-svg { height: 320px; }
+  .scg-map-svg { height: 240px; }
+  .scg-toolbar { flex-direction: column; align-items: stretch; }
+}

@@ -2790,5 +2790,68 @@
       "overallLabel": "Gesamt",
       "delta": "Punkte seit dem ersten Snapshot"
     }
+  },
+  "supplyGraph": {
+    "summary": {
+      "nodes": "Knoten",
+      "links": "Verbindungen",
+      "documentation": "Dokumentationsrate",
+      "stagesCovered": "Abgedeckte Stufen",
+      "empty": "Für dieses Produkt ist noch keine Lieferkette dokumentiert.",
+      "emptyHint": "Erzeugen Sie eine Basiskette oder fügen Sie Knoten und Verbindungen manuell hinzu.",
+      "complete": "Vollständige Kette (Material bis Produkt)"
+    },
+    "graph": {
+      "title": "Lieferketten-Graph",
+      "hint": "Zoomen mit dem Mausrad, Verschieben durch Ziehen, Klick auf einen Knoten öffnet dessen Dossier.",
+      "filters": "Knotentypen",
+      "documented": "Nur dokumentierte",
+      "reset": "Ansicht zurücksetzen",
+      "empty": "Kein Knoten für die aktuellen Filter anzuzeigen."
+    },
+    "types": {
+      "material": "Material",
+      "process": "Verfahren",
+      "site": "Standort",
+      "organization": "Organisation",
+      "product": "Produkt"
+    },
+    "dossier": {
+      "title": "Knoten-Dossier",
+      "select": "Wählen Sie einen Knoten im Graphen, um sein Dossier zu öffnen.",
+      "label": "Bezeichnung",
+      "type": "Typ",
+      "stage": "Stufe",
+      "status": "Status",
+      "process": "Verfahren",
+      "site": "Standort",
+      "org": "Lieferantenorganisation",
+      "evidence": "Quellnachweis",
+      "viewEvidence": "Im Nachweiszentrum öffnen",
+      "openSupplier": "Lieferanten öffnen",
+      "openQuality": "Qualitätsansicht öffnen",
+      "noEvidence": "Kein Quellnachweis verknüpft.",
+      "metadata": "Metadaten"
+    },
+    "map": {
+      "title": "Geografische Karte der Standorte",
+      "note": "Standorte mit im Lieferantenregister hinterlegten Koordinaten; Flüsse folgen der Kettenreihenfolge.",
+      "empty": "Noch kein Standort mit Koordinaten in dieser Kette.",
+      "sites": "Standort(e) verortet",
+      "flows": "Fluss/Flüsse gezeichnet",
+      "noCoords": "Knoten verweisen auf einen Standort ohne Koordinaten"
+    },
+    "stages": {
+      "title": "Abgedeckte Stufen",
+      "tier4": "Rohstoffe",
+      "tier3": "Spinnerei",
+      "tier2": "Stoff",
+      "tier1": "Konfektion",
+      "tier0": "Produkt",
+      "other": "Weitere Knoten"
+    },
+    "export": {
+      "cta": "Kette exportieren (JSON)"
+    }
   }
 }

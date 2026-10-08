@@ -2790,5 +2790,68 @@
       "overallLabel": "Globale",
       "delta": "punti dal primo snapshot"
     }
+  },
+  "supplyGraph": {
+    "summary": {
+      "nodes": "Nodi",
+      "links": "Collegamenti",
+      "documentation": "Tasso di documentazione",
+      "stagesCovered": "Fasi coperte",
+      "empty": "Nessuna catena di fornitura documentata per questo prodotto.",
+      "emptyHint": "Genera una catena di base oppure aggiungi nodi e collegamenti manualmente.",
+      "complete": "Catena completa (dal materiale al prodotto)"
+    },
+    "graph": {
+      "title": "Grafo della catena",
+      "hint": "Zoom con la rotella, spostamento trascinando, clic su un nodo per aprirne il dossier.",
+      "filters": "Tipi di nodo",
+      "documented": "Solo documentati",
+      "reset": "Reimposta la vista",
+      "empty": "Nessun nodo da visualizzare con i filtri attuali."
+    },
+    "types": {
+      "material": "Materiale",
+      "process": "Processo",
+      "site": "Sito",
+      "organization": "Organizzazione",
+      "product": "Prodotto"
+    },
+    "dossier": {
+      "title": "Dossier del nodo",
+      "select": "Seleziona un nodo nel grafo per aprirne il dossier.",
+      "label": "Etichetta",
+      "type": "Tipo",
+      "stage": "Fase",
+      "status": "Stato",
+      "process": "Processo",
+      "site": "Sito",
+      "org": "Organizzazione fornitrice",
+      "evidence": "Prova di origine",
+      "viewEvidence": "Apri nel Centro prove",
+      "openSupplier": "Apri il fornitore",
+      "openQuality": "Apri la vista qualità",
+      "noEvidence": "Nessuna prova di origine collegata.",
+      "metadata": "Metadati"
+    },
+    "map": {
+      "title": "Mappa geografica dei siti",
+      "note": "Siti con coordinate registrate nell'anagrafica fornitori; i flussi seguono la sequenza della catena.",
+      "empty": "Nessun sito con coordinate in questa catena.",
+      "sites": "sito/i localizzato/i",
+      "flows": "flusso/i tracciato/i",
+      "noCoords": "nodo/i che referenziano un sito senza coordinate"
+    },
+    "stages": {
+      "title": "Fasi coperte",
+      "tier4": "Materie prime",
+      "tier3": "Filatura",
+      "tier2": "Tessuto",
+      "tier1": "Confezione",
+      "tier0": "Prodotto",
+      "other": "Altri nodi"
+    },
+    "export": {
+      "cta": "Esporta la catena (JSON)"
+    }
   }
 }

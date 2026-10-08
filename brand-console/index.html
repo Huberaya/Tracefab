@@ -989,6 +989,7 @@
   <link rel="stylesheet" href="/assets/design-system/tracefab-shell.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-command.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-intel.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-supplychain.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
 </head>
 <body>
@@ -1033,6 +1034,10 @@
         qualitySeverityFilter: 'all',
         supplyChain: null,
         selectedSupplyChainProduct: null,
+        supplyChainMap: null,
+        chainSelectedNode: null,
+        scgFilters: null,
+        scgView: null,
         dpp: null,
         selectedDppProduct: null,
         modal: null,
@@ -3741,164 +3746,219 @@
         `;
       }
 
-            function supplyChainView() {
-        const p = state.selectedSupplyChainProduct || state.products[0] || { name: 'Organic Cotton T-Shirt', reference: 'AW26-0248' };
-        const sc = state.supplyChain || { graph: { nodes: [], links: [] }, summary: { nodeCount: 14, linkCount: 13, documentationRate: 98, stagesCoveredCount: 7 }, stages: { tier4_raw_materials: [], tier3_spinning: [], tier2_fabric: [], tier1_assembly: [], tier0_product: [], other_nodes: [] } };
-        const summary = sc.summary || { nodeCount: 14, linkCount: 13, documentationRate: 98, stagesCoveredCount: 7 };
+        /* Chantier 11 — Supply Chain Graph & Map : vue reelle du graphe de
+           tracabilite. Alimentee par GET /api/products/:id/supply-chain
+           (noeuds, liens, etapes, resume) et /supply-chain/map (sites avec
+           coordonnees). Graphe SVG interactif (zoom, deplacement, filtres
+           par type et documentation), selection de noeud vers un dossier
+           (preuve, fournisseur, qualite), carte geographique des sites et
+           de leurs flux, tableau d etapes reelles. Tout le contenu simule
+           de l ancienne vue (badge de chaine de garde « certifiee » avec
+           pourcentage de reconciliation invente, sept echelons codes en dur,
+           table de reconciliation massique fictive) a ete supprime. */
+        const sg = (key, fb) => (window.TF_I18N ? window.TF_I18N.t('supplyGraph.' + key, fb) : fb);
+        const SCG_TYPES = ['material', 'process', 'site', 'organization', 'product'];
+        const SCG_STAGE_ORDER = ['tier4_raw_materials', 'tier3_spinning', 'tier2_fabric', 'tier1_assembly', 'tier0_product', 'other_nodes'];
+        const scgIsDocumented = (status) => status && status !== 'declared';
+        const scgNodeStage = (stages, node) => {
+          for (const key of SCG_STAGE_ORDER) {
+            if ((stages?.[key] || []).some((n) => n.id === node.id)) return key;
+          }
+          return 'other_nodes';
+        };
+        const scgStageLabel = (key) => sg('stages.' + key.replace('tier4_raw_materials', 'tier4').replace('tier3_spinning', 'tier3').replace('tier2_fabric', 'tier2').replace('tier1_assembly', 'tier1').replace('tier0_product', 'tier0').replace('other_nodes', 'other'), key);
+
+        function scgLayout(stages, nodes) {
+          const positions = new Map();
+          SCG_STAGE_ORDER.forEach((stageKey, col) => {
+            const column = (stages?.[stageKey] || []).filter((n) => nodes.some((m) => m.id === n.id));
+            column.forEach((node, row) => {
+              positions.set(node.id, { x: 100 + col * 165, y: 60 + row * 72 });
+            });
+          });
+          return positions;
+        }
+
+        function supplyGraphPanel(sc) {
+          const nodes = sc.graph?.nodes || [];
+          const links = sc.graph?.links || [];
+          const filters = state.scgFilters || { types: [...SCG_TYPES], documentedOnly: false };
+          const visible = nodes.filter((n) => filters.types.includes(n.node_type) && (!filters.documentedOnly || scgIsDocumented(n.status)));
+          const visibleIds = new Set(visible.map((n) => n.id));
+          const visibleLinks = links.filter((l) => visibleIds.has(l.source_node_id) && visibleIds.has(l.target_node_id));
+          const positions = scgLayout(sc.stages, visible);
+          const selected = state.chainSelectedNode || null;
+
+          const nodeEls = visible.map((n) => {
+            const pos = positions.get(n.id);
+            if (!pos) return '';
+            const documented = scgIsDocumented(n.status);
+            return `<g class="scg-node${selected === n.id ? ' scg-selected' : ''}${documented ? '' : ' scg-declared'}" data-type="${esc(n.node_type)}" data-node-id="${esc(n.id)}" transform="translate(${pos.x},${pos.y})" role="button" tabindex="0" aria-label="${esc(n.label)}">
+              <circle r="13"></circle>
+              <text y="-20" text-anchor="middle">${esc((n.label || '').slice(0, 34))}${(n.label || '').length > 34 ? '…' : ''}</text>
+            </g>`;
+          }).join('');
+          const linkEls = visibleLinks.map((l) => {
+            const a = positions.get(l.source_node_id);
+            const b = positions.get(l.target_node_id);
+            if (!a || !b) return '';
+            const mid = (a.x + b.x) / 2;
+            return `<path class="scg-link${scgIsDocumented(l.status) ? ' scg-documented' : ''}" d="M ${a.x} ${a.y} C ${mid} ${a.y}, ${mid} ${b.y}, ${b.x} ${b.y}" data-link-id="${esc(l.id)}"></path>`;
+          }).join('');
+
+          return `<div class="card panel">
+            <div class="panel-head"><h2>${sg('graph.title', 'Supply chain graph')}</h2><span class="meta">${sg('graph.hint', '')}</span></div>
+            <div class="scg-toolbar">
+              <div class="scg-filters" aria-label="${sg('graph.filters', 'Node types')}">
+                ${SCG_TYPES.map((t) => `<label class="scg-filter${filters.types.includes(t) ? ' scg-active' : ''}"><input type="checkbox" data-scg-type="${t}" ${filters.types.includes(t) ? 'checked' : ''}>${esc(sg('types.' + t, t))}</label>`).join('')}
+                <label class="scg-filter${filters.documentedOnly ? ' scg-active' : ''}"><input type="checkbox" data-scg-documented ${filters.documentedOnly ? 'checked' : ''}>${sg('graph.documented', 'Documented only')}</label>
+              </div>
+              <div class="scg-zoom">
+                <button type="button" data-scg-zoom="1.25" aria-label="Zoom +">+</button>
+                <button type="button" data-scg-zoom="0.8" aria-label="Zoom -">−</button>
+                <button type="button" data-scg-reset>⟳</button>
+                <button type="button" data-action="export-supply-chain" title="${sg('export.cta', '')}">⤓</button>
+              </div>
+            </div>
+            <div class="scg-graph-wrap">
+              ${visible.length ? `<svg class="scg-svg" id="scg-svg" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet">
+                <g id="scg-viewport" transform="translate(${state.scgView?.x ?? 0},${state.scgView?.y ?? 0}) scale(${state.scgView?.k ?? 1})">
+                  ${linkEls}
+                  ${nodeEls}
+                </g>
+              </svg>` : `<div class="empty"><p>${nodes.length ? sg('graph.empty', '') : sg('summary.empty', '')}</p>${nodes.length ? '' : `<p class="meta">${sg('summary.emptyHint', '')}</p>`}</div>`}
+              <div class="scg-legend">
+                ${SCG_TYPES.map((t) => `<span><i style="background:${{material:'#8a5a2b',process:'#1d4ed8',site:'#0b7656',organization:'#7c3aed',product:'#17231f'}[t]}"></i>${esc(sg('types.' + t, t))}</span>`).join('')}
+                <span>— ${sg('graph.documented', '')} : trait plein</span>
+              </div>
+            </div>
+          </div>`;
+        }
+
+        function supplyNodeDossier(sc, product) {
+          const nodes = sc.graph?.nodes || [];
+          const links = sc.graph?.links || [];
+          const node = nodes.find((n) => n.id === state.chainSelectedNode) || null;
+          if (!node) return `<div class="scg-dossier"><div class="panel-head"><h2>${sg('dossier.title', 'Node dossier')}</h2></div><p class="meta">${sg('dossier.select', '')}</p></div>`;
+          const stage = scgNodeStage(sc.stages, node);
+          const supplier = node.organization_id ? suppliers().find((s) => s.organization_id === node.organization_id) : null;
+          const evidenceIds = [node.source_document_id, ...links.filter((l) => l.source_node_id === node.id || l.target_node_id === node.id).map((l) => l.evidence_document_id)].filter(Boolean);
+          const metadata = node.metadata && Object.keys(node.metadata).length ? node.metadata : null;
+          return `<div class="scg-dossier">
+            <div class="panel-head"><h2>${sg('dossier.title', 'Node dossier')}</h2>${status(node.status || 'declared')}</div>
+            <dl>
+              <div><dt>${sg('dossier.label', 'Label')}</dt><dd><strong>${esc(node.label || '—')}</strong></dd></div>
+              <div><dt>${sg('dossier.type', 'Type')}</dt><dd>${esc(sg('types.' + node.node_type, node.node_type))} · ${sg('dossier.stage', 'Stage')} : ${esc(scgStageLabel(stage))}</dd></div>
+              ${node.process_code ? `<div><dt>${sg('dossier.process', 'Process')}</dt><dd><code>${esc(node.process_code)}</code></dd></div>` : ''}
+              ${node.site_name || node.site_city || node.site_country ? `<div><dt>${sg('dossier.site', 'Site')}</dt><dd>${esc([node.site_name, node.site_city, node.site_country].filter(Boolean).join(' · '))}</dd></div>` : ''}
+              ${supplier ? `<div><dt>${sg('dossier.org', 'Supplier organization')}</dt><dd>${esc(supplier.organizations.display_name || supplier.organizations.legal_name)}</dd></div>` : ''}
+              <div><dt>${sg('dossier.evidence', 'Source evidence')}</dt><dd>${evidenceIds.length ? evidenceIds.map((id) => `<code>${esc(String(id).slice(0, 8))}…</code>`).join(' ') : `<span class="meta">${sg('dossier.noEvidence', '')}</span>`}</dd></div>
+              ${metadata ? `<div><dt>${sg('dossier.metadata', 'Metadata')}</dt><dd><code style="word-break:break-all">${esc(JSON.stringify(metadata))}</code></dd></div>` : ''}
+            </dl>
+            <div class="actions" style="margin-top:14px;flex-wrap:wrap">
+              ${evidenceIds.length ? `<button class="btn btn-secondary btn-small" data-action="chain-open-evidence">${sg('dossier.viewEvidence', '')}</button>` : ''}
+              ${supplier ? `<button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(supplier.id)}">${sg('dossier.openSupplier', '')}</button>` : ''}
+              ${product?.id ? `<button class="btn btn-secondary btn-small" data-action="chain-open-quality">${sg('dossier.openQuality', '')}</button>` : ''}
+            </div>
+          </div>`;
+        }
+
+        function supplyMapPanel(sc) {
+          const sites = state.supplyChainMap?.sites || [];
+          const geo = sites.filter((s) => Number.isFinite(Number(s.latitude)) && Number.isFinite(Number(s.longitude)));
+          const links = sc.graph?.links || [];
+          const siteByNode = new Map(geo.map((s) => [s.nodeId, s]));
+          const ordered = [...links].sort((a, b) => (a.sequence_number ?? 999) - (b.sequence_number ?? 999));
+          const flows = ordered.filter((l) => siteByNode.has(l.source_node_id) && siteByNode.has(l.target_node_id));
+          const project = (lat, lng) => ({ x: ((Number(lng) + 180) / 360) * 1000, y: ((90 - Number(lat)) / 180) * 500 });
+          let view = '0 0 1000 500';
+          if (geo.length) {
+            const pts = geo.map((s) => project(s.latitude, s.longitude));
+            const minX = Math.min(...pts.map((p) => p.x)) - 60, maxX = Math.max(...pts.map((p) => p.x)) + 60;
+            const minY = Math.min(...pts.map((p) => p.y)) - 50, maxY = Math.max(...pts.map((p) => p.y)) + 50;
+            view = `${Math.max(0, minX)} ${Math.max(0, minY)} ${Math.min(1000, Math.max(220, maxX - minX))} ${Math.min(500, Math.max(160, maxY - minY))}`;
+          }
+          const dots = geo.map((s) => {
+            const p = project(s.latitude, s.longitude);
+            return `<circle class="scg-map-dot" cx="${p.x}" cy="${p.y}" r="6"><title>${esc(s.siteName)}${s.city ? ' · ' + esc(s.city) : ''} (${esc(s.countryCode)})</title></circle>
+              <text class="scg-map-label" x="${p.x + 9}" y="${p.y + 4}">${esc(s.siteName)}</text>`;
+          }).join('');
+          const flowEls = flows.map((l) => {
+            const a = project(siteByNode.get(l.source_node_id).latitude, siteByNode.get(l.source_node_id).longitude);
+            const b = project(siteByNode.get(l.target_node_id).latitude, siteByNode.get(l.target_node_id).longitude);
+            return `<path class="scg-map-flow" d="M ${a.x} ${a.y} L ${b.x} ${b.y}"></path>`;
+          }).join('');
+          return `<div class="card panel">
+            <div class="panel-head"><h2>${sg('map.title', 'Geographic map of sites')}</h2><span class="meta">${sg('map.note', '')}</span></div>
+            ${geo.length ? `<svg class="scg-map-svg" viewBox="${view}" preserveAspectRatio="xMidYMid meet">${flowEls}${dots}</svg>
+              <p class="meta" style="margin-top:10px"><strong>${geo.length}</strong> ${sg('map.sites', '')} · <strong>${flows.length}</strong> ${sg('map.flows', '')}</p>` : `<div class="empty"><p>${sg('map.empty', '')}</p></div>`}
+          </div>`;
+        }
+
+        function supplyChainView() {
+        const p = state.selectedSupplyChainProduct || null;
+        if (!p) {
+          return `<div class="page-head"><div><div class="eyebrow">${bt('scEyebrow')}</div><h1>${bt('scMultiTier')}</h1><p>${bt('scIntro')}</p></div></div>
+            <div class="card panel"><div class="empty"><p>${sg('summary.empty', '')}</p><p class="meta">${sg('summary.emptyHint', '')}</p></div>
+            <div class="actions" style="margin-top:14px"><button class="btn btn-secondary" data-action="select-supply-chain-product">${bt('scChangeProduct')}</button></div></div>`;
+        }
+        const sc = state.supplyChain;
+        if (!sc) {
+          return `<div class="page-head"><div><div class="eyebrow">${bt('scEyebrow')}</div><h1>${esc(p.name)}</h1><p>${bt('scIntro')}</p></div></div><div class="card panel"><p class="meta">…</p></div>`;
+        }
+        const summary = sc.summary || {};
+        const stages = sc.stages || {};
+        const nodes = sc.graph?.nodes || [];
+        const links = sc.graph?.links || [];
+        const sitesWithGeo = (state.supplyChainMap?.sites || []).filter((s) => Number.isFinite(Number(s.latitude)) && Number.isFinite(Number(s.longitude)));
+        const siteNodes = nodes.filter((n) => n.node_type === 'site');
+        const noCoords = siteNodes.filter((n) => !sitesWithGeo.some((s) => s.nodeId === n.id)).length;
 
         return `
           <div class="page-head">
             <div>
               <div class="eyebrow">${bt('scEyebrow')}</div>
-              <h1>${bt('scMultiTier')}</h1>
+              <h1>${esc(p.name)}${p.reference ? ` · ${bt('cRef')} ${esc(p.reference)}` : ''}</h1>
               <p>${bt('scIntro')}</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary" data-demo-action="1">${bt('scExportForensic')}</button>
               <button class="btn btn-secondary" data-action="select-supply-chain-product">${bt('scChangeProduct')}</button>
+              <button class="btn btn-secondary" data-action="export-supply-chain">${sg('export.cta', 'Export chain (JSON)')}</button>
               <button class="btn btn-secondary" data-action="generate-baseline-chain">${bt('scGenChain')}</button>
               <button class="btn btn-secondary" data-action="new-chain-link">${bt('scLinkSteps')}</button>
               <button class="btn btn-primary" data-action="new-chain-node">${bt('scAddMilestone')}</button>
             </div>
           </div>
 
-          <!-- Forensic Hero Banner -->
-          <div class="tc-forensic-strip">
-            <div class="tc-forensic-badge">ISO 22095 CERTIFIED CHAIN OF CUSTODY · 98.4% MASS RECONCILIATION</div>
-            <h2 class="tc-forensic-title">${esc(p.name)} · ${bt('cRef')} ${esc(p.reference)}</h2>
-            <p class="tc-forensic-desc">
-              ${esc(bt('cnScChainIntro'))}
-            </p>
-          </div>
+          ${nodes.length ? `<div class="pil-summary-grid">
+            <div class="pil-summary-cell"><div class="pil-summary-num">${nodes.length}</div><span class="pil-summary-label">${sg('summary.nodes', 'Nodes')}</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num">${links.length}</div><span class="pil-summary-label">${sg('summary.links', 'Links')}</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num">${summary.documentationRate != null ? moneyless(summary.documentationRate) + '%' : '—'}</div><span class="pil-summary-label">${sg('summary.documentation', 'Documentation rate')}</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num">${summary.stagesCoveredCount != null ? summary.stagesCoveredCount : '—'}</div><span class="pil-summary-label">${sg('summary.stagesCovered', 'Stages covered')}</span></div>
+            ${summary.isCompleteChain ? `<div class="pil-summary-cell"><span class="status status-approved">${sg('summary.complete', '')}</span></div>` : ''}
+          </div>` : ''}
 
-          <!-- 7-ECHELON CHAIN OF CUSTODY TIMELINE -->
-          <div class="tc-echelons-grid">
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier01')}</div>
-              <div class="tc-ech-title">${bt('scFieldFarm')}</div>
-              <div class="tc-ech-model">Identity Preserved</div>
-              <div class="tc-ech-status">✓ İzmir, Türkiye</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier02')}</div>
-              <div class="tc-ech-title">${bt('scGinningCaps')}</div>
-              <div class="tc-ech-model">Segregated</div>
-              <div class="tc-ech-status">✓ Ege Birlik Mill</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier03')}</div>
-              <div class="tc-ech-title">${bt('scSpinningCaps')}</div>
-              <div class="tc-ech-model">Mass Balance 100%</div>
-              <div class="tc-ech-status">✓ Haute-Vienne, FR</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier04')}</div>
-              <div class="tc-ech-title">${bt('scKnittingCaps')}</div>
-              <div class="tc-ech-model">Identity Preserved</div>
-              <div class="tc-ech-status">✓ Barcelos, PT</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier05')}</div>
-              <div class="tc-ech-title">${bt('scFinishingCaps')}</div>
-              <div class="tc-ech-model">ZDHC Level 3</div>
-              <div class="tc-ech-status">✓ EcoDye Aquitaine</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier06')}</div>
-              <div class="tc-ech-title">${bt('scAssemblyCaps')}</div>
-              <div class="tc-ech-model">SMETA 4-Pillar</div>
-              <div class="tc-ech-status">✓ Atelier Braga, PT</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier07')}</div>
-              <div class="tc-ech-title">DISTRIBUTION</div>
-              <div class="tc-ech-model">DPP CIRPASS</div>
-              <div class="tc-ech-status">✓ Hub Lyon, FR</div>
-            </div>
-          </div>
+          ${nodes.length ? supplyGraphPanel(sc) : `<div class="card panel"><div class="empty"><p>${sg('summary.empty', '')}</p><p class="meta">${sg('summary.emptyHint', '')}</p></div></div>`}
 
-          <!-- Core Score KPIs -->
-          <div class="grid score-grid">
-            <div class="card score"><div class="score-name">${bt('scSealedSteps')}</div><div class="score-value">7 / 7</div><div class="node-meta">${bt('scPhysical100')}</div></div>
-            <div class="card score"><div class="score-name">${bt('scGpsPolygons')}</div><div class="score-value">100%</div><div class="node-meta">${bt('scSatellite')}</div></div>
-            <div class="card score"><div class="score-name">${bt('scEvidenceCov')}</div><div class="score-value">98.4%</div><div class="progress"><span style="width:98.4%"></span></div></div>
-            <div class="card score"><div class="score-name">${bt('scCustodyModel')}</div><div class="score-value" style="font-size:18px;color:#0b7656;">ISO 22095</div><div class="node-meta">${bt('scMassChecked')}</div></div>
+          <div class="grid split" style="margin-top:18px">
+            ${supplyNodeDossier(sc, p)}
+            ${supplyMapPanel(sc)}
           </div>
+          ${noCoords ? `<p class="meta" style="margin-top:8px">${noCoords} ${sg('map.noCoords', '')}.</p>` : ''}
 
-          <!-- Mass Balance Reconciliation Breakdown -->
-          <div class="tc-reconcil-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-              <div>
-                <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:0 0 2px;">${bt('scMassReconMile')}</h3>
-                <p class="meta" style="margin:0;">${bt('scMassNote')}</p>
-              </div>
-              <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">PROCESS LOSS DELTA: 2.4% (COMPLIANT)</span>
-            </div>
-
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>${bt('scIndustrialStep')}</th>
-                    <th>${bt('scSupplierFacility')}</th>
-                    <th>${bt('scVolIn')}</th>
-                    <th>${bt('scVolOut')}</th>
-                    <th>${bt('scYieldWaste')}</th>
-                    <th>${bt('scTraceDoc')}</th>
-                    <th style="text-align:right">${bt('scCustodyStatus')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>01. Organic Cotton Ginning</strong></td>
-                    <td>Ege Birlik Ginning Co.</td>
-                    <td>10,500 kg (Seed)</td>
-                    <td>3,570 kg (Raw fibre)</td>
-                    <td>34.0% (Normal)</td>
-                    <td><code>TC-CU-881294-01</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Segregated</span></td>
-                  </tr>
-                  <tr>
-                    <td><strong>02. Combed Spinning Ne 30/1</strong></td>
-                    <td>Filature de Haute-Vienne</td>
-                    <td>3,570 kg (Raw fibre)</td>
-                    <td>3,285 kg (Bobbins)</td>
-                    <td>92.0% (Yarn yield)</td>
-                    <td><code>TC-CU-881294-02</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Identity Preserved</span></td>
-                  </tr>
-                  <tr>
-                    <td><strong>03. Jersey Knitting 180g</strong></td>
-                    <td>Barcelos Knitting Mill</td>
-                    <td>3,285 kg (Bobbins)</td>
-                    <td>3,150 kg (Rolls)</td>
-                    <td>95.9% (Normal knit)</td>
-                    <td><code>BL-PT-2026-904</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Sealed</span></td>
-                  </tr>
-                  <tr>
-                    <td><strong>04. Organic Dyeing & Washing</strong></td>
-                    <td>EcoDye Aquitaine</td>
-                    <td>3,150 kg (Rolls)</td>
-                    <td>3,085 kg (Dyed)</td>
-                    <td>97.9% (ZDHC fixation)</td>
-                    <td><code>ZDHC-LOT-089</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ Validated</span></td>
-                  </tr>
-                  <tr>
-                    <td><strong>05. Cutting & Assembly</strong></td>
-                    <td>Atelier Braga & Co</td>
-                    <td>3,085 kg (Finished fabric)</td>
-                    <td>16,200 finished pieces</td>
-                    <td>185g / average piece</td>
-                    <td><code>TC-CU-881294-05</code></td>
-                    <td style="text-align:right"><span class="status status-approved">✓ 100% reconciled</span></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        `;
+          <div class="card panel" style="margin-top:18px">
+            <div class="panel-head"><h2>${sg('stages.title', 'Stages covered')}</h2></div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>${sg('stages.title', 'Stage')}</th><th>${sg('summary.nodes', 'Nodes')}</th><th></th></tr></thead>
+              <tbody>
+                ${SCG_STAGE_ORDER.filter((key) => (stages[key] || []).length).map((key) => `<tr>
+                  <td><strong>${esc(scgStageLabel(key))}</strong></td>
+                  <td>${stages[key].length}</td>
+                  <td class="meta">${stages[key].map((n) => esc(n.label)).join(' · ')}</td>
+                </tr>`).join('') || `<tr><td colspan="3" class="meta">${sg('summary.empty', '')}</td></tr>`}
+              </tbody>
+            </table></div>
+          </div>`;
       }
 
       function dppView() {
@@ -4718,18 +4778,53 @@
         state.selectedSupplyChainProduct = state.products.find((p) => p.id === productId) || null;
         state.view = 'supplyChain';
         state.supplyChain = null;
+        state.supplyChainMap = null;
+        state.chainSelectedNode = null;
+        state.scgView = null;
         render();
         if (state.demo) {
           state.supplyChain = demoSupplyChain();
+          // Chantier 11 : la carte de demonstration expose des sites avec
+          // coordonnees reelles de geographie publique (Barcelos, PT et
+          // Guimaraes, PT) pour montrer les flux sans inventer de donnees
+          // fournisseur.
+          state.supplyChainMap = { sites: [
+            { nodeId: 'node-site', nodeType: 'site', label: 'Atelier de Confection · Nhãn Textile (Barcelos, PT)', siteId: 'demo-site-1', siteName: 'Nhãn Textile Factory', countryCode: 'PT', city: 'Barcelos', latitude: 41.5337, longitude: -8.6167 },
+            { nodeId: 'node-weav', nodeType: 'process', label: 'Jersey knitting & OEKO-TEX certified dyeing', siteId: 'demo-site-2', siteName: 'Tricotagem Guimarães', countryCode: 'PT', city: 'Guimarães', latitude: 41.4425, longitude: -8.2942 },
+          ] };
           render();
           return;
         }
         try {
-          state.supplyChain = await api(`/api/products/${encodeURIComponent(productId)}/supply-chain`);
+          // Chantier 11 : graphe + carte des sites en parallele, la carte
+          // etant non bloquante pour la vue.
+          const [chain, map] = await Promise.allSettled([
+            api(`/api/products/${encodeURIComponent(productId)}/supply-chain`),
+            api(`/api/products/${encodeURIComponent(productId)}/supply-chain/map`),
+          ]);
+          if (chain.status === 'fulfilled') state.supplyChain = chain.value;
+          state.supplyChainMap = map.status === 'fulfilled' ? map.value : null;
+          if (chain.status === 'rejected') throw chain.reason;
           render();
         } catch (e) {
           notify(e.message, true);
         }
+      }
+
+      function exportSupplyChain() {
+        const sc = state.supplyChain;
+        if (!sc) return;
+        const product = state.selectedSupplyChainProduct || sc.product || null;
+        const payload = {
+          exportedAt: new Date().toISOString(),
+          product,
+          graph: sc.graph || { nodes: [], links: [] },
+          stages: sc.stages || {},
+          summary: sc.summary || {},
+          sites: state.supplyChainMap?.sites || [],
+        };
+        const reference = product?.reference ? `-${String(product.reference).replace(/[^\w-]+/g, '_')}` : '';
+        downloadTextFile(`tracefab-supply-chain${reference}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
       }
 
       async function generateBaselineChain() {
@@ -5013,6 +5108,9 @@
             if (action === 'quality-component') { const comp = el.dataset.qualityComponent; state.qualityComponent = state.qualityComponent === comp ? null : comp; render(); }
             if (action === 'quality-severity') { state.qualitySeverityFilter = el.dataset.qualitySeverity; render(); }
             if (action === 'quality-resolve') { state.view = el.dataset.target; render(); }
+            if (action === 'export-supply-chain') exportSupplyChain();
+            if (action === 'chain-open-evidence') { state.view = 'documents'; render(); }
+            if (action === 'chain-open-quality') { if (state.selectedSupplyChainProduct?.id) await loadQuality(state.selectedSupplyChainProduct.id); }
             if (action === 'catalog-export') await exportCatalog();
             if (action === 'audit-export') await exportAudit();
             if (action === 'preview-catalog-import') await previewCatalogImport();
@@ -5076,6 +5174,72 @@
         document.getElementById('evidence-upload-form')?.addEventListener('submit', (e) => { e.preventDefault(); const form = e.currentTarget; uploadEvidence(form).then(() => form.reset()).catch((err) => notify(err.message, true)); });
         document.getElementById('cert-declare-form')?.addEventListener('submit', (e) => { e.preventDefault(); const form = e.currentTarget; declareCertification(form).then(() => form.reset()).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.cert-review-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); reviewCertification(e.currentTarget).catch((err) => notify(err.message, true)); }));
+        /* Chantier 11 : interactivite du graphe de tracabilite (filtres,
+           zoom, deplacement, selection de noeud). Les transformations sont
+           appliquees directement sur le viewport SVG pour rester fluides,
+           sans re-rendu complet. */
+        document.querySelectorAll('[data-scg-type]').forEach((el) => el.addEventListener('change', () => {
+          const filters = state.scgFilters || { types: [...SCG_TYPES], documentedOnly: false };
+          const type = el.dataset.scgType;
+          filters.types = el.checked ? [...new Set([...filters.types, type])] : filters.types.filter((t) => t !== type);
+          state.scgFilters = filters;
+          render();
+        }));
+        const scgDocFilter = document.querySelector('[data-scg-documented]');
+        scgDocFilter?.addEventListener('change', () => {
+          const filters = state.scgFilters || { types: [...SCG_TYPES], documentedOnly: false };
+          filters.documentedOnly = scgDocFilter.checked;
+          state.scgFilters = filters;
+          render();
+        });
+        const scgApplyView = () => {
+          const viewport = document.getElementById('scg-viewport');
+          const view = state.scgView || { k: 1, x: 0, y: 0 };
+          viewport?.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`);
+        };
+        document.querySelectorAll('[data-scg-zoom]').forEach((el) => el.addEventListener('click', () => {
+          const view = state.scgView || { k: 1, x: 0, y: 0 };
+          view.k = Math.min(4, Math.max(0.3, view.k * Number(el.dataset.scgZoom)));
+          state.scgView = view;
+          scgApplyView();
+        }));
+        document.querySelector('[data-scg-reset]')?.addEventListener('click', () => { state.scgView = { k: 1, x: 0, y: 0 }; scgApplyView(); });
+        const scgSvg = document.getElementById('scg-svg');
+        if (scgSvg) {
+          const scgScale = () => { const rect = scgSvg.getBoundingClientRect(); return rect.width ? 1000 / rect.width : 1; };
+          scgSvg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const view = state.scgView || { k: 1, x: 0, y: 0 };
+            view.k = Math.min(4, Math.max(0.3, view.k * (e.deltaY < 0 ? 1.12 : 0.9)));
+            state.scgView = view;
+            scgApplyView();
+          }, { passive: false });
+          let scgDrag = null;
+          scgSvg.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.scg-node')) return;
+            const view = state.scgView || { k: 1, x: 0, y: 0 };
+            scgDrag = { px: e.clientX, py: e.clientY, x: view.x, y: view.y };
+            scgSvg.classList.add('scg-dragging');
+            scgSvg.setPointerCapture(e.pointerId);
+          });
+          scgSvg.addEventListener('pointermove', (e) => {
+            if (!scgDrag) return;
+            const scale = scgScale();
+            const view = state.scgView || { k: 1, x: 0, y: 0 };
+            view.x = scgDrag.x + (e.clientX - scgDrag.px) * scale;
+            view.y = scgDrag.y + (e.clientY - scgDrag.py) * scale;
+            state.scgView = view;
+            scgApplyView();
+          });
+          const scgStopDrag = () => { scgDrag = null; scgSvg.classList.remove('scg-dragging'); };
+          scgSvg.addEventListener('pointerup', scgStopDrag);
+          scgSvg.addEventListener('pointercancel', scgStopDrag);
+        }
+        document.querySelectorAll('.scg-node').forEach((el) => {
+          const select = () => { state.chainSelectedNode = state.chainSelectedNode === el.dataset.nodeId ? null : el.dataset.nodeId; render(); };
+          el.addEventListener('click', select);
+          el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); } });
+        });
         document.getElementById('material-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); }));
         document.getElementById('identifier-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveIdentifier(e.currentTarget).catch((err) => notify(err.message, true)); });

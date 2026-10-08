@@ -81,6 +81,7 @@ const routes: Route[] = [
   { pattern: /^products\/([^\/]+)\/wallet\/apple$/, params: ['productId'], load: () => import('./_routes/products/[productId]/wallet/apple.js') },
   { pattern: /^products\/([^\/]+)\/wallet\/google$/, params: ['productId'], load: () => import('./_routes/products/[productId]/wallet/google.js') },
   { pattern: /^products\/([^\/]+)\/supply\-chain\/generate\-baseline$/, params: ['productId'], load: () => import('./_routes/products/[productId]/supply-chain/generate-baseline.js') },
+  { pattern: /^products\/([^\/]+)\/supply\-chain\/map$/, params: ['productId'], load: () => import('./_routes/products/[productId]/supply-chain/map.js') },
   { pattern: /^products\/([^\/]+)\/supply\-chain\/nodes\/([^\/]+)$/, params: ['productId', 'nodeId'], load: () => import('./_routes/products/[productId]/supply-chain/nodes/[nodeId].js') },
   { pattern: /^products\/([^\/]+)\/supply\-chain\/nodes$/, params: ['productId'], load: () => import('./_routes/products/[productId]/supply-chain/nodes.js') },
   { pattern: /^products\/([^\/]+)\/supply\-chain\/links\/([^\/]+)$/, params: ['productId', 'linkId'], load: () => import('./_routes/products/[productId]/supply-chain/links/[linkId].js') },

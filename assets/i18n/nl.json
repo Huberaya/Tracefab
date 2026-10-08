@@ -2790,5 +2790,68 @@
       "overallLabel": "Totaal",
       "delta": "punten sinds de eerste momentopname"
     }
+  },
+  "supplyGraph": {
+    "summary": {
+      "nodes": "Knooppunten",
+      "links": "Verbindingen",
+      "documentation": "Documentatiegraad",
+      "stagesCovered": "Gedekte stappen",
+      "empty": "Voor dit product is nog geen toeleveringsketen gedocumenteerd.",
+      "emptyHint": "Genereer een basisketen of voeg handmatig knooppunten en verbindingen toe.",
+      "complete": "Volledige keten (van materiaal tot product)"
+    },
+    "graph": {
+      "title": "Keten-grafiek",
+      "hint": "Zoom met het wiel, verschuif door te slepen, klik op een knooppunt om het dossier te openen.",
+      "filters": "Knooppunttypen",
+      "documented": "Alleen gedocumenteerde",
+      "reset": "Weergave herstellen",
+      "empty": "Geen knooppunt weer te geven met de huidige filters."
+    },
+    "types": {
+      "material": "Materiaal",
+      "process": "Proces",
+      "site": "Vestiging",
+      "organization": "Organisatie",
+      "product": "Product"
+    },
+    "dossier": {
+      "title": "Knooppuntdossier",
+      "select": "Selecteer een knooppunt in de grafiek om het dossier te openen.",
+      "label": "Label",
+      "type": "Type",
+      "stage": "Stap",
+      "status": "Status",
+      "process": "Proces",
+      "site": "Vestiging",
+      "org": "Leveranciersorganisatie",
+      "evidence": "Bronbewijs",
+      "viewEvidence": "Openen in het bewijscentrum",
+      "openSupplier": "Leverancier openen",
+      "openQuality": "Kwaliteitsweergave openen",
+      "noEvidence": "Geen bronbewijs gekoppeld.",
+      "metadata": "Metadata"
+    },
+    "map": {
+      "title": "Geografische kaart van vestigingen",
+      "note": "Vestigingen met coördinaten in het leveranciersregister; stromen volgen de volgorde van de keten.",
+      "empty": "Nog geen vestiging met coördinaten in deze keten.",
+      "sites": "vestiging(en) gelokaliseerd",
+      "flows": "stroom/stromen getekend",
+      "noCoords": "knooppunt(en) verwijzen naar een vestiging zonder coördinaten"
+    },
+    "stages": {
+      "title": "Gedekte stappen",
+      "tier4": "Grondstoffen",
+      "tier3": "Spinnen",
+      "tier2": "Stof",
+      "tier1": "Confectie",
+      "tier0": "Product",
+      "other": "Overige knooppunten"
+    },
+    "export": {
+      "cta": "Keten exporteren (JSON)"
+    }
   }
 }

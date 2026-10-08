@@ -2666,5 +2666,68 @@ window.TF_I18N_BUNDLES.en = {
       "overallLabel": "Overall",
       "delta": "pts since the first snapshot"
     }
+  },
+  "supplyGraph": {
+    "summary": {
+      "nodes": "Nodes",
+      "links": "Links",
+      "documentation": "Documentation rate",
+      "stagesCovered": "Stages covered",
+      "empty": "No supply chain documented for this product yet.",
+      "emptyHint": "Generate a baseline chain or add nodes and links manually.",
+      "complete": "Complete chain (material to product)"
+    },
+    "graph": {
+      "title": "Supply chain graph",
+      "hint": "Zoom with the wheel, pan by dragging, click a node to open its dossier.",
+      "filters": "Node types",
+      "documented": "Documented only",
+      "reset": "Reset view",
+      "empty": "No node to display for the current filters."
+    },
+    "types": {
+      "material": "Material",
+      "process": "Process",
+      "site": "Site",
+      "organization": "Organization",
+      "product": "Product"
+    },
+    "dossier": {
+      "title": "Node dossier",
+      "select": "Select a node in the graph to open its dossier.",
+      "label": "Label",
+      "type": "Type",
+      "stage": "Stage",
+      "status": "Status",
+      "process": "Process",
+      "site": "Site",
+      "org": "Supplier organization",
+      "evidence": "Source evidence",
+      "viewEvidence": "Open in Evidence Center",
+      "openSupplier": "Open supplier",
+      "openQuality": "Open quality view",
+      "noEvidence": "No source evidence linked.",
+      "metadata": "Metadata"
+    },
+    "map": {
+      "title": "Geographic map of sites",
+      "note": "Sites with coordinates recorded in the supplier registry; flows follow the chain sequence.",
+      "empty": "No site with coordinates in this chain yet.",
+      "sites": "site(s) located",
+      "flows": "flow(s) drawn",
+      "noCoords": "node(s) reference a site without coordinates"
+    },
+    "stages": {
+      "title": "Stages covered",
+      "tier4": "Raw materials",
+      "tier3": "Spinning",
+      "tier2": "Fabric",
+      "tier1": "Assembly",
+      "tier0": "Product",
+      "other": "Other nodes"
+    },
+    "export": {
+      "cta": "Export chain (JSON)"
+    }
   }
 };

@@ -2790,5 +2790,68 @@
       "overallLabel": "Global",
       "delta": "pts depuis le premier instantané"
     }
+  },
+  "supplyGraph": {
+    "summary": {
+      "nodes": "Nœuds",
+      "links": "Liens",
+      "documentation": "Taux de documentation",
+      "stagesCovered": "Étapes couvertes",
+      "empty": "Aucune chaîne d'approvisionnement documentée pour ce produit pour l'instant.",
+      "emptyHint": "Générez une chaîne de base ou ajoutez des nœuds et liens manuellement.",
+      "complete": "Chaîne complète (matière au produit)"
+    },
+    "graph": {
+      "title": "Graphe de la chaîne",
+      "hint": "Zoom à la molette, déplacement par glisser, clic sur un nœud pour ouvrir son dossier.",
+      "filters": "Types de nœuds",
+      "documented": "Documentés uniquement",
+      "reset": "Réinitialiser la vue",
+      "empty": "Aucun nœud à afficher avec les filtres actuels."
+    },
+    "types": {
+      "material": "Matière",
+      "process": "Procédé",
+      "site": "Site",
+      "organization": "Organisation",
+      "product": "Produit"
+    },
+    "dossier": {
+      "title": "Dossier du nœud",
+      "select": "Sélectionnez un nœud dans le graphe pour ouvrir son dossier.",
+      "label": "Libellé",
+      "type": "Type",
+      "stage": "Étape",
+      "status": "Statut",
+      "process": "Procédé",
+      "site": "Site",
+      "org": "Organisation fournisseur",
+      "evidence": "Preuve source",
+      "viewEvidence": "Ouvrir dans le Centre de preuves",
+      "openSupplier": "Ouvrir le fournisseur",
+      "openQuality": "Ouvrir la vue qualité",
+      "noEvidence": "Aucune preuve source liée.",
+      "metadata": "Métadonnées"
+    },
+    "map": {
+      "title": "Carte géographique des sites",
+      "note": "Sites dont les coordonnées sont renseignées dans le registre fournisseurs ; les flux suivent la séquence de la chaîne.",
+      "empty": "Aucun site avec coordonnées dans cette chaîne pour l'instant.",
+      "sites": "site(s) localisé(s)",
+      "flows": "flux tracé(s)",
+      "noCoords": "nœud(s) référencent un site sans coordonnées"
+    },
+    "stages": {
+      "title": "Étapes couvertes",
+      "tier4": "Matières premières",
+      "tier3": "Filature",
+      "tier2": "Tissu",
+      "tier1": "Confection",
+      "tier0": "Produit",
+      "other": "Autres nœuds"
+    },
+    "export": {
+      "cta": "Exporter la chaîne (JSON)"
+    }
   }
 }
