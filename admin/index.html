@@ -96,6 +96,12 @@ select:focus,input:focus,textarea:focus{outline:2px solid var(--green-soft);bord
 .kpi .val{display:block;font-size:2rem;font-weight:800;letter-spacing:-.045em;
   line-height:1.12;margin-top:6px}
 .kpi .val.small{font-size:1.5rem}
+/* .kl/.kv : même contrat visuel que .lbl/.val, pour les cartes qui utilisent ces
+   noms (import, TODAY). Sans ces règles, .kv n'avait aucun style et .kl n'était
+   définie que sous .pilotnums — les nombres s'affichaient en texte ordinaire. */
+.kpi .kl{display:block;color:var(--muted);font-size:10px;font-weight:800;
+  letter-spacing:.12em;text-transform:uppercase}
+.kpi .kv{display:block;font-size:1.5rem;font-weight:800;letter-spacing:-.045em;margin-top:5px}
 .kpi.warn .val{color:var(--yellow)} .kpi.bad .val{color:var(--red)} .kpi.good .val{color:var(--green-dark)}
 
 .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:12px}
@@ -175,7 +181,12 @@ tbody tr:hover{background:#fafcf9}
 .timeline{list-style:none;margin:0;padding:0}
 .timeline li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid #f0f3ee}
 .timeline li:last-child{border-bottom:0}
-.tl-d{flex:none;width:74px;color:var(--muted);font-size:11.5px;font-family:var(--mono);padding-top:1px}
+/* Bornée aux items de liste : sans ce scope, la règle écrasait aussi le
+   conteneur de ligne de la vue activités, qui réutilise le nom .tl-d. */
+.timeline li .tl-d{flex:none;width:74px;color:var(--muted);font-size:11.5px;font-family:var(--mono);padding-top:1px}
+.tl-d .tl-when{color:var(--muted);font-size:11.5px;margin-bottom:5px}
+.tl-d .tl-body{padding:11px 0;border-bottom:1px solid #f0f3ee}
+.tl-d .tl-body b{display:block;font-size:13px;margin-top:3px}
 .tl-b b{display:block;font-size:13px}
 .tl-b span{color:var(--muted);font-size:12px}
 .nextaction{background:var(--green-soft);border:1px solid #cfe3d8;border-radius:var(--radius);padding:14px 16px}
@@ -303,6 +314,7 @@ const state = {
     product_count_min: '', product_count_max: '', supplier_count_min: '', supplier_count_max: '' },
   advancedOpen: false,
   settings: null, audit: null, auditFilter: '',
+  notes: null, emails: null, opportunities: null, noteCompany: '', emailCompany: '',
   lists: { items: [] }, activeList: null,
   importStep: null, importCsv: '', importMapping: {}, importPreview: null,
   importSource: '', importDetail: '', importSkip: true, importResult: null,
@@ -367,6 +379,287 @@ function demoCompanies() {
       maturity:'high', priority:'medium', stage:'customer', source:'Referral',
       estimated_value_eur:40000 },
   ];
+}
+
+function demoOpportunities() {
+  return {
+    "items": [
+      {
+        "company_id": "d1",
+        "name": "Example Fashion Group",
+        "stage": "pilot",
+        "priority": "critical",
+        "signals": 3,
+        "insufficient": false,
+        "layers": [
+          "L01",
+          "L02",
+          "L03",
+          "L06",
+          "L07"
+        ],
+        "problems": [
+          {
+            "code": "manySuppliers",
+            "evidence": "supplier_count = 42"
+          },
+          {
+            "code": "largeCatalogue",
+            "evidence": "product_count = 350"
+          },
+          {
+            "code": "catalogueUnstructured",
+            "evidence": "product_count = 350, maturity = medium"
+          },
+          {
+            "code": "esprScope",
+            "evidence": "country_code = FR (EU)"
+          }
+        ],
+        "features": [
+          {
+            "code": "supplyChainMapping",
+            "evidence": "supplier_count = 42"
+          },
+          {
+            "code": "productData",
+            "evidence": "product_count = 350"
+          },
+          {
+            "code": "evidenceCenter",
+            "evidence": "product_count = 350"
+          },
+          {
+            "code": "dppReadiness",
+            "evidence": "country_code = FR (EU)"
+          },
+          {
+            "code": "intelligence",
+            "evidence": "signal_count = 3"
+          }
+        ],
+        "estimated_value_eur": 68000,
+        "next_contact_at": "2026-10-08T16:25:23.935Z"
+      },
+      {
+        "company_id": "d5",
+        "name": "Atlas Apparel",
+        "stage": "to_contact",
+        "priority": "medium",
+        "signals": 3,
+        "insufficient": false,
+        "layers": [
+          "L01",
+          "L02",
+          "L03",
+          "L06",
+          "L07"
+        ],
+        "problems": [
+          {
+            "code": "manySuppliers",
+            "evidence": "supplier_count = 31"
+          },
+          {
+            "code": "largeCatalogue",
+            "evidence": "product_count = 210"
+          },
+          {
+            "code": "catalogueUnstructured",
+            "evidence": "product_count = 210, maturity = medium"
+          },
+          {
+            "code": "esprScope",
+            "evidence": "country_code = IT (EU)"
+          }
+        ],
+        "features": [
+          {
+            "code": "supplyChainMapping",
+            "evidence": "supplier_count = 31"
+          },
+          {
+            "code": "productData",
+            "evidence": "product_count = 210"
+          },
+          {
+            "code": "evidenceCenter",
+            "evidence": "product_count = 210"
+          },
+          {
+            "code": "dppReadiness",
+            "evidence": "country_code = IT (EU)"
+          },
+          {
+            "code": "intelligence",
+            "evidence": "signal_count = 3"
+          }
+        ],
+        "estimated_value_eur": null,
+        "next_contact_at": null
+      },
+      {
+        "company_id": "d6",
+        "name": "Verde Sportswear",
+        "stage": "qualified",
+        "priority": "low",
+        "signals": 3,
+        "insufficient": false,
+        "layers": [
+          "L01",
+          "L02",
+          "L03",
+          "L06",
+          "L07"
+        ],
+        "problems": [
+          {
+            "code": "manySuppliers",
+            "evidence": "supplier_count = 22"
+          },
+          {
+            "code": "largeCatalogue",
+            "evidence": "product_count = 140"
+          },
+          {
+            "code": "catalogueUnstructured",
+            "evidence": "product_count = 140, maturity = medium"
+          },
+          {
+            "code": "esprScope",
+            "evidence": "country_code = IT (EU)"
+          }
+        ],
+        "features": [
+          {
+            "code": "supplyChainMapping",
+            "evidence": "supplier_count = 22"
+          },
+          {
+            "code": "productData",
+            "evidence": "product_count = 140"
+          },
+          {
+            "code": "evidenceCenter",
+            "evidence": "product_count = 140"
+          },
+          {
+            "code": "dppReadiness",
+            "evidence": "country_code = IT (EU)"
+          },
+          {
+            "code": "intelligence",
+            "evidence": "signal_count = 3"
+          }
+        ],
+        "estimated_value_eur": null,
+        "next_contact_at": null
+      },
+      {
+        "company_id": "d2",
+        "name": "Northwind Textiles",
+        "stage": "demo",
+        "priority": "high",
+        "signals": 2,
+        "insufficient": false,
+        "layers": [
+          "L02",
+          "L03",
+          "L07"
+        ],
+        "problems": [
+          {
+            "code": "largeCatalogue",
+            "evidence": "product_count = 120"
+          },
+          {
+            "code": "catalogueUnstructured",
+            "evidence": "product_count = 120, maturity = low"
+          },
+          {
+            "code": "esprScope",
+            "evidence": "country_code = DE (EU)"
+          }
+        ],
+        "features": [
+          {
+            "code": "productData",
+            "evidence": "product_count = 120"
+          },
+          {
+            "code": "evidenceCenter",
+            "evidence": "product_count = 120"
+          },
+          {
+            "code": "dppReadiness",
+            "evidence": "country_code = DE (EU)"
+          }
+        ],
+        "estimated_value_eur": 42000,
+        "next_contact_at": null
+      },
+      {
+        "company_id": "d3",
+        "name": "Maison Lumière",
+        "stage": "contacted",
+        "priority": "high",
+        "signals": 1,
+        "insufficient": false,
+        "layers": [
+          "L07"
+        ],
+        "problems": [
+          {
+            "code": "esprScope",
+            "evidence": "country_code = FR (EU)"
+          }
+        ],
+        "features": [
+          {
+            "code": "dppReadiness",
+            "evidence": "country_code = FR (EU)"
+          }
+        ],
+        "estimated_value_eur": 36000,
+        "next_contact_at": null
+      },
+      {
+        "company_id": "d4",
+        "name": "Iberia Knit Mills",
+        "stage": "new",
+        "priority": "medium",
+        "signals": 1,
+        "insufficient": false,
+        "layers": [
+          "L07"
+        ],
+        "problems": [
+          {
+            "code": "esprScope",
+            "evidence": "country_code = ES (EU)"
+          },
+          {
+            "code": "maturityUnknown",
+            "evidence": "maturity = unknown"
+          }
+        ],
+        "features": [
+          {
+            "code": "dppReadiness",
+            "evidence": "country_code = ES (EU)"
+          }
+        ],
+        "estimated_value_eur": null,
+        "next_contact_at": null
+      }
+    ],
+    "closed": 1,
+    "insufficient": 0
+  };
+}
+
+function demoEmailSending() {
+  return {"refused": true, "reason": "no_consent_record", "detail": "crm_contacts ne porte aucun champ de consentement."};
 }
 
 function demoOpportunity() {
@@ -755,7 +1048,10 @@ function viewCompany() {
     ['contacts', t('company.tabContacts') + (d.contacts?.length ? ` (${d.contacts.length})` : '')],
     ['opportunity', t('company.tabOpportunity')],
     ['activity', t('company.tabActivity')],
-    ['notes', t('company.tabNotes')],
+    ['notes', t('company.tabNotes') + (d.activities?.filter((a) => a.type === 'note').length
+      ? ` (${d.activities.filter((a) => a.type === 'note').length})` : '')],
+    ['emails', t('company.tabEmails') + (d.activities?.filter((a) => a.type === 'email').length
+      ? ` (${d.activities.filter((a) => a.type === 'email').length})` : '')],
   ];
 
   const nextAction = c.next_contact_at
@@ -822,10 +1118,64 @@ function viewCompany() {
             </span></li>`).join('')}</ul></div>`
       : `<div class="empty"><b>${esc(t('company.noActivity'))}</b>${esc(t('company.noActivityBody'))}</div>`;
   } else if (state.tab === 'notes') {
-    body = `<div class="card"><h2>${esc(t('company.tabNotes'))}</h2>
-      ${c.notes ? `<p style="margin:0;line-height:1.7;white-space:pre-wrap">${esc(c.notes)}</p>`
-                : `<p class="hint">${esc(t('company.noNotes'))}</p>`}
-      </div>`;
+    /*
+     * La colonne libre `crm_companies.notes` est modifiable : c'est un résumé.
+     * Les notes de la timeline sont des `crm_activities` en REVOKE UPDATE, DELETE :
+     * elles ne peuvent être ni retouchées ni effacées. Afficher l'une sans l'autre
+     * donnait un historique incomplet — et l'unique colonne écrasée à chaque fois.
+     */
+    const logged = (d.activities || []).filter((a) => a.type === 'note');
+    body = `<div class="grid2">
+      <div class="card"><h2>${esc(t('notes.summary'))}</h2>
+        ${c.notes ? `<p style="margin:0;line-height:1.7;white-space:pre-wrap">${esc(c.notes)}</p>`
+                  : `<p class="hint">${esc(t('company.noNotes'))}</p>`}
+        <p class="hint" style="margin-top:10px">${esc(t('notes.summaryHint'))}</p>
+      </div>
+      <div class="card"><h2>${esc(t('notes.add'))}</h2>
+        <div class="form">
+          <label class="full">${esc(t('notes.what'))}
+            <input type="text" id="note-summary" maxlength="300" placeholder="${esc(t('notes.whatPlaceholder'))}"></label>
+          <label class="full">${esc(t('common.detail'))}
+            <textarea id="note-detail" rows="3" maxlength="4000" placeholder="${esc(t('notes.detailPlaceholder'))}"></textarea></label>
+        </div>
+        <button class="btn" id="save-note">${esc(t('notes.save'))}</button>
+        <p class="hint" style="margin-top:10px">${esc(t('notes.appendOnly'))}</p>
+      </div>
+    </div>
+    ${logged.length ? `<div class="card"><h2>${esc(t('notes.logged'))}</h2>
+      <ul class="timeline">${logged.map((a) => `
+        <li><span class="tl-d">${esc(fmtDate(a.occurred_at) || '')}</span>
+          <span class="tl-b"><b>${esc(a.summary)}</b>
+            ${a.detail ? `<span style="white-space:pre-wrap">${esc(a.detail)}</span>` : ''}
+            <span>${esc(a.actor_name || '—')}</span></span></li>`).join('')}</ul></div>`
+      : `<div class="empty"><b>${esc(t('notes.empty'))}</b>${esc(t('notes.emptyBody'))}</div>`}`;
+  } else if (state.tab === 'emails') {
+    /*
+     * TRACEFAB journalise, il n'envoie pas. Le refus est affiché avec sa raison :
+     * un bouton absent sans explication ressemble à un oubli, et un oubli finit
+     * par être « corrigé » sans que la décision ait été prise.
+     */
+    const logged = (d.activities || []).filter((a) => a.type === 'email');
+    body = `<div class="warn">${esc(t('emails.refused'))}
+        <div class="meta" style="margin-top:6px">${esc(t('emails.refusedWhy'))}</div></div>
+    <div class="card" style="margin-top:14px"><h2>${esc(t('emails.add'))}</h2>
+      <div class="form">
+        <label>${esc(t('emails.to'))}
+          <input type="email" id="email-to" placeholder="${esc(t('emails.toPlaceholder'))}"></label>
+        <label class="full">${esc(t('emails.subject'))}
+          <input type="text" id="email-subject" maxlength="300" placeholder="${esc(t('emails.subjectPlaceholder'))}"></label>
+        <label class="full">${esc(t('emails.outcome'))}
+          <textarea id="email-detail" rows="3" maxlength="4000" placeholder="${esc(t('emails.outcomePlaceholder'))}"></textarea></label>
+      </div>
+      <button class="btn" id="save-email">${esc(t('emails.save'))}</button>
+    </div>
+    ${logged.length ? `<div class="card"><h2>${esc(t('emails.logged'))}</h2>
+      <ul class="timeline">${logged.map((a) => `
+        <li><span class="tl-d">${esc(fmtDate(a.occurred_at) || '')}</span>
+          <span class="tl-b"><b>${esc(a.summary)}</b>
+            ${a.detail ? `<span style="white-space:pre-wrap">${esc(a.detail)}</span>` : ''}
+            <span>${esc(a.actor_name || '—')}</span></span></li>`).join('')}</ul></div>`
+      : `<div class="empty"><b>${esc(t('emails.empty'))}</b>${esc(t('emails.emptyBody'))}</div>`}`;
   }
 
   return `
@@ -1074,6 +1424,79 @@ function modalImport() {
   }
 
   return '';
+}
+
+function viewOpportunities() {
+  const o = state.opportunities;
+  if (!o) return `<div class="empty"><b>${esc(t('opportunities.loading'))}</b></div>`;
+
+  if (!o.items.length) {
+    return `<div class="empty"><b>${esc(t('opportunities.empty'))}</b>${esc(t('opportunities.emptyBody'))}</div>`;
+  }
+
+  const rows = o.items.map((it, i) => `
+    <tr>
+      <td class="mono">${i + 1}</td>
+      <td><button class="btn sm link" data-open="${esc(it.company_id)}">${esc(it.name)}</button>
+        <div class="meta mono">${esc((it.layers || []).join(' · '))}</div></td>
+      <td>${stageTag(it.stage)}</td>
+      <td>${priorityTag(it.priority)}</td>
+      <td><b class="num">${fmtInt(it.signals)}</b>
+        <div class="meta">${esc(t('opportunity.signals')).replace('%n', String(it.signals))}</div></td>
+      <td class="meta">${esc((it.problems || []).slice(0, 2).map((x) => t('opportunityProblem.' + x.code)).join(' · '))}</td>
+      <td class="meta">${esc(fmtDate(it.next_contact_at) || '—')}</td>
+    </tr>`).join('');
+
+  return `
+  <div class="hint" style="margin-bottom:14px">${esc(t('opportunities.howRanked'))}</div>
+  <div class="tblwrap"><table>
+    <thead><tr><th>#</th><th>${esc(t('opportunities.company'))}</th>
+      <th>${esc(t('common.stage'))}</th><th>${esc(t('common.priority'))}</th>
+      <th>${esc(t('opportunities.signals'))}</th>
+      <th>${esc(t('opportunities.whyNow'))}</th>
+      <th>${esc(t('common.nextContact'))}</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+  <div class="hint" style="margin-top:12px">
+    ${esc(t('opportunities.excluded'))
+      .replace('%closed', String(o.closed)).replace('%weak', String(o.insufficient))}
+  </div>`;
+}
+
+function viewNotes() {
+  const n = state.notes;
+  if (!n) return `<div class="empty"><b>${esc(t('notes.loading'))}</b></div>`;
+  if (!n.items.length) {
+    return `<div class="empty"><b>${esc(t('notes.empty'))}</b>${esc(t('notes.emptyBody'))}</div>`;
+  }
+  return `<div class="hint" style="margin-bottom:14px">${esc(t('notes.appendOnly'))}</div>
+  <ul class="timeline">${n.items.map((it) => `
+    <li><span class="tl-d">${esc(fmtDate(it.occurred_at) || '')}</span>
+      <span class="tl-b"><b>${esc(it.summary)}</b>
+        ${it.detail ? `<span style="white-space:pre-wrap">${esc(it.detail)}</span>` : ''}
+        <span>${it.crm_companies ? `<button class="btn sm link" data-open="${esc(it.company_id)}">${esc(it.crm_companies.name)}</button>` : ''}
+          · ${esc(it.actor_name || '—')}</span></span></li>`).join('')}</ul>`;
+}
+
+function viewEmails() {
+  const e = state.emails;
+  if (!e) return `<div class="empty"><b>${esc(t('emails.loading'))}</b></div>`;
+
+  /* Le refus d'envoi est affiché, pas tu : un bouton absent sans explication
+     ressemble à un oubli, et un oubli finit par être « corrigé » sans décision. */
+  const refusal = e.sending?.refused ? `<div class="warn">${esc(t('emails.refused'))}
+    <div class="meta" style="margin-top:6px">${esc(t('emails.refusedWhy'))}</div></div>` : '';
+
+  const list = e.items.length ? `<ul class="timeline">${e.items.map((it) => `
+    <li><span class="tl-d">${esc(fmtDate(it.occurred_at) || '')}</span>
+      <span class="tl-b"><b>${esc(it.summary)}</b>
+        ${it.detail ? `<span style="white-space:pre-wrap">${esc(it.detail)}</span>` : ''}
+        <span>${it.crm_companies ? `<button class="btn sm link" data-open="${esc(it.company_id)}">${esc(it.crm_companies.name)}</button>` : ''}
+          · ${esc(it.actor_name || '—')}</span></span></li>`).join('')}</ul>`
+    : `<div class="empty"><b>${esc(t('emails.empty'))}</b>${esc(t('emails.emptyBody'))}</div>`;
+
+  return `${refusal}
+  <div class="hint" style="margin:14px 0">${esc(t('emails.logHint'))}</div>
+  ${list}`;
 }
 
 function viewSettings() {
@@ -1507,24 +1930,28 @@ const NAV = [
   ['dashboard', '01'],
   ['prospects', '02'],
   ['pipeline', '03'],
-  ['contacts', '04'],
+  ['opportunities', '04'],
+  ['contacts', '05'],
 ];
 /* Chantier Admin 02 — l'opérationnel commercial. */
 const NAV_OPS = [
-  ['tasks', '05'],
-  ['activities', '06'],
-  ['meetings', '07'],
-  ['pilots', '08'],
-  ['customers', '09'],
-  ['analytics', '10'],
-  ['settings', '11'],
+  ['tasks', '06'],
+  ['activities', '07'],
+  ['emails', '08'],
+  ['notes', '09'],
+  ['meetings', '10'],
+  ['pilots', '11'],
+  ['customers', '12'],
+  ['analytics', '13'],
+  ['settings', '14'],
 ];
-const SOON = ['Leads','Opportunities','Campaigns','Emails','Notes','Suppliers','Product Usage'];
+const SOON = ['Leads','Campaigns','Suppliers','Product Usage'];
 
 function shell() {
   const titles = {
     dashboard: t('nav.dashboard'), prospects: t('nav.prospects'),
     pipeline: t('nav.pipeline'), contacts: t('nav.contacts'), company: t('company.title'),
+    opportunities: t('nav.opportunities'), emails: t('nav.emails'), notes: t('nav.notes'),
     tasks: t('nav.tasks'), activities: t('nav.activities'), meetings: t('nav.meetings'),
     pilots: t('nav.pilots'), customers: t('nav.customers'), analytics: t('nav.analytics'), settings: t('nav.settings'),
   };
@@ -1535,6 +1962,8 @@ function shell() {
     meetings: t('meetings.subtitle'), pilots: t('pilots.subtitle'),
     customers: t('customers.subtitle'), analytics: t('analytics.subtitle'),
     settings: t('settings.subtitle'),
+    opportunities: t('opportunities.subtitle'), emails: t('emails.subtitle'),
+    notes: t('notes.subtitle'),
   };
 
   const VIEWS = {
@@ -1542,6 +1971,7 @@ function shell() {
     contacts: viewContacts, tasks: viewTasks, activities: viewActivities,
     meetings: viewMeetings, pilots: viewPilots, customers: viewCustomers,
     analytics: viewAnalytics, settings: viewSettings,
+    opportunities: viewOpportunities, emails: viewEmails, notes: viewNotes,
   };
   const body = (VIEWS[state.view] || viewCompany)();
 
@@ -1642,6 +2072,10 @@ function bind() {
   }));
   all('[data-open]').forEach((el) => el.addEventListener('click', () => openCompany(el.dataset.open)));
   all('[data-tab]').forEach((b) => b.addEventListener('click', () => { state.tab = b.dataset.tab; render(); }));
+  const sn = document.getElementById('save-note');
+  if (sn) sn.addEventListener('click', () => saveNote());
+  const se = document.getElementById('save-email');
+  if (se) se.addEventListener('click', () => saveEmailLog());
 
   on('lang', 'change', (e) => setLang(e.target.value));
   on('refresh', 'click', () => loadView());
@@ -2105,6 +2539,91 @@ async function commitImport() {
   state.saving = false;
 }
 
+/*
+ * Écriture d'une note ou d'un journal d'e-mail.
+ *
+ * Les deux passent par la SEULE porte d'écriture existante
+ * (POST /api/admin/companies/:id/activities), déjà scellée dans le journal
+ * d'audit depuis Admin 04. Une seconde porte d'écriture créerait un chemin qui
+ * n'est pas journalisé.
+ */
+async function logActivity(type, summary, detail) {
+  if (state.demo) { state.error = t('common.demoReadOnly'); render(); return; }
+  const company = state.detail?.company;
+  if (!company?.id) return;
+  try {
+    await api(`/api/admin/companies/${encodeURIComponent(company.id)}/activities`, {
+      method: 'POST',
+      body: JSON.stringify({ type, summary, detail }),
+    });
+    state.detail.activities = (await api(
+      `/api/admin/companies/${encodeURIComponent(company.id)}/activities`,
+    )).items;
+    state.error = null;
+  } catch (e) {
+    state.error = e.message;
+  }
+  render();
+}
+
+async function saveNote() {
+  const summary = (document.getElementById('note-summary')?.value || '').trim();
+  if (!summary) { state.error = t('notes.summaryRequired'); render(); return; }
+  const detail = (document.getElementById('note-detail')?.value || '').trim();
+  await logActivity('note', summary, detail || null);
+}
+
+async function saveEmailLog() {
+  const subject = (document.getElementById('email-subject')?.value || '').trim();
+  if (!subject) { state.error = t('emails.subjectRequired'); render(); return; }
+  const to = (document.getElementById('email-to')?.value || '').trim();
+  const outcome = (document.getElementById('email-detail')?.value || '').trim();
+  /* Le destinataire est déclaré par l'opérateur, jamais déduit du nom de la
+     société : une adresse inventée partirait dans l'historique comme une vraie. */
+  const parts = [];
+  if (to) parts.push(`${t('emails.to')} : ${to}`);
+  if (outcome) parts.push(outcome);
+  await logActivity('email', subject, parts.join('\n') || null);
+}
+
+async function loadOpportunities() {
+  if (state.demo) { state.opportunities = demoOpportunities(); return; }
+  state.opportunities = await api('/api/admin/opportunities');
+}
+
+async function loadNotes() {
+  if (state.demo) {
+    state.notes = { items: [
+      { id:'n1', company_id:'d1', summary:'Relance après le salon PV — attend le cahier des charges DPP.',
+        detail:null, actor_name:'Founder', occurred_at:inDays(-2),
+        crm_companies:{ id:'d1', name:'Example Fashion Group', stage:'pilot' } },
+      { id:'n2', company_id:'d5', summary:'Le directeur RSE demande une preuve de traçabilité du coton.',
+        detail:'Prévoir un cas concret sur une capsule existante.', actor_name:'Founder', occurred_at:inDays(-5),
+        crm_companies:{ id:'d5', name:'Atlas Apparel', stage:'replied' } },
+      { id:'n3', company_id:'d2', summary:'Usine de teinture interne — données déjà structurées sur un tableur.',
+        detail:null, actor_name:'Founder', occurred_at:inDays(-8),
+        crm_companies:{ id:'d2', name:'Northwind Textiles', stage:'demo' } },
+    ], total: 3 };
+    return;
+  }
+  state.notes = await api('/api/admin/notes');
+}
+
+async function loadEmails() {
+  if (state.demo) {
+    state.emails = { items: [
+      { id:'m1', company_id:'d1', summary:'Proposition de pilote — 3 familles de produits',
+        detail:'À : Camille Roux. Réponse attendue sous 10 jours.', actor_name:'Founder', occurred_at:inDays(-4),
+        crm_companies:{ id:'d1', name:'Example Fashion Group', stage:'pilot' } },
+      { id:'m2', company_id:'d3', summary:'Envoi de la fiche DPP readiness',
+        detail:'À : contact non renseigné. Aucune réponse.', actor_name:'Founder', occurred_at:inDays(-11),
+        crm_companies:{ id:'d3', name:'Maison Lumière', stage:'contacted' } },
+    ], total: 2, sending: demoEmailSending() };
+    return;
+  }
+  state.emails = await api('/api/admin/emails');
+}
+
 async function loadSettings() {
   if (state.demo) {
     state.settings = {
@@ -2159,6 +2678,9 @@ async function loadView() {
     else if (state.view === 'analytics') await loadAnalytics();
     else if (state.view === 'customers') await loadCustomers();
     else if (state.view === 'settings') { await loadSettings(); await loadAudit(); }
+    else if (state.view === 'opportunities') await loadOpportunities();
+    else if (state.view === 'emails') await loadEmails();
+    else if (state.view === 'notes') await loadNotes();
     else if (state.view === 'prospects') { await loadCompanies(); await loadLists(); }
     else await loadCompanies();
   } catch (e) {

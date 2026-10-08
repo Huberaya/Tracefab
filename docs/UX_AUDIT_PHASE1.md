@@ -3715,3 +3715,135 @@ Les 25 SKIP ont une cause mesurée : 12 prisma-engine, 6 database, 4 browser,
 - Excel (.xlsx) toujours non livré : un classeur n'est pas un CSV.
 - Toujours reportés du cahier des charges Admin : Leads, Opportunities, Campaigns,
   Emails, Notes, Suppliers, Product Usage.
+
+---
+
+# CHANTIER ADMIN 05 — Notes (§12), Emails (§12), Opportunities (§1 + §4)
+
+## L'audit qui a décidé du chantier
+
+Trois faits mesurés avant d'écrire une ligne :
+
+| Constat | Preuve |
+|---|---|
+| `POST /api/admin/companies/:id/activities` existait et était scellé (Admin 04), mais **aucune interface ne l'appelait** | la seule occurrence côté front était un **GET** de rafraîchissement après un changement d'étape |
+| L'onglet « Notes » affichait la colonne unique `crm_companies.notes`, jamais les lignes `type='note'` de la timeline append-only | lecture du bloc `state.tab === 'notes'` |
+| `crm_contacts` ne porte **aucun** champ de consentement | `grep -icE "consent\|opt_in\|gdpr" prisma/schema.prisma` → **0**, alors que `api/_lib/email.ts` envoie réellement via Resend |
+
+`ACTIVITY_TYPES` contenait déjà `note`, `email` et `call` ; `GET /api/admin/activities`
+supportait déjà `?type=`. **Notes et Emails étaient donc des backends sans bouton.**
+
+**Aucune table `campaign` ni `lead` n'existe** (`grep -icE "campaign|crm_lead"` → 0) :
+ces deux entrées de §1 restent à venir, elles demandent une migration.
+
+## Décisions
+
+**1. Zéro migration.** `crm_activities` a exactement deux colonnes textuelles
+(`summary`, `detail`). Y encoder du JSON produirait un contenu non interrogeable
+et illisible dans la timeline. Rien de structuré n'est donc demandé : l'objet d'un
+e-mail va dans `summary`, le reste dans `detail`. Aucun fichier `prisma/` modifié.
+
+**2. `notes.ts` et `emails.ts` sont des lectures à périmètre FIXÉ.** Le `type`
+est imposé dans la route, pas accepté en paramètre. Ce ne sont pas
+`activities?type=note` déguisés : une route dont le paramètre décide du contenu
+n'a pas de périmètre. Les deux routes n'écrivent jamais.
+
+**3. Une seule porte d'écriture.** Notes et e-mails passent par la route
+d'activités existante, déjà scellée dans le journal d'audit. Une seconde porte
+créerait un chemin non journalisé.
+
+**4. TRACEFAB journalise les e-mails, il ne les envoie pas.** Le refus est une
+constante nommée (`EMAIL_SENDING_REFUSED`), renvoyée par la route, affichée par
+l'interface avec sa raison. Un bouton absent sans explication ressemble à un
+oubli — et un oubli finit par être « corrigé » sans que la décision ait été prise.
+
+**5. Le refus est épinglé sur le schéma.** Le test lit `prisma/schema.prisma` et
+échoue si un champ de consentement apparaît. Ce jour-là, la décision d'envoyer
+doit être prise explicitement au lieu de devenir possible par omission.
+
+**6. Le destinataire est validé, jamais déduit.** `parseRecipient` contrôle la
+FORME. TRACEFAB ne peut pas prouver qu'une boîte existe ; le prétendre serait un
+mensonge affiché comme une vérification.
+
+**7. Aucune table d'opportunités.** Une opportunité n'est pas une entité saisie,
+c'est une LECTURE de ce qui l'est déjà. La stocker créerait une seconde vérité
+qui divergerait de la fiche entreprise dès le premier changement.
+`rankOpportunities` réutilise `assessOpportunity` : les mêmes champs produisent
+les mêmes conclusions ici et sur la fiche.
+
+**8. Le classement est total, donc stable.** Signaux décroissants, puis priorité,
+puis valeur estimée, **puis identifiant**. Sans ce dernier critère, deux
+entreprises à égalité changeraient d'ordre d'un rafraîchissement à l'autre — et
+une liste de prospection qui bouge toute seule n'est pas exploitable.
+
+**9. Les entreprises fermées et celles sans signal sont retirées du classement et
+comptées à part.** Les mélanger ferait croire qu'il reste du travail là où il n'y
+en a plus, ou inversement.
+
+## Deux défauts CSS préexistants trouvés et corrigés
+
+Un contrôle systématique « toute classe utilisée a-t-elle une règle ? » en a
+révélé deux, **antérieurs à ce chantier** (comptes identiques avant/après) :
+
+1. **`.kv` n'avait aucune règle** et `.kl` n'était définie que sous `.pilotnums`.
+   15 nombres de KPI (vues import et TODAY, Admin 02/03) s'affichaient en texte
+   ordinaire. Le contrat KPI établi est `.kpi > .lbl` + `.kpi > .val` ; les règles
+   `.kpi .kl` / `.kpi .kv` ont été ajoutées plutôt que de renommer 15 occurrences
+   et 3 sélecteurs de tests.
+2. **Il existait deux règles `.tl-d` non bornées et contradictoires** : l'une
+   donnait `width:74px` à la cellule de date, l'autre faisait de la ligne
+   d'activité une grille à deux colonnes. La ligne d'activité héritait des deux —
+   une grille de 74px de large dont la première colonne en réclamait 132. La
+   règle de largeur est désormais bornée à `.timeline li .tl-d` ; la règle de
+   grille, qui était correcte, est conservée non bornée.
+
+## Les erreurs de mon propre test
+
+Cinq assertions étaient fausses, pas le code :
+
+- `rankOpportunities` sur 6 entreprises donne **3** opportunités (2 fermées +
+  1 sans signal), pas 4 — et j'avais écrit une assertion sur « le quatrième ».
+- J'avais écrit `isTrue(<regex>, false, 'message')` : le deuxième paramètre est
+  le LIBELLÉ. L'assertion testait l'inverse de ce qu'elle disait.
+- « La règle `.tl-d` non bornée a disparu » supposait qu'il n'en existait qu'une.
+- Mon détecteur de règle « non bornée » comptait la règle scopée comme non bornée
+  (`.tl-d` y est précédé d'un combinateur descendant).
+- **Une assertion matchait un commentaire** : la phrase
+  `sending: EMAIL_SENDING_REFUSED` figure dans l'en-tête de la route, donc
+  supprimer le code ne faisait pas échouer le test. La neuvième contre-vérification
+  ne détectait rien. Les commentaires sont désormais retirés avant l'assertion.
+
+Et une régression que j'ai introduite puis corrigée : les comptes de clés i18n
+étaient **absolus** (`eq(420)`) dans le test Admin 04. Ajouter 45 clés les a fait
+échouer sans qu'aucun défaut réel n'existe — exactement le piège déjà identifié.
+Les deux tests expriment maintenant un seuil, et le seuil a été contre-vérifié :
+retirer 13 clés Admin 04 produit 16 échecs.
+
+## Mesures
+
+| Vérification | Résultat |
+|---|---|
+| `test:admin:chantier05` | **334/334** |
+| Contre-vérifications (9 défauts injectés, 6 fichiers restaurés à l'identique) | **9/9 détectés** |
+| chantier01 / 02 / 03 / 04 | 95/95 · 315/315 · 262/262 · 745/745 |
+| `api:typecheck` | **90** (= baseline), **0 erreur dans les fichiers CRM** |
+| `test:typecheck:baseline` | 8/8 |
+| `typecheck` front · `schema:static` · `i18n:serving` | exit 0 · OK · 54/54 |
+| `test:suite` | **PASS 66 · SKIP 25 · FAIL 0 sur 91** |
+| Routeur | **152 motifs**, 26 routes admin |
+| Dictionnaires | **465 clés × 7 langues**, aucun CJK, keysets identiques |
+| Preview `/admin/?demo` | **200**, 465 clés servies dans les 7 langues |
+| Fichiers `prisma/` modifiés | **0** — zéro migration |
+| Classes utilisées sans règle CSS | **0** (2 défauts préexistants corrigés) |
+
+## Limites assumées
+
+- **Aucune migration exécutée, aucun handler n'a répondu à une requête réelle.**
+- **L'envoi d'e-mail n'a pas été testé** : `api.resend.com` n'est pas joignable
+  depuis cet environnement. Il n'est de toute façon pas branché sur la console.
+- Le classement de démonstration est la sortie réelle de `rankOpportunities` sur
+  les entreprises de démo, généré par la fonction — pas écrit à la main.
+- Toujours reportés de §1 : **Leads, Campaigns** (migration requise),
+  **Suppliers**, **Product Usage** (nécessite une télémétrie que le produit ne
+  produit pas ; à traiter comme un refus épinglé, pas comme une fonctionnalité).
+- Excel (.xlsx) toujours non livré.

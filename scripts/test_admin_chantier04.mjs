@@ -509,8 +509,13 @@ console.log('\nH. Routes — ordre porteur, journal en lecture seule');
 /* -------------------------------------------------------------------------- */
 
 const routerSrc = await readFile(at('api/index.ts'), 'utf8');
-const patterns = [...routerSrc.matchAll(/\{ pattern: (\/\^.*?\/), params: \[([^\]]*)\], load: \(\) => import\('\.\/(_routes\/[^']+)'\) \}/g)]
-  .map((m) => ({ re: new RegExp(m[1].slice(1, -1)), load: m[3] }));
+/*
+ * L'extraction s'arrête sur « /, params: » et non sur le premier « / » : un motif
+ * comme /^admin\/access$/ contient des slashes échappés, et couper au premier
+ * produirait des regex tronquées qui matcheraient quand même par accident.
+ */
+const patterns = [...routerSrc.matchAll(/\{ pattern: \/\^(.*?)\/, params: \[([^\]]*)\], load: \(\) => import\('\.\/(_routes\/[^']+)'\)/g)]
+  .map((m) => ({ re: new RegExp(`^${m[1]}`), load: m[3] }));
 isTrue(patterns.length >= 149, `le routeur déclare au moins 149 motifs (obtenu ${patterns.length})`);
 
 const match = (path) => {
@@ -523,9 +528,21 @@ eq(match('admin/settings'), '_routes/admin/settings.js',
   '/api/admin/settings atteint bien son handler');
 /* Contre-vérification de l'ordre : si un motif admin/([^/]+) existait avant,
    ces deux routes seraient inatteignables. */
-const firstAdminItem = patterns.findIndex((p) => /^admin\\\/\(\[\^/.test(String(p.re)));
-eq(firstAdminItem, -1,
-  'aucun motif générique admin/([^/]+) ne précède — les deux nouvelles routes ne peuvent pas être ombrées');
+/*
+ * Le risque réel n'est pas « un motif admin contient un joker » — `admin/companies/
+ * ([^/]+)` en contient un et ne peut pas ombrager `admin/audit`, puisqu'il est
+ * ancré sur `admin/companies/`. Le risque est un motif à UN SEUL segment joker
+ * directement sous `admin/`, qui avalerait n'importe quelle route admin.
+ */
+const greedyAdmin = patterns.filter((p) => /^admin\\\/\(\[\^\\\/\]\+\)\$$/.test(p.re.source));
+eq(greedyAdmin.length, 0,
+  `aucun motif à segment joker unique sous admin/ — sinon il avalerait audit, settings, notes, emails et opportunities (trouvé : ${greedyAdmin.length})`);
+/* Et la conséquence, mesurée plutôt que supposée : chaque route admin atteint son handler. */
+for (const path of ['admin/audit', 'admin/settings', 'admin/notes', 'admin/emails', 'admin/opportunities']) {
+  const hit = patterns.find((p) => p.re.test(path));
+  eq(hit ? hit.load : null, `_routes/admin/${path.split('/')[1]}.js`,
+    `${path} atteint son propre handler`);
+}
 
 const auditRoute = await readFile(at('api/_routes/admin/audit.ts'), 'utf8');
 isTrue(/methodNotAllowed\(res, \['GET'\]\)/.test(auditRoute),
@@ -582,7 +599,10 @@ const LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
 const dicts = {};
 for (const lang of LANGS) {
   dicts[lang] = JSON.parse(await readFile(at(`locales/${lang}/admin.json`), 'utf8'));
-  eq(Object.keys(dicts[lang]).length, 420, `${lang} : 420 clés`);
+  /* Seuil, pas compte absolu : l'intention est « rien d'Admin 04 n'a été perdu ».
+     Un compte absolu casse à chaque chantier suivant sans rien détecter. */
+  isTrue(Object.keys(dicts[lang]).length >= 420,
+    `${lang} : au moins 420 clés (obtenu ${Object.keys(dicts[lang]).length})`);
 }
 const refKeys = Object.keys(dicts.en).sort().join('|');
 for (const lang of LANGS) {

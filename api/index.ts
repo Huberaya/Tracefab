@@ -38,6 +38,10 @@ const routes: Route[] = [
   { pattern: /^admin\/pilots$/, params: [], load: () => import('./_routes/admin/pilots.js') },
   { pattern: /^admin\/pilots\/([^\/]+)$/, params: ['pilotId'], load: () => import('./_routes/admin/pilots/[pilotId].js') },
   { pattern: /^admin\/activities$/, params: [], load: () => import('./_routes/admin/activities.js') },
+  /* Chantier Admin 05 — boucle commerciale quotidienne (§12, §1). */
+  { pattern: /^admin\/notes$/, params: [], load: () => import('./_routes/admin/notes.js') },
+  { pattern: /^admin\/emails$/, params: [], load: () => import('./_routes/admin/emails.js') },
+  { pattern: /^admin\/opportunities$/, params: [], load: () => import('./_routes/admin/opportunities.js') },
   { pattern: /^admin\/analytics$/, params: [], load: () => import('./_routes/admin/analytics.js') },
   /* Chantier Admin 03 — acquisition : import CSV, listes, export. */
   { pattern: /^admin\/import\/preview$/, params: [], load: () => import('./_routes/admin/import/preview.js') },
