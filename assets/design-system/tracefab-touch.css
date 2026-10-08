@@ -1,0 +1,96 @@
+/* ==========================================================================
+   TRACEFAB — plancher de cible tactile
+   --------------------------------------------------------------------------
+   Un audit des neuf pages a releve 33 types de controles interactifs sous
+   40 px de haut : boutons de navigation a 39 px, selecteurs de langue a 30 px,
+   pastilles de filtre a 23 px, et des boutons-liens ("Sign out", "Back to
+   catalogue") a 14 px.
+
+   Reference : WCAG 2.5.5 (AAA) demande 44 x 44 px, WCAG 2.5.8 (AA) 24 x 24 px.
+   Le seuil produit retenu est 40 px de hauteur, les largeurs etant deja
+   confortables sur l'ensemble des controles mesures.
+
+   NE SONT PAS CIBLES ici les liens en ligne au fil d'un texte : WCAG 2.5.8 les
+   exempte explicitement, et les grossir casserait l'interlignage editorial.
+
+   Cette feuille est chargee en dernier par chaque page, apres le design system
+   et apres la feuille locale, pour ne pas dependre de l'ordre de specificite
+   de chaque gabarit.
+   ========================================================================== */
+
+:root { --tf-touch-min: 40px; }
+
+/* -- Socle commun ---------------------------------------------------------
+   Les controles de formulaire et les boutons autonomes de toutes les pages. */
+button,
+select,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="text"],
+input[type="email"],
+input[type="search"],
+input[type="date"],
+input[type="number"] {
+  min-height: var(--tf-touch-min);
+}
+
+/* Les boutons rendus comme du texte souligne gardent leur allure, mais leur
+   zone cliquable atteint le plancher. inline-flex evite qu'ils cassent la
+   ligne dans les barres d'outils ou ils vivent. */
+.link-button,
+.tf-lang__btn,
+.sp-check-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tf-touch-min);
+}
+
+/* -- Liens servant de controle -------------------------------------------
+   Logos cliquables, boutons-liens et retours de navigation : ce sont des
+   cibles a part entiere, pas des liens au fil du texte. */
+a.tf-brand,
+a.brand-logo,
+a.btn,
+a.link,
+.btn-action,
+.nav a,
+.links a,
+.actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tf-touch-min);
+}
+
+/* -- Cas particuliers mesures --------------------------------------------- */
+
+/* Landing : loupes de la visionneuse et bouton burger. */
+.tf-lens,
+.tf-burger { min-height: var(--tf-touch-min); min-width: var(--tf-touch-min); }
+
+/* Consoles : la navigation laterale etait a 39 px, a un pixel du plancher. */
+.nav button,
+.btn-small,
+.btn.btn-small { min-height: var(--tf-touch-min); }
+
+/* Selecteurs de langue et d'organisation, mesures entre 30 et 38 px. */
+select[id*="lang"],
+.lang-switcher-select,
+.org-select { min-height: var(--tf-touch-min); }
+
+/* Landing : navigation principale (39 px, a un pixel du plancher) et listes
+   de liens du pied de page (32 px). Le selecteur est .tf-nav, pas .nav. */
+.tf-nav a,
+.tf-footer li > a,
+footer li > a {
+  display: flex;
+  align-items: center;
+  min-height: var(--tf-touch-min);
+}
+
+/* Les cases a cocher restent des carres : on elargit la zone par le libelle
+   associe plutot qu'en deformant la case. */
+input[type="checkbox"],
+input[type="radio"] { min-height: 0; }
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]) { min-height: var(--tf-touch-min); }
