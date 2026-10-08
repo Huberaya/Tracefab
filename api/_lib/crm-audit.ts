@@ -13,7 +13,7 @@
 
 export const AUDIT_ENTITIES = [
   'crm_company', 'crm_contact', 'crm_task', 'crm_meeting', 'crm_pilot',
-  'crm_saved_view', 'crm_import',
+  'crm_saved_view', 'crm_import', 'crm_campaign', 'crm_lead',
 ] as const;
 
 export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
@@ -41,6 +41,15 @@ export const AUDIT_FIELDS: Record<AuditEntity, readonly string[]> = {
     'progress_pct', 'data_completeness_pct', 'evidence_coverage_pct', 'dpp_readiness_pct'],
   crm_saved_view: ['name'],
   crm_import: ['source', 'total', 'created', 'duplicate', 'invalid'],
+  /*
+   * Chantier Admin 07. Les compteurs d'une campagne n'y figurent pas : ils ne
+   * sont pas stockés, donc il n'y a rien à comparer. Journaliser un nombre
+   * calculé donnerait l'illusion d'un historique alors qu'il est rejouable.
+   */
+  crm_campaign: ['name', 'channel', 'status', 'objective', 'target_audience',
+    'starts_at', 'ends_at', 'budget_eur', 'owner_name'],
+  crm_lead: ['company_name', 'contact_name', 'email', 'status', 'campaign_id',
+    'discard_reason', 'converted_company_id', 'country_code', 'sector'],
 };
 
 export interface FieldChange {

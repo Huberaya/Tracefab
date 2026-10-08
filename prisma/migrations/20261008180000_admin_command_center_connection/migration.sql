@@ -35,11 +35,6 @@ ALTER TABLE crm_companies
  * validée à l'écriture par la route, qui refuse un identifiant inconnu.
  */
 
-/* Index partiel : seules les lignes connectées sont interrogées par les vues
-   Suppliers et Product Usage. Indexer toute la table indexerait surtout des NULL. */
-CREATE INDEX IF NOT EXISTS idx_crm_companies_linked_org
-  ON crm_companies (organization_id)
-  WHERE organization_id IS NOT NULL;
 
 /* Recherche par plateforme + lien, pour la vue Suppliers. */
 CREATE INDEX IF NOT EXISTS idx_crm_companies_org_link

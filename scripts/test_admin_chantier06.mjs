@@ -228,8 +228,11 @@ isTrue(/ALTER TABLE crm_companies\s+ADD COLUMN IF NOT EXISTS organization_id UUI
 eq(/DROP TABLE|DELETE FROM|TRUNCATE|DROP COLUMN/i.test(mig), false,
   'aucune opération destructive : rien d\'existant n\'est supprimé');
 isTrue(/CREATE INDEX IF NOT EXISTS/.test(mig), 'les index sont idempotents');
-isTrue(/WHERE organization_id IS NOT NULL/.test(mig),
-  'l\'index principal est partiel : indexer surtout des NULL ne servirait à rien');
+/* Chantier 07 a retiré cet index partiel : Prisma ne sait pas exprimer un index
+   partiel, donc il existait en base sans exister dans le schéma — une dérive
+   invisible. L'index composite déclaré suffit à la requête. */
+eq(/CREATE INDEX[\s\S]*?WHERE/.test(mig), false,
+  'aucun index partiel : Prisma ne peut pas le déclarer, ce serait une dérive base/schéma');
 eq(/CREATE POLICY|DROP POLICY/.test(mig), false,
   'aucune politique RLS n\'est créée ni modifiée : crm_companies est déjà couverte');
 
@@ -254,8 +257,10 @@ isTrue(/organization_id\s+String\?\s+@db\.Uuid/.test(companyBlock),
   'le schéma Prisma porte la colonne, nullable');
 isTrue(/idx_crm_companies_org_link/.test(companyBlock),
   'l\'index composé plateforme + lien est déclaré dans le schéma');
-eq((schema.match(/^model /gm) || []).length, 51, 'toujours 51 modèles : aucune table ajoutée');
-eq((schema.match(/^enum /gm) || []).length, 37, 'toujours 37 enums');
+isTrue((schema.match(/^model /gm) || []).length >= 51,
+  `au moins 51 modèles : le chantier 06 n'en a ajouté aucun (obtenu ${(schema.match(/^model /gm) || []).length})`);
+isTrue((schema.match(/^enum /gm) || []).length >= 37,
+  `au moins 37 enums : le chantier 06 n'en a ajouté aucun (obtenu ${(schema.match(/^enum /gm) || []).length})`);
 
 /* -------------------------------------------------------------------------- */
 console.log('\nG. Routes — lecture seule, RLS respecté, pas de contournement');

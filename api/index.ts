@@ -54,6 +54,13 @@ const routes: Route[] = [
   /* Chantier Admin 06 — comptes connectés (§1 Suppliers, §1 Product Usage). */
   { pattern: /^admin\/suppliers$/, params: [], load: () => import('./_routes/admin/suppliers.js') },
   { pattern: /^admin\/product-usage$/, params: [], load: () => import('./_routes/admin/product-usage.js') },
+  /* Chantier Admin 07 — campagnes et leads (§1). L'ordre est porteur : le
+     segment littéral `promote` reste devant le paramètre, comme pour companies. */
+  { pattern: /^admin\/campaigns$/, params: [], load: () => import('./_routes/admin/campaigns.js') },
+  { pattern: /^admin\/campaigns\/([^\/]+)$/, params: ['campaignId'], load: () => import('./_routes/admin/campaigns/[campaignId].js') },
+  { pattern: /^admin\/leads$/, params: [], load: () => import('./_routes/admin/leads.js') },
+  { pattern: /^admin\/leads\/([^\/]+)\/promote$/, params: ['leadId'], load: () => import('./_routes/admin/leads/[leadId]/promote.js') },
+  { pattern: /^admin\/leads\/([^\/]+)$/, params: ['leadId'], load: () => import('./_routes/admin/leads/[leadId].js') },
   { pattern: /^catalog\/products\/import$/, params: [], load: () => import('./_routes/catalog/products/import.js') },
   { pattern: /^catalog\/products\/export$/, params: [], load: () => import('./_routes/catalog/products/export.js') },
   { pattern: /^catalog\/products\/import\-jobs\/([^\/]+)$/, params: ['jobId'], load: () => import('./_routes/catalog/products/import-jobs/[jobId].js') },

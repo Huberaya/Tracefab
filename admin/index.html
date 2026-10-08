@@ -316,6 +316,7 @@ const state = {
   settings: null, audit: null, auditFilter: '',
   notes: null, emails: null, opportunities: null, noteCompany: '', emailCompany: '',
   connected: null, usage: null, linkableOrgs: [],
+  campaigns: null, leads: null, campaign: null, lead: null, leadCampaign: '', leadStatus: '',
   lists: { items: [] }, activeList: null,
   importStep: null, importCsv: '', importMapping: {}, importPreview: null,
   importSource: '', importDetail: '', importSkip: true, importResult: null,
@@ -1562,6 +1563,212 @@ function connectedSummary(d) {
   </div>`;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Chantier Admin 07 — campagnes et leads (§1)                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Les métriques de démo sont produites par measureCampaign lui-même, pas écrites
+   à la main : une fixture figée divergerait silencieusement de la fonction. */
+function demoCampaigns() { return [{"id": "c1", "name": "Première Vision 2026", "channel": "event", "status": "running", "objective": "Rencontrer les marques de mode françaises sur le salon", "target_audience": "France — marques de mode", "owner_name": "Léa Marchand", "starts_at": "2026-02-16T00:00:00.000Z", "budget_eur": 18000, "metrics": {"leads": 5, "byStatus": {"converted": 2, "qualified": 1, "contacted": 1, "discarded": 1}, "promoted": 2, "discarded": 1, "decided": 3, "customers": 1, "promotionRate": 66.7, "customerRate": 50}}, {"id": "c2", "name": "Outreach DACH Luxury", "channel": "email", "status": "running", "objective": "Premier contact avec les maisons de luxe DACH", "target_audience": "Allemagne, Autriche, Suisse — luxe", "owner_name": "Léa Marchand", "starts_at": "2026-08-01T00:00:00.000Z", "budget_eur": 4000, "metrics": {"leads": 3, "byStatus": {"contacted": 1, "new": 2}, "promoted": 0, "discarded": 0, "decided": 0, "customers": 0, "promotionRate": null, "customerRate": null}}, {"id": "c3", "name": "Webinar DPP Readiness", "channel": "webinar", "status": "completed", "objective": "Sensibiliser au passeport numérique de produit", "target_audience": "Europe — responsables conformité", "owner_name": "Léa Marchand", "starts_at": "2026-05-12T00:00:00.000Z", "ends_at": "2026-05-12T00:00:00.000Z", "metrics": {"leads": 2, "byStatus": {"new": 2}, "promoted": 0, "discarded": 0, "decided": 0, "customers": 0, "promotionRate": null, "customerRate": null}}, {"id": "c4", "name": "Partnership Referral", "channel": "referral", "status": "draft", "objective": "Candidats apportés par les partenaires", "target_audience": "", "owner_name": "", "metrics": {"leads": 0, "byStatus": {}, "promoted": 0, "discarded": 0, "decided": 0, "customers": 0, "promotionRate": null, "customerRate": null}}]; }
+function demoLeads() { return [{"id": "l1", "campaign_id": "c1", "company_name": "Maison Verte", "contact_name": "Claire Dubois", "contact_job_title": "Supply Chain Director", "email": "c.dubois@maisonverte.fr", "website": "maisonverte.fr", "country_code": "FR", "city": "Paris", "sector": "Fashion", "status": "converted", "converted_company_id": "d1", "source": "salon", "source_detail": "Première Vision 2026", "collected_at": "2026-02-17T00:00:00.000Z"}, {"id": "l2", "campaign_id": "c1", "company_name": "Atelier Nord", "contact_name": "Marc Lefevre", "contact_job_title": "CSR Manager", "email": "m.lefevre@ateliernord.fr", "website": "ateliernord.fr", "country_code": "FR", "city": "Lille", "sector": "Fashion", "status": "converted", "converted_company_id": "d5", "source": "salon", "source_detail": "Première Vision 2026", "collected_at": "2026-02-17T00:00:00.000Z"}, {"id": "l3", "campaign_id": "c1", "company_name": "Tissage du Rhône", "contact_name": "Sofia Ricci", "contact_job_title": "Procurement Director", "email": "s.ricci@tissagerhone.fr", "website": "tissagerhone.fr", "country_code": "FR", "city": "Lyon", "sector": "Mill", "status": "qualified", "source": "salon", "source_detail": "Première Vision 2026", "collected_at": "2026-02-18T00:00:00.000Z"}, {"id": "l4", "campaign_id": "c1", "company_name": "Fibre & Co", "contact_name": "Antoine Petit", "contact_job_title": "Founder", "email": "a.petit@fibreco.fr", "website": "fibreco.fr", "country_code": "FR", "city": "Roubaix", "sector": "Textile Supplier", "status": "discarded", "discard_reason": "Hors cible : aucun produit fini", "source": "salon", "source_detail": "Première Vision 2026", "collected_at": "2026-02-18T00:00:00.000Z"}, {"id": "l5", "campaign_id": "c2", "company_name": "Hanfhaus", "contact_name": "Lena Fischer", "contact_job_title": "Sustainability Director", "email": "l.fischer@hanfhaus.de", "website": "hanfhaus.de", "country_code": "DE", "city": "Berlin", "sector": "Fashion", "status": "contacted", "source": "email", "source_detail": "Outreach DACH — séquence 1", "collected_at": "2026-08-03T00:00:00.000Z"}, {"id": "l6", "campaign_id": "c3", "company_name": "Textielhuis", "contact_name": "Joost Vermeer", "contact_job_title": "Compliance Director", "email": "j.vermeer@textielhuis.nl", "website": "textielhuis.nl", "country_code": "NL", "city": "Amsterdam", "sector": "Retailer", "status": "new", "source": "webinar", "source_detail": "Webinar DPP Readiness", "collected_at": "2026-05-12T00:00:00.000Z"}]; }
+
+async function loadCampaigns() {
+  if (state.demo) { state.campaigns = { campaigns: demoCampaigns(), metricsSource: 'computed' }; return; }
+  state.campaigns = await api('/api/admin/campaigns');
+}
+
+async function loadLeads() {
+  if (state.demo) { state.leads = { leads: demoLeads() }; return; }
+  const q = new URLSearchParams();
+  if (state.leadCampaign) q.set('campaign_id', state.leadCampaign);
+  if (state.leadStatus) q.set('status', state.leadStatus);
+  state.leads = await api(`/api/admin/leads${q.toString() ? `?${q}` : ''}`);
+}
+
+/*
+ * `rate` existe déjà et rend un taux null par « Non mesuré » — c'est exactement
+ * le comportement voulu, et le réutiliser évite deux lectures du même concept.
+ *
+ * Mais `rate` arrondit via `fmtInt`. Les pourcentages de pilote sont des entiers,
+ * les taux de campagne ne le sont pas (2 promotions sur 3 = 66,7 %). Arrondir
+ * ferait perdre la précision sur de petits échantillons, exactement ceux où elle
+ * compte. D'où cette variante, sans toucher à `rate` dont la vue Pilotes est
+ * déjà validée.
+ */
+const ratePct = (v) => (v === null || v === undefined
+  ? `<span class="hint">${esc(t('common.notMeasured'))}</span>`
+  : `<b class="num">${fmtPct(v)}</b>`);
+
+function channelTag(ch) { return `<span class="tag">${esc(t('campaigns.channel.' + ch))}</span>`; }
+function campaignStatusTag(st) { return `<span class="tag ${st === 'running' ? 'ok' : ''}">${esc(t('campaigns.status.' + st))}</span>`; }
+function leadStatusTag(st) {
+  const cls = st === 'converted' ? 'ok' : (st === 'discarded' ? 'bad' : '');
+  return `<span class="tag ${cls}">${esc(t('leads.status.' + st))}</span>`;
+}
+
+function viewCampaigns() {
+  const d = state.campaigns;
+  if (!d) return `<div class="empty"><b>${esc(t('campaigns.loading'))}</b></div>`;
+  const rows = (d.campaigns || []).map((c) => {
+    const m = c.metrics || {};
+    return `
+    <tr>
+      <td><button class="btn sm link" data-campaign="${esc(c.id)}">${esc(c.name)}</button>
+        <div class="meta">${esc(c.target_audience || '')}</div></td>
+      <td>${channelTag(c.channel)}</td>
+      <td>${campaignStatusTag(c.status)}</td>
+      <td><b class="num">${fmtInt(m.leads || 0)}</b></td>
+      <td><b class="num">${fmtInt(m.promoted || 0)}</b></td>
+      <td>${ratePct(m.promotionRate)}</td>
+      <td><b class="num">${fmtInt(m.customers || 0)}</b></td>
+      <td>${ratePct(m.customerRate)}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <div class="bar">
+    <button class="btn primary" id="new-campaign">${esc(t('campaigns.new'))}</button>
+  </div>
+  <div class="hint" style="margin:14px 0">${esc(t('campaigns.hint'))}</div>
+  ${(d.campaigns || []).length ? `<div class="tblwrap"><table>
+    <thead><tr><th>${esc(t('common.name'))}</th><th>${esc(t('campaigns.channelLabel'))}</th>
+      <th>${esc(t('common.status'))}</th>
+      <th>${esc(t('campaigns.leads'))}</th><th>${esc(t('campaigns.promoted'))}</th>
+      <th>${esc(t('campaigns.promotionRate'))}</th>
+      <th>${esc(t('campaigns.customers'))}</th><th>${esc(t('campaigns.customerRate'))}</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`
+    : `<div class="empty"><b>${esc(t('campaigns.empty'))}</b>${esc(t('campaigns.emptyBody'))}</div>`}
+  <div class="hint" style="margin-top:12px">${esc(t('campaigns.rateHint'))}</div>`;
+}
+
+function viewLeads() {
+  const d = state.leads;
+  if (!d) return `<div class="empty"><b>${esc(t('leads.loading'))}</b></div>`;
+  const rows = (d.leads || []).map((l) => `
+    <tr>
+      <td><button class="btn sm link" data-lead="${esc(l.id)}">${esc(l.company_name)}</button>
+        <div class="meta">${esc(l.contact_name || '')}${l.contact_job_title ? ' · ' + esc(l.contact_job_title) : ''}</div></td>
+      <td class="meta">${esc(l.email || l.website || '—')}</td>
+      <td class="meta">${esc(l.country_code || '—')}</td>
+      <td>${leadStatusTag(l.status)}</td>
+      <td class="meta">${esc(t('leads.source'))} : ${esc(l.source || '—')}</td>
+      <td class="meta">${l.collected_at ? fmtDate(l.collected_at) : '<span class="meta">—</span>'}</td>
+      <td>${l.status === 'converted'
+        ? `<button class="btn sm link" data-open="${esc(l.converted_company_id)}">${esc(t('leads.viewCompany'))}</button>`
+        : (l.status === 'discarded' ? '<span class="meta">—</span>'
+          : `<button class="btn sm" data-promote="${esc(l.id)}">${esc(t('leads.promote'))}</button>`)}</td>
+    </tr>`).join('');
+
+  return `
+  <div class="bar">
+    <button class="btn primary" id="new-lead">${esc(t('leads.new'))}</button>
+  </div>
+  <div class="hint" style="margin:14px 0">${esc(t('leads.hint'))}</div>
+  ${(d.leads || []).length ? `<div class="tblwrap"><table>
+    <thead><tr><th>${esc(t('leads.company'))}</th><th>${esc(t('leads.contactLabel'))}</th>
+      <th>${esc(t('common.country'))}</th><th>${esc(t('common.status'))}</th>
+      <th>${esc(t('leads.source'))}</th><th>${esc(t('leads.collected'))}</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`
+    : `<div class="empty"><b>${esc(t('leads.empty'))}</b>${esc(t('leads.emptyBody'))}</div>`}`;
+}
+
+function viewCampaignDetail() {
+  const c = state.campaign;
+  if (!c) return `<div class="empty"><b>${esc(t('campaigns.loading'))}</b></div>`;
+  const m = c.metrics || {};
+  const byStatus = Object.entries(m.byStatus || {})
+    .map(([k, v]) => `<div class="field"><label>${esc(t('leads.status.' + k))}</label><span class="v num">${fmtInt(v)}</span></div>`)
+    .join('');
+  const leads = (c.leads || []).map((l) => `
+    <tr>
+      <td><button class="btn sm link" data-lead="${esc(l.id)}">${esc(l.company_name)}</button></td>
+      <td>${leadStatusTag(l.status)}</td>
+      <td class="meta">${esc(l.source || '—')}</td>
+      <td class="meta">${l.collected_at ? fmtDate(l.collected_at) : '—'}</td>
+    </tr>`).join('');
+  const companies = (c.companies || []).map((x) => `
+    <tr>
+      <td><button class="btn sm link" data-open="${esc(x.id)}">${esc(x.name)}</button></td>
+      <td>${stageTag(x.stage)}</td>
+      <td class="meta">${esc(x.country_code || '—')}</td>
+    </tr>`).join('');
+
+  return `
+  <div class="head">
+    <div style="min-width:0">
+      <button class="btn sm" id="back">${esc(t('common.back'))}</button>
+      <h1>${esc(c.name)}</h1>
+      <div class="tags">${channelTag(c.channel)}${campaignStatusTag(c.status)}</div>
+    </div>
+    <button class="btn" id="edit-campaign">${esc(t('common.edit'))}</button>
+  </div>
+
+  <div class="kpis four">
+    <div class="kpi"><div class="kl">${esc(t('campaigns.leads'))}</div><div class="kv num">${fmtInt(m.leads || 0)}</div></div>
+    <div class="kpi"><div class="kl">${esc(t('campaigns.promoted'))}</div><div class="kv num">${fmtInt(m.promoted || 0)}</div></div>
+    <div class="kpi"><div class="kl">${esc(t('campaigns.promotionRate'))}</div><div class="kv">${ratePct(m.promotionRate)}</div></div>
+    <div class="kpi"><div class="kl">${esc(t('campaigns.customers'))}</div><div class="kv num">${fmtInt(m.customers || 0)}</div></div>
+  </div>
+
+  <div class="card note">
+    <div class="hint" style="margin-bottom:8px">${esc(t('campaigns.hint'))}</div>
+    ${byStatus || `<div class="hint">${esc(t('campaigns.noLeads'))}</div>`}
+    <div class="hint" style="margin-top:8px">${esc(t('campaigns.rateHint'))}</div>
+  </div>
+
+  <h2>${esc(t('campaigns.leadList'))}</h2>
+  ${leads ? `<div class="tblwrap"><table><thead><tr>
+    <th>${esc(t('leads.company'))}</th><th>${esc(t('common.status'))}</th>
+    <th>${esc(t('leads.source'))}</th><th>${esc(t('leads.collected'))}</th></tr></thead>
+    <tbody>${leads}</tbody></table></div>` : `<div class="empty">${esc(t('campaigns.noLeads'))}</div>`}
+
+  <h2>${esc(t('campaigns.companies'))}</h2>
+  ${companies ? `<div class="tblwrap"><table><thead><tr>
+    <th>${esc(t('common.company'))}</th><th>${esc(t('common.stage'))}</th>
+    <th>${esc(t('common.country'))}</th></tr></thead>
+    <tbody>${companies}</tbody></table></div>` : `<div class="empty">${esc(t('campaigns.noCompanies'))}</div>`}`;
+}
+
+function viewLeadDetail() {
+  const l = state.lead;
+  if (!l) return `<div class="empty"><b>${esc(t('leads.loading'))}</b></div>`;
+  const fld = (label, v) => `<div class="field"><label>${esc(label)}</label><span class="v">${esc(v === null || v === undefined || v === '' ? '—' : String(v))}</span></div>`;
+  return `
+  <div class="head">
+    <div style="min-width:0">
+      <button class="btn sm" id="back">${esc(t('common.back'))}</button>
+      <h1>${esc(l.company_name)}</h1>
+      <div class="tags">${leadStatusTag(l.status)}</div>
+    </div>
+    ${l.status === 'converted'
+      ? `<button class="btn" data-open="${esc(l.converted_company_id)}">${esc(t('leads.viewCompany'))}</button>`
+      : (l.status === 'discarded' ? '' : `<button class="btn primary" data-promote="${esc(l.id)}">${esc(t('leads.promote'))}</button>`)}
+  </div>
+
+  <div class="card note">
+    ${fld(t('leads.contactLabel'), [l.contact_name, l.contact_job_title].filter(Boolean).join(' · '))}
+    ${fld(t('leads.emailLabel'), l.email)}
+    ${fld('LinkedIn', l.linkedin_url)}
+    ${fld(t('leads.websiteLabel'), l.website)}
+    ${fld(t('common.country'), l.country_code)}
+    ${fld(t('leads.city'), l.city)}
+    ${fld(t('leads.sector'), l.sector)}
+  </div>
+
+  <div class="card note">
+    <div class="hint" style="margin-bottom:8px">${esc(t('leads.provenance'))}</div>
+    ${fld(t('leads.source'), l.source)}
+    ${fld(t('leads.sourceDetail'), l.source_detail)}
+    ${fld(t('leads.collected'), l.collected_at ? fmtDate(l.collected_at) : null)}
+    <div class="hint" style="margin-top:8px">${esc(t('leads.provenanceHint'))}</div>
+  </div>
+
+  ${l.status === 'discarded' && l.discard_reason ? `<div class="card note">
+    <div class="hint" style="margin-bottom:8px">${esc(t('leads.discardReason'))}</div>
+    ${fld(t('leads.discardReason'), l.discard_reason)}
+  </div>` : ''}`;
+}
+
 function viewSuppliers() {
   const d = state.connected;
   if (!d) return `<div class="empty"><b>${esc(t('connected.loading'))}</b></div>`;
@@ -2124,24 +2331,29 @@ const NAV = [
   ['dashboard', '01'],
   ['prospects', '02'],
   ['pipeline', '03'],
-  ['opportunities', '04'],
-  ['contacts', '05'],
+  ['leads', '04'],
+  ['opportunities', '05'],
+  ['contacts', '06'],
+  /* Chantier Admin 07 — une campagne est un outil d'acquisition, elle reste
+     dans ce groupe plutôt que dans l'opérationnel. */
+  ['campaigns', '07'],
 ];
 /* Chantier Admin 02 — l'opérationnel commercial. */
 const NAV_OPS = [
-  ['tasks', '06'],
-  ['activities', '07'],
-  ['emails', '08'],
-  ['notes', '09'],
-  ['meetings', '10'],
-  ['pilots', '11'],
-  ['customers', '12'],
-  ['suppliers', '13'],
-  ['analytics', '14'],
-  ['usage', '15'],
-  ['settings', '16'],
+  ['tasks', '08'],
+  ['activities', '09'],
+  ['emails', '10'],
+  ['notes', '11'],
+  ['meetings', '12'],
+  ['pilots', '13'],
+  ['customers', '14'],
+  ['suppliers', '15'],
+  ['analytics', '16'],
+  ['usage', '17'],
+  ['settings', '18'],
 ];
-const SOON = ['Leads','Campaigns'];
+/* Les 18 entrées du §1 sont désormais réelles : aucune n'est « à venir ». */
+const SOON = [];
 
 function shell() {
   const titles = {
@@ -2149,6 +2361,8 @@ function shell() {
     pipeline: t('nav.pipeline'), contacts: t('nav.contacts'), company: t('company.title'),
     opportunities: t('nav.opportunities'), emails: t('nav.emails'), notes: t('nav.notes'),
     suppliers: t('nav.suppliers'), usage: t('nav.usage'),
+    campaigns: t('nav.campaigns'), leads: t('nav.leads'),
+    campaign: t('campaigns.detailTitle'), lead: t('leads.detailTitle'),
     tasks: t('nav.tasks'), activities: t('nav.activities'), meetings: t('nav.meetings'),
     pilots: t('nav.pilots'), customers: t('nav.customers'), analytics: t('nav.analytics'), settings: t('nav.settings'),
   };
@@ -2162,6 +2376,7 @@ function shell() {
     opportunities: t('opportunities.subtitle'), emails: t('emails.subtitle'),
     notes: t('notes.subtitle'), suppliers: t('suppliers.subtitle'),
     usage: t('usage.subtitle'),
+    campaigns: t('campaigns.subtitle'), leads: t('leads.subtitle'),
   };
 
   const VIEWS = {
@@ -2171,6 +2386,8 @@ function shell() {
     analytics: viewAnalytics, settings: viewSettings,
     opportunities: viewOpportunities, emails: viewEmails, notes: viewNotes,
     suppliers: viewSuppliers, usage: viewUsage,
+    campaigns: viewCampaigns, leads: viewLeads,
+    campaign: viewCampaignDetail, lead: viewLeadDetail,
   };
   const body = (VIEWS[state.view] || viewCompany)();
 
@@ -2188,8 +2405,8 @@ function shell() {
         <button class="nav" data-view="${id}" ${state.view === id ? 'aria-current="page"' : ''}>
           ${esc(t('nav.' + id))}<span class="k">${k}</span>
         </button>`).join('')}
-      <div class="navlabel">${esc(t('nav.comingSoon'))}</div>
-      ${SOON.map((s) => `<button class="nav soon" disabled title="${esc(t('nav.soonHint'))}">${esc(s)}</button>`).join('')}
+      ${SOON.length ? `<div class="navlabel">${esc(t('nav.comingSoon'))}</div>
+      ${SOON.map((s) => `<button class="nav soon" disabled title="${esc(t('nav.soonHint'))}">${esc(s)}</button>`).join('')}` : ''}
       <div class="sidefoot">
         <span class="rolechip">${esc(state.access?.role || '—')}</span>
         <div>${esc(state.access?.organizationName || '')}</div>
@@ -2218,6 +2435,8 @@ function shell() {
     ${state.modal === 'task' ? modalTask() : ''}
     ${state.modal === 'meeting' ? modalMeeting() : ''}
     ${state.modal === 'import' ? modalImport() : ''}
+    ${state.modal === 'campaign' ? modalCampaign() : ''}
+    ${state.modal === 'lead' ? modalLead() : ''}
   </div>`;
 }
 
@@ -2270,6 +2489,9 @@ function bind() {
     go('prospects');
   }));
   all('[data-open]').forEach((el) => el.addEventListener('click', () => openCompany(el.dataset.open)));
+  all('[data-campaign]').forEach((el) => el.addEventListener('click', () => openCampaign(el.dataset.campaign)));
+  all('[data-lead]').forEach((el) => el.addEventListener('click', () => openLead(el.dataset.lead)));
+  all('[data-promote]').forEach((el) => el.addEventListener('click', () => promoteLead(el.dataset.promote)));
   all('[data-tab]').forEach((b) => b.addEventListener('click', () => { state.tab = b.dataset.tab; render(); }));
   const sn = document.getElementById('save-note');
   if (sn) sn.addEventListener('click', () => saveNote());
@@ -2278,9 +2500,20 @@ function bind() {
 
   on('lang', 'change', (e) => setLang(e.target.value));
   on('refresh', 'click', () => loadView());
-  on('back', 'click', () => go('prospects'));
+  on('back', 'click', () => go(state.view === 'campaign' ? 'campaigns'
+    : (state.view === 'lead' ? 'leads' : 'prospects')));
   on('new-company', 'click', () => { state.formError = null; state.modal = 'company'; render(); });
   on('new-contact', 'click', () => { state.formError = null; state.modal = 'contact'; render(); });
+  on('new-campaign', 'click', () => { state.formError = null; state.modal = 'campaign'; render(); });
+  on('edit-campaign', 'click', () => { state.formError = null; state.modal = 'campaign'; render(); });
+  /* Le sélecteur de campagne du formulaire de lead a besoin de la liste :
+     elle est chargée avant l'ouverture, sinon le choix serait vide. */
+  on('new-lead', 'click', async () => {
+    state.formError = null;
+    if (!state.campaigns) { try { await loadCampaigns(); } catch (e) { /* liste absente : le lead reste créable sans campagne */ } }
+    state.modal = 'lead';
+    render();
+  });
   on('edit-company', 'click', () => { state.formError = null; state.modal = 'company'; render(); });
   on('m-cancel', 'click', () => { state.modal = null; state.formError = null; render(); });
   on('m-save', 'click', saveModal);
@@ -2921,6 +3154,8 @@ async function loadView() {
     else if (state.view === 'notes') await loadNotes();
     else if (state.view === 'suppliers') await loadConnected();
     else if (state.view === 'usage') await loadUsage();
+    else if (state.view === 'campaigns') await loadCampaigns();
+    else if (state.view === 'leads') { await loadLeads(); if (!state.campaigns) await loadCampaigns(); }
     else if (state.view === 'prospects') { await loadCompanies(); await loadLists(); }
     else await loadCompanies();
   } catch (e) {
@@ -2954,6 +3189,135 @@ const CONTACT_IDS = ['first_name','last_name','job_title','email','phone','linke
 const TASK_IDS = ['title','type','priority','due_at','assignee_name','company_id','detail'];
 const MEETING_IDS = ['subject','starts_at','ends_at','mode','company_id','location','attendees'];
 
+const CAMPAIGN_IDS = ['name', 'channel', 'status', 'objective', 'target_audience',
+  'starts_at', 'ends_at', 'budget_eur', 'owner_name', 'notes'];
+const LEAD_IDS = ['company_name', 'campaign_id', 'contact_name', 'contact_job_title',
+  'email', 'phone', 'linkedin_url', 'website', 'country_code', 'city', 'sector',
+  'source', 'source_detail', 'collected_at', 'notes'];
+
+function modalCampaign() {
+  const c = state.view === 'campaign' && state.campaign ? state.campaign : {};
+  const inp = (id, label, value, attrs) =>
+    `<label>${esc(label)}<input type="text" id="cp-${id}" value="${esc(value ?? '')}" ${attrs || ''}></label>`;
+  const sel = (id, label, value, list) =>
+    `<label>${esc(label)}<select id="cp-${id}">
+      ${list.map(([v, l]) => `<option value="${v}"${value === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}
+    </select></label>`;
+  const CHANNELS = ['email', 'linkedin', 'phone', 'event', 'webinar', 'referral', 'partner', 'content', 'other'];
+  const STATUSES = ['draft', 'planned', 'running', 'paused', 'completed', 'cancelled'];
+  return `
+  <div class="modal"><div class="modalbox" role="dialog" aria-modal="true">
+    <h2>${esc(c.id ? t('campaigns.editTitle') : t('campaigns.new'))}</h2>
+    ${state.formError ? `<div class="err">${esc(state.formError)}</div>` : ''}
+    <div class="form">
+      <label class="full">${esc(t('common.name'))}<input type="text" id="cp-name" value="${esc(c.name || '')}" required></label>
+      ${sel('channel', t('campaigns.channelLabel'), c.channel || 'email', CHANNELS.map((v) => [v, t('campaigns.channel.' + v)]))}
+      ${sel('status', t('common.status'), c.status || 'draft', STATUSES.map((v) => [v, t('campaigns.status.' + v)]))}
+      ${inp('starts_at', t('campaigns.starts'), (c.starts_at || '').slice(0, 10), 'placeholder="AAAA-MM-JJ"')}
+      ${inp('ends_at', t('campaigns.ends'), (c.ends_at || '').slice(0, 10), 'placeholder="AAAA-MM-JJ"')}
+      ${inp('budget_eur', t('campaigns.budget'), c.budget_eur ?? '')}
+      ${inp('owner_name', t('common.owner'), c.owner_name)}
+      <label class="full">${esc(t('campaigns.objective'))}<input type="text" id="cp-objective" value="${esc(c.objective || '')}"></label>
+      <label class="full">${esc(t('campaigns.targetAudience'))}<input type="text" id="cp-target_audience" value="${esc(c.target_audience || '')}"></label>
+      <label class="full">${esc(t('common.notes'))}<textarea id="cp-notes">${esc(c.notes || '')}</textarea></label>
+      <div class="hint full">${esc(t('campaigns.budgetHint'))}</div>
+    </div>
+    <div class="modalfoot"><button class="btn" id="m-cancel">${esc(t('common.cancel'))}</button>
+      <button class="btn primary" id="m-save">${esc(t('common.save'))}</button></div>
+  </div></div>`;
+}
+
+function modalLead() {
+  const l = state.view === 'lead' && state.lead ? state.lead : {};
+  const inp = (id, label, value, attrs) =>
+    `<label>${esc(label)}<input type="text" id="ld-${id}" value="${esc(value ?? '')}" ${attrs || ''}></label>`;
+  const camps = (state.campaigns?.campaigns || []);
+  return `
+  <div class="modal"><div class="modalbox" role="dialog" aria-modal="true">
+    <h2>${esc(t('leads.new'))}</h2>
+    ${state.formError ? `<div class="err">${esc(state.formError)}</div>` : ''}
+    <div class="form">
+      <label class="full">${esc(t('leads.company'))}<input type="text" id="ld-company_name" value="${esc(l.company_name || '')}" required></label>
+      <label class="full">${esc(t('leads.campaign'))}
+        <select id="ld-campaign_id">
+          <option value="">${esc(t('leads.noCampaign'))}</option>
+          ${camps.map((c) => `<option value="${esc(c.id)}"${l.campaign_id === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}
+        </select>
+      </label>
+      ${inp('contact_name', t('leads.contactLabel'), l.contact_name)}
+      ${inp('contact_job_title', t('leads.jobTitle'), l.contact_job_title)}
+      ${inp('email', t('leads.emailLabel'), l.email)}
+      ${inp('phone', t('leads.phone'), l.phone)}
+      ${inp('linkedin_url', 'LinkedIn', l.linkedin_url)}
+      ${inp('website', t('leads.websiteLabel'), l.website)}
+      ${inp('country_code', t('common.country'), l.country_code, 'maxlength="2"')}
+      ${inp('city', t('leads.city'), l.city)}
+      ${inp('sector', t('leads.sector'), l.sector)}
+      ${inp('source', t('leads.source'), l.source)}
+      ${inp('source_detail', t('leads.sourceDetail'), l.source_detail)}
+      ${inp('collected_at', t('leads.collected'), (l.collected_at || '').slice(0, 10), 'placeholder="AAAA-MM-JJ"')}
+      <div class="hint full">${esc(t('leads.identityHint'))}</div>
+      <div class="hint full">${esc(t('leads.collectedHint'))}</div>
+    </div>
+    <div class="modalfoot"><button class="btn" id="m-cancel">${esc(t('common.cancel'))}</button>
+      <button class="btn primary" id="m-save">${esc(t('common.save'))}</button></div>
+  </div></div>`;
+}
+
+async function openCampaign(id) {
+  state.campaign = null;
+  state.view = 'campaign';
+  render();
+  try {
+    if (state.demo) {
+      const c = demoCampaigns().find((x) => x.id === id) || null;
+      const leads = demoLeads().filter((l) => l.campaign_id === id);
+      /* La démo recompose le détail à partir des mêmes fixtures que la liste :
+         deux sources différentes finiraient par afficher des chiffres distincts. */
+      state.campaign = c ? { ...c, leads, companies: [] } : null;
+    } else {
+      state.campaign = await api(`/api/admin/campaigns/${encodeURIComponent(id)}`)
+        .then((r) => ({ ...(r.campaign || {}), metrics: r.metrics, leads: r.leads, companies: r.companies }));
+    }
+  } catch (e) {
+    state.error = e.message;
+  }
+  render();
+}
+
+function openLead(id) {
+  const l = (state.leads?.leads || demoLeads()).find((x) => x.id === id)
+    || (state.campaign?.leads || []).find((x) => x.id === id) || null;
+  state.lead = l;
+  state.view = 'lead';
+  render();
+}
+
+/*
+ * Promouvoir un lead : une entreprise est créée et le lead reste, marqué
+ * `converted`, avec sa provenance. Le supprimer ferait perdre l'origine du
+ * client — c'est la seule trace qu'il en reste (§14).
+ */
+async function promoteLead(id) {
+  try {
+    if (state.demo) {
+      const l = demoLeads().find((x) => x.id === id);
+      if (!l) return;
+      state.lead = { ...l, status: 'converted', converted_company_id: 'demo-' + id, converted_at: new Date().toISOString() };
+      state.formError = null;
+      render();
+      return;
+    }
+    const r = await api(`/api/admin/leads/${encodeURIComponent(id)}/promote`, { method: 'POST' });
+    state.lead = r.lead;
+    await loadLeads();
+    render();
+  } catch (e) {
+    state.error = e.message;
+    render();
+  }
+}
+
 async function saveModal() {
   state.saving = true;
   state.formError = null;
@@ -2976,6 +3340,31 @@ async function saveModal() {
       } else {
         await api('/api/admin/companies', { method: 'POST', body: JSON.stringify(body) });
       }
+    } else if (state.modal === 'campaign') {
+      const body = readForm('cp-', CAMPAIGN_IDS);
+      if (body.budget_eur !== '') body.budget_eur = Number(body.budget_eur);
+      for (const k of ['starts_at', 'ends_at']) { if (body[k] === '') body[k] = null; }
+      if (state.demo) { state.formError = t('common.demoReadOnly'); state.saving = false; render(); return; }
+      if (state.campaign?.id) {
+        await api(`/api/admin/campaigns/${encodeURIComponent(state.campaign.id)}`,
+          { method: 'PATCH', body: JSON.stringify(body) });
+      } else {
+        await api('/api/admin/campaigns', { method: 'POST', body: JSON.stringify(body) });
+      }
+    } else if (state.modal === 'lead') {
+      const body = readForm('ld-', LEAD_IDS);
+      /* Un champ vide délie / vide : sans cela une saisie erronée serait
+         définitive. L'empreinte de doublon, elle, reste figée côté serveur. */
+      for (const k of LEAD_IDS) { if (body[k] === '') body[k] = null; }
+      if (state.demo) { state.formError = t('common.demoReadOnly'); state.saving = false; render(); return; }
+      const r = await api('/api/admin/leads', { method: 'POST', body: JSON.stringify(body) })
+        .catch((e) => {
+          /* Un doublon n'est pas une panne : l'API renvoie la ligne existante
+             pour que l'opérateur puisse juger s'il s'agit du même prospect. */
+          if (e && e.status === 409) { state.formError = t('leads.duplicateFound'); throw e; }
+          throw e;
+        });
+      if (r && r.lead) { state.lead = r.lead; }
     } else if (state.modal === 'task') {
       const body = readForm('tk-', TASK_IDS);
       if (state.demo) { state.formError = t('common.demoReadOnly'); state.saving = false; render(); return; }
