@@ -2741,5 +2741,54 @@
     "detail": {
       "lastVerified": "Laatste verificatie"
     }
+  },
+  "qualityPremium": {
+    "panel": {
+      "title": "Uitgesplitste kwaliteitsscore",
+      "empty": "Voor dit product is nog geen kwaliteitsscore berekend.",
+      "emptyCta": "Score berekenen",
+      "computed": "Berekend op",
+      "version": "Berekeningsversie",
+      "hint": "Klik op een component om te verdiepen.",
+      "overall": "Totaal (afgeleid gemiddelde)"
+    },
+    "comp": {
+      "completeness": "Volledigheid van gegevens",
+      "freshness": "Versheid",
+      "documentationCoverage": "Bewijsdekking",
+      "consistency": "Consistentie"
+    },
+    "drill": {
+      "close": "Sluiten",
+      "missingTitle": "Ontbrekende velden",
+      "missingNone": "De engine meldt geen ontbrekend veld.",
+      "blockingTitle": "Blokkerende problemen",
+      "blockingNone": "De engine meldt geen blokkerend probleem.",
+      "relatedTitle": "Gerelateerde problemen",
+      "relatedNone": "Geen gerelateerde problemen voor deze component.",
+      "resolveNote": "Elk item verwijst naar de werkruimte waar de gegevens daadwerkelijk kunnen worden gecorrigeerd."
+    },
+    "resolve": {
+      "cta": "Oplossen",
+      "documents": "Bewijs uploaden",
+      "requests": "Gegevens opvragen",
+      "certifications": "Certificeringen beheren",
+      "product": "Productfiche openen"
+    },
+    "issues": {
+      "title": "Actieve problemen",
+      "empty": "Geen actieve problemen voor dit product.",
+      "all": "Alle",
+      "blocking": "Blokkerend",
+      "warning": "Waarschuwing",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Scoreverloop",
+      "note": "Eén balk per berekende momentopname — reële geschiedenis, geen interpolatie.",
+      "empty": "Minder dan twee momentopnames: herbereken na gegevenscorrectie om het verloop op te bouwen.",
+      "overallLabel": "Totaal",
+      "delta": "punten sinds de eerste momentopname"
+    }
   }
 }

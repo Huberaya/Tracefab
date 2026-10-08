@@ -1,0 +1,345 @@
+{
+  "en": {
+    "panel": {
+      "title": "Decomposed quality score",
+      "empty": "No quality score computed for this product yet.",
+      "emptyCta": "Compute the score",
+      "computed": "Computed on",
+      "version": "Calculation version",
+      "hint": "Click a component to drill down.",
+      "overall": "Overall (derived average)"
+    },
+    "comp": {
+      "completeness": "Data completeness",
+      "freshness": "Freshness",
+      "documentationCoverage": "Evidence coverage",
+      "consistency": "Consistency"
+    },
+    "drill": {
+      "close": "Close",
+      "missingTitle": "Missing fields",
+      "missingNone": "No missing field reported by the engine.",
+      "blockingTitle": "Blocking issues",
+      "blockingNone": "No blocking issue reported by the engine.",
+      "relatedTitle": "Related issues",
+      "relatedNone": "No related issue for this component.",
+      "resolveNote": "Every item links to the workspace where the data can actually be fixed."
+    },
+    "resolve": {
+      "cta": "Resolve",
+      "documents": "Upload evidence",
+      "requests": "Request data",
+      "certifications": "Manage certifications",
+      "product": "Open product sheet"
+    },
+    "issues": {
+      "title": "Active issues",
+      "empty": "No active issue for this product.",
+      "all": "All",
+      "blocking": "Blocking",
+      "warning": "Warning",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Score trend",
+      "note": "One bar per computed snapshot — real history, no interpolation.",
+      "empty": "Less than two snapshots: recompute after fixing data to build the trend.",
+      "overallLabel": "Overall",
+      "delta": "pts since the first snapshot"
+    }
+  },
+  "fr": {
+    "panel": {
+      "title": "Score qualité décomposé",
+      "empty": "Aucun score qualité calculé pour ce produit pour l'instant.",
+      "emptyCta": "Calculer le score",
+      "computed": "Calculé le",
+      "version": "Version de calcul",
+      "hint": "Cliquez sur une composante pour l'explorer.",
+      "overall": "Global (moyenne dérivée)"
+    },
+    "comp": {
+      "completeness": "Complétude des données",
+      "freshness": "Fraîcheur",
+      "documentationCoverage": "Couverture preuves",
+      "consistency": "Cohérence"
+    },
+    "drill": {
+      "close": "Fermer",
+      "missingTitle": "Champs manquants",
+      "missingNone": "Aucun champ manquant signalé par le moteur.",
+      "blockingTitle": "Anomalies bloquantes",
+      "blockingNone": "Aucune anomalie bloquante signalée par le moteur.",
+      "relatedTitle": "Anomalies liées",
+      "relatedNone": "Aucune anomalie liée à cette composante.",
+      "resolveNote": "Chaque élément pointe vers l'espace où la donnée peut réellement être corrigée."
+    },
+    "resolve": {
+      "cta": "Résoudre",
+      "documents": "Téléverser une preuve",
+      "requests": "Demander la donnée",
+      "certifications": "Gérer les certifications",
+      "product": "Ouvrir la fiche produit"
+    },
+    "issues": {
+      "title": "Anomalies actives",
+      "empty": "Aucune anomalie active pour ce produit.",
+      "all": "Toutes",
+      "blocking": "Bloquantes",
+      "warning": "Avertissements",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Tendance du score",
+      "note": "Une barre par instantané calculé — historique réel, aucune interpolation.",
+      "empty": "Moins de deux instantanés : recalculez après correction des données pour construire la tendance.",
+      "overallLabel": "Global",
+      "delta": "pts depuis le premier instantané"
+    }
+  },
+  "de": {
+    "panel": {
+      "title": "Aufgeschlüsselter Qualitätswert",
+      "empty": "Für dieses Produkt wurde noch kein Qualitätswert berechnet.",
+      "emptyCta": "Wert berechnen",
+      "computed": "Berechnet am",
+      "version": "Berechnungsversion",
+      "hint": "Klicken Sie auf eine Komponente, um sie zu vertiefen.",
+      "overall": "Gesamt (abgeleiteter Durchschnitt)"
+    },
+    "comp": {
+      "completeness": "Datenvollständigkeit",
+      "freshness": "Aktualität",
+      "documentationCoverage": "Nachweisabdeckung",
+      "consistency": "Konsistenz"
+    },
+    "drill": {
+      "close": "Schließen",
+      "missingTitle": "Fehlende Felder",
+      "missingNone": "Die Engine meldet kein fehlendes Feld.",
+      "blockingTitle": "Blockierende Probleme",
+      "blockingNone": "Die Engine meldet kein blockierendes Problem.",
+      "relatedTitle": "Zugehörige Probleme",
+      "relatedNone": "Keine zugehörigen Probleme für diese Komponente.",
+      "resolveNote": "Jeder Eintrag verweist auf den Bereich, in dem die Daten tatsächlich korrigiert werden können."
+    },
+    "resolve": {
+      "cta": "Beheben",
+      "documents": "Nachweis hochladen",
+      "requests": "Daten anfordern",
+      "certifications": "Zertifizierungen verwalten",
+      "product": "Produktblatt öffnen"
+    },
+    "issues": {
+      "title": "Aktive Probleme",
+      "empty": "Keine aktiven Probleme für dieses Produkt.",
+      "all": "Alle",
+      "blocking": "Blockierend",
+      "warning": "Warnung",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Wertverlauf",
+      "note": "Ein Balken pro berechnetem Snapshot — reale Historie, keine Interpolation.",
+      "empty": "Weniger als zwei Snapshots: Berechnen Sie nach Datenkorrekturen neu, um den Verlauf aufzubauen.",
+      "overallLabel": "Gesamt",
+      "delta": "Punkte seit dem ersten Snapshot"
+    }
+  },
+  "it": {
+    "panel": {
+      "title": "Punteggio qualità scomposto",
+      "empty": "Nessun punteggio qualità calcolato per questo prodotto.",
+      "emptyCta": "Calcola il punteggio",
+      "computed": "Calcolato il",
+      "version": "Versione di calcolo",
+      "hint": "Clicca su una componente per approfondirla.",
+      "overall": "Globale (media derivata)"
+    },
+    "comp": {
+      "completeness": "Completezza dei dati",
+      "freshness": "Freschezza",
+      "documentationCoverage": "Copertura prove",
+      "consistency": "Coerenza"
+    },
+    "drill": {
+      "close": "Chiudi",
+      "missingTitle": "Campi mancanti",
+      "missingNone": "Nessun campo mancante segnalato dal motore.",
+      "blockingTitle": "Anomalie bloccanti",
+      "blockingNone": "Nessuna anomalia bloccante segnalata dal motore.",
+      "relatedTitle": "Anomalie correlate",
+      "relatedNone": "Nessuna anomalia correlata a questa componente.",
+      "resolveNote": "Ogni elemento rimanda all'area in cui il dato può essere realmente corretto."
+    },
+    "resolve": {
+      "cta": "Risolvi",
+      "documents": "Carica una prova",
+      "requests": "Richiedi il dato",
+      "certifications": "Gestisci le certificazioni",
+      "product": "Apri la scheda prodotto"
+    },
+    "issues": {
+      "title": "Anomalie attive",
+      "empty": "Nessuna anomalia attiva per questo prodotto.",
+      "all": "Tutte",
+      "blocking": "Bloccanti",
+      "warning": "Avvisi",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Andamento del punteggio",
+      "note": "Una barra per snapshot calcolato — storico reale, nessuna interpolazione.",
+      "empty": "Meno di due snapshot: ricalcola dopo aver corretto i dati per costruire l'andamento.",
+      "overallLabel": "Globale",
+      "delta": "punti dal primo snapshot"
+    }
+  },
+  "es": {
+    "panel": {
+      "title": "Puntuación de calidad desglosada",
+      "empty": "Aún no se ha calculado ninguna puntuación de calidad para este producto.",
+      "emptyCta": "Calcular la puntuación",
+      "computed": "Calculado el",
+      "version": "Versión de cálculo",
+      "hint": "Haga clic en un componente para profundizar.",
+      "overall": "Global (media derivada)"
+    },
+    "comp": {
+      "completeness": "Completitud de los datos",
+      "freshness": "Frescura",
+      "documentationCoverage": "Cobertura de pruebas",
+      "consistency": "Coherencia"
+    },
+    "drill": {
+      "close": "Cerrar",
+      "missingTitle": "Campos faltantes",
+      "missingNone": "El motor no reporta ningún campo faltante.",
+      "blockingTitle": "Incidencias bloqueantes",
+      "blockingNone": "El motor no reporta ninguna incidencia bloqueante.",
+      "relatedTitle": "Incidencias relacionadas",
+      "relatedNone": "Ninguna incidencia relacionada con este componente.",
+      "resolveNote": "Cada elemento enlaza con el espacio donde el dato puede corregirse realmente."
+    },
+    "resolve": {
+      "cta": "Resolver",
+      "documents": "Subir una prueba",
+      "requests": "Solicitar el dato",
+      "certifications": "Gestionar certificaciones",
+      "product": "Abrir la ficha del producto"
+    },
+    "issues": {
+      "title": "Incidencias activas",
+      "empty": "Ninguna incidencia activa para este producto.",
+      "all": "Todas",
+      "blocking": "Bloqueantes",
+      "warning": "Avisos",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Evolución de la puntuación",
+      "note": "Una barra por instantánea calculada — historial real, sin interpolación.",
+      "empty": "Menos de dos instantáneas: vuelva a calcular tras corregir los datos para construir la evolución.",
+      "overallLabel": "Global",
+      "delta": "ptos desde la primera instantánea"
+    }
+  },
+  "nl": {
+    "panel": {
+      "title": "Uitgesplitste kwaliteitsscore",
+      "empty": "Voor dit product is nog geen kwaliteitsscore berekend.",
+      "emptyCta": "Score berekenen",
+      "computed": "Berekend op",
+      "version": "Berekeningsversie",
+      "hint": "Klik op een component om te verdiepen.",
+      "overall": "Totaal (afgeleid gemiddelde)"
+    },
+    "comp": {
+      "completeness": "Volledigheid van gegevens",
+      "freshness": "Versheid",
+      "documentationCoverage": "Bewijsdekking",
+      "consistency": "Consistentie"
+    },
+    "drill": {
+      "close": "Sluiten",
+      "missingTitle": "Ontbrekende velden",
+      "missingNone": "De engine meldt geen ontbrekend veld.",
+      "blockingTitle": "Blokkerende problemen",
+      "blockingNone": "De engine meldt geen blokkerend probleem.",
+      "relatedTitle": "Gerelateerde problemen",
+      "relatedNone": "Geen gerelateerde problemen voor deze component.",
+      "resolveNote": "Elk item verwijst naar de werkruimte waar de gegevens daadwerkelijk kunnen worden gecorrigeerd."
+    },
+    "resolve": {
+      "cta": "Oplossen",
+      "documents": "Bewijs uploaden",
+      "requests": "Gegevens opvragen",
+      "certifications": "Certificeringen beheren",
+      "product": "Productfiche openen"
+    },
+    "issues": {
+      "title": "Actieve problemen",
+      "empty": "Geen actieve problemen voor dit product.",
+      "all": "Alle",
+      "blocking": "Blokkerend",
+      "warning": "Waarschuwing",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Scoreverloop",
+      "note": "Eén balk per berekende momentopname — reële geschiedenis, geen interpolatie.",
+      "empty": "Minder dan twee momentopnames: herbereken na gegevenscorrectie om het verloop op te bouwen.",
+      "overallLabel": "Totaal",
+      "delta": "punten sinds de eerste momentopname"
+    }
+  },
+  "pt": {
+    "panel": {
+      "title": "Pontuação de qualidade decomposta",
+      "empty": "Ainda nenhuma pontuação de qualidade calculada para este produto.",
+      "emptyCta": "Calcular a pontuação",
+      "computed": "Calculado em",
+      "version": "Versão de cálculo",
+      "hint": "Clique num componente para o explorar.",
+      "overall": "Global (média derivada)"
+    },
+    "comp": {
+      "completeness": "Completude dos dados",
+      "freshness": "Frescura",
+      "documentationCoverage": "Cobertura de provas",
+      "consistency": "Consistência"
+    },
+    "drill": {
+      "close": "Fechar",
+      "missingTitle": "Campos em falta",
+      "missingNone": "O motor não reporta nenhum campo em falta.",
+      "blockingTitle": "Incidências bloqueadoras",
+      "blockingNone": "O motor não reporta nenhuma incidência bloqueadora.",
+      "relatedTitle": "Incidências relacionadas",
+      "relatedNone": "Nenhuma incidência relacionada com este componente.",
+      "resolveNote": "Cada item remete para o espaço onde o dado pode ser realmente corrigido."
+    },
+    "resolve": {
+      "cta": "Resolver",
+      "documents": "Carregar uma prova",
+      "requests": "Pedir o dado",
+      "certifications": "Gerir certificações",
+      "product": "Abrir a ficha do produto"
+    },
+    "issues": {
+      "title": "Incidências ativas",
+      "empty": "Nenhuma incidência ativa para este produto.",
+      "all": "Todas",
+      "blocking": "Bloqueadoras",
+      "warning": "Avisos",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Evolução da pontuação",
+      "note": "Uma barra por snapshot calculado — histórico real, sem interpolação.",
+      "empty": "Menos de dois snapshots: recalcule após corrigir os dados para construir a evolução.",
+      "overallLabel": "Global",
+      "delta": "ptos desde o primeiro snapshot"
+    }
+  }
+}

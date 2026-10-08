@@ -2741,5 +2741,54 @@
     "detail": {
       "lastVerified": "Última verificação"
     }
+  },
+  "qualityPremium": {
+    "panel": {
+      "title": "Pontuação de qualidade decomposta",
+      "empty": "Ainda nenhuma pontuação de qualidade calculada para este produto.",
+      "emptyCta": "Calcular a pontuação",
+      "computed": "Calculado em",
+      "version": "Versão de cálculo",
+      "hint": "Clique num componente para o explorar.",
+      "overall": "Global (média derivada)"
+    },
+    "comp": {
+      "completeness": "Completude dos dados",
+      "freshness": "Frescura",
+      "documentationCoverage": "Cobertura de provas",
+      "consistency": "Consistência"
+    },
+    "drill": {
+      "close": "Fechar",
+      "missingTitle": "Campos em falta",
+      "missingNone": "O motor não reporta nenhum campo em falta.",
+      "blockingTitle": "Incidências bloqueadoras",
+      "blockingNone": "O motor não reporta nenhuma incidência bloqueadora.",
+      "relatedTitle": "Incidências relacionadas",
+      "relatedNone": "Nenhuma incidência relacionada com este componente.",
+      "resolveNote": "Cada item remete para o espaço onde o dado pode ser realmente corrigido."
+    },
+    "resolve": {
+      "cta": "Resolver",
+      "documents": "Carregar uma prova",
+      "requests": "Pedir o dado",
+      "certifications": "Gerir certificações",
+      "product": "Abrir a ficha do produto"
+    },
+    "issues": {
+      "title": "Incidências ativas",
+      "empty": "Nenhuma incidência ativa para este produto.",
+      "all": "Todas",
+      "blocking": "Bloqueadoras",
+      "warning": "Avisos",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Evolução da pontuação",
+      "note": "Uma barra por snapshot calculado — histórico real, sem interpolação.",
+      "empty": "Menos de dois snapshots: recalcule após corrigir os dados para construir a evolução.",
+      "overallLabel": "Global",
+      "delta": "ptos desde o primeiro snapshot"
+    }
   }
 }

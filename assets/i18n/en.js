@@ -2617,5 +2617,54 @@ window.TF_I18N_BUNDLES.en = {
     "detail": {
       "lastVerified": "Last verification"
     }
+  },
+  "qualityPremium": {
+    "panel": {
+      "title": "Decomposed quality score",
+      "empty": "No quality score computed for this product yet.",
+      "emptyCta": "Compute the score",
+      "computed": "Computed on",
+      "version": "Calculation version",
+      "hint": "Click a component to drill down.",
+      "overall": "Overall (derived average)"
+    },
+    "comp": {
+      "completeness": "Data completeness",
+      "freshness": "Freshness",
+      "documentationCoverage": "Evidence coverage",
+      "consistency": "Consistency"
+    },
+    "drill": {
+      "close": "Close",
+      "missingTitle": "Missing fields",
+      "missingNone": "No missing field reported by the engine.",
+      "blockingTitle": "Blocking issues",
+      "blockingNone": "No blocking issue reported by the engine.",
+      "relatedTitle": "Related issues",
+      "relatedNone": "No related issue for this component.",
+      "resolveNote": "Every item links to the workspace where the data can actually be fixed."
+    },
+    "resolve": {
+      "cta": "Resolve",
+      "documents": "Upload evidence",
+      "requests": "Request data",
+      "certifications": "Manage certifications",
+      "product": "Open product sheet"
+    },
+    "issues": {
+      "title": "Active issues",
+      "empty": "No active issue for this product.",
+      "all": "All",
+      "blocking": "Blocking",
+      "warning": "Warning",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Score trend",
+      "note": "One bar per computed snapshot — real history, no interpolation.",
+      "empty": "Less than two snapshots: recompute after fixing data to build the trend.",
+      "overallLabel": "Overall",
+      "delta": "pts since the first snapshot"
+    }
   }
 };

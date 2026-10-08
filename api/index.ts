@@ -95,6 +95,7 @@ const routes: Route[] = [
   { pattern: /^traceability\/mass\-balance$/, params: [], load: () => import('./_routes/traceability/mass-balance.js') },
   { pattern: /^quality\/overview$/, params: [], load: () => import('./_routes/quality/overview.js') },
   { pattern: /^schema\-bindings$/, params: [], load: () => import('./_routes/schema-bindings.js') },
+  { pattern: /^quality\/products\/([^\/]+)\/history$/, params: ['productId'], load: () => import('./_routes/quality/products/[productId]/history.js') },
   { pattern: /^quality\/products\/([^\/]+)$/, params: ['productId'], load: () => import('./_routes/quality/products/[productId].js') },
   { pattern: /^quality\/suppliers\/([^\/]+)$/, params: ['supplierId'], load: () => import('./_routes/quality/suppliers/[supplierId].js') },
   { pattern: /^quality\-issues\/([^\/]+)\/acknowledge$/, params: ['issueId'], load: () => import('./_routes/quality-issues/[issueId]/acknowledge.js') },

@@ -2741,5 +2741,54 @@
     "detail": {
       "lastVerified": "Última verificación"
     }
+  },
+  "qualityPremium": {
+    "panel": {
+      "title": "Puntuación de calidad desglosada",
+      "empty": "Aún no se ha calculado ninguna puntuación de calidad para este producto.",
+      "emptyCta": "Calcular la puntuación",
+      "computed": "Calculado el",
+      "version": "Versión de cálculo",
+      "hint": "Haga clic en un componente para profundizar.",
+      "overall": "Global (media derivada)"
+    },
+    "comp": {
+      "completeness": "Completitud de los datos",
+      "freshness": "Frescura",
+      "documentationCoverage": "Cobertura de pruebas",
+      "consistency": "Coherencia"
+    },
+    "drill": {
+      "close": "Cerrar",
+      "missingTitle": "Campos faltantes",
+      "missingNone": "El motor no reporta ningún campo faltante.",
+      "blockingTitle": "Incidencias bloqueantes",
+      "blockingNone": "El motor no reporta ninguna incidencia bloqueante.",
+      "relatedTitle": "Incidencias relacionadas",
+      "relatedNone": "Ninguna incidencia relacionada con este componente.",
+      "resolveNote": "Cada elemento enlaza con el espacio donde el dato puede corregirse realmente."
+    },
+    "resolve": {
+      "cta": "Resolver",
+      "documents": "Subir una prueba",
+      "requests": "Solicitar el dato",
+      "certifications": "Gestionar certificaciones",
+      "product": "Abrir la ficha del producto"
+    },
+    "issues": {
+      "title": "Incidencias activas",
+      "empty": "Ninguna incidencia activa para este producto.",
+      "all": "Todas",
+      "blocking": "Bloqueantes",
+      "warning": "Avisos",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Evolución de la puntuación",
+      "note": "Una barra por instantánea calculada — historial real, sin interpolación.",
+      "empty": "Menos de dos instantáneas: vuelva a calcular tras corregir los datos para construir la evolución.",
+      "overallLabel": "Global",
+      "delta": "ptos desde la primera instantánea"
+    }
   }
 }

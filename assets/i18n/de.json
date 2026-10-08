@@ -2741,5 +2741,54 @@
     "detail": {
       "lastVerified": "Letzte Verifizierung"
     }
+  },
+  "qualityPremium": {
+    "panel": {
+      "title": "Aufgeschlüsselter Qualitätswert",
+      "empty": "Für dieses Produkt wurde noch kein Qualitätswert berechnet.",
+      "emptyCta": "Wert berechnen",
+      "computed": "Berechnet am",
+      "version": "Berechnungsversion",
+      "hint": "Klicken Sie auf eine Komponente, um sie zu vertiefen.",
+      "overall": "Gesamt (abgeleiteter Durchschnitt)"
+    },
+    "comp": {
+      "completeness": "Datenvollständigkeit",
+      "freshness": "Aktualität",
+      "documentationCoverage": "Nachweisabdeckung",
+      "consistency": "Konsistenz"
+    },
+    "drill": {
+      "close": "Schließen",
+      "missingTitle": "Fehlende Felder",
+      "missingNone": "Die Engine meldet kein fehlendes Feld.",
+      "blockingTitle": "Blockierende Probleme",
+      "blockingNone": "Die Engine meldet kein blockierendes Problem.",
+      "relatedTitle": "Zugehörige Probleme",
+      "relatedNone": "Keine zugehörigen Probleme für diese Komponente.",
+      "resolveNote": "Jeder Eintrag verweist auf den Bereich, in dem die Daten tatsächlich korrigiert werden können."
+    },
+    "resolve": {
+      "cta": "Beheben",
+      "documents": "Nachweis hochladen",
+      "requests": "Daten anfordern",
+      "certifications": "Zertifizierungen verwalten",
+      "product": "Produktblatt öffnen"
+    },
+    "issues": {
+      "title": "Aktive Probleme",
+      "empty": "Keine aktiven Probleme für dieses Produkt.",
+      "all": "Alle",
+      "blocking": "Blockierend",
+      "warning": "Warnung",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Wertverlauf",
+      "note": "Ein Balken pro berechnetem Snapshot — reale Historie, keine Interpolation.",
+      "empty": "Weniger als zwei Snapshots: Berechnen Sie nach Datenkorrekturen neu, um den Verlauf aufzubauen.",
+      "overallLabel": "Gesamt",
+      "delta": "Punkte seit dem ersten Snapshot"
+    }
   }
 }

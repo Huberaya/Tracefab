@@ -2741,5 +2741,54 @@
     "detail": {
       "lastVerified": "Dernière vérification"
     }
+  },
+  "qualityPremium": {
+    "panel": {
+      "title": "Score qualité décomposé",
+      "empty": "Aucun score qualité calculé pour ce produit pour l'instant.",
+      "emptyCta": "Calculer le score",
+      "computed": "Calculé le",
+      "version": "Version de calcul",
+      "hint": "Cliquez sur une composante pour l'explorer.",
+      "overall": "Global (moyenne dérivée)"
+    },
+    "comp": {
+      "completeness": "Complétude des données",
+      "freshness": "Fraîcheur",
+      "documentationCoverage": "Couverture preuves",
+      "consistency": "Cohérence"
+    },
+    "drill": {
+      "close": "Fermer",
+      "missingTitle": "Champs manquants",
+      "missingNone": "Aucun champ manquant signalé par le moteur.",
+      "blockingTitle": "Anomalies bloquantes",
+      "blockingNone": "Aucune anomalie bloquante signalée par le moteur.",
+      "relatedTitle": "Anomalies liées",
+      "relatedNone": "Aucune anomalie liée à cette composante.",
+      "resolveNote": "Chaque élément pointe vers l'espace où la donnée peut réellement être corrigée."
+    },
+    "resolve": {
+      "cta": "Résoudre",
+      "documents": "Téléverser une preuve",
+      "requests": "Demander la donnée",
+      "certifications": "Gérer les certifications",
+      "product": "Ouvrir la fiche produit"
+    },
+    "issues": {
+      "title": "Anomalies actives",
+      "empty": "Aucune anomalie active pour ce produit.",
+      "all": "Toutes",
+      "blocking": "Bloquantes",
+      "warning": "Avertissements",
+      "info": "Info"
+    },
+    "trend": {
+      "title": "Tendance du score",
+      "note": "Une barre par instantané calculé — historique réel, aucune interpolation.",
+      "empty": "Moins de deux instantanés : recalculez après correction des données pour construire la tendance.",
+      "overallLabel": "Global",
+      "delta": "pts depuis le premier instantané"
+    }
   }
 }

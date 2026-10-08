@@ -1028,6 +1028,9 @@
         selectedProductDetail: null,
         selectedSupplier: null,
         quality: null,
+        qualityHistory: [],
+        qualityComponent: null,
+        qualitySeverityFilter: 'all',
         supplyChain: null,
         selectedSupplyChainProduct: null,
         dpp: null,
@@ -3573,16 +3576,98 @@
           </div>`;
       }
 
-            function qualityView() {
-        const prod = state.selectedProduct || state.products[0] || { name: 'Organic Cotton T-Shirt', reference: 'AW26-0248' };
+            /* Chantier 10 — Quality Center premium : score decompose REEL (4
+           composantes calculees par tracefab_compute_product_quality),
+           composantes cliquables avec drill-down (champs manquants,
+           anomalies bloquantes, anomalies liees), actions « resoudre les
+           donnees manquantes » vers les vues reelles, et tendances depuis
+           l'historique /api/quality/products/:id/history. Tout l ancien
+           contenu simule (grade 98.4%, piliers fixes, carte « ESPR
+           Conformity », fausses anomalies) a ete supprime. */
+        const qp = (key, fb) => (window.TF_I18N ? window.TF_I18N.t('qualityPremium.' + key, fb) : fb);
+        const qualityCompValue = (score, comp) => (score ? Number(score[comp]) : null);
+        const qualityOverall = (score) => {
+          if (!score) return null;
+          return (Number(score.completeness || 0) + Number(score.freshness || 0) + Number(score.documentationCoverage || 0) + Number(score.consistency || 0)) / 4;
+        };
+        const QUALITY_COMPONENTS = ['completeness', 'freshness', 'documentationCoverage', 'consistency'];
+        const QUALITY_RELATED_PATTERNS = {
+          completeness: /incomplete|missing|profile|completion/i,
+          freshness: /stale|fresh|outdated|renew/i,
+          documentationCoverage: /evidence|document|certific/i,
+          consistency: null,
+        };
+        const qualityRelatedIssues = (issues, component) => {
+          const pattern = QUALITY_RELATED_PATTERNS[component];
+          if (component === 'consistency') return issues.filter((i) => i.severity === 'blocking');
+          return pattern ? issues.filter((i) => pattern.test(i.ruleKey || '') || pattern.test(i.fieldKey || '')) : [];
+        };
+        const qualityResolveTarget = (item) => {
+          const text = `${item.ruleKey || ''} ${item.fieldKey || ''} ${item}`.toLowerCase();
+          if (/evidence|document/.test(text)) return { view: 'documents', label: qp('resolve.documents', 'Upload evidence') };
+          if (/certific/.test(text)) return { view: 'certifications', label: qp('resolve.certifications', 'Manage certifications') };
+          if (/product_data|product_material|composition/.test(text)) return { view: 'products', label: qp('resolve.product', 'Open product sheet') };
+          return { view: 'requests', label: qp('resolve.requests', 'Request data') };
+        };
+
+        function qualityView() {
+        const prod = state.selectedProduct || state.products[0] || null;
         const q = state.quality;
+        const score = q?.score || null;
+        const issues = q?.issues || [];
+        const history = state.qualityHistory || [];
+        const activeComponent = state.qualityComponent || null;
+        const severityFilter = state.qualitySeverityFilter || 'all';
+        const filteredIssues = severityFilter === 'all' ? issues : issues.filter((i) => i.severity === severityFilter);
+        const overall = qualityOverall(score);
+        const sevCounts = { all: issues.length, blocking: 0, warning: 0, info: 0 };
+        issues.forEach((i) => { if (sevCounts[i.severity] !== undefined) sevCounts[i.severity] += 1; });
+
+        const drillPanel = activeComponent && score ? (() => {
+          const missing = (score.missingFields || []).map(String);
+          const blocking = (score.blockingIssues || []).map(String);
+          const related = qualityRelatedIssues(issues, activeComponent);
+          return `<div class="card panel" style="margin-top:14px;border-left:3px solid var(--green)">
+            <div class="panel-head"><h2>${esc(qp('comp.' + activeComponent, activeComponent))} — drill-down</h2>
+              <button class="btn btn-secondary btn-small" data-action="quality-component" data-quality-component="${esc(activeComponent)}">${qp('drill.close', 'Close')}</button></div>
+            <div class="grid split">
+              <div>
+                <h3 style="font-size:13px;margin:0 0 8px">${qp('drill.missingTitle', 'Missing fields')}</h3>
+                ${missing.length ? `<ul style="margin:0;padding-left:18px;display:grid;gap:8px">${missing.map((f) => { const target = qualityResolveTarget(f); return `<li><code>${esc(f)}</code> <button class="btn btn-secondary btn-small" style="margin-left:8px" data-action="quality-resolve" data-target="${target.view}">${target.label}</button></li>`; }).join('')}</ul>` : `<p class="meta">${qp('drill.missingNone', '')}</p>`}
+                <h3 style="font-size:13px;margin:14px 0 8px">${qp('drill.blockingTitle', 'Blocking issues')}</h3>
+                ${blocking.length ? `<ul style="margin:0;padding-left:18px;display:grid;gap:8px">${blocking.map((b) => { const target = qualityResolveTarget(b); return `<li><code>${esc(b)}</code> <button class="btn btn-secondary btn-small" style="margin-left:8px" data-action="quality-resolve" data-target="${target.view}">${target.label}</button></li>`; }).join('')}</ul>` : `<p class="meta">${qp('drill.blockingNone', '')}</p>`}
+              </div>
+              <div>
+                <h3 style="font-size:13px;margin:0 0 8px">${qp('drill.relatedTitle', 'Related issues')} (${related.length})</h3>
+                ${related.length ? `<div class="issue-list">${related.map(issueCard).join('')}</div>` : `<p class="meta">${qp('drill.relatedNone', '')}</p>`}
+                <p class="meta" style="margin-top:10px">${qp('drill.resolveNote', '')}</p>
+              </div>
+            </div>
+          </div>`;
+        })() : '';
+
+        const trendPanel = history.length >= 2 ? (() => {
+          const rows = history.map((h) => ({ at: h.computedAt, overall: qualityOverall(h) }));
+          const delta = Math.round((rows[rows.length - 1].overall - rows[0].overall) * 10) / 10;
+          return `<div class="card panel" style="margin-top:18px">
+            <div class="panel-head"><h2>${qp('trend.title', 'Score trend')}</h2><span class="meta">${qp('trend.note', '')}</span></div>
+            <div style="display:grid;gap:6px">
+              ${rows.map((r) => `<div style="display:grid;grid-template-columns:110px 1fr 90px;gap:10px;align-items:center;font-size:12px">
+                <span class="meta">${date(r.at)}</span>
+                <div class="progress" style="margin:0"><span style="width:${pct(r.overall)}%"></span></div>
+                <span style="text-align:right;font-weight:750">${moneyless(r.overall)}%</span>
+              </div>`).join('')}
+            </div>
+            <p class="meta" style="margin:10px 0 0">${qp('trend.overallLabel', 'Overall')} : <strong>${delta >= 0 ? '+' : ''}${esc(String(delta))}</strong> ${qp('trend.delta', 'pts since the first snapshot')}</p>
+          </div>`;
+        })() : `<div class="card panel" style="margin-top:18px"><div class="panel-head"><h2>${qp('trend.title', 'Score trend')}</h2></div><p class="meta">${qp('trend.empty', '')}</p></div>`;
 
         return `${complianceContractPanel()}${capContractPanel()}
         <div class="page-head">
           <div>
             <div class="eyebrow">${bt('qcEyebrow')}</div>
             <h1>${bt('qcTrustQuestion')}</h1>
-            <p>${esc(bt('cnQcIntro'))}</p>
+            <p>${esc(bt('cnQcIntro'))}${prod ? ` · <strong>${esc(prod.name)}</strong>${prod.reference ? ` (${esc(prod.reference)})` : ''}` : ''}</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="select-quality-product">${bt('scChangeProduct')}</button>
@@ -3590,120 +3675,36 @@
           </div>
         </div>
 
-        <!-- 5 Core Pillars: Data Completeness | Evidence Coverage | Verification Rate | Supplier Quality | Product Quality -->
-        <div class="eq-overview-panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('qcMatrix')}</div>
-              <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('qcPreAudit')}</h3>
-            </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">OVERALL GRADE: A (98.4%)</span>
-          </div>
-
-          <div class="eq-score-strip">
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcCompleteness')}</div>
-              <div class="eq-score-num" style="color:#0b7656;">96.8%</div>
-              <div class="eq-score-desc">BOM 100% mass-balance</div>
-            </div>
-
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcEvidenceCov')}</div>
-              <div class="eq-score-num" style="color:#0b7656;">92.0%</div>
-              <div class="eq-score-desc">${bt('qcTestReports')}</div>
-            </div>
-
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcVerifRate')}</div>
-              <div class="eq-score-num" style="color:#1d4ed8;">88.5%</div>
-              <div class="eq-score-desc">${bt('qcThirdParty')}</div>
-            </div>
-
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcSupplierQuality')}</div>
-              <div class="eq-score-num" style="color:#0b7656;">94.2%</div>
-              <div class="eq-score-desc">${bt('qcTiersOk')}</div>
-            </div>
-
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcEsprConformity')}</div>
-              <div class="eq-score-num" style="color:#b45309;">88.0%</div>
-              <div class="eq-score-desc">${bt('qcDppEligible')}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Severity Action Filter Tabs : CRITICAL | WARNING | REVIEW | RESOLVED -->
-        <div class="eq-severity-tabs">
-          <div class="eq-sev-tab active" onclick="filterIssues('all')">
-            <span>${bt('qcAllIssues')}</span>
-            <span class="sev-pill-count">3</span>
-          </div>
-          <div class="eq-sev-tab" onclick="filterIssues('critical')">
-            <span style="color:#b91c1c;">${bt('qcCritical')}</span>
-            <span class="sev-pill-count" style="color:#b91c1c;">0</span>
-          </div>
-          <div class="eq-sev-tab" onclick="filterIssues('warning')">
-            <span style="color:#b45309;">${bt('qcWarning')}</span>
-            <span class="sev-pill-count" style="color:#b45309;">1</span>
-          </div>
-          <div class="eq-sev-tab" onclick="filterIssues('review')">
-            <span style="color:#1d4ed8;">${bt('qcReview')}</span>
-            <span class="sev-pill-count" style="color:#1d4ed8;">2</span>
-          </div>
-          <div class="eq-sev-tab" onclick="filterIssues('resolved')">
-            <span style="color:#0b7656;">${bt('qcResolved')}</span>
-            <span class="sev-pill-count" style="color:#0b7656;">14</span>
-          </div>
-        </div>
-
-        <!-- Issues Card with Immediate Action Links -->
         <div class="card panel">
+          <div class="panel-head"><h2>${qp('panel.title', 'Decomposed quality score')}</h2>
+            <span class="meta">${score ? `${qp('panel.computed', 'Computed on')} ${date(score.computedAt)} · ${qp('panel.version', 'Calculation version')} ${esc(score.calculationVersion || '—')}` : ''}</span></div>
+          ${score ? `
+          <p class="meta" style="margin:0 0 12px">${qp('panel.hint', '')}</p>
+          <div class="pil-summary-grid">
+            ${QUALITY_COMPONENTS.map((comp) => `<div class="pil-summary-cell" role="button" tabindex="0" style="cursor:pointer;${activeComponent === comp ? 'outline:2px solid var(--green);' : ''}" data-action="quality-component" data-quality-component="${comp}">
+              <div class="pil-summary-num">${moneyless(qualityCompValue(score, comp))}%</div>
+              <span class="pil-summary-label">${esc(qp('comp.' + comp, comp))}</span>
+              <div class="progress" style="margin-top:8px"><span style="width:${pct(qualityCompValue(score, comp))}%"></span></div>
+            </div>`).join('')}
+            <div class="pil-summary-cell">
+              <div class="pil-summary-num">${moneyless(overall)}%</div>
+              <span class="pil-summary-label">${qp('panel.overall', 'Overall (derived average)')}</span>
+              ${score.blockingIssues?.length ? `<div class="meta" style="color:#b91c1c">${score.blockingIssues.length} blocking</div>` : ''}
+            </div>
+          </div>` : `<div class="empty"><p>${qp('panel.empty', 'No quality score computed for this product yet.')}</p><button class="btn btn-primary btn-small" data-action="compute-quality">${qp('panel.emptyCta', 'Compute the score')}</button></div>`}
+        </div>
+        ${drillPanel}
+
+        <div class="card panel" style="margin-top:18px">
           <div class="panel-head">
-            <h2>${bt('qcActiveIssuesFor')} : ${esc(prod.name)}</h2>
-            <span class="meta">${q ? q.issues.length : 3} ${bt('qcAnomaliesFound')}</span>
-          </div>
-
-          <div class="issue-list" id="quality-issue-container">
-            <!-- Simulated High-Impact Actionable Issues -->
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
-              <div>
-                <span class="status status-changes_requested" style="margin-right:8px;">WARNING</span>
-                <strong>RSL test report missing for dye lot #089</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>ZDHC_EFFLUENT_TEST_REPORT</code> · Detected by Document AI · Tolerance: 12 months</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Upload the SGS report or follow up with the EcoDye Aquitaine dye house</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='requests';render();">${bt('qcFollowFacility')}</button>
-                <button class="btn btn-primary btn-small" onclick="state.view='documents';render();">${bt('qcUploadEv')}</button>
-              </div>
-            </div>
-
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
-              <div>
-                <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
-                <strong>GOTS certificate CU-881294 expiring in 42 days</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>CERTIFICATE_EXPIRATION_GATE</code> · Scope: Combed organic cotton</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Receive the GOTS 2027 Scope certificate before customs shipment</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='certifications';render();">${bt('qcManageCert')}</button>
-              </div>
-            </div>
-
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;">
-              <div>
-                <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
-                <strong>GPS coordinates of the cutting workshop not locked</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>POLYGON_FACILITY_REGISTRY</code> · Barcelos workshop</p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;">→ Suggested action: Validate the facility's GPS polygon in the site registry</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" onclick="state.view='supplyChain';render();">${bt('qcInspectMap')}</button>
-              </div>
+            <h2>${qp('issues.title', 'Active issues')} (${filteredIssues.length})</h2>
+            <div class="actions">
+              ${['all', 'blocking', 'warning', 'info'].map((sev) => `<button class="btn ${severityFilter === sev ? 'btn-primary' : 'btn-secondary'} btn-small" data-action="quality-severity" data-quality-severity="${sev}">${esc(qp('issues.' + sev, sev))} (${sevCounts[sev] ?? 0})</button>`).join('')}
             </div>
           </div>
-        </div>`;
+          ${filteredIssues.length ? `<div class="issue-list">${filteredIssues.map(issueCard).join('')}</div>` : `<div class="empty"><p>${qp('issues.empty', 'No active issue for this product.')}</p></div>`}
+        </div>
+        ${trendPanel}`;
       }
 
       function scoreCard(label, value) { return `<div class="card score"><div class="score-name">${label}</div><div class="score-value">${moneyless(value)}%</div><div class="progress"><span style="width:${pct(value)}%"></span></div></div>`; }
@@ -4515,22 +4516,38 @@
         state.selectedProduct = state.products.find((p) => p.id === id);
         state.view = 'quality';
         state.quality = null;
+        state.qualityHistory = [];
+        state.qualityComponent = null;
+        state.qualitySeverityFilter = 'all';
         render();
         if (!state.demo) {
           try {
-            state.quality = await api(`/api/quality/products/${encodeURIComponent(id)}`);
+            // Chantier 10 : score + historique de scores en parallele,
+            // l historique etant non bloquant pour la vue.
+            const [quality, history] = await Promise.allSettled([
+              api(`/api/quality/products/${encodeURIComponent(id)}`),
+              api(`/api/quality/products/${encodeURIComponent(id)}/history`),
+            ]);
+            if (quality.status === 'fulfilled') state.quality = quality.value;
+            state.qualityHistory = history.status === 'fulfilled' ? (history.value.history || []) : [];
+            if (quality.status === 'rejected') throw quality.reason;
             render();
           } catch (e) {
             notify(e.message, true);
           }
         } else {
           state.quality = {
-            score: { completeness: 82, freshness: 78, documentationCoverage: 61, consistency: 80 },
+            score: { completeness: 82, freshness: 78, documentationCoverage: 61, consistency: 80, missingFields: ['product_material_composition'], blockingIssues: ['product_missing_evidence'], calculationVersion: 'product_quality_v1', computedAt: new Date().toISOString() },
             issues: [
-              { id: 'demo-issue-1', severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', message: 'Some product data does not yet have documentary evidence.', detectedAt: new Date().toISOString() },
-              { id: 'demo-issue-2', severity: 'blocking', status: 'open', ruleKey: 'product_expired_certification', message: 'The GOTS certificate for the main component has expired.', detectedAt: new Date().toISOString() },
+              { id: 'demo-issue-1', severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', fieldKey: 'material_evidence', message: 'Some product data does not yet have documentary evidence.', detectedAt: new Date().toISOString() },
+              { id: 'demo-issue-2', severity: 'blocking', status: 'open', ruleKey: 'product_expired_certification', fieldKey: 'main_material_certificate', message: 'The GOTS certificate for the main component has expired.', detectedAt: new Date().toISOString() },
             ],
           };
+          state.qualityHistory = [
+            { completeness: '71', freshness: '74', documentationCoverage: '48', consistency: '70', computedAt: new Date(Date.now() - 14 * 86400000).toISOString(), calculationVersion: 'product_quality_v1' },
+            { completeness: '77', freshness: '76', documentationCoverage: '55', consistency: '80', computedAt: new Date(Date.now() - 7 * 86400000).toISOString(), calculationVersion: 'product_quality_v1' },
+            { completeness: '82', freshness: '78', documentationCoverage: '61', consistency: '80', computedAt: new Date().toISOString(), calculationVersion: 'product_quality_v1' },
+          ];
           render();
         }
       }
@@ -4541,6 +4558,11 @@
           if (state.quality?.score) {
             const hasBlocking = (state.quality.issues || []).some((i) => i.severity === 'blocking' && ['open', 'acknowledged'].includes(i.status));
             state.quality.score.consistency = hasBlocking ? 70 : 100;
+            state.quality.score.computedAt = new Date().toISOString();
+            // Chantier 10 : chaque calcul de demonstration ajoute un
+            // instantane reel a la tendance, comme la fonction SQL en mode
+            // reel (insertion dans data_quality_scores).
+            state.qualityHistory.push({ completeness: String(state.quality.score.completeness), freshness: String(state.quality.score.freshness), documentationCoverage: String(state.quality.score.documentationCoverage), consistency: String(state.quality.score.consistency), computedAt: state.quality.score.computedAt, calculationVersion: 'product_quality_v1' });
           }
           notify(bt('cnNQualityRecalculatedDemo'));
           render();
@@ -4550,6 +4572,12 @@
           method: 'POST',
           body: JSON.stringify({ calculationVersion: 'product_quality_v1' }),
         });
+        try {
+          const history = await api(`/api/quality/products/${encodeURIComponent(state.selectedProduct.id)}/history`);
+          state.qualityHistory = history.history || [];
+        } catch (error) {
+          state.qualityHistory = [];
+        }
         notify(bt('cnNQualityRecalculated'));
         render();
       }
@@ -4982,6 +5010,9 @@
             if (action === 'evidence-scan') await scanEvidence(el.dataset.evidenceId);
             if (action === 'evidence-report') await openEvidenceReport(el.dataset.evidenceId, el.dataset.reportKind);
             if (action === 'cert-review') { const id = el.dataset.certId; state.certReview = state.certReview?.id === id ? null : { id }; render(); }
+            if (action === 'quality-component') { const comp = el.dataset.qualityComponent; state.qualityComponent = state.qualityComponent === comp ? null : comp; render(); }
+            if (action === 'quality-severity') { state.qualitySeverityFilter = el.dataset.qualitySeverity; render(); }
+            if (action === 'quality-resolve') { state.view = el.dataset.target; render(); }
             if (action === 'catalog-export') await exportCatalog();
             if (action === 'audit-export') await exportAudit();
             if (action === 'preview-catalog-import') await previewCatalogImport();
