@@ -5,6 +5,22 @@ type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;
 type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default: RouteHandler }> };
 
 const routes: Route[] = [
+  /*
+   * TRACEFAB COMMAND CENTER (Chantier Admin 01). Placées en tête : aucun autre
+   * motif ne commence par `admin`, donc rien ne peut les masquer.
+   *
+   * L'ordre interne est porteur. Le routeur prend le premier motif qui matche :
+   * `companies/([^/]+)/activities` et `.../stage` doivent donc précéder
+   * `companies/([^/]+)`, sinon ce dernier avalerait les deux.
+   */
+  { pattern: /^admin\/access$/, params: [], load: () => import('./_routes/admin/access.js') },
+  { pattern: /^admin\/dashboard$/, params: [], load: () => import('./_routes/admin/dashboard.js') },
+  { pattern: /^admin\/companies$/, params: [], load: () => import('./_routes/admin/companies.js') },
+  { pattern: /^admin\/companies\/([^\/]+)\/activities$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId]/activities.js') },
+  { pattern: /^admin\/companies\/([^\/]+)\/stage$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId]/stage.js') },
+  { pattern: /^admin\/companies\/([^\/]+)$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId].js') },
+  { pattern: /^admin\/contacts$/, params: [], load: () => import('./_routes/admin/contacts.js') },
+  { pattern: /^admin\/contacts\/([^\/]+)$/, params: ['contactId'], load: () => import('./_routes/admin/contacts/[contactId].js') },
   { pattern: /^catalog\/products\/import$/, params: [], load: () => import('./_routes/catalog/products/import.js') },
   { pattern: /^catalog\/products\/export$/, params: [], load: () => import('./_routes/catalog/products/export.js') },
   { pattern: /^catalog\/products\/import\-jobs\/([^\/]+)$/, params: ['jobId'], load: () => import('./_routes/catalog/products/import-jobs/[jobId].js') },

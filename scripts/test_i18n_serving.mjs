@@ -143,8 +143,28 @@ if (extra.length) ok(`langues supplémentaires, vérifiées par surface : ${extr
  * runtime. Une surface qui ne passe pas `languages` ne peut sélectionner que les
  * 7 langues d'origine : exiger d'elle un dictionnaire turc serait faux.
  */
-const surfaces = ['evidence/index.html', 'dpp/index.html', 'traceability/index.html',
-  'brand-console/index.html', 'supplier-portal/index.html'];
+/*
+ * Les surfaces sont DÉCOUVERTES, pas énumérées : toute page HTML qui charge le
+ * runtime est concernée. Une liste codée en dur oublie la suivante — c'est
+ * exactement ce qui serait arrivé à la console Admin.
+ */
+const SKIP_DIRS = new Set(['node_modules', 'public', 'api', 'scripts', 'docs', 'locales',
+  'assets', 'prisma', 'supabase', 'catalog', '.git', '.cache']);
+async function discoverSurfaces(dir, prefix) {
+  const found = [];
+  for (const entry of await readdir(at(dir), { withFileTypes: true })) {
+    if (SKIP_DIRS.has(entry.name)) continue;
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) found.push(...await discoverSurfaces(rel, rel));
+    else if (entry.name.endsWith('.html')) {
+      const html = await readFile(at(rel), 'utf8');
+      if (html.includes('/i18n-core.js')) found.push(rel);
+    }
+  }
+  return found;
+}
+const surfaces = (await discoverSurfaces('.', '')).sort();
+assert(surfaces.length >= 6, `au moins 6 surfaces chargent le runtime (${surfaces.length} trouvées)`);
 const requested = [];
 for (const surface of surfaces) {
   const html = await readFile(at(surface), 'utf8');

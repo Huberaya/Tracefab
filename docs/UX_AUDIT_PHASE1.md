@@ -3195,3 +3195,141 @@ Contre-vérification : `learnText` remplacé par l'ancien `n.nodeValue` → **4 
 `test:supplier-portal`, `test:quality-center` passent tous après le changement.
 
 **Lacune enregistrée :** aucune suite de tests ne couvre `operations/index.html`.
+
+---
+
+## Chantier Admin 01 — TRACEFAB Command Center : authentification, Dashboard, Prospects, Companies, Contacts, Pipeline
+
+### Audit préalable (mesuré, avant d'écrire une ligne)
+
+| constat | conséquence |
+|---|---|
+| 44 modèles, 26 enums ; **0 fichier** contenant `prospect`, `admin-console`, `command center` | terrain vierge, aucun risque d'écraser un existant |
+| `membership_role` (owner/admin/manager/contributor/viewer/auditor) est **toujours rattaché à une organisation** | il n'existe aucun rôle plateforme global ; en inventer un aurait créé un second système d'autorisation |
+| `organization_type` contient déjà **`platform`** | c'est l'ancrage : Admin = rôle owner/admin dans une organisation `platform` |
+| `tracefab_has_org_role(UUID, membership_role[])` existe depuis la migration initiale | la RLS a déjà son verrou, pas besoin d'en écrire un nouveau |
+| motif d'une route protégée : `requireClerkUser` → `withTracefabUserContext` → `json()` | les 8 nouvelles routes suivent exactement ce motif |
+| `api:typecheck` ne passe **ni `--strict` ni `--strictNullChecks`** | une union discriminante ne s'y réduit pas — mesuré par sonde, voir plus bas |
+| `prisma validate` et `check_migrations.ts` sont **bloqués** (binaires injoignables) | la migration n'a pas pu être exécutée ; c'est dit, pas contourné |
+
+### Décision 1 — pas de nouveau rôle
+
+Un **Admin / Founder** est un utilisateur qui satisfait **deux** conditions : membership
+`active` de rôle `owner` ou `admin`, **dans** une organisation de type `platform` et de
+statut `active`. Une marque appartient à une organisation `brand`, un fournisseur à une
+organisation `supplier` : ni l'un ni l'autre ne peut satisfaire la seconde condition.
+Aucun enum ajouté, aucun système parallèle.
+
+La règle est écrite **deux fois, volontairement** : en SQL (politiques RLS
+`tracefab_is_platform_org`) et en TypeScript (`selectPlatformAdminAccess`). Le test
+vérifie que les deux disent la même chose — si l'une dérive, l'autre ment.
+
+### Décision 2 — `crm-access.ts` n'importe rien
+
+`admin-access.ts` importe Clerk et Prisma, donc sa règle d'autorisation ne pouvait pas
+s'exécuter ici (`@prisma/client did not initialize`). La règle pure a été isolée dans
+`api/_lib/crm-access.ts`, **sans aucun import** : la frontière de sécurité la plus
+importante du module est maintenant exécutable et contre-vérifiable sans client généré
+ni jeton.
+
+### Décision 3 — les chiffres ne sont jamais inventés
+
+`computeDashboard(rows)` est pure : elle compte les lignes qu'on lui donne. Quand aucune
+opportunité n'est tranchée, `conversionRate` vaut **`null`** et l'interface affiche
+« non mesuré » — pas 0 %. Chaque étape du funnel compte aussi les suivantes (une démo
+implique d'avoir été contacté), ce qui rend les compteurs cohérents entre eux et
+vérifiable. En mode `?demo`, un bandeau permanent dit que ce sont des données de
+démonstration, et toute écriture est refusée.
+
+### Base — 3 tables, 6 enums
+
+`crm_companies`, `crm_contacts`, `crm_activities`. Verrous posés en base, pas seulement
+en interface :
+
+- `UNIQUE (platform_organization_id, name)` — un doublon de prospection est bloqué, pas signalé ;
+- `CHECK (stage <> 'lost' OR lost_reason IS NOT NULL)` — une perte sans raison est impossible ;
+- compteurs et valeur `>= 0`, `influence_level BETWEEN 0 AND 5` ;
+- `ENABLE` **et `FORCE`** ROW LEVEL SECURITY sur les trois tables — le propriétaire de la table y est soumis aussi ;
+- `REVOKE UPDATE, DELETE ON crm_activities` — la timeline est une preuve, pas un brouillon ;
+- triggers `*_platform_match` — un contact ou une activité ne peut pas être rattaché à une autre organisation que son entreprise.
+
+### API — 8 routes, ordre porteur
+
+`/api/admin/access` · `/dashboard` · `/companies` (GET/POST) · `/companies/:id`
+(GET/PATCH) · `/companies/:id/stage` · `/companies/:id/activities` · `/contacts`
+(GET/POST) · `/contacts/:id`.
+
+Le pipeline a **sa propre route** : un PATCH silencieux sur `stage` est refusé, donc un
+mouvement est toujours journalisé, dans la même transaction que la mise à jour.
+`/companies/:id/activities` et `/stage` précèdent `/companies/:id` dans le routeur —
+sinon ce motif avale les deux (contre-vérifié).
+
+### Interface — `admin/index.html`
+
+Même architecture que les autres surfaces (IIFE, état unique, Clerk via `/api/config`,
+`?demo`). Vues : Dashboard (13 KPI cliquables qui filtrent la liste), Prospects (table
+filtrable + pagination), Pipeline (board 10 colonnes), Contacts, et la fiche entreprise
+(Company / Contacts / Opportunity / Activity / Notes + Next action). Les 15 modules non
+encore livrés (Tasks, Emails, Meetings, Pilots, Analytics…) apparaissent **désactivés avec
+l'explication**, pas en liens morts.
+
+**Aucun libellé codé en dur** : 172 clés × 7 langues dans `locales/{lang}/admin.json`,
+générées par `scripts/build_admin_locales.py`, qui extrait les clés **du composant** et
+échoue si une traduction manque ou si une entrée multilingue est restée en anglais.
+
+### Trois défauts trouvés en écrivant le test
+
+1. **`api:typecheck` n'a pas `--strictNullChecks`** → `if (!parsed.ok) parsed.errors` ne
+   compile pas. Mesuré par sonde (`.cache/probe/n2.ts` : même le cas minimal échoue).
+   Les parseurs renvoient donc une forme plate `{ data, errors }`.
+2. **`optionalText(v, 2)` tronquait le pays avant validation** : « France » devenait
+   « Fr », qui est un code ISO valide. Correction : lire la valeur entière, contrôler,
+   puis normaliser.
+3. **`serve_preview.mjs` codait 4 routes en dur** et ne connaissait pas `/i18n-core.js` :
+   **aucune des 6 surfaces i18n** ne pouvait charger son runtime en preview. Le serveur
+   dérive désormais ses routes de `vercel.json`.
+
+`test_i18n_serving.mjs` énumérait aussi ses surfaces à la main (5). Il les **découvre**
+maintenant en cherchant les HTML qui chargent le runtime : 6 trouvées, dont la console
+Admin. Sinon l'oubli se reproduisait à la 7ᵉ.
+
+### `scripts/test_admin_chantier01.mjs` — 94 vérifications
+
+Exécute les modules **réels compilés**. Couvre : 11 cas d'autorisation (dont « un owner
+de marque n'a pas accès », le cœur de la séparation) · monotonie du funnel ·
+`conversionRate` null quand rien n'est tranché · validations (pays, email, influence,
+perte sans raison) · transitions · RLS activée **et forcée** sur les 3 tables ·
+toutes les politiques exigent `tracefab_is_platform_org` · append-only · unicité ·
+triggers de cohérence · 8 routes enregistrées dans l'ordre porteur · aucun libellé
+codé en dur · 7 dictionnaires aux mêmes 172 clés · route `/admin` présente.
+
+Contre-vérifications : suppression du contrôle `type = 'platform'` → **4 FAIL, exit 1** ;
+retrait de `FORCE ROW LEVEL SECURITY` → **1 FAIL, exit 1** ; inversion de l'ordre du
+routeur → **1 FAIL, exit 1** ; restauré → 94/94.
+
+### Mesures
+
+| | avant | après |
+|---|---|---|
+| modèles Prisma / enums | 44 / 26 | **47 / 32** |
+| routes API | 126 | **134** |
+| surfaces i18n | 5 | **6** |
+| `test:suite` | PASS 61 · SKIP 25 · FAIL 0 / 86 | **PASS 62 · SKIP 25 · FAIL 0 / 87** |
+| `test:admin:chantier01` | n'existait pas | **94/94**, contre-vérifié |
+| `api:typecheck` | 90 | **90** — 0 erreur dans les fichiers CRM |
+| `test:typecheck:baseline` | 8/8 | **8/8** |
+| `typecheck` front · `schema:static` | passent | **passent** |
+
+### Ce qui n'a pas pu être vérifié ici
+
+La migration **n'a pas été exécutée** : `prisma validate` exige `binaries.prisma.sh`
+(injoignable) et `check_migrations.ts` est un SKIP (`@prisma/client did not initialize`).
+La syntaxe SQL a été contrôlée structurellement (parenthèses, blocs `$$` appariés), pas
+par PostgreSQL. Les 8 handlers n'ont donc jamais répondu à une requête réelle : leur
+logique pure est testée, leur comportement Prisma ne l'est pas.
+
+### Non livré, volontairement
+
+Tasks, Activities (module complet), Meetings, Emails, Notes, Pilots, Leads,
+Opportunities, Campaigns, Customers, Suppliers, Analytics, Product Usage, Settings,
+import CSV/Excel, listes de prospection. Ils apparaissent désactivés dans la navigation.

@@ -80,7 +80,12 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   document_not_available: { status: 409 },
   certification_not_found: { status: 404 },
   certification_has_no_document: { status: 400 },
+  admin_access_denied: { status: 403 },
+  crm_company_not_found: { status: 404 },
+  crm_contact_not_found: { status: 404 },
+  crm_company_duplicate: { status: 409 },
 };
+
 
 /**
  * Convert a deliberately small, stable set of PostgreSQL business exceptions

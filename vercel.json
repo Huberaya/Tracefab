@@ -96,6 +96,10 @@
       "dest": "/passport/index.html"
     },
     {
+      "src": "/admin(?:/)?",
+      "dest": "/admin/index.html"
+    },
+    {
       "src": "/i18n-core.js",
       "dest": "/public/i18n-core.js"
     },

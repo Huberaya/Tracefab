@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRACEFAB — Command Center</title>
+<meta name="description" content="TRACEFAB Command Center — operate the platform and grow it: prospects, companies, contacts and commercial pipeline.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://rsms.me/" crossorigin>
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+<script src="/i18n-core.js"></script>
+<style>
+:root{
+  --paper:#f7f8f5; --panel:#ffffff; --ink:#141d19; --muted:#6d7b74;
+  --line:#e3e8e0; --green:#0b7656; --green-dark:#07523e; --green-soft:#e7f2ec;
+  --red:#b42318; --red-soft:#fdeceb; --yellow:#8f6417; --yellow-soft:#fbf2df;
+  --blue:#1f4f8f; --blue-soft:#e9f0fa;
+  --radius:14px; --shadow:0 12px 30px rgba(20,29,25,.07);
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;
+  font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+/* --- accès refusé / chargement ------------------------------------------- */
+.gate{min-height:100vh;display:grid;place-items:center;padding:24px}
+.gatebox{max-width:560px;width:100%;background:var(--panel);border:1px solid var(--line);
+  border-radius:20px;padding:34px;box-shadow:var(--shadow)}
+.eyebrow{color:var(--green);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+.gatebox h1{font-size:clamp(1.6rem,3.4vw,2.3rem);letter-spacing:-.04em;line-height:1.08;margin:10px 0 12px}
+.gatebox p{color:var(--muted);margin:0 0 20px;line-height:1.6}
+#clerk-sign-in{min-height:190px}
+
+/* --- squelette ----------------------------------------------------------- */
+.app{display:grid;grid-template-columns:238px 1fr;min-height:100vh}
+.side{border-right:1px solid var(--line);background:var(--panel);padding:18px 12px;
+  display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;gap:10px;align-items:center;padding:4px 8px 16px}
+.mark{width:32px;height:32px;border-radius:9px;background:var(--green-dark);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:12px;letter-spacing:.02em;flex:none}
+.brand b{display:block;font-size:13px;letter-spacing:-.01em}
+.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+.navlabel{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.14em;
+  text-transform:uppercase;padding:14px 10px 6px}
+.nav{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;
+  background:none;border-radius:9px;cursor:pointer;text-align:left;font-weight:600;color:#3c4a44}
+.nav:hover{background:#f1f4ef}
+.nav[aria-current="page"]{background:var(--green-soft);color:var(--green-dark)}
+.nav .k{font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:auto}
+.nav[aria-current="page"] .k{color:var(--green)}
+.nav.soon{opacity:.5;cursor:not-allowed}
+.sidefoot{margin-top:auto;padding:12px 10px 2px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:11px;line-height:1.5}
+.rolechip{display:inline-block;background:var(--green-soft);color:var(--green-dark);
+  font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 7px;border-radius:6px;margin-bottom:6px}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:14px;padding:14px 26px;border-bottom:1px solid var(--line);
+  background:var(--panel);position:sticky;top:0;z-index:5}
+.top h1{font-size:15px;margin:0;letter-spacing:-.01em;font-weight:700}
+.top .sub{color:var(--muted);font-size:12px}
+.top .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+select,input[type=text],input[type=search],textarea{
+  border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:7px 10px;font-size:13px}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--green-soft);border-color:var(--green)}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:7px 13px;
+  font-weight:700;cursor:pointer}
+.btn:hover{border-color:#c9d2c6}
+.btn.primary{background:var(--green-dark);border-color:var(--green-dark);color:#fff}
+.btn.primary:hover{background:#0a6449}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.view{padding:22px 26px 60px;min-width:0}
+
+.demo{display:flex;gap:10px;align-items:center;background:var(--yellow-soft);
+  border:1px solid #ecd9ab;color:#6d4d10;border-radius:10px;padding:9px 13px;
+  font-size:12.5px;font-weight:600;margin-bottom:18px}
+
+/* --- KPI ----------------------------------------------------------------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 15px;text-align:left;cursor:pointer;transition:border-color .12s,transform .12s}
+.kpi:hover{border-color:var(--green);transform:translateY(-1px)}
+.kpi[aria-pressed="true"]{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+.kpi .lbl{display:block;color:var(--muted);font-size:10px;font-weight:800;
+  letter-spacing:.12em;text-transform:uppercase}
+.kpi .val{display:block;font-size:2rem;font-weight:800;letter-spacing:-.045em;
+  line-height:1.12;margin-top:6px}
+.kpi .val.small{font-size:1.5rem}
+.kpi.warn .val{color:var(--yellow)} .kpi.bad .val{color:var(--red)} .kpi.good .val{color:var(--green-dark)}
+
+.panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 17px}
+.card h2{font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 12px}
+.bar{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12.5px}
+.bar .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .track{height:5px;background:#eef1ec;border-radius:3px;overflow:hidden;width:96px;flex:none}
+.bar .fill{height:100%;background:var(--green);border-radius:3px}
+.bar b{font-variant-numeric:tabular-nums;min-width:26px;text-align:right}
+
+/* --- table --------------------------------------------------------------- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.filters .sp{margin-left:auto}
+.tblwrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:840px}
+th{text-align:left;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 13px;border-bottom:1px solid #f0f3ee;vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#fafcf9}
+.co{font-weight:700;letter-spacing:-.01em}
+.meta{color:var(--muted);font-size:12px}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.07em;
+  text-transform:uppercase;padding:3px 7px;border-radius:6px;white-space:nowrap}
+.tag.s-new{background:#eef1ec;color:#4a5750}
+.tag.s-qualified{background:var(--blue-soft);color:var(--blue)}
+.tag.s-to_contact{background:var(--yellow-soft);color:var(--yellow)}
+.tag.s-contacted{background:#e9f0fa;color:#1f4f8f}
+.tag.s-replied{background:var(--green-soft);color:var(--green-dark)}
+.tag.s-meeting{background:#e6eefb;color:#1f4f8f}
+.tag.s-demo{background:#dfeee7;color:#0a6449}
+.tag.s-pilot{background:#d8ebe2;color:#07523e}
+.tag.s-customer{background:var(--green-dark);color:#fff}
+.tag.s-lost{background:var(--red-soft);color:var(--red)}
+.tag.p-critical{background:var(--red-soft);color:var(--red)}
+.tag.p-high{background:var(--yellow-soft);color:var(--yellow)}
+.tag.p-medium{background:#eef1ec;color:#4a5750}
+.tag.p-low{background:#f2f4f0;color:#8b968f}
+.empty{padding:44px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:5px}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:12px 2px;color:var(--muted);font-size:12px}
+
+/* --- pipeline ------------------------------------------------------------ */
+.board{display:flex;gap:10px;overflow-x:auto;padding-bottom:14px;align-items:flex-start}
+.col{flex:0 0 208px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  display:flex;flex-direction:column;max-height:calc(100vh - 190px)}
+.colhead{padding:11px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:7px}
+.colhead b{font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:800}
+.colhead .c{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.colbody{padding:8px;display:flex;flex-direction:column;gap:7px;overflow-y:auto}
+.pcard{border:1px solid var(--line);border-radius:10px;padding:9px 10px;cursor:pointer;background:#fff}
+.pcard:hover{border-color:var(--green)}
+.pcard b{display:block;font-size:12.5px;letter-spacing:-.01em;line-height:1.3}
+.pcard .m{color:var(--muted);font-size:11px;margin-top:3px}
+.pcard .row{display:flex;gap:5px;align-items:center;margin-top:6px;flex-wrap:wrap}
+
+/* --- détail -------------------------------------------------------------- */
+.head{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
+.head h1{font-size:clamp(1.5rem,3vw,2.1rem);letter-spacing:-.04em;line-height:1.1;margin:0}
+.head .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}
+.tab{border:0;background:none;padding:9px 13px;font-weight:700;font-size:13px;cursor:pointer;
+  color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--green)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;padding:9px 0;border-bottom:1px solid #f0f3ee}
+.field label{font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+.field .v{font-size:13.5px}
+.field .v.none{color:#a4ada6}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:11px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.form .full{grid-column:1/-1}
+.timeline{list-style:none;margin:0;padding:0}
+.timeline li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid #f0f3ee}
+.timeline li:last-child{border-bottom:0}
+.tl-d{flex:none;width:74px;color:var(--muted);font-size:11.5px;font-family:var(--mono);padding-top:1px}
+.tl-b b{display:block;font-size:13px}
+.tl-b span{color:var(--muted);font-size:12px}
+.nextaction{background:var(--green-soft);border:1px solid #cfe3d8;border-radius:var(--radius);padding:14px 16px}
+.nextaction .lbl{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--green-dark)}
+.nextaction .v{font-size:15px;font-weight:700;margin-top:5px;letter-spacing:-.01em}
+.modal{position:fixed;inset:0;background:rgba(20,29,25,.42);display:grid;place-items:center;
+  padding:20px;z-index:20}
+.modalbox{background:var(--panel);border-radius:18px;max-width:620px;width:100%;
+  max-height:88vh;overflow-y:auto;padding:22px 24px;box-shadow:0 30px 70px rgba(20,29,25,.24)}
+.modalbox h2{margin:0 0 16px;font-size:17px;letter-spacing:-.02em}
+.modalfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.err{background:var(--red-soft);color:var(--red);border-radius:9px;padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+.hint{color:var(--muted);font-size:12px;line-height:1.6;margin:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;
+    border-right:0;border-bottom:1px solid var(--line)}
+  .brand{padding:4px 8px} .navlabel{display:none}
+  .nav{width:auto;padding:7px 10px} .nav .k{display:none}
+  .sidefoot{display:none}
+  .view{padding:18px 16px 50px} .top{padding:12px 16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;transform:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/*
+ * TRACEFAB COMMAND CENTER — Chantier Admin 01.
+ *
+ * Même architecture que les autres surfaces : un IIFE, un état unique, un rendu
+ * par réécriture de #app, Clerk chargé depuis /api/config, et un mode `?demo`.
+ *
+ * Deux règles non négociables :
+ *   - aucun chiffre inventé. Chaque KPI vient de /api/admin/dashboard, qui
+ *     compte des lignes réelles. Quand rien n'est mesurable, on affiche
+ *     « non mesuré », pas 0.
+ *   - en mode démonstration, un bandeau le dit en permanence.
+ */
+(() => {
+'use strict';
+
+const STAGES = ['new','qualified','to_contact','contacted','replied','meeting','demo','pilot','customer'];
+const STAGE_LOST = 'lost';
+const PRIORITIES = ['critical','high','medium','low'];
+const COMPANY_TYPES = ['fashion_brand','textile_brand','manufacturer','textile_supplier','mill','dye_house','garment_factory','luxury_brand','sportswear','outdoor','retailer','marketplace','other'];
+const MATURITIES = ['unknown','low','medium','high'];
+const CONTACT_STATUSES = ['to_contact','contacted','replied','meeting','unresponsive','declined'];
+const LANGUAGES = ['en','fr','de','it','es','nl','pt'];
+
+const app = document.getElementById('app');
+
+const state = {
+  clerk: null, user: null, access: null,
+  loading: true, error: null,
+  demo: new URLSearchParams(location.search).has('demo'),
+  lang: localStorage.getItem('tracefab.lang') || 'en',
+  view: 'dashboard',
+  dashboard: null,
+  companies: { items: [], total: 0, limit: 50, offset: 0 },
+  contacts: { items: [] },
+  filters: { stage: '', priority: '', country: '', company_type: '', q: '', due: '' },
+  selected: null,          // id de l'entreprise ouverte
+  detail: null,            // { company, contacts, activities }
+  tab: 'overview',
+  modal: null,             // 'company' | 'contact' | 'move' | null
+  formError: null,
+  saving: false,
+};
+
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;',
+}[c]));
+
+/* Traduction : une clé absente renvoie la clé, jamais un blanc. */
+const t = (key) => {
+  const v = window.TracefabI18n ? window.TracefabI18n.t(key) : null;
+  return v == null ? key : v;
+};
+
+/* ---------------------------------------------------------------- données */
+
+function demoDashboard() {
+  return {
+    role: 'owner', organizationName: 'TRACEFAB (demo)', measuredAt: new Date().toISOString(),
+    sampleSize: 7, totalProspects: 7, newProspects: 2, toContact: 1, contacted: 3, replies: 2,
+    meetings: 2, demos: 1, pilots: 1, customers: 1, lost: 0,
+    estimatedValueEur: 186000, conversionRate: 100, dueToday: 2,
+    byStage: { new: 2, to_contact: 1, contacted: 1, demo: 1, pilot: 1, customer: 1 },
+    byCountry: { FR: 3, DE: 1, IT: 2, PT: 1 },
+    byCompanyType: { fashion_brand: 3, manufacturer: 2, luxury_brand: 1, mill: 1 },
+    byPriority: { critical: 1, high: 2, medium: 3, low: 1 },
+  };
+}
+
+function demoCompanies() {
+  return [
+    { id:'d1', name:'Example Fashion Group', website:'example.com', country_code:'FR', city:'Paris',
+      industry:'Fashion', company_type:'fashion_brand', employee_band:'250-500', revenue_band:'50-100M€',
+      product_count:350, supplier_count:42, maturity:'medium', priority:'critical', stage:'pilot',
+      source:'Referral', owner_name:'Founder', estimated_value_eur:68000,
+      next_contact_at:new Date().toISOString(), notes:'Groupe multi-marques, échéance ESPR 2027.' },
+    { id:'d2', name:'Northwind Textiles', website:'northwind.example', country_code:'DE', city:'Berlin',
+      industry:'Technical textiles', company_type:'manufacturer', employee_band:'50-250',
+      product_count:120, supplier_count:18, maturity:'low', priority:'high', stage:'demo',
+      source:'Event', owner_name:'Founder', estimated_value_eur:42000 },
+    { id:'d3', name:'Maison Lumière', website:'maisonlumiere.example', country_code:'FR', city:'Lyon',
+      industry:'Luxury', company_type:'luxury_brand', product_count:60, supplier_count:9,
+      maturity:'high', priority:'high', stage:'contacted', source:'Inbound', estimated_value_eur:36000 },
+    { id:'d4', name:'Iberia Knit Mills', website:'iberiaknit.example', country_code:'ES', city:'Porto',
+      industry:'Knitwear', company_type:'mill', employee_band:'50-250', product_count:80,
+      supplier_count:4, maturity:'unknown', priority:'medium', stage:'new', source:'List' },
+    { id:'d5', name:'Atlas Apparel', website:'atlasapparel.example', country_code:'IT', city:'Milan',
+      industry:'Apparel', company_type:'fashion_brand', product_count:210, supplier_count:31,
+      maturity:'medium', priority:'medium', stage:'to_contact', source:'Referral' },
+    { id:'d6', name:'Verde Sportswear', website:'verde.example', country_code:'IT', city:'Florence',
+      industry:'Sportswear', company_type:'sportswear', product_count:140, supplier_count:22,
+      maturity:'medium', priority:'low', stage:'qualified', source:'Inbound' },
+    { id:'d7', name:'Lusitania Fabrics', website:'lusitania.example', country_code:'PT', city:'Porto',
+      industry:'Woven fabrics', company_type:'textile_supplier', product_count:95, supplier_count:2,
+      maturity:'high', priority:'medium', stage:'customer', source:'Referral',
+      estimated_value_eur:40000 },
+  ];
+}
+
+function demoContacts() {
+  return [
+    { id:'c1', company_id:'d1', first_name:'Camille', last_name:'Roux', job_title:'Supply Chain Director',
+      email:'camille.roux@example.com', phone:'+33 1 00 00 00 00', country_code:'FR', language:'fr',
+      is_decision_maker:true, influence_level:5, status:'meeting',
+      crm_companies:{ id:'d1', name:'Example Fashion Group', stage:'pilot', priority:'critical' } },
+    { id:'c2', company_id:'d2', first_name:'Jonas', last_name:'Weber', job_title:'Sustainability Director',
+      email:'j.weber@northwind.example', country_code:'DE', language:'de',
+      is_decision_maker:true, influence_level:4, status:'contacted',
+      crm_companies:{ id:'d2', name:'Northwind Textiles', stage:'demo', priority:'high' } },
+    { id:'c3', company_id:'d3', first_name:'Élise', last_name:'Marchand', job_title:'CEO',
+      email:'e.marchand@maisonlumiere.example', country_code:'FR', language:'fr',
+      is_decision_maker:true, influence_level:5, status:'to_contact',
+      crm_companies:{ id:'d3', name:'Maison Lumière', stage:'contacted', priority:'high' } },
+  ];
+}
+
+/* ------------------------------------------------------------------ API */
+
+async function api(path, options = {}) {
+  const token = state.clerk?.session ? await state.clerk.session.getToken() : null;
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(body.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.details = body.details;
+    throw err;
+  }
+  return body;
+}
+
+/* ---------------------------------------------------------------- helpers */
+
+const fmtInt = (n) => (typeof n === 'number' && Number.isFinite(n)
+  ? n.toLocaleString(state.lang === 'fr' ? 'fr-FR' : 'en-US') : '—');
+
+const fmtMoney = (n) => (typeof n === 'number' && Number.isFinite(n)
+  ? `€${n.toLocaleString(state.lang === 'fr' ? 'fr-FR' : 'en-US')}` : '—');
+
+const fmtDate = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(state.lang === 'fr' ? 'fr-FR' : 'en-US', { day:'2-digit', month:'short' });
+};
+
+const fmtDateTime = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(state.lang === 'fr' ? 'fr-FR' : 'en-US', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+};
+
+/** Une absence de mesure n'est pas un zéro. */
+const measured = (v) => (v === null || v === undefined ? t('common.notMeasured') : v);
+
+const stageTag = (s) => `<span class="tag s-${esc(s)}">${esc(t('stage.' + s))}</span>`;
+const priorityTag = (p) => `<span class="tag p-${esc(p)}">${esc(t('priority.' + p))}</span>`;
+
+function field(label, value, cls) {
+  const shown = value === null || value === undefined || value === ''
+    ? `<span class="v none">${esc(t('common.notProvided'))}</span>`
+    : `<span class="v ${cls || ''}">${esc(value)}</span>`;
+  return `<div class="field"><label>${esc(label)}</label>${shown}</div>`;
+}
+
+/* ------------------------------------------------------------------ vues */
+
+function viewDashboard() {
+  const d = state.dashboard;
+  if (!d) return `<div class="empty">${esc(t('common.loading'))}</div>`;
+
+  const kpi = (key, value, filter, tone) => `
+    <button class="kpi ${tone || ''}" data-kpi="${esc(filter || '')}" aria-pressed="${state.filters.stage === filter ? 'true' : 'false'}">
+      <span class="lbl">${esc(t('dashboard.' + key))}</span>
+      <span class="val ${String(value).length > 6 ? 'small' : ''} num">${esc(value)}</span>
+    </button>`;
+
+  const bars = (title, obj, labelFn) => {
+    const entries = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) {
+      return `<div class="card"><h2>${esc(t(title))}</h2><p class="hint">${esc(t('common.noData'))}</p></div>`;
+    }
+    const max = Math.max(...entries.map((e) => e[1]), 1);
+    return `<div class="card"><h2>${esc(t(title))}</h2>${entries.map(([k, v]) => `
+      <div class="bar">
+        <span class="n">${esc(labelFn ? labelFn(k) : k)}</span>
+        <span class="track"><span class="fill" style="width:${Math.round((v / max) * 100)}%"></span></span>
+        <b class="num">${fmtInt(v)}</b>
+      </div>`).join('')}</div>`;
+  };
+
+  return `
+    <section class="kpis">
+      ${kpi('prospects', fmtInt(d.totalProspects), '')}
+      ${kpi('new', fmtInt(d.newProspects), 'new')}
+      ${kpi('toContact', fmtInt(d.toContact), 'to_contact', 'warn')}
+      ${kpi('contacted', fmtInt(d.contacted), 'contacted')}
+      ${kpi('replies', fmtInt(d.replies), 'replied')}
+      ${kpi('meetings', fmtInt(d.meetings), 'meeting')}
+      ${kpi('demos', fmtInt(d.demos), 'demo')}
+      ${kpi('pilots', fmtInt(d.pilots), 'pilot')}
+      ${kpi('customers', fmtInt(d.customers), 'customer', 'good')}
+      ${kpi('lost', fmtInt(d.lost), 'lost', 'bad')}
+      <div class="kpi" data-kpi="" style="cursor:default">
+        <span class="lbl">${esc(t('dashboard.value'))}</span>
+        <span class="val small num">${esc(fmtMoney(d.estimatedValueEur))}</span>
+      </div>
+      <div class="kpi" data-kpi="" style="cursor:default">
+        <span class="lbl">${esc(t('dashboard.conversion'))}</span>
+        <span class="val small num">${esc(d.conversionRate === null ? t('common.notMeasured') : d.conversionRate + '%')}</span>
+      </div>
+      ${kpi('dueToday', fmtInt(d.dueToday), '', 'warn')}
+    </section>
+
+    <div class="panels">
+      ${bars('dashboard.byStage', d.byStage, (k) => t('stage.' + k))}
+      ${bars('dashboard.byCountry', d.byCountry)}
+      ${bars('dashboard.byType', d.byCompanyType, (k) => t('type.' + k))}
+      ${bars('dashboard.byPriority', d.byPriority, (k) => t('priority.' + k))}
+      <div class="card">
+        <h2>${esc(t('dashboard.measured'))}</h2>
+        <p class="hint">${esc(t('dashboard.measuredBody'))}</p>
+        <div class="field"><label>${esc(t('dashboard.sampleSize'))}</label><span class="v num">${fmtInt(d.sampleSize)}</span></div>
+        <div class="field"><label>${esc(t('dashboard.measuredAt'))}</label><span class="v mono">${esc(fmtDateTime(d.measuredAt) || '—')}</span></div>
+      </div>
+    </div>`;
+}
+
+function filterBar() {
+  const f = state.filters;
+  const opt = (v, label) => `<option value="${esc(v)}"${f.stage === v ? ' selected' : ''}>${esc(label)}</option>`;
+  return `
+    <div class="filters">
+      <input type="search" id="f-q" placeholder="${esc(t('common.search'))}" value="${esc(f.q)}" style="min-width:200px">
+      <select id="f-stage" aria-label="${esc(t('common.stage'))}">
+        <option value="">${esc(t('common.allStages'))}</option>
+        ${STAGES.map((s) => opt(s, t('stage.' + s))).join('')}
+        <option value="lost"${f.stage === 'lost' ? ' selected' : ''}>${esc(t('stage.lost'))}</option>
+      </select>
+      <select id="f-priority" aria-label="${esc(t('common.priority'))}">
+        <option value="">${esc(t('common.allPriorities'))}</option>
+        ${PRIORITIES.map((p) => `<option value="${p}"${f.priority === p ? ' selected' : ''}>${esc(t('priority.' + p))}</option>`).join('')}
+      </select>
+      <select id="f-type" aria-label="${esc(t('common.type'))}">
+        <option value="">${esc(t('common.allTypes'))}</option>
+        ${COMPANY_TYPES.map((c) => `<option value="${c}"${f.company_type === c ? ' selected' : ''}>${esc(t('type.' + c))}</option>`).join('')}
+      </select>
+      <button class="btn sm" id="f-due" aria-pressed="${f.due === 'today' ? 'true' : 'false'}">${esc(t('common.dueToday'))}</button>
+      <span class="sp"></span>
+      <button class="btn primary" id="new-company">${esc(t('prospects.add'))}</button>
+    </div>`;
+}
+
+function viewProspects() {
+  const { items, total, limit, offset } = state.companies;
+  const rows = items.map((c) => `
+    <tr data-open="${esc(c.id)}">
+      <td><div class="co">${esc(c.name)}</div>
+        <div class="meta">${esc(c.industry || t('type.' + c.company_type))}</div></td>
+      <td class="mono">${esc(c.country_code || '—')}</td>
+      <td class="num">${esc(fmtInt(c.product_count))}</td>
+      <td class="num">${esc(fmtInt(c.supplier_count))}</td>
+      <td>${stageTag(c.stage)}</td>
+      <td>${priorityTag(c.priority)}</td>
+      <td class="num">${esc(fmtMoney(c.estimated_value_eur))}</td>
+      <td class="mono">${esc(fmtDate(c.next_contact_at) || '—')}</td>
+      <td class="meta">${esc(c.owner_name || '—')}</td>
+    </tr>`).join('');
+
+  const table = items.length ? `
+    <div class="tblwrap"><table>
+      <thead><tr>
+        <th>${esc(t('common.company'))}</th><th>${esc(t('common.country'))}</th>
+        <th>${esc(t('common.products'))}</th><th>${esc(t('common.suppliers'))}</th>
+        <th>${esc(t('common.stage'))}</th><th>${esc(t('common.priority'))}</th>
+        <th>${esc(t('common.value'))}</th><th>${esc(t('common.nextContact'))}</th>
+        <th>${esc(t('common.owner'))}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="pager">
+      <span class="num">${fmtInt(offset + 1)}–${fmtInt(Math.min(offset + limit, total))} / ${fmtInt(total)}</span>
+      <button class="btn sm" id="prev" ${offset === 0 ? 'disabled' : ''}>${esc(t('common.prev'))}</button>
+      <button class="btn sm" id="next" ${offset + limit >= total ? 'disabled' : ''}>${esc(t('common.next'))}</button>
+    </div>`
+    : `<div class="empty"><b>${esc(t('prospects.empty'))}</b>${esc(t('prospects.emptyBody'))}</div>`;
+
+  return filterBar() + table;
+}
+
+function viewPipeline() {
+  const cols = [...STAGES, STAGE_LOST];
+  return `<div class="board">${cols.map((s) => {
+    const cards = state.companies.items.filter((c) => c.stage === s);
+    return `<div class="col">
+      <div class="colhead"><b>${esc(t('stage.' + s))}</b><span class="c">${cards.length}</span></div>
+      <div class="colbody">
+        ${cards.map((c) => `
+          <div class="pcard" data-open="${esc(c.id)}">
+            <b>${esc(c.name)}</b>
+            <div class="m">${esc(c.country_code || '—')} · ${esc(fmtInt(c.product_count))} ${esc(t('common.products'))}</div>
+            <div class="row">${priorityTag(c.priority)}
+              ${c.estimated_value_eur ? `<span class="meta num">${esc(fmtMoney(c.estimated_value_eur))}</span>` : ''}
+            </div>
+          </div>`).join('') || `<p class="hint" style="padding:6px 4px">${esc(t('pipeline.emptyColumn'))}</p>`}
+      </div>
+    </div>`;
+  }).join('')}</div>
+  <p class="hint">${esc(t('pipeline.hint'))}</p>`;
+}
+
+function viewContacts() {
+  const items = state.contacts.items;
+  const rows = items.map((c) => `
+    <tr data-contact="${esc(c.id)}">
+      <td><div class="co">${esc([c.first_name, c.last_name].filter(Boolean).join(' ') || '—')}</div>
+        <div class="meta">${esc(c.email || '—')}</div></td>
+      <td>${esc(c.job_title || '—')}</td>
+      <td>${esc(c.crm_companies?.name || '—')}</td>
+      <td>${c.is_decision_maker ? `<span class="tag p-high">${esc(t('contacts.decisionMaker'))}</span>` : '—'}</td>
+      <td class="num">${esc(c.influence_level)}</td>
+      <td><span class="tag s-${esc(c.status === 'to_contact' ? 'to_contact' : c.status === 'replied' ? 'replied' : c.status === 'meeting' ? 'meeting' : 'new')}">${esc(t('contactStatus.' + c.status))}</span></td>
+      <td class="mono">${esc(fmtDate(c.last_contact_at) || '—')}</td>
+    </tr>`).join('');
+
+  const table = items.length ? `
+    <div class="tblwrap"><table>
+      <thead><tr>
+        <th>${esc(t('common.contact'))}</th><th>${esc(t('contacts.jobTitle'))}</th>
+        <th>${esc(t('common.company'))}</th><th>${esc(t('contacts.decisionMaker'))}</th>
+        <th>${esc(t('contacts.influence'))}</th><th>${esc(t('common.status'))}</th>
+        <th>${esc(t('common.lastContact'))}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`
+    : `<div class="empty"><b>${esc(t('contacts.empty'))}</b>${esc(t('contacts.emptyBody'))}</div>`;
+
+  return `<div class="filters"><span class="sp"></span>
+      <button class="btn primary" id="new-contact" ${state.companies.items.length ? '' : 'disabled'}>${esc(t('contacts.add'))}</button>
+    </div>${table}`;
+}
+
+/* --- détail entreprise --------------------------------------------------- */
+
+function opportunityPanel(c) {
+  /*
+   * Le potentiel commercial est une qualification saisie par l'équipe, pas une
+   * prédiction. Les éléments qui la justifient sont affichés tels quels : s'ils
+   * manquent, on le dit au lieu de broder.
+   */
+  const evidence = [
+    c.product_count ? `${fmtInt(c.product_count)} ${t('common.products')}` : null,
+    c.supplier_count ? `${fmtInt(c.supplier_count)} ${t('common.suppliers')}` : null,
+    c.country_code ? t('common.country') + ' ' + c.country_code : null,
+    t('type.' + c.company_type),
+  ].filter(Boolean);
+
+  return `<div class="grid2">
+    <div class="card">
+      <h2>${esc(t('company.opportunity'))}</h2>
+      <div class="field"><label>${esc(t('company.potential'))}</label>
+        <span class="v">${priorityTag(c.priority)}</span></div>
+      <div class="field"><label>${esc(t('company.maturity'))}</label>
+        <span class="v">${esc(t('maturity.' + c.maturity))}</span></div>
+      <div class="field"><label>${esc(t('company.estimatedValue'))}</label>
+        <span class="v num">${esc(fmtMoney(c.estimated_value_eur))}</span></div>
+      <div class="field"><label>${esc(t('company.source'))}</label>
+        <span class="v">${esc(c.source || '')}${c.source_detail ? ' · ' + esc(c.source_detail) : ''}</span></div>
+    </div>
+    <div class="card">
+      <h2>${esc(t('company.whyTarget'))}</h2>
+      <ul style="margin:0;padding-left:18px;line-height:1.8">
+        ${evidence.map((e) => `<li>${esc(e)}</li>`).join('')}
+      </ul>
+      <p class="hint" style="margin-top:12px">${esc(t('company.whyTargetNote'))}</p>
+    </div>
+  </div>`;
+}
+
+function viewCompany() {
+  const d = state.detail;
+  if (!d) return `<div class="empty">${esc(t('common.loading'))}</div>`;
+  const c = d.company;
+
+  const tabs = [
+    ['overview', t('company.tabOverview')],
+    ['contacts', t('company.tabContacts') + (d.contacts?.length ? ` (${d.contacts.length})` : '')],
+    ['opportunity', t('company.tabOpportunity')],
+    ['activity', t('company.tabActivity')],
+    ['notes', t('company.tabNotes')],
+  ];
+
+  const nextAction = c.next_contact_at
+    ? `<div class="nextaction">
+         <span class="lbl">${esc(t('company.nextAction'))}</span>
+         <div class="v">${esc(t('company.contactPlanned'))} · <span class="mono">${esc(fmtDateTime(c.next_contact_at))}</span></div>
+         <div class="meta">${esc(t('company.owner'))} : ${esc(c.owner_name || '—')}</div>
+       </div>`
+    : `<div class="card"><h2>${esc(t('company.nextAction'))}</h2>
+         <p class="hint">${esc(t('company.noNextAction'))}</p></div>`;
+
+  let body = '';
+  if (state.tab === 'overview') {
+    body = `<div class="grid2">
+      <div class="card">
+        <h2>${esc(t('company.tabOverview'))}</h2>
+        ${field(t('common.website'), c.website)}
+        ${field(t('common.country'), c.country_code)}
+        ${field(t('common.city'), c.city)}
+        ${field(t('common.industry'), c.industry)}
+        ${field(t('common.type'), t('type.' + c.company_type))}
+        ${field(t('common.employees'), c.employee_band)}
+        ${field(t('common.revenue'), c.revenue_band)}
+      </div>
+      <div class="card">
+        <h2>${esc(t('company.scale'))}</h2>
+        ${field(t('common.products'), c.product_count == null ? null : fmtInt(c.product_count), 'num')}
+        ${field(t('common.suppliers'), c.supplier_count == null ? null : fmtInt(c.supplier_count), 'num')}
+        ${field(t('company.maturity'), t('maturity.' + c.maturity))}
+        ${field(t('company.source'), c.source)}
+        ${field(t('common.lastContact'), fmtDateTime(c.last_contact_at))}
+        ${field(t('common.nextContact'), fmtDateTime(c.next_contact_at))}
+      </div>
+    </div>
+    <div style="margin-top:12px">${nextAction}</div>`;
+  } else if (state.tab === 'contacts') {
+    body = (d.contacts || []).length ? `<div class="tblwrap"><table>
+        <thead><tr><th>${esc(t('common.contact'))}</th><th>${esc(t('contacts.jobTitle'))}</th>
+          <th>${esc(t('contacts.email'))}</th><th>${esc(t('contacts.phone'))}</th>
+          <th>${esc(t('contacts.decisionMaker'))}</th><th>${esc(t('common.status'))}</th>
+          <th>${esc(t('contacts.nextAction'))}</th></tr></thead>
+        <tbody>${d.contacts.map((k) => `
+          <tr>
+            <td class="co">${esc([k.first_name, k.last_name].filter(Boolean).join(' ') || '—')}</td>
+            <td>${esc(k.job_title || '—')}</td>
+            <td class="mono">${esc(k.email || '—')}</td>
+            <td class="mono">${esc(k.phone || '—')}</td>
+            <td>${k.is_decision_maker ? esc(t('common.yes')) : esc(t('common.no'))}</td>
+            <td>${esc(t('contactStatus.' + k.status))}</td>
+            <td class="meta">${esc(k.next_action || '—')}</td>
+          </tr>`).join('')}</tbody></table></div>`
+      : `<div class="empty"><b>${esc(t('contacts.empty'))}</b>${esc(t('company.noContactBody'))}
+           <div style="margin-top:14px"><button class="btn primary" id="new-contact">${esc(t('contacts.add'))}</button></div></div>`;
+  } else if (state.tab === 'opportunity') {
+    body = opportunityPanel(c);
+  } else if (state.tab === 'activity') {
+    const acts = d.activities || [];
+    body = acts.length ? `<div class="card"><h2>${esc(t('company.tabActivity'))}</h2>
+        <ul class="timeline">${acts.map((a) => `
+          <li><span class="tl-d">${esc(fmtDate(a.occurred_at) || '')}</span>
+            <span class="tl-b"><b>${esc(a.summary)}</b>
+              ${a.detail ? `<span>${esc(a.detail)}</span>` : ''}
+              <span>${esc(t('activity.' + a.type))} · ${esc(a.actor_name || '')}</span>
+            </span></li>`).join('')}</ul></div>`
+      : `<div class="empty"><b>${esc(t('company.noActivity'))}</b>${esc(t('company.noActivityBody'))}</div>`;
+  } else if (state.tab === 'notes') {
+    body = `<div class="card"><h2>${esc(t('company.tabNotes'))}</h2>
+      ${c.notes ? `<p style="margin:0;line-height:1.7;white-space:pre-wrap">${esc(c.notes)}</p>`
+                : `<p class="hint">${esc(t('company.noNotes'))}</p>`}
+      </div>`;
+  }
+
+  return `
+    <div class="head">
+      <div style="min-width:0">
+        <button class="btn sm" id="back">${esc(t('common.back'))}</button>
+        <h1>${esc(c.name)}</h1>
+        <div class="tags">${stageTag(c.stage)}${priorityTag(c.priority)}
+          ${c.country_code ? `<span class="tag p-medium mono">${esc(c.country_code)}</span>` : ''}
+        </div>
+      </div>
+      <span class="sp" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+        <select id="move-stage" aria-label="${esc(t('pipeline.move'))}">
+          ${[...STAGES, STAGE_LOST].map((s) => `<option value="${s}"${c.stage === s ? ' selected' : ''}>${esc(t('stage.' + s))}</option>`).join('')}
+        </select>
+        <button class="btn" id="edit-company">${esc(t('common.edit'))}</button>
+      </span>
+    </div>
+    <div class="tabs" role="tablist">
+      ${tabs.map(([id, label]) => `<button class="tab" role="tab" data-tab="${id}"
+        aria-selected="${state.tab === id ? 'true' : 'false'}">${esc(label)}</button>`).join('')}
+    </div>
+    ${body}`;
+}
+
+/* ---------------------------------------------------------------- modales */
+
+function modalCompany() {
+  const c = state.detail?.company || {};
+  const editing = Boolean(c.id);
+  const inp = (id, label, value, attrs) =>
+    `<label>${esc(label)}<input type="text" id="fc-${id}" value="${esc(value ?? '')}" ${attrs || ''}></label>`;
+  const sel = (id, label, value, list, prefix) =>
+    `<label>${esc(label)}<select id="fc-${id}">
+      ${list.map(([v, l]) => `<option value="${v}"${value === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}
+    </select></label>`;
+
+  return `<div class="modal"><div class="modalbox" role="dialog" aria-modal="true">
+    <h2>${esc(editing ? t('company.edit') : t('prospects.add'))}</h2>
+    ${state.formError ? `<div class="err">${esc(state.formError)}</div>` : ''}
+    <div class="form">
+      <label class="full">${esc(t('common.company'))}<input type="text" id="fc-name" value="${esc(c.name || '')}" required></label>
+      ${inp('website', t('common.website'), c.website)}
+      ${inp('country_code', t('common.countryIso'), c.country_code, 'maxlength="2"')}
+      ${inp('city', t('common.city'), c.city)}
+      ${inp('industry', t('common.industry'), c.industry)}
+      ${sel('company_type', t('common.type'), c.company_type || 'other',
+        COMPANY_TYPES.map((v) => [v, t('type.' + v)]))}
+      ${inp('employee_band', t('common.employees'), c.employee_band)}
+      ${inp('revenue_band', t('common.revenue'), c.revenue_band)}
+      ${inp('product_count', t('common.products'), c.product_count, 'inputmode="numeric"')}
+      ${inp('supplier_count', t('common.suppliers'), c.supplier_count, 'inputmode="numeric"')}
+      ${sel('maturity', t('company.maturity'), c.maturity || 'unknown',
+        MATURITIES.map((v) => [v, t('maturity.' + v)]))}
+      ${sel('priority', t('common.priority'), c.priority || 'medium',
+        PRIORITIES.map((v) => [v, t('priority.' + v)]))}
+      ${inp('estimated_value_eur', t('company.estimatedValue'), c.estimated_value_eur, 'inputmode="numeric"')}
+      ${inp('source', t('company.source'), c.source)}
+      ${inp('owner_name', t('common.owner'), c.owner_name)}
+      <label class="full">${esc(t('company.nextContactDate'))}
+        <input type="text" id="fc-next_contact_at" value="${esc((c.next_contact_at || '').slice(0, 10))}" placeholder="YYYY-MM-DD"></label>
+      <label class="full">${esc(t('common.notes'))}
+        <textarea id="fc-notes" rows="3">${esc(c.notes || '')}</textarea></label>
+    </div>
+    <div class="modalfoot">
+      <button class="btn" id="m-cancel">${esc(t('common.cancel'))}</button>
+      <button class="btn primary" id="m-save" ${state.saving ? 'disabled' : ''}>${esc(t('common.save'))}</button>
+    </div>
+  </div></div>`;
+}
+
+function modalContact() {
+  const companyId = state.detail?.company?.id || state.companies.items[0]?.id || '';
+  const inp = (id, label, value, attrs) =>
+    `<label>${esc(label)}<input type="text" id="kc-${id}" value="${esc(value ?? '')}" ${attrs || ''}></label>`;
+  return `<div class="modal"><div class="modalbox" role="dialog" aria-modal="true">
+    <h2>${esc(t('contacts.add'))}</h2>
+    ${state.formError ? `<div class="err">${esc(state.formError)}</div>` : ''}
+    <div class="form">
+      ${inp('first_name', t('contacts.firstName'))}
+      ${inp('last_name', t('contacts.lastName'))}
+      ${inp('job_title', t('contacts.jobTitle'))}
+      ${inp('email', t('contacts.email'))}
+      ${inp('phone', t('contacts.phone'))}
+      ${inp('linkedin_url', t('contacts.linkedin'))}
+      ${inp('country_code', t('common.countryIso'), '', 'maxlength="2"')}
+      ${inp('language', t('contacts.language'), '', 'maxlength="8"')}
+      ${inp('next_action', t('contacts.nextAction'))}
+      <label>${esc(t('contacts.decisionMaker'))}
+        <select id="kc-is_decision_maker">
+          <option value="false">${esc(t('common.no'))}</option>
+          <option value="true">${esc(t('common.yes'))}</option>
+        </select></label>
+      <label>${esc(t('contacts.influence'))}
+        <select id="kc-influence_level">
+          ${[0,1,2,3,4,5].map((n) => `<option value="${n}">${n}</option>`).join('')}
+        </select></label>
+      <label>${esc(t('common.status'))}
+        <select id="kc-status">
+          ${CONTACT_STATUSES.map((v) => `<option value="${v}">${esc(t('contactStatus.' + v))}</option>`).join('')}
+        </select></label>
+      <input type="hidden" id="kc-company_id" value="${esc(companyId)}">
+    </div>
+    <div class="modalfoot">
+      <button class="btn" id="m-cancel">${esc(t('common.cancel'))}</button>
+      <button class="btn primary" id="m-save" ${state.saving ? 'disabled' : ''}>${esc(t('common.save'))}</button>
+    </div>
+  </div></div>`;
+}
+
+/* ------------------------------------------------------------------ shell */
+
+const NAV = [
+  ['dashboard', 'Dashboard', '01'],
+  ['prospects', 'Prospects', '02'],
+  ['pipeline', 'Pipeline', '03'],
+  ['contacts', 'Contacts', '04'],
+];
+const SOON = ['Companies','Leads','Opportunities','Campaigns','Tasks','Activities','Meetings','Emails','Notes','Pilots','Customers','Suppliers','Analytics','Product Usage','Settings'];
+
+function shell() {
+  const titles = {
+    dashboard: t('nav.dashboard'), prospects: t('nav.prospects'),
+    pipeline: t('nav.pipeline'), contacts: t('nav.contacts'), company: t('company.title'),
+  };
+  const subtitles = {
+    dashboard: t('dashboard.subtitle'), prospects: t('prospects.subtitle'),
+    pipeline: t('pipeline.subtitle'), contacts: t('contacts.subtitle'), company: '',
+  };
+
+  let body;
+  if (state.view === 'dashboard') body = viewDashboard();
+  else if (state.view === 'prospects') body = viewProspects();
+  else if (state.view === 'pipeline') body = viewPipeline();
+  else if (state.view === 'contacts') body = viewContacts();
+  else body = viewCompany();
+
+  return `<div class="app">
+    <nav class="side">
+      <div class="brand"><div class="mark">tf</div>
+        <div><b>TRACEFAB</b><small>Command Center</small></div></div>
+      <div class="navlabel">${esc(t('nav.operate'))}</div>
+      ${NAV.map(([id, , k]) => `
+        <button class="nav" data-view="${id}" ${state.view === id ? 'aria-current="page"' : ''}>
+          ${esc(t('nav.' + id))}<span class="k">${k}</span>
+        </button>`).join('')}
+      <div class="navlabel">${esc(t('nav.comingSoon'))}</div>
+      ${SOON.map((s) => `<button class="nav soon" disabled title="${esc(t('nav.soonHint'))}">${esc(s)}</button>`).join('')}
+      <div class="sidefoot">
+        <span class="rolechip">${esc(state.access?.role || '—')}</span>
+        <div>${esc(state.access?.organizationName || '')}</div>
+        <div>${esc(state.access?.email || '')}</div>
+      </div>
+    </nav>
+    <div class="main">
+      <header class="top">
+        <div><h1>${esc(titles[state.view] || '')}</h1>
+          <div class="sub">${esc(subtitles[state.view] || '')}</div></div>
+        <div class="sp">
+          <select id="lang" aria-label="${esc(t('common.language'))}">
+            ${LANGUAGES.map((l) => `<option value="${l}"${state.lang === l ? ' selected' : ''}>${l.toUpperCase()}</option>`).join('')}
+          </select>
+          <button class="btn sm" id="refresh">${esc(t('common.refresh'))}</button>
+        </div>
+      </header>
+      <div class="view">
+        ${state.demo ? `<div class="demo"><strong>${esc(t('common.demoBanner'))}</strong></div>` : ''}
+        ${state.error ? `<div class="err">${esc(state.error)}</div>` : ''}
+        ${body}
+      </div>
+    </div>
+    ${state.modal === 'company' ? modalCompany() : ''}
+    ${state.modal === 'contact' ? modalContact() : ''}
+  </div>`;
+}
+
+function render() {
+  if (state.loading) {
+    app.innerHTML = `<div class="gate"><div class="gatebox">
+      <div class="eyebrow">TRACEFAB</div><h1>${esc(t('gate.loading'))}</h1></div></div>`;
+    return;
+  }
+  if (state.error && !state.demo && !state.access) {
+    app.innerHTML = `<div class="gate"><div class="gatebox">
+      <div class="eyebrow">TRACEFAB Command Center</div>
+      <h1>${esc(t('gate.error'))}</h1>
+      <p class="err">${esc(state.error)}</p>
+      <button class="btn" id="reload">${esc(t('common.retry'))}</button></div></div>`;
+    const b = document.getElementById('reload');
+    if (b) b.onclick = () => location.reload();
+    return;
+  }
+  if (!state.access && !state.demo) {
+    app.innerHTML = `<div class="gate"><div class="gatebox">
+      <div class="eyebrow">TRACEFAB Command Center</div>
+      <h1>${esc(t('gate.signin'))}</h1>
+      <p>${esc(t('gate.signinBody'))}</p>
+      <div id="clerk-sign-in"></div></div></div>`;
+    if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'));
+    return;
+  }
+  if (!state.access && state.demo && state.accessChecked) {
+    app.innerHTML = `<div class="gate"><div class="gatebox">
+      <div class="eyebrow">TRACEFAB Command Center</div>
+      <h1>${esc(t('gate.denied'))}</h1>
+      <p>${esc(t('gate.deniedBody'))}</p></div></div>`;
+    return;
+  }
+  app.innerHTML = shell();
+  bind();
+}
+
+/* ---------------------------------------------------------------- binding */
+
+function bind() {
+  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+  const all = (sel) => Array.from(document.querySelectorAll(sel));
+
+  all('[data-view]').forEach((b) => b.addEventListener('click', () => go(b.dataset.view)));
+  all('[data-kpi]').forEach((b) => b.addEventListener('click', () => {
+    state.filters.stage = b.dataset.kpi;
+    state.filters.offset = 0;
+    go('prospects');
+  }));
+  all('[data-open]').forEach((el) => el.addEventListener('click', () => openCompany(el.dataset.open)));
+  all('[data-tab]').forEach((b) => b.addEventListener('click', () => { state.tab = b.dataset.tab; render(); }));
+
+  on('lang', 'change', (e) => setLang(e.target.value));
+  on('refresh', 'click', () => loadView());
+  on('back', 'click', () => go('prospects'));
+  on('new-company', 'click', () => { state.formError = null; state.modal = 'company'; render(); });
+  on('new-contact', 'click', () => { state.formError = null; state.modal = 'contact'; render(); });
+  on('edit-company', 'click', () => { state.formError = null; state.modal = 'company'; render(); });
+  on('m-cancel', 'click', () => { state.modal = null; state.formError = null; render(); });
+  on('m-save', 'click', saveModal);
+  on('prev', 'click', () => { state.companies.offset = Math.max(0, state.companies.offset - state.companies.limit); loadView(); });
+  on('next', 'click', () => { state.companies.offset += state.companies.limit; loadView(); });
+
+  const fDue = document.getElementById('f-due');
+  if (fDue) fDue.addEventListener('click', () => {
+    state.filters.due = state.filters.due === 'today' ? '' : 'today';
+    loadView();
+  });
+
+  ['f-stage','f-priority','f-type'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => {
+      state.filters.stage = document.getElementById('f-stage')?.value || '';
+      state.filters.priority = document.getElementById('f-priority')?.value || '';
+      state.filters.company_type = document.getElementById('f-type')?.value || '';
+      state.companies.offset = 0;
+      loadView();
+    });
+  });
+
+  const q = document.getElementById('f-q');
+  if (q) {
+    let timer;
+    q.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        state.filters.q = q.value;
+        state.companies.offset = 0;
+        loadView();
+      }, 260);
+    });
+  }
+
+  const move = document.getElementById('move-stage');
+  if (move) move.addEventListener('change', () => moveStage(move.value));
+}
+
+/* ------------------------------------------------------------------ loads */
+
+async function loadDashboard() {
+  if (state.demo) { state.dashboard = demoDashboard(); return; }
+  state.dashboard = await api('/api/admin/dashboard');
+}
+
+function queryString() {
+  const f = state.filters;
+  const p = new URLSearchParams();
+  if (f.stage) p.set('stage', f.stage);
+  if (f.priority) p.set('priority', f.priority);
+  if (f.company_type) p.set('company_type', f.company_type);
+  if (f.q) p.set('q', f.q);
+  if (f.due) p.set('due', f.due);
+  p.set('limit', String(state.companies.limit));
+  p.set('offset', String(state.companies.offset));
+  return p.toString();
+}
+
+async function loadCompanies() {
+  if (state.demo) {
+    let items = demoCompanies();
+    const f = state.filters;
+    if (f.stage) items = items.filter((c) => c.stage === f.stage);
+    if (f.priority) items = items.filter((c) => c.priority === f.priority);
+    if (f.company_type) items = items.filter((c) => c.company_type === f.company_type);
+    if (f.q) {
+      const term = f.q.toLowerCase();
+      items = items.filter((c) => (c.name + (c.industry || '')).toLowerCase().includes(term));
+    }
+    if (f.due === 'today') items = items.filter((c) => c.next_contact_at);
+    state.companies = { items, total: items.length, limit: 50, offset: 0 };
+    return;
+  }
+  state.companies = await api(`/api/admin/companies?${queryString()}`);
+}
+
+async function loadContacts() {
+  if (state.demo) { state.contacts = { items: demoContacts() }; return; }
+  state.contacts = await api('/api/admin/contacts');
+}
+
+async function openCompany(id) {
+  state.selected = id;
+  state.tab = 'overview';
+  state.detail = null;
+  state.view = 'company';
+  render();
+  try {
+    if (state.demo) {
+      const company = demoCompanies().find((c) => c.id === id) || null;
+      state.detail = {
+        company,
+        contacts: demoContacts().filter((c) => c.company_id === id),
+        activities: [
+          { id:'a1', type:'created', summary:`Prospect créé : ${company?.name || ''}`, actor_name:'Founder', occurred_at:new Date().toISOString() },
+        ],
+      };
+    } else {
+      state.detail = await api(`/api/admin/companies/${encodeURIComponent(id)}`);
+    }
+  } catch (e) {
+    state.error = e.message;
+  }
+  render();
+}
+
+async function loadView() {
+  state.error = null;
+  try {
+    if (state.view === 'dashboard') await loadDashboard();
+    else if (state.view === 'contacts') { await loadCompanies(); await loadContacts(); }
+    else if (state.view === 'company' && state.selected) { await openCompany(state.selected); return; }
+    else await loadCompanies();
+  } catch (e) {
+    state.error = e.message;
+  }
+  render();
+}
+
+function go(view) {
+  state.view = view;
+  if (view !== 'company') state.selected = null;
+  loadView();
+}
+
+/* --------------------------------------------------------------- mutations */
+
+function readForm(prefix, ids) {
+  const out = {};
+  ids.forEach((id) => {
+    const el = document.getElementById(`${prefix}${id}`);
+    if (el) out[id] = el.value;
+  });
+  return out;
+}
+
+const COMPANY_IDS = ['name','website','country_code','city','industry','company_type','employee_band',
+  'revenue_band','product_count','supplier_count','maturity','priority','estimated_value_eur',
+  'source','owner_name','next_contact_at','notes'];
+const CONTACT_IDS = ['first_name','last_name','job_title','email','phone','linkedin_url','country_code',
+  'language','is_decision_maker','influence_level','status','next_action','company_id'];
+
+async function saveModal() {
+  state.saving = true;
+  state.formError = null;
+  render();
+  try {
+    if (state.modal === 'company') {
+      const body = readForm('fc-', COMPANY_IDS);
+      if (body.estimated_value_eur) body.estimated_value_eur = Number(body.estimated_value_eur);
+      if (body.product_count) body.product_count = Number(body.product_count);
+      if (body.supplier_count) body.supplier_count = Number(body.supplier_count);
+      if (state.detail?.company?.id) {
+        const { company } = await api(`/api/admin/companies/${encodeURIComponent(state.detail.company.id)}`,
+          { method: 'PATCH', body: JSON.stringify(body) });
+        state.detail.company = company;
+      } else if (state.demo) {
+        state.formError = t('common.demoReadOnly');
+        state.saving = false; render(); return;
+      } else {
+        await api('/api/admin/companies', { method: 'POST', body: JSON.stringify(body) });
+      }
+    } else {
+      const body = readForm('kc-', CONTACT_IDS);
+      body.is_decision_maker = body.is_decision_maker === 'true';
+      body.influence_level = Number(body.influence_level || 0);
+      if (state.demo) {
+        state.formError = t('common.demoReadOnly');
+        state.saving = false; render(); return;
+      }
+      await api('/api/admin/contacts', { method: 'POST', body: JSON.stringify(body) });
+    }
+    state.modal = null;
+    state.saving = false;
+    await loadView();
+  } catch (e) {
+    state.saving = false;
+    state.formError = e.details ? `${e.message} — ${e.details.join(', ')}` : e.message;
+    render();
+  }
+}
+
+async function moveStage(stage) {
+  const company = state.detail?.company;
+  if (!company || company.stage === stage) return;
+  if (state.demo) { state.error = t('common.demoReadOnly'); render(); return; }
+
+  let lostReason = null;
+  if (stage === 'lost') {
+    lostReason = window.prompt(t('pipeline.lostReasonPrompt'));
+    if (!lostReason) { render(); return; }
+  }
+  try {
+    const res = await api(`/api/admin/companies/${encodeURIComponent(company.id)}/stage`, {
+      method: 'PATCH',
+      body: JSON.stringify({ stage, lost_reason: lostReason }),
+    });
+    state.detail.company = res.company;
+    state.detail.activities = (await api(
+      `/api/admin/companies/${encodeURIComponent(company.id)}/activities`,
+    )).items;
+    state.error = null;
+  } catch (e) {
+    state.error = e.message;
+  }
+  render();
+}
+
+/* ---------------------------------------------------------------- langue */
+
+async function setLang(lang) {
+  state.lang = lang;
+  localStorage.setItem('tracefab.lang', lang);
+  document.documentElement.lang = lang;
+  if (window.TracefabI18n) {
+    await window.TracefabI18n.setLanguage(lang);
+  }
+  render();
+}
+
+/* ------------------------------------------------------------------ boot */
+
+async function boot() {
+  try {
+    await window.TracefabI18n.init({ scope: 'admin', fallback: 'en', language: state.lang });
+  } catch (e) {
+    /* Le dictionnaire peut manquer : on continue avec les clés brutes plutôt que
+       de bloquer la console. L'erreur est visible en console. */
+    console.error('TRACEFAB admin : dictionnaire i18n indisponible', e);
+  }
+
+  if (state.demo) {
+    state.access = { role: 'owner', organizationName: 'TRACEFAB (demo)', email: 'demo@tracefab.example' };
+    state.loading = false;
+    await loadView();
+    return;
+  }
+
+  try {
+    const config = await fetch('/api/config').then((r) => r.json());
+    if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
+    const domain = atob(config.publishableKey.split('_')[2]).slice(0, -1);
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = `https://${domain}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.setAttribute('data-clerk-publishable-key', config.publishableKey);
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('clerk_sdk_unavailable'));
+      document.head.appendChild(s);
+    });
+    state.clerk = window.Clerk;
+    if (!state.clerk) throw new Error('clerk_sdk_unavailable');
+    await state.clerk.load();
+    state.user = state.clerk.user;
+    state.loading = false;
+
+    if (!state.user) { render(); return; }
+
+    try {
+      state.access = await api('/api/admin/access');
+    } catch (e) {
+      state.access = null;
+      state.accessChecked = true;
+      if (e.status !== 403) state.error = e.message;
+    }
+    render();
+    if (state.access) await loadView();
+  } catch (e) {
+    state.loading = false;
+    state.error = e.message;
+    render();
+  }
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
