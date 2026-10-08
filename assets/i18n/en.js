@@ -1906,6 +1906,32 @@ window.TF_I18N_BUNDLES.en = {
     errPrefix: "Error:"
   },
 
+
+  // --- Acceptation d'invitation (premier ecran du fournisseur) ----------
+  invite: {
+    metaTitle: "Tracefab — Accept an invitation",
+    eyebrow: "Team invitation",
+    title: "Join a supplier organisation.",
+    intro: "Sign in with the invited email address to accept this invitation and reach the Tracefab supplier workspace.",
+    preparing: "Preparing the invitation…",
+    acceptBtn: "Accept invitation",
+    openPortal: "Open the Supplier Portal",
+    validating: "Validating your identity and the invitation…",
+    accepted: "Invitation accepted. Your access to the supplier organisation is active.",
+    signedInAs: "Signed in as",
+    clickToAccept: "Click to accept the invitation.",
+    fallbackUser: "Tracefab user",
+    signInPrompt: "Sign in with the invited email address to continue.",
+    errInvalidToken: "The invitation link is invalid.",
+    errExpired: "The link has expired or has already been used.",
+    errEmailMismatch: "Sign in with the email address that received the invitation.",
+    errAlreadyMember: "You already have access to this organisation.",
+    errUnauthorized: "Sign in to continue.",
+    errGeneric: "This invitation could not be processed.",
+    errMissingToken: "The invitation link is missing or invalid.",
+    errUnavailable: "Sign-in unavailable."
+  },
+
   // --- DPP public --------------------------------------------------------
   dpp: {
     badgeEu: "EU ESPR / DPP format",

@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tracefab — Accepter une invitation</title>
+  <title data-i18n="invite.metaTitle">Tracefab — Accept an invitation</title>
+  <meta name="robots" content="noindex, nofollow">
   <style>
     :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color:#17231f; background:#f7f8f4; --green:#0b7656; --dark:#07523e; --line:#e2e8df; --muted:#71807a; }
     * { box-sizing:border-box; } body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 20% 10%, #e7f5ed, transparent 42%), #f7f8f4; }
@@ -11,20 +12,36 @@
     .brand { display:flex; align-items:center; gap:11px; margin-bottom:34px; } .mark { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; background:#d7f3e4; color:var(--dark); font-weight:900; letter-spacing:-.08em; } .name { font-weight:800; font-size:19px; letter-spacing:-.04em; } .name small { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.12em; margin-top:2px; }
     .eyebrow { color:var(--green); text-transform:uppercase; letter-spacing:.14em; font-size:11px; font-weight:800; margin-bottom:10px; } h1 { margin:0; letter-spacing:-.055em; font-size:36px; line-height:1.05; } p { color:var(--muted); line-height:1.65; } .message { margin-top:22px; padding:15px; border-radius:12px; background:#f3f6f2; color:#53625a; font-size:14px; } .message.error { color:#9d3937; background:#ffebea; } .message.success { color:#07523e; background:#e4f3ec; }
     .actions { margin-top:24px; display:flex; gap:10px; flex-wrap:wrap; } button,.link { border:0; border-radius:11px; padding:11px 16px; font:inherit; font-size:13px; font-weight:750; text-decoration:none; cursor:pointer; } button { background:var(--green); color:white; } button:disabled { opacity:.55; cursor:wait; } .link { background:white; color:var(--dark); border:1px solid var(--line); } #clerk-sign-in { margin-top:22px; }
+    .lang-slot { display:flex; justify-content:flex-end; margin-bottom:6px; }
+    .lang-slot select { border:1px solid var(--line); background:white; color:var(--dark);
+      border-radius:999px; padding:6px 11px; font:inherit; font-size:12px; font-weight:650; cursor:pointer; }
   </style>
+  <script>window.TF_I18N_SKIP_META = true;</script>
+  <script src="/assets/i18n/en.js"></script>
+  <script src="/assets/js/tf-i18n.js"></script>
 </head>
 <body>
   <main class="card">
+    <div class="lang-slot" id="invite-lang-slot"></div>
     <div class="brand"><div class="mark">tf</div><div class="name">tracefab<small>supplier workspace</small></div></div>
-    <div class="eyebrow">Invitation d’équipe</div>
-    <h1>Rejoindre une organisation fournisseur.</h1>
-    <p id="intro">Connectez-vous avec l’adresse email invitée pour accepter cette invitation et accéder à l’espace fournisseur Tracefab.</p>
-    <div id="message" class="message">Préparation de l’invitation…</div>
+    <div class="eyebrow" data-i18n="invite.eyebrow">Team invitation</div>
+    <h1 data-i18n="invite.title">Join a supplier organisation.</h1>
+    <p id="intro" data-i18n="invite.intro">Sign in with the invited email address to accept this invitation and reach the Tracefab supplier workspace.</p>
+    <div id="message" class="message" data-i18n="invite.preparing">Preparing the invitation…</div>
     <div id="clerk-sign-in"></div>
-    <div class="actions" id="actions" hidden><button id="accept-button" type="button">Accepter l’invitation</button><a class="link" href="/supplier-portal/">Ouvrir le Supplier Portal</a></div>
+    <div class="actions" id="actions" hidden><button id="accept-button" type="button" data-i18n="invite.acceptBtn">Accept invitation</button><a class="link" href="/supplier-portal/" data-i18n="invite.openPortal">Open the Supplier Portal</a></div>
   </main>
   <script>
     (() => {
+      const iv = (k) => (window.TF_I18N ? window.TF_I18N.t('invite.' + k, k) : k);
+      const LANG_NAMES = {en:'🇬🇧 English',fr:'🇫🇷 Français',de:'🇩🇪 Deutsch',it:'🇮🇹 Italiano',es:'🇪🇸 Español',nl:'🇳🇱 Nederlands',pt:'🇵🇹 Português'};
+      function mountLangSelect() {
+        const slot = document.getElementById('invite-lang-slot');
+        const api = window.TF_I18N;
+        if (!slot || !api) return;
+        slot.innerHTML = `<select id="invite-lang-select" aria-label="Language">${api.supported.map((l) => `<option value="${l}"${l === api.lang ? ' selected' : ''}>${LANG_NAMES[l] || l}</option>`).join('')}</select>`;
+        slot.firstChild.onchange = (e) => api.setLanguage(e.target.value);
+      }
       const token = new URLSearchParams(location.search).get('token');
       if (token) history.replaceState({}, document.title, `${location.pathname}${location.hash}`);
       const message = document.getElementById('message');
@@ -33,36 +50,47 @@
       const acceptButton = document.getElementById('accept-button');
       let clerk;
       let accepted = false;
+      let lastMessage = null;
       function show(text, kind) { message.textContent = text; message.className = `message ${kind || ''}`; }
+      // Memorise le rendu plutot que la chaine : au changement de langue on
+      // rejoue la fonction et le message suit, comme le reste de la page.
+      function showFn(fn, kind) { lastMessage = () => show(fn(), kind); lastMessage(); }
       function errorLabel(error) {
-        return ({ invalid_invitation_token:'Le lien d’invitation est invalide.', invalid_or_expired_invitation:'Le lien est expiré ou a déjà été utilisé.', invitation_email_mismatch:'Connectez-vous avec l’adresse email qui a reçu l’invitation.', user_already_member:'Vous avez déjà accès à cette organisation.', unauthorized:'Connectez-vous pour continuer.' })[error] || error || 'Impossible de traiter cette invitation.';
+        const connu = ({ invalid_invitation_token:iv('errInvalidToken'), invalid_or_expired_invitation:iv('errExpired'), invitation_email_mismatch:iv('errEmailMismatch'), user_already_member:iv('errAlreadyMember'), unauthorized:iv('errUnauthorized') })[error];
+        if (connu) return connu;
+        if (error) console.error('[tracefab] invitation:', error);
+        return iv('errGeneric');
       }
       async function accept() {
         if (accepted || !clerk?.user || !token) return;
-        accepted = true; acceptButton.disabled = true; show('Validation de votre identité et de l’invitation…');
+        accepted = true; acceptButton.disabled = true; showFn(() => iv('validating'));
         try {
           const authToken = await clerk.session.getToken();
           const response = await fetch('/api/invitations/accept', { method:'POST', headers:{ 'Content-Type':'application/json', ...(authToken ? { Authorization:`Bearer ${authToken}` } : {}) }, body:JSON.stringify({ invitationToken:token }) });
           const payload = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`);
-          show('Invitation acceptée. Votre accès à l’organisation fournisseur est actif.', 'success');
+          showFn(() => iv('accepted'), 'success');
           actions.hidden = false; acceptButton.hidden = true;
-        } catch (error) { accepted = false; acceptButton.disabled = false; show(errorLabel(error.message), 'error'); actions.hidden = false; }
+        } catch (error) { accepted = false; acceptButton.disabled = false; showFn(() => errorLabel(error.message), 'error'); actions.hidden = false; }
       }
       async function boot() {
-        if (!token || token.length > 256) { show('Le lien d’invitation est absent ou invalide.', 'error'); return; }
+        if (!token || token.length > 256) { showFn(() => iv('errMissingToken'), 'error'); return; }
         try {
           const config = await fetch('/api/config').then((response) => response.json());
           if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
           await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js'; script.onload = resolve; script.onerror = () => reject(new Error('clerk_sdk_unavailable')); document.head.appendChild(script); });
           clerk = new window.Clerk(config.publishableKey); await clerk.load();
-          clerk.addListener(() => { if (clerk.user) { signIn.hidden = true; actions.hidden = false; show(`Connecté en tant que ${clerk.user.primaryEmailAddress?.emailAddress || 'utilisateur Tracefab'}. Cliquez pour accepter l’invitation.`); } });
-          if (clerk.user) { signIn.hidden = true; actions.hidden = false; show(`Connecté en tant que ${clerk.user.primaryEmailAddress?.emailAddress || 'utilisateur Tracefab'}. Cliquez pour accepter l’invitation.`); }
-          else { clerk.mountSignIn(signIn, { routing:'hash', appearance:{ elements:{ card:'shadow-none', rootBox:'w-full' } } }); show('Connectez-vous avec l’adresse email invitée pour continuer.'); }
-        } catch (error) { show(error.message || 'Connexion indisponible.', 'error'); }
+          clerk.addListener(() => { if (clerk.user) { signIn.hidden = true; actions.hidden = false; showFn(() => `${iv('signedInAs')} ${clerk.user.primaryEmailAddress?.emailAddress || iv('fallbackUser')}. ${iv('clickToAccept')}`); } });
+          if (clerk.user) { signIn.hidden = true; actions.hidden = false; showFn(() => `${iv('signedInAs')} ${clerk.user.primaryEmailAddress?.emailAddress || iv('fallbackUser')}. ${iv('clickToAccept')}`); }
+          else { clerk.mountSignIn(signIn, { routing:'hash', appearance:{ elements:{ card:'shadow-none', rootBox:'w-full' } } }); showFn(() => iv('signInPrompt')); }
+        } catch (error) { if (error && error.message) console.error('[tracefab] invitation boot:', error.message);
+          showFn(() => iv('errUnavailable'), 'error'); }
       }
       acceptButton.addEventListener('click', () => accept());
-      boot();
+      document.addEventListener('tf:languagechange', () => { mountLangSelect(); if (lastMessage) lastMessage(); });
+      (window.TF_I18N ? window.TF_I18N.setLanguage(window.TF_I18N.lang) : Promise.resolve())
+        .then(mountLangSelect, mountLangSelect)
+        .then(boot, boot);
     })();
   </script>
 </body>
