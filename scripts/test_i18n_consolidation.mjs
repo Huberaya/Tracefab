@@ -163,6 +163,37 @@ if (!chromium) {
   }
 }
 
+/* --------------------------------------------------------------------------
+   Garde : les generateurs de catalogue ne doivent jamais borner leur
+   suppression sur la fin de l'objet.
+
+   build_quality_i18n.mjs supprimait sa portee avec un lookahead (?=\n\};).
+   Tant que 'quality' etait la derniere racine du catalogue, le resultat etait
+   juste par accident ; des que des portees ont ete ajoutees apres elle, le
+   [\s\S]*? paresseux les a toutes avalees. Un seul lancement du generateur a
+   fait passer en.js de 22 racines a 18, en silence, sans erreur.
+
+   Ce motif est donc interdit dans tout generateur de catalogue.
+   -------------------------------------------------------------------------- */
+{
+  const dir = join(ROOT, 'scripts');
+  const gens = readdirSync(dir).filter((f) => /^build_.*_i18n\.mjs$/.test(f));
+  if (!gens.length) fail('garde generateurs: aucun script build_*_i18n.mjs trouve');
+  for (const g of gens) {
+    const raw = readFileSync(join(dir, g), 'utf8');
+    // On retire les commentaires avant d'analyser : la correction de ce bug
+    // est documentee en toutes lettres dans les generateurs, et une garde qui
+    // se declenche sur sa propre explication ne vaut rien.
+    const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    if (/\(\?=\\n\\\};\)/.test(src)) {
+      fail(`garde generateurs: ${g} borne sa suppression sur la fin de l'objet `
+        + `((?=\\n\\};)) — il effacera toute portee situee apres la sienne`);
+    } else {
+      ok(`garde generateurs: ${g} borne sa suppression sur sa propre portee`);
+    }
+  }
+}
+
 console.log('');
 if (failures) {
   console.error(`Consolidation i18n : ${failures} probleme(s).`);

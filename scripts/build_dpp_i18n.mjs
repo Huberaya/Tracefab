@@ -170,7 +170,12 @@ const scopeFor = (i) => Object.fromEntries(keys.map((k) => [k, T[k][i]]));
 
 const enPath = join(I18N, 'en.js');
 let enSrc = readFileSync(enPath, 'utf8');
-enSrc = enSrc.replace(/,\n\n  \/\/ --- DPP public[\s\S]*?\n  \}(?=\n\};)/, '');
+// Le lookahead (?=\n\};) bornait la suppression a la fin de TOUT l'objet :
+// le [\s\S]*? paresseux avalait donc chaque racine situee apres celle-ci.
+// Tant que cette portee etait la derniere du catalogue, le resultat etait
+// juste par accident. On borne desormais sur la fermeture de la portee
+// elle-meme (accolade a 2 espaces), ce qui est independant de sa position.
+enSrc = enSrc.replace(/,?\n\n  \/\/ --- DPP public[\s\S]*?\n  \}/, '');
 const body = Object.entries(scopeFor(0)).map(([k, v]) => `    ${k}: ${JSON.stringify(v)}`).join(',\n');
 enSrc = enSrc.replace(/\n\};\s*$/, `,\n\n  // --- DPP public --------------------------------------------------------\n  dpp: {\n${body}\n  }\n};\n`);
 writeFileSync(enPath, enSrc);
