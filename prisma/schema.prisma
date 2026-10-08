@@ -580,6 +580,17 @@ model organizations {
   transaction_certificates_transaction_certificates_seller_organization_idToorganizations                      transaction_certificates[]          @relation("transaction_certificates_seller_organization_idToorganizations")
   verification_records_verification_records_owner_organization_idToorganizations                               verification_records[]              @relation("verification_records_owner_organization_idToorganizations")
   verification_records_verification_records_verifier_organization_idToorganizations                            verification_records[]              @relation("verification_records_verifier_organization_idToorganizations")
+  crm_companies_crm_companies_platformToorganizations                                                          crm_companies[] @relation("crm_companies_platform")
+  crm_companies_crm_companies_linkedToorganizations                                                            crm_companies[] @relation("crm_companies_linked")
+  crm_contacts                                                                                                 crm_contacts[]
+  crm_activities                                                                                               crm_activities[]
+  crm_tasks                                                                                                    crm_tasks[]
+  crm_meetings                                                                                                 crm_meetings[]
+  crm_pilots_crm_pilots_platformToorganizations                                                                crm_pilots[] @relation("crm_pilots_platform")
+  crm_pilots_crm_pilots_linkedToorganizations                                                                  crm_pilots[] @relation("crm_pilots_linked")
+  crm_campaigns                                                                                                crm_campaigns[]
+  crm_leads                                                                                                    crm_leads[]
+  crm_saved_views                                                                                              crm_saved_views[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -1525,6 +1536,7 @@ enum crm_activity_type {
 model crm_companies {
   id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   platform_organization_id String           @db.Uuid
+  platform_organization  organizations @relation("crm_companies_platform", fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   name                   String
   website                String?
   country_code           String?            @db.VarChar(2)
@@ -1549,6 +1561,7 @@ model crm_companies {
   collected_at           DateTime?          @db.Timestamptz(6)
   owner_user_id          String?            @db.Uuid
   organization_id        String?            @db.Uuid
+  linked_organization    organizations @relation("crm_companies_linked", fields: [organization_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   campaign_id            String?            @db.Uuid
   owner_name             String?
   notes                  String?
@@ -1560,7 +1573,17 @@ model crm_companies {
   crm_contacts           crm_contacts[]
   crm_activities         crm_activities[]
 
+  crm_tasks              crm_tasks[]
+  crm_meetings           crm_meetings[]
+  crm_pilots             crm_pilots[]
+  crm_leads              crm_leads[]
   @@unique([platform_organization_id, name], map: "crm_companies_org_name_key")
+  @@index([platform_organization_id, converted_at], map: "idx_crm_companies_org_converted")
+  @@index([platform_organization_id, dpp_interest], map: "idx_crm_companies_org_dpp_interest")
+  @@index([platform_organization_id, traceability_interest], map: "idx_crm_companies_org_traceability_interest")
+  @@index([platform_organization_id, product_count], map: "idx_crm_companies_org_product_count")
+  @@index([platform_organization_id, supplier_count], map: "idx_crm_companies_org_supplier_count")
+  @@index([platform_organization_id, employee_band], map: "idx_crm_companies_org_employee_band")
   @@index([platform_organization_id, stage], map: "idx_crm_companies_org_stage")
   @@index([platform_organization_id, priority], map: "idx_crm_companies_org_priority")
   @@index([platform_organization_id, country_code], map: "idx_crm_companies_org_country")
@@ -1573,6 +1596,7 @@ model crm_contacts {
   id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id             String             @db.Uuid
   platform_organization_id String           @db.Uuid
+  organizations          organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   first_name             String?
   last_name              String?
   job_title              String?
@@ -1591,6 +1615,8 @@ model crm_contacts {
   updated_at             DateTime           @default(now()) @db.Timestamptz(6)
   crm_companies          crm_companies      @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  crm_tasks              crm_tasks[]
+  crm_meetings           crm_meetings[]
   @@index([company_id], map: "idx_crm_contacts_company")
   @@index([platform_organization_id, status], map: "idx_crm_contacts_org_status")
 }
@@ -1599,6 +1625,7 @@ model crm_activities {
   id                     String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id             String            @db.Uuid
   platform_organization_id String          @db.Uuid
+  organizations          organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   type                   crm_activity_type @default(note)
   summary                String
   detail                 String?
@@ -1653,8 +1680,11 @@ enum crm_pilot_status {
 model crm_tasks {
   id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   platform_organization_id String           @db.Uuid
+  organizations            organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   company_id               String?          @db.Uuid
+  crm_companies            crm_companies @relation(fields: [company_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   contact_id               String?          @db.Uuid
+  crm_contacts             crm_contacts @relation(fields: [contact_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   type                     crm_task_type    @default(follow_up)
   title                    String
   detail                   String?
@@ -1676,8 +1706,11 @@ model crm_tasks {
 model crm_meetings {
   id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   platform_organization_id String           @db.Uuid
+  organizations            organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   company_id               String           @db.Uuid
+  crm_companies            crm_companies @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   contact_id               String?          @db.Uuid
+  crm_contacts             crm_contacts @relation(fields: [contact_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   subject                  String
   starts_at                DateTime         @db.Timestamptz(6)
   ends_at                  DateTime?        @db.Timestamptz(6)
@@ -1696,11 +1729,14 @@ model crm_meetings {
 model crm_pilots {
   id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   platform_organization_id String           @db.Uuid
+  platform_organization    organizations @relation("crm_pilots_platform", fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   company_id               String           @unique @db.Uuid
+  crm_companies            crm_companies @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   /* Facultatif : relié à l'organisation TRACEFAB réelle une fois le pilote devenu
      client. Sans ce lien, les pourcentages ci-dessous sont DÉCLARÉS par l'équipe
      et l'interface le dit — ils ne sont jamais présentés comme des mesures. */
   organization_id          String?          @db.Uuid
+  linked_organization      organizations @relation("crm_pilots_linked", fields: [organization_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   starts_at                DateTime?        @db.Timestamptz(6)
   ends_at                  DateTime?        @db.Timestamptz(6)
   status                   crm_pilot_status @default(planned)
@@ -1777,6 +1813,7 @@ enum crm_lead_status {
 model crm_saved_views {
   id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   platform_organization_id String   @db.Uuid
+  organizations            organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   name                     String
   filters                  Json     @default("{}")
   created_by               String?  @db.Uuid
@@ -1784,6 +1821,7 @@ model crm_saved_views {
   created_at               DateTime @default(now()) @db.Timestamptz(6)
   updated_at               DateTime @default(now()) @db.Timestamptz(6)
 
+  crm_saved_views          crm_saved_views[]
   @@unique([platform_organization_id, name], map: "uq_crm_saved_views_org_name")
   @@index([platform_organization_id, created_at], map: "idx_crm_saved_views_org_created")
 }
@@ -1791,6 +1829,7 @@ model crm_saved_views {
 model crm_campaigns {
   id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   platform_organization_id String           @db.Uuid
+  organizations          organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   name                   String
   channel                crm_campaign_channel@default(email)
   status                 crm_campaign_status@default(draft)
@@ -1804,6 +1843,7 @@ model crm_campaigns {
   created_at             DateTime           @default(now()) @db.Timestamptz(6)
   updated_at             DateTime           @default(now()) @db.Timestamptz(6)
 
+  crm_leads              crm_leads[]
   @@unique([platform_organization_id, name], map: "uq_crm_campaigns_org_name")
   @@index([platform_organization_id, status], map: "idx_crm_campaigns_org_status")
 }
@@ -1811,7 +1851,9 @@ model crm_campaigns {
 model crm_leads {
   id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   platform_organization_id String           @db.Uuid
+  organizations          organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   campaign_id            String?            @db.Uuid
+  crm_campaigns          crm_campaigns @relation(fields: [campaign_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   company_name           String
   contact_name           String?
   contact_job_title      String?
@@ -1825,6 +1867,7 @@ model crm_leads {
   status                 crm_lead_status    @default(new)
   discard_reason         String?
   converted_company_id   String?            @db.Uuid
+  converted_company      crm_companies @relation(fields: [converted_company_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   converted_at           DateTime?          @db.Timestamptz(6)
   duplicate_key          String
   source                 String?

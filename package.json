@@ -8,6 +8,7 @@
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
     "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:supplier-portal && npm run test:questionnaires && npm run ds:check && npm run check:landing && npm run test:landing",
+    "test:migrations": "node scripts/test_migrations.mjs",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "npx tsx scripts/test_neon_bulk_operations_chantier8.mjs",
     "test:wallet:chantier9": "npx tsx scripts/test_wallet_chantier9.ts",

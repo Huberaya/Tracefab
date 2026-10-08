@@ -70,6 +70,15 @@ const ENVIRONMENTAL = [
     remedy: 'npx playwright install chromium',
   },
   {
+    /* Le test de migrations démarre un vrai PostgreSQL, installé depuis PyPI au
+       premier lancement. Sans réseau il ne peut pas s'exécuter — et il le dit
+       explicitement plutôt que de passer. */
+    id: 'postgres-server',
+    patterns: [/POSTGRES_SERVER_UNAVAILABLE/],
+    reason: 'PostgreSQL embarqué indisponible — pypi.org est injoignable depuis cet environnement.',
+    remedy: 'installer pglast et embedded-postgres dans .cache/pgvenv (réseau requis)',
+  },
+  {
     id: 'staging',
     patterns: [/requires TRACEFAB_STAGING_URL/, /TRACEFAB_E2E_STORAGE_STATE/],
     reason: 'Environnement de staging requis — aucun repli mock ou démo n’est autorisé, par conception.',
