@@ -2575,3 +2575,83 @@ La section K ouvre maintenant la vue `documents`. **78/78**, contre 77 réussis 
 - `api:typecheck` : **90 = 90** (85 Prisma non généré + 5 préexistants), aucune erreur sur les fichiers touchés
 - `test:suite` : **PASS 49 · SKIP 18 · FAIL 0 sur 67**, exit 0
 - `test:api:wiring` 45/45 · `test:product:tabs` 64/64 · `test:product:intelligence` 36/36 · `test:console:actions` 64/64 · `test:supplier-portal:surface` 78/78
+
+---
+
+## Chantier 28 — Plus de faux succès : export réel du registre, modale BOM atteignable
+
+### Le point de départ
+
+`supplier-portal/index.html` `documentsView()` portait :
+
+```js
+onclick="alert('Registre d\'inventaire exporté.')"
+```
+
+Un message de succès pour une opération qui n'avait jamais lieu : aucun fichier, aucune
+donnée. C'est la classe de bug du Chantier 17.
+
+### Trois défauts de la même famille, trouvés en cherchant le premier
+
+**1. L'export n'existait pas.** Aucun endpoint d'export fournisseur n'est déclaré : les seuls
+exports (`catalog/export/*`) sont scopés à une organisation **marque** et exigent un UUID
+d'organisation (`audit-dossier.ts:15-18`).
+
+Le registre est donc produit dans le navigateur, à partir des documents réellement chargés par
+`GET /api/documents`. Deux règles :
+
+- les colonnes sont **exactement** celles que renvoie `documents.ts` (l.95-112) — 17 champs,
+  même ordre ; un champ absent donne une cellule vide, jamais `null`, `N/A` ni une valeur devinée ;
+- **un coffre vide ne produit aucun fichier.** Un registre vide affirmerait « aucune preuve »
+  alors que le chargement a peut-être simplement échoué. L'utilisateur est prévenu à la place.
+
+Échappement RFC 4180, `metadata` sérialisée en JSON, BOM UTF-8 pour Excel, et `DEMO-` dans le
+nom de fichier quand les données sont des données de démonstration.
+
+**2. `onclick="openBomModal()"` appelait une fonction qui n'a jamais existé.** Une seule
+occurrence dans tout le fichier, aucune définition : le bouton levait une `ReferenceError`
+silencieuse et ne faisait rien. Or `bind()` (l.2423) gère déjà `open-bom-import`, qui fait
+`state.modal = 'import-bom'; render();`. Le bouton utilisait simplement le mauvais mécanisme —
+il passe à `data-action="open-bom-import"`.
+
+**3. `state.modal` n'était pas initialisé.** Ajout de `modal: null`.
+
+### Une erreur de diagnostic, corrigée
+
+J'ai d'abord conclu que `modalView()` n'était « invoquée nulle part » et j'ai ajouté son rendu
+dans `render()`. **C'était faux** : `shell()` (l.1513) contenait déjà
+`${state.modal ? modalView(state.modal) : ''}`. Mon ajout faisait donc apparaître la modale
+**deux fois**. La modification est annulée ; seul le mécanisme du bouton était en cause.
+
+Le test compte maintenant `.modal-backdrop` et `#bom-csv-input` : **exactement un** de chacun.
+Contre-vérification en réinjectant le double rendu → 48/50, exit 1.
+
+Deux leçons : un `grep -n "modalView("` tronquait la ligne 1515 et laissait croire à une simple
+déclaration ; et `function overview()` est indentée à **12** espaces, pas 6, ce qui a faussé mon
+repérage de la fonction englobante.
+
+### Vérification
+
+`scripts/test_vault_register.mjs` — **50/50** (`npm run test:vault:register`).
+
+Le test **exécute** le générateur CSV (`window.buildVaultRegisterCsv`), extrait les colonnes de
+`documents.ts` par expression rationnelle et compare les deux listes, vérifie l'échappement sur
+des valeurs réelles (virgule, guillemets, objet), lit les **octets** du blob pour le BOM
+(`Blob.text()` le supprime par spécification), et pilote l'ouverture puis la fermeture de la
+modale dans jsdom.
+
+Contre-vérifications : réinjection de l'`alert()` + champ vide à `N/A` → 5 échecs, exit 1 ;
+double rendu de la modale → 2 échecs, exit 1. Restauration → 50/50.
+
+### Un incident d'environnement, signalé
+
+`node_modules` n'est pas persisté entre les tours de cette sandbox. `jsdom` (déclaré en
+`devDependencies`, `^30.1.2`) avait disparu, ce qui faisait échouer `test:supplier-portal:surface`
+à l'import. `npm ci` l'a restauré (207 paquets). Ce n'est pas un défaut du dépôt.
+
+### Résultats
+
+- `api:typecheck` : **90 = 90**
+- `test:suite` : **PASS 50 · SKIP 18 · FAIL 0 sur 68**, exit 0
+- `test:vault:register` 50/50 (nouveau) · `test:supplier-portal:surface` 78/78 · `test:api:wiring` 45/45
+- **0 `alert()`** dans `supplier-portal/index.html` et `brand-console/index.html`

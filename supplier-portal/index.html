@@ -1405,7 +1405,7 @@ a { color: inherit; text-decoration: none; }
         return translations[lang]?.[key] || translations['fr'][key] || key;
       }
 
-      const state = { ocr:null, clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'fr', demo:(() => { const flag = new URLSearchParams(location.search).get('demo'); return flag === null ? false : !['0', 'false', 'off'].includes(String(flag).toLowerCase()); })() };
+      const state = { ocr:null, modal:null, clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'fr', demo:(() => { const flag = new URLSearchParams(location.search).get('demo'); return flag === null ? false : !['0', 'false', 'off'].includes(String(flag).toLowerCase()); })() };
       const labels = { draft:'Brouillon', sent:'Envoyée', in_progress:'En cours', submitted:'Soumise', changes_requested:'À corriger', approved:'Approuvée', cancelled:'Annulée', pending:'En attente', answered:'Répondu', accepted:'Accepté', needs_review:'À revoir', verified_by_reviewer:'Vérifiée', not_started:'À commencer', uploaded:'Enregistré', scanning:'Contrôle en cours', available:'Disponible', rejected:'Rejeté', deleted:'Supprimé', declared:'Déclarée', documented:'Documentée', suspended:'Suspendu', revoked:'Révoqué' };
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
       const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0,2).toUpperCase() || 'TF';
@@ -1735,7 +1735,7 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
               <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
                 Déposez votre nomenclature pour valider automatiquement la décomposition à 100% et le bilan massique.
               </p>
-              <button class="btn btn-primary" onclick="openBomModal()" style="width:100%;">
+              <button type="button" class="btn btn-primary" data-action="open-bom-import" style="width:100%;">
                 📥 Importer un fichier BOM / Lots
               </button>
             </div>
@@ -1836,6 +1836,64 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
         return `<div class="page-head"><div><div class="eyebrow">Accès organisationnel</div><h1>Équipe fournisseur</h1><p>Gérez les membres de l’organisation active sans changer de tenant. Les rôles et suspensions sont contrôlés côté serveur.</p></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.members.length} membre(s)</h2><span class="meta">${canManage ? 'Gestion autorisée' : 'Lecture seule'}</span></div>${state.members.length ? `<div class="item-list">${state.members.map((member) => `<form class="item member-edit-form" data-membership-id="${esc(member.id)}"><div class="item-head"><div><h3>${esc(member.user?.fullName || member.user?.email || 'Membre')}</h3><p>${esc(member.user?.email || '')} · ${esc(member.role)}</p></div>${status(member.status)}</div>${canManage && member.userId !== state.user?.id && member.role !== 'owner' ? `<div class="form-grid" style="margin-top:14px"><label>Rôle<select class="select" name="role"><option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Admin</option><option value="manager" ${member.role === 'manager' ? 'selected' : ''}>Manager</option><option value="contributor" ${member.role === 'contributor' ? 'selected' : ''}>Contributeur</option><option value="viewer" ${member.role === 'viewer' ? 'selected' : ''}>Lecteur</option><option value="auditor" ${member.role === 'auditor' ? 'selected' : ''}>Auditeur</option></select></label><label>État<select class="select" name="status"><option value="active" ${member.status === 'active' ? 'selected' : ''}>Actif</option><option value="suspended" ${member.status === 'suspended' ? 'selected' : ''}>Suspendu</option><option value="revoked" ${member.status === 'revoked' ? 'selected' : ''}>Révoqué</option></select></label></div><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">Enregistrer l’accès</button></div>` : ''}</form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">♙</div><strong>Aucun membre</strong><p>Ajoutez un collaborateur pour travailler à plusieurs sur les données fournisseur.</p></div>'}</div><div class="card panel">${canManage ? `<div class="panel-head"><h2>Inviter un membre</h2></div><form id="member-invite-form"><div class="form-grid"><label class="field-full">Email<input class="input" name="email" type="email" maxlength="320" placeholder="quality@atelier.example" required></label><label class="field-full">Rôle<select class="select" name="targetRole"><option value="manager">Manager</option><option value="contributor">Contributeur</option><option value="viewer">Lecteur</option><option value="auditor">Auditeur</option><option value="admin">Admin</option></select></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">Envoyer l’invitation</button></div></form>` : '<div class="panel-head"><h2>Invitation</h2></div><p>Seuls les owners et admins peuvent inviter ou modifier un membre.</p>'}${state.memberInvitations.length ? `<div class="notice" style="margin-top:20px"><strong>${state.memberInvitations.length} invitation(s) en attente</strong><br>${state.memberInvitations.map((invitation) => `<div class="invitation-row"><span>${esc(invitation.email)} · ${esc(invitation.targetRole)} · expire le ${date(invitation.expiresAt)}</span>${canManage ? `<span class="actions"><button class="btn btn-secondary btn-small" type="button" data-invitation-action="resend" data-invitation-id="${esc(invitation.id)}">Renvoyer</button><button class="btn btn-danger btn-small" type="button" data-invitation-action="revoke" data-invitation-id="${esc(invitation.id)}">Révoquer</button></span>` : ''}</div>`).join('')}</div>` : ''}</div></div>`;
       }
 
+      /**
+       * Registre d'inventaire du coffre-fort.
+       *
+       * Aucun endpoint d'export n'existe côté fournisseur : les seuls déclarés
+       * (`catalog/export/*`) sont scopés à une organisation *marque* et exigent un
+       * UUID d'organisation (audit-dossier.ts:15-18). Le registre est donc produit
+       * ici, à partir des documents réellement chargés par GET /api/documents.
+       *
+       * Deux règles :
+       *  - les colonnes sont exactement celles que renvoie documents.ts (l.95-112) ;
+       *    un champ absent donne une cellule vide, jamais une valeur inventée ;
+       *  - un coffre vide ne produit aucun fichier. Un registre vide affirmerait
+       *    « aucune preuve » alors que le chargement a peut-être simplement échoué.
+       */
+      const VAULT_REGISTER_COLUMNS = [
+        'id', 'ownerOrganizationId', 'ownerOrganizationName', 'originalFilename',
+        'contentType', 'byteSize', 'sha256', 'kind', 'status', 'visibility',
+        'expiresAt', 'createdAt', 'availableAt', 'updatedAt', 'metadata',
+        'verificationCount', 'latestVerificationStatus',
+      ];
+
+      /** Échappement RFC 4180 : guillemets doublés, cellule encadrée si nécessaire. */
+      function csvCell(value) {
+        if (value === null || value === undefined || value === '') return '';
+        const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+        return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+      }
+
+      /** Sépare les lignes du CSV sans exécuter le téléchargement (testable). */
+      function buildVaultRegisterCsv(rows) {
+        const lines = [VAULT_REGISTER_COLUMNS.join(',')];
+        for (const row of rows) {
+          lines.push(VAULT_REGISTER_COLUMNS.map((key) => csvCell(row[key])).join(','));
+        }
+        return lines.join('\r\n');
+      }
+
+      function exportVaultRegister() {
+        const rows = Array.isArray(state.documents) ? state.documents : [];
+        if (!rows.length) {
+          notify('Aucun document chargé : un registre vide affirmerait à tort « aucune preuve ».', true);
+          return;
+        }
+        const date = new Date().toISOString().slice(0, 10);
+        const name = `tracefab-registre-coffre-${state.demo ? 'DEMO-' : ''}${date}.csv`;
+        // BOM UTF-8 : sans elle, Excel interprète mal les caractères accentués.
+        const blob = new Blob(['\uFEFF' + buildVaultRegisterCsv(rows)], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        notify(`Registre exporté — ${rows.length} preuve(s)${state.demo ? ', données de démonstration' : ''}.`);
+      }
+
       function documentsView() {
         return `<div class="page-head">
             <div>
@@ -1844,7 +1902,10 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
               <p>${esc(t('vaultDesc'))}</p>
             </div>
             <div class="actions">
-              <button class="btn btn-secondary btn-small" onclick="alert('Registre d\'inventaire exporté.')">Exporter Registre Vault</button>
+              <div>
+                <button class="btn btn-secondary btn-small" onclick="exportVaultRegister()">Exporter le registre d'inventaire</button>
+                <p class="meta" style="margin-top:6px;max-width:300px">Reprend les documents réellement chargés du coffre, colonnes par colonnes. Aucune donnée ajoutée, aucune valeur de remplacement : un champ absent reste vide.</p>
+              </div>
             </div>
           </div>
 
@@ -2355,6 +2416,8 @@ Coton Recyclé GRS; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required st
 
       window.handleBomImportSubmit = handleBomImportSubmit;
       window.previewBomCsv = previewBomCsv;
+      window.exportVaultRegister = exportVaultRegister;
+      window.buildVaultRegisterCsv = buildVaultRegisterCsv;
 
       function bind() {
         document.querySelectorAll('[data-view]').forEach((element) => element.addEventListener('click', () => { state.view = element.dataset.view; if (state.view !== 'requestDetail') state.selectedRequest = null; render(); }));
