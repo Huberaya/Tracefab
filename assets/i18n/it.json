@@ -2330,5 +2330,48 @@
       "interestPilot": "Un pilota",
       "interestOther": "Altro"
     }
+  },
+  "shell": {
+    "common": {
+      "close": "Chiudi"
+    },
+    "trigger": {
+      "palette": "Tavolozza dei comandi",
+      "notifications": "Notifiche"
+    },
+    "palette": {
+      "title": "Tavolozza dei comandi",
+      "placeholder": "Cerca o vai a…",
+      "move": "navigare",
+      "open": "aprire",
+      "close": "chiudere",
+      "navigation": "Navigazione",
+      "actions": "Azioni",
+      "entities": "Ricerca",
+      "noResults": "Nessun risultato. Prova con un'altra parola."
+    },
+    "notifications": {
+      "title": "Notifiche",
+      "empty": "Al momento nulla richiede la tua attenzione."
+    },
+    "console": {
+      "notifOverdueTitle": "Richiesta in ritardo",
+      "notifDueSoonTitle": "Richiesta in scadenza",
+      "notifReviewTitle": "Risposta da verificare",
+      "notifReviewDetail": "Una risposta del fornitore è pronta per la revisione.",
+      "actionOpen": "Apri",
+      "actionReview": "Verifica"
+    },
+    "portal": {
+      "notifAnswerTitle": "Richiesta in attesa di risposta",
+      "notifAnswerDetailPrefix": "Inviata da",
+      "notifOverdueTitle": "Richiesta in ritardo",
+      "notifCertExpiringTitle": "Certificazione in scadenza",
+      "notifCertExpiringDetailPrefix": "Scade il",
+      "notifCapTitle": "Piano di azione correttiva in corso",
+      "notifCapDetailPrefix": "Aperto il",
+      "actionOpen": "Apri",
+      "actionAnswer": "Rispondi"
+    }
   }
 }

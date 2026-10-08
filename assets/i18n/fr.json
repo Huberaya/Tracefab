@@ -2330,5 +2330,48 @@
       "interestPilot": "Un pilote",
       "interestOther": "Autre chose"
     }
+  },
+  "shell": {
+    "common": {
+      "close": "Fermer"
+    },
+    "trigger": {
+      "palette": "Palette de commandes",
+      "notifications": "Notifications"
+    },
+    "palette": {
+      "title": "Palette de commandes",
+      "placeholder": "Rechercher ou aller à…",
+      "move": "naviguer",
+      "open": "ouvrir",
+      "close": "fermer",
+      "navigation": "Navigation",
+      "actions": "Actions",
+      "entities": "Recherche",
+      "noResults": "Aucun résultat. Essayez un autre mot."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "empty": "Rien ne demande votre attention pour le moment."
+    },
+    "console": {
+      "notifOverdueTitle": "Demande en retard",
+      "notifDueSoonTitle": "Demande bientôt à échéance",
+      "notifReviewTitle": "Réponse à vérifier",
+      "notifReviewDetail": "Une réponse fournisseur est prête pour la revue.",
+      "actionOpen": "Ouvrir",
+      "actionReview": "Vérifier"
+    },
+    "portal": {
+      "notifAnswerTitle": "Demande en attente de votre réponse",
+      "notifAnswerDetailPrefix": "Envoyée par",
+      "notifOverdueTitle": "Demande en retard",
+      "notifCertExpiringTitle": "Certification bientôt expirée",
+      "notifCertExpiringDetailPrefix": "Expire le",
+      "notifCapTitle": "Plan d'action corrective en cours",
+      "notifCapDetailPrefix": "Ouvert le",
+      "actionOpen": "Ouvrir",
+      "actionAnswer": "Répondre"
+    }
   }
 }

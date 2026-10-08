@@ -366,10 +366,12 @@
     </script>
     <script src="/assets/i18n/en.js"></script>
     <script src="/assets/js/tf-i18n.js"></script>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-shell.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
 </head>
 <body>
   <div id="app"></div>
+  <script src="/assets/js/tf-shell.js"></script>
   <script>
     (() => {
       'use strict';
@@ -521,7 +523,7 @@
       function openRequests() { return state.requests.filter((request) => !['approved','cancelled'].includes(request.status)); }
       function shell(content) {
         const userName = state.user?.fullName || state.user?.email || 'Utilisateur';
-        return `${state.demo ? `<div class="demo-banner">${esc(t('spDemoBanner')).replace('?demo=0', '<code>?demo=0</code>')}</div>` : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖','Mass-Balance')}${navButton('passport','✦','Passeport')}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || t('spDemoMode'))}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
+        return `${state.demo ? `<div class="demo-banner">${esc(t('spDemoBanner')).replace('?demo=0', '<code>?demo=0</code>')}</div>` : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖','Mass-Balance')}${navButton('passport','✦','Passeport')}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || t('spDemoMode'))}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions"><button type="button" class="tfsh-trigger" data-shell-open="palette" aria-label="${esc((window.TF_I18N && window.TF_I18N.t('shell.trigger.palette', 'Command palette')) || 'Command palette')}"><span aria-hidden="true">⌕</span><span class="tfsh-trigger__label">⌘K</span></button><button type="button" class="tfsh-trigger" data-shell-open="notifications" aria-label="${esc((window.TF_I18N && window.TF_I18N.t('shell.trigger.notifications', 'Notifications')) || 'Notifications')}"><span aria-hidden="true">◉</span><span data-shell-badge hidden></span></button>${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
 
       function modalView(type) {
@@ -1252,18 +1254,83 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
         if (i18nReady) render();
       });
 
-      window.tracefabSupplierPortal = { state, sync, render, goView };
+      window.tracefabSupplierPortal = { state, sync, render, goView, openRequest };
       (window.TF_I18N ? window.TF_I18N.setLanguage(state.lang) : Promise.resolve())
         .then(() => { i18nReady = true; }, () => { i18nReady = true; })
         .then(boot, boot);
     })();
   </script>
-</body>
-</html>
+  <script>
+    /* Chantier 04 — câblage du shell applicatif (palette Ctrl/Cmd+K + centre
+       de notifications) côté portail fournisseur. Le shell ne lit que l'état
+       déjà chargé par le portail : il n'invente rien, aucun appel API. */
+    (function wireShell() {
+      const host = window.tracefabSupplierPortal;
+      if (!host || !window.TFShell) return;
+      const TF = () => window.TF_I18N;
+      const t = (k, fb) => (TF() ? TF().t(k, fb) : fb);
+      const st = () => host.state || {};
+
+      window.TFShell.init({
+        t,
+        providers: () => {
+          const s = st();
+          const nav = [
+            ['overview', '⌂'], ['requests', '↗'], ['sites', '▦'], ['certifications', '✓'],
+            ['materials', '◇'], ['documents', '▤'], ['dataPoints', '⌁'], ['members', '♙'],
+            ['quality', '◒'], ['massBalance', '⚖'], ['passport', '✦'], ['profile', '◎']
+          ].map(([view, icon]) => ({
+            id: 'nav-' + view, icon,
+            label: (view.charAt(0).toUpperCase() + view.slice(1)).replace(/([A-Z])/g, ' $1'),
+            run: () => host.goView(view)
+          }));
+
+          const entities = [];
+          (s.requests || []).forEach((r) => entities.push({
+            id: 'req-' + r.id, icon: '↗', label: r.title || r.id, hint: r.status || '',
+            run: () => host.openRequest(r.id)
+          }));
+          (s.materials || []).forEach((m) => entities.push({
+            id: 'mat-' + m.id, icon: '◇', label: m.name || m.materialType || m.id, hint: m.materialType || '',
+            run: () => host.goView('materials')
+          }));
+          (s.certifications || []).forEach((c) => entities.push({
+            id: 'cert-' + c.id, icon: '✓', label: c.standardName || c.standardCode || c.id, hint: c.issuerName || '',
+            run: () => host.goView('certifications')
+          }));
+          (s.documents || []).forEach((d) => entities.push({
+            id: 'doc-' + d.id, icon: '▤', label: d.originalFilename || d.id, hint: d.kind || '',
+            run: () => host.goView('documents')
+          }));
+
+          const now = Date.now();
+          const notifications = [];
+          (s.requests || []).forEach((r) => {
+            if (['approved', 'cancelled'].includes(r.status)) return;
+            const due = r.dueAt ? new Date(r.dueAt).getTime() : null;
+            const label = r.title || r.id;
+            if (due && due < now) {
+              notifications.push({ id: 'ovd-' + r.id, severity: 'critical', title: t('shell.portal.notifOverdueTitle', 'Request overdue'), detail: label, actionLabel: t('shell.portal.actionOpen', 'Open'), run: () => host.openRequest(r.id) });
+            } else if (r.status === 'in_progress') {
+              notifications.push({ id: 'ans-' + r.id, severity: 'info', title: t('shell.portal.notifAnswerTitle', 'Data request awaiting your answer'), detail: (t('shell.portal.notifAnswerDetailPrefix', 'Request:') + ' ' + label).trim(), actionLabel: t('shell.portal.actionAnswer', 'Answer'), run: () => host.openRequest(r.id) });
+            }
+          });
+          (s.certifications || []).forEach((c) => {
+            const exp = c.expiresAt ? new Date(c.expiresAt).getTime() : null;
+            if (exp && exp > 0 && exp - now < 60 * 86400000) {
+              notifications.push({ id: 'exp-' + c.id, severity: 'warning', title: t('shell.portal.notifCertExpiringTitle', 'Certification expiring soon'), detail: (t('shell.portal.notifCertExpiringDetailPrefix', 'Certificate:') + ' ' + (c.standardName || c.standardCode || c.id)).trim(), actionLabel: t('shell.portal.actionOpen', 'Open'), run: () => host.goView('certifications') });
+            }
+          });
+          (s.caps || []).forEach((cap) => {
+            if (['resolved', 'closed', 'approved'].includes(cap.status)) return;
+            notifications.push({ id: 'cap-' + cap.id, severity: 'warning', title: t('shell.portal.notifCapTitle', 'Corrective action requested'), detail: (t('shell.portal.notifCapDetailPrefix', 'CAP:') + ' ' + (cap.title || cap.id)).trim(), actionLabel: t('shell.portal.actionOpen', 'Open'), run: () => host.goView('quality') });
+          });
+
+          return { nav, actions: [], entities, notifications };
+        }
+      });
+      window.TFShell.refresh();
+    })();
   </script>
 </body>
-</html>
-body>
-</html>
-body>
 </html>

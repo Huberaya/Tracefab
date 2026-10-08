@@ -2330,5 +2330,48 @@
       "interestPilot": "Een pilot",
       "interestOther": "Iets anders"
     }
+  },
+  "shell": {
+    "common": {
+      "close": "Sluiten"
+    },
+    "trigger": {
+      "palette": "Commandopalet",
+      "notifications": "Meldingen"
+    },
+    "palette": {
+      "title": "Commandopalet",
+      "placeholder": "Zoeken of springen naar…",
+      "move": "navigeren",
+      "open": "openen",
+      "close": "sluiten",
+      "navigation": "Navigatie",
+      "actions": "Acties",
+      "entities": "Zoeken",
+      "noResults": "Geen resultaat. Probeer een ander woord."
+    },
+    "notifications": {
+      "title": "Meldingen",
+      "empty": "Er vraagt op dit moment niets je aandacht."
+    },
+    "console": {
+      "notifOverdueTitle": "Verzoek over datum",
+      "notifDueSoonTitle": "Verzoek bijna verlopen",
+      "notifReviewTitle": "Antwoord wacht op review",
+      "notifReviewDetail": "Een leveranciersantwoord is klaar voor review.",
+      "actionOpen": "Openen",
+      "actionReview": "Reviewen"
+    },
+    "portal": {
+      "notifAnswerTitle": "Verzoek wacht op je antwoord",
+      "notifAnswerDetailPrefix": "Verstuurd door",
+      "notifOverdueTitle": "Verzoek over datum",
+      "notifCertExpiringTitle": "Certificering verloopt binnenkort",
+      "notifCertExpiringDetailPrefix": "Verloopt op",
+      "notifCapTitle": "Corrigerend actieplan in behandeling",
+      "notifCapDetailPrefix": "Geopend op",
+      "actionOpen": "Openen",
+      "actionAnswer": "Beantwoorden"
+    }
   }
 }

@@ -1,0 +1,268 @@
+{
+  "en": {
+    "common": { "close": "Close" },
+    "trigger": { "palette": "Command palette", "notifications": "Notifications" },
+    "palette": {
+      "title": "Command palette",
+      "placeholder": "Search or jump to…",
+      "move": "navigate",
+      "open": "open",
+      "close": "close",
+      "navigation": "Navigation",
+      "actions": "Actions",
+      "entities": "Search",
+      "noResults": "No result. Try another word."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "empty": "Nothing needs your attention right now."
+    },
+    "console": {
+      "notifOverdueTitle": "Request overdue",
+      "notifDueSoonTitle": "Request due soon",
+      "notifReviewTitle": "Response awaiting review",
+      "notifReviewDetail": "A supplier response is ready for review.",
+      "actionOpen": "Open",
+      "actionReview": "Review"
+    },
+    "portal": {
+      "notifAnswerTitle": "Request awaiting your response",
+      "notifAnswerDetailPrefix": "Sent by",
+      "notifOverdueTitle": "Request overdue",
+      "notifCertExpiringTitle": "Certification expiring soon",
+      "notifCertExpiringDetailPrefix": "Expires on",
+      "notifCapTitle": "Corrective action plan in progress",
+      "notifCapDetailPrefix": "Opened on",
+      "actionOpen": "Open",
+      "actionAnswer": "Answer"
+    }
+  },
+  "fr": {
+    "common": { "close": "Fermer" },
+    "trigger": { "palette": "Palette de commandes", "notifications": "Notifications" },
+    "palette": {
+      "title": "Palette de commandes",
+      "placeholder": "Rechercher ou aller à…",
+      "move": "naviguer",
+      "open": "ouvrir",
+      "close": "fermer",
+      "navigation": "Navigation",
+      "actions": "Actions",
+      "entities": "Recherche",
+      "noResults": "Aucun résultat. Essayez un autre mot."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "empty": "Rien ne demande votre attention pour le moment."
+    },
+    "console": {
+      "notifOverdueTitle": "Demande en retard",
+      "notifDueSoonTitle": "Demande bientôt à échéance",
+      "notifReviewTitle": "Réponse à vérifier",
+      "notifReviewDetail": "Une réponse fournisseur est prête pour la revue.",
+      "actionOpen": "Ouvrir",
+      "actionReview": "Vérifier"
+    },
+    "portal": {
+      "notifAnswerTitle": "Demande en attente de votre réponse",
+      "notifAnswerDetailPrefix": "Envoyée par",
+      "notifOverdueTitle": "Demande en retard",
+      "notifCertExpiringTitle": "Certification bientôt expirée",
+      "notifCertExpiringDetailPrefix": "Expire le",
+      "notifCapTitle": "Plan d'action corrective en cours",
+      "notifCapDetailPrefix": "Ouvert le",
+      "actionOpen": "Ouvrir",
+      "actionAnswer": "Répondre"
+    }
+  },
+  "de": {
+    "common": { "close": "Schließen" },
+    "trigger": { "palette": "Befehlspalette", "notifications": "Benachrichtigungen" },
+    "palette": {
+      "title": "Befehlspalette",
+      "placeholder": "Suchen oder springen zu…",
+      "move": "navigieren",
+      "open": "öffnen",
+      "close": "schließen",
+      "navigation": "Navigation",
+      "actions": "Aktionen",
+      "entities": "Suche",
+      "noResults": "Kein Ergebnis. Versuchen Sie ein anderes Wort."
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "empty": "Im Moment erfordert nichts Ihre Aufmerksamkeit."
+    },
+    "console": {
+      "notifOverdueTitle": "Anfrage überfällig",
+      "notifDueSoonTitle": "Anfrage bald fällig",
+      "notifReviewTitle": "Antwort wartet auf Prüfung",
+      "notifReviewDetail": "Eine Lieferantenantwort ist bereit zur Prüfung.",
+      "actionOpen": "Öffnen",
+      "actionReview": "Prüfen"
+    },
+    "portal": {
+      "notifAnswerTitle": "Anfrage wartet auf Ihre Antwort",
+      "notifAnswerDetailPrefix": "Gesendet von",
+      "notifOverdueTitle": "Anfrage überfällig",
+      "notifCertExpiringTitle": "Zertifizierung läuft bald ab",
+      "notifCertExpiringDetailPrefix": "Läuft ab am",
+      "notifCapTitle": "Korrekturmaßnahmenplan in Bearbeitung",
+      "notifCapDetailPrefix": "Eröffnet am",
+      "actionOpen": "Öffnen",
+      "actionAnswer": "Antworten"
+    }
+  },
+  "it": {
+    "common": { "close": "Chiudi" },
+    "trigger": { "palette": "Tavolozza dei comandi", "notifications": "Notifiche" },
+    "palette": {
+      "title": "Tavolozza dei comandi",
+      "placeholder": "Cerca o vai a…",
+      "move": "navigare",
+      "open": "aprire",
+      "close": "chiudere",
+      "navigation": "Navigazione",
+      "actions": "Azioni",
+      "entities": "Ricerca",
+      "noResults": "Nessun risultato. Prova con un'altra parola."
+    },
+    "notifications": {
+      "title": "Notifiche",
+      "empty": "Al momento nulla richiede la tua attenzione."
+    },
+    "console": {
+      "notifOverdueTitle": "Richiesta in ritardo",
+      "notifDueSoonTitle": "Richiesta in scadenza",
+      "notifReviewTitle": "Risposta da verificare",
+      "notifReviewDetail": "Una risposta del fornitore è pronta per la revisione.",
+      "actionOpen": "Apri",
+      "actionReview": "Verifica"
+    },
+    "portal": {
+      "notifAnswerTitle": "Richiesta in attesa di risposta",
+      "notifAnswerDetailPrefix": "Inviata da",
+      "notifOverdueTitle": "Richiesta in ritardo",
+      "notifCertExpiringTitle": "Certificazione in scadenza",
+      "notifCertExpiringDetailPrefix": "Scade il",
+      "notifCapTitle": "Piano di azione correttiva in corso",
+      "notifCapDetailPrefix": "Aperto il",
+      "actionOpen": "Apri",
+      "actionAnswer": "Rispondi"
+    }
+  },
+  "es": {
+    "common": { "close": "Cerrar" },
+    "trigger": { "palette": "Paleta de comandos", "notifications": "Notificaciones" },
+    "palette": {
+      "title": "Paleta de comandos",
+      "placeholder": "Buscar o ir a…",
+      "move": "navegar",
+      "open": "abrir",
+      "close": "cerrar",
+      "navigation": "Navegación",
+      "actions": "Acciones",
+      "entities": "Búsqueda",
+      "noResults": "Sin resultados. Prueba con otra palabra."
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "empty": "Nada requiere tu atención por ahora."
+    },
+    "console": {
+      "notifOverdueTitle": "Solicitud vencida",
+      "notifDueSoonTitle": "Solicitud por vencer",
+      "notifReviewTitle": "Respuesta pendiente de revisión",
+      "notifReviewDetail": "Una respuesta de proveedor está lista para revisar.",
+      "actionOpen": "Abrir",
+      "actionReview": "Revisar"
+    },
+    "portal": {
+      "notifAnswerTitle": "Solicitud en espera de tu respuesta",
+      "notifAnswerDetailPrefix": "Enviada por",
+      "notifOverdueTitle": "Solicitud vencida",
+      "notifCertExpiringTitle": "Certificación por caducar",
+      "notifCertExpiringDetailPrefix": "Caduca el",
+      "notifCapTitle": "Plan de acción correctiva en curso",
+      "notifCapDetailPrefix": "Abierto el",
+      "actionOpen": "Abrir",
+      "actionAnswer": "Responder"
+    }
+  },
+  "nl": {
+    "common": { "close": "Sluiten" },
+    "trigger": { "palette": "Commandopalet", "notifications": "Meldingen" },
+    "palette": {
+      "title": "Commandopalet",
+      "placeholder": "Zoeken of springen naar…",
+      "move": "navigeren",
+      "open": "openen",
+      "close": "sluiten",
+      "navigation": "Navigatie",
+      "actions": "Acties",
+      "entities": "Zoeken",
+      "noResults": "Geen resultaat. Probeer een ander woord."
+    },
+    "notifications": {
+      "title": "Meldingen",
+      "empty": "Er vraagt op dit moment niets je aandacht."
+    },
+    "console": {
+      "notifOverdueTitle": "Verzoek over datum",
+      "notifDueSoonTitle": "Verzoek bijna verlopen",
+      "notifReviewTitle": "Antwoord wacht op review",
+      "notifReviewDetail": "Een leveranciersantwoord is klaar voor review.",
+      "actionOpen": "Openen",
+      "actionReview": "Reviewen"
+    },
+    "portal": {
+      "notifAnswerTitle": "Verzoek wacht op je antwoord",
+      "notifAnswerDetailPrefix": "Verstuurd door",
+      "notifOverdueTitle": "Verzoek over datum",
+      "notifCertExpiringTitle": "Certificering verloopt binnenkort",
+      "notifCertExpiringDetailPrefix": "Verloopt op",
+      "notifCapTitle": "Corrigerend actieplan in behandeling",
+      "notifCapDetailPrefix": "Geopend op",
+      "actionOpen": "Openen",
+      "actionAnswer": "Beantwoorden"
+    }
+  },
+  "pt": {
+    "common": { "close": "Fechar" },
+    "trigger": { "palette": "Paleta de comandos", "notifications": "Notificações" },
+    "palette": {
+      "title": "Paleta de comandos",
+      "placeholder": "Pesquisar ou ir para…",
+      "move": "navegar",
+      "open": "abrir",
+      "close": "fechar",
+      "navigation": "Navegação",
+      "actions": "Ações",
+      "entities": "Pesquisa",
+      "noResults": "Sem resultados. Tente outra palavra."
+    },
+    "notifications": {
+      "title": "Notificações",
+      "empty": "Nada precisa da sua atenção neste momento."
+    },
+    "console": {
+      "notifOverdueTitle": "Pedido em atraso",
+      "notifDueSoonTitle": "Pedido quase no prazo limite",
+      "notifReviewTitle": "Resposta por rever",
+      "notifReviewDetail": "Uma resposta de fornecedor está pronta para revisão.",
+      "actionOpen": "Abrir",
+      "actionReview": "Rever"
+    },
+    "portal": {
+      "notifAnswerTitle": "Pedido à espera da sua resposta",
+      "notifAnswerDetailPrefix": "Enviado por",
+      "notifOverdueTitle": "Pedido em atraso",
+      "notifCertExpiringTitle": "Certificação a expirar em breve",
+      "notifCertExpiringDetailPrefix": "Expira em",
+      "notifCapTitle": "Plano de ação corretiva em curso",
+      "notifCapDetailPrefix": "Aberto em",
+      "actionOpen": "Abrir",
+      "actionAnswer": "Responder"
+    }
+  }
+}

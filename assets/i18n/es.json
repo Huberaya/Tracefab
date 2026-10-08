@@ -2330,5 +2330,48 @@
       "interestPilot": "Un piloto",
       "interestOther": "Otra cosa"
     }
+  },
+  "shell": {
+    "common": {
+      "close": "Cerrar"
+    },
+    "trigger": {
+      "palette": "Paleta de comandos",
+      "notifications": "Notificaciones"
+    },
+    "palette": {
+      "title": "Paleta de comandos",
+      "placeholder": "Buscar o ir a…",
+      "move": "navegar",
+      "open": "abrir",
+      "close": "cerrar",
+      "navigation": "Navegación",
+      "actions": "Acciones",
+      "entities": "Búsqueda",
+      "noResults": "Sin resultados. Prueba con otra palabra."
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "empty": "Nada requiere tu atención por ahora."
+    },
+    "console": {
+      "notifOverdueTitle": "Solicitud vencida",
+      "notifDueSoonTitle": "Solicitud por vencer",
+      "notifReviewTitle": "Respuesta pendiente de revisión",
+      "notifReviewDetail": "Una respuesta de proveedor está lista para revisar.",
+      "actionOpen": "Abrir",
+      "actionReview": "Revisar"
+    },
+    "portal": {
+      "notifAnswerTitle": "Solicitud en espera de tu respuesta",
+      "notifAnswerDetailPrefix": "Enviada por",
+      "notifOverdueTitle": "Solicitud vencida",
+      "notifCertExpiringTitle": "Certificación por caducar",
+      "notifCertExpiringDetailPrefix": "Caduca el",
+      "notifCapTitle": "Plan de acción correctiva en curso",
+      "notifCapDetailPrefix": "Abierto el",
+      "actionOpen": "Abrir",
+      "actionAnswer": "Responder"
+    }
   }
 }

@@ -1,0 +1,239 @@
+/* ==========================================================================
+   TRACEFAB SHELL — v1.0 (Chantier 04)
+   Command palette, recherche globale et centre de notifications partages
+   entre la Brand Console et le Supplier Portal.
+
+   Regles :
+     - le shell vit dans des conteneurs fixes en fin de <body>, hors des
+       zones re-rendues par innerHTML des SPA ;
+     - z-index au-dessus des modales applicatives ;
+     - classes prefixees .tfsh-* : aucune collision avec l'existant ;
+     - prefere le clavier : palette et panneau sont pilotables sans souris.
+   ========================================================================== */
+
+:root {
+  --tfsh-bg: #0c1f18;
+  --tfsh-bg-raised: #112b23;
+  --tfsh-line: rgba(242, 245, 243, 0.14);
+  --tfsh-ink: #eef5f1;
+  --tfsh-ink-muted: rgba(242, 245, 243, 0.62);
+  --tfsh-ink-faint: rgba(242, 245, 243, 0.40);
+  --tfsh-accent: #2ee39b;
+  --tfsh-warn: #eec86f;
+  --tfsh-crit: #ff9a82;
+  --tfsh-z: 9600;
+}
+
+/* -- Boutons declencheurs -------------------------------------------------- */
+
+.tfsh-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  position: relative;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line, #e2e8df);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink, #17231f);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.tfsh-trigger:hover { border-color: var(--green, #0b7656); }
+.tfsh-trigger kbd {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  padding: 2px 5px;
+  border: 1px solid var(--line, #d7dfd6);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: #fff;
+  color: var(--muted, #71807a);
+}
+.tfsh-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--tfsh-crit);
+  color: #3a140c;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+/* -- Overlays --------------------------------------------------------------- */
+
+.tfsh-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--tfsh-z);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 9vh 18px 32px;
+  background: rgba(4, 11, 8, 0.55);
+  backdrop-filter: blur(2px);
+}
+.tfsh-overlay.is-open { display: flex; }
+
+.tfsh-panel {
+  width: min(640px, 100%);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--tfsh-bg);
+  color: var(--tfsh-ink);
+  border: 1px solid var(--tfsh-line);
+  border-radius: 16px;
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.5);
+}
+.tfsh-panel--side { width: min(460px, 100%); }
+
+.tfsh-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tfsh-line);
+}
+.tfsh-input-row .tfsh-glyph { color: var(--tfsh-ink-faint); flex: none; }
+.tfsh-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--tfsh-ink);
+  font: inherit;
+  font-size: 15px;
+}
+.tfsh-input::placeholder { color: var(--tfsh-ink-faint); }
+
+.tfsh-list {
+  overflow-y: auto;
+  padding: 8px;
+  margin: 0;
+  list-style: none;
+}
+.tfsh-group {
+  padding: 10px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tfsh-ink-faint);
+}
+.tfsh-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--tfsh-ink);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.tfsh-item:hover,
+.tfsh-item.is-active { background: var(--tfsh-bg-raised); }
+.tfsh-item.is-active { outline: 1px solid rgba(46, 227, 155, 0.45); }
+.tfsh-item__icon { flex: none; width: 20px; text-align: center; color: var(--tfsh-accent); }
+.tfsh-item__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tfsh-item__hint { flex: none; font-size: 11px; color: var(--tfsh-ink-faint); }
+
+.tfsh-empty {
+  padding: 26px 16px;
+  text-align: center;
+  color: var(--tfsh-ink-muted);
+  font-size: 13.5px;
+}
+
+.tfsh-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--tfsh-line);
+}
+.tfsh-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.tfsh-close {
+  border: 0;
+  background: transparent;
+  color: var(--tfsh-ink-muted);
+  font-size: 18px;
+  cursor: pointer;
+  min-height: 32px;
+  min-width: 32px;
+  border-radius: 8px;
+}
+.tfsh-close:hover { color: var(--tfsh-ink); background: var(--tfsh-bg-raised); }
+
+/* -- Notifications ---------------------------------------------------------- */
+
+.tfsh-notif {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 13px 12px;
+  border-radius: 10px;
+}
+.tfsh-notif + .tfsh-notif { margin-top: 4px; }
+.tfsh-notif:hover { background: var(--tfsh-bg-raised); }
+.tfsh-notif__dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; background: var(--tfsh-ink-faint); }
+.tfsh-notif--critical .tfsh-notif__dot { background: var(--tfsh-crit); }
+.tfsh-notif--warning .tfsh-notif__dot { background: var(--tfsh-warn); }
+.tfsh-notif--info .tfsh-notif__dot { background: var(--tfsh-accent); }
+.tfsh-notif__title { margin: 0; font-size: 13.5px; font-weight: 650; }
+.tfsh-notif__detail { margin: 3px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--tfsh-ink-muted); }
+.tfsh-notif__action {
+  align-self: center;
+  border: 0;
+  background: transparent;
+  color: var(--tfsh-accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tfsh-notif__action:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.tfsh-foot {
+  padding: 10px 16px;
+  border-top: 1px solid var(--tfsh-line);
+  font-size: 11.5px;
+  color: var(--tfsh-ink-faint);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.tfsh-foot kbd {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  border: 1px solid var(--tfsh-line);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-right: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tfsh-overlay, .tfsh-panel { animation: none !important; transition: none !important; }
+}
+@media (max-width: 560px) {
+  .tfsh-overlay { padding: 5vh 10px 20px; }
+  .tfsh-trigger .tfsh-trigger__label { display: none; }
+}

@@ -2206,5 +2206,48 @@ window.TF_I18N_BUNDLES.en = {
       "interestPilot": "A pilot",
       "interestOther": "Something else"
     }
+  },
+  "shell": {
+    "common": {
+      "close": "Close"
+    },
+    "trigger": {
+      "palette": "Command palette",
+      "notifications": "Notifications"
+    },
+    "palette": {
+      "title": "Command palette",
+      "placeholder": "Search or jump to…",
+      "move": "navigate",
+      "open": "open",
+      "close": "close",
+      "navigation": "Navigation",
+      "actions": "Actions",
+      "entities": "Search",
+      "noResults": "No result. Try another word."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "empty": "Nothing needs your attention right now."
+    },
+    "console": {
+      "notifOverdueTitle": "Request overdue",
+      "notifDueSoonTitle": "Request due soon",
+      "notifReviewTitle": "Response awaiting review",
+      "notifReviewDetail": "A supplier response is ready for review.",
+      "actionOpen": "Open",
+      "actionReview": "Review"
+    },
+    "portal": {
+      "notifAnswerTitle": "Request awaiting your response",
+      "notifAnswerDetailPrefix": "Sent by",
+      "notifOverdueTitle": "Request overdue",
+      "notifCertExpiringTitle": "Certification expiring soon",
+      "notifCertExpiringDetailPrefix": "Expires on",
+      "notifCapTitle": "Corrective action plan in progress",
+      "notifCapDetailPrefix": "Opened on",
+      "actionOpen": "Open",
+      "actionAnswer": "Answer"
+    }
   }
 };

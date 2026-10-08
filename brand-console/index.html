@@ -986,10 +986,12 @@
     <script>window.TF_I18N_SKIP_META = true;</script>
     <script src="/assets/i18n/en.js"></script>
     <script src="/assets/js/tf-i18n.js"></script>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-shell.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
 </head>
 <body>
   <div id="app"></div>
+  <script src="/assets/js/tf-shell.js"></script>
   <script>
     (() => {
       'use strict';
@@ -1724,7 +1726,7 @@
               <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || bt('shDemoAccount'))}</span><button class="link-button" data-action="signout">${bt('signOut')}</button></div></div></div>
             </aside>
             <main class="main">
-              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">${esc(bt("newRequest"))}</button></div></header>
+              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions"><button type="button" class="tfsh-trigger" data-shell-open="palette" aria-label="${esc((window.TF_I18N && window.TF_I18N.t('shell.trigger.palette', 'Command palette')) || 'Command palette')}"><span aria-hidden="true">⌕</span><span class="tfsh-trigger__label">⌘K</span></button><button type="button" class="tfsh-trigger" data-shell-open="notifications" aria-label="${esc((window.TF_I18N && window.TF_I18N.t('shell.trigger.notifications', 'Notifications')) || 'Notifications')}"><span aria-hidden="true">◉</span><span data-shell-badge hidden></span></button>${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">${esc(bt("newRequest"))}</button></div></header>
               <section class="content">${content}</section>
             </main>
           </div>
@@ -4705,12 +4707,84 @@
           await sync();
         }
       }
-      window.tracefabBrandConsole = { state, sync };
+      window.tracefabBrandConsole = { state, sync, render, openProduct, openSupplier, openRequest };
       // Le catalogue doit etre charge dans la langue de l'application avant
       // le premier rendu.
       (window.TF_I18N ? window.TF_I18N.setLanguage(state.lang) : Promise.resolve())
         .then(() => { i18nReady = true; }, () => { i18nReady = true; })
         .then(boot, boot);
+    })();
+  </script>
+  <script>
+    /* Chantier 04 — câblage du shell applicatif (palette Ctrl/Cmd+K + centre
+       de notifications). Le shell ne lit que l'état deja charge par la
+       console : il n'invente rien et n'appelle aucune API lui-meme. */
+    (function wireShell() {
+      const host = window.tracefabBrandConsole;
+      const TF = () => window.TF_I18N;
+      const t = (k, fb) => (TF() ? TF().t(k, fb) : fb);
+      if (!host || !window.TFShell) return;
+
+      const st = () => host.state || {};
+      const goView = (v) => { const s = st(); s.view = v; s.selectedRequest = null; host.render(); };
+      const name = (o) => (o && (o.display_name || o.legal_name || o.name)) || '';
+      const productName = (p) => (p && (p.name || p.reference)) || '';
+      const supplierName = (rec) => (rec && rec.organizations ? name(rec.organizations) : (rec && rec.name) || '');
+
+      window.TFShell.init({
+        t,
+        providers: () => {
+          const s = st();
+          const nav = [
+            ['overview', '⌂'], ['products', '◇'], ['suppliers', '◎'], ['materials', '⬡'], ['supplyChain', '☍'],
+            ['requests', '↗'], ['questionnaires', '✎'], ['documents', '▤'], ['certifications', '✓'],
+            ['quality', '◒'], ['risk', '⚠'], ['massBalance', '⚖'], ['integrations', '⇄'],
+            ['intelligence', '✦'], ['dpp', '▣'], ['reports', '☷'], ['settings', '⚙']
+          ].map(([view, icon]) => ({
+            id: 'nav-' + view, icon,
+            label: (view.charAt(0).toUpperCase() + view.slice(1)).replace(/([A-Z])/g, ' $1'),
+            run: () => goView(view)
+          }));
+
+          const actions = [
+            { id: 'act-new-request', icon: '↗', label: t('console.newRequest', 'New data request'), run: () => { s.modal = 'new-request'; host.render(); } },
+            { id: 'act-new-product', icon: '◇', label: t('console.pdNew', 'New product'), run: () => { s.modal = 'new-product'; host.render(); } },
+            { id: 'act-invite', icon: '◎', label: t('console.mdInviteSupplier', 'Invite a supplier'), run: () => { s.modal = 'invite-supplier'; host.render(); } }
+          ];
+
+          const entities = [];
+          (s.products || []).forEach((p) => entities.push({
+            id: 'prod-' + p.id, icon: '◇', label: productName(p), hint: p.reference || '',
+            run: () => host.openProduct(p.id)
+          }));
+          (s.suppliers || []).forEach((rec) => entities.push({
+            id: 'sup-' + (rec.id || rec.organization_id), icon: '◎', label: supplierName(rec), hint: (rec.organizations && rec.organizations.country_code) || '',
+            run: () => host.openSupplier(rec.id || rec.organization_id)
+          }));
+          (s.requests || []).forEach((r) => entities.push({
+            id: 'req-' + r.id, icon: '↗', label: r.title || r.reference || r.id, hint: r.status || '',
+            run: () => host.openRequest(r.id)
+          }));
+
+          const now = Date.now();
+          const notifications = [];
+          (s.requests || []).forEach((r) => {
+            if (['approved', 'cancelled'].includes(r.status)) return;
+            const due = r.dueAt ? new Date(r.dueAt).getTime() : null;
+            const label = r.title || r.reference || r.id;
+            if (due && due < now) {
+              notifications.push({ id: 'ovd-' + r.id, severity: 'critical', title: t('shell.console.notifOverdueTitle', 'Request overdue'), detail: label, actionLabel: t('shell.console.actionOpen', 'Open'), run: () => host.openRequest(r.id) });
+            } else if (due && due - now < 72 * 3600000) {
+              notifications.push({ id: 'due-' + r.id, severity: 'warning', title: t('shell.console.notifDueSoonTitle', 'Request due soon'), detail: label, actionLabel: t('shell.console.actionOpen', 'Open'), run: () => host.openRequest(r.id) });
+            } else if (r.status === 'submitted') {
+              notifications.push({ id: 'rev-' + r.id, severity: 'info', title: t('shell.console.notifReviewTitle', 'Response awaiting review'), detail: t('shell.console.notifReviewDetail', 'A supplier response is ready for review.'), actionLabel: t('shell.console.actionReview', 'Review'), run: () => host.openRequest(r.id) });
+            }
+          });
+
+          return { nav, actions, entities, notifications };
+        }
+      });
+      window.TFShell.refresh();
     })();
   </script>
 </body>
