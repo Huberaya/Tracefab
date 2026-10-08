@@ -165,7 +165,17 @@
 
         const r = demoAlea(20260407);
 
-        const CIBLE_FOURNISSEURS = 86, CIBLE_PRODUITS = 1248, CIBLE_SITES = 214;
+        // Les cibles viennent de /assets/js/tf-demo-figures.js, partage avec
+        // l'accueil. Les valeurs ci-dessous ne sont qu'un repli si le fichier
+        // n'a pas ete charge : elles ne doivent jamais diverger de lui, et un
+        // test le verifie.
+        const CHIFFRES = (typeof window !== 'undefined' && window.TF_DEMO_FIGURES) || {
+          produits: 1248, fournisseurs: 86, sites: 214, pays: 18,
+          qualite: 92.4, preuves: 84, verifies: 78, tracables: 91, dpp: 88,
+        };
+        const CIBLE_FOURNISSEURS = CHIFFRES.fournisseurs,
+              CIBLE_PRODUITS = CHIFFRES.produits,
+              CIBLE_SITES = CHIFFRES.sites;
 
         const formes = ['Textile Mill','Spinning Co','Dye House','Knitwear','Weaving','Finishing','Garment Works','Trims'];
 
@@ -274,6 +284,70 @@
 
         }
 
+        calibrerTaux();
+      }
+
+      /* Calibrage des taux.
+       *
+       * Les effectifs etaient deja construits pour tomber juste. Les taux,
+       * eux, etaient tires au sort : `r() < 0.84` sur 1 248 produits donne
+       * 85,3 %, pas 84 %. L'ecart entre la console et l'accueil n'etait pas
+       * un desaccord sur la valeur, c'etait du bruit d'echantillonnage
+       * affiche comme une mesure.
+       *
+       * On pose donc un quota exact, etale sur toute la liste plutot que
+       * groupe en tete : une page de resultats reste ainsi representative du
+       * total, ce qui ne serait pas le cas si les 84 % couverts occupaient
+       * les 84 premiers pour cent de la liste.
+       */
+      function calibrerTaux() {
+        const CHIFFRES = (typeof window !== 'undefined' && window.TF_DEMO_FIGURES) || {
+          qualite: 92.4, preuves: 84, verifies: 78, tracables: 91, dpp: 88,
+        };
+        const produits = state.products || [], fournisseurs = state.suppliers || [];
+
+        // `parmi` restreint le vivier. La verification par tiers est un
+        // sous-ensemble de la couverture de preuve : un produit verifie sans
+        // preuve est une incoherence, et c'est exactement celle que le
+        // validateur du semeur de pilote refuse. Le jeu de demonstration doit
+        // respecter ses propres regles.
+        const quota = (liste, champ, ciblePct, parmi, decalage) => {
+          const total = liste.length;
+          if (!total) return;
+          const voulu = Math.round((ciblePct / 100) * total);
+          liste.forEach((x) => { x[champ] = false; });
+          const vivier = parmi ? liste.filter((x) => x[parmi]) : liste;
+          const n = vivier.length;
+          if (!n) return;
+          const aPoser = Math.min(voulu, n);
+          let poses = 0;
+          for (let k = 0; k < n; k += 1) {
+            const du = Math.floor(((k + 1) * aPoser) / n);
+            if (du > poses) { vivier[(k + decalage) % n][champ] = true; poses = du; }
+          }
+        };
+        quota(produits, 'evidenceCovered', CHIFFRES.preuves, null, 0);
+        quota(produits, 'thirdPartyVerified', CHIFFRES.verifies, 'evidenceCovered', 0);
+        quota(produits, 'traceable', CHIFFRES.tracables, null, 113);
+
+        // Pour les moyennes on garde la dispersion tiree au sort et on
+        // deplace seulement le centre. Forcer chaque valeur a la cible
+        // donnerait une liste ou tous les fournisseurs ont la meme note, ce
+        // qui ne ressemble a aucun portefeuille reel.
+        const centrer = (liste, champ, cible, bas, haut) => {
+          const vals = liste.filter((x) => typeof x[champ] === 'number');
+          if (!vals.length) return;
+          const vise = Math.round(cible * vals.length);
+          let somme = vals.reduce((a, x) => a + x[champ], 0);
+          for (let garde = 0; somme !== vise && garde < vals.length * 80; garde += 1) {
+            const pas = somme < vise ? 1 : -1;
+            const x = vals[garde % vals.length];
+            const prochaine = x[champ] + pas;
+            if (prochaine >= bas && prochaine <= haut) { x[champ] = prochaine; somme += pas; }
+          }
+        };
+        centrer(fournisseurs, 'dataQuality', CHIFFRES.qualite, 60, 100);
+        centrer(produits, 'dppScore', CHIFFRES.dpp, 40, 100);
       }
 
       // Agregats de la vue d ensemble, tous derives de l etat ci-dessus.
@@ -852,13 +926,13 @@
         return `<div>
           <!-- Hero Banner -->
           <div class="intel-hero-card">
-            <div class="intel-tag">AGENTIC TEXTILE REASONING ENGINE · ZERO HALLUCINATION</div>
+            <div class="intel-tag">${esc(bt('cnIntelTag'))}</div>
             <h1 class="intel-title">TRACEFAB Intelligence</h1>
             <p class="intel-desc">
               ${bt('iaIntro')}
             </p>
             <div class="intel-guardrail-badge">
-              <span>🛡️ GARDE-FOU CONTRACTUEL :</span>
+              <span>🛡️ ${esc(bt('cnIntelGuardrail'))}</span>
               <span>${bt('iaNoInvented')}</span>
             </div>
           </div>
@@ -1380,7 +1454,7 @@
               <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('evSovereign')}</div>
               <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('evSha')}</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">142 EVIDENCE ITEMS VALIDATED ON NEON DB</span>
+            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;" data-tf-demo>142 EVIDENCE ITEMS VALIDATED ON NEON DB</span>
           </div>
 
           <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-top:16px;">
@@ -1583,7 +1657,7 @@
       function settingsConsoleView() {
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Configuration</div>
+            <div class="eyebrow">${bt('cnSettingsEyebrow')}</div>
             <h1>${bt('stTitle')}</h1>
             <p>${bt('stIntro')}</p>
           </div>
@@ -1629,8 +1703,8 @@
             <!-- Domain 1: Supply Chain -->
             <div class="mc-domain-card">
               <div class="mc-domain-header">
-                <span class="mc-domain-tag">01 / SUPPLY CHAIN</span>
-                <span class="mc-domain-badge mc-badge-green">ACTIF</span>
+                <span class="mc-domain-tag">${esc(bt('cnDom1'))}</span>
+                <span class="mc-domain-badge mc-badge-green">${esc(bt('cnStatusActive'))}</span>
               </div>
               <div class="mc-stat-huge">${prodCount}</div>
               <div class="mc-stat-sublist">
@@ -1644,8 +1718,8 @@
             <!-- Domain 2: Data Quality & Evidence -->
             <div class="mc-domain-card">
               <div class="mc-domain-header">
-                <span class="mc-domain-tag">02 / DATA QUALITY</span>
-                <span class="mc-domain-badge mc-badge-green">GRADE A</span>
+                <span class="mc-domain-tag">${esc(bt('cnDom2'))}</span>
+                <span class="mc-domain-badge mc-badge-green" data-tf-demo>GRADE A</span>
               </div>
               <div class="mc-stat-huge" style="color:#0b7656;">${ag.qualite}%</div>
               <div class="mc-stat-sublist">
@@ -1659,8 +1733,8 @@
             <!-- Domain 3: Traceability Echelons -->
             <div class="mc-domain-card">
               <div class="mc-domain-header">
-                <span class="mc-domain-tag">03 / TRACEABILITY</span>
-                <span class="mc-domain-badge mc-badge-blue">COMPLET</span>
+                <span class="mc-domain-tag">${esc(bt('cnDom3'))}</span>
+                <span class="mc-domain-badge mc-badge-blue">${esc(bt('cnStatusComplete'))}</span>
               </div>
               <div class="mc-stat-huge" style="color:#1d4ed8;">${ag.tracables}%</div>
               <div class="mc-stat-sublist">
@@ -1674,8 +1748,8 @@
             <!-- Domain 4: DPP Readiness -->
             <div class="mc-domain-card">
               <div class="mc-domain-header">
-                <span class="mc-domain-tag">04 / DPP READINESS</span>
-                <span class="mc-domain-badge mc-badge-amber">CIRPASS 1.2</span>
+                <span class="mc-domain-tag">${esc(bt('cnDom4'))}</span>
+                <span class="mc-domain-badge mc-badge-amber" data-tf-demo>CIRPASS 1.2</span>
               </div>
               <div class="mc-stat-huge" style="color:#b45309;">${ag.dpp}%</div>
               <div class="mc-stat-sublist">
@@ -1868,7 +1942,7 @@
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">${bt('sxPartnerActive')}</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>${bt('cnThOrganisation')}</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">${bt('sxPartnerActive')}</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">${bt('cnSupplierProfileBtn')}</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || bt('cnMaterialLabel'); }
@@ -1889,7 +1963,7 @@
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bt('pxTraceGraph')}</button>
             <button class="btn btn-secondary" data-action="product-dpp-from-detail">${bt('pxPrepareDpp')}</button>
-            <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/dpp/">📋 Passeport DPP Public</button>
+            <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/dpp/">📋 ${bt('pxPublicDpp')}</button>
             <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}">${bt('pxNewEvidenceReq')}</button>
           </div>
         </div>
@@ -1898,7 +1972,7 @@
         <div class="lineage-shell">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;letter-spacing:0.1em;text-transform:uppercase;">PRODUCT LINEAGE & CUSTODY CHAIN</div>
+              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;letter-spacing:0.1em;text-transform:uppercase;">${esc(bt('cnLineageTitle'))}</div>
               <h3 style="font-size:18px;font-weight:800;color:#17231f;margin:4px 0 0;">${bt('pxLineage')}</h3>
             </div>
             <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">${bt('pxVerifiedSealed')}</span>
@@ -1906,36 +1980,36 @@
 
           <div class="lineage-pipeline-flow">
             <div class="lineage-step-card active" data-demo-action="1">
-              <div class="lineage-step-label">01. FIBRE</div>
-              <div class="lineage-step-sub">Ferme GOTS</div>
+              <div class="lineage-step-label">${esc(bt('cnLinFibre'))}</div>
+              <div class="lineage-step-sub" data-tf-demo>GOTS Farm</div>
             </div>
             <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">02. FILATURE</div>
-              <div class="lineage-step-sub">Bilan Massique</div>
+              <div class="lineage-step-label">${esc(bt('cnLinSpinning'))}</div>
+              <div class="lineage-step-sub" data-tf-demo>Mass Balance</div>
             </div>
             <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">03. TRICOTAGE</div>
-              <div class="lineage-step-sub">Guimarães PT</div>
+              <div class="lineage-step-label">${esc(bt('cnLinKnitting'))}</div>
+              <div class="lineage-step-sub" data-tf-demo>Guimarães PT</div>
             </div>
             <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">04. TEINTURE</div>
+              <div class="lineage-step-label">${esc(bt('cnLinDyeing'))}</div>
               <div class="lineage-step-sub" data-tf-demo>ZDHC Level 3</div>
             </div>
             <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">05. CONFECTION</div>
-              <div class="lineage-step-sub">Certified Workshop</div>
+              <div class="lineage-step-label">${esc(bt('cnLinAssembly'))}</div>
+              <div class="lineage-step-sub" data-tf-demo>Certified Workshop</div>
             </div>
             <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">06. PRODUIT</div>
-              <div class="lineage-step-sub">BOM 100%</div>
+              <div class="lineage-step-label">${esc(bt('cnLinProduct'))}</div>
+              <div class="lineage-step-sub" data-tf-demo>BOM 100%</div>
             </div>
             <div class="lineage-step-card" data-demo-action="1">
               <div class="lineage-step-label">${esc(bt('cnGrpPef'))}</div>
-              <div class="lineage-step-sub">Score A (PEF)</div>
+              <div class="lineage-step-sub" data-tf-demo>Score A (PEF)</div>
             </div>
             <div class="lineage-step-card" data-tf-act="open" data-tf-arg="/dpp/">
-              <div class="lineage-step-label" style="color:#0b7656;">08. DPP QR</div>
-              <div class="lineage-step-sub">GS1 Link</div>
+              <div class="lineage-step-label" style="color:#0b7656;">${esc(bt('cnLinDppQr'))}</div>
+              <div class="lineage-step-sub" data-tf-demo>GS1 Link</div>
             </div>
           </div>
         </div>
@@ -1947,11 +2021,11 @@
               <label>${bt('pxStyleName')}<input class="input" name="name" value="${esc(p.name)}"></label>
               <label>${bt('pxSku')}<input class="input" name="reference" value="${esc(p.reference)}"></label>
               <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || 'Ready-to-wear')}"></label>
-              <label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || 'Navy Deep')}"></label>
+              <label>${bt('pxColor')}<input class="input" name="colorName" value="${esc(p.colorName || 'Navy Deep')}"></label>
               <label>${bt('pxCountrySpin')}<input class="input" name="countryOfSpinning" value="${esc(p.countryOfSpinning || 'PT')}"></label>
               <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || 'PT')}"></label>
-              <label>Poids unitaire (g)<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams || '185')}"></label>
-              <label>Tailles<input class="input" name="sizeRange" value="${esc((p.sizeRange || ['XS','S','M','L','XL']).join(', '))}"></label>
+              <label>${bt('pxWeightG')}<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams || '185')}"></label>
+              <label>${bt('pxSizes')}<input class="input" name="sizeRange" value="${esc((p.sizeRange || ['XS','S','M','L','XL']).join(', '))}"></label>
               <div class="form-actions field-full">
                 <button class="btn btn-primary" type="submit">${bt('pxUpdate')}</button>
               </div>
@@ -1961,7 +2035,7 @@
           <div class="card panel">
             <div class="panel-head">
               <div>
-                <h2>Nomenclature & Bilan Massique (BOM)</h2>
+                <h2>${bt('pxBomTitle')}</h2>
                 <p class="meta" style="margin:4px 0 0;">${bt('pxEspr')}</p>
               </div>
               <span class="status status-approved">${bt('pxReconciled')}</span>
@@ -1975,15 +2049,15 @@
               </div>
               <div class="actions">
                 <label class="meta">${bt('pxSharePct')}<input class="input" name="percentage" type="number" value="${esc(m.percentage || 100)}" style="width:75px"></label>
-                <button class="btn btn-secondary btn-small" type="submit">Valider</button>
+                <button class="btn btn-secondary btn-small" type="submit">${bt('pxApply')}</button>
               </div>
             </form>`).join('')}</div>` : `
             <div class="item-list">
-              <div class="item">
+              <div class="item" data-tf-demo>
                 <div><strong>Combed Organic Cotton (GOTS)</strong><div class="meta">Primary fibre · Türkiye / Greece</div></div>
                 <div class="actions"><span class="badge badge-verified">85%</span></div>
               </div>
-              <div class="item">
+              <div class="item" data-tf-demo>
                 <div><strong>Pre-consumer Recycled Cotton (GRS)</strong><div class="meta">Reincorporated spinning waste</div></div>
                 <div class="actions"><span class="badge badge-verified">15%</span></div>
               </div>
@@ -2008,7 +2082,7 @@
                 <h2>${bt('pxIdentifiers')}</h2>
                 <p class="meta">${bt('pxResolveHint')}</p>
               </div>
-              <span class="meta">${detail.identifiers?.length || 0} identifiant(s) actif(s)</span>
+              <span class="meta">${detail.identifiers?.length || 0} ${bt('pxActiveIdentifiers')}</span>
             </div>
             ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">${esc(bt('cnCreatedOn'))} ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">${bt('pxSave')}</button></div></form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('pxNoId')}</p></div>`}
             <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>${bt('pdIdValue')}<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
@@ -2293,7 +2367,7 @@
               <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('qcMatrix')}</div>
               <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('qcPreAudit')}</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">OVERALL GRADE: A (98.4%)</span>
+            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;" data-tf-demo>OVERALL GRADE: A (98.4%)</span>
           </div>
 
           <div class="eq-score-strip">
@@ -2364,7 +2438,7 @@
             <!-- Simulated High-Impact Actionable Issues -->
             <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
               <div>
-                <span class="status status-changes_requested" style="margin-right:8px;">WARNING</span>
+                <span class="status status-changes_requested" style="margin-right:8px;">${esc(bt('cnSevWarning'))}</span>
                 <strong>RSL test report missing for dye lot #089</strong>
                 <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>ZDHC_EFFLUENT_TEST_REPORT</code> <span data-tf-demo>· Detected by Document AI · Tolerance: 12 months</span></p>
                 <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Upload the SGS report or follow up with the EcoDye Aquitaine dye house</div>
@@ -2377,7 +2451,7 @@
 
             <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
               <div>
-                <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
+                <span class="status status-draft" style="margin-right:8px;">${esc(bt('cnSevReview'))}</span>
                 <strong>GOTS certificate CU-881294 expiring in 42 days</strong>
                 <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>CERTIFICATE_EXPIRATION_GATE</code> <span data-tf-demo>· Scope: Combed organic cotton</span></p>
                 <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Receive the GOTS 2027 Scope certificate before customs shipment</div>
@@ -2389,7 +2463,7 @@
 
             <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;">
               <div>
-                <span class="status status-draft" style="margin-right:8px;">REVIEW</span>
+                <span class="status status-draft" style="margin-right:8px;">${esc(bt('cnSevReview'))}</span>
                 <strong data-tf-demo>GPS coordinates of the cutting workshop not locked</strong>
                 <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>POLYGON_FACILITY_REGISTRY</code> <span data-tf-demo>· Barcelos workshop</span></p>
                 <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Validate the facility's GPS polygon in the site registry</div>
@@ -2477,7 +2551,7 @@
             <div class="tc-echelon-card">
               <div class="tc-ech-num">${bt('scTier02')}</div>
               <div class="tc-ech-title">${bt('scGinningCaps')}</div>
-              <div class="tc-ech-model">Segregated</div>
+              <div class="tc-ech-model" data-tf-demo>Segregated</div>
               <div class="tc-ech-status" data-tf-demo>✓ Ege Birlik Mill</div>
             </div>
             <div class="tc-echelon-card">
@@ -2506,7 +2580,7 @@
             </div>
             <div class="tc-echelon-card">
               <div class="tc-ech-num">${bt('scTier07')}</div>
-              <div class="tc-ech-title">DISTRIBUTION</div>
+              <div class="tc-ech-title">${esc(bt('cnMbDistribution'))}</div>
               <div class="tc-ech-model">DPP CIRPASS</div>
               <div class="tc-ech-status" data-tf-demo>✓ Hub Lyon, FR</div>
             </div>
@@ -2527,7 +2601,7 @@
                 <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:0 0 2px;">${bt('scMassReconMile')}</h3>
                 <p class="meta" style="margin:0;">${bt('scMassNote')}</p>
               </div>
-              <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">PROCESS LOSS DELTA: 2.4% (COMPLIANT)</span>
+              <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;" data-tf-demo>PROCESS LOSS DELTA: 2.4% (COMPLIANT)</span>
             </div>
 
             <div class="table-wrap">

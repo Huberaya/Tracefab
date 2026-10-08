@@ -430,6 +430,14 @@
     "saveDraft": "保存草稿",
     "responseRecorded": "回复已成功保存。",
     "requestSubmitted": "数据已成功提交至品牌商。",
-    "spNoEvidence": "无证据"
+    "spNoEvidence": "无证据",
+    "spMatOrigin": "原产地",
+    "spDocFile": "文件",
+    "spValue": "值",
+    "spSubject": "主题",
+    "spCode": "代码",
+    "spEmail": "电子邮件",
+    "spVersion": "版本",
+    "spExpiry": "到期"
   }
 }

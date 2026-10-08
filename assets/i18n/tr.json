@@ -430,6 +430,14 @@
     "saveDraft": "Taslağı Kaydet",
     "responseRecorded": "Yanıt başarıyla kaydedildi.",
     "requestSubmitted": "Talep markaya gönderildi.",
-    "spNoEvidence": "Kanıt yok"
+    "spNoEvidence": "Kanıt yok",
+    "spMatOrigin": "Köken",
+    "spDocFile": "Dosya",
+    "spValue": "Değer",
+    "spSubject": "Konu",
+    "spCode": "Kod",
+    "spEmail": "E-posta",
+    "spVersion": "Sürüm",
+    "spExpiry": "Son kullanma"
   }
 }

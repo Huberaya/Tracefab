@@ -38,7 +38,10 @@ const ALLOW = [
   [/\b(Apple|Google) Wallet\b/, 'nom de service tiers'],
   [/Control Union|Global Organic Textile Standard|Digital Link/i, 'organisme ou norme'],
   [/\bBatch:|Tier \d|Trade secret redacted/, 'valeur de demonstration'],
-  [/\b(Paris|Porto|Braga|Milano|Lisboa)\b|United States/, 'toponyme'],
+  [/\b(Paris|Porto|Braga|Milano|Lisboa|Guimar\u00e3es|Germany|Morocco|Tunisia|India|Vietnam|China|T\u00fcrkiye|Greece)\b|United States/, 'toponyme'],
+  // La signature de marque est une identite graphique, pas une phrase.
+  [/DATA \u00d7 TEXTILE \u00d7 TRUST/, 'marque'],
+  [/\bCIRPASS\b|\bJSON-LD\b/, 'norme ou format'],
   // Le jeu de demonstration genere 1 248 produits, 86 fournisseurs et
   // 214 sites par composition « categorie + numero » ou « pays + metier +
   // numero ». Ces libelles sont de la donnee, pas de la copie : ils sont
@@ -199,6 +202,37 @@ const showView = (page, view) => page.evaluate((v) => {
   if (b) b.click();
 }, view);
 
+/* Vues de detail a visiter, par page.
+ *
+ * Une vue de detail s'ouvre en cliquant une ligne, pas un bouton de
+ * navigation : elle n'apparait donc dans aucun [data-view] et echappait
+ * entierement au balayage. C'est la que vivent la lignee produit, la fiche
+ * fournisseur et leurs onglets — c'est-a-dire la partie la plus dense de
+ * l'application.
+ */
+const DRILLDOWNS = {
+  '/brand-console/': [
+    { cle: 'produit', vue: 'products', ouvrir: 'button[data-product-id]', retour: 'products',
+      onglets: ['overview', 'composition', 'materials', 'supplyChain', 'manufacturing',
+                'suppliers', 'evidence', 'certifications', 'quality', 'dpp', 'history'] },
+    { cle: 'fournisseur', vue: 'suppliers', ouvrir: '[data-supplier-id-view]', retour: 'suppliers' },
+  ],
+};
+
+const enterDrilldown = async (page, drill) => {
+  await page.evaluate((v) => document.querySelector(`[data-view="${v}"]`)?.click(), drill.vue);
+  await page.waitForTimeout(400);
+  const opened = await page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    el.click();
+    return true;
+  }, drill.ouvrir);
+  if (!opened) return false;
+  await page.waitForTimeout(500);
+  return true;
+};
+
 for (const url of PAGES) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const perView = {};
@@ -223,6 +257,28 @@ for (const url of PAGES) {
         const key = v || '(accueil)';
         (perView[key] ||= {})[lang] = await snapshot(page);
       }
+      // Les vues de detail ne portent pas de [data-view] : on y descend en
+      // cliquant une ligne. C'etait l'angle mort suivant — sept libelles de
+      // lignee sont restes en francais sur une page EN pendant quinze
+      // chantiers parce que la garde ne passait jamais cette porte.
+      for (const drill of DRILLDOWNS[url] || []) {
+        const entered = await enterDrilldown(page, drill);
+        if (!entered) continue;
+        (perView[`${drill.cle}`] ||= {})[lang] = await snapshot(page);
+        for (const tab of drill.onglets || []) {
+          const shown = await page.evaluate((t) => {
+            const b = document.querySelector(`[data-tab="${t}"]`);
+            if (!b) return false;
+            b.click();
+            return true;
+          }, tab);
+          if (!shown) continue;
+          await page.waitForTimeout(260);
+          (perView[`${drill.cle}/${tab}`] ||= {})[lang] = await snapshot(page);
+        }
+        await showView(page, drill.retour);
+        await page.waitForTimeout(260);
+      }
     }
   } catch (e) {
     console.log(`  ECHEC ${url} : ${String(e).slice(0, 70)}`);
@@ -238,7 +294,14 @@ for (const url of PAGES) {
     if (!pair.en || !pair.fr) continue;
     scanned += pair.en.length;
     const frozen = [...new Set(pair.en.filter((t) => pair.fr.includes(t)))]
-      .filter((t) => /\s/.test(t) && /[a-z]{3}/.test(t));
+      // Ce filtre a longtemps exige un espace ET trois minuscules consecutives.
+      // Les deux conditions etaient des angles morts, pas des garde-fous :
+      // « ACTIF » et « 01. FIBRE » sont en capitales, « Valider » et
+      // « COMPLET » sont des mots isoles. La garde ne pouvait voir aucune
+      // etiquette courte ou capitalisee — c'est-a-dire la majeure partie du
+      // vocabulaire d'une interface dense. On ne retient plus que la presence
+      // de trois lettres, casse indifferente.
+      .filter((t) => /[a-zA-Z]{3}/.test(t));
     frozenCount += frozen.length;
     // Du francais sur une page dont la langue par defaut est l'anglais.
     for (const t of (pair.en || [])) {

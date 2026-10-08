@@ -141,8 +141,24 @@ ok(genRisk.includes('apresAccolade'), 'les deux generateurs inserent en tete de 
 ok(/function demoEchelle\(\)/.test(page), 'le generateur a l echelle existe');
 ok(/function demoAgregats\(\)/.test(page), 'les agregats derives existent');
 ok(/const ag = demoAgregats\(\);/.test(page), 'la vue d ensemble lit les agregats');
-ok(/CIBLE_FOURNISSEURS = 86, CIBLE_PRODUITS = 1248, CIBLE_SITES = 214/.test(page),
-  'les cibles du cahier des charges sont nommees une fois, pas dispersees');
+// Les cibles ont quitte la console pour assets/js/tf-demo-figures.js : elles
+// etaient nommees une fois ici, mais l'accueil en portait sa propre copie dans
+// le catalogue i18n. « Une fois » ne vaut que si c'est une fois POUR TOUTES LES
+// SURFACES. On verifie donc le lien, pas le litteral.
+const CHIFFRES_SRC = readFileSync(join(ROOT, 'assets/js/tf-demo-figures.js'), 'utf8');
+const CHIFFRES_VAL = JSON.parse(CHIFFRES_SRC.slice(CHIFFRES_SRC.indexOf('=') + 1).trim().replace(/;\s*$/, ''));
+ok(CHIFFRES_VAL.fournisseurs === 86 && CHIFFRES_VAL.produits === 1248 && CHIFFRES_VAL.sites === 214,
+  'la source unique porte les cibles du cahier des charges');
+ok(/CIBLE_FOURNISSEURS\s*=\s*CHIFFRES\.fournisseurs/.test(page)
+  && /CIBLE_PRODUITS\s*=\s*CHIFFRES\.produits/.test(page)
+  && /CIBLE_SITES\s*=\s*CHIFFRES\.sites/.test(page),
+  'la console lit les cibles depuis la source unique, elle ne les redeclare pas');
+ok(!/CIBLE_(FOURNISSEURS|PRODUITS|SITES)\s*=\s*\d/.test(page),
+  'aucune cible reecrite en litteral dans la console');
+// Les taux etaient, eux, echantillonnes : r() < 0.84 sur 1 248 produits donnait
+// 85,3 %. La calibration ramene la mesure sur la cible apres tirage.
+ok(/function calibrerTaux\(\)/.test(page) && /\n\s*calibrerTaux\(\);/.test(page),
+  'les taux sont calibres sur la cible, pas laisses au tirage');
 for (const litteral of ['<strong>1 248</strong>', '<strong>86</strong>', '<strong>214</strong>',
                         '<strong>18 pays</strong>', '<strong>92.4%</strong>', '<strong>142</strong>']) {
   ok(!page.includes(litteral), `aucun KPI ecrit en dur : ${litteral}`);
