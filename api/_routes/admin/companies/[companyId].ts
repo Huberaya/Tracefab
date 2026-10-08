@@ -78,7 +78,7 @@ async function update(req: VercelRequest, res: VercelResponse) {
       return json(res, 422, { error: 'no_updatable_field' });
     }
 
-    const updated = (await withTracefabUserContext(admin.userId, admin.userEmail, async (tx) => {
+    const result = (await withTracefabUserContext(admin.userId, admin.userEmail, async (tx) => {
       const existing = await tx.crm_companies.findFirst({
         where: { id: companyId, platform_organization_id: admin.platformOrganizationId },
         /* Les champs journalisés sont sélectionnés explicitement : sans eux,
@@ -91,6 +91,27 @@ async function update(req: VercelRequest, res: VercelResponse) {
         },
       });
       if (!existing) return null;
+
+      /*
+       * Existence du lien — Chantier Admin 06.
+       *
+       * La colonne n'a pas de clé étrangère (voir la migration), donc c'est ici
+       * que se joue la seule protection contre un lien qui pointerait dans le vide.
+       *
+       * La sonde passe par RLS : une organisation que l'admin ne peut pas voir
+       * n'est pas liable. Ce n'est pas une limitation accidentelle — lier suppose
+       * accéder, et permettre de lier une organisation invisible créerait un lien
+       * dont personne ne pourrait rien lire.
+       */
+      const link = parsed.data.organization_id;
+      if (typeof link === 'string') {
+        const target = await tx.organizations.findFirst({
+          where: { id: link },
+          select: { id: true, type: true },
+        });
+        if (!target) return { linkError: true as const };
+      }
+
       const company = await tx.crm_companies.update({
         where: { id: companyId },
         data: parsed.data as never,
@@ -101,8 +122,12 @@ async function update(req: VercelRequest, res: VercelResponse) {
         after: company as unknown as Record<string, unknown>,
       });
       return company;
-    })) as unknown;
+    })) as unknown as Record<string, unknown> | { linkError: true } | null;
 
+    if (result && 'linkError' in result) {
+      return json(res, 422, { error: 'crm_organization_not_linkable' });
+    }
+    const updated = result as Record<string, unknown> | null;
     if (!updated) return json(res, 404, { error: 'crm_company_not_found' });
     return json(res, 200, { company: updated });
   } catch (error) {

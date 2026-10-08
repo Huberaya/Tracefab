@@ -9,6 +9,8 @@
  * fait que compter les lignes qu'on lui donne.
  */
 
+import { parseOrganizationId } from './crm-link.js';
+
 export const PIPELINE_STAGES = [
   'new',
   'qualified',
@@ -117,6 +119,7 @@ export interface CompanyInput {
   notes?: unknown;
   estimated_value_eur?: unknown;
   next_contact_at?: unknown;
+  organization_id?: unknown;
 }
 
 /*
@@ -169,12 +172,31 @@ export function parseCompanyInput(body: CompanyInput): ParseResult<Record<string
 
   const website = optionalText(body.website, 300);
 
+  /*
+   * Lien vers l'organisation TRACEFAB réelle (Chantier Admin 06).
+   *
+   * Trois cas, et non deux : absent du corps (rien à faire), explicitement null
+   * (DÉLIER — nécessaire, sinon un lien erroné serait irréversible), ou valeur
+   * (valider la forme). L'existence de l'organisation est vérifiée par la route :
+   * sans clé étrangère sur la colonne, c'est la seule protection contre un lien
+   * qui pointerait dans le vide.
+   */
+  let organizationId: string | null = null;
+  const linkProvided = body.organization_id !== undefined;
+  if (linkProvided && body.organization_id !== null) {
+    const parsedId = parseOrganizationId(body.organization_id);
+    if (parsedId === null) errors.push('organization_id_must_be_uuid');
+    else organizationId = parsedId;
+  }
+
   if (errors.length) return { data: null, errors };
 
   const data: Record<string, unknown> = { name };
   const assign = (key: string, value: unknown) => {
     if (value !== null && value !== undefined) data[key] = value;
   };
+  /* Traité à part : `assign` ignore les null, et délier exige justement d'écrire null. */
+  if (linkProvided) data.organization_id = organizationId;
   assign('website', website);
   assign('country_code', countryCode);
   assign('city', optionalText(body.city, 120));

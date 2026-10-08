@@ -315,6 +315,7 @@ const state = {
   advancedOpen: false,
   settings: null, audit: null, auditFilter: '',
   notes: null, emails: null, opportunities: null, noteCompany: '', emailCompany: '',
+  connected: null, usage: null, linkableOrgs: [],
   lists: { items: [] }, activeList: null,
   importStep: null, importCsv: '', importMapping: {}, importPreview: null,
   importSource: '', importDetail: '', importSkip: true, importResult: null,
@@ -353,7 +354,7 @@ function demoDashboard() {
 
 function demoCompanies() {
   return [
-    { id:'d1', name:'Example Fashion Group', website:'example.com', country_code:'FR', city:'Paris',
+    { id:'d1', name:'Example Fashion Group', organization_id:'11111111-2222-4333-8444-555555555555', website:'example.com', country_code:'FR', city:'Paris',
       industry:'Fashion', company_type:'fashion_brand', employee_band:'250-500', revenue_band:'50-100M€',
       product_count:350, supplier_count:42, maturity:'medium', priority:'critical', stage:'pilot',
       source:'Referral', owner_name:'Founder', estimated_value_eur:68000,
@@ -368,17 +369,114 @@ function demoCompanies() {
     { id:'d4', name:'Iberia Knit Mills', website:'iberiaknit.example', country_code:'ES', city:'Porto',
       industry:'Knitwear', company_type:'mill', employee_band:'50-250', product_count:80,
       supplier_count:4, maturity:'unknown', priority:'medium', stage:'new', source:'List' },
-    { id:'d5', name:'Atlas Apparel', website:'atlasapparel.example', country_code:'IT', city:'Milan',
+    { id:'d5', name:'Atlas Apparel', organization_id:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', website:'atlasapparel.example', country_code:'IT', city:'Milan',
       industry:'Apparel', company_type:'fashion_brand', product_count:210, supplier_count:31,
       maturity:'medium', priority:'medium', stage:'to_contact', source:'Referral' },
     { id:'d6', name:'Verde Sportswear', website:'verde.example', country_code:'IT', city:'Florence',
       industry:'Sportswear', company_type:'sportswear', product_count:140, supplier_count:22,
       maturity:'medium', priority:'low', stage:'qualified', source:'Inbound' },
-    { id:'d7', name:'Lusitania Fabrics', website:'lusitania.example', country_code:'PT', city:'Porto',
+    { id:'d7', name:'Lusitania Fabrics', organization_id:'11111111-2222-4333-8444-555555555555', website:'lusitania.example', country_code:'PT', city:'Porto',
       industry:'Woven fabrics', company_type:'textile_supplier', product_count:95, supplier_count:2,
       maturity:'high', priority:'medium', stage:'customer', source:'Referral',
       estimated_value_eur:40000 },
   ];
+}
+
+function demoConnected() {
+  return {
+    "views": [
+      {
+        "company_id": "d1",
+        "name": "Example Fashion Group",
+        "stage": "pilot",
+        "priority": "critical",
+        "organization_id": "11111111-2222-4333-8444-555555555555",
+        "measurement": "measured",
+        "declared": {
+          "supplier_count": 42,
+          "product_count": 350
+        },
+        "measured": {
+          "suppliers": 31,
+          "onboarded": 12,
+          "avgProfileCompletion": 68.4,
+          "lastSubmittedAt": "2026-09-01T09:12:00Z"
+        },
+        "gap": -11
+      },
+      {
+        "company_id": "d5",
+        "name": "Atlas Apparel",
+        "stage": "replied",
+        "priority": "high",
+        "organization_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "measurement": "not_accessible",
+        "declared": {
+          "supplier_count": 18,
+          "product_count": 140
+        },
+        "measured": null,
+        "gap": null
+      },
+      {
+        "company_id": "d7",
+        "name": "Lusitania Fabrics",
+        "stage": "customer",
+        "priority": "medium",
+        "organization_id": "11111111-2222-4333-8444-555555555555",
+        "measurement": "measured",
+        "declared": {
+          "supplier_count": 6,
+          "product_count": 90
+        },
+        "measured": {
+          "suppliers": 0,
+          "onboarded": 0,
+          "avgProfileCompletion": null,
+          "lastSubmittedAt": null
+        },
+        "gap": -6
+      },
+      {
+        "company_id": "d2",
+        "name": "Northwind Textiles",
+        "stage": "demo",
+        "priority": "high",
+        "organization_id": null,
+        "measurement": "declared",
+        "declared": {
+          "supplier_count": 18,
+          "product_count": 120
+        },
+        "measured": null,
+        "gap": null
+      },
+      {
+        "company_id": "d3",
+        "name": "Maison Lumière",
+        "stage": "contacted",
+        "priority": "medium",
+        "organization_id": null,
+        "measurement": "declared",
+        "declared": {
+          "supplier_count": null,
+          "product_count": 45
+        },
+        "measured": null,
+        "gap": null
+      }
+    ],
+    "summary": {
+      "measured": 2,
+      "declared": 2,
+      "notAccessible": 1,
+      "measuredSuppliers": 31,
+      "avgProfileCompletion": 68.4,
+      "lastSubmittedAt": "2026-09-01T09:12:00Z"
+    },
+    "scope": "supplier_engagement",
+    "telemetry": false
+  };
 }
 
 function demoOpportunities() {
@@ -728,6 +826,13 @@ const fmtInt = (n) => (typeof n === 'number' && Number.isFinite(n)
 const fmtMoney = (n) => (typeof n === 'number' && Number.isFinite(n)
   ? `€${n.toLocaleString(state.lang === 'fr' ? 'fr-FR' : 'en-US')}` : '—');
 
+/*
+ * Un pourcentage à une décimale. `fmtInt` arrondirait 68.4 en 68 et ferait
+ * perdre la précision que le serveur a volontairement conservée.
+ */
+const fmtPct = (n) => (typeof n === 'number' && Number.isFinite(n)
+  ? `${n.toLocaleString(state.lang || 'fr', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`
+  : '—');
 const fmtDate = (v) => {
   if (!v) return null;
   const d = new Date(v);
@@ -1235,6 +1340,13 @@ function modalCompany() {
       ${inp('estimated_value_eur', t('company.estimatedValue'), c.estimated_value_eur, 'inputmode="numeric"')}
       ${inp('source', t('company.source'), c.source)}
       ${inp('owner_name', t('common.owner'), c.owner_name)}
+      <label class="full">${esc(t('company.link'))}
+        <select id="fc-organization_id">
+          <option value="">${esc(t('company.notLinked'))}</option>
+          ${(state.linkableOrgs || []).map((o) => `<option value="${esc(o.id)}"${c.organization_id === o.id ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}
+        </select>
+      </label>
+      <span class="hint">${esc(t('company.linkHint'))}</span>
       <label class="full">${esc(t('company.nextContactDate'))}
         <input type="text" id="fc-next_contact_at" value="${esc((c.next_contact_at || '').slice(0, 10))}" placeholder="YYYY-MM-DD"></label>
       <label class="full">${esc(t('common.notes'))}
@@ -1424,6 +1536,88 @@ function modalImport() {
   }
 
   return '';
+}
+
+/*
+ * §1 — Suppliers et Product Usage.
+ *
+ * Les trois états sont TOUJOURS affichés, y compris « non accessible ». Afficher
+ * zéro à la place d'un refus RLS serait afficher une mesure inventée : zéro est
+ * un fait, et ce fait n'a pas été observé.
+ */
+function measurementTag(measurement) {
+  const cls = measurement === 'measured' ? 'good' : measurement === 'declared' ? 'p-medium' : 'bad';
+  return `<span class="tag ${cls}">${esc(t('measurement.' + measurement))}</span>`;
+}
+
+function connectedSummary(d) {
+  const s = d.summary || {};
+  return `<div class="kpis three">
+    <div class="kpi"><span class="lbl">${esc(t('connected.measured'))}</span>
+      <span class="val num">${fmtInt(s.measured ?? 0)}</span></div>
+    <div class="kpi"><span class="lbl">${esc(t('connected.declared'))}</span>
+      <span class="val num">${fmtInt(s.declared ?? 0)}</span></div>
+    <div class="kpi"><span class="lbl">${esc(t('connected.notAccessible'))}</span>
+      <span class="val small num">${fmtInt(s.notAccessible ?? 0)}</span></div>
+  </div>`;
+}
+
+function viewSuppliers() {
+  const d = state.connected;
+  if (!d) return `<div class="empty"><b>${esc(t('connected.loading'))}</b></div>`;
+
+  const rows = (d.views || []).map((v) => `
+    <tr>
+      <td><button class="btn sm link" data-open="${esc(v.company_id)}">${esc(v.name)}</button></td>
+      <td>${stageTag(v.stage)}</td>
+      <td>${measurementTag(v.measurement)}</td>
+      <td>${v.measurement === 'measured'
+        ? `<b class="num">${fmtInt(v.measured.suppliers)}</b> <span class="meta">${esc(t('suppliers.onboarded')).replace('%n', String(v.measured.onboarded))}</span>`
+        : `<span class="meta">${esc(v.declared.supplier_count === null ? '—' : fmtInt(v.declared.supplier_count))}</span>`}</td>
+      <td>${v.gap === null ? '<span class="meta">—</span>'
+        : `<b class="num" style="color:var(${v.gap < 0 ? '--red' : '--green-dark'})">${v.gap > 0 ? '+' : ''}${fmtInt(v.gap)}</b>`}</td>
+      <td class="meta">${v.measurement === 'not_accessible' ? esc(t('connected.whyNotAccessible')) : '—'}</td>
+    </tr>`).join('');
+
+  return `
+  ${connectedSummary(d)}
+  <div class="hint" style="margin:14px 0">${esc(t('suppliers.hint'))}</div>
+  ${(d.views || []).length ? `<div class="tblwrap"><table>
+    <thead><tr><th>${esc(t('common.company'))}</th><th>${esc(t('common.stage'))}</th>
+      <th>${esc(t('connected.measurement'))}</th>
+      <th>${esc(t('suppliers.count'))}</th>
+      <th>${esc(t('suppliers.gap'))}</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`
+    : `<div class="empty"><b>${esc(t('connected.empty'))}</b>${esc(t('connected.emptyBody'))}</div>`}
+  <div class="hint" style="margin-top:12px">${esc(t('suppliers.gapHint'))}</div>`;
+}
+
+function viewUsage() {
+  const d = state.usage;
+  if (!d) return `<div class="empty"><b>${esc(t('connected.loading'))}</b></div>`;
+
+  const measured = (d.views || []).filter((v) => v.measurement === 'measured');
+
+  return `
+  ${connectedSummary(d)}
+  <div class="warn" style="margin:14px 0">${esc(t('usage.scope'))}
+    <div class="meta" style="margin-top:6px">${esc(t('usage.scopeDetail'))}</div></div>
+  ${measured.length ? `<div class="tblwrap"><table>
+    <thead><tr><th>${esc(t('common.company'))}</th>
+      <th>${esc(t('usage.suppliers'))}</th><th>${esc(t('usage.onboarded'))}</th>
+      <th>${esc(t('usage.completion'))}</th><th>${esc(t('usage.lastSubmitted'))}</th></tr></thead>
+    <tbody>${measured.map((v) => `
+      <tr><td><button class="btn sm link" data-open="${esc(v.company_id)}">${esc(v.name)}</button></td>
+        <td class="num">${fmtInt(v.measured.suppliers)}</td>
+        <td class="num">${fmtInt(v.measured.onboarded)}</td>
+        <td>${v.measured.avgProfileCompletion === null
+          ? `<span class="hint">${esc(t('common.notMeasured'))}</span>`
+          : `<b class="num">${esc(fmtPct(v.measured.avgProfileCompletion))}</b>`}</td>
+        <td class="meta mono">${esc(fmtDate(v.measured.lastSubmittedAt) || '—')}</td></tr>`).join('')}
+    </tbody></table></div>`
+    : `<div class="empty"><b>${esc(t('usage.empty'))}</b>${esc(t('usage.emptyBody'))}</div>`}
+  ${d.summary?.notAccessible ? `<div class="hint" style="margin-top:12px">
+    ${esc(t('usage.hiddenCount')).replace('%n', String(d.summary.notAccessible))}</div>` : ''}`;
 }
 
 function viewOpportunities() {
@@ -1942,16 +2136,19 @@ const NAV_OPS = [
   ['meetings', '10'],
   ['pilots', '11'],
   ['customers', '12'],
-  ['analytics', '13'],
-  ['settings', '14'],
+  ['suppliers', '13'],
+  ['analytics', '14'],
+  ['usage', '15'],
+  ['settings', '16'],
 ];
-const SOON = ['Leads','Campaigns','Suppliers','Product Usage'];
+const SOON = ['Leads','Campaigns'];
 
 function shell() {
   const titles = {
     dashboard: t('nav.dashboard'), prospects: t('nav.prospects'),
     pipeline: t('nav.pipeline'), contacts: t('nav.contacts'), company: t('company.title'),
     opportunities: t('nav.opportunities'), emails: t('nav.emails'), notes: t('nav.notes'),
+    suppliers: t('nav.suppliers'), usage: t('nav.usage'),
     tasks: t('nav.tasks'), activities: t('nav.activities'), meetings: t('nav.meetings'),
     pilots: t('nav.pilots'), customers: t('nav.customers'), analytics: t('nav.analytics'), settings: t('nav.settings'),
   };
@@ -1963,7 +2160,8 @@ function shell() {
     customers: t('customers.subtitle'), analytics: t('analytics.subtitle'),
     settings: t('settings.subtitle'),
     opportunities: t('opportunities.subtitle'), emails: t('emails.subtitle'),
-    notes: t('notes.subtitle'),
+    notes: t('notes.subtitle'), suppliers: t('suppliers.subtitle'),
+    usage: t('usage.subtitle'),
   };
 
   const VIEWS = {
@@ -1972,6 +2170,7 @@ function shell() {
     meetings: viewMeetings, pilots: viewPilots, customers: viewCustomers,
     analytics: viewAnalytics, settings: viewSettings,
     opportunities: viewOpportunities, emails: viewEmails, notes: viewNotes,
+    suppliers: viewSuppliers, usage: viewUsage,
   };
   const body = (VIEWS[state.view] || viewCompany)();
 
@@ -2586,6 +2785,45 @@ async function saveEmailLog() {
   await logActivity('email', subject, parts.join('\n') || null);
 }
 
+/*
+ * Organisations liables — Chantier Admin 06.
+ *
+ * /api/organizations est filtré par RLS sur les adhésions de l'utilisateur : il ne
+ * peut donc renvoyer que des organisations auxquelles on a réellement accès. Le
+ * sélecteur ne propose ainsi que des liens qui fonctionneront — proposer une
+ * organisation invisible produirait un lien dont personne ne pourrait rien lire.
+ *
+ * Non bloquant : sans cette liste, la console reste utilisable, seul le lien est
+ * indisponible.
+ */
+async function loadLinkableOrgs() {
+  if (state.demo) {
+    state.linkableOrgs = [{"id": "11111111-2222-4333-8444-555555555555", "name": "TRACEFAB Demo Org 11111111"}, {"id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", "name": "TRACEFAB Demo Org aaaaaaaa"}];
+    return;
+  }
+  try {
+    const res = await api('/api/organizations');
+    state.linkableOrgs = (res.organizations || [])
+      .map((m) => ({
+        id: m.organizations?.id,
+        name: m.organizations?.display_name || m.organizations?.legal_name || m.organizations?.id || '',
+      }))
+      .filter((o) => o.id);
+  } catch (e) {
+    state.linkableOrgs = [];
+  }
+}
+
+async function loadConnected() {
+  if (state.demo) { state.connected = demoConnected(); return; }
+  state.connected = await api('/api/admin/suppliers');
+}
+
+async function loadUsage() {
+  if (state.demo) { state.usage = demoConnected(); return; }
+  state.usage = await api('/api/admin/product-usage');
+}
+
 async function loadOpportunities() {
   if (state.demo) { state.opportunities = demoOpportunities(); return; }
   state.opportunities = await api('/api/admin/opportunities');
@@ -2681,6 +2919,8 @@ async function loadView() {
     else if (state.view === 'opportunities') await loadOpportunities();
     else if (state.view === 'emails') await loadEmails();
     else if (state.view === 'notes') await loadNotes();
+    else if (state.view === 'suppliers') await loadConnected();
+    else if (state.view === 'usage') await loadUsage();
     else if (state.view === 'prospects') { await loadCompanies(); await loadLists(); }
     else await loadCompanies();
   } catch (e) {
@@ -2708,7 +2948,7 @@ function readForm(prefix, ids) {
 
 const COMPANY_IDS = ['name','website','country_code','city','industry','company_type','employee_band',
   'revenue_band','product_count','supplier_count','maturity','priority','estimated_value_eur',
-  'source','owner_name','next_contact_at','notes'];
+  'source','owner_name','next_contact_at','notes','organization_id'];
 const CONTACT_IDS = ['first_name','last_name','job_title','email','phone','linkedin_url','country_code',
   'language','is_decision_maker','influence_level','status','next_action','company_id'];
 const TASK_IDS = ['title','type','priority','due_at','assignee_name','company_id','detail'];
@@ -2724,6 +2964,8 @@ async function saveModal() {
       if (body.estimated_value_eur) body.estimated_value_eur = Number(body.estimated_value_eur);
       if (body.product_count) body.product_count = Number(body.product_count);
       if (body.supplier_count) body.supplier_count = Number(body.supplier_count);
+      /* Une sélection vide DÉLIE : sans cela un lien erroné serait irréversible. */
+      if (body.organization_id === '') body.organization_id = null;
       if (state.detail?.company?.id) {
         const { company } = await api(`/api/admin/companies/${encodeURIComponent(state.detail.company.id)}`,
           { method: 'PATCH', body: JSON.stringify(body) });
@@ -2813,6 +3055,7 @@ async function boot() {
 
   if (state.demo) {
     state.access = { role: 'owner', organizationName: 'TRACEFAB (demo)', email: 'demo@tracefab.example' };
+    await loadLinkableOrgs();
     state.loading = false;
     await loadView();
     return;
@@ -2842,6 +3085,7 @@ async function boot() {
 
     try {
       state.access = await api('/api/admin/access');
+      await loadLinkableOrgs();
     } catch (e) {
       state.access = null;
       state.accessChecked = true;

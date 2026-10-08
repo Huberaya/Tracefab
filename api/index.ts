@@ -51,6 +51,9 @@ const routes: Route[] = [
   /* Chantier Admin 04 — journal d'audit (§16) et réglages (§1). */
   { pattern: /^admin\/audit$/, params: [], load: () => import('./_routes/admin/audit.js') },
   { pattern: /^admin\/settings$/, params: [], load: () => import('./_routes/admin/settings.js') },
+  /* Chantier Admin 06 — comptes connectés (§1 Suppliers, §1 Product Usage). */
+  { pattern: /^admin\/suppliers$/, params: [], load: () => import('./_routes/admin/suppliers.js') },
+  { pattern: /^admin\/product-usage$/, params: [], load: () => import('./_routes/admin/product-usage.js') },
   { pattern: /^catalog\/products\/import$/, params: [], load: () => import('./_routes/catalog/products/import.js') },
   { pattern: /^catalog\/products\/export$/, params: [], load: () => import('./_routes/catalog/products/export.js') },
   { pattern: /^catalog\/products\/import\-jobs\/([^\/]+)$/, params: ['jobId'], load: () => import('./_routes/catalog/products/import-jobs/[jobId].js') },

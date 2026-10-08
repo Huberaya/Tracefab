@@ -1548,6 +1548,7 @@ model crm_companies {
   source_detail          String?
   collected_at           DateTime?          @db.Timestamptz(6)
   owner_user_id          String?            @db.Uuid
+  organization_id        String?            @db.Uuid
   owner_name             String?
   notes                  String?
   estimated_value_eur    Int?
@@ -1563,6 +1564,7 @@ model crm_companies {
   @@index([platform_organization_id, priority], map: "idx_crm_companies_org_priority")
   @@index([platform_organization_id, country_code], map: "idx_crm_companies_org_country")
   @@index([platform_organization_id, next_contact_at], map: "idx_crm_companies_org_next_contact")
+  @@index([platform_organization_id, organization_id], map: "idx_crm_companies_org_link")
 }
 
 model crm_contacts {
