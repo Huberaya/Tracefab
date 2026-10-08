@@ -3106,3 +3106,92 @@ il est SKIP (`prisma-engine`) dans la suite, comme avant ce chantier.
 s'installe sur iOS. Le rendre installable exige un émetteur CMS SignedData avec le
 certificat du pass et l'intermédiaire WWDR, et une validation sur un appareil réel —
 ni l'un ni l'autre n'est possible ici.
+
+---
+
+## Chantier 34 — `auto-translate.js` : déduplication du glossaire et changement de langue réparé
+
+### Mesure préalable
+
+`public/auto-translate.js` faisait 889 lignes, dont **810 de glossaire inline**.
+`public/translations_deep.json` contient 101 entrées × 6 langues (`de, en, es, it, nl,
+pt`) — et était servi par `vercel.json` sans qu'**aucun code ne le lise**. Comparaison
+entrée par entrée : **101/101 strictement identiques**, mêmes clés, mêmes langues. Le
+fichier JSON était donc une copie morte du glossaire inline.
+
+Couverture réelle du glossaire, mesurée sur les 4 pages consommatrices :
+
+| page | clés présentes sur 101 |
+|---|---|
+| `brand-console/index.html` | 55 |
+| `supplier-portal/index.html` | 33 |
+| `quality-center/index.html` | 7 |
+| `operations/index.html` | **1** |
+
+**37 clés** ne correspondent à aucun texte de ces 4 pages. `operations` ne tire
+pratiquement rien du mécanisme alors qu'il le charge ; aucune de ces deux pages n'a de
+texte français statique — tout y est généré en JS.
+
+### Décision 1 — une seule source
+
+Le glossaire inline est supprimé ; `auto-translate.js` charge `/translations_deep.json`,
+qui devient la seule source. **889 → 158 lignes.** Le chargement est mis en cache
+(`glossaryLoad`), un échec est journalisé via `console.error` et laisse `GLOSSARY` vide :
+la page reste en français plutôt que d'afficher un mélange partiel. C'est exactement le
+défaut du Chantier 29 — un dictionnaire qui 404 ne doit pas être silencieux.
+
+`setTracefabGlobalLanguage()` renvoie désormais la promesse : un appelant ou un test peut
+attendre l'application au lieu de deviner un délai.
+
+### Décision 2 — un défaut réel, trouvé par le test
+
+Le test a échoué sur la bascule anglais → allemand. Cause : `applyDom` cherchait le
+texte **affiché** dans le glossaire, dont les clés sont françaises. Après un passage en
+anglais, « Products » ne correspond plus à rien et aucune autre langue n'est atteignable.
+Le corps de la fonction est **identique octet pour octet** à l'ancien `translateDom`
+(vérifié par appariement d'accolades sur `/tmp/at34.bak`) : le défaut est antérieur à ce
+chantier, pas introduit par lui.
+
+Corrigé en traduisant toujours depuis le **texte d'origine**, mémorisé dans une
+`WeakMap` par nœud (et dans `data-tracefab-placeholder` pour les placeholders). Garde
+ajoutée : si la page a remplacé le contenu par autre chose que le texte d'origine ou
+l'une de ses traductions, le glossaire **réapprend** au lieu d'écraser. Le retour au
+français restaure maintenant le texte d'origine — `'fr'` n'est plus court-circuité.
+
+Branche morte supprimée : le `else` de l'ancienne boucle itérait les 101 entrées pour
+tester `trimmed === frKey`, condition déjà couverte par le `if` précédent — elle ne
+pouvait jamais affecter quoi que ce soit, et coûtait 101 comparaisons par nœud à chaque
+mutation du DOM.
+
+### `scripts/test_auto_translate.mjs` — 32 vérifications
+
+Exécute le fichier réel dans jsdom 30 (`resources.interceptors` + `requestInterceptor`,
+`window.fetch` installé avant tout `await`), avec le glossaire servi depuis le disque :
+
+- aucune copie inline ne subsiste dans le source ;
+- `/translations_deep.json` est réellement demandé ;
+- `Produits → Products`, `Fournisseurs → Suppliers`, `Traçabilité → Traceability` ;
+- `<pre>` reste en français (exclusion respectée) ;
+- bascule en allemand puis **retour au français**, texte et placeholder ;
+- un contenu posé par la page n'est pas écrasé ;
+- échec de chargement → rien n'est traduit **et** l'erreur est journalisée ;
+- les 101 entrées portent les 6 langues, non vides, aucune ne se traduit par elle-même ;
+- la couverture par page (55 / 33 / 7 / 1) et les 37 clés mortes sont épinglées.
+
+Contre-vérification : `learnText` remplacé par l'ancien `n.nodeValue` → **4 FAIL, exit 1**.
+
+### Mesures
+
+| | avant | après |
+|---|---|---|
+| `public/auto-translate.js` | 889 lignes | **158** |
+| sources du glossaire | 2 (1 lue) | **1** |
+| changement de langue | 1 seule bascule possible | **libre, aller-retour inclus** |
+| `test:i18n:auto-translate` | n'existait pas | **32/32** |
+| `test:suite` | PASS 60 · SKIP 25 · FAIL 0 / 85 | **PASS 61 · SKIP 25 · FAIL 0 / 86** |
+| `api:typecheck` | 90 | **90** (baseline 8/8) |
+
+`test:i18n`, `test:i18n:unified`, `test:i18n:serving`, `test:brand-console`,
+`test:supplier-portal`, `test:quality-center` passent tous après le changement.
+
+**Lacune enregistrée :** aucune suite de tests ne couvre `operations/index.html`.
