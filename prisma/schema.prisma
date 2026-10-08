@@ -1605,3 +1605,110 @@ model crm_activities {
   @@index([company_id, occurred_at], map: "idx_crm_activities_company_time")
   @@index([platform_organization_id, occurred_at], map: "idx_crm_activities_org_time")
 }
+
+/* -------------------------------------------------------------------------- *
+ * TRACEFAB COMMAND CENTER — Chantier Admin 02
+ * Tâches commerciales, rendez-vous, pilotes, conversion.
+ *
+ * Même ancrage que le Chantier 01 : platform_organization_id + RLS.
+ * -------------------------------------------------------------------------- */
+
+enum crm_task_type {
+  call
+  email
+  follow_up
+  book_demo
+  prepare_demo
+  send_proposal
+  follow_pilot
+  other
+}
+
+enum crm_task_status {
+  open
+  done
+  cancelled
+}
+
+enum crm_meeting_mode {
+  onsite
+  video
+  call
+}
+
+enum crm_pilot_status {
+  planned
+  active
+  completed
+  abandoned
+}
+
+model crm_tasks {
+  id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform_organization_id String           @db.Uuid
+  company_id               String?          @db.Uuid
+  contact_id               String?          @db.Uuid
+  type                     crm_task_type    @default(follow_up)
+  title                    String
+  detail                   String?
+  due_at                   DateTime?        @db.Timestamptz(6)
+  priority                 crm_priority     @default(medium)
+  status                   crm_task_status  @default(open)
+  assignee_user_id         String?          @db.Uuid
+  assignee_name            String?
+  completed_at             DateTime?        @db.Timestamptz(6)
+  created_at               DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime         @default(now()) @db.Timestamptz(6)
+
+  @@index([platform_organization_id, status, due_at], map: "idx_crm_tasks_org_status_due")
+  @@index([company_id], map: "idx_crm_tasks_company")
+  @@index([contact_id], map: "idx_crm_tasks_contact")
+  @@index([platform_organization_id, assignee_user_id, status], map: "idx_crm_tasks_org_assignee")
+}
+
+model crm_meetings {
+  id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform_organization_id String           @db.Uuid
+  company_id               String           @db.Uuid
+  contact_id               String?          @db.Uuid
+  subject                  String
+  starts_at                DateTime         @db.Timestamptz(6)
+  ends_at                  DateTime?        @db.Timestamptz(6)
+  mode                     crm_meeting_mode @default(video)
+  location                 String?
+  attendees                String?
+  outcome                  String?
+  notes                    String?
+  created_at               DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime         @default(now()) @db.Timestamptz(6)
+
+  @@index([platform_organization_id, starts_at], map: "idx_crm_meetings_org_starts")
+  @@index([company_id], map: "idx_crm_meetings_company")
+}
+
+model crm_pilots {
+  id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform_organization_id String           @db.Uuid
+  company_id               String           @unique @db.Uuid
+  /* Facultatif : relié à l'organisation TRACEFAB réelle une fois le pilote devenu
+     client. Sans ce lien, les pourcentages ci-dessous sont DÉCLARÉS par l'équipe
+     et l'interface le dit — ils ne sont jamais présentés comme des mesures. */
+  organization_id          String?          @db.Uuid
+  starts_at                DateTime?        @db.Timestamptz(6)
+  ends_at                  DateTime?        @db.Timestamptz(6)
+  status                   crm_pilot_status @default(planned)
+  supplier_count           Int?
+  product_count            Int?
+  objectives               String?
+  progress_pct             Int?
+  data_completeness_pct    Int?
+  evidence_coverage_pct    Int?
+  dpp_readiness_pct        Int?
+  issues                   String?
+  results                  String?
+  commercial_potential_eur Int?
+  created_at               DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime         @default(now()) @db.Timestamptz(6)
+
+  @@index([platform_organization_id, status], map: "idx_crm_pilots_org_status")
+}

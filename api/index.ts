@@ -21,6 +21,18 @@ const routes: Route[] = [
   { pattern: /^admin\/companies\/([^\/]+)$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId].js') },
   { pattern: /^admin\/contacts$/, params: [], load: () => import('./_routes/admin/contacts.js') },
   { pattern: /^admin\/contacts\/([^\/]+)$/, params: ['contactId'], load: () => import('./_routes/admin/contacts/[contactId].js') },
+  /*
+   * Chantier Admin 02 — opérationnel. `tasks`, `meetings`, `pilots` : la
+   * collection avant l'élément. `activities` et `analytics` sont globaux.
+   */
+  { pattern: /^admin\/tasks$/, params: [], load: () => import('./_routes/admin/tasks.js') },
+  { pattern: /^admin\/tasks\/([^\/]+)$/, params: ['taskId'], load: () => import('./_routes/admin/tasks/[taskId].js') },
+  { pattern: /^admin\/meetings$/, params: [], load: () => import('./_routes/admin/meetings.js') },
+  { pattern: /^admin\/meetings\/([^\/]+)$/, params: ['meetingId'], load: () => import('./_routes/admin/meetings/[meetingId].js') },
+  { pattern: /^admin\/pilots$/, params: [], load: () => import('./_routes/admin/pilots.js') },
+  { pattern: /^admin\/pilots\/([^\/]+)$/, params: ['pilotId'], load: () => import('./_routes/admin/pilots/[pilotId].js') },
+  { pattern: /^admin\/activities$/, params: [], load: () => import('./_routes/admin/activities.js') },
+  { pattern: /^admin\/analytics$/, params: [], load: () => import('./_routes/admin/analytics.js') },
   { pattern: /^catalog\/products\/import$/, params: [], load: () => import('./_routes/catalog/products/import.js') },
   { pattern: /^catalog\/products\/export$/, params: [], load: () => import('./_routes/catalog/products/export.js') },
   { pattern: /^catalog\/products\/import\-jobs\/([^\/]+)$/, params: ['jobId'], load: () => import('./_routes/catalog/products/import-jobs/[jobId].js') },

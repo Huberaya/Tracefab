@@ -111,7 +111,8 @@
     "test:wallet:signature": "node scripts/test_apple_signature.mjs",
     "test:i18n:auto-translate": "node scripts/test_auto_translate.mjs",
     "i18n:admin:build": "python3 scripts/build_admin_locales.py",
-    "test:admin:chantier01": "node scripts/test_admin_chantier01.mjs"
+    "test:admin:chantier01": "node scripts/test_admin_chantier01.mjs",
+    "test:admin:chantier02": "node scripts/test_admin_chantier02.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",

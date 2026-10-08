@@ -201,6 +201,37 @@ tbody tr:hover{background:#fafcf9}
   .view{padding:18px 16px 50px} .top{padding:12px 16px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;transform:none!important}}
+
+/* ---- Chantier Admin 02 ---- */
+.kpis.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpis.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.kpis.three,.kpis.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.btn.on{border-color:var(--ink);color:var(--ink);background:var(--green-soft)}
+.btn.link{border:0;background:none;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit}
+.viewhead{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:14px 0}
+.card.note{border-left:2px solid var(--ink);padding:14px 16px}
+h2.sub{font-size:15px;font-weight:600;margin:22px 0 10px;letter-spacing:.01em}
+.mono.late{color:var(--red);font-weight:600}
+.cardhead{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:12px}
+.meter{margin:10px 0}
+.meterhead{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.meterbar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
+.meterbar i{display:block;height:100%;background:var(--ink);border-radius:3px}
+.meterbar.ok i{background:var(--green)}
+.pilot .pilothead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.pilotnums{display:flex;gap:22px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:6px}
+.pilotnums>div{display:flex;flex-direction:column;gap:2px}
+.pilotnums .kl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.arow{display:grid;grid-template-columns:110px 1fr 48px 76px;gap:10px;align-items:center;padding:6px 0;font-size:13px}
+.alabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.abar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.abar i{display:block;height:100%;background:var(--ink)}
+.anum{text-align:right}
+.arate{text-align:right;font-size:12px}
+.tl-d{display:grid;grid-template-columns:132px 1fr;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)}
+.tl-d:last-child{border-bottom:0}
+@media(max-width:640px){.tl-d{grid-template-columns:1fr;gap:4px}.arow{grid-template-columns:84px 1fr 40px 64px}}
+.tag.a-conversion{background:var(--green);color:#fff}
 </style>
 </head>
 <body>
@@ -241,6 +272,9 @@ const state = {
   dashboard: null,
   companies: { items: [], total: 0, limit: 50, offset: 0 },
   contacts: { items: [] },
+  tasks: { items: [] }, meetings: { items: [] }, pilots: { items: [] },
+  activities: { items: [] }, analytics: null,
+  taskScope: 'today', meetScope: 'upcoming', activityType: '', pilotStatus: '',
   filters: { stage: '', priority: '', country: '', company_type: '', q: '', due: '' },
   selected: null,          // id de l'entreprise ouverte
   detail: null,            // { company, contacts, activities }
@@ -784,39 +818,469 @@ function modalContact() {
   </div></div>`;
 }
 
+function modalTask() {
+  const inp = (id, label, value, attrs) =>
+    `<label>${esc(label)}<input type="text" id="tk-${id}" value="${esc(value ?? '')}" ${attrs || ''}></label>`;
+  const companies = state.detail?.company ? [state.detail.company] : state.companies.items;
+  return `<div class="modal"><div class="modalbox" role="dialog" aria-modal="true">
+    <h2>${esc(t('tasks.new'))}</h2>
+    ${state.formError ? `<div class="err">${esc(state.formError)}</div>` : ''}
+    <div class="form">
+      <label class="full">${esc(t('tasks.task'))}<input type="text" id="tk-title" required></label>
+      <label>${esc(t('common.type'))}<select id="tk-type">
+        ${TASK_TYPES.map((v) => `<option value="${v}">${esc(t('taskType.' + v))}</option>`).join('')}</select></label>
+      <label>${esc(t('common.priority'))}<select id="tk-priority">
+        ${PRIORITIES.map((v) => `<option value="${v}"${v === 'high' ? ' selected' : ''}>${esc(t('priority.' + v))}</option>`).join('')}</select></label>
+      <label class="full">${esc(t('tasks.due'))}
+        <input type="text" id="tk-due_at" placeholder="YYYY-MM-DD"></label>
+      <label>${esc(t('tasks.owner'))}<input type="text" id="tk-assignee_name" value="${esc(state.access?.organizationName || '')}"></label>
+      <label>${esc(t('common.company'))}<select id="tk-company_id">
+        <option value="">${esc(t('tasks.noCompany'))}</option>
+        ${companies.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
+      <label class="full">${esc(t('common.notes'))}<textarea id="tk-detail" rows="3"></textarea></label>
+    </div>
+    <div class="modalfoot">
+      <button class="btn" id="m-cancel">${esc(t('common.cancel'))}</button>
+      <button class="btn primary" id="m-save" ${state.saving ? 'disabled' : ''}>${esc(t('common.save'))}</button>
+    </div>
+  </div></div>`;
+}
+
+function modalMeeting() {
+  const inp = (id, label, value, attrs) =>
+    `<label>${esc(label)}<input type="text" id="mt-${id}" value="${esc(value ?? '')}" ${attrs || ''}></label>`;
+  const companies = state.detail?.company ? [state.detail.company] : state.companies.items;
+  return `<div class="modal"><div class="modalbox" role="dialog" aria-modal="true">
+    <h2>${esc(t('meetings.new'))}</h2>
+    ${state.formError ? `<div class="err">${esc(state.formError)}</div>` : ''}
+    <div class="form">
+      <label class="full">${esc(t('meetings.subject'))}<input type="text" id="mt-subject" required></label>
+      <label>${esc(t('meetings.starts'))}<input type="text" id="mt-starts_at" placeholder="YYYY-MM-DDTHH:mm"></label>
+      <label>${esc(t('meetings.ends'))}<input type="text" id="mt-ends_at" placeholder="YYYY-MM-DDTHH:mm"></label>
+      <label>${esc(t('meetings.mode'))}<select id="mt-mode">
+        ${MEETING_MODES.map((v) => `<option value="${v}">${esc(t('meetMode.' + v))}</option>`).join('')}</select></label>
+      <label>${esc(t('common.company'))}<select id="mt-company_id">
+        <option value="">${esc(t('tasks.noCompany'))}</option>
+        ${companies.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
+      <label class="full">${esc(t('meetings.location'))}<input type="text" id="mt-location"></label>
+      <label class="full">${esc(t('meetings.attendees'))}<input type="text" id="mt-attendees"></label>
+    </div>
+    <div class="modalfoot">
+      <button class="btn" id="m-cancel">${esc(t('common.cancel'))}</button>
+      <button class="btn primary" id="m-save" ${state.saving ? 'disabled' : ''}>${esc(t('common.save'))}</button>
+    </div>
+  </div></div>`;
+}
+
+/* ---------------------------------------------------- Admin 02 : demo data */
+
+const now = () => new Date();
+const inDays = (n, h) => { const d = now(); d.setDate(d.getDate() + n); if (h !== undefined) d.setHours(h, 0, 0, 0); return d.toISOString(); };
+
+function demoTasks() {
+  return [
+    { id:'t1', title:'Appeler Camille Roux — cadrage pilote', type:'call', status:'open', priority:'critical',
+      due_at: inDays(0, 10), assignee_name:'Founder', company_id:'d1',
+      crm_companies:{ id:'d1', name:'Example Fashion Group', stage:'pilot', priority:'critical' } },
+    { id:'t2', title:'Préparer la démo DPP pour Northwind', type:'prepare_demo', status:'open', priority:'high',
+      due_at: inDays(-1, 9), assignee_name:'Founder', company_id:'d2',
+      crm_companies:{ id:'d2', name:'Northwind Textiles', stage:'demo', priority:'high' } },
+    { id:'t3', title:'Relancer Élise Marchand après 12 jours', type:'follow_up', status:'open', priority:'high',
+      due_at: inDays(0, 16), assignee_name:'Founder', company_id:'d3',
+      crm_companies:{ id:'d3', name:'Maison Lumière', stage:'contacted', priority:'high' } },
+    { id:'t4', title:'Envoyer la proposition à Iberia Knit Mills', type:'send_proposal', status:'open', priority:'medium',
+      due_at: inDays(2, 11), assignee_name:'Founder', company_id:'d4',
+      crm_companies:{ id:'d4', name:'Iberia Knit Mills', stage:'new', priority:'medium' } },
+    { id:'t5', title:'Suivre le pilote Example Fashion Group', type:'follow_pilot', status:'open', priority:'medium',
+      due_at: inDays(5, 14), assignee_name:'Founder', company_id:'d1',
+      crm_companies:{ id:'d1', name:'Example Fashion Group', stage:'pilot', priority:'critical' } },
+    { id:'t6', title:'Qualifier Atlas Apparel', type:'email', status:'done', priority:'low',
+      due_at: inDays(-3, 9), completed_at: inDays(-3, 12), assignee_name:'Founder', company_id:'d5',
+      crm_companies:{ id:'d5', name:'Atlas Apparel', stage:'to_contact', priority:'medium' } },
+  ];
+}
+
+function demoMeetings() {
+  return [
+    { id:'m1', subject:'Démo ESPR / DPP readiness', starts_at: inDays(1, 10), ends_at: inDays(1, 11),
+      mode:'video', location:'Google Meet', attendees:'Camille Roux, Jonas Weber',
+      company_id:'d1', crm_companies:{ id:'d1', name:'Example Fashion Group', stage:'pilot', priority:'critical' } },
+    { id:'m2', subject:'Point de cadrage traçabilité', starts_at: inDays(4, 15), mode:'onsite',
+      location:'Berlin', attendees:'Jonas Weber',
+      company_id:'d2', crm_companies:{ id:'d2', name:'Northwind Textiles', stage:'demo', priority:'high' } },
+    { id:'m3', subject:'Premier échange', starts_at: inDays(-6, 11), mode:'call',
+      outcome:'Intéressée, demande une démonstration.', attendees:'Élise Marchand',
+      company_id:'d3', crm_companies:{ id:'d3', name:'Maison Lumière', stage:'contacted', priority:'high' } },
+  ];
+}
+
+function demoPilots() {
+  return [
+    { id:'p1', company_id:'d1', status:'active', starts_at: inDays(-24), ends_at: inDays(66),
+      supplier_count:12, product_count:350, progress_pct:62, commercial_potential_eur:68000,
+      data_completeness_pct:84, evidence_coverage_pct:72, dpp_readiness_pct:69,
+      objectives:'Couvrir 12 fournisseurs critiques et produire un DPP exportable sur 350 références.',
+      issues:'Trois fournisseurs n’ont pas renvoyé leurs certificats de teinture.',
+      crm_companies:{ id:'d1', name:'Example Fashion Group', stage:'pilot', priority:'critical' } },
+  ];
+}
+
+function demoActivities() {
+  return [
+    { id:'a1', type:'conversion', summary:'Converti en client : Lusitania Fabrics', actor_name:'Founder', occurred_at: inDays(-9) },
+    { id:'a2', type:'pilot', summary:'Pilot started — Example Fashion Group', actor_name:'Founder', occurred_at: inDays(-24) },
+    { id:'a3', type:'meeting', summary:'Démo ESPR / DPP readiness', detail:'Google Meet', actor_name:'Founder', occurred_at: inDays(-2) },
+    { id:'a4', type:'status_change', summary:'Pipeline : contacted → replied', from_stage:'contacted', to_stage:'replied',
+      actor_name:'Founder', occurred_at: inDays(-4) },
+    { id:'a5', type:'email', summary:'Envoi de la plaquette ESPR', actor_name:'Founder', occurred_at: inDays(-5) },
+  ];
+}
+
+function demoAnalytics() {
+  return {
+    total: 7, customers: 1, lost: 0,
+    byStage: { new:2, qualified:1, to_contact:1, contacted:1, demo:1, pilot:1, customer:1 },
+    byCountry: {
+      FR:{ total:2, customers:0, lost:0, conversionRate:null },
+      DE:{ total:1, customers:0, lost:0, conversionRate:null },
+      IT:{ total:2, customers:0, lost:0, conversionRate:null },
+      ES:{ total:1, customers:0, lost:0, conversionRate:null },
+      PT:{ total:1, customers:1, lost:0, conversionRate:100 },
+    },
+    bySource: {
+      Referral:{ total:3, customers:1, lost:0, conversionRate:100 },
+      Inbound:{ total:2, customers:0, lost:0, conversionRate:null },
+      Event:{ total:1, customers:0, lost:0, conversionRate:null },
+      List:{ total:1, customers:0, lost:0, conversionRate:null },
+    },
+    avgDaysToConvert: null, conversionsMeasured: 0,
+    counts: { companies:7, meetings:3, pilots:1, conversions:1, demos:1, demoStage:1, demoActivities:1 },
+  };
+}
+
+/* ------------------------------------------------------ Admin 02 : helpers */
+
+const TASK_TYPES = ['call','email','follow_up','book_demo','prepare_demo','send_proposal','follow_pilot','other'];
+const MEETING_MODES = ['onsite','video','call'];
+const PILOT_STATUSES = ['planned','active','completed','abandoned'];
+const ACTIVITY_TYPES = ['created','status_change','note','email','call','meeting','demo','proposal','pilot','conversion','lost'];
+
+const taskTypeTag = (k) => `<span class="tag">${esc(t('taskType.' + k))}</span>`;
+const meetingModeTag = (k) => `<span class="tag">${esc(t('meetMode.' + (k || 'onsite')))}</span>`;
+const pilotStatusTag = (k) => `<span class="tag s-${esc(k)}">${esc(t('pilotStatus.' + k))}</span>`;
+
+/** Une tâche en retard reste en retard même si son échéance tombe aujourd'hui. */
+function taskBucket(task) {
+  if (task.status !== 'open') return 'closed';
+  if (!task.due_at) return 'undated';
+  const d = new Date(task.due_at);
+  if (Number.isNaN(d.getTime())) return 'undated';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dueDay = new Date(d); dueDay.setHours(0, 0, 0, 0);
+  if (dueDay < today) return 'overdue';
+  if (dueDay.getTime() === today.getTime()) return 'today';
+  return 'upcoming';
+}
+
+const scopeBar = (id, current, options) => `<div class="filters">
+  ${options.map(([k, label]) => `<button class="btn sm ${current === k ? 'on' : ''}"
+    data-${id}="${k}" ${current === k ? 'aria-pressed="true"' : ''}>${esc(label)}</button>`).join('')}
+</div>`;
+
+const meter = (label, pct, tone) => `<div class="meter">
+  <div class="meterhead"><span>${esc(label)}</span><b class="num">${pct === null || pct === undefined ? esc(t('common.notMeasured')) : fmtInt(pct) + '%'}</b></div>
+  <div class="meterbar ${tone || ''}"><i style="width:${typeof pct === 'number' ? Math.min(100, Math.max(0, pct)) : 0}%"></i></div>
+</div>`;
+
+/** Un pourcentage non mesuré ne s'affiche jamais comme une barre pleine. */
+const rate = (v) => (v === null || v === undefined ? `<span class="hint">${esc(t('common.notMeasured'))}</span>`
+  : `<b class="num">${fmtInt(v)} %</b>`);
+
+/* --------------------------------------------------------- Admin 02 : vues */
+
+function viewTasks() {
+  const items = state.tasks.items || [];
+  const counts = items.reduce((a, task) => { a[taskBucket(task)] = (a[taskBucket(task)] || 0) + 1; return a; }, {});
+  const open = (counts.overdue || 0) + (counts.today || 0) + (counts.upcoming || 0) + (counts.undated || 0);
+
+  const filtered = state.taskScope === 'all' ? items : items.filter((x) => taskBucket(x) === state.taskScope);
+  /* TODAY = ce qui est à faire aujourd'hui ET le retard. Séparer les deux
+     laisserait croire qu'un commercial en retard est à l'heure. */
+  const scoped = state.taskScope === 'today'
+    ? items.filter((x) => taskBucket(x) === 'today' || taskBucket(x) === 'overdue')
+    : filtered;
+
+  const rows = scoped.map((k) => `
+    <tr>
+      <td>${taskTypeTag(k.type)}</td>
+      <td><div class="co">${esc(k.title)}</div>
+        ${k.detail ? `<div class="meta">${esc(k.detail)}</div>` : ''}</td>
+      <td>${k.crm_companies ? `<button class="btn sm link" data-open="${esc(k.crm_companies.id)}">${esc(k.crm_companies.name)}</button>` : '<span class="hint">—</span>'}</td>
+      <td class="mono ${taskBucket(k) === 'overdue' ? 'late' : ''}">${esc(fmtDateTime(k.due_at) || t('tasks.noDate'))}</td>
+      <td>${priorityTag(k.priority)}</td>
+      <td class="meta">${esc(k.assignee_name || '—')}</td>
+      <td><button class="btn sm" data-task="${esc(k.id)}" data-to="${k.status === 'done' ? 'open' : 'done'}">
+        ${esc(k.status === 'done' ? t('tasks.reopen') : t('tasks.markDone'))}</button></td>
+    </tr>`).join('');
+
+  const table = scoped.length ? `<div class="tblwrap"><table>
+    <thead><tr>
+      <th>${esc(t('common.type'))}</th><th>${esc(t('tasks.task'))}</th>
+      <th>${esc(t('common.company'))}</th><th>${esc(t('tasks.due'))}</th>
+      <th>${esc(t('common.priority'))}</th><th>${esc(t('tasks.owner'))}</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table></div>`
+    : `<div class="empty"><b>${esc(t('tasks.empty'))}</b>${esc(t('tasks.emptyBody'))}</div>`;
+
+  return `
+  <div class="kpis four">
+    <button class="kpi" data-tscope="today"><div class="kl">${esc(t('tasks.actionable'))}</div>
+      <div class="kv num">${fmtInt((counts.overdue || 0) + (counts.today || 0))}</div></button>
+    <button class="kpi" data-tscope="overdue"><div class="kl">${esc(t('tasks.overdue'))}</div>
+      <div class="kv num">${fmtInt(counts.overdue || 0)}</div></button>
+    <button class="kpi" data-tscope="open"><div class="kl">${esc(t('tasks.open'))}</div>
+      <div class="kv num">${fmtInt(open)}</div></button>
+    <button class="kpi" data-tscope="all"><div class="kl">${esc(t('tasks.all'))}</div>
+      <div class="kv num">${fmtInt(items.length)}</div></button>
+  </div>
+  ${scopeBar('tscope', state.taskScope, [
+    ['today', t('tasks.actionable')], ['overdue', t('tasks.overdue')],
+    ['upcoming', t('tasks.upcoming')], ['undated', t('tasks.undated')],
+    ['closed', t('tasks.closed')], ['all', t('tasks.all')],
+  ])}
+  <div class="viewhead">
+    <div class="hint">${esc(t('tasks.hint'))}</div>
+    <button class="btn primary" id="new-task">${esc(t('tasks.new'))}</button>
+  </div>
+  ${table}`;
+}
+
+function viewActivities() {
+  const items = state.activities.items || [];
+  const shown = state.activityType ? items.filter((a) => a.type === state.activityType) : items;
+
+  const line = shown.map((a) => `
+    <div class="tl-d">
+      <div class="tl-when"><span class="mono">${esc(fmtDateTime(a.occurred_at) || '—')}</span></div>
+      <div class="tl-body">
+        <span class="tag a-${esc(a.type)}">${esc(t('activity.' + a.type))}</span>
+        <b>${esc(a.summary)}</b>
+        ${a.detail ? `<div class="meta">${esc(a.detail)}</div>` : ''}
+        ${a.from_stage && a.to_stage ? `<div class="meta">${esc(t('stage.' + a.from_stage))} → ${esc(t('stage.' + a.to_stage))}</div>` : ''}
+        <div class="meta">${esc(a.actor_name || '—')}
+          ${a.crm_companies ? ` · <button class="btn sm link" data-open="${esc(a.crm_companies.id)}">${esc(a.crm_companies.name)}</button>` : ''}</div>
+      </div>
+    </div>`).join('');
+
+  return `
+  <div class="viewhead">
+    <div class="hint">${esc(t('activities.hint'))}</div>
+    <select id="f-activity" class="btn sm">
+      <option value="">${esc(t('activities.allTypes'))}</option>
+      ${ACTIVITY_TYPES.map((k) => `<option value="${k}" ${state.activityType === k ? 'selected' : ''}>${esc(t('activity.' + k))}</option>`).join('')}
+    </select>
+  </div>
+  ${shown.length ? `<div class="timeline">${line}</div>`
+    : `<div class="empty"><b>${esc(t('activities.empty'))}</b>${esc(t('activities.emptyBody'))}</div>`}`;
+}
+
+function viewMeetings() {
+  const items = state.meetings.items || [];
+  const rows = items.map((m) => `
+    <tr>
+      <td><div class="co">${esc(m.subject)}</div>
+        ${m.attendees ? `<div class="meta">${esc(m.attendees)}</div>` : ''}</td>
+      <td>${m.crm_companies ? `<button class="btn sm link" data-open="${esc(m.crm_companies.id)}">${esc(m.crm_companies.name)}</button>` : '<span class="hint">—</span>'}</td>
+      <td class="mono">${esc(fmtDateTime(m.starts_at) || '—')}</td>
+      <td>${meetingModeTag(m.mode)}</td>
+      <td class="meta">${esc(m.location || '—')}</td>
+      <td class="meta">${esc(m.outcome || '—')}</td>
+    </tr>`).join('');
+
+  return `
+  ${scopeBar('mscope', state.meetScope, [
+    ['upcoming', t('meetings.upcoming')], ['past', t('meetings.past')], ['all', t('meetings.all')],
+  ])}
+  <div class="viewhead">
+    <div class="hint">${esc(t('meetings.hint'))}</div>
+    <button class="btn primary" id="new-meeting">${esc(t('meetings.new'))}</button>
+  </div>
+  ${items.length ? `<div class="tblwrap"><table>
+    <thead><tr>
+      <th>${esc(t('meetings.subject'))}</th><th>${esc(t('common.company'))}</th>
+      <th>${esc(t('meetings.starts'))}</th><th>${esc(t('meetings.mode'))}</th>
+      <th>${esc(t('meetings.location'))}</th><th>${esc(t('meetings.outcome'))}</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>`
+    : `<div class="empty"><b>${esc(t('meetings.empty'))}</b>${esc(t('meetings.emptyBody'))}</div>`}`;
+}
+
+function viewPilots() {
+  const items = state.pilots.items || [];
+  const shown = state.pilotStatus ? items.filter((p) => p.status === state.pilotStatus) : items;
+
+  const cards = shown.map((p) => {
+    const name = p.crm_companies ? p.crm_companies.name : (p.company_id || '—');
+    return `<div class="card pilot">
+      <div class="pilothead">
+        <div>
+          <div class="co">${p.crm_companies
+            ? `<button class="btn sm link" data-open="${esc(p.crm_companies.id)}">${esc(name)}</button>` : esc(name)}</div>
+          <div class="meta mono">${esc(fmtDate(p.starts_at) || '?')} → ${esc(fmtDate(p.ends_at) || '?')}</div>
+        </div>
+        ${pilotStatusTag(p.status)}
+      </div>
+      <div class="pilotnums">
+        <div><span class="kl">${esc(t('pilots.suppliers'))}</span><b class="num">${fmtInt(p.supplier_count)}</b></div>
+        <div><span class="kl">${esc(t('pilots.products'))}</span><b class="num">${fmtInt(p.product_count)}</b></div>
+        <div><span class="kl">${esc(t('pilots.potential'))}</span><b class="num">${fmtMoney(p.commercial_potential_eur)}</b></div>
+      </div>
+      ${meter(t('pilots.progression'), p.progress_pct)}
+      ${meter(t('pilots.dataCompleteness'), p.data_completeness_pct, 'ok')}
+      ${meter(t('pilots.evidenceCoverage'), p.evidence_coverage_pct, 'ok')}
+      ${meter(t('pilots.dppReadiness'), p.dpp_readiness_pct, 'ok')}
+      ${p.objectives ? `<div class="field"><label>${esc(t('pilots.objectives'))}</label><span class="v">${esc(p.objectives)}</span></div>` : ''}
+      ${p.issues ? `<div class="field"><label>${esc(t('pilots.issues'))}</label><span class="v">${esc(p.issues)}</span></div>` : ''}
+      ${p.results ? `<div class="field"><label>${esc(t('pilots.results'))}</label><span class="v">${esc(p.results)}</span></div>` : ''}
+    </div>`;
+  }).join('');
+
+  return `
+  ${scopeBar('pstatus', state.pilotStatus, [['', t('pilots.allStatuses')],
+    ...PILOT_STATUSES.map((k) => [k, t('pilotStatus.' + k)])])}
+  <div class="viewhead"><div class="hint">${esc(t('pilots.declaredHint'))}</div></div>
+  ${shown.length ? `<div class="grid2">${cards}</div>`
+    : `<div class="empty"><b>${esc(t('pilots.empty'))}</b>${esc(t('pilots.emptyBody'))}</div>`}`;
+}
+
+function viewCustomers() {
+  const items = (state.customers.items || []);
+  const won = items.filter((c) => c.stage === 'customer');
+  const lost = items.filter((c) => c.stage === 'lost');
+  const value = won.reduce((a, c) => a + (Number(c.converted_value_eur) || 0), 0);
+
+  const row = (c) => `
+    <tr data-open="${esc(c.id)}">
+      <td><div class="co">${esc(c.name)}</div><div class="meta">${esc(c.industry || t('type.' + c.company_type))}</div></td>
+      <td class="mono">${esc(c.country_code || '—')}</td>
+      <td>${c.stage === 'lost' ? `<span class="meta">${esc(c.lost_reason || '—')}</span>` : stageTag(c.stage)}</td>
+      <td class="num">${c.stage === 'lost' ? '—' : fmtMoney(c.converted_value_eur)}</td>
+      <td class="mono">${c.stage === 'lost' ? '—' : esc(fmtDate(c.converted_at) || '—')}</td>
+      <td class="meta">${esc(c.owner_name || '—')}</td>
+    </tr>`;
+
+  const table = (list, emptyText) => (list.length ? `<div class="tblwrap"><table>
+    <thead><tr>
+      <th>${esc(t('common.company'))}</th><th>${esc(t('common.country'))}</th>
+      <th>${esc(t('customers.state'))}</th><th>${esc(t('customers.value'))}</th>
+      <th>${esc(t('customers.convertedAt'))}</th><th>${esc(t('common.owner'))}</th>
+    </tr></thead><tbody>${list.map(row).join('')}</tbody></table></div>`
+    : `<div class="empty"><b>${esc(t('customers.empty'))}</b>${esc(emptyText)}</div>`);
+
+  return `
+  <div class="kpis three">
+    <div class="kpi"><div class="kl">${esc(t('customers.won'))}</div><div class="kv num">${fmtInt(won.length)}</div></div>
+    <div class="kpi"><div class="kl">${esc(t('customers.lost'))}</div><div class="kv num">${fmtInt(lost.length)}</div></div>
+    <div class="kpi"><div class="kl">${esc(t('customers.convertedValue'))}</div><div class="kv num">${fmtMoney(value)}</div></div>
+  </div>
+  <div class="card note">${esc(t('customers.historyNote'))}</div>
+  <h2 class="sub">${esc(t('customers.won'))}</h2>${table(won, t('customers.emptyWon'))}
+  <h2 class="sub">${esc(t('customers.lost'))}</h2>${table(lost, t('customers.emptyLost'))}`;
+}
+
+function viewAnalytics() {
+  const a = state.analytics;
+  if (!a) return `<div class="empty"><b>${esc(t('analytics.empty'))}</b></div>`;
+
+  const bar = (label, total, customers, conversion) => `<div class="arow">
+    <span class="alabel mono">${esc(label)}</span>
+    <span class="abar"><i style="width:${a.total ? Math.round((total / a.total) * 100) : 0}%"></i></span>
+    <span class="anum num">${fmtInt(total)}</span>
+    <span class="arate">${rate(conversion)}</span>
+  </div>`;
+
+  const stages = STAGES.map((s) => [t('stage.' + s), a.byStage[s] || 0]);
+
+  return `
+  <div class="kpis four">
+    <div class="kpi"><div class="kl">${esc(t('analytics.demos'))}</div><div class="kv num">${fmtInt(a.counts.demos)}</div></div>
+    <div class="kpi"><div class="kl">${esc(t('analytics.pilots'))}</div><div class="kv num">${fmtInt(a.counts.pilots)}</div></div>
+    <div class="kpi"><div class="kl">${esc(t('analytics.won'))}</div><div class="kv num">${fmtInt(a.counts.conversions)}</div></div>
+    <div class="kpi"><div class="kl">${esc(t('analytics.lost'))}</div><div class="kv num">${fmtInt(a.lost)}</div></div>
+  </div>
+
+  <div class="card note">
+    <div class="field"><label>${esc(t('analytics.avgDays'))}</label>
+      <span class="v">${a.avgDaysToConvert === null || a.avgDaysToConvert === undefined
+        ? esc(t('common.notMeasured')) : fmtInt(a.avgDaysToConvert) + ' ' + esc(t('analytics.days'))}</span></div>
+    <div class="hint">${esc(t('analytics.avgDaysHint'))}</div>
+  </div>
+
+  <div class="panels">
+    <div class="card"><div class="cardhead">${esc(t('analytics.byCountry'))}</div>
+      ${Object.entries(a.byCountry).sort((x, y) => y[1].total - x[1].total)
+        .map(([k, v]) => bar(k, v.total, v.customers, v.conversionRate)).join('')}</div>
+    <div class="card"><div class="cardhead">${esc(t('analytics.bySource'))}</div>
+      ${Object.entries(a.bySource).sort((x, y) => y[1].total - x[1].total)
+        .map(([k, v]) => bar(k, v.total, v.customers, v.conversionRate)).join('')}</div>
+  </div>
+  <div class="panels">
+    <div class="card"><div class="cardhead">${esc(t('analytics.byStage'))}</div>
+      ${stages.map(([k, v]) => bar(k, v, v, null)).join('')}</div>
+  </div>`;
+}
+
 /* ------------------------------------------------------------------ shell */
 
 const NAV = [
-  ['dashboard', 'Dashboard', '01'],
-  ['prospects', 'Prospects', '02'],
-  ['pipeline', 'Pipeline', '03'],
-  ['contacts', 'Contacts', '04'],
+  ['dashboard', '01'],
+  ['prospects', '02'],
+  ['pipeline', '03'],
+  ['contacts', '04'],
 ];
-const SOON = ['Companies','Leads','Opportunities','Campaigns','Tasks','Activities','Meetings','Emails','Notes','Pilots','Customers','Suppliers','Analytics','Product Usage','Settings'];
+/* Chantier Admin 02 — l'opérationnel commercial. */
+const NAV_OPS = [
+  ['tasks', '05'],
+  ['activities', '06'],
+  ['meetings', '07'],
+  ['pilots', '08'],
+  ['customers', '09'],
+  ['analytics', '10'],
+];
+const SOON = ['Leads','Opportunities','Campaigns','Emails','Notes','Suppliers','Product Usage','Settings'];
 
 function shell() {
   const titles = {
     dashboard: t('nav.dashboard'), prospects: t('nav.prospects'),
     pipeline: t('nav.pipeline'), contacts: t('nav.contacts'), company: t('company.title'),
+    tasks: t('nav.tasks'), activities: t('nav.activities'), meetings: t('nav.meetings'),
+    pilots: t('nav.pilots'), customers: t('nav.customers'), analytics: t('nav.analytics'),
   };
   const subtitles = {
     dashboard: t('dashboard.subtitle'), prospects: t('prospects.subtitle'),
     pipeline: t('pipeline.subtitle'), contacts: t('contacts.subtitle'), company: '',
+    tasks: t('tasks.subtitle'), activities: t('activities.subtitle'),
+    meetings: t('meetings.subtitle'), pilots: t('pilots.subtitle'),
+    customers: t('customers.subtitle'), analytics: t('analytics.subtitle'),
   };
 
-  let body;
-  if (state.view === 'dashboard') body = viewDashboard();
-  else if (state.view === 'prospects') body = viewProspects();
-  else if (state.view === 'pipeline') body = viewPipeline();
-  else if (state.view === 'contacts') body = viewContacts();
-  else body = viewCompany();
+  const VIEWS = {
+    dashboard: viewDashboard, prospects: viewProspects, pipeline: viewPipeline,
+    contacts: viewContacts, tasks: viewTasks, activities: viewActivities,
+    meetings: viewMeetings, pilots: viewPilots, customers: viewCustomers,
+    analytics: viewAnalytics,
+  };
+  const body = (VIEWS[state.view] || viewCompany)();
 
   return `<div class="app">
     <nav class="side">
       <div class="brand"><div class="mark">tf</div>
         <div><b>TRACEFAB</b><small>Command Center</small></div></div>
       <div class="navlabel">${esc(t('nav.operate'))}</div>
-      ${NAV.map(([id, , k]) => `
+      ${NAV.map(([id, k]) => `
+        <button class="nav" data-view="${id}" ${state.view === id ? 'aria-current="page"' : ''}>
+          ${esc(t('nav.' + id))}<span class="k">${k}</span>
+        </button>`).join('')}
+      <div class="navlabel">${esc(t('nav.commercial'))}</div>
+      ${NAV_OPS.map(([id, k]) => `
         <button class="nav" data-view="${id}" ${state.view === id ? 'aria-current="page"' : ''}>
           ${esc(t('nav.' + id))}<span class="k">${k}</span>
         </button>`).join('')}
@@ -847,6 +1311,8 @@ function shell() {
     </div>
     ${state.modal === 'company' ? modalCompany() : ''}
     ${state.modal === 'contact' ? modalContact() : ''}
+    ${state.modal === 'task' ? modalTask() : ''}
+    ${state.modal === 'meeting' ? modalMeeting() : ''}
   </div>`;
 }
 
@@ -944,6 +1410,35 @@ function bind() {
 
   const move = document.getElementById('move-stage');
   if (move) move.addEventListener('change', () => moveStage(move.value));
+
+  /* Admin 02 : bascules de portée, actions de tâche, création. */
+  all('[data-tscope]').forEach((b) => b.addEventListener('click', () => {
+    state.taskScope = b.dataset.tscope; render();
+  }));
+  all('[data-mscope]').forEach((b) => b.addEventListener('click', () => {
+    state.meetScope = b.dataset.mscope; loadView();
+  }));
+  all('[data-pstatus]').forEach((b) => b.addEventListener('click', () => {
+    state.pilotStatus = b.dataset.pstatus; render();
+  }));
+  all('[data-task]').forEach((b) => b.addEventListener('click', () => setTaskStatus(b.dataset.task, b.dataset.to)));
+  on('new-task', 'click', () => { state.formError = null; state.modal = 'task'; render(); });
+  on('new-meeting', 'click', () => { state.formError = null; state.modal = 'meeting'; render(); });
+
+  const fa = document.getElementById('f-activity');
+  if (fa) fa.addEventListener('change', () => { state.activityType = fa.value; loadView(); });
+}
+
+async function setTaskStatus(id, status) {
+  if (state.demo) { state.error = t('common.demoReadOnly'); render(); return; }
+  try {
+    await api(`/api/admin/tasks/${encodeURIComponent(id)}`, {
+      method: 'PATCH', body: JSON.stringify({ status }),
+    });
+    state.error = null;
+    await loadTasks();
+  } catch (e) { state.error = e.message; }
+  render();
 }
 
 /* ------------------------------------------------------------------ loads */
@@ -1014,12 +1509,70 @@ async function openCompany(id) {
   render();
 }
 
+async function loadTasks() {
+  if (state.demo) { state.tasks = { items: demoTasks() }; return; }
+  state.tasks = await api('/api/admin/tasks?limit=500');
+}
+
+async function loadMeetings() {
+  if (state.demo) {
+    const all = demoMeetings();
+    const cut = Date.now();
+    const items = state.meetScope === 'all' ? all
+      : state.meetScope === 'past' ? all.filter((m) => Date.parse(m.starts_at) < cut)
+        : all.filter((m) => Date.parse(m.starts_at) >= cut);
+    state.meetings = { items };
+    return;
+  }
+  state.meetings = await api(`/api/admin/meetings?scope=${encodeURIComponent(state.meetScope)}`);
+}
+
+async function loadPilots() {
+  if (state.demo) { state.pilots = { items: demoPilots() }; return; }
+  state.pilots = await api('/api/admin/pilots');
+}
+
+async function loadActivities() {
+  if (state.demo) { state.activities = { items: demoActivities() }; return; }
+  const q = state.activityType ? `?type=${encodeURIComponent(state.activityType)}` : '';
+  state.activities = await api(`/api/admin/activities${q}`);
+}
+
+async function loadAnalytics() {
+  if (state.demo) { state.analytics = demoAnalytics(); return; }
+  const res = await api('/api/admin/analytics');
+  state.analytics = res.analytics;
+}
+
+async function loadCustomers() {
+  if (state.demo) {
+    const all = demoCompanies();
+    const d7 = all.find((c) => c.id === 'd7');
+    if (d7) { d7.converted_at = inDays(-9); d7.converted_value_eur = 40000; }
+    state.customers = { items: all.filter((c) => c.stage === 'customer' || c.stage === 'lost') };
+    return;
+  }
+  /* Deux lectures plutôt qu'un endpoint dédié : le pipeline est la source de
+     vérité, un client n'est qu'une entreprise à l'étape customer. Aucun duplicata. */
+  const [won, lost] = await Promise.all([
+    api('/api/admin/companies?stage=customer&limit=200'),
+    api('/api/admin/companies?stage=lost&limit=200'),
+  ]);
+  state.customers = { items: [...(won.items || []), ...(lost.items || [])] };
+}
+
 async function loadView() {
   state.error = null;
   try {
     if (state.view === 'dashboard') await loadDashboard();
     else if (state.view === 'contacts') { await loadCompanies(); await loadContacts(); }
     else if (state.view === 'company' && state.selected) { await openCompany(state.selected); return; }
+    else if (state.view === 'tasks') await loadTasks();
+    else if (state.view === 'meetings') await loadMeetings();
+    else if (state.view === 'pilots') await loadPilots();
+    else if (state.view === 'activities') await loadActivities();
+    else if (state.view === 'analytics') await loadAnalytics();
+    else if (state.view === 'customers') await loadCustomers();
     else await loadCompanies();
   } catch (e) {
     state.error = e.message;
@@ -1049,6 +1602,8 @@ const COMPANY_IDS = ['name','website','country_code','city','industry','company_
   'source','owner_name','next_contact_at','notes'];
 const CONTACT_IDS = ['first_name','last_name','job_title','email','phone','linkedin_url','country_code',
   'language','is_decision_maker','influence_level','status','next_action','company_id'];
+const TASK_IDS = ['title','type','priority','due_at','assignee_name','company_id','detail'];
+const MEETING_IDS = ['subject','starts_at','ends_at','mode','company_id','location','attendees'];
 
 async function saveModal() {
   state.saving = true;
@@ -1070,6 +1625,14 @@ async function saveModal() {
       } else {
         await api('/api/admin/companies', { method: 'POST', body: JSON.stringify(body) });
       }
+    } else if (state.modal === 'task') {
+      const body = readForm('tk-', TASK_IDS);
+      if (state.demo) { state.formError = t('common.demoReadOnly'); state.saving = false; render(); return; }
+      await api('/api/admin/tasks', { method: 'POST', body: JSON.stringify(body) });
+    } else if (state.modal === 'meeting') {
+      const body = readForm('mt-', MEETING_IDS);
+      if (state.demo) { state.formError = t('common.demoReadOnly'); state.saving = false; render(); return; }
+      await api('/api/admin/meetings', { method: 'POST', body: JSON.stringify(body) });
     } else {
       const body = readForm('kc-', CONTACT_IDS);
       body.is_decision_maker = body.is_decision_maker === 'true';

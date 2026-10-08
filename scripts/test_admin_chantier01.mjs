@@ -360,8 +360,10 @@ check(() => {
   if (!html.includes("TracefabI18n ? window.TracefabI18n.t(key) : null")) throw new Error('shim absent');
 }, 'une clé manquante renvoie la clé, jamais un blanc');
 
-/* Libellés français codés en dur dans le rendu : le contenu métier doit venir des dictionnaires. */
-const rendered = html.slice(html.indexOf('function shell()'));
+/* Libellés français codés en dur dans le rendu : le contenu métier doit venir des dictionnaires.
+   Les commentaires de code sont retirés avant le scan : ils ne sont pas rendus, et les
+   laisser comptait comme « libellé codé en dur » du texte qui n'atteint jamais l'écran. */
+const rendered = html.slice(html.indexOf('function shell()')).replace(/\/\*[\s\S]*?\*\//g, '');
 const hardcoded = (rendered.match(/[\u00e0\u00e2\u00e7\u00e9\u00e8\u00ea\u00eb\u00ee\u00f4\u00f9\u00fb][a-zà-ÿ]{2,}/g) || [])
   .filter((w) => !/d[eé]monstration/i.test(w));
 eq(hardcoded.length, 0, 'aucun libellé français codé en dur dans le rendu',

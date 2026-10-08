@@ -3,7 +3,7 @@ import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { isUnauthorized } from '../../../../_lib/auth.js';
 import { isAdminAccessDenied, requirePlatformAdmin } from '../../../../_lib/admin-access.js';
 import { withTracefabUserContext } from '../../../../_lib/context.js';
-import { PIPELINE_STAGES, canTransition, stageRank } from '../../../../_lib/crm.js';
+import { PIPELINE_STAGES, canConvert, canTransition, stageRank } from '../../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 
 /**
@@ -36,14 +36,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = (await withTracefabUserContext(admin.userId, admin.userEmail, async (tx) => {
       const company = await tx.crm_companies.findFirst({
         where: { id: companyId, platform_organization_id: admin.platformOrganizationId },
-        select: { id: true, name: true, stage: true },
+        select: { id: true, name: true, stage: true, converted_at: true },
       });
       if (!company) return { status: 404 as const };
+
+      if (stage === 'customer') {
+        const guard = canConvert(company);
+        if (!guard.ok) return { status: 422 as const, error: guard.error };
+      }
 
       const from = company.stage as (typeof PIPELINE_STAGES)[number] | 'lost';
       const decision = canTransition(from, stage, Boolean(lostReason));
       if (!decision.ok) return { status: 422 as const, error: decision.error };
       if (!decision.activity) return { status: 200 as const, unchanged: true, company };
+
+      /* Conversion (§14) : rien n'est déplacé, rien n'est copié. Les contacts,
+         activités, tâches et rendez-vous restent attachés par company_id — c'est
+         ce qui garantit que l'historique commercial survit au passage client.
+         `converted_at` est obligatoire : la contrainte CHECK en base le refuse
+         autrement, et c'est lui qui rend la durée de conversion mesurable. */
+      const valueRaw = Number(body.converted_value_eur);
+      const convertedValue = stage === 'customer' && Number.isInteger(valueRaw) && valueRaw >= 0
+        ? valueRaw
+        : null;
+      const linkedOrg = stage === 'customer' && typeof body.linked_organization_id === 'string'
+        && body.linked_organization_id.trim()
+        ? body.linked_organization_id.trim().slice(0, 64)
+        : null;
 
       const updated = await tx.crm_companies.update({
         where: { id: companyId },
@@ -51,6 +70,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           stage,
           lost_reason: stage === 'lost' ? lostReason : null,
           last_contact_at: stage === 'contacted' || stage === 'replied' ? new Date() : undefined,
+          converted_at: stage === 'customer' ? new Date() : null,
+          converted_value_eur: convertedValue,
+          linked_organization_id: linkedOrg,
         } as never,
       });
 

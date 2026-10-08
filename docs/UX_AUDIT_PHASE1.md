@@ -3333,3 +3333,109 @@ logique pure est testée, leur comportement Prisma ne l'est pas.
 Tasks, Activities (module complet), Meetings, Emails, Notes, Pilots, Leads,
 Opportunities, Campaigns, Customers, Suppliers, Analytics, Product Usage, Settings,
 import CSV/Excel, listes de prospection. Ils apparaissent désactivés dans la navigation.
+
+---
+
+## Chantier Admin 02 — opérationnel commercial
+
+Suite du Chantier Admin 01. Six modules de la console passent de « à venir » à
+opérationnels : **Tâches + TODAY (§11)**, **Activités (§12)**, **Rendez-vous (§12)**,
+**Pilotes (§13)**, **Clients (§14)** et **Analytics (§15)**.
+
+### Décisions de modélisation
+
+**Pas de table pour les e-mails ni les notes.** Ce sont des lignes de
+`crm_activities` filtrées par `type`. Une table séparée aurait créé deux journaux
+concurrents pour le même fait.
+
+**`crm_meetings` est une table à part** parce qu'un rendez-vous a besoin d'un
+`starts_at` planifiable — une activité est un fait passé, un rendez-vous est un
+engagement futur.
+
+**La conversion n'ajoute aucune table.** Trois colonnes sur `crm_companies`
+(`converted_at`, `converted_value_eur`, `linked_organization_id`). Rien n'est
+déplacé, donc contacts, activités, tâches et rendez-vous — tous rattachés par
+`company_id` — survivent par construction. §14 est satisfait sans mécanisme de
+copie à maintenir.
+
+**Un pilote par entreprise** (`company_id @unique`). Deux pilotes simultanés sur
+le même compte rendraient la progression illisible.
+
+**Le trigger de cohérence d'organisation a dû être réécrit.** La version du
+Chantier 01 levait `crm company % does not exist` sur un `company_id` NULL. Or
+`crm_tasks.company_id` est nullable — une tâche du jour peut ne concerner aucune
+entreprise. La fonction rend `NEW` quand `company_id IS NULL` ; pour
+`crm_contacts` et `crm_activities`, dont la colonne est `NOT NULL`, le
+comportement est inchangé.
+
+### Ce qui est déclaré n'est pas présenté comme mesuré
+
+Les pourcentages d'un pilote (complétude des données, couverture des preuves,
+préparation DPP) sont **saisis par l'équipe commerciale**. TRACEFAB ne les mesure
+que si `organization_id` relie un vrai espace. Les routes renvoient donc
+`measurement: 'declared'` et l'interface affiche l'avertissement. Un « DPP
+readiness 69 % » non sourcé présenté comme une mesure produit violerait la règle
+« ne jamais inventer de donnée ».
+
+Même principe en analytics : `avgDaysToConvert` vaut `null` quand aucune
+conversion n'est datée, jamais `0`. Un « 0 jour » laisserait croire à une
+conversion instantanée mesurée. L'interface affiche « Non mesuré ».
+
+Un pays sans décision affiche un taux de conversion `null`, pas `0 %`.
+
+### TODAY inclut le retard
+
+`taskBucket()` classe une tâche dont l'échéance était hier soir en `overdue`, pas
+en `today`. Une tâche « du jour » déjà dépassée serait sinon présentée comme
+étant à l'heure. La carte d'entrée affiche `today + overdue` et son libellé le
+dit (« À traiter aujourd'hui »), pour ne pas double-compter avec la carte
+« En retard ».
+
+### Mesures
+
+| | avant | après |
+|---|---|---|
+| modèles Prisma / enums | 47 / 32 | **50 / 36** |
+| routes API | 134 | **142** |
+| clés `admin.json` × 7 langues | 172 | **271** |
+| `test:suite` | PASS 62 · SKIP 25 · FAIL 0 / 87 | **PASS 63 · SKIP 25 · FAIL 0 / 88** |
+| `test:admin:chantier02` | n'existait pas | **315/315**, contre-vérifié 6 fois |
+| `test:admin:chantier01` | 94/94 | **94/94** |
+| `api:typecheck` | 90 | **90** — 0 erreur dans les fichiers CRM |
+
+Les 6 contre-vérifications (chacune exit 1) : trigger non tolérant au NULL ·
+ordre du routeur inversé · `canConvert` permissif · moyenne sur échantillon vide
+renvoyant `0` · traduction française supprimée · pourcentages de pilote annoncés
+comme mesurés.
+
+### Deux défauts de test corrigés en route
+
+**`document.body.textContent` inclut le source du `<script>` inline.** Le test
+cherchait « Premier échange », « NaN », « undefined » et les noms d'entreprises
+dans le rendu — il les trouvait dans le code. Les assertions passaient ou
+échouaient pour de mauvaises raisons. La lecture se fait maintenant sur `#app`.
+
+**Chercher un mot anglais dans le source donne des faux positifs** :
+`function viewMeetings()` contient « Meetings » sans être un libellé. Le contrôle
+« aucun libellé codé en dur » du Chantier 01 comptait aussi les commentaires de
+code. Il exclut désormais les commentaires — et attrape toujours un vrai libellé
+codé en dur (contre-vérifié). La preuve d'internationalisation du Chantier 02
+passe par le rendu : la page est rechargée avec le dictionnaire allemand et les
+libellés doivent basculer.
+
+`toLocaleString('fr-FR')` sépare les milliers par U+202F (espace fine insécable),
+pas par un espace ordinaire : comparer à un littéral `'40 000'` échouait à tort.
+
+### Ce qui n'a pas pu être vérifié ici
+
+La migration **n'a toujours pas été exécutée** : `prisma validate` exige
+`binaries.prisma.sh` (injoignable) et `check_migrations.ts` reste un SKIP. La
+syntaxe SQL est contrôlée structurellement, pas par PostgreSQL. Les 8 nouveaux
+handlers n'ont jamais répondu à une requête réelle : leur logique pure est
+exécutée par le test, leur comportement Prisma ne l'est pas.
+
+### Non livré, volontairement
+
+Leads, Opportunities, Campaigns, Emails, Notes, Suppliers, Product Usage,
+Settings, import CSV/Excel (§8), listes de prospection (§7), recherche avancée
+multi-critères (§9). Ils restent désactivés dans la navigation.

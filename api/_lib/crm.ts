@@ -394,3 +394,283 @@ export function stageRank(stage: CrmStage) {
   if (stage === 'lost') return -1;
   return PIPELINE_STAGES.indexOf(stage as PipelineStage);
 }
+
+/* ========================================================================== *
+ * Chantier Admin 02 — tâches, rendez-vous, pilotes, conversion, analytics.
+ * Toujours pur : aucune requête, aucun process.env.
+ * ========================================================================== */
+
+export const TASK_TYPES = [
+  'call', 'email', 'follow_up', 'book_demo', 'prepare_demo',
+  'send_proposal', 'follow_pilot', 'other',
+] as const;
+
+export const TASK_STATUSES = ['open', 'done', 'cancelled'] as const;
+export const MEETING_MODES = ['onsite', 'video', 'call'] as const;
+export const PILOT_STATUSES = ['planned', 'active', 'completed', 'abandoned'] as const;
+
+const DAY_MS = 86400000;
+
+const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+/**
+ * Classe une tâche dans le seul seau qui compte pour une journée commerciale.
+ *
+ * `overdue` prime sur `today` : une tâche en retard dont l'échéance est
+ * aujourd'hui est en retard, pas « du jour ». Un commercial qui verrait la
+ * seconde étiquette croirait être à l'heure.
+ */
+export function taskBucket(
+  task: { status: string; due_at?: string | Date | null },
+  now: Date = new Date(),
+): 'overdue' | 'today' | 'upcoming' | 'undated' | 'closed' {
+  if (task.status !== 'open') return 'closed';
+  if (!task.due_at) return 'undated';
+  const due = new Date(task.due_at);
+  if (Number.isNaN(due.getTime())) return 'undated';
+  const today = startOf(now);
+  const dueDay = startOf(due);
+  if (dueDay < today) return 'overdue';
+  if (dueDay === today) return 'today';
+  return 'upcoming';
+}
+
+export interface TaskRow {
+  status: string;
+  due_at?: string | Date | null;
+  priority?: string;
+}
+
+/** Vue TODAY : ce qu'il faut faire, ce qui est en retard, ce qui est fait. */
+export function computeToday(tasks: TaskRow[], now: Date = new Date()) {
+  const buckets = { overdue: 0, today: 0, upcoming: 0, undated: 0, closed: 0 };
+  for (const task of tasks) buckets[taskBucket(task, now)] += 1;
+  return {
+    ...buckets,
+    open: buckets.overdue + buckets.today + buckets.upcoming + buckets.undated,
+    actionable: buckets.overdue + buckets.today,
+    total: tasks.length,
+  };
+}
+
+export function parseTaskInput(body: Record<string, unknown>): ParseResult<Record<string, unknown>> {
+  const errors: string[] = [];
+  const title = optionalText(body.title, 200);
+  if (!title) errors.push('title_required');
+
+  const type = body.type === undefined ? null : oneOf(body.type, TASK_TYPES);
+  if (body.type !== undefined && type === null) errors.push('task_type_unknown');
+
+  const status = body.status === undefined ? null : oneOf(body.status, TASK_STATUSES);
+  if (body.status !== undefined && status === null) errors.push('task_status_unknown');
+
+  const priority = body.priority === undefined ? null : oneOf(body.priority, PRIORITIES);
+  if (body.priority !== undefined && priority === null) errors.push('priority_unknown');
+
+  const dueAt = optionalText(body.due_at, 40);
+  if (dueAt && Number.isNaN(Date.parse(dueAt))) errors.push('due_at_must_be_a_date');
+
+  if (errors.length) return { data: null, errors };
+
+  const data: Record<string, unknown> = { title };
+  const assign = (k: string, v: unknown) => { if (v !== null && v !== undefined) data[k] = v; };
+  assign('type', type);
+  assign('status', status);
+  assign('priority', priority);
+  assign('detail', optionalText(body.detail, 2000));
+  assign('assignee_name', optionalText(body.assignee_name, 120));
+  assign('company_id', optionalText(body.company_id, 64));
+  assign('contact_id', optionalText(body.contact_id, 64));
+  assign('due_at', dueAt ? new Date(dueAt).toISOString() : null);
+  return { data, errors: [] };
+}
+
+export function parseMeetingInput(body: Record<string, unknown>): ParseResult<Record<string, unknown>> {
+  const errors: string[] = [];
+  const subject = optionalText(body.subject, 200);
+  if (!subject) errors.push('subject_required');
+
+  const startsAt = optionalText(body.starts_at, 40);
+  if (!startsAt) errors.push('starts_at_required');
+  else if (Number.isNaN(Date.parse(startsAt))) errors.push('starts_at_must_be_a_date');
+
+  const endsAt = optionalText(body.ends_at, 40);
+  if (endsAt && Number.isNaN(Date.parse(endsAt))) errors.push('ends_at_must_be_a_date');
+  if (startsAt && endsAt
+    && !Number.isNaN(Date.parse(startsAt)) && !Number.isNaN(Date.parse(endsAt))
+    && Date.parse(endsAt) <= Date.parse(startsAt)) {
+    errors.push('ends_at_must_be_after_starts_at');
+  }
+
+  const mode = body.mode === undefined ? null : oneOf(body.mode, MEETING_MODES);
+  if (body.mode !== undefined && mode === null) errors.push('meeting_mode_unknown');
+
+  if (errors.length) return { data: null, errors };
+
+  const data: Record<string, unknown> = {
+    subject,
+    starts_at: new Date(startsAt as string).toISOString(),
+  };
+  const assign = (k: string, v: unknown) => { if (v !== null && v !== undefined) data[k] = v; };
+  assign('ends_at', endsAt ? new Date(endsAt).toISOString() : null);
+  assign('mode', mode);
+  assign('location', optionalText(body.location, 200));
+  assign('attendees', optionalText(body.attendees, 500));
+  assign('outcome', optionalText(body.outcome, 2000));
+  assign('notes', optionalText(body.notes, 4000));
+  assign('company_id', optionalText(body.company_id, 64));
+  assign('contact_id', optionalText(body.contact_id, 64));
+  return { data, errors: [] };
+}
+
+const optionalPercent = (value: unknown, field: string, errors: string[]) => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) {
+    errors.push(`${field}_must_be_between_0_and_100`);
+    return null;
+  }
+  return parsed;
+};
+
+export function parsePilotInput(body: Record<string, unknown>): ParseResult<Record<string, unknown>> {
+  const errors: string[] = [];
+
+  const status = body.status === undefined ? null : oneOf(body.status, PILOT_STATUSES);
+  if (body.status !== undefined && status === null) errors.push('pilot_status_unknown');
+
+  const startsAt = optionalText(body.starts_at, 40);
+  if (startsAt && Number.isNaN(Date.parse(startsAt))) errors.push('starts_at_must_be_a_date');
+  const endsAt = optionalText(body.ends_at, 40);
+  if (endsAt && Number.isNaN(Date.parse(endsAt))) errors.push('ends_at_must_be_a_date');
+  if (startsAt && endsAt
+    && !Number.isNaN(Date.parse(startsAt)) && !Number.isNaN(Date.parse(endsAt))
+    && Date.parse(endsAt) <= Date.parse(startsAt)) {
+    errors.push('ends_at_must_be_after_starts_at');
+  }
+
+  const supplierCount = optionalCount(body.supplier_count, 'supplier_count', errors);
+  const productCount = optionalCount(body.product_count, 'product_count', errors);
+  const potential = optionalCount(body.commercial_potential_eur, 'commercial_potential_eur', errors);
+
+  const data: Record<string, unknown> = {};
+  const assign = (k: string, v: unknown) => { if (v !== null && v !== undefined) data[k] = v; };
+  assign('status', status);
+  assign('starts_at', startsAt ? new Date(startsAt).toISOString() : null);
+  assign('ends_at', endsAt ? new Date(endsAt).toISOString() : null);
+  assign('supplier_count', supplierCount);
+  assign('product_count', productCount);
+  assign('commercial_potential_eur', potential);
+  assign('progress_pct', optionalPercent(body.progress_pct, 'progress_pct', errors));
+  assign('data_completeness_pct', optionalPercent(body.data_completeness_pct, 'data_completeness_pct', errors));
+  assign('evidence_coverage_pct', optionalPercent(body.evidence_coverage_pct, 'evidence_coverage_pct', errors));
+  assign('dpp_readiness_pct', optionalPercent(body.dpp_readiness_pct, 'dpp_readiness_pct', errors));
+  assign('objectives', optionalText(body.objectives, 2000));
+  assign('issues', optionalText(body.issues, 4000));
+  assign('results', optionalText(body.results, 4000));
+  assign('company_id', optionalText(body.company_id, 64));
+  assign('organization_id', optionalText(body.organization_id, 64));
+
+  if (errors.length) return { data: null, errors };
+  return { data, errors: [] };
+}
+
+/* -------------------------------------------------------------------------- *
+ * Conversion prospect → client
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Garde-fou de conversion.
+ *
+ * La conversion ne déplace rien : la ligne entreprise reste, ses contacts,
+ * activités, tâches et rendez-vous restent attachés par company_id. Rien n'est
+ * perdu parce que rien n'est déplacé — et c'est vérifié par un test, pas affirmé.
+ */
+export function canConvert(company: { stage: string; converted_at?: string | Date | null }) {
+  if (company.stage === 'customer') {
+    return { ok: false, error: 'already_a_customer' };
+  }
+  return { ok: true, convertedAt: company.converted_at ? new Date(company.converted_at).toISOString() : null };
+}
+
+/** Durée en jours entre la création et la conversion. */
+export function daysToConvert(row: { created_at?: string | Date | null; converted_at?: string | Date | null }) {
+  if (!row.created_at || !row.converted_at) return null;
+  const a = new Date(row.created_at).getTime();
+  const b = new Date(row.converted_at).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b) || b < a) return null;
+  return Math.round(((b - a) / DAY_MS) * 10) / 10;
+}
+
+export interface AnalyticsRow {
+  stage: string;
+  country_code?: string | null;
+  company_type?: string | null;
+  industry?: string | null;
+  source?: string | null;
+  created_at?: string | Date | null;
+  converted_at?: string | Date | null;
+}
+
+/**
+ * Statistiques commerciales.
+ *
+ * Aucune moyenne n'est produite sur un échantillon vide : `avgDaysToConvert` vaut
+ * `null`, pas 0. Un « 0 jour » laisserait croire à une conversion instantanée
+ * mesurée alors qu'il n'y a rien à mesurer.
+ */
+export function computeAnalytics(rows: AnalyticsRow[]) {
+  const byCountry: Record<string, { total: number; customers: number; lost: number }> = {};
+  const bySource: Record<string, { total: number; customers: number; lost: number }> = {};
+  const byStage: Record<string, number> = {};
+  const durations: number[] = [];
+
+  let customers = 0;
+  let lost = 0;
+
+  for (const row of rows) {
+    byStage[row.stage] = (byStage[row.stage] || 0) + 1;
+
+    const country = row.country_code || 'unknown';
+    byCountry[country] = byCountry[country] || { total: 0, customers: 0, lost: 0 };
+    byCountry[country].total += 1;
+
+    const source = row.source || 'unknown';
+    bySource[source] = bySource[source] || { total: 0, customers: 0, lost: 0 };
+    bySource[source].total += 1;
+
+    if (row.stage === 'customer') {
+      customers += 1;
+      byCountry[country].customers += 1;
+      bySource[source].customers += 1;
+      const d = daysToConvert(row);
+      if (d !== null) durations.push(d);
+    }
+    if (row.stage === 'lost') {
+      lost += 1;
+      byCountry[country].lost += 1;
+      bySource[source].lost += 1;
+    }
+  }
+
+  const rate = (c: number, l: number) => (c + l === 0 ? null : Math.round((c / (c + l)) * 1000) / 10);
+
+  const withRates = (map: Record<string, { total: number; customers: number; lost: number }>) =>
+    Object.fromEntries(Object.entries(map).map(([k, v]) => [k, {
+      ...v,
+      conversionRate: rate(v.customers, v.lost),
+    }]));
+
+  return {
+    total: rows.length,
+    customers,
+    lost,
+    byStage,
+    byCountry: withRates(byCountry),
+    bySource: withRates(bySource),
+    avgDaysToConvert: durations.length
+      ? Math.round((durations.reduce((a, b) => a + b, 0) / durations.length) * 10) / 10
+      : null,
+    conversionsMeasured: durations.length,
+  };
+}
