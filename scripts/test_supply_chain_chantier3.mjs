@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 
 const assert = (condition, message) => {
@@ -113,7 +114,13 @@ assert(
 for (const rang of ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']) {
   assert(brandConsoleHtml.includes(rang), `Brand console must display ${rang}`);
 }
-for (const etape of ['Matières', 'Filature', 'Tissage', 'Confection', 'Produit Fini']) {
+// Chantier 8 : « Matieres » ne figure plus en dur dans le balisage, la copie
+// est passee au catalogue. On verifie la cle dans le balisage et la copie
+// francaise dans fr.json, comme pour les autres repointages.
+const frConsole = JSON.parse(readFileSync(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console;
+assert(brandConsoleHtml.includes("bt('materials')"), 'Brand console must name the materials stage through the catalogue');
+assert(frConsole.materials === 'Matières', 'la copie FR de l etape Matieres doit rester au catalogue');
+for (const etape of ['Filature', 'Tissage', 'Confection', 'Produit Fini']) {
   assert(brandConsoleHtml.includes(etape), `Brand console must name the ${etape} stage`);
 }
 assert(brandConsoleHtml.includes('data-action="generate-baseline-chain"'), 'Brand console must offer baseline generation action');

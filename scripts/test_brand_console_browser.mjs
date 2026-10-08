@@ -28,7 +28,7 @@ try {
   await page.locator('#material-form select[name="materialId"]').selectOption('demo-material-1');
   await page.locator('#material-form input[name="percentage"]').fill('80');
   await page.locator('#material-form button[type="submit"]').click();
-  await page.getByText('Coton biologique').first().waitFor();
+  await page.getByText('Organic cotton').first().waitFor();
 
   await page.locator('#identifier-form select[name="identifierType"]').selectOption('ean');
   await page.locator('#identifier-form input[name="identifierValue"]').fill('3760123456789');

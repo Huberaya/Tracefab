@@ -94,9 +94,15 @@ assert(
   brandConsoleHtml.includes('waiveIssue('),
   'Brand console must implement waiveIssue handler',
 );
+// Chantier 8 : le badge est passe au catalogue (console.cnWaiverGranted).
 assert(
-  brandConsoleHtml.includes('Dérogation accordée'),
+  brandConsoleHtml.includes("bt('cnWaiverGranted')"),
   'Brand console must display waiver reason badge when issue is waived',
+);
+assert(
+  JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.cnWaiverGranted
+    === 'Dérogation accordée :',
+  'la copie FR du badge de derogation doit rester au catalogue',
 );
 
 // 4. Pure State Machine Simulation of Issue Lifecycle and Score Recovery

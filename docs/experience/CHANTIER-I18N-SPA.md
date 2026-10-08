@@ -612,3 +612,92 @@ Hors périmètre de cette tranche, inchangé : `dppConsoleView` est du code
 mort (~34 chaînes françaises) et mérite une suppression plutôt qu'une
 traduction ; `certificationsConsoleView` affiche `certJours(c)` en
 littéral ; les fixtures `Coton biologique` de la console restent françaises.
+
+---
+
+## Fait — tranche 8 : solde de la Brand Console
+
+La console était réputée traduite depuis la tranche 5 : 662 clés, et les
+sondes d'alors ne signalaient rien. Elle comptait pourtant encore **178
+chaînes françaises hors `bt()`**. La racine `console` passe à **780 clés ×
+7 langues**.
+
+### Pourquoi la tranche 5 ne les avait pas vues
+
+Les sondes précédentes cherchaient du français **dans le rendu**, avec un
+détecteur par accents et mots-outils — la même faiblesse qu'en tranche 7.
+Deux angles morts s'y ajoutaient :
+
+- les **toasts** `notify()` ne s'affichent qu'après une action, donc jamais
+  pendant un parcours de lecture ;
+- l'**écran d'authentification** et l'écran de chargement ne s'affichent pas
+  en mode démonstration.
+
+Le filet employé ici est l'analyse statique de la source : neutraliser les
+appels `bt('…')` (ce sont des identifiants, pas de la copie), puis lister
+tout littéral et tout texte de gabarit restant. Ce filet ne dépend ni du
+parcours, ni de l'état de l'application.
+
+Un second filet, utile et bon marché, consiste à **comparer le rendu EN et
+le rendu FR** : toute ligne identique dans les deux est soit un nom propre,
+soit du texte non câblé. Il a sa propre lacune — une ligne *partiellement*
+traduite diffère entre les deux et y échappe — ce qui confirme qu'aucun
+filet unique ne suffit.
+
+### Travail effectué
+
+1. **`dppConsoleView` supprimée** (79 lignes). Aucune branche du routeur ne
+   l'appelait — `state.view === 'dpp'` rend `dppView()`. Elle portait 34
+   chaînes françaises qu'on aurait traduites pour rien.
+2. **30 fixtures passées en anglais** (règle 2 : une donnée de démonstration
+   n'est pas de la copie d'interface). Les noms propres restent intacts :
+   Fiação Norte Lda, Nhãn Textile Confeção, Quinta de São Martinho, CITEVE,
+   Control Union, Hohenstein.
+3. **44 toasts câblés** sur `notify(bt('cnN*'))`. Ils ne suivaient pas tous
+   la même forme — `notify('x')`, `notify('x', true)`,
+   `notify(cond ? 'a' : 'b')`, affectation à `reviewerNote` — ce qui a imposé
+   de remplacer le **littéral quoté** lui-même plutôt que l'appel.
+4. **74 clés de chrome** : écrans d'authentification et de chargement,
+   introductions de vue, états vides, groupes de formulaire, aides de
+   saisie, fragments de phrase interpolés.
+5. **4 libellés de fixture** `Rang 1..4` anglicisés ; ils échappaient au
+   filet parce qu'ils encodaient le tiret en `\u2014`.
+
+### Le piège qui a cassé la page
+
+Deux chaînes visées vivaient dans des littéraux **simple-quotés**, pas dans
+des gabarits. Y injecter `${esc(bt('clé'))}` produit du texte inerte *et*
+referme la chaîne sur l'apostrophe de la clé : `SyntaxError`. Le garde
+`node --check` sur le plus long `<script>` l'a arrêté net — mais après
+écriture, car la vérification suivait l'enregistrement. Les deux chaînes ont
+été converties en gabarits.
+
+Variante du même piège dans le `<head>` : `content="${esc(bt('cnMetaDesc'))}"`
+ne s'interpole pas, le `<head>` est du HTML statique. La `meta description`
+utilise donc `data-i18n-attr="content:console.cnMetaDesc"`, comme le DPP.
+
+### Une assertion qui passait pour la mauvaise raison
+
+`test_supply_chain_chantier3.mjs` vérifiait que la console nomme l'étape
+« Matières ». Le mot n'existait dans le fichier que par
+« Matières & Traçabilité », un intitulé de groupe de formulaire sans rapport
+avec la chaîne d'approvisionnement. Le test passait par coïncidence. Il
+vérifie désormais la clé `bt('materials')` et la copie française au
+catalogue — contrôle négatif prouvé.
+
+### Vérifications
+
+- **0 fuite de gabarit** dans le rendu des 17 vues (`${`, `bt(`, `esc(`,
+  `undefined`, `[object Object]`).
+- **0 ligne française dans le rendu anglais**, fragments interpolés inclus.
+- 7 langues résolues, `meta description` comprise. 0 `pageerror`.
+- 3 tests repointés, 2 avec contrôle négatif prouvé ;
+  `test_brand_console_browser.mjs` suivait une fixture anglicisée.
+- Barrière : **45/45**, `build` OK, `tsc --noEmit` OK, `e2e_audit.py` 4/4,
+  personas 6/6 · 4/4 · 4/4.
+
+### Reste à traiter
+
+`quality-center/` est un gabarit de 73 lignes sans sélecteur de langue ;
+`passport/` et `operations/` sont orphelins ; `tsx` manque en dépendance de
+développement (8 scripts) ; les phases 9 à 12 n'ont pas de rapport dédié.

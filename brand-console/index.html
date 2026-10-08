@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tracefab — Brand Console</title>
-  <meta name="description" content="Tracefab Brand Console — collecter, revoir et améliorer les données fournisseurs.">
+  <meta name="description" content="Tracefab Brand Console — collect, review and improve supplier data." data-i18n-attr="content:console.cnMetaDesc">
   <style>
     :root {
       --ink: #17231f;
@@ -1021,7 +1021,7 @@
       };
 
       const PROCESS_LABELS = {
-        ginning: 'Égrenage (Ginning)',
+        ginning: 'Ginning',
         spinning: 'Filature (Spinning)',
         weaving: 'Tissage (Weaving)',
         knitting: 'Tricotage (Knitting)',
@@ -1308,7 +1308,7 @@
         ];
         state.memberships = state.organizations;
         state.suppliers = [{ id: 'demo-supplier-record', organization_id: 'demo-supplier', relationship_id: 'demo-relationship', organizations: { id: 'demo-supplier', type: 'supplier', display_name: 'Nhãn Textile', legal_name: 'Nhãn Textile', country_code: 'PT', status: 'active' } }];
-        state.materials = [{ id: 'demo-material-1', name: 'Coton biologique', materialType: 'fiber', originCountryCode: 'PT' }];
+        state.materials = [{ id: 'demo-material-1', name: 'Organic cotton', materialType: 'fiber', originCountryCode: 'PT' }];
         state.products = [
           { id: 'demo-product-1', brandOrganizationId: 'demo-brand', reference: 'AT-ESS-001', name: 'Cotton Essential', category: 'T-shirt', status: 'active', version: 2, dataReadiness: 'needs_review', dataCompletion: '82' },
           { id: 'demo-product-2', brandOrganizationId: 'demo-brand', reference: 'AT-LIN-004', name: 'Ligne lin naturel', category: 'Chemise', status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '46' },
@@ -1334,7 +1334,7 @@
               fieldKey: 'gots_tc_document',
               required: true,
               dataType: 'document_proof',
-              helpText: 'Certificat de transaction délivré par Control Union (CU-881294).',
+              helpText: 'Transaction certificate issued by Control Union (CU-881294).',
               status: 'submitted',
               documentName: 'GOTS_Transaction_Certificate_TC2026.pdf',
               documentSize: '1.2 MB',
@@ -1343,18 +1343,18 @@
                   id: 'resp-item-1',
                   isCurrent: true,
                   status: 'documented',
-                  value: 'CU-881294 (GOTS v6.0 - 85% Coton Biologique Peigné)',
-                  reviewerNote: 'Preuve documentaire inspectée. Le numéro de lot correspond au bon de livraison Fiação Norte.'
+                  value: 'CU-881294 (GOTS v6.0 - 85% combed organic cotton)',
+                  reviewerNote: 'Documentary evidence inspected. The batch number matches the Fiação Norte delivery note.'
                 }
               ]
             },
             {
               id: 'req-item-2',
-              label: 'Conformité Chimique & RSL (OEKO-TEX Standard 100)',
+              label: 'Chemical compliance & RSL (OEKO-TEX Standard 100)',
               fieldKey: 'oekotex_rsl_compliance',
               required: true,
               dataType: 'document_proof',
-              helpText: 'Rapport d\'essais analytiques garantissant l\'absence de colorants azoïques.',
+              helpText: 'Rapport d\'essais analytiques garantissant l\'absence of azo dyes.',
               status: 'submitted',
               documentName: 'OEKO_TEX_Test_Report_Appendix4.pdf',
               documentSize: '2.4 MB',
@@ -1363,7 +1363,7 @@
                   id: 'resp-item-2',
                   isCurrent: true,
                   status: 'documented',
-                  value: 'Rapport Hohenstein #21.HPT.94112 — Zéro substance restreinte',
+                  value: 'Hohenstein report #21.HPT.94112 — zero restricted substances',
                   reviewerNote: null
                 }
               ]
@@ -1374,7 +1374,7 @@
               fieldKey: 'smeta_social_audit',
               required: true,
               dataType: 'document_proof',
-              helpText: 'Attestation de respect des normes de travail décent et sécurité.',
+              helpText: 'Attestation of compliance with decent work and safety standards.',
               status: 'submitted',
               documentName: 'SMETA_4Pillar_Audit_Porto_2026.pdf',
               documentSize: '4.8 MB',
@@ -1383,8 +1383,8 @@
                   id: 'resp-item-3',
                   isCurrent: true,
                   status: 'verified_by_reviewer',
-                  value: 'Audit SMETA valide jusqu\'au 15 Janvier 2028 (Score A)',
-                  reviewerNote: 'Vérifié par Camille Martin le 04/10/2026 : salaires décents et sécurité incendie validés.'
+                  value: 'Audit SMETA valide jusqu\'to 15 January 2028 (score A)',
+                  reviewerNote: 'Verified by Camille Martin on 04/10/2026: decent wages and fire safety validated.'
                 }
               ]
             }
@@ -1396,9 +1396,9 @@
           'node-fiber': {
             id: 'node-fiber',
             tier: 'Tier 4',
-            title: 'Culture de la Fibre (Coton)',
+            title: 'Fibre cultivation (cotton)',
             entity: 'Quinta de São Martinho',
-            facilityType: 'Exploitation agricole régénératrice',
+            facilityType: 'Regenerative farm',
             location: 'Alentejo, Portugal (PT)',
             coordinates: '38.0151° N, 7.8632° W',
             certifications: ['GOTS v6.0 (CU-881294)', 'Regenerative Organic'],
@@ -1417,13 +1417,13 @@
             tier: 'Tier 3',
             title: 'Filature & Peignage',
             entity: 'Fiação Norte Lda',
-            facilityType: 'Unité de peignage et filage à rotor',
+            facilityType: 'Combing and rotor spinning unit',
             location: 'Guimarães, Portugal (PT)',
             coordinates: '41.4425° N, 8.2918° W',
             certifications: ['OEKO-TEX Standard 100', 'ISO 9001:2015'],
             batchLot: 'YARN-30-1-COMBED-89',
             auditor: 'CITEVE Portugal',
-            auditScore: '98.5% Qualité Titre',
+            auditScore: '98.5% count quality',
             evidenceFiles: [
               { name: 'Yarn_Tensile_Strength_Report.pdf', size: '890 KB', date: '22 Avr 2026' }
             ],
@@ -1435,7 +1435,7 @@
             tier: 'Tier 3',
             title: 'Tricotage Jersey Circulaire',
             entity: 'Malhas do Ave',
-            facilityType: 'Tricotage industriel grand diamètre',
+            facilityType: 'Large-diameter industrial knitting',
             location: 'Santo Tirso, Portugal (PT)',
             coordinates: '41.3431° N, 8.4738° W',
             certifications: ['GOTS Mill Certified', 'BCI Member'],
@@ -1453,7 +1453,7 @@
             tier: 'Tier 2',
             title: 'Ennoblissement & Teinture',
             entity: 'Tinturaria Braga Lda',
-            facilityType: 'Usine de teinture en circuit fermé',
+            facilityType: 'Closed-loop dye house',
             location: 'Braga, Portugal (PT)',
             coordinates: '41.5454° N, 8.4265° W',
             certifications: ['OEKO-TEX STeP (Level 3)', 'ZDHC MRSL Level 3'],
@@ -1477,7 +1477,7 @@
             certifications: ['SMETA 4-Pillar (Social & Safety)', 'ISO 14001:2018'],
             batchLot: 'CMT-PO-2026-9921',
             auditor: 'Bureau Veritas',
-            auditScore: 'Score SMETA : Zero Non-Conformité',
+            auditScore: 'SMETA score: zero non-conformity',
             evidenceFiles: [
               { name: 'SMETA_Social_Audit_Full_Report.pdf', size: '5.8 MB', date: '15 Jan 2026' }
             ],
@@ -1489,13 +1489,13 @@
             tier: 'Produit / DPP',
             title: 'Produit Fini & Passeport DPP',
             entity: 'Atelier Demo (Donneur d\'ordre)',
-            facilityType: 'Distribution & Émission Passeport ESPR',
+            facilityType: 'Distribution & ESPR passport issuance',
             location: 'Paris, France (FR)',
             coordinates: '48.8566° N, 2.3522° E',
-            certifications: ['CIRPASS DPP Spec 1.2', 'Loi AGEC Fiche Validée'],
+            certifications: ['CIRPASS DPP Spec 1.2', 'AGEC Act record validated'],
             batchLot: 'AT-ESS-001 (Collection FW26)',
             auditor: 'TRACEFAB Continuous RegTech Engine',
-            auditScore: 'Score Qualité : 96% (Verified)',
+            auditScore: 'Quality score: 96% (verified)',
             evidenceFiles: [
               { name: 'CIRPASS_DPP_Export_JSONLD.jsonld', size: '48 KB', date: '06 Oct 2026' }
             ],
@@ -1513,10 +1513,10 @@
             itemCount: 5,
             requiredItemCount: 4,
             fields: [
-              { id: 'f-1', key: 'product_composition', label: 'Exact material composition (%)', type: 'composition_table', required: true, helpText: 'Détail de chaque fibre avec son pourcentage massique' },
+              { id: 'f-1', key: 'product_composition', label: 'Exact material composition (%)', type: 'composition_table', required: true, helpText: bt('cnHintFibre') },
               { id: 'f-2', key: 'country_of_spinning', label: 'Country of spinning', type: 'country_code', required: true, helpText: 'Code pays ISO 3166-1 alpha-2' },
-              { id: 'f-3', key: 'facility_registration', label: 'Main production site', type: 'facility_select', required: true, helpText: 'Sélectionner parmi les sites enregistrés au portail' },
-              { id: 'f-4', key: 'care_instructions', label: 'Washing and care instructions', type: 'text_multiline', required: false, helpText: 'Symboles GINETEX ou texte explicatif' }
+              { id: 'f-3', key: 'facility_registration', label: 'Main production site', type: 'facility_select', required: true, helpText: bt('cnHintSites') },
+              { id: 'f-4', key: 'care_instructions', label: 'Washing and care instructions', type: 'text_multiline', required: false, helpText: bt('cnHintCare') }
             ]
           },
           {
@@ -1528,9 +1528,9 @@
             itemCount: 4,
             requiredItemCount: 3,
             fields: [
-              { id: 'c-1', key: 'rsl_test_report', label: 'RSL laboratory test report (< 12 months)', type: 'document_proof', required: true, helpText: 'Analyse accréditée ISO 17025 (SGS, Intertek, CITEVE)' },
-              { id: 'c-2', key: 'zdhc_level', label: 'Niveau d\'attestation ZDHC MRSL', type: 'select_single', required: true, helpText: 'Level 1, Level 2 ou Level 3' },
-              { id: 'c-3', key: 'closed_loop_water', label: 'Dyeing water recycling rate', type: 'percentage_number', required: false, helpText: 'Taux de réutilisation en boucle fermée' }
+              { id: 'c-1', key: 'rsl_test_report', label: 'RSL laboratory test report (< 12 months)', type: 'document_proof', required: true, helpText: bt('cnHintIso') },
+              { id: 'c-2', key: 'zdhc_level', label: 'Niveau d\'attestation ZDHC MRSL', type: 'select_single', required: true, helpText: bt('cnHintLevel') },
+              { id: 'c-3', key: 'closed_loop_water', label: 'Dyeing water recycling rate', type: 'percentage_number', required: false, helpText: bt('cnHintReuse') }
             ]
           },
           {
@@ -1542,9 +1542,9 @@
             itemCount: 4,
             requiredItemCount: 4,
             fields: [
-              { id: 's-1', key: 'social_audit_file', label: 'Full third-party social audit report', type: 'document_proof', required: true, helpText: 'SMETA 4-Pillar, BSCI ou SA8000 en cours de validité' },
-              { id: 's-2', key: 'audit_score_letter', label: 'Notation globale obtenue', type: 'text_short', required: true, helpText: 'Score A, B ou Zero Critical Non-Conformity' },
-              { id: 's-3', key: 'living_wage_attestation', label: 'Living Wage attestation', type: 'document_proof', required: true, helpText: 'Calcul basé sur les benchmarks Anker / Global Living Wage' }
+              { id: 's-1', key: 'social_audit_file', label: 'Full third-party social audit report', type: 'document_proof', required: true, helpText: bt('cnHintSmeta') },
+              { id: 's-2', key: 'audit_score_letter', label: 'Notation globale obtenue', type: 'text_short', required: true, helpText: bt('cnHintScore') },
+              { id: 's-3', key: 'living_wage_attestation', label: 'Living Wage attestation', type: 'document_proof', required: true, helpText: bt('cnHintWage') }
             ]
           },
           {
@@ -1612,10 +1612,10 @@
             traceability: { icon: '\u260d', nameKey: 'dpPillar3', metPercent: 75,
               descriptionKey: 'dpP3Desc',
               items: [
-                { label: 'Rang 1 \u2014 Confection', met: true },
-                { label: 'Rang 2 \u2014 Tissage / tricotage', met: true },
-                { label: 'Rang 3 \u2014 Filature', met: true },
-                { label: 'Rang 4 \u2014 Matière première', met: false },
+                { label: 'Tier 1 \u2014 Making-up', met: true },
+                { label: 'Tier 2 \u2014 Weaving / knitting', met: true },
+                { label: 'Tier 3 \u2014 Spinning', met: true },
+                { label: 'Tier 4 \u2014 Raw material', met: false },
               ] },
             quality: { icon: '\ud83d\udee1\ufe0f', nameKey: 'dpPillar4', metPercent: 67,
               descriptionKey: 'dpP4Desc',
@@ -1945,9 +1945,9 @@
 
       function render() {
         if (state.configError && !state.demo && !state.user) {
-          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>Connexion indisponible</h1><p>${esc(state.configError)}. Vérifiez Clerk et la configuration de l’API, ou ouvrez <code>?demo=1</code> pour parcourir l’interface.</p><button class="btn btn-secondary" data-action="retry">Réessayer</button></div></div>`; bind(); return;
+          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>Connexion indisponible</h1><p>${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
         }
-        if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>Préparation de votre espace…</h1><p>Chargement des organisations, produits et demandes.</p></div></div>`; return; }
+        if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>${esc(bt('cnLoadingTitle'))}</h1><p>${esc(bt('cnLoadingSub'))}</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }
         const content = state.view === 'overview' ? overview() :
           state.view === 'requests' ? requestsView() :
@@ -1973,7 +1973,7 @@
       }
 
       function renderAuth() {
-        app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div><h1>La donnée fournisseur, enfin pilotable.</h1><p>Centralisez vos demandes, rendez les progrès visibles et transformez les données déclarées en décisions documentées.</p><ul><li>Demandes et questionnaires</li><li>Revue et collaboration</li><li>Score qualité explicable</li></ul></div><div class="auth-box"><div class="eyebrow">Espace marque</div><h2>Se connecter</h2><p>Accédez à votre espace Tracefab sécurisé.</p><div id="clerk-sign-in"></div></div></div></div>`;
+        app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div><h1>${esc(bt('cnAuthTitle'))}</h1><p>${esc(bt('cnAuthSub'))}</p><ul><li>${esc(bt('cnAuthF1'))}</li><li>${esc(bt('cnAuthF2'))}</li><li>${esc(bt('cnAuthF3'))}</li></ul></div><div class="auth-box"><div class="eyebrow">Espace marque</div><h2>Se connecter</h2><p>${esc(bt('cnAuthAccess'))}</p><div id="clerk-sign-in"></div></div></div></div>`;
         if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'), { appearance: { elements: { card: 'shadow-none', rootBox: 'w-full' } } });
       }
 
@@ -1985,7 +1985,7 @@
           <div>
             <div class="eyebrow">Form Studio & Custom Compliance Protocols</div>
             <h1>Questionnaire Builder</h1>
-            <p>Concevez et déployez des questionnaires sur-mesure pour vos fournisseurs : exigences documentaires, extraction OCR, règles de validation et conformité CSRD.</p>
+            <p>${esc(bt('cnQnIntro'))}</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-demo-action="1">${bt('qbExport')}</button>
@@ -2006,7 +2006,7 @@
                   <div style="flex:1">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                       <div>
-                        <span class="cert-pill" style="margin-bottom:6px;">${esc(q.category || 'Conformité')} · v${esc(q.version)}</span>
+                        <span class="cert-pill" style="margin-bottom:6px;">${esc(q.category || bt('cnGrpCompliance'))} · v${esc(q.version)}</span>
                         <h3 style="font-size:15px;margin-top:2px;">${esc(q.title)}</h3>
                       </div>
                       <span class="status status-approved">${q.itemCount || q.fields?.length || 4} champs (${q.requiredItemCount || 3} obligatoires)</span>
@@ -2064,7 +2064,7 @@
             <div class="card panel">
               <div class="panel-head"><h2>${bt('qbAutoCompliance')}</h2></div>
               <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-                Chaque questionnaire créé dans TRACEFAB génère automatiquement un mapping vers le standard européen <strong>CIRPASS JSON-LD</strong> et les points de contrôle de la <strong>${bt('qbAgec')}</strong>.
+                ${esc(bt('cnQnMapping'))} <strong>CIRPASS JSON-LD</strong> ${esc(bt('cnQnCheckpoints'))} <strong>${bt('qbAgec')}</strong>.
               </p>
             </div>
           </div>
@@ -2112,7 +2112,7 @@
         const nodes = state.chainNodes || {};
         const node = nodes[selectedId] || nodes['node-fiber'] || {
           tier: 'Tier 4',
-          title: 'Culture de la Fibre',
+          title: 'Fibre cultivation',
           entity: 'Quinta de São Martinho',
           location: 'Alentejo, Portugal',
           auditScore: '100% Conforme',
@@ -2128,7 +2128,7 @@
           <div>
             <div class="eyebrow">${bt('scMapTitle')}</div>
             <h1>${bt('scVisuTitle')}</h1>
-            <p>Cartographie interactive multi-échelons : cliquez sur un nœud industriel pour inspecter les coordonnées GPS, bilans massiques et preuves d'audit scellées.</p>
+            <p>${esc(bt('cnScIntro'))}</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">${bt('scOpenDpp')}</button>
@@ -2244,7 +2244,7 @@
           <div class="inspector-card">
             <div class="inspector-header">
               <div>
-                <span class="badge-tier" style="margin-bottom:6px;">${esc(node.tier)} · Nœud sélectionné</span>
+                <span class="badge-tier" style="margin-bottom:6px;">${esc(node.tier)} · ${esc(bt('cnNodeSelected'))}</span>
                 <h2 style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">${esc(node.title)}</h2>
                 <div style="font-size:13px;color:var(--muted);margin-top:2px;">${bt('scEntity')} <strong>${esc(node.entity)}</strong> · ${esc(node.location)}</div>
               </div>
@@ -2286,7 +2286,7 @@
             </div>
 
             <div>
-              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">Preuves Documentaires Scellées (${(node.evidenceFiles || []).length})</div>
+              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">${esc(bt('cnSealedEvidenceCount'))}${(node.evidenceFiles || []).length})</div>
               <div style="display:grid;gap:8px;">
                 ${(node.evidenceFiles || []).map(f => `
                   <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#ffffff;">
@@ -2294,7 +2294,7 @@
                       <span style="font-size:16px;">📄</span>
                       <div>
                         <strong style="font-size:12.5px;">${esc(f.name)}</strong>
-                        <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · Téléversé le ${esc(f.date)}</div>
+                        <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · ${esc(bt('cnUploadedOn'))} ${esc(f.date)}</div>
                       </div>
                     </div>
                     <button class="btn btn-secondary btn-small" data-demo-action="1">${bt('scInspect')}</button>
@@ -2347,7 +2347,7 @@
           <div>
             <div class="eyebrow">${bt('evVault')}</div>
             <h1>${bt('evCentre')}</h1>
-            <p>Auditez, scellez et vérifiez les preuves réelles de votre supply chain textile : certificats de transaction, rapports d'essais ISO 17025, audits sociaux SMETA et déclarations REACH.</p>
+            <p>${esc(bt('cnEvIntro'))}</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-demo-action="1">${bt('evDownload')}</button>
@@ -2519,85 +2519,10 @@
         </div>`;
       }
 
-      function dppConsoleView() {
-        return `<div class="page-head">
-          <div>
-            <div class="eyebrow">EU ESPR Compliance Engine</div>
-            <h1>Digital Product Passport (DPP) Readiness</h1>
-            <p>Score de préparation au Passeport Numérique des Produits de l'Union Européenne.</p>
-          </div>
-          <div class="actions">
-            <button class="btn btn-secondary" onclick="window.open('/dpp/', '_blank')">Exporter JSON-LD (CIRPASS) ↗</button>
-            <button class="btn btn-primary" data-demo-action="1">Recalculer les scores DPP</button>
-          </div>
-        </div>
-
-        <div class="grid kpis">
-          <div class="card kpi">
-            <div class="kpi-label">${bt('dpGlobalScore')}</div>
-            <div class="kpi-value" style="color:var(--green)">88%</div>
-            <div class="kpi-note">Prêt pour émission QR</div>
-          </div>
-          <div class="card kpi">
-            <div class="kpi-label">Styles Prêts (Eligible)</div>
-            <div class="kpi-value">42 / 48</div>
-            <div class="kpi-note">87.5% de la collection</div>
-          </div>
-          <div class="card kpi">
-            <div class="kpi-label">Preuves Manquantes</div>
-            <div class="kpi-value" style="color:#d97706">6</div>
-            <div class="kpi-note">2 demandes en cours</div>
-          </div>
-          <div class="card kpi">
-            <div class="kpi-label">Conformité ESPR</div>
-            <div class="kpi-value" style="color:var(--green)">100%</div>
-            <div class="kpi-note">Schéma textile v2.1</div>
-          </div>
-        </div>
-
-        <div class="grid split">
-          <div class="card panel">
-            <div class="panel-head"><h2>Matrice d'éligibilité par Produit</h2></div>
-            <table class="mockup-table">
-              <thead>
-                <tr><th>${bt('mdReference')}</th><th>Nom du produit</th><th>Matières</th><th>Traçabilité</th><th>Score DPP</th><th>${bt('pdStatus')}</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><code>AT-ESS-001</code></td>
-                  <td><strong>Essentiel coton</strong></td>
-                  <td>100% Coton bio</td>
-                  <td>Tier 1 à 4</td>
-                  <td><strong style="color:var(--green)">94%</strong></td>
-                  <td><span class="status status-approved">Prêt pour QR</span></td>
-                </tr>
-                <tr>
-                  <td><code>AT-LIN-004</code></td>
-                  <td><strong>Ligne lin naturel</strong></td>
-                  <td>100% Lin FR</td>
-                  <td>Tier 1 à 3</td>
-                  <td><strong style="color:#d97706">76%</strong></td>
-                  <td><span class="status status-submitted">Preuve en attente</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="card panel">
-            <div class="panel-head"><h2>Aperçu du Passeport Public (Consumer QR)</h2></div>
-            <div style="background:#f8faf8;border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center;">
-              <div style="width:110px;height:110px;background:white;border:1px solid #d0ded4;border-radius:12px;margin:0 auto 14px;display:grid;place-items:center;">
-                <div style="font-size:11px;font-family:var(--font-mono);font-weight:700;color:var(--ink);">[QR DPP LIVE]</div>
-              </div>
-              <strong style="font-size:14px;display:block;">Essentiel Coton Biologique</strong>
-              <span style="font-size:11px;color:var(--muted);"><a href="/dpp/" target="_blank" style="color:var(--green);font-weight:700;">https://dpp.tracefab.com/p/at-ess-001 ↗</a></span>
-              <div style="margin-top:14px;display:flex;justify-content:center;gap:8px;">
-                <button class="btn btn-secondary btn-small" onclick="window.open('/dpp/', '_blank')">Ouvrir la page publique</button>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }
+      // dppConsoleView a ete supprimee au chantier 8. La fonction n'etait
+      // appelee par aucune branche du routeur — state.view === 'dpp' rend
+      // dppView() — et portait 34 chaines francaises que l'on aurait
+      // traduites pour rien. Historique disponible dans git.
 
       function reportsConsoleView() {
         return `<div class="page-head">
@@ -2809,8 +2734,8 @@
       }
 
       function requestTable(items) {
-        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>Créez votre première demande fournisseur.</p><button class="btn btn-primary btn-small" data-action="new-request">Créer une demande</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="Mettre en file une relance fournisseur">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>${esc(bt('cnRqEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="new-request">${esc(bt('cnRqCreate'))}</button></div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('cnRdQueueReminder'))}">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
             function requestsView() {
@@ -2819,7 +2744,7 @@
           <div>
             <div class="eyebrow">${bt('rqEyebrow')}</div>
             <h1>${bt('rqPilotage')}</h1>
-            <p>TRACEFAB ne demande pas de simples fichiers : chaque demande transforme les déclarations amont en données structurées, reliées au produit et auditables.</p>
+            <p>${esc(bt('cnRqIntro'))}</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="state.view='questionnaires';render();">${bt('rqQbuilder')}</button>
@@ -2921,14 +2846,14 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>Votre catalogue est vide</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || 'Pays non renseigné')}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>Invitez votre premier fournisseur pour commencer une collecte.</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
       }
 
-      function materialName(material) { return material?.name || material?.materialName || material?.id || 'Matériau'; }
+      function materialName(material) { return material?.name || material?.materialName || material?.id || bt('cnMaterialLabel'); }
       function materialType(material) { return material?.materialType || material?.material_type || ''; }
             function productDetailView() {
         const detail = state.selectedProductDetail;
@@ -2941,7 +2866,7 @@
             <button class="link-button" data-view="products">${bt('pxBackCatalogue')}</button>
             <div class="eyebrow" style="margin-top:16px;">Intelligence Produit · ${bt('cRef')} ${esc(p.reference || 'AW26-0248')} · Version ${esc(p.version || '1.0')}</div>
             <h1>${esc(p.name || 'Organic Cotton T-Shirt')}</h1>
-            <p>${esc(p.category || 'T-Shirt & Maille')} · Confection responsable certifiée · Indice Qualité : <strong>98.4 / 100</strong></p>
+            <p>${esc(p.category || 'T-Shirt & Maille')} · ${esc(bt('cnSxQualityIndex'))} <strong>98.4 / 100</strong></p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bt('pxTraceGraph')}</button>
@@ -2987,7 +2912,7 @@
               <div class="lineage-step-sub">BOM 100%</div>
             </div>
             <div class="lineage-step-card" data-demo-action="1">
-              <div class="lineage-step-label">07. PEF ÉCO</div>
+              <div class="lineage-step-label">${esc(bt('cnGrpPef'))}</div>
               <div class="lineage-step-sub">Score A (PEF)</div>
             </div>
             <div class="lineage-step-card" onclick="window.open('/dpp/', '_blank')">
@@ -3003,7 +2928,7 @@
             <form id="product-detail-form" class="form-grid">
               <label>${bt('pxStyleName')}<input class="input" name="name" value="${esc(p.name)}"></label>
               <label>${bt('pxSku')}<input class="input" name="reference" value="${esc(p.reference)}"></label>
-              <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || 'Prêt-à-porter')}"></label>
+              <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || 'Ready-to-wear')}"></label>
               <label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || 'Navy Deep')}"></label>
               <label>${bt('pxCountrySpin')}<input class="input" name="countryOfSpinning" value="${esc(p.countryOfSpinning || 'PT')}"></label>
               <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || 'PT')}"></label>
@@ -3028,7 +2953,7 @@
               <input type="hidden" name="materialId" value="${esc(m.materialId)}">
               <div>
                 <strong>${esc(materialName(m.material))}</strong>
-                <div class="meta">${esc(m.role || 'Principal')} · ${esc(materialType(m.material) || 'Fibre certifiée')}</div>
+                <div class="meta">${esc(m.role || 'Principal')} · ${esc(materialType(m.material) || bt('cnCertifiedFibre'))}</div>
               </div>
               <div class="actions">
                 <label class="meta">${bt('pxSharePct')}<input class="input" name="percentage" type="number" value="${esc(m.percentage || 100)}" style="width:75px"></label>
@@ -3067,7 +2992,7 @@
               </div>
               <span class="meta">${detail.identifiers?.length || 0} identifiant(s) actif(s)</span>
             </div>
-            ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">Créé le ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">${bt('pxSave')}</button></div></form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('pxNoId')}</p></div>`}
+            ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">${esc(bt('cnCreatedOn'))} ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">${bt('pxSave')}</button></div></form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('pxNoId')}</p></div>`}
             <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
           </div>`;
       }
@@ -3075,7 +3000,7 @@
       function supplierDetailView() {
         const supplier = state.selectedSupplier;
         if (!supplier) return `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('sxNotFound')}</strong><button class="btn btn-secondary" data-view="suppliers">${bt('sxBack')}</button></div>`;
-        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">${bt('sxBackArrow')}</button><div class="eyebrow" style="margin-top:20px">${bt('sxSupplier')}</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || 'Pays non renseigné')} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">${bt('sxNewRequest')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || 'Non chargé')}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">${bt('sxActivities')}</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">${bt('sxSummary')}</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : '<div class="empty"><p>Profil non disponible pour cette organisation.</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
+        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">${bt('sxBackArrow')}</button><div class="eyebrow" style="margin-top:20px">${bt('sxSupplier')}</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || bt('cnCountryUnknown'))} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">${bt('sxNewRequest')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || bt('cnNotLoaded'))}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">${bt('sxActivities')}</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">${bt('sxSummary')}</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : `<div class="empty"><p>${esc(bt('cnNoProfile'))}</p></div>`}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
       }
 
       function capContractPanel() {
@@ -3091,7 +3016,7 @@
       }
 
       function complianceContractPanel() {
-        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcPefTitle')}</h2><p class="meta">${bt('qcEcoScore')} : ${esc(state.pefAssessment?.pefGrade || '—')} · Audit greenClaimsAudit : ${esc(state.greenClaimsAudit?.status || '' + bt('qcToLaunch'))}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">${bt('qcComputePef')}</button></div><div class="panel-head" style="margin-top:14px"><div><h2>${bt('qcGreenShield')}</h2><p class="meta">${bt('qcClaimsNote')}</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">${bt('qcAuditClaims')}</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">${bt('qcClaim')}<textarea class="textarea" name="claimText" rows="2" placeholder="Coton biologique certifié…"></textarea></label></form></div>`;
+        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcPefTitle')}</h2><p class="meta">${bt('qcEcoScore')} : ${esc(state.pefAssessment?.pefGrade || '—')} · Audit greenClaimsAudit : ${esc(state.greenClaimsAudit?.status || '' + bt('qcToLaunch'))}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">${bt('qcComputePef')}</button></div><div class="panel-head" style="margin-top:14px"><div><h2>${bt('qcGreenShield')}</h2><p class="meta">${bt('qcClaimsNote')}</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">${bt('qcAuditClaims')}</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">${bt('qcClaim')}<textarea class="textarea" name="claimText" rows="2" placeholder="Organic cotton certifié…"></textarea></label></form></div>`;
       }
 
 
@@ -3335,7 +3260,7 @@
           <div>
             <div class="eyebrow">${bt('qcEyebrow')}</div>
             <h1>${bt('qcTrustQuestion')}</h1>
-            <p>Score explicable à 6 niveaux vérifiant l'authenticité documentaire, la non-altération des preuves et la cohérence de masse de vos collections textiles.</p>
+            <p>${esc(bt('cnQcIntro'))}</p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="select-quality-product">${bt('scChangeProduct')}</button>
@@ -3469,24 +3394,24 @@
             <span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span>
             <div>
               <strong>${esc(issue.message)}</strong>
-              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(statusLabel(issue.status))}</span> · <span class="meta">Détectée le ${date(issue.detectedAt)}</span></p>
+              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(statusLabel(issue.status))}</span> · <span class="meta">${esc(bt('cnDetectedOn'))} ${date(issue.detectedAt)}</span></p>
               ${isWaived && waiverReason ? `
                 <div class="item-response" style="margin-top:7px;background:#edf7f0;border:1px solid #cce8d5;border-radius:8px;font-size:11px;color:#285e42">
-                  <strong>Dérogation accordée :</strong> ${esc(waiverReason)}
+                  <strong>${esc(bt('cnWaiverGranted'))}</strong> ${esc(waiverReason)}
                 </div>
               ` : ''}
               ${isAcknowledged ? `
-                <div class="meta" style="margin-top:5px;color:#3d6752">✓ Prise en compte et acquittée par l’équipe qualité${issue.acknowledgedAt ? ` le ${date(issue.acknowledgedAt)}` : ''}.</div>
+                <div class="meta" style="margin-top:5px;color:#3d6752">✓ ${esc(bt('cnQcAcknowledged'))}${issue.acknowledgedAt ? ` le ${date(issue.acknowledgedAt)}` : ''}.</div>
               ` : ''}
             </div>
             <div class="actions" style="justify-content:flex-end">
               ${issue.status === 'open' ? `
                 <button class="btn btn-secondary btn-small" data-action="acknowledge-issue" data-issue-id="${esc(issue.id)}">Acquitter</button>
-                <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">Déroger (Waive)</button>
+                <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">${esc(bt('cnQcWaive'))}</button>
               ` : isAcknowledged ? `
-                <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">Déroger (Waive)</button>
+                <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">${esc(bt('cnQcWaive'))}</button>
               ` : `
-                <span class="status status-approved" style="font-size:10px">Dérogation active</span>
+                <span class="status status-approved" style="font-size:10px">${esc(bt('cnQcWaiverActive'))}</span>
               `}
             </div>
           </div>
@@ -3519,7 +3444,7 @@
             <div class="tc-forensic-badge">ISO 22095 CERTIFIED CHAIN OF CUSTODY · 98.4% MASS RECONCILIATION</div>
             <h2 class="tc-forensic-title">${esc(p.name)} · ${bt('cRef')} ${esc(p.reference)}</h2>
             <p class="tc-forensic-desc">
-              Chaque maillon industriel ci-dessous est audité et scellé avec son modèle de garde associé (Ségrégation d'Identité ou Bilan Massique Réconcilié). Zéro déclaration sans preuve documentaire ou polygonale.
+              ${esc(bt('cnScChainIntro'))}
             </p>
           </div>
 
@@ -3681,7 +3606,7 @@
             <div>
               <div class="eyebrow">${bt('dpEyebrow')}</div>
               <h1>${esc(p.name)}</h1>
-              <p>${bt('dpRef')} <strong>${esc(p.reference)}</strong> · Version v${esc(p.version)} · Catégorie: ${esc(p.category || bt('dpNotSpecified'))}</p>
+              <p>${bt('dpRef')} <strong>${esc(p.reference)}</strong> · Version v${esc(p.version)} · ${esc(bt('cnCategory'))} ${esc(p.category || bt('dpNotSpecified'))}</p>
             </div>
             <div class="actions">
               <button class="btn btn-secondary" data-action="select-dpp-product">${bt('scChangeProduct')}</button>
@@ -3696,7 +3621,7 @@
                 <span style="font-size:24px">🎉</span>
                 <div>
                   <strong style="color:var(--green);font-size:15px">${bt('dpValidated')}</strong>
-                  <p class="meta" style="margin:4px 0 0;color:#285e42">${bt('dpAllMet')} <code>${esc(dpp.profileKey || 'textile_readiness_mvp')}</code>. La validation interne a été signée le ${date(dpp.reviewedAt || new Date())}.</p>
+                  <p class="meta" style="margin:4px 0 0;color:#285e42">${bt('dpAllMet')} <code>${esc(dpp.profileKey || 'textile_readiness_mvp')}</code>${esc(bt('cnSignedOn'))} ${date(dpp.reviewedAt || new Date())}.</p>
                 </div>
               </div>
             </div>
@@ -3719,10 +3644,10 @@
           </div>
 
           <div class="dpp-pillars">
-            ${renderPillarCard(pillars.identification, '🏷️', '1. Identification & Caractéristiques')}
-            ${renderPillarCard(pillars.composition, '🧵', '2. Composition Matières')}
-            ${renderPillarCard(pillars.traceability, '☍', '3. Traçabilité Supply Chain')}
-            ${renderPillarCard(pillars.quality, '🛡️', '4. Qualité & Preuves')}
+            ${renderPillarCard(pillars.identification, '🏷️', bt('cnStep1'))}
+            ${renderPillarCard(pillars.composition, '🧵', bt('cnStep2'))}
+            ${renderPillarCard(pillars.traceability, '☍', bt('cnStep3'))}
+            ${renderPillarCard(pillars.quality, '🛡️', bt('cnStep4'))}
           </div>
 
           ${dpp.missingFields && dpp.missingFields.length ? `
@@ -3797,7 +3722,7 @@
             <div class="detail-meta">
               ${status(r.status)}
               <span class="meta">${esc(r.questionnaireKey)} · v${esc(r.questionnaireVersion)}</span>
-              <span class="meta">Échéance : ${date(r.dueAt)}</span>
+              <span class="meta">${esc(bt('cnDueOn'))} ${date(r.dueAt)}</span>
               ${r.productId ? `<span class="meta">Produit : <strong><button class="link-button" data-product-id="${esc(r.productId)}" style="display:inline;padding:0;font-size:inherit">${esc(state.products.find((p) => p.id === r.productId)?.name || r.productId)}</button></strong></span>` : ''}
               <span class="cert-pill">${bt('rdAuditTrail')}</span>
             </div>
@@ -3839,7 +3764,7 @@
                           <span style="font-size:20px;">📄</span>
                           <div>
                             <strong style="font-size:12.5px;">${esc(item.documentName)}</strong>
-                            <div style="font-size:11px;color:var(--muted);">${esc(item.documentSize)} · Scellé SHA-256</div>
+                            <div style="font-size:11px;color:var(--muted);">${esc(item.documentSize)} · ${esc(bt('cnSealedSha'))}</div>
                           </div>
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
@@ -3853,7 +3778,7 @@
                       <div class="annotation-panel">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
                           <div>
-                            <strong style="font-size:11px;color:var(--muted);text-transform:uppercase;">Donnée Déclarée par le Fournisseur :</strong>
+                            <strong style="font-size:11px;color:var(--muted);text-transform:uppercase;">${esc(bt('cnDeclaredBySupplier'))}</strong>
                             <div style="font-size:13px;font-weight:750;margin-top:2px;">${esc(response.value)}</div>
                           </div>
                           <span class="status status-${esc(response.status)}">${esc(statusLabel(response.status))}</span>
@@ -3886,7 +3811,7 @@
             <div class="card panel">
               <div class="panel-head"><h2>${bt('rdProtocol')}</h2></div>
               <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-                Chaque validation génère un enregistrement immuable sur Neon PostgreSQL opposable aux audits de certification.
+                ${esc(bt('cnRdImmutable'))}
               </p>
               <div style="display:grid;gap:12px;margin-top:14px;font-size:12px;">
                 <div style="padding:10px;background:#f8faf8;border-left:3px solid var(--green);border-radius:8px;">
@@ -3904,7 +3829,7 @@
               <div class="panel-head"><h2>${bt('rdQuickActions')}</h2></div>
               <div style="display:grid;gap:8px;">
                 <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" data-demo-action="1">
-                  ✉️ Relancer le fournisseur par email
+                  ✉️ ${esc(bt('cnRdRemindEmail'))}
                 </button>
                 <button class="btn btn-secondary btn-small" style="text-align:left;justify-content:flex-start;" onclick="window.open('/dpp/', '_blank')">
                   ${bt('rdPreviewDpp')}
@@ -3925,7 +3850,7 @@
         const preview = state.catalogImport.preview;
         if (!preview) return '<p class="meta" style="margin-top:14px">' + bt('mdPreviewCatalogHint') + '</p>';
         const issues = (preview.errors || []).slice(0, 12);
-        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>${bt('mdValidationResult')}</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : '<span class="status status-changes_requested">À corriger</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">${bt('mdRows')}</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('mdAccepted')}</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('rqRejected')}</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">Aucune erreur de validation détectée.</p>'}${(preview.warnings || []).length ? `<p class="meta" style="margin-top:10px">${moneyless(preview.warnings.length)} avertissement(s) non bloquant(s).</p>` : ''}</div>`;
+        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>${bt('mdValidationResult')}</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : `<span class="status status-changes_requested">${esc(bt('cnToFix'))}</span>`}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">${bt('mdRows')}</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('mdAccepted')}</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('rqRejected')}</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : `<p class="success-note" style="margin-top:12px">${esc(bt('cnNoValidationErrors'))}</p>`}${(preview.warnings || []).length ? `<p class="meta" style="margin-top:10px">${moneyless(preview.warnings.length)} ${esc(bt('cnWarningsNonBlocking'))}</p>` : ''}</div>`;
       }
 
       function modal(type) {
@@ -3933,7 +3858,7 @@
         if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdSupplierOnboarding')}</div><h2>${bt('mdBulkInvite')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdRequiredColumns')} <code>email</code>, <code>legalName</code>${bt('mdInviteNote')}</p><label class="field-full">${bt('mdCsvFile')}<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdCreateValidInvites')}</button></div>${supplierImportPreview()}</div></div>`;
         if (type === 'catalog-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h2>${bt('mdImportCatalogue')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdImportNote')}</p><div class="notice" style="margin:14px 0">${bt('mdRequiredColumns')} <code>reference</code>, <code>name</code>${bt('mdExtraColumnsNote')}</div><label class="field-full">${bt('mdCsvFile')}<input class="input" id="catalog-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="catalog-import-content" rows="8" placeholder="reference,name,category,sku\nAT-NEW-001,Sample product,T-shirt,SKU-001">${esc(state.catalogImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-catalog-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-catalog-import" ${state.catalogImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdImportValidRows')}</button></div>${catalogImportPreview()}</div></div>`;
         if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdEcosystem')}</div><h2>${bt('mdInviteSupplier')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdActivationNote')}</p><form id="supplier-form"><div class="form-grid"><label class="field-full">${bt('mdBusinessEmail')}<input class="input" name="email" type="email" required placeholder="contact@supplier.com"></label><label>${bt('mdLegalName')}<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>${bt('mdDisplayName')}<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>${bt('mdCountry')}<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>${bt('mdBrandOrg')}<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdSendInvite')}</button></div></form></div></div>`;
-        if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>${bt('mdCreateAuditProtocol')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">${bt('mdQuestionnaireTitle')}<input class="input" name="title" required placeholder="${bt('mdPhAuditTitle')}"></label><label>${bt('mdUniqueSlug')}<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>${bt('mdEsgCategory')}<select class="select" name="category"><option value="Chimie & Rejets">${bt('mdCatChemistry')}</option><option value="Matières & Traçabilité">${bt('mdCatMaterials')}</option><option value="Social & Éthique">${bt('mdCatSocial')}</option><option value="Empreinte Carbone">${bt('mdCatCarbon')}</option></select></label><label class="field-full">${bt('mdAuditDescription')}<textarea class="textarea" name="description" rows="3" required placeholder="${bt('mdPhAuditDesc')}"></textarea></label><label>${bt('mdFirstFieldType')}<select class="select" name="firstFieldType"><option value="document_proof">${bt('mdFieldDocProof')}</option><option value="composition_table">${bt('mdFieldComposition')}</option><option value="facility_select">${bt('mdFieldSitePicker')}</option></select></label><label>${bt('mdRequiredField')}<select class="select" name="required"><option value="true">${bt('mdYesBlocking')}</option><option value="false">${bt('mdOptional')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdPublishQuestionnaire')}</button></div></form></div></div>`;
+        if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>${bt('mdCreateAuditProtocol')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">${bt('mdQuestionnaireTitle')}<input class="input" name="title" required placeholder="${bt('mdPhAuditTitle')}"></label><label>${bt('mdUniqueSlug')}<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>${bt('mdEsgCategory')}<select class="select" name="category"><option value="Chimie & Rejets">${bt('mdCatChemistry')}</option><option value="${esc(bt('cnGrpMaterials'))}">${bt('mdCatMaterials')}</option><option value="${esc(bt('cnGrpSocial'))}">${bt('mdCatSocial')}</option><option value="Empreinte Carbone">${bt('mdCatCarbon')}</option></select></label><label class="field-full">${bt('mdAuditDescription')}<textarea class="textarea" name="description" rows="3" required placeholder="${bt('mdPhAuditDesc')}"></textarea></label><label>${bt('mdFirstFieldType')}<select class="select" name="firstFieldType"><option value="document_proof">${bt('mdFieldDocProof')}</option><option value="composition_table">${bt('mdFieldComposition')}</option><option value="facility_select">${bt('mdFieldSitePicker')}</option></select></label><label>${bt('mdRequiredField')}<select class="select" name="required"><option value="true">${bt('mdYesBlocking')}</option><option value="false">${bt('mdOptional')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdPublishQuestionnaire')}</button></div></form></div></div>`;
         if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdCollection')}</div><h2>${bt('mdNewDataRequest')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">${bt('mdTitle')}<input class="input" name="title" required placeholder="${bt('mdPhRequestTitle')}"></label><label>${bt('sxSupplier')}<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label class="field-full">${bt('mdLinkedProduct')}<select class="select" name="productId"><option value="">${bt('mdNoLinkedProduct')}</option>${state.products.map((p) => `<option value="${esc(p.id)}" ${state.modalProductId === p.id ? 'selected' : ''}>${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label><label>${bt('mdDueDate')}<input class="input" name="dueAt" type="date"></label><label>${bt('mdBrandOrg')}<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateAndPrepare')}</button></div></form></div></div>`;
         if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdAddNode')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">${bt('mdNodeLabel')}<input class="input" name="label" required placeholder="${bt('mdPhNodeLabel')}"></label><label>${bt('mdNodeType')}<select class="select" name="nodeType" required><option value="process">${bt('mdProcessTransform')}</option><option value="site">${bt('mdSupplierSite')}</option><option value="material">${bt('mdRawMaterial')}</option><option value="organization">${bt('mdPartnerOrg')}</option></select></label><label>${bt('mdTextileProcess')}<select class="select" name="processCode"><option value="">${bt('mdNoneOther')}</option><option value="ginning">${bt('mdGinning')}</option><option value="spinning">${bt('mdSpinning')}</option><option value="weaving">${bt('mdWeaving')}</option><option value="knitting">${bt('mdKnitting')}</option><option value="dyeing">${bt('mdDyeing')}</option><option value="finishing">${bt('mdFinishing')}</option><option value="cutting">${bt('mdCutting')}</option><option value="sewing">${bt('mdSewing')}</option><option value="assembly">${bt('mdAssembly')}</option><option value="packaging">${bt('mdPackaging')}</option></select></label><label class="field-full">${bt('mdLinkedMaterial')}<select class="select" name="materialId"><option value="">${bt('mdNone')}</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">${bt('mdSupplierOrg')}<select class="select" name="organizationId"><option value="">${bt('mdNone')}</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdAddNodeCta')}</button></div></form></div></div>`;
         if (type === 'new-chain-link') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdLinkTwoSteps')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-link-form"><div class="form-grid"><label class="field-full">${bt('mdSourceStep')}<select class="select" name="sourceNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label class="field-full">${bt('mdTargetStep')}<select class="select" name="targetNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label>${bt('mdRelationType')}<select class="select" name="linkType" required><option value="next_step">${bt('mdRelNextStep')}</option><option value="transformed_at">${bt('mdRelTransformedAt')}</option><option value="manufactured_at">${bt('mdRelManufacturedAt')}</option><option value="sourced_from">${bt('mdRelSourcedFrom')}</option><option value="contains">${bt('mdRelContains')}</option></select></label><label>${bt('mdSequenceOrder')}<input class="input" name="sequenceNumber" type="number" min="1" step="1" placeholder="1"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateLink')}</button></div></form></div></div>`;
@@ -3942,7 +3867,7 @@
         if (type === 'cap-message') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdCapThread')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="cap-message-form"><label>CAP<input class="input" name="capId" required placeholder="${bt('mdPhCapUuid')}"></label><label>Message<textarea class="textarea" name="message" rows="4" required></textarea></label><div class="form-actions"><button class="btn btn-primary">${bt('mdSend')}</button></div></form></div></div>`;
         if (type === 'waive-issue') {
           const issue = state.quality?.issues?.find((i) => i.id === state.modalIssueId);
-          return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityWaiver')}</div><h2>${bt('mdGrantWaiver')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdWaiverNote')}</p>${issue ? `<div class="notice" style="margin-bottom:15px;background:#fdfcf9;border:1px solid #f1ece1;padding:10px 14px;border-radius:8px"><strong>${esc(issue.message)}</strong><div class="meta">${esc(issue.ruleKey)} · Sévérité : ${esc(issue.severity)}</div></div>` : ''}<form id="waive-issue-form"><input type="hidden" name="issueId" value="${esc(state.modalIssueId)}"><div class="form-grid"><label class="field-full">${bt('mdWaiverReason')}<textarea class="textarea" name="reason" rows="3" required minlength="10" placeholder="${bt('mdPhWaiverReason')}"></textarea></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdValidateWaiver')}</button></div></form></div></div>`;
+          return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityWaiver')}</div><h2>${bt('mdGrantWaiver')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdWaiverNote')}</p>${issue ? `<div class="notice" style="margin-bottom:15px;background:#fdfcf9;border:1px solid #f1ece1;padding:10px 14px;border-radius:8px"><strong>${esc(issue.message)}</strong><div class="meta">${esc(issue.ruleKey)} · ${esc(bt('cnSeverity'))} ${esc(issue.severity)}</div></div>` : ''}<form id="waive-issue-form"><input type="hidden" name="issueId" value="${esc(state.modalIssueId)}"><div class="form-grid"><label class="field-full">${bt('mdWaiverReason')}<textarea class="textarea" name="reason" rows="3" required minlength="10" placeholder="${bt('mdPhWaiverReason')}"></textarea></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdValidateWaiver')}</button></div></form></div></div>`;
         }
         return '';
       }
@@ -3992,7 +3917,7 @@
 
       async function commitSupplierImport() {
         const content = state.supplierImport.content || document.getElementById('supplier-import-content')?.value || '';
-        if (!(state.supplierImport.preview?.acceptedRows > 0) || !content.trim()) { notify('Prévisualisez un fichier contenant au moins une ligne fournisseur importable.', true); return; }
+        if (!(state.supplierImport.preview?.acceptedRows > 0) || !content.trim()) { notify(bt('cnNPreviewSupplierRow'), true); return; }
         state.supplierImport.loading = true; render();
         try {
           if (state.demo) {
@@ -4004,7 +3929,7 @@
             const result = await api('/api/catalog/suppliers/import', { method: 'POST', body: JSON.stringify({ brandOrganizationId: state.activeOrganizationId, csvContent: content, filename: state.supplierImport.filename || 'suppliers.csv', idempotencyKey: `brand-suppliers-${Date.now()}-${content.length}` }) });
             state.supplierImport.job = result.job; state.supplierImport.delivery = result.delivery; await sync();
           }
-          state.modal = null; const delivery = state.supplierImport.delivery; notify(`Import fournisseurs terminé : ${state.supplierImport.job?.acceptedRows || 0} invitation(s) créée(s).${delivery ? ` ${delivery.sent || 0} envoyée(s), ${delivery.pending || 0} en attente manuelle, ${delivery.failed || 0} en échec.` : ''}`);
+          state.modal = null; const delivery = state.supplierImport.delivery; notify(`Import fournisseurs terminé : ${state.supplierImport.job?.acceptedRows || 0} ${esc(bt('cnInvitesCreated'))}${delivery ? ` ${delivery.sent || 0} ${esc(bt('cnSentPlural'))} ${delivery.pending || 0} en attente manuelle, ${delivery.failed || 0} en échec.` : ''}`);
         } finally { state.supplierImport.loading = false; render(); }
       }
 
@@ -4042,12 +3967,12 @@
       }
 
       async function exportCatalog() {
-        if (state.demo) { downloadTextFile('tracefab-product-catalog-demo.csv', demoCatalogCsv()); notify('Catalogue exporté en mode démonstration.'); return; }
+        if (state.demo) { downloadTextFile('tracefab-product-catalog-demo.csv', demoCatalogCsv()); notify(bt('cnNCatalogExportedDemo')); return; }
         const token = await state.clerk?.session?.getToken();
         const response = await fetch(`/api/catalog/products/export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || `request_failed_${response.status}`); }
         downloadTextFile('tracefab-product-catalog.csv', await response.text());
-        notify('Catalogue exporté.');
+        notify(bt('cnNCatalogExported'));
       }
 
       async function exportAudit() {
@@ -4056,12 +3981,12 @@
         const response = await fetch(`/api/catalog/audit-export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || `request_failed_${response.status}`); }
         downloadTextFile('tracefab-audit-export.csv', await response.text());
-        notify('Dossier audit exporté.');
+        notify(bt('cnNAuditExported'));
       }
 
       async function commitCatalogImport() {
         const content = state.catalogImport.content || document.getElementById('catalog-import-content')?.value || '';
-        if (!(state.catalogImport.preview?.acceptedRows > 0) || !content.trim()) { notify('Prévisualisez un fichier contenant au moins une ligne importable avant de lancer l’import.', true); return; }
+        if (!(state.catalogImport.preview?.acceptedRows > 0) || !content.trim()) { notify(bt('cnNPreviewRow'), true); return; }
         state.catalogImport.loading = true;
         render();
         try {
@@ -4086,13 +4011,13 @@
         const data = Object.fromEntries(new FormData(form));
         if (state.demo) { state.products.unshift({ id: `demo-${Date.now()}`, brandOrganizationId: state.activeOrganizationId, reference: data.reference, name: data.name, category: data.category, status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '0' }); state.modal = null; notify('Produit créé en mode démonstration.'); return; }
         await api('/api/products', { method: 'POST', body: JSON.stringify({ ...data, brandOrganizationId: state.activeOrganizationId }) });
-        state.modal = null; await sync(); notify('Produit créé.');
+        state.modal = null; await sync(); notify(bt('cnNProductCreated'));
       }
       async function inviteSupplier(form) {
         const data = Object.fromEntries(new FormData(form));
-        if (state.demo) { state.modal = null; notify('Invitation simulée en mode démonstration.'); return; }
+        if (state.demo) { state.modal = null; notify(bt('cnNInviteDemo')); return; }
         await api(`/api/organizations/${encodeURIComponent(data.organizationId)}/invitations`, { method: 'POST', body: JSON.stringify(data) });
-        state.modal = null; await sync(); notify('Invitation fournisseur créée.');
+        state.modal = null; await sync(); notify(bt('cnNSupplierInvited'));
       }
       async function createRequest(form) {
         const data = Object.fromEntries(new FormData(form));
@@ -4102,7 +4027,7 @@
         if (state.demo) { const request = { id: `demo-${Date.now()}`, ...body, status: 'draft', completionPercentage: '0', createdAt: new Date().toISOString() }; state.requests.unshift(request); state.modal = null; state.modalProductId = null; notify('Demande créée en mode démonstration.'); return; }
         const created = await api('/api/data-requests', { method: 'POST', body: JSON.stringify(body) });
         await api(`/api/data-requests/${created.request.id}/items/from-template`, { method: 'POST', body: '{}' });
-        state.modal = null; state.modalProductId = null; await sync(); await openRequest(created.request.id); notify('Demande créée et questionnaire préparé.');
+        state.modal = null; state.modalProductId = null; await sync(); await openRequest(created.request.id); notify(bt('cnNRequestCreated'));
       }
       async function openRequest(id) {
         state.view = 'requestDetail';
@@ -4132,15 +4057,15 @@
       }
       async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: 'Partenaire actif' }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
       async function saveProduct(form) { const data = Object.fromEntries(new FormData(form)); const body = { ...data, sizeRange: String(data.sizeRange || '').split(',').map((x) => x.trim()).filter(Boolean), weightGrams: data.weightGrams ? Number(data.weightGrams) : null }; if (state.demo) { Object.assign(state.selectedProductDetail.product, body); state.selectedProduct = state.selectedProductDetail.product; notify('Produit mis à jour en mode démonstration.'); render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`, { method: 'PATCH', body: JSON.stringify(body) }); await sync(); notify('Données produit enregistrées.'); render(); }
-      async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify('Nouvelle révision simulée.'); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify('Nouvelle révision créée.'); render(); }
+      async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify(bt('cnNRevisionDemo')); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify(bt('cnNRevisionCreated')); render(); }
       async function saveSchemaBinding(form) {
         if (!state.selectedProductDetail?.product) return;
         const [schemaKey, schemaVersion] = String(new FormData(form).get('schemaIdentity') || '').split('|');
         if (!schemaKey || !schemaVersion) return;
-        if (state.demo) { state.schemaBindings.push({ id: `demo-schema-${Date.now()}`, schemaKey, schemaVersion, subjectType: 'product', subjectId: state.selectedProductDetail.product.id, createdAt: new Date().toISOString() }); notify('Schéma rattaché en mode démonstration.'); render(); return; }
+        if (state.demo) { state.schemaBindings.push({ id: `demo-schema-${Date.now()}`, schemaKey, schemaVersion, subjectType: 'product', subjectId: state.selectedProductDetail.product.id, createdAt: new Date().toISOString() }); notify(bt('cnNSchemaLinkedDemo')); render(); return; }
         const result = await api('/api/schema-bindings', { method: 'POST', body: JSON.stringify({ schemaKey, schemaVersion, subjectType: 'product', subjectId: state.selectedProductDetail.product.id }) });
         state.schemaBindings = [...state.schemaBindings.filter((binding) => binding.id !== result.binding.id), result.binding];
-        notify('Schéma rattaché au produit.'); render();
+        notify(bt('cnNSchemaLinked')); render();
       }
       async function refreshProductDetail() {
         if (!state.selectedProductDetail?.product) return;
@@ -4165,14 +4090,14 @@
           const existing = state.selectedProductDetail.materials.find((entry) => entry.materialId === body.materialId && entry.role === body.materialRole && (!isUpdate || entry.productVersion === body.productVersion));
           if (existing) Object.assign(existing, { percentage: body.percentage === null ? null : String(body.percentage), unit: body.unit });
           else state.selectedProductDetail.materials.push({ ...body, percentage: body.percentage === null ? null : String(body.percentage), productVersion: state.selectedProductDetail.product.version, role: body.materialRole, material: material ? { name: material.name, materialType: material.materialType, id: material.id } : { id: body.materialId } });
-          notify(isUpdate ? 'Composition mise à jour en mode démonstration.' : 'Matériau ajouté en mode démonstration.');
+          notify(isUpdate ? bt('cnNCompositionUpdatedDemo') : bt('cnNMaterialAddedDemo'));
           render();
           return;
         }
         const method = isUpdate ? 'PATCH' : 'POST';
         await api(`/api/products/${encodeURIComponent(productId)}/materials`, { method, body: JSON.stringify(body) });
         await refreshProductDetail();
-        notify(isUpdate ? 'Composition mise à jour.' : 'Matériau ajouté à la composition.');
+        notify(isUpdate ? bt('cnNCompositionUpdated') : bt('cnNMaterialAdded'));
       }
       async function saveIdentifier(form) {
         if (!state.selectedProductDetail?.product) return;
@@ -4187,26 +4112,26 @@
           } else {
             state.selectedProductDetail.identifiers.push({ id: `demo-identifier-${Date.now()}`, type: body.identifierType, value: body.identifierValue, isPrimary: body.isPrimary, createdAt: new Date().toISOString() });
           }
-          notify(identifierId ? 'Identifiant mis à jour en mode démonstration.' : 'Identifiant ajouté en mode démonstration.');
+          notify(identifierId ? bt('cnNIdUpdatedDemo') : bt('cnNIdAddedDemo'));
           render();
           return;
         }
         const path = `/api/products/${encodeURIComponent(productId)}/identifiers${identifierId ? `?identifierId=${encodeURIComponent(identifierId)}` : ''}`;
         await api(path, { method: identifierId ? 'PATCH' : 'POST', body: JSON.stringify(body) });
         await refreshProductDetail();
-        notify(identifierId ? 'Identifiant mis à jour.' : 'Identifiant ajouté.');
+        notify(identifierId ? bt('cnNIdUpdated') : bt('cnNIdAdded'));
       }
       async function refreshDetail() { if (!state.selectedRequest) return; if (!state.demo) state.selectedRequest = (await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}`)).request; render(); }
-      async function sendRequest() { if (!state.selectedRequest) return; if (!state.demo) await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}/send`, { method: 'POST' }); state.selectedRequest.status = 'sent'; state.modal = null; await refreshDetail(); notify('Demande envoyée au fournisseur.'); }
+      async function sendRequest() { if (!state.selectedRequest) return; if (!state.demo) await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}/send`, { method: 'POST' }); state.selectedRequest.status = 'sent'; state.modal = null; await refreshDetail(); notify(bt('cnNRequestSent')); }
       async function remindRequest(requestId) {
         const id = requestId || state.selectedRequest?.id;
         if (!id) return;
         if (state.demo) {
-          notify('Relance fournisseur mise en file en mode démonstration.');
+          notify(bt('cnNReminderQueuedDemo'));
           return;
         }
         await api(`/api/data-requests/${encodeURIComponent(id)}/remind`, { method: 'POST' });
-        notify('Relance fournisseur mise en file. Une seule relance est dédoublonnée pendant dix minutes.');
+        notify(bt('cnNReminderQueued'));
       }
       async function loadQuality(id) {
         state.selectedProduct = state.products.find((p) => p.id === id);
@@ -4224,8 +4149,8 @@
           state.quality = {
             score: { completeness: 82, freshness: 78, documentationCoverage: 61, consistency: 80 },
             issues: [
-              { id: 'demo-issue-1', severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', message: 'Certaines données produit n’ont pas encore de preuve documentaire.', detectedAt: new Date().toISOString() },
-              { id: 'demo-issue-2', severity: 'blocking', status: 'open', ruleKey: 'product_expired_certification', message: 'Le certificat GOTS associé au composant principal est expiré.', detectedAt: new Date().toISOString() },
+              { id: 'demo-issue-1', severity: 'warning', status: 'open', ruleKey: 'product_missing_evidence', message: 'Some product data does not yet have documentary evidence.', detectedAt: new Date().toISOString() },
+              { id: 'demo-issue-2', severity: 'blocking', status: 'open', ruleKey: 'product_expired_certification', message: 'The GOTS certificate for the main component has expired.', detectedAt: new Date().toISOString() },
             ],
           };
           render();
@@ -4239,7 +4164,7 @@
             const hasBlocking = (state.quality.issues || []).some((i) => i.severity === 'blocking' && ['open', 'acknowledged'].includes(i.status));
             state.quality.score.consistency = hasBlocking ? 70 : 100;
           }
-          notify('Score qualité recalculé en mode démonstration.');
+          notify(bt('cnNQualityRecalculatedDemo'));
           render();
           return;
         }
@@ -4247,7 +4172,7 @@
           method: 'POST',
           body: JSON.stringify({ calculationVersion: 'product_quality_v1' }),
         });
-        notify('Score qualité recalculé.');
+        notify(bt('cnNQualityRecalculated'));
         render();
       }
 
@@ -4259,13 +4184,13 @@
             issue.status = 'acknowledged';
             issue.acknowledgedAt = new Date().toISOString();
           }
-          notify('Anomalie qualité acquittée en mode démonstration.');
+          notify(bt('cnNIssueResolvedDemo'));
           render();
           return;
         }
         await api(`/api/quality-issues/${encodeURIComponent(issueId)}/acknowledge`, { method: 'POST' });
         await loadQuality(state.selectedProduct.id);
-        notify('Anomalie qualité acquittée avec succès.');
+        notify(bt('cnNIssueResolved'));
       }
 
       async function waiveIssue(form) {
@@ -4274,7 +4199,7 @@
         const issueId = data.issueId;
         const reason = (data.reason || '').trim();
         if (reason.length < 10) {
-          notify('Le motif de dérogation doit comporter au moins 10 caractères.', true);
+          notify(bt('cnNWaiverTooShort'), true);
           return;
         }
         if (state.demo) {
@@ -4288,7 +4213,7 @@
             }
           }
           state.modal = null;
-          notify('Dérogation accordée en mode démonstration.');
+          notify(bt('cnNWaiverGrantedDemo'));
           render();
           return;
         }
@@ -4298,36 +4223,36 @@
         });
         state.modal = null;
         await computeQuality();
-        notify('Dérogation enregistrée avec succès.');
+        notify(bt('cnNWaiverSaved'));
       }
       async function reviewResponse(responseId, reviewStatus) {
-        const comment = window.prompt(reviewStatus === 'verified_by_reviewer' ? 'Commentaire de vérification (facultatif)' : 'Indiquez la correction ou la preuve attendue', '') || '';
+        const comment = window.prompt(reviewStatus === 'verified_by_reviewer' ? bt('cnPhVerifyComment') : bt('cnPhCorrection'), '') || '';
         if (state.demo) {
           if (state.selectedRequest?.items) {
             for (const item of state.selectedRequest.items) {
               const resp = item.responses?.find((r) => r.id === responseId);
               if (resp) {
                 resp.status = reviewStatus;
-                resp.reviewerNote = comment || (reviewStatus === 'verified_by_reviewer' ? 'Preuve inspectée et validée par la marque.' : 'Correction demandée au fournisseur.');
+                resp.reviewerNote = comment || (reviewStatus === 'verified_by_reviewer' ? bt('cnNEvidenceApproved') : bt('cnNCorrectionRequested'));
                 break;
               }
             }
           }
-          notify(reviewStatus === 'verified_by_reviewer' ? 'Preuve vérifiée et scellée.' : 'Demande de correction transmise.');
+          notify(reviewStatus === 'verified_by_reviewer' ? bt('cnNEvidenceSealed') : 'Demande de correction transmise.');
           render();
           return;
         }
         await api(`/api/data-responses/${encodeURIComponent(responseId)}/review`, { method: 'POST', body: JSON.stringify({ status: reviewStatus, reviewComment: comment }) });
         await refreshDetail();
-        notify(reviewStatus === 'verified_by_reviewer' ? 'Réponse vérifiée.' : 'Demande de correction envoyée.');
+        notify(reviewStatus === 'verified_by_reviewer' ? bt('cnNAnswerVerified') : bt('cnNCorrectionSent'));
       }
 
       function demoSupplyChain() {
         const p = state.selectedSupplyChainProduct || state.products[0];
         const nodes = [
-          { id: 'node-raw', node_type: 'material', label: 'Coton biologique certifié GOTS', process_code: 'ginning', status: 'documented', material_name: 'Coton bio', source_document_id: 'demo-doc-1' },
-          { id: 'node-spin', node_type: 'process', label: 'Filature · Fil 30/1 peigné haute résistance', process_code: 'spinning', status: 'documented', source_document_id: 'demo-doc-2' },
-          { id: 'node-weav', node_type: 'process', label: 'Tissage jersey & Teinture certifiée OEKO-TEX', process_code: 'weaving', status: 'verified_by_reviewer', source_document_id: 'demo-doc-3' },
+          { id: 'node-raw', node_type: 'material', label: 'GOTS-certified organic cotton', process_code: 'ginning', status: 'documented', material_name: 'Organic cotton', source_document_id: 'demo-doc-1' },
+          { id: 'node-spin', node_type: 'process', label: 'Spinning · high-tenacity combed yarn 30/1', process_code: 'spinning', status: 'documented', source_document_id: 'demo-doc-2' },
+          { id: 'node-weav', node_type: 'process', label: 'Jersey knitting & OEKO-TEX certified dyeing', process_code: 'weaving', status: 'verified_by_reviewer', source_document_id: 'demo-doc-3' },
           { id: 'node-site', node_type: 'site', label: 'Atelier de Confection · Nhãn Textile (Barcelos, PT)', process_code: 'sewing', status: 'verified_by_reviewer', site_name: 'Nhãn Textile Factory', site_country: 'PT', site_city: 'Barcelos' },
           { id: 'node-prod', node_type: 'product', label: `Produit fini · ${p?.name || 'T-Shirt Essentiel'}`, process_code: 'packaging', status: 'documented' },
         ];
@@ -4380,13 +4305,13 @@
         if (!state.selectedSupplyChainProduct) return;
         if (state.demo) {
           state.supplyChain = demoSupplyChain();
-          notify('Chaîne de base générée en mode démonstration.');
+          notify(bt('cnNChainGeneratedDemo'));
           render();
           return;
         }
         try {
           state.supplyChain = await api(`/api/products/${encodeURIComponent(state.selectedSupplyChainProduct.id)}/supply-chain/generate-baseline`, { method: 'POST' });
-          notify('Chaîne de traçabilité générée avec succès.');
+          notify(bt('cnNChainGenerated'));
           render();
         } catch (e) {
           notify(e.message, true);
@@ -4407,7 +4332,7 @@
           const newNode = { id: `node-${Date.now()}`, node_type: body.nodeType, label: body.label, process_code: body.processCode, status: 'declared' };
           state.supplyChain.graph.nodes.push(newNode);
           state.modal = null;
-          notify('Nœud ajouté en mode démonstration.');
+          notify(bt('cnNNodeAddedDemo'));
           render();
           return;
         }
@@ -4417,7 +4342,7 @@
         });
         state.modal = null;
         await loadSupplyChain(state.selectedSupplyChainProduct.id);
-        notify('Nœud ajouté au graphe de traçabilité.');
+        notify(bt('cnNNodeAdded'));
       }
 
       async function addChainLink(form) {
@@ -4589,7 +4514,7 @@
             method: 'POST',
           });
           state.dpp = res.dpp;
-          notify('Passeport DPP validé pour publication avec succès !');
+          notify(bt('cnNDppPublished'));
           render();
         } catch (e) {
           notify(e.message, true);
@@ -4603,7 +4528,7 @@
           await api(path, { method: 'POST', body: JSON.stringify(data) });
         }
         state.modal = null;
-        notify(kind === 'create' ? 'CAP créé.' : kind === 'review' ? 'Revue CAP enregistrée.' : 'Message CAP envoyé.');
+        notify(kind === 'create' ? bt('cnNCapCreated') : kind === 'review' ? bt('cnNCapReviewed') : bt('cnNCapMessageSent'));
         render();
       }
 
@@ -4697,8 +4622,8 @@
             itemCount: 4,
             requiredItemCount: data.required === 'true' ? 4 : 3,
             fields: [
-              { id: `f-${Date.now()}-1`, key: 'primary_evidence', label: 'Preuve documentaire d\'audit principal', type: data.firstFieldType, required: data.required === 'true', helpText: 'Rapport accrédité' },
-              { id: `f-${Date.now()}-2`, key: 'attestation_compliance', label: 'Déclaration formelle de conformité', type: 'text_short', required: true, helpText: 'Signé par le directeur d\'usine' }
+              { id: `f-${Date.now()}-1`, key: 'primary_evidence', label: 'Preuve documentaire d\'audit principal', type: data.firstFieldType, required: data.required === 'true', helpText: bt('cnDocAccredited') },
+              { id: `f-${Date.now()}-2`, key: 'attestation_compliance', label: bt('cnDocDeclaration'), type: 'text_short', required: true, helpText: 'Signé par le directeur d\'usine' }
             ]
           };
           state.questionnaires.unshift(newQ);
