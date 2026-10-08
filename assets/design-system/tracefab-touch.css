@@ -94,3 +94,47 @@ input[type="checkbox"],
 input[type="radio"] { min-height: 0; }
 label:has(> input[type="checkbox"]),
 label:has(> input[type="radio"]) { min-height: var(--tf-touch-min); }
+
+/* -- Cibles primaires ------------------------------------------------------
+   Chantier 02 : les CTA principaux visent WCAG 2.5.5 (44 px) quand le
+   plancher commun reste a 40 px. La regle ne peut qu'agrandir : aucune
+   cible deja conforme ne retrecit. */
+:root { --tf-touch-target: 44px; }
+.tf-btn--primary,
+.tf-btn--lg,
+.btn-primary,
+button[type="submit"].btn-primary,
+.sp-next__cta { min-height: var(--tf-touch-target); }
+
+/* -- Focus clavier ---------------------------------------------------------
+   Un contour unique, visible, pour la navigation clavier sur toutes les
+   surfaces. :focus-visible evite de souligner le clic souris. */
+:focus-visible {
+  outline: 2px solid var(--tf-emerald, #0fb97c);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Sur les fonds sombres de la landing, l'emeraude clair reste lisible. */
+.tf-on-dark :focus-visible { outline-color: var(--tf-emerald-bri, #2ee39b); }
+
+/* -- Selection ------------------------------------------------------------- */
+::selection {
+  background: rgba(15, 185, 124, 0.28);
+  color: inherit;
+}
+
+/* -- Mouvement reduit ------------------------------------------------------
+   Garde globale pour les pages qui ne chargent pas tracefab-core.css
+   (consoles, portail, quality-center, operations). Le mouvement doit
+   expliquer une relation ; si l'utilisateur le coupe, tout s'arrete. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

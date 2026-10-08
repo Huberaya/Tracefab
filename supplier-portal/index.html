@@ -5,8 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tracefab — Supplier Portal</title>
   <meta name="description" content="Tracefab Supplier Portal — maintenir son profil et répondre aux demandes de données.">
+  <!-- Chantier 02 : famille unique Inter Tight (variable) + JetBrains Mono. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
   <style>
-    :root { --ink:#17231f; --muted:#71807a; --paper:#f7f8f4; --panel:#fff; --line:#e2e8df; --green:#0b7656; --green-dark:#07523e; --green-soft:#e4f3ec; --yellow:#d79621; --yellow-soft:#fff3d8; --red:#bd514e; --red-soft:#ffebea; --shadow:0 16px 45px rgba(20,42,34,.08); --radius:18px; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--paper); }
+    :root { --ink:#17231f; --muted:#71807a; --paper:#f7f8f4; --panel:#fff; --line:#e2e8df; --green:#0b7656; --green-dark:#07523e; --green-soft:#e4f3ec; --yellow:#d79621; --yellow-soft:#fff3d8; --red:#bd514e; --red-soft:#ffebea; --shadow:0 16px 45px rgba(20,42,34,.08); --radius:18px; font-family:'Inter Tight',Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--ink); background:var(--paper); }
     * { box-sizing:border-box; } body { margin:0; background:var(--paper); } button,input,select,textarea { font:inherit; } button { cursor:pointer; }
     .app { display:grid; grid-template-columns:256px minmax(0,1fr); min-height:100vh; } .sidebar { background:#112b23; color:#eff8f2; padding:25px 16px; display:flex; flex-direction:column; }
     .brand { display:flex; align-items:center; gap:11px; padding:0 11px 31px; } .brand-mark { width:36px; height:36px; border-radius:12px; background:#d7f3e4; color:var(--green-dark); display:grid; place-items:center; font-weight:900; letter-spacing:-.08em; } .brand-name { font-weight:780; letter-spacing:-.03em; font-size:18px; } .brand-name small { display:block; color:#a9c4b6; font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; margin-top:2px; }
@@ -346,6 +350,7 @@
     }
 
   </style>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-components.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-spa-responsive.css">
   <!-- The legacy auto-translate.js DOM rewriter was removed here: it reads the
        same localStorage key as this app ("tracefab_lang") but defaults to "en"

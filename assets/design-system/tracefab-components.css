@@ -1,0 +1,283 @@
+/* ==========================================================================
+   TRACEFAB COMPONENTS — v3.0 (Chantier 02)
+   Primitives partagées entre toutes les surfaces (consoles, portail, pages
+   publiques). Chargée APRÈS les feuilles locales, AVANT spa-responsive et
+   touch (qui doivent rester dernières).
+
+   Règles :
+     - aucun nom de classe existant n'est redéfini : uniquement des .tf-c-*
+       et .tf-status*, préfixées pour ne jamais entrer en collision ;
+     - chaque couleur utilise le token v3 avec un repli hexadécimal, ce qui
+       rend ces composants autonomes sur les pages qui ne chargent pas
+       tracefab-core.css ;
+     - les sept statuts de la donnée TRACEFAB sont couverts, sans jamais
+       confondre déclaration, preuve et certification tierce.
+
+   §1  Badges de statut de donnée (trust scale)
+   §2  État vide (.tf-c-empty)
+   §3  État d'erreur (.tf-c-error)
+   §4  Table primitive (.tf-c-table)
+   §5  Lien d'action DATA → INSIGHT → ACTION (.tf-c-action)
+   §6  KPI cliquable (.tf-c-kpi)
+   ========================================================================== */
+
+/* ── §1 · BADGES DE STATUT DE DONNÉE ───────────────────────────────────── */
+/* Échelle de confiance TRACEFAB : missing / needs_review / declared /
+   documented / verified / third_party_certified / expired. */
+
+.tf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.tf-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.tf-status--missing {
+  color: var(--tf-trust-missing, #c0492f);
+  background: var(--tf-trust-missing-bg, rgba(192, 73, 47, 0.10));
+  border-color: rgba(192, 73, 47, 0.32);
+}
+.tf-status--needs-review {
+  color: var(--tf-trust-review, #b47e18);
+  background: var(--tf-trust-review-bg, rgba(180, 126, 24, 0.12));
+  border-color: rgba(180, 126, 24, 0.34);
+}
+.tf-status--declared {
+  color: var(--tf-trust-declared, #5d6a65);
+  background: var(--tf-trust-declared-bg, rgba(122, 135, 130, 0.12));
+  border-color: rgba(122, 135, 130, 0.32);
+}
+.tf-status--documented {
+  color: var(--tf-trust-documented, #2f6f94);
+  background: var(--tf-trust-documented-bg, rgba(47, 111, 148, 0.11));
+  border-color: rgba(47, 111, 148, 0.32);
+}
+.tf-status--verified {
+  color: var(--tf-emerald-deep, #07875a);
+  background: var(--tf-trust-verified-bg, rgba(15, 185, 124, 0.11));
+  border-color: rgba(15, 185, 124, 0.34);
+}
+.tf-status--third-party-certified {
+  color: var(--tf-emerald-ink, #05543a);
+  background: var(--tf-trust-certified-bg, rgba(7, 135, 90, 0.12));
+  border-color: rgba(7, 135, 90, 0.38);
+}
+.tf-status--expired {
+  color: #8a3324;
+  background: rgba(138, 51, 36, 0.10);
+  border-color: rgba(138, 51, 36, 0.34);
+}
+.tf-status--expired::before {
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+/* Variante sombre (surfaces forest) */
+.tf-on-dark .tf-status--missing            { color: #ff9a82; }
+.tf-on-dark .tf-status--needs-review       { color: #eec86f; }
+.tf-on-dark .tf-status--declared           { color: #aebbb5; }
+.tf-on-dark .tf-status--documented         { color: #8fc6e4; }
+.tf-on-dark .tf-status--verified           { color: var(--tf-emerald-bri, #2ee39b); }
+.tf-on-dark .tf-status--third-party-certified { color: #6fe0b1; }
+.tf-on-dark .tf-status--expired            { color: #ffab99; }
+
+/* ── §2 · ÉTAT VIDE ────────────────────────────────────────────────────── */
+/* Chaque écran sans donnée explique ce qu'on peut y faire et propose
+   l'action suivante. */
+
+.tf-c-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 44px 24px;
+  text-align: center;
+  border: 1px dashed var(--tf-line-light, rgba(10, 12, 11, 0.16));
+  border-radius: 14px;
+  background: var(--tf-surface-light-raised, #ffffff);
+  color: var(--tf-ink-soft, #434a47);
+}
+.tf-c-empty__icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--tf-trust-documented-bg, rgba(47, 111, 148, 0.09));
+  color: var(--tf-trust-documented, #2f6f94);
+  font-size: 20px;
+}
+.tf-c-empty__title {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--tf-ink, #0a0c0b);
+}
+.tf-c-empty__text {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--tf-ink-muted, #6b746f);
+}
+
+/* ── §3 · ÉTAT D'ERREUR ────────────────────────────────────────────────── */
+/* Jamais « Error 500 » seul : un message compréhensible + Retry. */
+
+.tf-c-error {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 20px 22px;
+  border: 1px solid rgba(192, 73, 47, 0.35);
+  border-left: 3px solid var(--tf-trust-missing, #c0492f);
+  border-radius: 12px;
+  background: var(--tf-trust-missing-bg, rgba(192, 73, 47, 0.06));
+  color: var(--tf-ink-soft, #434a47);
+}
+.tf-c-error__title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+  color: #8a3324;
+}
+.tf-c-error__text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* ── §4 · TABLE PRIMITIVE ──────────────────────────────────────────────── */
+
+.tf-c-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+}
+.tf-c-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tf-ink-muted, #6b746f);
+  background: var(--tf-surface-light, #f5f4f0);
+  border-bottom: 1px solid var(--tf-line-light, rgba(10, 12, 11, 0.12));
+  white-space: nowrap;
+}
+.tf-c-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tf-line-light-faint, rgba(10, 12, 11, 0.06));
+  vertical-align: middle;
+}
+.tf-c-table tbody tr:hover td {
+  background: var(--tf-surface-light-hover, rgba(10, 12, 11, 0.03));
+}
+.tf-c-table .tf-c-table__num {
+  font-family: var(--tf-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+/* Colonne triable : triangle discret, état aria-sort porté par le th. */
+.tf-c-table th[aria-sort] { cursor: pointer; }
+.tf-c-table th[aria-sort]::after {
+  content: '↕';
+  margin-left: 6px;
+  opacity: 0.45;
+}
+.tf-c-table th[aria-sort='ascending']::after  { content: '↑'; opacity: 0.95; }
+.tf-c-table th[aria-sort='descending']::after { content: '↓'; opacity: 0.95; }
+
+/* ── §5 · LIEN D'ACTION — DATA → INSIGHT → ACTION ─────────────────────── */
+/* Un chiffre seul ne suffit jamais : il pointe vers sa remédiation. */
+
+.tf-c-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--tf-emerald-deep, #07875a);
+  cursor: pointer;
+  text-decoration: none;
+}
+.tf-c-action::after {
+  content: '→';
+  transition: transform 160ms ease;
+}
+.tf-c-action:hover::after,
+.tf-c-action:focus-visible::after { transform: translateX(3px); }
+.tf-c-action:hover,
+.tf-c-action:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── §6 · KPI CLIQUABLE ────────────────────────────────────────────────── */
+/* Chaque KPI du Command Center est une porte d'entrée, pas une affiche. */
+
+.tf-c-kpi {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 16px 18px;
+  text-align: left;
+  border: 1px solid var(--tf-line-light, rgba(10, 12, 11, 0.12));
+  border-radius: 14px;
+  background: var(--tf-surface-light-raised, #ffffff);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+.tf-c-kpi:hover,
+.tf-c-kpi:focus-visible {
+  border-color: var(--tf-emerald-deep, #07875a);
+  transform: translateY(-1px);
+}
+.tf-c-kpi__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tf-ink-muted, #6b746f);
+}
+.tf-c-kpi__value {
+  font-size: 26px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.tf-c-kpi__hint {
+  font-size: 12.5px;
+  color: var(--tf-ink-muted, #6b746f);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-c-action::after,
+  .tf-c-kpi { transition: none; }
+  .tf-c-kpi:hover,
+  .tf-c-kpi:focus-visible { transform: none; }
+}

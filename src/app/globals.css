@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  /* Chantier 02 : famille unique du design system v3 (Inter Tight). */
+  --font-sans: 'Inter Tight', Inter, system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
