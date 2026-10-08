@@ -2434,5 +2434,60 @@
       "sortAsc": "ordine crescente",
       "sortDesc": "ordine decrescente"
     }
+  },
+  "portal2": {
+    "todo": {
+      "title": "Cosa devo fare?",
+      "note": "Priorità calcolata dai tuoi dati in tempo reale.",
+      "empty": "Sei in pari — al momento nulla richiede la tua attenzione.",
+      "overdue": "In ritardo — rispondi ora",
+      "dueSoon": "In scadenza entro 7 giorni",
+      "answer": "In attesa di una tua risposta",
+      "cap": "Azione correttiva richiesta",
+      "cert": "Certificazione in scadenza",
+      "weakest": "Area del profilo più debole",
+      "open": "Apri"
+    },
+    "onb": {
+      "nav": "Onboarding",
+      "title": "Onboarding guidato",
+      "intro": "Nove passi per preparare la tua organizzazione alle richieste dati dei marchi. L'avanzamento è calcolato in tempo reale dai dati dichiarati.",
+      "progress": "completato",
+      "done": "Fatto",
+      "todo": "Da fare",
+      "openAction": "Apri",
+      "current": "Passo successivo",
+      "step1": "Completa il profilo della tua organizzazione",
+      "step1d": "Raggiungi almeno l'80% di completezza del profilo.",
+      "step2": "Dichiara le tue attività",
+      "step2d": "Filatura, tessitura, tintura, confezione…",
+      "step3": "Aggiungi un sito produttivo",
+      "step3d": "Dichiara almeno un sito attivo.",
+      "step4": "Dichiara i tuoi materiali",
+      "step4d": "Fibre, tessuti e accessori che produci.",
+      "step5": "Dichiara le certificazioni",
+      "step5d": "GOTS, OEKO-TEX, GRS, ISO…",
+      "step6": "Carica le prove",
+      "step6d": "Certificati, rapporti di prova, prove di origine.",
+      "step7": "Invita il tuo team",
+      "step7d": "Dai ai colleghi un accesso controllato.",
+      "step8": "Rispondi a una richiesta dati",
+      "step8d": "Invia almeno una risposta a un marchio.",
+      "step9": "Configura il tuo passaporto",
+      "step9d": "Titolo e visibilità del tuo passaporto pubblico."
+    },
+    "shares": {
+      "nav": "Condivisioni dati",
+      "title": "Condivisioni dati per marchio",
+      "intro": "Visualizza quali marchi hanno accesso ai tuoi dati, con quale ambito e fino a quando. Concessione e revoca sono gestite da ciascun marchio.",
+      "grantee": "Marchio",
+      "scope": "Ambito",
+      "status": "Stato",
+      "period": "Periodo",
+      "created": "Creato",
+      "empty": "Nessuna condivisione dati per ora. Quando un marchio riceverà l'accesso ai tuoi dati, comparirà qui.",
+      "unlimited": "Senza data di fine",
+      "scopeNone": "Ambito non dettagliato"
+    }
   }
 }

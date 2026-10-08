@@ -2434,5 +2434,60 @@
       "sortAsc": "orden ascendente",
       "sortDesc": "orden descendente"
     }
+  },
+  "portal2": {
+    "todo": {
+      "title": "¿Qué debo hacer?",
+      "note": "Priorizado a partir de sus datos en tiempo real.",
+      "empty": "Está al día — nada requiere su atención en este momento.",
+      "overdue": "Vencida — responder ahora",
+      "dueSoon": "Con vencimiento en 7 días",
+      "answer": "Esperando su respuesta",
+      "cap": "Acción correctiva solicitada",
+      "cert": "Certificación próxima a caducar",
+      "weakest": "Área más débil del perfil",
+      "open": "Abrir"
+    },
+    "onb": {
+      "nav": "Onboarding",
+      "title": "Onboarding guiado",
+      "intro": "Nueve pasos para preparar su organización para las solicitudes de datos de las marcas. El avance se calcula en vivo a partir de sus datos declarados.",
+      "progress": "completado",
+      "done": "Hecho",
+      "todo": "Pendiente",
+      "openAction": "Abrir",
+      "current": "Siguiente paso",
+      "step1": "Complete el perfil de su organización",
+      "step1d": "Alcance al menos un 80 % de completitud del perfil.",
+      "step2": "Declare sus actividades",
+      "step2d": "Hilatura, tejeduría, tintura, confección…",
+      "step3": "Añada un centro de producción",
+      "step3d": "Declare al menos un centro activo.",
+      "step4": "Declare sus materiales",
+      "step4d": "Fibras, tejidos y avíos que produce.",
+      "step5": "Declare sus certificaciones",
+      "step5d": "GOTS, OEKO-TEX, GRS, ISO…",
+      "step6": "Suba sus pruebas",
+      "step6d": "Certificados, informes de ensayo, pruebas de origen.",
+      "step7": "Invite a su equipo",
+      "step7d": "Dé a sus colegas un acceso controlado.",
+      "step8": "Responda a una solicitud de datos",
+      "step8d": "Envíe al menos una respuesta a una marca.",
+      "step9": "Configure su pasaporte",
+      "step9d": "Título y visibilidad de su pasaporte público."
+    },
+    "shares": {
+      "nav": "Comparticiones de datos",
+      "title": "Comparticiones de datos por marca",
+      "intro": "Vea qué marcas tienen acceso a sus datos, con qué alcance y hasta cuándo. La concesión y la revocación las gestiona cada marca.",
+      "grantee": "Marca",
+      "scope": "Alcance",
+      "status": "Estado",
+      "period": "Período",
+      "created": "Creado",
+      "empty": "Aún no hay comparticiones de datos. Cuando una marca reciba acceso a sus datos, aparecerá aquí.",
+      "unlimited": "Sin fecha de fin",
+      "scopeNone": "Alcance sin detallar"
+    }
   }
 }

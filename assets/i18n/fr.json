@@ -2434,5 +2434,60 @@
       "sortAsc": "tri croissant",
       "sortDesc": "tri décroissant"
     }
+  },
+  "portal2": {
+    "todo": {
+      "title": "Que dois-je faire ?",
+      "note": "Priorisé à partir de vos données en temps réel.",
+      "empty": "Vous êtes à jour — rien ne demande votre attention pour le moment.",
+      "overdue": "En retard — répondre maintenant",
+      "dueSoon": "Échéance sous 7 jours",
+      "answer": "En attente de votre réponse",
+      "cap": "Action corrective demandée",
+      "cert": "Certification bientôt expirée",
+      "weakest": "Point le plus faible du profil",
+      "open": "Ouvrir"
+    },
+    "onb": {
+      "nav": "Onboarding",
+      "title": "Onboarding guidé",
+      "intro": "Neuf étapes pour préparer votre organisation aux demandes de données des marques. L'avancement est calculé en direct à partir de vos données déclarées.",
+      "progress": "terminé",
+      "done": "Fait",
+      "todo": "À faire",
+      "openAction": "Ouvrir",
+      "current": "Étape suivante",
+      "step1": "Compléter le profil de votre organisation",
+      "step1d": "Atteignez au moins 80 % de complétude du profil.",
+      "step2": "Déclarer vos activités",
+      "step2d": "Filature, tissage, teinture, confection…",
+      "step3": "Ajouter un site de production",
+      "step3d": "Déclarez au moins un site actif.",
+      "step4": "Déclarer vos matières",
+      "step4d": "Fibres, tissus et fournitures que vous produisez.",
+      "step5": "Déclarer vos certifications",
+      "step5d": "GOTS, OEKO-TEX, GRS, ISO…",
+      "step6": "Téléverser vos preuves",
+      "step6d": "Certificats, rapports d'essai, preuves d'origine.",
+      "step7": "Inviter votre équipe",
+      "step7d": "Donnez à vos collègues un accès contrôlé.",
+      "step8": "Répondre à une demande de données",
+      "step8d": "Soumettez au moins une réponse à une marque.",
+      "step9": "Configurer votre passeport",
+      "step9d": "Titre et visibilité de votre passeport public."
+    },
+    "shares": {
+      "nav": "Partages de données",
+      "title": "Partages de données par marque",
+      "intro": "Consultez les marques qui ont accès à vos données, avec quel périmètre et jusqu'à quand. L'octroi et la révocation sont gérés par chaque marque.",
+      "grantee": "Marque",
+      "scope": "Périmètre",
+      "status": "Statut",
+      "period": "Période",
+      "created": "Créé",
+      "empty": "Aucun partage de données pour le moment. Lorsqu'une marque recevra un accès à vos données, il apparaîtra ici.",
+      "unlimited": "Sans date de fin",
+      "scopeNone": "Périmètre non détaillé"
+    }
   }
 }

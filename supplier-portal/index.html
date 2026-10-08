@@ -367,6 +367,7 @@
     <script src="/assets/i18n/en.js"></script>
     <script src="/assets/js/tf-i18n.js"></script>
   <link rel="stylesheet" href="/assets/design-system/tracefab-shell.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-portal2.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
 </head>
 <body>
@@ -503,7 +504,7 @@
           state.loading = false; render();
         } catch (error) { state.loading = false; state.configError = error.message; render(); }
       }
-      function viewLabel() { return ({ overview:t('spNavOverview'), requests:t('spNavRequests'), profile:t('spNavProfile'), sites:t('spNavSites'), certifications:t('spNavCerts'), materials:t('spNavMaterials'), documents:t('spNavDocuments'), dataPoints:t('spNavDataPoints'), members:t('spNavMembers'), quality:t('spNavQuality'), passport:t('spNavPassport'), massBalance:t('spNavMassBalance'), requestDetail:t('spNavRequestDetail'), selfOnboarding:t('spNavOnboarding') })[state.view] || t('spNavOverview'); }
+      function viewLabel() { return ({ overview:t('spNavOverview'), onboarding:p2t('onb.nav','Onboarding'), requests:t('spNavRequests'), profile:t('spNavProfile'), sites:t('spNavSites'), certifications:t('spNavCerts'), materials:t('spNavMaterials'), documents:t('spNavDocuments'), shares:p2t('shares.nav','Data shares'), dataPoints:t('spNavDataPoints'), members:t('spNavMembers'), quality:t('spNavQuality'), passport:t('spNavPassport'), massBalance:t('spNavMassBalance'), requestDetail:t('spNavRequestDetail'), selfOnboarding:t('spNavOnboarding') })[state.view] || t('spNavOverview'); }
       function currentOrg() { return state.organizations.find((entry) => entry.organizationId === state.selectedOrganizationId)?.organization || state.memberships.find((membership) => membership.organization_id === state.selectedOrganizationId)?.organizations; }
       function langSwitcher() {
         return `<select class="lang-switcher-select" id="lang-switch" title="${t('spLangTitle')}">
@@ -523,7 +524,7 @@
       function openRequests() { return state.requests.filter((request) => !['approved','cancelled'].includes(request.status)); }
       function shell(content) {
         const userName = state.user?.fullName || state.user?.email || 'Utilisateur';
-        return `${state.demo ? `<div class="demo-banner">${esc(t('spDemoBanner')).replace('?demo=0', '<code>?demo=0</code>')}</div>` : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖','Mass-Balance')}${navButton('passport','✦','Passeport')}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || t('spDemoMode'))}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions"><button type="button" class="tfsh-trigger" data-shell-open="palette" aria-label="${esc((window.TF_I18N && window.TF_I18N.t('shell.trigger.palette', 'Command palette')) || 'Command palette')}"><span aria-hidden="true">⌕</span><span class="tfsh-trigger__label">⌘K</span></button><button type="button" class="tfsh-trigger" data-shell-open="notifications" aria-label="${esc((window.TF_I18N && window.TF_I18N.t('shell.trigger.notifications', 'Notifications')) || 'Notifications')}"><span aria-hidden="true">◉</span><span data-shell-badge hidden></span></button>${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
+        return `${state.demo ? `<div class="demo-banner">${esc(t('spDemoBanner')).replace('?demo=0', '<code>?demo=0</code>')}</div>` : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('onboarding','⚑',p2t('onb.nav','Onboarding'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('shares','⇄',p2t('shares.nav','Data shares'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖','Mass-Balance')}${navButton('passport','✦','Passeport')}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || t('spDemoMode'))}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions"><button type="button" class="tfsh-trigger" data-shell-open="palette" aria-label="${esc((window.TF_I18N && window.TF_I18N.t('shell.trigger.palette', 'Command palette')) || 'Command palette')}"><span aria-hidden="true">⌕</span><span class="tfsh-trigger__label">⌘K</span></button><button type="button" class="tfsh-trigger" data-shell-open="notifications" aria-label="${esc((window.TF_I18N && window.TF_I18N.t('shell.trigger.notifications', 'Notifications')) || 'Notifications')}"><span aria-hidden="true">◉</span><span data-shell-badge hidden></span></button>${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
       }
 
       function modalView(type) {
@@ -577,7 +578,7 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>${t('spLoadingSpace')}</h1><p>${t('spLoadingDetail')}</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }
         if (state.view === 'selfOnboarding') { app.innerHTML = selfOnboardingView(); bind(); return; }
-        const content = state.view === 'overview' ? overview() : state.view === 'requests' ? requestsView() : state.view === 'profile' ? profileView() : state.view === 'sites' ? sitesView() : state.view === 'certifications' ? certificationsView() : state.view === 'materials' ? materialsView() : state.view === 'documents' ? documentsView() : state.view === 'dataPoints' ? dataPointsView() : state.view === 'members' ? membersView() : state.view === 'quality' ? qualityView() : state.view === 'massBalance' ? massBalanceSupplierView() : state.view === 'passport' ? passportView() : requestDetailView();
+        const content = state.view === 'overview' ? overview() : state.view === 'requests' ? requestsView() : state.view === 'profile' ? profileView() : state.view === 'sites' ? sitesView() : state.view === 'certifications' ? certificationsView() : state.view === 'materials' ? materialsView() : state.view === 'documents' ? documentsView() : state.view === 'dataPoints' ? dataPointsView() : state.view === 'members' ? membersView() : state.view === 'quality' ? qualityView() : state.view === 'massBalance' ? massBalanceSupplierView() : state.view === 'passport' ? passportView() : state.view === 'onboarding' ? onboardingView() : state.view === 'shares' ? sharesView() : requestDetailView();
         app.innerHTML = shell(content); bind();
       }
       function renderAuth() { app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><h1>${t('spAuthTitle')}</h1><p>${t('spAuthSub')}</p><ul><li>${t('spAuthArg1')}</li><li>${t('spAuthArg2')}</li><li>${t('spAuthArg3')}</li></ul></div><div class="auth-box"><div class="eyebrow">${t('spSupplierSpace')}</div><h2>${t('spSignIn')}</h2><p>${t('spAuthAccess')}</p><div id="clerk-sign-in"></div></div></div></div>`; if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'), { appearance:{ elements:{ card:'shadow-none', rootBox:'w-full' } } }); }
@@ -666,9 +667,117 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
         </div>`;
       }
 
+      /* =====================================================================
+         Chantier 06 — Supplier Portal 2.0
+         Dashboard « WHAT DO I NEED TO DO? », onboarding guide 9 etapes,
+         partages de donnees par marque. Tout est derive de l etat deja
+         charge par le portail : aucune donnee inventee, aucun appel API
+         supplementaire. p2t() lit le namespace i18n `portal2` directement
+         (t() prefixe `portal.`).
+         ===================================================================== */
+      const p2t = (key, fb) => (window.TF_I18N ? window.TF_I18N.t('portal2.' + key, fb) : fb);
+
+      function todoTasks() {
+        const tasks = [];
+        const now = Date.now();
+        openRequests().forEach((request) => {
+          const due = request.dueAt ? new Date(request.dueAt).getTime() : null;
+          const title = request.title || request.id;
+          if (due && due < now) {
+            tasks.push({ severity: 'critical', kind: p2t('todo.overdue', 'Overdue'), title, id: request.id, meta: t('spDueOn') + ' ' + date(request.dueAt) });
+          } else if (due && due - now < 7 * 86400000) {
+            tasks.push({ severity: 'warning', kind: p2t('todo.dueSoon', 'Due soon'), title, id: request.id, meta: t('spDueOn') + ' ' + date(request.dueAt) });
+          } else if (request.status === 'in_progress') {
+            tasks.push({ severity: 'info', kind: p2t('todo.answer', 'Awaiting your answer'), title, id: request.id, meta: '' });
+          }
+        });
+        (state.caps || []).forEach((cap) => {
+          if (!['resolved', 'closed', 'approved'].includes(cap.status)) {
+            tasks.push({ severity: 'warning', kind: p2t('todo.cap', 'Corrective action requested'), title: cap.title || cap.id, view: 'quality' });
+          }
+        });
+        (state.certifications || []).forEach((certification) => {
+          const exp = certification.expiresAt ? new Date(certification.expiresAt).getTime() : null;
+          if (exp && exp - now < 60 * 86400000) {
+            tasks.push({ severity: 'warning', kind: p2t('todo.cert', 'Certification expiring soon'), title: certification.standardName || certification.standardCode || certification.id, view: 'certifications' });
+          }
+        });
+        const faible = spDimensions().slice().sort((a, b) => a.valeur - b.valeur)[0];
+        if (faible && faible.valeur < SP_SEUIL) {
+          tasks.push({ severity: 'info', kind: p2t('todo.weakest', 'Weakest profile area'), title: faible.label + ' · ' + faible.valeur + '%', view: faible.vue });
+        }
+        const rank = { critical: 0, warning: 1, info: 2 };
+        return tasks.sort((a, b) => (rank[a.severity] ?? 3) - (rank[b.severity] ?? 3));
+      }
+
+      function todoSection() {
+        const tasks = todoTasks();
+        return `<section class="sp2-todo" aria-label="${esc(p2t('todo.title', 'What do I need to do?'))}">
+          <div class="sp2-todo-head">
+            <h2 class="sp2-todo-title">${esc(p2t('todo.title', 'What do I need to do?'))}</h2>
+            <span class="sp2-todo-note">${esc(p2t('todo.note', 'Prioritized from your live data.'))}</span>
+          </div>
+          ${tasks.length ? `<div class="sp2-task-list">${tasks.map((task) => `<button type="button" class="sp2-task" data-severity="${task.severity}" ${task.id ? `data-request-id="${esc(task.id)}"` : `data-view="${esc(task.view)}"`}>
+              <span class="sp2-task-kind">${esc(task.kind)}</span>
+              <span class="sp2-task-body"><span class="sp2-task-title">${esc(task.title)}</span>${task.meta ? `<span class="sp2-task-meta">${esc(task.meta)}</span>` : ''}</span>
+              <span class="btn btn-secondary btn-small" aria-hidden="true">${esc(p2t('todo.open', 'Open'))}</span>
+            </button>`).join('')}</div>`
+          : `<div class="sp2-empty">${esc(p2t('todo.empty', 'You are all caught up.'))}</div>`}
+        </section>`;
+      }
+
+      function onboardingSteps() {
+        const p = state.profile || {};
+        return [
+          { done: Number(p.profileCompletion) >= 80, view: 'profile', label: p2t('onb.step1', ''), desc: p2t('onb.step1d', '') },
+          { done: (p.activityTypes || []).length > 0, view: 'profile', label: p2t('onb.step2', ''), desc: p2t('onb.step2d', '') },
+          { done: (state.sites || []).length > 0, view: 'sites', label: p2t('onb.step3', ''), desc: p2t('onb.step3d', '') },
+          { done: (state.materials || []).length > 0, view: 'materials', label: p2t('onb.step4', ''), desc: p2t('onb.step4d', '') },
+          { done: (state.certifications || []).length > 0, view: 'certifications', label: p2t('onb.step5', ''), desc: p2t('onb.step5d', '') },
+          { done: (state.documents || []).length > 0, view: 'documents', label: p2t('onb.step6', ''), desc: p2t('onb.step6d', '') },
+          { done: (state.members || []).length > 1, view: 'members', label: p2t('onb.step7', ''), desc: p2t('onb.step7d', '') },
+          { done: (state.requests || []).some((request) => ['submitted', 'approved'].includes(request.status)), view: 'requests', label: p2t('onb.step8', ''), desc: p2t('onb.step8d', '') },
+          { done: !!(state.passport && (state.passport.headline || state.passport.isPublic)), view: 'passport', label: p2t('onb.step9', ''), desc: p2t('onb.step9d', '') }
+        ];
+      }
+
+      function onboardingView() {
+        const steps = onboardingSteps();
+        const doneCount = steps.filter((step) => step.done).length;
+        const pctDone = Math.round((doneCount / steps.length) * 100);
+        const firstPending = steps.findIndex((step) => !step.done);
+        return `<div class="page-head"><div><div class="eyebrow">${esc(t('spSupplierDeclarations'))}</div><h1>${esc(p2t('onb.title', 'Guided onboarding'))}</h1><p>${esc(p2t('onb.intro', ''))}</p></div></div>
+          <div class="sp2-onb-progress">
+            <div class="sp2-onb-progress-head"><strong>${doneCount}/${steps.length} ${esc(p2t('onb.progress', 'completed'))}</strong><span class="meta">${pctDone}%</span></div>
+            <div class="sp2-onb-bar"><span style="width:${pctDone}%"></span></div>
+          </div>
+          <div class="sp2-steps">${steps.map((step, index) => `<div class="sp2-step" data-done="${step.done}" data-current="${index === firstPending}">
+            <span class="sp2-step-dot">${step.done ? '✓' : index + 1}</span>
+            <span class="sp2-step-body"><span class="sp2-step-label">${esc(step.label)}</span><span class="sp2-step-desc">${esc(step.desc)}</span></span>
+            <span class="sp2-step-chip">${step.done ? esc(p2t('onb.done', 'Done')) : esc(p2t('onb.todo', 'To do'))}</span>
+            ${!step.done ? `<button type="button" class="btn btn-secondary btn-small" data-view="${esc(step.view)}">${esc(p2t('onb.openAction', 'Open'))}</button>` : ''}
+          </div>`).join('')}</div>`;
+      }
+
+      function sharesView() {
+        const shares = state.shares || [];
+        return `<div class="page-head"><div><div class="eyebrow">${esc(t('spSupplierDeclarations'))}</div><h1>${esc(p2t('shares.title', 'Per-brand data shares'))}</h1><p>${esc(p2t('shares.intro', ''))}</p></div></div>
+          <div class="card panel">
+            ${shares.length ? `<div class="sp2-shares">${shares.map((share) => {
+              const brand = share.granteeOrganization?.display_name || share.granteeOrganization?.legal_name || '—';
+              const scopeKeys = share.scope && typeof share.scope === 'object' ? Object.keys(share.scope).filter((key) => share.scope[key]) : [];
+              return `<div class="sp2-share">
+                <div class="sp2-share-head"><span class="sp2-share-brand">${esc(brand)}</span>${status(share.status)}</div>
+                <div class="sp2-scope-row">${scopeKeys.length ? scopeKeys.map((key) => `<span class="sp2-scope-chip">${esc(key)}</span>`).join('') : `<span class="meta">${esc(p2t('shares.scopeNone', 'No scope detail'))}</span>`}</div>
+                <div class="sp2-share-meta">${esc(p2t('shares.created', 'Created'))} ${date(share.createdAt)} · ${esc(p2t('shares.period', 'Period'))} ${date(share.startsAt)} → ${share.endsAt ? date(share.endsAt) : esc(p2t('shares.unlimited', 'No end date'))}</div>
+              </div>`;
+            }).join('')}</div>`
+            : `<div class="empty"><div class="empty-icon">⇄</div><strong>${esc(p2t('shares.empty', 'No data share yet.'))}</strong></div>`}
+          </div>`;
+      }
+
       function overview() {
         const dueSoon = openRequests().filter((request) => request.dueAt && new Date(request.dueAt).getTime() - Date.now() < 7*86400000);
-        const completionPct = state.profile?.profileCompletion || 82;
 
         return `<div>
           <!-- Mission Hero Banner -->
@@ -679,6 +788,8 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
           </div>
 
           ${spProgressPanel()}
+
+          ${todoSection()}
 
           <!-- 4 Core Supplier Action Modules -->
           <div class="sp-actions-grid">
@@ -723,7 +834,7 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
             </div>
             <div class="card kpi">
               <div class="kpi-label">${t('spActiveShares')}</div>
-              <div class="kpi-value">${moneyless(state.shares?.length || 4)}</div>
+              <div class="kpi-value">${moneyless(state.shares?.length || 0)}</div>
               <div class="kpi-note">${t('spConnectedBrands')}</div>
             </div>
           </div>

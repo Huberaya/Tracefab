@@ -2310,5 +2310,60 @@ window.TF_I18N_BUNDLES.en = {
       "sortAsc": "sorted ascending",
       "sortDesc": "sorted descending"
     }
+  },
+  "portal2": {
+    "todo": {
+      "title": "What do I need to do?",
+      "note": "Prioritized from your live data.",
+      "empty": "You are all caught up — nothing needs your attention right now.",
+      "overdue": "Overdue — answer now",
+      "dueSoon": "Due within 7 days",
+      "answer": "Awaiting your answer",
+      "cap": "Corrective action requested",
+      "cert": "Certification expiring soon",
+      "weakest": "Weakest profile area",
+      "open": "Open"
+    },
+    "onb": {
+      "nav": "Onboarding",
+      "title": "Guided onboarding",
+      "intro": "Nine steps to make your organization ready for brand data requests. Status is computed live from your declared data.",
+      "progress": "completed",
+      "done": "Done",
+      "todo": "To do",
+      "openAction": "Open",
+      "current": "Next step",
+      "step1": "Complete your organization profile",
+      "step1d": "Reach at least 80% profile completion.",
+      "step2": "Declare your activities",
+      "step2d": "Spinning, weaving, dyeing, confection…",
+      "step3": "Add a production site",
+      "step3d": "Declare at least one active site.",
+      "step4": "Declare your materials",
+      "step4d": "Fibers, fabrics and trims you produce.",
+      "step5": "Declare certifications",
+      "step5d": "GOTS, OEKO-TEX, GRS, ISO…",
+      "step6": "Upload evidence",
+      "step6d": "Certificates, test reports, origin proofs.",
+      "step7": "Invite your team",
+      "step7d": "Give colleagues controlled access.",
+      "step8": "Answer a data request",
+      "step8d": "Submit at least one response to a brand.",
+      "step9": "Set up your passport",
+      "step9d": "Headline and visibility of your public passport."
+    },
+    "shares": {
+      "nav": "Data shares",
+      "title": "Per-brand data shares",
+      "intro": "View which brands hold access to your data, with which scope and until when. Grants and revocations are managed by each brand.",
+      "grantee": "Brand",
+      "scope": "Scope",
+      "status": "Status",
+      "period": "Period",
+      "created": "Created",
+      "empty": "No data share yet. When a brand receives access to your data, it will appear here.",
+      "unlimited": "No end date",
+      "scopeNone": "No scope detail"
+    }
   }
 };

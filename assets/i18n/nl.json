@@ -2434,5 +2434,60 @@
       "sortAsc": "oplopend gesorteerd",
       "sortDesc": "aflopend gesorteerd"
     }
+  },
+  "portal2": {
+    "todo": {
+      "title": "Wat moet ik doen?",
+      "note": "Geprioriteerd op basis van uw actuele gegevens.",
+      "empty": "U bent helemaal bij — er vraagt momenteel niets uw aandacht.",
+      "overdue": "Termijn verlopen — antwoord nu",
+      "dueSoon": "Vervalt binnen 7 dagen",
+      "answer": "Wacht op uw antwoord",
+      "cap": "Corrigerende actie gevraagd",
+      "cert": "Certificering verloopt binnenkort",
+      "weakest": "Zwakste profielonderdeel",
+      "open": "Openen"
+    },
+    "onb": {
+      "nav": "Onboarding",
+      "title": "Begeleide onboarding",
+      "intro": "Negen stappen om uw organisatie voor te bereiden op dataverzoeken van merken. De voortgang wordt live berekend uit uw verklaarde gegevens.",
+      "progress": "voltooid",
+      "done": "Klaar",
+      "todo": "Te doen",
+      "openAction": "Openen",
+      "current": "Volgende stap",
+      "step1": "Vul uw organisatieprofiel aan",
+      "step1d": "Bereik minimaal 80% profielvolledigheid.",
+      "step2": "Verklaar uw activiteiten",
+      "step2d": "Spinnen, weven, verven, confectie…",
+      "step3": "Voeg een productielocatie toe",
+      "step3d": "Verklaar minstens één actieve locatie.",
+      "step4": "Verklaar uw materialen",
+      "step4d": "Vezels, stoffen en fournituren die u produceert.",
+      "step5": "Verklaar certificeringen",
+      "step5d": "GOTS, OEKO-TEX, GRS, ISO…",
+      "step6": "Upload bewijsstukken",
+      "step6d": "Certificaten, testrapporten, herkomstbewijzen.",
+      "step7": "Nodig uw team uit",
+      "step7d": "Geef collega's gecontroleerde toegang.",
+      "step8": "Beantwoord een dataverzoek",
+      "step8d": "Dien minstens één antwoord in bij een merk.",
+      "step9": "Stel uw paspoort in",
+      "step9d": "Titel en zichtbaarheid van uw openbare paspoort."
+    },
+    "shares": {
+      "nav": "Datadeling",
+      "title": "Datadeling per merk",
+      "intro": "Bekijk welke merken toegang tot uw gegevens hebben, met welke reikwijdte en tot wanneer. Toekenning en intrekking worden door elk merk beheerd.",
+      "grantee": "Merk",
+      "scope": "Reikwijdte",
+      "status": "Status",
+      "period": "Periode",
+      "created": "Aangemaakt",
+      "empty": "Nog geen datadeling. Zodra een merk toegang tot uw gegevens krijgt, verschijnt het hier.",
+      "unlimited": "Zonder einddatum",
+      "scopeNone": "Reikwijdte niet gespecificeerd"
+    }
   }
 }

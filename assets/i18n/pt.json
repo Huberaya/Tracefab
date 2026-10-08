@@ -2434,5 +2434,60 @@
       "sortAsc": "ordem crescente",
       "sortDesc": "ordem decrescente"
     }
+  },
+  "portal2": {
+    "todo": {
+      "title": "O que preciso de fazer?",
+      "note": "Priorizado a partir dos seus dados em tempo real.",
+      "empty": "Está em dia — nada precisa da sua atenção neste momento.",
+      "overdue": "Em atraso — responder agora",
+      "dueSoon": "Com prazo dentro de 7 dias",
+      "answer": "À espera da sua resposta",
+      "cap": "Ação corretiva solicitada",
+      "cert": "Certificação quase a expirar",
+      "weakest": "Área mais fraca do perfil",
+      "open": "Abrir"
+    },
+    "onb": {
+      "nav": "Onboarding",
+      "title": "Onboarding guiado",
+      "intro": "Nove passos para preparar a sua organização para os pedidos de dados das marcas. O progresso é calculado em direto a partir dos seus dados declarados.",
+      "progress": "concluído",
+      "done": "Feito",
+      "todo": "Por fazer",
+      "openAction": "Abrir",
+      "current": "Próximo passo",
+      "step1": "Complete o perfil da sua organização",
+      "step1d": "Alcance pelo menos 80% de completude do perfil.",
+      "step2": "Declarar as suas atividades",
+      "step2d": "Fiação, tecelagem, tinturaria, confeção…",
+      "step3": "Adicionar uma unidade de produção",
+      "step3d": "Declarar pelo menos uma unidade ativa.",
+      "step4": "Declarar os seus materiais",
+      "step4d": "Fibras, tecidos e acessórios que produz.",
+      "step5": "Declarar certificações",
+      "step5d": "GOTS, OEKO-TEX, GRS, ISO…",
+      "step6": "Carregar provas",
+      "step6d": "Certificados, relatórios de ensaio, provas de origem.",
+      "step7": "Convidar a sua equipa",
+      "step7d": "Dê aos colegas um acesso controlado.",
+      "step8": "Responder a um pedido de dados",
+      "step8d": "Submeta pelo menos uma resposta a uma marca.",
+      "step9": "Configurar o seu passaporte",
+      "step9d": "Título e visibilidade do seu passaporte público."
+    },
+    "shares": {
+      "nav": "Partilhas de dados",
+      "title": "Partilhas de dados por marca",
+      "intro": "Veja que marcas têm acesso aos seus dados, com que âmbito e até quando. A concessão e a revogação são geridas por cada marca.",
+      "grantee": "Marca",
+      "scope": "Âmbito",
+      "status": "Estado",
+      "period": "Período",
+      "created": "Criado",
+      "empty": "Ainda sem partilhas de dados. Quando uma marca receber acesso aos seus dados, aparecerá aqui.",
+      "unlimited": "Sem data de fim",
+      "scopeNone": "Âmbito não detalhado"
+    }
   }
 }

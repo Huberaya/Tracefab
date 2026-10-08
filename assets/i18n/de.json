@@ -2434,5 +2434,60 @@
       "sortAsc": "aufsteigend sortiert",
       "sortDesc": "absteigend sortiert"
     }
+  },
+  "portal2": {
+    "todo": {
+      "title": "Was muss ich tun?",
+      "note": "Priorisiert anhand Ihrer aktuellen Daten.",
+      "empty": "Sie sind auf dem neuesten Stand — nichts erfordert derzeit Ihre Aufmerksamkeit.",
+      "overdue": "Überfällig — jetzt antworten",
+      "dueSoon": "Fällig innerhalb von 7 Tagen",
+      "answer": "Wartet auf Ihre Antwort",
+      "cap": "Korrekturmaßnahme angefordert",
+      "cert": "Zertifikat läuft bald ab",
+      "weakest": "Schwächster Profilbereich",
+      "open": "Öffnen"
+    },
+    "onb": {
+      "nav": "Onboarding",
+      "title": "Begleitetes Onboarding",
+      "intro": "Neun Schritte, um Ihre Organisation auf Datenanfragen von Marken vorzubereiten. Der Fortschritt wird live aus Ihren erklärten Daten berechnet.",
+      "progress": "abgeschlossen",
+      "done": "Erledigt",
+      "todo": "Zu tun",
+      "openAction": "Öffnen",
+      "current": "Nächster Schritt",
+      "step1": "Organisationsprofil vervollständigen",
+      "step1d": "Erreichen Sie mindestens 80 % Profilvollständigkeit.",
+      "step2": "Ihre Tätigkeiten erklären",
+      "step2d": "Spinnen, Weben, Färben, Konfektion…",
+      "step3": "Produktionsstätte hinzufügen",
+      "step3d": "Erklären Sie mindestens eine aktive Stätte.",
+      "step4": "Ihre Materialien erklären",
+      "step4d": "Fasern, Stoffe und Zubehör, die Sie herstellen.",
+      "step5": "Zertifizierungen erklären",
+      "step5d": "GOTS, OEKO-TEX, GRS, ISO…",
+      "step6": "Nachweise hochladen",
+      "step6d": "Zertifikate, Prüfberichte, Herkunftsnachweise.",
+      "step7": "Ihr Team einladen",
+      "step7d": "Geben Sie Kollegen kontrollierten Zugriff.",
+      "step8": "Eine Datenanfrage beantworten",
+      "step8d": "Senden Sie mindestens eine Antwort an eine Marke.",
+      "step9": "Ihren Pass einrichten",
+      "step9d": "Titel und Sichtbarkeit Ihres öffentlichen Passes."
+    },
+    "shares": {
+      "nav": "Datenfreigaben",
+      "title": "Datenfreigaben je Marke",
+      "intro": "Sehen Sie, welche Marken Zugriff auf Ihre Daten haben, mit welchem Umfang und bis wann. Erteilung und Widerruf werden von jeder Marke verwaltet.",
+      "grantee": "Marke",
+      "scope": "Umfang",
+      "status": "Status",
+      "period": "Zeitraum",
+      "created": "Erstellt",
+      "empty": "Noch keine Datenfreigabe. Sobald eine Marke Zugriff auf Ihre Daten erhält, erscheint sie hier.",
+      "unlimited": "Ohne Enddatum",
+      "scopeNone": "Umfang nicht detailliert"
+    }
   }
 }

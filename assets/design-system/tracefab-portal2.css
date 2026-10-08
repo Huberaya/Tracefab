@@ -1,0 +1,183 @@
+/* ==========================================================================
+   TRACEFAB — Supplier Portal 2.0 (Chantier 06)
+   Dashboard « WHAT DO I NEED TO DO? », onboarding guide 9 etapes,
+   partages de donnees par marque. Classes .sp2-*, theme clair du portail.
+   ========================================================================== */
+
+/* ---- Section taches ------------------------------------------------------ */
+.sp2-todo { margin-top: 22px; }
+.sp2-todo-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.sp2-todo-title {
+  font-size: 15px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.sp2-todo-note { font-size: 12px; color: var(--muted, #6b746f); }
+.sp2-task-list { display: grid; gap: 10px; }
+.sp2-task {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e1e8e2);
+  border-left: 4px solid var(--border, #c7c5ba);
+  border-radius: 12px;
+  padding: 12px 16px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.sp2-task:hover, .sp2-task:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(5, 20, 14, 0.08);
+  outline: none;
+}
+.sp2-task[data-severity="critical"] { border-left-color: #b91c1c; }
+.sp2-task[data-severity="warning"] { border-left-color: #b45309; }
+.sp2-task[data-severity="info"] { border-left-color: #1d4ed8; }
+.sp2-task-kind {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sp2-task[data-severity="critical"] .sp2-task-kind { color: #b91c1c; }
+.sp2-task[data-severity="warning"] .sp2-task-kind { color: #b45309; }
+.sp2-task[data-severity="info"] .sp2-task-kind { color: #1d4ed8; }
+.sp2-task-body { flex: 1; min-width: 0; }
+.sp2-task-title {
+  display: block;
+  font-weight: 700;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sp2-task-meta { display: block; font-size: 12px; color: var(--muted, #6b746f); margin-top: 2px; }
+.sp2-empty {
+  background: var(--surface, #ffffff);
+  border: 1px dashed var(--border, #c7c5ba);
+  border-radius: 12px;
+  padding: 16px 18px;
+  font-size: 13.5px;
+  color: var(--muted, #6b746f);
+}
+
+/* ---- Onboarding guide (9 etapes) ----------------------------------------- */
+.sp2-onb-progress {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e1e8e2);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+.sp2-onb-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.sp2-onb-progress-num { font-size: 20px; font-weight: 800; }
+.sp2-onb-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(11, 118, 86, 0.12);
+  overflow: hidden;
+}
+.sp2-onb-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green, #0b7656);
+  transition: width 0.3s ease;
+}
+.sp2-steps { display: grid; gap: 10px; }
+.sp2-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e1e8e2);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.sp2-step[data-current="true"] { border-color: var(--green, #0b7656); box-shadow: 0 0 0 1px var(--green, #0b7656) inset; }
+.sp2-step-dot {
+  min-width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(107, 116, 111, 0.12);
+  color: var(--muted, #6b746f);
+}
+.sp2-step[data-done="true"] .sp2-step-dot { background: rgba(16, 185, 129, 0.16); color: #0b7656; }
+.sp2-step-body { flex: 1; min-width: 0; }
+.sp2-step-label { display: block; font-weight: 700; font-size: 13.5px; }
+.sp2-step-desc { display: block; font-size: 12px; color: var(--muted, #6b746f); margin-top: 2px; }
+.sp2-step-chip {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.sp2-step[data-done="true"] .sp2-step-chip { background: rgba(16, 185, 129, 0.14); color: #0b7656; }
+.sp2-step[data-done="false"] .sp2-step-chip { background: rgba(180, 83, 9, 0.12); color: #b45309; }
+
+/* ---- Partages de donnees par marque --------------------------------------- */
+.sp2-shares { display: grid; gap: 10px; margin-top: 14px; }
+.sp2-share {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e1e8e2);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+}
+.sp2-share-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sp2-share-brand { font-weight: 800; font-size: 14px; }
+.sp2-share-meta { font-size: 12px; color: var(--muted, #6b746f); }
+.sp2-scope-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.sp2-scope-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(29, 78, 216, 0.10);
+  color: #1d4ed8;
+}
+
+/* ---- Mobile-first ---------------------------------------------------------- */
+@media (max-width: 720px) {
+  .sp2-task { flex-wrap: wrap; }
+  .sp2-task-kind { width: 100%; }
+  .sp2-step { flex-wrap: wrap; }
+  .sp2-step .btn { width: 100%; }
+  .sp2-share-head { flex-direction: column; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp2-task, .sp2-onb-bar span { transition: none; transform: none !important; }
+}
