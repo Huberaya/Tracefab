@@ -701,3 +701,124 @@ catalogue — contrôle négatif prouvé.
 `quality-center/` est un gabarit de 73 lignes sans sélecteur de langue ;
 `passport/` et `operations/` sont orphelins ; `tsx` manque en dépendance de
 développement (8 scripts) ; les phases 9 à 12 n'ont pas de rapport dédié.
+
+---
+
+## Tranche 9 — `quality-center`, `operations`, `passport`, `tsx`
+
+### Deux diagnostics du backlog étaient faux
+
+La tranche 8 laissait trois constats. L'audit préalable en a invalidé deux.
+
+« `quality-center/` est un gabarit de 73 lignes » : le fichier fait bien
+73 lignes, mais **16 475 octets**. Le CSS et le JS y sont quasi minifiés sur
+des lignes très longues. C'est une page complète, pas une ébauche. Pour
+dimensionner ces coquilles, `wc -c`, jamais `wc -l`.
+
+« `passport/` et `operations/` sont orphelins » : les deux sont servis par des
+routes enregistrées dans `api/index.ts`
+(`api/_routes/passport/[tokenOrSlug].ts`, `api/_routes/operations/overview.ts`)
+et couverts par des tests. Les supprimer aurait cassé des points d'entrée
+vivants. **Avant de déclarer une coquille HTML morte, chercher les références
+entrantes dans `api/_routes/` et `scripts/`.**
+
+La dette réelle n'était donc pas l'orphelinat mais l'i18n :
+
+| page | octets | `<html lang>` | `tf-i18n` | sélecteur | `fr-FR` figé |
+|---|---|---|---|---|---|
+| `quality-center/` | 16 475 | `fr` | oui | **aucun** | 1 |
+| `passport/` | 27 781 | `fr` | **non** | aucun | 1 |
+| `operations/` | 7 820 | `fr` | **non** | aucun | 1 |
+
+### `quality-center/` — une page qui lisait le catalogue sans pouvoir en changer
+
+La page résolvait déjà `quality.*` (44 clés) et se re-rendait sur
+`tf:languagechange`. Il lui manquait le moyen de déclencher ce changement :
+elle héritait passivement d'un choix fait ailleurs. Un sélecteur a été ajouté
+dans l'emplacement `.actions` de la barre supérieure, sur le modèle de
+`#dpp-lang-select`. `<html lang>` passe à `en` et `num()` suit la locale
+active au lieu de `toLocaleString('fr-FR')`.
+
+Une ligne posant `documentElement.lang` à la main a été retirée : `tf-i18n`
+le fait déjà dans `applyDocumentMeta()` à chaque `setLanguage`. Dupliquer
+cette responsabilité n'apportait rien.
+
+### `operations/` — un script mort depuis des mois
+
+La page chargeait `<script src="/auto-translate.js">`. **Ce fichier n'existe
+pas** : la requête renvoyait `HTTP 404` à chaque visite. Le réécriveur
+historique avait été retiré du dépôt sans que la balise suive. Un
+`grep -c 'auto-translate.js'` ne suffit pas à trancher — sur
+`quality-center` le même compte valait 1, mais pour un simple commentaire de
+suppression. Il faut `grep -n 'script src=.*auto-translate'`.
+
+La balise morte a été remplacée par la vraie pile : `TF_I18N_SKIP_META`,
+`/assets/i18n/en.js`, `/assets/js/tf-i18n.js`. Une racine **`ops`** de
+28 clés couvre les 7 langues, la `meta description` comprise via
+`data-i18n-attr`. Date d'exécution localisée, sélecteur dans la barre de
+navigation.
+
+### Un écouteur sur la mauvaise cible
+
+Premier essai sur `operations/` : la `meta description` se traduisait, le
+corps de page restait anglais. `tf-i18n` émet
+`document.dispatchEvent(new CustomEvent('tf:languagechange', …))`, et un
+`CustomEvent` ne remonte pas par défaut. Un `addEventListener` nu dans une
+IIFE s'attache à `window` : il n'a jamais vu l'événement. Les autres pages
+écrivent `document.addEventListener` — la nuance est invisible à la relecture.
+**Écouter sur `document`, pas sur `window`.**
+
+### `passport/` — 59 clés, de zéro
+
+788 lignes sans aucune couverture : balisage statique, en-tête Open Graph,
+quatre KPI, bannière secret d'affaires, trois cartes, barre collante et
+modale de demande d'accès NDA. Une racine **`passport`** de 59 clés en
+7 langues. Les données de démonstration (noms de sites, matières, résumé
+d'entreprise, base légale) sont passées à l'anglais sans clé, selon la règle
+de tri en vigueur ; `Nhãn Textile`, `GOTS`, `OEKO-TEX`, `CITEVE`, `Intertek`
+et `Control Union` restent intacts.
+
+Deux assertions de `test_universal_passport_chantier6.mjs` portaient sur la
+copie française en dur. Repointées sur le couple clé + catalogue, **contrôle
+négatif prouvé** : en sabotant `fr.json`, le test échoue bien.
+
+### Un débordement mobile antérieur à la tranche
+
+`quality-center` débordait de **346 px** à 390 px de large. Vérification faite
+sur la version `HEAD` : le défaut préexistait, la tranche ne l'avait pas
+introduit. Cause : `table{min-width:680px}` dans une piste de grille `1fr`,
+dont le minimum implicite vaut `auto`. La carte s'élargissait à la table au
+lieu de laisser `.table-wrap` défiler. Corrigé par
+`grid-template-columns:minmax(0,1fr)` et `min-width:0` sur les enfants, en
+couche responsive **en dernier** dans le `<style>`. Débord nul de 390 à
+1280 px, table défilante en dessous de 900 px.
+
+### `tsx` — une dépendance téléchargée à chaque exécution
+
+`npx --no-install tsx --version` échouait : `tsx` n'était dans aucun
+`package.json`. Les 8 scripts qui l'invoquent téléchargeaient donc une
+version non épinglée depuis le registre **à chaque exécution** — lenteur,
+dépendance réseau, et aucune garantie de reproductibilité. `tsx@^4.23.15`
+ajouté en `devDependencies`. Les 5 scripts non-Neon s'exécutent désormais en
+717 à 1 020 ms. Les 3 variantes `test:neon:*` échouent toujours faute de
+connexion Neon, ce qui est attendu et inchangé.
+
+### Vérifications
+
+- **0 débordement horizontal** sur les 3 pages, de 390 à 1280 px.
+- **0 fuite de gabarit** et **0 `pageerror`** sur les 3 pages, 7 langues.
+- `/auto-translate.js` : plus aucune requête en échec.
+- Catalogues portés à **21 racines** ; `ops` 28 clés et `passport` 59 clés
+  complètes sur les 7 langues.
+- 2 assertions repointées, contrôle négatif prouvé.
+- Barrière : **45/45**, `build` OK, `tsc --noEmit` OK, `e2e_audit.py` 4/4,
+  personas 6/6 · 4/4 · 4/4.
+
+### Reste à traiter
+
+`passport/` utilise encore une identité visuelle distincte du système de
+design (Plus Jakarta Sans, accent bleu `#2563eb`) : la page est antérieure à
+la refonte et n'a pas été restylée, car cela relève d'une décision de design
+à valider. Les phases 9 à 12 n'ont toujours pas de rapport dédié. Restent
+aussi deux polices d'affichage à arbitrer, 27 cibles tactiles sous 40 px et
+10 clés `portal` non référencées.
