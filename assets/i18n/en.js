@@ -1725,7 +1725,6 @@ window.TF_I18N_BUNDLES.en = {
     spIssueDate: "Issue date",
     spExpiryDate: "Expiry date",
     spPrivateEvidence: "Private evidence",
-    spNoEvidence: "No evidence",
     spNoCert: "No certificate declared",
     spNoCertHint: "Declare your standards and attach an available evidence when needed.",
     spDeclareCert: "Declare a certificate",
@@ -1748,18 +1747,10 @@ window.TF_I18N_BUNDLES.en = {
     profile: "Company Profile",
     requestDetail: "Respond to Request",
     vaultDesc: "Upload your audit certificates once and share them instantly across all your brand clients.",
-    uploadEvidence: "Upload Evidence to Vault",
     ndaTitle: "Trade Secret & Confidentiality Protection",
     ndaDesc: "Proprietary formulas, pricing and margins remain strictly confidential. Only proof hashes and mass-balance reconciliation are shared.",
     hello: "Hello",
-    pendingRequests: "Open Requests",
-    sitesRegistered: "Registered Facilities",
-    validCerts: "Active Certificates",
-    qualityIndex: "Data Completion",
-    submitToBrand: "Submit to Brand",
-    saveDraft: "Save Draft",
-    responseRecorded: "Response saved successfully.",
-    requestSubmitted: "Request submitted to brand."
+    submitToBrand: "Submit to Brand"
   },
 
 

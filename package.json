@@ -65,6 +65,7 @@
     "test:routes": "node scripts/test_route_registry.mjs",
     "test:i18n": "node scripts/test_i18n_consolidation.mjs",
     "test:phases": "node scripts/audit_phases_9_12.mjs --base http://127.0.0.1:3000",
+    "test:touch": "node scripts/test_touch_targets.mjs --base http://127.0.0.1:3000",
     "i18n:build": "node scripts/build_app_i18n.mjs",
     "test:chantier3-risk": "node scripts/test_chantier3_risk.mjs",
     "test:chantier4-demo": "node scripts/test_chantier4_demo.mjs",
