@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from './_lib/vercel-types.js';
 import { json } from './_lib/http.js';
+import { correlationId, reportError } from './_lib/error-reporting.js';
 
 type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;
 type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default: RouteHandler }> };
@@ -150,6 +151,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     route.params.forEach((param, index) => { query[param] = decodeURIComponent(match[index + 1]); });
     req.query = query;
   }
-  const module = await route.load();
-  return module.default(req, res);
+  // Barriere d'erreur centrale.
+  //
+  // Sans elle, une exception non rattrapee dans un gestionnaire remonte au
+  // runtime serverless : le client recoit un 500 opaque, l'erreur n'atterrit
+  // nulle part, et personne n'est prevenu. 13 des 125 routes n'ont aucun
+  // try/catch, et des helpers comme storage.ts jettent sur mauvaise
+  // configuration. Le chargement dynamique du module peut echouer lui aussi.
+  const correlation = correlationId();
+  try {
+    const module = await route.load();
+    return await module.default(req, res);
+  } catch (error) {
+    await reportError(error, {
+      route: route.pattern.source,
+      method: req.method,
+      path,
+      status: 500,
+    }, correlation);
+
+    // Un gestionnaire peut avoir deja commence a repondre avant de jeter.
+    // Ecrire une seconde fois provoquerait une erreur par-dessus l'erreur.
+    if (res.headersSent || res.writableEnded) return undefined;
+
+    // Le client recoit l'identifiant de correlation, et rien d'autre : le
+    // detail de l'exception reste dans le journal et le collecteur.
+    return json(res, 500, { error: 'internal_error', correlationId: correlation });
+  }
 }

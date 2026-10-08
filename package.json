@@ -81,7 +81,8 @@
     "test:journeys": "node scripts/test_journeys_e2e.mjs",
     "test:cross-tenant": "node scripts/test_cross_tenant.mjs",
     "audit:personas": "node scripts/persona_audit.mjs --base http://127.0.0.1:3000",
-    "audit:e2e": "python3 scripts/e2e_audit.py"
+    "audit:e2e": "python3 scripts/e2e_audit.py",
+    "test:production-readiness": "npx tsx scripts/test_production_readiness.ts"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",
