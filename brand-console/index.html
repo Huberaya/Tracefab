@@ -987,11 +987,13 @@
     <script src="/assets/i18n/en.js"></script>
     <script src="/assets/js/tf-i18n.js"></script>
   <link rel="stylesheet" href="/assets/design-system/tracefab-shell.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-command.css">
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
 </head>
 <body>
   <div id="app"></div>
   <script src="/assets/js/tf-shell.js"></script>
+  <script src="/assets/js/tf-tables.js"></script>
   <script>
     (() => {
       'use strict';
@@ -2599,8 +2601,35 @@
         const brand = currentBrand();
         // Tous les chiffres de cet ecran derivent de l etat, aucun n est ecrit en dur.
         const ag = demoAgregats();
-        const prodCount = ag.produits;
-        const supCount = ag.fournisseurs || suppliers().length;
+
+        /* Chantier 05 — Brand Command Center : metriques derivees de l etat. */
+        const nowTs = Date.now();
+        const tcc = (key, fb) => (window.TF_I18N ? window.TF_I18N.t(key, fb) : fb);
+        const allProducts = state.products || [];
+        const openRequests = state.requests.filter((r) => !['approved', 'cancelled'].includes(r.status));
+        const overdueRequests = openRequests.filter((r) => r.dueAt && new Date(r.dueAt).getTime() < nowTs);
+        const dueSoonRequests = openRequests.filter((r) => r.dueAt && new Date(r.dueAt).getTime() - nowTs < 7 * 86400000);
+        const awaitingReview = state.requests.filter((r) => r.status === 'submitted');
+        const incompleteProducts = allProducts.filter((p) => Number(p.dataCompletion) < 100);
+        const reviewProducts = allProducts.filter((p) => p.dataReadiness === 'needs_review');
+        const certExpiry = (c) => { const raw = c.expires || c.expiresAt; const ts = raw ? new Date(raw).getTime() : NaN; return Number.isNaN(ts) ? null : ts; };
+        const certsExpiring = (state.certifications || []).filter((c) => { const ts = certExpiry(c); return ts !== null && ts - nowTs < 90 * 86400000; });
+        const completions = allProducts.map((p) => Number(p.dataCompletion)).filter((n) => !Number.isNaN(n));
+        const avgCompletion = completions.length ? Math.round(completions.reduce((a, b) => a + b, 0) / completions.length) : null;
+        const quals = suppliers().map((s) => s.dataQuality).filter((n) => typeof n === 'number');
+        const avgQuality = quals.length ? Math.round((quals.reduce((a, b) => a + b, 0) / quals.length) * 10) / 10 : null;
+        const dpps = allProducts.map((p) => p.dppScore).filter((n) => typeof n === 'number');
+        const avgDpp = dpps.length ? Math.round((dpps.reduce((a, b) => a + b, 0) / dpps.length) * 10) / 10 : null;
+
+        const chipFor = (value, warnBelow, critBelow) => {
+          if (value === null || value === undefined) return `<span class="cc-chip cc-chip-none">${tcc('command.chip.unknown', '—')}</span>`;
+          if (value < critBelow) return `<span class="cc-chip cc-chip-crit">${tcc('command.chip.critical', '!')}</span>`;
+          if (value < warnBelow) return `<span class="cc-chip cc-chip-warn">${tcc('command.chip.attention', '~')}</span>`;
+          return `<span class="cc-chip cc-chip-ok">${tcc('command.chip.onTrack', 'OK')}</span>`;
+        };
+        const kpi = (view, value, label, chip) => `<button type="button" class="cc-kpi" data-view="${view}"><span class="cc-kpi-num">${value}</span><span class="cc-kpi-label">${label}${chip ? ' ' + chip : ''}</span></button>`;
+        const pill = (count, severity, label, sub, view) => `<button type="button" class="cc-pill" data-severity="${severity}" data-view="${view}"><span class="cc-pill-num">${count}</span><span><span class="cc-pill-label">${label}</span>${sub ? `<span class="cc-pill-sub">${sub}</span>` : ''}</span></button>`;
+        const nextItem = (label, meta, btn) => `<div class="cc-next-item"><div><strong>${label}</strong>${meta ? `<span class="meta">${meta}</span>` : ''}</div>${btn}</div>`;
 
         return `<div class="mc-container">
           <!-- Mission Control Strip -->
@@ -2616,96 +2645,58 @@
             </div>
           </div>
 
-          <!-- 4 Mission Domains : SUPPLY CHAIN | DATA | TRACEABILITY | DPP -->
-          <div class="mc-domains-grid">
-            <!-- Domain 1: Supply Chain -->
-            <div class="mc-domain-card">
-              <div class="mc-domain-header">
-                <span class="mc-domain-tag">01 / SUPPLY CHAIN</span>
-                <span class="mc-domain-badge mc-badge-green">ACTIF</span>
-              </div>
-              <div class="mc-stat-huge">${prodCount}</div>
-              <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovProducts')}</span><strong>${moneyless(ag.produits)}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovSuppliers')}</span><strong>${ag.fournisseurs}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovFacilities')}</span><strong>${ag.sites}</strong></div>
-                <div class="mc-stat-subitem"><span>Pays de production</span><strong>${ag.pays} pays</strong></div>
+          <div class="cc-section">
+            <div class="cc-section-head">
+              <div>
+                <h2 class="cc-section-title">01 / ${tcc('command.section.where', 'Where are we')}</h2>
+                <p class="cc-section-note">${tcc('command.section.note', 'Live workspace metrics.')}</p>
               </div>
             </div>
-
-            <!-- Domain 2: Data Quality & Evidence -->
-            <div class="mc-domain-card">
-              <div class="mc-domain-header">
-                <span class="mc-domain-tag">02 / DATA QUALITY</span>
-                <span class="mc-domain-badge mc-badge-green">GRADE A</span>
-              </div>
-              <div class="mc-stat-huge" style="color:#0b7656;">${ag.qualite}%</div>
-              <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${ag.qualite}%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('scEvidenceCov')}</span><strong>${ag.preuves}%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovVerified')}</span><strong>${ag.verifies}%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovCertificates')}</span><strong>${ag.certificats}</strong></div>
-              </div>
-            </div>
-
-            <!-- Domain 3: Traceability Echelons -->
-            <div class="mc-domain-card">
-              <div class="mc-domain-header">
-                <span class="mc-domain-tag">03 / TRACEABILITY</span>
-                <span class="mc-domain-badge mc-badge-blue">COMPLET</span>
-              </div>
-              <div class="mc-stat-huge" style="color:#1d4ed8;">${ag.tracables}%</div>
-              <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovTraceable')}</span><strong>${ag.tracables}%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovLineage')}</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovGpsPolygons')}</span><strong>214 sites</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovMassBalanced')}</span><strong>97.6%</strong></div>
-              </div>
-            </div>
-
-            <!-- Domain 4: DPP Readiness -->
-            <div class="mc-domain-card">
-              <div class="mc-domain-header">
-                <span class="mc-domain-tag">04 / DPP READINESS</span>
-                <span class="mc-domain-badge mc-badge-amber">CIRPASS 1.2</span>
-              </div>
-              <div class="mc-stat-huge" style="color:#b45309;">${ag.dpp}%</div>
-              <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovDpp')}</span><strong>88.0%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>1 098 styles</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovAgec')}</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovPefValidated')}</span><strong>Tier 3</strong></div>
-              </div>
+            <div class="cc-kpi-grid">
+              ${kpi('products', ag.produits, tcc('command.kpi.products', 'Products'))}
+              ${kpi('suppliers', ag.fournisseurs, tcc('command.kpi.suppliers', 'Suppliers'))}
+              ${kpi('supplyChain', ag.sites, tcc('command.kpi.sites', 'Production sites'))}
+              ${kpi('supplyChain', ag.pays, tcc('command.kpi.countries', 'Production countries'))}
+              ${kpi('products', avgCompletion === null ? '\u2014' : avgCompletion + '%', tcc('command.kpi.completeness', 'Avg. data completeness'), chipFor(avgCompletion, 80, 50))}
+              ${kpi('quality', avgQuality === null ? '\u2014' : avgQuality + '%', tcc('command.kpi.quality', 'Avg. supplier data quality'), chipFor(avgQuality, 80, 50))}
+              ${kpi('dpp', avgDpp === null ? '\u2014' : avgDpp + '%', tcc('command.kpi.dpp', 'DPP readiness'), chipFor(avgDpp, 80, 50))}
+              ${kpi('certifications', ag.certificats, tcc('command.kpi.certifications', 'Certifications'))}
             </div>
           </div>
 
-          <!-- Attention & Alerts Bar -->
-          <div class="mc-attention-panel">
-            <div class="mc-attention-head">
-              <div class="mc-attention-title">
-                <span style="font-size:16px;">⚠️</span>
-                <span>${bt('ovAttentionTitle')}</span>
-              </div>
-              <span class="meta" style="color:#b45309;font-weight:700;">${bt('ovGuidedFix')}</span>
-            </div>
-            <div class="mc-attention-grid">
-              <div class="mc-attention-pill clickable" onclick="state.view=\'requests\';render();">
-                <div class="mc-attention-num">17</div>
-                <div><strong>${bt('ovMissingData')}</strong><br><small>${bt('ovSuppliersPending')}</small></div>
-              </div>
-              <div class="mc-attention-pill clickable" onclick="state.view=\'certifications\';render();">
-                <div class="mc-attention-num">8</div>
-                <div><strong>${bt('ovCertsExpiring')}</strong><br><small>Renouvellement sous 90j</small></div>
-              </div>
-              <div class="mc-attention-pill clickable" onclick="state.view=\'suppliers\';render();">
-                <div class="mc-attention-num">5</div>
-                <div><strong>${bt('ovSuppliersReview')}</strong><br><small>${bt('ovCompleteness')}</small></div>
-              </div>
-              <div class="mc-attention-pill clickable" onclick="state.view=\'products\';render();">
-                <div class="mc-attention-num">12</div>
-                <div><strong>${bt('ovProductsIncomplete')}</strong><br><small>${bt('ovBomUnbalanced')}</small></div>
-              </div>
-            </div>
+          <div class="cc-section">
+            <div class="cc-section-head"><h2 class="cc-section-title">02 / ${tcc('command.section.missing', "What's missing")}</h2></div>
+            ${(!incompleteProducts.length && !counts.open && !awaitingReview.length)
+              ? `<div class="cc-empty">${tcc('command.missing.empty', 'Nothing missing.')}</div>`
+              : `<div class="cc-pill-grid">
+                  ${incompleteProducts.length ? pill(incompleteProducts.length, 'warning', tcc('command.missing.incompleteProducts', 'Incomplete products'), tcc('command.kpi.completeness', ''), 'products') : ''}
+                  ${counts.open ? pill(counts.open, 'info', tcc('command.missing.openRequests', 'Open data requests'), '', 'requests') : ''}
+                  ${awaitingReview.length ? pill(awaitingReview.length, 'info', tcc('command.missing.awaitingReview', 'Responses awaiting review'), '', 'requests') : ''}
+                </div>`}
+          </div>
+
+          <div class="cc-section">
+            <div class="cc-section-head"><h2 class="cc-section-title">03 / ${tcc('command.section.risky', "What's risky")}</h2></div>
+            ${(!overdueRequests.length && !dueSoonRequests.length && !reviewProducts.length && !certsExpiring.length)
+              ? `<div class="cc-empty">${tcc('command.risky.empty', 'No active risk detected.')}</div>`
+              : `<div class="cc-pill-grid">
+                  ${overdueRequests.length ? pill(overdueRequests.length, 'critical', tcc('command.risky.overdue', 'Overdue requests'), '', 'requests') : ''}
+                  ${dueSoonRequests.length ? pill(dueSoonRequests.length, 'warning', tcc('command.risky.dueSoon', 'Due within 7 days'), '', 'requests') : ''}
+                  ${reviewProducts.length ? pill(reviewProducts.length, 'warning', tcc('command.risky.needsReview', 'Products needing review'), '', 'products') : ''}
+                  ${certsExpiring.length ? pill(certsExpiring.length, 'warning', tcc('command.risky.certsExpiring', 'Certifications expiring within 90 days'), '', 'certifications') : ''}
+                </div>`}
+          </div>
+
+          <div class="cc-section">
+            <div class="cc-section-head"><h2 class="cc-section-title">04 / ${tcc('command.section.next', 'Next actions')}</h2></div>
+            ${(() => {
+              const items = [];
+              if (overdueRequests.length) items.push(nextItem(tcc('command.next.remindOverdue', 'Follow up on overdue requests'), overdueRequests.length + ' \u00b7 ' + tcc('command.risky.overdue', ''), `<button class="btn btn-primary btn-small" data-view="requests">${bt('ovSeeAll')}</button>`));
+              if (awaitingReview.length) items.push(nextItem(tcc('command.next.reviewSubmitted', 'Review submitted responses'), awaitingReview.length + ' \u00b7 ' + tcc('command.missing.awaitingReview', ''), `<button class="btn btn-primary btn-small" data-view="requests">${bt('ovSeeAll')}</button>`));
+              if (incompleteProducts.length) items.push(nextItem(tcc('command.next.collectMissing', 'Launch a collection for incomplete products'), incompleteProducts.length + ' \u00b7 ' + tcc('command.missing.incompleteProducts', ''), `<button class="btn btn-primary btn-small" data-action="new-request">${bt('ovNewRequest')}</button>`));
+              if (!suppliers().length) items.push(nextItem(tcc('command.next.inviteFirst', 'Invite your first supplier'), '', `<button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button>`));
+              return items.length ? `<div class="cc-next-list">${items.join('')}</div>` : `<div class="cc-empty">${tcc('command.next.empty', 'No priority action right now.')}</div>`;
+            })()}
           </div>
 
           <!-- Operational Tables Split -->
@@ -2743,9 +2734,9 @@
         </div>`;
       }
 
-      function requestTable(items) {
+      function requestTable(items, enhanced) {
         if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>${esc(bt('cnRqEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="new-request">${esc(bt('cnRqCreate'))}</button></div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>Avancement</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('cnRdQueueReminder'))}">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+        return `<div class="table-wrap"><table${enhanced ? ' data-tftable="requests"' : ''}><thead><tr><th${enhanced ? ' data-tfsort' : ''}>${bt('rqRequest')}</th><th${enhanced ? ' data-tfsort' : ''}>${bt('sxSupplier')}</th><th${enhanced ? ' data-tfsort' : ''}>${bt('pdStatus')}</th><th${enhanced ? ' data-tfsort' : ''}>Avancement</th><th${enhanced ? ' data-tfsort' : ''}>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"${enhanced ? ` data-tf-id="${esc(r.id)}"` : ''}><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('cnRdQueueReminder'))}">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
             function requestsView() {
@@ -2851,16 +2842,16 @@
               <option value="cancelled">${bt('rqRejected')}</option>
             </select>
           </div>
-          <div id="request-list">${requestTable(state.requests)}</div>
+          <div id="request-list">${requestTable(state.requests, true)}</div>
         </div>`;
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table data-tftable="products"><thead><tr><th data-tfsort>${bt('pdProduct')}</th><th data-tfsort>${bt('pdCategory')}</th><th data-tfsort>${bt('pdStatus')}</th><th data-tfsort>${bt('pdCompleteness')}</th><th data-tfsort>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr data-tf-id="${esc(p.id)}"><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>Organisation</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table data-tftable="suppliers"><thead><tr><th data-tfsort>Organisation</th><th data-tfsort>${bt('spRole')}</th><th data-tfsort>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr data-tf-id="${esc(s.id)}"><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || bt('cnMaterialLabel'); }
@@ -4572,6 +4563,24 @@
 
       function bind() {
 
+        /* Chantier 05 — tables modernes : le moteur TFTables n opere que sur
+           le DOM deja rendu ; les actions de groupe appellent des fonctions
+           reelles de la console (aucune donnee inventee). */
+        if (window.TFTables) {
+          window.TFTables.setT((key, fb) => (window.TF_I18N ? window.TF_I18N.t(key, fb) : fb));
+          window.TFTables.register('products', { exportName: 'tracefab-products', bulk: [] });
+          window.TFTables.register('suppliers', { exportName: 'tracefab-suppliers', bulk: [] });
+          window.TFTables.register('requests', {
+            exportName: 'tracefab-requests',
+            bulk: [{
+              id: 'remind',
+              label: () => (window.TF_I18N ? window.TF_I18N.t('command.table.bulkRemind', 'Remind suppliers') : 'Remind suppliers'),
+              run: (ids) => { ids.forEach((id) => remindRequest(id).catch((error) => notify(error.message, true))); }
+            }]
+          });
+          window.TFTables.mount(app);
+        }
+
         // Buttons that used to alert() a fake success now say what is actually true.
         document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
           event.preventDefault(); notify(bt('demoUnavailable'));
@@ -4628,7 +4637,7 @@
         document.querySelectorAll('[data-action="open-waive-modal"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); state.modal = 'waive-issue'; state.modalIssueId = el.dataset.issueId; render(); }));
         const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => { state.activeOrganizationId = org.value; sync(); });
         const search = document.getElementById('request-search'); const filter = document.getElementById('request-filter');
-        const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); list?.querySelectorAll('[data-action="remind-request"]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); remindRequest(el.dataset.reminderRequestId).catch((error) => notify(error.message, true)); })); };
+        const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items, true); if (window.TFTables) window.TFTables.mount(list); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); list?.querySelectorAll('[data-action="remind-request"]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); remindRequest(el.dataset.reminderRequestId).catch((error) => notify(error.message, true)); })); };
         search?.addEventListener('input', filterRequests); filter?.addEventListener('change', filterRequests);
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('supply-chain-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadSupplyChain(e.target.value); });
@@ -4707,7 +4716,7 @@
           await sync();
         }
       }
-      window.tracefabBrandConsole = { state, sync, render, openProduct, openSupplier, openRequest };
+      window.tracefabBrandConsole = { state, sync, render, openProduct, openSupplier, openRequest, remindRequest };
       // Le catalogue doit etre charge dans la langue de l'application avant
       // le premier rendu.
       (window.TF_I18N ? window.TF_I18N.setLanguage(state.lang) : Promise.resolve())

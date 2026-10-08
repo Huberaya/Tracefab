@@ -2373,5 +2373,66 @@
       "actionOpen": "Öffnen",
       "actionAnswer": "Antworten"
     }
+  },
+  "command": {
+    "section": {
+      "where": "Wo stehen wir",
+      "missing": "Was fehlt",
+      "risky": "Was riskant ist",
+      "next": "Nächste Schritte",
+      "note": "Jede Zahl auf diesem Bildschirm wird aus den Daten Ihres Arbeitsbereichs berechnet."
+    },
+    "kpi": {
+      "products": "Produkte",
+      "suppliers": "Lieferanten",
+      "sites": "Produktionsstätten",
+      "countries": "Produktionsländer",
+      "completeness": "Durchschnittliche Datenvollständigkeit",
+      "quality": "Durchschnittliche Datenqualität der Lieferanten",
+      "dpp": "DPP-Bereitschaft",
+      "certifications": "Zertifizierungen"
+    },
+    "chip": {
+      "onTrack": "Auf Kurs",
+      "attention": "Zu beobachten",
+      "critical": "Kritisch",
+      "unknown": "Nicht gemessen"
+    },
+    "missing": {
+      "incompleteProducts": "Unvollständige Produkte",
+      "openRequests": "Offene Datenanfragen",
+      "awaitingReview": "Antworten zur Prüfung",
+      "empty": "Es fehlt nichts – alle verfolgten Elemente sind vollständig."
+    },
+    "risky": {
+      "overdue": "Überfällige Anfragen",
+      "dueSoon": "Fällig innerhalb von 7 Tagen",
+      "needsReview": "Produkte zur Prüfung",
+      "certsExpiring": "Zertifikate, die innerhalb von 90 Tagen ablaufen",
+      "empty": "Kein aktives Risiko in Ihrem Arbeitsbereich erkannt."
+    },
+    "next": {
+      "remindOverdue": "Überfällige Anfragen nachfassen",
+      "reviewSubmitted": "Übermittelte Antworten prüfen",
+      "collectMissing": "Erhebung für unvollständige Produkte starten",
+      "inviteFirst": "Ihren ersten Lieferanten einladen",
+      "empty": "Derzeit keine prioritäre Aktion – nutzen Sie die Schnellaktionen unten."
+    },
+    "table": {
+      "filterPlaceholder": "Zeilen filtern…",
+      "columns": "Spalten",
+      "exportCsv": "CSV exportieren",
+      "savedViews": "Gespeicherte Ansichten",
+      "saveView": "Aktuelle Ansicht speichern",
+      "saveViewPrompt": "Benennen Sie diese Ansicht",
+      "deleteView": "Löschen",
+      "noSavedViews": "Keine gespeicherten Ansichten",
+      "selected": "ausgewählt",
+      "bulkExport": "Auswahl exportieren",
+      "bulkRemind": "Lieferanten erinnern",
+      "filteredEmpty": "Keine Zeile entspricht dem aktuellen Filter.",
+      "sortAsc": "aufsteigend sortiert",
+      "sortDesc": "absteigend sortiert"
+    }
   }
 }

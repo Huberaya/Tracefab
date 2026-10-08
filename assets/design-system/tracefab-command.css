@@ -1,0 +1,294 @@
+/* ==========================================================================
+   TRACEFAB — Brand Command Center (Chantier 05)
+   Sections WHERE / MISSING / RISKY / NEXT + tables modernes (.tft-*).
+   Theme clair coherent avec les cartes .mc-* existantes de la console.
+   ========================================================================== */
+
+/* ---- Bandes de section -------------------------------------------------- */
+.cc-section {
+  margin-top: 26px;
+}
+.cc-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.cc-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0b7656;
+  margin: 0;
+}
+.cc-section-note {
+  font-size: 12px;
+  color: #6b746f;
+  margin: 2px 0 0;
+}
+
+/* ---- Cartes KPI cliquables (WHERE) --------------------------------------- */
+.cc-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.cc-kpi {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #e1e8e2;
+  border-radius: 14px;
+  padding: 16px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.cc-kpi:hover,
+.cc-kpi:focus-visible {
+  transform: translateY(-2px);
+  border-color: #10b981;
+  box-shadow: 0 8px 24px rgba(11, 118, 86, 0.10);
+  outline: none;
+}
+.cc-kpi-num {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #05140e;
+}
+.cc-kpi-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: #434a47;
+}
+
+/* ---- Pastilles MISSING / RISKY ------------------------------------------- */
+.cc-pill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.cc-pill {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #ffffff;
+  border: 1px solid #e1e8e2;
+  border-left: 4px solid #c7c5ba;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.cc-pill:hover,
+.cc-pill:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(11, 118, 86, 0.08);
+  outline: none;
+}
+.cc-pill[data-severity="warning"] { border-left-color: #b45309; }
+.cc-pill[data-severity="critical"] { border-left-color: #b91c1c; }
+.cc-pill[data-severity="info"] { border-left-color: #1d4ed8; }
+.cc-pill-num {
+  min-width: 40px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #05140e;
+}
+.cc-pill[data-severity="critical"] .cc-pill-num { color: #b91c1c; }
+.cc-pill[data-severity="warning"] .cc-pill-num { color: #b45309; }
+.cc-pill-label { font-size: 13.5px; font-weight: 700; }
+.cc-pill-sub { display: block; font-size: 12px; color: #6b746f; margin-top: 2px; }
+
+/* ---- Etat vide d'une section --------------------------------------------- */
+.cc-empty {
+  background: #ffffff;
+  border: 1px dashed #c7c5ba;
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-size: 13.5px;
+  color: #434a47;
+}
+
+/* ---- Chips d'etat calcules ------------------------------------------------ */
+.cc-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.cc-chip-ok { background: rgba(16, 185, 129, 0.14); color: #0b7656; }
+.cc-chip-warn { background: rgba(180, 83, 9, 0.14); color: #b45309; }
+.cc-chip-crit { background: rgba(185, 28, 28, 0.12); color: #b91c1c; }
+.cc-chip-none { background: rgba(107, 116, 111, 0.12); color: #6b746f; }
+
+/* ---- Actions prioritaires (NEXT) ------------------------------------------ */
+.cc-next-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.cc-next-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e1e8e2;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.cc-next-item strong { font-size: 13.5px; }
+.cc-next-item .meta { display: block; margin-top: 2px; }
+
+/* ==========================================================================
+   Tables modernes (.tft-*)
+   ========================================================================== */
+.tft-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 0 12px;
+}
+.tft-filter {
+  flex: 1 1 200px;
+  max-width: 340px;
+}
+.tft-cols,
+.tft-views {
+  position: relative;
+}
+.tft-cols summary,
+.tft-views summary {
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid #d7ddd8;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #1b1f1d;
+  user-select: none;
+}
+.tft-cols summary::-webkit-details-marker,
+.tft-views summary::-webkit-details-marker { display: none; }
+.tft-cols[open] summary,
+.tft-views[open] summary { border-color: #10b981; }
+.tft-cols-menu {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  background: #ffffff;
+  border: 1px solid #e1e8e2;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(5, 20, 14, 0.14);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+.tft-cols-menu label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tft-view-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tft-view-apply {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tft-view-apply:hover { background: #f5f4f0; }
+.tft-view-del {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: #6b746f;
+  font-size: 12px;
+  padding: 6px;
+  border-radius: 8px;
+}
+.tft-view-del:hover { color: #b91c1c; background: #f5f4f0; }
+.tft-view-save,
+.tft-views-none {
+  border-top: 1px solid #ecebe5;
+  padding-top: 8px;
+  margin-top: 4px;
+  font-size: 12.5px;
+}
+.tft-view-save {
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 600;
+  color: #0b7656;
+}
+.tft-views-none { color: #6b746f; }
+
+.tft-bulkbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.10);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.tft-bulkcount { font-size: 12.5px; font-weight: 700; color: #0b7656; }
+.tft-empty {
+  padding: 14px 4px;
+  font-size: 13px;
+  color: #6b746f;
+}
+
+/* Tri */
+.tft-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.tft-sortable::after { content: "↕"; margin-left: 6px; color: #959c98; font-size: 11px; }
+th[aria-sort="ascending"].tft-sortable::after { content: "↑"; color: #0b7656; }
+th[aria-sort="descending"].tft-sortable::after { content: "↓"; color: #0b7656; }
+.tft-sortable:focus-visible { outline: 2px solid #10b981; outline-offset: -2px; }
+
+td[data-tf-bulk], th[data-tf-bulk] { width: 36px; text-align: center; }
+
+@media (max-width: 720px) {
+  .tft-toolbar { align-items: stretch; }
+  .tft-filter { max-width: none; }
+  .cc-kpi-grid, .cc-pill-grid, .cc-next-list { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-kpi, .cc-pill { transition: none; transform: none !important; }
+}

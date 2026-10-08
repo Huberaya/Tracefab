@@ -2249,5 +2249,66 @@ window.TF_I18N_BUNDLES.en = {
       "actionOpen": "Open",
       "actionAnswer": "Answer"
     }
+  },
+  "command": {
+    "section": {
+      "where": "Where are we",
+      "missing": "What's missing",
+      "risky": "What's risky",
+      "next": "Next actions",
+      "note": "Every number on this screen is computed from your workspace data."
+    },
+    "kpi": {
+      "products": "Products",
+      "suppliers": "Suppliers",
+      "sites": "Production sites",
+      "countries": "Production countries",
+      "completeness": "Avg. data completeness",
+      "quality": "Avg. supplier data quality",
+      "dpp": "DPP readiness",
+      "certifications": "Certifications"
+    },
+    "chip": {
+      "onTrack": "On track",
+      "attention": "Needs attention",
+      "critical": "Critical",
+      "unknown": "Not measured"
+    },
+    "missing": {
+      "incompleteProducts": "Incomplete products",
+      "openRequests": "Open data requests",
+      "awaitingReview": "Responses awaiting review",
+      "empty": "Nothing missing — every tracked item is complete."
+    },
+    "risky": {
+      "overdue": "Overdue requests",
+      "dueSoon": "Due within 7 days",
+      "needsReview": "Products needing review",
+      "certsExpiring": "Certifications expiring within 90 days",
+      "empty": "No active risk detected in your workspace."
+    },
+    "next": {
+      "remindOverdue": "Follow up on overdue requests",
+      "reviewSubmitted": "Review submitted responses",
+      "collectMissing": "Launch a collection for incomplete products",
+      "inviteFirst": "Invite your first supplier",
+      "empty": "No priority action right now — use the quick actions below."
+    },
+    "table": {
+      "filterPlaceholder": "Filter rows…",
+      "columns": "Columns",
+      "exportCsv": "Export CSV",
+      "savedViews": "Saved views",
+      "saveView": "Save current view",
+      "saveViewPrompt": "Name this view",
+      "deleteView": "Delete",
+      "noSavedViews": "No saved views",
+      "selected": "selected",
+      "bulkExport": "Export selection",
+      "bulkRemind": "Remind suppliers",
+      "filteredEmpty": "No rows match the current filter.",
+      "sortAsc": "sorted ascending",
+      "sortDesc": "sorted descending"
+    }
   }
 };

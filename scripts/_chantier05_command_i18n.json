@@ -1,0 +1,429 @@
+{
+  "en": {
+    "section": {
+      "where": "Where are we",
+      "missing": "What's missing",
+      "risky": "What's risky",
+      "next": "Next actions",
+      "note": "Every number on this screen is computed from your workspace data."
+    },
+    "kpi": {
+      "products": "Products",
+      "suppliers": "Suppliers",
+      "sites": "Production sites",
+      "countries": "Production countries",
+      "completeness": "Avg. data completeness",
+      "quality": "Avg. supplier data quality",
+      "dpp": "DPP readiness",
+      "certifications": "Certifications"
+    },
+    "chip": {
+      "onTrack": "On track",
+      "attention": "Needs attention",
+      "critical": "Critical",
+      "unknown": "Not measured"
+    },
+    "missing": {
+      "incompleteProducts": "Incomplete products",
+      "openRequests": "Open data requests",
+      "awaitingReview": "Responses awaiting review",
+      "empty": "Nothing missing — every tracked item is complete."
+    },
+    "risky": {
+      "overdue": "Overdue requests",
+      "dueSoon": "Due within 7 days",
+      "needsReview": "Products needing review",
+      "certsExpiring": "Certifications expiring within 90 days",
+      "empty": "No active risk detected in your workspace."
+    },
+    "next": {
+      "remindOverdue": "Follow up on overdue requests",
+      "reviewSubmitted": "Review submitted responses",
+      "collectMissing": "Launch a collection for incomplete products",
+      "inviteFirst": "Invite your first supplier",
+      "empty": "No priority action right now — use the quick actions below."
+    },
+    "table": {
+      "filterPlaceholder": "Filter rows…",
+      "columns": "Columns",
+      "exportCsv": "Export CSV",
+      "savedViews": "Saved views",
+      "saveView": "Save current view",
+      "saveViewPrompt": "Name this view",
+      "deleteView": "Delete",
+      "noSavedViews": "No saved views",
+      "selected": "selected",
+      "bulkExport": "Export selection",
+      "bulkRemind": "Remind suppliers",
+      "filteredEmpty": "No rows match the current filter.",
+      "sortAsc": "sorted ascending",
+      "sortDesc": "sorted descending"
+    }
+  },
+  "fr": {
+    "section": {
+      "where": "Où en sommes-nous",
+      "missing": "Ce qui manque",
+      "risky": "Ce qui est à risque",
+      "next": "Prochaines actions",
+      "note": "Chaque chiffre de cet écran est calculé à partir des données de votre espace."
+    },
+    "kpi": {
+      "products": "Produits",
+      "suppliers": "Fournisseurs",
+      "sites": "Sites de production",
+      "countries": "Pays de production",
+      "completeness": "Complétude moyenne des données",
+      "quality": "Qualité moyenne des données fournisseurs",
+      "dpp": "Préparation DPP",
+      "certifications": "Certifications"
+    },
+    "chip": {
+      "onTrack": "Sur la bonne voie",
+      "attention": "À surveiller",
+      "critical": "Critique",
+      "unknown": "Non mesuré"
+    },
+    "missing": {
+      "incompleteProducts": "Produits incomplets",
+      "openRequests": "Demandes de données ouvertes",
+      "awaitingReview": "Réponses à contrôler",
+      "empty": "Rien ne manque — tous les éléments suivis sont complets."
+    },
+    "risky": {
+      "overdue": "Demandes en retard",
+      "dueSoon": "Échéance sous 7 jours",
+      "needsReview": "Produits à contrôler",
+      "certsExpiring": "Certifications expirant sous 90 jours",
+      "empty": "Aucun risque actif détecté dans votre espace."
+    },
+    "next": {
+      "remindOverdue": "Relancer les demandes en retard",
+      "reviewSubmitted": "Contrôler les réponses soumises",
+      "collectMissing": "Lancer une collecte pour les produits incomplets",
+      "inviteFirst": "Inviter votre premier fournisseur",
+      "empty": "Aucune action prioritaire pour le moment — utilisez les actions rapides ci-dessous."
+    },
+    "table": {
+      "filterPlaceholder": "Filtrer les lignes…",
+      "columns": "Colonnes",
+      "exportCsv": "Exporter en CSV",
+      "savedViews": "Vues enregistrées",
+      "saveView": "Enregistrer la vue actuelle",
+      "saveViewPrompt": "Nommez cette vue",
+      "deleteView": "Supprimer",
+      "noSavedViews": "Aucune vue enregistrée",
+      "selected": "sélectionnée(s)",
+      "bulkExport": "Exporter la sélection",
+      "bulkRemind": "Relancer les fournisseurs",
+      "filteredEmpty": "Aucune ligne ne correspond au filtre actuel.",
+      "sortAsc": "tri croissant",
+      "sortDesc": "tri décroissant"
+    }
+  },
+  "de": {
+    "section": {
+      "where": "Wo stehen wir",
+      "missing": "Was fehlt",
+      "risky": "Was riskant ist",
+      "next": "Nächste Schritte",
+      "note": "Jede Zahl auf diesem Bildschirm wird aus den Daten Ihres Arbeitsbereichs berechnet."
+    },
+    "kpi": {
+      "products": "Produkte",
+      "suppliers": "Lieferanten",
+      "sites": "Produktionsstätten",
+      "countries": "Produktionsländer",
+      "completeness": "Durchschnittliche Datenvollständigkeit",
+      "quality": "Durchschnittliche Datenqualität der Lieferanten",
+      "dpp": "DPP-Bereitschaft",
+      "certifications": "Zertifizierungen"
+    },
+    "chip": {
+      "onTrack": "Auf Kurs",
+      "attention": "Zu beobachten",
+      "critical": "Kritisch",
+      "unknown": "Nicht gemessen"
+    },
+    "missing": {
+      "incompleteProducts": "Unvollständige Produkte",
+      "openRequests": "Offene Datenanfragen",
+      "awaitingReview": "Antworten zur Prüfung",
+      "empty": "Es fehlt nichts – alle verfolgten Elemente sind vollständig."
+    },
+    "risky": {
+      "overdue": "Überfällige Anfragen",
+      "dueSoon": "Fällig innerhalb von 7 Tagen",
+      "needsReview": "Produkte zur Prüfung",
+      "certsExpiring": "Zertifikate, die innerhalb von 90 Tagen ablaufen",
+      "empty": "Kein aktives Risiko in Ihrem Arbeitsbereich erkannt."
+    },
+    "next": {
+      "remindOverdue": "Überfällige Anfragen nachfassen",
+      "reviewSubmitted": "Übermittelte Antworten prüfen",
+      "collectMissing": "Erhebung für unvollständige Produkte starten",
+      "inviteFirst": "Ihren ersten Lieferanten einladen",
+      "empty": "Derzeit keine prioritäre Aktion – nutzen Sie die Schnellaktionen unten."
+    },
+    "table": {
+      "filterPlaceholder": "Zeilen filtern…",
+      "columns": "Spalten",
+      "exportCsv": "CSV exportieren",
+      "savedViews": "Gespeicherte Ansichten",
+      "saveView": "Aktuelle Ansicht speichern",
+      "saveViewPrompt": "Benennen Sie diese Ansicht",
+      "deleteView": "Löschen",
+      "noSavedViews": "Keine gespeicherten Ansichten",
+      "selected": "ausgewählt",
+      "bulkExport": "Auswahl exportieren",
+      "bulkRemind": "Lieferanten erinnern",
+      "filteredEmpty": "Keine Zeile entspricht dem aktuellen Filter.",
+      "sortAsc": "aufsteigend sortiert",
+      "sortDesc": "absteigend sortiert"
+    }
+  },
+  "it": {
+    "section": {
+      "where": "A che punto siamo",
+      "missing": "Cosa manca",
+      "risky": "Cosa è a rischio",
+      "next": "Prossime azioni",
+      "note": "Ogni numero di questa schermata è calcolato dai dati del tuo spazio di lavoro."
+    },
+    "kpi": {
+      "products": "Prodotti",
+      "suppliers": "Fornitori",
+      "sites": "Siti produttivi",
+      "countries": "Paesi di produzione",
+      "completeness": "Completezza media dei dati",
+      "quality": "Qualità media dei dati fornitori",
+      "dpp": "Preparazione DPP",
+      "certifications": "Certificazioni"
+    },
+    "chip": {
+      "onTrack": "In linea",
+      "attention": "Da monitorare",
+      "critical": "Critico",
+      "unknown": "Non misurato"
+    },
+    "missing": {
+      "incompleteProducts": "Prodotti incompleti",
+      "openRequests": "Richieste dati aperte",
+      "awaitingReview": "Risposte da verificare",
+      "empty": "Non manca nulla: tutti gli elementi monitorati sono completi."
+    },
+    "risky": {
+      "overdue": "Richieste in ritardo",
+      "dueSoon": "In scadenza entro 7 giorni",
+      "needsReview": "Prodotti da verificare",
+      "certsExpiring": "Certificazioni in scadenza entro 90 giorni",
+      "empty": "Nessun rischio attivo rilevato nel tuo spazio."
+    },
+    "next": {
+      "remindOverdue": "Sollecita le richieste in ritardo",
+      "reviewSubmitted": "Verifica le risposte inviate",
+      "collectMissing": "Avvia una raccolta per i prodotti incompleti",
+      "inviteFirst": "Invita il tuo primo fornitore",
+      "empty": "Nessuna azione prioritaria al momento: usa le azioni rapide qui sotto."
+    },
+    "table": {
+      "filterPlaceholder": "Filtra le righe…",
+      "columns": "Colonne",
+      "exportCsv": "Esporta CSV",
+      "savedViews": "Viste salvate",
+      "saveView": "Salva la vista corrente",
+      "saveViewPrompt": "Dai un nome a questa vista",
+      "deleteView": "Elimina",
+      "noSavedViews": "Nessuna vista salvata",
+      "selected": "selezionate",
+      "bulkExport": "Esporta selezione",
+      "bulkRemind": "Sollecita i fornitori",
+      "filteredEmpty": "Nessuna riga corrisponde al filtro corrente.",
+      "sortAsc": "ordine crescente",
+      "sortDesc": "ordine decrescente"
+    }
+  },
+  "es": {
+    "section": {
+      "where": "Dónde estamos",
+      "missing": "Qué falta",
+      "risky": "Qué está en riesgo",
+      "next": "Próximas acciones",
+      "note": "Cada cifra de esta pantalla se calcula a partir de los datos de su espacio de trabajo."
+    },
+    "kpi": {
+      "products": "Productos",
+      "suppliers": "Proveedores",
+      "sites": "Centros de producción",
+      "countries": "Países de producción",
+      "completeness": "Completitud media de los datos",
+      "quality": "Calidad media de los datos de proveedores",
+      "dpp": "Preparación DPP",
+      "certifications": "Certificaciones"
+    },
+    "chip": {
+      "onTrack": "En buen camino",
+      "attention": "A vigilar",
+      "critical": "Crítico",
+      "unknown": "No medido"
+    },
+    "missing": {
+      "incompleteProducts": "Productos incompletos",
+      "openRequests": "Solicitudes de datos abiertas",
+      "awaitingReview": "Respuestas por revisar",
+      "empty": "No falta nada: todos los elementos supervisados están completos."
+    },
+    "risky": {
+      "overdue": "Solicitudes vencidas",
+      "dueSoon": "Con vencimiento en 7 días",
+      "needsReview": "Productos por revisar",
+      "certsExpiring": "Certificaciones que caducan en 90 días",
+      "empty": "Ningún riesgo activo detectado en su espacio."
+    },
+    "next": {
+      "remindOverdue": "Hacer seguimiento de las solicitudes vencidas",
+      "reviewSubmitted": "Revisar las respuestas enviadas",
+      "collectMissing": "Iniciar una recopilación para los productos incompletos",
+      "inviteFirst": "Invitar a su primer proveedor",
+      "empty": "Ninguna acción prioritaria por ahora: use las acciones rápidas de abajo."
+    },
+    "table": {
+      "filterPlaceholder": "Filtrar filas…",
+      "columns": "Columnas",
+      "exportCsv": "Exportar CSV",
+      "savedViews": "Vistas guardadas",
+      "saveView": "Guardar la vista actual",
+      "saveViewPrompt": "Nombre de esta vista",
+      "deleteView": "Eliminar",
+      "noSavedViews": "No hay vistas guardadas",
+      "selected": "seleccionadas",
+      "bulkExport": "Exportar selección",
+      "bulkRemind": "Recordar a los proveedores",
+      "filteredEmpty": "Ninguna fila coincide con el filtro actual.",
+      "sortAsc": "orden ascendente",
+      "sortDesc": "orden descendente"
+    }
+  },
+  "nl": {
+    "section": {
+      "where": "Waar staan we",
+      "missing": "Wat ontbreekt",
+      "risky": "Wat risicovol is",
+      "next": "Volgende acties",
+      "note": "Elk cijfer op dit scherm wordt berekend uit de gegevens van uw werkruimte."
+    },
+    "kpi": {
+      "products": "Producten",
+      "suppliers": "Leveranciers",
+      "sites": "Productielocaties",
+      "countries": "Productielanden",
+      "completeness": "Gemiddelde datavolledigheid",
+      "quality": "Gemiddelde datakwaliteit van leveranciers",
+      "dpp": "DPP-paraatheid",
+      "certifications": "Certificeringen"
+    },
+    "chip": {
+      "onTrack": "Op schema",
+      "attention": "Aandacht nodig",
+      "critical": "Kritiek",
+      "unknown": "Niet gemeten"
+    },
+    "missing": {
+      "incompleteProducts": "Onvolledige producten",
+      "openRequests": "Open dataverzoeken",
+      "awaitingReview": "Antwoorden ter beoordeling",
+      "empty": "Er ontbreekt niets — alle gevolgde items zijn compleet."
+    },
+    "risky": {
+      "overdue": "Verzoeken met verlopen termijn",
+      "dueSoon": "Vervallen binnen 7 dagen",
+      "needsReview": "Producten ter beoordeling",
+      "certsExpiring": "Certificeringen die binnen 90 dagen verlopen",
+      "empty": "Geen actief risico gedetecteerd in uw werkruimte."
+    },
+    "next": {
+      "remindOverdue": "Verlopen verzoeken opvolgen",
+      "reviewSubmitted": "Ingediende antwoorden beoordelen",
+      "collectMissing": "Verzameling starten voor onvolledige producten",
+      "inviteFirst": "Uw eerste leverancier uitnodigen",
+      "empty": "Geen prioritaire actie momenteel — gebruik de snelacties hieronder."
+    },
+    "table": {
+      "filterPlaceholder": "Rijen filteren…",
+      "columns": "Kolommen",
+      "exportCsv": "CSV exporteren",
+      "savedViews": "Opgeslagen weergaven",
+      "saveView": "Huidige weergave opslaan",
+      "saveViewPrompt": "Geef deze weergave een naam",
+      "deleteView": "Verwijderen",
+      "noSavedViews": "Geen opgeslagen weergaven",
+      "selected": "geselecteerd",
+      "bulkExport": "Selectie exporteren",
+      "bulkRemind": "Leveranciers herinneren",
+      "filteredEmpty": "Geen rijen komen overeen met het huidige filter.",
+      "sortAsc": "oplopend gesorteerd",
+      "sortDesc": "aflopend gesorteerd"
+    }
+  },
+  "pt": {
+    "section": {
+      "where": "Onde estamos",
+      "missing": "O que falta",
+      "risky": "O que está em risco",
+      "next": "Próximas ações",
+      "note": "Cada número deste ecrã é calculado a partir dos dados do seu espaço de trabalho."
+    },
+    "kpi": {
+      "products": "Produtos",
+      "suppliers": "Fornecedores",
+      "sites": "Unidades de produção",
+      "countries": "Países de produção",
+      "completeness": "Completude média dos dados",
+      "quality": "Qualidade média dos dados dos fornecedores",
+      "dpp": "Preparação DPP",
+      "certifications": "Certificações"
+    },
+    "chip": {
+      "onTrack": "No bom caminho",
+      "attention": "A acompanhar",
+      "critical": "Crítico",
+      "unknown": "Não medido"
+    },
+    "missing": {
+      "incompleteProducts": "Produtos incompletos",
+      "openRequests": "Pedidos de dados abertos",
+      "awaitingReview": "Respostas por validar",
+      "empty": "Nada em falta — todos os elementos acompanhados estão completos."
+    },
+    "risky": {
+      "overdue": "Pedidos em atraso",
+      "dueSoon": "Com prazo dentro de 7 dias",
+      "needsReview": "Produtos por validar",
+      "certsExpiring": "Certificações a expirar em 90 dias",
+      "empty": "Nenhum risco ativo detetado no seu espaço."
+    },
+    "next": {
+      "remindOverdue": "Acompanhar os pedidos em atraso",
+      "reviewSubmitted": "Validar as respostas submetidas",
+      "collectMissing": "Iniciar uma recolha para os produtos incompletos",
+      "inviteFirst": "Convidar o seu primeiro fornecedor",
+      "empty": "Nenhuma ação prioritária para já — utilize as ações rápidas abaixo."
+    },
+    "table": {
+      "filterPlaceholder": "Filtrar linhas…",
+      "columns": "Colunas",
+      "exportCsv": "Exportar CSV",
+      "savedViews": "Vistas guardadas",
+      "saveView": "Guardar a vista atual",
+      "saveViewPrompt": "Dê um nome a esta vista",
+      "deleteView": "Eliminar",
+      "noSavedViews": "Sem vistas guardadas",
+      "selected": "selecionadas",
+      "bulkExport": "Exportar seleção",
+      "bulkRemind": "Lembrar os fornecedores",
+      "filteredEmpty": "Nenhuma linha corresponde ao filtro atual.",
+      "sortAsc": "ordem crescente",
+      "sortDesc": "ordem decrescente"
+    }
+  }
+}

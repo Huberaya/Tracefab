@@ -2373,5 +2373,66 @@
       "actionOpen": "Openen",
       "actionAnswer": "Beantwoorden"
     }
+  },
+  "command": {
+    "section": {
+      "where": "Waar staan we",
+      "missing": "Wat ontbreekt",
+      "risky": "Wat risicovol is",
+      "next": "Volgende acties",
+      "note": "Elk cijfer op dit scherm wordt berekend uit de gegevens van uw werkruimte."
+    },
+    "kpi": {
+      "products": "Producten",
+      "suppliers": "Leveranciers",
+      "sites": "Productielocaties",
+      "countries": "Productielanden",
+      "completeness": "Gemiddelde datavolledigheid",
+      "quality": "Gemiddelde datakwaliteit van leveranciers",
+      "dpp": "DPP-paraatheid",
+      "certifications": "Certificeringen"
+    },
+    "chip": {
+      "onTrack": "Op schema",
+      "attention": "Aandacht nodig",
+      "critical": "Kritiek",
+      "unknown": "Niet gemeten"
+    },
+    "missing": {
+      "incompleteProducts": "Onvolledige producten",
+      "openRequests": "Open dataverzoeken",
+      "awaitingReview": "Antwoorden ter beoordeling",
+      "empty": "Er ontbreekt niets — alle gevolgde items zijn compleet."
+    },
+    "risky": {
+      "overdue": "Verzoeken met verlopen termijn",
+      "dueSoon": "Vervallen binnen 7 dagen",
+      "needsReview": "Producten ter beoordeling",
+      "certsExpiring": "Certificeringen die binnen 90 dagen verlopen",
+      "empty": "Geen actief risico gedetecteerd in uw werkruimte."
+    },
+    "next": {
+      "remindOverdue": "Verlopen verzoeken opvolgen",
+      "reviewSubmitted": "Ingediende antwoorden beoordelen",
+      "collectMissing": "Verzameling starten voor onvolledige producten",
+      "inviteFirst": "Uw eerste leverancier uitnodigen",
+      "empty": "Geen prioritaire actie momenteel — gebruik de snelacties hieronder."
+    },
+    "table": {
+      "filterPlaceholder": "Rijen filteren…",
+      "columns": "Kolommen",
+      "exportCsv": "CSV exporteren",
+      "savedViews": "Opgeslagen weergaven",
+      "saveView": "Huidige weergave opslaan",
+      "saveViewPrompt": "Geef deze weergave een naam",
+      "deleteView": "Verwijderen",
+      "noSavedViews": "Geen opgeslagen weergaven",
+      "selected": "geselecteerd",
+      "bulkExport": "Selectie exporteren",
+      "bulkRemind": "Leveranciers herinneren",
+      "filteredEmpty": "Geen rijen komen overeen met het huidige filter.",
+      "sortAsc": "oplopend gesorteerd",
+      "sortDesc": "aflopend gesorteerd"
+    }
   }
 }

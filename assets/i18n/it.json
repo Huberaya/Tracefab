@@ -2373,5 +2373,66 @@
       "actionOpen": "Apri",
       "actionAnswer": "Rispondi"
     }
+  },
+  "command": {
+    "section": {
+      "where": "A che punto siamo",
+      "missing": "Cosa manca",
+      "risky": "Cosa è a rischio",
+      "next": "Prossime azioni",
+      "note": "Ogni numero di questa schermata è calcolato dai dati del tuo spazio di lavoro."
+    },
+    "kpi": {
+      "products": "Prodotti",
+      "suppliers": "Fornitori",
+      "sites": "Siti produttivi",
+      "countries": "Paesi di produzione",
+      "completeness": "Completezza media dei dati",
+      "quality": "Qualità media dei dati fornitori",
+      "dpp": "Preparazione DPP",
+      "certifications": "Certificazioni"
+    },
+    "chip": {
+      "onTrack": "In linea",
+      "attention": "Da monitorare",
+      "critical": "Critico",
+      "unknown": "Non misurato"
+    },
+    "missing": {
+      "incompleteProducts": "Prodotti incompleti",
+      "openRequests": "Richieste dati aperte",
+      "awaitingReview": "Risposte da verificare",
+      "empty": "Non manca nulla: tutti gli elementi monitorati sono completi."
+    },
+    "risky": {
+      "overdue": "Richieste in ritardo",
+      "dueSoon": "In scadenza entro 7 giorni",
+      "needsReview": "Prodotti da verificare",
+      "certsExpiring": "Certificazioni in scadenza entro 90 giorni",
+      "empty": "Nessun rischio attivo rilevato nel tuo spazio."
+    },
+    "next": {
+      "remindOverdue": "Sollecita le richieste in ritardo",
+      "reviewSubmitted": "Verifica le risposte inviate",
+      "collectMissing": "Avvia una raccolta per i prodotti incompleti",
+      "inviteFirst": "Invita il tuo primo fornitore",
+      "empty": "Nessuna azione prioritaria al momento: usa le azioni rapide qui sotto."
+    },
+    "table": {
+      "filterPlaceholder": "Filtra le righe…",
+      "columns": "Colonne",
+      "exportCsv": "Esporta CSV",
+      "savedViews": "Viste salvate",
+      "saveView": "Salva la vista corrente",
+      "saveViewPrompt": "Dai un nome a questa vista",
+      "deleteView": "Elimina",
+      "noSavedViews": "Nessuna vista salvata",
+      "selected": "selezionate",
+      "bulkExport": "Esporta selezione",
+      "bulkRemind": "Sollecita i fornitori",
+      "filteredEmpty": "Nessuna riga corrisponde al filtro corrente.",
+      "sortAsc": "ordine crescente",
+      "sortDesc": "ordine decrescente"
+    }
   }
 }

@@ -65,8 +65,8 @@ check(consoleHtml.includes('/assets/js/tf-shell.js'), 'js charge');
 check(consoleHtml.includes('data-shell-open="palette"'), 'declencheur palette dans la topbar');
 check(consoleHtml.includes('data-shell-open="notifications"'), 'declencheur notifications dans la topbar');
 check(consoleHtml.includes('data-shell-badge'), 'badge de notifications present');
-check(/window\.tracefabBrandConsole\s*=\s*\{\s*state,\s*sync,\s*render,\s*openProduct,\s*openSupplier,\s*openRequest\s*\}/.test(consoleHtml),
-  'hooks exposes (render/openProduct/openSupplier/openRequest)');
+check(/window\.tracefabBrandConsole\s*=\s*\{\s*state,\s*sync,\s*render,\s*openProduct,\s*openSupplier,\s*openRequest,\s*remindRequest\s*\}/.test(consoleHtml),
+  'hooks exposes (render/openProduct/openSupplier/openRequest/remindRequest)');
 check(/window\.TFShell\.init\(\{/.test(consoleHtml), 'TFShell.init cable');
 
 console.log('\n[4] integration Supplier Portal');
