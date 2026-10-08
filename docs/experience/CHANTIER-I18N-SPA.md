@@ -954,3 +954,91 @@ emails transactionnels. Candidat évident pour la suite.
 Restent aussi : l'identité visuelle divergente de `passport/`, les phases 9
 à 12 sans rapport dédié, deux polices d'affichage à arbitrer, 27 cibles
 tactiles sous 40 px et 10 clés `portal` non référencées.
+
+---
+
+## Tranche 11 — `invitations/accept/`, le premier écran du fournisseur
+
+### Pourquoi cette page d'abord
+
+C'est le tout premier écran qu'un fournisseur invité voit de TRACEFAB.
+`api/_lib/email.ts` construit le lien `/invitations/accept?token=…` dans les
+emails transactionnels, et la page est routée dans `vercel.json`,
+`dev_static_server.mjs` et `api/index.ts`.
+
+L'audit a révélé une incohérence nette dans l'entonnoir : **les emails sont
+déjà en anglais** (`${organizationName} invited you to Tracefab`), mais la
+page d'atterrissage était **entièrement en français**, sans aucune i18n.
+Un fournisseur portugais recevait un email anglais et arrivait sur
+« Rejoindre une organisation fournisseur. »
+
+C'était la dernière page du dépôt sans couverture.
+
+### Ce qui a été fait
+
+Racine de catalogue **`invite`**, 21 clés × 7 langues. Balisage statique via
+`data-i18n`, messages dynamiques via le résolveur `iv()`, sélecteur de langue
+en haut de carte, `lang="en"`, et `TF_I18N_SKIP_META` pour que la page ne
+récupère pas le titre de la landing.
+
+Ajout d'un `<meta name="robots" content="noindex, nofollow">` : une page
+d'invitation à jeton n'a rien à faire dans un index de moteur de recherche.
+Elle n'en avait aucun.
+
+### Les messages d'état ne suivaient pas la langue
+
+Premier jet : les titres changeaient de langue, mais le message d'état restait
+figé. `show()` écrit directement dans `#message`, donc `tf-i18n` ne peut pas le
+reprendre — et mémoriser la *chaîne* produite ne sert à rien, puisqu'il faut la
+recalculer.
+
+La correction mémorise le **rendu** plutôt que le texte :
+
+```js
+function showFn(fn, kind) { lastMessage = () => show(fn(), kind); lastMessage(); }
+document.addEventListener('tf:languagechange', () => { mountLangSelect(); if (lastMessage) lastMessage(); });
+```
+
+Un fournisseur qui bascule de langue en cours de session voit désormais tout
+changer, message d'erreur compris.
+
+### Des codes machine affichés au fournisseur
+
+Le test en aperçu statique a mis au jour un défaut antérieur : la page
+affichait `api_not_available_in_static_preview` tel quel dans la zone de
+message. Le dictionnaire `errorLabel()` couvrait les erreurs d'invitation
+connues, mais le chemin d'amorçage faisait `show(error.message || …)` — donc
+`clerk_not_configured`, `request_failed_503` et consorts arrivaient bruts sous
+les yeux de l'utilisateur.
+
+Un code machine n'apprend rien à un fournisseur. La page rend maintenant un
+message traduit et conserve le code en `console.error` pour le support.
+
+### Un test repointé
+
+`test_supplier_advanced.mjs` extrayait le script de la page avec
+`/<script>([\s\S]*)<\/script>/` — une regex **gourmande**, qui capturait du
+premier `<script>` au dernier `</script>`. Elle fonctionnait tant que la page
+n'avait qu'un bloc ; l'ajout de la pile i18n l'a cassée.
+
+Plutôt que de la rendre paresseuse, le contrat a été renforcé : **chaque** bloc
+`<script>` inline doit parser, les balises à `src` étant exclues. C'est plus
+strict qu'avant et insensible à l'ordre. Contrôle négatif prouvé.
+
+### Vérifications
+
+- 7 langues sur le balisage **et** sur les messages d'état, bascule en cours
+  de session comprise.
+- Plus **aucune page du dépôt en `<html lang="fr">`** : la couverture i18n est
+  complète sur les 9 pages suivies par git.
+- 0 débordement à 390 px, 0 `pageerror`, 0 requête statique en échec.
+- Barrière : **45/45**, `build` OK, `tsc --noEmit` OK, `e2e_audit.py` 4/4,
+  personas 6/6 · 4/4 · 4/4.
+
+### Reste à traiter
+
+Le chantier i18n est clos côté couverture. Restent, par ordre d'intérêt :
+l'identité visuelle divergente de `passport/` (Plus Jakarta Sans, accent bleu
+`#2563eb`) qui attend un arbitrage ; les phases 9 à 12 sans rapport dédié ;
+deux polices d'affichage à arbitrer ; 27 cibles tactiles sous 40 px ; 10 clés
+`portal` non référencées.

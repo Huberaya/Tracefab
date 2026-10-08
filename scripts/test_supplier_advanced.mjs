@@ -34,9 +34,17 @@ assert(files.portal.includes("navButton('dataPoints'") && files.portal.includes(
 assert(files.portal.includes('sourceDocumentId'), 'Structured data point evidence selection is missing');
 assert(files.docs.includes('Chantier 23'), 'Advanced Supplier Portal documentation is missing');
 assert(files.acceptPage.includes('/api/invitations/accept') && files.acceptPage.includes('clerk.browser.js'), 'Invitation acceptance page is missing Clerk/API integration');
-const acceptScript = files.acceptPage.match(/<script>([\s\S]*)<\/script>/)?.[1];
-assert(acceptScript, 'Invitation acceptance page script is missing');
-new vm.Script(acceptScript, { filename: 'invitations/accept/index.html' });
+// Chantier 11 : la page charge desormais la pile i18n, donc plusieurs blocs
+// <script>. L'ancienne regex etait gourmande et capturait du premier <script>
+// au dernier </script>, balises externes comprises. On verifie maintenant que
+// CHAQUE bloc inline parse — contrat plus strict et insensible a l'ordre.
+const acceptScripts = [...files.acceptPage.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+  .map((m) => m[1])
+  .filter((code) => code.trim());
+assert(acceptScripts.length >= 1, 'Invitation acceptance page script is missing');
+for (const [index, code] of acceptScripts.entries()) {
+  new vm.Script(code, { filename: `invitations/accept/index.html#${index}` });
+}
 assert(files.hardening.includes('last_owner_membership_required') && files.hardening.includes('data_points_insert_owner'), 'Neon hardening migration is missing role and RLS guards');
 assert(files.supplierInvitationCompatibility.includes("NEW.target_role = 'owner' AND NEW.relationship_id IS NULL"), 'Supplier onboarding owner invitation compatibility is missing');
 assert(files.email.includes('manualInvitationFallbackAllowed') && files.email.includes('TRACEFAB_ALLOW_MANUAL_INVITATION_FALLBACK'), 'Production invitation fallback is not explicitly gated');
