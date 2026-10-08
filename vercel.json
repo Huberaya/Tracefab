@@ -16,10 +16,6 @@
     {
       "src": "assets/**",
       "use": "@vercel/static"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
     }
   ],
   "headers": [
@@ -86,18 +82,6 @@
     {
       "src": "/api/(.*)",
       "dest": "/api/index.ts?path=$1"
-    },
-    {
-      "src": "/i18n-engine.js",
-      "dest": "/public/i18n-engine.js"
-    },
-    {
-      "src": "/auto-translate.js",
-      "dest": "/public/auto-translate.js"
-    },
-    {
-      "src": "/translations_deep.json",
-      "dest": "/public/translations_deep.json"
     },
     {
       "src": "/",

@@ -54,9 +54,6 @@ const REWRITES = [
   [/^\/quality-center\/?$/, 'quality-center/index.html'],
   [/^\/operations\/?$/, 'operations/index.html'],
   [/^\/passport\/?$/, 'passport/index.html'],
-  [/^\/i18n-engine\.js$/, 'public/i18n-engine.js'],
-  [/^\/auto-translate\.js$/, 'public/auto-translate.js'],
-  [/^\/translations_deep\.json$/, 'public/translations_deep.json'],
 ];
 
 function resolveFile(urlPath) {

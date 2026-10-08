@@ -170,6 +170,30 @@ assert.ok(
 // Etendu au chantier 7. Verifier le seul balisage ne suffisait plus : la copie
 // du DPP vit desormais dans le catalogue i18n, et la cle badgeEu y rendait
 // « DPP Compliant » a l'ecran alors que le fichier HTML, lui, passait le test.
+// Chantier 10. Les deux garde-fous ci-dessus ne couvraient que dpp/index.html
+// et la portee `dpp` des catalogues. Deux fichiers y echappaient tout en etant
+// deployes : p/at-ess-001.html (un DPP statique fantome, masque en production
+// par la reecriture /p/(.*) -> /dpp/) et archive/index.legacy-2026-10-07.html.
+// Les deux revendiquaient « DPP Conforme » et « certifié ESPR ». Le filet
+// couvre desormais tout fichier HTML suivi par git.
+{
+  const { execSync } = await import('node:child_process');
+  const INTERDIT = /DPP Conforme|DPP Compliant|DPP Konform|DPP Conform\b|certifié ESPR|Conforme Règlementation/;
+  const suivis = execSync('git ls-files "*.html"', { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  assert.ok(suivis.length > 0, 'le filet doit inspecter au moins un fichier HTML');
+  for (const fichier of suivis) {
+    const contenu = await readFile(fichier, 'utf8');
+    const trouve = contenu.match(INTERDIT);
+    assert.ok(
+      !trouve,
+      `${fichier} revendique une certification reglementaire : « ${trouve && trouve[0]} »`,
+    );
+  }
+  console.log(`✓ ${suivis.length} fichiers HTML sans revendication de conformite`);
+}
+
 for (const lang of ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt']) {
   const nom = lang === 'en' ? null : `../assets/i18n/${lang}.json`;
   const scope = nom

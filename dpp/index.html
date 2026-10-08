@@ -713,7 +713,6 @@
       .tab-content-panel { padding: 22px 16px; }
     }
   </style>
-  <script src="/auto-translate.js"></script>
     <!-- i18n : catalogue unique /assets/i18n. Page grand public : titre et
          description lui sont propres, d'ou TF_I18N_SKIP_META. -->
     <script>window.TF_I18N_SKIP_META = true;</script>
@@ -1264,13 +1263,6 @@
     function renderDppLang(lang) {
       const T = window.TF_I18N;
       const tr = (k) => (T ? T.t('dpp.' + k, k) : k);
-      // Le moteur historique auto-translate.js (charge ligne ~675) reecrit les noeuds
-      // texte depuis un glossaire a SOURCE FRANCAISE, via un MutationObserver sur le
-      // body. Il met sa langue courante en cache au chargement : sans cette
-      // synchronisation il repeint le badge dans SA langue et annule tf-i18n.
-      if (typeof window.setTracefabGlobalLanguage === 'function') {
-        window.setTracefabGlobalLanguage(lang);
-      }
       document.documentElement.lang = lang;
       const badge = document.querySelector('.badge-eu');
       if (badge) badge.innerHTML = BADGE_ICON + ' ' + tr('badgeEu');

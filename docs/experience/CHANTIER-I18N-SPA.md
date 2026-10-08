@@ -745,9 +745,18 @@ cette responsabilité n'apportait rien.
 
 ### `operations/` — un script mort depuis des mois
 
-La page chargeait `<script src="/auto-translate.js">`. **Ce fichier n'existe
-pas** : la requête renvoyait `HTTP 404` à chaque visite. Le réécriveur
-historique avait été retiré du dépôt sans que la balise suive. Un
+La page chargeait `<script src="/auto-translate.js">`.
+
+> **Correction apportée en tranche 10.** Cette section affirmait que le
+> fichier n'existait pas et que la requête renvoyait `HTTP 404`. C'est faux :
+> le 404 venait de mon banc d'essai. Je servais le site avec
+> `python3 -m http.server`, qui ignore la table de routage du projet. Le
+> fichier existait bien dans `public/`, et `vercel.json` comme
+> `scripts/dev_static_server.mjs` le routaient. Retirer la balise restait la
+> bonne décision — la page chargeait 25 Ko de réécriveur concurrent — mais le
+> motif avancé était erroné. Voir la tranche 10.
+
+Un
 `grep -c 'auto-translate.js'` ne suffit pas à trancher — sur
 `quality-center` le même compte valait 1, mais pour un simple commentaire de
 suppression. Il faut `grep -n 'script src=.*auto-translate'`.
@@ -807,7 +816,8 @@ connexion Neon, ce qui est attendu et inchangé.
 
 - **0 débordement horizontal** sur les 3 pages, de 390 à 1280 px.
 - **0 fuite de gabarit** et **0 `pageerror`** sur les 3 pages, 7 langues.
-- `/auto-translate.js` : plus aucune requête en échec.
+- `/auto-translate.js` : balise retirée de `operations/` (voir la correction
+  ci-dessus sur le motif invoqué).
 - Catalogues portés à **21 racines** ; `ops` 28 clés et `passport` 59 clés
   complètes sur les 7 langues.
 - 2 assertions repointées, contrôle négatif prouvé.
@@ -822,3 +832,125 @@ la refonte et n'a pas été restylée, car cela relève d'une décision de desig
 à valider. Les phases 9 à 12 n'ont toujours pas de rapport dédié. Restent
 aussi deux polices d'affichage à arbitrer, 27 cibles tactiles sous 40 px et
 10 clés `portal` non référencées.
+
+---
+
+## Tranche 10 — démantèlement de la couche de traduction héritée
+
+### D'abord, une erreur de ma part à corriger
+
+La tranche 9 affirmait que `/auto-translate.js` n'existait pas et renvoyait
+`HTTP 404`. **C'était un artefact de mon banc d'essai.** Je servais le site
+avec `python3 -m http.server`, qui n'a aucune table de routage. Or le fichier
+vit dans `public/`, et deux routages le servaient bien :
+
+```
+vercel.json:95              "src": "/auto-translate.js" → "/public/auto-translate.js"
+dev_static_server.mjs:58    [/^\/auto-translate\.js$/, 'public/auto-translate.js']
+```
+
+Avec le serveur du projet, la réponse était **`HTTP 200`**. Retirer la balise
+de `operations/` restait juste, mais pour une autre raison que celle écrite.
+La leçon : **ne jamais conclure à l'absence d'une ressource depuis un serveur
+qui ne reproduit pas le routage de production.** L'aperçu tourne désormais sur
+`scripts/dev_static_server.mjs`, qui reflète `vercel.json`.
+
+### Le DPP public chargeait encore le réécriveur
+
+`dpp/index.html` était la dernière page à charger `/auto-translate.js` —
+`brand-console`, `supplier-portal` et `quality-center` ne gardaient qu'un
+commentaire de suppression. Le moteur est l'ancienne architecture : un
+glossaire **à source française** qui compare le texte rendu et le réécrit, un
+`MutationObserver` permanent sur le `body`, et il pose lui-même
+`document.documentElement.lang`.
+
+Mesure sur la page : **25 550 octets** téléchargés pour zéro effet utile. Le
+glossaire ne trouve plus rien, puisque la source du DPP est passée à
+l'anglais. Zéro mutation observée en 1,5 s. C'était du poids mort sur la page
+la plus sensible du produit — celle qu'un consommateur ouvre en scannant un QR
+code.
+
+Le DPP portait en plus un contournement dédié :
+
+```js
+// Il met sa langue courante en cache au chargement : sans cette
+// synchronisation il repeint le badge dans SA langue et annule tf-i18n.
+if (typeof window.setTracefabGlobalLanguage === 'function') { … }
+```
+
+`setTracefabGlobalLanguage` n'était défini que par `auto-translate.js` et
+n'était appelé que là. Le moteur parti, le contournement n'a plus d'objet : il
+est supprimé avec lui.
+
+Sont donc retirés : la balise dans `dpp/index.html`, le contournement,
+`public/auto-translate.js`, `public/i18n-engine.js`,
+`public/translations_deep.json`, leurs trois routes dans `vercel.json`, les
+trois mêmes dans `dev_static_server.mjs`, et l'entrée de build `public/**`
+devenue sans objet. Le DPP rend ses 7 langues à l'identique, 0 `pageerror`,
+0 requête en échec.
+
+### Deux fichiers déployés revendiquaient une conformité réglementaire
+
+La règle du projet est explicite depuis le début : **la préparation DPP est un
+indicateur opérationnel, jamais une certification.** `test_pef_chantier3.mjs`
+la fait respecter — mais seulement sur `dpp/index.html` et sur la portée `dpp`
+des 7 catalogues. Deux fichiers passaient entre les mailles :
+
+| fichier | formulations | servi ? |
+|---|---|---|
+| `p/at-ess-001.html` | « certifié ESPR », « Conforme Règlementation Européenne ESPR », « DPP Conforme » | masqué en production par la réécriture `/p/(.*)` → `/dpp/` |
+| `archive/index.legacy-2026-10-07.html` | « Conforme Règlementation » | **oui, publiquement** — `builds` déploie `**/*.html` |
+
+`p/at-ess-001.html` était un DPP statique fantôme de 34 Ko : la règle
+`/p/(.*)` → `/dpp/index.html?gtin=$1` est évaluée **avant** le
+`handle: filesystem`, donc le fichier n'a jamais pu être atteint. L'URL sert
+désormais le vrai DPP multilingue, comme avant.
+
+L'archive de l'ancienne landing, elle, était bel et bien accessible : suivie
+par git, déployée, et portant une revendication de conformité interdite. Les
+deux fichiers sont supprimés ; git en conserve l'historique.
+
+### Le garde-fou est passé à l'échelle du dépôt
+
+Corriger deux fichiers ne vaut rien si le troisième peut réapparaître. Le
+filet de `test_pef_chantier3.mjs` inspecte désormais **tout fichier HTML suivi
+par git**, via `git ls-files "*.html"` :
+
+```
+✓ 9 fichiers HTML sans revendication de conformite
+```
+
+Contrôle négatif prouvé : un fichier contenant « DPP Conforme » ajouté à
+l'index fait échouer le test, avec le chemin fautif en message.
+
+### Reliquats de locale
+
+`brand-console` gardait un `toLocaleString('fr-FR')` isolé sur le nombre de
+produits de la vue d'ensemble, alors que l'helper maison `moneyless()` suit la
+locale active partout ailleurs. Corrigé.
+
+`brand-console` et `supplier-portal` déclaraient encore `<html lang="fr">`
+malgré 780 et 378 clés traduites. `tf-i18n` corrige l'attribut au démarrage,
+mais le balisage servi mentait aux robots d'indexation, aux lecteurs d'écran
+et au rendu sans JavaScript. Les 8 pages principales servent maintenant
+`lang="en"`.
+
+### Vérifications
+
+- 8 pages principales : `lang=en`, **0 requête en échec**, **0 `pageerror`**.
+- DPP : 7 langues identiques avant/après, badge `dpp.badgeEu` intact
+  (« EU ESPR / DPP format », jamais « Compliant »).
+- `vercel.json` : 14 → 11 routes, 4 → 3 entrées de build. JSON valide.
+- Barrière : **45/45**, `build` OK, `tsc --noEmit` OK, `e2e_audit.py` 4/4,
+  personas 6/6 · 4/4 · 4/4.
+
+### Reste à traiter
+
+`invitations/accept/` est la **seule page encore sans i18n** (`lang="fr"`,
+6,5 Ko). C'est pourtant le premier écran que voit tout fournisseur invité :
+`api/_lib/email.ts` construit le lien `/invitations/accept?token=…` dans les
+emails transactionnels. Candidat évident pour la suite.
+
+Restent aussi : l'identité visuelle divergente de `passport/`, les phases 9
+à 12 sans rapport dédié, deux polices d'affichage à arbitrer, 27 cibles
+tactiles sous 40 px et 10 clés `portal` non référencées.
