@@ -90,7 +90,8 @@ Missing / Needs review ; ne jamais inventer de risque ou de donnée ».
 interpolation `{count}/{days}/{missing}`), `sources.*` (3, `{n}`).
 Source : `scripts/_chantier12_intel_ask_i18n.json` ; générateur
 `scripts/build_intel_ask_i18n.mjs` (idempotent) ; injection dans
-`assets/i18n/en.js` + 6 locales JSON. tr/zh exclus (locales partielles).
+`assets/i18n/en.js` + 6 locales JSON. Mise à jour Chantier 15 : les fichiers
+`tr.json`/`zh.json` partiels ont depuis été retirés du produit.
 Le helper console `ia(key, vars)` traduit via `TF_I18N` et interpole.
 Aucun texte métier codé en dur dans la vue.
 

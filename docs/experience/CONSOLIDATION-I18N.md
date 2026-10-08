@@ -213,3 +213,16 @@ valeur — donc le coupable n'écrivait ni via `innerHTML` ni via `textContent`
 sur ce nœud, mais mutait ses nœuds texte enfants. À retenir : quand la valeur
 écrite est correcte et la valeur lue ne l'est pas, chercher un **second
 écrivain**, pas une erreur de résolution.
+
+---
+
+## Mise à jour — Chantier 15 (2026-10-08)
+
+Ce document décrit l'état historique de consolidation, notamment les locales
+partielles turque et chinoise ainsi que les chaînes métier restant à extraire
+à l'époque. **État courant : voir `CHANTIER-15-I18N-COMPLETE.md`.** Le Chantier
+15 a retiré `tr.json`/`zh.json` et leurs options de langue (elles ne couvraient
+qu'environ 16 % du catalogue), limité les générateurs aux sept locales
+complètes (en/fr/de/it/es/nl/pt), ajouté les métadonnées localisées par page et
+extrait les derniers labels/notifications ciblés dans `i18n15` (118 clés × 7).
+Les tests de consolidation protègent maintenant ce choix.

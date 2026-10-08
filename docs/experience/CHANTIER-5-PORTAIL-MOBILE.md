@@ -159,10 +159,12 @@ nommage était une lacune de mesure.
 
 ## 4. i18n : une frontière assumée
 
-Les 17 chaînes du premier écran sont passées au catalogue, **× 9 langues** —
-les 7 habituelles plus **le turc et le chinois**, que le portail sert aussi et
-que `test:i18n` contrôle sur les portées `shared` et `portal`. Générateur :
-`scripts/build_portal_overview_i18n.mjs`, même mécanique que ses deux aînés.
+État historique à la livraison : les 17 chaînes du premier écran étaient
+produites par `scripts/build_portal_overview_i18n.mjs` en neuf catalogues.
+**Mise à jour Chantier 15 (2026-10-08)** : ce générateur produit désormais
+uniquement les sept langues complètes ; tr/zh ont été retirées du produit avec
+leurs catalogues partiels. Le contrôle courant est `test:i18n` et
+`test_i18n_chantier15.mjs`.
 
 Le reste de `overview()` — les 4 cartes d'action, les 6 statistiques, les
 demandes prioritaires, l'import BOM — **reste en dur, en français.** C'est le

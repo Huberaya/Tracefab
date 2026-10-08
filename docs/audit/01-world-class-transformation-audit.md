@@ -303,3 +303,15 @@ d'environnement (réseau sandbox), documentés comme tels.**
    et distingue Known / Inferred / Missing / Needs review.
 5. **Un chantier à la fois**, avec rapport d'étape et validation avant le
    suivant.
+
+---
+
+## État actualisé de l'i18n — Chantier 15 (2026-10-08)
+
+Le tableau d'audit ci-dessus est le **baseline** antérieur aux chantiers
+03→15, pas l'état actuel. Le Chantier 15 a livré les métadonnées localisées par
+page et `i18n15` (118 clés × 7 langues), extrait les derniers textes d'interface
+ciblés, et **retiré** `tr`/`zh` (catalogues partiels à ~16 %) des fichiers, des
+sélecteurs et des générateurs. Voir le rapport actuel
+`docs/experience/CHANTIER-15-I18N-COMPLETE.md` ; les chantiers 13 et 14 restent
+à valider/exécuter.

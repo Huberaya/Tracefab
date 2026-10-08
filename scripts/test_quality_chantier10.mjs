@@ -17,7 +17,7 @@
      5. non-regression : les routes qualite existantes, le SPA
         Quality Center et les chantiers precedents.
    ========================================================================== */
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
@@ -111,8 +111,7 @@ for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   check(hasAll, lang + '.json : toutes les cles qualityPremium.* presentes');
 }
 for (const lang of ['tr', 'zh']) {
-  const catalog = JSON.parse(read('assets/i18n/' + lang + '.json'));
-  check(!('qualityPremium' in catalog), lang + '.json : namespace qualityPremium exclu (locales partielles)');
+  check(!existsSync(join(ROOT, `assets/i18n/${lang}.json`)), lang + '.json : locale partielle retiree du produit (chantier 15)');
 }
 
 /* --- 5. generateur ---------------------------------------------------------------- */

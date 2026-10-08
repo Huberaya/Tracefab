@@ -124,8 +124,7 @@ for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   check(hasAll, lang + '.json : toutes les cles intel.* presentes');
 }
 for (const lang of ['tr', 'zh']) {
-  const catalog = JSON.parse(read('assets/i18n/' + lang + '.json'));
-  check(!('intel' in catalog), lang + '.json : namespace intel exclu (locales partielles, repli EN)');
+  check(!existsSync(join(ROOT, `assets/i18n/${lang}.json`)), lang + '.json : locale partielle retiree du produit (chantier 15)');
 }
 
 /* --- 7. generateur --------------------------------------------------------------------- */

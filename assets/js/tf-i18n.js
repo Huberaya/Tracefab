@@ -19,10 +19,9 @@
 (function () {
   'use strict';
 
-  // La landing expose les 7 locales de la phase 1. Le portail fournisseur
-  // sert aussi des fournisseurs turcs et chinois : une page peut donc
-  // elargir l'ensemble via window.TF_I18N_SUPPORTED, declare avant ce script.
-  var SUPPORTED = window.TF_I18N_SUPPORTED || ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
+  // Langues produit avec catalogues complets. Toute extension exige une locale
+  // traduite de bout en bout et les tests de parite, jamais un override de page.
+  var SUPPORTED = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
   var DEFAULT = 'en';
   var STORAGE_KEY = 'tracefab.lang';
   // Les SPA ecrivaient 'tracefab_lang' tandis que la landing ecrivait
@@ -117,9 +116,14 @@
     // titre de la landing des le premier changement de langue — c'est le
     // genre d'effet de bord qui avait fait retirer l'ancien auto-translate.js.
     if (window.TF_I18N_SKIP_META) return;
-    var title = t('meta.title', null);
+    /* Chantier 15 — metadonnees localisees par page : une page statique peut
+       declarer window.TF_I18N_PAGE_META = { title: 'siteMeta.xTitle',
+       description: 'siteMeta.xDesc' } AVANT ce script pour recevoir ses
+       propres metadonnees traduites au lieu de celles de la landing. */
+    var pageMeta = window.TF_I18N_PAGE_META || {};
+    var title = t(pageMeta.title || 'meta.title', null);
     if (title) document.title = title;
-    var desc = t('meta.description', null);
+    var desc = t(pageMeta.description || 'meta.description', null);
     if (desc) {
       var tag = document.querySelector('meta[name="description"]');
       if (tag) tag.setAttribute('content', desc);

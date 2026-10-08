@@ -15,7 +15,7 @@
    Usage : node scripts/test_i18n_consolidation.mjs [--base http://127.0.0.1:3000]
    Sans navigateur disponible, les points 3 et 4 sont ignores et signales.
    ========================================================================== */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
@@ -47,8 +47,9 @@ for (const ns of ['shared', 'console', 'portal']) {
 
 // Locales completes : parite stricte attendue.
 const FULL = ['fr', 'de', 'it', 'es', 'nl', 'pt'];
-// Locales partielles : servies au seul portail, repli anglais assume.
-const PARTIAL = { tr: ['shared', 'portal'], zh: ['shared', 'portal'] };
+// Chantier 15 — tr et zh ont ete retirees du produit : leurs catalogues
+// etaient couverts a ~16 %, ce qui faisait passer du francais ou de
+// l anglais pour du turc ou du chinois. Elles ne doivent pas revenir.
 
 for (const lang of FULL) {
   const d = JSON.parse(readFileSync(join(ROOT, `assets/i18n/${lang}.json`), 'utf8'));
@@ -60,13 +61,9 @@ for (const lang of FULL) {
   else ok(`${lang}: parite stricte avec EN (${keys.size} cles)`);
 }
 
-for (const [lang, scopes] of Object.entries(PARTIAL)) {
-  const d = JSON.parse(readFileSync(join(ROOT, `assets/i18n/${lang}.json`), 'utf8'));
-  const keys = new Set(leaves(d));
-  const expected = [...enKeys].filter((k) => scopes.includes(k.split('.')[0]));
-  const missing = expected.filter((k) => !keys.has(k));
-  if (missing.length) fail(`${lang}: ${missing.length} cle(s) manquante(s) sur ${scopes.join('+')}`);
-  else ok(`${lang}: portees ${scopes.join('+')} completes (${keys.size} cles, repli EN ailleurs)`);
+for (const lang of ['tr', 'zh']) {
+  if (existsSync(join(ROOT, `assets/i18n/${lang}.json`))) fail(`${lang}: le catalogue partiel a ete reintroduit`);
+  else ok(`${lang}: catalogue partiel absent (retire du produit)`);
 }
 
 /* -- 2. un seul catalogue ------------------------------------------------- */
@@ -148,15 +145,20 @@ if (!chromium) {
       if (carried === 'it') ok('continuite: la langue choisie sur la landing est reprise par la console');
       else fail(`continuite: la console est en "${carried}" alors que la landing etait en italien`);
 
-      // le portail accepte le turc
+      // Chantier 15 — tr et zh ne sont plus des langues produit : le portail
+      // ne doit ni les lister ni les servir (repli anglais obligatoire).
       const p3 = await browser.newPage();
       const r3 = await boot(p3, `${BASE}/supplier-portal/`);
       if (r3) {
-        await p3.evaluate(() => window.TF_I18N.setLanguage('tr'));
-        await p3.waitForTimeout(300);
-        const tr = await p3.evaluate(() => window.TF_I18N.t('shared.stDraft', null));
-        if (tr === 'Taslak') ok(`portail: le turc est servi (shared.stDraft = ${tr})`);
-        else fail(`portail: shared.stDraft en turc = ${JSON.stringify(tr)}, attendu "Taslak"`);
+        const supported = await p3.evaluate(() => window.TF_I18N.supported);
+        if (!supported.includes('tr') && !supported.includes('zh')) ok('portail: tr et zh retirees des langues supportees');
+        else fail(`portail: langues supportees = ${JSON.stringify(supported)}`);
+        const afterTr = await p3.evaluate(() => window.TF_I18N.setLanguage('tr').then((l) => l));
+        if (afterTr === 'en') ok('portail: une demande de turc retombe honnetement sur l anglais');
+        else fail(`portail: setLanguage('tr') a donne "${afterTr}", attendu "en"`);
+        const options = await p3.evaluate(() => Array.from(document.querySelectorAll('select option')).map((o) => o.value));
+        if (!options.includes('tr') && !options.includes('zh')) ok('portail: aucune option tr/zh dans le selecteur');
+        else fail(`portail: le selecteur propose encore ${JSON.stringify(options.filter((o) => o === 'tr' || o === 'zh'))}`);
       }
     }
     await browser.close();

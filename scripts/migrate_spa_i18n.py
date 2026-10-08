@@ -79,12 +79,8 @@ HEAD_CONSOLE = """    <!-- i18n consolide : catalogue unique /assets/i18n, servi
 </head>"""
 
 HEAD_PORTAL = """    <!-- i18n consolide : catalogue unique /assets/i18n, servi par le runtime
-         partage tf-i18n.js. Le portail sert aussi des fournisseurs turcs et
-         chinois, d'ou l'elargissement de l'ensemble des langues. -->
-    <script>
-      window.TF_I18N_SUPPORTED = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
-      window.TF_I18N_SKIP_META = true;
-    </script>
+         partage tf-i18n.js. Seules les sept langues completes sont exposees. -->
+    <script>window.TF_I18N_SKIP_META = true;</script>
     <script src="/assets/i18n/en.js"></script>
     <script src="/assets/js/tf-i18n.js"></script>
 </head>"""

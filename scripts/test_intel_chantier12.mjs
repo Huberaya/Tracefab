@@ -137,8 +137,7 @@ for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   check(hasAll, lang + '.json : toutes les cles intelAsk.* presentes');
 }
 for (const lang of ['tr', 'zh']) {
-  const catalog = JSON.parse(read('assets/i18n/' + lang + '.json'));
-  check(!('intelAsk' in catalog), lang + '.json : namespace intelAsk exclu (locales partielles)');
+  check(!existsSync(join(ROOT, `assets/i18n/${lang}.json`)), lang + '.json : locale partielle retiree du produit (chantier 15)');
 }
 
 /* --- 6. generateur -------------------------------------------------------------------- */

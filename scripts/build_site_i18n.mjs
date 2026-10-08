@@ -5,9 +5,8 @@
 
    Source unique : scripts/_chantier03_site_i18n.json (7 langues).
    Cible : assets/i18n/en.js (reference) + fr/de/it/es/nl/pt.json.
-   Les locales partielles (tr/zh) ne couvrent que shared+portal : le repli
-   anglais s'applique, aucune cle n'y est ajoutee (parite testee stricte
-   sur les locales completes uniquement).
+   Seules les sept locales completes sont produites. tr/zh ont ete retirees
+   des fichiers et des selecteurs au chantier 15.
 
    Idempotent : relancer ne duplique rien.
    ========================================================================== */

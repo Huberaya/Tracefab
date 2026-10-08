@@ -6,7 +6,7 @@
 
    Source unique : scripts/_chantier11_supply_graph_i18n.json (7 langues).
    Cible : assets/i18n/en.js + fr/de/it/es/nl/pt.json.
-   Locales partielles (tr/zh) : repli anglais, aucune cle ajoutee.
+   Locales produit : sept catalogues complets (en/fr/de/it/es/nl/pt). tr/zh retirees au chantier 15.
 
    Strictement additif : ce generateur n'efface aucune cle, et borne son
    insertion a son propre namespace. Idempotent.

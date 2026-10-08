@@ -111,8 +111,8 @@ for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   check(hasAll, lang + '.json : toutes les cles command.* presentes');
 }
 for (const lang of ['tr', 'zh']) {
-  const catalog = JSON.parse(read('assets/i18n/' + lang + '.json'));
-  check(!('command' in catalog), lang + '.json : namespace command exclu (locales partielles)');
+  check(!existsSync(join(ROOT, `assets/i18n/${lang}.json`)),
+    lang + '.json : locale partielle retiree du produit (chantier 15)');
 }
 
 /* --- 6. generateur -------------------------------------------------------------- */

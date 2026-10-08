@@ -120,9 +120,8 @@ for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   check(hasAll, lang + '.json : toutes les cles shell.* presentes (imbriquees, aplaties par tf-i18n)');
 }
 for (const lang of ['tr', 'zh']) {
-  const catalog = JSON.parse(read('assets/i18n/' + lang + '.json'));
-  check(!Object.keys(catalog).some((k) => k.startsWith('shell.')),
-    lang + '.json : namespace shell exclu (locales partielles)');
+  check(!existsSync(join(ROOT, `assets/i18n/${lang}.json`)),
+    lang + '.json : locale partielle retiree du produit (chantier 15)');
 }
 
 /* --- 6. generateur ---------------------------------------------------------- */

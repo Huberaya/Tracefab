@@ -120,8 +120,8 @@ for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   check(hasAll, lang + '.json : toutes les cles portal2.* presentes');
 }
 for (const lang of ['tr', 'zh']) {
-  const catalog = JSON.parse(read('assets/i18n/' + lang + '.json'));
-  check(!('portal2' in catalog), lang + '.json : namespace portal2 exclu (locales partielles, repli EN)');
+  check(!existsSync(join(ROOT, `assets/i18n/${lang}.json`)),
+    lang + '.json : locale partielle retiree du produit (chantier 15)');
 }
 
 /* --- 6. generateur --------------------------------------------------------------------- */

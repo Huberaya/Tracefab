@@ -1107,7 +1107,7 @@
       const status = (value) => `<span class="status status-${esc(value)}">${esc(statusLabel(value) || '—')}</span>`;
       const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
       // Dates and numbers used to render French whatever the chosen language.
-      const BCP47 = { fr:'fr-FR', en:'en-GB', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT', tr:'tr-TR', zh:'zh-CN' };
+      const BCP47 = { fr:'fr-FR', en:'en-GB', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT' };
       const locale = () => BCP47[state.lang] || 'en-GB';
       const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle: 'medium' }).format(new Date(value)) : '—';
       const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits: 0 });
@@ -1144,19 +1144,13 @@
 
       // chiffres, aucune derive entre deux rechargements.
 
-      const DEMO_PAYS = [
-
-        ['PT','Portugal'], ['IT','Italie'], ['FR','France'], ['DE','Allemagne'],
-
-        ['TR','Turquie'], ['IN','Inde'], ['BD','Bangladesh'], ['VN','Vietnam'],
-
-        ['CN','Chine'], ['MA','Maroc'], ['TN','Tunisie'], ['US','Etats-Unis'],
-
-        ['ES','Espagne'], ['PL','Pologne'], ['RO','Roumanie'], ['GR','Grece'],
-
-        ['EG','Egypte'], ['LK','Sri Lanka'],
-
-      ];
+      /* Codes des pays de demonstration : les noms affiches sont derives
+         de la langue active (Intl.DisplayNames), pas figes en francais. */
+      const DEMO_PAYS = ['PT','IT','FR','DE','TR','IN','BD','VN','CN','MA','TN','US','ES','PL','RO','GR','EG','LK'];
+      const demoCountryName = (code) => {
+        try { return new Intl.DisplayNames([locale()], { type: 'region' }).of(code) || code; }
+        catch { return code; }
+      };
 
       function demoAlea(graine) {
 
@@ -1210,7 +1204,8 @@
 
         for (let i = 0; i < manqueF; i += 1) {
 
-          const [code, pays] = DEMO_PAYS[i % DEMO_PAYS.length];
+          const code = DEMO_PAYS[i % DEMO_PAYS.length];
+          const pays = demoCountryName(code);
 
           const rang = 1 + (i % 4);
 
@@ -1739,7 +1734,7 @@
         return `${state.demo ? '<div class="demo-banner">' + bt('shDemoMode') + '</div>' : ''}
           <div class="app">
             <aside class="sidebar">
-              <div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div>
+              <div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>${esc(b15('console.brandConsoleLabel'))}</small></div></div>
               <nav class="nav">
                 <div class="nav-section-title">${esc(bt('navMain'))}</div>
                 ${navButton('overview', '⌂', bt('overview'))}
@@ -1809,6 +1804,27 @@
         return T.t('console.' + key, null) || T.t('shared.' + key, key);
       }
 
+      /* Chantier 15 — i18n complet : helper du namespace i18n15 avec
+         interpolation {slot}. Aucun texte metier ne vit dans la vue. */
+      function b15(key, vars = {}) {
+        const T = window.TF_I18N;
+        let text = T ? T.t('i18n15.' + key, null) : null;
+        if (text == null) text = key;
+        for (const [name, value] of Object.entries(vars)) text = text.split(`{${name}}`).join(String(value));
+        return text;
+      }
+
+      /* Chantier 15 — metadonnees localisees de la SPA (titre + description),
+         reappliquees a chaque changement de langue. */
+      function applyConsoleMeta() {
+        const T = window.TF_I18N; if (!T) return;
+        const title = T.t('i18n15.appMeta.consoleTitle', null);
+        if (title) document.title = title;
+        const desc = T.t('i18n15.appMeta.consoleDesc', null);
+        const tag = document.querySelector('meta[name="description"]');
+        if (desc && tag) tag.setAttribute('content', desc);
+      }
+
       function brandLangSwitcher() {
         return `<select class="org-select" id="brand-lang-select" onchange="setBrandLang(this.value)" style="margin-right:8px;font-family:inherit;font-weight:700;">
           <option value="en" ${state.lang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
@@ -1839,6 +1855,7 @@
       document.addEventListener('tf:languagechange', (event) => {
         state.lang = event.detail.lang;
         document.documentElement.lang = state.lang;
+        applyConsoleMeta();
         if (i18nReady) render();
       });
 
@@ -1884,10 +1901,10 @@
       };
       const iaCategoryBadge = (category) => {
         const map = {
-          known: ['status-approved', ia('category.known', 'Known')],
-          inferred: ['status-draft', ia('category.inferred', 'Inferred')],
-          missing: ['status-changes_requested', ia('category.missing', 'Missing')],
-          needs_review: ['status-needs_review', ia('category.needsReview', 'Needs review')],
+          known: ['status-approved', ia('category.known')],
+          inferred: ['status-draft', ia('category.inferred')],
+          missing: ['status-changes_requested', ia('category.missing')],
+          needs_review: ['status-needs_review', ia('category.needsReview')],
         };
         const [cls, label] = map[category] || ['status-draft', category];
         return `<span class="status ${cls}">${esc(label)}</span>`;
@@ -1950,37 +1967,37 @@
 
         return `<div>
           <div class="card panel" style="border-left:3px solid var(--green)">
-            <div class="meta" style="text-transform:uppercase;letter-spacing:0.08em;font-weight:800">${ia('hero.tag', '')}</div>
+            <div class="meta" style="text-transform:uppercase;letter-spacing:0.08em;font-weight:800">${ia('hero.tag')}</div>
             <h1 style="margin:6px 0">TRACEFAB Intelligence</h1>
             <p>${esc(bt('iaIntro'))}</p>
             <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);margin-top:8px">
-              <div style="font-size:12px;line-height:1.5">${ia('hero.guard', '')}</div>
+              <div style="font-size:12px;line-height:1.5">${ia('hero.guard')}</div>
             </div>
           </div>
 
           <div class="card panel" style="margin-top:18px">
-            <div class="panel-head"><h2>${ia('intents.title', '')}</h2></div>
+            <div class="panel-head"><h2>${ia('intents.title')}</h2></div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
               ${IA_INTENTS.map((it) => `<button class="btn ${intent === it.id ? 'btn-primary' : 'btn-secondary'} btn-small" data-action="intel-ask" data-intent="${it.id}">${esc(ia('intents.' + it.id, it.id))}</button>`).join('')}
             </div>
             <form id="intel-ask-form" style="display:flex;gap:10px;flex-wrap:wrap">
-              <input class="input" name="question" style="flex:1;min-width:240px" placeholder="${ia('input.placeholder', '')}">
-              <button class="btn btn-primary" type="submit">${ia('input.cta', 'Ask')}</button>
+              <input class="input" name="question" style="flex:1;min-width:240px" placeholder="${ia('input.placeholder')}">
+              <button class="btn btn-primary" type="submit">${ia('input.cta')}</button>
             </form>
           </div>
 
           ${state.intelState === 'notCovered' ? `<div class="card panel" style="margin-top:18px">
-            <div class="panel-head"><h2>${ia('notCovered.title', '')}</h2></div>
+            <div class="panel-head"><h2>${ia('notCovered.title')}</h2></div>
             <p>« ${esc(state.intelQuery || '')} »</p>
-            <p class="meta">${ia('notCovered.body', '')}</p>
+            <p class="meta">${ia('notCovered.body')}</p>
           </div>` : ''}
 
-          ${state.intelLoading ? `<div class="card panel" style="margin-top:18px"><p class="meta">${ia('answer.loading', '')}</p></div>` : ''}
-          ${state.intelError ? `<div class="card panel" style="margin-top:18px"><p style="color:#b91c1c">${ia('answer.error', '')}</p><p class="meta">${esc(state.intelError)}</p></div>` : ''}
+          ${state.intelLoading ? `<div class="card panel" style="margin-top:18px"><p class="meta">${ia('answer.loading')}</p></div>` : ''}
+          ${state.intelError ? `<div class="card panel" style="margin-top:18px"><p style="color:#b91c1c">${ia('answer.error')}</p><p class="meta">${esc(state.intelError)}</p></div>` : ''}
 
           ${answer && state.intelState === 'answered' ? `<div class="card panel" style="margin-top:18px">
-            <div class="panel-head"><h2>${ia('answer.title', '')} — ${esc(ia('intents.' + intent, intent))}</h2>
-              <span class="meta">${ia('answer.computedAt', 'Computed on')} ${date(answer.computedAt)}${answer.demo ? ' · demo' : ''} · ${ia('answer.window', 'window: {days} day(s)').replace('{days}', String(windowDays))}</span></div>
+            <div class="panel-head"><h2>${ia('answer.title')} — ${esc(ia('intents.' + intent, intent))}</h2>
+              <span class="meta">${ia('answer.computedAt')} ${date(answer.computedAt)}${answer.demo ? ' · demo' : ''} · ${ia('answer.window').replace('{days}', String(windowDays))}</span></div>
             <p style="font-size:14.5px;line-height:1.6"><strong>${esc(ia('summary.' + intent, summaryVars))}</strong></p>
             <div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0">
               ${iaCategoryBadge('known')} <span class="meta" style="align-self:center">${counts.known}</span>
@@ -1989,22 +2006,22 @@
               ${iaCategoryBadge('needs_review')} <span class="meta" style="align-self:center">${counts.needs_review}</span>
             </div>
             ${findings.length ? `<div class="table-wrap"><table>
-              <thead><tr><th>${ia('table.entity', 'Entity')}</th><th>${ia('table.detail', 'Detail')}</th><th>${ia('table.daysLeft', 'Days left')}</th><th style="text-align:right">${ia('table.open', 'Open')}</th></tr></thead>
+              <thead><tr><th>${ia('table.entity')}</th><th>${ia('table.detail')}</th><th>${ia('table.daysLeft')}</th><th style="text-align:right">${ia('table.open')}</th></tr></thead>
               <tbody>
                 ${findings.map((f) => `<tr>
                   <td>${iaCategoryBadge(f.category)}</td>
                   <td><strong>${esc(f.label)}</strong>${f.sub ? `<div class="meta">${esc(f.sub)}</div>` : ''}${f.expiresAt ? `<div class="meta">${date(f.expiresAt)}</div>` : ''}</td>
                   <td>${f.daysLeft != null ? esc(String(f.daysLeft)) : '—'}</td>
                   <td style="text-align:right">
-                    ${f.entityType === 'certification' ? `<button class="btn btn-secondary btn-small" data-view="certifications">${ia('table.open', 'Open')}</button>` : ''}
-                    ${f.entityType === 'product' ? `<button class="btn btn-secondary btn-small" data-product-id="${esc(f.id)}">${ia('table.open', 'Open')}</button>` : ''}
-                    ${f.entityType === 'document' ? `<button class="btn btn-secondary btn-small" data-view="documents">${ia('table.open', 'Open')}</button>` : ''}
+                    ${f.entityType === 'certification' ? `<button class="btn btn-secondary btn-small" data-view="certifications">${ia('table.open')}</button>` : ''}
+                    ${f.entityType === 'product' ? `<button class="btn btn-secondary btn-small" data-product-id="${esc(f.id)}">${ia('table.open')}</button>` : ''}
+                    ${f.entityType === 'document' ? `<button class="btn btn-secondary btn-small" data-view="documents">${ia('table.open')}</button>` : ''}
                   </td>
                 </tr>`).join('')}
               </tbody>
-            </table></div>` : `<div class="empty"><p>${ia('answer.empty', '')}</p></div>`}
-            <p class="meta" style="margin-top:12px">${ia('answer.basedOn', 'Based on')} : ${ia('sources.certifications', { n: answer.basedOn?.certifications ?? 0 })} · ${ia('sources.products', { n: answer.basedOn?.products ?? 0 })} · ${ia('sources.documents', { n: answer.basedOn?.documents ?? 0 })}.</p>
-            <p class="meta" style="margin-top:4px">${ia('legend.note', '')}</p>
+            </table></div>` : `<div class="empty"><p>${ia('answer.empty')}</p></div>`}
+            <p class="meta" style="margin-top:12px">${ia('answer.basedOn')} : ${ia('sources.certifications', { n: answer.basedOn?.certifications ?? 0 })} · ${ia('sources.products', { n: answer.basedOn?.products ?? 0 })} · ${ia('sources.documents', { n: answer.basedOn?.documents ?? 0 })}.</p>
+            <p class="meta" style="margin-top:4px">${ia('legend.note')}</p>
           </div>` : ''}
         </div>`;
       }
@@ -2048,7 +2065,7 @@
 
       function render() {
         if (state.configError && !state.demo && !state.user) {
-          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>Connexion indisponible</h1><p>${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
+          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">${esc(b15('console.consoleName'))}</div><h1>${esc(b15('console.loginUnavailable'))}</h1><p>${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
         }
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>${esc(bt('cnLoadingTitle'))}</h1><p>${esc(bt('cnLoadingSub'))}</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }
@@ -2076,7 +2093,7 @@
       }
 
       function renderAuth() {
-        app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>brand console</small></div></div><h1>${esc(bt('cnAuthTitle'))}</h1><p>${esc(bt('cnAuthSub'))}</p><ul><li>${esc(bt('cnAuthF1'))}</li><li>${esc(bt('cnAuthF2'))}</li><li>${esc(bt('cnAuthF3'))}</li></ul></div><div class="auth-box"><div class="eyebrow">Espace marque</div><h2>Se connecter</h2><p>${esc(bt('cnAuthAccess'))}</p><div id="clerk-sign-in"></div></div></div></div>`;
+        app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>${esc(b15('console.brandConsoleLabel'))}</small></div></div><h1>${esc(bt('cnAuthTitle'))}</h1><p>${esc(bt('cnAuthSub'))}</p><ul><li>${esc(bt('cnAuthF1'))}</li><li>${esc(bt('cnAuthF2'))}</li><li>${esc(bt('cnAuthF3'))}</li></ul></div><div class="auth-box"><div class="eyebrow">${esc(b15('console.eyBrandSpace'))}</div><h2>${esc(b15('console.signIn'))}</h2><p>${esc(bt('cnAuthAccess'))}</p><div id="clerk-sign-in"></div></div></div></div>`;
         if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'), { appearance: { elements: { card: 'shadow-none', rootBox: 'w-full' } } });
       }
 
@@ -2086,8 +2103,8 @@
         const qList = state.questionnaires || [];
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Form Studio & Custom Compliance Protocols</div>
-            <h1>Questionnaire Builder</h1>
+            <div class="eyebrow">${esc(b15('console.eyFormStudioProtocols'))}</div>
+            <h1>${esc(b15('console.questionnaireBuilder'))}</h1>
             <p>${esc(bt('cnQnIntro'))}</p>
           </div>
           <div class="actions">
@@ -2100,7 +2117,7 @@
           <!-- Questionnaires Catalog List -->
           <div class="card panel">
             <div class="panel-head">
-              <h2>Protocoles d'Audit Actifs (${qList.length})</h2>
+              <h2>${esc(b15('console.activeAuditProtocols', { count: qList.length }))}</h2>
               <span class="meta">${bt('qbSchemas')}</span>
             </div>
             <div class="item-list">
@@ -2191,7 +2208,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>${bt('mtName')}</th><th>${bt('mtType')}</th><th>${bt('mtOrigin')}</th><th>${bt('mtRecycled')}</th><th>Certifications</th><th>${bt('mtTier')}</th><th style="text-align:right">${bt('mtActions')}</th></tr>
+                <tr><th>${bt('mtName')}</th><th>${bt('mtType')}</th><th>${bt('mtOrigin')}</th><th>${bt('mtRecycled')}</th><th>${esc(b15('console.tableCertifications'))}</th><th>${bt('mtTier')}</th><th style="text-align:right">${bt('mtActions')}</th></tr>
               </thead>
               <tbody>
                 ${mats.map((m) => `<tr>
@@ -2360,7 +2377,7 @@
                 <strong style="display:block;font-size:12px;font-family:var(--font-mono);margin-top:3px;">${esc(node.coordinates)}</strong>
               </div>
               <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
-                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">Lot / Batch ID</span>
+                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">${esc(b15('console.lotBatchId'))}</span>
                 <strong style="display:block;font-size:12px;font-family:var(--font-mono);margin-top:3px;">${esc(node.batchLot)}</strong>
               </div>
               <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
@@ -2642,7 +2659,7 @@
          La vue marque inclut les certificats des fournisseurs actifs ; la
          couverture du catalogue versionne est affichee a titre informatif,
          jamais comme une exigence de conformite. */
-      const bc = (key, fb) => (window.TF_I18N ? window.TF_I18N.t('certifications.' + key, fb) : fb);
+      const bc = (key) => (window.TF_I18N ? window.TF_I18N.t('certifications.' + key, key) : key);
       const certNorm = (c) => ({
         raw: c,
         id: c.id || null,
@@ -2673,7 +2690,7 @@
       };
       const certHealthBadge = (health) => {
         const cls = health === 'valid' ? 'status-approved' : health === 'expiring' ? 'status-needs_review' : health === 'expired' ? 'status-changes_requested' : 'status-draft';
-        const labels = { valid: bc('health.valid', 'Valid'), expiring: bc('health.expiring', 'Expiring'), expired: bc('health.expired', 'Expired'), needsReview: bc('health.needsReview', 'Needs review') };
+        const labels = { valid: bc('health.valid'), expiring: bc('health.expiring'), expired: bc('health.expired'), needsReview: bc('health.needsReview') };
         return `<span class="status ${cls}">${esc(labels[health])}</span>`;
       };
       const certStatusLabel = (status) => bc('statuses.' + status, status);
@@ -2684,12 +2701,12 @@
         return `<tr class="cert-review-row"><td colspan="9" style="background:#fbfaf8"><div style="padding:14px 18px">
           <form class="cert-review-form" data-review-id="${esc(cert.id)}" style="display:grid;gap:10px">
             <div class="form-grid" style="margin:0">
-              <label>${bc('review.status', 'Decision')}<select class="select" name="verificationStatus">${options.map((o) => `<option value="${o}">${esc(bc('review.statuses.' + o, o))}</option>`).join('')}</select></label>
-              <label>${bc('review.method', 'Method')}<input class="input" name="method" maxlength="240" required placeholder="Document check, issuer registry…"></label>
-              <label>${bc('review.notes', 'Notes')}<input class="input" name="notes" maxlength="2000"></label>
+              <label>${bc('review.status')}<select class="select" name="verificationStatus">${options.map((o) => `<option value="${o}">${esc(bc('review.statuses.' + o, o))}</option>`).join('')}</select></label>
+              <label>${bc('review.method')}<input class="input" name="method" maxlength="240" required placeholder="${esc(b15('console.reviewMethodPh'))}"></label>
+              <label>${bc('review.notes')}<input class="input" name="notes" maxlength="2000"></label>
             </div>
-            <p class="meta" style="margin:0">${bc('review.note', '')}</p>
-            <div class="form-actions" style="margin:0"><button class="btn btn-primary btn-small" type="submit">${bc('review.cta', 'Review')}</button></div>
+            <p class="meta" style="margin:0">${bc('review.note')}</p>
+            <div class="form-actions" style="margin:0"><button class="btn btn-primary btn-small" type="submit">${bc('review.cta')}</button></div>
           </form>
         </div></td></tr>`;
       }
@@ -2713,13 +2730,13 @@
           </div>
         </div>
 
-        <div class="panel-head" style="margin-top:6px"><h2>${bc('health.title', 'Certification health')}</h2><span class="meta">${bc('health.note', '')}</span></div>
+        <div class="panel-head" style="margin-top:6px"><h2>${bc('health.title')}</h2><span class="meta">${bc('health.note')}</span></div>
         <div class="pil-summary-grid">
-          <div class="pil-summary-cell"><div class="pil-summary-num">${certs.length}</div><span class="pil-summary-label">${bc('health.total', 'Certificates tracked')}</span></div>
-          <div class="pil-summary-cell"><div class="pil-summary-num">${health.valid}</div><span class="pil-summary-label">${bc('health.valid', 'Valid')}</span></div>
-          <div class="pil-summary-cell"><div class="pil-summary-num">${health.expiring}</div><span class="pil-summary-label">${bc('health.expiring', 'Expiring within 90 days')}</span></div>
-          <div class="pil-summary-cell"><div class="pil-summary-num">${health.expired}</div><span class="pil-summary-label">${bc('health.expired', 'Expired')}</span></div>
-          <div class="pil-summary-cell"><div class="pil-summary-num">${health.needsReview}</div><span class="pil-summary-label">${bc('health.needsReview', 'Needs review')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${certs.length}</div><span class="pil-summary-label">${bc('health.total')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${health.valid}</div><span class="pil-summary-label">${bc('health.valid')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${health.expiring}</div><span class="pil-summary-label">${bc('health.expiring')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${health.expired}</div><span class="pil-summary-label">${bc('health.expired')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${health.needsReview}</div><span class="pil-summary-label">${bc('health.needsReview')}</span></div>
         </div>
 
         <div class="grid split" style="margin-top:18px">
@@ -2727,14 +2744,14 @@
             <div class="panel-head"><h2>${esc(bt('certActiveTitle'))} (${certs.length})</h2></div>
             ${certs.length ? `<div class="table-wrap"><table>
               <thead><tr>
-                <th>${bc('table.standard', 'Standard')}</th>
-                <th>${bc('table.number', 'Certificate number')}</th>
-                <th>${bc('table.issuer', 'Issuer')}</th>
-                <th>${bc('table.owner', 'Owner')}</th>
-                <th>${bc('table.expires', 'Expires')}</th>
-                <th>${bc('table.status', 'Status')}</th>
-                <th>${bc('table.health', 'Health')}</th>
-                <th>${bc('table.verifications', 'Verifications')}</th>
+                <th>${bc('table.standard')}</th>
+                <th>${bc('table.number')}</th>
+                <th>${bc('table.issuer')}</th>
+                <th>${bc('table.owner')}</th>
+                <th>${bc('table.expires')}</th>
+                <th>${bc('table.status')}</th>
+                <th>${bc('table.health')}</th>
+                <th>${bc('table.verifications')}</th>
                 <th style="text-align:right"></th>
               </tr></thead>
               <tbody>
@@ -2748,11 +2765,11 @@
                   <td>${certHealthBadge(certHealth(c))}</td>
                   <td>${c.verificationCount}</td>
                   <td style="text-align:right"><div class="actions" style="justify-content:flex-end">
-                    ${c.ownedByBrand && c.id ? `<button class="btn btn-secondary btn-small" data-action="cert-review" data-cert-id="${esc(c.id)}">${bc('review.cta', 'Review')}</button>` : ''}
+                    ${c.ownedByBrand && c.id ? `<button class="btn btn-secondary btn-small" data-action="cert-review" data-cert-id="${esc(c.id)}">${bc('review.cta')}</button>` : ''}
                   </div></td>
                 </tr>${certReviewRow(c)}`).join('')}
               </tbody>
-            </table></div>` : `<div class="empty"><div class="empty-icon">🛡</div><strong>${bc('empty.title', 'No certification tracked yet')}</strong><p>${bc('empty.sub', '')}</p></div>`}
+            </table></div>` : `<div class="empty"><div class="empty-icon">🛡</div><strong>${bc('empty.title')}</strong><p>${bc('empty.sub')}</p></div>`}
           </div>
         </div>
 
@@ -2762,36 +2779,36 @@
             <div style="font-size:12.5px;color:var(--muted);display:grid;gap:12px;">
               ${(() => {
                 const bientot = certs.filter((c) => { const j = certJours({ expires: c.expires }); return c.expires && j <= 90; }).sort((a, b) => certJours({ expires: a.expires }) - certJours({ expires: b.expires }));
-                if (!bientot.length) return `<p>${bc('watch.none', 'No certification expires within 90 days.')}</p>`;
+                if (!bientot.length) return `<p>${bc('watch.none')}</p>`;
                 const t = bientot[0];
-                return `<p><strong>${bientot.length}</strong> ${bc('watch.count', 'certification(s) expire within 90 days.')}<br>
-                  ${bc('watch.next', 'Next renewal')} : <strong>${esc(t.name)}</strong> — ${certJours({ expires: t.expires })} ${bc('watch.daysLeft', 'day(s) left')}.</p>`;
+                return `<p><strong>${bientot.length}</strong> ${bc('watch.count')}<br>
+                  ${bc('watch.next')} : <strong>${esc(t.name)}</strong> — ${certJours({ expires: t.expires })} ${bc('watch.daysLeft')}.</p>`;
               })()}
               <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);">
-                <strong style="color:var(--green-dark);">${bc('watch.ruleTitle', '')}</strong>
-                <div style="font-size:11px;margin-top:4px;">${bc('watch.ruleBody', '')}</div>
+                <strong style="color:var(--green-dark);">${bc('watch.ruleTitle')}</strong>
+                <div style="font-size:11px;margin-top:4px;">${bc('watch.ruleBody')}</div>
               </div>
             </div>
           </div>
           <div class="card panel">
-            <div class="panel-head"><h2>${bc('coverage.title', 'Catalog coverage')}</h2></div>
-            <p class="meta" style="margin-top:0">${bc('coverage.note', '')}</p>
-            ${standards.length ? `<p><strong>${covered.length}</strong> ${bc('coverage.covered', '')} · <strong>${uncovered.length}</strong> ${bc('coverage.uncovered', '')}</p>
-              ${uncovered.length ? `<div class="meta" style="display:flex;flex-wrap:wrap;gap:6px">${uncovered.map((s) => `<span class="cert-pill">${esc(s.code)}</span>`).join('')}</div>` : `<p class="meta">${bc('coverage.none', '')}</p>`}` : `<p class="meta">—</p>`}
+            <div class="panel-head"><h2>${bc('coverage.title')}</h2></div>
+            <p class="meta" style="margin-top:0">${bc('coverage.note')}</p>
+            ${standards.length ? `<p><strong>${covered.length}</strong> ${bc('coverage.covered')} · <strong>${uncovered.length}</strong> ${bc('coverage.uncovered')}</p>
+              ${uncovered.length ? `<div class="meta" style="display:flex;flex-wrap:wrap;gap:6px">${uncovered.map((s) => `<span class="cert-pill">${esc(s.code)}</span>`).join('')}</div>` : `<p class="meta">${bc('coverage.none')}</p>`}` : `<p class="meta">—</p>`}
           </div>
         </div>
 
         <div class="card panel" style="margin-top:18px">
-          <div class="panel-head"><h2>${bc('declare.title', 'Declare a certification')}</h2></div>
+          <div class="panel-head"><h2>${bc('declare.title')}</h2></div>
           <form id="cert-declare-form" class="form-grid">
-            <label>${bc('declare.standard', 'Standard name')}<input class="input" name="standardName" maxlength="240" required list="cert-standards-list">${certificateDocs.length || standards.length ? `<datalist id="cert-standards-list">${standards.map((s) => `<option value="${esc(s.name)}">`).join('')}</datalist>` : ''}</label>
-            <label>${bc('declare.standardCode', 'Standard code')}<input class="input" name="standardCode" maxlength="120"></label>
-            <label>${bc('declare.issuer', 'Issuer')}<input class="input" name="issuerName" maxlength="240"></label>
-            <label>${bc('declare.number', 'Certificate number')}<input class="input" name="certificateNumber" maxlength="180"></label>
-            <label>${bc('declare.issuedAt', 'Issued on')}<input class="input" name="issuedAt" type="date"></label>
-            <label>${bc('declare.expiresAt', 'Expires on')}<input class="input" name="expiresAt" type="date"></label>
-            <label class="field-full">${bc('declare.document', 'Supporting evidence')}<select class="select" name="documentId"><option value="">${bc('declare.documentNone', 'No evidence yet')}</option>${certificateDocs.map((d) => `<option value="${esc(d.id)}">${esc(d.originalFilename)}</option>`).join('')}</select></label>
-            <div class="form-actions field-full"><button class="btn btn-primary" type="submit">${bc('declare.cta', 'Declare')}</button></div>
+            <label>${bc('declare.standard')}<input class="input" name="standardName" maxlength="240" required list="cert-standards-list">${certificateDocs.length || standards.length ? `<datalist id="cert-standards-list">${standards.map((s) => `<option value="${esc(s.name)}">`).join('')}</datalist>` : ''}</label>
+            <label>${bc('declare.standardCode')}<input class="input" name="standardCode" maxlength="120"></label>
+            <label>${bc('declare.issuer')}<input class="input" name="issuerName" maxlength="240"></label>
+            <label>${bc('declare.number')}<input class="input" name="certificateNumber" maxlength="180"></label>
+            <label>${bc('declare.issuedAt')}<input class="input" name="issuedAt" type="date"></label>
+            <label>${bc('declare.expiresAt')}<input class="input" name="expiresAt" type="date"></label>
+            <label class="field-full">${bc('declare.document')}<select class="select" name="documentId"><option value="">${bc('declare.documentNone')}</option>${certificateDocs.map((d) => `<option value="${esc(d.id)}">${esc(d.originalFilename)}</option>`).join('')}</select></label>
+            <div class="form-actions field-full"><button class="btn btn-primary" type="submit">${bc('declare.cta')}</button></div>
           </form>
         </div>`;
       }
@@ -2812,7 +2829,7 @@
         if (!data.standardName?.trim()) throw new Error('invalid_certification_standard_name');
         if (state.demo) {
           state.certifications.unshift({ id: `demo-cert-${Date.now()}`, standard: data.standardName.trim(), standardCode: data.standardCode || null, number: data.certificateNumber || null, issuer: data.issuerName || null, issued: data.issuedAt || null, expires: data.expiresAt || null, status: data.documentId ? 'documented' : 'declared', ownedByBrand: true, verificationCount: 0 });
-          notify(bc('declare.successDemo', 'Demonstration mode: certification added locally.'));
+          notify(bc('declare.successDemo'));
           render();
           return;
         }
@@ -2826,7 +2843,7 @@
           documentId: data.documentId || undefined,
         }) });
         await refreshCertifications();
-        notify(bc('declare.success', 'Certification declared.'));
+        notify(bc('declare.success'));
       }
 
       async function reviewCertification(form) {
@@ -2840,14 +2857,14 @@
             cert.lastVerifiedAt = new Date().toISOString();
           }
           state.certReview = null;
-          notify(bc('review.successDemo', 'Demonstration mode: review applied locally.'));
+          notify(bc('review.successDemo'));
           render();
           return;
         }
         await api(`/api/certifications/${encodeURIComponent(id)}/review`, { method: 'POST', body: JSON.stringify({ verificationStatus: data.verificationStatus, method: data.method.trim(), notes: data.notes || undefined }) });
         state.certReview = null;
         await refreshCertifications();
-        notify(bc('review.success', 'Review recorded.'));
+        notify(bc('review.success'));
       }
 
       // dppConsoleView a ete supprimee au chantier 8. La fonction n'etait
@@ -2858,7 +2875,7 @@
       function reportsConsoleView() {
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Reporting & CSRD Audits</div>
+            <div class="eyebrow">${esc(b15('console.eyReportingCsrd'))}</div>
             <h1>${bt('rpTitle')}</h1>
             <p>${bt('rpIntro')}</p>
           </div>
@@ -2887,7 +2904,7 @@
             </div>
           </div>
           <div class="card panel">
-            <div class="panel-head"><h2>Piste d'audit immuable</h2></div>
+            <div class="panel-head"><h2>${esc(b15('console.auditTrail'))}</h2></div>
             <p style="font-size:12px;color:var(--muted);line-height:1.6;">${bt('rpIntegrityNote')}</p>
           </div>
         </div>`;
@@ -2896,8 +2913,8 @@
       function settingsConsoleView() {
         return `<div class="page-head">
           <div>
-            <div class="eyebrow">Configuration</div>
-            <h1>Settings & Governance</h1>
+            <div class="eyebrow">${esc(b15('console.eyConfiguration'))}</div>
+            <h1>${esc(b15('console.settingsGovernance'))}</h1>
             <p>${bt('stIntro')}</p>
           </div>
           <div class="actions">
@@ -2923,7 +2940,7 @@
 
         /* Chantier 05 — Brand Command Center : metriques derivees de l etat. */
         const nowTs = Date.now();
-        const tcc = (key, fb) => (window.TF_I18N ? window.TF_I18N.t(key, fb) : fb);
+        const tcc = (key) => (window.TF_I18N ? window.TF_I18N.t(key, key) : key);
         const allProducts = state.products || [];
         const openRequests = state.requests.filter((r) => !['approved', 'cancelled'].includes(r.status));
         const overdueRequests = openRequests.filter((r) => r.dueAt && new Date(r.dueAt).getTime() < nowTs);
@@ -2941,10 +2958,10 @@
         const avgDpp = dpps.length ? Math.round((dpps.reduce((a, b) => a + b, 0) / dpps.length) * 10) / 10 : null;
 
         const chipFor = (value, warnBelow, critBelow) => {
-          if (value === null || value === undefined) return `<span class="cc-chip cc-chip-none">${tcc('command.chip.unknown', '—')}</span>`;
-          if (value < critBelow) return `<span class="cc-chip cc-chip-crit">${tcc('command.chip.critical', '!')}</span>`;
-          if (value < warnBelow) return `<span class="cc-chip cc-chip-warn">${tcc('command.chip.attention', '~')}</span>`;
-          return `<span class="cc-chip cc-chip-ok">${tcc('command.chip.onTrack', 'OK')}</span>`;
+          if (value === null || value === undefined) return `<span class="cc-chip cc-chip-none">${tcc('command.chip.unknown')}</span>`;
+          if (value < critBelow) return `<span class="cc-chip cc-chip-crit">${tcc('command.chip.critical')}</span>`;
+          if (value < warnBelow) return `<span class="cc-chip cc-chip-warn">${tcc('command.chip.attention')}</span>`;
+          return `<span class="cc-chip cc-chip-ok">${tcc('command.chip.onTrack')}</span>`;
         };
         const kpi = (view, value, label, chip) => `<button type="button" class="cc-kpi" data-view="${view}"><span class="cc-kpi-num">${value}</span><span class="cc-kpi-label">${label}${chip ? ' ' + chip : ''}</span></button>`;
         const pill = (count, severity, label, sub, view) => `<button type="button" class="cc-pill" data-severity="${severity}" data-view="${view}"><span class="cc-pill-num">${count}</span><span><span class="cc-pill-label">${label}</span>${sub ? `<span class="cc-pill-sub">${sub}</span>` : ''}</span></button>`;
@@ -2954,7 +2971,7 @@
           <!-- Mission Control Strip -->
           <div class="mc-hero-strip">
             <div>
-              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#34d399;font-weight:700;letter-spacing:0.12em;margin-bottom:6px;">MISSION CONTROL CENTER · LAYER 01–07</div>
+              <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#34d399;font-weight:700;letter-spacing:0.12em;margin-bottom:6px;">${esc(b15('console.missionControl'))}</div>
               <h1 class="mc-headline">${bt('ovEyebrow')}</h1>
               <p class="mc-subline">${bt('ovSubline')}</p>
             </div>
@@ -2967,54 +2984,54 @@
           <div class="cc-section">
             <div class="cc-section-head">
               <div>
-                <h2 class="cc-section-title">01 / ${tcc('command.section.where', 'Where are we')}</h2>
-                <p class="cc-section-note">${tcc('command.section.note', 'Live workspace metrics.')}</p>
+                <h2 class="cc-section-title">01 / ${tcc('command.section.where')}</h2>
+                <p class="cc-section-note">${tcc('command.section.note')}</p>
               </div>
             </div>
             <div class="cc-kpi-grid">
-              ${kpi('products', ag.produits, tcc('command.kpi.products', 'Products'))}
-              ${kpi('suppliers', ag.fournisseurs, tcc('command.kpi.suppliers', 'Suppliers'))}
-              ${kpi('supplyChain', ag.sites, tcc('command.kpi.sites', 'Production sites'))}
-              ${kpi('supplyChain', ag.pays, tcc('command.kpi.countries', 'Production countries'))}
-              ${kpi('products', avgCompletion === null ? '\u2014' : avgCompletion + '%', tcc('command.kpi.completeness', 'Avg. data completeness'), chipFor(avgCompletion, 80, 50))}
-              ${kpi('quality', avgQuality === null ? '\u2014' : avgQuality + '%', tcc('command.kpi.quality', 'Avg. supplier data quality'), chipFor(avgQuality, 80, 50))}
-              ${kpi('dpp', avgDpp === null ? '\u2014' : avgDpp + '%', tcc('command.kpi.dpp', 'DPP readiness'), chipFor(avgDpp, 80, 50))}
-              ${kpi('certifications', ag.certificats, tcc('command.kpi.certifications', 'Certifications'))}
+              ${kpi('products', ag.produits, tcc('command.kpi.products'))}
+              ${kpi('suppliers', ag.fournisseurs, tcc('command.kpi.suppliers'))}
+              ${kpi('supplyChain', ag.sites, tcc('command.kpi.sites'))}
+              ${kpi('supplyChain', ag.pays, tcc('command.kpi.countries'))}
+              ${kpi('products', avgCompletion === null ? '\u2014' : avgCompletion + '%', tcc('command.kpi.completeness'), chipFor(avgCompletion, 80, 50))}
+              ${kpi('quality', avgQuality === null ? '\u2014' : avgQuality + '%', tcc('command.kpi.quality'), chipFor(avgQuality, 80, 50))}
+              ${kpi('dpp', avgDpp === null ? '\u2014' : avgDpp + '%', tcc('command.kpi.dpp'), chipFor(avgDpp, 80, 50))}
+              ${kpi('certifications', ag.certificats, tcc('command.kpi.certifications'))}
             </div>
           </div>
 
           <div class="cc-section">
-            <div class="cc-section-head"><h2 class="cc-section-title">02 / ${tcc('command.section.missing', "What's missing")}</h2></div>
+            <div class="cc-section-head"><h2 class="cc-section-title">02 / ${tcc('command.section.missing')}</h2></div>
             ${(!incompleteProducts.length && !counts.open && !awaitingReview.length)
-              ? `<div class="cc-empty">${tcc('command.missing.empty', 'Nothing missing.')}</div>`
+              ? `<div class="cc-empty">${tcc('command.missing.empty')}</div>`
               : `<div class="cc-pill-grid">
-                  ${incompleteProducts.length ? pill(incompleteProducts.length, 'warning', tcc('command.missing.incompleteProducts', 'Incomplete products'), tcc('command.kpi.completeness', ''), 'products') : ''}
-                  ${counts.open ? pill(counts.open, 'info', tcc('command.missing.openRequests', 'Open data requests'), '', 'requests') : ''}
-                  ${awaitingReview.length ? pill(awaitingReview.length, 'info', tcc('command.missing.awaitingReview', 'Responses awaiting review'), '', 'requests') : ''}
+                  ${incompleteProducts.length ? pill(incompleteProducts.length, 'warning', tcc('command.missing.incompleteProducts'), tcc('command.kpi.completeness'), 'products') : ''}
+                  ${counts.open ? pill(counts.open, 'info', tcc('command.missing.openRequests'), '', 'requests') : ''}
+                  ${awaitingReview.length ? pill(awaitingReview.length, 'info', tcc('command.missing.awaitingReview'), '', 'requests') : ''}
                 </div>`}
           </div>
 
           <div class="cc-section">
-            <div class="cc-section-head"><h2 class="cc-section-title">03 / ${tcc('command.section.risky', "What's risky")}</h2></div>
+            <div class="cc-section-head"><h2 class="cc-section-title">03 / ${tcc('command.section.risky')}</h2></div>
             ${(!overdueRequests.length && !dueSoonRequests.length && !reviewProducts.length && !certsExpiring.length)
-              ? `<div class="cc-empty">${tcc('command.risky.empty', 'No active risk detected.')}</div>`
+              ? `<div class="cc-empty">${tcc('command.risky.empty')}</div>`
               : `<div class="cc-pill-grid">
-                  ${overdueRequests.length ? pill(overdueRequests.length, 'critical', tcc('command.risky.overdue', 'Overdue requests'), '', 'requests') : ''}
-                  ${dueSoonRequests.length ? pill(dueSoonRequests.length, 'warning', tcc('command.risky.dueSoon', 'Due within 7 days'), '', 'requests') : ''}
-                  ${reviewProducts.length ? pill(reviewProducts.length, 'warning', tcc('command.risky.needsReview', 'Products needing review'), '', 'products') : ''}
-                  ${certsExpiring.length ? pill(certsExpiring.length, 'warning', tcc('command.risky.certsExpiring', 'Certifications expiring within 90 days'), '', 'certifications') : ''}
+                  ${overdueRequests.length ? pill(overdueRequests.length, 'critical', tcc('command.risky.overdue'), '', 'requests') : ''}
+                  ${dueSoonRequests.length ? pill(dueSoonRequests.length, 'warning', tcc('command.risky.dueSoon'), '', 'requests') : ''}
+                  ${reviewProducts.length ? pill(reviewProducts.length, 'warning', tcc('command.risky.needsReview'), '', 'products') : ''}
+                  ${certsExpiring.length ? pill(certsExpiring.length, 'warning', tcc('command.risky.certsExpiring'), '', 'certifications') : ''}
                 </div>`}
           </div>
 
           <div class="cc-section">
-            <div class="cc-section-head"><h2 class="cc-section-title">04 / ${tcc('command.section.next', 'Next actions')}</h2></div>
+            <div class="cc-section-head"><h2 class="cc-section-title">04 / ${tcc('command.section.next')}</h2></div>
             ${(() => {
               const items = [];
-              if (overdueRequests.length) items.push(nextItem(tcc('command.next.remindOverdue', 'Follow up on overdue requests'), overdueRequests.length + ' \u00b7 ' + tcc('command.risky.overdue', ''), `<button class="btn btn-primary btn-small" data-view="requests">${bt('ovSeeAll')}</button>`));
-              if (awaitingReview.length) items.push(nextItem(tcc('command.next.reviewSubmitted', 'Review submitted responses'), awaitingReview.length + ' \u00b7 ' + tcc('command.missing.awaitingReview', ''), `<button class="btn btn-primary btn-small" data-view="requests">${bt('ovSeeAll')}</button>`));
-              if (incompleteProducts.length) items.push(nextItem(tcc('command.next.collectMissing', 'Launch a collection for incomplete products'), incompleteProducts.length + ' \u00b7 ' + tcc('command.missing.incompleteProducts', ''), `<button class="btn btn-primary btn-small" data-action="new-request">${bt('ovNewRequest')}</button>`));
-              if (!suppliers().length) items.push(nextItem(tcc('command.next.inviteFirst', 'Invite your first supplier'), '', `<button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button>`));
-              return items.length ? `<div class="cc-next-list">${items.join('')}</div>` : `<div class="cc-empty">${tcc('command.next.empty', 'No priority action right now.')}</div>`;
+              if (overdueRequests.length) items.push(nextItem(tcc('command.next.remindOverdue'), overdueRequests.length + ' \u00b7 ' + tcc('command.risky.overdue'), `<button class="btn btn-primary btn-small" data-view="requests">${bt('ovSeeAll')}</button>`));
+              if (awaitingReview.length) items.push(nextItem(tcc('command.next.reviewSubmitted'), awaitingReview.length + ' \u00b7 ' + tcc('command.missing.awaitingReview'), `<button class="btn btn-primary btn-small" data-view="requests">${bt('ovSeeAll')}</button>`));
+              if (incompleteProducts.length) items.push(nextItem(tcc('command.next.collectMissing'), incompleteProducts.length + ' \u00b7 ' + tcc('command.missing.incompleteProducts'), `<button class="btn btn-primary btn-small" data-action="new-request">${bt('ovNewRequest')}</button>`));
+              if (!suppliers().length) items.push(nextItem(tcc('command.next.inviteFirst'), '', `<button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button>`));
+              return items.length ? `<div class="cc-next-list">${items.join('')}</div>` : `<div class="cc-empty">${tcc('command.next.empty')}</div>`;
             })()}
           </div>
 
@@ -3029,7 +3046,7 @@
             </div>
 
             <div class="card panel">
-              <div class="panel-head"><h2>Actions d'infrastructure rapides</h2></div>
+              <div class="panel-head"><h2>${esc(b15('console.quickInfraActions'))}</h2></div>
               <div class="quick-grid">
                 <button class="quick" data-action="new-request">
                   <span class="quick-icon">↗</span>
@@ -3054,8 +3071,8 @@
       }
 
       function requestTable(items, enhanced) {
-        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>Aucune demande</strong><p>${esc(bt('cnRqEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="new-request">${esc(bt('cnRqCreate'))}</button></div>`;
-        return `<div class="table-wrap"><table${enhanced ? ' data-tftable="requests"' : ''}><thead><tr><th${enhanced ? ' data-tfsort' : ''}>${bt('rqRequest')}</th><th${enhanced ? ' data-tfsort' : ''}>${bt('sxSupplier')}</th><th${enhanced ? ' data-tfsort' : ''}>${bt('pdStatus')}</th><th${enhanced ? ' data-tfsort' : ''}>Avancement</th><th${enhanced ? ' data-tfsort' : ''}>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"${enhanced ? ` data-tf-id="${esc(r.id)}"` : ''}><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">Ouvrir</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('cnRdQueueReminder'))}">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>${esc(b15('console.noRequests'))}</strong><p>${esc(bt('cnRqEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="new-request">${esc(bt('cnRqCreate'))}</button></div>`;
+        return `<div class="table-wrap"><table${enhanced ? ' data-tftable="requests"' : ''}><thead><tr><th${enhanced ? ' data-tfsort' : ''}>${bt('rqRequest')}</th><th${enhanced ? ' data-tfsort' : ''}>${bt('sxSupplier')}</th><th${enhanced ? ' data-tfsort' : ''}>${bt('pdStatus')}</th><th${enhanced ? ' data-tfsort' : ''}>${esc(b15('console.requestProgress'))}</th><th${enhanced ? ' data-tfsort' : ''}>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"${enhanced ? ` data-tf-id="${esc(r.id)}"` : ''}><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">${esc(b15('console.openRequest'))}</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('cnRdQueueReminder'))}">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
             function requestsView() {
@@ -3079,7 +3096,7 @@
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0b7656;"></span>
               <span>${bt('rqCycle')}</span>
             </div>
-            <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:700;">Zero Data Silos · Full Audit Trail</span>
+            <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:700;">${esc(b15('console.requestLifecycleTagline'))}</span>
           </div>
 
           <div class="dc-lifecycle-strip">
@@ -3166,11 +3183,11 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table data-tftable="products"><thead><tr><th data-tfsort>${bt('pdProduct')}</th><th data-tfsort>${bt('pdCategory')}</th><th data-tfsort>${bt('pdStatus')}</th><th data-tfsort>${bt('pdCompleteness')}</th><th data-tfsort>Readiness</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr data-tf-id="${esc(p.id)}"><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">Ouvrir</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table data-tftable="products"><thead><tr><th data-tfsort>${bt('pdProduct')}</th><th data-tfsort>${bt('pdCategory')}</th><th data-tfsort>${bt('pdStatus')}</th><th data-tfsort>${bt('pdCompleteness')}</th><th data-tfsort>${esc(b15('console.readiness'))}</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr data-tf-id="${esc(p.id)}"><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${esc(b15('console.openRequest'))}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table data-tftable="suppliers"><thead><tr><th data-tfsort>Organisation</th><th data-tfsort>${bt('spRole')}</th><th data-tfsort>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr data-tf-id="${esc(s.id)}"><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">Partenaire actif</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">Profil</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table data-tftable="suppliers"><thead><tr><th data-tfsort>${esc(b15('console.organization'))}</th><th data-tfsort>${bt('spRole')}</th><th data-tfsort>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr data-tf-id="${esc(s.id)}"><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">${esc(b15('console.activePartner'))}</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">${esc(b15('console.profile'))}</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || bt('cnMaterialLabel'); }
@@ -3209,9 +3226,9 @@
               <div class="panel-head"><h2>${bit('overview.identity', 'Identity')}</h2><span class="meta">${bit('common.computedNote', '')}</span></div>
               <dl style="display:grid;gap:14px;margin:0">
                 <div><dt class="meta">${bt('cRef')}</dt><dd style="margin:4px 0 0;font-weight:750">${esc(p.reference || '—')}</dd></div>
-                <div><dt class="meta">GTIN / Identifiants</dt><dd style="margin:4px 0 0;font-weight:750">${ids.length ? ids.map((i) => esc(i.type.toUpperCase() + ' ' + i.value)).join(' · ') : '—'}</dd></div>
+                <div><dt class="meta">${esc(b15('console.gtinIdentifiers'))}</dt><dd style="margin:4px 0 0;font-weight:750">${ids.length ? ids.map((i) => esc(i.type.toUpperCase() + ' ' + i.value)).join(' · ') : '—'}</dd></div>
                 <div><dt class="meta">${bt('pdCategory')}</dt><dd style="margin:4px 0 0;font-weight:750">${esc(p.category || '—')}</dd></div>
-                <div><dt class="meta">Version</dt><dd style="margin:4px 0 0;font-weight:750">v${esc(p.version || '1')}</dd></div>
+                <div><dt class="meta">${esc(b15('console.versionLabel'))}</dt><dd style="margin:4px 0 0;font-weight:750">v${esc(p.version || '1')}</dd></div>
                 <div><dt class="meta">${bt('pdStatus')}</dt><dd style="margin:4px 0 0">${status(p.status)}</dd></div>
                 <div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0 0;font-weight:750">${p.dataCompletion != null ? esc(moneyless(p.dataCompletion)) + '%' : '—'}</dd></div>
               </dl>
@@ -3223,11 +3240,11 @@
                 <label>${bt('pxStyleName')}<input class="input" name="name" value="${esc(p.name || '')}"></label>
                 <label>${bt('pxSku')}<input class="input" name="reference" value="${esc(p.reference || '')}"></label>
                 <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || '')}"></label>
-                <label>Couleur<input class="input" name="colorName" value="${esc(p.colorName || '')}"></label>
+                <label>${esc(b15('console.colorLabel'))}<input class="input" name="colorName" value="${esc(p.colorName || '')}"></label>
                 <label>${bit('overview.countryOfDesign', 'Country of design')}<input class="input" name="countryOfDesign" value="${esc(p.countryOfDesign || '')}" maxlength="2"></label>
                 <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || '')}" maxlength="2"></label>
-                <label>Poids unitaire (g)<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams != null ? p.weightGrams : '')}"></label>
-                <label>Tailles<input class="input" name="sizeRange" value="${esc(sizeRangeText)}"></label>
+                <label>${esc(b15('console.weightGramsLabel'))}<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams != null ? p.weightGrams : '')}"></label>
+                <label>${esc(b15('console.sizesLabel'))}<input class="input" name="sizeRange" value="${esc(sizeRangeText)}"></label>
                 <div class="form-actions field-full"><button class="btn btn-primary" type="submit">${bt('pxUpdate')}</button></div>
               </form>
             </div>
@@ -3254,13 +3271,13 @@
         /* -- lentille Materials : BOM reel (edition + ajout conserves) ------- */
         const materialsLens = `
           <div class="card panel">
-            <div class="panel-head"><div><h2>Nomenclature & Bilan Massique (BOM)</h2><p class="meta" style="margin:4px 0 0;">${bt('pxEspr')}</p></div></div>
+            <div class="panel-head"><div><h2>${esc(b15('console.bomMassBalance'))}</h2><p class="meta" style="margin:4px 0 0;">${bt('pxEspr')}</p></div></div>
             ${mats.length ? `<div class="item-list">${mats.map((m) => `<form class="item material-edit-form" data-material-product-id="${esc(p.id)}">
               <input type="hidden" name="materialId" value="${esc(m.materialId)}">
               <div><strong>${esc(materialName(m.material))}</strong><div class="meta">${esc(m.role || '—')} · ${esc(materialType(m.material) || '')}</div></div>
               <div class="actions">
                 <label class="meta">${bt('pxSharePct')}<input class="input" name="percentage" type="number" value="${esc(m.percentage != null ? m.percentage : '')}" style="width:75px"></label>
-                <button class="btn btn-secondary btn-small" type="submit">Valider</button>
+                <button class="btn btn-secondary btn-small" type="submit">${esc(b15('console.validate'))}</button>
               </div>
             </form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bit('composition.noComposition', 'No composition declared yet.')}</p></div>`}
             <form id="material-form" class="form-grid" style="margin-top:18px">
@@ -3273,7 +3290,7 @@
           <div class="card panel" style="margin-top:18px;">
             <div class="panel-head"><div><h2>${bt('pxIdentifiers')}</h2><p class="meta">${bt('pxResolveHint')}</p></div><span class="meta">${ids.length}</span></div>
             ${ids.length ? `<div class="item-list">${ids.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">${esc(bt('cnCreatedOn'))} ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">${bt('pxSave')}</button></div></form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('pxNoId')}</p></div>`}
-            <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>Valeur<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
+            <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">${esc(b15('console.identifierInternal'))}</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>${esc(b15('console.labelValue'))}<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
           </div>`;
 
         /* -- lentilles Supply chain / Manufacturing / Suppliers : graphe reel */
@@ -3281,7 +3298,7 @@
         const supplyChainLens = sc ? `
           <div class="pil-summary-grid">
             <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.nodeCount ?? scNodes.length}</div><span class="pil-summary-label">${bit('supplyChain.nodes', 'Traceability nodes')}</span></div>
-            <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.linkCount ?? scLinks.length}</div><span class="pil-summary-label">Liens</span></div>
+            <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.linkCount ?? scLinks.length}</div><span class="pil-summary-label">${esc(b15('console.links'))}</span></div>
             <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.documentationRate != null ? scSummary.documentationRate + '%' : '—'}</div><span class="pil-summary-label">${bit('supplyChain.documentationRate', 'Documentation rate')}</span></div>
             <div class="pil-summary-cell"><div class="pil-summary-num">${scSummary?.stagesCovered != null ? (Array.isArray(scSummary.stagesCovered) ? scSummary.stagesCovered.length : scSummary.stagesCovered) : '—'}</div><span class="pil-summary-label">${bit('supplyChain.stagesCovered', 'Stages covered')}</span></div>
           </div>
@@ -3322,7 +3339,7 @@
         const certs = (state.certifications || []).map(certNorm);
         const certificationsLens = `
           <p class="pil-note">${bit('certifications.orgNote', '')}</p>
-          ${certs.length ? `<div class="table-wrap"><table><thead><tr><th>${bc('table.standard', 'Standard')}</th><th>${bc('table.number', 'Certificate number')}</th><th>${bc('table.issuer', 'Issuer')}</th><th>${bc('table.expires', 'Expires')}</th><th>${bc('table.health', 'Health')}</th></tr></thead><tbody>
+          ${certs.length ? `<div class="table-wrap"><table><thead><tr><th>${bc('table.standard')}</th><th>${bc('table.number')}</th><th>${bc('table.issuer')}</th><th>${bc('table.expires')}</th><th>${bc('table.health')}</th></tr></thead><tbody>
             ${certs.map((c) => `<tr><td><strong>${esc(c.name)}</strong></td><td class="meta">${esc(c.number || '—')}</td><td>${esc(c.issuer || '—')}</td><td>${c.expires ? date(c.expires) : '—'}</td><td>${certHealthBadge(certHealth(c))}</td></tr>`).join('')}
           </tbody></table></div>` : `<div class="empty"><p>${bit('certifications.none', 'No certification declared yet.')}</p></div>`}
           <div class="actions" style="margin-top:16px"><button class="btn btn-secondary btn-small" data-view="certifications">${bit('certifications.openCerts', 'Open certifications')}</button></div>`;
@@ -3389,7 +3406,7 @@
       function supplierDetailView() {
         const supplier = state.selectedSupplier;
         if (!supplier) return `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('sxNotFound')}</strong><button class="btn btn-secondary" data-view="suppliers">${bt('sxBack')}</button></div>`;
-        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">${bt('sxBackArrow')}</button><div class="eyebrow" style="margin-top:20px">${bt('sxSupplier')}</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || bt('cnCountryUnknown'))} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">${bt('sxNewRequest')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>Profil fournisseur</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || bt('cnNotLoaded'))}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">Contact</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">${bt('sxActivities')}</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">${bt('sxSummary')}</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : `<div class="empty"><p>${esc(bt('cnNoProfile'))}</p></div>`}</div><div class="card panel"><div class="panel-head"><h2>Demandes</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
+        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">${bt('sxBackArrow')}</button><div class="eyebrow" style="margin-top:20px">${bt('sxSupplier')}</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || bt('cnCountryUnknown'))} · ${esc(supplier.role || 'Membre actif')}</p></div><div class="actions"><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">${bt('sxNewRequest')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${esc(b15('console.supplierProfilePanel'))}</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || bt('cnNotLoaded'))}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">${esc(b15('console.contact'))}</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">${bt('sxActivities')}</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">${bt('sxSummary')}</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : `<div class="empty"><p>${esc(bt('cnNoProfile'))}</p></div>`}</div><div class="card panel"><div class="panel-head"><h2>${esc(b15('console.requestsPanel'))}</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
       }
 
       function capContractPanel() {
@@ -3401,11 +3418,11 @@
       }
 
       function massBalanceConsoleView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('mbAntiFraud')}</div><h1>${bt('mbTitle')}</h1><p>${bt('mbIntro')}</p></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2></div><form id="tc-form"><input class="input" name="certificateNumber" placeholder="TC-2026-0001" required><input class="input" name="certifiedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbRegisterTc')}</button></form></div><div class="card panel"><form id="allocate-tc-form"><input class="input" name="productId" placeholder="UUID produit" required><input class="input" name="allocatedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbAllocate')}</button></form></div></div><div class="card panel" style="margin-top:18px"><h2>Rapprochement produit</h2><form id="reconcile-mass-balance-form"><input class="input" name="productId" placeholder="UUID produit" required><input class="input" name="productionUnits" type="number" required><input class="input" name="unitWeightGrams" type="number" required><input class="input" name="cuttingWastePct" type="number" required></form></div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('mbAntiFraud')}</div><h1>${bt('mbTitle')}</h1><p>${bt('mbIntro')}</p></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2></div><form id="tc-form"><input class="input" name="certificateNumber" placeholder="TC-2026-0001" required><input class="input" name="certifiedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbRegisterTc')}</button></form></div><div class="card panel"><form id="allocate-tc-form"><input class="input" name="productId" placeholder="${esc(b15('console.uuidProductPh'))}" required><input class="input" name="allocatedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbAllocate')}</button></form></div></div><div class="card panel" style="margin-top:18px"><h2>${esc(b15('console.productReconciliation'))}</h2><form id="reconcile-mass-balance-form"><input class="input" name="productId" placeholder="${esc(b15('console.uuidProductPh'))}" required><input class="input" name="productionUnits" type="number" required><input class="input" name="unitWeightGrams" type="number" required><input class="input" name="cuttingWastePct" type="number" required></form></div>`;
       }
 
       function complianceContractPanel() {
-        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcPefTitle')}</h2><p class="meta">${bt('qcEcoScore')} : ${esc(state.pefAssessment?.pefGrade || '—')} · Audit greenClaimsAudit : ${esc(state.greenClaimsAudit?.status || '' + bt('qcToLaunch'))}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">${bt('qcComputePef')}</button></div><div class="panel-head" style="margin-top:14px"><div><h2>${bt('qcGreenShield')}</h2><p class="meta">${bt('qcClaimsNote')}</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">${bt('qcAuditClaims')}</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">${bt('qcClaim')}<textarea class="textarea" name="claimText" rows="2" placeholder="Organic cotton certifié…"></textarea></label></form></div>`;
+        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcPefTitle')}</h2><p class="meta">${bt('qcEcoScore')} : ${esc(state.pefAssessment?.pefGrade || '—')} · ${esc(b15('console.greenClaimsAuditLabel'))} ${esc(state.greenClaimsAudit?.status || '' + bt('qcToLaunch'))}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">${bt('qcComputePef')}</button></div><div class="panel-head" style="margin-top:14px"><div><h2>${bt('qcGreenShield')}</h2><p class="meta">${bt('qcClaimsNote')}</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">${bt('qcAuditClaims')}</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">${bt('qcClaim')}<textarea class="textarea" name="claimText" rows="2" placeholder="${esc(b15('console.greenClaimPh'))}"></textarea></label></form></div>`;
       }
 
 
@@ -3793,7 +3810,7 @@
             </div>
             <div class="actions" style="justify-content:flex-end">
               ${issue.status === 'open' ? `
-                <button class="btn btn-secondary btn-small" data-action="acknowledge-issue" data-issue-id="${esc(issue.id)}">Acquitter</button>
+                <button class="btn btn-secondary btn-small" data-action="acknowledge-issue" data-issue-id="${esc(issue.id)}">${esc(b15('console.acknowledge'))}</button>
                 <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">${esc(bt('cnQcWaive'))}</button>
               ` : isAcknowledged ? `
                 <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">${esc(bt('cnQcWaive'))}</button>
@@ -4022,7 +4039,7 @@
 
       function dppView() {
         if (!state.selectedDppProduct) {
-          return `<div class="page-head"><div><div class="eyebrow">Digital Product Passport</div><h1>${bt('dpTitle')}</h1><p>${bt('dpEmptyHint')}</p></div></div>
+          return `<div class="page-head"><div><div class="eyebrow">${esc(b15('console.eyDpp'))}</div><h1>${bt('dpTitle')}</h1><p>${bt('dpEmptyHint')}</p></div></div>
             <div class="card panel"><label>${bt('dpSelectProduct')}<select class="select" id="dpp-product-select"><option value="">${bt('dpChooseCatalog')}</option>${state.products.map((p) => `<option value="${esc(p.id)}">${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label></div>`;
         }
 
@@ -4077,7 +4094,7 @@
             </div>
             <div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <span class="eyebrow">Profil Actif : ${esc(dpp.profileKey || 'textile_readiness_mvp')} v${esc(dpp.profileVersion || '1.0')}</span>
+                <span class="eyebrow">${esc(b15('console.eyActiveProfile'))} ${esc(dpp.profileKey || 'textile_readiness_mvp')} v${esc(dpp.profileVersion || '1.0')}</span>
                 <span class="meta">${esc(dpp.metRequirements)} / ${esc(dpp.totalRequirements)} exigences satisfaites</span>
               </div>
               <div class="progress" style="height:10px;margin-bottom:12px"><span style="width:${pct(dpp.completionScore)}%;background:${scoreColor}"></span></div>
@@ -4231,7 +4248,7 @@
 
                         ${response.reviewerNote ? `
                           <div class="annotation-bubble ${response.status === 'verified_by_reviewer' ? 'verified' : ''}">
-                            <strong>Note d'Audit / Justification :</strong>
+                            <strong>${esc(b15('console.auditNoteLabel'))}</strong>
                             <div>${esc(response.reviewerNote)}</div>
                           </div>
                         ` : ''}
@@ -4288,25 +4305,25 @@
         const preview = state.supplierImport.preview;
         if (!preview) return '<p class="meta" style="margin-top:14px">' + bt('mdPreviewSupplierHint') + '</p>';
         const issues = (preview.errors || []).slice(0, 12);
-        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>${bt('mdValidationResult')}</h3>${preview.valid ? '<span class="status status-approved">' + bt('mdImportPossible') + '</span>' : '<span class="status status-changes_requested">' + bt('mdToFix') + '</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">${bt('mdRows')}</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">Invitations</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('rqRejected')}</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">' + bt('mdNoValidationError') + '</p>'}</div>`;
+        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>${bt('mdValidationResult')}</h3>${preview.valid ? '<span class="status status-approved">' + bt('mdImportPossible') + '</span>' : '<span class="status status-changes_requested">' + bt('mdToFix') + '</span>'}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">${bt('mdRows')}</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">${esc(b15('console.invitationsLabel'))}</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('rqRejected')}</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : '<p class="success-note" style="margin-top:12px">' + bt('mdNoValidationError') + '</p>'}</div>`;
       }
 
       function catalogImportPreview() {
         const preview = state.catalogImport.preview;
         if (!preview) return '<p class="meta" style="margin-top:14px">' + bt('mdPreviewCatalogHint') + '</p>';
         const issues = (preview.errors || []).slice(0, 12);
-        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>${bt('mdValidationResult')}</h3>${preview.valid ? '<span class="status status-approved">Import possible</span>' : `<span class="status status-changes_requested">${esc(bt('cnToFix'))}</span>`}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">${bt('mdRows')}</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('mdAccepted')}</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('rqRejected')}</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : `<p class="success-note" style="margin-top:12px">${esc(bt('cnNoValidationErrors'))}</p>`}${(preview.warnings || []).length ? `<p class="meta" style="margin-top:10px">${moneyless(preview.warnings.length)} ${esc(bt('cnWarningsNonBlocking'))}</p>` : ''}</div>`;
+        return `<div class="card panel" style="margin-top:16px;padding:14px"><div class="panel-head"><h3>${bt('mdValidationResult')}</h3>${preview.valid ? '<span class="status status-approved">' + esc(b15('console.importPossibleLabel')) + '</span>' : `<span class="status status-changes_requested">${esc(bt('cnToFix'))}</span>`}</div><div class="grid kpis" style="margin-top:12px"><div class="kpi"><div class="kpi-label">${bt('mdRows')}</div><div class="kpi-value">${moneyless(preview.totalRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('mdAccepted')}</div><div class="kpi-value" style="color:var(--green)">${moneyless(preview.acceptedRows)}</div></div><div class="kpi"><div class="kpi-label">${bt('rqRejected')}</div><div class="kpi-value" style="color:var(--red)">${moneyless(preview.rejectedRows)}</div></div></div>${issues.length ? `<div class="item-list" style="margin-top:12px">${issues.map((item) => `<div class="item"><strong>Ligne ${esc(item.line)} · ${esc(item.code)}</strong><span class="meta">${esc(item.message)}</span></div>`).join('')}</div>` : `<p class="success-note" style="margin-top:12px">${esc(bt('cnNoValidationErrors'))}</p>`}${(preview.warnings || []).length ? `<p class="meta" style="margin-top:10px">${moneyless(preview.warnings.length)} ${esc(bt('cnWarningsNonBlocking'))}</p>` : ''}</div>`;
       }
 
       function modal(type) {
-        if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>${bt('mdNewProduct')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>${bt('mdReference')}<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>${bt('mdName')}<input class="input" name="name" required placeholder="Cotton Essential"></label><label>${bt('pdCategory')}<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateProduct')}</button></div></form></div></div>`;
+        if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${esc(b15('console.eyCatalogue'))}</div><h2>${bt('mdNewProduct')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>${bt('mdReference')}<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>${bt('mdName')}<input class="input" name="name" required placeholder="Cotton Essential"></label><label>${bt('pdCategory')}<input class="input" name="category" placeholder="T-shirt"></label><label>${esc(b15('console.skuLabel'))}<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateProduct')}</button></div></form></div></div>`;
         if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdSupplierOnboarding')}</div><h2>${bt('mdBulkInvite')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdRequiredColumns')} <code>email</code>, <code>legalName</code>${bt('mdInviteNote')}</p><label class="field-full">${bt('mdCsvFile')}<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdCreateValidInvites')}</button></div>${supplierImportPreview()}</div></div>`;
         if (type === 'catalog-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h2>${bt('mdImportCatalogue')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdImportNote')}</p><div class="notice" style="margin:14px 0">${bt('mdRequiredColumns')} <code>reference</code>, <code>name</code>${bt('mdExtraColumnsNote')}</div><label class="field-full">${bt('mdCsvFile')}<input class="input" id="catalog-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="catalog-import-content" rows="8" placeholder="reference,name,category,sku\nAT-NEW-001,Sample product,T-shirt,SKU-001">${esc(state.catalogImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-catalog-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-catalog-import" ${state.catalogImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdImportValidRows')}</button></div>${catalogImportPreview()}</div></div>`;
         if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdEcosystem')}</div><h2>${bt('mdInviteSupplier')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdActivationNote')}</p><form id="supplier-form"><div class="form-grid"><label class="field-full">${bt('mdBusinessEmail')}<input class="input" name="email" type="email" required placeholder="contact@supplier.com"></label><label>${bt('mdLegalName')}<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>${bt('mdDisplayName')}<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>${bt('mdCountry')}<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>${bt('mdBrandOrg')}<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdSendInvite')}</button></div></form></div></div>`;
-        if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>${bt('mdCreateAuditProtocol')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">${bt('mdQuestionnaireTitle')}<input class="input" name="title" required placeholder="${bt('mdPhAuditTitle')}"></label><label>${bt('mdUniqueSlug')}<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>${bt('mdEsgCategory')}<select class="select" name="category"><option value="Chimie & Rejets">${bt('mdCatChemistry')}</option><option value="${esc(bt('cnGrpMaterials'))}">${bt('mdCatMaterials')}</option><option value="${esc(bt('cnGrpSocial'))}">${bt('mdCatSocial')}</option><option value="Empreinte Carbone">${bt('mdCatCarbon')}</option></select></label><label class="field-full">${bt('mdAuditDescription')}<textarea class="textarea" name="description" rows="3" required placeholder="${bt('mdPhAuditDesc')}"></textarea></label><label>${bt('mdFirstFieldType')}<select class="select" name="firstFieldType"><option value="document_proof">${bt('mdFieldDocProof')}</option><option value="composition_table">${bt('mdFieldComposition')}</option><option value="facility_select">${bt('mdFieldSitePicker')}</option></select></label><label>${bt('mdRequiredField')}<select class="select" name="required"><option value="true">${bt('mdYesBlocking')}</option><option value="false">${bt('mdOptional')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdPublishQuestionnaire')}</button></div></form></div></div>`;
+        if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${esc(b15('console.eyFormStudio'))}</div><h2>${bt('mdCreateAuditProtocol')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">${bt('mdQuestionnaireTitle')}<input class="input" name="title" required placeholder="${bt('mdPhAuditTitle')}"></label><label>${bt('mdUniqueSlug')}<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>${bt('mdEsgCategory')}<select class="select" name="category"><option value="Chimie & Rejets">${bt('mdCatChemistry')}</option><option value="${esc(bt('cnGrpMaterials'))}">${bt('mdCatMaterials')}</option><option value="${esc(bt('cnGrpSocial'))}">${bt('mdCatSocial')}</option><option value="Empreinte Carbone">${bt('mdCatCarbon')}</option></select></label><label class="field-full">${bt('mdAuditDescription')}<textarea class="textarea" name="description" rows="3" required placeholder="${bt('mdPhAuditDesc')}"></textarea></label><label>${bt('mdFirstFieldType')}<select class="select" name="firstFieldType"><option value="document_proof">${bt('mdFieldDocProof')}</option><option value="composition_table">${bt('mdFieldComposition')}</option><option value="facility_select">${bt('mdFieldSitePicker')}</option></select></label><label>${bt('mdRequiredField')}<select class="select" name="required"><option value="true">${bt('mdYesBlocking')}</option><option value="false">${bt('mdOptional')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdPublishQuestionnaire')}</button></div></form></div></div>`;
         if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdCollection')}</div><h2>${bt('mdNewDataRequest')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">${bt('mdTitle')}<input class="input" name="title" required placeholder="${bt('mdPhRequestTitle')}"></label><label>${bt('sxSupplier')}<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label class="field-full">${bt('mdLinkedProduct')}<select class="select" name="productId"><option value="">${bt('mdNoLinkedProduct')}</option>${state.products.map((p) => `<option value="${esc(p.id)}" ${state.modalProductId === p.id ? 'selected' : ''}>${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label><label>${bt('mdDueDate')}<input class="input" name="dueAt" type="date"></label><label>${bt('mdBrandOrg')}<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateAndPrepare')}</button></div></form></div></div>`;
-        if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdAddNode')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">${bt('mdNodeLabel')}<input class="input" name="label" required placeholder="${bt('mdPhNodeLabel')}"></label><label>${bt('mdNodeType')}<select class="select" name="nodeType" required><option value="process">${bt('mdProcessTransform')}</option><option value="site">${bt('mdSupplierSite')}</option><option value="material">${bt('mdRawMaterial')}</option><option value="organization">${bt('mdPartnerOrg')}</option></select></label><label>${bt('mdTextileProcess')}<select class="select" name="processCode"><option value="">${bt('mdNoneOther')}</option><option value="ginning">${bt('mdGinning')}</option><option value="spinning">${bt('mdSpinning')}</option><option value="weaving">${bt('mdWeaving')}</option><option value="knitting">${bt('mdKnitting')}</option><option value="dyeing">${bt('mdDyeing')}</option><option value="finishing">${bt('mdFinishing')}</option><option value="cutting">${bt('mdCutting')}</option><option value="sewing">${bt('mdSewing')}</option><option value="assembly">${bt('mdAssembly')}</option><option value="packaging">${bt('mdPackaging')}</option></select></label><label class="field-full">${bt('mdLinkedMaterial')}<select class="select" name="materialId"><option value="">${bt('mdNone')}</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">${bt('mdSupplierOrg')}<select class="select" name="organizationId"><option value="">${bt('mdNone')}</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdAddNodeCta')}</button></div></form></div></div>`;
-        if (type === 'new-chain-link') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdLinkTwoSteps')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-link-form"><div class="form-grid"><label class="field-full">${bt('mdSourceStep')}<select class="select" name="sourceNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label class="field-full">${bt('mdTargetStep')}<select class="select" name="targetNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label>${bt('mdRelationType')}<select class="select" name="linkType" required><option value="next_step">${bt('mdRelNextStep')}</option><option value="transformed_at">${bt('mdRelTransformedAt')}</option><option value="manufactured_at">${bt('mdRelManufacturedAt')}</option><option value="sourced_from">${bt('mdRelSourcedFrom')}</option><option value="contains">${bt('mdRelContains')}</option></select></label><label>${bt('mdSequenceOrder')}<input class="input" name="sequenceNumber" type="number" min="1" step="1" placeholder="1"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateLink')}</button></div></form></div></div>`;
+        if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${esc(b15('console.eySupplyChain'))}</div><h2>${bt('mdAddNode')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">${bt('mdNodeLabel')}<input class="input" name="label" required placeholder="${bt('mdPhNodeLabel')}"></label><label>${bt('mdNodeType')}<select class="select" name="nodeType" required><option value="process">${bt('mdProcessTransform')}</option><option value="site">${bt('mdSupplierSite')}</option><option value="material">${bt('mdRawMaterial')}</option><option value="organization">${bt('mdPartnerOrg')}</option></select></label><label>${bt('mdTextileProcess')}<select class="select" name="processCode"><option value="">${bt('mdNoneOther')}</option><option value="ginning">${bt('mdGinning')}</option><option value="spinning">${bt('mdSpinning')}</option><option value="weaving">${bt('mdWeaving')}</option><option value="knitting">${bt('mdKnitting')}</option><option value="dyeing">${bt('mdDyeing')}</option><option value="finishing">${bt('mdFinishing')}</option><option value="cutting">${bt('mdCutting')}</option><option value="sewing">${bt('mdSewing')}</option><option value="assembly">${bt('mdAssembly')}</option><option value="packaging">${bt('mdPackaging')}</option></select></label><label class="field-full">${bt('mdLinkedMaterial')}<select class="select" name="materialId"><option value="">${bt('mdNone')}</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">${bt('mdSupplierOrg')}<select class="select" name="organizationId"><option value="">${bt('mdNone')}</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdAddNodeCta')}</button></div></form></div></div>`;
+        if (type === 'new-chain-link') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${esc(b15('console.eySupplyChain'))}</div><h2>${bt('mdLinkTwoSteps')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-link-form"><div class="form-grid"><label class="field-full">${bt('mdSourceStep')}<select class="select" name="sourceNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label class="field-full">${bt('mdTargetStep')}<select class="select" name="targetNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label>${bt('mdRelationType')}<select class="select" name="linkType" required><option value="next_step">${bt('mdRelNextStep')}</option><option value="transformed_at">${bt('mdRelTransformedAt')}</option><option value="manufactured_at">${bt('mdRelManufacturedAt')}</option><option value="sourced_from">${bt('mdRelSourcedFrom')}</option><option value="contains">${bt('mdRelContains')}</option></select></label><label>${bt('mdSequenceOrder')}<input class="input" name="sequenceNumber" type="number" min="1" step="1" placeholder="1"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateLink')}</button></div></form></div></div>`;
         if (type === 'create-cap') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdCreateCap')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="create-cap-form"><div class="form-grid"><label>${bt('mdQualityIssue')}<input class="input" name="issueId" required placeholder="${bt('mdPhIssueUuid')}"></label><label>${bt('mdSupplierOrganisation')}<input class="input" name="supplierOrganizationId" required placeholder="${bt('mdPhSupplierUuid')}"></label><label class="field-full">${bt('mdTitle')}<input class="input" name="title" required></label><label class="field-full">Instructions<textarea class="textarea" name="instructions" rows="4" required></textarea></label></div><div class="form-actions"><button class="btn btn-primary">${bt('mdCreateCapCta')}</button></div></form></div></div>`;
         if (type === 'review-cap') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdReviewCap')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="review-cap-form"><label>CAP<input class="input" name="capId" required placeholder="${bt('mdPhCapUuid')}"></label><label>Verdict<select class="select" name="verdict"><option value="approved">${bt('mdApprove')}</option><option value="rejected">${bt('mdRequestRework')}</option></select></label><label>Notes<textarea class="textarea" name="reviewNotes" rows="4" required></textarea></label><div class="form-actions"><button class="btn btn-primary">${bt('mdSaveReview')}</button></div></form></div></div>`;
         if (type === 'cap-message') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdCapThread')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="cap-message-form"><label>CAP<input class="input" name="capId" required placeholder="${bt('mdPhCapUuid')}"></label><label>Message<textarea class="textarea" name="message" rows="4" required></textarea></label><div class="form-actions"><button class="btn btn-primary">${bt('mdSend')}</button></div></form></div></div>`;
@@ -4374,7 +4391,7 @@
             const result = await api('/api/catalog/suppliers/import', { method: 'POST', body: JSON.stringify({ brandOrganizationId: state.activeOrganizationId, csvContent: content, filename: state.supplierImport.filename || 'suppliers.csv', idempotencyKey: `brand-suppliers-${Date.now()}-${content.length}` }) });
             state.supplierImport.job = result.job; state.supplierImport.delivery = result.delivery; await sync();
           }
-          state.modal = null; const delivery = state.supplierImport.delivery; notify(`Import fournisseurs terminé : ${state.supplierImport.job?.acceptedRows || 0} ${esc(bt('cnInvitesCreated'))}${delivery ? ` ${delivery.sent || 0} ${esc(bt('cnSentPlural'))} ${delivery.pending || 0} en attente manuelle, ${delivery.failed || 0} en échec.` : ''}`);
+          state.modal = null; const delivery = state.supplierImport.delivery; notify(b15('console.importSuppliersDone', { accepted: state.supplierImport.job?.acceptedRows || 0, invitesLabel: bt('cnInvitesCreated') }) + (delivery ? ' ' + b15('console.importSuppliersDelivery', { sent: delivery.sent || 0, sentLabel: bt('cnSentPlural'), pending: delivery.pending || 0, failed: delivery.failed || 0 }) : ''));
         } finally { state.supplierImport.loading = false; render(); }
       }
 
@@ -4445,7 +4462,7 @@
             await sync();
           }
           state.modal = null;
-          notify(`Import catalogue terminé : ${state.catalogImport.job?.acceptedRows || 0} ligne(s) acceptée(s).`);
+          notify(b15('console.importCatalogDone', { count: state.catalogImport.job?.acceptedRows || 0 }));
         } finally {
           state.catalogImport.loading = false;
           render();
@@ -5320,12 +5337,12 @@
             requiredItemCount: data.required === 'true' ? 4 : 3,
             fields: [
               { id: `f-${Date.now()}-1`, key: 'primary_evidence', label: 'Preuve documentaire d\'audit principal', type: data.firstFieldType, required: data.required === 'true', helpText: bt('cnDocAccredited') },
-              { id: `f-${Date.now()}-2`, key: 'attestation_compliance', label: bt('cnDocDeclaration'), type: 'text_short', required: true, helpText: 'Signé par le directeur d\'usine' }
+              { id: `f-${Date.now()}-2`, key: 'attestation_compliance', label: bt('cnDocDeclaration'), type: 'text_short', required: true, helpText: b15('console.declarationHelp') }
             ]
           };
           state.questionnaires.unshift(newQ);
           state.modal = null;
-          notify(`Protocole "${data.title}" créé et disponible pour toutes les marques.`);
+          notify(b15('console.protocolCreated', { title: data.title }));
           render();
         });
         document.getElementById('request-form')?.addEventListener('submit', (e) => { e.preventDefault(); createRequest(e.currentTarget).catch((err) => notify(err.message, true)); });
@@ -5369,7 +5386,7 @@
       // Le catalogue doit etre charge dans la langue de l'application avant
       // le premier rendu.
       (window.TF_I18N ? window.TF_I18N.setLanguage(state.lang) : Promise.resolve())
-        .then(() => { i18nReady = true; }, () => { i18nReady = true; })
+        .then(() => { i18nReady = true; applyConsoleMeta(); }, () => { i18nReady = true; applyConsoleMeta(); })
         .then(boot, boot);
     })();
   </script>

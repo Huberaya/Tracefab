@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 /* ==========================================================================
-   Chantier 07 — injection du namespace `intel` (Product Intelligence reelle :
-   fiche produit 11 lentilles branchee sur l'API) dans les
-   catalogues i18n.
+   Chantier 15 — injection du namespace `i18n15` (metadonnees localisees,
+   Brand Console, Portail Fournisseur et Quality Center) dans les catalogues.
 
-   Source unique : scripts/_chantier07_intel_i18n.json (7 langues).
+   Source unique : scripts/_chantier15_i18n.json (7 langues).
    Cible : assets/i18n/en.js + fr/de/it/es/nl/pt.json.
-   Locales produit : sept catalogues complets (en/fr/de/it/es/nl/pt). tr/zh retirees au chantier 15.
+   Les seules locales produit sont les sept langues completes (EN/FR/DE/IT/ES/NL/PT).
 
    Strictement additif : ce generateur n'efface aucune cle, et borne son
    insertion a son propre namespace. Idempotent.
@@ -15,7 +14,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
-const SRC = JSON.parse(readFileSync(join(ROOT, 'scripts/_chantier07_intel_i18n.json'), 'utf8'));
+const SRC = JSON.parse(readFileSync(join(ROOT, 'scripts/_chantier15_i18n.json'), 'utf8'));
 
 const LANGS = Object.keys(SRC);
 if (!LANGS.includes('en')) throw new Error('en manquant dans la source');
@@ -36,11 +35,11 @@ for (const lang of LANGS) {
 }
 console.log(`ok  parite source : ${refKeys.size} cles x ${LANGS.length} langues`);
 
-/* -- en.js : insertion du bloc intel avant le }; final ------------------- */
+/* -- en.js : insertion du bloc i18n15 avant le }; final ------------------- */
 const EN_PATH = join(ROOT, 'assets/i18n/en.js');
 let en = readFileSync(EN_PATH, 'utf8');
-if (/\n\s*"intel":\s*\{/.test(en) || /\n\s*intel:\s*\{/.test(en)) {
-  console.log('ok  en.js : bloc intel deja present (idempotent)');
+if (/\n  "i18n15":\s*\{/.test(en) || /\n  i18n15:\s*\{/.test(en)) {
+  console.log('ok  en.js : bloc i18n15 deja present (idempotent)');
 } else {
   const literal = JSON.stringify(SRC.en, null, 2)
     .split('\n')
@@ -48,19 +47,19 @@ if (/\n\s*"intel":\s*\{/.test(en) || /\n\s*intel:\s*\{/.test(en)) {
     .join('\n');
   const idx = en.lastIndexOf('};');
   if (idx === -1) throw new Error('en.js : fermeture }; introuvable');
-  const head = en.slice(0, idx).replace(/\s*$/, '');
-  en = head + ',\n  "intel": ' + literal + '\n};\n';
+  const head = en.slice(0, idx).replace(/[,\s]*$/, '');
+  en = head + ',\n  "i18n15": ' + literal + '\n};\n';
   writeFileSync(EN_PATH, en);
-  console.log('ok  en.js : bloc intel insere');
+  console.log('ok  en.js : bloc i18n15 insere');
 }
 
 /* -- locales completes ------------------------------------------------------ */
 for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   const path = join(ROOT, `assets/i18n/${lang}.json`);
   const data = JSON.parse(readFileSync(path, 'utf8'));
-  data.intel = SRC[lang];
+  data.i18n15 = SRC[lang];
   writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
-  console.log(`ok  ${lang}.json : bloc intel ecrit`);
+  console.log(`ok  ${lang}.json : bloc i18n15 ecrit`);
 }
 
-console.log('injection intel i18n terminee');
+console.log('injection i18n15 terminee');

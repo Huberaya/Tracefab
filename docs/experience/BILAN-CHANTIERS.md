@@ -34,9 +34,11 @@ seule exemption documentée).
 
 1. La langue était **perdue entre la vitrine et l'application** — deux clés de
    stockage distinctes.
-2. Le portail fournisseur repliait en **français** les clés absentes en turc,
-   portugais et chinois. Il replie désormais en anglais, et les 30 clés
-   manquantes sont traduites.
+2. État historique au 7 octobre : le portail exposait le turc et le chinois
+   partiels et repliait certaines clés en français. **Mise à jour Chantier 15
+   (8 octobre 2026)** : seules les sept langues complètes (EN/FR/DE/IT/ES/NL/PT)
+   sont maintenant proposées ; les catalogues tr/zh et leurs options ont été
+   retirés. Voir `CHANTIER-15-I18N-COMPLETE.md`.
 3. Un changement de langue venu d'un **autre onglet** ne redessinait jamais la
    page.
 4. `quality-center/` n'avait **aucune traduction**, alors que trois pages y

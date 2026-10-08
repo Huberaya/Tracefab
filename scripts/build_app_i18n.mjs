@@ -4,7 +4,7 @@
    Avant : trois catalogues concurrents.
      - assets/i18n/            549 cles, consomme par la landing et product-intelligence
      - brandTranslations       dictionnaire inline de brand-console  (7 langues)
-     - translations            dictionnaire inline de supplier-portal (9 langues)
+     - translations            dictionnaire inline de supplier-portal (7 langues produit)
      - dppLangs                dictionnaire inline de dpp/index.html
 
    Apres : un seul catalogue, assets/i18n/, servi par le runtime
@@ -80,7 +80,8 @@ if (!C.en || !P.en) {
   process.exit(CHECK ? 0 : 1);
 }
 
-/* -- 2. complements de traduction (les 30 cles absentes de pt, tr, zh) --- */
+/* -- 2. complements historiques : 30 cles portugaises ajoutees au bundle.
+   Chantier 15 : tr/zh ne sont plus des langues produit. ------------------- */
 const FILL = {
   pt: {
     demoUnavailable: 'Indisponível no modo de demonstração — conecte as APIs TRACEFAB para executar esta ação.',
@@ -95,32 +96,6 @@ const FILL = {
     stSubmitted: 'Submetida', stSuspended: 'Suspenso', stUploaded: 'Guardado',
     stVerified: 'Verificada', stWaived: 'Derrogação',
   },
-  tr: {
-    demoUnavailable: 'Demo modunda kullanılamaz — bu işlemi çalıştırmak için TRACEFAB API\'lerini bağlayın.',
-    stAcknowledged: 'Bilgi alındı', stActive: 'Aktif', stApproved: 'Onaylandı',
-    stAvailable: 'Mevcut', stCancelled: 'İptal edildi', stChangesRequested: 'Değişiklik talep edildi',
-    stCompleted: 'Tamamlandı', stDataReady: 'Doğrulamaya hazır', stDeclared: 'Beyan edildi',
-    stDeleted: 'Silindi', stDocumented: 'Belgelendi', stDraft: 'Taslak',
-    stInProgress: 'Devam ediyor', stInvited: 'Davet edildi', stNeedsReview: 'Gözden geçirilmeli',
-    stNotStarted: 'Başlanmadı', stOpen: 'Açık', stReadyToPublish: 'Yayına hazır',
-    stRejected: 'Reddedildi', stResolved: 'Çözüldü', stReviewRequired: 'İnceleme gerekli',
-    stRevoked: 'Geri alındı', stScanning: 'Taranıyor', stSent: 'Gönderildi',
-    stSubmitted: 'Teslim edildi', stSuspended: 'Askıya alındı', stUploaded: 'Kaydedildi',
-    stVerified: 'Doğrulandı', stWaived: 'Muafiyet',
-  },
-  zh: {
-    demoUnavailable: '演示模式下不可用 — 请连接 TRACEFAB API 以执行此操作。',
-    stAcknowledged: '已确认接收', stActive: '启用', stApproved: '已批准',
-    stAvailable: '可用', stCancelled: '已取消', stChangesRequested: '需修改',
-    stCompleted: '已完成', stDataReady: '待验证', stDeclared: '已申报',
-    stDeleted: '已删除', stDocumented: '已存档', stDraft: '草稿',
-    stInProgress: '进行中', stInvited: '已邀请', stNeedsReview: '待复核',
-    stNotStarted: '未开始', stOpen: '待处理', stReadyToPublish: '可发布',
-    stRejected: '已拒绝', stResolved: '已解决', stReviewRequired: '需审核',
-    stRevoked: '已撤销', stScanning: '扫描中', stSent: '已发送',
-    stSubmitted: '已提交', stSuspended: '已暂停', stUploaded: '已保存',
-    stVerified: '已验证', stWaived: '已豁免',
-  },
 };
 
 /* -- 3. repartition en portees ------------------------------------------- */
@@ -131,7 +106,10 @@ const sharedKeys = common.filter((k) => !divergent.includes(k));
 const consoleKeys = kc.filter((k) => !sharedKeys.includes(k));
 const portalKeys = kp.filter((k) => !sharedKeys.includes(k));
 
-const LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
+/* Chantier 15 — tr et zh retirees du produit (locales a 16 %, jamais
+   completees : les proposer aurait fait passer du francais ou de
+   l anglais pour du turc ou du chinois). */
+const LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
 const gaps = [];
 
 function valueFor(dict, lang, key) {

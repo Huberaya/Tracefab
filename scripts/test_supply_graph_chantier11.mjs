@@ -114,8 +114,7 @@ for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   check(hasAll, lang + '.json : toutes les cles supplyGraph.* presentes');
 }
 for (const lang of ['tr', 'zh']) {
-  const catalog = JSON.parse(read('assets/i18n/' + lang + '.json'));
-  check(!('supplyGraph' in catalog), lang + '.json : namespace supplyGraph exclu (locales partielles)');
+  check(!existsSync(join(ROOT, `assets/i18n/${lang}.json`)), lang + '.json : locale partielle retiree du produit (chantier 15)');
 }
 
 /* --- 5. generateur --------------------------------------------------------------------- */

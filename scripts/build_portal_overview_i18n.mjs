@@ -27,12 +27,13 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const I18N = join(ROOT, 'assets/i18n');
 const CHECK = process.argv.includes('--check');
-const LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
+/* Chantier 15 : langues produit complètes uniquement. */
+const LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
 
 const DEBUT = '    // --- Premier ecran du portail (chantier 5) ---';
 const FIN = '    // --- fin premier ecran du portail ---';
 
-// cle: [en, fr, de, it, es, nl, pt, tr, zh]
+// cle: [en, fr, de, it, es, nl, pt]
 const T = {
   spDemoBanner: [
     'Demonstration mode — the figures below are demonstration data. Open ?demo=0 to connect Clerk and the Tracefab APIs.',
@@ -41,9 +42,7 @@ const T = {
     'Modalità dimostrativa — i dati seguenti sono dimostrativi. Apri ?demo=0 per collegare Clerk e le API Tracefab.',
     'Modo demostración — las cifras siguientes son datos de demostración. Abra ?demo=0 para conectar Clerk y las API de Tracefab.',
     'Demonstratiemodus — onderstaande cijfers zijn demonstratiegegevens. Open ?demo=0 om Clerk en de Tracefab-APIs te verbinden.',
-    'Modo demonstração — os números abaixo são dados de demonstração. Abra ?demo=0 para ligar o Clerk e as APIs Tracefab.',
-    "Demo modu — aşağıdaki veriler gösterim amaçlıdır. Clerk ve Tracefab API'lerini bağlamak için ?demo=0 adresini açın.",
-    "演示模式 — 以下数据仅为演示数据。打开 ?demo=0 以连接 Clerk 和 Tracefab API。",
+    'Modo demonstração — os números abaixo são dados de demonstração. Abra ?demo=0 para ligar o Clerk e as APIs Tracefab.'
   ],
   spHeroTag: [
     'Shared supplier vault · EU trade secrets directive',
@@ -52,9 +51,7 @@ const T = {
     'Caveau fornitori condiviso · direttiva UE segreti commerciali',
     'Bóveda de proveedores compartida · directiva UE secretos comerciales',
     'Gedeelde leverancierskluis · EU-richtlijn bedrijfsgeheimen',
-    'Cofre de fornecedores partilhado · diretiva UE segredos comerciais',
-    "Ortak tedarikçi kasası · AB ticari sırlar direktifi",
-    "共享供应商保险库 · 欧盟商业秘密指令",
+    'Cofre de fornecedores partilhado · diretiva UE segredos comerciais'
   ],
   spHeroTitle: [
     'Your data. Your profile. Reusable across all your customers.',
@@ -63,9 +60,7 @@ const T = {
     'I tuoi dati. Il tuo profilo. Riutilizzabili per tutti i tuoi clienti.',
     'Sus datos. Su perfil. Reutilizables para todos sus clientes.',
     'Uw data. Uw profiel. Herbruikbaar voor al uw klanten.',
-    'Os seus dados. O seu perfil. Reutilizáveis para todos os seus clientes.',
-    "Verileriniz. Profiliniz. Tüm müşterileriniz için yeniden kullanılabilir.",
-    "您的数据。您的档案。可供所有客户重复使用。",
+    'Os seus dados. O seu perfil. Reutilizáveis para todos os seus clientes.'
   ],
   spHeroSub: [
     'Upload your certificates and production sites once into your encrypted vault. Share proof of compliance instantly, without disclosing your prices, exclusive subcontractors or margins.',
@@ -74,9 +69,7 @@ const T = {
     'Carica una sola volta certificati e siti produttivi nel tuo caveau cifrato. Condividi subito la prova di conformità senza rivelare prezzi, subappaltatori esclusivi o margini.',
     'Suba sus certificados y centros de producción una sola vez a su bóveda cifrada. Comparta la prueba de conformidad al instante, sin revelar precios, subcontratistas exclusivos ni márgenes.',
     'Upload uw certificaten en productielocaties één keer naar uw versleutelde kluis. Deel direct het nalevingsbewijs zonder prijzen, exclusieve onderaannemers of marges prijs te geven.',
-    'Carregue os seus certificados e unidades de produção uma só vez no seu cofre cifrado. Partilhe a prova de conformidade de imediato, sem revelar preços, subcontratados exclusivos ou margens.',
-    "Sertifikalarınızı ve üretim tesislerinizi şifreli kasanıza bir kez yükleyin. Fiyatlarınızı, özel taşeronlarınızı veya kâr marjlarınızı açıklamadan uygunluk kanıtını anında paylaşın.",
-    "将证书和生产基地一次性上传到您的加密保险库。即时共享合规证明，无需披露价格、独家分包商或利润率。",
+    'Carregue os seus certificados e unidades de produção uma só vez no seu cofre cifrado. Partilhe a prova de conformidade de imediato, sem revelar preços, subcontratados exclusivos ou margens.'
   ],
   spProfileTitle: [
     'Your compliance profile',
@@ -85,11 +78,10 @@ const T = {
     'Il tuo profilo di conformità',
     'Su perfil de conformidad',
     'Uw nalevingsprofiel',
-    'O seu perfil de conformidade',
-    "Uygunluk profiliniz",
-    "您的合规档案",
+    'O seu perfil de conformidade'
   ],
-  spComplete: ['complete', 'complété', 'vollständig', 'completo', 'completado', 'volledig', 'completo', "tamamlandı", "已完成"],
+  spComplete: ['complete', 'complété', 'vollständig', 'completo', 'completado', 'volledig', 'completo'
+  ],
   spWeakest: [
     'Weakest area',
     'Point le plus faible',
@@ -97,11 +89,10 @@ const T = {
     'Punto più debole',
     'Punto más débil',
     'Zwakste onderdeel',
-    'Ponto mais fraco',
-    "En zayıf alan",
-    "最薄弱环节",
+    'Ponto mais fraco'
   ],
-  spFixNow: ['Fix this now', 'Corriger maintenant', 'Jetzt beheben', 'Correggi ora', 'Corregir ahora', 'Nu verhelpen', 'Corrigir agora', "Şimdi düzelt", "立即修复"],
+  spFixNow: ['Fix this now', 'Corriger maintenant', 'Jetzt beheben', 'Correggi ora', 'Corregir ahora', 'Nu verhelpen', 'Corrigir agora'
+  ],
   spAllOnTarget: [
     'Every area is on target. Nothing needs your attention.',
     "Toutes les dimensions sont au niveau attendu. Rien n'attend votre intervention.",
@@ -109,17 +100,22 @@ const T = {
     'Tutte le dimensioni sono al livello atteso. Nulla richiede il tuo intervento.',
     'Todas las dimensiones están en el nivel esperado. Nada requiere su atención.',
     'Alle onderdelen liggen op niveau. Er is niets dat uw aandacht vraagt.',
-    'Todas as dimensões estão no nível esperado. Nada exige a sua intervenção.',
-    "Tüm alanlar hedefte. Dikkatinizi gerektiren bir şey yok.",
-    "所有环节均已达标，无需处理。",
+    'Todas as dimensões estão no nível esperado. Nada exige a sua intervenção.'
   ],
-  spDimCompleteness: ['Profile completeness', 'Complétude du profil', 'Profilvollständigkeit', 'Completezza del profilo', 'Integridad del perfil', 'Volledigheid profiel', 'Completude do perfil', "Profil eksiksizliği", "档案完整度"],
-  spDimFreshness: ['Data freshness', 'Fraîcheur des données', 'Datenaktualität', 'Freschezza dei dati', 'Actualidad de los datos', 'Actualiteit van data', 'Atualidade dos dados', "Veri güncelliği", "数据时效性"],
-  spDimDocumentation: ['Evidence coverage', 'Couverture documentaire', 'Nachweisabdeckung', 'Copertura documentale', 'Cobertura documental', 'Bewijsdekking', 'Cobertura documental', "Kanıt kapsamı", "证据覆盖率"],
-  spDimConsistency: ['Data consistency', 'Cohérence des données', 'Datenkonsistenz', 'Coerenza dei dati', 'Coherencia de los datos', 'Dataconsistentie', 'Coerência dos dados', "Veri tutarlılığı", "数据一致性"],
-  spMissingField: ['Missing', 'Manquant', 'Fehlt', 'Mancante', 'Falta', 'Ontbreekt', 'Em falta', "Eksik", "缺少"],
-  spFieldRslReport: ['an RSL test report', "un rapport d'essais RSL", 'ein RSL-Prüfbericht', 'un rapporto di prova RSL', 'un informe de ensayo RSL', 'een RSL-testrapport', 'um relatório de ensaio RSL', "bir RSL test raporu", "一份 RSL 检测报告"],
-  spFieldActiveSite: ['an active production site', 'un site de production actif', 'eine aktive Produktionsstätte', 'un sito produttivo attivo', 'un centro de producción activo', 'een actieve productielocatie', 'uma unidade de produção ativa', "aktif bir üretim tesisi", "一个有效的生产基地"],
+  spDimCompleteness: ['Profile completeness', 'Complétude du profil', 'Profilvollständigkeit', 'Completezza del profilo', 'Integridad del perfil', 'Volledigheid profiel', 'Completude do perfil'
+  ],
+  spDimFreshness: ['Data freshness', 'Fraîcheur des données', 'Datenaktualität', 'Freschezza dei dati', 'Actualidad de los datos', 'Actualiteit van data', 'Atualidade dos dados'
+  ],
+  spDimDocumentation: ['Evidence coverage', 'Couverture documentaire', 'Nachweisabdeckung', 'Copertura documentale', 'Cobertura documental', 'Bewijsdekking', 'Cobertura documental'
+  ],
+  spDimConsistency: ['Data consistency', 'Cohérence des données', 'Datenkonsistenz', 'Coerenza dei dati', 'Coherencia de los datos', 'Dataconsistentie', 'Coerência dos dados'
+  ],
+  spMissingField: ['Missing', 'Manquant', 'Fehlt', 'Mancante', 'Falta', 'Ontbreekt', 'Em falta'
+  ],
+  spFieldRslReport: ['an RSL test report', "un rapport d'essais RSL", 'ein RSL-Prüfbericht', 'un rapporto di prova RSL', 'un informe de ensayo RSL', 'een RSL-testrapport', 'um relatório de ensaio RSL'
+  ],
+  spFieldActiveSite: ['an active production site', 'un site de production actif', 'eine aktive Produktionsstätte', 'un sito produttivo attivo', 'un centro de producción activo', 'een actieve productielocatie', 'uma unidade de produção ativa'
+  ],
   spNoScore: [
     'Your compliance score will appear once your first data has been submitted.',
     'Votre score de conformité apparaîtra dès la première donnée transmise.',
@@ -127,9 +123,7 @@ const T = {
     'Il tuo punteggio di conformità apparirà dopo il primo invio di dati.',
     'Su puntuación de conformidad aparecerá tras el primer envío de datos.',
     'Uw nalevingsscore verschijnt zodra de eerste gegevens zijn ingediend.',
-    'A sua pontuação de conformidade surgirá após o primeiro envio de dados.',
-    "Uygunluk puanınız ilk veriler gönderildiğinde görünecek.",
-    "提交首批数据后，您的合规评分将在此显示。",
+    'A sua pontuação de conformidade surgirá após o primeiro envio de dados.'
   ],
 };
 

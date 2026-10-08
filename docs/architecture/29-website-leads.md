@@ -13,7 +13,7 @@ Chaque page est statique, sertie par `vercel.json` via le handle filesystem
 (aucune route explicite nécessaire). Elles réutilisent le design system
 (`tracefab-core.css`, `tracefab-site.css`, `tracefab-components.css`,
 `tracefab-touch.css`), le sélecteur de langue `tf-i18n` et un namespace i18n
-dédié `site.*` (EN + six locales complètes ; repli anglais pour tr/zh).
+dédié `site.*` (EN + six locales complètes). Les locales partielles tr/zh ont été retirées au Chantier 15 ; elles ne sont ni exposées ni promises.
 Chaque page porte canonical, hreflang, Open Graph et JSON-LD.
 
 ## Capture de leads

@@ -15,8 +15,10 @@ Architecture multilingue native · 9 pages, 7 langues, 1 629 clés.
 | Clés de catalogue | 1 629 |
 
 La phase 1 du cahier des charges demandait EN/FR/DE/IT/ES/NL. Le portugais a
-été ajouté en cours de route, et le turc et le chinois sont servis en
-couverture partielle (`shared` + `portal`) pour le portail fournisseur.
+été ajouté en cours de route. **Mise à jour Chantier 15 (2026-10-08)** : les
+catalogues turc et chinois partiels ont été retirés du produit ; seules les
+sept langues complètes sont désormais exposées. Voir
+`CHANTIER-15-I18N-COMPLETE.md`.
 
 L'architecture est inchangée depuis les tranches précédentes : `t(clé,
 secours)` résout locale active → anglais par défaut → secours de l'appelant →

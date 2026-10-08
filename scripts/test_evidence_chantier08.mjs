@@ -21,7 +21,7 @@
         security-report, verification-report, verify-ai) et le portail
         fournisseur restent enregistres ; privacy par defaut preservee.
    ========================================================================== */
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
@@ -115,8 +115,7 @@ for (const lang of ['fr', 'de', 'it', 'es', 'nl', 'pt']) {
   check(hasAll, lang + '.json : toutes les cles evidence.* presentes');
 }
 for (const lang of ['tr', 'zh']) {
-  const catalog = JSON.parse(read('assets/i18n/' + lang + '.json'));
-  check(!('evidence' in catalog), lang + '.json : namespace evidence exclu (locales partielles, repli EN)');
+  check(!existsSync(join(ROOT, `assets/i18n/${lang}.json`)), lang + '.json : locale partielle retiree du produit (chantier 15)');
 }
 
 /* --- 6. generateur ------------------------------------------------------------- */
