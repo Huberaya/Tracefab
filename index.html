@@ -628,14 +628,7 @@
 
 <script src="/assets/i18n/en.js"></script>
 <script src="/assets/js/tf-i18n.js"></script>
-  <script>
-    // Pont global stable : TF_I18N.setLanguage est l'implementation, mais
-    // window.setLanguage reste l'API publique documentee de la landing
-    // (utilisee par le menu #lang-menu-btn et par les tests de contrat).
-    window.setLanguage = function (lang) {
-      return window.TF_I18N && window.TF_I18N.setLanguage(lang);
-    };
-  </script>
+  <script src="/assets/js/index.0.js"></script>
 <script src="/assets/js/tf-landing.js" defer></script>
 </body>
 </html>

@@ -116,3 +116,18 @@ de servir.
 > **Une clé présente n'est pas une clé valide.** Le mode par défaut vérifie
 > seulement que les variables existent. Seul `?probe=live` prouve que les
 > services répondent. C'est celui qu'il faut passer avant d'ouvrir le trafic.
+
+## Limitation de debit et plafond de lignes
+
+| Variable | Criticite | Defaut | Role |
+|---|---|---|---|
+| `TRACEFAB_RATE_LIMIT_SALT` | reglage | derive de `CLERK_SECRET_KEY`, sinon `DATABASE_URL` | Cle du HMAC qui remplace l'adresse du client dans `rate_limit_counters`. La table ne doit contenir aucune donnee personnelle : une IPv4 simplement hachee se retrouve par force brute. A fixer explicitement si l'on veut pouvoir la faire tourner sans changer de secret Clerk. |
+| `TRACEFAB_RATE_LIMIT_PUBLIC_READ` | reglage | `120` / 60 s | Lectures publiques anonymes, par client. |
+| `TRACEFAB_RATE_LIMIT_PUBLIC_WRITE` | reglage | `10` / 300 s | Ecritures anonymes — `passport/:token/request-access` est la seule aujourd'hui. |
+| `TRACEFAB_RATE_LIMIT_WALLET` | reglage | `20` / 60 s | Laissez-passer Apple et Google : signature cryptographique, couteuse en CPU. |
+| `TRACEFAB_RATE_LIMIT_CREDENTIALED` | reglage | `600` / 60 s | Requetes portant un justificatif. Un tableau de bord en emet beaucoup ; trop serrer casse l'application pour des utilisateurs legitimes. |
+| `TRACEFAB_QUERY_ROW_CEILING` | reglage | `5000` | Plafond applique par le client Prisma a tout `findMany` sans `take`. C'est un filet contre la serialisation d'une table entiere, pas une pagination. |
+
+Aucune de ces variables n'est bloquante : le limiteur fonctionne sans elles,
+avec les valeurs ci-dessus. La seule consequence d'un sel absent est qu'il est
+derive d'un secret existant au lieu d'etre choisi.

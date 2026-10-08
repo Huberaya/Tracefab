@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('--- Chantier : Test Suite - Passeport Fournisseur Universel « 1-Clic » & Viralité Inversée ---');
 
@@ -64,7 +65,7 @@ console.log('✓ API index routing table verified');
 // 5. Verify Public Passport Frontend (passport/index.html)
 const publicPassportPath = path.resolve('passport/index.html');
 assert(fs.existsSync(publicPassportPath), 'passport/index.html must exist');
-const publicPassport = fs.readFileSync(publicPassportPath, 'utf8');
+const publicPassport = pageSource('passport/index.html');
 assert(publicPassport.includes('Universal Supplier Passport'), 'Page must contain title');
 // La copie n'est plus en dur : le balisage appelle la cle et le catalogue
 // francais conserve le libelle d'origine.
@@ -84,7 +85,7 @@ console.log('✓ Public Verifiable Passport Viewer (passport/index.html) verifie
 
 // 6. Verify Supplier Portal Integration (supplier-portal/index.html)
 const supplierPortalPath = path.resolve('supplier-portal/index.html');
-const supplierPortal = fs.readFileSync(supplierPortalPath, 'utf8');
+const supplierPortal = pageSource('supplier-portal/index.html');
 assert(supplierPortal.includes('passportView'), 'Supplier portal must implement passportView');
 // La copie n'est plus en dur : le balisage appelle la cle, et le catalogue
 // francais conserve le libelle d'origine.

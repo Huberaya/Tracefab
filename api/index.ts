@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from './_lib/vercel-types.js';
 import { json } from './_lib/http.js';
 import { correlationId, reportError } from './_lib/error-reporting.js';
+import { applyHeaders, evaluate } from './_lib/rate-limit.js';
 
 type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;
 type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default: RouteHandler }> };
@@ -151,6 +152,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     route.params.forEach((param, index) => { query[param] = decodeURIComponent(match[index + 1]); });
     req.query = query;
   }
+  // Limitation de debit.
+  //
+  // Placee ici, apres la resolution de la route et AVANT route.load() : une
+  // requete rejetee ne declenche pas le chargement du module, donc pas le
+  // demarrage a froid qu'elle cherchait peut-etre a provoquer.
+  //
+  // Le limiteur ne jette jamais. Si lui-meme echoue, la requete passe : un
+  // limiteur casse ne doit pas rendre le service indisponible.
+  try {
+    const decision = await evaluate(path, req);
+    applyHeaders(res, decision);
+    if (!decision.allowed) {
+      return json(res, 429, { error: 'rate_limited', retryAfterSeconds: decision.resetSeconds });
+    }
+  } catch {
+    // Volontairement silencieux cote client. L'incident reste visible par
+    // l'absence des en-tetes RateLimit-* sur la reponse.
+  }
+
   // Barriere d'erreur centrale.
   //
   // Sans elle, une exception non rattrapee dans un gestionnaire remonte au

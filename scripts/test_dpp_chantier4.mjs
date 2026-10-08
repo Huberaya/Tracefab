@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { pageSource } from './lib/page_source.mjs';
 
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -82,7 +83,7 @@ assert(
 
 // 3. Verify Brand Console UI
 console.log('3. Checking Brand Console UI implementation...');
-const brandConsoleHtml = await readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8');
+const brandConsoleHtml = pageSource('brand-console/index.html');
 assert(
   brandConsoleHtml.includes("navButton('dpp'") || brandConsoleHtml.includes('data-view="dpp"'),
   'Brand console must include DPP navigation',

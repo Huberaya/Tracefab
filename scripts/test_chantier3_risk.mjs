@@ -17,6 +17,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LANGS = ['fr', 'de', 'it', 'es', 'nl', 'pt'];
@@ -26,7 +27,7 @@ const ok = (cond, label, detail = '') => {
   if (cond) { console.log(`  OK    ${label}`); } else { ko += 1; console.log(`  ECHEC ${label}${detail ? ` — ${detail}` : ''}`); }
 };
 
-const page = readFileSync(join(ROOT, 'brand-console/index.html'), 'utf8');
+const page = pageSource('brand-console/index.html');
 
 /* --- 1. cablage de la vue ------------------------------------------------ */
 ok(page.includes("navButton('risk'"), "entree de navigation 'risk'");

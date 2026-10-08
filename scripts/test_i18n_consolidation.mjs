@@ -17,6 +17,7 @@
    ========================================================================== */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const baseArg = process.argv.indexOf('--base');
@@ -75,7 +76,8 @@ const SPAS = {
   'supplier-portal/index.html': 'translations',
 };
 for (const [file, varName] of Object.entries(SPAS)) {
-  const src = readFileSync(join(ROOT, file), 'utf8');
+  // Le JavaScript de page vit dans /assets/js/ depuis le durcissement CSP.
+  const src = pageSource(file);
   if (new RegExp(`(?:const|let|var)\\s+${varName}\\s*=\\s*\\{`).test(src)) {
     fail(`${file}: le dictionnaire inline ${varName} est revenu`);
   } else ok(`${file}: aucun dictionnaire inline`);

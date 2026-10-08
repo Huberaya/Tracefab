@@ -27,6 +27,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LANGS = ['fr', 'de', 'it', 'es', 'nl', 'pt'];
@@ -36,7 +37,7 @@ const ok = (cond, label, detail = '') => {
   if (cond) { console.log(`  OK    ${label}`); } else { ko += 1; console.log(`  ECHEC ${label}${detail ? ` — ${detail}` : ''}`); }
 };
 
-const page = readFileSync(join(ROOT, 'supplier-portal/index.html'), 'utf8');
+const page = pageSource('supplier-portal/index.html');
 
 function corpsDe(nom) {
   const i = page.indexOf(`function ${nom}(`);
@@ -66,8 +67,12 @@ ok(/SP_SEUIL/.test(panneau) && /const SP_SEUIL = \d+/.test(page), 'le seuil d\'a
 
 /* --- 2. une action de contenu existe et mene quelque part --------------- */
 ok(/sp-focus-btn/.test(panneau), 'le panneau porte un bouton d\'action principal');
-ok(/goView\('\$\{faible\.vue\}'\)/.test(panneau), 'le bouton mene a la vue qui corrige le point faible');
-ok(/class="sp-check-pill[^"]*"[\s\S]{0,180}onclick="goView\('\$\{d\.vue\}'\)/.test(panneau),
+// Les gestionnaires inline ont ete remplaces par la delegation data-tf-act,
+// pour que la CSP puisse interdire 'unsafe-inline'. L'assertion porte donc
+// sur la cible transportee, qui est la seule chose qui compte ici : le
+// bouton doit mener a la vue du point faible.
+ok(/data-tf-arg="\$\{faible\.vue\}"/.test(panneau), 'le bouton mene a la vue qui corrige le point faible');
+ok(/class="sp-check-pill[^"]*"[\s\S]{0,220}data-tf-arg="\$\{d\.vue\}"/.test(panneau),
   'chaque pastille est cliquable vers sa vue');
 
 /* Les gestionnaires en ligne s'evaluent dans la portee globale : l'application

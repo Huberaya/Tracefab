@@ -36,21 +36,21 @@
 
       <nav class="nav" aria-label="Console">
         <div class="nav-section-title" data-i18n="pi.nav.main">Main console</div>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">⌂</span><span data-i18n="pi.nav.overview">Overview</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">⌂</span><span data-i18n="pi.nav.overview">Overview</span></button>
         <button type="button" class="active"><span class="nav-icon">◇</span><span data-i18n="pi.nav.products">Products</span></button>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">◎</span><span data-i18n="pi.nav.suppliers">Suppliers</span></button>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">⬡</span><span data-i18n="pi.nav.materials">Materials</span></button>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">☍</span><span data-i18n="pi.nav.supplyChain">Supply chain</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">◎</span><span data-i18n="pi.nav.suppliers">Suppliers</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">⬡</span><span data-i18n="pi.nav.materials">Materials</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">☍</span><span data-i18n="pi.nav.supplyChain">Supply chain</span></button>
         <div class="nav-section-title" data-i18n="pi.nav.collection">Collection &amp; compliance</div>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">↗</span><span data-i18n="pi.nav.dataCollection">Data collection</span></button>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">▤</span><span data-i18n="pi.nav.evidence">Evidence</span></button>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">✓</span><span data-i18n="pi.nav.certifications">Certifications</span></button>
-        <button type="button" onclick="location.href='/quality-center/'"><span class="nav-icon">◒</span><span data-i18n="pi.nav.quality">Quality</span></button>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">⚠</span><span data-i18n="pi.nav.risk">Risk</span></button>
-        <button type="button" onclick="location.href='/dpp/'"><span class="nav-icon">▣</span><span data-i18n="pi.nav.dpp">DPP</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">↗</span><span data-i18n="pi.nav.dataCollection">Data collection</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">▤</span><span data-i18n="pi.nav.evidence">Evidence</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">✓</span><span data-i18n="pi.nav.certifications">Certifications</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/quality-center/"><span class="nav-icon">◒</span><span data-i18n="pi.nav.quality">Quality</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">⚠</span><span data-i18n="pi.nav.risk">Risk</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/dpp/"><span class="nav-icon">▣</span><span data-i18n="pi.nav.dpp">DPP</span></button>
         <div class="nav-section-title" data-i18n="pi.nav.governance">Governance</div>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">☷</span><span data-i18n="pi.nav.reports">Reports</span></button>
-        <button type="button" onclick="location.href='/brand-console/'"><span class="nav-icon">⚙</span><span data-i18n="pi.nav.settings">Settings</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">☷</span><span data-i18n="pi.nav.reports">Reports</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">⚙</span><span data-i18n="pi.nav.settings">Settings</span></button>
       </nav>
 
       <div class="sidebar-bottom">
@@ -112,19 +112,9 @@
   </div>
 
   <script src="/assets/i18n/en.js"></script>
-  <script src="/assets/js/tf-i18n.js"></script>
+  <script src="/assets/js/tf-actions.js"></script>
+    <script src="/assets/js/tf-i18n.js"></script>
   <script src="/assets/js/tf-product.js"></script>
-  <script>
-    (function () {
-      var sel = document.getElementById('pi-lang');
-      if (!sel) return;
-      var sync = function () { if (window.TF_I18N) sel.value = window.TF_I18N.lang; };
-      sel.addEventListener('change', function () {
-        if (window.TF_I18N) window.TF_I18N.setLanguage(sel.value);
-      });
-      document.addEventListener('tf:languagechange', sync);
-      if (window.TF_I18N && window.TF_I18N.ready) window.TF_I18N.ready.then(sync);
-    })();
-  </script>
+  <script src="/assets/js/product-intelligence.0.js"></script>
 </body>
 </html>

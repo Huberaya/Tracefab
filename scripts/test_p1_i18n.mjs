@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { pageSource } from './lib/page_source.mjs';
 
 // 1. Verify existence and validity of all 7 translation dictionaries
 const langs = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
@@ -31,7 +32,7 @@ for (const lang of langs) {
 }
 
 // 2. Verify Landing Page Header & i18n Selector
-const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const indexHtml = pageSource('index.html');
 assert(indexHtml.includes('lang-menu-btn'), 'Language menu button missing in index.html header');
 assert(indexHtml.includes('setLanguage'), 'setLanguage controller missing in index.html');
 assert(indexHtml.includes('hreflang="fr"'), 'hreflang="fr" alternate SEO tag missing in index.html');

@@ -1,5 +1,6 @@
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { pageSource } from './lib/page_source.mjs';
 
 const files = Object.fromEntries(await Promise.all([
   ['portal', 'brand-console/index.html'],
@@ -13,7 +14,12 @@ const files = Object.fromEntries(await Promise.all([
   ['router', 'api/index.ts'],
   ['migration', 'prisma/migrations/20261006190000_catalog_import_export/migration.sql'],
   ['docs', 'docs/architecture/28-p1-catalog-import-export.md'],
-].map(async ([key, path]) => [key, await readFile(path, 'utf8')])));
+].map(async ([key, path]) => [
+  key,
+  // Le JavaScript des pages vit desormais dans /assets/js/ ; pageSource
+  // rend la page entiere, exactement comme elle etait lue avant.
+  path.endsWith('.html') ? pageSource(path) : await readFile(path, 'utf8'),
+])));
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const script = files.portal.match(/<script>([\s\S]*?)<\/script>/)?.[1];

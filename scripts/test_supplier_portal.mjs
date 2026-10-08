@@ -1,7 +1,8 @@
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { pageSource } from './lib/page_source.mjs';
 
-const html = await readFile(new URL('../supplier-portal/index.html', import.meta.url), 'utf8');
+const html = pageSource('supplier-portal/index.html');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert(script, 'Supplier Portal inline application script is missing');
 

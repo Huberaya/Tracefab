@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { pageSource } from './lib/page_source.mjs';
 
 // 1. Static Contract Assertions
 const dppRoute = await readFile(new URL('../api/_routes/dpp/validate.ts', import.meta.url), 'utf8');
 const dppLib = await readFile(new URL('../api/_lib/dpp-validator.ts', import.meta.url), 'utf8');
-const dppHtml = await readFile(new URL('../dpp/index.html', import.meta.url), 'utf8');
+const dppHtml = pageSource('dpp/index.html');
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 
 assert(indexTs.includes('dpp/validate'), 'dpp/validate route missing in api/index.ts');

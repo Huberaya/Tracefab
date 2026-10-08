@@ -220,6 +220,22 @@ async function seed(plan: Plan) {
       await prisma.organizations.deleteMany({ where: { legal_name: { startsWith: PILOT } } });
     }
 
+    // Sans ce refus, un deuxieme amorcage empile un second pilote : 22
+    // fournisseurs, 40 produits, et des chiffres de rapport qui ne veulent
+    // plus rien dire. Le validateur du mode --dry-run ne pouvait pas le voir,
+    // il verifie l'unicite A L'INTERIEUR du plan, pas face a la base.
+    const dejaLa = await prisma.organizations.findFirst({
+      where: { legal_name: { startsWith: PILOT } },
+      select: { id: true },
+    });
+    if (dejaLa) {
+      console.error(`\n  Un pilote existe deja (${dejaLa.id}).`);
+      console.error('  Rejouez avec --reset pour le remplacer, ou supprimez-le a la main.');
+      console.error('  Amorcer par-dessus produirait deux pilotes et un rapport faux.\n');
+      process.exitCode = 1;
+      return null;
+    }
+
     const brand = await prisma.organizations.create({
       data: { type: 'brand', legal_name: plan.brand.legal_name,
         display_name: plan.brand.display_name, country_code: plan.brand.country_code },
@@ -227,15 +243,22 @@ async function seed(plan: Plan) {
     console.log(`  marque creee : ${brand.id}`);
 
     const supplierIds = new Map<string, string>();
+    // On retient aussi l'identifiant de la relation. Une demande de donnees
+    // dont le relationship_id ne designe pas exactement le couple
+    // (marque, fournisseur) est rejetee par le declencheur
+    // data_request_relationship_mismatch. Le mode --dry-run ne pouvait pas
+    // le voir : il ne touche pas la base.
+    const relationshipIds = new Map<string, string>();
     for (const s of plan.suppliers) {
       const org = await prisma.organizations.create({
         data: { type: 'supplier', legal_name: `${PILOT} — ${s.name}`,
           display_name: s.name, country_code: s.country },
       });
       supplierIds.set(s.key, org.id);
-      await prisma.brand_supplier_relationships.create({
+      const link = await prisma.brand_supplier_relationships.create({
         data: { brand_organization_id: brand.id, supplier_organization_id: org.id },
       });
+      relationshipIds.set(s.key, link.id);
     }
     console.log(`  ${plan.suppliers.length} fournisseurs crees et relies a la marque`);
 
@@ -251,6 +274,7 @@ async function seed(plan: Plan) {
         data: {
           brand_organization_id: brand.id,
           supplier_organization_id: supplierIds.get(r.supplier)!,
+          relationship_id: relationshipIds.get(r.supplier)!,
           title: r.title,
           questionnaire_key: 'textile_core',
           questionnaire_version: '1.0',
@@ -296,6 +320,10 @@ if (!process.env.DATABASE_URL?.trim()) {
 }
 
 const brandId = await seed(plan);
+// Pas d'amorcage, pas de rapport. Imprimer les chiffres du pilote alors que
+// rien n'a ete ecrit donnerait a croire que la base contient ce qu'elle ne
+// contient pas — et c'est ce rapport qu'un commercial pose sur la table.
+if (!brandId) process.exit(process.exitCode || 1);
 printReport(plan);
 console.log(`Identifiant de la marque pilote : ${brandId}`);
 console.log('Supprimer avec --reset avant de rejouer.\n');

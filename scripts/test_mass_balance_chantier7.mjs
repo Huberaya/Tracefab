@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('--- Static Test Suite: Chantier 7 Mass-Balance & Volumetric Anti-Fraud Engine ---');
 
@@ -41,7 +42,7 @@ console.log('✓ API routes, TypeScript contracts, and router bindings verified.
 
 // 3. Verify Brand Console UI Integration
 const brandConsolePath = path.resolve('brand-console/index.html');
-const brandConsole = fs.readFileSync(brandConsolePath, 'utf8');
+const brandConsole = pageSource('brand-console/index.html');
 
 assert.ok(brandConsole.includes("navButton('massBalance'"), 'Brand Console must have massBalance in navigation');
 assert.ok(brandConsole.includes('massBalanceConsoleView'), 'Brand Console must implement massBalanceConsoleView');
@@ -54,7 +55,7 @@ console.log('✓ Brand Console UI navigation, KPIs, ledger, and product reconcil
 
 // 4. Verify Supplier Portal UI Integration
 const supplierPortalPath = path.resolve('supplier-portal/index.html');
-const supplierPortal = fs.readFileSync(supplierPortalPath, 'utf8');
+const supplierPortal = pageSource('supplier-portal/index.html');
 
 assert.ok(supplierPortal.includes("navButton('massBalance'"), 'Supplier Portal must have massBalance in navigation');
 assert.ok(supplierPortal.includes('massBalanceSupplierView'), 'Supplier Portal must implement massBalanceSupplierView');

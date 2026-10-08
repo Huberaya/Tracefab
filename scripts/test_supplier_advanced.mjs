@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { pageSource } from './lib/page_source.mjs';
 
 const files = Object.fromEntries(await Promise.all([
   ['profile', 'api/_lib/supplier-profile.ts'],
@@ -17,7 +18,12 @@ const files = Object.fromEntries(await Promise.all([
   ['hardening', 'prisma/migrations/20261005090000_supplier_portal_advanced_hardening/migration.sql'],
   ['supplierInvitationCompatibility', 'prisma/migrations/20261005100000_supplier_invitation_compatibility/migration.sql'],
   ['email', 'api/_lib/email.ts'],
-].map(async ([key, path]) => [key, await readFile(path, 'utf8')])));
+].map(async ([key, path]) => [
+  key,
+  // Le JavaScript des pages vit desormais dans /assets/js/ ; pageSource
+  // rend la page entiere, exactement comme elle etait lue avant.
+  path.endsWith('.html') ? pageSource(path) : await readFile(path, 'utf8'),
+])));
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 

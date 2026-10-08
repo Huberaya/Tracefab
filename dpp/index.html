@@ -724,7 +724,8 @@
   </style>
     <!-- i18n : catalogue unique /assets/i18n. Page grand public : titre et
          description lui sont propres, d'ou TF_I18N_SKIP_META. -->
-    <script>window.TF_I18N_SKIP_META = true;</script>
+    <script src="/assets/js/tf-actions.js"></script>
+    <script src="/assets/js/tf-skip-meta.js"></script>
     <script src="/assets/i18n/en.js"></script>
     <script src="/assets/js/tf-i18n.js"></script>
     <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
@@ -743,7 +744,7 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
-        <select id="dpp-lang-select" onchange="applyDppLang(this.value)" style="background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);padding:6px 12px;border-radius:9999px;font-size:12px;font-family:inherit;font-weight:700;cursor:pointer;">
+        <select id="dpp-lang-select" data-tf-act="p01" data-tf-on="change" style="background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);padding:6px 12px;border-radius:9999px;font-size:12px;font-family:inherit;font-weight:700;cursor:pointer;">
           <option value="en">🇬🇧 English</option>
           <option value="fr">🇫🇷 Français</option>
           <option value="de">🇩🇪 Deutsch</option>
@@ -1202,157 +1203,9 @@
     </div>
   </div>
 
-  <script>
-    (() => {
-      // Tab switching logic
-      const tabs = document.querySelectorAll('.dpp-tab-btn');
-      const panels = {
-        materials: document.getElementById('panel-materials'),
-        traceability: document.getElementById('panel-traceability'),
-        impact: document.getElementById('panel-impact'),
-        circularity: document.getElementById('panel-circularity'),
-        evidence: document.getElementById('panel-evidence'),
-        gs1: document.getElementById('panel-gs1')
-      };
+  <script src="/assets/js/dpp.1.js"></script>
 
-      tabs.forEach(btn => {
-        btn.addEventListener('click', () => {
-          tabs.forEach(t => t.classList.remove('active'));
-          btn.classList.add('active');
-          const target = btn.dataset.tab;
-          Object.keys(panels).forEach(k => {
-            if (panels[k]) panels[k].style.display = (k === target) ? 'block' : 'none';
-          });
-        });
-      });
-
-      // JSON-LD Export and Modal
-      const jsonContent = document.getElementById('dpp-jsonld').textContent.trim();
-      const modal = document.getElementById('modal-jsonld');
-      const codeContainer = document.getElementById('json-code-container');
-      const btnViewRaw = document.getElementById('btn-view-raw');
-      const btnClose = document.getElementById('modal-close');
-      const btnExport = document.getElementById('btn-export-jsonld');
-
-      btnViewRaw.addEventListener('click', () => {
-        try {
-          const formatted = JSON.stringify(JSON.parse(jsonContent), null, 2);
-          codeContainer.textContent = formatted;
-        } catch (e) {
-          codeContainer.textContent = jsonContent;
-        }
-        modal.classList.add('open');
-      });
-
-      btnClose.addEventListener('click', () => modal.classList.remove('open'));
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('open');
-      });
-
-      btnExport.addEventListener('click', () => {
-        const blob = new Blob([jsonContent], { type: 'application/ld+json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'dpp-at-ess-001-cirpass.jsonld';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
-    })();
-  </script>
-
-  <script>
-    // dppLangs a ete fusionne dans le catalogue unique /assets/i18n
-    // (portee 'dpp'). Regenerable par scripts/build_dpp_i18n.mjs.
-
-    const BADGE_ICON = `<svg fill="currentColor" viewBox="0 0 20 20" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg> `;
-
-    function applyDppLang(lang) {
-      const T = window.TF_I18N;
-      if (T) { T.setLanguage(lang); return; }
-      renderDppLang(lang);
-    }
-
-    // Rendu effectif, separe du commutateur pour que tout changement de
-    // langue — selecteur de cette page, console, autre onglet — emprunte le
-    // meme chemin.
-    function renderDppLang(lang) {
-      const T = window.TF_I18N;
-      const tr = (k) => (T ? T.t('dpp.' + k, k) : k);
-      document.documentElement.lang = lang;
-      const badge = document.querySelector('.badge-eu');
-      if (badge) badge.innerHTML = BADGE_ICON + ' ' + tr('badgeEu');
-      const select = document.getElementById('dpp-lang-select');
-      if (select) select.value = lang;
-    }
-
-    document.addEventListener('tf:languagechange', (event) => renderDppLang(event.detail.lang));
-
-    document.addEventListener('DOMContentLoaded', () => {
-      // Le runtime detecte la langue (?lang, stockage partage, navigateur)
-      // puis emet tf:languagechange, qui declenche le rendu.
-      renderDppLang((window.TF_I18N && window.TF_I18N.lang) || 'en');
-    });
-
-    /* ===================================================================
-     * Hydratation du passeport public
-     *
-     * La page reste entierement servie en statique : c'est elle que lisent
-     * les moteurs de recherche, et elle fonctionne sans backend. Quand un
-     * identifiant est present dans l'URL, on remplace les valeurs de
-     * demonstration par les donnees reelles de /api/dpp/:gtin.
-     *
-     * Regle : on n'ecrit que ce que l'API renvoie. Une valeur absente laisse
-     * la valeur affichee intacte plutot que de vider le champ — un passeport
-     * public troue inquiete plus qu'il n'informe.
-     * =================================================================== */
-    (function hydratePassport() {
-      const params = new URLSearchParams(location.search);
-      // Deux entrees : ?gtin=... et le dernier segment de /dpp/<gtin>.
-      const fromPath = location.pathname.replace(/\/+$/, '').split('/').pop();
-      const id = params.get('gtin') || params.get('id')
-        || (fromPath && fromPath !== 'dpp' && !/\.html?$/.test(fromPath) ? fromPath : null);
-
-      const banner = document.getElementById('dpp-demo-banner');
-      if (!id) return;                       // pas d'identifiant : demo assumee
-
-      const dig = (obj, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), obj);
-
-      const apply = (payload) => {
-        const dpp = payload && payload.dpp;
-        if (!dpp) return false;
-        document.querySelectorAll('[data-dpp-field]').forEach((el) => {
-          const v = dig(dpp, el.dataset.dppField);
-          if (v === undefined || v === null || v === '') return;
-          el.textContent = String(v) + (el.dataset.dppSuffix || '');
-          // La valeur n'est plus de la demonstration ni une chaine traduisible :
-          // sans cela le prochain changement de langue la rendrait a nouveau.
-          el.removeAttribute('data-tf-demo');
-          el.removeAttribute('data-i18n');
-        });
-        document.querySelectorAll('[data-dpp-href]').forEach((el) => {
-          const v = dig(payload, el.dataset.dppHref);
-          if (v) el.setAttribute('href', String(v));
-        });
-        if (dpp.productName) document.title = dpp.productName + ' — Digital Product Passport | TRACEFAB';
-        if (banner) banner.hidden = true;
-        document.documentElement.setAttribute('data-dpp-source', 'live');
-        return true;
-      };
-
-      fetch('/api/dpp/' + encodeURIComponent(id), { headers: { accept: 'application/json' } })
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-        .then((payload) => { if (!apply(payload)) throw new Error('empty'); })
-        .catch(() => {
-          // Echec reseau ou passeport inconnu : on garde le contenu statique,
-          // mais on le dit. Afficher de la demo pour du reel serait le pire cas.
-          document.documentElement.setAttribute('data-dpp-source', 'demo');
-          if (banner) banner.hidden = false;
-        });
-    })();
-  </script>
+  <script src="/assets/js/dpp.2.js"></script>
 
 </body>
 </html>

@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { pageSource } from './lib/page_source.mjs';
 
 // 1. Static Contract Assertions
-const brandConsoleHtml = await readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8');
+const brandConsoleHtml = pageSource('brand-console/index.html');
 const plmRoute = await readFile(new URL('../api/_routes/integrations/plm.ts', import.meta.url), 'utf8');
 const plmLib = await readFile(new URL('../api/_lib/plm-connector.ts', import.meta.url), 'utf8');
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
