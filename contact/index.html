@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRACEFAB — Contact · Demo, pilot, partnership</title>
+  <meta name="description" content="Talk to TRACEFAB: request a demo prepared around your supply chain, run a pilot with ten suppliers and twenty products, or write to the team.">
+  <meta name="theme-color" content="#040b08">
+  <meta name="color-scheme" content="dark light">
+
+  <link rel="canonical" href="https://tracefab.vercel.app/contact/">
+  <link rel="alternate" hreflang="en" href="https://tracefab.vercel.app/contact/?lang=en">
+  <link rel="alternate" hreflang="fr" href="https://tracefab.vercel.app/contact/?lang=fr">
+  <link rel="alternate" hreflang="de" href="https://tracefab.vercel.app/contact/?lang=de">
+  <link rel="alternate" hreflang="it" href="https://tracefab.vercel.app/contact/?lang=it">
+  <link rel="alternate" hreflang="es" href="https://tracefab.vercel.app/contact/?lang=es">
+  <link rel="alternate" hreflang="nl" href="https://tracefab.vercel.app/contact/?lang=nl">
+  <link rel="alternate" hreflang="pt" href="https://tracefab.vercel.app/contact/?lang=pt">
+  <link rel="alternate" hreflang="x-default" href="https://tracefab.vercel.app/contact/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TRACEFAB">
+  <meta property="og:title" content="TRACEFAB — Contact">
+  <meta property="og:description" content="Request a demo, run a pilot, or write to the team.">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040b08'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230fb97c' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M8 25l5-6 6 3 5-15' fill='none' stroke='%230fb97c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-site.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    "name": "TRACEFAB Contact",
+    "description": "Request a demo, run a pilot or write to the TRACEFAB team.",
+    "isPartOf": { "@type": "WebSite", "name": "TRACEFAB", "url": "https://tracefab.vercel.app/" }
+  }
+  </script>
+
+  <style>
+    .tf-site-hero { padding: 150px 0 70px; }
+    .tf-contact-layout { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; align-items: start; }
+    .tf-contact-card { border: 1px solid var(--tf-line-light-soft); border-radius: var(--tf-r-lg); background: var(--tf-surface-light-raised); padding: 22px 22px 24px; display: grid; gap: 8px; }
+    .tf-contact-card + .tf-contact-card { margin-top: 14px; }
+    .tf-contact-card__title { font-size: 16px; font-weight: 640; margin: 0; }
+    .tf-contact-card__desc { font-size: 13px; line-height: 1.55; color: var(--tf-ink-muted); margin: 0; }
+    .tf-contact-form { display: grid; gap: 16px; }
+    .tf-contact-form .tf-field label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .04em; margin-bottom: 6px; color: var(--tf-ink-soft); }
+    .tf-contact-form input, .tf-contact-form select, .tf-contact-form textarea {
+      width: 100%; padding: 12px 14px; border: 1px solid var(--tf-line-light);
+      border-radius: var(--tf-r-sm); background: var(--tf-surface-light-raised);
+      font: inherit; font-size: 14px; color: var(--tf-ink);
+    }
+    .tf-contact-form textarea { min-height: 120px; resize: vertical; }
+    .tf-form-msg { font-size: 13.5px; line-height: 1.5; margin: 4px 0 0; }
+    .tf-form-msg--ok { color: var(--tf-emerald-deep); }
+    .tf-form-msg--err { color: var(--tf-trust-missing); }
+    @media (max-width: 900px) { .tf-contact-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .tf-site-hero { padding: 120px 0 48px; } }
+  </style>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-components.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
+</head>
+
+<body>
+<a class="tf-skip" href="#main" data-i18n="common.skip">Skip to main content</a>
+
+<header class="tf-header">
+  <div class="tf-header__shell">
+    <a href="/" class="tf-brand" aria-label="TRACEFAB">
+      <svg class="tf-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="4" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.3"/>
+        <path d="M3 11h26M3 16h26M3 21h26" stroke="currentColor" stroke-opacity=".26" stroke-width="1"/>
+        <path d="M8 25.5l5-6.5 6 3 5-15.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>
+        <span class="tf-brand__word">TRACEFAB</span>
+        <span class="tf-brand__sub">DATA × TEXTILE × TRUST</span>
+      </span>
+    </a>
+
+    <nav class="tf-nav" aria-label="Primary">
+      <a href="/platform/">Platform</a>
+      <a href="/security/" data-i18n="site.nav.security">Security</a>
+      <a href="/resources/" data-i18n="site.nav.resources">Resources</a>
+      <a href="/about/" data-i18n="site.nav.about">About</a>
+      <a href="/contact/" aria-current="page" data-i18n="site.nav.contact">Contact</a>
+    </nav>
+
+    <div class="tf-header__actions">
+      <label class="tf-visually-hidden" for="tf-site-lang" data-i18n="site.langLabel">Language</label>
+      <select id="tf-site-lang" style="min-height:40px">
+        <option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option>
+        <option value="it">IT</option><option value="es">ES</option><option value="nl">NL</option><option value="pt">PT</option>
+      </select>
+      <a href="/brand-console/" class="tf-btn tf-btn--ghost-dark tf-btn--sm" data-i18n="site.nav.signIn">Sign in</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="tf-section tf-on-dark tf-site-hero">
+    <div class="tf-container">
+      <span class="tf-eyebrow" data-i18n="site.eyebrow">TRACEFAB — the intelligence layer for the global textile supply chain</span>
+      <h1 class="tf-display-1" style="margin-top:22px" data-i18n="site.contact.title">Talk to TRACEFAB</h1>
+      <p class="tf-lead" style="max-width:62ch;margin-top:22px" data-i18n="site.contact.lede">
+        Tell us where your supply chain data hurts. We will show you what a structured
+        intelligence layer changes.
+      </p>
+    </div>
+  </section>
+
+  <section class="tf-section tf-on-light">
+    <div class="tf-container">
+      <div class="tf-contact-layout">
+
+        <div>
+          <article class="tf-contact-card">
+            <h2 class="tf-contact-card__title" data-i18n="site.contact.demoTitle">See a demo</h2>
+            <p class="tf-contact-card__desc" data-i18n="site.contact.demoTxt">A walkthrough prepared around a supply chain that looks like yours.</p>
+          </article>
+          <article class="tf-contact-card">
+            <h2 class="tf-contact-card__title" data-i18n="site.contact.pilotTitle">Run a pilot</h2>
+            <p class="tf-contact-card__desc" data-i18n="site.contact.pilotTxt">One brand, ten suppliers, twenty products — from data collection to DPP readiness, with a pilot report at the end.</p>
+          </article>
+          <article class="tf-contact-card">
+            <h2 class="tf-contact-card__title" data-i18n="site.contact.writeTitle">Write to us</h2>
+            <p class="tf-contact-card__desc" data-i18n="site.contact.writeTxt">Sales, partnerships, security questions or press — the same inbox, answered by humans.</p>
+          </article>
+        </div>
+
+        <form id="tf-contact-form" class="tf-contact-form" novalidate>
+          <h2 class="tf-display-3" data-i18n="site.contact.formTitle">Send a message</h2>
+
+          <div class="tf-field">
+            <label for="tf-c-name" data-i18n="site.form.name">Full name</label>
+            <input id="tf-c-name" name="name" type="text" autocomplete="name" required maxlength="120">
+          </div>
+          <div class="tf-field">
+            <label for="tf-c-email" data-i18n="site.form.email">Work email</label>
+            <input id="tf-c-email" name="email" type="email" autocomplete="email" required maxlength="254">
+          </div>
+          <div class="tf-field">
+            <label for="tf-c-company" data-i18n="site.form.company">Company</label>
+            <input id="tf-c-company" name="company" type="text" autocomplete="organization" maxlength="160">
+          </div>
+          <div class="tf-field">
+            <label for="tf-c-role" data-i18n="site.form.role">Role</label>
+            <select id="tf-c-role" name="role">
+              <option value="brand" data-i18n="site.form.roleBrand">Brand / Manufacturer</option>
+              <option value="supplier" data-i18n="site.form.roleSupplier">Supplier</option>
+              <option value="consultant" data-i18n="site.form.roleConsultant">Consultant / Auditor</option>
+              <option value="other" data-i18n="site.form.roleOther">Other</option>
+            </select>
+          </div>
+          <div class="tf-field">
+            <label for="tf-c-interest" data-i18n="site.contact.interest">I am interested in</label>
+            <select id="tf-c-interest" name="interest">
+              <option value="demo" data-i18n="site.contact.interestDemo">A demo</option>
+              <option value="pilot" data-i18n="site.contact.interestPilot">A pilot</option>
+              <option value="other" data-i18n="site.contact.interestOther">Something else</option>
+            </select>
+          </div>
+          <div class="tf-field">
+            <label for="tf-c-message" data-i18n="site.form.message">Message</label>
+            <textarea id="tf-c-message" name="message" maxlength="2000" data-i18n-attr="placeholder:site.form.messageHint" placeholder="Optional — tell us about your supply chain and what you want to achieve."></textarea>
+          </div>
+
+          <div>
+            <button type="submit" class="tf-btn tf-btn--primary" id="tf-c-submit" data-i18n="site.form.submit">Send</button>
+          </div>
+          <p class="tf-form-msg tf-form-msg--ok" id="tf-c-success" role="status" hidden data-i18n="site.form.successTxt">
+            Your request has been recorded. Our team will get back to you shortly.
+          </p>
+          <p class="tf-form-msg tf-form-msg--err" id="tf-c-error" role="alert" hidden data-i18n="site.form.errorTxt">
+            We could not record your request. Please try again or write to sales@tracefab.com.
+          </p>
+        </form>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="tf-footer tf-on-dark">
+  <div class="tf-container">
+    <div class="tf-footer__top">
+      <div>
+        <a href="/" class="tf-brand" aria-label="TRACEFAB">
+          <svg class="tf-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="4" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.3"/>
+            <path d="M3 11h26M3 16h26M3 21h26" stroke="currentColor" stroke-opacity=".26" stroke-width="1"/>
+            <path d="M8 25.5l5-6.5 6 3 5-15.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>
+            <span class="tf-brand__word">TRACEFAB</span>
+            <span class="tf-brand__sub">DATA × TEXTILE × TRUST</span>
+          </span>
+        </a>
+        <p class="tf-footer__statement" data-i18n="footer.statement">The intelligence layer for the global textile supply chain.</p>
+        <span class="tf-label tf-label--xs" data-i18n="footer.europe">European by design · Global by architecture</span>
+      </div>
+      <div>
+        <h3 data-i18n="footer.colPlatform">Platform</h3>
+        <ul>
+          <li><a href="/brand-console/" data-i18n="footer.platform1">Brand Console</a></li>
+          <li><a href="/supplier-portal/" data-i18n="footer.platform2">Supplier Portal</a></li>
+          <li><a href="/quality-center/" data-i18n="footer.platform3">Quality Center</a></li>
+          <li><a href="/dpp/" data-i18n="footer.platform4">Public DPP</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 data-i18n="footer.colResources">Resources</h3>
+        <ul>
+          <li><a href="/platform/" data-i18n="footer.resources1">Platform overview</a></li>
+          <li><a href="/security/" data-i18n="footer.resources2">Trust &amp; security</a></li>
+          <li><a href="/resources/" data-i18n="footer.resources3">Resources</a></li>
+          <li><a href="/about/" data-i18n="footer.resources4">About &amp; contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="tf-footer__bottom">
+      <span class="tf-label tf-label--xs" data-i18n="footer.rights">© 2026 TRACEFAB. All rights reserved.</span>
+      <span class="tf-label tf-label--xs" data-i18n="site.footerNote">DPP readiness is a preparation indicator, not a legal certification.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/i18n/en.js"></script>
+<script src="/assets/js/tf-i18n.js"></script>
+<script>
+  (function () {
+    var sel = document.getElementById('tf-site-lang');
+    if (sel && window.TF_I18N) {
+      sel.value = window.TF_I18N.lang || 'en';
+      sel.addEventListener('change', function () { window.TF_I18N.setLanguage(sel.value); });
+    }
+
+    /* Capture reelle du lead : POST /api/leads. Le kind derive de l'interet
+       exprime ; « autre chose » reste un contact general. Jamais de fausse
+       confirmation : succes et erreur sont des etats distincts. */
+    var form = document.getElementById('tf-contact-form');
+    if (!form) return;
+    var submitBtn = document.getElementById('tf-c-submit');
+    var successBox = document.getElementById('tf-c-success');
+    var errorBox = document.getElementById('tf-c-error');
+
+    function t(key, fallback) {
+      return window.TF_I18N ? window.TF_I18N.t(key, fallback) : fallback;
+    }
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var data = new FormData(form);
+      var interest = (data.get('interest') || 'demo').toString();
+      var payload = {
+        kind: interest === 'pilot' ? 'pilot' : (interest === 'demo' ? 'demo' : 'contact'),
+        name: (data.get('name') || '').toString().trim(),
+        email: (data.get('email') || '').toString().trim(),
+        company: (data.get('company') || '').toString().trim(),
+        role: (data.get('role') || '').toString().trim(),
+        message: (data.get('message') || '').toString().trim(),
+        sourceUrl: window.location.href
+      };
+      if (!payload.name || !payload.email) return;
+      if (errorBox) errorBox.hidden = true;
+      if (successBox) successBox.hidden = true;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy', 'true');
+        submitBtn.textContent = t('site.form.submitting', 'Sending…');
+      }
+      fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error('lead_rejected_' + response.status);
+          return response.json();
+        })
+        .then(function () {
+          form.reset();
+          if (successBox) successBox.hidden = false;
+        })
+        .catch(function () {
+          if (errorBox) errorBox.hidden = false;
+        })
+        .finally(function () {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.removeAttribute('aria-busy');
+            submitBtn.textContent = t('site.form.submit', 'Send');
+          }
+        });
+    });
+  })();
+</script>
+</body>
+</html>

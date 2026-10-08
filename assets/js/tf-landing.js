@@ -811,11 +811,60 @@
     if (form) {
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-        var done = $('[data-tf-demo-success]', modal);
-        if (done) { done.hidden = false; }
-        form.hidden = true;
+        submitLead(form, modal);
       });
     }
+  }
+
+  /* Le modal « Request a demo » capture reellement le lead : POST /api/leads,
+     etats busy / succes / erreur, jamais de fausse confirmation. */
+  function submitLead(form, modal) {
+    var done = $('[data-tf-demo-success]', modal);
+    var errorBox = $('[data-tf-demo-error]', modal);
+    var submitBtn = $('#tf-demo-submit', modal);
+    var data = new FormData(form);
+    var payload = {
+      kind: 'demo',
+      name: (data.get('name') || '').toString().trim(),
+      email: (data.get('email') || '').toString().trim(),
+      company: (data.get('company') || '').toString().trim(),
+      role: (data.get('role') || '').toString().trim(),
+      sourceUrl: window.location.href
+    };
+    if (!payload.name || !payload.email) return;
+
+    function setBusy(busy) {
+      if (!submitBtn) return;
+      submitBtn.disabled = busy;
+      submitBtn.setAttribute('aria-busy', busy ? 'true' : 'false');
+      if (window.TF_I18N) {
+        submitBtn.textContent = busy
+          ? window.TF_I18N.t('modal.sending', 'Sending…')
+          : window.TF_I18N.t('modal.submit', 'Request a demo');
+      }
+    }
+    function fail() {
+      setBusy(false);
+      if (errorBox) errorBox.hidden = false;
+    }
+
+    setBusy(true);
+    if (errorBox) errorBox.hidden = true;
+    fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error('lead_rejected_' + response.status);
+        return response.json();
+      })
+      .then(function () {
+        setBusy(false);
+        form.hidden = true;
+        if (done) done.hidden = false;
+      })
+      .catch(function () { fail(); });
   }
 
   /* ── BOOT ────────────────────────────────────────────────────────────── */

@@ -48,6 +48,7 @@ const routes: Route[] = [
   { pattern: /^integrations$/, params: [], load: () => import('./_routes/integrations.js') },
   { pattern: /^gs1\/digital\-link\/([^\/]+)$/, params: ['gtin'], load: () => import('./_routes/gs1/digital-link/[gtin].js') },
   { pattern: /^invitations\/accept$/, params: [], load: () => import('./_routes/invitations/accept.js') },
+  { pattern: /^leads$/, params: [], load: () => import('./_routes/leads.js') },
   { pattern: /^webhooks\/clerk$/, params: [], load: () => import('./_routes/webhooks/clerk.js') },
   { pattern: /^materials\/([^\/]+)$/, params: ['materialId'], load: () => import('./_routes/materials/[materialId].js') },
   { pattern: /^materials$/, params: [], load: () => import('./_routes/materials.js') },

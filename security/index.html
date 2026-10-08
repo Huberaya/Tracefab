@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRACEFAB — Trust &amp; Security</title>
+  <meta name="description" content="How TRACEFAB protects supply chain data: tenant isolation with forced row level security, server-verified authentication, private evidence storage, append-only audit log, and readiness instead of compliance claims.">
+  <meta name="theme-color" content="#040b08">
+  <meta name="color-scheme" content="dark light">
+
+  <link rel="canonical" href="https://tracefab.vercel.app/security/">
+  <link rel="alternate" hreflang="en" href="https://tracefab.vercel.app/security/?lang=en">
+  <link rel="alternate" hreflang="fr" href="https://tracefab.vercel.app/security/?lang=fr">
+  <link rel="alternate" hreflang="de" href="https://tracefab.vercel.app/security/?lang=de">
+  <link rel="alternate" hreflang="it" href="https://tracefab.vercel.app/security/?lang=it">
+  <link rel="alternate" hreflang="es" href="https://tracefab.vercel.app/security/?lang=es">
+  <link rel="alternate" hreflang="nl" href="https://tracefab.vercel.app/security/?lang=nl">
+  <link rel="alternate" hreflang="pt" href="https://tracefab.vercel.app/security/?lang=pt">
+  <link rel="alternate" hreflang="x-default" href="https://tracefab.vercel.app/security/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TRACEFAB">
+  <meta property="og:title" content="TRACEFAB — Trust &amp; Security">
+  <meta property="og:description" content="Tenant isolation by design, private evidence storage, append-only audit log — and readiness instead of compliance claims.">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040b08'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230fb97c' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M8 25l5-6 6 3 5-15' fill='none' stroke='%230fb97c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-site.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "TRACEFAB Trust & Security",
+    "description": "Security architecture of TRACEFAB: tenant isolation, authentication, private evidence storage, audit log, notification pipeline, hardened edge.",
+    "isPartOf": { "@type": "WebSite", "name": "TRACEFAB", "url": "https://tracefab.vercel.app/" }
+  }
+  </script>
+
+  <style>
+    .tf-site-hero { padding: 150px 0 84px; }
+    .tf-sec-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--tf-line-light-soft); border: 1px solid var(--tf-line-light-soft); border-radius: var(--tf-r-lg); overflow: hidden; }
+    .tf-sec-item { background: var(--tf-surface-light-raised); padding: 26px 24px 30px; display: grid; gap: 10px; align-content: start; }
+    .tf-sec-item__num { font-family: var(--tf-font-mono); font-size: 12px; letter-spacing: .14em; color: var(--tf-emerald-deep); }
+    .tf-sec-item__title { font-size: 17px; font-weight: 640; letter-spacing: -.01em; }
+    .tf-sec-item__desc { font-size: 13.5px; line-height: 1.6; color: var(--tf-ink-muted); margin: 0; }
+    @media (max-width: 860px) { .tf-sec-grid { grid-template-columns: 1fr; } .tf-site-hero { padding: 120px 0 60px; } }
+  </style>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-components.css">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css">
+</head>
+
+<body>
+<a class="tf-skip" href="#main" data-i18n="common.skip">Skip to main content</a>
+
+<header class="tf-header">
+  <div class="tf-header__shell">
+    <a href="/" class="tf-brand" aria-label="TRACEFAB">
+      <svg class="tf-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="4" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.3"/>
+        <path d="M3 11h26M3 16h26M3 21h26" stroke="currentColor" stroke-opacity=".26" stroke-width="1"/>
+        <path d="M8 25.5l5-6.5 6 3 5-15.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>
+        <span class="tf-brand__word">TRACEFAB</span>
+        <span class="tf-brand__sub">DATA × TEXTILE × TRUST</span>
+      </span>
+    </a>
+
+    <nav class="tf-nav" aria-label="Primary">
+      <a href="/platform/">Platform</a>
+      <a href="/security/" aria-current="page" data-i18n="site.nav.security">Security</a>
+      <a href="/resources/" data-i18n="site.nav.resources">Resources</a>
+      <a href="/about/" data-i18n="site.nav.about">About</a>
+      <a href="/contact/" data-i18n="site.nav.contact">Contact</a>
+    </nav>
+
+    <div class="tf-header__actions">
+      <label class="tf-visually-hidden" for="tf-site-lang" data-i18n="site.langLabel">Language</label>
+      <select id="tf-site-lang" style="min-height:40px">
+        <option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option>
+        <option value="it">IT</option><option value="es">ES</option><option value="nl">NL</option><option value="pt">PT</option>
+      </select>
+      <a href="/brand-console/" class="tf-btn tf-btn--ghost-dark tf-btn--sm" data-i18n="site.nav.signIn">Sign in</a>
+      <a href="/contact/" class="tf-btn tf-btn--primary tf-btn--sm" data-i18n="site.ctaDemo">Request a demo</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="tf-section tf-on-dark tf-site-hero">
+    <div class="tf-container">
+      <span class="tf-eyebrow" data-i18n="site.eyebrow">TRACEFAB — the intelligence layer for the global textile supply chain</span>
+      <h1 class="tf-display-1" style="margin-top:22px" data-i18n="site.security.title">Trust &amp; Security</h1>
+      <p class="tf-lead" style="max-width:64ch;margin-top:22px" data-i18n="site.security.lede">
+        Supply chain data is sensitive by nature. TRACEFAB is built so that every datum has an
+        owner, a status, a proof trail — and no path across tenants.
+      </p>
+    </div>
+  </section>
+
+  <section class="tf-section tf-on-light">
+    <div class="tf-container">
+      <div class="tf-sec-grid">
+        <article class="tf-sec-item"><span class="tf-sec-item__num">01</span><h2 class="tf-sec-item__title" data-i18n="site.security.t1">Tenant isolation by design</h2><p class="tf-sec-item__desc" data-i18n="site.security.d1">Multi-tenancy is enforced at the database level: Row Level Security is enabled and forced on tenant tables, and the API always resolves the caller's organization from a verified session.</p></article>
+        <article class="tf-sec-item"><span class="tf-sec-item__num">02</span><h2 class="tf-sec-item__title" data-i18n="site.security.t2">Server-verified authentication</h2><p class="tf-sec-item__desc" data-i18n="site.security.d2">Sessions are verified server-side against the identity provider, with an explicit allow-list of authorized origins. No trust is placed in client-provided identity.</p></article>
+        <article class="tf-sec-item"><span class="tf-sec-item__num">03</span><h2 class="tf-sec-item__title" data-i18n="site.security.t3">Private evidence storage</h2><p class="tf-sec-item__desc" data-i18n="site.security.d3">Documents live in private object storage, accessed only through short-lived signed URLs issued by the API after a tenant check, with SHA-256 hashing and an antivirus scan contract on upload.</p></article>
+        <article class="tf-sec-item"><span class="tf-sec-item__num">04</span><h2 class="tf-sec-item__title" data-i18n="site.security.t4">Declarations ≠ evidence ≠ certification</h2><p class="tf-sec-item__desc" data-i18n="site.security.d4">Every data point carries an explicit status — declared, documented, verified, third-party certified, needs review or expired. The interface never blurs these levels.</p></article>
+        <article class="tf-sec-item"><span class="tf-sec-item__num">05</span><h2 class="tf-sec-item__title" data-i18n="site.security.t5">Append-only audit log</h2><p class="tf-sec-item__desc" data-i18n="site.security.d5">Sensitive operations write who, what, when, before and after into an append-only audit trail scoped per organization.</p></article>
+        <article class="tf-sec-item"><span class="tf-sec-item__num">06</span><h2 class="tf-sec-item__title" data-i18n="site.security.t6">Durable notification pipeline</h2><p class="tf-sec-item__desc" data-i18n="site.security.d6">Notifications flow through a transactional outbox processed by a secret-protected worker, with delivery observability and alerting.</p></article>
+        <article class="tf-sec-item"><span class="tf-sec-item__num">07</span><h2 class="tf-sec-item__title" data-i18n="site.security.t7">Hardened edge</h2><p class="tf-sec-item__desc" data-i18n="site.security.d7">Strict security headers (HSTS, CSP, nosniff, frame deny), no-store API responses and controlled error mapping keep infrastructure details private.</p></article>
+        <article class="tf-sec-item"><span class="tf-sec-item__num">08</span><h2 class="tf-sec-item__title" data-i18n="site.security.t8">Readiness, never certification</h2><p class="tf-sec-item__desc" data-i18n="site.security.d8">TRACEFAB measures DPP and data readiness. It never claims legal compliance for a brand — regulatory responsibility stays with the economic operator.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="tf-section tf-on-dark">
+    <div class="tf-container" style="max-width:820px">
+      <p class="tf-lead" data-i18n="site.security.questions">Security questions? Our team answers architecture, isolation and processing questions on request.</p>
+      <div style="margin-top:22px">
+        <a href="/contact/" class="tf-btn tf-btn--primary" data-i18n="site.security.cta">Talk to the team</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="tf-footer tf-on-dark">
+  <div class="tf-container">
+    <div class="tf-footer__top">
+      <div>
+        <a href="/" class="tf-brand" aria-label="TRACEFAB">
+          <svg class="tf-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="4" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.3"/>
+            <path d="M3 11h26M3 16h26M3 21h26" stroke="currentColor" stroke-opacity=".26" stroke-width="1"/>
+            <path d="M8 25.5l5-6.5 6 3 5-15.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>
+            <span class="tf-brand__word">TRACEFAB</span>
+            <span class="tf-brand__sub">DATA × TEXTILE × TRUST</span>
+          </span>
+        </a>
+        <p class="tf-footer__statement" data-i18n="footer.statement">The intelligence layer for the global textile supply chain.</p>
+        <span class="tf-label tf-label--xs" data-i18n="footer.europe">European by design · Global by architecture</span>
+      </div>
+      <div>
+        <h3 data-i18n="footer.colPlatform">Platform</h3>
+        <ul>
+          <li><a href="/brand-console/" data-i18n="footer.platform1">Brand Console</a></li>
+          <li><a href="/supplier-portal/" data-i18n="footer.platform2">Supplier Portal</a></li>
+          <li><a href="/quality-center/" data-i18n="footer.platform3">Quality Center</a></li>
+          <li><a href="/dpp/" data-i18n="footer.platform4">Public DPP</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 data-i18n="footer.colResources">Resources</h3>
+        <ul>
+          <li><a href="/platform/" data-i18n="footer.resources1">Platform overview</a></li>
+          <li><a href="/security/" data-i18n="footer.resources2">Trust &amp; security</a></li>
+          <li><a href="/resources/" data-i18n="footer.resources3">Resources</a></li>
+          <li><a href="/about/" data-i18n="footer.resources4">About &amp; contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="tf-footer__bottom">
+      <span class="tf-label tf-label--xs" data-i18n="footer.rights">© 2026 TRACEFAB. All rights reserved.</span>
+      <span class="tf-label tf-label--xs" data-i18n="site.footerNote">DPP readiness is a preparation indicator, not a legal certification.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/i18n/en.js"></script>
+<script src="/assets/js/tf-i18n.js"></script>
+<script>
+  (function () {
+    var sel = document.getElementById('tf-site-lang');
+    if (sel && window.TF_I18N) {
+      sel.value = window.TF_I18N.lang || 'en';
+      sel.addEventListener('change', function () { window.TF_I18N.setLanguage(sel.value); });
+    }
+  })();
+</script>
+</body>
+</html>

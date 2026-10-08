@@ -272,3 +272,56 @@ export async function sendDataRequestNotificationEmail(
 
   return { status: 'sent', providerId };
 }
+
+/* ── Chantier 03 — notification des leads du site public ─────────────────
+   L'envoi est une commodité : le lead est déjà persisté quand cette fonction
+   tourne. Un échec ne doit jamais remonter vers le visiteur. La destination
+   est TRACEFAB_LEADS_NOTIFICATION_EMAIL ; sans elle, l'envoi est ignoré. */
+
+type WebsiteLeadEmail = {
+  kind: string;
+  name: string;
+  email: string;
+  company?: string | null;
+  role?: string | null;
+  message?: string | null;
+  sourceUrl?: string | null;
+};
+
+export async function sendLeadNotificationEmail(input: WebsiteLeadEmail): Promise<EmailDeliveryResult> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+  const to = process.env.TRACEFAB_LEADS_NOTIFICATION_EMAIL?.trim();
+  if (!apiKey || !from || !to) return { status: 'not_configured' };
+
+  const subjectPrefix = input.kind === 'pilot' ? 'Pilot request' : input.kind === 'contact' ? 'Contact' : 'Demo request';
+  const lines: string[] = [
+    `New TRACEFAB website lead (${input.kind}).`,
+    '',
+    `Name: ${input.name}`,
+    `Email: ${input.email}`,
+  ];
+  if (input.company) lines.push(`Company: ${input.company}`);
+  if (input.role) lines.push(`Role: ${input.role}`);
+  if (input.message) lines.push('', 'Message:', input.message);
+  if (input.sourceUrl) lines.push('', `Source: ${input.sourceUrl}`);
+
+  let response: Response;
+  try {
+    response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: `${subjectPrefix} — ${input.name} (${input.email})`,
+        text: lines.join('\n'),
+        html: lines.map((line) => (line ? `<p>${escapeHtml(line)}</p>` : '')).join(''),
+      }),
+    });
+  } catch {
+    return { status: 'failed' };
+  }
+  if (!response.ok) return { status: 'failed' };
+  return { status: 'sent', providerId: null };
+}

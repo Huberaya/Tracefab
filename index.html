@@ -562,10 +562,10 @@
       <div>
         <h3 data-i18n="footer.colResources">Resources</h3>
         <ul>
-          <li><a href="/docs/architecture/01-system-context.md" data-i18n="footer.resources1">Platform architecture</a></li>
-          <li><a href="/docs/DESIGN_SYSTEM.md" data-i18n="footer.resources2">Design system</a></li>
-          <li><a href="/docs/architecture/15-product-api.md" data-i18n="footer.resources3">API reference</a></li>
-          <li><a href="/docs/architecture/02-multi-tenancy-and-security.md" data-i18n="footer.resources4">Security &amp; multi-tenancy</a></li>
+          <li><a href="/platform/" data-i18n="footer.resources1">Platform overview</a></li>
+          <li><a href="/security/" data-i18n="footer.resources2">Trust &amp; security</a></li>
+          <li><a href="/resources/" data-i18n="footer.resources3">Resources</a></li>
+          <li><a href="/about/" data-i18n="footer.resources4">About &amp; contact</a></li>
         </ul>
       </div>
     </div>
@@ -611,15 +611,19 @@
         </select>
       </div>
       <div style="display:flex;gap:10px;margin-top:22px">
-        <button type="submit" class="tf-btn tf-btn--primary" data-i18n="modal.submit">Request a demo</button>
+        <button type="submit" class="tf-btn tf-btn--primary" id="tf-demo-submit" data-i18n="modal.submit">Request a demo</button>
         <button type="button" class="tf-btn tf-btn--ghost-dark" data-tf-close-demo data-i18n="modal.cancel">Cancel</button>
       </div>
+      <p class="tf-body-sm" data-tf-demo-error role="alert" hidden
+         style="color:#ff9a82;margin-top:14px" data-i18n="modal.errorTxt">
+        We could not record your request. Please try again or write to sales@tracefab.com.
+      </p>
     </form>
 
-    <div data-tf-demo-success hidden>
+    <div data-tf-demo-success hidden aria-live="polite">
       <h3 class="tf-display-3" style="margin-bottom:10px" data-i18n="modal.successTitle">Request recorded.</h3>
       <p class="tf-body-sm" style="color:var(--tf-ink-inv-muted);margin-bottom:22px" data-i18n="modal.successTxt">
-        This demonstration form is not connected to a mailbox yet. Nothing was transmitted.
+        Thank you — your request has been recorded. Our team will come back to you with a walkthrough prepared for your supply chain.
       </p>
       <button type="button" class="tf-btn tf-btn--ghost-dark" data-tf-close-demo data-i18n="modal.close">Close</button>
     </div>
