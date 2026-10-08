@@ -261,8 +261,12 @@ for (const e of ['crm_task_type', 'crm_task_status', 'crm_meeting_mode', 'crm_pi
 }
 
 const schema = await readFile(at('prisma/schema.prisma'), 'utf8');
-eq((schema.match(/^model /gm) || []).length, 50, 'schema.prisma : 50 modèles');
-eq((schema.match(/^enum /gm) || []).length, 36, 'schema.prisma : 36 enums');
+/* Seuil, pas égalité stricte : l'intention est « rien du Chantier 02 n'a été
+   perdu », pas « le total est figé ». Un chantier suivant ajoute des modèles. */
+isTrue((schema.match(/^model /gm) || []).length >= 50,
+  'schema.prisma : au moins 50 modèles', `${(schema.match(/^model /gm) || []).length} modèles`);
+isTrue((schema.match(/^enum /gm) || []).length >= 36,
+  'schema.prisma : au moins 36 enums', `${(schema.match(/^enum /gm) || []).length} enums`);
 isTrue(/model crm_pilots \{[\s\S]*?company_id\s+String\s+@unique/.test(schema),
   'un pilote par entreprise (company_id @unique)');
 
@@ -287,8 +291,9 @@ const EXPECTED = [
 for (const [, pattern] of EXPECTED) {
   isTrue(router.includes(pattern), `motif enregistré : ${pattern}`);
 }
-isTrue((router.match(/pattern: \/\^/g) || []).length === 142,
-  'le routeur compte 142 motifs (134 + 8), rien n\'a été perdu');
+isTrue((router.match(/pattern: \/\^/g) || []).length >= 142,
+  'le routeur compte au moins 142 motifs (134 + les 8 du Chantier 02)',
+  `${(router.match(/pattern: \/\^/g) || []).length} motifs`);
 
 for (const [file, pattern] of EXPECTED) {
   const routeLine = lineOf(pattern);
@@ -355,7 +360,8 @@ const LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
 const dicts = {};
 for (const lang of LANGS) {
   dicts[lang] = JSON.parse(await readFile(at(`locales/${lang}/admin.json`), 'utf8'));
-  eq(Object.keys(dicts[lang]).length, 271, `${lang}/admin.json : 271 clés`);
+  isTrue(Object.keys(dicts[lang]).length >= 271,
+    `${lang}/admin.json : au moins 271 clés`, `${Object.keys(dicts[lang]).length} clés`);
 }
 const enKeys = Object.keys(dicts.en).sort().join('|');
 for (const lang of LANGS.slice(1)) {

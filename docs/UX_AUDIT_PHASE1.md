@@ -3439,3 +3439,125 @@ exécutée par le test, leur comportement Prisma ne l'est pas.
 Leads, Opportunities, Campaigns, Emails, Notes, Suppliers, Product Usage,
 Settings, import CSV/Excel (§8), listes de prospection (§7), recherche avancée
 multi-critères (§9). Ils restent désactivés dans la navigation.
+
+---
+
+## Chantier Admin 03 — acquisition
+
+Trois sections de la spec qui manquaient : **listes de prospection (§7)**,
+**import CSV (§8)** et **recherche avancée (§9)**. Sans elles, la console ne
+pouvait ni être alimentée, ni être triée, ni être partagée.
+
+### Réutilisation plutôt que réinvention
+
+Le dépôt contenait déjà `api/_lib/bulk-operations/csv-parser.ts` — détection
+`,`/`;`, champs entre guillemets avec virgules et sauts de ligne internes,
+guillemets échappés, BOM, normalisation d'en-têtes accentués — déjà couvert par
+`test:bulk:chantier8`. L'import CRM l'utilise tel quel. Écrire un second parseur
+aurait produit deux comportements différents sur le même fichier.
+
+`collected_at` et `source_detail` existaient depuis le Chantier 01, avec le
+commentaire « jamais d'entreprise inventée ». La règle §9 était déjà modélisée :
+l'import l'alimente, il ne la recrée pas. Seuls les deux niveaux d'intérêt
+(`dpp_interest`, `traceability_interest`) ont été ajoutés.
+
+### Un seul module de filtres, deux consommateurs
+
+`api/_lib/crm-filters.ts` construit la clause `where` de la liste **et** celle de
+l'export CSV. Deux implémentations séparées finiraient par diverger, et un export
+qui ne correspond pas à l'écran est pire qu'une absence d'export : il a l'air
+fiable.
+
+### Trois règles d'import
+
+**Rien n'est inventé.** Une colonne absente du fichier reste absente de la ligne.
+Aucun défaut métier n'est fabriqué côté application : si le fichier ne dit pas la
+taille, la taille est vide, pas « moyenne ».
+
+**La provenance survit (§9).** `source`, `source_detail` et `collected_at` sont
+écrits par l'import, jamais par le fichier — un fichier qui prétend sa propre
+date de collecte n'est pas une source. Ces trois colonnes sont aussi dans
+l'export, pour que la provenance survive à l'aller-retour.
+
+**Un doublon n'est jamais tranché silencieusement.** Il est signalé avec sa
+raison (`same_name_and_country`, `same_name`, `same_domain`) et la ligne
+existante. Ni saut muet, ni écrasement muet. La politique `abort` refuse
+l'import entier si un seul doublon existe.
+
+L'aperçu (`/import/preview`) n'écrit rien et le commit (`/import/commit`) appelle
+**la même fonction** : ils ne peuvent pas diverger.
+
+### Listes de prospection en base, pas en localStorage
+
+`crm_saved_views` stocke un jeu de filtres nommé en `jsonb`. En base plutôt qu'en
+localStorage pour qu'une équipe la partage : « France — Marques de mode » doit
+exister pour le fondateur comme pour le commercial qui le rejoint. `jsonb` plutôt
+que des colonnes : un critère §9 de plus ne demande pas de migration.
+`sanitizeSavedFilters` ne persiste que les clés connues, non vides et courtes.
+
+### Mesures
+
+| | avant | après |
+|---|---|---|
+| modèles Prisma / enums | 50 / 36 | **51 / 37** |
+| routes API | 142 | **147** |
+| clés `admin.json` × 7 langues | 271 | **340** |
+| `test:suite` | PASS 63 · SKIP 25 · FAIL 0 / 88 | **PASS 64 · SKIP 25 · FAIL 0 / 89** |
+| `test:admin:chantier03` | n'existait pas | **262/262**, contre-vérifié 6 fois |
+| `test:admin:chantier01` / `02` | 94/94 · 315/315 | **95/95 · 315/315** |
+| `api:typecheck` | 90 | **90** — 0 erreur dans les fichiers CRM |
+
+Les 6 contre-vérifications (chacune produit des FAIL) : `sanitizeSavedFilters`
+persistant les filtres vides · `export` placé après `companies/([^/]+)` · alias
+français `nom` retiré · un `create` ajouté à l'aperçu · RLS non forcée sur
+`crm_saved_views` · traduction supprimée.
+
+### Quatre défauts trouvés par le test, pas par moi
+
+**`Nom` — l'en-tête français le plus courant — n'était reconnu par aucun alias.**
+`normalizeHeaderKey('Nom')` donne `nom`, absent de la liste. Un CSV français
+entier aurait été importé **sans nom**, la colonne la plus importante du
+fichier. Les alias couvrent maintenant les 7 langues.
+
+**`sanitizeSavedFilters` persistait les filtres vides.** Le commentaire disait
+« non vides », le code ne le vérifiait pas : `{ q: '' }` produisait un objet non
+vide, et `POST /api/admin/lists` acceptait une liste sans aucun filtre réel — le
+garde `no_known_filter` était contourné.
+
+**Deux `placeholder` étaient du français codé en dur** dans une interface à 7
+langues (« Salon Première Vision 2026 », « Nom;Pays;Produits »). Un `placeholder`
+est du texte d'interface : il est passé au dictionnaire. C'est le contrôle
+durci du Chantier 01 qui les a attrapés.
+
+**`Maison Lumière` dans le stub de démonstration ne matchait pas `/lumiere/i`** :
+l'accent n'était pas normalisé, donc le doublon de démonstration passait en
+« nouveau ».
+
+### Deux assertions de test corrigées
+
+**`Blob.text()` supprime un BOM initial** (les octets sont bien `ef bb bf`, le
+texte rendu commence par `n`). La vérification du BOM porte désormais sur
+`arrayBuffer()`.
+
+**Le contrôle « aucun libellé codé en dur » scannait aussi les chaînes de
+données.** Il cible maintenant le texte des template literals, hors
+interpolation `${...}` — ce qui est réellement rendu. Contre-vérifié : un
+`<div>Opérations</div>` injecté est toujours attrapé.
+
+Les compteurs absolus des tests 02 et 03 (modèles, enums, motifs, clés) sont
+devenus des seuils : leur intention est « rien de ce chantier n'a été perdu »,
+pas « le total est figé ».
+
+### Ce qui n'a pas pu être vérifié ici
+
+La migration **n'a toujours pas été exécutée** : `binaries.prisma.sh` est
+injoignable, `prisma validate` et `check_migrations.ts` restent bloqués. Le SQL
+est contrôlé structurellement (parenthèses, blocs `$$`, guillemets hors
+commentaires), pas par PostgreSQL. Les 5 nouveaux handlers n'ont jamais répondu à
+une requête réelle.
+
+### Non livré, volontairement
+
+Leads, Opportunities, Campaigns, Emails, Notes, Suppliers, Product Usage,
+Settings. Import Excel (`.xlsx`) : seul CSV est pris en charge — un classeur
+Excel n'est pas un CSV et ne se lit pas avec le même parseur.

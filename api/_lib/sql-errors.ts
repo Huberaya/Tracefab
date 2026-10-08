@@ -84,6 +84,10 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   crm_company_not_found: { status: 404 },
   crm_contact_not_found: { status: 404 },
   crm_company_duplicate: { status: 409 },
+  crm_saved_view_not_found: { status: 404 },
+  crm_saved_view_duplicate: { status: 409 },
+  crm_import_source_required: { status: 422 },
+  crm_import_file_too_large: { status: 413 },
 };
 
 

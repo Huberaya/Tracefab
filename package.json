@@ -112,7 +112,8 @@
     "test:i18n:auto-translate": "node scripts/test_auto_translate.mjs",
     "i18n:admin:build": "python3 scripts/build_admin_locales.py",
     "test:admin:chantier01": "node scripts/test_admin_chantier01.mjs",
-    "test:admin:chantier02": "node scripts/test_admin_chantier02.mjs"
+    "test:admin:chantier02": "node scripts/test_admin_chantier02.mjs",
+    "test:admin:chantier03": "node scripts/test_admin_chantier03.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",

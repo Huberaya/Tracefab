@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../_lib/admin-acce
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { COMPANY_TYPES, MATURITIES, PIPELINE_STAGES, PRIORITIES, parseCompanyInput } from '../../_lib/crm.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { buildCompanyFilters } from '../../_lib/crm-filters.js';
 
 const COMPANY_FIELDS = {
   id: true,
@@ -59,59 +60,17 @@ async function list(req: VercelRequest, res: VercelResponse) {
     const offsetRaw = Number(first(req.query.offset) ?? 0);
     const offset = Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
 
-    const where: Record<string, unknown> = { platform_organization_id: admin.platformOrganizationId };
-
-    const stage = first(req.query.stage);
-    if (typeof stage === 'string' && stage) {
-      if (![...PIPELINE_STAGES, 'lost'].includes(stage)) return json(res, 400, { error: 'stage_unknown' });
-      where.stage = stage;
-    }
-
-    const priority = first(req.query.priority);
-    if (typeof priority === 'string' && priority) {
-      if (!PRIORITIES.includes(priority as (typeof PRIORITIES)[number])) {
-        return json(res, 400, { error: 'priority_unknown' });
-      }
-      where.priority = priority;
-    }
-
-    const companyType = first(req.query.company_type);
-    if (typeof companyType === 'string' && companyType) {
-      if (!COMPANY_TYPES.includes(companyType as (typeof COMPANY_TYPES)[number])) {
-        return json(res, 400, { error: 'company_type_unknown' });
-      }
-      where.company_type = companyType;
-    }
-
-    const maturity = first(req.query.maturity);
-    if (typeof maturity === 'string' && maturity) {
-      if (!MATURITIES.includes(maturity as (typeof MATURITIES)[number])) {
-        return json(res, 400, { error: 'maturity_unknown' });
-      }
-      where.maturity = maturity;
-    }
-
-    const country = first(req.query.country);
-    if (typeof country === 'string' && country) where.country_code = country.toUpperCase();
-
-    const search = first(req.query.q);
-    if (typeof search === 'string' && search.trim()) {
-      const term = search.trim();
-      where.OR = [
-        { name: { contains: term, mode: 'insensitive' } },
-        { website: { contains: term, mode: 'insensitive' } },
-        { city: { contains: term, mode: 'insensitive' } },
-        { industry: { contains: term, mode: 'insensitive' } },
-      ];
-    }
-
-    const due = first(req.query.due);
-    if (due === 'today') {
-      const end = new Date();
-      end.setHours(23, 59, 59, 999);
-      where.next_contact_at = { lte: end };
-      where.stage = { notIn: ['customer', 'lost'] };
-    }
+    /*
+     * Le même module construit les filtres de la liste ET ceux de l'export CSV.
+     * Deux implémentations séparées finiraient par diverger, et un export qui ne
+     * correspond pas à l'écran a l'air fiable alors qu'il ne l'est pas.
+     */
+    const filters = buildCompanyFilters(
+      req.query as Record<string, string | string[] | undefined>,
+      admin.platformOrganizationId,
+    );
+    if (filters.error) return json(res, 400, { error: filters.error });
+    const where = filters.where;
 
     const [items, total] = (await withTracefabUserContext(admin.userId, admin.userEmail, async (tx) => [
       await tx.crm_companies.findMany({

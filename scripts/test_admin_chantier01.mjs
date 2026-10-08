@@ -360,10 +360,50 @@ check(() => {
   if (!html.includes("TracefabI18n ? window.TracefabI18n.t(key) : null")) throw new Error('shim absent');
 }, 'une clé manquante renvoie la clé, jamais un blanc');
 
-/* Libellés français codés en dur dans le rendu : le contenu métier doit venir des dictionnaires.
-   Les commentaires de code sont retirés avant le scan : ils ne sont pas rendus, et les
-   laisser comptait comme « libellé codé en dur » du texte qui n'atteint jamais l'écran. */
-const rendered = html.slice(html.indexOf('function shell()')).replace(/\/\*[\s\S]*?\*\//g, '');
+/*
+ * Libellés français codés en dur dans le rendu : le contenu métier doit venir des
+ * dictionnaires.
+ *
+ * Un libellé d'interface est du TEXTE de template literal — la partie d'un
+ * `...` qui n'est pas dans une interpolation `${...}`. Les commentaires de code
+ * et les chaînes de données de démonstration (un nom d'entreprise comme
+ * « Maison Lumière ») n'atteignent jamais l'écran comme libellé : les scanner
+ * produisait des faux positifs qui masquaient le contrôle réel.
+ */
+const templateText = (source) => {
+  const out = [];
+  let i = 0;
+  let depth = 0;
+  let current = '';
+  while (i < source.length) {
+    const c = source[i];
+    if (depth === 0 && c === '`') { depth = 1; current = ''; i += 1; continue; }
+    if (depth === 1) {
+      if (c === '\\') { i += 2; continue; }
+      if (c === '`') { out.push(current); depth = 0; i += 1; continue; }
+      if (c === '$' && source[i + 1] === '{') {
+        /* Saute l'interpolation en comptant les accolades imbriquées. */
+        let nest = 1;
+        i += 2;
+        while (i < source.length && nest > 0) {
+          if (source[i] === '{') nest += 1;
+          else if (source[i] === '}') nest -= 1;
+          i += 1;
+        }
+        continue;
+      }
+      current += c;
+      i += 1;
+      continue;
+    }
+    i += 1;
+  }
+  return out.join('\n');
+};
+const rendered = templateText(html.replace(/\/\*[\s\S]*?\*\//g, ''));
+check(() => {
+  if (rendered.length < 2000) throw new Error(`seulement ${rendered.length} caractères de texte de template`);
+}, 'le scan couvre bien le texte des templates');
 const hardcoded = (rendered.match(/[\u00e0\u00e2\u00e7\u00e9\u00e8\u00ea\u00eb\u00ee\u00f4\u00f9\u00fb][a-zà-ÿ]{2,}/g) || [])
   .filter((w) => !/d[eé]monstration/i.test(w));
 eq(hardcoded.length, 0, 'aucun libellé français codé en dur dans le rendu',

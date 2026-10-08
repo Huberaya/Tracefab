@@ -232,6 +232,19 @@ h2.sub{font-size:15px;font-weight:600;margin:22px 0 10px;letter-spacing:.01em}
 .tl-d:last-child{border-bottom:0}
 @media(max-width:640px){.tl-d{grid-template-columns:1fr;gap:4px}.arow{grid-template-columns:84px 1fr 40px 64px}}
 .tag.a-conversion{background:var(--green);color:#fff}
+
+/* ---- Chantier Admin 03 ---- */
+.listbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.advanced{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;padding:12px 0 4px}
+.mini{display:flex;flex-direction:column;gap:4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.mini select,.mini input{font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.warn{background:var(--yellow-soft);color:var(--yellow);padding:9px 12px;border-radius:8px;font-size:13px;margin:10px 0}
+.modalbox.wide{max-width:860px}
+tr.r-invalid{background:var(--red-soft)}
+tr.r-duplicate{background:var(--yellow-soft)}
+.tag.st-new{background:var(--green-soft);color:var(--green-dark)}
+.tag.st-duplicate{background:var(--yellow-soft);color:var(--yellow)}
+.tag.st-invalid{background:var(--red-soft);color:var(--red)}
 </style>
 </head>
 <body>
@@ -259,6 +272,7 @@ const PRIORITIES = ['critical','high','medium','low'];
 const COMPANY_TYPES = ['fashion_brand','textile_brand','manufacturer','textile_supplier','mill','dye_house','garment_factory','luxury_brand','sportswear','outdoor','retailer','marketplace','other'];
 const MATURITIES = ['unknown','low','medium','high'];
 const CONTACT_STATUSES = ['to_contact','contacted','replied','meeting','unresponsive','declined'];
+const INTEREST_LEVELS = ['unknown','low','medium','high'];
 const LANGUAGES = ['en','fr','de','it','es','nl','pt'];
 
 const app = document.getElementById('app');
@@ -275,7 +289,13 @@ const state = {
   tasks: { items: [] }, meetings: { items: [] }, pilots: { items: [] },
   activities: { items: [] }, analytics: null,
   taskScope: 'today', meetScope: 'upcoming', activityType: '', pilotStatus: '',
-  filters: { stage: '', priority: '', country: '', company_type: '', q: '', due: '' },
+  filters: { stage: '', priority: '', country: '', company_type: '', q: '', due: '',
+    maturity: '', employee_band: '', dpp_interest: '', traceability_interest: '',
+    product_count_min: '', product_count_max: '', supplier_count_min: '', supplier_count_max: '' },
+  advancedOpen: false,
+  lists: { items: [] }, activeList: null,
+  importStep: null, importCsv: '', importMapping: {}, importPreview: null,
+  importSource: '', importDetail: '', importSkip: true, importResult: null,
   selected: null,          // id de l'entreprise ouverte
   detail: null,            // { company, contacts, activities }
   tab: 'overview',
@@ -479,7 +499,48 @@ function viewDashboard() {
 function filterBar() {
   const f = state.filters;
   const opt = (v, label) => `<option value="${esc(v)}"${f.stage === v ? ' selected' : ''}>${esc(label)}</option>`;
+  const activeCount = FILTER_KEYS.filter((k) => f[k]).length;
+
+  const interestSel = (id, label) => `<label class="mini">${esc(label)}
+    <select id="f-${id}">
+      <option value="">${esc(t('common.any'))}</option>
+      ${INTEREST_LEVELS.map((v) => `<option value="${v}"${f[id] === v ? ' selected' : ''}>${esc(t('interest.' + v))}</option>`).join('')}
+    </select></label>`;
+
+  const advanced = state.advancedOpen ? `<div class="advanced">
+    <label class="mini">${esc(t('filters.maturity'))}
+      <select id="f-maturity">
+        <option value="">${esc(t('common.any'))}</option>
+        ${MATURITIES.map((m) => `<option value="${m}"${f.maturity === m ? ' selected' : ''}>${esc(t('maturity.' + m))}</option>`).join('')}
+      </select></label>
+    <label class="mini">${esc(t('filters.size'))}
+      <input type="text" id="f-employee_band" value="${esc(f.employee_band)}" placeholder="250-500"></label>
+    ${interestSel('dpp_interest', t('filters.dppInterest'))}
+    ${interestSel('traceability_interest', t('filters.traceabilityInterest'))}
+    <label class="mini">${esc(t('filters.productsMin'))}
+      <input type="text" id="f-product_count_min" value="${esc(f.product_count_min)}" inputmode="numeric"></label>
+    <label class="mini">${esc(t('filters.productsMax'))}
+      <input type="text" id="f-product_count_max" value="${esc(f.product_count_max)}" inputmode="numeric"></label>
+    <label class="mini">${esc(t('filters.suppliersMin'))}
+      <input type="text" id="f-supplier_count_min" value="${esc(f.supplier_count_min)}" inputmode="numeric"></label>
+    <label class="mini">${esc(t('filters.suppliersMax'))}
+      <input type="text" id="f-supplier_count_max" value="${esc(f.supplier_count_max)}" inputmode="numeric"></label>
+    <button class="btn sm" id="f-reset">${esc(t('filters.reset'))}</button>
+  </div>` : '';
+
   return `
+    <div class="listbar">
+      <select id="f-list" aria-label="${esc(t('lists.label'))}">
+        <option value="">${esc(t('lists.none'))}</option>
+        ${(state.lists.items || []).map((l) => `<option value="${esc(l.id)}"${state.activeList === l.id ? ' selected' : ''}>${esc(l.name)}</option>`).join('')}
+      </select>
+      <button class="btn sm" id="list-save">${esc(t('lists.save'))}</button>
+      <button class="btn sm" id="list-delete" ${state.activeList ? '' : 'disabled'}>${esc(t('lists.delete'))}</button>
+      <span class="sp"></span>
+      <button class="btn sm" id="import-open">${esc(t('import.open'))}</button>
+      <button class="btn sm" id="export-csv">${esc(t('common.export'))}</button>
+      <button class="btn primary" id="new-company">${esc(t('prospects.add'))}</button>
+    </div>
     <div class="filters">
       <input type="search" id="f-q" placeholder="${esc(t('common.search'))}" value="${esc(f.q)}" style="min-width:200px">
       <select id="f-stage" aria-label="${esc(t('common.stage'))}">
@@ -496,9 +557,9 @@ function filterBar() {
         ${COMPANY_TYPES.map((c) => `<option value="${c}"${f.company_type === c ? ' selected' : ''}>${esc(t('type.' + c))}</option>`).join('')}
       </select>
       <button class="btn sm" id="f-due" aria-pressed="${f.due === 'today' ? 'true' : 'false'}">${esc(t('common.dueToday'))}</button>
-      <span class="sp"></span>
-      <button class="btn primary" id="new-company">${esc(t('prospects.add'))}</button>
-    </div>`;
+      <button class="btn sm" id="f-advanced" aria-expanded="${state.advancedOpen ? 'true' : 'false'}">${esc(t('filters.more'))}${activeCount ? ` (${activeCount})` : ''}</button>
+    </div>
+    ${advanced}`;
 }
 
 function viewProspects() {
@@ -870,6 +931,92 @@ function modalMeeting() {
       <button class="btn primary" id="m-save" ${state.saving ? 'disabled' : ''}>${esc(t('common.save'))}</button>
     </div>
   </div></div>`;
+}
+
+/* ------------------------------------------------------ Admin 03 : import */
+
+const IMPORT_TARGETS = ['name','website','country_code','city','industry','company_type',
+  'employee_band','revenue_band','product_count','supplier_count','maturity','priority',
+  'stage','source','source_detail','collected_at','dpp_interest','traceability_interest',
+  'owner_name','notes'];
+
+function modalImport() {
+  const step = state.importStep || 'file';
+  const prev = state.importPreview;
+
+  /* Étape 1 — le fichier. */
+  if (step === 'file') {
+    return `<div class="modal"><div class="modalbox" role="dialog" aria-modal="true">
+      <h2>${esc(t('import.title'))}</h2>
+      ${state.formError ? `<div class="err">${esc(state.formError)}</div>` : ''}
+      <div class="form">
+        <label class="full">${esc(t('import.source'))}
+          <input type="text" id="im-source" value="${esc(state.importSource)}" placeholder="${esc(t('import.sourcePlaceholder'))}" required></label>
+        <label class="full">${esc(t('import.sourceDetail'))}
+          <input type="text" id="im-detail" value="${esc(state.importDetail)}"></label>
+        <label class="full">${esc(t('import.csv'))}
+          <textarea id="im-csv" rows="8" placeholder="${esc(t('import.csvPlaceholder'))}">${esc(state.importCsv)}</textarea></label>
+        <div class="hint">${esc(t('import.hint'))}</div>
+      </div>
+      <div class="modalfoot">
+        <button class="btn" id="m-cancel">${esc(t('common.cancel'))}</button>
+        <button class="btn primary" id="im-preview" ${state.saving ? 'disabled' : ''}>${esc(t('import.preview'))}</button>
+      </div>
+    </div></div>`;
+  }
+
+  /* Étape 2 — mapping des colonnes. */
+  if (step === 'mapping' && prev) {
+    const headers = prev.headers || [];
+    return `<div class="modal"><div class="modalbox" role="dialog" aria-modal="true">
+      <h2>${esc(t('import.mapping'))}</h2>
+      <div class="hint">${esc(t('import.mappingHint'))}</div>
+      <div class="form">
+        ${headers.map((h) => `<label class="mini">${esc(h)}
+          <select id="map-${esc(h)}">
+            <option value="">${esc(t('import.ignore'))}</option>
+            ${IMPORT_TARGETS.map((k) => `<option value="${k}"${prev.mapping[h] === k ? ' selected' : ''}>${esc(t('importField.' + k))}</option>`).join('')}
+          </select></label>`).join('')}
+      </div>
+      ${prev.unmapped && prev.unmapped.length ? `<div class="warn">${esc(t('import.unmapped'))} : ${esc(prev.unmapped.join(', '))}</div>` : ''}
+      <div class="modalfoot">
+        <button class="btn" id="im-back">${esc(t('common.back'))}</button>
+        <button class="btn primary" id="im-repreview">${esc(t('import.preview'))}</button>
+      </div>
+    </div></div>`;
+  }
+
+  /* Étape 3 — aperçu avant écriture. */
+  if (prev) {
+    const c = prev.counts || {};
+    const rows = (prev.rows || []).slice(0, 200).map((r) => `<tr class="r-${esc(r.status)}">
+      <td class="num">${esc(r.index + 1)}</td>
+      <td><span class="tag st-${esc(r.status)}">${esc(t('importStatus.' + r.status))}</span></td>
+      <td>${esc(r.name || '—')}</td>
+      <td class="meta">${esc((r.errors || []).join(', ') || (r.duplicate ? `${t('importDuplicate.' + r.duplicate.reason)} — ${r.duplicate.existingName}` : ''))}</td>
+    </tr>`).join('');
+
+    return `<div class="modal"><div class="modalbox wide" role="dialog" aria-modal="true">
+      <h2>${esc(t('import.review'))}</h2>
+      <div class="kpis four">
+        <div class="kpi"><div class="kl">${esc(t('import.total'))}</div><div class="kv num">${esc(c.total || 0)}</div></div>
+        <div class="kpi"><div class="kl">${esc(t('importStatus.new'))}</div><div class="kv num">${esc(c.new || 0)}</div></div>
+        <div class="kpi"><div class="kl">${esc(t('importStatus.duplicate'))}</div><div class="kv num">${esc(c.duplicate || 0)}</div></div>
+        <div class="kpi"><div class="kl">${esc(t('importStatus.invalid'))}</div><div class="kv num">${esc(c.invalid || 0)}</div></div>
+      </div>
+      <div class="hint">${esc(t('import.reviewHint'))}</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th>#</th><th>${esc(t('common.status'))}</th>
+          <th>${esc(t('common.company'))}</th><th>${esc(t('import.issue'))}</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+      <div class="modalfoot">
+        <button class="btn" id="im-back">${esc(t('common.back'))}</button>
+        <button class="btn primary" id="im-commit" ${state.saving || !(c.new > 0) ? 'disabled' : ''}>${esc(t('import.commit'))}</button>
+      </div>
+    </div></div>`;
+  }
+
+  return '';
 }
 
 /* ---------------------------------------------------- Admin 02 : demo data */
@@ -1313,6 +1460,7 @@ function shell() {
     ${state.modal === 'contact' ? modalContact() : ''}
     ${state.modal === 'task' ? modalTask() : ''}
     ${state.modal === 'meeting' ? modalMeeting() : ''}
+    ${state.modal === 'import' ? modalImport() : ''}
   </div>`;
 }
 
@@ -1384,15 +1532,46 @@ function bind() {
     loadView();
   });
 
-  ['f-stage','f-priority','f-type'].forEach((id) => {
+  const FILTER_IDS = ['f-stage', 'f-priority', 'f-type', 'f-maturity', 'f-dpp_interest',
+    'f-traceability_interest', 'f-employee_band', 'f-product_count_min', 'f-product_count_max',
+    'f-supplier_count_min', 'f-supplier_count_max'];
+  FILTER_IDS.forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener('change', () => {
-      state.filters.stage = document.getElementById('f-stage')?.value || '';
-      state.filters.priority = document.getElementById('f-priority')?.value || '';
-      state.filters.company_type = document.getElementById('f-type')?.value || '';
-      state.companies.offset = 0;
-      loadView();
+    if (!el) return;
+    const ev = el.tagName === 'SELECT' ? 'change' : 'input';
+    let timer;
+    el.addEventListener(ev, () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        state.filters.stage = document.getElementById('f-stage')?.value || '';
+        state.filters.priority = document.getElementById('f-priority')?.value || '';
+        state.filters.company_type = document.getElementById('f-type')?.value || '';
+        readAdvancedFilters();
+        state.activeList = null;
+        state.companies.offset = 0;
+        loadView();
+      }, id === 'f-employee_band' || /_count_/.test(id) ? 260 : 0);
     });
+  });
+
+  on('f-advanced', 'click', () => { state.advancedOpen = !state.advancedOpen; render(); });
+  on('f-reset', 'click', () => {
+    FILTER_KEYS.forEach((k) => { state.filters[k] = ''; });
+    state.activeList = null;
+    state.companies.offset = 0;
+    loadView();
+  });
+  on('f-list', 'change', (e) => applyList(e.target.value));
+  on('list-save', 'click', saveCurrentList);
+  on('list-delete', 'click', deleteList);
+  on('export-csv', 'click', exportCsv);
+  on('import-open', 'click', openImport);
+  on('im-preview', 'click', () => runImportPreview());
+  on('im-repreview', 'click', () => { state.importMapping = readImportMapping(); runImportPreview(state.importMapping); });
+  on('im-commit', 'click', commitImport);
+  on('im-back', 'click', () => {
+    state.importStep = state.importStep === 'review' ? 'mapping' : 'file';
+    render();
   });
 
   const q = document.getElementById('f-q');
@@ -1448,16 +1627,20 @@ async function loadDashboard() {
   state.dashboard = await api('/api/admin/dashboard');
 }
 
-function queryString() {
+/* Les mêmes clés que `buildCompanyFilters` côté serveur, et que
+   `SAVED_VIEW_FILTER_KEYS` : une liste enregistrée se rejoue telle quelle. */
+const FILTER_KEYS = ['stage','priority','country','company_type','maturity','q','due',
+  'employee_band','dpp_interest','traceability_interest',
+  'product_count_min','product_count_max','supplier_count_min','supplier_count_max'];
+
+function queryString(extra) {
   const f = state.filters;
   const p = new URLSearchParams();
-  if (f.stage) p.set('stage', f.stage);
-  if (f.priority) p.set('priority', f.priority);
-  if (f.company_type) p.set('company_type', f.company_type);
-  if (f.q) p.set('q', f.q);
-  if (f.due) p.set('due', f.due);
-  p.set('limit', String(state.companies.limit));
-  p.set('offset', String(state.companies.offset));
+  FILTER_KEYS.forEach((k) => { if (f[k]) p.set(k, f[k]); });
+  if (!extra) {
+    p.set('limit', String(state.companies.limit));
+    p.set('offset', String(state.companies.offset));
+  }
   return p.toString();
 }
 
@@ -1561,6 +1744,232 @@ async function loadCustomers() {
   state.customers = { items: [...(won.items || []), ...(lost.items || [])] };
 }
 
+async function loadLists() {
+  if (state.demo) {
+    state.lists = { items: [
+      { id: 'l1', name: 'France — Marques de mode', filters: { country: 'FR', company_type: 'fashion_brand' } },
+      { id: 'l2', name: 'Europe — Prospects DPP', filters: { dpp_interest: 'high' } },
+      { id: 'l3', name: 'Haute priorité', filters: { priority: 'critical' } },
+    ] };
+    return;
+  }
+  try { state.lists = await api('/api/admin/lists'); }
+  catch (e) { state.lists = { items: [] }; }
+}
+
+function readAdvancedFilters() {
+  ['maturity', 'employee_band', 'dpp_interest', 'traceability_interest',
+    'product_count_min', 'product_count_max', 'supplier_count_min', 'supplier_count_max'
+  ].forEach((id) => {
+    const el = document.getElementById(`f-${id}`);
+    if (el) state.filters[id] = el.value;
+  });
+}
+
+async function saveCurrentList() {
+  const active = FILTER_KEYS.filter((k) => state.filters[k]);
+  if (!active.length) { state.error = t('lists.noFilters'); render(); return; }
+  const name = window.prompt(t('lists.namePrompt'));
+  if (!name) return;
+  if (state.demo) { state.error = t('common.demoReadOnly'); render(); return; }
+  const filters = {};
+  active.forEach((k) => { filters[k] = state.filters[k]; });
+  try {
+    await api('/api/admin/lists', { method: 'POST', body: JSON.stringify({ name, filters }) });
+    state.error = null;
+    await loadLists();
+  } catch (e) { state.error = e.message; }
+  render();
+}
+
+async function applyList(id) {
+  state.activeList = id || null;
+  if (!id) return;
+  const list = (state.lists.items || []).find((l) => l.id === id);
+  if (!list) return;
+  /* Une liste REMPLACE les filtres, elle ne s'y ajoute pas : deux jeux de filtres
+     empilés produiraient un résultat que personne ne sait reproduire. */
+  FILTER_KEYS.forEach((k) => { state.filters[k] = ''; });
+  Object.entries(list.filters || {}).forEach(([k, v]) => {
+    if (FILTER_KEYS.includes(k)) state.filters[k] = String(v ?? '');
+  });
+  state.companies.offset = 0;
+  await loadView();
+}
+
+async function deleteList() {
+  if (!state.activeList) return;
+  if (!window.confirm(t('lists.deleteConfirm'))) return;
+  if (state.demo) { state.error = t('common.demoReadOnly'); render(); return; }
+  try {
+    await api(`/api/admin/lists/${encodeURIComponent(state.activeList)}`, { method: 'DELETE' });
+    state.activeList = null;
+    state.error = null;
+    await loadLists();
+  } catch (e) { state.error = e.message; }
+  render();
+}
+
+/** Télécharge le CSV du résultat filtré — les mêmes filtres que l'écran. */
+async function exportCsv() {
+  if (state.demo) {
+    const rows = state.companies.items || [];
+    const head = ['name', 'country_code', 'company_type', 'stage', 'priority', 'source'];
+    const csv = [head.join(',')].concat(rows.map((r) => head.map((k) => {
+      const v = String(r[k] ?? '');
+      return /[",;\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+    }).join(','))).join('\n');
+    downloadCsv(`\uFEFF${csv}`, 'tracefab-prospects-demo.csv');
+    return;
+  }
+  try {
+    const token = state.clerk?.session ? await state.clerk.session.getToken() : null;
+    const res = await fetch(`/api/admin/companies/export?${queryString(true)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'export_failed');
+    }
+    downloadCsv(await res.text(), `tracefab-prospects-${new Date().toISOString().slice(0, 10)}.csv`);
+    state.error = null;
+  } catch (e) { state.error = e.message; }
+  render();
+}
+
+function downloadCsv(text, filename) {
+  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ------------------------------------------------------ actions d'import */
+
+function openImport() {
+  state.modal = 'import';
+  state.importStep = 'file';
+  state.importPreview = null;
+  state.importResult = null;
+  state.formError = null;
+  render();
+}
+
+function readImportMapping() {
+  const prev = state.importPreview;
+  if (!prev) return state.importMapping;
+  const mapping = {};
+  (prev.headers || []).forEach((h) => {
+    const el = document.getElementById(`map-${h}`);
+    if (el) mapping[h] = el.value || null;
+  });
+  return mapping;
+}
+
+async function runImportPreview(mapping) {
+  const csv = (document.getElementById('im-csv') || {}).value;
+  if (csv === undefined) { /* étape mapping : le textarea n'est plus dans le DOM */ }
+  else state.importCsv = csv;
+  const src = (document.getElementById('im-source') || {}).value;
+  if (src !== undefined) state.importSource = src;
+  const det = (document.getElementById('im-detail') || {}).value;
+  if (det !== undefined) state.importDetail = det;
+
+  if (!state.importSource.trim()) { state.formError = t('import.sourceRequired'); render(); return; }
+  if (!state.importCsv.trim()) { state.formError = t('import.csvRequired'); render(); return; }
+
+  state.saving = true;
+  render();
+  try {
+    if (state.demo) {
+      state.importPreview = demoImportPreview();
+      state.importStep = 'review';
+    } else {
+      const res = await api('/api/admin/import/preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          csv: state.importCsv,
+          source: state.importSource,
+          source_detail: state.importDetail || null,
+          mapping: mapping || {},
+        }),
+      });
+      state.importPreview = res.preview;
+      /* Le serveur a peut-être complété le mapping : on passe à l'étape mapping
+         seulement s'il reste des colonnes non reconnues. */
+      state.importStep = (res.preview.unmapped || []).length ? 'mapping' : 'review';
+    }
+    state.formError = null;
+  } catch (e) {
+    state.formError = e.details ? `${e.message} — ${e.details.join(', ')}` : e.message;
+    state.importStep = 'file';
+  }
+  state.saving = false;
+  render();
+}
+
+function demoImportPreview() {
+  const lines = state.importCsv.split(/\r?\n/).filter((l) => l.trim());
+  const headers = (lines[0] || '').split(/[;,]/).map((h) => h.trim());
+  const mapping = {};
+  headers.forEach((h, i) => { mapping[h] = ['name', 'country_code', 'product_count'][i] || null; });
+  const rows = lines.slice(1).map((line, i) => {
+    const cells = line.split(/[;,]/).map((c) => c.trim());
+    const name = cells[0] || '';
+    /* Normalisation avant comparaison : « Maison Lumière » avec son accent ne
+       matche pas /lumiere/ — le doublon de démonstration passait en « nouveau ». */
+    const flat = (v) => String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const dupe = /maison lumiere/.test(flat(name));
+    return {
+      index: i, name,
+      status: !name ? 'invalid' : dupe ? 'duplicate' : 'new',
+      errors: name ? undefined : ['name_required'],
+      duplicate: dupe ? { reason: 'same_name_and_country', existingName: 'Maison Lumière', existingId: 'd3' } : undefined,
+      data: name ? { name, country_code: cells[1] || null, product_count: Number(cells[2]) || null } : undefined,
+    };
+  });
+  const counts = rows.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; a.total += 1; return a; }, { total: 0 });
+  return {
+    headers, mapping, rows, counts,
+    unmapped: headers.filter((h) => !mapping[h]),
+  };
+}
+
+async function commitImport() {
+  if (state.demo) { state.formError = t('common.demoReadOnly'); render(); return; }
+  state.saving = true;
+  render();
+  try {
+    const res = await api('/api/admin/import/commit', {
+      method: 'POST',
+      body: JSON.stringify({
+        csv: state.importCsv,
+        source: state.importSource,
+        source_detail: state.importDetail || null,
+        mapping: state.importMapping || {},
+        duplicates: 'skip',
+      }),
+    });
+    state.importResult = res;
+    state.modal = null;
+    state.importStep = null;
+    state.importCsv = '';
+    state.importPreview = null;
+    state.error = null;
+    await loadView();
+  } catch (e) {
+    state.formError = e.details ? `${e.message} — ${e.details.join(', ')}` : e.message;
+    state.importStep = 'review';
+    render();
+  }
+  state.saving = false;
+}
+
 async function loadView() {
   state.error = null;
   try {
@@ -1573,6 +1982,7 @@ async function loadView() {
     else if (state.view === 'activities') await loadActivities();
     else if (state.view === 'analytics') await loadAnalytics();
     else if (state.view === 'customers') await loadCustomers();
+    else if (state.view === 'prospects') { await loadCompanies(); await loadLists(); }
     else await loadCompanies();
   } catch (e) {
     state.error = e.message;

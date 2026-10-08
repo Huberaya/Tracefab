@@ -1536,6 +1536,9 @@ model crm_companies {
   product_count          Int?
   supplier_count         Int?
   maturity               crm_maturity       @default(unknown)
+  /* Intérêt DÉCLARÉ par l'équipe, jamais déduit automatiquement. */
+  dpp_interest           crm_interest_level @default(unknown)
+  traceability_interest  crm_interest_level @default(unknown)
   priority               crm_priority       @default(medium)
   stage                  crm_pipeline_stage @default(new)
   lost_reason            String?
@@ -1711,4 +1714,42 @@ model crm_pilots {
   updated_at               DateTime         @default(now()) @db.Timestamptz(6)
 
   @@index([platform_organization_id, status], map: "idx_crm_pilots_org_status")
+}
+
+/* ========================================================================== *
+ * Chantier Admin 03 — acquisition : listes de prospection (§7),
+ * import CSV (§8), recherche avancée (§9).
+ *
+ * Une liste de prospection n'est qu'un jeu de filtres nommé. Elle vit en base
+ * plutôt qu'en localStorage pour qu'une équipe la partage : « France – Marques
+ * de mode » doit exister pour le fondateur comme pour le commercial.
+ *
+ * `collected_at` et `source_detail` existent depuis le Chantier 01 : la règle
+ * « jamais d'entreprise inventée, toute donnée externe garde sa source et sa
+ * date » est déjà modélisée, l'import ne fait que l'alimenter.
+ * ========================================================================== */
+
+/*
+ * `unknown` est explicite : il signifie « non qualifié », pas « faible ».
+ * Confondre les deux ferait trier l'équipe sur une absence de donnée.
+ */
+enum crm_interest_level {
+  unknown
+  low
+  medium
+  high
+}
+
+model crm_saved_views {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform_organization_id String   @db.Uuid
+  name                     String
+  filters                  Json     @default("{}")
+  created_by               String?  @db.Uuid
+  created_by_name          String?
+  created_at               DateTime @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([platform_organization_id, name], map: "uq_crm_saved_views_org_name")
+  @@index([platform_organization_id, created_at], map: "idx_crm_saved_views_org_created")
 }

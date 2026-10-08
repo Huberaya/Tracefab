@@ -16,6 +16,12 @@ const routes: Route[] = [
   { pattern: /^admin\/access$/, params: [], load: () => import('./_routes/admin/access.js') },
   { pattern: /^admin\/dashboard$/, params: [], load: () => import('./_routes/admin/dashboard.js') },
   { pattern: /^admin\/companies$/, params: [], load: () => import('./_routes/admin/companies.js') },
+  /*
+   * `companies/export` DOIT précéder `companies/([^/]+)` : le routeur prend le
+   * premier motif qui matche, et `export` serait sinon lu comme un identifiant
+   * d'entreprise. C'est le même ordre porteur que `/activities` et `/stage`.
+   */
+  { pattern: /^admin\/companies\/export$/, params: [], load: () => import('./_routes/admin/companies/export.js') },
   { pattern: /^admin\/companies\/([^\/]+)\/activities$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId]/activities.js') },
   { pattern: /^admin\/companies\/([^\/]+)\/stage$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId]/stage.js') },
   { pattern: /^admin\/companies\/([^\/]+)$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId].js') },
@@ -33,6 +39,11 @@ const routes: Route[] = [
   { pattern: /^admin\/pilots\/([^\/]+)$/, params: ['pilotId'], load: () => import('./_routes/admin/pilots/[pilotId].js') },
   { pattern: /^admin\/activities$/, params: [], load: () => import('./_routes/admin/activities.js') },
   { pattern: /^admin\/analytics$/, params: [], load: () => import('./_routes/admin/analytics.js') },
+  /* Chantier Admin 03 — acquisition : import CSV, listes, export. */
+  { pattern: /^admin\/import\/preview$/, params: [], load: () => import('./_routes/admin/import/preview.js') },
+  { pattern: /^admin\/import\/commit$/, params: [], load: () => import('./_routes/admin/import/commit.js') },
+  { pattern: /^admin\/lists$/, params: [], load: () => import('./_routes/admin/lists.js') },
+  { pattern: /^admin\/lists\/([^\/]+)$/, params: ['listId'], load: () => import('./_routes/admin/lists/[listId].js') },
   { pattern: /^catalog\/products\/import$/, params: [], load: () => import('./_routes/catalog/products/import.js') },
   { pattern: /^catalog\/products\/export$/, params: [], load: () => import('./_routes/catalog/products/export.js') },
   { pattern: /^catalog\/products\/import\-jobs\/([^\/]+)$/, params: ['jobId'], load: () => import('./_routes/catalog/products/import-jobs/[jobId].js') },

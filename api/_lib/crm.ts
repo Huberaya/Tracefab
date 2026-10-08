@@ -85,7 +85,7 @@ const COUNTRY_RE = /^[A-Za-z]{2}$/;
  * « Fr », qui est un code ISO valide. On lit la valeur entière, on la contrôle,
  * et on ne tronque que ce qui a déjà été accepté.
  */
-const countryCodeInput = (value: unknown, errors: string[]) => {
+export const countryCodeInput = (value: unknown, errors: string[]) => {
   if (value === undefined || value === null) return null;
   const text = String(value).trim();
   if (!text) return null;
