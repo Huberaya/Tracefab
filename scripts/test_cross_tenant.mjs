@@ -1,0 +1,214 @@
+#!/usr/bin/env node
+/**
+ * TRACEFAB — audit d'isolation multi-locataires (chantier 17).
+ *
+ * TRACEFAB est multi-tenant : une marque ne doit jamais lire les donnees d'une
+ * autre. L'isolation repose sur une chaine de trois maillons, appliquee route
+ * par route :
+ *
+ *     requireClerkUser  ->  withTracefabUserContext  ->  scope brand_organization_id
+ *
+ * Le danger n'est pas qu'un maillon casse, c'est qu'une route nouvelle soit
+ * ajoutee sans la chaine. Cet audit rend ce cas impossible en silence : toute
+ * route de api/index.ts doit etre classee ici explicitement. Une route inconnue
+ * fait echouer la CI, ce qui force l'auteur a declarer son modele d'acces.
+ *
+ * Usage : node scripts/test_cross_tenant.mjs
+ */
+import { readFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = (p) => readFileSync(join(ROOT, p), 'utf8');
+
+/* ------------------------------------------------------------------ modeles
+ * Chaque route releve d'un des cinq modeles d'acces ci-dessous. Le prefixe est
+ * compare au chemin de la route tel qu'il apparait dans api/index.ts.
+ */
+const ACCESS_MODELS = {
+  // Donnees d'un locataire : la chaine complete est obligatoire.
+  TENANT: { needs: ['requireClerkUser', 'withTracefabUserContext'] },
+  // Surface publique assumee : passeport consommateur, wallets, sante, config.
+  PUBLIC: { needs: [] },
+  // Taches de fond declenchees par un worker : secret partage obligatoire.
+  WORKER: { needs: ['workerAuthorized', 'cronAuthorized'] },
+  // Webhook externe : la signature de l'emetteur fait foi.
+  WEBHOOK: { needs: ['verifyClerkWebhook', 'Webhook', 'svix'] },
+  // Referentiel sans donnee de locataire : facteurs PEF, catalogues, regles.
+  REFERENCE: { needs: [] },
+};
+
+/* Classement explicite des routes non-TENANT. Tout le reste est TENANT.
+ * Chaque entree porte sa justification : une exemption sans raison ecrite est
+ * une faille qui attend son heure. */
+const CLASSIFIED = {
+  'webhooks/clerk': ['WEBHOOK', 'Signature Clerk ; cree les comptes, ne lit aucun locataire.'],
+  'passport/[tokenOrSlug]': ['PUBLIC', 'Passeport partage par jeton opaque ; le jeton est le controle d acces.'],
+  'passport/[tokenOrSlug]/request-access': ['PUBLIC', 'Demande d acces depuis un passeport partage, avant toute authentification.'],
+  'pef/factors': ['REFERENCE', 'Facteurs d impact PEF, identiques pour tous.'],
+  'dpp/[gtin]': ['PUBLIC', 'Passeport numerique public : c est sa raison d etre.'],
+  'dpp/[gtin]/google-wallet': ['PUBLIC', 'Carte wallet derivee du passeport public.'],
+  'dpp/[gtin]/apple-wallet': ['PUBLIC', 'Carte wallet derivee du passeport public.'],
+  'products/[productId]/wallet/apple': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
+  'products/[productId]/wallet/google': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
+  'health': ['PUBLIC', 'Sonde de disponibilite, aucune donnee metier.'],
+  'config': ['PUBLIC', 'Configuration client publique (cles publiables).'],
+  'catalog/schemas': ['REFERENCE', 'Schemas de donnees du produit, communs a tous les locataires.'],
+  'catalog/questionnaires': ['REFERENCE', 'Modeles de questionnaires standards.'],
+  'catalog/certification-standards': ['REFERENCE', 'Referentiel de certifications (GOTS, OEKO-TEX...).'],
+  'green-claims/rules': ['REFERENCE', 'Regles reglementaires d allegations environnementales.'],
+  'gs1/digital-link/[gtin]': ['PUBLIC', 'Resolution GS1 Digital Link, norme publique.'],
+  'questionnaires': ['REFERENCE', 'Catalogue de questionnaires, sans requete locataire.'],
+  'questionnaires/[questionnaireKey]': ['REFERENCE', 'Detail d un questionnaire de catalogue.'],
+  'internal/notification-outbox/health': ['WORKER', 'Sonde de la file de notifications.'],
+  'internal/notification-outbox/process': ['WORKER', 'Vide la file ; declenche par cron.'],
+  'internal/notification-outbox/reminders': ['WORKER', 'Programme les relances ; declenche par cron.'],
+  'internal/notification-outbox/schedule': ['WORKER', 'Planifie la file ; declenche par cron.'],
+  'internal/p2/readiness': ['WORKER', 'Diagnostic d infrastructure reserve a l exploitation.'],
+};
+
+/* --------------------------------------------------------- lecture du routeur */
+
+const indexSrc = read('api/index.ts');
+const routeRe = /\{\s*pattern:\s*\/\^(.+?)\$\/,[\s\S]*?load:\s*\(\)\s*=>\s*import\('\.\/_routes\/(.+?)\.js'\)/g;
+const routes = [];
+for (const m of indexSrc.matchAll(routeRe)) {
+  const pattern = m[1].replace(/\\/g, '');
+  const file = `api/_routes/${m[2]}.ts`;
+  // Chemin lisible : on remplace les groupes de capture par le nom du parametre.
+  const paramsM = indexSrc.slice(m.index, m.index + 400).match(/params:\s*\[([^\]]*)\]/);
+  const params = paramsM ? (paramsM[1].match(/'([^']+)'/g) || []).map((s) => s.slice(1, -1)) : [];
+  let i = 0;
+  const key = pattern.replace(/\(\[\^\/\]\+\)|\(\.\*\)|\([^)]*\)/g, () => `[${params[i++] || 'param'}]`);
+  routes.push({ key, file, pattern });
+}
+
+/* Un parseur qui rate une route rate sa garde. On compare donc ce qu'on a lu
+ * au nombre de chargements declares dans le routeur. */
+const declaredLoads = (indexSrc.match(/load:\s*\(\)\s*=>\s*import\(/g) || []).length;
+if (routes.length !== declaredLoads) {
+  console.error(`Routeur mal lu : ${routes.length} routes analysees pour ${declaredLoads} declarees.`);
+  process.exit(1);
+}
+
+/* ------------------------------------------------------------------- audit */
+
+const failures = [];
+const stats = { TENANT: 0, PUBLIC: 0, WORKER: 0, WEBHOOK: 0, REFERENCE: 0 };
+const unknown = [];
+
+for (const r of routes) {
+  if (!existsSync(join(ROOT, r.file))) {
+    failures.push(`${r.key} : fichier de route absent (${r.file})`);
+    continue;
+  }
+  const src = read(r.file);
+  const entry = CLASSIFIED[r.key];
+  const model = entry ? entry[0] : 'TENANT';
+  stats[model] += 1;
+
+  const needs = ACCESS_MODELS[model].needs;
+  if (needs.length) {
+    const satisfied = needs.some((n) => src.includes(n));
+    const all = model === 'TENANT' ? needs.every((n) => src.includes(n)) : satisfied;
+    if (!all) {
+      const missing = needs.filter((n) => !src.includes(n));
+      failures.push(`${r.key} [${model}] : maillon d isolation absent -> ${missing.join(', ')}`);
+    }
+  }
+
+  // L'isolation reelle est portee par RLS : withTracefabUserContext ouvre une
+  // transaction et y arme tracefab.user_id, que les politiques Postgres lisent.
+  // Le vrai danger est donc une requete emise HORS de ce contexte, avec le
+  // client prisma brut : elle echappe aux politiques.
+  if (model === 'TENANT') {
+    const rawClient = /\bprisma\.[a-z_]+\.(findMany|findFirst|findUnique|create|update|delete|count|aggregate|groupBy)\(/.test(src);
+    if (rawClient) {
+      failures.push(`${r.key} [TENANT] : utilise le client prisma brut, hors contexte RLS`);
+    }
+    const queries = /\.(findMany|findFirst|findUnique|count|aggregate|groupBy)\(/.test(src);
+    if (queries && !src.includes('withTracefabUserContext')) {
+      failures.push(`${r.key} [TENANT] : interroge la base sans withTracefabUserContext, RLS non armee`);
+    }
+  }
+
+  if (!entry && !/requireClerkUser/.test(src)) {
+    unknown.push(`${r.key} (${r.file})`);
+  }
+}
+
+/* Routes non classees ET non authentifiees : le cas dangereux. */
+for (const u of unknown) {
+  failures.push(`${u} : route ni classee ni authentifiee. Declarez son modele d acces dans CLASSIFIED.`);
+}
+
+/* ------------------------------------------------------- scenarios croises */
+
+const scenarios = [
+  ['Marque A lit les produits de la marque B',
+    'tracefab_products', 'brand_organization_id'],
+  ['Marque A lit les demandes de donnees de la marque B',
+    'data_requests', 'brand_organization_id'],
+  ['Marque A lit les relations fournisseurs de la marque B',
+    'brand_supplier_relationships', 'brand_organization_id'],
+  ['Marque A lit les evaluations PEF de la marque B',
+    'product_pef_assessments', 'brand_organization_id'],
+  ['Marque A lit les plans d action qualite de la marque B',
+    'quality_corrective_action_plans', 'brand_organization_id'],
+  ['Marque A lit les reconciliations de bilan massique de la marque B',
+    'mass_balance_reconciliations', 'brand_organization_id'],
+];
+
+const schema = read('prisma/schema.prisma');
+const rlsScenarios = scenarios.map(([title, table, col]) => {
+  const m = schema.match(new RegExp(`model\\s+${table}\\s*\\{([\\s\\S]*?)\\n\\}`));
+  const hasCol = m ? m[1].includes(col) : false;
+  return { title, table, ok: hasCol, why: m ? (hasCol ? '' : `colonne ${col} absente`) : 'modele absent du schema' };
+});
+for (const s of rlsScenarios) {
+  if (!s.ok) failures.push(`scenario croise "${s.title}" : ${s.why}`);
+}
+
+// Le verrou final est en base : RLS activee et forcee, declaree dans les
+// migrations SQL et non dans schema.prisma.
+import { readdirSync } from 'node:fs';
+const migDir = join(ROOT, 'prisma/migrations');
+let enable = 0; let force = 0; let migrations = 0;
+if (existsSync(migDir)) {
+  for (const d of readdirSync(migDir)) {
+    const f = join(migDir, d, 'migration.sql');
+    if (!existsSync(f)) continue;
+    migrations += 1;
+    const sql = readFileSync(f, 'utf8');
+    enable += (sql.match(/ENABLE ROW LEVEL SECURITY/g) || []).length;
+    force += (sql.match(/FORCE ROW LEVEL SECURITY/g) || []).length;
+  }
+}
+if (enable === 0) failures.push('aucune instruction ENABLE ROW LEVEL SECURITY dans les migrations');
+
+/* ------------------------------------------------------------------ verdict */
+
+const line = '-'.repeat(78);
+console.log(`\n=== TRACEFAB — AUDIT D'ISOLATION MULTI-LOCATAIRES ===\n${line}`);
+console.log(`Routes inspectees        : ${routes.length}`);
+console.log(`  dont locataire (chaine complete exigee) : ${stats.TENANT}`);
+console.log(`  dont publiques assumees                 : ${stats.PUBLIC}`);
+console.log(`  dont worker (secret partage)            : ${stats.WORKER}`);
+console.log(`  dont webhook (signature)                : ${stats.WEBHOOK}`);
+console.log(`  dont referentiel sans locataire         : ${stats.REFERENCE}`);
+console.log(line);
+for (const s of rlsScenarios) {
+  console.log(`${s.ok ? 'OK  ' : 'ECHEC'} scenario croise : ${s.title}`);
+}
+console.log(line);
+if (failures.length) {
+  console.log(`${failures.length} probleme(s) d isolation :\n`);
+  for (const f of failures) console.log(`  - ${f}`);
+  console.log(line);
+  process.exit(1);
+}
+console.log('Isolation multi-locataires : aucune route hors modele declare.');
+console.log(`Verrou base de donnees : ${enable} ENABLE / ${force} FORCE ROW LEVEL SECURITY sur ${migrations} migrations.`);
+console.log('Preuve d execution reelle : test:neon:security, qui exige DATABASE_URL.');
+console.log(line);

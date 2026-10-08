@@ -3,7 +3,10 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright';
 
 const port = 4173;
-const server = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], {
+// On sert via dev_static_server.mjs, seul serveur local qui applique les
+// reecritures de vercel.json. Un test qui valide contre un serveur ignorant le
+// routage de production ne prouve rien sur la production.
+const server = spawn(process.execPath, ['scripts/dev_static_server.mjs', '--port', String(port)], {
   cwd: new URL('..', import.meta.url),
   stdio: 'ignore',
 });
