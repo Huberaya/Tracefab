@@ -2620,7 +2620,7 @@
                 <div class="mc-stat-subitem"><span>${bt('ovProducts')}</span><strong>${moneyless(ag.produits)}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovSuppliers')}</span><strong>${ag.fournisseurs}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovFacilities')}</span><strong>${ag.sites}</strong></div>
-                <div class="mc-stat-subitem"><span>Pays de production</span><strong>${ag.pays} pays</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovProdCountries')}</span><strong>${ag.pays} ${bt('ovCountriesUnit')}</strong></div>
               </div>
             </div>
 
@@ -2649,7 +2649,7 @@
               <div class="mc-stat-sublist">
                 <div class="mc-stat-subitem"><span>${bt('ovTraceable')}</span><strong>${ag.tracables}%</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovLineage')}</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovGpsPolygons')}</span><strong>214 sites</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovGpsPolygons')}</span><strong>${moneyless(214)} ${bt('ovSitesUnit')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovMassBalanced')}</span><strong>97.6%</strong></div>
               </div>
             </div>
@@ -2663,7 +2663,7 @@
               <div class="mc-stat-huge" style="color:#b45309;">${ag.dpp}%</div>
               <div class="mc-stat-sublist">
                 <div class="mc-stat-subitem"><span>${bt('ovDpp')}</span><strong>88.0%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>1 098 styles</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>${moneyless(1098)} ${bt('ovStylesUnit')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovAgec')}</span><strong>100%</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovPefValidated')}</span><strong>Tier 3</strong></div>
               </div>
@@ -2686,7 +2686,7 @@
               </div>
               <div class="mc-attention-pill clickable" onclick="state.view=\'certifications\';render();">
                 <div class="mc-attention-num">8</div>
-                <div><strong>${bt('ovCertsExpiring')}</strong><br><small>Renouvellement sous 90j</small></div>
+                <div><strong>${bt('ovCertsExpiring')}</strong><br><small>${bt('ovRenewal90')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" onclick="state.view=\'suppliers\';render();">
                 <div class="mc-attention-num">5</div>
@@ -2710,7 +2710,7 @@
             </div>
 
             <div class="card panel">
-              <div class="panel-head"><h2>Actions d'infrastructure rapides</h2></div>
+              <div class="panel-head"><h2>${bt('ovQuickInfra')}</h2></div>
               <div class="quick-grid">
                 <button class="quick" data-action="new-request">
                   <span class="quick-icon">↗</span>
