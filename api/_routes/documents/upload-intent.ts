@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headers: result.upload.headers,
         expiresInSeconds: Number(process.env.PRIVATE_STORAGE_PRESIGN_SECONDS || 600),
       },
-      next: { scan: `/api/supplier/documents/${result.document.id}/scan` },
+      next: { scan: `/api/documents/${result.document.id}/scan` },
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });

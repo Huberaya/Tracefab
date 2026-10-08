@@ -2549,8 +2549,8 @@
       "type": "Knotentyp"
     },
     "evidence": {
-      "plannedTitle": "Produktnachweise — gebündelt im Nachweis-Center",
-      "plannedNote": "Dokumentarische Nachweise zu diesem Produkt werden hier durch das Nachweis-Center-Arbeitspaket zusammengeführt. Bis dahin werden Dokumente auf Organisationsebene verwaltet.",
+      "plannedTitle": "Nachweise auf Organisationsebene",
+      "plannedNote": "Das Nachweiszentrum verwaltet Zertifikate, Prüfberichte und Herkunftsnachweise Ihrer Organisation. Die Zuordnung pro Produkt ist auf der Roadmap.",
       "openDocuments": "Dokumente öffnen"
     },
     "certifications": {
@@ -2579,6 +2579,79 @@
       "noHistory": "Für dieses Produkt wurde noch kein datiertes Ereignis erfasst.",
       "event": "Ereignis",
       "date": "Datum"
+    }
+  },
+  "evidence": {
+    "stats": {
+      "total": "Verfolgte Nachweise",
+      "available": "Verfügbar",
+      "pending": "Warten auf Scan",
+      "rejected": "Abgelehnt",
+      "expiring": "Laufen innerhalb von 90 Tagen ab"
+    },
+    "table": {
+      "filename": "Dokument",
+      "kind": "Typ",
+      "status": "Status",
+      "size": "Größe",
+      "sha": "Prüfsumme (SHA-256)",
+      "expires": "Läuft ab",
+      "links": "Verknüpfungen",
+      "created": "Hinzugefügt"
+    },
+    "actions": {
+      "download": "Herunterladen",
+      "scan": "Antivirus-Scan starten",
+      "verification": "Prüfbericht",
+      "security": "Sicherheitsbericht"
+    },
+    "upload": {
+      "title": "Nachweis hochladen",
+      "file": "Datei",
+      "kind": "Nachweistyp",
+      "expires": "Ablauf",
+      "cta": "Hochladen und prüfen",
+      "note": "Dokumente sind standardmäßig privat und werden im privaten Speicher der Organisation aufbewahrt.",
+      "success": "Nachweis hochgeladen und analysiert.",
+      "successDemo": "Demonstrationsmodus: Nachweis lokal hinzugefügt."
+    },
+    "detail": {
+      "metadata": "Metadaten",
+      "loading": "Wird geladen…",
+      "method": "Methode",
+      "statusLabel": "Prüfstatus",
+      "verifiedAt": "Geprüft am",
+      "notes": "Notizen",
+      "securityResult": "Ergebnis der Sicherheitsanalyse",
+      "certifications": "Verknüpfte Zertifizierungen",
+      "records": "Verifizierungsdatensätze",
+      "expired": "Abgelaufen"
+    },
+    "empty": {
+      "title": "Noch keine Nachweise hochgeladen",
+      "sub": "Laden Sie Zertifikate, Prüfberichte oder Herkunftsnachweise hoch, um Ihre Nachweisbasis aufzubauen."
+    },
+    "kinds": {
+      "certificate": "Zertifikat",
+      "technical_spec": "Technische Spezifikation",
+      "origin_proof": "Herkunftsnachweis",
+      "audit_report": "Auditbericht",
+      "invoice": "Rechnung",
+      "other": "Sonstiges"
+    },
+    "status": {
+      "uploaded": "Hochgeladen",
+      "scanning": "Wird gescannt",
+      "available": "Verfügbar",
+      "rejected": "Abgelehnt"
+    },
+    "links": {
+      "none": "Noch keine Verknüpfung"
+    },
+    "lens": {
+      "title": "Nachweiszentrum",
+      "note": "Zertifikate, Prüfberichte und Herkunftsnachweise werden im Nachweiszentrum verwaltet.",
+      "cta": "Nachweiszentrum öffnen"
     }
   }
 }

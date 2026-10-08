@@ -2549,9 +2549,9 @@
       "type": "Tipo de nodo"
     },
     "evidence": {
-      "plannedTitle": "Pruebas por producto — unificadas con el Centro de pruebas",
-      "plannedNote": "Las pruebas documentales vinculadas a este producto se consolidarán aquí mediante el frente Centro de pruebas. Hasta entonces, los documentos se gestionan a nivel de organización.",
-      "openDocuments": "Abrir los documentos"
+      "plannedTitle": "Evidencias a nivel de organización",
+      "plannedNote": "El Centro de evidencias gestiona certificados, informes de ensayo y pruebas de origen de su organización. La vinculación por producto está en la hoja de ruta.",
+      "openDocuments": "Abrir documentos"
     },
     "certifications": {
       "orgNote": "Certificaciones declaradas a nivel de organización. Los certificados por producto aún no se registran por separado.",
@@ -2579,6 +2579,79 @@
       "noHistory": "Aún no se ha registrado ningún evento con fecha para este producto.",
       "event": "Evento",
       "date": "Fecha"
+    }
+  },
+  "evidence": {
+    "stats": {
+      "total": "Pruebas supervisadas",
+      "available": "Disponibles",
+      "pending": "Pendientes de análisis",
+      "rejected": "Rechazadas",
+      "expiring": "Caducan en 90 días"
+    },
+    "table": {
+      "filename": "Documento",
+      "kind": "Tipo",
+      "status": "Estado",
+      "size": "Tamaño",
+      "sha": "Huella (SHA-256)",
+      "expires": "Caducidad",
+      "links": "Vínculos",
+      "created": "Añadida"
+    },
+    "actions": {
+      "download": "Descargar",
+      "scan": "Ejecutar análisis antivirus",
+      "verification": "Informe de verificación",
+      "security": "Informe de seguridad"
+    },
+    "upload": {
+      "title": "Subir una prueba",
+      "file": "Archivo",
+      "kind": "Tipo de prueba",
+      "expires": "Caducidad",
+      "cta": "Subir y analizar",
+      "note": "Los documentos son privados por defecto y se almacenan en el depósito privado de la organización.",
+      "success": "Prueba subida y analizada.",
+      "successDemo": "Modo demostración: prueba añadida localmente."
+    },
+    "detail": {
+      "metadata": "Metadatos",
+      "loading": "Cargando…",
+      "method": "Método",
+      "statusLabel": "Estado de verificación",
+      "verifiedAt": "Verificada el",
+      "notes": "Notas",
+      "securityResult": "Resultado del análisis de seguridad",
+      "certifications": "Certificaciones vinculadas",
+      "records": "Registros de verificación",
+      "expired": "Vencida"
+    },
+    "empty": {
+      "title": "Aún no se ha subido ninguna prueba",
+      "sub": "Suba certificados, informes de ensayo o pruebas de origen para construir su base de pruebas."
+    },
+    "kinds": {
+      "certificate": "Certificado",
+      "technical_spec": "Especificación técnica",
+      "origin_proof": "Prueba de origen",
+      "audit_report": "Informe de auditoría",
+      "invoice": "Factura",
+      "other": "Otro"
+    },
+    "status": {
+      "uploaded": "Subida",
+      "scanning": "Análisis en curso",
+      "available": "Disponible",
+      "rejected": "Rechazada"
+    },
+    "links": {
+      "none": "Aún no hay vínculos"
+    },
+    "lens": {
+      "title": "Centro de evidencias",
+      "note": "Los certificados, informes de ensayo y pruebas de origen se gestionan en el Centro de evidencias.",
+      "cta": "Abrir el centro de evidencias"
     }
   }
 }

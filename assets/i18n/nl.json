@@ -2549,8 +2549,8 @@
       "type": "Knooppunttype"
     },
     "evidence": {
-      "plannedTitle": "Bewijs per product — gebundeld in het Bewijscentrum",
-      "plannedNote": "Documentair bewijs bij dit product wordt hier gebundeld door het werkpakket Bewijscentrum. Tot die tijd worden documenten op organisatieniveau beheerd.",
+      "plannedTitle": "Bewijs op organisatieniveau",
+      "plannedNote": "Het bewijscentrum beheert certificaten, testrapporten en herkomstbewijzen van uw organisatie. Koppeling per product staat op de roadmap.",
       "openDocuments": "Documenten openen"
     },
     "certifications": {
@@ -2579,6 +2579,79 @@
       "noHistory": "Voor dit product is nog geen gedateerde gebeurtenis vastgelegd.",
       "event": "Gebeurtenis",
       "date": "Datum"
+    }
+  },
+  "evidence": {
+    "stats": {
+      "total": "Bewijsstukken gevolgd",
+      "available": "Beschikbaar",
+      "pending": "Wachten op scan",
+      "rejected": "Afgewezen",
+      "expiring": "Verlopen binnen 90 dagen"
+    },
+    "table": {
+      "filename": "Document",
+      "kind": "Type",
+      "status": "Status",
+      "size": "Grootte",
+      "sha": "Vingerafdruk (SHA-256)",
+      "expires": "Verloopt",
+      "links": "Koppelingen",
+      "created": "Toegevoegd"
+    },
+    "actions": {
+      "download": "Downloaden",
+      "scan": "Antivirus-scan uitvoeren",
+      "verification": "Verificatierapport",
+      "security": "Beveiligingsrapport"
+    },
+    "upload": {
+      "title": "Bewijsstuk toevoegen",
+      "file": "Bestand",
+      "kind": "Type bewijs",
+      "expires": "Vervaldatum",
+      "cta": "Uploaden en scannen",
+      "note": "Documenten zijn standaard privé en worden opgeslagen in de privéopslag van de organisatie.",
+      "success": "Bewijsstuk geüpload en geanalyseerd.",
+      "successDemo": "Demonstratiemodus: bewijsstuk lokaal toegevoegd."
+    },
+    "detail": {
+      "metadata": "Metadata",
+      "loading": "Laden…",
+      "method": "Methode",
+      "statusLabel": "Verificatiestatus",
+      "verifiedAt": "Geverifieerd op",
+      "notes": "Notities",
+      "securityResult": "Resultaat van de beveiligingsanalyse",
+      "certifications": "Gekoppelde certificeringen",
+      "records": "Verificatieregisters",
+      "expired": "Verlopen"
+    },
+    "empty": {
+      "title": "Nog geen bewijsstukken geüpload",
+      "sub": "Upload certificaten, testrapporten of herkomstbewijzen om uw bewijsbasis op te bouwen."
+    },
+    "kinds": {
+      "certificate": "Certificaat",
+      "technical_spec": "Technische specificatie",
+      "origin_proof": "Herkomstbewijs",
+      "audit_report": "Auditrapport",
+      "invoice": "Factuur",
+      "other": "Overig"
+    },
+    "status": {
+      "uploaded": "Geüpload",
+      "scanning": "Wordt gescand",
+      "available": "Beschikbaar",
+      "rejected": "Afgewezen"
+    },
+    "links": {
+      "none": "Nog geen koppeling"
+    },
+    "lens": {
+      "title": "Bewijscentrum",
+      "note": "Certificaten, testrapporten en herkomstbewijzen worden beheerd in het bewijscentrum.",
+      "cta": "Bewijscentrum openen"
     }
   }
 }

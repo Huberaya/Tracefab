@@ -2549,8 +2549,8 @@
       "type": "Type de nœud"
     },
     "evidence": {
-      "plannedTitle": "Preuves par produit — unifiées avec le Centre de preuves",
-      "plannedNote": "Les preuves documentaires attachées à ce produit seront consolidées ici par le chantier Centre de preuves. D'ici là, les documents sont gérés au niveau de l'organisation.",
+      "plannedTitle": "Preuves au niveau de l'organisation",
+      "plannedNote": "Le Centre de preuves suit les certificats, rapports de test et preuves d'origine de votre organisation. L'attachement par produit est sur la feuille de route.",
       "openDocuments": "Ouvrir les documents"
     },
     "certifications": {
@@ -2579,6 +2579,79 @@
       "noHistory": "Aucun événement horodaté enregistré pour ce produit pour le moment.",
       "event": "Événement",
       "date": "Date"
+    }
+  },
+  "evidence": {
+    "stats": {
+      "total": "Preuves suivies",
+      "available": "Disponibles",
+      "pending": "En attente d'analyse",
+      "rejected": "Rejetées",
+      "expiring": "Expirent sous 90 jours"
+    },
+    "table": {
+      "filename": "Document",
+      "kind": "Type",
+      "status": "Statut",
+      "size": "Taille",
+      "sha": "Empreinte (SHA-256)",
+      "expires": "Expiration",
+      "links": "Liaisons",
+      "created": "Ajoutée"
+    },
+    "actions": {
+      "download": "Télécharger",
+      "scan": "Lancer l'analyse antivirus",
+      "verification": "Rapport de vérification",
+      "security": "Rapport de sécurité"
+    },
+    "upload": {
+      "title": "Verser une preuve",
+      "file": "Fichier",
+      "kind": "Type de preuve",
+      "expires": "Expiration",
+      "cta": "Verser et analyser",
+      "note": "Les documents sont privés par défaut et stockés dans le compartiment privé de l'organisation.",
+      "success": "Preuve versée et analysée.",
+      "successDemo": "Mode démonstration : preuve ajoutée localement."
+    },
+    "detail": {
+      "metadata": "Métadonnées",
+      "loading": "Chargement…",
+      "method": "Méthode",
+      "statusLabel": "Statut de vérification",
+      "verifiedAt": "Vérifiée le",
+      "notes": "Notes",
+      "securityResult": "Résultat de l'analyse de sécurité",
+      "certifications": "Certifications liées",
+      "records": "Enregistrements de vérification",
+      "expired": "Expirée"
+    },
+    "empty": {
+      "title": "Aucune preuve versée pour le moment",
+      "sub": "Versez des certificats, rapports d'essai ou preuves d'origine pour construire votre base de preuves."
+    },
+    "kinds": {
+      "certificate": "Certificat",
+      "technical_spec": "Spécification technique",
+      "origin_proof": "Preuve d'origine",
+      "audit_report": "Rapport d'audit",
+      "invoice": "Facture",
+      "other": "Autre"
+    },
+    "status": {
+      "uploaded": "Versé",
+      "scanning": "Analyse en cours",
+      "available": "Disponible",
+      "rejected": "Rejeté"
+    },
+    "links": {
+      "none": "Aucune liaison pour le moment"
+    },
+    "lens": {
+      "title": "Centre de preuves",
+      "note": "Certificats, rapports de test et preuves d’origine sont gérés dans le Centre de preuves.",
+      "cta": "Ouvrir le centre de preuves"
     }
   }
 }

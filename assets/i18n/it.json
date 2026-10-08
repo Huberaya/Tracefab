@@ -2549,8 +2549,8 @@
       "type": "Tipo di nodo"
     },
     "evidence": {
-      "plannedTitle": "Prove per prodotto — unificate nel Centro prove",
-      "plannedNote": "Le prove documentali collegate a questo prodotto saranno consolidate qui dal cantiere Centro prove. Fino ad allora, i documenti sono gestiti a livello di organizzazione.",
+      "plannedTitle": "Prove a livello di organizzazione",
+      "plannedNote": "Il Centro prove gestisce certificati, rapporti di prova e prove di origine della vostra organizzazione. L'associazione per prodotto è in roadmap.",
       "openDocuments": "Apri i documenti"
     },
     "certifications": {
@@ -2579,6 +2579,79 @@
       "noHistory": "Nessun evento datato registrato per questo prodotto per ora.",
       "event": "Evento",
       "date": "Data"
+    }
+  },
+  "evidence": {
+    "stats": {
+      "total": "Prove monitorate",
+      "available": "Disponibili",
+      "pending": "In attesa di scansione",
+      "rejected": "Rifiutate",
+      "expiring": "In scadenza entro 90 giorni"
+    },
+    "table": {
+      "filename": "Documento",
+      "kind": "Tipo",
+      "status": "Stato",
+      "size": "Dimensione",
+      "sha": "Impronta (SHA-256)",
+      "expires": "Scadenza",
+      "links": "Collegamenti",
+      "created": "Aggiunta"
+    },
+    "actions": {
+      "download": "Scarica",
+      "scan": "Avvia la scansione antivirus",
+      "verification": "Rapporto di verifica",
+      "security": "Rapporto di sicurezza"
+    },
+    "upload": {
+      "title": "Carica una prova",
+      "file": "File",
+      "kind": "Tipo di prova",
+      "expires": "Scadenza",
+      "cta": "Carica e analizza",
+      "note": "I documenti sono privati per impostazione predefinita e conservati nell'archivio privato dell'organizzazione.",
+      "success": "Prova caricata e analizzata.",
+      "successDemo": "Modalità dimostrazione: prova aggiunta localmente."
+    },
+    "detail": {
+      "metadata": "Metadati",
+      "loading": "Caricamento…",
+      "method": "Metodo",
+      "statusLabel": "Stato di verifica",
+      "verifiedAt": "Verificata il",
+      "notes": "Note",
+      "securityResult": "Risultato dell'analisi di sicurezza",
+      "certifications": "Certificazioni collegate",
+      "records": "Voci di verifica",
+      "expired": "Scaduta"
+    },
+    "empty": {
+      "title": "Nessuna prova caricata per ora",
+      "sub": "Carica certificati, rapporti di prova o prove di origine per costruire la tua base di prove."
+    },
+    "kinds": {
+      "certificate": "Certificato",
+      "technical_spec": "Specifica tecnica",
+      "origin_proof": "Prova di origine",
+      "audit_report": "Rapporto di audit",
+      "invoice": "Fattura",
+      "other": "Altro"
+    },
+    "status": {
+      "uploaded": "Caricata",
+      "scanning": "Scansione in corso",
+      "available": "Disponibile",
+      "rejected": "Rifiutata"
+    },
+    "links": {
+      "none": "Nessun collegamento per ora"
+    },
+    "lens": {
+      "title": "Centro prove",
+      "note": "Certificati, rapporti di prova e prove di origine sono gestiti nel Centro prove.",
+      "cta": "Apri il centro prove"
     }
   }
 }

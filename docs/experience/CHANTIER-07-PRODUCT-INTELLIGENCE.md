@@ -103,6 +103,8 @@ inventées, le bouton « Passeport DPP Public » hors contexte produit.
 
 - La lentille Evidence est volontairement un panneau « à venir » : l'API de
   preuves par produit relève du chantier 08 (Evidence Center).
+  *(Mise à jour : livrée au chantier 08 — la lentille affiche désormais les
+  compteurs réels de documents et ouvre le Centre de preuves.)*
 - Les certifications affichées sont au niveau organisation ; les certificats
   par produit ne sont pas encore enregistrés séparément en base.
 - La maquette statique `product-intelligence/` reste une page de

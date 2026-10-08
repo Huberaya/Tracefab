@@ -58,8 +58,8 @@
       "type": "Node type"
     },
     "evidence": {
-      "plannedTitle": "Per-product evidence — unified with the Evidence Center",
-      "plannedNote": "Documentary evidence attached to this product will be consolidated here by the Evidence Center workstream. Until then, documents are managed at organization level.",
+      "plannedTitle": "Organization-level evidence",
+      "plannedNote": "The Evidence Center tracks certificates, test reports and origin proofs for your organization. Per-product attachment is on the roadmap.",
       "openDocuments": "Open documents"
     },
     "certifications": {
@@ -149,8 +149,8 @@
       "type": "Type de nœud"
     },
     "evidence": {
-      "plannedTitle": "Preuves par produit — unifiées avec le Centre de preuves",
-      "plannedNote": "Les preuves documentaires attachées à ce produit seront consolidées ici par le chantier Centre de preuves. D'ici là, les documents sont gérés au niveau de l'organisation.",
+      "plannedTitle": "Preuves au niveau de l'organisation",
+      "plannedNote": "Le Centre de preuves suit les certificats, rapports de test et preuves d'origine de votre organisation. L'attachement par produit est sur la feuille de route.",
       "openDocuments": "Ouvrir les documents"
     },
     "certifications": {
@@ -240,8 +240,8 @@
       "type": "Knotentyp"
     },
     "evidence": {
-      "plannedTitle": "Produktnachweise — gebündelt im Nachweis-Center",
-      "plannedNote": "Dokumentarische Nachweise zu diesem Produkt werden hier durch das Nachweis-Center-Arbeitspaket zusammengeführt. Bis dahin werden Dokumente auf Organisationsebene verwaltet.",
+      "plannedTitle": "Nachweise auf Organisationsebene",
+      "plannedNote": "Das Nachweiszentrum verwaltet Zertifikate, Prüfberichte und Herkunftsnachweise Ihrer Organisation. Die Zuordnung pro Produkt ist auf der Roadmap.",
       "openDocuments": "Dokumente öffnen"
     },
     "certifications": {
@@ -331,8 +331,8 @@
       "type": "Tipo di nodo"
     },
     "evidence": {
-      "plannedTitle": "Prove per prodotto — unificate nel Centro prove",
-      "plannedNote": "Le prove documentali collegate a questo prodotto saranno consolidate qui dal cantiere Centro prove. Fino ad allora, i documenti sono gestiti a livello di organizzazione.",
+      "plannedTitle": "Prove a livello di organizzazione",
+      "plannedNote": "Il Centro prove gestisce certificati, rapporti di prova e prove di origine della vostra organizzazione. L'associazione per prodotto è in roadmap.",
       "openDocuments": "Apri i documenti"
     },
     "certifications": {
@@ -422,9 +422,9 @@
       "type": "Tipo de nodo"
     },
     "evidence": {
-      "plannedTitle": "Pruebas por producto — unificadas con el Centro de pruebas",
-      "plannedNote": "Las pruebas documentales vinculadas a este producto se consolidarán aquí mediante el frente Centro de pruebas. Hasta entonces, los documentos se gestionan a nivel de organización.",
-      "openDocuments": "Abrir los documentos"
+      "plannedTitle": "Evidencias a nivel de organización",
+      "plannedNote": "El Centro de evidencias gestiona certificados, informes de ensayo y pruebas de origen de su organización. La vinculación por producto está en la hoja de ruta.",
+      "openDocuments": "Abrir documentos"
     },
     "certifications": {
       "orgNote": "Certificaciones declaradas a nivel de organización. Los certificados por producto aún no se registran por separado.",
@@ -513,8 +513,8 @@
       "type": "Knooppunttype"
     },
     "evidence": {
-      "plannedTitle": "Bewijs per product — gebundeld in het Bewijscentrum",
-      "plannedNote": "Documentair bewijs bij dit product wordt hier gebundeld door het werkpakket Bewijscentrum. Tot die tijd worden documenten op organisatieniveau beheerd.",
+      "plannedTitle": "Bewijs op organisatieniveau",
+      "plannedNote": "Het bewijscentrum beheert certificaten, testrapporten en herkomstbewijzen van uw organisatie. Koppeling per product staat op de roadmap.",
       "openDocuments": "Documenten openen"
     },
     "certifications": {
@@ -604,9 +604,9 @@
       "type": "Tipo de nó"
     },
     "evidence": {
-      "plannedTitle": "Provas por produto — unificadas no Centro de provas",
-      "plannedNote": "As provas documentais associadas a este produto serão consolidadas aqui pelo estaleiro Centro de provas. Até lá, os documentos são geridos ao nível da organização.",
-      "openDocuments": "Abrir os documentos"
+      "plannedTitle": "Evidências ao nível da organização",
+      "plannedNote": "A Central de evidências gere certificados, relatórios de teste e provas de origem da sua organização. A associação por produto está no roadmap.",
+      "openDocuments": "Abrir documentos"
     },
     "certifications": {
       "orgNote": "Certificações declaradas ao nível da organização. Os certificados por produto ainda não são registados separadamente.",

@@ -2549,9 +2549,9 @@
       "type": "Tipo de nó"
     },
     "evidence": {
-      "plannedTitle": "Provas por produto — unificadas no Centro de provas",
-      "plannedNote": "As provas documentais associadas a este produto serão consolidadas aqui pelo estaleiro Centro de provas. Até lá, os documentos são geridos ao nível da organização.",
-      "openDocuments": "Abrir os documentos"
+      "plannedTitle": "Evidências ao nível da organização",
+      "plannedNote": "A Central de evidências gere certificados, relatórios de teste e provas de origem da sua organização. A associação por produto está no roadmap.",
+      "openDocuments": "Abrir documentos"
     },
     "certifications": {
       "orgNote": "Certificações declaradas ao nível da organização. Os certificados por produto ainda não são registados separadamente.",
@@ -2579,6 +2579,79 @@
       "noHistory": "Ainda não foi registado nenhum evento com data para este produto.",
       "event": "Evento",
       "date": "Data"
+    }
+  },
+  "evidence": {
+    "stats": {
+      "total": "Provas acompanhadas",
+      "available": "Disponíveis",
+      "pending": "À espera de análise",
+      "rejected": "Rejeitadas",
+      "expiring": "Expiram dentro de 90 dias"
+    },
+    "table": {
+      "filename": "Documento",
+      "kind": "Tipo",
+      "status": "Estado",
+      "size": "Tamanho",
+      "sha": "Impressão digital (SHA-256)",
+      "expires": "Expira",
+      "links": "Ligações",
+      "created": "Adicionada"
+    },
+    "actions": {
+      "download": "Descarregar",
+      "scan": "Executar análise antivírus",
+      "verification": "Relatório de verificação",
+      "security": "Relatório de segurança"
+    },
+    "upload": {
+      "title": "Adicionar prova",
+      "file": "Ficheiro",
+      "kind": "Tipo de prova",
+      "expires": "Expiração",
+      "cta": "Carregar e analisar",
+      "note": "Os documentos são privados por predefinição e guardados no armazenamento privado da organização.",
+      "success": "Prova carregada e analisada.",
+      "successDemo": "Modo de demonstração: prova adicionada localmente."
+    },
+    "detail": {
+      "metadata": "Metadados",
+      "loading": "A carregar…",
+      "method": "Método",
+      "statusLabel": "Estado de verificação",
+      "verifiedAt": "Verificada em",
+      "notes": "Notas",
+      "securityResult": "Resultado da análise de segurança",
+      "certifications": "Certificações vinculadas",
+      "records": "Registros de verificação",
+      "expired": "Vencida"
+    },
+    "empty": {
+      "title": "Ainda não foram carregadas provas",
+      "sub": "Carregue certificados, relatórios de ensaio ou provas de origem para construir a sua base de provas."
+    },
+    "kinds": {
+      "certificate": "Certificado",
+      "technical_spec": "Especificação técnica",
+      "origin_proof": "Prova de origem",
+      "audit_report": "Relatório de auditoria",
+      "invoice": "Fatura",
+      "other": "Outro"
+    },
+    "status": {
+      "uploaded": "Carregada",
+      "scanning": "Análise em curso",
+      "available": "Disponível",
+      "rejected": "Rejeitada"
+    },
+    "links": {
+      "none": "Ainda sem ligações"
+    },
+    "lens": {
+      "title": "Central de evidências",
+      "note": "Certificados, relatórios de teste e provas de origem são geridos na Central de evidências.",
+      "cta": "Abrir a central de evidências"
     }
   }
 }

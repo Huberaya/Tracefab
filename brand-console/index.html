@@ -1010,6 +1010,8 @@
         suppliers: [],
         materials: [],
         products: [],
+        documents: [],
+        evidenceDetail: null,
         requests: [],
         questionnaires: [],
         schemaCatalog: [],
@@ -1329,6 +1331,12 @@
           { id: 'demo-product-2', brandOrganizationId: 'demo-brand', reference: 'AT-LIN-004', name: 'Ligne lin naturel', category: 'Chemise', status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '46' },
         ];
         demoEchelle();
+        state.documents = [
+          { id: 'demo-evidence-1', originalFilename: 'GOTS-2026-tissage.pdf', contentType: 'application/pdf', byteSize: 1843200, kind: 'certificate', status: 'available', visibility: 'private', createdAt: '2026-01-12T09:30:00Z', availableAt: '2026-01-12T09:31:00Z', expiresAt: '2027-01-12T00:00:00Z', sha256: '0f3a9c2e81b7d4a65e9f1c0b2d8a7e64', metadata: { source: 'demo' }, links: { certifications: 1, dataPoints: 0, dataResponses: 0, supplyChainNodes: 1, supplyChainLinks: 0, greenClaims: 0, transactionCertificates: 0 } },
+          { id: 'demo-evidence-2', originalFilename: 'rapport-test-zdhc-ecodye.pdf', contentType: 'application/pdf', byteSize: 942080, kind: 'audit_report', status: 'available', visibility: 'private', createdAt: '2026-02-03T14:10:00Z', availableAt: '2026-02-03T14:11:00Z', expiresAt: '2027-02-03T00:00:00Z', sha256: 'a7c1e9f034b2d8650f1e2a3b4c5d6e7f', metadata: { source: 'demo' }, links: { certifications: 0, dataPoints: 2, dataResponses: 0, supplyChainNodes: 0, supplyChainLinks: 0, greenClaims: 1, transactionCertificates: 0 } },
+          { id: 'demo-evidence-3', originalFilename: 'preuve-origine-lin-2026.pdf', contentType: 'application/pdf', byteSize: 614400, kind: 'origin_proof', status: 'scanning', visibility: 'private', createdAt: '2026-09-28T08:00:00Z', availableAt: null, expiresAt: null, sha256: null, metadata: { source: 'demo' }, links: {} },
+          { id: 'demo-evidence-4', originalFilename: 'facture-coton-bio-q3.pdf', contentType: 'application/pdf', byteSize: 231424, kind: 'invoice', status: 'available', visibility: 'private', createdAt: '2026-07-05T11:45:00Z', availableAt: '2026-07-05T11:46:00Z', expiresAt: '2026-11-30T00:00:00Z', sha256: 'b2d4f6a8c0e1357913579bdf02468ace', metadata: { source: 'demo' }, links: { certifications: 0, dataPoints: 0, dataResponses: 0, supplyChainNodes: 0, supplyChainLinks: 0, greenClaims: 0, transactionCertificates: 2 } },
+        ];
         state.requests = [
           { id: 'demo-request-1', brandOrganizationId: 'demo-brand', supplierOrganizationId: 'demo-supplier', title: 'Product data — Autumn collection', questionnaireKey: 'product-data-core', questionnaireVersion: '1.0', status: 'in_progress', dueAt: new Date(Date.now() + 5 * 86400000).toISOString(), completionPercentage: '64', lastActivityAt: new Date().toISOString() },
           {
@@ -1664,6 +1672,10 @@
           state.requests = requests.requests || [];
           state.questionnaires = questionnaires.questionnaires || [];
           state.schemaCatalog = schemas.schemas || [];
+          // Chantier 08 : les documents de preuve sont charges separement pour
+          // ne pas bloquer le reste de la console si l'endpoint echoue.
+          const evidence = await Promise.allSettled([api('/api/documents')]);
+          state.documents = evidence[0].status === 'fulfilled' ? (evidence[0].value.documents || []) : [];
           const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
           state.activeOrganizationId = state.activeOrganizationId || brands[0]?.organization_id || null;
           state.loading = false;
@@ -2356,119 +2368,190 @@
         </div>`;
       }
 
-            function documentsConsoleView() {
-        const docs = state.documents || [];
+      /* Chantier 08 — Evidence Center : centre de preuves reel de la console.
+         Alimente par GET /api/documents (state.documents, charge dans sync),
+         upload via /api/documents/upload-intent + PUT presigne + analyse
+         antivirus /api/documents/:id/scan, rapports de verification et de
+         securite via leurs endpoints respectifs. Aucun chiffre en dur : les
+         statistiques sont comptees depuis les documents charges. */
+      const be = (key, fb) => (window.TF_I18N ? window.TF_I18N.t('evidence.' + key, fb) : fb);
+      const evidenceKindLabel = (k) => be('kinds.' + k, k);
+      const evidenceStatusLabel = (s) => be('status.' + s, s);
+      const evidenceSize = (bytes) => {
+        const n = Number(bytes);
+        if (!Number.isFinite(n) || n <= 0) return '—';
+        return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : (n / 1024).toFixed(1) + ' KB';
+      };
+      const evidenceLinksCount = (doc) => {
+        const links = doc.links || {};
+        return Object.values(links).reduce((a, b) => a + (Number(b) || 0), 0);
+      };
+
+      function evidenceDetailRow(doc) {
+        const detail = state.evidenceDetail;
+        if (!detail || detail.id !== doc.id) return '';
+        let body;
+        if (detail.loading) {
+          body = `<p class="meta">${be('detail.loading', 'Loading…')}</p>`;
+        } else if (detail.error) {
+          body = `<p class="meta" style="color:#b91c1c">${esc(detail.error)}</p>`;
+        } else if (detail.kind === 'verification') {
+          const report = detail.data?.report || {};
+          const verifications = report.verifications || [];
+          body = `<dl style="display:grid;gap:10px;margin:0">
+            <div><dt class="meta">${be('detail.statusLabel', 'Verification status')}</dt><dd style="margin:3px 0 0;font-weight:750">${esc(report.latestAiStatus || 'unverified')}</dd></div>
+            <div><dt class="meta">${be('detail.certifications', 'Linked certifications')}</dt><dd style="margin:3px 0 0">${(report.certifications || []).length ? report.certifications.map((c) => esc(c.standard_name || c.id)).join(', ') : '—'}</dd></div>
+            <div><dt class="meta">${be('detail.records', 'Verification records')}</dt><dd style="margin:3px 0 0">${verifications.length ? verifications.map((v) => esc(v.method || '') + ' · ' + esc(v.status || '')).join(' ; ') : '—'}</dd></div>
+          </dl>`;
+        } else {
+          const report = detail.data?.securityReport || {};
+          const integrity = report.integrity || {};
+          const compliance = report.compliance || {};
+          body = `<dl style="display:grid;gap:10px;margin:0">
+            <div><dt class="meta">SHA-256</dt><dd style="margin:3px 0 0;font-family:var(--font-mono,monospace);word-break:break-all">${esc(integrity.sha256 || '—')}</dd></div>
+            <div><dt class="meta">${be('detail.securityResult', 'Security analysis result')}</dt><dd style="margin:3px 0 0">${report.antivirus ? esc(JSON.stringify(report.antivirus)) : '—'}</dd></div>
+            <div><dt class="meta">${be('table.status', 'Status')}</dt><dd style="margin:3px 0 0">${compliance.isAvailable ? evidenceStatusLabel('available') : compliance.isQuarantined ? evidenceStatusLabel('rejected') : '—'}${compliance.isExpired ? ' · ' + esc(be('detail.expired', 'Expired')) : ''}</dd></div>
+          </dl>`;
+        }
+        return `<tr class="evidence-detail-row"><td colspan="8" style="background:#fbfaf8"><div style="padding:14px 18px">${body}</div></td></tr>`;
+      }
+
+      function documentsConsoleView() {
+        const docs = (state.documents || []).filter((d) => d.status !== 'deleted');
+        const now = Date.now();
+        const stats = {
+          total: docs.length,
+          available: docs.filter((d) => d.status === 'available').length,
+          pending: docs.filter((d) => ['uploaded', 'scanning'].includes(d.status)).length,
+          rejected: docs.filter((d) => d.status === 'rejected').length,
+          expiring: docs.filter((d) => d.expiresAt && new Date(d.expiresAt).getTime() - now < 90 * 86400000).length
+        };
+        const kinds = ['certificate', 'technical_spec', 'origin_proof', 'audit_report', 'invoice', 'other'];
+
         return `<div class="page-head">
           <div>
             <div class="eyebrow">${bt('evVault')}</div>
             <h1>${bt('evCentre')}</h1>
             <p>${esc(bt('cnEvIntro'))}</p>
           </div>
-          <div class="actions">
-            <button class="btn btn-secondary" data-demo-action="1">${bt('evDownload')}</button>
-            <button class="btn btn-primary" data-demo-action="1">${bt('evUpload')}</button>
-          </div>
         </div>
 
-        <!-- Evidence Trust Matrix Strip -->
-        <div class="eq-overview-panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('evSovereign')}</div>
-              <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('evSha')}</h3>
-            </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">142 EVIDENCE ITEMS VALIDATED ON NEON DB</span>
-          </div>
-
-          <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-top:16px;">
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('evTransCerts')}</div>
-              <div class="eq-score-num">48</div>
-              <div class="eq-score-desc">${bt('evMassBalance')}</div>
-            </div>
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('evLabReports')}</div>
-              <div class="eq-score-num">36</div>
-              <div class="eq-score-desc">${bt('evRsl')}</div>
-            </div>
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('evSocialAudits')}</div>
-              <div class="eq-score-num">24</div>
-              <div class="eq-score-desc">${bt('evHumanRights')}</div>
-            </div>
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('evProdRecords')}</div>
-              <div class="eq-score-num">34</div>
-              <div class="eq-score-desc">${bt('evDelivery')}</div>
-            </div>
-          </div>
+        <div class="pil-summary-grid">
+          <div class="pil-summary-cell"><div class="pil-summary-num">${stats.total}</div><span class="pil-summary-label">${be('stats.total', 'Evidence tracked')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${stats.available}</div><span class="pil-summary-label">${be('stats.available', 'Available')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${stats.pending}</div><span class="pil-summary-label">${be('stats.pending', 'Awaiting scan')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${stats.rejected}</div><span class="pil-summary-label">${be('stats.rejected', 'Rejected')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${stats.expiring}</div><span class="pil-summary-label">${be('stats.expiring', 'Expiring within 90 days')}</span></div>
         </div>
 
-        <div class="card panel">
-          <div class="panel-head">
-            <h2>${bt('evActiveDocs')} (${docs.length})</h2>
-            <span class="meta" style="color:#0b7656;font-weight:750;">${bt('evIntegrityOk')}</span>
-          </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>${bt('evTitle')}</th>
-                  <th>${bt('evTypeStd')}</th>
-                  <th>${bt('evIssuer')}</th>
-                  <th>${bt('evLinkedSupplier')}</th>
-                  <th>${bt('evIssueDate')}</th>
-                  <th>${bt('evValidity')}</th>
-                  <th>${bt('evIntegrityStatus')}</th>
-                  <th style="text-align:right">${bt('evAction')}</th>
-                </tr>
-              </thead>
+        <div class="grid split" style="margin-top:18px">
+          <div class="card panel" style="grid-column: span 2">
+            <div class="panel-head"><h2>${bt('evActiveDocs')} (${docs.length})</h2></div>
+            ${docs.length ? `<div class="table-wrap"><table>
+              <thead><tr>
+                <th>${be('table.filename', 'Document')}</th>
+                <th>${be('table.kind', 'Type')}</th>
+                <th>${be('table.status', 'Status')}</th>
+                <th>${be('table.size', 'Size')}</th>
+                <th>${be('table.expires', 'Expires')}</th>
+                <th>${be('table.links', 'Links')}</th>
+                <th>${be('table.created', 'Added')}</th>
+                <th style="text-align:right"></th>
+              </tr></thead>
               <tbody>
-                <tr>
-                  <td><strong>GOTS 2026 Transaction Certificate</strong><div class="meta">Organic Cotton Lot #089-A</div></td>
-                  <td><span class="badge badge-verified">TC GOTS</span></td>
-                  <td>Control Union Certifications</td>
-                  <td>Filature de Haute-Vienne</td>
-                  <td>14/01/2026</td>
-                  <td>14/01/2027</td>
-                  <td><span class="status status-approved">${bt('evSealed')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
-                </tr>
-                <tr>
-                  <td><strong>ZDHC MRSL Level 3 Laboratory Report</strong><div class="meta">${bt('evWastewater')}</div></td>
-                  <td><span class="badge badge-verified">ZDHC Test</span></td>
-                  <td>SGS Textile Testing Services</td>
-                  <td>EcoDye Aquitaine</td>
-                  <td>02/03/2026</td>
-                  <td>02/03/2027</td>
-                  <td><span class="status status-approved">${bt('evIso')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
-                </tr>
-                <tr>
-                  <td><strong>SMETA 4-Pillar Social Audit (Grade A)</strong><div class="meta">${bt('evHealthSafety')}</div></td>
-                  <td><span class="badge badge-verified">SMETA Audit</span></td>
-                  <td>Intertek Ethical Services</td>
-                  <td>Assembly & Tailoring Workshop</td>
-                  <td>10/11/2025</td>
-                  <td>10/11/2026</td>
-                  <td><span class="status status-approved">${bt('evIlo')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
-                </tr>
-                <tr>
-                  <td><strong>OEKO-TEX Standard 100 Certificate</strong><div class="meta">${bt('evClass1')}</div></td>
-                  <td><span class="badge badge-verified">OEKO-TEX</span></td>
-                  <td>CITEVE Portugal</td>
-                  <td>Portugal Textile Mill</td>
-                  <td>18/02/2026</td>
-                  <td>18/02/2027</td>
-                  <td><span class="status status-approved">${bt('evValid')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
-                </tr>
+                ${docs.map((doc) => `<tr>
+                  <td><strong>${esc(doc.originalFilename)}</strong><div class="meta" style="font-family:var(--font-mono,monospace)">${doc.sha256 ? esc(String(doc.sha256).slice(0, 16)) + '…' : '—'}</div></td>
+                  <td>${esc(evidenceKindLabel(doc.kind))}</td>
+                  <td>${status(doc.status === 'available' ? 'approved' : doc.status === 'rejected' ? 'rejected' : 'draft')}<div class="meta">${esc(evidenceStatusLabel(doc.status))}</div></td>
+                  <td>${evidenceSize(doc.byteSize)}</td>
+                  <td>${doc.expiresAt ? date(doc.expiresAt) : '—'}</td>
+                  <td>${evidenceLinksCount(doc) || `<span class="meta">${be('links.none', 'No link yet')}</span>`}</td>
+                  <td>${date(doc.createdAt)}</td>
+                  <td style="text-align:right"><div class="actions" style="justify-content:flex-end">
+                    ${doc.status === 'available' ? `<button class="btn btn-secondary btn-small" data-action="evidence-download" data-evidence-id="${esc(doc.id)}">${be('actions.download', 'Download')}</button>` : ''}
+                    ${['uploaded', 'scanning'].includes(doc.status) ? `<button class="btn btn-secondary btn-small" data-action="evidence-scan" data-evidence-id="${esc(doc.id)}">${be('actions.scan', 'Run antivirus scan')}</button>` : ''}
+                    <button class="btn btn-secondary btn-small" data-action="evidence-report" data-report-kind="verification" data-evidence-id="${esc(doc.id)}">${be('actions.verification', 'Verification report')}</button>
+                    <button class="btn btn-secondary btn-small" data-action="evidence-report" data-report-kind="security" data-evidence-id="${esc(doc.id)}">${be('actions.security', 'Security report')}</button>
+                  </div></td>
+                </tr>${evidenceDetailRow(doc)}`).join('')}
               </tbody>
-            </table>
+            </table></div>` : `<div class="empty"><div class="empty-icon">▤</div><strong>${be('empty.title', 'No evidence uploaded yet')}</strong><p>${be('empty.sub', '')}</p></div>`}
           </div>
+        </div>
+
+        <div class="card panel" style="margin-top:18px">
+          <div class="panel-head"><h2>${be('upload.title', 'Add evidence')}</h2><span class="meta">${be('upload.note', '')}</span></div>
+          <form id="evidence-upload-form" class="form-grid">
+            <label class="field-full">${be('upload.file', 'File')}<input class="input" name="file" type="file" accept="application/pdf,image/png,image/jpeg,text/plain" required></label>
+            <label>${be('upload.kind', 'Evidence type')}<select class="select" name="kind">${kinds.map((k) => `<option value="${k}">${esc(evidenceKindLabel(k))}</option>`).join('')}</select></label>
+            <label>${be('upload.expires', 'Expiry')}<input class="input" name="expiresAt" type="date"></label>
+            <div class="form-actions field-full"><button class="btn btn-primary" type="submit">${be('upload.cta', 'Upload and scan')}</button></div>
+          </form>
         </div>`;
+      }
+
+      async function refreshEvidence() {
+        if (state.demo) return;
+        try {
+          const result = await api('/api/documents');
+          state.documents = result.documents || [];
+          render();
+        } catch (error) {
+          notify(error.message, true);
+        }
+      }
+
+      async function downloadEvidence(id) {
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const result = await api(`/api/documents/${encodeURIComponent(id)}/download`);
+        if (result.download?.url) window.open(result.download.url, '_blank', 'noopener,noreferrer');
+      }
+
+      async function scanEvidence(id) {
+        if (state.demo) {
+          const doc = (state.documents || []).find((d) => d.id === id);
+          if (doc) { doc.status = 'available'; doc.availableAt = new Date().toISOString(); }
+          notify(be('upload.successDemo', 'Demonstration mode: evidence added locally.'));
+          render();
+          return;
+        }
+        await api(`/api/documents/${encodeURIComponent(id)}/scan`, { method: 'POST', body: '{}' });
+        await refreshEvidence();
+      }
+
+      async function openEvidenceReport(id, kind) {
+        const key = kind + ':' + id;
+        if (state.evidenceDetail?.key === key) { state.evidenceDetail = null; render(); return; }
+        state.evidenceDetail = { key, id, kind, loading: true };
+        render();
+        try {
+          const endpoint = kind === 'verification' ? 'verification-report' : 'security-report';
+          const data = await api(`/api/documents/${encodeURIComponent(id)}/${endpoint}`);
+          state.evidenceDetail = { key, id, kind, data };
+        } catch (error) {
+          state.evidenceDetail = { key, id, kind, error: error.message };
+        }
+        render();
+      }
+
+      async function uploadEvidence(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const file = data.file;
+        if (!(file instanceof File) || !file.size) throw new Error('document_file_required');
+        if (file.size > 50 * 1024 * 1024) throw new Error('document_size_limit_exceeded');
+        if (state.demo) {
+          state.documents.unshift({ id: `demo-evidence-${Date.now()}`, originalFilename: file.name, contentType: file.type, byteSize: file.size, kind: data.kind || 'other', status: 'available', visibility: 'private', createdAt: new Date().toISOString(), availableAt: new Date().toISOString(), expiresAt: data.expiresAt || null, sha256: null, metadata: { source: 'brand-console-demo' } });
+          notify(be('upload.successDemo', 'Demonstration mode: evidence added locally.'));
+          render();
+          return;
+        }
+        const body = { originalFilename: file.name, contentType: file.type, byteSize: file.size, kind: data.kind || 'other', expiresAt: data.expiresAt || null, metadata: { source: 'brand-console' } };
+        const intent = await api('/api/documents/upload-intent', { method: 'POST', body: JSON.stringify(body) });
+        const upload = await fetch(intent.upload.url, { method: 'PUT', headers: intent.upload.headers || {}, body: file });
+        if (!upload.ok) throw new Error('private_storage_upload_failed');
+        await api(`/api/documents/${encodeURIComponent(intent.document.id)}/scan`, { method: 'POST', body: '{}' }).catch((error) => notify(error.message, true));
+        await refreshEvidence();
+        notify(be('upload.success', 'Evidence uploaded and analyzed.'));
       }
 
       // Jours restants avant echeance, et pastille correspondante. La veille
@@ -2989,11 +3072,16 @@
           </tbody></table></div>`
           : `<div class="empty"><div class="empty-icon">◎</div><strong>${bit('suppliers.empty', 'No organization in the traceability graph yet.')}</strong></div>`;
 
-        /* -- lentille Evidence : honnete — unification au chantier 08 -------- */
+        /* -- lentille Evidence : renvoie vers le Centre de preuves (chantier 08) -- */
+        const evidenceDocs = (state.documents || []).filter((d) => d.status !== 'deleted');
         const evidenceLens = `
-          <div class="card panel pil-planned">
+          <div class="card panel">
             <div class="panel-head"><h2>${bit('evidence.plannedTitle', '')}</h2></div>
             <p class="pil-note" style="margin-bottom:14px">${bit('evidence.plannedNote', '')}</p>
+            <div class="pil-summary-grid" style="margin-bottom:14px">
+              <div class="pil-summary-cell"><div class="pil-summary-num">${evidenceDocs.length}</div><span class="pil-summary-label">${window.TF_I18N.t('evidence.stats.total', 'Evidence tracked')}</span></div>
+              <div class="pil-summary-cell"><div class="pil-summary-num">${evidenceDocs.filter((d) => d.status === 'available').length}</div><span class="pil-summary-label">${window.TF_I18N.t('evidence.stats.available', 'Available')}</span></div>
+            </div>
             <button class="btn btn-secondary btn-small" data-view="documents">${bit('evidence.openDocuments', 'Open documents')}</button>
           </div>`;
 
@@ -4724,6 +4812,9 @@
             if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
             if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
             if (action === 'dp-resolve') await resolveDppRequirement(el.dataset.dpTarget);
+            if (action === 'evidence-download') await downloadEvidence(el.dataset.evidenceId);
+            if (action === 'evidence-scan') await scanEvidence(el.dataset.evidenceId);
+            if (action === 'evidence-report') await openEvidenceReport(el.dataset.evidenceId, el.dataset.reportKind);
             if (action === 'catalog-export') await exportCatalog();
             if (action === 'audit-export') await exportAudit();
             if (action === 'preview-catalog-import') await previewCatalogImport();
@@ -4784,6 +4875,7 @@
         document.getElementById('cap-message-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitCapConsoleForm(e.currentTarget, 'message').catch((err) => notify(err.message, true)); });
         document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('schema-binding-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveSchemaBinding(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('evidence-upload-form')?.addEventListener('submit', (e) => { e.preventDefault(); const form = e.currentTarget; uploadEvidence(form).then(() => form.reset()).catch((err) => notify(err.message, true)); });
         document.getElementById('material-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); }));
         document.getElementById('identifier-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveIdentifier(e.currentTarget).catch((err) => notify(err.message, true)); });

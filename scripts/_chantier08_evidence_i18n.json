@@ -1,0 +1,513 @@
+{
+  "en": {
+    "stats": {
+      "total": "Evidence tracked",
+      "available": "Available",
+      "pending": "Awaiting scan",
+      "rejected": "Rejected",
+      "expiring": "Expiring within 90 days"
+    },
+    "table": {
+      "filename": "Document",
+      "kind": "Type",
+      "status": "Status",
+      "size": "Size",
+      "sha": "Fingerprint (SHA-256)",
+      "expires": "Expires",
+      "links": "Links",
+      "created": "Added"
+    },
+    "actions": {
+      "download": "Download",
+      "scan": "Run antivirus scan",
+      "verification": "Verification report",
+      "security": "Security report"
+    },
+    "upload": {
+      "title": "Add evidence",
+      "file": "File",
+      "kind": "Evidence type",
+      "expires": "Expiry",
+      "cta": "Upload and scan",
+      "note": "Documents are private by default and stored in the organization's private bucket.",
+      "success": "Evidence uploaded and analyzed.",
+      "successDemo": "Demonstration mode: evidence added locally."
+    },
+    "detail": {
+      "metadata": "Metadata",
+      "loading": "Loading…",
+      "method": "Method",
+      "statusLabel": "Verification status",
+      "verifiedAt": "Verified at",
+      "notes": "Notes",
+      "securityResult": "Security analysis result",
+      "certifications": "Linked certifications",
+      "records": "Verification records",
+      "expired": "Expired"
+    },
+    "empty": {
+      "title": "No evidence uploaded yet",
+      "sub": "Upload certificates, test reports or origin proofs to build your evidence base."
+    },
+    "kinds": {
+      "certificate": "Certificate",
+      "technical_spec": "Technical specification",
+      "origin_proof": "Origin proof",
+      "audit_report": "Audit report",
+      "invoice": "Invoice",
+      "other": "Other"
+    },
+    "status": {
+      "uploaded": "Uploaded",
+      "scanning": "Scanning",
+      "available": "Available",
+      "rejected": "Rejected"
+    },
+    "links": {
+      "none": "No link yet"
+    },
+    "lens": {
+      "title": "Evidence Center",
+      "note": "Certificates, test reports and origin proofs are managed in the Evidence Center.",
+      "cta": "Open the Evidence Center"
+    }
+  },
+  "fr": {
+    "stats": {
+      "total": "Preuves suivies",
+      "available": "Disponibles",
+      "pending": "En attente d'analyse",
+      "rejected": "Rejetées",
+      "expiring": "Expirent sous 90 jours"
+    },
+    "table": {
+      "filename": "Document",
+      "kind": "Type",
+      "status": "Statut",
+      "size": "Taille",
+      "sha": "Empreinte (SHA-256)",
+      "expires": "Expiration",
+      "links": "Liaisons",
+      "created": "Ajoutée"
+    },
+    "actions": {
+      "download": "Télécharger",
+      "scan": "Lancer l'analyse antivirus",
+      "verification": "Rapport de vérification",
+      "security": "Rapport de sécurité"
+    },
+    "upload": {
+      "title": "Verser une preuve",
+      "file": "Fichier",
+      "kind": "Type de preuve",
+      "expires": "Expiration",
+      "cta": "Verser et analyser",
+      "note": "Les documents sont privés par défaut et stockés dans le compartiment privé de l'organisation.",
+      "success": "Preuve versée et analysée.",
+      "successDemo": "Mode démonstration : preuve ajoutée localement."
+    },
+    "detail": {
+      "metadata": "Métadonnées",
+      "loading": "Chargement…",
+      "method": "Méthode",
+      "statusLabel": "Statut de vérification",
+      "verifiedAt": "Vérifiée le",
+      "notes": "Notes",
+      "securityResult": "Résultat de l'analyse de sécurité",
+      "certifications": "Certifications liées",
+      "records": "Enregistrements de vérification",
+      "expired": "Expirée"
+    },
+    "empty": {
+      "title": "Aucune preuve versée pour le moment",
+      "sub": "Versez des certificats, rapports d'essai ou preuves d'origine pour construire votre base de preuves."
+    },
+    "kinds": {
+      "certificate": "Certificat",
+      "technical_spec": "Spécification technique",
+      "origin_proof": "Preuve d'origine",
+      "audit_report": "Rapport d'audit",
+      "invoice": "Facture",
+      "other": "Autre"
+    },
+    "status": {
+      "uploaded": "Versé",
+      "scanning": "Analyse en cours",
+      "available": "Disponible",
+      "rejected": "Rejeté"
+    },
+    "links": {
+      "none": "Aucune liaison pour le moment"
+    },
+    "lens": {
+      "title": "Centre de preuves",
+      "note": "Certificats, rapports de test et preuves d’origine sont gérés dans le Centre de preuves.",
+      "cta": "Ouvrir le centre de preuves"
+    }
+  },
+  "de": {
+    "stats": {
+      "total": "Verfolgte Nachweise",
+      "available": "Verfügbar",
+      "pending": "Warten auf Scan",
+      "rejected": "Abgelehnt",
+      "expiring": "Laufen innerhalb von 90 Tagen ab"
+    },
+    "table": {
+      "filename": "Dokument",
+      "kind": "Typ",
+      "status": "Status",
+      "size": "Größe",
+      "sha": "Prüfsumme (SHA-256)",
+      "expires": "Läuft ab",
+      "links": "Verknüpfungen",
+      "created": "Hinzugefügt"
+    },
+    "actions": {
+      "download": "Herunterladen",
+      "scan": "Antivirus-Scan starten",
+      "verification": "Prüfbericht",
+      "security": "Sicherheitsbericht"
+    },
+    "upload": {
+      "title": "Nachweis hochladen",
+      "file": "Datei",
+      "kind": "Nachweistyp",
+      "expires": "Ablauf",
+      "cta": "Hochladen und prüfen",
+      "note": "Dokumente sind standardmäßig privat und werden im privaten Speicher der Organisation aufbewahrt.",
+      "success": "Nachweis hochgeladen und analysiert.",
+      "successDemo": "Demonstrationsmodus: Nachweis lokal hinzugefügt."
+    },
+    "detail": {
+      "metadata": "Metadaten",
+      "loading": "Wird geladen…",
+      "method": "Methode",
+      "statusLabel": "Prüfstatus",
+      "verifiedAt": "Geprüft am",
+      "notes": "Notizen",
+      "securityResult": "Ergebnis der Sicherheitsanalyse",
+      "certifications": "Verknüpfte Zertifizierungen",
+      "records": "Verifizierungsdatensätze",
+      "expired": "Abgelaufen"
+    },
+    "empty": {
+      "title": "Noch keine Nachweise hochgeladen",
+      "sub": "Laden Sie Zertifikate, Prüfberichte oder Herkunftsnachweise hoch, um Ihre Nachweisbasis aufzubauen."
+    },
+    "kinds": {
+      "certificate": "Zertifikat",
+      "technical_spec": "Technische Spezifikation",
+      "origin_proof": "Herkunftsnachweis",
+      "audit_report": "Auditbericht",
+      "invoice": "Rechnung",
+      "other": "Sonstiges"
+    },
+    "status": {
+      "uploaded": "Hochgeladen",
+      "scanning": "Wird gescannt",
+      "available": "Verfügbar",
+      "rejected": "Abgelehnt"
+    },
+    "links": {
+      "none": "Noch keine Verknüpfung"
+    },
+    "lens": {
+      "title": "Nachweiszentrum",
+      "note": "Zertifikate, Prüfberichte und Herkunftsnachweise werden im Nachweiszentrum verwaltet.",
+      "cta": "Nachweiszentrum öffnen"
+    }
+  },
+  "it": {
+    "stats": {
+      "total": "Prove monitorate",
+      "available": "Disponibili",
+      "pending": "In attesa di scansione",
+      "rejected": "Rifiutate",
+      "expiring": "In scadenza entro 90 giorni"
+    },
+    "table": {
+      "filename": "Documento",
+      "kind": "Tipo",
+      "status": "Stato",
+      "size": "Dimensione",
+      "sha": "Impronta (SHA-256)",
+      "expires": "Scadenza",
+      "links": "Collegamenti",
+      "created": "Aggiunta"
+    },
+    "actions": {
+      "download": "Scarica",
+      "scan": "Avvia la scansione antivirus",
+      "verification": "Rapporto di verifica",
+      "security": "Rapporto di sicurezza"
+    },
+    "upload": {
+      "title": "Carica una prova",
+      "file": "File",
+      "kind": "Tipo di prova",
+      "expires": "Scadenza",
+      "cta": "Carica e analizza",
+      "note": "I documenti sono privati per impostazione predefinita e conservati nell'archivio privato dell'organizzazione.",
+      "success": "Prova caricata e analizzata.",
+      "successDemo": "Modalità dimostrazione: prova aggiunta localmente."
+    },
+    "detail": {
+      "metadata": "Metadati",
+      "loading": "Caricamento…",
+      "method": "Metodo",
+      "statusLabel": "Stato di verifica",
+      "verifiedAt": "Verificata il",
+      "notes": "Note",
+      "securityResult": "Risultato dell'analisi di sicurezza",
+      "certifications": "Certificazioni collegate",
+      "records": "Voci di verifica",
+      "expired": "Scaduta"
+    },
+    "empty": {
+      "title": "Nessuna prova caricata per ora",
+      "sub": "Carica certificati, rapporti di prova o prove di origine per costruire la tua base di prove."
+    },
+    "kinds": {
+      "certificate": "Certificato",
+      "technical_spec": "Specifica tecnica",
+      "origin_proof": "Prova di origine",
+      "audit_report": "Rapporto di audit",
+      "invoice": "Fattura",
+      "other": "Altro"
+    },
+    "status": {
+      "uploaded": "Caricata",
+      "scanning": "Scansione in corso",
+      "available": "Disponibile",
+      "rejected": "Rifiutata"
+    },
+    "links": {
+      "none": "Nessun collegamento per ora"
+    },
+    "lens": {
+      "title": "Centro prove",
+      "note": "Certificati, rapporti di prova e prove di origine sono gestiti nel Centro prove.",
+      "cta": "Apri il centro prove"
+    }
+  },
+  "es": {
+    "stats": {
+      "total": "Pruebas supervisadas",
+      "available": "Disponibles",
+      "pending": "Pendientes de análisis",
+      "rejected": "Rechazadas",
+      "expiring": "Caducan en 90 días"
+    },
+    "table": {
+      "filename": "Documento",
+      "kind": "Tipo",
+      "status": "Estado",
+      "size": "Tamaño",
+      "sha": "Huella (SHA-256)",
+      "expires": "Caducidad",
+      "links": "Vínculos",
+      "created": "Añadida"
+    },
+    "actions": {
+      "download": "Descargar",
+      "scan": "Ejecutar análisis antivirus",
+      "verification": "Informe de verificación",
+      "security": "Informe de seguridad"
+    },
+    "upload": {
+      "title": "Subir una prueba",
+      "file": "Archivo",
+      "kind": "Tipo de prueba",
+      "expires": "Caducidad",
+      "cta": "Subir y analizar",
+      "note": "Los documentos son privados por defecto y se almacenan en el depósito privado de la organización.",
+      "success": "Prueba subida y analizada.",
+      "successDemo": "Modo demostración: prueba añadida localmente."
+    },
+    "detail": {
+      "metadata": "Metadatos",
+      "loading": "Cargando…",
+      "method": "Método",
+      "statusLabel": "Estado de verificación",
+      "verifiedAt": "Verificada el",
+      "notes": "Notas",
+      "securityResult": "Resultado del análisis de seguridad",
+      "certifications": "Certificaciones vinculadas",
+      "records": "Registros de verificación",
+      "expired": "Vencida"
+    },
+    "empty": {
+      "title": "Aún no se ha subido ninguna prueba",
+      "sub": "Suba certificados, informes de ensayo o pruebas de origen para construir su base de pruebas."
+    },
+    "kinds": {
+      "certificate": "Certificado",
+      "technical_spec": "Especificación técnica",
+      "origin_proof": "Prueba de origen",
+      "audit_report": "Informe de auditoría",
+      "invoice": "Factura",
+      "other": "Otro"
+    },
+    "status": {
+      "uploaded": "Subida",
+      "scanning": "Análisis en curso",
+      "available": "Disponible",
+      "rejected": "Rechazada"
+    },
+    "links": {
+      "none": "Aún no hay vínculos"
+    },
+    "lens": {
+      "title": "Centro de evidencias",
+      "note": "Los certificados, informes de ensayo y pruebas de origen se gestionan en el Centro de evidencias.",
+      "cta": "Abrir el centro de evidencias"
+    }
+  },
+  "nl": {
+    "stats": {
+      "total": "Bewijsstukken gevolgd",
+      "available": "Beschikbaar",
+      "pending": "Wachten op scan",
+      "rejected": "Afgewezen",
+      "expiring": "Verlopen binnen 90 dagen"
+    },
+    "table": {
+      "filename": "Document",
+      "kind": "Type",
+      "status": "Status",
+      "size": "Grootte",
+      "sha": "Vingerafdruk (SHA-256)",
+      "expires": "Verloopt",
+      "links": "Koppelingen",
+      "created": "Toegevoegd"
+    },
+    "actions": {
+      "download": "Downloaden",
+      "scan": "Antivirus-scan uitvoeren",
+      "verification": "Verificatierapport",
+      "security": "Beveiligingsrapport"
+    },
+    "upload": {
+      "title": "Bewijsstuk toevoegen",
+      "file": "Bestand",
+      "kind": "Type bewijs",
+      "expires": "Vervaldatum",
+      "cta": "Uploaden en scannen",
+      "note": "Documenten zijn standaard privé en worden opgeslagen in de privéopslag van de organisatie.",
+      "success": "Bewijsstuk geüpload en geanalyseerd.",
+      "successDemo": "Demonstratiemodus: bewijsstuk lokaal toegevoegd."
+    },
+    "detail": {
+      "metadata": "Metadata",
+      "loading": "Laden…",
+      "method": "Methode",
+      "statusLabel": "Verificatiestatus",
+      "verifiedAt": "Geverifieerd op",
+      "notes": "Notities",
+      "securityResult": "Resultaat van de beveiligingsanalyse",
+      "certifications": "Gekoppelde certificeringen",
+      "records": "Verificatieregisters",
+      "expired": "Verlopen"
+    },
+    "empty": {
+      "title": "Nog geen bewijsstukken geüpload",
+      "sub": "Upload certificaten, testrapporten of herkomstbewijzen om uw bewijsbasis op te bouwen."
+    },
+    "kinds": {
+      "certificate": "Certificaat",
+      "technical_spec": "Technische specificatie",
+      "origin_proof": "Herkomstbewijs",
+      "audit_report": "Auditrapport",
+      "invoice": "Factuur",
+      "other": "Overig"
+    },
+    "status": {
+      "uploaded": "Geüpload",
+      "scanning": "Wordt gescand",
+      "available": "Beschikbaar",
+      "rejected": "Afgewezen"
+    },
+    "links": {
+      "none": "Nog geen koppeling"
+    },
+    "lens": {
+      "title": "Bewijscentrum",
+      "note": "Certificaten, testrapporten en herkomstbewijzen worden beheerd in het bewijscentrum.",
+      "cta": "Bewijscentrum openen"
+    }
+  },
+  "pt": {
+    "stats": {
+      "total": "Provas acompanhadas",
+      "available": "Disponíveis",
+      "pending": "À espera de análise",
+      "rejected": "Rejeitadas",
+      "expiring": "Expiram dentro de 90 dias"
+    },
+    "table": {
+      "filename": "Documento",
+      "kind": "Tipo",
+      "status": "Estado",
+      "size": "Tamanho",
+      "sha": "Impressão digital (SHA-256)",
+      "expires": "Expira",
+      "links": "Ligações",
+      "created": "Adicionada"
+    },
+    "actions": {
+      "download": "Descarregar",
+      "scan": "Executar análise antivírus",
+      "verification": "Relatório de verificação",
+      "security": "Relatório de segurança"
+    },
+    "upload": {
+      "title": "Adicionar prova",
+      "file": "Ficheiro",
+      "kind": "Tipo de prova",
+      "expires": "Expiração",
+      "cta": "Carregar e analisar",
+      "note": "Os documentos são privados por predefinição e guardados no armazenamento privado da organização.",
+      "success": "Prova carregada e analisada.",
+      "successDemo": "Modo de demonstração: prova adicionada localmente."
+    },
+    "detail": {
+      "metadata": "Metadados",
+      "loading": "A carregar…",
+      "method": "Método",
+      "statusLabel": "Estado de verificação",
+      "verifiedAt": "Verificada em",
+      "notes": "Notas",
+      "securityResult": "Resultado da análise de segurança",
+      "certifications": "Certificações vinculadas",
+      "records": "Registros de verificação",
+      "expired": "Vencida"
+    },
+    "empty": {
+      "title": "Ainda não foram carregadas provas",
+      "sub": "Carregue certificados, relatórios de ensaio ou provas de origem para construir a sua base de provas."
+    },
+    "kinds": {
+      "certificate": "Certificado",
+      "technical_spec": "Especificação técnica",
+      "origin_proof": "Prova de origem",
+      "audit_report": "Relatório de auditoria",
+      "invoice": "Fatura",
+      "other": "Outro"
+    },
+    "status": {
+      "uploaded": "Carregada",
+      "scanning": "Análise em curso",
+      "available": "Disponível",
+      "rejected": "Rejeitada"
+    },
+    "links": {
+      "none": "Ainda sem ligações"
+    },
+    "lens": {
+      "title": "Central de evidências",
+      "note": "Certificados, relatórios de teste e provas de origem são geridos na Central de evidências.",
+      "cta": "Abrir a central de evidências"
+    }
+  }
+}

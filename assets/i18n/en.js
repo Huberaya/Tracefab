@@ -2425,8 +2425,8 @@ window.TF_I18N_BUNDLES.en = {
       "type": "Node type"
     },
     "evidence": {
-      "plannedTitle": "Per-product evidence — unified with the Evidence Center",
-      "plannedNote": "Documentary evidence attached to this product will be consolidated here by the Evidence Center workstream. Until then, documents are managed at organization level.",
+      "plannedTitle": "Organization-level evidence",
+      "plannedNote": "The Evidence Center tracks certificates, test reports and origin proofs for your organization. Per-product attachment is on the roadmap.",
       "openDocuments": "Open documents"
     },
     "certifications": {
@@ -2455,6 +2455,79 @@ window.TF_I18N_BUNDLES.en = {
       "noHistory": "No timestamped event recorded for this product yet.",
       "event": "Event",
       "date": "Date"
+    }
+  },
+  "evidence": {
+    "stats": {
+      "total": "Evidence tracked",
+      "available": "Available",
+      "pending": "Awaiting scan",
+      "rejected": "Rejected",
+      "expiring": "Expiring within 90 days"
+    },
+    "table": {
+      "filename": "Document",
+      "kind": "Type",
+      "status": "Status",
+      "size": "Size",
+      "sha": "Fingerprint (SHA-256)",
+      "expires": "Expires",
+      "links": "Links",
+      "created": "Added"
+    },
+    "actions": {
+      "download": "Download",
+      "scan": "Run antivirus scan",
+      "verification": "Verification report",
+      "security": "Security report"
+    },
+    "upload": {
+      "title": "Add evidence",
+      "file": "File",
+      "kind": "Evidence type",
+      "expires": "Expiry",
+      "cta": "Upload and scan",
+      "note": "Documents are private by default and stored in the organization's private bucket.",
+      "success": "Evidence uploaded and analyzed.",
+      "successDemo": "Demonstration mode: evidence added locally."
+    },
+    "detail": {
+      "metadata": "Metadata",
+      "loading": "Loading…",
+      "method": "Method",
+      "statusLabel": "Verification status",
+      "verifiedAt": "Verified at",
+      "notes": "Notes",
+      "securityResult": "Security analysis result",
+      "certifications": "Linked certifications",
+      "records": "Verification records",
+      "expired": "Expired"
+    },
+    "empty": {
+      "title": "No evidence uploaded yet",
+      "sub": "Upload certificates, test reports or origin proofs to build your evidence base."
+    },
+    "kinds": {
+      "certificate": "Certificate",
+      "technical_spec": "Technical specification",
+      "origin_proof": "Origin proof",
+      "audit_report": "Audit report",
+      "invoice": "Invoice",
+      "other": "Other"
+    },
+    "status": {
+      "uploaded": "Uploaded",
+      "scanning": "Scanning",
+      "available": "Available",
+      "rejected": "Rejected"
+    },
+    "links": {
+      "none": "No link yet"
+    },
+    "lens": {
+      "title": "Evidence Center",
+      "note": "Certificates, test reports and origin proofs are managed in the Evidence Center.",
+      "cta": "Open the Evidence Center"
     }
   }
 };
