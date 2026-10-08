@@ -2853,5 +2853,65 @@
     "export": {
       "cta": "Exportar a cadeia (JSON)"
     }
+  },
+  "intelAsk": {
+    "hero": {
+      "tag": "Motor de perguntas determinístico sobre os seus dados registados",
+      "guard": "Salvaguarda: o TRACEFAB calcula apenas a partir de dados registados. Não inventa números, riscos nem provas, e cada resultado cita os registos de origem."
+    },
+    "intents": {
+      "title": "Perguntas que o motor consegue responder",
+      "certificates_expiring": "Que certificados expiram na janela?",
+      "certificates_expired": "Que certificados já expiraram?",
+      "certifications_needs_review": "Que certificações ainda aguardam revisão?",
+      "products_missing_data": "A que produtos faltam dados?",
+      "documents_pending": "Que documentos não passaram a análise de segurança?",
+      "evidence_unlinked": "Que documentos disponíveis ainda não estão ligados a nada?"
+    },
+    "input": {
+      "placeholder": "Faça a pergunta pelas suas palavras — o motor associa-a a uma pergunta coberta",
+      "cta": "Perguntar"
+    },
+    "notCovered": {
+      "title": "Esta pergunta ainda não é coberta",
+      "body": "O TRACEFAB Intelligence responde a uma lista fixa de perguntas calculadas sobre os seus dados. A geração de texto livre está propositadamente indisponível: nenhuma resposta pode ser inventada."
+    },
+    "answer": {
+      "title": "Resposta",
+      "basedOn": "Baseada em",
+      "computedAt": "Calculada em",
+      "empty": "Nenhum registo corresponde a esta pergunta.",
+      "error": "O motor não conseguiu responder. Tente novamente.",
+      "loading": "A calcular a partir dos seus dados…",
+      "window": "janela: {days} dia(s)"
+    },
+    "category": {
+      "known": "Conhecido",
+      "inferred": "Inferido",
+      "missing": "Em falta",
+      "needsReview": "Por verificar"
+    },
+    "legend": {
+      "note": "Conhecido: dado registado. Inferido: resultado de uma regra explícita. Em falta: dado ausente. Por verificar: à espera de uma decisão humana. O TRACEFAB nunca promove nada automaticamente."
+    },
+    "table": {
+      "entity": "Entidade",
+      "detail": "Detalhe",
+      "daysLeft": "Dias restantes",
+      "open": "Abrir"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificado(s) expiram nos próximos {days} dia(s); {missing} certificado(s) não têm data de validade registada.",
+      "certificates_expired": "{count} certificado(s) estão expirados.",
+      "certifications_needs_review": "{count} certificação(ões) ainda aguardam revisão humana.",
+      "products_missing_data": "{count} produto(s) têm dados incompletos ou não revistos.",
+      "documents_pending": "{count} documento(s) não concluíram a análise de segurança.",
+      "evidence_unlinked": "{count} documento(s) disponíveis ainda não estão ligados a nada."
+    },
+    "sources": {
+      "certifications": "{n} registo(s) de certificação",
+      "products": "{n} registo(s) de produto",
+      "documents": "{n} registo(s) de documento"
+    }
   }
 }

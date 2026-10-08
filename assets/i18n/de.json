@@ -2853,5 +2853,65 @@
     "export": {
       "cta": "Kette exportieren (JSON)"
     }
+  },
+  "intelAsk": {
+    "hero": {
+      "tag": "Deterministisches Fragewerk über Ihre erfassten Daten",
+      "guard": "Leitplanke: TRACEFAB berechnet ausschließlich aus erfassten Daten. Keine Zahl, kein Risiko und kein Nachweis wird erfunden; jedes Ergebnis nennt seine Quelldatensätze."
+    },
+    "intents": {
+      "title": "Vom Werk beantwortbare Fragen",
+      "certificates_expiring": "Welche Zertifikate laufen im Zeitfenster ab?",
+      "certificates_expired": "Welche Zertifikate sind bereits abgelaufen?",
+      "certifications_needs_review": "Welche Zertifizierungen warten noch auf Prüfung?",
+      "products_missing_data": "Welchen Produkten fehlen Daten?",
+      "documents_pending": "Welche Dokumente haben den Sicherheits-Scan nicht durchlaufen?",
+      "evidence_unlinked": "Welche verfügbaren Dokumente sind noch nirgends verknüpft?"
+    },
+    "input": {
+      "placeholder": "Fragen Sie in eigenen Worten — das Werk ordnet die Frage einem abgedeckten Thema zu",
+      "cta": "Fragen"
+    },
+    "notCovered": {
+      "title": "Diese Frage wird noch nicht abgedeckt",
+      "body": "TRACEFAB Intelligence beantwortet eine feste Liste von Fragen, die aus Ihren Daten berechnet werden. Freie Textgenerierung ist absichtlich nicht verfügbar, damit keine Antwort erfunden werden kann."
+    },
+    "answer": {
+      "title": "Antwort",
+      "basedOn": "Basierend auf",
+      "computedAt": "Berechnet am",
+      "empty": "Kein Datensatz entspricht dieser Frage.",
+      "error": "Das Werk konnte nicht antworten. Bitte erneut versuchen.",
+      "loading": "Berechnung aus Ihren Daten…",
+      "window": "Zeitfenster: {days} Tag(e)"
+    },
+    "category": {
+      "known": "Bekannt",
+      "inferred": "Abgeleitet",
+      "missing": "Fehlend",
+      "needsReview": "Prüfung erforderlich"
+    },
+    "legend": {
+      "note": "Bekannt: erfasste Daten. Abgeleitet: Ergebnis einer ausdrücklichen Regel. Fehlend: keine Daten. Prüfung erforderlich: wartet auf eine menschliche Entscheidung. TRACEFAB stuft nichts davon automatisch herauf."
+    },
+    "table": {
+      "entity": "Entität",
+      "detail": "Detail",
+      "daysLeft": "Verbleibende Tage",
+      "open": "Öffnen"
+    },
+    "summary": {
+      "certificates_expiring": "{count} Zertifikat(e) laufen in den nächsten {days} Tag(en) ab; für {missing} Zertifikat(e) ist kein Ablaufdatum erfasst.",
+      "certificates_expired": "{count} Zertifikat(e) sind abgelaufen.",
+      "certifications_needs_review": "{count} Zertifizierung(en) warten noch auf eine menschliche Prüfung.",
+      "products_missing_data": "{count} Produkt(e) haben unvollständige oder ungeprüfte Daten.",
+      "documents_pending": "{count} Dokument(e) haben den Sicherheits-Scan noch nicht durchlaufen.",
+      "evidence_unlinked": "{count} verfügbare(s) Dokument(e) sind noch nirgends verknüpft."
+    },
+    "sources": {
+      "certifications": "{n} Zertifizierungsdatensatz/-sätze",
+      "products": "{n} Produktdatensatz/-sätze",
+      "documents": "{n} Dokumentdatensatz/-sätze"
+    }
   }
 }

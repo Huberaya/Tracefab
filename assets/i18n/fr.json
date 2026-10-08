@@ -2853,5 +2853,65 @@
     "export": {
       "cta": "Exporter la chaîne (JSON)"
     }
+  },
+  "intelAsk": {
+    "hero": {
+      "tag": "Moteur de questions déterministe sur vos données enregistrées",
+      "guard": "Garde-fou : TRACEFAB calcule uniquement à partir des données enregistrées. Aucun chiffre, risque ou preuve n'est inventé, et chaque résultat cite ses enregistrements sources."
+    },
+    "intents": {
+      "title": "Questions couvertes par le moteur",
+      "certificates_expiring": "Quels certificats expirent dans la fenêtre ?",
+      "certificates_expired": "Quels certificats sont déjà expirés ?",
+      "certifications_needs_review": "Quelles certifications attendent encore une vérification ?",
+      "products_missing_data": "Quels produits ont des données manquantes ?",
+      "documents_pending": "Quels documents n'ont pas passé l'analyse de sécurité ?",
+      "evidence_unlinked": "Quels documents disponibles ne sont encore liés à rien ?"
+    },
+    "input": {
+      "placeholder": "Posez la question avec vos mots — le moteur la rattache à une question couverte",
+      "cta": "Demander"
+    },
+    "notCovered": {
+      "title": "Cette question n'est pas encore couverte",
+      "body": "TRACEFAB Intelligence répond à une liste fixe de questions calculées sur vos données. La génération de texte libre est volontairement indisponible : aucune réponse ne peut être inventée."
+    },
+    "answer": {
+      "title": "Réponse",
+      "basedOn": "Fondé sur",
+      "computedAt": "Calculé le",
+      "empty": "Aucun enregistrement ne correspond à cette question.",
+      "error": "Le moteur n'a pas pu répondre. Veuillez réessayer.",
+      "loading": "Calcul à partir de vos données…",
+      "window": "fenêtre : {days} jour(s)"
+    },
+    "category": {
+      "known": "Connu",
+      "inferred": "Déduit",
+      "missing": "Manquant",
+      "needsReview": "À vérifier"
+    },
+    "legend": {
+      "note": "Connu : donnée enregistrée. Déduit : résultat d'une règle explicite. Manquant : donnée absente. À vérifier : en attente d'une décision humaine. TRACEFAB n'en promeut aucun automatiquement."
+    },
+    "table": {
+      "entity": "Entité",
+      "detail": "Détail",
+      "daysLeft": "Jours restants",
+      "open": "Ouvrir"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificat(s) expirent dans les {days} prochain(s) jour(s) ; {missing} certificat(s) n'ont pas de date d'expiration enregistrée.",
+      "certificates_expired": "{count} certificat(s) sont expirés.",
+      "certifications_needs_review": "{count} certification(s) attendent encore une vérification humaine.",
+      "products_missing_data": "{count} produit(s) ont des données incomplètes ou non vérifiées.",
+      "documents_pending": "{count} document(s) n'ont pas terminé l'analyse de sécurité.",
+      "evidence_unlinked": "{count} document(s) disponible(s) ne sont encore liés à rien."
+    },
+    "sources": {
+      "certifications": "{n} enregistrement(s) de certification",
+      "products": "{n} enregistrement(s) produit",
+      "documents": "{n} enregistrement(s) de document"
+    }
   }
 }

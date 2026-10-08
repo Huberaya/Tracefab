@@ -39,6 +39,7 @@ const routes: Route[] = [
   { pattern: /^documents\/([^\/]+)\/verification\-report$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/verification-report.js') },
   { pattern: /^documents$/, params: [], load: () => import('./_routes/documents.js') },
   { pattern: /^health$/, params: [], load: () => import('./_routes/health.js') },
+  { pattern: /^intel\/ask$/, params: [], load: () => import('./_routes/intel/ask.js') },
   { pattern: /^internal\/notification\-outbox\/health$/, params: [], load: () => import('./_routes/internal/notification-outbox/health.js') },
   { pattern: /^internal\/notification\-outbox\/process$/, params: [], load: () => import('./_routes/internal/notification-outbox/process.js') },
   { pattern: /^internal\/notification\-outbox\/reminders$/, params: [], load: () => import('./_routes/internal/notification-outbox/reminders.js') },

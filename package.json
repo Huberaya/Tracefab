@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
-    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:supplier-portal && npm run test:questionnaires && npm run test:website:chantier3 && npm run test:shell:chantier4 && npm run test:command:chantier5 && npm run test:portal2:chantier6 && npm run test:intel:chantier7 && npm run test:evidence:chantier08 && npm run test:certifications:chantier09 && npm run test:quality:chantier10 && npm run test:supplygraph:chantier11",
+    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:supplier-portal && npm run test:questionnaires && npm run test:website:chantier3 && npm run test:shell:chantier4 && npm run test:command:chantier5 && npm run test:portal2:chantier6 && npm run test:intel:chantier7 && npm run test:evidence:chantier08 && npm run test:certifications:chantier09 && npm run test:quality:chantier10 && npm run test:supplygraph:chantier11 && npm run test:intelask:chantier12",
     "test:shell:chantier4": "node scripts/test_shell_chantier4.mjs",
     "test:command:chantier5": "node scripts/test_command_chantier5.mjs",
     "test:portal2:chantier6": "node scripts/test_portal2_chantier6.mjs",
@@ -13,6 +13,7 @@
     "test:certifications:chantier09": "node scripts/test_certifications_chantier09.mjs",
     "test:quality:chantier10": "node scripts/test_quality_chantier10.mjs",
     "test:supplygraph:chantier11": "node scripts/test_supply_graph_chantier11.mjs",
+    "test:intelask:chantier12": "node scripts/test_intel_chantier12.mjs",
     "test:website:chantier3": "node scripts/test_website_chantier3.mjs",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "npx tsx scripts/test_neon_bulk_operations_chantier8.mjs",

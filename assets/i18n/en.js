@@ -2729,5 +2729,65 @@ window.TF_I18N_BUNDLES.en = {
     "export": {
       "cta": "Export chain (JSON)"
     }
+  },
+  "intelAsk": {
+    "hero": {
+      "tag": "Deterministic question engine over your recorded data",
+      "guard": "Guardrail: TRACEFAB computes only from recorded data. It never invents figures, risks or evidence, and every result cites its source records."
+    },
+    "intents": {
+      "title": "Questions the engine can answer",
+      "certificates_expiring": "Which certificates expire within the window?",
+      "certificates_expired": "Which certificates are already expired?",
+      "certifications_needs_review": "Which certifications still await review?",
+      "products_missing_data": "Which products are missing data?",
+      "documents_pending": "Which documents have not passed the security scan?",
+      "evidence_unlinked": "Which available documents are linked to nothing yet?"
+    },
+    "input": {
+      "placeholder": "Ask in your own words — the engine matches it to a covered question",
+      "cta": "Ask"
+    },
+    "notCovered": {
+      "title": "This question is not covered yet",
+      "body": "TRACEFAB Intelligence answers a fixed list of questions computed from your data. Free-text generation is deliberately unavailable, so no answer can ever be invented."
+    },
+    "answer": {
+      "title": "Answer",
+      "basedOn": "Based on",
+      "computedAt": "Computed on",
+      "empty": "No record matches this question.",
+      "error": "The engine could not answer. Please try again.",
+      "loading": "Computing from your data…",
+      "window": "window: {days} day(s)"
+    },
+    "category": {
+      "known": "Known",
+      "inferred": "Inferred",
+      "missing": "Missing",
+      "needsReview": "Needs review"
+    },
+    "legend": {
+      "note": "Known: recorded data. Inferred: derived by a stated rule. Missing: absent data. Needs review: awaiting a human decision. TRACEFAB never auto-promotes any of them."
+    },
+    "table": {
+      "entity": "Entity",
+      "detail": "Detail",
+      "daysLeft": "Days left",
+      "open": "Open"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificate(s) expire within the next {days} day(s); {missing} certificate(s) have no expiry date on record.",
+      "certificates_expired": "{count} certificate(s) are expired.",
+      "certifications_needs_review": "{count} certification(s) still await a human review.",
+      "products_missing_data": "{count} product(s) have incomplete or unreviewed data.",
+      "documents_pending": "{count} document(s) have not completed the security scan.",
+      "evidence_unlinked": "{count} available document(s) are linked to nothing yet."
+    },
+    "sources": {
+      "certifications": "{n} certification record(s)",
+      "products": "{n} product record(s)",
+      "documents": "{n} document record(s)"
+    }
   }
 };

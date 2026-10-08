@@ -1,0 +1,422 @@
+{
+  "en": {
+    "hero": {
+      "tag": "Deterministic question engine over your recorded data",
+      "guard": "Guardrail: TRACEFAB computes only from recorded data. It never invents figures, risks or evidence, and every result cites its source records."
+    },
+    "intents": {
+      "title": "Questions the engine can answer",
+      "certificates_expiring": "Which certificates expire within the window?",
+      "certificates_expired": "Which certificates are already expired?",
+      "certifications_needs_review": "Which certifications still await review?",
+      "products_missing_data": "Which products are missing data?",
+      "documents_pending": "Which documents have not passed the security scan?",
+      "evidence_unlinked": "Which available documents are linked to nothing yet?"
+    },
+    "input": {
+      "placeholder": "Ask in your own words — the engine matches it to a covered question",
+      "cta": "Ask"
+    },
+    "notCovered": {
+      "title": "This question is not covered yet",
+      "body": "TRACEFAB Intelligence answers a fixed list of questions computed from your data. Free-text generation is deliberately unavailable, so no answer can ever be invented."
+    },
+    "answer": {
+      "title": "Answer",
+      "basedOn": "Based on",
+      "computedAt": "Computed on",
+      "empty": "No record matches this question.",
+      "error": "The engine could not answer. Please try again.",
+      "loading": "Computing from your data…",
+      "window": "window: {days} day(s)"
+    },
+    "category": {
+      "known": "Known",
+      "inferred": "Inferred",
+      "missing": "Missing",
+      "needsReview": "Needs review"
+    },
+    "legend": {
+      "note": "Known: recorded data. Inferred: derived by a stated rule. Missing: absent data. Needs review: awaiting a human decision. TRACEFAB never auto-promotes any of them."
+    },
+    "table": {
+      "entity": "Entity",
+      "detail": "Detail",
+      "daysLeft": "Days left",
+      "open": "Open"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificate(s) expire within the next {days} day(s); {missing} certificate(s) have no expiry date on record.",
+      "certificates_expired": "{count} certificate(s) are expired.",
+      "certifications_needs_review": "{count} certification(s) still await a human review.",
+      "products_missing_data": "{count} product(s) have incomplete or unreviewed data.",
+      "documents_pending": "{count} document(s) have not completed the security scan.",
+      "evidence_unlinked": "{count} available document(s) are linked to nothing yet."
+    },
+    "sources": {
+      "certifications": "{n} certification record(s)",
+      "products": "{n} product record(s)",
+      "documents": "{n} document record(s)"
+    }
+  },
+  "fr": {
+    "hero": {
+      "tag": "Moteur de questions déterministe sur vos données enregistrées",
+      "guard": "Garde-fou : TRACEFAB calcule uniquement à partir des données enregistrées. Aucun chiffre, risque ou preuve n'est inventé, et chaque résultat cite ses enregistrements sources."
+    },
+    "intents": {
+      "title": "Questions couvertes par le moteur",
+      "certificates_expiring": "Quels certificats expirent dans la fenêtre ?",
+      "certificates_expired": "Quels certificats sont déjà expirés ?",
+      "certifications_needs_review": "Quelles certifications attendent encore une vérification ?",
+      "products_missing_data": "Quels produits ont des données manquantes ?",
+      "documents_pending": "Quels documents n'ont pas passé l'analyse de sécurité ?",
+      "evidence_unlinked": "Quels documents disponibles ne sont encore liés à rien ?"
+    },
+    "input": {
+      "placeholder": "Posez la question avec vos mots — le moteur la rattache à une question couverte",
+      "cta": "Demander"
+    },
+    "notCovered": {
+      "title": "Cette question n'est pas encore couverte",
+      "body": "TRACEFAB Intelligence répond à une liste fixe de questions calculées sur vos données. La génération de texte libre est volontairement indisponible : aucune réponse ne peut être inventée."
+    },
+    "answer": {
+      "title": "Réponse",
+      "basedOn": "Fondé sur",
+      "computedAt": "Calculé le",
+      "empty": "Aucun enregistrement ne correspond à cette question.",
+      "error": "Le moteur n'a pas pu répondre. Veuillez réessayer.",
+      "loading": "Calcul à partir de vos données…",
+      "window": "fenêtre : {days} jour(s)"
+    },
+    "category": {
+      "known": "Connu",
+      "inferred": "Déduit",
+      "missing": "Manquant",
+      "needsReview": "À vérifier"
+    },
+    "legend": {
+      "note": "Connu : donnée enregistrée. Déduit : résultat d'une règle explicite. Manquant : donnée absente. À vérifier : en attente d'une décision humaine. TRACEFAB n'en promeut aucun automatiquement."
+    },
+    "table": {
+      "entity": "Entité",
+      "detail": "Détail",
+      "daysLeft": "Jours restants",
+      "open": "Ouvrir"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificat(s) expirent dans les {days} prochain(s) jour(s) ; {missing} certificat(s) n'ont pas de date d'expiration enregistrée.",
+      "certificates_expired": "{count} certificat(s) sont expirés.",
+      "certifications_needs_review": "{count} certification(s) attendent encore une vérification humaine.",
+      "products_missing_data": "{count} produit(s) ont des données incomplètes ou non vérifiées.",
+      "documents_pending": "{count} document(s) n'ont pas terminé l'analyse de sécurité.",
+      "evidence_unlinked": "{count} document(s) disponible(s) ne sont encore liés à rien."
+    },
+    "sources": {
+      "certifications": "{n} enregistrement(s) de certification",
+      "products": "{n} enregistrement(s) produit",
+      "documents": "{n} enregistrement(s) de document"
+    }
+  },
+  "de": {
+    "hero": {
+      "tag": "Deterministisches Fragewerk über Ihre erfassten Daten",
+      "guard": "Leitplanke: TRACEFAB berechnet ausschließlich aus erfassten Daten. Keine Zahl, kein Risiko und kein Nachweis wird erfunden; jedes Ergebnis nennt seine Quelldatensätze."
+    },
+    "intents": {
+      "title": "Vom Werk beantwortbare Fragen",
+      "certificates_expiring": "Welche Zertifikate laufen im Zeitfenster ab?",
+      "certificates_expired": "Welche Zertifikate sind bereits abgelaufen?",
+      "certifications_needs_review": "Welche Zertifizierungen warten noch auf Prüfung?",
+      "products_missing_data": "Welchen Produkten fehlen Daten?",
+      "documents_pending": "Welche Dokumente haben den Sicherheits-Scan nicht durchlaufen?",
+      "evidence_unlinked": "Welche verfügbaren Dokumente sind noch nirgends verknüpft?"
+    },
+    "input": {
+      "placeholder": "Fragen Sie in eigenen Worten — das Werk ordnet die Frage einem abgedeckten Thema zu",
+      "cta": "Fragen"
+    },
+    "notCovered": {
+      "title": "Diese Frage wird noch nicht abgedeckt",
+      "body": "TRACEFAB Intelligence beantwortet eine feste Liste von Fragen, die aus Ihren Daten berechnet werden. Freie Textgenerierung ist absichtlich nicht verfügbar, damit keine Antwort erfunden werden kann."
+    },
+    "answer": {
+      "title": "Antwort",
+      "basedOn": "Basierend auf",
+      "computedAt": "Berechnet am",
+      "empty": "Kein Datensatz entspricht dieser Frage.",
+      "error": "Das Werk konnte nicht antworten. Bitte erneut versuchen.",
+      "loading": "Berechnung aus Ihren Daten…",
+      "window": "Zeitfenster: {days} Tag(e)"
+    },
+    "category": {
+      "known": "Bekannt",
+      "inferred": "Abgeleitet",
+      "missing": "Fehlend",
+      "needsReview": "Prüfung erforderlich"
+    },
+    "legend": {
+      "note": "Bekannt: erfasste Daten. Abgeleitet: Ergebnis einer ausdrücklichen Regel. Fehlend: keine Daten. Prüfung erforderlich: wartet auf eine menschliche Entscheidung. TRACEFAB stuft nichts davon automatisch herauf."
+    },
+    "table": {
+      "entity": "Entität",
+      "detail": "Detail",
+      "daysLeft": "Verbleibende Tage",
+      "open": "Öffnen"
+    },
+    "summary": {
+      "certificates_expiring": "{count} Zertifikat(e) laufen in den nächsten {days} Tag(en) ab; für {missing} Zertifikat(e) ist kein Ablaufdatum erfasst.",
+      "certificates_expired": "{count} Zertifikat(e) sind abgelaufen.",
+      "certifications_needs_review": "{count} Zertifizierung(en) warten noch auf eine menschliche Prüfung.",
+      "products_missing_data": "{count} Produkt(e) haben unvollständige oder ungeprüfte Daten.",
+      "documents_pending": "{count} Dokument(e) haben den Sicherheits-Scan noch nicht durchlaufen.",
+      "evidence_unlinked": "{count} verfügbare(s) Dokument(e) sind noch nirgends verknüpft."
+    },
+    "sources": {
+      "certifications": "{n} Zertifizierungsdatensatz/-sätze",
+      "products": "{n} Produktdatensatz/-sätze",
+      "documents": "{n} Dokumentdatensatz/-sätze"
+    }
+  },
+  "it": {
+    "hero": {
+      "tag": "Motore di domande deterministico sui dati registrati",
+      "guard": "Presidio: TRACEFAB calcola solo dai dati registrati. Non inventa numeri, rischi o prove, e ogni risultato cita i record di origine."
+    },
+    "intents": {
+      "title": "Domande a cui il motore sa rispondere",
+      "certificates_expiring": "Quali certificati scadono nella finestra?",
+      "certificates_expired": "Quali certificati sono già scaduti?",
+      "certifications_needs_review": "Quali certificazioni attendono ancora una verifica?",
+      "products_missing_data": "A quali prodotti mancano dati?",
+      "documents_pending": "Quali documenti non hanno superato la scansione di sicurezza?",
+      "evidence_unlinked": "Quali documenti disponibili non sono ancora collegati a nulla?"
+    },
+    "input": {
+      "placeholder": "Fai la domanda con parole tue — il motore la associa a una domanda coperta",
+      "cta": "Chiedi"
+    },
+    "notCovered": {
+      "title": "Questa domanda non è ancora coperta",
+      "body": "TRACEFAB Intelligence risponde a un elenco fisso di domande calcolate sui tuoi dati. La generazione di testo libero è volutamente indisponibile: nessuna risposta può essere inventata."
+    },
+    "answer": {
+      "title": "Risposta",
+      "basedOn": "Basata su",
+      "computedAt": "Calcolata il",
+      "empty": "Nessun record corrisponde a questa domanda.",
+      "error": "Il motore non ha potuto rispondere. Riprova.",
+      "loading": "Calcolo dai tuoi dati…",
+      "window": "finestra: {days} giorno/i"
+    },
+    "category": {
+      "known": "Noto",
+      "inferred": "Dedotto",
+      "missing": "Mancante",
+      "needsReview": "Da verificare"
+    },
+    "legend": {
+      "note": "Noto: dato registrato. Dedotto: risultato di una regola esplicita. Mancante: dato assente. Da verificare: in attesa di decisione umana. TRACEFAB non promuove nulla automaticamente."
+    },
+    "table": {
+      "entity": "Entità",
+      "detail": "Dettaglio",
+      "daysLeft": "Giorni rimanenti",
+      "open": "Apri"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificato/i scadono nei prossimi {days} giorno/i; {missing} certificato/i non hanno data di scadenza registrata.",
+      "certificates_expired": "{count} certificato/i sono scaduti.",
+      "certifications_needs_review": "{count} certificazione/i attendono ancora una verifica umana.",
+      "products_missing_data": "{count} prodotto/i hanno dati incompleti o non verificati.",
+      "documents_pending": "{count} documento/i non hanno completato la scansione di sicurezza.",
+      "evidence_unlinked": "{count} documento/i disponibili non sono ancora collegati a nulla."
+    },
+    "sources": {
+      "certifications": "{n} record di certificazione",
+      "products": "{n} record di prodotto",
+      "documents": "{n} record di documento"
+    }
+  },
+  "es": {
+    "hero": {
+      "tag": "Motor de preguntas determinista sobre sus datos registrados",
+      "guard": "Salvaguarda: TRACEFAB calcula únicamente a partir de datos registrados. No inventa cifras, riesgos ni pruebas, y cada resultado cita sus registros de origen."
+    },
+    "intents": {
+      "title": "Preguntas que el motor puede responder",
+      "certificates_expiring": "¿Qué certificados caducan en la ventana?",
+      "certificates_expired": "¿Qué certificados ya han caducado?",
+      "certifications_needs_review": "¿Qué certificaciones siguen pendientes de revisión?",
+      "products_missing_data": "¿A qué productos les faltan datos?",
+      "documents_pending": "¿Qué documentos no han superado el análisis de seguridad?",
+      "evidence_unlinked": "¿Qué documentos disponibles aún no están vinculados a nada?"
+    },
+    "input": {
+      "placeholder": "Formule la pregunta con sus palabras — el motor la asocia a una pregunta cubierta",
+      "cta": "Preguntar"
+    },
+    "notCovered": {
+      "title": "Esta pregunta aún no está cubierta",
+      "body": "TRACEFAB Intelligence responde a una lista fija de preguntas calculadas sobre sus datos. La generación de texto libre no está disponible a propósito: ninguna respuesta puede ser inventada."
+    },
+    "answer": {
+      "title": "Respuesta",
+      "basedOn": "Basada en",
+      "computedAt": "Calculada el",
+      "empty": "Ningún registro corresponde a esta pregunta.",
+      "error": "El motor no ha podido responder. Inténtelo de nuevo.",
+      "loading": "Calculando a partir de sus datos…",
+      "window": "ventana: {days} día(s)"
+    },
+    "category": {
+      "known": "Conocido",
+      "inferred": "Inferido",
+      "missing": "Faltante",
+      "needsReview": "Por revisar"
+    },
+    "legend": {
+      "note": "Conocido: dato registrado. Inferido: resultado de una regla explícita. Faltante: dato ausente. Por revisar: a la espera de una decisión humana. TRACEFAB nunca promociona nada automáticamente."
+    },
+    "table": {
+      "entity": "Entidad",
+      "detail": "Detalle",
+      "daysLeft": "Días restantes",
+      "open": "Abrir"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificado(s) caducan en los próximos {days} día(s); {missing} certificado(s) no tienen fecha de caducidad registrada.",
+      "certificates_expired": "{count} certificado(s) están caducados.",
+      "certifications_needs_review": "{count} certificación(es) siguen pendientes de revisión humana.",
+      "products_missing_data": "{count} producto(s) tienen datos incompletos o sin revisar.",
+      "documents_pending": "{count} documento(s) no han completado el análisis de seguridad.",
+      "evidence_unlinked": "{count} documento(s) disponibles aún no están vinculados a nada."
+    },
+    "sources": {
+      "certifications": "{n} registro(s) de certificación",
+      "products": "{n} registro(s) de producto",
+      "documents": "{n} registro(s) de documento"
+    }
+  },
+  "nl": {
+    "hero": {
+      "tag": "Deterministische vraagemotor over uw geregistreerde gegevens",
+      "guard": "Waarborg: TRACEFAB berekent uitsluitend op basis van geregistreerde gegevens. Er wordt geen cijfer, risico of bewijs verzonnen en elk resultaat noemt de brongegevens."
+    },
+    "intents": {
+      "title": "Vragen die de motor kan beantwoorden",
+      "certificates_expiring": "Welke certificaten verlopen binnen het venster?",
+      "certificates_expired": "Welke certificaten zijn al verlopen?",
+      "certifications_needs_review": "Welke certificeringen wachten nog op controle?",
+      "products_missing_data": "Welke producten missen gegevens?",
+      "documents_pending": "Welke documenten hebben de beveiligingsscan niet doorlopen?",
+      "evidence_unlinked": "Welke beschikbare documenten zijn nog nergens aan gekoppeld?"
+    },
+    "input": {
+      "placeholder": "Stel de vraag in uw eigen woorden — de motor koppelt haar aan een gedekte vraag",
+      "cta": "Vragen"
+    },
+    "notCovered": {
+      "title": "Deze vraag wordt nog niet gedekt",
+      "body": "TRACEFAB Intelligence beantwoordt een vaste lijst vragen die uit uw gegevens worden berekend. Vrije tekstgeneratie is bewust niet beschikbaar, zodat er geen antwoord verzonnen kan worden."
+    },
+    "answer": {
+      "title": "Antwoord",
+      "basedOn": "Gebaseerd op",
+      "computedAt": "Berekend op",
+      "empty": "Geen record komt overeen met deze vraag.",
+      "error": "De motor kon niet antwoorden. Probeer het opnieuw.",
+      "loading": "Berekening uit uw gegevens…",
+      "window": "venster: {days} dag(en)"
+    },
+    "category": {
+      "known": "Bekend",
+      "inferred": "Afgeleid",
+      "missing": "Ontbrekend",
+      "needsReview": "Controle vereist"
+    },
+    "legend": {
+      "note": "Bekend: geregistreerd gegeven. Afgeleid: resultaat van een expliciete regel. Ontbrekend: gegeven ontbreekt. Controle vereist: wacht op een menselijke beslissing. TRACEFAB waardeert niets automatisch op."
+    },
+    "table": {
+      "entity": "Entiteit",
+      "detail": "Detail",
+      "daysLeft": "Resterende dagen",
+      "open": "Openen"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificaat/certificaten verlopen in de komende {days} dag(en); {missing} certificaat/certificaten hebben geen geregistreerde vervaldatum.",
+      "certificates_expired": "{count} certificaat/certificaten zijn verlopen.",
+      "certifications_needs_review": "{count} certificering(en) wachten nog op menselijke controle.",
+      "products_missing_data": "{count} product(en) hebben onvolledige of ongecontroleerde gegevens.",
+      "documents_pending": "{count} document(en) hebben de beveiligingsscan nog niet doorlopen.",
+      "evidence_unlinked": "{count} beschikbaar(e) document(en) zijn nog nergens aan gekoppeld."
+    },
+    "sources": {
+      "certifications": "{n} certificeringsrecord(s)",
+      "products": "{n} productrecord(s)",
+      "documents": "{n} documentrecord(s)"
+    }
+  },
+  "pt": {
+    "hero": {
+      "tag": "Motor de perguntas determinístico sobre os seus dados registados",
+      "guard": "Salvaguarda: o TRACEFAB calcula apenas a partir de dados registados. Não inventa números, riscos nem provas, e cada resultado cita os registos de origem."
+    },
+    "intents": {
+      "title": "Perguntas que o motor consegue responder",
+      "certificates_expiring": "Que certificados expiram na janela?",
+      "certificates_expired": "Que certificados já expiraram?",
+      "certifications_needs_review": "Que certificações ainda aguardam revisão?",
+      "products_missing_data": "A que produtos faltam dados?",
+      "documents_pending": "Que documentos não passaram a análise de segurança?",
+      "evidence_unlinked": "Que documentos disponíveis ainda não estão ligados a nada?"
+    },
+    "input": {
+      "placeholder": "Faça a pergunta pelas suas palavras — o motor associa-a a uma pergunta coberta",
+      "cta": "Perguntar"
+    },
+    "notCovered": {
+      "title": "Esta pergunta ainda não é coberta",
+      "body": "O TRACEFAB Intelligence responde a uma lista fixa de perguntas calculadas sobre os seus dados. A geração de texto livre está propositadamente indisponível: nenhuma resposta pode ser inventada."
+    },
+    "answer": {
+      "title": "Resposta",
+      "basedOn": "Baseada em",
+      "computedAt": "Calculada em",
+      "empty": "Nenhum registo corresponde a esta pergunta.",
+      "error": "O motor não conseguiu responder. Tente novamente.",
+      "loading": "A calcular a partir dos seus dados…",
+      "window": "janela: {days} dia(s)"
+    },
+    "category": {
+      "known": "Conhecido",
+      "inferred": "Inferido",
+      "missing": "Em falta",
+      "needsReview": "Por verificar"
+    },
+    "legend": {
+      "note": "Conhecido: dado registado. Inferido: resultado de uma regra explícita. Em falta: dado ausente. Por verificar: à espera de uma decisão humana. O TRACEFAB nunca promove nada automaticamente."
+    },
+    "table": {
+      "entity": "Entidade",
+      "detail": "Detalhe",
+      "daysLeft": "Dias restantes",
+      "open": "Abrir"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificado(s) expiram nos próximos {days} dia(s); {missing} certificado(s) não têm data de validade registada.",
+      "certificates_expired": "{count} certificado(s) estão expirados.",
+      "certifications_needs_review": "{count} certificação(ões) ainda aguardam revisão humana.",
+      "products_missing_data": "{count} produto(s) têm dados incompletos ou não revistos.",
+      "documents_pending": "{count} documento(s) não concluíram a análise de segurança.",
+      "evidence_unlinked": "{count} documento(s) disponíveis ainda não estão ligados a nada."
+    },
+    "sources": {
+      "certifications": "{n} registo(s) de certificação",
+      "products": "{n} registo(s) de produto",
+      "documents": "{n} registo(s) de documento"
+    }
+  }
+}

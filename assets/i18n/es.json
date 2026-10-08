@@ -2853,5 +2853,65 @@
     "export": {
       "cta": "Exportar la cadena (JSON)"
     }
+  },
+  "intelAsk": {
+    "hero": {
+      "tag": "Motor de preguntas determinista sobre sus datos registrados",
+      "guard": "Salvaguarda: TRACEFAB calcula únicamente a partir de datos registrados. No inventa cifras, riesgos ni pruebas, y cada resultado cita sus registros de origen."
+    },
+    "intents": {
+      "title": "Preguntas que el motor puede responder",
+      "certificates_expiring": "¿Qué certificados caducan en la ventana?",
+      "certificates_expired": "¿Qué certificados ya han caducado?",
+      "certifications_needs_review": "¿Qué certificaciones siguen pendientes de revisión?",
+      "products_missing_data": "¿A qué productos les faltan datos?",
+      "documents_pending": "¿Qué documentos no han superado el análisis de seguridad?",
+      "evidence_unlinked": "¿Qué documentos disponibles aún no están vinculados a nada?"
+    },
+    "input": {
+      "placeholder": "Formule la pregunta con sus palabras — el motor la asocia a una pregunta cubierta",
+      "cta": "Preguntar"
+    },
+    "notCovered": {
+      "title": "Esta pregunta aún no está cubierta",
+      "body": "TRACEFAB Intelligence responde a una lista fija de preguntas calculadas sobre sus datos. La generación de texto libre no está disponible a propósito: ninguna respuesta puede ser inventada."
+    },
+    "answer": {
+      "title": "Respuesta",
+      "basedOn": "Basada en",
+      "computedAt": "Calculada el",
+      "empty": "Ningún registro corresponde a esta pregunta.",
+      "error": "El motor no ha podido responder. Inténtelo de nuevo.",
+      "loading": "Calculando a partir de sus datos…",
+      "window": "ventana: {days} día(s)"
+    },
+    "category": {
+      "known": "Conocido",
+      "inferred": "Inferido",
+      "missing": "Faltante",
+      "needsReview": "Por revisar"
+    },
+    "legend": {
+      "note": "Conocido: dato registrado. Inferido: resultado de una regla explícita. Faltante: dato ausente. Por revisar: a la espera de una decisión humana. TRACEFAB nunca promociona nada automáticamente."
+    },
+    "table": {
+      "entity": "Entidad",
+      "detail": "Detalle",
+      "daysLeft": "Días restantes",
+      "open": "Abrir"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificado(s) caducan en los próximos {days} día(s); {missing} certificado(s) no tienen fecha de caducidad registrada.",
+      "certificates_expired": "{count} certificado(s) están caducados.",
+      "certifications_needs_review": "{count} certificación(es) siguen pendientes de revisión humana.",
+      "products_missing_data": "{count} producto(s) tienen datos incompletos o sin revisar.",
+      "documents_pending": "{count} documento(s) no han completado el análisis de seguridad.",
+      "evidence_unlinked": "{count} documento(s) disponibles aún no están vinculados a nada."
+    },
+    "sources": {
+      "certifications": "{n} registro(s) de certificación",
+      "products": "{n} registro(s) de producto",
+      "documents": "{n} registro(s) de documento"
+    }
   }
 }

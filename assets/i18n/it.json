@@ -2853,5 +2853,65 @@
     "export": {
       "cta": "Esporta la catena (JSON)"
     }
+  },
+  "intelAsk": {
+    "hero": {
+      "tag": "Motore di domande deterministico sui dati registrati",
+      "guard": "Presidio: TRACEFAB calcola solo dai dati registrati. Non inventa numeri, rischi o prove, e ogni risultato cita i record di origine."
+    },
+    "intents": {
+      "title": "Domande a cui il motore sa rispondere",
+      "certificates_expiring": "Quali certificati scadono nella finestra?",
+      "certificates_expired": "Quali certificati sono già scaduti?",
+      "certifications_needs_review": "Quali certificazioni attendono ancora una verifica?",
+      "products_missing_data": "A quali prodotti mancano dati?",
+      "documents_pending": "Quali documenti non hanno superato la scansione di sicurezza?",
+      "evidence_unlinked": "Quali documenti disponibili non sono ancora collegati a nulla?"
+    },
+    "input": {
+      "placeholder": "Fai la domanda con parole tue — il motore la associa a una domanda coperta",
+      "cta": "Chiedi"
+    },
+    "notCovered": {
+      "title": "Questa domanda non è ancora coperta",
+      "body": "TRACEFAB Intelligence risponde a un elenco fisso di domande calcolate sui tuoi dati. La generazione di testo libero è volutamente indisponibile: nessuna risposta può essere inventata."
+    },
+    "answer": {
+      "title": "Risposta",
+      "basedOn": "Basata su",
+      "computedAt": "Calcolata il",
+      "empty": "Nessun record corrisponde a questa domanda.",
+      "error": "Il motore non ha potuto rispondere. Riprova.",
+      "loading": "Calcolo dai tuoi dati…",
+      "window": "finestra: {days} giorno/i"
+    },
+    "category": {
+      "known": "Noto",
+      "inferred": "Dedotto",
+      "missing": "Mancante",
+      "needsReview": "Da verificare"
+    },
+    "legend": {
+      "note": "Noto: dato registrato. Dedotto: risultato di una regola esplicita. Mancante: dato assente. Da verificare: in attesa di decisione umana. TRACEFAB non promuove nulla automaticamente."
+    },
+    "table": {
+      "entity": "Entità",
+      "detail": "Dettaglio",
+      "daysLeft": "Giorni rimanenti",
+      "open": "Apri"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificato/i scadono nei prossimi {days} giorno/i; {missing} certificato/i non hanno data di scadenza registrata.",
+      "certificates_expired": "{count} certificato/i sono scaduti.",
+      "certifications_needs_review": "{count} certificazione/i attendono ancora una verifica umana.",
+      "products_missing_data": "{count} prodotto/i hanno dati incompleti o non verificati.",
+      "documents_pending": "{count} documento/i non hanno completato la scansione di sicurezza.",
+      "evidence_unlinked": "{count} documento/i disponibili non sono ancora collegati a nulla."
+    },
+    "sources": {
+      "certifications": "{n} record di certificazione",
+      "products": "{n} record di prodotto",
+      "documents": "{n} record di documento"
+    }
   }
 }

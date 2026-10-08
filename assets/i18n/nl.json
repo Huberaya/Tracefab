@@ -2853,5 +2853,65 @@
     "export": {
       "cta": "Keten exporteren (JSON)"
     }
+  },
+  "intelAsk": {
+    "hero": {
+      "tag": "Deterministische vraagemotor over uw geregistreerde gegevens",
+      "guard": "Waarborg: TRACEFAB berekent uitsluitend op basis van geregistreerde gegevens. Er wordt geen cijfer, risico of bewijs verzonnen en elk resultaat noemt de brongegevens."
+    },
+    "intents": {
+      "title": "Vragen die de motor kan beantwoorden",
+      "certificates_expiring": "Welke certificaten verlopen binnen het venster?",
+      "certificates_expired": "Welke certificaten zijn al verlopen?",
+      "certifications_needs_review": "Welke certificeringen wachten nog op controle?",
+      "products_missing_data": "Welke producten missen gegevens?",
+      "documents_pending": "Welke documenten hebben de beveiligingsscan niet doorlopen?",
+      "evidence_unlinked": "Welke beschikbare documenten zijn nog nergens aan gekoppeld?"
+    },
+    "input": {
+      "placeholder": "Stel de vraag in uw eigen woorden — de motor koppelt haar aan een gedekte vraag",
+      "cta": "Vragen"
+    },
+    "notCovered": {
+      "title": "Deze vraag wordt nog niet gedekt",
+      "body": "TRACEFAB Intelligence beantwoordt een vaste lijst vragen die uit uw gegevens worden berekend. Vrije tekstgeneratie is bewust niet beschikbaar, zodat er geen antwoord verzonnen kan worden."
+    },
+    "answer": {
+      "title": "Antwoord",
+      "basedOn": "Gebaseerd op",
+      "computedAt": "Berekend op",
+      "empty": "Geen record komt overeen met deze vraag.",
+      "error": "De motor kon niet antwoorden. Probeer het opnieuw.",
+      "loading": "Berekening uit uw gegevens…",
+      "window": "venster: {days} dag(en)"
+    },
+    "category": {
+      "known": "Bekend",
+      "inferred": "Afgeleid",
+      "missing": "Ontbrekend",
+      "needsReview": "Controle vereist"
+    },
+    "legend": {
+      "note": "Bekend: geregistreerd gegeven. Afgeleid: resultaat van een expliciete regel. Ontbrekend: gegeven ontbreekt. Controle vereist: wacht op een menselijke beslissing. TRACEFAB waardeert niets automatisch op."
+    },
+    "table": {
+      "entity": "Entiteit",
+      "detail": "Detail",
+      "daysLeft": "Resterende dagen",
+      "open": "Openen"
+    },
+    "summary": {
+      "certificates_expiring": "{count} certificaat/certificaten verlopen in de komende {days} dag(en); {missing} certificaat/certificaten hebben geen geregistreerde vervaldatum.",
+      "certificates_expired": "{count} certificaat/certificaten zijn verlopen.",
+      "certifications_needs_review": "{count} certificering(en) wachten nog op menselijke controle.",
+      "products_missing_data": "{count} product(en) hebben onvolledige of ongecontroleerde gegevens.",
+      "documents_pending": "{count} document(en) hebben de beveiligingsscan nog niet doorlopen.",
+      "evidence_unlinked": "{count} beschikbaar(e) document(en) zijn nog nergens aan gekoppeld."
+    },
+    "sources": {
+      "certifications": "{n} certificeringsrecord(s)",
+      "products": "{n} productrecord(s)",
+      "documents": "{n} documentrecord(s)"
+    }
   }
 }

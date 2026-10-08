@@ -1038,6 +1038,11 @@
         chainSelectedNode: null,
         scgFilters: null,
         scgView: null,
+        intelQuery: null,
+        intelAnswer: null,
+        intelState: null,
+        intelLoading: false,
+        intelError: null,
         dpp: null,
         selectedDppProduct: null,
         modal: null,
@@ -1848,143 +1853,197 @@
       window.state = state;
 
 
-      function intelligenceView() {
-        const query = state.activeIntelQuery || "Which products contain non-GOTS-certified cotton in the AW26 collection?";
-        const currentAnswer = state.activeIntelAnswer || {
-          summary: "Exhaustive analysis of 1,248 catalogue references: 98.4% of the AW26 collection is covered by a valid GOTS certificate. Only 2 references lack a sealed transaction certificate.",
-          details: [
-            {
-              sku: "AW26-0812 · Ribbed Cotton Socks",
-              issue: "OEKO-TEX certificate present but no GOTS transaction certificate (TC) for the combed yarn lot.",
-              supplier: "Filature du Sud-Ouest",
-              evidenceCited: "TC-GOTS-MISSING · Request ref. REQ-2026-092",
-              action: "Supplier follow-up issued on 04/10/2026"
-            },
-            {
-              sku: "AW26-0419 · Doublure Veste Trench",
-              issue: "Material declared as Recycled Cotton (GRS) without third-party verified mass-balance evidence.",
-              supplier: "Recycled Textiles Europe",
-              evidenceCited: "GRS-CERT-8841 (Status: expired on 15/09/2026)",
-              action: "Blocage de l'export DPP en cours"
-            }
-          ],
-          citations: [
-            { id: "TC-CU-881294", label: "Certificat Transaction Control Union GOTS 2026", hash: "sha256-8a9d...4f21" },
-            { id: "SGS-LAB-098", label: "Rapport Laboratoire ZDHC MRSL Level 3 SGS", hash: "sha256-3b17...9c82" },
-            { id: "SMETA-BRAGA-26", label: "Audit Social SMETA 4-Pillar Atelier Braga", hash: "sha256-7e44...5a19" }
-          ]
+      /* Chantier 12 — TRACEFAB Intelligence : moteur de questions
+         DETERMINISTE sur les donnees reelles du tenant (GET /api/intel/ask).
+         Aucune generation de texte : chaque intention est un calcul explicite
+         sur certifications / produits / documents ; chaque resultat porte sa
+         categorie epistemique (known / inferred / missing / needs_review) et
+         des entites sources reelles (id). Une question hors liste repond
+         honnetement « non couverte ». Tout le contenu simule de l ancienne
+         vue (reponse codee en dur, citations avec fausses empreintes, badge
+         marketing « zero hallucination ») a ete supprime. */
+      const ia = (key, vars = {}) => {
+        let text = window.TF_I18N ? window.TF_I18N.t('intelAsk.' + key, key) : key;
+        for (const [name, value] of Object.entries(vars)) text = text.split(`{${name}}`).join(String(value));
+        return text;
+      };
+      const IA_INTENTS = [
+        { id: 'certificates_expiring', keywords: ['expir', 'ablauf', 'scaden', 'caduc', 'verloop'] },
+        { id: 'certificates_expired', keywords: ['expired', 'expire', 'abgelaufen', 'scadut', 'caducad', 'verlopen'] },
+        { id: 'certifications_needs_review', keywords: ['review', 'verif', 'prüf', 'pruf', 'attente', 'pending'] },
+        { id: 'products_missing_data', keywords: ['missing', 'manqu', 'fehl', 'manc', 'falta', 'ontbrek', 'incomplete'] },
+        { id: 'documents_pending', keywords: ['scan', 'antivirus', 'analys', 'pending document'] },
+        { id: 'evidence_unlinked', keywords: ['link', 'li\u00e9', 'verkn\u00fcpft', 'collegat', 'vinculad', 'gekoppeld', 'unlinked'] },
+      ];
+      const iaMatchIntent = (text) => {
+        const lower = String(text || '').toLowerCase();
+        for (const intent of IA_INTENTS) {
+          if (intent.keywords.some((k) => lower.includes(k))) return intent.id;
+        }
+        return null;
+      };
+      const iaCategoryBadge = (category) => {
+        const map = {
+          known: ['status-approved', ia('category.known', 'Known')],
+          inferred: ['status-draft', ia('category.inferred', 'Inferred')],
+          missing: ['status-changes_requested', ia('category.missing', 'Missing')],
+          needs_review: ['status-needs_review', ia('category.needsReview', 'Needs review')],
         };
+        const [cls, label] = map[category] || ['status-draft', category];
+        return `<span class="status ${cls}">${esc(label)}</span>`;
+      };
+
+      function intelDemoAnswer(intent, windowDays) {
+        const certs = (state.certifications || []).map(certNorm);
+        const now = Date.now();
+        const findings = [];
+        if (intent === 'certificates_expiring') {
+          certs.forEach((c) => {
+            const ts = certExpiresTs(c);
+            const base = { entityType: 'certification', id: c.id || c.standard, label: c.name, sub: [c.number, c.issuer].filter(Boolean).join(' · ') || null, expiresAt: c.expires || null };
+            if (ts !== null && ts >= now && ts - now <= windowDays * 86400000) findings.push({ ...base, category: 'known', daysLeft: Math.ceil((ts - now) / 86400000) });
+            else if (ts === null) findings.push({ ...base, category: 'missing', daysLeft: null });
+          });
+        }
+        if (intent === 'certificates_expired') {
+          certs.forEach((c) => {
+            const ts = certExpiresTs(c);
+            if ((ts !== null && ts < now) || c.status === 'expired') findings.push({ category: 'known', entityType: 'certification', id: c.id || c.standard, label: c.name, sub: [c.number, c.issuer].filter(Boolean).join(' · ') || null, daysLeft: ts !== null ? Math.ceil((ts - now) / 86400000) : null, expiresAt: c.expires || null });
+          });
+        }
+        if (intent === 'certifications_needs_review') {
+          certs.filter((c) => ['declared', 'needs_review'].includes(c.status)).forEach((c) => findings.push({ category: 'needs_review', entityType: 'certification', id: c.id || c.standard, label: c.name, sub: [c.number, c.issuer].filter(Boolean).join(' · ') || null, daysLeft: null, expiresAt: c.expires || null }));
+        }
+        if (intent === 'products_missing_data') {
+          (state.products || []).forEach((p) => {
+            const completion = Number(p.dataCompletion);
+            if (p.dataReadiness === 'needs_review') findings.push({ category: 'needs_review', entityType: 'product', id: p.id, label: `${p.name} (${p.reference})`, sub: `${p.dataReadiness} · ${completion}%`, daysLeft: null, expiresAt: null });
+            else if (p.dataReadiness === 'not_started' || completion < 50) findings.push({ category: 'missing', entityType: 'product', id: p.id, label: `${p.name} (${p.reference})`, sub: `${p.dataReadiness} · ${completion}%`, daysLeft: null, expiresAt: null });
+          });
+        }
+        if (intent === 'documents_pending') {
+          (state.documents || []).filter((d) => ['uploaded', 'scanning', 'rejected'].includes(d.status)).forEach((d) => findings.push({ category: d.status === 'rejected' ? 'needs_review' : 'known', entityType: 'document', id: d.id, label: d.originalFilename, sub: `${d.kind} · ${d.status}`, daysLeft: null, expiresAt: null }));
+        }
+        if (intent === 'evidence_unlinked') {
+          (state.documents || []).filter((d) => d.status === 'available').forEach((d) => {
+            const links = d.links || {};
+            const total = Object.values(links).reduce((a, b) => a + (Number(b) || 0), 0);
+            if (total === 0) findings.push({ category: 'inferred', entityType: 'document', id: d.id, label: d.originalFilename, sub: `${d.kind} · ${d.status}`, daysLeft: null, expiresAt: null });
+          });
+        }
+        return {
+          intent, windowDays, computedAt: new Date().toISOString(),
+          basedOn: { certifications: certs.length, products: (state.products || []).length, documents: (state.documents || []).length },
+          findings, demo: true,
+        };
+      }
+
+      function intelligenceView() {
+        const answer = state.intelAnswer || null;
+        const intent = answer?.intent || null;
+        const windowDays = answer?.windowDays || 45;
+        const findings = answer?.findings || [];
+        const counts = { known: 0, inferred: 0, missing: 0, needs_review: 0 };
+        findings.forEach((f) => { if (counts[f.category] !== undefined) counts[f.category] += 1; });
+        const missingExpiry = intent === 'certificates_expiring' ? findings.filter((f) => f.category === 'missing').length : 0;
+        const summaryVars = { count: findings.length - missingExpiry, missing: missingExpiry, days: windowDays };
 
         return `<div>
-          <!-- Hero Banner -->
-          <div class="intel-hero-card">
-            <div class="intel-tag">AGENTIC TEXTILE REASONING ENGINE · ZERO HALLUCINATION</div>
-            <h1 class="intel-title">TRACEFAB Intelligence</h1>
-            <p class="intel-desc">
-              ${bt('iaIntro')}
-            </p>
-            <div class="intel-guardrail-badge">
-              <span>🛡️ GARDE-FOU CONTRACTUEL :</span>
-              <span>${bt('iaNoInvented')}</span>
+          <div class="card panel" style="border-left:3px solid var(--green)">
+            <div class="meta" style="text-transform:uppercase;letter-spacing:0.08em;font-weight:800">${ia('hero.tag', '')}</div>
+            <h1 style="margin:6px 0">TRACEFAB Intelligence</h1>
+            <p>${esc(bt('iaIntro'))}</p>
+            <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);margin-top:8px">
+              <div style="font-size:12px;line-height:1.5">${ia('hero.guard', '')}</div>
             </div>
           </div>
 
-          <!-- Query Panel with Suggested Prompts -->
-          <div class="intel-query-panel">
-            <div style="font-size:12px;font-weight:750;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${bt('iaSuggestions')}</div>
-            <div class="intel-chips-row">
-              <span class="intel-chip" onclick="askIntel('Which products contain non-GOTS-certified cotton in the AW26 collection?')">
-                🌾 Cotton without GOTS TC (AW26)
-              </span>
-              <span class="intel-chip" onclick="askIntel('Which certificates expire in the next 45 days?')">
-                ⏳ Certificates expiring within 45 days
-              </span>
-              <span class="intel-chip" onclick="askIntel('Do all garment workshops meet SMETA living-wage requirements?')">
-                ⚖️ SMETA living-wage compliance
-              </span>
-              <span class="intel-chip" onclick="askIntel('What is the readiness rate for the ESPR Digital Product Passport?')">
-                📋 CIRPASS DPP eligibility rate
-              </span>
+          <div class="card panel" style="margin-top:18px">
+            <div class="panel-head"><h2>${ia('intents.title', '')}</h2></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+              ${IA_INTENTS.map((it) => `<button class="btn ${intent === it.id ? 'btn-primary' : 'btn-secondary'} btn-small" data-action="intel-ask" data-intent="${it.id}">${esc(ia('intents.' + it.id, it.id))}</button>`).join('')}
             </div>
-
-            <div class="intel-input-wrap">
-              <input class="intel-input" id="intel-query-input" value="${esc(query)}" placeholder="${bt('iaPlaceholder')}">
-              <button class="btn btn-primary" onclick="submitIntelQuery()">${bt('iaQuery')}</button>
-            </div>
+            <form id="intel-ask-form" style="display:flex;gap:10px;flex-wrap:wrap">
+              <input class="input" name="question" style="flex:1;min-width:240px" placeholder="${ia('input.placeholder', '')}">
+              <button class="btn btn-primary" type="submit">${ia('input.cta', 'Ask')}</button>
+            </form>
           </div>
 
-          <!-- Answer Box with Verified Evidence Links -->
-          <div class="intel-answer-box">
-            <div class="intel-answer-header">
-              <div>
-                <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:11.5px;font-weight:750;">${bt('iaVerifiedSynthesis')}</span>
-                <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:4px 0 0;">« ${esc(query)} »</h3>
-              </div>
-              <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;">${bt('iaResponseTime')}</span>
-            </div>
+          ${state.intelState === 'notCovered' ? `<div class="card panel" style="margin-top:18px">
+            <div class="panel-head"><h2>${ia('notCovered.title', '')}</h2></div>
+            <p>« ${esc(state.intelQuery || '')} »</p>
+            <p class="meta">${ia('notCovered.body', '')}</p>
+          </div>` : ''}
 
-            <p style="font-size:14px;color:#17231f;line-height:1.6;margin-bottom:18px;">
-              ${esc(currentAnswer.summary)}
-            </p>
+          ${state.intelLoading ? `<div class="card panel" style="margin-top:18px"><p class="meta">${ia('answer.loading', '')}</p></div>` : ''}
+          ${state.intelError ? `<div class="card panel" style="margin-top:18px"><p style="color:#b91c1c">${ia('answer.error', '')}</p><p class="meta">${esc(state.intelError)}</p></div>` : ''}
 
-            <!-- Granular Result Table -->
-            <div class="table-wrap" style="margin-bottom:20px;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>${bt('iaRefArticle')}</th>
-                    <th>${bt('scSupplierFacility')}</th>
-                    <th>${bt('iaAnomaly')}</th>
-                    <th>${bt('iaCitedProof')}</th>
-                    <th style="text-align:right">Action Directe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${currentAnswer.details.map(d => `
-                    <tr>
-                      <td><strong>${esc(d.sku)}</strong></td>
-                      <td>${esc(d.supplier)}</td>
-                      <td><span class="status status-changes_requested">${esc(d.issue)}</span></td>
-                      <td><span class="cert-pill">${esc(d.evidenceCited)}</span></td>
-                      <td style="text-align:right">
-                        <button class="btn btn-secondary btn-small" onclick="state.view='requests';render();">
-                          ${esc(d.action)}
-                        </button>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+          ${answer && state.intelState === 'answered' ? `<div class="card panel" style="margin-top:18px">
+            <div class="panel-head"><h2>${ia('answer.title', '')} — ${esc(ia('intents.' + intent, intent))}</h2>
+              <span class="meta">${ia('answer.computedAt', 'Computed on')} ${date(answer.computedAt)}${answer.demo ? ' · demo' : ''} · ${ia('answer.window', 'window: {days} day(s)').replace('{days}', String(windowDays))}</span></div>
+            <p style="font-size:14.5px;line-height:1.6"><strong>${esc(ia('summary.' + intent, summaryVars))}</strong></p>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0">
+              ${iaCategoryBadge('known')} <span class="meta" style="align-self:center">${counts.known}</span>
+              ${iaCategoryBadge('inferred')} <span class="meta" style="align-self:center">${counts.inferred}</span>
+              ${iaCategoryBadge('missing')} <span class="meta" style="align-self:center">${counts.missing}</span>
+              ${iaCategoryBadge('needs_review')} <span class="meta" style="align-self:center">${counts.needs_review}</span>
             </div>
-
-            <!-- Evidence Citations Section (Zero Hallucination Proof) -->
-            <div style="background:#f8faf8;border:1px solid #edf2ee;border-radius:12px;padding:16px;">
-              <div style="font-size:11.5px;font-weight:800;color:#17231f;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">
-                ${bt('iaCitedEvidence')}
-              </div>
-              <div>
-                ${currentAnswer.citations.map(c => `
-                  <span class="intel-cited-badge" onclick="state.view='documents';render();">
-                    📄 ${esc(c.label)} <code style="color:#0b7656;margin-left:4px;">[${esc(c.hash)}]</code>
-                  </span>
-                `).join('')}
-              </div>
-            </div>
-          </div>
+            ${findings.length ? `<div class="table-wrap"><table>
+              <thead><tr><th>${ia('table.entity', 'Entity')}</th><th>${ia('table.detail', 'Detail')}</th><th>${ia('table.daysLeft', 'Days left')}</th><th style="text-align:right">${ia('table.open', 'Open')}</th></tr></thead>
+              <tbody>
+                ${findings.map((f) => `<tr>
+                  <td>${iaCategoryBadge(f.category)}</td>
+                  <td><strong>${esc(f.label)}</strong>${f.sub ? `<div class="meta">${esc(f.sub)}</div>` : ''}${f.expiresAt ? `<div class="meta">${date(f.expiresAt)}</div>` : ''}</td>
+                  <td>${f.daysLeft != null ? esc(String(f.daysLeft)) : '—'}</td>
+                  <td style="text-align:right">
+                    ${f.entityType === 'certification' ? `<button class="btn btn-secondary btn-small" data-view="certifications">${ia('table.open', 'Open')}</button>` : ''}
+                    ${f.entityType === 'product' ? `<button class="btn btn-secondary btn-small" data-product-id="${esc(f.id)}">${ia('table.open', 'Open')}</button>` : ''}
+                    ${f.entityType === 'document' ? `<button class="btn btn-secondary btn-small" data-view="documents">${ia('table.open', 'Open')}</button>` : ''}
+                  </td>
+                </tr>`).join('')}
+              </tbody>
+            </table></div>` : `<div class="empty"><p>${ia('answer.empty', '')}</p></div>`}
+            <p class="meta" style="margin-top:12px">${ia('answer.basedOn', 'Based on')} : ${ia('sources.certifications', { n: answer.basedOn?.certifications ?? 0 })} · ${ia('sources.products', { n: answer.basedOn?.products ?? 0 })} · ${ia('sources.documents', { n: answer.basedOn?.documents ?? 0 })}.</p>
+            <p class="meta" style="margin-top:4px">${ia('legend.note', '')}</p>
+          </div>` : ''}
         </div>`;
       }
 
-      function askIntel(q) {
-        state.activeIntelQuery = q;
+      async function askIntelIntent(intent) {
+        const windowDays = 45;
+        state.intelQuery = ia('intents.' + intent, intent);
+        state.intelState = null;
+        state.intelAnswer = null;
+        state.intelError = null;
+        if (state.demo) {
+          state.intelAnswer = intelDemoAnswer(intent, windowDays);
+          state.intelState = 'answered';
+          render();
+          return;
+        }
+        state.intelLoading = true;
+        render();
+        try {
+          state.intelAnswer = await api(`/api/intel/ask?intent=${encodeURIComponent(intent)}&windowDays=${windowDays}`);
+          state.intelState = 'answered';
+        } catch (error) {
+          state.intelError = error.message;
+        }
+        state.intelLoading = false;
         render();
       }
 
-      function submitIntelQuery() {
-        const inp = document.getElementById('intel-query-input');
-        if (inp) {
-          state.activeIntelQuery = inp.value;
+      function askIntelQuestion(text) {
+        const intent = iaMatchIntent(text);
+        state.intelQuery = text;
+        if (!intent) {
+          state.intelState = 'notCovered';
+          state.intelAnswer = null;
+          state.intelLoading = false;
           render();
+          return;
         }
+        askIntelIntent(intent);
       }
 
       function render() {
@@ -5109,6 +5168,7 @@
             if (action === 'quality-severity') { state.qualitySeverityFilter = el.dataset.qualitySeverity; render(); }
             if (action === 'quality-resolve') { state.view = el.dataset.target; render(); }
             if (action === 'export-supply-chain') exportSupplyChain();
+            if (action === 'intel-ask') askIntelIntent(el.dataset.intent);
             if (action === 'chain-open-evidence') { state.view = 'documents'; render(); }
             if (action === 'chain-open-quality') { if (state.selectedSupplyChainProduct?.id) await loadQuality(state.selectedSupplyChainProduct.id); }
             if (action === 'catalog-export') await exportCatalog();
@@ -5174,6 +5234,7 @@
         document.getElementById('evidence-upload-form')?.addEventListener('submit', (e) => { e.preventDefault(); const form = e.currentTarget; uploadEvidence(form).then(() => form.reset()).catch((err) => notify(err.message, true)); });
         document.getElementById('cert-declare-form')?.addEventListener('submit', (e) => { e.preventDefault(); const form = e.currentTarget; declareCertification(form).then(() => form.reset()).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.cert-review-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); reviewCertification(e.currentTarget).catch((err) => notify(err.message, true)); }));
+        document.getElementById('intel-ask-form')?.addEventListener('submit', (e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); askIntelQuestion(String(fd.get('question') || '')); });
         /* Chantier 11 : interactivite du graphe de tracabilite (filtres,
            zoom, deplacement, selection de noeud). Les transformations sont
            appliquees directement sur le viewport SVG pour rester fluides,
