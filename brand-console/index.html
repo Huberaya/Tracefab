@@ -1011,6 +1011,9 @@
         materials: [],
         products: [],
         documents: [],
+        certifications: [],
+        certStandards: [],
+        certReview: null,
         evidenceDetail: null,
         requests: [],
         questionnaires: [],
@@ -1595,12 +1598,13 @@
         // en relatif pour ne jamais perimer.
         const dans = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
         state.certifications = [
-          { standard: 'GOTS 7.0', number: 'CU-GOTS-884213', issuer: 'Control Union', expires: dans(412) },
-          { standard: 'OEKO-TEX STANDARD 100', number: 'SH025-174412-TESTEX', issuer: 'TESTEX', expires: dans(31) },
-          { standard: 'GRS 4.0', number: 'CU-GRS-771904', issuer: 'Control Union', expires: dans(58) },
-          { standard: 'ISO 14001:2015', number: 'FR-14001-20264', issuer: 'Bureau Veritas', expires: dans(233) },
-          { standard: 'SMETA 4-Pillar', number: 'SMETA-BRAGA-2026-118', issuer: 'SGS', expires: dans(176) },
+          { id: 'demo-cert-1', standard: 'GOTS 7.0', number: 'CU-GOTS-884213', issuer: 'Control Union', expires: dans(412), issued: dans(-318), status: 'verified_by_reviewer', ownedByBrand: true, verificationCount: 2 },
+          { id: 'demo-cert-2', standard: 'OEKO-TEX STANDARD 100', number: 'SH025-174412-TESTEX', issuer: 'TESTEX', expires: dans(31), issued: dans(-334), status: 'verified_by_reviewer', ownedByBrand: true, verificationCount: 1 },
+          { id: 'demo-cert-3', standard: 'GRS 4.0', number: 'CU-GRS-771904', issuer: 'Control Union', expires: dans(58), issued: dans(-307), status: 'documented', ownedByBrand: true, verificationCount: 0 },
+          { id: 'demo-cert-4', standard: 'ISO 14001:2015', number: 'FR-14001-20264', issuer: 'Bureau Veritas', expires: dans(233), issued: dans(-132), status: 'declared', ownedByBrand: true, verificationCount: 0 },
+          { id: 'demo-cert-5', standard: 'SMETA 4-Pillar', number: 'SMETA-BRAGA-2026-118', issuer: 'SGS', expires: dans(-12), issued: dans(-377), status: 'expired', ownedByBrand: false, ownerName: 'Nhãn Textile', verificationCount: 1 },
         ];
+        state.certStandards = [];
 
         // Preparation DPP : 88%, coherent avec le KPI de la vue d'ensemble.
         // 7 exigences sur 9, dont une bloquante restante — un score volontiers
@@ -1676,6 +1680,11 @@
           // ne pas bloquer le reste de la console si l'endpoint echoue.
           const evidence = await Promise.allSettled([api('/api/documents')]);
           state.documents = evidence[0].status === 'fulfilled' ? (evidence[0].value.documents || []) : [];
+          // Chantier 09 : certifications (marque + fournisseurs actifs) et
+          // catalogue versionne des referentiels, pareillement non bloquants.
+          const certPayloads = await Promise.allSettled([api('/api/certifications'), api('/api/catalog/certification-standards')]);
+          state.certifications = certPayloads[0].status === 'fulfilled' ? (certPayloads[0].value.certifications || []) : [];
+          state.certStandards = certPayloads[1].status === 'fulfilled' ? (certPayloads[1].value.standards || []) : [];
           const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
           state.activeOrganizationId = state.activeOrganizationId || brands[0]?.organization_id || null;
           state.loading = false;
@@ -2559,62 +2568,219 @@
       // precedente affirmait en dur qu'aucun certificat n'expirait, ce qui
       // devenait faux des que la vue etait alimentee.
       const certJours = (c) => Math.ceil((Date.parse(c.expires) - Date.now()) / 86400000);
-      function certStatut(c) {
-        const j = certJours(c);
-        if (j < 0) return `<span class="status status-changes_requested">${esc(bt('certExpired'))}</span>`;
-        if (j <= 90) return `<span class="status status-needs_review">${esc(bt('certExpiringSoon'))}</span>`;
-        return `<span class="status status-approved">${esc(bt('certValid'))}</span>`;
+      /* Chantier 09 — Certification Intelligence : sante (valid / expiring /
+         expired / needs review) derivee des statuts et dates reels, veille
+         d'expiration actionnable, declaration et revue humaine via
+         GET/POST /api/certifications et POST /api/certifications/:id/review.
+         La vue marque inclut les certificats des fournisseurs actifs ; la
+         couverture du catalogue versionne est affichee a titre informatif,
+         jamais comme une exigence de conformite. */
+      const bc = (key, fb) => (window.TF_I18N ? window.TF_I18N.t('certifications.' + key, fb) : fb);
+      const certNorm = (c) => ({
+        raw: c,
+        id: c.id || null,
+        name: c.standardName || c.standard || '—',
+        code: c.standardCode || null,
+        number: c.certificateNumber || c.number || null,
+        issuer: c.issuerName || c.issuer || null,
+        issued: c.issuedAt || c.issued || null,
+        expires: c.expiresAt || c.expires || null,
+        status: c.status || 'declared',
+        ownerName: c.ownerName || null,
+        ownedByBrand: c.ownedByBrand !== false,
+        documentId: c.documentId || null,
+        verificationCount: c.verificationCount || 0,
+      });
+      const certExpiresTs = (c) => {
+        const raw = c.expiresAt ?? c.expires;
+        const ts = raw ? new Date(raw).getTime() : NaN;
+        return Number.isNaN(ts) ? null : ts;
+      };
+      const certHealth = (c) => {
+        const ts = certExpiresTs(c);
+        if (c.status === 'expired') return 'expired';
+        if (ts !== null && ts < Date.now()) return 'expired';
+        if (ts !== null && ts - Date.now() < 90 * 86400000) return 'expiring';
+        if (['declared', 'needs_review'].includes(c.status)) return 'needsReview';
+        return 'valid';
+      };
+      const certHealthBadge = (health) => {
+        const cls = health === 'valid' ? 'status-approved' : health === 'expiring' ? 'status-needs_review' : health === 'expired' ? 'status-changes_requested' : 'status-draft';
+        const labels = { valid: bc('health.valid', 'Valid'), expiring: bc('health.expiring', 'Expiring'), expired: bc('health.expired', 'Expired'), needsReview: bc('health.needsReview', 'Needs review') };
+        return `<span class="status ${cls}">${esc(labels[health])}</span>`;
+      };
+      const certStatusLabel = (status) => bc('statuses.' + status, status);
+
+      function certReviewRow(cert) {
+        if (!state.certReview || state.certReview.id !== cert.id || !cert.id) return '';
+        const options = ['passed', 'failed', 'needs_review', 'expired'];
+        return `<tr class="cert-review-row"><td colspan="9" style="background:#fbfaf8"><div style="padding:14px 18px">
+          <form class="cert-review-form" data-review-id="${esc(cert.id)}" style="display:grid;gap:10px">
+            <div class="form-grid" style="margin:0">
+              <label>${bc('review.status', 'Decision')}<select class="select" name="verificationStatus">${options.map((o) => `<option value="${o}">${esc(bc('review.statuses.' + o, o))}</option>`).join('')}</select></label>
+              <label>${bc('review.method', 'Method')}<input class="input" name="method" maxlength="240" required placeholder="Document check, issuer registry…"></label>
+              <label>${bc('review.notes', 'Notes')}<input class="input" name="notes" maxlength="2000"></label>
+            </div>
+            <p class="meta" style="margin:0">${bc('review.note', '')}</p>
+            <div class="form-actions" style="margin:0"><button class="btn btn-primary btn-small" type="submit">${bc('review.cta', 'Review')}</button></div>
+          </form>
+        </div></td></tr>`;
       }
 
       function certificationsConsoleView() {
-        const certs = state.certifications || [];
+        const certs = (state.certifications || []).map(certNorm);
+        const health = { valid: 0, expiring: 0, expired: 0, needsReview: 0 };
+        certs.forEach((c) => { health[certHealth(c)] += 1; });
+        const standards = (state.certStandards || []).filter((s) => s && s.code);
+        const coveredNames = new Set(certs.map((c) => `${c.name}`.toLowerCase()));
+        const coveredCodes = new Set(certs.map((c) => (c.code || '').toLowerCase()).filter(Boolean));
+        const covered = standards.filter((s) => coveredCodes.has(`${s.code}`.toLowerCase()) || coveredNames.has(`${s.name}`.toLowerCase()));
+        const uncovered = standards.filter((s) => !coveredCodes.has(`${s.code}`.toLowerCase()) && !coveredNames.has(`${s.name}`.toLowerCase()));
+        const certificateDocs = (state.documents || []).filter((d) => d.status === 'available' && d.kind === 'certificate');
+
         return `<div class="page-head">
           <div>
             <div class="eyebrow">${esc(bt('certEyebrow'))}</div>
             <h1>${esc(bt('certTitle'))}</h1>
             <p>${esc(bt('certLead'))}</p>
           </div>
-          <div class="actions">
-            <button class="btn btn-primary" data-demo-action="1">+ ${esc(bt('certDeclare'))}</button>
+        </div>
+
+        <div class="panel-head" style="margin-top:6px"><h2>${bc('health.title', 'Certification health')}</h2><span class="meta">${bc('health.note', '')}</span></div>
+        <div class="pil-summary-grid">
+          <div class="pil-summary-cell"><div class="pil-summary-num">${certs.length}</div><span class="pil-summary-label">${bc('health.total', 'Certificates tracked')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${health.valid}</div><span class="pil-summary-label">${bc('health.valid', 'Valid')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${health.expiring}</div><span class="pil-summary-label">${bc('health.expiring', 'Expiring within 90 days')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${health.expired}</div><span class="pil-summary-label">${bc('health.expired', 'Expired')}</span></div>
+          <div class="pil-summary-cell"><div class="pil-summary-num">${health.needsReview}</div><span class="pil-summary-label">${bc('health.needsReview', 'Needs review')}</span></div>
+        </div>
+
+        <div class="grid split" style="margin-top:18px">
+          <div class="card panel" style="grid-column: span 2">
+            <div class="panel-head"><h2>${esc(bt('certActiveTitle'))} (${certs.length})</h2></div>
+            ${certs.length ? `<div class="table-wrap"><table>
+              <thead><tr>
+                <th>${bc('table.standard', 'Standard')}</th>
+                <th>${bc('table.number', 'Certificate number')}</th>
+                <th>${bc('table.issuer', 'Issuer')}</th>
+                <th>${bc('table.owner', 'Owner')}</th>
+                <th>${bc('table.expires', 'Expires')}</th>
+                <th>${bc('table.status', 'Status')}</th>
+                <th>${bc('table.health', 'Health')}</th>
+                <th>${bc('table.verifications', 'Verifications')}</th>
+                <th style="text-align:right"></th>
+              </tr></thead>
+              <tbody>
+                ${certs.map((c) => `<tr>
+                  <td><strong>${esc(c.name)}</strong>${c.code ? `<div class="meta">${esc(c.code)}</div>` : ''}</td>
+                  <td>${c.number ? `<code>${esc(c.number)}</code>` : '—'}</td>
+                  <td>${esc(c.issuer || '—')}</td>
+                  <td>${esc(c.ownerName || bc(c.ownedByBrand ? 'owner.brand' : 'owner.supplier', ''))}</td>
+                  <td>${c.expires ? date(c.expires) : '—'}</td>
+                  <td><span class="meta">${esc(certStatusLabel(c.status))}</span></td>
+                  <td>${certHealthBadge(certHealth(c))}</td>
+                  <td>${c.verificationCount}</td>
+                  <td style="text-align:right"><div class="actions" style="justify-content:flex-end">
+                    ${c.ownedByBrand && c.id ? `<button class="btn btn-secondary btn-small" data-action="cert-review" data-cert-id="${esc(c.id)}">${bc('review.cta', 'Review')}</button>` : ''}
+                  </div></td>
+                </tr>${certReviewRow(c)}`).join('')}
+              </tbody>
+            </table></div>` : `<div class="empty"><div class="empty-icon">🛡</div><strong>${bc('empty.title', 'No certification tracked yet')}</strong><p>${bc('empty.sub', '')}</p></div>`}
           </div>
         </div>
-        <div class="grid split">
-          <div class="card panel">
-            <div class="panel-head"><h2>${esc(bt('certActiveTitle'))}</h2></div>
-            <div class="table-wrap cert-table">
-              <table>
-                <thead>
-                  <tr><th>${esc(bt('certColStandard'))}</th><th>${esc(bt('certColNumber'))}</th><th>${esc(bt('certColIssuer'))}</th><th>${esc(bt('certColExpiry'))}</th><th>${esc(bt('certColStatus'))}</th></tr>
-                </thead>
-                <tbody>
-                  ${certs.length ? certs.map((c) => `<tr>
-                    <td><strong>${esc(c.standard)}</strong></td>
-                    <td><code>${esc(c.number)}</code></td>
-                    <td>${esc(c.issuer)}</td>
-                    <td>${esc(c.expires)}</td>
-                    <td>${certStatut(c)}</td>
-                  </tr>`).join('') : `<tr><td colspan="5" class="empty">${esc(bt('certNone'))}</td></tr>`}
-                </tbody>
-              </table>
-            </div>
-          </div>
+
+        <div class="grid split" style="margin-top:18px">
           <div class="card panel">
             <div class="panel-head"><h2>${esc(bt('certWatchTitle'))}</h2></div>
             <div style="font-size:12.5px;color:var(--muted);display:grid;gap:12px;">
               ${(() => {
-                const bientot = certs.filter((c) => certJours(c) <= 90).sort((a, b) => certJours(a) - certJours(b));
-                if (!bientot.length) return `<p>${esc(bt('certWatchNone'))}</p>`;
+                const bientot = certs.filter((c) => { const j = certJours({ expires: c.expires }); return c.expires && j <= 90; }).sort((a, b) => certJours({ expires: a.expires }) - certJours({ expires: b.expires }));
+                if (!bientot.length) return `<p>${bc('watch.none', 'No certification expires within 90 days.')}</p>`;
                 const t = bientot[0];
-                return `<p><strong>${bientot.length}</strong> ${esc(bt('certWatchCount'))}<br>
-                  ${esc(bt('certNextRenewal'))} : <strong>${esc(t.standard)}</strong> — ${certJours(t)} ${esc(bt('certDaysLeft'))}.</p>`;
+                return `<p><strong>${bientot.length}</strong> ${bc('watch.count', 'certification(s) expire within 90 days.')}<br>
+                  ${bc('watch.next', 'Next renewal')} : <strong>${esc(t.name)}</strong> — ${certJours({ expires: t.expires })} ${bc('watch.daysLeft', 'day(s) left')}.</p>`;
               })()}
               <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);">
-                <strong style="color:var(--green-dark);">${esc(bt('certRuleTitle'))}</strong>
-                <div style="font-size:11px;margin-top:4px;">${esc(bt('certRuleBody'))}</div>
+                <strong style="color:var(--green-dark);">${bc('watch.ruleTitle', '')}</strong>
+                <div style="font-size:11px;margin-top:4px;">${bc('watch.ruleBody', '')}</div>
               </div>
             </div>
           </div>
+          <div class="card panel">
+            <div class="panel-head"><h2>${bc('coverage.title', 'Catalog coverage')}</h2></div>
+            <p class="meta" style="margin-top:0">${bc('coverage.note', '')}</p>
+            ${standards.length ? `<p><strong>${covered.length}</strong> ${bc('coverage.covered', '')} · <strong>${uncovered.length}</strong> ${bc('coverage.uncovered', '')}</p>
+              ${uncovered.length ? `<div class="meta" style="display:flex;flex-wrap:wrap;gap:6px">${uncovered.map((s) => `<span class="cert-pill">${esc(s.code)}</span>`).join('')}</div>` : `<p class="meta">${bc('coverage.none', '')}</p>`}` : `<p class="meta">—</p>`}
+          </div>
+        </div>
+
+        <div class="card panel" style="margin-top:18px">
+          <div class="panel-head"><h2>${bc('declare.title', 'Declare a certification')}</h2></div>
+          <form id="cert-declare-form" class="form-grid">
+            <label>${bc('declare.standard', 'Standard name')}<input class="input" name="standardName" maxlength="240" required list="cert-standards-list">${certificateDocs.length || standards.length ? `<datalist id="cert-standards-list">${standards.map((s) => `<option value="${esc(s.name)}">`).join('')}</datalist>` : ''}</label>
+            <label>${bc('declare.standardCode', 'Standard code')}<input class="input" name="standardCode" maxlength="120"></label>
+            <label>${bc('declare.issuer', 'Issuer')}<input class="input" name="issuerName" maxlength="240"></label>
+            <label>${bc('declare.number', 'Certificate number')}<input class="input" name="certificateNumber" maxlength="180"></label>
+            <label>${bc('declare.issuedAt', 'Issued on')}<input class="input" name="issuedAt" type="date"></label>
+            <label>${bc('declare.expiresAt', 'Expires on')}<input class="input" name="expiresAt" type="date"></label>
+            <label class="field-full">${bc('declare.document', 'Supporting evidence')}<select class="select" name="documentId"><option value="">${bc('declare.documentNone', 'No evidence yet')}</option>${certificateDocs.map((d) => `<option value="${esc(d.id)}">${esc(d.originalFilename)}</option>`).join('')}</select></label>
+            <div class="form-actions field-full"><button class="btn btn-primary" type="submit">${bc('declare.cta', 'Declare')}</button></div>
+          </form>
         </div>`;
+      }
+
+      async function refreshCertifications() {
+        if (state.demo) return;
+        try {
+          const result = await api('/api/certifications');
+          state.certifications = result.certifications || [];
+          render();
+        } catch (error) {
+          notify(error.message, true);
+        }
+      }
+
+      async function declareCertification(form) {
+        const data = Object.fromEntries(new FormData(form));
+        if (!data.standardName?.trim()) throw new Error('invalid_certification_standard_name');
+        if (state.demo) {
+          state.certifications.unshift({ id: `demo-cert-${Date.now()}`, standard: data.standardName.trim(), standardCode: data.standardCode || null, number: data.certificateNumber || null, issuer: data.issuerName || null, issued: data.issuedAt || null, expires: data.expiresAt || null, status: data.documentId ? 'documented' : 'declared', ownedByBrand: true, verificationCount: 0 });
+          notify(bc('declare.successDemo', 'Demonstration mode: certification added locally.'));
+          render();
+          return;
+        }
+        await api('/api/certifications', { method: 'POST', body: JSON.stringify({
+          standardName: data.standardName.trim(),
+          standardCode: data.standardCode || undefined,
+          issuerName: data.issuerName || undefined,
+          certificateNumber: data.certificateNumber || undefined,
+          issuedAt: data.issuedAt || undefined,
+          expiresAt: data.expiresAt || undefined,
+          documentId: data.documentId || undefined,
+        }) });
+        await refreshCertifications();
+        notify(bc('declare.success', 'Certification declared.'));
+      }
+
+      async function reviewCertification(form) {
+        const id = form.dataset.reviewId;
+        const data = Object.fromEntries(new FormData(form));
+        if (!data.method?.trim()) throw new Error('verification_method_required');
+        if (state.demo) {
+          const cert = (state.certifications || []).find((c) => c.id === id);
+          if (cert) {
+            cert.status = data.verificationStatus === 'passed' ? 'verified_by_reviewer' : data.verificationStatus === 'expired' ? 'expired' : 'needs_review';
+            cert.lastVerifiedAt = new Date().toISOString();
+          }
+          state.certReview = null;
+          notify(bc('review.successDemo', 'Demonstration mode: review applied locally.'));
+          render();
+          return;
+        }
+        await api(`/api/certifications/${encodeURIComponent(id)}/review`, { method: 'POST', body: JSON.stringify({ verificationStatus: data.verificationStatus, method: data.method.trim(), notes: data.notes || undefined }) });
+        state.certReview = null;
+        await refreshCertifications();
+        notify(bc('review.success', 'Review recorded.'));
       }
 
       // dppConsoleView a ete supprimee au chantier 8. La fonction n'etait
@@ -3085,12 +3251,12 @@
             <button class="btn btn-secondary btn-small" data-view="documents">${bit('evidence.openDocuments', 'Open documents')}</button>
           </div>`;
 
-        /* -- lentille Certifications : niveau organisation, assume ----------- */
-        const certs = state.certifications || [];
+        /* -- lentille Certifications : niveau organisation, forme normalisee -- */
+        const certs = (state.certifications || []).map(certNorm);
         const certificationsLens = `
           <p class="pil-note">${bit('certifications.orgNote', '')}</p>
-          ${certs.length ? `<div class="table-wrap"><table><thead><tr><th>Standard</th><th>Numero</th><th>Emetteur</th><th>Expiration</th></tr></thead><tbody>
-            ${certs.map((c) => `<tr><td><strong>${esc(c.standard)}</strong></td><td class="meta">${esc(c.number || '—')}</td><td>${esc(c.issuer || '—')}</td><td>${date(c.expires)}</td></tr>`).join('')}
+          ${certs.length ? `<div class="table-wrap"><table><thead><tr><th>${bc('table.standard', 'Standard')}</th><th>${bc('table.number', 'Certificate number')}</th><th>${bc('table.issuer', 'Issuer')}</th><th>${bc('table.expires', 'Expires')}</th><th>${bc('table.health', 'Health')}</th></tr></thead><tbody>
+            ${certs.map((c) => `<tr><td><strong>${esc(c.name)}</strong></td><td class="meta">${esc(c.number || '—')}</td><td>${esc(c.issuer || '—')}</td><td>${c.expires ? date(c.expires) : '—'}</td><td>${certHealthBadge(certHealth(c))}</td></tr>`).join('')}
           </tbody></table></div>` : `<div class="empty"><p>${bit('certifications.none', 'No certification declared yet.')}</p></div>`}
           <div class="actions" style="margin-top:16px"><button class="btn btn-secondary btn-small" data-view="certifications">${bit('certifications.openCerts', 'Open certifications')}</button></div>`;
 
@@ -4815,6 +4981,7 @@
             if (action === 'evidence-download') await downloadEvidence(el.dataset.evidenceId);
             if (action === 'evidence-scan') await scanEvidence(el.dataset.evidenceId);
             if (action === 'evidence-report') await openEvidenceReport(el.dataset.evidenceId, el.dataset.reportKind);
+            if (action === 'cert-review') { const id = el.dataset.certId; state.certReview = state.certReview?.id === id ? null : { id }; render(); }
             if (action === 'catalog-export') await exportCatalog();
             if (action === 'audit-export') await exportAudit();
             if (action === 'preview-catalog-import') await previewCatalogImport();
@@ -4876,6 +5043,8 @@
         document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('schema-binding-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveSchemaBinding(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('evidence-upload-form')?.addEventListener('submit', (e) => { e.preventDefault(); const form = e.currentTarget; uploadEvidence(form).then(() => form.reset()).catch((err) => notify(err.message, true)); });
+        document.getElementById('cert-declare-form')?.addEventListener('submit', (e) => { e.preventDefault(); const form = e.currentTarget; declareCertification(form).then(() => form.reset()).catch((err) => notify(err.message, true)); });
+        document.querySelectorAll('.cert-review-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); reviewCertification(e.currentTarget).catch((err) => notify(err.message, true)); }));
         document.getElementById('material-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); }));
         document.getElementById('identifier-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveIdentifier(e.currentTarget).catch((err) => notify(err.message, true)); });

@@ -2653,5 +2653,93 @@
       "note": "Certificati, rapporti di prova e prove di origine sono gestiti nel Centro prove.",
       "cta": "Apri il centro prove"
     }
+  },
+  "certifications": {
+    "health": {
+      "title": "Stato delle certificazioni",
+      "note": "Categorie derivate dagli stati registrati e dalle date di scadenza — nessun dato simulato.",
+      "total": "Certificati monitorati",
+      "valid": "Validi",
+      "expiring": "In scadenza entro 90 giorni",
+      "expired": "Scaduti",
+      "needsReview": "Da verificare"
+    },
+    "table": {
+      "standard": "Standard",
+      "number": "Numero di certificato",
+      "issuer": "Ente",
+      "owner": "Proprietario",
+      "issued": "Rilasciato",
+      "expires": "Scade",
+      "status": "Stato",
+      "health": "Salute",
+      "verifications": "Verifiche"
+    },
+    "owner": {
+      "brand": "La nostra organizzazione",
+      "supplier": "Fornitore"
+    },
+    "watch": {
+      "title": "Monitoraggio scadenze",
+      "none": "Nessuna certificazione scade entro 90 giorni.",
+      "count": "certificazioni scadono entro 90 giorni.",
+      "next": "Prossimo rinnovo",
+      "daysLeft": "giorno/i rimanenti",
+      "ruleTitle": "Come funziona il monitoraggio",
+      "ruleBody": "Il monitoraggio delle scadenze è derivato dalle date dichiarate. I rinnovi restano responsabilità della vostra organizzazione; TRACEFAB prepara e monitora, senza garantire la conformità normativa."
+    },
+    "coverage": {
+      "title": "Copertura del catalogo",
+      "note": "Confronto informativo con il catalogo versionato delle certificazioni — non un requisito di conformità.",
+      "covered": "standard del catalogo coperti da almeno un certificato",
+      "uncovered": "standard del catalogo senza certificato",
+      "none": "Ogni standard del catalogo è coperto da almeno un certificato."
+    },
+    "declare": {
+      "title": "Dichiara una certificazione",
+      "standard": "Nome dello standard",
+      "standardCode": "Codice standard",
+      "issuer": "Ente",
+      "number": "Numero di certificato",
+      "issuedAt": "Rilasciato il",
+      "expiresAt": "Scade il",
+      "document": "Prova a supporto",
+      "documentNone": "Nessuna prova per ora (solo dichiarazione)",
+      "cta": "Dichiara",
+      "success": "Certificazione dichiarata.",
+      "successDemo": "Modalità dimostrazione: certificazione aggiunta localmente."
+    },
+    "review": {
+      "cta": "Verifica",
+      "title": "Verifica umana",
+      "status": "Decisione",
+      "method": "Metodo",
+      "notes": "Note",
+      "note": "La verifica è sempre decisa da una persona — TRACEFAB non promuove mai automaticamente un certificato.",
+      "success": "Verifica registrata.",
+      "successDemo": "Modalità dimostrazione: verifica applicata localmente.",
+      "statuses": {
+        "passed": "Conforme",
+        "failed": "Non conforme",
+        "needs_review": "Da verificare",
+        "expired": "Scaduto"
+      }
+    },
+    "empty": {
+      "title": "Nessuna certificazione monitorata",
+      "sub": "Dichiara qui i tuoi certificati; i certificati dei fornitori compaiono automaticamente quando le relazioni sono attive."
+    },
+    "statuses": {
+      "declared": "Dichiarata",
+      "documented": "Documentata",
+      "checked_for_consistency": "Coerenza verificata",
+      "verified_by_reviewer": "Verificata da un revisore",
+      "certified_by_third_party": "Certificata da terze parti",
+      "expired": "Scaduta",
+      "needs_review": "Da verificare"
+    },
+    "detail": {
+      "lastVerified": "Ultima verifica"
+    }
   }
 }

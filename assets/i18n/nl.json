@@ -2653,5 +2653,93 @@
       "note": "Certificaten, testrapporten en herkomstbewijzen worden beheerd in het bewijscentrum.",
       "cta": "Bewijscentrum openen"
     }
+  },
+  "certifications": {
+    "health": {
+      "title": "Certificeringsstatus",
+      "note": "Categorieën afgeleid uit geregistreerde statussen en vervaldatums — geen gesimuleerde gegevens.",
+      "total": "Gevolgde certificaten",
+      "valid": "Geldig",
+      "expiring": "Verlopen binnen 90 dagen",
+      "expired": "Verlopen",
+      "needsReview": "Controle vereist"
+    },
+    "table": {
+      "standard": "Standaard",
+      "number": "Certificaatnummer",
+      "issuer": "Uitgever",
+      "owner": "Eigenaar",
+      "issued": "Uitgegeven",
+      "expires": "Verloopt",
+      "status": "Status",
+      "health": "Gezondheid",
+      "verifications": "Verificaties"
+    },
+    "owner": {
+      "brand": "Onze organisatie",
+      "supplier": "Leverancier"
+    },
+    "watch": {
+      "title": "Vervalbewaking",
+      "none": "Geen certificaat verloopt binnen 90 dagen.",
+      "count": "certificaat/certificaten verlopen binnen 90 dagen.",
+      "next": "Volgende verlenging",
+      "daysLeft": "dag(en) resterend",
+      "ruleTitle": "Zo werkt de vervalbewaking",
+      "ruleBody": "De vervalbewaking is afgeleid van de opgegeven vervaldatums. Verlengingen blijven de verantwoordelijkheid van uw organisatie; TRACEFAB bereidt voor en volgt op, maar garandeert geen regelgevingsconformiteit."
+    },
+    "coverage": {
+      "title": "Catalogusdekking",
+      "note": "Informatieve vergelijking met de geversioneerde certificeringscatalogus — geen conformiteitsvereiste.",
+      "covered": "catalogusstandaard(en) gedekt door minstens één certificaat",
+      "uncovered": "catalogusstandaard(en) zonder certificaat",
+      "none": "Elke catalogusstandaard is gedekt door minstens één certificaat."
+    },
+    "declare": {
+      "title": "Certificering declareren",
+      "standard": "Naam van de standaard",
+      "standardCode": "Standaardcode",
+      "issuer": "Uitgever",
+      "number": "Certificaatnummer",
+      "issuedAt": "Uitgegeven op",
+      "expiresAt": "Verloopt op",
+      "document": "Ondersteunend bewijs",
+      "documentNone": "Nog geen bewijs (alleen declaratie)",
+      "cta": "Declareren",
+      "success": "Certificering gedeclareerd.",
+      "successDemo": "Demonstratiemodus: certificering lokaal toegevoegd."
+    },
+    "review": {
+      "cta": "Beoordelen",
+      "title": "Menselijke beoordeling",
+      "status": "Beslissing",
+      "method": "Methode",
+      "notes": "Notities",
+      "note": "Verificatie wordt altijd door een mens beslist — TRACEFAB waardeert nooit automatisch een certificaat op.",
+      "success": "Beoordeling vastgelegd.",
+      "successDemo": "Demonstratiemodus: beoordeling lokaal toegepast.",
+      "statuses": {
+        "passed": "Goedgekeurd",
+        "failed": "Afgekeurd",
+        "needs_review": "Controle vereist",
+        "expired": "Verlopen"
+      }
+    },
+    "empty": {
+      "title": "Nog geen certificering gevolgd",
+      "sub": "Declareer hieronder uw eigen certificaten; leverancierscertificaten verschijnen automatisch zodra leveranciersrelaties actief zijn."
+    },
+    "statuses": {
+      "declared": "Gedeclareerd",
+      "documented": "Gedocumenteerd",
+      "checked_for_consistency": "Consistentie gecontroleerd",
+      "verified_by_reviewer": "Geverifieerd door een beoordelaar",
+      "certified_by_third_party": "Gecertificeerd door derde partij",
+      "expired": "Verlopen",
+      "needs_review": "Controle vereist"
+    },
+    "detail": {
+      "lastVerified": "Laatste verificatie"
+    }
   }
 }

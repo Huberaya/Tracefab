@@ -2653,5 +2653,93 @@
       "note": "Certificats, rapports de test et preuves d’origine sont gérés dans le Centre de preuves.",
       "cta": "Ouvrir le centre de preuves"
     }
+  },
+  "certifications": {
+    "health": {
+      "title": "Santé des certifications",
+      "note": "Catégories dérivées des statuts enregistrés et des dates d'expiration — aucune donnée simulée.",
+      "total": "Certificats suivis",
+      "valid": "Valides",
+      "expiring": "Expirent sous 90 jours",
+      "expired": "Expirés",
+      "needsReview": "À vérifier"
+    },
+    "table": {
+      "standard": "Référentiel",
+      "number": "Numéro de certificat",
+      "issuer": "Organisme",
+      "owner": "Propriétaire",
+      "issued": "Délivré le",
+      "expires": "Expire le",
+      "status": "Statut",
+      "health": "Santé",
+      "verifications": "Vérifications"
+    },
+    "owner": {
+      "brand": "Notre organisation",
+      "supplier": "Fournisseur"
+    },
+    "watch": {
+      "title": "Veille d'expiration",
+      "none": "Aucune certification n'expire sous 90 jours.",
+      "count": "certification(s) expirent sous 90 jours.",
+      "next": "Prochain renouvellement",
+      "daysLeft": "jour(s) restant(s)",
+      "ruleTitle": "Fonctionnement de la veille",
+      "ruleBody": "La veille d'expiration est dérivée des dates d'expiration déclarées. Le renouvellement reste sous la responsabilité de votre organisation ; TRACEFAB prépare et suit, sans garantir la conformité réglementaire."
+    },
+    "coverage": {
+      "title": "Couverture du catalogue",
+      "note": "Comparaison informative avec le catalogue versionné des référentiels — pas une exigence de conformité.",
+      "covered": "référentiel(s) du catalogue couvert(s) par au moins un certificat",
+      "uncovered": "référentiel(s) du catalogue sans certificat",
+      "none": "Chaque référentiel du catalogue est couvert par au moins un certificat."
+    },
+    "declare": {
+      "title": "Déclarer une certification",
+      "standard": "Nom du référentiel",
+      "standardCode": "Code du référentiel",
+      "issuer": "Organisme",
+      "number": "Numéro de certificat",
+      "issuedAt": "Délivré le",
+      "expiresAt": "Expire le",
+      "document": "Preuve associée",
+      "documentNone": "Pas encore de preuve (déclaration seule)",
+      "cta": "Déclarer",
+      "success": "Certification déclarée.",
+      "successDemo": "Mode démonstration : certification ajoutée localement."
+    },
+    "review": {
+      "cta": "Vérifier",
+      "title": "Vérification humaine",
+      "status": "Décision",
+      "method": "Méthode",
+      "notes": "Notes",
+      "note": "La vérification est toujours décidée par un humain — TRACEFAB ne promeut jamais un certificat automatiquement.",
+      "success": "Vérification enregistrée.",
+      "successDemo": "Mode démonstration : vérification appliquée localement.",
+      "statuses": {
+        "passed": "Conforme",
+        "failed": "Non conforme",
+        "needs_review": "À vérifier",
+        "expired": "Expiré"
+      }
+    },
+    "empty": {
+      "title": "Aucune certification suivie pour l'instant",
+      "sub": "Déclarez vos certificats ci-dessous ; les certificats fournisseurs apparaissent automatiquement dès que les relations fournisseurs sont actives."
+    },
+    "statuses": {
+      "declared": "Déclarée",
+      "documented": "Documentée",
+      "checked_for_consistency": "Cohérence contrôlée",
+      "verified_by_reviewer": "Vérifiée par un réviseur",
+      "certified_by_third_party": "Certifiée par un tiers",
+      "expired": "Expirée",
+      "needs_review": "À vérifier"
+    },
+    "detail": {
+      "lastVerified": "Dernière vérification"
+    }
   }
 }

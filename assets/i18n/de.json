@@ -2653,5 +2653,93 @@
       "note": "Zertifikate, Prüfberichte und Herkunftsnachweise werden im Nachweiszentrum verwaltet.",
       "cta": "Nachweiszentrum öffnen"
     }
+  },
+  "certifications": {
+    "health": {
+      "title": "Zertifizierungsstatus",
+      "note": "Kategorien aus erfassten Statuswerten und Ablaufdaten abgeleitet — keine simulierten Daten.",
+      "total": "Erfasste Zertifikate",
+      "valid": "Gültig",
+      "expiring": "Laufen innerhalb von 90 Tagen ab",
+      "expired": "Abgelaufen",
+      "needsReview": "Prüfung erforderlich"
+    },
+    "table": {
+      "standard": "Standard",
+      "number": "Zertifikatsnummer",
+      "issuer": "Aussteller",
+      "owner": "Eigentümer",
+      "issued": "Ausgestellt",
+      "expires": "Läuft ab",
+      "status": "Status",
+      "health": "Zustand",
+      "verifications": "Verifizierungen"
+    },
+    "owner": {
+      "brand": "Unsere Organisation",
+      "supplier": "Lieferant"
+    },
+    "watch": {
+      "title": "Ablaufüberwachung",
+      "none": "Kein Zertifikat läuft innerhalb von 90 Tagen ab.",
+      "count": "Zertifikat(e) laufen innerhalb von 90 Tagen ab.",
+      "next": "Nächste Verlängerung",
+      "daysLeft": "Tag(e) verbleibend",
+      "ruleTitle": "So funktioniert die Ablaufüberwachung",
+      "ruleBody": "Die Ablaufüberwachung wird aus den erklärten Ablaufdaten abgeleitet. Verlängerungen bleiben Verantwortung Ihrer Organisation; TRACEFAB bereitet vor und verfolgt, garantiert aber keine regulatorische Konformität."
+    },
+    "coverage": {
+      "title": "Katalogabdeckung",
+      "note": "Informativer Vergleich mit dem versionierten Zertifizierungskatalog — keine Konformitätsanforderung.",
+      "covered": "Katalogstandard(s) mit mindestens einem Zertifikat abgedeckt",
+      "uncovered": "Katalogstandard(s) ohne Zertifikat",
+      "none": "Jeder Katalogstandard ist durch mindestens ein Zertifikat abgedeckt."
+    },
+    "declare": {
+      "title": "Zertifizierung erklären",
+      "standard": "Name des Standards",
+      "standardCode": "Standardcode",
+      "issuer": "Aussteller",
+      "number": "Zertifikatsnummer",
+      "issuedAt": "Ausgestellt am",
+      "expiresAt": "Gültig bis",
+      "document": "Beleg",
+      "documentNone": "Noch kein Beleg (nur Erklärung)",
+      "cta": "Erklären",
+      "success": "Zertifizierung erklärt.",
+      "successDemo": "Demonstrationsmodus: Zertifizierung lokal hinzugefügt."
+    },
+    "review": {
+      "cta": "Prüfen",
+      "title": "Menschliche Prüfung",
+      "status": "Entscheidung",
+      "method": "Methode",
+      "notes": "Notizen",
+      "note": "Die Verifizierung wird immer von einem Menschen entschieden — TRACEFAB stuft nie automatisch ein Zertifikat herauf.",
+      "success": "Prüfung erfasst.",
+      "successDemo": "Demonstrationsmodus: Prüfung lokal angewendet.",
+      "statuses": {
+        "passed": "Bestanden",
+        "failed": "Nicht bestanden",
+        "needs_review": "Prüfung erforderlich",
+        "expired": "Abgelaufen"
+      }
+    },
+    "empty": {
+      "title": "Noch keine Zertifizierung erfasst",
+      "sub": "Erklären Sie unten Ihre eigenen Zertifikate; Lieferantenzertifikate erscheinen automatisch, sobald Lieferantenbeziehungen aktiv sind."
+    },
+    "statuses": {
+      "declared": "Erklärt",
+      "documented": "Belegt",
+      "checked_for_consistency": "Konsistenz geprüft",
+      "verified_by_reviewer": "Von Prüfer verifiziert",
+      "certified_by_third_party": "Von Dritter Seite zertifiziert",
+      "expired": "Abgelaufen",
+      "needs_review": "Prüfung erforderlich"
+    },
+    "detail": {
+      "lastVerified": "Letzte Verifizierung"
+    }
   }
 }

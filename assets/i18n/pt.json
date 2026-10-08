@@ -2653,5 +2653,93 @@
       "note": "Certificados, relatórios de teste e provas de origem são geridos na Central de evidências.",
       "cta": "Abrir a central de evidências"
     }
+  },
+  "certifications": {
+    "health": {
+      "title": "Estado das certificações",
+      "note": "Categorias derivadas dos estados registados e das datas de validade — sem dados simulados.",
+      "total": "Certificados acompanhados",
+      "valid": "Válidos",
+      "expiring": "Expiram em 90 dias",
+      "expired": "Expirados",
+      "needsReview": "Por verificar"
+    },
+    "table": {
+      "standard": "Norma",
+      "number": "Número do certificado",
+      "issuer": "Emissor",
+      "owner": "Proprietário",
+      "issued": "Emitido",
+      "expires": "Expira",
+      "status": "Estado",
+      "health": "Saúde",
+      "verifications": "Verificações"
+    },
+    "owner": {
+      "brand": "A nossa organização",
+      "supplier": "Fornecedor"
+    },
+    "watch": {
+      "title": "Vigilância de validade",
+      "none": "Nenhuma certificação expira em 90 dias.",
+      "count": "certificação(ões) expiram em 90 dias.",
+      "next": "Próxima renovação",
+      "daysLeft": "dia(s) restante(s)",
+      "ruleTitle": "Como funciona a vigilância",
+      "ruleBody": "A vigilância de validade é derivada das datas declaradas. As renovações continuam a ser responsabilidade da sua organização; o TRACEFAB prepara e acompanha, sem garantir a conformidade regulamentar."
+    },
+    "coverage": {
+      "title": "Cobertura do catálogo",
+      "note": "Comparação informativa com o catálogo versionado de certificações — não é um requisito de conformidade.",
+      "covered": "norma(s) do catálogo coberta(s) por pelo menos um certificado",
+      "uncovered": "norma(s) do catálogo sem certificado",
+      "none": "Todas as normas do catálogo estão cobertas por pelo menos um certificado."
+    },
+    "declare": {
+      "title": "Declarar uma certificação",
+      "standard": "Nome da norma",
+      "standardCode": "Código da norma",
+      "issuer": "Emissor",
+      "number": "Número do certificado",
+      "issuedAt": "Emitido em",
+      "expiresAt": "Expira em",
+      "document": "Prova associada",
+      "documentNone": "Ainda sem prova (apenas declaração)",
+      "cta": "Declarar",
+      "success": "Certificação declarada.",
+      "successDemo": "Modo demonstração: certificação adicionada localmente."
+    },
+    "review": {
+      "cta": "Rever",
+      "title": "Revisão humana",
+      "status": "Decisão",
+      "method": "Método",
+      "notes": "Notas",
+      "note": "A verificação é sempre decidida por uma pessoa — o TRACEFAB nunca promove automaticamente um certificado.",
+      "success": "Revisão registada.",
+      "successDemo": "Modo demonstração: revisão aplicada localmente.",
+      "statuses": {
+        "passed": "Conforme",
+        "failed": "Não conforme",
+        "needs_review": "Por verificar",
+        "expired": "Expirado"
+      }
+    },
+    "empty": {
+      "title": "Ainda nenhuma certificação acompanhada",
+      "sub": "Declare os seus certificados abaixo; os certificados de fornecedores aparecem automaticamente quando as relações estão ativas."
+    },
+    "statuses": {
+      "declared": "Declarada",
+      "documented": "Documentada",
+      "checked_for_consistency": "Consistência verificada",
+      "verified_by_reviewer": "Verificada por um revisor",
+      "certified_by_third_party": "Certificada por terceiros",
+      "expired": "Expirada",
+      "needs_review": "Por verificar"
+    },
+    "detail": {
+      "lastVerified": "Última verificação"
+    }
   }
 }

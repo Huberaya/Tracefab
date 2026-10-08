@@ -2529,5 +2529,93 @@ window.TF_I18N_BUNDLES.en = {
       "note": "Certificates, test reports and origin proofs are managed in the Evidence Center.",
       "cta": "Open the Evidence Center"
     }
+  },
+  "certifications": {
+    "health": {
+      "title": "Certification health",
+      "note": "Buckets derived from recorded statuses and expiry dates — no simulated data.",
+      "total": "Certificates tracked",
+      "valid": "Valid",
+      "expiring": "Expiring within 90 days",
+      "expired": "Expired",
+      "needsReview": "Needs review"
+    },
+    "table": {
+      "standard": "Standard",
+      "number": "Certificate number",
+      "issuer": "Issuer",
+      "owner": "Owner",
+      "issued": "Issued",
+      "expires": "Expires",
+      "status": "Status",
+      "health": "Health",
+      "verifications": "Verifications"
+    },
+    "owner": {
+      "brand": "Our organization",
+      "supplier": "Supplier"
+    },
+    "watch": {
+      "title": "Expiry watch",
+      "none": "No certification expires within 90 days.",
+      "count": "certification(s) expire within 90 days.",
+      "next": "Next renewal",
+      "daysLeft": "day(s) left",
+      "ruleTitle": "How renewal watch works",
+      "ruleBody": "The expiry watch is derived from declared expiry dates. Renewals remain your organization's responsibility; TRACEFAB prepares and tracks, it does not guarantee regulatory compliance."
+    },
+    "coverage": {
+      "title": "Catalog coverage",
+      "note": "Informational comparison against the versioned certification catalog — not a compliance requirement.",
+      "covered": "catalog standard(s) covered by at least one certificate",
+      "uncovered": "catalog standard(s) without a certificate",
+      "none": "Every catalog standard is covered by at least one certificate."
+    },
+    "declare": {
+      "title": "Declare a certification",
+      "standard": "Standard name",
+      "standardCode": "Standard code",
+      "issuer": "Issuer",
+      "number": "Certificate number",
+      "issuedAt": "Issued on",
+      "expiresAt": "Expires on",
+      "document": "Supporting evidence",
+      "documentNone": "No evidence yet (declaration only)",
+      "cta": "Declare",
+      "success": "Certification declared.",
+      "successDemo": "Demonstration mode: certification added locally."
+    },
+    "review": {
+      "cta": "Review",
+      "title": "Human review",
+      "status": "Decision",
+      "method": "Method",
+      "notes": "Notes",
+      "note": "Verification is always decided by a human — TRACEFAB never auto-promotes a certificate.",
+      "success": "Review recorded.",
+      "successDemo": "Demonstration mode: review applied locally.",
+      "statuses": {
+        "passed": "Passed",
+        "failed": "Failed",
+        "needs_review": "Needs review",
+        "expired": "Expired"
+      }
+    },
+    "empty": {
+      "title": "No certification tracked yet",
+      "sub": "Declare your own certificates below; supplier certificates appear automatically once supplier relationships are active."
+    },
+    "statuses": {
+      "declared": "Declared",
+      "documented": "Documented",
+      "checked_for_consistency": "Consistency checked",
+      "verified_by_reviewer": "Verified by reviewer",
+      "certified_by_third_party": "Certified by third party",
+      "expired": "Expired",
+      "needs_review": "Needs review"
+    },
+    "detail": {
+      "lastVerified": "Last verification"
+    }
   }
 };

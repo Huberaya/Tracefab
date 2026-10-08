@@ -1,0 +1,618 @@
+{
+  "en": {
+    "health": {
+      "title": "Certification health",
+      "note": "Buckets derived from recorded statuses and expiry dates — no simulated data.",
+      "total": "Certificates tracked",
+      "valid": "Valid",
+      "expiring": "Expiring within 90 days",
+      "expired": "Expired",
+      "needsReview": "Needs review"
+    },
+    "table": {
+      "standard": "Standard",
+      "number": "Certificate number",
+      "issuer": "Issuer",
+      "owner": "Owner",
+      "issued": "Issued",
+      "expires": "Expires",
+      "status": "Status",
+      "health": "Health",
+      "verifications": "Verifications"
+    },
+    "owner": {
+      "brand": "Our organization",
+      "supplier": "Supplier"
+    },
+    "watch": {
+      "title": "Expiry watch",
+      "none": "No certification expires within 90 days.",
+      "count": "certification(s) expire within 90 days.",
+      "next": "Next renewal",
+      "daysLeft": "day(s) left",
+      "ruleTitle": "How renewal watch works",
+      "ruleBody": "The expiry watch is derived from declared expiry dates. Renewals remain your organization's responsibility; TRACEFAB prepares and tracks, it does not guarantee regulatory compliance."
+    },
+    "coverage": {
+      "title": "Catalog coverage",
+      "note": "Informational comparison against the versioned certification catalog — not a compliance requirement.",
+      "covered": "catalog standard(s) covered by at least one certificate",
+      "uncovered": "catalog standard(s) without a certificate",
+      "none": "Every catalog standard is covered by at least one certificate."
+    },
+    "declare": {
+      "title": "Declare a certification",
+      "standard": "Standard name",
+      "standardCode": "Standard code",
+      "issuer": "Issuer",
+      "number": "Certificate number",
+      "issuedAt": "Issued on",
+      "expiresAt": "Expires on",
+      "document": "Supporting evidence",
+      "documentNone": "No evidence yet (declaration only)",
+      "cta": "Declare",
+      "success": "Certification declared.",
+      "successDemo": "Demonstration mode: certification added locally."
+    },
+    "review": {
+      "cta": "Review",
+      "title": "Human review",
+      "status": "Decision",
+      "method": "Method",
+      "notes": "Notes",
+      "note": "Verification is always decided by a human — TRACEFAB never auto-promotes a certificate.",
+      "success": "Review recorded.",
+      "successDemo": "Demonstration mode: review applied locally.",
+      "statuses": {
+        "passed": "Passed",
+        "failed": "Failed",
+        "needs_review": "Needs review",
+        "expired": "Expired"
+      }
+    },
+    "empty": {
+      "title": "No certification tracked yet",
+      "sub": "Declare your own certificates below; supplier certificates appear automatically once supplier relationships are active."
+    },
+    "statuses": {
+      "declared": "Declared",
+      "documented": "Documented",
+      "checked_for_consistency": "Consistency checked",
+      "verified_by_reviewer": "Verified by reviewer",
+      "certified_by_third_party": "Certified by third party",
+      "expired": "Expired",
+      "needs_review": "Needs review"
+    },
+    "detail": {
+      "lastVerified": "Last verification"
+    }
+  },
+  "fr": {
+    "health": {
+      "title": "Santé des certifications",
+      "note": "Catégories dérivées des statuts enregistrés et des dates d'expiration — aucune donnée simulée.",
+      "total": "Certificats suivis",
+      "valid": "Valides",
+      "expiring": "Expirent sous 90 jours",
+      "expired": "Expirés",
+      "needsReview": "À vérifier"
+    },
+    "table": {
+      "standard": "Référentiel",
+      "number": "Numéro de certificat",
+      "issuer": "Organisme",
+      "owner": "Propriétaire",
+      "issued": "Délivré le",
+      "expires": "Expire le",
+      "status": "Statut",
+      "health": "Santé",
+      "verifications": "Vérifications"
+    },
+    "owner": {
+      "brand": "Notre organisation",
+      "supplier": "Fournisseur"
+    },
+    "watch": {
+      "title": "Veille d'expiration",
+      "none": "Aucune certification n'expire sous 90 jours.",
+      "count": "certification(s) expirent sous 90 jours.",
+      "next": "Prochain renouvellement",
+      "daysLeft": "jour(s) restant(s)",
+      "ruleTitle": "Fonctionnement de la veille",
+      "ruleBody": "La veille d'expiration est dérivée des dates d'expiration déclarées. Le renouvellement reste sous la responsabilité de votre organisation ; TRACEFAB prépare et suit, sans garantir la conformité réglementaire."
+    },
+    "coverage": {
+      "title": "Couverture du catalogue",
+      "note": "Comparaison informative avec le catalogue versionné des référentiels — pas une exigence de conformité.",
+      "covered": "référentiel(s) du catalogue couvert(s) par au moins un certificat",
+      "uncovered": "référentiel(s) du catalogue sans certificat",
+      "none": "Chaque référentiel du catalogue est couvert par au moins un certificat."
+    },
+    "declare": {
+      "title": "Déclarer une certification",
+      "standard": "Nom du référentiel",
+      "standardCode": "Code du référentiel",
+      "issuer": "Organisme",
+      "number": "Numéro de certificat",
+      "issuedAt": "Délivré le",
+      "expiresAt": "Expire le",
+      "document": "Preuve associée",
+      "documentNone": "Pas encore de preuve (déclaration seule)",
+      "cta": "Déclarer",
+      "success": "Certification déclarée.",
+      "successDemo": "Mode démonstration : certification ajoutée localement."
+    },
+    "review": {
+      "cta": "Vérifier",
+      "title": "Vérification humaine",
+      "status": "Décision",
+      "method": "Méthode",
+      "notes": "Notes",
+      "note": "La vérification est toujours décidée par un humain — TRACEFAB ne promeut jamais un certificat automatiquement.",
+      "success": "Vérification enregistrée.",
+      "successDemo": "Mode démonstration : vérification appliquée localement.",
+      "statuses": {
+        "passed": "Conforme",
+        "failed": "Non conforme",
+        "needs_review": "À vérifier",
+        "expired": "Expiré"
+      }
+    },
+    "empty": {
+      "title": "Aucune certification suivie pour l'instant",
+      "sub": "Déclarez vos certificats ci-dessous ; les certificats fournisseurs apparaissent automatiquement dès que les relations fournisseurs sont actives."
+    },
+    "statuses": {
+      "declared": "Déclarée",
+      "documented": "Documentée",
+      "checked_for_consistency": "Cohérence contrôlée",
+      "verified_by_reviewer": "Vérifiée par un réviseur",
+      "certified_by_third_party": "Certifiée par un tiers",
+      "expired": "Expirée",
+      "needs_review": "À vérifier"
+    },
+    "detail": {
+      "lastVerified": "Dernière vérification"
+    }
+  },
+  "de": {
+    "health": {
+      "title": "Zertifizierungsstatus",
+      "note": "Kategorien aus erfassten Statuswerten und Ablaufdaten abgeleitet — keine simulierten Daten.",
+      "total": "Erfasste Zertifikate",
+      "valid": "Gültig",
+      "expiring": "Laufen innerhalb von 90 Tagen ab",
+      "expired": "Abgelaufen",
+      "needsReview": "Prüfung erforderlich"
+    },
+    "table": {
+      "standard": "Standard",
+      "number": "Zertifikatsnummer",
+      "issuer": "Aussteller",
+      "owner": "Eigentümer",
+      "issued": "Ausgestellt",
+      "expires": "Läuft ab",
+      "status": "Status",
+      "health": "Zustand",
+      "verifications": "Verifizierungen"
+    },
+    "owner": {
+      "brand": "Unsere Organisation",
+      "supplier": "Lieferant"
+    },
+    "watch": {
+      "title": "Ablaufüberwachung",
+      "none": "Kein Zertifikat läuft innerhalb von 90 Tagen ab.",
+      "count": "Zertifikat(e) laufen innerhalb von 90 Tagen ab.",
+      "next": "Nächste Verlängerung",
+      "daysLeft": "Tag(e) verbleibend",
+      "ruleTitle": "So funktioniert die Ablaufüberwachung",
+      "ruleBody": "Die Ablaufüberwachung wird aus den erklärten Ablaufdaten abgeleitet. Verlängerungen bleiben Verantwortung Ihrer Organisation; TRACEFAB bereitet vor und verfolgt, garantiert aber keine regulatorische Konformität."
+    },
+    "coverage": {
+      "title": "Katalogabdeckung",
+      "note": "Informativer Vergleich mit dem versionierten Zertifizierungskatalog — keine Konformitätsanforderung.",
+      "covered": "Katalogstandard(s) mit mindestens einem Zertifikat abgedeckt",
+      "uncovered": "Katalogstandard(s) ohne Zertifikat",
+      "none": "Jeder Katalogstandard ist durch mindestens ein Zertifikat abgedeckt."
+    },
+    "declare": {
+      "title": "Zertifizierung erklären",
+      "standard": "Name des Standards",
+      "standardCode": "Standardcode",
+      "issuer": "Aussteller",
+      "number": "Zertifikatsnummer",
+      "issuedAt": "Ausgestellt am",
+      "expiresAt": "Gültig bis",
+      "document": "Beleg",
+      "documentNone": "Noch kein Beleg (nur Erklärung)",
+      "cta": "Erklären",
+      "success": "Zertifizierung erklärt.",
+      "successDemo": "Demonstrationsmodus: Zertifizierung lokal hinzugefügt."
+    },
+    "review": {
+      "cta": "Prüfen",
+      "title": "Menschliche Prüfung",
+      "status": "Entscheidung",
+      "method": "Methode",
+      "notes": "Notizen",
+      "note": "Die Verifizierung wird immer von einem Menschen entschieden — TRACEFAB stuft nie automatisch ein Zertifikat herauf.",
+      "success": "Prüfung erfasst.",
+      "successDemo": "Demonstrationsmodus: Prüfung lokal angewendet.",
+      "statuses": {
+        "passed": "Bestanden",
+        "failed": "Nicht bestanden",
+        "needs_review": "Prüfung erforderlich",
+        "expired": "Abgelaufen"
+      }
+    },
+    "empty": {
+      "title": "Noch keine Zertifizierung erfasst",
+      "sub": "Erklären Sie unten Ihre eigenen Zertifikate; Lieferantenzertifikate erscheinen automatisch, sobald Lieferantenbeziehungen aktiv sind."
+    },
+    "statuses": {
+      "declared": "Erklärt",
+      "documented": "Belegt",
+      "checked_for_consistency": "Konsistenz geprüft",
+      "verified_by_reviewer": "Von Prüfer verifiziert",
+      "certified_by_third_party": "Von Dritter Seite zertifiziert",
+      "expired": "Abgelaufen",
+      "needs_review": "Prüfung erforderlich"
+    },
+    "detail": {
+      "lastVerified": "Letzte Verifizierung"
+    }
+  },
+  "it": {
+    "health": {
+      "title": "Stato delle certificazioni",
+      "note": "Categorie derivate dagli stati registrati e dalle date di scadenza — nessun dato simulato.",
+      "total": "Certificati monitorati",
+      "valid": "Validi",
+      "expiring": "In scadenza entro 90 giorni",
+      "expired": "Scaduti",
+      "needsReview": "Da verificare"
+    },
+    "table": {
+      "standard": "Standard",
+      "number": "Numero di certificato",
+      "issuer": "Ente",
+      "owner": "Proprietario",
+      "issued": "Rilasciato",
+      "expires": "Scade",
+      "status": "Stato",
+      "health": "Salute",
+      "verifications": "Verifiche"
+    },
+    "owner": {
+      "brand": "La nostra organizzazione",
+      "supplier": "Fornitore"
+    },
+    "watch": {
+      "title": "Monitoraggio scadenze",
+      "none": "Nessuna certificazione scade entro 90 giorni.",
+      "count": "certificazioni scadono entro 90 giorni.",
+      "next": "Prossimo rinnovo",
+      "daysLeft": "giorno/i rimanenti",
+      "ruleTitle": "Come funziona il monitoraggio",
+      "ruleBody": "Il monitoraggio delle scadenze è derivato dalle date dichiarate. I rinnovi restano responsabilità della vostra organizzazione; TRACEFAB prepara e monitora, senza garantire la conformità normativa."
+    },
+    "coverage": {
+      "title": "Copertura del catalogo",
+      "note": "Confronto informativo con il catalogo versionato delle certificazioni — non un requisito di conformità.",
+      "covered": "standard del catalogo coperti da almeno un certificato",
+      "uncovered": "standard del catalogo senza certificato",
+      "none": "Ogni standard del catalogo è coperto da almeno un certificato."
+    },
+    "declare": {
+      "title": "Dichiara una certificazione",
+      "standard": "Nome dello standard",
+      "standardCode": "Codice standard",
+      "issuer": "Ente",
+      "number": "Numero di certificato",
+      "issuedAt": "Rilasciato il",
+      "expiresAt": "Scade il",
+      "document": "Prova a supporto",
+      "documentNone": "Nessuna prova per ora (solo dichiarazione)",
+      "cta": "Dichiara",
+      "success": "Certificazione dichiarata.",
+      "successDemo": "Modalità dimostrazione: certificazione aggiunta localmente."
+    },
+    "review": {
+      "cta": "Verifica",
+      "title": "Verifica umana",
+      "status": "Decisione",
+      "method": "Metodo",
+      "notes": "Note",
+      "note": "La verifica è sempre decisa da una persona — TRACEFAB non promuove mai automaticamente un certificato.",
+      "success": "Verifica registrata.",
+      "successDemo": "Modalità dimostrazione: verifica applicata localmente.",
+      "statuses": {
+        "passed": "Conforme",
+        "failed": "Non conforme",
+        "needs_review": "Da verificare",
+        "expired": "Scaduto"
+      }
+    },
+    "empty": {
+      "title": "Nessuna certificazione monitorata",
+      "sub": "Dichiara qui i tuoi certificati; i certificati dei fornitori compaiono automaticamente quando le relazioni sono attive."
+    },
+    "statuses": {
+      "declared": "Dichiarata",
+      "documented": "Documentata",
+      "checked_for_consistency": "Coerenza verificata",
+      "verified_by_reviewer": "Verificata da un revisore",
+      "certified_by_third_party": "Certificata da terze parti",
+      "expired": "Scaduta",
+      "needs_review": "Da verificare"
+    },
+    "detail": {
+      "lastVerified": "Ultima verifica"
+    }
+  },
+  "es": {
+    "health": {
+      "title": "Estado de las certificaciones",
+      "note": "Categorías derivadas de los estados registrados y las fechas de caducidad — sin datos simulados.",
+      "total": "Certificados supervisados",
+      "valid": "Válidos",
+      "expiring": "Caducan en 90 días",
+      "expired": "Caducados",
+      "needsReview": "Por revisar"
+    },
+    "table": {
+      "standard": "Norma",
+      "number": "Número de certificado",
+      "issuer": "Emisor",
+      "owner": "Propietario",
+      "issued": "Emitido",
+      "expires": "Caduca",
+      "status": "Estado",
+      "health": "Salud",
+      "verifications": "Verificaciones"
+    },
+    "owner": {
+      "brand": "Nuestra organización",
+      "supplier": "Proveedor"
+    },
+    "watch": {
+      "title": "Vigilancia de caducidades",
+      "none": "Ninguna certificación caduca en 90 días.",
+      "count": "certificación(es) caducan en 90 días.",
+      "next": "Próxima renovación",
+      "daysLeft": "día(s) restante(s)",
+      "ruleTitle": "Cómo funciona la vigilancia",
+      "ruleBody": "La vigilancia de caducidades se deriva de las fechas declaradas. Las renovaciones siguen siendo responsabilidad de su organización; TRACEFAB prepara y supervisa, sin garantizar el cumplimiento normativo."
+    },
+    "coverage": {
+      "title": "Cobertura del catálogo",
+      "note": "Comparación informativa con el catálogo versionado de certificaciones — no es un requisito de cumplimiento.",
+      "covered": "norma(s) del catálogo cubierta(s) por al menos un certificado",
+      "uncovered": "norma(s) del catálogo sin certificado",
+      "none": "Todas las normas del catálogo están cubiertas por al menos un certificado."
+    },
+    "declare": {
+      "title": "Declarar una certificación",
+      "standard": "Nombre de la norma",
+      "standardCode": "Código de la norma",
+      "issuer": "Emisor",
+      "number": "Número de certificado",
+      "issuedAt": "Emitido el",
+      "expiresAt": "Caduca el",
+      "document": "Prueba asociada",
+      "documentNone": "Sin prueba todavía (solo declaración)",
+      "cta": "Declarar",
+      "success": "Certificación declarada.",
+      "successDemo": "Modo demostración: certificación añadida localmente."
+    },
+    "review": {
+      "cta": "Revisar",
+      "title": "Revisión humana",
+      "status": "Decisión",
+      "method": "Método",
+      "notes": "Notas",
+      "note": "La verificación siempre la decide una persona — TRACEFAB nunca promociona automáticamente un certificado.",
+      "success": "Revisión registrada.",
+      "successDemo": "Modo demostración: revisión aplicada localmente.",
+      "statuses": {
+        "passed": "Conforme",
+        "failed": "No conforme",
+        "needs_review": "Por revisar",
+        "expired": "Caducado"
+      }
+    },
+    "empty": {
+      "title": "Aún no se supervisa ninguna certificación",
+      "sub": "Declare sus certificados aquí; los certificados de proveedores aparecen automáticamente cuando las relaciones están activas."
+    },
+    "statuses": {
+      "declared": "Declarada",
+      "documented": "Documentada",
+      "checked_for_consistency": "Coherencia comprobada",
+      "verified_by_reviewer": "Verificada por un revisor",
+      "certified_by_third_party": "Certificada por terceros",
+      "expired": "Caducada",
+      "needs_review": "Por revisar"
+    },
+    "detail": {
+      "lastVerified": "Última verificación"
+    }
+  },
+  "nl": {
+    "health": {
+      "title": "Certificeringsstatus",
+      "note": "Categorieën afgeleid uit geregistreerde statussen en vervaldatums — geen gesimuleerde gegevens.",
+      "total": "Gevolgde certificaten",
+      "valid": "Geldig",
+      "expiring": "Verlopen binnen 90 dagen",
+      "expired": "Verlopen",
+      "needsReview": "Controle vereist"
+    },
+    "table": {
+      "standard": "Standaard",
+      "number": "Certificaatnummer",
+      "issuer": "Uitgever",
+      "owner": "Eigenaar",
+      "issued": "Uitgegeven",
+      "expires": "Verloopt",
+      "status": "Status",
+      "health": "Gezondheid",
+      "verifications": "Verificaties"
+    },
+    "owner": {
+      "brand": "Onze organisatie",
+      "supplier": "Leverancier"
+    },
+    "watch": {
+      "title": "Vervalbewaking",
+      "none": "Geen certificaat verloopt binnen 90 dagen.",
+      "count": "certificaat/certificaten verlopen binnen 90 dagen.",
+      "next": "Volgende verlenging",
+      "daysLeft": "dag(en) resterend",
+      "ruleTitle": "Zo werkt de vervalbewaking",
+      "ruleBody": "De vervalbewaking is afgeleid van de opgegeven vervaldatums. Verlengingen blijven de verantwoordelijkheid van uw organisatie; TRACEFAB bereidt voor en volgt op, maar garandeert geen regelgevingsconformiteit."
+    },
+    "coverage": {
+      "title": "Catalogusdekking",
+      "note": "Informatieve vergelijking met de geversioneerde certificeringscatalogus — geen conformiteitsvereiste.",
+      "covered": "catalogusstandaard(en) gedekt door minstens één certificaat",
+      "uncovered": "catalogusstandaard(en) zonder certificaat",
+      "none": "Elke catalogusstandaard is gedekt door minstens één certificaat."
+    },
+    "declare": {
+      "title": "Certificering declareren",
+      "standard": "Naam van de standaard",
+      "standardCode": "Standaardcode",
+      "issuer": "Uitgever",
+      "number": "Certificaatnummer",
+      "issuedAt": "Uitgegeven op",
+      "expiresAt": "Verloopt op",
+      "document": "Ondersteunend bewijs",
+      "documentNone": "Nog geen bewijs (alleen declaratie)",
+      "cta": "Declareren",
+      "success": "Certificering gedeclareerd.",
+      "successDemo": "Demonstratiemodus: certificering lokaal toegevoegd."
+    },
+    "review": {
+      "cta": "Beoordelen",
+      "title": "Menselijke beoordeling",
+      "status": "Beslissing",
+      "method": "Methode",
+      "notes": "Notities",
+      "note": "Verificatie wordt altijd door een mens beslist — TRACEFAB waardeert nooit automatisch een certificaat op.",
+      "success": "Beoordeling vastgelegd.",
+      "successDemo": "Demonstratiemodus: beoordeling lokaal toegepast.",
+      "statuses": {
+        "passed": "Goedgekeurd",
+        "failed": "Afgekeurd",
+        "needs_review": "Controle vereist",
+        "expired": "Verlopen"
+      }
+    },
+    "empty": {
+      "title": "Nog geen certificering gevolgd",
+      "sub": "Declareer hieronder uw eigen certificaten; leverancierscertificaten verschijnen automatisch zodra leveranciersrelaties actief zijn."
+    },
+    "statuses": {
+      "declared": "Gedeclareerd",
+      "documented": "Gedocumenteerd",
+      "checked_for_consistency": "Consistentie gecontroleerd",
+      "verified_by_reviewer": "Geverifieerd door een beoordelaar",
+      "certified_by_third_party": "Gecertificeerd door derde partij",
+      "expired": "Verlopen",
+      "needs_review": "Controle vereist"
+    },
+    "detail": {
+      "lastVerified": "Laatste verificatie"
+    }
+  },
+  "pt": {
+    "health": {
+      "title": "Estado das certificações",
+      "note": "Categorias derivadas dos estados registados e das datas de validade — sem dados simulados.",
+      "total": "Certificados acompanhados",
+      "valid": "Válidos",
+      "expiring": "Expiram em 90 dias",
+      "expired": "Expirados",
+      "needsReview": "Por verificar"
+    },
+    "table": {
+      "standard": "Norma",
+      "number": "Número do certificado",
+      "issuer": "Emissor",
+      "owner": "Proprietário",
+      "issued": "Emitido",
+      "expires": "Expira",
+      "status": "Estado",
+      "health": "Saúde",
+      "verifications": "Verificações"
+    },
+    "owner": {
+      "brand": "A nossa organização",
+      "supplier": "Fornecedor"
+    },
+    "watch": {
+      "title": "Vigilância de validade",
+      "none": "Nenhuma certificação expira em 90 dias.",
+      "count": "certificação(ões) expiram em 90 dias.",
+      "next": "Próxima renovação",
+      "daysLeft": "dia(s) restante(s)",
+      "ruleTitle": "Como funciona a vigilância",
+      "ruleBody": "A vigilância de validade é derivada das datas declaradas. As renovações continuam a ser responsabilidade da sua organização; o TRACEFAB prepara e acompanha, sem garantir a conformidade regulamentar."
+    },
+    "coverage": {
+      "title": "Cobertura do catálogo",
+      "note": "Comparação informativa com o catálogo versionado de certificações — não é um requisito de conformidade.",
+      "covered": "norma(s) do catálogo coberta(s) por pelo menos um certificado",
+      "uncovered": "norma(s) do catálogo sem certificado",
+      "none": "Todas as normas do catálogo estão cobertas por pelo menos um certificado."
+    },
+    "declare": {
+      "title": "Declarar uma certificação",
+      "standard": "Nome da norma",
+      "standardCode": "Código da norma",
+      "issuer": "Emissor",
+      "number": "Número do certificado",
+      "issuedAt": "Emitido em",
+      "expiresAt": "Expira em",
+      "document": "Prova associada",
+      "documentNone": "Ainda sem prova (apenas declaração)",
+      "cta": "Declarar",
+      "success": "Certificação declarada.",
+      "successDemo": "Modo demonstração: certificação adicionada localmente."
+    },
+    "review": {
+      "cta": "Rever",
+      "title": "Revisão humana",
+      "status": "Decisão",
+      "method": "Método",
+      "notes": "Notas",
+      "note": "A verificação é sempre decidida por uma pessoa — o TRACEFAB nunca promove automaticamente um certificado.",
+      "success": "Revisão registada.",
+      "successDemo": "Modo demonstração: revisão aplicada localmente.",
+      "statuses": {
+        "passed": "Conforme",
+        "failed": "Não conforme",
+        "needs_review": "Por verificar",
+        "expired": "Expirado"
+      }
+    },
+    "empty": {
+      "title": "Ainda nenhuma certificação acompanhada",
+      "sub": "Declare os seus certificados abaixo; os certificados de fornecedores aparecem automaticamente quando as relações estão ativas."
+    },
+    "statuses": {
+      "declared": "Declarada",
+      "documented": "Documentada",
+      "checked_for_consistency": "Consistência verificada",
+      "verified_by_reviewer": "Verificada por um revisor",
+      "certified_by_third_party": "Certificada por terceiros",
+      "expired": "Expirada",
+      "needs_review": "Por verificar"
+    },
+    "detail": {
+      "lastVerified": "Última verificação"
+    }
+  }
+}

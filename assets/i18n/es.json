@@ -2653,5 +2653,93 @@
       "note": "Los certificados, informes de ensayo y pruebas de origen se gestionan en el Centro de evidencias.",
       "cta": "Abrir el centro de evidencias"
     }
+  },
+  "certifications": {
+    "health": {
+      "title": "Estado de las certificaciones",
+      "note": "Categorías derivadas de los estados registrados y las fechas de caducidad — sin datos simulados.",
+      "total": "Certificados supervisados",
+      "valid": "Válidos",
+      "expiring": "Caducan en 90 días",
+      "expired": "Caducados",
+      "needsReview": "Por revisar"
+    },
+    "table": {
+      "standard": "Norma",
+      "number": "Número de certificado",
+      "issuer": "Emisor",
+      "owner": "Propietario",
+      "issued": "Emitido",
+      "expires": "Caduca",
+      "status": "Estado",
+      "health": "Salud",
+      "verifications": "Verificaciones"
+    },
+    "owner": {
+      "brand": "Nuestra organización",
+      "supplier": "Proveedor"
+    },
+    "watch": {
+      "title": "Vigilancia de caducidades",
+      "none": "Ninguna certificación caduca en 90 días.",
+      "count": "certificación(es) caducan en 90 días.",
+      "next": "Próxima renovación",
+      "daysLeft": "día(s) restante(s)",
+      "ruleTitle": "Cómo funciona la vigilancia",
+      "ruleBody": "La vigilancia de caducidades se deriva de las fechas declaradas. Las renovaciones siguen siendo responsabilidad de su organización; TRACEFAB prepara y supervisa, sin garantizar el cumplimiento normativo."
+    },
+    "coverage": {
+      "title": "Cobertura del catálogo",
+      "note": "Comparación informativa con el catálogo versionado de certificaciones — no es un requisito de cumplimiento.",
+      "covered": "norma(s) del catálogo cubierta(s) por al menos un certificado",
+      "uncovered": "norma(s) del catálogo sin certificado",
+      "none": "Todas las normas del catálogo están cubiertas por al menos un certificado."
+    },
+    "declare": {
+      "title": "Declarar una certificación",
+      "standard": "Nombre de la norma",
+      "standardCode": "Código de la norma",
+      "issuer": "Emisor",
+      "number": "Número de certificado",
+      "issuedAt": "Emitido el",
+      "expiresAt": "Caduca el",
+      "document": "Prueba asociada",
+      "documentNone": "Sin prueba todavía (solo declaración)",
+      "cta": "Declarar",
+      "success": "Certificación declarada.",
+      "successDemo": "Modo demostración: certificación añadida localmente."
+    },
+    "review": {
+      "cta": "Revisar",
+      "title": "Revisión humana",
+      "status": "Decisión",
+      "method": "Método",
+      "notes": "Notas",
+      "note": "La verificación siempre la decide una persona — TRACEFAB nunca promociona automáticamente un certificado.",
+      "success": "Revisión registrada.",
+      "successDemo": "Modo demostración: revisión aplicada localmente.",
+      "statuses": {
+        "passed": "Conforme",
+        "failed": "No conforme",
+        "needs_review": "Por revisar",
+        "expired": "Caducado"
+      }
+    },
+    "empty": {
+      "title": "Aún no se supervisa ninguna certificación",
+      "sub": "Declare sus certificados aquí; los certificados de proveedores aparecen automáticamente cuando las relaciones están activas."
+    },
+    "statuses": {
+      "declared": "Declarada",
+      "documented": "Documentada",
+      "checked_for_consistency": "Coherencia comprobada",
+      "verified_by_reviewer": "Verificada por un revisor",
+      "certified_by_third_party": "Certificada por terceros",
+      "expired": "Caducada",
+      "needs_review": "Por revisar"
+    },
+    "detail": {
+      "lastVerified": "Última verificación"
+    }
   }
 }
