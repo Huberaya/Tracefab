@@ -2655,3 +2655,94 @@ double rendu de la modale → 2 échecs, exit 1. Restauration → 50/50.
 - `test:suite` : **PASS 50 · SKIP 18 · FAIL 0 sur 68**, exit 0
 - `test:vault:register` 50/50 (nouveau) · `test:supplier-portal:surface` 78/78 · `test:api:wiring` 45/45
 - **0 `alert()`** dans `supplier-portal/index.html` et `brand-console/index.html`
+
+---
+
+## Chantier 29 — Les dictionnaires i18n étaient écrits, jamais servis
+
+### Le défaut
+
+`public/i18n-core.js:59` charge ses traductions ainsi :
+
+```js
+var urls = ['/locales/' + lang + '/' + scope + '.json', '/locales/' + lang + '/translation.json'];
+```
+
+Or `vercel.json` déclare un tableau `builds`. Quand ce tableau est présent, **seuls les fichiers
+émis par un build existent dans la sortie**. Quatre motifs étaient déclarés :
+
+| motif | couvre `locales/fr/app.json` ? |
+|---|---|
+| `api/index.ts` | non |
+| `**/*.html` | non |
+| `public/**/*` | non |
+| `assets/**/*` | non |
+
+`locales/` est à la racine du dépôt, pas dans `public/`. Les quatorze dictionnaires — sept
+langues, 158 clés dans `translation.json` et 45 dans `app.json`, tous parfaitement alignés —
+étaient donc **inaccessibles en production**.
+
+Trois surfaces incluent le runtime (`evidence/index.html:892`, `dpp/index.html:616`,
+`traceability/index.html:896`) et appellent toutes `TracefabI18n.init({ scope: 'app' })`. Chacune
+recevait un 404 sur `/locales/{lang}/app.json`, puis un 404 sur le repli
+`/locales/{lang}/translation.json`, puis se taisait : le runtime se replie sur sa langue par
+défaut sans rien signaler. Un sélecteur de langue qui ne change rien, sur trois pages.
+
+### Le correctif
+
+Un build, quatre lignes :
+
+```json
+{ "src": "locales/**/*", "use": "@vercel/static" }
+```
+
+`@vercel/static` conserve le préfixe du motif — c'est vérifiable dans la config existante : la
+route `/i18n-core.js` → `/public/i18n-core.js` prouve que `public/**/*` émet sous `public/`.
+Donc `locales/**/*` émet sous `locales/`, et l'URL `/locales/fr/app.json` correspond au chemin
+du fichier. Aucune route n'est nécessaire : aucune route existante ne capture ce chemin, et la
+table se termine par `{"handle": "filesystem"}`.
+
+### Vérification
+
+`scripts/test_i18n_serving.mjs` — **36/36** (`npm run test:i18n:serving`).
+
+Le test ne se contente pas de chercher la ligne ajoutée. Il :
+
+- convertit chaque glob de `builds` en expression rationnelle et vérifie que les **14** fichiers
+  de `locales/` sont couverts, par **un seul** motif ;
+- vérifie en contre-exemple que les quatre motifs préexistants n'en couvraient **aucun** ;
+- **lit l'URL dans le runtime** au lieu de la recopier, puis vérifie que chaque combinaison
+  demandée par les trois surfaces × sept langues × (scope + repli) correspond à un fichier réel ;
+- vérifie qu'**aucune route ne fait ombre** à `/locales/de/app.json` avant le gestionnaire de
+  fichiers ;
+- vérifie que la CSP `connect-src` autorise la même origine, sans quoi le `fetch` serait bloqué ;
+- vérifie qu'aucun `.vercelignore`, aucun champ `files` et aucune règle `.gitignore` n'exclut
+  `locales/` du déploiement.
+
+Contre-vérification : suppression du build ajouté → **4 échecs, exit 1**. Restauration → 36/36.
+
+### Deux bugs du test, corrigés avant de conclure
+
+Le test a d'abord échoué sur trois assertions, et les trois venaient de lui :
+
+1. **Les `src` de routes Vercel sont des motifs de chemin complets.** Je les compilais en
+   `new RegExp(r.src)` non ancrée : `src: "/"` capturait alors n'importe quelle URL contenant
+   une barre, et le test croyait détecter une route faisant ombre. Corrigé en `^(?:src)$`.
+2. **`**/` doit matcher zéro segment.** Ma conversion exigeait un segment, si bien que
+   `public/**/*` ne couvrait pas `public/i18n-core.js` et que le test déclarait le runtime non
+   émis. Corrigé en `(?:[^/]+/)*`.
+
+Sans ces deux corrections, le test aurait « prouvé » un défaut de configuration qui n'existait
+pas, et masqué le vrai.
+
+### Ce qui n'est pas vérifié ici
+
+Aucun déploiement n'est possible depuis cet environnement : le test prouve que la **configuration
+déclare** l'émission et que rien ne s'y oppose, pas que Vercel produit effectivement les fichiers.
+La sortie réelle du build reste à confirmer au premier déploiement.
+
+### Résultats
+
+- `api:typecheck` : **90 = 90**
+- `test:suite` : **PASS 51 · SKIP 18 · FAIL 0 sur 69**, exit 0
+- `test:i18n:serving` 36/36 (nouveau)

@@ -16,6 +16,10 @@
     {
       "src": "assets/**/*",
       "use": "@vercel/static"
+    },
+    {
+      "src": "locales/**/*",
+      "use": "@vercel/static"
     }
   ],
   "headers": [
