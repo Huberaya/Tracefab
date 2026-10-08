@@ -75,7 +75,8 @@
     "test:landing-reperage": "node scripts/test_landing_reperage.mjs",
     "test:landing-performance": "node scripts/test_landing_performance.mjs",
     "test:chantier5-console": "node scripts/test_chantier5_console.mjs",
-    "test:console-css": "node scripts/test_console_css.mjs"
+    "test:console-css": "node scripts/test_console_css.mjs",
+    "test:copy": "node scripts/test_hardcoded_copy.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",

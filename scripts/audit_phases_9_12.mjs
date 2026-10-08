@@ -272,7 +272,15 @@ const browser = await chromium.launch();
     pages.length + '/' + pages.length);
   check('12', 'Toutes les pages en lang="en" par defaut', langEn === pages.length,
     langEn + '/' + pages.length, pages.length + '/' + pages.length);
-  check('12', 'Aucune copie metier en dur hors catalogue', totalKeys > 1400,
+  // Ce controle s'intitulait « Aucune copie metier en dur hors catalogue »
+  // alors qu'il ne mesurait que la taille du catalogue. Un catalogue
+  // volumineux ne dit rien de ce qui reste en dur dans les pages : le nom
+  // promettait un resultat que l'assertion ne produisait pas, et quatre
+  // chaines francaises affichees sur une page lang="en" sont passees dessous.
+  // Il porte desormais le nom de ce qu'il fait. La copie non traduite est
+  // verifiee par `npm run test:copy` (scripts/test_hardcoded_copy.mjs), qui
+  // bascule la langue et compare le texte reellement rendu.
+  check('12', 'Catalogue i18n au-dessus du seuil', totalKeys > 1400,
     totalKeys + ' cles catalogue', '> 1400');
 }
 
