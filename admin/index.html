@@ -245,6 +245,14 @@ tr.r-duplicate{background:var(--yellow-soft)}
 .tag.st-new{background:var(--green-soft);color:var(--green-dark)}
 .tag.st-duplicate{background:var(--yellow-soft);color:var(--yellow)}
 .tag.st-invalid{background:var(--red-soft);color:var(--red)}
+
+/* ---- Chantier Admin 04 ---- */
+ul.findings{margin:0;padding-left:18px;line-height:1.7}
+ul.findings li{margin-bottom:8px}
+ul.findings .meta{font-size:11px;margin-top:2px}
+.tag.layer{font-family:var(--mono);letter-spacing:.04em}
+.tag.a-converted,.tag.a-imported{background:var(--green);color:#fff}
+.tag.a-deleted,.tag.a-lost,.tag.a-list_deleted{background:var(--red-soft);color:var(--red)}
 </style>
 </head>
 <body>
@@ -273,6 +281,7 @@ const COMPANY_TYPES = ['fashion_brand','textile_brand','manufacturer','textile_s
 const MATURITIES = ['unknown','low','medium','high'];
 const CONTACT_STATUSES = ['to_contact','contacted','replied','meeting','unresponsive','declined'];
 const INTEREST_LEVELS = ['unknown','low','medium','high'];
+const AUDIT_ENTITIES = ['crm_company','crm_contact','crm_task','crm_meeting','crm_pilot','crm_saved_view','crm_import'];
 const LANGUAGES = ['en','fr','de','it','es','nl','pt'];
 
 const app = document.getElementById('app');
@@ -293,6 +302,7 @@ const state = {
     maturity: '', employee_band: '', dpp_interest: '', traceability_interest: '',
     product_count_min: '', product_count_max: '', supplier_count_min: '', supplier_count_max: '' },
   advancedOpen: false,
+  settings: null, audit: null, auditFilter: '',
   lists: { items: [] }, activeList: null,
   importStep: null, importCsv: '', importMapping: {}, importPreview: null,
   importSource: '', importDetail: '', importSkip: true, importResult: null,
@@ -357,6 +367,25 @@ function demoCompanies() {
       maturity:'high', priority:'medium', stage:'customer', source:'Referral',
       estimated_value_eur:40000 },
   ];
+}
+
+function demoOpportunity() {
+  return {
+    problems: [
+      { code: "manySuppliers", evidence: "supplier_count = 42" },
+      { code: "largeCatalogue", evidence: "product_count = 350" },
+      { code: "catalogueUnstructured", evidence: "product_count = 350, maturity = medium" },
+      { code: "esprScope", evidence: "country_code = FR (EU)" },
+    ],
+    features: [
+      { code: "supplyChainMapping", evidence: "supplier_count = 42" },
+      { code: "productData", evidence: "product_count = 350" },
+      { code: "evidenceCenter", evidence: "product_count = 350" },
+      { code: "dppReadiness", evidence: "country_code = FR (EU)" },
+      { code: "intelligence", evidence: "signal_count = 3" },
+    ],
+    signals: 3, insufficient: false, layers: ["L01", "L02", "L03", "L06", "L07"],
+  };
 }
 
 function demoContacts() {
@@ -655,16 +684,44 @@ function viewContacts() {
 
 function opportunityPanel(c) {
   /*
-   * Le potentiel commercial est une qualification saisie par l'équipe, pas une
-   * prédiction. Les éléments qui la justifient sont affichés tels quels : s'ils
-   * manquent, on le dit au lieu de broder.
+   * §4 — opportunité TRACEFAB.
+   *
+   * Tout vient de `state.detail.opportunity`, calculé CÔTÉ SERVEUR par
+   * assessOpportunity(). Chaque conclusion arrive avec le champ qui l'a produite
+   * (`evidence`) : affiché tel quel, il est vérifiable. Sans signal, l'écran dit
+   * « données insuffisantes » au lieu de broder.
    */
-  const evidence = [
+  const o = state.detail?.opportunity;
+  const facts = [
     c.product_count ? `${fmtInt(c.product_count)} ${t('common.products')}` : null,
     c.supplier_count ? `${fmtInt(c.supplier_count)} ${t('common.suppliers')}` : null,
-    c.country_code ? t('common.country') + ' ' + c.country_code : null,
+    c.country_code ? `${t('common.country')} ${c.country_code}` : null,
     t('type.' + c.company_type),
   ].filter(Boolean);
+
+  const list = (items, prefix) => (items || []).map((f) => `
+    <li><b>${esc(t(prefix + f.code))}</b>
+      <div class="meta mono">${esc(f.evidence)}</div></li>`).join('');
+
+  const body = (!o || o.insufficient)
+    ? `<div class="empty"><b>${esc(t('opportunity.insufficient'))}</b>${esc(t('opportunity.insufficientBody'))}</div>`
+    : `<div class="panels">
+        <div class="card">
+          <div class="cardhead">${esc(t('opportunity.problems'))}</div>
+          ${o.problems.length ? `<ul class="findings">${list(o.problems, 'opportunityProblem.')}</ul>`
+            : `<div class="hint">${esc(t('opportunity.noProblem'))}</div>`}
+        </div>
+        <div class="card">
+          <div class="cardhead">${esc(t('opportunity.features'))}</div>
+          ${o.features.length ? `<ul class="findings">${list(o.features, 'opportunityFeature.')}</ul>`
+            : `<div class="hint">${esc(t('opportunity.noFeature'))}</div>`}
+        </div>
+      </div>
+      <div class="card">
+        <div class="cardhead">${esc(t('opportunity.layers'))}</div>
+        <div class="filters">${(o.layers || []).map((l) => `<span class="tag layer">${esc(l)} ${esc(t('layers.' + l))}</span>`).join('')}</div>
+        <div class="hint">${esc(t('opportunity.signals')).replace('%n', String(o.signals))}</div>
+      </div>`;
 
   return `<div class="grid2">
     <div class="card">
@@ -677,15 +734,15 @@ function opportunityPanel(c) {
         <span class="v num">${esc(fmtMoney(c.estimated_value_eur))}</span></div>
       <div class="field"><label>${esc(t('company.source'))}</label>
         <span class="v">${esc(c.source || '')}${c.source_detail ? ' · ' + esc(c.source_detail) : ''}</span></div>
+      <div class="hint">${esc(t('opportunity.declaredNote'))}</div>
     </div>
     <div class="card">
       <h2>${esc(t('company.whyTarget'))}</h2>
-      <ul style="margin:0;padding-left:18px;line-height:1.8">
-        ${evidence.map((e) => `<li>${esc(e)}</li>`).join('')}
-      </ul>
+      <ul class="findings">${facts.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>
       <p class="hint" style="margin-top:12px">${esc(t('company.whyTargetNote'))}</p>
     </div>
-  </div>`;
+  </div>
+  ${body}`;
 }
 
 function viewCompany() {
@@ -1017,6 +1074,75 @@ function modalImport() {
   }
 
   return '';
+}
+
+function viewSettings() {
+  const st = state.settings;
+  const au = state.audit;
+  if (!st) return `<div class="empty"><b>${esc(t('settings.empty'))}</b></div>`;
+
+  const chain = au && au.chain ? au.chain : st.audit?.chain;
+  const chainOk = chain ? chain.isValid : null;
+
+  const rows = ((au && au.items) || []).map((e) => `
+    <tr>
+      <td class="mono">${esc(fmtDateTime(e.created_at) || '—')}</td>
+      <td><span class="tag a-${esc(e.action)}">${esc(t('auditAction.' + e.action))}</span></td>
+      <td class="mono">${esc(t('auditEntity.' + e.entity_type))}</td>
+      <td class="meta">${esc(e.metadata?.actorName || '—')}</td>
+      <td class="meta">${esc((e.metadata?.changedFields || []).join(', ') || '—')}</td>
+    </tr>`).join('');
+
+  return `
+  <div class="panels">
+    <div class="card">
+      <div class="cardhead">${esc(t('settings.access'))}</div>
+      <div class="field"><label>${esc(t('settings.org'))}</label><span class="v">${esc(st.organization?.name || '—')}</span></div>
+      <div class="field"><label>${esc(t('settings.roles'))}</label><span class="v mono">${esc((st.access?.roles || []).join(' · '))}</span></div>
+      <div class="field"><label>${esc(t('settings.admins'))}</label><span class="v num">${esc((st.access?.admins || []).length)}</span></div>
+      ${st.access?.singlePointOfFailure ? `<div class="warn">${esc(t('settings.spof'))}</div>` : ''}
+      <div class="hint">${esc(t('settings.accessNote'))}</div>
+    </div>
+    <div class="card">
+      <div class="cardhead">${esc(t('settings.audit'))}</div>
+      <div class="field"><label>${esc(t('settings.chain'))}</label>
+        <span class="v">${chainOk === null ? esc(t('common.notMeasured'))
+          : chainOk ? esc(t('settings.chainOk')) : esc(t('settings.chainBroken'))}</span></div>
+      <div class="field"><label>${esc(t('settings.entries'))}</label><span class="v num">${esc(chain?.totalEntries ?? '—')}</span></div>
+      <div class="field"><label>${esc(t('settings.appendOnly'))}</label><span class="v">${esc(st.audit?.appendOnlyActivities ? t('common.yes') : t('common.no'))}</span></div>
+      <div class="hint">${esc(t('settings.auditNote'))}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead">${esc(t('settings.volumes'))}</div>
+    <div class="pilotnums">
+      ${Object.entries(st.counts || {}).map(([k, v]) => `<div><span class="kl">${esc(t('settings.count.' + k))}</span><b class="num">${fmtInt(v)}</b></div>`).join('')}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead">${esc(t('settings.pipeline'))}</div>
+    <div class="hint">${esc(t('settings.pipelineNote'))}</div>
+    <div class="filters">
+      ${(st.pipeline?.stages || []).map((x) => `<span class="tag s-${esc(x)}">${esc(t('stage.' + x))}</span>`).join('')}
+      <span class="tag s-lost">${esc(t('stage.lost'))}</span>
+    </div>
+  </div>
+
+  <div class="viewhead">
+    <div class="hint">${esc(t('settings.trailHint'))}</div>
+    <select id="f-audit" class="btn sm">
+      <option value="">${esc(t('settings.allEntities'))}</option>
+      ${AUDIT_ENTITIES.map((k) => `<option value="${k}"${state.auditFilter === k ? ' selected' : ''}>${esc(t('auditEntity.' + k))}</option>`).join('')}
+    </select>
+  </div>
+  ${(au && au.items && au.items.length) ? `<div class="tblwrap"><table>
+    <thead><tr><th>${esc(t('settings.when'))}</th><th>${esc(t('settings.action'))}</th>
+      <th>${esc(t('settings.entity'))}</th><th>${esc(t('settings.actor'))}</th>
+      <th>${esc(t('settings.fields'))}</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`
+    : `<div class="empty"><b>${esc(t('settings.noAudit'))}</b>${esc(t('settings.noAuditBody'))}</div>`}`;
 }
 
 /* ---------------------------------------------------- Admin 02 : demo data */
@@ -1391,15 +1517,16 @@ const NAV_OPS = [
   ['pilots', '08'],
   ['customers', '09'],
   ['analytics', '10'],
+  ['settings', '11'],
 ];
-const SOON = ['Leads','Opportunities','Campaigns','Emails','Notes','Suppliers','Product Usage','Settings'];
+const SOON = ['Leads','Opportunities','Campaigns','Emails','Notes','Suppliers','Product Usage'];
 
 function shell() {
   const titles = {
     dashboard: t('nav.dashboard'), prospects: t('nav.prospects'),
     pipeline: t('nav.pipeline'), contacts: t('nav.contacts'), company: t('company.title'),
     tasks: t('nav.tasks'), activities: t('nav.activities'), meetings: t('nav.meetings'),
-    pilots: t('nav.pilots'), customers: t('nav.customers'), analytics: t('nav.analytics'),
+    pilots: t('nav.pilots'), customers: t('nav.customers'), analytics: t('nav.analytics'), settings: t('nav.settings'),
   };
   const subtitles = {
     dashboard: t('dashboard.subtitle'), prospects: t('prospects.subtitle'),
@@ -1407,13 +1534,14 @@ function shell() {
     tasks: t('tasks.subtitle'), activities: t('activities.subtitle'),
     meetings: t('meetings.subtitle'), pilots: t('pilots.subtitle'),
     customers: t('customers.subtitle'), analytics: t('analytics.subtitle'),
+    settings: t('settings.subtitle'),
   };
 
   const VIEWS = {
     dashboard: viewDashboard, prospects: viewProspects, pipeline: viewPipeline,
     contacts: viewContacts, tasks: viewTasks, activities: viewActivities,
     meetings: viewMeetings, pilots: viewPilots, customers: viewCustomers,
-    analytics: viewAnalytics,
+    analytics: viewAnalytics, settings: viewSettings,
   };
   const body = (VIEWS[state.view] || viewCompany)();
 
@@ -1606,6 +1734,9 @@ function bind() {
 
   const fa = document.getElementById('f-activity');
   if (fa) fa.addEventListener('change', () => { state.activityType = fa.value; loadView(); });
+
+  const fg = document.getElementById('f-audit');
+  if (fg) fg.addEventListener('change', () => { state.auditFilter = fg.value; loadView(); });
 }
 
 async function setTaskStatus(id, status) {
@@ -1682,6 +1813,10 @@ async function openCompany(id) {
         activities: [
           { id:'a1', type:'created', summary:`Prospect créé : ${company?.name || ''}`, actor_name:'Founder', occurred_at:new Date().toISOString() },
         ],
+        /* Sortie réelle de assessOpportunity() sur les champs de d1 : la démo
+           montre le même résultat que le serveur, pas une variante écrite à la
+           main qui divergerait silencieusement. */
+        opportunity: id === 'd1' ? demoOpportunity() : { problems: [], features: [], signals: 0, insufficient: true, layers: [] },
       };
     } else {
       state.detail = await api(`/api/admin/companies/${encodeURIComponent(id)}`);
@@ -1970,6 +2105,47 @@ async function commitImport() {
   state.saving = false;
 }
 
+async function loadSettings() {
+  if (state.demo) {
+    state.settings = {
+      organization: { name: 'TRACEFAB (demo)', type: 'platform' },
+      access: {
+        roles: ['owner', 'admin'],
+        admins: [{ user_id: 'u1', role: 'owner', status: 'active' }],
+        singlePointOfFailure: true,
+      },
+      pipeline: { stages: STAGES, lostStage: 'lost' },
+      counts: { companies: 7, contacts: 3, tasks: 6, meetings: 3, pilots: 1, lists: 3, activities: 5, auditEntries: 4 },
+      audit: { chain: { isValid: true, totalEntries: 4 }, appendOnlyActivities: true },
+    };
+    return;
+  }
+  const res = await api('/api/admin/settings');
+  state.settings = res.settings;
+}
+
+async function loadAudit() {
+  if (state.demo) {
+    state.audit = { items: [
+      { id: 'g1', action: 'converted', entity_type: 'crm_company', entity_id: 'd7',
+        actor_user_id: 'u1', created_at: inDays(-9),
+        metadata: { actorName: 'Founder', changedFields: ['stage', 'converted_at'], changeCount: 2 } },
+      { id: 'g2', action: 'imported', entity_type: 'crm_import', entity_id: null,
+        actor_user_id: 'u1', created_at: inDays(-6),
+        metadata: { actorName: 'Founder', source: 'Salon PV 2026', total: 12, created: 9, duplicate: 2, invalid: 1 } },
+      { id: 'g3', action: 'stage_changed', entity_type: 'crm_company', entity_id: 'd1',
+        actor_user_id: 'u1', created_at: inDays(-3),
+        metadata: { actorName: 'Founder', from: 'demo', to: 'pilot', changeCount: 1 } },
+      { id: 'g4', action: 'list_saved', entity_type: 'crm_saved_view', entity_id: 'l1',
+        actor_user_id: 'u1', created_at: inDays(-1),
+        metadata: { actorName: 'Founder', changeCount: 0 } },
+    ], total: 4, chain: { isValid: true, totalEntries: 4 } };
+    return;
+  }
+  const q = state.auditFilter ? `?entity_type=${encodeURIComponent(state.auditFilter)}` : '';
+  state.audit = await api(`/api/admin/audit${q}&verify=1`.replace('?&', '?'));
+}
+
 async function loadView() {
   state.error = null;
   try {
@@ -1982,6 +2158,7 @@ async function loadView() {
     else if (state.view === 'activities') await loadActivities();
     else if (state.view === 'analytics') await loadAnalytics();
     else if (state.view === 'customers') await loadCustomers();
+    else if (state.view === 'settings') { await loadSettings(); await loadAudit(); }
     else if (state.view === 'prospects') { await loadCompanies(); await loadLists(); }
     else await loadCompanies();
   } catch (e) {

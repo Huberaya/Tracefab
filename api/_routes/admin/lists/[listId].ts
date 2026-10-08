@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../../_lib/admin-a
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { sanitizeSavedFilters } from '../../../_lib/crm-import.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { auditAdmin } from '../../../_lib/crm-audit-write.js';
 
 /**
  * GET    /api/admin/lists/:listId
@@ -57,7 +58,12 @@ async function update(req: VercelRequest, res: VercelResponse) {
         select: { id: true },
       });
       if (!existing) return null;
-      return tx.crm_saved_views.update({ where: { id: listId }, data: data as never });
+      const updated = await tx.crm_saved_views.update({ where: { id: listId }, data: data as never });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_saved_view', action: 'updated', entityId: listId,
+        after: { name: data.name } as Record<string, unknown>,
+      });
+      return updated;
     })) as unknown;
 
     if (!updated) return json(res, 404, { error: 'crm_saved_view_not_found' });
@@ -77,7 +83,12 @@ async function remove(req: VercelRequest, res: VercelResponse) {
         select: { id: true },
       });
       if (!existing) return null;
-      return tx.crm_saved_views.delete({ where: { id: listId } });
+      const removed = await tx.crm_saved_views.delete({ where: { id: listId } });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_saved_view', action: 'list_deleted', entityId: listId,
+        before: removed as unknown as Record<string, unknown>, after: null,
+      });
+      return removed;
     })) as unknown;
     if (!removed) return json(res, 404, { error: 'crm_saved_view_not_found' });
     return json(res, 200, { deleted: true });

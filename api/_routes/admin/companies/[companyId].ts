@@ -5,6 +5,8 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../../_lib/admin-a
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { parseCompanyInput } from '../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { auditAdmin } from '../../../_lib/crm-audit-write.js';
+import { assessOpportunity } from '../../../_lib/crm-opportunity.js';
 
 /**
  * GET   /api/admin/companies/:companyId — fiche complète (entreprise, contacts, activité)
@@ -42,10 +44,18 @@ async function read(req: VercelRequest, res: VercelResponse) {
       crm_contacts: unknown[];
       crm_activities: unknown[];
     };
+    /*
+     * §4 : l'opportunité TRACEFAB est DÉRIVÉE côté serveur, à partir des champs
+     * réellement saisis. Chaque conclusion porte le champ qui l'a produite, et
+     * une absence de donnée ne produit aucune conclusion.
+     */
+    const opportunity = assessOpportunity(company);
+
     return json(res, 200, {
       company,
       contacts: company.crm_contacts,
       activities: company.crm_activities,
+      opportunity,
     });
   } catch (error) {
     return fail(res, error, 'GET /api/admin/companies/:id');
@@ -71,13 +81,26 @@ async function update(req: VercelRequest, res: VercelResponse) {
     const updated = (await withTracefabUserContext(admin.userId, admin.userEmail, async (tx) => {
       const existing = await tx.crm_companies.findFirst({
         where: { id: companyId, platform_organization_id: admin.platformOrganizationId },
-        select: { id: true },
+        /* Les champs journalisés sont sélectionnés explicitement : sans eux,
+           `before` serait vide et chaque modification ressemblerait à une création. */
+        select: {
+          id: true, name: true, stage: true, priority: true, country_code: true,
+          company_type: true, maturity: true, product_count: true, supplier_count: true,
+          estimated_value_eur: true, owner_name: true, dpp_interest: true,
+          traceability_interest: true,
+        },
       });
       if (!existing) return null;
-      return tx.crm_companies.update({
+      const company = await tx.crm_companies.update({
         where: { id: companyId },
         data: parsed.data as never,
       });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_company', action: 'updated', entityId: companyId,
+        before: existing as unknown as Record<string, unknown>,
+        after: company as unknown as Record<string, unknown>,
+      });
+      return company;
     })) as unknown;
 
     if (!updated) return json(res, 404, { error: 'crm_company_not_found' });

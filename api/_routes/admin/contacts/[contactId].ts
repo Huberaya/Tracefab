@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../../_lib/admin-a
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { parseContactInput } from '../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { auditAdmin } from '../../../_lib/crm-audit-write.js';
 
 /**
  * GET   /api/admin/contacts/:contactId
@@ -56,7 +57,12 @@ async function update(req: VercelRequest, res: VercelResponse) {
         select: { id: true },
       });
       if (!existing) return null;
-      return tx.crm_contacts.update({ where: { id: contactId }, data: parsed.data as never });
+      const contact = await tx.crm_contacts.update({ where: { id: contactId }, data: parsed.data as never });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_contact', action: 'updated', entityId: contactId,
+        after: contact as unknown as Record<string, unknown>,
+      });
+      return contact;
     })) as unknown;
 
     if (!updated) return json(res, 404, { error: 'crm_contact_not_found' });

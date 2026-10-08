@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../../../_lib/admi
 import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { ACTIVITY_TYPES } from '../../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
+import { auditAdmin } from '../../../../_lib/crm-audit-write.js';
 
 /**
  * GET  /api/admin/companies/:companyId/activities — timeline
@@ -69,7 +70,7 @@ async function add(req: VercelRequest, res: VercelResponse) {
         select: { id: true },
       });
       if (!company) return null;
-      return tx.crm_activities.create({
+      const activity = await tx.crm_activities.create({
         data: {
           company_id: companyId,
           platform_organization_id: admin.platformOrganizationId,
@@ -80,6 +81,23 @@ async function add(req: VercelRequest, res: VercelResponse) {
           actor_name: admin.fullName,
         } as never,
       });
+
+      /*
+       * La table `crm_activities` est déjà en REVOKE UPDATE, DELETE : la ligne ne
+       * peut pas être retouchée. Mais un lecteur qui parcourt le journal d'audit
+       * ne doit pas avoir à savoir quelles actions y figurent et lesquelles non.
+       * Une note manuelle est un acte d'administration ; son absence rendrait la
+       * piste incomplète sans que rien ne le signale.
+       */
+      await auditAdmin(tx as never, {
+        admin,
+        entity: 'crm_company',
+        action: 'created',
+        entityId: companyId,
+        metadata: { activityType: type, activityId: activity.id, via: 'manual_activity' },
+      });
+
+      return activity;
     })) as unknown;
 
     if (!created) return json(res, 404, { error: 'crm_company_not_found' });

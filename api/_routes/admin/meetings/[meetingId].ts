@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../../_lib/admin-a
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { parseMeetingInput } from '../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { auditAdmin } from '../../../_lib/crm-audit-write.js';
 
 /**
  * GET   /api/admin/meetings/:meetingId
@@ -52,7 +53,12 @@ async function update(req: VercelRequest, res: VercelResponse) {
         select: { id: true },
       });
       if (!existing) return null;
-      return tx.crm_meetings.update({ where: { id: meetingId }, data: data as never });
+      const meeting = await tx.crm_meetings.update({ where: { id: meetingId }, data: data as never });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_meeting', action: 'updated', entityId: meetingId,
+        after: meeting as unknown as Record<string, unknown>,
+      });
+      return meeting;
     })) as unknown;
 
     if (!updated) return json(res, 404, { error: 'crm_meeting_not_found' });

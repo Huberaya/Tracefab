@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../_lib/admin-acce
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { MEETING_MODES, parseMeetingInput } from '../../_lib/crm.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { auditAdmin } from '../../_lib/crm-audit-write.js';
 
 const first = (value: unknown) => (Array.isArray(value) ? value[0] : value);
 
@@ -99,12 +100,22 @@ async function create(req: VercelRequest, res: VercelResponse) {
           } as never,
         });
 
+        await auditAdmin(tx as never, {
+          admin, entity: 'crm_meeting', action: 'meeting_scheduled', entityId: meeting.id,
+          before: null, after: meeting as unknown as Record<string, unknown>,
+        });
+
         return meeting;
       }
 
-      return tx.crm_meetings.create({
+      const loose = await tx.crm_meetings.create({
         data: { ...data, platform_organization_id: admin.platformOrganizationId } as never,
       });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_meeting', action: 'meeting_scheduled', entityId: loose.id,
+        before: null, after: loose as unknown as Record<string, unknown>,
+      });
+      return loose;
     })) as unknown;
 
     if (!created) return json(res, 404, { error: 'crm_company_not_found' });

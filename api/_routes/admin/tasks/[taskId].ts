@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../../_lib/admin-a
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { parseTaskInput } from '../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { auditAdmin } from '../../../_lib/crm-audit-write.js';
 
 /**
  * GET    /api/admin/tasks/:taskId
@@ -59,7 +60,17 @@ async function update(req: VercelRequest, res: VercelResponse) {
       if (target === 'done' && existing.status !== 'done') data.completed_at = new Date().toISOString();
       if (target !== 'done') data.completed_at = null;
 
-      return tx.crm_tasks.update({ where: { id: taskId }, data: data as never });
+      const task = await tx.crm_tasks.update({ where: { id: taskId }, data: data as never });
+      await auditAdmin(tx as never, {
+        admin,
+        entity: 'crm_task',
+        action: target === 'done' ? 'task_completed'
+          : existing.status === 'done' ? 'task_reopened' : 'updated',
+        entityId: taskId,
+        before: { status: existing.status },
+        after: task as unknown as Record<string, unknown>,
+      });
+      return task;
     })) as unknown;
 
     if (!updated) return json(res, 404, { error: 'crm_task_not_found' });
@@ -79,7 +90,12 @@ async function remove(req: VercelRequest, res: VercelResponse) {
         select: { id: true },
       });
       if (!existing) return null;
-      return tx.crm_tasks.delete({ where: { id: taskId } });
+      const removed = await tx.crm_tasks.delete({ where: { id: taskId } });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_task', action: 'deleted', entityId: taskId,
+        before: removed as unknown as Record<string, unknown>, after: null,
+      });
+      return removed;
     })) as unknown;
     if (!removed) return json(res, 404, { error: 'crm_task_not_found' });
     return json(res, 200, { deleted: true });

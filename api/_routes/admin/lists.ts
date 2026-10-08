@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../_lib/admin-acce
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { sanitizeSavedFilters } from '../../_lib/crm-import.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { auditAdmin } from '../../_lib/crm-audit-write.js';
 
 /**
  * GET  /api/admin/lists — listes de prospection de l'équipe (§7)
@@ -64,6 +65,11 @@ async function create(req: VercelRequest, res: VercelResponse) {
           created_by: admin.userId,
           created_by_name: admin.fullName,
         } as never,
+      });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_saved_view', action: 'list_saved', entityId: row.id,
+        before: null, after: { name } as Record<string, unknown>,
+        metadata: { filters },
       });
       return { conflict: false as const, row };
     })) as unknown as { conflict: boolean; row?: unknown };

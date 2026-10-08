@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../../../_lib/admi
 import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { PIPELINE_STAGES, canConvert, canTransition, stageRank } from '../../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
+import { auditAdmin } from '../../../../_lib/crm-audit-write.js';
 
 /**
  * PATCH /api/admin/companies/:companyId/stage
@@ -94,6 +95,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           actor_user_id: admin.userId,
           actor_name: admin.fullName,
         } as never,
+      });
+
+      /*
+       * §16 : le mouvement de pipeline est l'acte commercial le plus sensible de
+       * la console. Il est scellé dans la chaîne de hachage, dans la MÊME
+       * transaction : si l'audit échoue, le mouvement est annulé avec lui.
+       */
+      await auditAdmin(tx as never, {
+        admin,
+        entity: 'crm_company',
+        action: stage === 'customer' ? 'converted' : stage === 'lost' ? 'lost' : 'stage_changed',
+        entityId: companyId,
+        before: { stage: from, lost_reason: null, converted_at: company.converted_at },
+        after: {
+          stage,
+          lost_reason: stage === 'lost' ? lostReason : null,
+          converted_at: stage === 'customer' ? new Date() : null,
+          converted_value_eur: convertedValue,
+        },
+        metadata: { from, to: stage },
       });
 
       return { status: 200 as const, company: updated, from, to: stage };

@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../_lib/admin-acce
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, parseTaskInput } from '../../_lib/crm.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { auditAdmin } from '../../_lib/crm-audit-write.js';
 
 const first = (value: unknown) => (Array.isArray(value) ? value[0] : value);
 
@@ -99,7 +100,7 @@ async function create(req: VercelRequest, res: VercelResponse) {
       /* Une tâche marquée « faite » à la création porte sa date de fin : la
          contrainte en base l'exige, autant la satisfaire ici. */
       if (data.status === 'done' && !data.completed_at) data.completed_at = new Date().toISOString();
-      return tx.crm_tasks.create({
+      const task = await tx.crm_tasks.create({
         data: {
           ...data,
           platform_organization_id: admin.platformOrganizationId,
@@ -107,6 +108,11 @@ async function create(req: VercelRequest, res: VercelResponse) {
           assignee_user_id: admin.userId,
         } as never,
       });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_task', action: 'created', entityId: task.id,
+        before: null, after: task as unknown as Record<string, unknown>,
+      });
+      return task;
     })) as unknown;
 
     return json(res, 201, { task: created });

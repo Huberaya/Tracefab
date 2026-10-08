@@ -6,6 +6,7 @@ import { withTracefabUserContext } from '../../../_lib/context.js';
 import { parseCsvRows } from '../../../_lib/bulk-operations/csv-parser.js';
 import { buildImportPreview } from '../../../_lib/crm-import.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { auditAdmin } from '../../../_lib/crm-audit-write.js';
 
 const MAX_CSV_BYTES = 2 * 1024 * 1024;
 const MAX_ROWS_PER_IMPORT = 2000;
@@ -109,6 +110,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           } as never,
         });
       }
+
+      await auditAdmin(tx as never, {
+        admin,
+        entity: 'crm_import',
+        action: 'imported',
+        entityId: null,
+        /* L'import est journalisé comme UN acte, pas comme N créations : chaque
+           entreprise créée porte déjà sa provenance dans `source` et sa propre
+           activité `created`. Doubler l'écriture noierait la chaîne. */
+        metadata: {
+          source,
+          total: preview.counts.total,
+          created: created.length,
+          duplicate: preview.counts.duplicate,
+          invalid: preview.counts.invalid,
+        },
+      });
 
       return { aborted: false as const, preview, createdCount: created.length };
     })) as unknown as {

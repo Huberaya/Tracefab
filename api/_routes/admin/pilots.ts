@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../_lib/admin-acce
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { PILOT_STATUSES, parsePilotInput } from '../../_lib/crm.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { auditAdmin } from '../../_lib/crm-audit-write.js';
 
 const first = (value: unknown) => (Array.isArray(value) ? value[0] : value);
 
@@ -94,6 +95,10 @@ async function create(req: VercelRequest, res: VercelResponse) {
         } as never,
       });
 
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_pilot', action: 'created', entityId: pilot.id,
+        before: null, after: pilot as unknown as Record<string, unknown>,
+      });
       return pilot;
     })) as unknown;
 

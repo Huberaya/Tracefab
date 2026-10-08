@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../_lib/admin-acce
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { CONTACT_STATUSES, parseContactInput } from '../../_lib/crm.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { auditAdmin } from '../../_lib/crm-audit-write.js';
 
 /**
  * GET  /api/admin/contacts          — liste (filtre par entreprise, statut, recherche)
@@ -87,13 +88,18 @@ async function create(req: VercelRequest, res: VercelResponse) {
         select: { id: true },
       });
       if (!company) return null;
-      return tx.crm_contacts.create({
+      const contact = await tx.crm_contacts.create({
         data: {
           ...(parsed.data as Record<string, unknown>),
           company_id: companyId,
           platform_organization_id: admin.platformOrganizationId,
         } as never,
       });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_contact', action: 'created', entityId: contact.id,
+        before: null, after: contact as unknown as Record<string, unknown>,
+      });
+      return contact;
     })) as unknown;
 
     if (!created) return json(res, 404, { error: 'crm_company_not_found' });

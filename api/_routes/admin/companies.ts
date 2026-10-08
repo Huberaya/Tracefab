@@ -5,6 +5,7 @@ import { isAdminAccessDenied, requirePlatformAdmin } from '../../_lib/admin-acce
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { COMPANY_TYPES, MATURITIES, PIPELINE_STAGES, PRIORITIES, parseCompanyInput } from '../../_lib/crm.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { auditAdmin } from '../../_lib/crm-audit-write.js';
 import { buildCompanyFilters } from '../../_lib/crm-filters.js';
 
 const COMPANY_FIELDS = {
@@ -114,6 +115,10 @@ async function create(req: VercelRequest, res: VercelResponse) {
           actor_name: admin.fullName,
           to_stage: (company.stage as never) ?? 'new',
         } as never,
+      });
+      await auditAdmin(tx as never, {
+        admin, entity: 'crm_company', action: 'created', entityId: company.id,
+        before: null, after: company as unknown as Record<string, unknown>,
       });
       return company;
     })) as unknown as Record<string, unknown>;

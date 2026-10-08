@@ -32,6 +32,22 @@ export async function appendImmutableAuditLog(
     metadata?: Record<string, unknown>;
   }
 ) {
+  /*
+   * Verrou consultatif de transaction, par organisation.
+   *
+   * La chaîne LIT le hachage précédent puis ÉCRIT le suivant. Sans
+   * sérialisation, deux ajouts concurrents liraient le même previousHash et
+   * produiraient deux maillons frères : verifyAuditChainIntegrity() signalerait
+   * alors une chaîne cassée sur un journal pourtant intact. Le défaut existait
+   * déjà, mais la console Admin multiplie les points d'écriture — le corriger
+   * ici protège aussi les appelants existants.
+   *
+   * pg_advisory_xact_lock est libéré à la fin de la transaction : il ne peut pas
+   * fuiter. Une collision de hachage entre deux organisations ne provoque qu'une
+   * sérialisation inutile, jamais une donnée fausse.
+   */
+  await client.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${params.organizationId}))`;
+
   // 1. Fetch previous log hash for this organization to maintain linear hash chain
   const previousLog = await client.audit_logs.findFirst({
     where: { organization_id: params.organizationId },

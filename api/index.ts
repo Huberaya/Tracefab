@@ -44,6 +44,9 @@ const routes: Route[] = [
   { pattern: /^admin\/import\/commit$/, params: [], load: () => import('./_routes/admin/import/commit.js') },
   { pattern: /^admin\/lists$/, params: [], load: () => import('./_routes/admin/lists.js') },
   { pattern: /^admin\/lists\/([^\/]+)$/, params: ['listId'], load: () => import('./_routes/admin/lists/[listId].js') },
+  /* Chantier Admin 04 — journal d'audit (§16) et réglages (§1). */
+  { pattern: /^admin\/audit$/, params: [], load: () => import('./_routes/admin/audit.js') },
+  { pattern: /^admin\/settings$/, params: [], load: () => import('./_routes/admin/settings.js') },
   { pattern: /^catalog\/products\/import$/, params: [], load: () => import('./_routes/catalog/products/import.js') },
   { pattern: /^catalog\/products\/export$/, params: [], load: () => import('./_routes/catalog/products/export.js') },
   { pattern: /^catalog\/products\/import\-jobs\/([^\/]+)$/, params: ['jobId'], load: () => import('./_routes/catalog/products/import-jobs/[jobId].js') },

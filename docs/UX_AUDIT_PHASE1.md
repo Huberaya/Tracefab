@@ -3561,3 +3561,157 @@ une requête réelle.
 Leads, Opportunities, Campaigns, Emails, Notes, Suppliers, Product Usage,
 Settings. Import Excel (`.xlsx`) : seul CSV est pris en charge — un classeur
 Excel n'est pas un CSV et ne se lit pas avec le même parseur.
+
+---
+
+# CHANTIER ADMIN 04 — Opportunité TRACEFAB (§4), journal d'audit (§16), réglages (§1)
+
+## Ce qui existait déjà, et ce qui manquait
+
+L'audit préalable a établi trois faits mesurés :
+
+| Constat | Preuve |
+|---|---|
+| `api/_lib/audit-vault.ts` fournissait déjà une écriture **chaînée par hachage** (`previousHash` → `entryHash` dans `metadata`) et un vérificateur `verifyAuditChainIntegrity` | lecture intégrale du module |
+| **Aucune** route de la console Admin n'écrivait dans `audit_logs` | `grep -rln audit_logs api/_routes/admin/ api/_lib/crm*.ts` → vide |
+| La lecture puis l'écriture de la chaîne n'étaient **pas protégées en concurrence** | `grep -c advisory api/_lib/audit-vault.ts` → **0** |
+
+§16 est une section **obligatoire** du cahier des charges : ce n'était pas un
+confort, c'était un trou.
+
+Le modèle `audit_logs` existait depuis la migration Neon initiale
+(`prisma/schema.prisma:64`, colonnes `before_state` / `after_state` / `metadata`)
+avec ses politiques RLS (`audit_select_admin` à la ligne 1106,
+`audit_insert_member` à la ligne 1108). **Aucune migration n'a donc été ajoutée :
+0 fichier `prisma/` modifié dans ce chantier.**
+
+## Décisions
+
+**1. Réutiliser la table chaînée existante, pas en créer une seconde.**
+Une table parallèle aurait produit deux pistes dont personne ne saurait laquelle
+fait foi.
+
+**2. Liste blanche de champs par entité (`AUDIT_FIELDS`), pas la ligne entière.**
+Deux raisons : un `before_state` complet sur une entreprise de 3 000 produits
+gonfle la chaîne sans rien apporter à la relecture ; et une colonne ajoutée
+demain au modèle se retrouverait journalisée sans que personne l'ait décidé.
+Le téléphone et le LinkedIn d'un contact ne sont **pas** journalisés : le journal
+n'a pas à dupliquer des données personnelles.
+
+**3. `diffStates` traite « absent » et `null` comme la même absence.**
+Sans cette règle, chaque PATCH journaliserait des suppressions fantômes pour
+chaque colonne non lue, et les vrais changements seraient noyés.
+
+**4. Le vocabulaire est imposé par le TYPE, pas par une exception.**
+Lever dans la transaction annulerait une mutation métier légitime à cause d'une
+faute de frappe dans le journal. `action: AuditAction` fait d'un verbe inventé
+une erreur de compilation.
+
+**5. L'audit est écrit DANS la transaction de la mutation.**
+Un audit écrit après coup peut manquer si la requête suivante échoue, et un
+journal qui ne correspond pas à l'état réel ne vaut plus rien comme preuve.
+Conséquence : si l'audit échoue, la mutation est annulée avec lui.
+
+**6. `GET /api/admin/audit` et `GET /api/admin/settings` sont en lecture seule.**
+L'accès Admin se donne dans `organization_memberships`. Exposer une écriture dans
+les réglages créerait une seconde porte vers le rôle.
+
+**7. §4 : chaque conclusion cite le champ qui l'a produite.**
+`assessOpportunity()` renvoie des `{ code, evidence }` où `evidence` est une paire
+`champ = valeur` (`supplier_count = 42`), pas une phrase. Le libellé vient du
+dictionnaire ; l'API ne transporte aucune langue. **Aucun signal → aucun
+problème, aucune fonctionnalité, et un état explicite « données insuffisantes ».**
+
+**8. Les seuils sont écrits, donc discutables** (`THRESHOLDS` : 20 fournisseurs,
+100 produits, 3 signaux convergents). Un lecteur peut les contester, ce qu'il ne
+peut pas faire avec un « potentiel élevé » sorti de nulle part.
+
+**9. La couche L06 (Intelligence) n'est proposée qu'à partir de 3 signaux
+convergents.** La recommander sur un seul champ saisi serait du remplissage.
+
+## Le défaut préexistant corrigé
+
+`appendImmutableAuditLog` lisait le hachage du dernier maillon puis écrivait le
+suivant, sans verrou. Deux ajouts concurrents lisaient le **même** `previousHash`
+et produisaient deux maillons frères : `verifyAuditChainIntegrity` aurait alors
+signalé une chaîne rompue sur un journal **intact**. Un journal d'audit dont le
+vérificateur ment sur un journal sain est pire que pas de vérificateur.
+
+Ajout : `pg_advisory_xact_lock(hashtext(organizationId))` **avant** la lecture,
+libéré à la fin de la transaction. Le correctif protège aussi les appelants
+existants du module, pas seulement la console Admin.
+
+## Les défauts que mon propre test a trouvés dans mon propre code
+
+1. **`sanitizeAuditFilters` acceptait les tableaux.** `?action=a&action=b` arrive
+   en tableau ; `String(['a','b'])` vaut `'a,b'` — non vide, donc conservé, absent
+   de tout vocabulaire. La route valide `action` séparément : la valeur **validée**
+   et la valeur **interrogée** divergeaient sans que rien ne le signale.
+2. **Deux `evidence` contenaient du texte en langue naturelle** (`"42 suppliers"`,
+   `"3 signaux convergents"`) dans une surface en 7 langues. Remplacés par
+   `supplier_count = 42` et `signal_count = 3`.
+3. **La fixture de démonstration divergeait de la fonction réelle.** Je l'avais
+   calculée avec un `dpp_interest: 'high'` que l'entreprise de démo n'a pas :
+   elle annonçait 4 signaux là où la fonction en produit **3**. La fixture est
+   désormais générée par la fonction réelle.
+4. **`activities.ts` POST n'était pas scellé.** Une note manuelle (§12) est un
+   acte d'administration ; son absence rendait la piste incomplète sans que rien
+   ne le signale.
+
+Et **quatre de mes propres assertions étaient fausses**, pas le code :
+
+- `diffStates` renvoie `FieldChange[]`, pas `null` ni `{before, after}` — j'avais
+  écrit le test contre une signature imaginée.
+- Avec `before = {stage, priority}` et `after = {stage}`, le champ vidé est
+  `priority`, pas `stage`.
+- Un regex `action: 'x'` ne voit pas un ternaire réparti sur trois lignes, et ses
+  **conditions** (`'done'`, `'customer'`) ne sont pas des actions. C'est la
+  troisième fois qu'un matcher trop étroit me trompe ; la vérification est passée
+  sur le type, garanti par le compilateur.
+- « Le verrou est pris avant la lecture » était ancré sur la première occurrence
+  textuelle de `previousHash`, qui est la déclaration d'interface en tête de
+  fichier. Un verrou posé trop tard serait passé.
+
+## Ce qui est vérifié, et ce qui ne l'est pas
+
+Les 27 codes de `EU_MEMBER_STATES` ont été confrontés à `world-countries@5.1.0` :
+tous sont des codes ISO 3166-1 alpha-2 valides de la région Europe, sans doublon.
+**L'appartenance à l'UE elle-même n'est pas encodée par ce jeu de données** (aucun
+champ `eu`/`union`) : elle repose sur ma connaissance et n'a pas pu être vérifiée
+depuis cet environnement. La Grèce est retenue sous son code ISO `GR`, pas sous le
+code européen `EL`, parce que c'est ce que saisissent les opérateurs et ce que
+stocke `country_code`.
+
+## Mesures
+
+| Vérification | Résultat |
+|---|---|
+| `test:admin:chantier04` | **740/740** |
+| Contre-vérifications (7 défauts injectés, 8 fichiers restaurés à l'identique) | **7/7 détectés** |
+| `test:admin:chantier01 / 02 / 03` | 95/95 · 315/315 · 262/262 |
+| `api:typecheck` | **90** (= baseline), **0 erreur dans les fichiers CRM** |
+| `test:typecheck:baseline` | 8/8 |
+| `typecheck` front | exit **0** |
+| `schema:static` | OK — 22 tables, 61 politiques |
+| `test:i18n:serving` | 54/54 |
+| `test:suite` | **PASS 65 · SKIP 25 · FAIL 0 sur 90** |
+| Routeur | **149 motifs** |
+| Dictionnaires | **420 clés × 7 langues**, aucun CJK, keysets identiques |
+| Preview `/admin/?demo` | **200**, 420 clés servies dans les 7 langues |
+| Fichiers `prisma/` modifiés | **0** — `audit_logs` préexistait |
+
+Les 25 SKIP ont une cause mesurée : 12 prisma-engine, 6 database, 4 browser,
+3 staging par conception. Aucun défaut de code.
+
+## Limites assumées
+
+- **Aucune migration n'a jamais été exécutée ; aucun handler n'a répondu à une
+  requête réelle.** Les affirmations sur l'API sont structurelles ; celles sur
+  l'interface sont comportementales, en jsdom, sur données de démonstration.
+- **Le verrou advisory n'a jamais été exécuté contre PostgreSQL.** Sa nécessité
+  est démontrée par la lecture du code, son effet par raisonnement, pas par mesure.
+- **`prisma validate` et `npx prisma generate` restent bloqués** (TLS vers
+  `binaries.prisma.sh`).
+- Excel (.xlsx) toujours non livré : un classeur n'est pas un CSV.
+- Toujours reportés du cahier des charges Admin : Leads, Opportunities, Campaigns,
+  Emails, Notes, Suppliers, Product Usage.
