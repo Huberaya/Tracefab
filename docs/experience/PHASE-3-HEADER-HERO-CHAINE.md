@@ -107,10 +107,37 @@ niveau de rang et son état de preuve.
   en moins de 30 secondes ; c'est ce que mesure ce volet de
   `scripts/persona_audit.mjs`.
 
-## 7. Une dette connue
+## 7. Correction d'un diagnostic erroné
 
-`#platform` déborde en hauteur : 1 888 px à 1 440 px de large, 3 093 px à
-390 px. Un bloc de neutralisation en fin de `tracefab-site.css` contient le
-problème sans le résoudre. Le retirer fait réapparaître le défaut — c'est
-documenté à cet endroit du fichier pour que personne ne le supprime en
-croyant nettoyer.
+Une version antérieure de ce rapport annonçait ici une « dette connue » :
+`#platform` aurait débordé en hauteur, et un bloc en fin de
+`tracefab-site.css` aurait « contenu le problème sans le résoudre ».
+
+**Les deux affirmations sont fausses.** Elles ont été vérifiées à la mesure,
+sous Playwright, à 390 / 760 / 1024 / 1440 / 1600 px :
+
+| Largeur | Débordement horizontal | Hauteur de `#platform` |
+|---|---|---|
+| 390 px | 0 px | 3 093 px |
+| 760 px | 0 px | 2 420 px |
+| 1 024 px | 0 px | 2 088 px |
+| 1 440 px | 0 px | 1 888 px |
+| 1 600 px | 0 px | 1 888 px |
+
+Il n'y a aucun débordement, à aucune largeur. Les hauteurs citées n'étaient
+pas un symptôme : c'était la simple mesure d'une section longue. `#platform`
+empile sept couches de 163 à 408 px — une par étage du socle conceptuel. Une
+section de parcours au défilement est haute par construction ; c'est son
+fonctionnement, pas son défaut.
+
+Quant au bloc en fin de `tracefab-site.css`, il n'a rien à voir avec
+`#platform` : c'est le **retour visuel du chantier L2 demandé par
+l'utilisateur** (suppression du rail, des nœuds en losange et des étiquettes
+de relais). Il doit rester en place. Le retirer ne corrigerait aucun
+débordement — il annulerait une décision produit.
+
+**Ce qu'il faut en retenir.** Un chiffre n'est pas un diagnostic. J'avais
+relevé des hauteurs, je les avais qualifiées de débordement sans les
+comparer à quoi que ce soit, et j'avais attribué à un bloc de CSS une
+intention qu'il n'avait pas. La mesure a été refaite, la section est saine,
+et le présent paragraphe remplace l'erreur plutôt que de l'effacer.
