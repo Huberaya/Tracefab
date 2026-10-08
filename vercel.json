@@ -2,7 +2,7 @@
   "builds": [
     {
       "src": "api/index.ts",
-      "use": "@vercel/node",
+      "use": "@vercel/node@23.0.0",
       "config": { "includeFiles": ["catalog/**/*.json"] }
     },
     {
@@ -90,6 +90,10 @@
     {
       "src": "/traceability(?:/)?",
       "dest": "/traceability/index.html"
+    },
+    {
+      "src": "/passport(?:/)?",
+      "dest": "/passport/index.html"
     },
     {
       "src": "/i18n-core.js",

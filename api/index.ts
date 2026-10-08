@@ -143,14 +143,27 @@ function requestPath(req: VercelRequest) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const path = requestPath(req);
-  const route = routes.find((candidate) => candidate.pattern.test(path));
-  if (!route) return json(res, 404, { error: 'route_not_found' });
-  const match = route.pattern.exec(path);
-  if (match) {
-    const query = { ...req.query };
-    route.params.forEach((param, index) => { query[param] = decodeURIComponent(match[index + 1]); });
-    req.query = query;
+  try {
+    const route = routes.find((candidate) => candidate.pattern.test(path));
+    if (!route) return json(res, 404, { error: 'route_not_found' });
+    const match = route.pattern.exec(path);
+    if (match) {
+      const query = { ...req.query };
+      route.params.forEach((param, index) => { query[param] = decodeURIComponent(match[index + 1]); });
+      req.query = query;
+    }
+    const module = await route.load();
+    return await module.default(req, res);
+  } catch (error) {
+    /*
+     * Repli fermé. Sans ce bloc, toute exception remonte à Vercel : un
+     * `decodeURIComponent` sur une URL malformée (`/api/products/%`) lève
+     * URIError, un gestionnaire qui échoue laisse passer l'erreur du framework,
+     * laquelle peut emporter du SQL, des chemins de fichiers ou des trames de
+     * pile. On journalise côté serveur et on renvoie un corps générique.
+     */
+    console.error('Unhandled API route failure', { path, error });
+    if (res.headersSent) return res.end();
+    return json(res, 500, { error: 'internal_error' });
   }
-  const module = await route.load();
-  return module.default(req, res);
 }

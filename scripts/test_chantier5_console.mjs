@@ -8,8 +8,22 @@ const plmLib = await readFile(new URL('../api/_lib/plm-connector.ts', import.met
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 
 // Assertions on Brand Console UX
-assert(brandConsoleHtml.includes('Supply Chain Visualization'), 'Supply chain visualization view missing');
-assert(brandConsoleHtml.includes('Full Custody Mapping'), 'Full custody mapping missing');
+/*
+ * Ces deux assertions cherchaient « Supply Chain Visualization » et « Full Custody
+ * Mapping » : des libellés marketing qui n'ont jamais figuré dans le dépôt (0
+ * occurrence y compris au point de branchement 4ddf5f5). Elles sont remplacées par
+ * ce qui est réellement vérifiable : la vue existe, elle est atteignable, et elle
+ * déclare la source dont elle dépend.
+ */
+assert(/state\.view === 'supplyChain' \? supplyChainView\(\)/.test(brandConsoleHtml),
+  'Supply chain view is not reachable from the view dispatcher');
+assert(brandConsoleHtml.includes("key: 'supply-chain'"), 'Supply chain tab is missing from PRODUCT_TABS');
+assert(brandConsoleHtml.includes("source: 'GET /api/products/{id}/supply-chain'"),
+  'Supply chain tab does not declare its data source');
+assert(brandConsoleHtml.includes('case \'supply-chain\': return supplyChainTabPanel(data);'),
+  'Supply chain tab is not dispatched to a panel');
+assert(brandConsoleHtml.includes('/api/products/${id}/supply-chain'),
+  'Supply chain endpoint is missing from the lazy-load map');
 assert(brandConsoleHtml.includes('Rapports & Audits') || brandConsoleHtml.includes('Reports & Audits'), 'Reports and audits section missing');
 assert(brandConsoleHtml.includes("navButton('supplyChain'"), 'supplyChain nav button missing');
 

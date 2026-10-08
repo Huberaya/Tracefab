@@ -2945,3 +2945,87 @@ par des assertions structurelles.
 - `test:i18n:unified` 77/77 (nouveau) · `test:i18n:serving` 50/50 (33 avant)
 - `test:suite` : **PASS 53 · SKIP 18 · FAIL 0 sur 71**, exit 0
 - `api:typecheck` 90 = 90, baseline 8/8 — aucun fichier de `api/` touché
+
+---
+
+## Chantier 32 — Épinglage du builder, route `/passport` manquante, repli fermé du routeur, 14 scripts enregistrés
+
+### 1. `@vercel/node` épinglé
+
+`builds[0].use` valait `"@vercel/node"`, sans version. Vercel résout alors `latest` à
+chaque build : un major peut arriver en production sans qu'aucun commit ne change dans
+le dépôt. Registre interrogé : 495 versions, `dist-tags` = `latest 23.0.0`,
+`canary 5.7.11`. Épinglé sur **`@vercel/node@23.0.0`**, c'est-à-dire exactement ce que
+`latest` résout aujourd'hui — le comportement est gelé, pas modifié.
+
+### 2. Bug réel trouvé en écrivant le test de configuration : `/passport` injoignable
+
+`api/_routes/supplier/passport.ts:60` renvoie en production
+`publicUrl: '/passport/?ref=' + slug`. Le portail fournisseur l'affiche
+(`supplier-portal/index.html:1764`). `passport/index.html` (788 lignes) lit bien ce
+paramètre (`:468` → `urlParams.get('ref')`). Mais **aucune route de `vercel.json` ne
+servait `/passport`** : la page est déployée par le build `**/*.html` et renvoie 404.
+Même classe de défaut que le Chantier 29. Route `/passport(?:/)?` ajoutée.
+
+### 3. Le routeur n'avait aucun repli fermé
+
+`scripts/test_production_hardening.mjs` exigeait la chaîne
+`'Unhandled API route failure'` dans `api/index.ts` : **0 occurrence**. `handler()`
+n'avait ni `try` ni `catch`. Toute exception remontait à Vercel — y compris un
+`URIError` de `decodeURIComponent` sur une URL malformée (`/api/products/%` lève
+`URIError: URI malformed`, vérifié). Un gestionnaire qui échoue laissait donc passer
+l'erreur du framework, susceptible d'emporter du SQL, des chemins ou des trames de
+pile. Repli fermé ajouté : journalisation côté serveur, corps générique
+`{ error: 'internal_error' }`, garde `res.headersSent`.
+
+Deux commandes npm exigées par le même test étaient absentes : ajout de
+`security:production:env` (`audit_production_env.mjs --production`, échoue bien ici
+avec 23 problèmes faute de variables de production — c'est son rôle de porte de
+pré-déploiement) et `security:production:hardening`.
+
+### 4. Scripts non enregistrés : 12, pas 15
+
+Le décompte antérieur (15) ne comptait comme « enregistrés » que les scripts
+`node scripts/…`. Or `test_bulk_operations_chantier8.mjs`,
+`test_neon_bulk_operations_chantier8.mjs` et `test_chantier10_storage` sont enregistrés
+via **`npx tsx`**, qui résout déjà les spécificateurs `.js` → `.ts`. Décompte corrigé
+par correspondance sur tout nom `scripts/…` : **76 fichiers, 12 non référencés**.
+Un crochet de résolution `.js` → `.ts` avait été écrit pour ce problème avant de
+constater que `tsx` le résolvait déjà — supprimé.
+
+| script | état mesuré | décision |
+|---|---|---|
+| `test_chantier1_core` · `2_supplier` · `3_quality` | passent | enregistrés tels quels |
+| `test_production_hardening` | échouait | **2 vrais défauts corrigés** (repli fermé, commandes npm) |
+| `test_chantier4_dpp` | échouait | défaut de test : cherchait `'espr'` en minuscules, la page porte `ESPR` ×4 → assertion insensible à la casse |
+| `test_chantier5_console` | échouait | défaut de test : « Supply Chain Visualization » et « Full Custody Mapping » n'ont jamais figuré dans le dépôt (0 occurrence y compris en `4ddf5f5`) → remplacés par 5 assertions sur la surface réelle (`supplyChainView` atteignable, onglet déclaré, source déclarée, panneau, endpoint) |
+| 7 × `test_neon_*` | Prisma non généré | enregistrés ; le runner les classe SKIP (`prisma-engine`) |
+
+**Écrasement évité de justesse :** `test:dpp:chantier4` pointait déjà vers
+`scripts/test_dpp_chantier4.mjs` (12 709 o, dans la chaîne `test` agrégée). L'ajout par
+dictionnaire l'avait réaffecté à `test_chantier4_dpp.mjs`, orphanant le fichier
+d'origine. Restauré ; le nouveau test porte le nom `test:dpp:consumer:chantier4`.
+Contrôle final : **76/76 fichiers référencés, 0 orphelin, aucun script npm pointant
+vers un fichier absent.**
+
+### 5. `scripts/test_deploy_config.mjs` — 39 vérifications
+
+Le nouveau test est ce qui a révélé le point 2. Il vérifie : builder épinglé ·
+chaque `dest` de route pointe vers un fichier existant · chaque fichier de `public/`
+a sa route · le chemin du cron correspond à une route déclarée **et** à un fichier de
+gestionnaire existant · chaque surface ayant un `index.html` est joignable et
+réciproquement · `engines.node` déclaré et du même majeur que `@types/node`.
+Contre-vérification : épinglage et route `/passport` retirés → 3 FAIL, exit 1.
+
+### Mesures
+
+| | avant | après |
+|---|---|---|
+| `test:suite` | PASS 53 · SKIP 18 · FAIL 0 / 71 | **PASS 59 · SKIP 25 · FAIL 0 / 84** |
+| scripts `test:*` | 71 | **85** (−1 auto-exclu = 84 exécutés) |
+| `test:deploy:config` | n'existait pas | **39/39** |
+| `test_production_hardening` | échec (non enregistré) | **passe** |
+| `api:typecheck` | 90 | **90** (baseline 8/8) |
+| `typecheck` front | passe | **passe** |
+
+Aucun fichier sous `api/` modifié hormis `api/index.ts` (repli fermé, +14 lignes).

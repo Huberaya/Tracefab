@@ -10,7 +10,13 @@ const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf
 assert(indexTs.includes('dpp/validate'), 'dpp/validate route missing in api/index.ts');
 assert(dppRoute.includes('validateDppCompliance'), 'validateDppCompliance missing in dpp route');
 assert(dppLib.includes('frenchAgecArticle13'), 'frenchAgecArticle13 missing in dpp-validator.ts');
-assert(dppHtml.includes('espr') && dppHtml.includes('CIRPASS'), 'CIRPASS/ESPR markers missing in dpp consumer page');
+/*
+ * Insensible à la casse : la page porte « ESPR » en capitales (4 occurrences) et
+ * « CIRPASS » (1). L'ancienne assertion cherchait 'espr' en minuscules et échouait
+ * donc sur un contenu pourtant présent.
+ */
+const dppLower = dppHtml.toLowerCase();
+assert(dppLower.includes('espr') && dppLower.includes('cirpass'), 'CIRPASS/ESPR markers missing in dpp consumer page');
 
 // 2. Functional Inline Testing: Valid DPP Payload
 function validateDpp(payload) {
