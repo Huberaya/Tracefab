@@ -3029,3 +3029,80 @@ Contre-vérification : épinglage et route `/passport` retirés → 3 FAIL, exit
 | `typecheck` front | passe | **passe** |
 
 Aucun fichier sous `api/` modifié hormis `api/index.ts` (repli fermé, +14 lignes).
+
+---
+
+## Chantier 33 — La signature Apple : ce qui est signé, et ce qui ne l'est pas
+
+### Ce que le code faisait
+
+`apple-pass-generator.ts:251-268` avait deux branches :
+
+- avec `APPLE_PASS_CERTIFICATE_PEM` + `APPLE_PASS_KEY_PEM` → `createSign('RSA-SHA256').sign(keyPem)` ;
+- sinon → la chaîne ASCII `PKCS7_DEV_SIGNATURE_<sha256>`.
+
+La seconde n'est évidemment pas du PKCS#7. **La première non plus.** `signer.sign()`
+renvoie une signature RSA nue (DER RSASSA-PKCS1-v1_5, 256 octets pour RSA-2048), alors
+qu'Apple attend dans l'entrée `signature` une structure **CMS/PKCS#7 SignedData**
+contenant le manifeste, signée avec le certificat du pass et chaînée à l'intermédiaire
+WWDR. L'option `wwdrCertificatePem` existe dans `AppleWalletOptions:50` et n'est lue
+nulle part.
+
+Autrement dit : aucun des deux chemins ne produit un pass installable sur iOS, et le
+chemin « production » donnait l'impression contraire. Aucun appelant ne positionnait
+`useMockSignature` (déclaré en `types.ts:51`, 0 usage), et les deux routes servaient le
+tampon en `application/vnd.apple.pkpass` sans rien dire de son statut.
+
+### Décision
+
+Ne pas écrire un émetteur CMS de toutes pièces : il ne peut pas être vérifié contre
+Apple depuis cet environnement, et un conteneur faux mais plausible serait pire que
+l'état actuel. À la place, rendre la frontière **mesurable et visible** :
+
+- `resolveSignatureMode(options)` → `'raw-rsa-sha256' | 'dev-placeholder'`. Une seule
+  fonction décide, consultée à la fois par le générateur et par les routes : l'en-tête
+  renvoyé au client ne peut pas diverger du tampon produit.
+- `isSignatureInstallable(mode)` → `false`, toujours. Le jour où un vrai CMS est
+  produit, c'est cette fonction qui changera, pas quinze endroits.
+- `signManifest()` extrait du générateur, avec un `console.warn` explicite quand un
+  certificat est configuré — pour que l'échec se voie au build, pas sur un téléphone.
+- Les deux routes publient `X-Tracefab-Pass-Signature` et `X-Tracefab-Pass-Installable`.
+- `generateApplePkpass()` conserve son type de retour `Buffer` : 2 routes et 3 tests en
+  dépendent, et le changer n'aurait rien apporté que l'en-tête ne dise déjà.
+
+Le préfixe `PKCS7_DEV_SIGNATURE_` est trompeur et **conservé** : des passes déjà émis et
+des tests en dépendent. Son statut réel est porté par `resolveSignatureMode()`, pas par
+son nom — c'est dit dans le commentaire du code.
+
+### `scripts/test_apple_signature.mjs` — 32 vérifications
+
+Exécute le module **compilé**, avec une vraie clé RSA-2048 générée sur place :
+
+| | mesuré |
+|---|---|
+| repli | commence par `PKCS7_DEV_SIGNATURE_`, **pas** d'OID `id-signedData`, empreinte SHA-256 présente |
+| chemin certificat | **256 octets exactement** — une signature nue, pas un conteneur |
+| les deux | ne contiennent pas l'OID `1.2.840.113549.1.7.2` (`06 09 2a 86 48 86 f7 0d 01 07 02`) |
+| contre-vérification | le détecteur reconnaît un conteneur CMS construit pour l'occasion |
+| `generateApplePkpass` | renvoie toujours un Buffer, magic `504b0304`, entrée `signature` présente |
+
+Contre-vérification du test : `isSignatureInstallable` renvoyant `true` sur
+`raw-rsa-sha256` → 1 FAIL, exit 1.
+
+### Mesures
+
+| | avant | après |
+|---|---|---|
+| `test:suite` | PASS 59 · SKIP 25 · FAIL 0 / 84 | **PASS 60 · SKIP 25 · FAIL 0 / 85** |
+| `test:wallet:signature` | n'existait pas | **32/32** |
+| `test:pkpass:bundle` · `test:wallet:honesty` | passent | **passent** |
+| `api:typecheck` | 90 | **90** (baseline 8/8) |
+| `typecheck` front | 0 | **0** |
+
+`test:wallet:chantier9` échoue en direct sur `@prisma/client did not initialize` ;
+il est SKIP (`prisma-engine`) dans la suite, comme avant ce chantier.
+
+**Ce qui n'est pas fait, dit explicitement :** aucun pass produit par ce dépôt ne
+s'installe sur iOS. Le rendre installable exige un émetteur CMS SignedData avec le
+certificat du pass et l'intermédiaire WWDR, et une validation sur un appareil réel —
+ni l'un ni l'autre n'est possible ici.

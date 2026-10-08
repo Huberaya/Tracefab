@@ -244,31 +244,77 @@ export async function generateApplePkpass(data: DppPassData, options?: AppleWall
   files['manifest.json'] = manifestBuffer;
 
   // Cryptographic signature handling
-  let signatureBuffer: Buffer;
-  const certPem = options?.passCertificatePem || process.env.APPLE_PASS_CERTIFICATE_PEM;
-  const keyPem = options?.passKeyPem || process.env.APPLE_PASS_KEY_PEM;
-
-  if (certPem && keyPem && !options?.useMockSignature) {
-    try {
-      const signer = createSign('RSA-SHA256');
-      signer.update(manifestBuffer as any);
-      signatureBuffer = signer.sign(keyPem);
-    } catch (e) {
-      console.warn('Production Apple sign failed, falling back to development mock signature:', e);
-      signatureBuffer = Buffer.from(
-        `PKCS7_DEV_SIGNATURE_${createHash('sha256').update(manifestBuffer as any).digest('hex')}`,
-        'utf-8'
-      );
-    }
-  } else {
-    // Development / test fallback signature
-    signatureBuffer = Buffer.from(
-      `PKCS7_DEV_SIGNATURE_${createHash('sha256').update(manifestBuffer as any).digest('hex')}`,
-      'utf-8'
-    );
-  }
+  const signatureBuffer = signManifest(manifestBuffer, options);
 
   files['signature'] = signatureBuffer;
 
   return createPkpassZip(files);
+}
+
+/**
+ * Modes de signature réellement produits par ce module.
+ *
+ * Ni l'un ni l'autre n'est une structure CMS/PKCS#7 SignedData, qui est ce
+ * qu'Apple exige dans l'entrée `signature` d'un `.pkpass`. Un pass produit ici ne
+ * s'installera donc pas sur iOS — quelle que soit la branche prise. C'est mesuré,
+ * pas supposé : `signer.sign()` renvoie une signature RSA nue (DER
+ * RSASSA-PKCS1-v1_5), et le repli écrit une chaîne ASCII.
+ */
+export type AppleSignatureMode = 'raw-rsa-sha256' | 'dev-placeholder';
+
+/**
+ * Détermine quel mode s'appliquerait, sans rien signer.
+ *
+ * Le générateur et les routes HTTP consultent cette même fonction : il n'existe
+ * qu'une seule source de vérité, donc l'en-tête renvoyé au client ne peut pas
+ * diverger du tampon réellement produit.
+ */
+export function resolveSignatureMode(options?: AppleWalletOptions): AppleSignatureMode {
+  if (options?.useMockSignature) return 'dev-placeholder';
+  const certPem = options?.passCertificatePem || process.env.APPLE_PASS_CERTIFICATE_PEM;
+  const keyPem = options?.passKeyPem || process.env.APPLE_PASS_KEY_PEM;
+  return certPem && keyPem ? 'raw-rsa-sha256' : 'dev-placeholder';
+}
+
+/** Aucun des deux modes ne produit un pass installable sur iOS. */
+export function isSignatureInstallable(mode: AppleSignatureMode): boolean {
+  return false;
+}
+
+/**
+ * Signe le manifeste. Le tampon retourné n'est jamais une signature Apple valide
+ * — voir {@link AppleSignatureMode}. La fonction ne prétend pas le contraire et
+ * avertit quand un vrai certificat est configuré, pour que personne ne découvre
+ * l'échec à l'installation sur un téléphone.
+ */
+export function signManifest(manifestBuffer: Buffer, options?: AppleWalletOptions): Buffer {
+  const mode = resolveSignatureMode(options);
+
+  if (mode === 'raw-rsa-sha256') {
+    const keyPem = (options?.passKeyPem || process.env.APPLE_PASS_KEY_PEM) as string;
+    try {
+      const signer = createSign('RSA-SHA256');
+      signer.update(manifestBuffer as any);
+      const raw = signer.sign(keyPem);
+      console.warn(
+        'Apple Wallet : certificat configuré, mais signer.sign() produit une signature RSA nue, ' +
+          'pas une structure CMS SignedData. Le .pkpass ne s\'installera pas sur iOS. ' +
+          'Le mode est signalé par resolveSignatureMode().',
+      );
+      return raw;
+    } catch (error) {
+      console.warn('Signature RSA du manifeste Apple en échec, repli sur l\'empreinte de développement :', error);
+    }
+  }
+
+  /*
+   * Repli de développement. Le préfixe « PKCS7_ » est trompeur : ce n'est pas du
+   * PKCS#7, c'est une empreinte SHA-256 lisible. Il est conservé tel quel parce
+   * que des tests et des passes déjà émis en dépendent ; son statut réel est porté
+   * par resolveSignatureMode(), pas par son nom.
+   */
+  return Buffer.from(
+    `PKCS7_DEV_SIGNATURE_${createHash('sha256').update(manifestBuffer as any).digest('hex')}`,
+    'utf-8',
+  );
 }

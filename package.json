@@ -107,7 +107,8 @@
     "test:neon:plm-erp-gs1": "node scripts/test_neon_plm_erp_gs1.mjs",
     "test:neon:quality-cap": "node scripts/test_neon_quality_cap.mjs",
     "test:neon:universal-passport": "node scripts/test_neon_universal_passport.mjs",
-    "test:dpp:consumer:chantier4": "node scripts/test_chantier4_dpp.mjs"
+    "test:dpp:consumer:chantier4": "node scripts/test_chantier4_dpp.mjs",
+    "test:wallet:signature": "node scripts/test_apple_signature.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",
