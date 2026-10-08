@@ -250,9 +250,13 @@ isTrue(migration.includes('crm company % does not exist'),
 isTrue(migration.includes('crm row organization does not match its company'),
   'le trigger refuse toujours le re-parentage vers une autre plateforme');
 
+/* Chantier 07 : linked_organization_id faisait doublon avec organization_id
+   (chantier 06). Une seule colonne subsiste — voir la migration A06. */
+eq(/linked_organization_id/.test(migration.replace(/\/\*[\s\S]*?\*\//g, '')), false,
+  'linked_organization_id a disparu du code de la migration — plus de doublon');
 isTrue(/stage <> 'customer' OR converted_at IS NOT NULL/.test(migration),
   'un client sans converted_at est refusé en base — c\'est ce qui rend la durée de conversion mesurable');
-for (const col of ['converted_at', 'converted_value_eur', 'linked_organization_id']) {
+for (const col of ['converted_at', 'converted_value_eur']) {
   isTrue(migration.includes(`ADD COLUMN IF NOT EXISTS ${col}`),
     `crm_companies.${col} ajoutée — la conversion n\'ajoute pas de table, donc rien n\'est déplacé`);
 }
@@ -350,7 +354,9 @@ const stageHandler = await readFile(at('api/_routes/admin/companies/[companyId]/
 isTrue(stageHandler.includes("converted_at: stage === 'customer' ? new Date() : null"),
   'la conversion écrit converted_at — sans lui le CHECK en base rejette l\'update');
 isTrue(stageHandler.includes('canConvert'), 'la conversion passe par canConvert');
-isTrue(stageHandler.includes('linked_organization_id'), 'la conversion peut relier un vrai espace TRACEFAB');
+isTrue(stageHandler.includes('organization_id'), 'la conversion peut relier un vrai espace TRACEFAB');
+isTrue(/parseOrganizationId/.test(stageHandler),
+  'le lien est validé comme UUID : le .slice(0, 64) envoyait une chaîne quelconque dans une colonne UUID');
 
 /* -------------------------------------------------------------------------- */
 console.log('\nG. Internationalisation');

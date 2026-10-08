@@ -223,8 +223,8 @@ console.log('\nF. Migration — additive, non destructive, isolation inchangée'
 
 const migDir = 'prisma/migrations/20261008180000_admin_command_center_connection/migration.sql';
 const mig = await readFile(at(migDir), 'utf8');
-isTrue(/ALTER TABLE crm_companies\s+ADD COLUMN IF NOT EXISTS organization_id UUID;/.test(mig),
-  'la migration ajoute une colonne UUID nullable et idempotente');
+isTrue(/ALTER TABLE crm_companies\s+ADD COLUMN IF NOT EXISTS organization_id UUID\s+REFERENCES organizations\(id\) ON DELETE SET NULL;/.test(mig),
+  'la migration ajoute une colonne UUID nullable, idempotente, sous clé étrangère ON DELETE SET NULL');
 eq(/DROP TABLE|DELETE FROM|TRUNCATE|DROP COLUMN/i.test(mig), false,
   'aucune opération destructive : rien d\'existant n\'est supprimé');
 isTrue(/CREATE INDEX IF NOT EXISTS/.test(mig), 'les index sont idempotents');

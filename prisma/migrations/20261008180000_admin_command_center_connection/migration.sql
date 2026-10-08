@@ -25,7 +25,8 @@
 -- -----------------------------------------------------------------------------
 
 ALTER TABLE crm_companies
-  ADD COLUMN IF NOT EXISTS organization_id UUID;
+  ADD COLUMN IF NOT EXISTS organization_id UUID
+    REFERENCES organizations(id) ON DELETE SET NULL;
 
 /*
  * Pas de clé étrangère, conformément au précédent de crm_pilots.organization_id.

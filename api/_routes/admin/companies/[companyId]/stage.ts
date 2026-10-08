@@ -6,6 +6,7 @@ import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { PIPELINE_STAGES, canConvert, canTransition, stageRank } from '../../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { auditAdmin } from '../../../../_lib/crm-audit-write.js';
+import { parseOrganizationId } from '../../../../_lib/crm-link.js';
 
 /**
  * PATCH /api/admin/companies/:companyId/stage
@@ -60,10 +61,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const convertedValue = stage === 'customer' && Number.isInteger(valueRaw) && valueRaw >= 0
         ? valueRaw
         : null;
-      const linkedOrg = stage === 'customer' && typeof body.linked_organization_id === 'string'
-        && body.linked_organization_id.trim()
-        ? body.linked_organization_id.trim().slice(0, 64)
-        : null;
+      /*
+       * Lien vers l'organisation TRACEFAB (chantier 07).
+       *
+       * Il remplace linked_organization_id, qui recevait un .slice(0, 64) : une
+       * chaîne quelconque dans une colonne UUID sous clé étrangère, ce qui
+       * échouait en base sur toute valeur non UUID.
+       *
+       * Trois cas, pas deux. Absent : on ne touche pas à la colonne — un lien
+       * posé à la main depuis la vue Suppliers ne doit pas être effacé par un
+       * simple changement d'étape. Null explicite : on délie. UUID valide : on
+       * lie. L'existence de l'organisation est vérifiée plus bas, parce qu'il
+       * n'y a pas de vérification possible au seul niveau du format.
+       */
+      let linkedOrg: string | null | undefined;
+      if (body.organization_id === null) {
+        linkedOrg = null;
+      } else if (typeof body.organization_id === 'string' && body.organization_id.trim()) {
+        const parsedOrg = parseOrganizationId(body.organization_id);
+        if (!parsedOrg) return json(res, 422, { error: 'organization_id_must_be_uuid' });
+        linkedOrg = parsedOrg;
+      }
 
       const updated = await tx.crm_companies.update({
         where: { id: companyId },
@@ -73,7 +91,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           last_contact_at: stage === 'contacted' || stage === 'replied' ? new Date() : undefined,
           converted_at: stage === 'customer' ? new Date() : null,
           converted_value_eur: convertedValue,
-          linked_organization_id: linkedOrg,
+          /* `undefined` laisse la colonne intacte ; `null` délie. */
+          organization_id: linkedOrg,
         } as never,
       });
 

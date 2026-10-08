@@ -12,13 +12,17 @@
 --   prendrait pour des faits. Le lead est PROMU en entreprise, et la promotion
 --   conserve la provenance (§9).
 --
--- POURQUOI AUCUNE CLÉ ÉTRANGÈRE
---   Le bloc CRM existant n'en porte aucune : crm_tasks.company_id,
---   crm_meetings.company_id, crm_pilots.organization_id et
---   crm_companies.organization_id sont tous des UUID nus, validés à l'écriture.
---   Introduire ici la première FK créerait une incohérence et un comportement
---   de suppression en cascade que personne n'a examiné. Les références sont
---   donc vérifiées à l'écriture, comme partout ailleurs.
+-- CLÉS ÉTRANGÈRES
+--   Corrigé au chantier 07 : l'affirmation précédente (« le bloc CRM n'a aucune
+--   clé étrangère ») était FAUSSE. Elle venait d'une lecture de schema.prisma,
+--   où aucune colonne CRM ne porte de @relation, alors que les migrations A01 et
+--   A02 créent bien 15 contraintes — crm_tasks.company_id,
+--   crm_contacts.company_id, crm_pilots.organization_id, etc. Vérifié en
+--   exécutant la chaîne complète sur PostgreSQL : pg_constraint les liste.
+--
+--   Ces deux colonnes portent donc une FK, comme le reste du bloc, avec
+--   ON DELETE SET NULL : supprimer une campagne ou une entreprise détache le
+--   lead au lieu de le supprimer — sa provenance doit survivre (§9).
 --
 -- CE QUE CETTE MIGRATION NE FAIT PAS
 --   Elle ne crée aucune donnée. Aucun lead ni aucune campagne n'est inventé :
@@ -86,7 +90,7 @@ COMMENT ON COLUMN crm_campaigns.budget_eur IS
 CREATE TABLE IF NOT EXISTS crm_leads (
   id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   platform_organization_id UUID NOT NULL,
-  campaign_id              UUID,
+  campaign_id              UUID REFERENCES crm_campaigns(id) ON DELETE SET NULL,
   company_name             TEXT NOT NULL,
   contact_name             TEXT,
   contact_job_title        TEXT,
@@ -99,7 +103,7 @@ CREATE TABLE IF NOT EXISTS crm_leads (
   sector                   TEXT,
   status                   crm_lead_status NOT NULL DEFAULT 'new',
   discard_reason           TEXT,
-  converted_company_id     UUID,
+  converted_company_id     UUID REFERENCES crm_companies(id) ON DELETE SET NULL,
   converted_at             TIMESTAMPTZ,
   duplicate_key            TEXT NOT NULL,
   source                   TEXT,

@@ -329,9 +329,20 @@ isTrue(/EXCEPTION WHEN duplicate_object THEN NULL/.test(mig),
 isTrue(/ALTER TABLE crm_companies\s+ADD COLUMN IF NOT EXISTS campaign_id UUID;/.test(mig),
   'campaign_id est ajouté à crm_companies, nullable et idempotent');
 
-/* Aucune clé étrangère, conformément à tout le bloc CRM. */
-eq(/FOREIGN KEY|REFERENCES/.test(mig), false,
-  'aucune clé étrangère : tout le bloc CRM s\'en passe et valide à l\'écriture. Introduire la première ici créerait une incohérence et une cascade jamais examinée');
+/*
+ * Clés étrangères, comme tout le bloc CRM.
+ *
+ * L'affirmation inverse — « le bloc CRM n'a aucune FK » — était FAUSSE : elle
+ * venait d'une lecture de schema.prisma, où aucune colonne CRM ne porte de
+ * @relation, alors que les migrations A01/A02 en créent bien 15. Vérifié en
+ * exécutant la chaîne complète sur PostgreSQL.
+ */
+isTrue(/campaign_id\s+UUID REFERENCES crm_campaigns\(id\) ON DELETE SET NULL/.test(mig),
+  'campaign_id porte une FK ON DELETE SET NULL : supprimer une campagne détache le lead sans le supprimer');
+isTrue(/converted_company_id\s+UUID REFERENCES crm_companies\(id\) ON DELETE SET NULL/.test(mig),
+  'converted_company_id porte une FK : un lead ne peut pas pointer vers une entreprise inexistante');
+eq(/ON DELETE CASCADE/.test(mig), false,
+  'aucun ON DELETE CASCADE ici : la provenance d\'un lead doit survivre (§9)');
 
 /* Aucun index partiel : Prisma ne sait pas les exprimer, donc ce serait une
    dérive invisible entre le schéma et la base. */

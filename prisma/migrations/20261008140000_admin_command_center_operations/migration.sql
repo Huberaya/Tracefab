@@ -113,14 +113,29 @@ CREATE TABLE IF NOT EXISTS crm_pilots (
 
 -- Conversion prospect → client -------------------------------------------------
 --
--- Trois colonnes, pas une nouvelle table. La conversion ne déplace rien : la
+-- Deux colonnes, pas une nouvelle table. La conversion ne déplace rien : la
 -- ligne `crm_companies` reste, ses contacts, activités et rendez-vous restent
 -- attachés par company_id. Rien n'est perdu parce que rien n'est déplacé.
 
 ALTER TABLE crm_companies
   ADD COLUMN IF NOT EXISTS converted_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS converted_value_eur INTEGER,
-  ADD COLUMN IF NOT EXISTS linked_organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS converted_value_eur INTEGER;
+
+/*
+ * linked_organization_id a été RETIRÉE (chantier 07).
+ *
+ * Elle faisait doublon avec crm_companies.organization_id, ajoutée par le
+ * chantier 06 pour les vues Suppliers et Product Usage : deux colonnes pour un
+ * même concept — « l'organisation TRACEFAB derrière cette entreprise » — qui
+ * pouvaient diverger sans que rien ne les réconcilie.
+ *
+ * Celle du chantier 06 est conservée parce qu'elle est validée (UUID contrôlé,
+ * existence de l'organisation vérifiée) alors que celle-ci recevait un
+ * .trim().slice(0, 64) : une chaîne quelconque dans une colonne UUID sous clé
+ * étrangère, ce qui échouait en base sur toute valeur non UUID.
+ *
+ * Le lien reste écrit à la conversion — voir companies/[companyId]/stage.ts.
+ */
 
 -- Une conversion sans date n'est pas une conversion mesurable, et un client sans
 -- conversion datée fausse la durée moyenne avant conversion.
