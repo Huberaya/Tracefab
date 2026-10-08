@@ -1042,3 +1042,84 @@ l'identité visuelle divergente de `passport/` (Plus Jakarta Sans, accent bleu
 `#2563eb`) qui attend un arbitrage ; les phases 9 à 12 sans rapport dédié ;
 deux polices d'affichage à arbitrer ; 27 cibles tactiles sous 40 px ; 10 clés
 `portal` non référencées.
+
+---
+
+## Tranche 12 — alignement visuel du Passeport Fournisseur
+
+### L'écart
+
+`passport/index.html` est antérieur au système de design et n'avait jamais
+été repris. Il tournait sur une identité entièrement distincte :
+
+| | avant | système de design |
+|---|---|---|
+| police | Plus Jakarta Sans | Inter Tight + JetBrains Mono |
+| fond | `#090d16` (bleu nuit) | `--tf-forest-950` `#040b08` |
+| accent | `#2563eb` (bleu) | `--tf-emerald` `#0fb97c` |
+| rayons | 16–18 px | `--tf-r-sm` 4 px à `--tf-r-lg` 10 px |
+| indicateurs | 4 couleurs décoratives | blanc cassé, libellés mono |
+
+Les quatre indicateurs étaient rendus en émeraude, bleu ciel, ambre et violet.
+La charte demande l'émeraude **avec parcimonie** et une page qui « fonctionne
+presque en monochrome » : quatre accents décoratifs sur une seule ligne, c'est
+l'inverse.
+
+### Ce qui a été fait
+
+La page charge désormais `tracefab-core.css` et sa feuille locale a été
+réécrite sur les jetons : **52 variables `--tf-*`** et plus une seule couleur
+en dur. Les noms de classes sont inchangés, donc le balisage rendu par le
+script n'a pas bougé.
+
+- Surface Deep Forest, cartes `--tf-forest-900`, éléments `--tf-forest-850`.
+- Les chiffres passent en blanc cassé, les libellés en JetBrains Mono
+  majuscule espacé : « grands chiffres, petits libellés techniques ».
+- L'émeraude est réservée aux signaux de confiance (`✓ Audited profile`,
+  `✓ AI verified`, statut `Active`) et au CTA principal.
+- Les statuts prennent l'échelle `--tf-trust-*` déjà présente dans le système
+  plutôt que des verts et ambres ad hoc.
+- Le dégradé tricolore en tête de carte devient un filet émeraude unique.
+- Emoji retirés des trois titres de carte et de la modale de confirmation ;
+  la coche `✓` est conservée, elle porte du sens.
+
+### Défauts trouvés en chemin
+
+**Un drapeau portugais codé en dur.** Le badge pays rendait
+`🇵🇹 ${countryCode}` pour **tout** fournisseur — un atelier turc ou
+bangladais aurait affiché le drapeau du Portugal. La plateforme revendique
+pourtant de couvrir n'importe quel pays. Le drapeau est retiré, le code pays
+reste en mono.
+
+**Une variable morte.** L'état de chargement et deux blocs de la modale
+pointaient vers `var(--muted)`, supprimée avec l'ancienne palette : ils
+rendaient du texte sans couleur déclarée. Remplacés par des classes.
+
+**Une phrase juridique en mono majuscule.** La mention NDA héritait du
+traitement `.form-group label` — libellé technique, majuscules, interlettrage
+large. Correct pour « VOTRE EMAIL », illisible pour trois lignes de
+conditions de confidentialité. Spécificité corrigée.
+
+**Une bande grise fantôme.** Premier jet du bandeau d'indicateurs : les filets
+de séparation étaient dessinés par un fond de grille avec `gap: 1px`. Le fond
+peignait aussi la zone du `padding-top`, ce qui produisait un rectangle vide
+au-dessus des chiffres. Les séparateurs passent en `border-left`.
+
+**La barre collante recouvrait la dernière carte.** Réserve de 150 px en bas
+du conteneur (170 px en mobile), vérifiée en fin de page.
+
+### Vérifications
+
+- 6 largeurs testées (390 → 1600 px) : **0 débordement horizontal**,
+  **0 cible tactile sous 40 px**, 0 fuite de gabarit, 0 `pageerror`.
+- i18n intacte après restyle : les 7 langues rendent toujours, catalogue
+  `passport` inchangé.
+- Barrière : **45/45**, `build` OK, `tsc --noEmit` OK, `e2e_audit.py` 4/4,
+  personas 6/6 · 4/4 · 4/4.
+- Captures : `.visual/t12/passport-{AVANT,APRES,mobile}.png`.
+
+### Reste à traiter
+
+Les phases 9 à 12 n'ont toujours pas de rapport dédié. Restent deux polices
+d'affichage à arbitrer, les cibles tactiles sous 40 px sur les **autres**
+pages, et 10 clés `portal` non référencées.
