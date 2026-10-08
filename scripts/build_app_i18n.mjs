@@ -188,7 +188,13 @@ const enPath = join(I18N, 'en.js');
 let enSrc = readFileSync(enPath, 'utf8');
 if (/^\s*(shared|console|portal):/m.test(enSrc)) {
   console.log('\n  en.js contient deja les portees applicatives — reecriture.');
-  enSrc = enSrc.replace(/,?\n\n  \/\/ --- portees applicatives[\s\S]*?(?=\n\};)/, '');
+  // Le lookahead (?=\n\};) bornait la suppression a la fin de TOUT l'objet :
+  // le [\s\S]*? paresseux avalait donc chaque racine situee apres celle-ci.
+  // Tant que cette portee etait la derniere du catalogue, le resultat etait
+  // juste par accident. On borne desormais sur la fermeture de la portee
+  // elle-meme (accolade a 2 espaces), ce qui est independant de sa position.
+  // Cette portee en contient trois : on va jusqu'a la fermeture de 'portal'.
+  enSrc = enSrc.replace(/,?\n\n  \/\/ --- portees applicatives[\s\S]*?\n  portal: \{[\s\S]*?\n  \}/, '');
 }
 const fmt = (o, ind) => Object.entries(o)
   .map(([k, v]) => `${ind}${k}: ${JSON.stringify(v)}`).join(',\n');

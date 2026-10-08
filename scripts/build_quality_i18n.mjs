@@ -32,6 +32,8 @@ const T = {
   eyebrowBrand: ['Tracefab Quality Center', 'Tracefab Quality Center', 'Tracefab Quality Center', 'Tracefab Quality Center', 'Tracefab Quality Center', 'Tracefab Quality Center', 'Tracefab Quality Center'],
   unavailable: ['Quality unavailable', 'Qualité indisponible', 'Qualität nicht verfügbar', 'Qualità non disponibile', 'Calidad no disponible', 'Kwaliteit niet beschikbaar', 'Qualidade indisponível'],
   retry: ['Try again', 'Réessayer', 'Erneut versuchen', 'Riprova', 'Reintentar', 'Opnieuw proberen', 'Tentar novamente'],
+  errBackend: ['The quality service is temporarily unreachable. Your data is intact.', 'Le service qualité est temporairement injoignable. Vos données sont intactes.', 'Der Qualitätsdienst ist vorübergehend nicht erreichbar. Ihre Daten sind unversehrt.', 'Il servizio qualità è temporaneamente irraggiungibile. I suoi dati sono intatti.', 'El servicio de calidad no está disponible temporalmente. Sus datos están intactos.', 'De kwaliteitsdienst is tijdelijk onbereikbaar. Uw gegevens zijn intact.', 'O serviço de qualidade está temporariamente indisponível. Os seus dados estão intactos.'],
+  errSignIn: ['Please sign in again to continue.', 'Reconnectez-vous pour continuer.', 'Bitte melden Sie sich erneut an.', 'Effettui di nuovo l’accesso per continuare.', 'Vuelva a iniciar sesión para continuar.', 'Meld u opnieuw aan om door te gaan.', 'Inicie sessão novamente para continuar.'],
   signInTitle: ['Control your data quality.', 'Contrôler la qualité de la donnée.', 'Die Datenqualität steuern.', 'Controllare la qualità del dato.', 'Controlar la calidad del dato.', 'De datakwaliteit beheersen.', 'Controlar a qualidade dos dados.'],
   signInLede: ['Explainable scores, actionable issues and a history of review decisions.', 'Scores explicables, issues actionnables et historique des décisions de revue.', 'Nachvollziehbare Scores, umsetzbare Befunde und eine Historie der Prüfentscheidungen.', 'Punteggi spiegabili, problemi azionabili e storico delle decisioni di revisione.', 'Puntuaciones explicables, incidencias accionables e histórico de decisiones de revisión.', 'Verklaarbare scores, uitvoerbare bevindingen en een historiek van beoordelingsbeslissingen.', 'Pontuações explicáveis, questões acionáveis e histórico das decisões de revisão.'],
   navHome: ['Home', 'Accueil', 'Startseite', 'Home', 'Inicio', 'Home', 'Início'],
@@ -97,7 +99,12 @@ const scopeFor = (i) => Object.fromEntries(keys.map((k) => [k, T[k][i]]));
 // en.js
 const enPath = join(I18N, 'en.js');
 let enSrc = readFileSync(enPath, 'utf8');
-enSrc = enSrc.replace(/,\n\n  \/\/ --- Quality Center[\s\S]*?\n  \}(?=\n\};)/, '');
+// Le lookahead (?=\n\};) bornait la suppression a la fin de TOUT l'objet :
+// le [\s\S]*? paresseux avalait donc chaque racine situee apres celle-ci.
+// Tant que cette portee etait la derniere du catalogue, le resultat etait
+// juste par accident. On borne desormais sur la fermeture de la portee
+// elle-meme (accolade a 2 espaces), ce qui est independant de sa position.
+enSrc = enSrc.replace(/,?\n\n  \/\/ --- Quality Center[\s\S]*?\n  \}/, '');
 const body = Object.entries(scopeFor(0)).map(([k, v]) => `    ${k}: ${JSON.stringify(v)}`).join(',\n');
 enSrc = enSrc.replace(/\n\};\s*$/, `,\n\n  // --- Quality Center ----------------------------------------------------\n  quality: {\n${body}\n  }\n};\n`);
 writeFileSync(enPath, enSrc);

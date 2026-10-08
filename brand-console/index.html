@@ -3660,17 +3660,20 @@
                 <span class="status status-changes_requested">${dpp.blockingCount} bloquant(s)</span>
               </div>
               <div class="item-list">
-                ${dpp.missingFields.map((m) => `
+                ${dpp.missingFields.map((m) => {
+                  const target = dppFixTarget(m.key);
+                  return `
                   <div class="item">
                     <div>
                       <h3>${esc(m.labelKey ? bt(m.labelKey) : (m.label || m.key))} ${m.blocking ? '<span style="color:var(--red)">*</span>' : ''}</h3>
                       <p class="meta">${bt('dpReqCode')} : <code>${esc(m.key)}</code> · ${m.blocking ? bt('dpMandatory') : bt('dpRecommended')}</p>
                     </div>
-                    <div>
+                    <div class="actions" style="justify-content:flex-end;align-items:center;gap:8px">
                       <span class="severity ${m.blocking ? 'severity-blocking' : 'severity-info'}">${m.blocking ? bt('dpBlocking') : bt('dpRecommended')}</span>
+                      ${target ? `<button class="btn btn-secondary btn-small" data-action="dp-resolve" data-dp-target="${esc(target.view)}">${esc(bt('dpResolveIn'))} ${esc(bt(target.labelKey))}</button>` : ''}
                     </div>
                   </div>
-                `).join('')}
+                `; }).join('')}
               </div>
             </div>
           ` : `
@@ -4283,6 +4286,31 @@
         };
       }
 
+      /**
+       * Chaque exigence DPP manquante doit mener a l'ecran qui la corrige :
+       * le brief impose une liste d'actions, pas un constat. On indexe sur le
+       * prefixe de la cle d'exigence pour couvrir celles que le backend
+       * ajoutera. Sans correspondance, aucun bouton n'est rendu — un bouton
+       * qui ne mene nulle part est pire que pas de bouton.
+       */
+      const DP_FIX_TARGETS = {
+        supply_chain: { view: 'supplyChain', labelKey: 'supplyChain' },
+        traceability: { view: 'supplyChain', labelKey: 'supplyChain' },
+        quality:      { view: 'quality',     labelKey: 'quality' },
+        composition:  { view: 'materials',   labelKey: 'materials' },
+        product:      { view: 'products',    labelKey: 'products' },
+      };
+      function dppFixTarget(key) {
+        return DP_FIX_TARGETS[String(key || '').split('.')[0]] || null;
+      }
+      async function resolveDppRequirement(view) {
+        const productId = state.selectedDppProduct?.id || state.selectedProduct?.id;
+        if (view === 'supplyChain' && productId) { await loadSupplyChain(productId); return; }
+        if (view === 'quality' && productId) { await loadQuality(productId); return; }
+        state.view = view;
+        render();
+      }
+
       async function loadSupplyChain(productId) {
         state.selectedSupplyChainProduct = state.products.find((p) => p.id === productId) || null;
         state.view = 'supplyChain';
@@ -4545,6 +4573,7 @@
             if (action === 'new-product') { state.modal = 'new-product'; render(); }
             if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
             if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
+            if (action === 'dp-resolve') await resolveDppRequirement(el.dataset.dpTarget);
             if (action === 'catalog-export') await exportCatalog();
             if (action === 'audit-export') await exportAudit();
             if (action === 'preview-catalog-import') await previewCatalogImport();
