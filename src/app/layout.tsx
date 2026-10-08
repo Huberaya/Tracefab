@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Passeport Numérique de Produit (DPP) — Tracefab',
-  description: 'Passeport Numérique de Produit textile certifié conforme aux normes européennes ESPR 2024/1781 et Loi AGEC Article 13.',
+  description: 'Démonstration de passeport numérique de produit textile, préparé pour les exigences du Digital Product Passport (règlement ESPR 2024/1781) et de la loi AGEC article 13. L’état de préparation affiché ne constitue pas une certification de conformité.',
 };
 
 export const viewport: Viewport = {

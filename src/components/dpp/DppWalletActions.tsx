@@ -50,7 +50,7 @@ export const DppWalletActions: React.FC<DppWalletActionsProps> = ({
       try {
         await navigator.share({
           title: `Passeport Numérique — ${reference}`,
-          text: `Découvrez le Passeport Numérique de Produit (DPP) certifié ESPR.`,
+          text: `Découvrez le Passeport Numérique de Produit (DPP), préparé pour les exigences ESPR.`,
           url: window.location.href,
         });
       } catch {

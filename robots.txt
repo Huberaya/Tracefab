@@ -1,0 +1,15 @@
+# TRACEFAB — robots
+# Les surfaces applicatives (consoles, portail, pages internes) ne sont pas
+# indexables ; seuls le site public et les expériences produit publiques le sont.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /brand-console
+Disallow: /supplier-portal
+Disallow: /quality-center
+Disallow: /operations
+Disallow: /invitations
+Disallow: /product-intelligence
+
+Sitemap: https://tracefab.vercel.app/sitemap.xml

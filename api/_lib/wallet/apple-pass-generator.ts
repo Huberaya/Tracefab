@@ -59,7 +59,7 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
         {
           key: 'composition',
           label: 'COMPOSITION 100%',
-          value: data.certifiedComposition || 'Fibres naturelles certifiées',
+          value: data.certifiedComposition || 'Composition déclarée (preuve à vérifier)',
         },
         {
           key: 'gtin',
@@ -71,13 +71,13 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
       backFields: [
         {
           key: 'dpp_url',
-          label: 'PASSEPORT NUMÉRIQUE OFFICIEL (DPP)',
+          label: 'PASSEPORT NUMÉRIQUE PRODUIT (DPP)',
           value: data.dppUrl,
         },
         {
           key: 'espr_notice',
           label: 'CADRE RÉGLEMENTAIRE EUROPÉEN',
-          value: 'Ce passeport produit est certifié conforme au Règlement Écoconception ESPR 2024/1781 et à la loi AGEC article 13.',
+          value: 'Ce passeport produit est préparé pour les exigences du Digital Product Passport (Règlement Écoconception ESPR 2024/1781) et de la loi AGEC article 13. Cet état de préparation ne constitue pas une certification de conformité.',
         },
         {
           key: 'product_id',

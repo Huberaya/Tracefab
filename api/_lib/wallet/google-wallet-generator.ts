@@ -69,7 +69,7 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
       {
         id: 'composition',
         header: 'COMPOSITION 100%',
-        body: data.certifiedComposition || 'Fibres certifiées',
+        body: data.certifiedComposition || 'Composition déclarée (preuve à vérifier)',
       },
       {
         id: 'pef',
@@ -84,7 +84,7 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
       {
         id: 'traceability',
         header: 'TRAÇABILITÉ SUPPLY CHAIN',
-        body: data.supplyChainSummary || 'Nœuds certifiés GOTS/GRS auditables.',
+        body: data.supplyChainSummary || 'Chaîne de valeur déclarée, preuves à vérifier.',
       },
     ],
     linksModuleData: {

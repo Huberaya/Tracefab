@@ -12,7 +12,10 @@ export default function Home() {
           Tracefab Digital Product Passport
         </h1>
         <p className="text-neutral-400 text-sm sm:text-base leading-relaxed">
-          Passeport Numérique de Produit textile certifié conforme aux normes européennes ESPR 2024/1781, avec intégration native Apple Wallet & Google Wallet.
+          Démonstration de passeport numérique de produit textile, préparé pour
+          les exigences du Digital Product Passport (règlement ESPR 2024/1781),
+          avec intégration native Apple Wallet & Google Wallet. L'état de
+          préparation affiché ne constitue pas une certification de conformité.
         </p>
 
         <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-center">

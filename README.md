@@ -4,6 +4,13 @@ Infrastructure de données fournisseurs pour la traçabilité textile, la qualit
 
 ## Statut
 
+**Transformation world-class en cours.** L'audit complet du 8 octobre 2026 et
+la feuille de route en 20 chantiers (un à la fois, validation entre chaque)
+sont dans `docs/audit/01-world-class-transformation-audit.md`. Le Chantier 01
+(Audit & Foundation) ajoute `robots.txt`, `sitemap.xml` et remplace toute
+formulation de « conformité » réglementaire par un vocabulaire strict de
+readiness.
+
 **P2 en cours — Chantier 9 / Référentiel des certifications / readiness infrastructure staging / E2E Playwright non mocké — base Chantier 23, Notification Observability et Neon + Clerk**
 
 Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité, le graphe de traçabilité et la première projection versionnée de préparation DPP. Le P2 ajoute le catalogue versionné des standards de certification sous `/api/catalog/certification-standards`, la readiness protégée des intégrations réelles sous `/api/internal/p2/readiness` et un test Playwright staging strictement non mocké ; sa validation finale attend encore les credentials réels S3/antivirus/Resend/webhook d'alerte. Le schéma Neon est appliqué via Prisma avec une identité Clerk côté serveur. Le Chantier 18 ajoute une Brand Console statique sous `/brand-console/` avec produits, révisions, composition, identifiants, fournisseurs, demandes, revue et qualité. Le Chantier 19 ajoute un Supplier Portal approfondi sous `/supplier-portal/` pour le profil, les sites, les matériaux, les certificats déclarés, la qualité fournisseur, les demandes de données, les réponses versionnées et la soumission. Le Chantier 20 ajoute le stockage privé des preuves avec URLs présignées, contrôle serveur, hash SHA-256, antivirus contractuel et téléchargements temporaires. Le Chantier 21 ajoute la planification Vercel Cron des relances et l'enchaînement sécurisé de l'outbox. Le Chantier 22 ajoute les logs corrélés, l'état protégé de l'outbox et les alertes webhook timeout-safe pour les échecs de notification. Le Chantier 23 ajoute les data points structurés, la gestion d'équipe et le contexte multi-organisation du Supplier Portal, avec acceptation Clerk des invitations, renvoi/révocation et durcissement RLS Neon. Le bucket, le scanner antivirus, la configuration Cron, le webhook d'alerte et les memberships réels restent des dépendances d'infrastructure à activer sur staging/production.
