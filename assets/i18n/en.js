@@ -1942,6 +1942,7 @@ window.TF_I18N_BUNDLES.en = {
 
   // --- DPP public --------------------------------------------------------
   dpp: {
+    demoBanner: "Demonstration passport — sample data, not a real product.",
     badgeEu: "EU ESPR / DPP format",
     verifiedOrigin: "✓ Verified Provenance",
     composition: "Material Composition",

@@ -105,7 +105,7 @@ export async function resolveDppPassData(
     verificationDate: (product.updated_at || new Date()).toISOString().slice(0, 10),
     transactionCertificateNumber: mb ? `TC-VERIFIED-MB-${mb.id.slice(0, 8)}` : undefined,
     supplyChainSummary,
-    careInstructions: 'Lavage en machine à 30°C sur envers avec couleurs similaires. Essorage doux (600 tr/min). Ne pas sécher en machine. Repassage à fer doux.',
-    recyclingInstructions: 'Produit mono-matière hautement recyclable. En fin d’usage, déposer dans une borne textile Re-fashion ou rapporter en magasin.',
+    careInstructions: 'Machine wash at 30°C inside out with similar colours. Gentle spin (600 rpm). Do not tumble dry. Iron on low heat.',
+    recyclingInstructions: 'Single-material product, highly recyclable. At end of life, drop it in a textile collection point or return it in store.',
   };
 }

@@ -112,6 +112,10 @@
       "dest": "/dpp/index.html?gtin=$1"
     },
     {
+      "src": "/dpp/([^/]+)",
+      "dest": "/dpp/index.html?gtin=$1"
+    },
+    {
       "src": "/quality-center(?:/)?",
       "dest": "/quality-center/index.html"
     },

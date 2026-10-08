@@ -2116,6 +2116,7 @@
     "errUnavailable": "Anmeldung nicht verfügbar."
   },
   "dpp": {
+    "demoBanner": "Demo-Pass — Beispieldaten, kein reales Produkt.",
     "badgeEu": "EU-ESPR-/DPP-Format",
     "verifiedOrigin": "✓ Verifizierte Herkunft",
     "composition": "Materialzusammensetzung",
