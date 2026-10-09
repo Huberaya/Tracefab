@@ -100,7 +100,9 @@ const infinies = [...site.matchAll(/animation:\s*(tf-[a-z-]+)[^;]*infinite/g)].m
 ok(infinies.length > 0, 'des animations infinies existent bien', infinies.join(', '));
 
 /* --- 6. le script principal ne bloque pas l'analyse --------------------- */
-ok(/<script src="\/assets\/js\/tf-landing\.js" defer><\/script>/.test(html),
+// Les references portent une empreinte de contenu (?v=…) depuis que
+// /assets/js/ est servi en immuable : la requete est optionnelle ici.
+ok(/<script src="\/assets\/js\/tf-landing\.js(\?v=[0-9a-f]+)?" defer><\/script>/.test(html),
   'tf-landing.js est differe');
 
 console.log(ko === 0 ? '\n  landing : la performance tient.' : `\n  landing : ${ko} echec(s).`);

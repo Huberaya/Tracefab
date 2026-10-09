@@ -224,11 +224,70 @@ Vérifié par mutation — retirer la bannière du passeport fait échouer le te
 locales sont limitées au portail). À rouvrir si des fournisseurs turcs ou
 chinois doivent lire leur propre passeport public.
 
-## 5 · Pas de cache long sur `/assets/`
+## 5 · Cache des assets — RÉGLÉ
 
-`vercel.json` n'expose que `/(.*)` et `/api/(.*)`. Les fichiers JS ne sont
-pas nommés par empreinte de contenu : sans cela, un cache long servirait du
-code périmé.
+Vercel sert les fichiers statiques avec `public, max-age=0, must-revalidate`
+par défaut. Le CDN garde le fichier, mais **le navigateur redemande à chaque
+chargement** : « est-ce toujours à jour ? ». Même quand la réponse est un 304
+sans corps, l'aller-retour a lieu. Soixante références réparties sur neuf
+pages — soit, pour un visiteur qui a déjà tout en cache, soixante allers-retours
+inutiles.
+
+On ne pouvait pas simplement passer à `immutable` : les fichiers s'appellent
+`brand-console.1.js` et gardent ce nom d'une version à l'autre. Un navigateur
+ayant mis cette URL en cache pour un an n'aurait jamais reçu le correctif
+suivant.
+
+### Empreinte de contenu
+
+`npm run assets:version` appose l'empreinte sha256 du fichier sur chaque
+référence : `/assets/js/brand-console.1.js?v=9f2c41b8`. Le contenu change,
+l'URL change, le cache se contourne de lui-même. `immutable` devient honnête.
+
+| Chemin | Cache-Control | Pourquoi |
+|---|---|---|
+| `/assets/js/(.*)` | `max-age=31536000, immutable` | URL versionnée depuis le HTML |
+| `/assets/design-system/(.*)` | `max-age=31536000, immutable` | idem |
+| `/assets/i18n/(.*)` | `max-age=300, must-revalidate` | **récupérés à l'exécution** |
+
+La troisième ligne est la plus importante. Les catalogues de langue sont
+chargés par `tf-i18n.js` au moment où l'utilisateur change de langue, pas
+écrits dans le HTML : aucune empreinte ne peut leur être apposée à la
+construction. Les avoir inclus dans la règle `immutable` aurait figé les
+traductions pour un an. Vérifié : avec `?lang=fr`, le navigateur demande
+`i18n/en.js?v=fc02b6f5` (versionné) puis `i18n/fr.json` (nu).
+
+### Le garde-fou, qui est la vraie livraison
+
+Une empreinte ne vaut que si elle est à jour. Modifier un bundle sans relancer
+le générateur laisserait l'ancienne empreinte dans le HTML : les visiteurs
+continueraient à exécuter l'ancien code **pendant un an**. Un correctif de
+sécurité déployé et jamais reçu.
+
+`npm run test:assets` recalcule l'empreinte de chaque fichier et la compare à
+celle écrite dans le HTML. Il est branché dans `npm run build` : une empreinte
+périmée **bloque la construction**. Il refuse aussi qu'une ressource servie en
+immuable soit liée sans empreinte, et que `/assets/i18n/` soit déclaré
+immuable.
+
+Vérifié par mutation dans les deux sens : ajouter un octet à `tf-landing.js`
+sans régénérer fait échouer le test et bloque `npm run build` ; déclarer
+`/assets/i18n/` immuable le fait échouer aussi.
+
+### Effets de bord traités
+
+`scripts/lib/page_source.mjs` résolvait le `src` littéral dans le manifeste.
+Sans adaptation, les 57 tests auraient cessé d'inspecter le JavaScript des
+pages **en restant verts** — bien pire qu'un échec. La requête est désormais
+retirée avant la recherche dans le manifeste, et la réinsertion vérifiée par
+sonde sur trois pages.
+
+`test_landing_performance` cherchait `<script src="/assets/js/tf-landing.js"
+defer>` au caractère près. Motif élargi à l'empreinte optionnelle, sans
+affaiblir l'assertion : retirer le `defer` le fait toujours rougir.
+
+Chargement réel des neuf pages après bascule : 60/60 requêtes `/assets/`
+versionnées, 0 réponse ≥ 400, 0 erreur JavaScript.
 
 ## 6 · Quatre engagements contractuels à trancher
 

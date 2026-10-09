@@ -34,8 +34,14 @@ export function pageSource(relativePath) {
   return html.replace(
     /<script src="(\/assets\/js\/[^"]+)"([^>]*)><\/script>/g,
     (whole, href, attrs) => {
-      if (!owned.has(href)) return whole;
-      const file = join(ROOT, href.slice(1));
+      // Les references portent une empreinte de contenu (?v=9f2c41b8) pour que
+      // /assets/js/ puisse etre servi en immuable. Le manifeste, lui, indexe
+      // les chemins nus. Sans retirer la requete ici, aucune page ne serait
+      // plus reconnue : les tests cesseraient d'inspecter le JS des pages tout
+      // en restant verts, ce qui est pire que de les voir echouer.
+      const nu = href.split('?')[0];
+      if (!owned.has(nu)) return whole;
+      const file = join(ROOT, nu.slice(1));
       if (!existsSync(file)) return whole;
       return `<script${attrs}>\n${readFileSync(file, 'utf8')}\n</script>`;
     },
