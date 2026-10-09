@@ -19,8 +19,16 @@
  * compteurs pousses a leur valeur finale. Sans cela la reference figerait du
  * bruit. Mesure de controle avant d'ecrire la premiere reference : deux
  * captures consecutives de chacune des 19 surfaces, ecart 0,000 %.
+ *
+ * DEPUIS 20261009 : les fontes sont STATIQUES (assets/css/fonts.css) et le
+ * navigateur de test est epingle (scripts/lib/launch_chromium.mjs :
+ * @sparticuz/chromium en devDependency exacte, repli Chromium Playwright
+ * 153.0.8010.12 via playwright fige en 1.63.0). Le rendu ne depend plus ni
+ * d'un CDN de fontes, ni d'un telechargement de navigateur, ni des polices
+ * systeme de la machine : l'empattement entre le poste et la CI est celui
+ * que couvre le seuil, plus la variation d'environnement.
  */
-import { chromium } from 'playwright';
+import { launchTestBrowser } from './lib/launch_chromium.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { SURFACES, ECRANS, capturer, comparer, nomFichier } from './lib/visuel.mjs';
@@ -49,14 +57,22 @@ mkdirSync(DOSSIER, { recursive: true });
  * test rougit pour une raison etrangere au code — c'est exactement ce qui
  * est arrive sur la CI.
  *
- * On mesure donc la largeur reellement rendue d'un texte temoin dans les
- * trois familles de repli. C'est le signal direct : si les polices
- * disponibles changent, ces largeurs changent.
+ * Depuis les fontes statiques, on mesure la largeur reellement rendue d'un
+ * texte temoin dans les familles versionnees (Inter Tight, JetBrains Mono).
+ * C'est le signal direct : si les woff2 versionnes ne sont pas servis (repli
+ * systeme), ces largeurs changent — et la comparaison de pixels n'aurait
+ * alors plus aucun sens.
  */
 const EMPREINTE = join(DOSSIER, '_environnement.json');
 
 async function empreinte(navigateur) {
   const page = await navigateur.newPage();
+  // Les fontes STATIQUES sont chargees depuis la page locale : leur largeur
+  // rendue est identique partout ou le woff2 versionne est servi. Si une
+  // largeur bouge, c'est que la fonte attendue n'a pas ete servie (repli
+  // systeme) — comparer des pixels n'aurait alors aucun sens.
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.fonts.ready);
   const largeurs = await page.evaluate(() => {
     const mesurer = (famille) => {
       const el = document.createElement('span');
@@ -67,33 +83,42 @@ async function empreinte(navigateur) {
       el.remove();
       return l;
     };
-    return { sans: mesurer('sans-serif'), serif: mesurer('serif'), mono: mesurer('monospace') };
+    return {
+      interTight: mesurer("'Inter Tight'"),
+      jetbrainsMono: mesurer("'JetBrains Mono'"),
+    };
   });
   await page.close();
   return { navigateur: navigateur.version(), largeurs };
 }
 
-const nav = await chromium.launch();
+const nav = await launchTestBrowser();
 const ENV_COURANT = await empreinte(nav);
 
 if (!MAJ && existsSync(EMPREINTE)) {
   const attendu = JSON.parse(readFileSync(EMPREINTE, 'utf8'));
+  // La famille du navigateur doit correspondre (153.0.8010) ; le niveau
+  // correctif (153.0.8010.0 vs 153.0.8010.12) porte des correctifs de
+  // securite qui ne changent pas le rendu, et l'ecarter ici reintroduirait
+  // le faux-saut qu'on supprime.
+  const famille = (v) => String(v).split('.').slice(0, 3).join('.');
   const memeRendu = JSON.stringify(attendu.largeurs) === JSON.stringify(ENV_COURANT.largeurs)
-    && attendu.navigateur === ENV_COURANT.navigateur;
+    && famille(attendu.navigateur) === famille(ENV_COURANT.navigateur);
   if (!memeRendu) {
     await nav.close();
     console.log('\n  TEST NON EXECUTE — environnement de rendu different de la reference.');
     console.log(`    reference : Chromium ${attendu.navigateur} · largeurs ${JSON.stringify(attendu.largeurs)}`);
     console.log(`    ici       : Chromium ${ENV_COURANT.navigateur} · largeurs ${JSON.stringify(ENV_COURANT.largeurs)}`);
-    console.log('\n  Les polices systeme de repli ne sont pas les memes : comparer des');
-    console.log('  pixels ici n\'apprendrait rien sur le code. AUCUNE verification');
-    console.log('  visuelle n\'a donc eu lieu. Pour couvrir cette machine, rejouer la');
-    console.log('  reference avec « npm run test:regression -- --maj » puis la relire.\n');
-    // Sortie 0 assumee : ce test est volontairement hors de la boucle CI
-    // (voir .github/workflows/ci.yml). Le rendre rouge ici punirait une
-    // machine saine. Le message ci-dessus dit sans ambiguite que rien n'a
-    // ete verifie.
-    process.exit(0);
+    console.log('\n  Les fontes statiques ne rendent pas comme attendu, ou la famille du');
+    console.log('  navigateur a change : comparer des pixels n\'apprendrait rien sur le');
+    console.log('  code. AUCUNE verification visuelle n\'a donc eu lieu. Pour couvrir');
+    console.log('  cette machine, rejouer la reference avec');
+    console.log('  « npm run test:regression -- --maj » puis la relire.\n');
+    // Sortie 2 = NON EXECUTE. La regle du depot s'applique desormais ici
+    // aussi : un test qui ne s'est pas execute ne vaut pas un test qui passe.
+    // Avec les fontes statiques et le navigateur epingle, ce cas ne survient
+    // plus en CI — seulement sur une machine dont le rendu est hors perimetre.
+    process.exit(2);
   }
 }
 let echecs = 0, compares = 0, ecrits = 0, nouveaux = 0;

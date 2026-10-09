@@ -116,15 +116,14 @@ jobs:
         # Les suites neon et staging exigent une base ou un environnement
         # deploye : elles ont leur propre etage.
         #
-        # test:regression est exclu pour une raison differente et assumee : sa
-        # reference est une image, donc liee a son environnement de rendu. Les
-        # fontes distantes sont bloquees, mais le repli depend des polices
-        # systeme, qui different entre le poste de developpement et le runner.
-        # Le laisser ici le ferait rougir pour une raison etrangere au code ;
-        # l'automatiser suppose de figer le rendu dans un conteneur.
+        # test:regression fait partie de la boucle depuis 20261009 : fontes
+        # statiques versionnees (assets/css/fonts.css) et navigateur de test
+        # epingle (@sparticuz/chromium, repli Chromium Playwright fige) — le
+        # rendu ne depend plus de la machine. Seuil 0,10 % intact. S'il ne
+        # peut pas se comparer, il sort NON EXECUTE (2), jamais vert.
         run: |
           set -u
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression').join(' '))")
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2').join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then

@@ -26,13 +26,9 @@
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040b08'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230fb97c' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M8 25l5-6 6 3 5-15' fill='none' stroke='%230fb97c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Axe variable, pas cinq instances statiques. Le design system declare
-       huit graisses (400, 480, 500, 520, 540, 560, 600, 620) ; en statique les
-       cinq instances servies les ecrasaient sur trois rendus seulement. La
-       graisse 300 n'est utilisee nulle part sur cette page. -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <!-- Fontes statiques : axe variable 400-700 sert depuis le depot
+       (assets/css/fonts.css). Plus aucune dependance au CDN Google. -->
+  <link rel="stylesheet" href="/assets/css/fonts.css?v=c78cbebf">
 
   <link rel="stylesheet" href="/assets/design-system/tracefab-core.css?v=2c246dca">
   <link rel="stylesheet" href="/assets/design-system/tracefab-site.css?v=439233d7">
@@ -627,7 +623,7 @@
   </div>
 </div>
 
-<script src="/assets/i18n/en.js?v=0301922d"></script>
+<script src="/assets/i18n/en.js?v=0cabd343"></script>
 <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
   <script src="/assets/js/index.0.js?v=65e736ef"></script>
 <script src="/assets/js/tf-landing.js?v=09027282" defer></script>

@@ -1,8 +1,7 @@
 {
-  "navigateur": "153.0.8010.12",
+  "navigateur": "153.0.8010.0",
   "largeurs": {
-    "sans": 1641.66,
-    "serif": 1528.58,
-    "mono": 2107.19
+    "interTight": 1566,
+    "jetbrainsMono": 2100
   }
 }

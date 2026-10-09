@@ -36,14 +36,19 @@ const core = readFileSync(join(ROOT, 'assets/design-system/tracefab-core.css'), 
 const site = readFileSync(join(ROOT, 'assets/design-system/tracefab-site.css'), 'utf8');
 const js = readFileSync(join(ROOT, 'assets/js/tf-landing.js'), 'utf8');
 
-/* --- 1. la police d'affichage est demandee en axe variable -------------- */
-const lien = (html.match(/https:\/\/fonts\.googleapis\.com\/css2\?[^"']+/) || [])[0] || '';
-ok(lien !== '', 'la page declare bien une feuille de polices');
+/* --- 1. la police d'affichage est servie depuis le depot, en axe variable */
+// Depuis 20261009, les fontes sont STATIQUES (assets/css/fonts.css + woff2
+// versionnes) : plus de CDN, plus de variation selon le reseau ou la machine.
+const lien = (html.match(/href="(\/assets\/css\/fonts\.css[^"]*)"/) || [])[0] || '';
+ok(lien !== '', 'la page declare la feuille de fontes statiques');
+ok(!/fonts\.googleapis\.com|fonts\.gstatic\.com/.test(html),
+  'aucune dependance au CDN de fontes');
 
-const axe = lien.match(/Inter\+Tight:wght@([0-9]+)\.\.([0-9]+)/);
+const fontsCss = readFileSync(join(ROOT, 'assets/css/fonts.css'), 'utf8');
+const axe = fontsCss.match(/font-family:\s*'Inter Tight'[\s\S]*?font-weight:\s*(\d+)\s+(\d+)/);
 ok(axe !== null,
-  'Inter Tight est demandee en axe variable, pas en instances statiques',
-  lien.match(/Inter\+Tight:wght@[^&]*/)?.[0] || 'introuvable');
+  'Inter Tight est servie en axe variable, pas en instances statiques',
+  (fontsCss.match(/font-weight:\s*\d+\s+\d+/) || ['introuvable'])[0]);
 
 /* --- 2. l'axe couvre vraiment toutes les graisses dessinees ------------- */
 const utilisees = [...new Set(
@@ -70,12 +75,11 @@ if (axe) {
 }
 
 /* --- 3. le reste du chargement de police reste correct ------------------ */
-ok(/[?&]display=swap/.test(lien), 'display=swap : le texte ne reste pas invisible pendant le chargement');
-ok(/rel="preconnect" href="https:\/\/fonts\.googleapis\.com"/.test(html),
-  'preconnect vers fonts.googleapis.com');
-ok(/rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin/.test(html),
-  'preconnect vers fonts.gstatic.com, avec crossorigin');
-ok(/Axe variable, pas cinq instances statiques/.test(html),
+ok(/font-display:\s*swap/.test(fontsCss),
+  'display=swap : le texte ne reste pas invisible pendant le chargement');
+ok(/font-weight:\s*400\s+700/.test(fontsCss),
+  'un seul axe variable 400-700 par famille, servi en local');
+ok(/Fontes statiques/.test(html),
   'la raison du choix est ecrite dans le document, pas seulement dans un test');
 
 /* --- 4. mise en veille des animations hors champ ------------------------ */
