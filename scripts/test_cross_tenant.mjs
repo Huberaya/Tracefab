@@ -209,6 +209,13 @@ if (failures.length) {
   process.exit(1);
 }
 console.log('Isolation multi-locataires : aucune route hors modele declare.');
-console.log(`Verrou base de donnees : ${enable} ENABLE / ${force} FORCE ROW LEVEL SECURITY sur ${migrations} migrations.`);
-console.log('Preuve d execution reelle : test:neon:security, qui exige DATABASE_URL.');
+// Ce script lit du code source : il verifie que chaque route DECLARE ses
+// maillons d'isolation. C'est un audit statique, utile, et ce n'est pas une
+// preuve d'etancheite. Les deux lignes qui suivent le disent sans detour,
+// parce que la version precedente affichait « Verrou base de donnees : 46
+// ENABLE / 50 FORCE » — un comptage de drapeaux de catalogue, presente comme
+// un verrou, sur une base ou aucune politique n'etait jamais evaluee.
+console.log(`Declarations dans les migrations : ${enable} ENABLE / ${force} FORCE sur ${migrations} migrations.`);
+console.log('Ces drapeaux ne prouvent rien : BYPASSRLS, porte par le role, prime sur ENABLE comme sur FORCE.');
+console.log('Preuve d etancheite par execution : npm run test:neon:rls (exige un role sans BYPASSRLS).');
 console.log(line);

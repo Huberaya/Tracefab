@@ -27,6 +27,7 @@
     "test:quality-actions:chantier5": "node scripts/test_quality_actions_chantier5.mjs",
     "test:onboarding:chantier6": "node scripts/test_supplier_onboarding_chantier6.mjs",
     "test:neon:security": "node scripts/test_neon_security.mjs",
+    "test:neon:rls": "node scripts/test_rls_isolation.mjs",
     "test:neon:supplier": "node scripts/test_neon_supplier_flow.mjs",
     "test:neon:supplier:advanced": "node scripts/test_neon_supplier_advanced.mjs",
     "test:neon:product": "node scripts/test_neon_product_flow.mjs",
