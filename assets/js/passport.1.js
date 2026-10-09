@@ -1,16 +1,22 @@
     (async function() {
       const urlParams = new URLSearchParams(window.location.search);
+      // Un passeport se consulte par `?ref=` ou `?token=`. SANS l'un des deux,
+      // la page est la demonstration — et elle le sait d'avance, au lieu de le
+      // deduire d'un echec de l'API.
+      const MODE_DEMONSTRATION = !urlParams.get('ref') && !urlParams.get('token');
       const ref = urlParams.get('ref') || urlParams.get('token') || 'nhan-textile-pt';
 
       let state = {
         data: null,
         loading: true,
         error: null,
+        absent: false,
+        erreur: null,
         modalOpen: false
       };
 
 
-      const pt_ = (k) => (window.TF_I18N ? window.TF_I18N.t('passport.' + k, k) : k);
+      const pt_ = (k, repli) => (window.TF_I18N ? window.TF_I18N.t('passport.' + k, repli || k) : (repli || k));
       const LANG_NAMES = {en:'🇬🇧 English',fr:'🇫🇷 Français',de:'🇩🇪 Deutsch',it:'🇮🇹 Italiano',es:'🇪🇸 Español',nl:'🇳🇱 Nederlands',pt:'🇵🇹 Português'};
       function langSelect() {
         const api = window.TF_I18N;
@@ -24,26 +30,11 @@
         if (slot) slot.innerHTML = langSelect();
       }
 
-      async function fetchPassport() {
-        try {
-          const res = await fetch(`/api/passport/${encodeURIComponent(ref)}`);
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || pt_('errNotFound'));
-          }
-          state.data = await res.json();
-          state.loading = false;
-          // Donnees reelles : la banniere de demonstration n'a plus lieu d'etre.
-          const b = document.getElementById('passport-demo-banner');
-          if (b) b.hidden = true;
-          document.body.removeAttribute('data-tf-demo');
-        } catch (e) {
-          // If server call fails, fallback to realistic verified demo supplier
-          console.warn('API error, loading verified demonstration passport:', e.message);
-          // Repli sur un fournisseur fictif : la banniere reste visible et la
-          // page entiere se declare comme donnee de demonstration.
-          document.body.setAttribute('data-tf-demo', '');
-          state.data = {
+      /* Jeu de demonstration du passeport fournisseur. Il vivait DANS le bloc
+       * `catch` de l'appel API : la page de demonstration n'existait que parce
+       * que la requete echouait. Nomme et sorti de la, il n'est plus servi que
+       * sur demande explicite. */
+      const PASSEPORT_DEMONSTRATION = {
             passport: {
               id: 'demo-passport-1',
               slug: 'nhan-textile-pt',
@@ -89,18 +80,87 @@
               mode: 'redacted',
               legalBasis: 'Directive (EU) 2016/943 on the protection of trade secrets'
             }
-          };
+      };
+
+      async function fetchPassport() {
+        if (MODE_DEMONSTRATION) {
+          document.body.setAttribute('data-tf-demo', '');
+          state.data = PASSEPORT_DEMONSTRATION;
           state.loading = false;
+          render();
+          return;
         }
+        try {
+          const res = await fetch(`/api/passport/${encodeURIComponent(ref)}`);
+          if (!res.ok) {
+            // « Ce passeport n'existe pas ou n'est plus partage » et « le service
+            // est en panne » appellent deux conduites differentes du visiteur.
+            // Les confondre, c'est se tromper de cause devant lui.
+            state.absent = [403, 404, 410].includes(res.status);
+            state.erreur = state.absent ? null : 'HTTP ' + res.status;
+          } else {
+            state.data = await res.json();
+            const b = document.getElementById('passport-demo-banner');
+            if (b) b.hidden = true;
+            document.body.removeAttribute('data-tf-demo');
+          }
+        } catch (e) {
+          // Panne reseau. Aucune donnee n'est fabriquee ici : afficher un
+          // fournisseur invente, meme sous une banniere « demonstration »,
+          // revient a presenter une entreprise a la place d'une autre.
+          state.erreur = (e && e.message) ? e.message : 'network';
+        }
+        state.loading = false;
         render();
+      }
+
+      // Deux ecrans sobres, et surtout distincts : le visiteur doit savoir s'il
+      // doit redemander un lien a son fournisseur, ou simplement revenir plus
+      // tard. Aucun des deux n'emprunte quoi que ce soit au jeu de demonstration.
+      function renderIndisponible(app) {
+        // La banniere annonce « passeport de demonstration ». Rien n'est
+        // montre ici : la laisser affichee decrirait un contenu absent.
+        const banniere = document.getElementById('passport-demo-banner');
+        if (banniere) banniere.hidden = true;
+        document.body.removeAttribute('data-tf-demo');
+        const absent = state.absent;
+        const titre = absent
+          ? pt_('unavailableTitle', 'This passport is not available')
+          : pt_('unreachableTitle', 'Passport temporarily unreachable');
+        const corps = absent
+          ? pt_('unavailableBody', 'The link may have expired, or the supplier may have stopped sharing this profile. Ask them for a new link.')
+          : pt_('unreachableBody', 'We could not load this passport. No data is shown rather than the wrong data. Please try again shortly.');
+        app.innerHTML = `
+          <div class="hero-card" data-passport-indisponible="${absent ? 'absent' : 'erreur'}">
+            <h1 style="font-size:24px;margin:0 0 10px;">${esc(titre)}</h1>
+            <p style="color:var(--text-muted);max-width:52ch;margin:0;">${esc(corps)}</p>
+            ${absent ? '' : `<button type="button" id="passport-reessayer"
+              style="margin-top:18px;">${esc(pt_('retry', 'Try again'))}</button>`}
+          </div>`;
+        const bouton = document.getElementById('passport-reessayer');
+        if (bouton) {
+          bouton.addEventListener('click', () => {
+            state.loading = true; state.absent = false; state.erreur = null;
+            fetchPassport();
+          });
+        }
       }
 
       function render() {
         const app = document.getElementById('app');
         if (state.loading) return;
+        if (state.absent || state.erreur) { renderIndisponible(app); return; }
 
         const d = state.data;
-        const sup = d.supplier;
+        // Collections absentes = collections vides. Une reponse reelle a
+        // laquelle il manque un tableau faisait lever `.length` sur `undefined`
+        // pendant la construction du gabarit : `render()` s'interrompait et la
+        // page restait blanche. Tant que le repli fictif existait, le defaut
+        // etait masque — il ne l'est plus, donc il se traite ici.
+        d.certifications = d.certifications || [];
+        d.sites = d.sites || [];
+        d.materials = d.materials || [];
+        const sup = d.supplier || {};
         const pass = d.passport;
         const score = d.qualityScore;
 

@@ -1973,7 +1973,12 @@ window.TF_I18N_BUNDLES.en = {
     btnGotIt: "Got it",
     errNotFound: "Passport not found.",
     errSend: "Error while sending",
-    errPrefix: "Error:"
+    errPrefix: "Error:",
+    unavailableTitle: "This passport is not available",
+    unavailableBody: "The link may have expired, or the supplier may have stopped sharing this profile. Ask them for a new link.",
+    unreachableTitle: "Passport temporarily unreachable",
+    unreachableBody: "We could not load this passport. No data is shown rather than the wrong data. Please try again shortly.",
+    retry: "Try again"
   },
 
 

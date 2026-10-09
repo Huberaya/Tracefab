@@ -2152,7 +2152,12 @@
     "errSend": "Errore durante l’invio",
     "errPrefix": "Errore:",
     "brandLine": "Passaporto fornitore universale",
-    "demoBanner": "Passaporto dimostrativo — fornitore di esempio, non un’azienda reale."
+    "demoBanner": "Passaporto dimostrativo — fornitore di esempio, non un’azienda reale.",
+    "unavailableTitle": "Questo passaporto non è disponibile",
+    "unavailableBody": "Il link potrebbe essere scaduto, oppure il fornitore ha smesso di condividere questo profilo. Chiedetegli un nuovo link.",
+    "unreachableTitle": "Passaporto temporaneamente irraggiungibile",
+    "unreachableBody": "Non è stato possibile caricare questo passaporto. Non viene mostrato alcun dato anziché un dato errato. Riprovate tra poco.",
+    "retry": "Riprova"
   },
   "invite": {
     "metaTitle": "Tracefab — Accetta un invito",

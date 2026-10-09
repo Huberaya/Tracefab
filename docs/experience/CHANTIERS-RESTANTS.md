@@ -1201,3 +1201,56 @@ deux allégations.
   réel : la pastille « Made in Portugal » était figée, et la donnée disponible
   est un code pays (`PT`). L'afficher proprement demande une table de noms de
   pays localisés — amélioration fonctionnelle, pas correction d'un mensonge.
+
+## 16. Chantier 1C — le passeport fournisseur inventait une entreprise
+
+`passport.1.js` enveloppait son appel API dans un `try/catch` dont le `catch`
+contenait un fournisseur complet et nommé : **Nhãn Textile Portugal**, PT,
+fondé en 1998, 251-1000 salariés, **« ✓ AUDITED PROFILE »**, certifié GOTS et
+OEKO-TEX. Toute réponse non-OK y menait.
+
+Deux conséquences, et aucune n'est acceptable pour un produit de traçabilité :
+
+- un lien de partage vers un passeport jamais publié, expiré ou révoqué
+  affichait **une autre entreprise**, auditée et certifiée ;
+- une panne passagère sur un **vrai** passeport remplaçait silencieusement le
+  profil du fournisseur par celui du fournisseur fictif.
+
+La bannière « passeport de démonstration » restait visible, ce qui tenait lieu
+de garde-fou. Elle ne suffit pas : elle qualifie la page, pas l'entreprise qu'on
+y lit. Personne ne déduit d'un bandeau que la société affichée n'est pas celle
+qu'il cherchait.
+
+**Le défaut était structurel, pas accidentel.** La page de démonstration
+elle-même passait par ce `catch` : sans `?ref`, elle interrogeait
+`nhan-textile-pt`, recevait 404, et tombait dans le repli. La démonstration
+était donc indissociable d'une panne — et réciproquement, toute panne devenait
+une démonstration. Supprimer le repli sans rien d'autre aurait supprimé la
+démonstration.
+
+**Corrigé ainsi :**
+
+- mode démonstration **explicite**, décidé par l'URL (`?ref`/`?token` absents)
+  et non déduit d'un échec ; le jeu de données est nommé
+  `PASSEPORT_DEMONSTRATION` et sorti du chemin d'erreur ;
+- deux écrans distincts, parce que le visiteur n'a pas la même conduite à
+  tenir : **403/404/410** → « ce passeport n'est pas disponible », avec
+  l'invitation à redemander un lien ; **toute autre panne** → « momentanément
+  inaccessible », avec une reprise ;
+- la bannière de démonstration est retirée sur ces écrans : rien n'y est
+  montré, la laisser décrirait un contenu absent ;
+- 5 clés i18n sur 7 locales.
+
+**Un défaut masqué est apparu en retirant le repli.** Le gabarit lisait
+`d.certifications.length`, `d.sites.length` et `d.materials.length` sans
+vérification. Une réponse réelle à laquelle il manquait un tableau faisait lever
+`render()` en pleine construction : la page restait **blanche**. Tant que le
+repli fictif existait, ce cas n'arrivait jamais. Collections absentes valent
+désormais collections vides, et le cas est gardé explicitement.
+
+**Garde :** `npm run test:passport-public` — 36 assertions, dont la structure du
+code (le `catch` ne doit plus contenir de fournisseur, le mode démonstration
+doit venir de l'URL). Cinq mutations vérifiées : repli réintroduit, 404 et panne
+confondus, bannière laissée sur l'écran d'erreur, durcissement retiré, mode
+démonstration redevenu implicite.
+

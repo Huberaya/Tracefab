@@ -2152,7 +2152,12 @@
     "errSend": "Erreur lors de l’envoi",
     "errPrefix": "Erreur :",
     "brandLine": "Passeport fournisseur universel",
-    "demoBanner": "Passeport de démonstration — fournisseur fictif, pas une entreprise réelle."
+    "demoBanner": "Passeport de démonstration — fournisseur fictif, pas une entreprise réelle.",
+    "unavailableTitle": "Ce passeport n'est pas disponible",
+    "unavailableBody": "Le lien a peut-être expiré, ou le fournisseur ne partage plus ce profil. Demandez-lui un nouveau lien.",
+    "unreachableTitle": "Passeport momentanément inaccessible",
+    "unreachableBody": "Ce passeport n'a pas pu être chargé. Aucune donnée n'est affichée, plutôt qu'une donnée erronée. Réessayez dans un instant.",
+    "retry": "Réessayer"
   },
   "invite": {
     "metaTitle": "Tracefab — Accepter une invitation",

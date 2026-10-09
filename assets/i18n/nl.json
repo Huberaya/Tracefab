@@ -2152,7 +2152,12 @@
     "errSend": "Fout bij het verzenden",
     "errPrefix": "Fout:",
     "brandLine": "Universeel leverancierspaspoort",
-    "demoBanner": "Demonstratiepaspoort — voorbeeldleverancier, geen echt bedrijf."
+    "demoBanner": "Demonstratiepaspoort — voorbeeldleverancier, geen echt bedrijf.",
+    "unavailableTitle": "Dit paspoort is niet beschikbaar",
+    "unavailableBody": "De link is mogelijk verlopen, of de leverancier deelt dit profiel niet meer. Vraag hem om een nieuwe link.",
+    "unreachableTitle": "Paspoort tijdelijk onbereikbaar",
+    "unreachableBody": "Dit paspoort kon niet worden geladen. Er worden geen gegevens getoond in plaats van onjuiste gegevens. Probeer het zo meteen opnieuw.",
+    "retry": "Opnieuw proberen"
   },
   "invite": {
     "metaTitle": "Tracefab — Een uitnodiging accepteren",

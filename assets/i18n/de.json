@@ -2152,7 +2152,12 @@
     "errSend": "Fehler beim Senden",
     "errPrefix": "Fehler:",
     "brandLine": "Universeller Lieferantenpass",
-    "demoBanner": "Demonstrationspass — Beispiellieferant, kein reales Unternehmen."
+    "demoBanner": "Demonstrationspass — Beispiellieferant, kein reales Unternehmen.",
+    "unavailableTitle": "Dieser Pass ist nicht verfügbar",
+    "unavailableBody": "Der Link ist möglicherweise abgelaufen, oder der Lieferant teilt dieses Profil nicht mehr. Bitten Sie ihn um einen neuen Link.",
+    "unreachableTitle": "Pass vorübergehend nicht erreichbar",
+    "unreachableBody": "Dieser Pass konnte nicht geladen werden. Es werden keine Daten angezeigt statt falscher Daten. Bitte versuchen Sie es in Kürze erneut.",
+    "retry": "Erneut versuchen"
   },
   "invite": {
     "metaTitle": "Tracefab — Einladung annehmen",

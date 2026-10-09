@@ -2152,7 +2152,12 @@
     "errSend": "Error al enviar",
     "errPrefix": "Error:",
     "brandLine": "Pasaporte universal de proveedor",
-    "demoBanner": "Pasaporte de demostración — proveedor de ejemplo, no una empresa real."
+    "demoBanner": "Pasaporte de demostración — proveedor de ejemplo, no una empresa real.",
+    "unavailableTitle": "Este pasaporte no está disponible",
+    "unavailableBody": "Puede que el enlace haya caducado o que el proveedor haya dejado de compartir este perfil. Pídale un enlace nuevo.",
+    "unreachableTitle": "Pasaporte temporalmente inaccesible",
+    "unreachableBody": "No se ha podido cargar este pasaporte. No se muestra ningún dato en lugar de un dato incorrecto. Vuelva a intentarlo en unos instantes.",
+    "retry": "Reintentar"
   },
   "invite": {
     "metaTitle": "Tracefab — Aceptar una invitación",
