@@ -1,0 +1,45 @@
+{
+  "operations": {
+    "meta": {
+      "title": "Tracefab — Operaties",
+      "description": "Tracefab Operaties — status van outbox, scheduler en operationele afhankelijkheden."
+    },
+    "workspace": "operaties",
+    "loading": "Operaties worden geladen…",
+    "retry": "Opnieuw proberen",
+    "unavailableTitle": "Operatorweergave niet beschikbaar",
+    "authTitle": "Verwerking beheren.",
+    "authBody": "Deze weergave is voorbehouden aan owners en beheerders van Tracefab-organisaties.",
+    "nav": {
+      "home": "Home",
+      "qualityCenter": "Quality Center",
+      "brandConsole": "Brand Console",
+      "refresh": "Vernieuwen"
+    },
+    "eyebrow": "P1 · applicatie-observeerbaarheid",
+    "title": "De gezondheid van de verwerking, zichtbaar.",
+    "lede": "Duurzame meldingen, de outbox-wachtrij, de scheduler en de alertafhankelijkheden volgen zonder bedrijfsgegevens of persoonsgegevens bloot te geven.",
+    "kpi": {
+      "pending": "In afwachting",
+      "processing": "In verwerking",
+      "failed": "Mislukkingen",
+      "blocked": "Geblokkeerd > 15 min"
+    },
+    "deps": {
+      "title": "Beschermde afhankelijkheden",
+      "cron": "Vercel Cron",
+      "worker": "Outbox-worker",
+      "alerting": "Alert-webhook",
+      "configured": "Geconfigureerd",
+      "missing": "Ontbreekt",
+      "notConfigured": "Niet geconfigureerd"
+    },
+    "rules": {
+      "title": "Exploitatieregels",
+      "body": "De metrieken worden per organisatie geaggregeerd en bevatten geen e-mails, geen aanvraagtities en geen ruwe leveranciersfouten.",
+      "outbox": "De outbox blijft de duurzame bron van waarheid. Een niet-beschikbaar extern alert blokkeert de verwerking niet.",
+      "oldest": "Oudste taak in afwachting"
+    },
+    "brand": "Tracefab Operaties"
+  }
+}

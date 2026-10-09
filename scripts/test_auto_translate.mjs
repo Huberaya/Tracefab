@@ -223,11 +223,15 @@ for (const p of pages) {
 }
 
 /*
- * Mesure, pas objectif : ces chiffres épinglent l'état constaté. `operations` ne
- * tire presque rien du glossaire — c'est un fait enregistré, pas un seuil fixé.
- * Si la couverture recule, quelque chose a changé dans ces pages.
+ * Mesure, pas objectif : ces chiffres épinglent l'état constaté. Si la
+ * couverture recule, quelque chose a changé dans ces pages.
+ *
+ * `operations/index.html` est passé de 1 à 0 : la page a quitté le glossaire
+ * pour le runtime partagé (locales/{lang}/operations.json). Ce n'est pas une
+ * régression mais la fin d'une couverture illusoire — un glossaire qui traduit
+ * des termes isolés laissait intactes toutes les phrases de la page.
  */
-const EXPECTED = { 'brand-console/index.html': 55, 'operations/index.html': 1, 'quality-center/index.html': 7, 'supplier-portal/index.html': 33 };
+const EXPECTED = { 'brand-console/index.html': 55, 'operations/index.html': 0, 'quality-center/index.html': 7, 'supplier-portal/index.html': 33 };
 for (const [p, n] of Object.entries(EXPECTED)) {
   eq(coverage[p], n, `${p} : ${n} clés du glossaire présentes`);
 }

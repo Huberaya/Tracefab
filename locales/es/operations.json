@@ -1,0 +1,45 @@
+{
+  "operations": {
+    "meta": {
+      "title": "Tracefab — Operaciones",
+      "description": "Tracefab Operaciones — estado de la outbox, el scheduler y las dependencias operativas."
+    },
+    "workspace": "operaciones",
+    "loading": "Cargando las operaciones…",
+    "retry": "Reintentar",
+    "unavailableTitle": "Vista de operador no disponible",
+    "authTitle": "Gobernar los procesos.",
+    "authBody": "Esta vista está reservada a los owners y administradores de las organizaciones Tracefab.",
+    "nav": {
+      "home": "Inicio",
+      "qualityCenter": "Quality Center",
+      "brandConsole": "Brand Console",
+      "refresh": "Actualizar"
+    },
+    "eyebrow": "P1 · observabilidad de la aplicación",
+    "title": "La salud de los procesos, visible.",
+    "lede": "Seguir las notificaciones duraderas, la cola outbox, el scheduler y las dependencias de alerta sin exponer datos de negocio ni PII.",
+    "kpi": {
+      "pending": "En espera",
+      "processing": "En proceso",
+      "failed": "Fallos",
+      "blocked": "Bloqueados > 15 min"
+    },
+    "deps": {
+      "title": "Dependencias protegidas",
+      "cron": "Vercel Cron",
+      "worker": "Worker de outbox",
+      "alerting": "Webhook de alerta",
+      "configured": "Configurado",
+      "missing": "Falta",
+      "notConfigured": "No configurado"
+    },
+    "rules": {
+      "title": "Reglas de operación",
+      "body": "Las métricas se agregan por organización y no contienen emails, títulos de solicitudes ni errores de proveedor en bruto.",
+      "outbox": "La outbox sigue siendo la fuente durable de verdad. Una alerta externa no disponible no bloquea el procesamiento.",
+      "oldest": "Trabajo en espera más antiguo"
+    },
+    "brand": "Tracefab Operaciones"
+  }
+}

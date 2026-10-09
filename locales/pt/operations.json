@@ -1,0 +1,45 @@
+{
+  "operations": {
+    "meta": {
+      "title": "Tracefab — Operações",
+      "description": "Tracefab Operações — estado da outbox, do scheduler e das dependências operacionais."
+    },
+    "workspace": "operações",
+    "loading": "A carregar as operações…",
+    "retry": "Tentar novamente",
+    "unavailableTitle": "Vista de operador indisponível",
+    "authTitle": "Governar os processamentos.",
+    "authBody": "Esta vista é reservada aos owners e administradores das organizações Tracefab.",
+    "nav": {
+      "home": "Início",
+      "qualityCenter": "Quality Center",
+      "brandConsole": "Brand Console",
+      "refresh": "Atualizar"
+    },
+    "eyebrow": "P1 · observabilidade aplicacional",
+    "title": "A saúde dos processamentos, visível.",
+    "lede": "Acompanhar as notificações duráveis, a fila outbox, o scheduler e as dependências de alerta sem expor dados de negócio nem PII.",
+    "kpi": {
+      "pending": "Em espera",
+      "processing": "Em processamento",
+      "failed": "Falhas",
+      "blocked": "Bloqueados > 15 min"
+    },
+    "deps": {
+      "title": "Dependências protegidas",
+      "cron": "Vercel Cron",
+      "worker": "Worker de outbox",
+      "alerting": "Webhook de alerta",
+      "configured": "Configurado",
+      "missing": "Em falta",
+      "notConfigured": "Não configurado"
+    },
+    "rules": {
+      "title": "Regras de exploração",
+      "body": "As métricas são agregadas por organização e não contêm emails, títulos de pedidos nem erros de fornecedor em bruto.",
+      "outbox": "A outbox continua a ser a fonte durável de verdade. Um alerta externo indisponível não bloqueia o processamento.",
+      "oldest": "Tarefa em espera mais antiga"
+    },
+    "brand": "Tracefab Operações"
+  }
+}

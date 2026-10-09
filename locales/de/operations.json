@@ -1,0 +1,45 @@
+{
+  "operations": {
+    "meta": {
+      "title": "Tracefab — Betrieb",
+      "description": "Tracefab Betrieb — Zustand von Outbox, Scheduler und Betriebsabhängigkeiten."
+    },
+    "workspace": "Betrieb",
+    "loading": "Betriebsdaten werden geladen…",
+    "retry": "Erneut versuchen",
+    "unavailableTitle": "Operatoransicht nicht verfügbar",
+    "authTitle": "Verarbeitung steuern.",
+    "authBody": "Diese Ansicht ist Owners und Admins von Tracefab-Organisationen vorbehalten.",
+    "nav": {
+      "home": "Startseite",
+      "qualityCenter": "Quality Center",
+      "brandConsole": "Brand Console",
+      "refresh": "Aktualisieren"
+    },
+    "eyebrow": "P1 · Anwendungsobservabilität",
+    "title": "Der Zustand der Verarbeitung, sichtbar.",
+    "lede": "Dauerhafte Benachrichtigungen, die Outbox-Warteschlange, den Scheduler und die Alarmabhängigkeiten verfolgen — ohne Geschäftsdaten oder personenbezogene Daten offenzulegen.",
+    "kpi": {
+      "pending": "Wartend",
+      "processing": "In Bearbeitung",
+      "failed": "Fehler",
+      "blocked": "Blockiert > 15 Min."
+    },
+    "deps": {
+      "title": "Geschützte Abhängigkeiten",
+      "cron": "Vercel Cron",
+      "worker": "Outbox-Worker",
+      "alerting": "Alarm-Webhook",
+      "configured": "Konfiguriert",
+      "missing": "Fehlt",
+      "notConfigured": "Nicht konfiguriert"
+    },
+    "rules": {
+      "title": "Betriebsregeln",
+      "body": "Die Metriken werden pro Organisation aggregiert und enthalten weder E-Mails noch Anfragetitel noch rohe Lieferantenfehler.",
+      "outbox": "Die Outbox bleibt die dauerhafte Quelle der Wahrheit. Ein nicht verfügbarer externer Alarm blockiert die Verarbeitung nicht.",
+      "oldest": "Ältester wartender Job"
+    },
+    "brand": "Tracefab Betrieb"
+  }
+}

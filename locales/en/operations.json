@@ -1,0 +1,45 @@
+{
+  "operations": {
+    "meta": {
+      "title": "Tracefab — Operations",
+      "description": "Tracefab Operations — outbox health, scheduler and operational dependencies."
+    },
+    "workspace": "operations",
+    "loading": "Loading operations…",
+    "retry": "Retry",
+    "unavailableTitle": "Operator view unavailable",
+    "authTitle": "Govern your processing.",
+    "authBody": "This view is reserved for owners and admins of Tracefab organisations.",
+    "nav": {
+      "home": "Home",
+      "qualityCenter": "Quality Center",
+      "brandConsole": "Brand Console",
+      "refresh": "Refresh"
+    },
+    "eyebrow": "P1 · application observability",
+    "title": "Processing health, made visible.",
+    "lede": "Track durable notifications, the outbox queue, the scheduler and alerting dependencies without exposing business data or PII.",
+    "kpi": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "failed": "Failures",
+      "blocked": "Blocked > 15 min"
+    },
+    "deps": {
+      "title": "Protected dependencies",
+      "cron": "Vercel Cron",
+      "worker": "Outbox worker",
+      "alerting": "Alerting webhook",
+      "configured": "Configured",
+      "missing": "Missing",
+      "notConfigured": "Not configured"
+    },
+    "rules": {
+      "title": "Operating rules",
+      "body": "Metrics are aggregated per organisation and contain no emails, no request titles and no raw supplier errors.",
+      "outbox": "The outbox remains the durable source of truth. An unavailable external alert does not block processing.",
+      "oldest": "Oldest pending job"
+    },
+    "brand": "Tracefab Operations"
+  }
+}
