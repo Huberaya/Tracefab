@@ -101,19 +101,60 @@ en étant cloisonnés) et il n'inspectait que les tables déjà marquées RLS, d
 une table dégrèvée sortait de sa surveillance. Les deux corrigés, vérifiés par
 mutation.
 
-## 3 · Trois surfaces existent et sont injoignables
+## 3 · Surfaces injoignables — RÉGLÉ
 
-Zéro lien de navigation entrant, toutes formes confondues :
+**Il y en avait quatre, pas trois.** `/invitations/accept/` manquait à
+l'inventaire. Mesure avant correction, liens entrants toutes formes
+confondues (`href`, chaîne citée dans un bundle, `data-tf-arg`) :
 
-| Page | Liens entrants | Remarque |
-|---|---|---|
-| `/product-intelligence/` | **0** | **exigée explicitement par le cahier des charges** |
-| `/passport/` | 0 | seules des URL d'API la mentionnent |
-| `/operations/` | 0 | idem |
+| Surface | Avant | Après |
+|---|---:|---:|
+| `/product-intelligence/` | **0** | 4 |
+| `/passport/` | **0** | 4 |
+| `/operations/` | **0** | 0, assumé |
+| `/invitations/accept/` | **0** | 0, assumé |
 
-Construites, testées, traduites — et inatteignables en cliquant. Même
-nature que la chaîne de valeur du chantier 3 : du code correct derrière une
-porte absente.
+Les quatre ne relevaient pas du même problème, et les traiter pareil aurait
+été une erreur.
+
+**`/product-intelligence/`** est exigée par le cahier des charges, complète et
+conforme — 11 onglets, barre latérale aux 13 entrées de la spécification. Elle
+rejoint la liste « Platform » du pied de page, aux côtés des quatre autres
+surfaces produit, et la console l'ouvre depuis la fiche produit
+(« Open intelligence record »).
+
+**`/passport/`** est le passeport fournisseur public. Le portail fournisseur
+le décrivait sans jamais y mener : il propose maintenant « View my public
+passport », et la fiche fournisseur de la console « View public passport ».
+
+**`/operations/`** est une console interne d'exploitation, protégée par Clerk,
+dépendante du service operations — elle affiche d'ailleurs « Operator view
+unavailable » sans lui. Elle ne s'adresse ni aux marques ni aux fournisseurs.
+La placer dans une navigation client aurait été une faute. Elle reste sans
+lien, **par décision écrite**.
+
+**`/invitations/accept/`** s'atteint par le lien d'un courriel porteur d'un
+jeton. Un lien de menu vers une page d'acceptation sans jeton n'aurait aucun
+sens. Sans lien, par décision écrite.
+
+### Le garde-fou
+
+`npm run test:surfaces` — aucune suite ne pouvait voir le problème : elles
+vérifiaient ce que contient chaque page, jamais si on peut y arriver. Une page
+sans lien entrant passe tous les tests de contenu du monde.
+
+Le test exige de chaque surface soit un lien entrant, soit une déclaration
+motivée dans `SANS_LIEN_ASSUME`. Il échoue aussi si une surface déclarée sans
+lien en reçoit un, pour que la déclaration ne survive pas à sa raison d'être.
+Vérifié par mutation dans les deux sens.
+
+### Trouvé en chemin
+
+La fiche produit de la console affichait **« Intelligence Produit » en
+français dans une page anglaise**, codé en dur à côté d'un « Version » tout
+aussi figé. Le garde-fou de copie ne l'avait pas vu. Les deux chaînes sont
+passées en clés (`console.pxProductIntel`, `console.pxVersion`), traduites
+dans les sept locales.
 
 ## 4 · i18n résiduelle sur deux de ces pages
 

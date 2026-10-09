@@ -438,6 +438,7 @@
     "spCode": "Kod",
     "spEmail": "E-posta",
     "spVersion": "Sürüm",
-    "spExpiry": "Son kullanma"
+    "spExpiry": "Son kullanma",
+    "spViewPublicPassport": "Genel pasaportumu görüntüle"
   }
 }

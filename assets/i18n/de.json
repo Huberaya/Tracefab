@@ -445,7 +445,8 @@
     "resources3": "API-Referenz",
     "resources4": "Sicherheit und Mandantenfähigkeit",
     "rights": "© 2026 TRACEFAB. Alle Rechte vorbehalten.",
-    "legal": "Die DPP-Reife ist ein Reifeindikator, keine rechtliche Zertifizierung."
+    "legal": "Die DPP-Reife ist ein Reifeindikator, keine rechtliche Zertifizierung.",
+    "platform5": "Produktintelligenz"
   },
   "modal": {
     "eyebrow": "Demo anfragen",
@@ -1592,7 +1593,11 @@
     "cnLineageTitle": "PRODUKTHERKUNFT & VERWAHRKETTE",
     "cnLinDppQr": "08. DPP QR",
     "cnSupplierProfileBtn": "Profil",
-    "cnThOrganisation": "Organisation"
+    "cnThOrganisation": "Organisation",
+    "pxProductIntel": "Produktintelligenz",
+    "pxVersion": "Version",
+    "pxOpenIntel": "Intelligence-Datensatz öffnen",
+    "sxPublicPassport": "Öffentlichen Pass ansehen"
   },
   "portal": {
     "sites": "Produktionsstätten",
@@ -1986,7 +1991,8 @@
     "spCode": "Code",
     "spEmail": "E-Mail",
     "spVersion": "Version",
-    "spExpiry": "Ablauf"
+    "spExpiry": "Ablauf",
+    "spViewPublicPassport": "Meinen öffentlichen Pass ansehen"
   },
   "quality": {
     "loading": "Quality Center wird geladen…",

@@ -445,7 +445,8 @@
     "resources3": "Referência da API",
     "resources4": "Segurança e multi-inquilino",
     "rights": "© 2026 TRACEFAB. Todos os direitos reservados.",
-    "legal": "A preparação DPP é um indicador de preparação, não uma certificação legal."
+    "legal": "A preparação DPP é um indicador de preparação, não uma certificação legal.",
+    "platform5": "Inteligência de produto"
   },
   "modal": {
     "eyebrow": "Pedir uma demonstração",
@@ -1592,7 +1593,11 @@
     "cnLineageTitle": "LINHAGEM DO PRODUTO & CADEIA DE CUSTÓDIA",
     "cnLinDppQr": "08. DPP QR",
     "cnSupplierProfileBtn": "Perfil",
-    "cnThOrganisation": "Organização"
+    "cnThOrganisation": "Organização",
+    "pxProductIntel": "Inteligência de produto",
+    "pxVersion": "Versão",
+    "pxOpenIntel": "Abrir a ficha de inteligência",
+    "sxPublicPassport": "Ver o passaporte público"
   },
   "portal": {
     "sites": "Instalações de Produção",
@@ -1986,7 +1991,8 @@
     "spCode": "Código",
     "spEmail": "E-mail",
     "spVersion": "Versão",
-    "spExpiry": "Validade"
+    "spExpiry": "Validade",
+    "spViewPublicPassport": "Ver o meu passaporte público"
   },
   "quality": {
     "loading": "A carregar o Quality Center…",

@@ -445,7 +445,8 @@
     "resources3": "Référence API",
     "resources4": "Sécurité et multi-tenance",
     "rights": "© 2026 TRACEFAB. Tous droits réservés.",
-    "legal": "La préparation DPP est un indicateur de maturité, pas une certification juridique."
+    "legal": "La préparation DPP est un indicateur de maturité, pas une certification juridique.",
+    "platform5": "Intelligence produit"
   },
   "modal": {
     "eyebrow": "Demander une démo",
@@ -1592,7 +1593,11 @@
     "cnLineageTitle": "LIGNÉE PRODUIT & CHAÎNE DE GARDE",
     "cnLinDppQr": "08. DPP QR",
     "cnSupplierProfileBtn": "Profil",
-    "cnThOrganisation": "Organisation"
+    "cnThOrganisation": "Organisation",
+    "pxProductIntel": "Intelligence produit",
+    "pxVersion": "Version",
+    "pxOpenIntel": "Ouvrir la fiche intelligence",
+    "sxPublicPassport": "Voir le passeport public"
   },
   "portal": {
     "sites": "Sites de production",
@@ -1986,7 +1991,8 @@
     "spCode": "Code",
     "spEmail": "E-mail",
     "spVersion": "Version",
-    "spExpiry": "Expiration"
+    "spExpiry": "Expiration",
+    "spViewPublicPassport": "Voir mon passeport public"
   },
   "quality": {
     "loading": "Chargement du Quality Center…",

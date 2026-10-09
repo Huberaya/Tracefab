@@ -78,6 +78,7 @@
     "test:chantier5-console": "node scripts/test_chantier5_console.mjs",
     "test:console-css": "node scripts/test_console_css.mjs",
     "test:copy": "node scripts/test_hardcoded_copy.mjs",
+    "test:surfaces": "node scripts/test_surfaces_joignables.mjs",
     "test:coherence": "node scripts/test_coherence_chiffres.mjs",
     "serve": "node scripts/dev_static_server.mjs --port 3000",
     "test:journeys": "node scripts/test_journeys_e2e.mjs",

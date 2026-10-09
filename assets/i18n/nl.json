@@ -445,7 +445,8 @@
     "resources3": "API-referentie",
     "resources4": "Beveiliging en multi-tenancy",
     "rights": "© 2026 TRACEFAB. Alle rechten voorbehouden.",
-    "legal": "DPP-gereedheid is een volwassenheidsindicator, geen juridische certificering."
+    "legal": "DPP-gereedheid is een volwassenheidsindicator, geen juridische certificering.",
+    "platform5": "Productintelligentie"
   },
   "modal": {
     "eyebrow": "Demo aanvragen",
@@ -1592,7 +1593,11 @@
     "cnLineageTitle": "PRODUCTHERKOMST & KETENBEHEER",
     "cnLinDppQr": "08. DPP QR",
     "cnSupplierProfileBtn": "Profiel",
-    "cnThOrganisation": "Organisatie"
+    "cnThOrganisation": "Organisatie",
+    "pxProductIntel": "Productintelligentie",
+    "pxVersion": "Versie",
+    "pxOpenIntel": "Intelligencedossier openen",
+    "sxPublicPassport": "Openbaar paspoort bekijken"
   },
   "portal": {
     "sites": "Productielocaties",
@@ -1986,7 +1991,8 @@
     "spCode": "Code",
     "spEmail": "E-mail",
     "spVersion": "Versie",
-    "spExpiry": "Vervaldatum"
+    "spExpiry": "Vervaldatum",
+    "spViewPublicPassport": "Mijn openbaar paspoort bekijken"
   },
   "quality": {
     "loading": "Quality Center wordt geladen…",

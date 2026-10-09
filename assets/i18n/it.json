@@ -445,7 +445,8 @@
     "resources3": "Riferimento API",
     "resources4": "Sicurezza e multi-tenancy",
     "rights": "© 2026 TRACEFAB. Tutti i diritti riservati.",
-    "legal": "La prontezza DPP è un indicatore di maturità, non una certificazione legale."
+    "legal": "La prontezza DPP è un indicatore di maturità, non una certificazione legale.",
+    "platform5": "Intelligenza di prodotto"
   },
   "modal": {
     "eyebrow": "Richiedi una demo",
@@ -1592,7 +1593,11 @@
     "cnLineageTitle": "FILIERA PRODOTTO & CATENA DI CUSTODIA",
     "cnLinDppQr": "08. DPP QR",
     "cnSupplierProfileBtn": "Profilo",
-    "cnThOrganisation": "Organizzazione"
+    "cnThOrganisation": "Organizzazione",
+    "pxProductIntel": "Intelligenza di prodotto",
+    "pxVersion": "Versione",
+    "pxOpenIntel": "Apri la scheda intelligence",
+    "sxPublicPassport": "Vedi il passaporto pubblico"
   },
   "portal": {
     "sites": "Stabilimenti Produttivi",
@@ -1986,7 +1991,8 @@
     "spCode": "Codice",
     "spEmail": "Email",
     "spVersion": "Versione",
-    "spExpiry": "Scadenza"
+    "spExpiry": "Scadenza",
+    "spViewPublicPassport": "Vedi il mio passaporto pubblico"
   },
   "quality": {
     "loading": "Caricamento del Quality Center…",

@@ -445,7 +445,8 @@
     "resources3": "Referencia de API",
     "resources4": "Seguridad y multi-tenencia",
     "rights": "© 2026 TRACEFAB. Todos los derechos reservados.",
-    "legal": "La preparación DPP es un indicador de madurez, no una certificación legal."
+    "legal": "La preparación DPP es un indicador de madurez, no una certificación legal.",
+    "platform5": "Inteligencia de producto"
   },
   "modal": {
     "eyebrow": "Solicitar una demo",
@@ -1592,7 +1593,11 @@
     "cnLineageTitle": "LINAJE DEL PRODUCTO Y CADENA DE CUSTODIA",
     "cnLinDppQr": "08. DPP QR",
     "cnSupplierProfileBtn": "Perfil",
-    "cnThOrganisation": "Organización"
+    "cnThOrganisation": "Organización",
+    "pxProductIntel": "Inteligencia de producto",
+    "pxVersion": "Versión",
+    "pxOpenIntel": "Abrir la ficha de inteligencia",
+    "sxPublicPassport": "Ver el pasaporte público"
   },
   "portal": {
     "sites": "Centros de producción",
@@ -1986,7 +1991,8 @@
     "spCode": "Código",
     "spEmail": "Correo",
     "spVersion": "Versión",
-    "spExpiry": "Caducidad"
+    "spExpiry": "Caducidad",
+    "spViewPublicPassport": "Ver mi pasaporte público"
   },
   "quality": {
     "loading": "Cargando el Quality Center…",

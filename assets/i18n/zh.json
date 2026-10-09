@@ -438,6 +438,7 @@
     "spCode": "代码",
     "spEmail": "电子邮件",
     "spVersion": "版本",
-    "spExpiry": "到期"
+    "spExpiry": "到期",
+    "spViewPublicPassport": "查看我的公开护照"
   }
 }
