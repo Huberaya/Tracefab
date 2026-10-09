@@ -31,6 +31,7 @@
     "test:neon:rls": "node scripts/test_rls_isolation.mjs",
     "test:neon:dpp-provenance": "npx tsx scripts/test_neon_dpp_provenance.mjs",
     "test:neon:auth-provisioning": "npx tsx scripts/test_neon_auth_provisioning.mjs",
+    "test:neon:deploiement-publication": "npx tsx scripts/test_neon_publication_deploiement.mjs",
     "test:neon:supplier": "node scripts/test_neon_supplier_flow.mjs",
     "test:neon:supplier:advanced": "node scripts/test_neon_supplier_advanced.mjs",
     "test:neon:product": "node scripts/test_neon_product_flow.mjs",

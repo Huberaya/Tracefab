@@ -294,6 +294,13 @@ jobs:
         # produit non publie resout, ou si un GTIN inconnu fabrique une fiche.
         run: npm run test:neon:dpp-provenance
 
+      - name: Repetition du deploiement de la publication explicite
+        # Rejoue la migration 36 sur une base de preprod jetable (etat « 35 »),
+        # verifie l'inventaire, la matrice d'acces et les URL, puis execute le
+        # retour arriere complet et la restauration logique. Rien n'est touche
+        # hors de la base jetable (garde : serveur local uniquement).
+        run: npm run test:neon:deploiement-publication
+
       - name: Provisionnement utilisateur et politiques INSERT/UPDATE
         # Premiere connexion et reconnexion sous le role runtime reel, sans
         # BYPASSRLS : c'est la bascule que l'upsert nu cassait silencieusement.
