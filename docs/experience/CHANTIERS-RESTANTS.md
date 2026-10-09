@@ -10,6 +10,10 @@ la base Neon de production. Pas en relisant les en-têtes.
 > que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les
 > deux causes et leur correction sont au §11. La règle qui manquait : après
 > chaque poussée, lire la conclusion des jobs avant d'annoncer quoi que ce soit.
+>
+> **Run #41 sur `486249f` : `success`**, les quatre jobs verts — `Socle`,
+> `Parcours`, `Vérification`, `Base — isolation RLS exécutée`. Conclusion lue
+> via l'API GitHub, pas supposée. C'est la première CI verte depuis #37.
 
 > Ce bloc ne porte plus de SHA. Il en portait un, `5b78ac6`, resté figé
 > pendant que `main` avançait de sept commits : un en-tête qui se périme à
