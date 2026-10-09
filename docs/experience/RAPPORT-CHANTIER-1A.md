@@ -1,7 +1,12 @@
 # Chantier 1A — rapport de fin de mission
 
 Branche `correctifs/chantier-1a` · commits `ce94c9e`, `dcb250b`, `1809135`
-CI run **#51 : SUCCESS**, quatre jobs. Preuves dans `preuves-1a/`.
+CI run **#55 : SUCCESS**, quatre jobs. Preuves dans `preuves-1a/`.
+
+> **Mise à jour.** Les trois points livrés comme « constatés, non corrigés »
+> (§10) ont depuis été corrigés à votre demande, avant l'ouverture du chantier
+> 1B. Le détail est au §10 ; le seul point encore ouvert dépend d'un secret
+> que je n'ai pas.
 
 ---
 
@@ -148,6 +153,7 @@ qui ne casse pas quand on casse le code ne prouve rien :
 | Garde | Portée | Mutations détectées |
 |---|---|---|
 | `test:neon:rls:auth` | Provisionnement + isolation, sous le rôle applicatif réel | étage base de la CI |
+| `test:neon:dpp-ambigu` | Un identifiant public ambigu est refusé, pas deviné | étage base de la CI |
 | `test:rate-limit` | Classement, budgets, panne de compteur | 5 / 5 |
 | `test:dpp-sans-invention` | Aucune valeur métier inventée ne sort | 5 / 5 |
 | `test:dpp-public` | Aucune valeur de démonstration présentée comme réelle | 2 / 2 |
