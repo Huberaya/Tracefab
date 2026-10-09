@@ -1613,7 +1613,8 @@
     "pdClearFilters": "Limpar filtros",
     "pdMatching": "Correspondências",
     "pdNoMatch": "Nenhum produto corresponde a estes filtros",
-    "pdNoMatchHint": "Alargue a pesquisa ou limpe os filtros para ver todo o catálogo."
+    "pdNoMatchHint": "Alargue a pesquisa ou limpe os filtros para ver todo o catálogo.",
+    "pdOnlyIncomplete": "Apenas incompletos"
   },
   "portal": {
     "sites": "Instalações de Produção",

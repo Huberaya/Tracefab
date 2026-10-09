@@ -1613,7 +1613,8 @@
     "pdClearFilters": "Filter zurücksetzen",
     "pdMatching": "Treffer",
     "pdNoMatch": "Kein Produkt entspricht diesen Filtern",
-    "pdNoMatchHint": "Erweitern Sie die Suche oder setzen Sie die Filter zurück, um den gesamten Katalog zu sehen."
+    "pdNoMatchHint": "Erweitern Sie die Suche oder setzen Sie die Filter zurück, um den gesamten Katalog zu sehen.",
+    "pdOnlyIncomplete": "Nur unvollständige"
   },
   "portal": {
     "sites": "Produktionsstätten",

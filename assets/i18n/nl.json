@@ -1613,7 +1613,8 @@
     "pdClearFilters": "Filters wissen",
     "pdMatching": "Overeenkomsten",
     "pdNoMatch": "Geen product voldoet aan deze filters",
-    "pdNoMatchHint": "Verruim de zoekopdracht of wis de filters om de volledige catalogus te zien."
+    "pdNoMatchHint": "Verruim de zoekopdracht of wis de filters om de volledige catalogus te zien.",
+    "pdOnlyIncomplete": "Alleen onvolledige"
   },
   "portal": {
     "sites": "Productielocaties",

@@ -1613,7 +1613,8 @@
     "pdClearFilters": "Effacer les filtres",
     "pdMatching": "Correspondances",
     "pdNoMatch": "Aucun produit ne correspond à ces filtres",
-    "pdNoMatchHint": "Élargissez la recherche ou effacez les filtres pour revoir tout le catalogue."
+    "pdNoMatchHint": "Élargissez la recherche ou effacez les filtres pour revoir tout le catalogue.",
+    "pdOnlyIncomplete": "Incomplets seulement"
   },
   "portal": {
     "sites": "Sites de production",

@@ -947,9 +947,114 @@ montré**.
 
 ### Reste à faire sur le catalogue
 
-Le tri par colonne n'existe pas. Et le jeu de démonstration reste pauvre :
-presque toutes les références affichent **0 % de complétude**, ce qui donne une
-table techniquement correcte mais peu parlante.
+Le tri par colonne n'existe pas. Le jeu de démonstration est traité au **§14**.
+
+## 14 · La démonstration se contredisait elle-même — RÉGLÉ
+
+### Le constat
+
+Le tableau de bord annonçait **« 12 produits incomplets »** au-dessus d'un
+catalogue qui en montrait **1 246 à 0 % de complétude**. Pour une plateforme
+dont l'argument est « pouvez-vous faire confiance à vos données ? », c'est la
+première chose qu'un responsable conformité remarque — et il a raison.
+
+Trois causes distinctes, toutes dans le générateur de démonstration.
+
+**1. `dataCompletion` n'était jamais généré.** Les 1 246 produits créés par
+`demoEchelle()` ne portaient pas ce champ. `pct(undefined)` vaut 0, d'où une
+colonne entière à 0 % et des barres de progression vides.
+
+**2. `dataReadiness` valait `'verified'`, qui n'existe pas.** L'enum qui fait
+foi est `product_data_readiness` dans `prisma/schema.prisma` :
+
+```
+not_started · in_progress · data_ready · needs_review
+```
+
+`'verified'` n'en fait pas partie, donc `STATUS_KEYS` ne le connaissait pas et
+le libellé sortait **brut et non traduit** — un « verified » en minuscules au
+milieu de « Needs review » et « In progress ». La démonstration fabriquait des
+données que le backend ne peut pas produire.
+
+**3. Le registre de risque comparait à `'ready'`,** valeur que rien ne produit
+non plus. Chaque produit tombait donc dans la branche « données non
+validées » : **les 1 248 produits étaient signalés**. Un registre qui liste
+tout ne hiérarchise plus rien.
+
+### Ce qui a été fait
+
+La distribution n'est plus tirée au sort, elle est **construite**. Le registre
+retenant au plus un signal par produit, deux nombres suffisent à le
+déterminer, et ces deux nombres existaient déjà dans
+`assets/js/tf-demo-figures.js` — **déclarés sans aucun consommateur** :
+
+| source unique | valeur | ce qu'elle pilote désormais |
+|---|---|---|
+| `attention.produitsIncomplets` | 12 | produits sous le seuil de 70 % |
+| `signauxOuverts` | 42 | total des signaux du registre |
+
+Soit 12 produits incomplets + 30 complets mais non validés = 42 signaux. Les
+défauts sont posés **à pas régulier** dans le catalogue : groupés en tête, ils
+tomberaient tous sur la première page et donneraient une impression fausse.
+
+| | avant | après |
+|---|---|---|
+| complétude affichée | `0 %` sur 1 246 lignes | 22 % … 100 %, 25 valeurs distinctes par page |
+| libellés de maturité | `verified` brut, hors enum | traduits, conformes à l'enum |
+| registre de risque | 1 248 signaux | **42** |
+| pastille « produits incomplets » | `12` écrit en dur | **comptée sur l'état** |
+
+### Deux corrections de fond, au-delà des chiffres
+
+**La source unique n'était pas unique.** Le repli de `TF_DEMO_FIGURES` était
+recopié à trois endroits du fichier. Une seule copie désormais,
+`chiffresDemo()`. De même, le seuil de 70 % vivait en trois exemplaires —
+génération, pastille, registre — qui pouvaient dériver séparément et faire
+mentir l'un des trois : c'est maintenant `SEUIL_COMPLETUDE`.
+
+**Un commentaire mentait.** La vue d'ensemble portait *« Tous les chiffres de
+cet écran dérivent de l'état, aucun n'est écrit en dur »* juste au-dessus de
+quatre pastilles codées `17`, `8`, `5`, `12` en clair dans le balisage. Le
+nombre de produits incomplets est désormais réellement compté sur l'état ; les
+trois autres viennent de la source unique, faute d'être dérivables de ce jeu
+de données. Le commentaire dit maintenant la vérité, y compris sur ce qu'il
+reste de non dérivé.
+
+### De l'indicateur à son correctif
+
+Cliquer « 12 produits incomplets » menait au catalogue **entier**. La pastille
+ouvre maintenant le catalogue **filtré sur ces douze produits**, avec une puce
+qui dit visiblement que la vue est filtrée. Un indicateur qui ne conduit pas à
+son correctif oblige l'utilisateur à refaire à la main le tri que la machine a
+déjà fait.
+
+### Le garde-fou
+
+`npm run test:donnees-demo` — 6 sections. La section B relit l'enum
+**directement dans `prisma/schema.prisma`** : la règle n'est pas recopiée dans
+le test, elle est lue à sa source.
+
+| mutation | ce qui échoue |
+|---|---|
+| `dataCompletion` non généré | A — 23 lignes à 0 % · C · E |
+| `dataReadiness = 'verified'` | B — libellé non traduit **et** valeur hors enum |
+| risque comparé à `'ready'` | E — 1 248 signaux au lieu de 42 |
+| nombre d'incomplets déconnecté de la source | C, D |
+| pastille réécrite en dur | **F** |
+
+La dernière mérite un mot. Les cinq premières ont été attrapées du premier
+coup ; **la pastille écrite en dur, non** — remplacer le calcul par le littéral
+`12` donnait exactement le même affichage, puisque la valeur attendue était 12.
+Le test comparait à la constante, pas à la donnée.
+
+D'où la section F : elle **sert une source modifiée** à la volée (7 incomplets,
+23 signaux) en interceptant la requête, et vérifie que l'affichage suit. Un
+nombre figé ne peut plus passer pour un nombre calculé.
+
+### Reste à faire
+
+Le tri par colonne du catalogue. Et les quatre marques qui partagent le slug
+`mb-shirt-001`.
 
 ## Déjà réglé — ne pas reprendre
 

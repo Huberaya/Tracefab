@@ -13,7 +13,7 @@
         materials: [],
         products: [],
         pages: {},
-        filtres: { products: { q: '', category: '', status: '', readiness: '' } },
+        filtres: { products: { q: '', category: '', status: '', readiness: '', incomplets: false } },
         requests: [],
         questionnaires: [],
         schemaCatalog: [],
@@ -169,6 +169,7 @@
           if (f.category && String(p.category || '') !== f.category) return false;
           if (f.status && String(p.status || '') !== f.status) return false;
           if (f.readiness && String(p.dataReadiness || 'in_progress') !== f.readiness) return false;
+          if (f.incomplets && !(Number(p.dataCompletion) < SEUIL_COMPLETUDE)) return false;
           if (!q) return true;
           return normaliser(p.name).includes(q) || normaliser(p.reference).includes(q);
         });
@@ -176,7 +177,7 @@
 
       function filtresActifs() {
         const f = state.filtres.products;
-        return Boolean(f.q || f.category || f.status || f.readiness);
+        return Boolean(f.q || f.category || f.status || f.readiness || f.incomplets);
       }
 
       /* Les options viennent des donnees, jamais d'une liste ecrite en dur :
@@ -207,6 +208,7 @@
             ${select('category', 'pdAllCategories', optionsFacette('category', '', null))}
             ${select('status', 'pdAllStatuses', optionsFacette('status', '', (v) => statusLabel(v) || v))}
             ${select('readiness', 'pdAllReadiness', optionsFacette('dataReadiness', 'in_progress', (v) => statusLabel(v) || v))}
+            ${f.incomplets ? `<span class="filters-chip">${esc(bt('pdOnlyIncomplete'))}</span>` : ''}
             ${filtresActifs() ? `<button type="button" class="btn btn-secondary btn-small"
               data-tf-act="fx">${esc(bt('pdClearFilters'))}</button>` : ''}
             ${filtresActifs() ? `<p class="filters-count">${esc(bt('pdMatching'))}
@@ -304,6 +306,26 @@
 
       }
 
+      /* Source unique des chiffres de demonstration. Le repli ci-dessous ne
+       * sert que si /assets/js/tf-demo-figures.js n'a pas ete charge ; il ne
+       * doit jamais diverger de lui, et test:coherence le verifie. Il etait
+       * recopie a trois endroits : une seule copie desormais. */
+      /* Completude a partir de laquelle les donnees d'un produit sont jugees
+       * suffisantes. Le nombre vivait en trois exemplaires — generation,
+       * pastille du tableau de bord, registre de risque — qui pouvaient
+       * deriver separement et faire mentir l'un des trois. */
+      const SEUIL_COMPLETUDE = 70;
+
+      function chiffresDemo() {
+        return (typeof window !== 'undefined' && window.TF_DEMO_FIGURES) || {
+          produits: 1248, fournisseurs: 86, sites: 214, pays: 18,
+          qualite: 92.4, preuves: 84, verifies: 78, tracables: 91, dpp: 88,
+          elementsPreuve: 9847, signauxOuverts: 42,
+          attention: { donneesManquantes: 17, certificatsExpirant: 8,
+            fournisseursARevoir: 5, produitsIncomplets: 12 },
+        };
+      }
+
       function demoEchelle() {
 
         const r = demoAlea(20260407);
@@ -312,10 +334,7 @@
         // l'accueil. Les valeurs ci-dessous ne sont qu'un repli si le fichier
         // n'a pas ete charge : elles ne doivent jamais diverger de lui, et un
         // test le verifie.
-        const CHIFFRES = (typeof window !== 'undefined' && window.TF_DEMO_FIGURES) || {
-          produits: 1248, fournisseurs: 86, sites: 214, pays: 18,
-          qualite: 92.4, preuves: 84, verifies: 78, tracables: 91, dpp: 88,
-        };
+        const CHIFFRES = chiffresDemo();
         const CIBLE_FOURNISSEURS = CHIFFRES.fournisseurs,
               CIBLE_PRODUITS = CHIFFRES.produits,
               CIBLE_SITES = CHIFFRES.sites;
@@ -324,7 +343,8 @@
 
         const categories = ['T-shirt','Shirt','Trousers','Knitwear','Dress','Jacket','Accessory','Denim'];
 
-        const lectures = ['verified','needs_review','in_progress'];
+        // La maturite n'est plus tiree au sort ici : calibrerTaux la
+        // construit, avec les seules valeurs de l'enum product_data_readiness.
 
       
 
@@ -411,7 +431,6 @@
 
             version: 1 + Math.floor(r() * 3),
 
-            dataReadiness: lectures[Math.floor(r() * lectures.length)],
 
             demoGenerated: true,
 
@@ -444,9 +463,7 @@
        * les 84 premiers pour cent de la liste.
        */
       function calibrerTaux() {
-        const CHIFFRES = (typeof window !== 'undefined' && window.TF_DEMO_FIGURES) || {
-          qualite: 92.4, preuves: 84, verifies: 78, tracables: 91, dpp: 88,
-        };
+        const CHIFFRES = chiffresDemo();
         const produits = state.products || [], fournisseurs = state.suppliers || [];
 
         // `parmi` restreint le vivier. La verification par tiers est un
@@ -491,6 +508,56 @@
         };
         centrer(fournisseurs, 'dataQuality', CHIFFRES.qualite, 60, 100);
         centrer(produits, 'dppScore', CHIFFRES.dpp, 40, 100);
+
+        /* Completude et maturite des produits.
+         *
+         * Trois defauts se cumulaient ici. Les produits generes n'avaient
+         * aucun dataCompletion : la table affichait 0 % sur 1 246 references
+         * pendant que l'accueil annoncait « 12 produits incomplets ». Leur
+         * dataReadiness valait 'verified', absent de l'enum
+         * product_data_readiness — le libelle sortait donc brut et non
+         * traduit. Et le registre de risque comparait a 'ready', valeur que
+         * rien ne produit : les 1 248 produits etaient signales, soit un
+         * registre qui ne hierarchise plus rien.
+         *
+         * On ne tire donc pas au sort : on CONSTRUIT la distribution
+         * annoncee. Le registre retenant au plus un signal par produit
+         * (completude sous le seuil, sinon donnees non validees), deux
+         * nombres suffisent a le determiner.
+         */
+        const repartirCompletude = (liste, seuil, nbIncomplets, nbSignaux) => {
+          const n = liste.length;
+          if (!n) return;
+          const incomplets = Math.max(0, Math.min(nbIncomplets, n));
+          const aRevoir = Math.max(0, Math.min(nbSignaux - incomplets, n - incomplets));
+
+          // Tout le monde part conforme. La dispersion reste visible — un
+          // catalogue ou chaque produit afficherait la meme valeur ne
+          // ressemblerait a rien.
+          liste.forEach((p, i) => {
+            p.dataCompletion = (seuil + 2) + ((i * 7) % (99 - seuil));
+            p.dataReadiness = 'data_ready';
+          });
+
+          // Les defauts sont poses a pas regulier : groupes en tete, ils
+          // tomberaient tous sur la premiere page du catalogue et donneraient
+          // une impression fausse.
+          const total = incomplets + aRevoir;
+          const pas = total ? Math.max(1, Math.floor(n / total)) : 1;
+          let place = 0;
+          for (let k = 0; k < incomplets; k += 1, place += 1) {
+            const p = liste[(place * pas) % n];
+            p.dataCompletion = (seuil - 48) + ((k * 13) % 42);
+            p.dataReadiness = k % 2 ? 'needs_review' : 'in_progress';
+          }
+          for (let k = 0; k < aRevoir; k += 1, place += 1) {
+            // Complets mais non valides : le second motif de signal.
+            liste[(place * pas) % n].dataReadiness = 'needs_review';
+          }
+        };
+        repartirCompletude(produits, SEUIL_COMPLETUDE,
+          (CHIFFRES.attention && CHIFFRES.attention.produitsIncomplets) || 0,
+          CHIFFRES.signauxOuverts || 0);
       }
 
       // Agregats de la vue d ensemble, tous derives de l etat ci-dessus.
@@ -1847,7 +1914,22 @@
         const counts = requestCounts();
         const brand = currentBrand();
         // Tous les chiffres de cet ecran derivent de l etat, aucun n est ecrit en dur.
+        //
+        // Ce n'etait pas vrai des quatre pastilles ATTENTION : elles portaient
+        // 17, 8, 5 et 12 en clair dans le balisage, pendant que le catalogue
+        // comptait 1 246 produits a 0 % de completude. Le tableau de bord
+        // annoncait donc douze produits incomplets au-dessus d'une table qui
+        // en montrait mille deux cent quarante-six.
+        //
+        // Le nombre de produits incomplets est desormais COMPTE sur l'etat :
+        // il ne peut plus diverger de ce que la vue catalogue montrera. Les
+        // trois autres viennent de la source unique partagee avec l'accueil,
+        // faute d'etre derivables de ce jeu de demonstration.
         const ag = demoAgregats();
+        const AT = Object.assign({}, chiffresDemo().attention, {
+          produitsIncomplets: (state.products || [])
+            .filter((p) => Number(p.dataCompletion) < SEUIL_COMPLETUDE).length,
+        });
         const prodCount = ag.produits;
         const supCount = ag.fournisseurs || suppliers().length;
 
@@ -1939,19 +2021,19 @@
             </div>
             <div class="mc-attention-grid">
               <div class="mc-attention-pill clickable" data-tf-act="p07">
-                <div class="mc-attention-num">17</div>
+                <div class="mc-attention-num">${AT.donneesManquantes}</div>
                 <div><strong>${bt('ovMissingData')}</strong><br><small>${bt('ovSuppliersPending')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p17">
-                <div class="mc-attention-num">8</div>
+                <div class="mc-attention-num">${AT.certificatsExpirant}</div>
                 <div><strong>${bt('ovCertsExpiring')}</strong><br><small>${bt('ovRenewal90')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p18">
-                <div class="mc-attention-num">5</div>
+                <div class="mc-attention-num">${AT.fournisseursARevoir}</div>
                 <div><strong>${bt('ovSuppliersReview')}</strong><br><small>${bt('ovCompleteness')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p19">
-                <div class="mc-attention-num">12</div>
+                <div class="mc-attention-num">${AT.produitsIncomplets}</div>
                 <div><strong>${bt('ovProductsIncomplete')}</strong><br><small>${bt('ovBomUnbalanced')}</small></div>
               </div>
             </div>
@@ -2302,7 +2384,7 @@
         const now = Date.now();
         const org = (s) => s.organizations || {};
         const nom = (o, s) => o.display_name || o.legal_name || s.id || '—';
-        const SEUIL = 70;          // completude produit jugee suffisante
+        const SEUIL = SEUIL_COMPLETUDE;
         const rows = [];
 
         // 1. Concentration : part du pays le plus represente
@@ -2336,7 +2418,7 @@
           if (Number.isFinite(c) && c < SEUIL) {
             rows.push({ sev: c < 50 ? 'Critical' : 'High', cat: 'riskCatProduct', subject: label,
               sig: 'riskSigIncomplete', extra: c + '%', view: 'products' });
-          } else if (p.dataReadiness && p.dataReadiness !== 'ready') {
+          } else if (p.dataReadiness && p.dataReadiness !== 'data_ready') {
             rows.push({ sev: 'Medium', cat: 'riskCatProduct', subject: label,
               sig: 'riskSigNotReady', extra: statusLabel(p.dataReadiness), view: 'products' });
           }
@@ -2375,7 +2457,7 @@
             score: part(sup.filter((s) => !org(s).country_code).length, sup.length) },
           { key: 'riskDimData', n: prods.length,
             score: part(prods.filter((p) => Number(p.dataCompletion) < SEUIL
-              || (p.dataReadiness && p.dataReadiness !== 'ready')).length, prods.length) },
+              || (p.dataReadiness && p.dataReadiness !== 'data_ready')).length, prods.length) },
           { key: 'riskDimCollection', n: reqs.length,
             score: part(reqs.filter((r) => !clos(r) && ((r.dueAt && Date.parse(r.dueAt) < now)
               || Number(r.completionPercentage) < 50)).length, reqs.length) },
@@ -4209,7 +4291,15 @@
         p16: function (event) { state.selectedChainNode='node-assembly';render(); },
         p17: function (event) { state.view='certifications';render(); },
         p18: function (event) { state.view='suppliers';render(); },
-        p19: function (event) { state.view='products';render(); },
+        p19: function (event) {
+          // « 12 produits incomplets » doit mener aux douze, pas au catalogue
+          // entier : un indicateur qui ne conduit pas a son correctif oblige
+          // l'utilisateur a refaire a la main le tri que la machine a deja fait.
+          state.filtres.products = { q: '', category: '', status: '', readiness: '', incomplets: true };
+          state.pages.products = 1;
+          state.view = 'products';
+          render();
+        },
         p20: function (event) { state.view='questionnaires';render(); },
         p21: function (event) { filterRequestsByStatus('all'); },
         p22: function (event) { filterRequestsByStatus('sent'); },
@@ -4240,7 +4330,7 @@
           render();
         },
         fx: function (event) {
-          state.filtres.products = { q: '', category: '', status: '', readiness: '' };
+          state.filtres.products = { q: '', category: '', status: '', readiness: '', incomplets: false };
           state.pages.products = 1;
           render();
         },

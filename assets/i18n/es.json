@@ -1613,7 +1613,8 @@
     "pdClearFilters": "Borrar filtros",
     "pdMatching": "Coincidencias",
     "pdNoMatch": "Ningún producto coincide con estos filtros",
-    "pdNoMatchHint": "Amplíe la búsqueda o borre los filtros para ver todo el catálogo."
+    "pdNoMatchHint": "Amplíe la búsqueda o borre los filtros para ver todo el catálogo.",
+    "pdOnlyIncomplete": "Solo incompletos"
   },
   "portal": {
     "sites": "Centros de producción",

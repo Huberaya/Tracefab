@@ -1613,7 +1613,8 @@
     "pdClearFilters": "Azzera i filtri",
     "pdMatching": "Corrispondenze",
     "pdNoMatch": "Nessun prodotto corrisponde a questi filtri",
-    "pdNoMatchHint": "Amplia la ricerca o azzera i filtri per rivedere tutto il catalogo."
+    "pdNoMatchHint": "Amplia la ricerca o azzera i filtri per rivedere tutto il catalogo.",
+    "pdOnlyIncomplete": "Solo incompleti"
   },
   "portal": {
     "sites": "Stabilimenti Produttivi",

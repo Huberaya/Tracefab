@@ -1332,6 +1332,7 @@ window.TF_I18N_BUNDLES.en = {
     pdSearchLabel: "Search the catalogue",
     pdSearchPlaceholder: "Search name or reference",
     pdAllCategories: "All categories",
+    pdOnlyIncomplete: "Incomplete only",
     pdAllStatuses: "All statuses",
     pdAllReadiness: "All readiness",
     pdClearFilters: "Clear filters",
