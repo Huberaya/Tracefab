@@ -10,27 +10,35 @@ document du tout.
 
 ---
 
-## 1 · Bloquant — rien n'est sur `main`
+## 1 · Fusionné — `main` porte tout
 
-**Huit PR ouvertes, empilées, aucune fusionnée.** C'est le seul vrai point
-bloquant : tout le travail des chantiers 13 à 20 existe, est testé, passe
-la CI, et n'est visible par personne.
+**Les huit PR sont fusionnées.** Plus aucune PR ouverte.
+**`main` = `f4d8a73`**, CI verte.
 
-L'ordre de fusion n'est pas négociable — chaque PR a pour base la
-précédente :
+Fusion séquentielle le 9 octobre 2026, chaque PR ré-adressée vers `main`
+après sa parente :
 
-| Ordre | PR | Chantier |
-|---|---|---|
-| 1 | #26 | 15 — i18n complet |
-| 2 | #27 | 13 — DPP Readiness actionnable |
-| 3 | #28 | 14 — Passeport public dynamique |
-| 4 | #29 | 17 — Tests E2E & CI |
-| 5 | #30 | 18 — Production Readiness |
-| 6 | #31 | 19 — Commercial Readiness |
-| 7 | #32 | 16 — Sécurité & Performance |
-| 8 | #33 | 20 — Cohérence |
+| Ordre | PR | Chantier | `main` après fusion |
+|---|---|---|---|
+| 1 | #26 | 15 — i18n complet | `22d3cda` |
+| 2 | #27 | 13 — DPP Readiness actionnable | `5f3245a` |
+| 3 | #28 | 14 — Passeport public dynamique | `306acb7` |
+| 4 | #29 | 17 — Tests E2E & CI | `571b1cd` |
+| 5 | #30 | 18 — Production Readiness | `a4ebf1c` |
+| 6 | #31 | 19 — Commercial Readiness | `f4aa899` |
+| 7 | #32 | 16 — Sécurité & Performance | `c9c00e0` |
+| 8 | #33 | 20 — Cohérence | `f4d8a73` |
 
-Fusionner dans le désordre produira des conflits inutiles.
+14 commits, 116 fichiers. La pile était strictement linéaire — vérifié
+avant fusion avec `git merge-base --is-ancestor` sur les huit maillons.
+
+**Contrôle décisif après fusion :** l'arborescence de `main` est identique,
+octet pour octet, à celle du sommet de la pile
+(`49a29f6dca5ff308021690cf6755db404930c974`). Rien n'a été perdu ni
+réordonné par l'empilement.
+
+Les huit branches `experience/*` n'ont pas été supprimées. Leurs commits
+sont dans `main` ; les effacer est sans risque mais n'a pas été demandé.
 
 ---
 
@@ -125,8 +133,18 @@ copie de la donnée.
 
 ## Note de méthode
 
-Les suites de tests n'ont pas été rejouées pour établir ce relevé :
-`node_modules` n'est pas conservé entre les sessions et `playwright`
-manquait. Les constats ci-dessus reposent sur l'inspection du dépôt et sur
-l'API GitHub. Le dernier passage complet de la barrière date de la livraison
-du chantier 20, tout au vert, CI #18 verte sur ses quatre jobs.
+Les suites de tests n'ont pas été rejouées localement pour établir ce
+relevé : `node_modules` n'est pas conservé entre les sessions. Les constats
+reposent sur l'inspection du dépôt, sur l'API GitHub et sur la CI.
+
+Après fusion, **CI run #25 sur `main` (`f4d8a73`) : verte sur ses quatre
+jobs.**
+
+Une réserve sur cette phrase, qui vaut pour tous les rapports précédents :
+le job « Base — isolation RLS executee » est vert **sans rien exécuter**.
+Le secret `DATABASE_URL` n'existe pas dans le dépôt, donc ses étapes
+d'installation, de génération Prisma et de scénarios croisés sont
+*skipped*. Le job porte un nom qui affirme une exécution qui n'a jamais eu
+lieu. Les 46 tables en ENABLE rapportées aux chantiers précédents ont bien
+été mesurées, mais en local contre un PostgreSQL jetable — jamais en CI, et
+jamais contre Neon. À corriger en même temps que les migrations.
