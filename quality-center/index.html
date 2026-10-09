@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TRACEFAB — Quality Center</title>
-  <meta name="description" content="TRACEFAB Quality Center — peut-on faire confiance à la donnée ? Scores explicables, issues actionnables et plans d'action corrective.">
-  <script src="/auto-translate.js"></script>
+  <title data-i18n="quality.meta.title">TRACEFAB — Quality Center</title>
+  <meta name="description" data-i18n-attr="content:quality.meta.description" content="TRACEFAB Quality Center — peut-on faire confiance à la donnée ? Scores explicables, issues actionnables et plans d'action corrective.">
+  <script src="/i18n-core.js"></script>
 
   <!-- Design system canonique : assets/design-system/tracefab-ds.css
        Ne pas éditer entre les marqueurs. `npm run ds:sync` pour propager. -->
@@ -908,6 +908,24 @@ a { color: inherit; text-decoration: none; }
        État. Le Quality Center ne fabrique aucune donnée : tout vient de
        /api/quality/*, et le mode démo est explicitement étiqueté.
        ------------------------------------------------------------------ */
+    /*
+     * Tout le texte vient de locales/{lang}/quality.json.
+     *
+     * Le helper s'appelle `tr` et non `t` : la fonction api() déclarait déjà
+     * `const t = await token()` pour le jeton Clerk. Un même nom dans la même
+     * portée aurait masqué l'un des deux — et le masquage d'un jeton
+     * d'authentification par un traducteur est le genre de collision qui ne se
+     * voit qu'en production.
+     *
+     * `tr()` renvoie la clé quand le dictionnaire ne l'a pas — la convention de
+     * brand-console. Une clé manquante doit rester visible pour être comblée,
+     * jamais se déguiser en texte plausible.
+     */
+    const tr = (key, values) => {
+      const value = window.TracefabI18n ? window.TracefabI18n.t(key, values) : null;
+      return value === null || value === undefined ? key : value;
+    };
+
     const params = new URLSearchParams(location.search);
     const state = {
       demo: params.has('demo'),
@@ -929,9 +947,14 @@ a { color: inherit; text-decoration: none; }
 
     const app = document.getElementById('app');
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
-    const num = (v) => Number(v || 0).toLocaleString('fr-FR');
+    /* Nombre et date suivent la langue active : afficher « 1 240 » et
+       « 14/01/2027 » à un lecteur allemand pendant que tout le reste est en
+       allemand serait une demi-traduction. */
+    const LOCALES = { fr: 'fr-FR', en: 'en-GB', de: 'de-DE', it: 'it-IT', es: 'es-ES', nl: 'nl-NL', pt: 'pt-PT' };
+    const locale = () => LOCALES[window.TracefabI18n ? window.TracefabI18n.language : 'fr'] || 'fr-FR';
+    const num = (v) => Number(v || 0).toLocaleString(locale());
     const pct = (v) => Math.max(0, Math.min(100, Math.round(Number(v || 0))));
-    const dateFr = (v) => (v ? new Date(v).toLocaleDateString('fr-FR') : '—');
+    const dateFr = (v) => (v ? new Date(v).toLocaleDateString(locale()) : '—');
 
     /* ------------------------------------------------------------------
        Dérivations. Uniquement à partir de ce que l'API renvoie réellement :
@@ -966,9 +989,13 @@ a { color: inherit; text-decoration: none; }
       return '';
     }
 
-    const SEVERITY_LABEL = { blocking: 'Critique', warning: 'Avertissement', info: 'Information' };
-    const STATUS_LABEL = { open: 'À traiter', acknowledged: 'Acquittée', waived: 'Waivée', resolved: 'Résolue' };
-    const CAP_STATUS_LABEL = { requested: 'Demandé', submitted: 'Correction soumise', approved: 'Approuvé', rejected: 'Rejeté', closed: 'Clôturé' };
+    /* Libellés d'énumérations : la clé est construite à partir de la valeur de
+       l'API. Une valeur inconnue retombe sur la valeur brute échappée, jamais sur
+       une étiquette inventée — un nouveau statut ajouté côté serveur doit être
+       visible, pas traduit de force. */
+    const SEVERITY_LABEL = (v) => (v ? tr('quality.severity.' + v) : v);
+    const STATUS_LABEL = (v) => (v ? tr('quality.status.' + v) : v);
+    const CAP_STATUS_LABEL = (v) => (v ? tr('quality.capStatus.' + v) : v);
 
     /* Regroupement §15 : chaque issue doit mener à l'action qui la résout. */
     function bucketOf(issue) {
@@ -1064,10 +1091,10 @@ a { color: inherit; text-decoration: none; }
         scores: state.data && state.data.scores ? num(state.data.scores.length) : '',
       };
       const links = [
-        ['overview', 'Vue d’ensemble'],
-        ['issues', 'Issues'],
-        ['caps', 'Plans d’action'],
-        ['scores', 'Scores'],
+        ['overview', tr('quality.nav.overview')],
+        ['issues', tr('quality.nav.issues')],
+        ['caps', tr('quality.nav.caps')],
+        ['scores', tr('quality.nav.scores')],
       ];
       return `
         <aside class="tf-app__side">
@@ -1075,19 +1102,19 @@ a { color: inherit; text-decoration: none; }
             <span class="tf-wordmark__mark" aria-hidden="true">tf</span>
             <span class="tf-wordmark__name">TRACEFAB</span>
           </a>
-          <nav class="tf-sidenav" aria-label="Quality Center">
-            <div class="tf-sidenav__group">Qualité</div>
+          <nav class="tf-sidenav" aria-label="${esc(tr('quality.aria.qualityCenter'))}">
+            <div class="tf-sidenav__group">${esc(tr('quality.nav.group'))}</div>
             ${links.map(([id, label]) => `
               <button type="button" class="tf-sidenav__link${state.view === id ? ' is-on' : ''}" data-nav="${id}" aria-current="${state.view === id ? 'page' : 'false'}">
                 <span>${label}</span>${counts[id] ? `<span class="tf-sidenav__count">${counts[id]}</span>` : ''}
               </button>`).join('')}
           </nav>
-          <nav class="tf-sidenav" aria-label="Autres surfaces" style="margin-top:auto">
-            <div class="tf-sidenav__group">Surfaces</div>
-            <a class="tf-sidenav__link" href="/evidence/">Evidence Center</a>
-            <a class="tf-sidenav__link" href="/brand-console/">Brand Console</a>
-            <a class="tf-sidenav__link" href="/supplier-portal/">Supplier Portal</a>
-            <a class="tf-sidenav__link" href="/">Accueil</a>
+          <nav class="tf-sidenav" aria-label="${esc(tr('quality.aria.otherSurfaces'))}" style="margin-top:auto">
+            <div class="tf-sidenav__group">${esc(tr('quality.nav.surfaces'))}</div>
+            <a class="tf-sidenav__link" href="/evidence/">${esc(tr('quality.nav.evidence'))}</a>
+            <a class="tf-sidenav__link" href="/brand-console/">${esc(tr('quality.nav.brandConsole'))}</a>
+            <a class="tf-sidenav__link" href="/supplier-portal/">${esc(tr('quality.nav.supplierPortal'))}</a>
+            <a class="tf-sidenav__link" href="/">${esc(tr('quality.nav.home'))}</a>
           </nav>
         </aside>`;
     }
@@ -1096,13 +1123,14 @@ a { color: inherit; text-decoration: none; }
       return `
         <header class="tf-app__topbar">
           <div>
-            <span class="tf-label">Quality Center</span>
+            <span class="tf-label">${esc(tr('quality.topbar.label'))}</span>
             <h1 class="tf-h2" style="margin-top:4px">${title}</h1>
             ${sub ? `<p class="tf-small" style="margin:4px 0 0">${sub}</p>` : ''}
           </div>
           <div class="tf-row tf-row--gap-3">
-            ${state.demo ? '<span class="tf-demo-mark">Mode démonstration</span>' : ''}
-            <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-act="refresh">Rafraîchir</button>
+            ${state.demo ? `<span class="tf-demo-mark">${esc(tr('quality.topbar.demo'))}</span>` : ''}
+            <select class="tf-select" id="qc-lang" aria-label="Language" style="width:auto;padding:6px 10px;font-size:12px"></select>
+            <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-act="refresh">${esc(tr('quality.topbar.refresh'))}</button>
           </div>
         </header>`;
     }
@@ -1129,15 +1157,15 @@ a { color: inherit; text-decoration: none; }
         </div>`;
 
       return `
-        <section class="tf-tilegrid" aria-label="Indicateurs de confiance">
-          ${tile('Complétude des données', avg ? pct(avg.completeness) + '<span style="font-size:.5em">%</span>' : null)}
-          ${tile('Couverture des preuves', avg ? pct(avg.documentationCoverage) + '<span style="font-size:.5em">%</span>' : null)}
-          ${tile('Fraîcheur', avg ? pct(avg.freshness) + '<span style="font-size:.5em">%</span>' : null)}
-          ${tile('Cohérence', avg ? pct(avg.consistency) + '<span style="font-size:.5em">%</span>' : null)}
-          ${tile('Qualité produit', prod === null ? null : pct(prod) + '<span style="font-size:.5em">%</span>')}
-          ${tile('Qualité fournisseur', supp === null ? null : pct(supp) + '<span style="font-size:.5em">%</span>')}
-          ${tile('Issues critiques', num(m.blockingIssues || 0), (m.blockingIssues || 0) > 0 ? 'tf-tile--alert' : '')}
-          ${tile('À traiter', num(m.openIssues || 0), (m.openIssues || 0) > 0 ? 'tf-tile--warn' : '')}
+        <section class="tf-tilegrid" aria-label="${esc(tr('quality.aria.trustTiles'))}">
+          ${tile(tr('quality.tiles.completeness'), avg ? pct(avg.completeness) + '<span style="font-size:.5em">%</span>' : null)}
+          ${tile(tr('quality.tiles.evidence'), avg ? pct(avg.documentationCoverage) + '<span style="font-size:.5em">%</span>' : null)}
+          ${tile(tr('quality.tiles.freshness'), avg ? pct(avg.freshness) + '<span style="font-size:.5em">%</span>' : null)}
+          ${tile(tr('quality.tiles.consistency'), avg ? pct(avg.consistency) + '<span style="font-size:.5em">%</span>' : null)}
+          ${tile(tr('quality.tiles.product'), prod === null ? null : pct(prod) + '<span style="font-size:.5em">%</span>')}
+          ${tile(tr('quality.tiles.supplier'), supp === null ? null : pct(supp) + '<span style="font-size:.5em">%</span>')}
+          ${tile(tr('quality.tiles.critical'), num(m.blockingIssues || 0), (m.blockingIssues || 0) > 0 ? 'tf-tile--alert' : '')}
+          ${tile(tr('quality.tiles.open'), num(m.openIssues || 0), (m.openIssues || 0) > 0 ? 'tf-tile--warn' : '')}
         </section>`;
     }
 
@@ -1148,16 +1176,16 @@ a { color: inherit; text-decoration: none; }
         review: 'tf-badge--declared', resolved: 'tf-badge--certified',
       }[bucket];
       const actions = [];
-      if (i.status === 'open') actions.push(`<button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-issue="ack" data-id="${esc(i.id)}">Acquitter</button>`);
-      if (i.status !== 'waived' && i.status !== 'resolved') actions.push(`<button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-issue="waive" data-id="${esc(i.id)}">Waiver</button>`);
+      if (i.status === 'open') actions.push(`<button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-issue="ack" data-id="${esc(i.id)}">${esc(tr('quality.actions.ack'))}</button>`);
+      if (i.status !== 'waived' && i.status !== 'resolved') actions.push(`<button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-issue="waive" data-id="${esc(i.id)}">${esc(tr('quality.actions.waive'))}</button>`);
       // §15 : chaque problème conduit directement vers l'action qui le résout.
-      actions.push(`<button type="button" class="tf-btn tf-btn--dark tf-btn--sm" data-issue="cap" data-id="${esc(i.id)}">Plan d’action</button>`);
+      actions.push(`<button type="button" class="tf-btn tf-btn--dark tf-btn--sm" data-issue="cap" data-id="${esc(i.id)}">${esc(tr('quality.actions.cap'))}</button>`);
       return `
         <tr>
           <td><strong>${esc(i.subjectName)}</strong><span class="tf-sub">${esc(i.subjectType)} · ${esc(i.ownerOrganizationName || '—')}</span></td>
           <td>${esc(i.message)}<span class="tf-sub">${esc(i.ruleKey)}${i.fieldKey ? ' · ' + esc(i.fieldKey) : ''}</span></td>
-          <td><span class="tf-badge ${badge}">${SEVERITY_LABEL[i.severity] || esc(i.severity)}</span></td>
-          <td><span class="tf-badge tf-badge--neutral">${STATUS_LABEL[i.status] || esc(i.status)}</span></td>
+          <td><span class="tf-badge ${badge}">${esc(SEVERITY_LABEL(i.severity))}</span></td>
+          <td><span class="tf-badge tf-badge--neutral">${esc(STATUS_LABEL(i.status))}</span></td>
           <td><div class="qc-actions">${actions.join('')}</div></td>
         </tr>`;
     }
@@ -1168,33 +1196,33 @@ a { color: inherit; text-decoration: none; }
       const caps = (state.caps && state.caps.caps) || [];
       const openCaps = caps.filter((c) => c.status === 'requested' || c.status === 'submitted');
       return `
-        ${topbar('Peut-on faire confiance à la donnée ?', 'Scores explicables, issues actionnables et plans d’action corrective.')}
+        ${topbar(tr('quality.overview.title'), tr('quality.overview.sub'))}
         <div class="tf-app__body">
           ${notice()}
           <div class="qc-disclaimer">
             <span aria-hidden="true">ⓘ</span>
-            <span>Ces scores sont des indicateurs de préparation, <strong>explicables</strong> jusqu’au document qui les produit. Ils ne constituent jamais une <strong>certification</strong> juridique ni une déclaration de conformité.</span>
+            <span>${esc(tr('quality.disclaimer'))}</span>
           </div>
           ${trustTiles()}
           <section class="tf-panel">
             <div class="tf-panel__head">
-              <div><span class="tf-label">Priorité</span><h2 class="tf-h3" style="margin-top:6px">Issues critiques</h2></div>
-              <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-nav="issues">Voir toutes les issues</button>
+              <div><span class="tf-label">${esc(tr('quality.overview.priority'))}</span><h2 class="tf-h3" style="margin-top:6px">${esc(tr('quality.overview.critical'))}</h2></div>
+              <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-nav="issues">${esc(tr('quality.overview.seeAll'))}</button>
             </div>
             ${critical.length ? `<div class="tf-tablewrap"><table class="tf-table">
-              <thead><tr><th scope="col">Sujet</th><th scope="col">Issue</th><th scope="col">Gravité</th><th scope="col">Statut</th><th scope="col">Action</th></tr></thead>
+              <thead><tr><th scope="col">${esc(tr('quality.table.subject'))}</th><th scope="col">${esc(tr('quality.table.issue'))}</th><th scope="col">${esc(tr('quality.table.severity'))}</th><th scope="col">${esc(tr('quality.table.status'))}</th><th scope="col">${esc(tr('quality.table.action'))}</th></tr></thead>
               <tbody>${critical.map(issueRow).join('')}</tbody></table></div>`
-            : '<div class="tf-empty">Aucune issue critique. Les issues restantes sont dans l’onglet Issues.</div>'}
+            : `<div class="tf-empty">${esc(tr('quality.overview.noCritical'))}</div>`}
           </section>
           <section class="tf-panel">
             <div class="tf-panel__head">
-              <div><span class="tf-label">Boucle de correction</span><h2 class="tf-h3" style="margin-top:6px">Plans d’action en cours</h2></div>
-              <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-nav="caps">Ouvrir les plans d’action</button>
+              <div><span class="tf-label">${esc(tr('quality.overview.loop'))}</span><h2 class="tf-h3" style="margin-top:6px">${esc(tr('quality.overview.openCaps'))}</h2></div>
+              <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-nav="caps">${esc(tr('quality.overview.openCapsCta'))}</button>
             </div>
             ${openCaps.length ? `<div class="tf-tablewrap"><table class="tf-table">
-              <thead><tr><th scope="col">Plan</th><th scope="col">Fournisseur</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col"><span class="tf-visually-hidden">Actions</span></th></tr></thead>
+              <thead><tr><th scope="col">${esc(tr('quality.table.plan'))}</th><th scope="col">${esc(tr('quality.table.supplier'))}</th><th scope="col">${esc(tr('quality.table.due'))}</th><th scope="col">${esc(tr('quality.table.status'))}</th><th scope="col"><span class="tf-visually-hidden">${esc(tr('quality.aria.actions'))}</span></th></tr></thead>
               <tbody>${openCaps.map(capRow).join('')}</tbody></table></div>`
-            : '<div class="tf-empty">Aucun plan d’action en cours.</div>'}
+            : `<div class="tf-empty">${esc(tr('quality.overview.noCaps'))}</div>`}
           </section>
         </div>`;
     }
@@ -1204,26 +1232,26 @@ a { color: inherit; text-decoration: none; }
       const buckets = ['critical', 'warning', 'review', 'resolved'];
       const groups = buckets.map((b) => [b, issues.filter((i) => bucketOf(i) === b)]);
       return `
-        ${topbar('Issues', 'Critique, avertissement, à revoir, résolu — chaque ligne mène à l’action qui la clôture.')}
+        ${topbar(tr('quality.issues.title'), tr('quality.issues.sub'))}
         <div class="tf-app__body">
           ${notice()}
           <div class="tf-toolbar">
             <div class="tf-field-inline">
-              <label class="tf-label" for="qc-sev">Gravité</label>
+              <label class="tf-label" for="qc-sev">${esc(tr('quality.issues.severityLabel'))}</label>
               <select class="tf-select" id="qc-sev" data-filter="severity">
-                <option value="">Toutes</option>
-                <option value="blocking">Bloquantes</option>
-                <option value="warning">Avertissements</option>
-                <option value="info">Information</option>
+                <option value="">${esc(tr('quality.issues.allSeverities'))}</option>
+                <option value="blocking">${esc(tr('quality.issues.blocking'))}</option>
+                <option value="warning">${esc(tr('quality.issues.warnings'))}</option>
+                <option value="info">${esc(tr('quality.issues.info'))}</option>
               </select>
             </div>
             <div class="tf-field-inline">
-              <label class="tf-label" for="qc-st">Statut</label>
+              <label class="tf-label" for="qc-st">${esc(tr('quality.issues.statusLabel'))}</label>
               <select class="tf-select" id="qc-st" data-filter="status">
-                <option value="">Tous</option>
-                <option value="open">À traiter</option>
-                <option value="acknowledged">Acquittées</option>
-                <option value="waived">Waivées</option>
+                <option value="">${esc(tr('quality.issues.allStatuses'))}</option>
+                <option value="open">${esc(tr('quality.issues.stOpen'))}</option>
+                <option value="acknowledged">${esc(tr('quality.issues.stAcknowledged'))}</option>
+                <option value="waived">${esc(tr('quality.issues.stWaived'))}</option>
               </select>
             </div>
           </div>
@@ -1232,16 +1260,16 @@ a { color: inherit; text-decoration: none; }
               <div class="tf-panel__head">
                 <div>
                   <span class="tf-badge ${b === 'critical' ? 'tf-badge--missing' : b === 'warning' ? 'tf-badge--review' : b === 'resolved' ? 'tf-badge--certified' : 'tf-badge--declared'}">
-                    ${b === 'critical' ? 'Critique' : b === 'warning' ? 'Avertissement' : b === 'resolved' ? 'Résolu' : 'À revoir'}
+                    ${esc(tr('quality.issues.b' + b.charAt(0).toUpperCase() + b.slice(1)))}
                   </span>
-                  <h2 class="tf-h3" style="margin-top:10px">${rows.length} issue${rows.length > 1 ? 's' : ''}</h2>
+                  <h2 class="tf-h3" style="margin-top:10px">${esc(tr(rows.length > 1 ? 'quality.issues.countMany' : 'quality.issues.countOne', { count: rows.length }))}</h2>
                 </div>
               </div>
               <div class="tf-tablewrap"><table class="tf-table">
-                <thead><tr><th scope="col">Sujet</th><th scope="col">Issue</th><th scope="col">Gravité</th><th scope="col">Statut</th><th scope="col">Action</th></tr></thead>
+                <thead><tr><th scope="col">${esc(tr('quality.table.subject'))}</th><th scope="col">${esc(tr('quality.table.issue'))}</th><th scope="col">${esc(tr('quality.table.severity'))}</th><th scope="col">${esc(tr('quality.table.status'))}</th><th scope="col">${esc(tr('quality.table.action'))}</th></tr></thead>
                 <tbody>${rows.map(issueRow).join('')}</tbody>
               </table></div>
-            </section>`).join('') || '<div class="tf-empty">Aucune issue pour ces filtres.</div>'}
+            </section>`).join('') || `<div class="tf-empty">${esc(tr('quality.issues.none'))}</div>`}
         </div>`;
     }
 
@@ -1254,10 +1282,10 @@ a { color: inherit; text-decoration: none; }
           <td><strong>${esc(c.title)}</strong><span class="tf-sub">${product ? esc(product.name) + (product.reference ? ' · ' + esc(product.reference) : '') : '—'}${issue ? ' · ' + esc(issue.rule_key) : ''}</span></td>
           <td>${esc((supplier && supplier.display_name) || '—')}</td>
           <td class="tf-num">${dateFr(c.due_date)}</td>
-          <td><span class="tf-status tf-status--${esc(c.status)}">${CAP_STATUS_LABEL[c.status] || esc(c.status)}</span></td>
+          <td><span class="tf-status tf-status--${esc(c.status)}">${esc(CAP_STATUS_LABEL(c.status))}</span></td>
           <td><div class="qc-actions">
             <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-cap="open" data-id="${esc(c.id)}">Ouvrir</button>
-            ${c.status === 'requested' ? `<button type="button" class="tf-btn tf-btn--dark tf-btn--sm" data-cap="remediate" data-id="${esc(c.id)}">Soumettre la correction</button>` : ''}
+            ${c.status === 'requested' ? `<button type="button" class="tf-btn tf-btn--dark tf-btn--sm" data-cap="remediate" data-id="${esc(c.id)}">${esc(tr('quality.cap.submitRemediation'))}</button>` : ''}
             ${c.status === 'submitted' ? `
               <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-cap="approve" data-id="${esc(c.id)}">Approuver</button>
               <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-cap="reject" data-id="${esc(c.id)}">Rejeter</button>` : ''}
@@ -1269,27 +1297,27 @@ a { color: inherit; text-decoration: none; }
       const caps = (state.caps && state.caps.caps) || [];
       const detail = state.capDetail;
       return `
-        ${topbar('Plans d’action corrective', 'Demander, corriger, revoir. La boucle qui transforme une issue en donnée fiable.')}
+        ${topbar(tr('quality.caps.title'), tr('quality.caps.sub'))}
         <div class="tf-app__body">
           ${notice()}
           <div class="tf-toolbar">
             <div class="tf-field-inline">
-              <label class="tf-label" for="qc-capst">Statut</label>
+              <label class="tf-label" for="qc-capst">${esc(tr('quality.table.status'))}</label>
               <select class="tf-select" id="qc-capst" data-filter="capsStatus">
-                <option value="">Tous</option>
-                <option value="requested">Demandés</option>
-                <option value="submitted">Corrections soumises</option>
-                <option value="approved">Approuvés</option>
-                <option value="rejected">Rejetés</option>
+                <option value="">${esc(tr('quality.issues.allStatuses'))}</option>
+                <option value="requested">${esc(tr('quality.caps.stRequested'))}</option>
+                <option value="submitted">${esc(tr('quality.caps.stSubmitted'))}</option>
+                <option value="approved">${esc(tr('quality.caps.stApproved'))}</option>
+                <option value="rejected">${esc(tr('quality.caps.stRejected'))}</option>
               </select>
             </div>
           </div>
           ${detail ? capDetailPanel(detail) : `
           <section class="tf-panel">
             ${caps.length ? `<div class="tf-tablewrap"><table class="tf-table">
-              <thead><tr><th scope="col">Plan</th><th scope="col">Fournisseur</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col"><span class="tf-visually-hidden">Actions</span></th></tr></thead>
+              <thead><tr><th scope="col">${esc(tr('quality.table.plan'))}</th><th scope="col">${esc(tr('quality.table.supplier'))}</th><th scope="col">${esc(tr('quality.table.due'))}</th><th scope="col">${esc(tr('quality.table.status'))}</th><th scope="col"><span class="tf-visually-hidden">${esc(tr('quality.aria.actions'))}</span></th></tr></thead>
               <tbody>${caps.map(capRow).join('')}</tbody></table></div>`
-            : '<div class="tf-empty">Aucun plan d’action. Ouvrez-en un depuis une issue.</div>'}
+            : `<div class="tf-empty">${esc(tr('quality.caps.none'))}</div>`}
           </section>`}
         </div>`;
     }
@@ -1304,60 +1332,60 @@ a { color: inherit; text-decoration: none; }
         <section class="tf-panel">
           <div class="tf-panel__head">
             <div>
-              <button type="button" class="tf-btn tf-btn--quiet tf-btn--sm" data-cap="back">← Retour à la liste</button>
+              <button type="button" class="tf-btn tf-btn--quiet tf-btn--sm" data-cap="back">${esc(tr('quality.cap.back'))}</button>
               <h2 class="tf-h2" style="margin-top:10px">${esc(c.title)}</h2>
-              <p class="tf-small" style="margin:6px 0 0">${esc((supplier && supplier.display_name) || '—')} · échéance ${dateFr(c.due_date)} · priorité ${esc(c.priority || '—')}</p>
+              <p class="tf-small" style="margin:6px 0 0">${esc(tr('quality.cap.meta', { supplier: (supplier && supplier.display_name) || '—', date: dateFr(c.due_date), priority: c.priority || '—' }))}</p>
             </div>
-            <span class="tf-status tf-status--${esc(c.status)}">${CAP_STATUS_LABEL[c.status] || esc(c.status)}</span>
+            <span class="tf-status tf-status--${esc(c.status)}">${esc(CAP_STATUS_LABEL(c.status))}</span>
           </div>
 
           ${issue ? `<div class="tf-notice" style="margin-bottom:var(--tf-space-4)">
-            <span class="tf-badge tf-badge--${issue.severity === 'blocking' ? 'missing' : issue.severity === 'warning' ? 'review' : 'declared'}">${SEVERITY_LABEL[issue.severity] || esc(issue.severity)}</span>
+            <span class="tf-badge tf-badge--${issue.severity === 'blocking' ? 'missing' : issue.severity === 'warning' ? 'review' : 'declared'}">${esc(SEVERITY_LABEL(issue.severity))}</span>
             <span>${esc(issue.message || issue.rule_key)}</span></div>` : ''}
 
           <div class="qc-form" style="margin-bottom:var(--tf-space-5)">
-            <div class="tf-field-inline"><span class="tf-label">Consignes</span><p class="tf-body" style="margin:0">${esc(c.instructions)}</p></div>
-            ${c.supplier_response_summary ? `<div class="tf-field-inline"><span class="tf-label">Réponse du fournisseur</span><p class="tf-body" style="margin:0">${esc(c.supplier_response_summary)}</p><span class="tf-small">Soumise le ${dateFr(c.submitted_at)}</span></div>` : ''}
-            ${c.review_verdict ? `<div class="tf-field-inline"><span class="tf-label">Revue — ${c.review_verdict === 'approved' ? 'approuvée' : 'rejetée'}</span><p class="tf-body" style="margin:0">${esc(c.review_notes || '—')}</p></div>` : ''}
+            <div class="tf-field-inline"><span class="tf-label">${esc(tr('quality.cap.instructions'))}</span><p class="tf-body" style="margin:0">${esc(c.instructions)}</p></div>
+            ${c.supplier_response_summary ? `<div class="tf-field-inline"><span class="tf-label">${esc(tr('quality.cap.supplierResponse'))}</span><p class="tf-body" style="margin:0">${esc(c.supplier_response_summary)}</p><span class="tf-small">${esc(tr('quality.cap.submittedOn', { date: dateFr(c.submitted_at) }))}</span></div>` : ''}
+            ${c.review_verdict ? `<div class="tf-field-inline"><span class="tf-label">${esc(tr(c.review_verdict === 'approved' ? 'quality.cap.reviewApproved' : 'quality.cap.reviewRejected'))}</span><p class="tf-body" style="margin:0">${esc(c.review_notes || '—')}</p></div>` : ''}
           </div>
 
           ${canRemediate ? `
           <form class="qc-form" data-capform="remediate" data-id="${esc(c.id)}" style="border-top:1px solid var(--tf-sf-line);padding-top:var(--tf-space-5)">
             <div class="tf-field-inline">
-              <label class="tf-label" for="qc-rs">Résumé de la correction</label>
-              <textarea class="tf-textarea" id="qc-rs" name="responseSummary" required placeholder="Ce qui a été corrigé, et comment."></textarea>
+              <label class="tf-label" for="qc-rs">${esc(tr('quality.cap.remediateLabel'))}</label>
+              <textarea class="tf-textarea" id="qc-rs" name="responseSummary" required placeholder="${esc(tr('quality.cap.remediatePlaceholder'))}"></textarea>
             </div>
             <div class="tf-field-inline">
-              <label class="tf-label" for="qc-rm">Message (optionnel)</label>
-              <input class="tf-input" id="qc-rm" name="message" type="text" placeholder="Contexte pour la marque">
+              <label class="tf-label" for="qc-rm">${esc(tr('quality.cap.messageLabel'))}</label>
+              <input class="tf-input" id="qc-rm" name="message" type="text" placeholder="${esc(tr('quality.cap.messagePlaceholder'))}">
             </div>
-            <div class="tf-row tf-row--gap-3"><button type="submit" class="tf-btn tf-btn--dark">Soumettre la correction</button></div>
+            <div class="tf-row tf-row--gap-3"><button type="submit" class="tf-btn tf-btn--dark">${esc(tr('quality.cap.submitRemediation'))}</button></div>
           </form>` : ''}
 
           ${canReview ? `
           <form class="qc-form" data-capform="review" data-id="${esc(c.id)}" style="border-top:1px solid var(--tf-sf-line);padding-top:var(--tf-space-5)">
             <div class="tf-field-inline">
-              <label class="tf-label" for="qc-rn">Notes de revue</label>
-              <textarea class="tf-textarea" id="qc-rn" name="reviewNotes" placeholder="Motif de l’approbation ou du rejet."></textarea>
+              <label class="tf-label" for="qc-rn">${esc(tr('quality.cap.reviewNotes'))}</label>
+              <textarea class="tf-textarea" id="qc-rn" name="reviewNotes" placeholder="${esc(tr('quality.cap.reviewPlaceholder'))}"></textarea>
             </div>
             <div class="tf-row tf-row--gap-3">
-              <button type="submit" class="tf-btn tf-btn--primary" name="verdict" value="approved">Approuver</button>
-              <button type="submit" class="tf-btn tf-btn--ghost" name="verdict" value="rejected">Rejeter</button>
+              <button type="submit" class="tf-btn tf-btn--primary" name="verdict" value="approved">${esc(tr('quality.cap.approve'))}</button>
+              <button type="submit" class="tf-btn tf-btn--ghost" name="verdict" value="rejected">${esc(tr('quality.cap.reject'))}</button>
             </div>
           </form>` : ''}
 
           <div style="border-top:1px solid var(--tf-sf-line);padding-top:var(--tf-space-5)">
-            <span class="tf-label">Fil de discussion</span>
+            <span class="tf-label">${esc(tr('quality.cap.thread'))}</span>
             <div class="qc-thread" style="margin-top:12px">
               ${msgs.length ? msgs.map((m) => `<div class="qc-msg"><div class="qc-msg__meta">${dateFr(m.created_at)}</div>${esc(m.message || '')}</div>`).join('')
-                : '<div class="tf-empty">Aucun message.</div>'}
+                : `<div class="tf-empty">${esc(tr('quality.cap.noMessages'))}</div>`}
             </div>
             <form class="qc-form" data-capform="message" data-id="${esc(c.id)}" style="margin-top:var(--tf-space-4)">
               <div class="tf-field-inline">
-                <label class="tf-label" for="qc-msg">Ajouter un message</label>
-                <input class="tf-input" id="qc-msg" name="message" type="text" required placeholder="Question, précision, relance…">
+                <label class="tf-label" for="qc-msg">${esc(tr('quality.cap.addMessage'))}</label>
+                <input class="tf-input" id="qc-msg" name="message" type="text" required placeholder="${esc(tr('quality.cap.threadPlaceholder'))}">
               </div>
-              <div><button type="submit" class="tf-btn tf-btn--ghost tf-btn--sm">Envoyer</button></div>
+              <div><button type="submit" class="tf-btn tf-btn--ghost tf-btn--sm">${esc(tr('quality.cap.send'))}</button></div>
             </form>
           </div>
         </section>`;
@@ -1366,18 +1394,18 @@ a { color: inherit; text-decoration: none; }
     function viewScores() {
       const scores = (state.data && state.data.scores) || [];
       return `
-        ${topbar('Scores', 'Quatre dimensions explicables : complétude, fraîcheur, couverture des preuves, cohérence.')}
+        ${topbar(tr('quality.scores.title'), tr('quality.scores.sub'))}
         <div class="tf-app__body">
           ${notice()}
           ${scores.length ? `<div class="qc-scores">${scores.map((s) => `
             <article class="qc-score">
               <div class="qc-score__head">
                 <div><div class="qc-score__name">${esc(s.subjectName)}</div>
-                <span class="tf-small">${esc(s.subjectType)} · calculé le ${dateFr(s.computedAt)}</span></div>
+                <span class="tf-small">${esc(s.subjectType)} · ${esc(tr('quality.scores.computedOn', { date: dateFr(s.computedAt) }))}</span></div>
                 <span class="tf-metric tf-metric--md">${pct((Number(s.completeness) + Number(s.freshness) + Number(s.documentationCoverage) + Number(s.consistency)) / 4)}<span style="font-size:.5em">%</span></span>
               </div>
               <div class="qc-score__bars">
-                ${[['Complétude', s.completeness], ['Fraîcheur', s.freshness], ['Preuves', s.documentationCoverage], ['Cohérence', s.consistency]].map(([label, v]) => `
+                ${[[tr('quality.scores.completeness'), s.completeness], [tr('quality.scores.freshness'), s.freshness], [tr('quality.scores.evidence'), s.documentationCoverage], [tr('quality.scores.consistency'), s.consistency]].map(([label, v]) => `
                   <div class="tf-bar">
                     <span>${label}</span>
                     <span class="tf-bar__track"><i class="tf-bar__fill ${barClass(v)}" style="width:${pct(v)}%"></i></span>
@@ -1385,30 +1413,30 @@ a { color: inherit; text-decoration: none; }
                   </div>`).join('')}
               </div>
             </article>`).join('')}</div>`
-          : '<div class="tf-empty">Aucun score calculé.</div>'}
+          : `<div class="tf-empty">${esc(tr('quality.scores.none'))}</div>`}
         </div>`;
     }
 
     function render() {
       if (state.loading) {
-        app.innerHTML = '<div class="qc-auth"><div class="tf-body">Chargement du Quality Center…</div></div>';
+        app.innerHTML = `<div class="qc-auth"><div class="tf-body">${esc(tr('quality.loading'))}</div></div>`;
         return;
       }
       if (state.error && !state.demo) {
         app.innerHTML = `<div class="qc-auth"><div class="qc-auth__card">
           <span class="tf-label tf-label--accent">TRACEFAB</span>
-          <h1 class="tf-h1" style="margin-top:12px">Qualité indisponible</h1>
+          <h1 class="tf-h1" style="margin-top:12px">${esc(tr('quality.error.title'))}</h1>
           <p class="tf-body" style="margin:12px 0 20px">${esc(state.error)}</p>
-          <button type="button" class="tf-btn tf-btn--primary" data-act="retry">Réessayer</button>
+          <button type="button" class="tf-btn tf-btn--primary" data-act="retry">${esc(tr('quality.error.retry'))}</button>
         </div></div>`;
         bind();
         return;
       }
       if (!state.user && !state.demo) {
         app.innerHTML = `<div class="qc-auth"><div class="qc-auth__card">
-          <span class="tf-label tf-label--accent">TRACEFAB · Quality Center</span>
-          <h1 class="tf-h1" style="margin-top:12px">Contrôler la qualité de la donnée.</h1>
-          <p class="tf-body" style="margin:12px 0 0">Scores explicables, issues actionnables et plans d’action corrective. Ces indicateurs de préparation ne constituent jamais une certification.</p>
+          <span class="tf-label tf-label--accent">${esc(tr('quality.auth.label'))}</span>
+          <h1 class="tf-h1" style="margin-top:12px">${esc(tr('quality.auth.title'))}</h1>
+          <p class="tf-body" style="margin:12px 0 0">${esc(tr('quality.auth.body'))}</p>
           <div id="clerk-sign-in"></div>
         </div></div>`;
         if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'));
@@ -1423,7 +1451,25 @@ a { color: inherit; text-decoration: none; }
     /* ------------------------------------------------------------------
        Interactions
        ------------------------------------------------------------------ */
+    const LANG_NAMES = { en: 'English', fr: 'Français', de: 'Deutsch', it: 'Italiano', es: 'Español', nl: 'Nederlands', pt: 'Português' };
+    function renderLangSelect() {
+      const el = document.getElementById('qc-lang');
+      if (!el) return;
+      const langs = window.TracefabI18n ? window.TracefabI18n.LANGS : Object.keys(LANG_NAMES);
+      const active = window.TracefabI18n ? window.TracefabI18n.language : null;
+      el.innerHTML = langs
+        .map((code) => `<option value="${code}"${code === active ? ' selected' : ''}>${LANG_NAMES[code] || code}</option>`)
+        .join('');
+    }
+
     function bind() {
+      const langSelect = document.getElementById('qc-lang');
+      if (langSelect) {
+        renderLangSelect();
+        langSelect.onchange = () => {
+          if (window.TracefabI18n) window.TracefabI18n.setLanguage(langSelect.value);
+        };
+      }
       document.querySelectorAll('[data-nav]').forEach((el) => {
         el.onclick = () => { state.view = el.dataset.nav; state.capDetail = null; state.notice = null; render(); };
       });
@@ -1451,7 +1497,7 @@ a { color: inherit; text-decoration: none; }
         if (state.demo) {
           const issue = (state.data.issues || []).find((i) => i.id === id);
           if (issue) issue.status = action === 'ack' ? 'acknowledged' : 'waived';
-          state.notice = action === 'ack' ? 'Issue acquittée (mode démonstration).' : 'Waiver enregistré (mode démonstration).';
+          state.notice = action === 'ack' ? tr('quality.notice.ackDemo') : tr('quality.notice.waiveDemo');
           render();
           return;
         }
@@ -1464,7 +1510,7 @@ a { color: inherit; text-decoration: none; }
           options.body = JSON.stringify({ reason });
         }
         await api(path, options);
-        state.notice = 'Action enregistrée.';
+        state.notice = tr('quality.notice.saved');
         await loadQuality(false);
       } catch (e) {
         state.notice = '!' + e.message;
@@ -1495,7 +1541,7 @@ a { color: inherit; text-decoration: none; }
             const notes = window.prompt && window.prompt(action === 'approve' ? 'Notes d’approbation' : 'Motif du rejet');
             const c = (state.caps.caps || []).find((x) => x.id === id);
             if (c) { c.status = action === 'approve' ? 'approved' : 'rejected'; c.review_verdict = action === 'approve' ? 'approved' : 'rejected'; c.review_notes = notes || ''; }
-            state.notice = 'Revue enregistrée (mode démonstration).';
+            state.notice = tr('quality.notice.reviewDemo');
             render();
             return;
           }
@@ -1504,7 +1550,7 @@ a { color: inherit; text-decoration: none; }
             method: 'POST',
             body: JSON.stringify({ verdict: action === 'approve' ? 'approved' : 'rejected', reviewNotes: notes || undefined }),
           });
-          state.notice = 'Revue enregistrée.';
+          state.notice = tr('quality.notice.reviewSaved');
           state.capDetail = null;
           await loadQuality(false);
         }
@@ -1524,14 +1570,14 @@ a { color: inherit; text-decoration: none; }
           const payload = { responseSummary: String(data.get('responseSummary') || '').trim() };
           const msg = String(data.get('message') || '').trim();
           if (msg) payload.message = msg;
-          if (!payload.responseSummary) { state.notice = '!Le résumé de la correction est obligatoire.'; render(); return; }
+          if (!payload.responseSummary) { state.notice = tr('quality.notice.summaryRequired'); render(); return; }
           if (state.demo) {
             const c = (state.caps.caps || []).find((x) => x.id === id);
             if (c) { c.status = 'submitted'; c.supplier_response_summary = payload.responseSummary; }
-            state.notice = 'Correction soumise (mode démonstration).';
+            state.notice = tr('quality.notice.remediationDemo');
           } else {
             await api(`/api/quality/caps/${encodeURIComponent(id)}/submit-remediation`, { method: 'POST', body: JSON.stringify(payload) });
-            state.notice = 'Correction soumise.';
+            state.notice = tr('quality.notice.remediationSaved');
             await loadQuality(false);
             const list = state.caps;
             state.capDetail = (list.caps || []).find((c) => c.id === id) || null;
@@ -1545,10 +1591,10 @@ a { color: inherit; text-decoration: none; }
           if (state.demo) {
             const c = (state.caps.caps || []).find((x) => x.id === id);
             if (c) { c.status = verdict === 'approved' ? 'approved' : 'rejected'; c.review_verdict = verdict; c.review_notes = notes || ''; }
-            state.notice = 'Revue enregistrée (mode démonstration).';
+            state.notice = tr('quality.notice.reviewDemo');
           } else {
             await api(`/api/quality/caps/${encodeURIComponent(id)}/review`, { method: 'POST', body: JSON.stringify({ verdict, reviewNotes: notes }) });
-            state.notice = 'Revue enregistrée.';
+            state.notice = tr('quality.notice.reviewSaved');
             state.capDetail = null;
             await loadQuality(false);
           }
@@ -1609,8 +1655,21 @@ a { color: inherit; text-decoration: none; }
       }
     }
 
+    /*
+     * Changer de langue doit retraduire ce qui est DÉJÀ affiché : le gabarit est
+     * réinjecté en entier, donc le re-rendu suffit. Le message courant est porté
+     * par state.notice, déjà traduit au moment de l'action — il reste donc dans la
+     * langue de l'action, ce qui est le comportement attendu pour une
+     * confirmation déjà lue.
+     */
+    document.addEventListener('tracefab:lang', () => render());
+
     window.tracefabQualityCenter = { state, render, loadQuality };
-    boot();
+    /* Le contenu s'affiche d'abord en français, puis est traduit dès que le
+       dictionnaire arrive : aucun fetch ne bloque le premier rendu. */
+    const start = () => { renderLangSelect(); boot(); };
+    if (window.TracefabI18n) window.TracefabI18n.init({ scope: 'quality', fallback: 'fr' }).then(start, start);
+    else start();
   })();
   </script>
 </body>

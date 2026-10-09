@@ -1,0 +1,170 @@
+{
+  "quality": {
+    "meta": {
+      "title": "TRACEFAB — Quality Center",
+      "description": "TRACEFAB Quality Center — peut-on faire confiance à la donnée ? Scores explicables, issues actionnables et plans d'action corrective."
+    },
+    "loading": "Chargement du Quality Center…",
+    "error": {
+      "title": "Qualité indisponible",
+      "retry": "Réessayer"
+    },
+    "auth": {
+      "label": "TRACEFAB · Quality Center",
+      "title": "Contrôler la qualité de la donnée.",
+      "body": "Scores explicables, issues actionnables et plans d'action corrective. Ces indicateurs de préparation ne constituent jamais une certification."
+    },
+    "topbar": {
+      "label": "Quality Center",
+      "refresh": "Rafraîchir",
+      "demo": "Mode démonstration"
+    },
+    "nav": {
+      "group": "Qualité",
+      "overview": "Vue d'ensemble",
+      "issues": "Issues",
+      "caps": "Plans d'action",
+      "scores": "Scores",
+      "surfaces": "Surfaces",
+      "evidence": "Evidence Center",
+      "brandConsole": "Brand Console",
+      "supplierPortal": "Supplier Portal",
+      "home": "Accueil"
+    },
+    "aria": {
+      "trustTiles": "Indicateurs de confiance",
+      "otherSurfaces": "Autres surfaces",
+      "qualityCenter": "Quality Center",
+      "actions": "Actions"
+    },
+    "disclaimer": "Ces scores sont des indicateurs de préparation, explicables jusqu'au document qui les produit. Ils ne constituent jamais une certification juridique ni une déclaration de conformité.",
+    "tiles": {
+      "completeness": "Complétude des données",
+      "evidence": "Couverture des preuves",
+      "freshness": "Fraîcheur",
+      "consistency": "Cohérence",
+      "product": "Qualité produit",
+      "supplier": "Qualité fournisseur",
+      "critical": "Issues critiques",
+      "open": "À traiter"
+    },
+    "overview": {
+      "title": "Peut-on faire confiance à la donnée ?",
+      "sub": "Scores explicables, issues actionnables et plans d'action corrective.",
+      "priority": "Priorité",
+      "critical": "Issues critiques",
+      "seeAll": "Voir toutes les issues",
+      "noCritical": "Aucune issue critique. Les issues restantes sont dans l'onglet Issues.",
+      "loop": "Boucle de correction",
+      "openCaps": "Plans d'action en cours",
+      "openCapsCta": "Ouvrir les plans d'action",
+      "noCaps": "Aucun plan d'action en cours."
+    },
+    "table": {
+      "subject": "Sujet",
+      "issue": "Issue",
+      "severity": "Gravité",
+      "status": "Statut",
+      "action": "Action",
+      "plan": "Plan",
+      "supplier": "Fournisseur",
+      "due": "Échéance"
+    },
+    "issues": {
+      "title": "Issues",
+      "sub": "Critique, avertissement, à revoir, résolu — chaque ligne mène à l'action qui la clôture.",
+      "severityLabel": "Gravité",
+      "statusLabel": "Statut",
+      "allSeverities": "Toutes",
+      "blocking": "Bloquantes",
+      "warnings": "Avertissements",
+      "info": "Information",
+      "allStatuses": "Tous",
+      "stOpen": "À traiter",
+      "stAcknowledged": "Acquittées",
+      "stWaived": "Waivées",
+      "bCritical": "Critique",
+      "bWarning": "Avertissement",
+      "bResolved": "Résolu",
+      "bReview": "À revoir",
+      "countOne": "{count} issue",
+      "countMany": "{count} issues",
+      "none": "Aucune issue pour ces filtres."
+    },
+    "actions": {
+      "ack": "Acquitter",
+      "waive": "Waiver",
+      "cap": "Plan d'action"
+    },
+    "severity": {
+      "blocking": "Critique",
+      "warning": "Avertissement",
+      "info": "Information"
+    },
+    "status": {
+      "open": "À traiter",
+      "acknowledged": "Acquittée",
+      "waived": "Waivée",
+      "resolved": "Résolue"
+    },
+    "capStatus": {
+      "requested": "Demandé",
+      "submitted": "Correction soumise",
+      "approved": "Approuvé",
+      "rejected": "Rejeté",
+      "closed": "Clôturé"
+    },
+    "caps": {
+      "title": "Plans d'action corrective",
+      "sub": "Demander, corriger, revoir. La boucle qui transforme une issue en donnée fiable.",
+      "stRequested": "Demandés",
+      "stSubmitted": "Corrections soumises",
+      "stApproved": "Approuvés",
+      "stRejected": "Rejetés",
+      "none": "Aucun plan d'action. Ouvrez-en un depuis une issue."
+    },
+    "cap": {
+      "back": "← Retour à la liste",
+      "meta": "{supplier} · échéance {date} · priorité {priority}",
+      "instructions": "Consignes",
+      "supplierResponse": "Réponse du fournisseur",
+      "submittedOn": "Soumise le {date}",
+      "reviewApproved": "Revue — approuvée",
+      "reviewRejected": "Revue — rejetée",
+      "remediateLabel": "Résumé de la correction",
+      "remediatePlaceholder": "Ce qui a été corrigé, et comment.",
+      "messageLabel": "Message (optionnel)",
+      "messagePlaceholder": "Contexte pour la marque",
+      "submitRemediation": "Soumettre la correction",
+      "reviewNotes": "Notes de revue",
+      "reviewPlaceholder": "Motif de l'approbation ou du rejet.",
+      "approve": "Approuver",
+      "reject": "Rejeter",
+      "thread": "Fil de discussion",
+      "noMessages": "Aucun message.",
+      "addMessage": "Ajouter un message",
+      "threadPlaceholder": "Question, précision, relance…",
+      "send": "Envoyer"
+    },
+    "scores": {
+      "title": "Scores",
+      "sub": "Quatre dimensions explicables : complétude, fraîcheur, couverture des preuves, cohérence.",
+      "computedOn": "calculé le {date}",
+      "completeness": "Complétude",
+      "freshness": "Fraîcheur",
+      "evidence": "Preuves",
+      "consistency": "Cohérence",
+      "none": "Aucun score calculé."
+    },
+    "notice": {
+      "ackDemo": "Issue acquittée (mode démonstration).",
+      "waiveDemo": "Waiver enregistré (mode démonstration).",
+      "saved": "Action enregistrée.",
+      "reviewDemo": "Revue enregistrée (mode démonstration).",
+      "reviewSaved": "Revue enregistrée.",
+      "remediationDemo": "Correction soumise (mode démonstration).",
+      "remediationSaved": "Correction soumise.",
+      "summaryRequired": "!Le résumé de la correction est obligatoire."
+    }
+  }
+}

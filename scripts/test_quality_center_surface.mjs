@@ -10,9 +10,14 @@
  *   npm run test:quality-center
  */
 import { readFile } from 'node:fs/promises';
-import { JSDOM, VirtualConsole } from 'jsdom';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import pkg from 'jsdom';
+
+const { JSDOM, VirtualConsole, requestInterceptor } = pkg;
 
 const root = new URL('../', import.meta.url);
+const at = (p) => new URL(p, root);
 
 let failures = 0;
 let checks = 0;
@@ -29,20 +34,58 @@ const pageErrors = [];
 const virtualConsole = new VirtualConsole();
 virtualConsole.on('jsdomError', (e) => pageErrors.push(e.message));
 
+/*
+ * La page charge /i18n-core.js puis /locales/{lang}/quality.json. Sans ces deux
+ * fetch, `window.TracefabI18n` reste indéfini et chaque libellé s'affiche sous
+ * forme de clé — le test passait alors à côté du rendu réel. On sert les vrais
+ * fichiers, comme en production, et on attend que le dictionnaire soit prêt.
+ */
+const serveLocally = requestInterceptor((request) => {
+  const rel = new URL(request.url).pathname.replace(/^\/+/, '');
+  for (const candidate of [rel, `public/${rel}`]) {
+    const full = fileURLToPath(at(candidate));
+    if (existsSync(full)) {
+      const body = readFileSync(full, 'utf8');
+      const type = candidate.endsWith('.json') ? 'application/json' : 'application/javascript';
+      return new Response(body, { headers: { 'Content-Type': `${type}; charset=utf-8` } });
+    }
+  }
+  return new Response('', { status: 404 });
+});
+
 const dom = new JSDOM(html, {
   runScripts: 'dangerously',
   pretendToBeVisual: true,
   url: 'https://tracefab.vercel.app/quality-center/?demo=1',
   virtualConsole,
+  resources: { interceptors: [serveLocally] },
 });
 const { window } = dom;
 const { document } = window;
 
-if (document.readyState !== 'complete') {
-  await new Promise((r) => window.addEventListener('load', r, { once: true }));
+window.fetch = async (url) => {
+  const rel = String(url).replace(/^\/+/, '');
+  for (const candidate of [rel, `public/${rel}`]) {
+    try {
+      return { ok: true, status: 200, json: async () => JSON.parse(await readFile(at(candidate), 'utf8')) };
+    } catch { /* candidat suivant */ }
+  }
+  return { ok: false, status: 404, json: async () => null };
+};
+
+/* Attendre le rendu RÉEL : dictionnaire chargé ET gabarit injecté. Attendre un
+   simple délai mesurait un rendu produit avant l'arrivée du dictionnaire. */
+for (let i = 0; i < 200; i += 1) {
+  if (window.TracefabI18n?.isReady && (document.getElementById('app')?.innerHTML || '').length > 800) break;
+  await new Promise((r) => setTimeout(r, 20));
 }
-// boot() -> loadQuality() -> demoData() -> render() is async.
-await new Promise((r) => setTimeout(r, 30));
+await new Promise((r) => setTimeout(r, 80));
+
+/* Les libellés attendus viennent du dictionnaire de la langue effectivement
+   détectée (jsdom annonce en-US) : figer du français reviendrait à tester le
+   navigateur de test plutôt que le produit. */
+const dict = (await readFile(at(`locales/${window.TracefabI18n.language}/quality.json`), 'utf8'));
+const QC = JSON.parse(dict).quality;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
@@ -79,7 +122,8 @@ eq($('.tf-sidenav__link.is-on').getAttribute('aria-current'), 'page', 'aria-curr
 console.log('\nC. Vue d’ensemble (§15)');
 eq($$('.tf-tile').length, 8, 'huit indicateurs de confiance');
 const tileLabels = $$('.tf-tile .tf-label').map((e) => e.textContent);
-for (const expected of ['Complétude des données', 'Couverture des preuves', 'Qualité produit', 'Qualité fournisseur']) {
+for (const key of ['completeness', 'evidence', 'product', 'supplier']) {
+  const expected = QC.tiles[key];
   assert(tileLabels.includes(expected), `indicateur « ${expected} » présent`, tileLabels.join(' | '));
 }
 // Les valeurs doivent être dérivées des scores, pas inventées.
@@ -87,14 +131,38 @@ const demoScores = window.tracefabQualityCenter.state.data.scores;
 const expectedCompleteness = Math.round(
   demoScores.reduce((a, s) => a + Number(s.completeness), 0) / demoScores.length,
 );
-const completenessTile = $$('.tf-tile').find((t) => t.textContent.includes('Complétude des données'));
+const completenessTile = $$('.tf-tile').find((t) => t.textContent.includes(QC.tiles.completeness));
 assert(
   completenessTile.textContent.includes(String(expectedCompleteness)),
   `complétude agrégée depuis l’API (${expectedCompleteness}%)`,
   completenessTile.textContent.trim(),
 );
-assert(
-  $('.qc-disclaimer').textContent.includes('certification') && $('.qc-disclaimer').textContent.includes('explicables'),
+/*
+ * La garantie visée n'est pas « le mot certification apparaît en français » :
+ * c'est que le bandeau distingue un indicateur de préparation d'une
+ * certification, DANS TOUTES LES LANGUES. On vérifie donc le rendu contre le
+ * dictionnaire actif, puis la propriété de fond sur les sept dictionnaires —
+ * sinon traduire la page aurait suffi à faire disparaître l'avertissement.
+ */
+/* Le bandeau contient aussi l'icône ⓘ dans un <span> voisin : comparer le
+   textContent du conteneur revenait à comparer « ⓘ … » au dictionnaire. */
+assert($('.qc-disclaimer span:last-child').textContent.trim() === QC.disclaimer,
+  'le bandeau est rendu depuis le dictionnaire',
+  $('.qc-disclaimer span:last-child').textContent.trim());
+{
+  const langs = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
+  for (const lang of langs) {
+    const text = JSON.parse(await readFile(at(`locales/${lang}/quality.json`), 'utf8')).quality.disclaimer;
+    const readiness = /préparation|readiness|Reifegrad|preparazione|preparación|gereedheid|preparação/i.test(text);
+    /* `nooit` manquait : le néerlandais disait bien « Ze vormen nooit een
+       juridische certificering » et l'assertion le rejetait quand même. */
+    const notCertification = /jamais|never|niemals|mai|nunca|nooit/i.test(text)
+      && /certification|Zertifizierung|certificazione|certificación|certificering|certificação/i.test(text);
+    assert(readiness && notCertification,
+      `${lang} : le bandeau dit « indicateur de préparation » et « jamais une certification »`, text);
+  }
+}
+assert(true,
   'le bandeau distingue préparation et certification',
 );
 // Aucune métrique que l’API ne fournit pas.
@@ -119,9 +187,9 @@ console.log('\nE. Vue Issues — regroupement et filtres');
 nav('issues');
 eq($('.tf-sidenav__link.is-on').dataset.nav, 'issues', 'navigation vers Issues');
 const buckets = $$('.tf-panel .tf-panel__head .tf-badge').map((b) => b.textContent.trim());
-assert(buckets.includes('Critique'), 'groupe Critique');
-assert(buckets.includes('Avertissement'), 'groupe Avertissement');
-assert(buckets.includes('À revoir'), 'groupe À revoir');
+assert(buckets.includes(QC.issues.bCritical), `groupe ${QC.issues.bCritical}`);
+assert(buckets.includes(QC.issues.bWarning), `groupe ${QC.issues.bWarning}`);
+assert(buckets.includes(QC.issues.bReview), `groupe ${QC.issues.bReview}`);
 assert($$('[data-filter]').length === 2, 'deux filtres (gravité, statut)');
 assert($$('[data-issue="ack"]').length >= 1, 'action Acquitter exposée');
 assert($$('[data-issue="waive"]').length >= 1, 'action Waiver exposée');
@@ -136,7 +204,7 @@ eq(
   'acknowledged',
   'l’issue passe à « acquittée »',
 );
-assert(st.notice && st.notice.includes('acquittée'), 'confirmation affichée');
+assert(st.notice === QC.notice.ackDemo, 'confirmation affichée', st.notice);
 
 console.log('\nG. Plans d’action corrective — le workflow complet');
 nav('caps');
@@ -152,7 +220,7 @@ await new Promise((r) => setTimeout(r, 10));
 assert(st.capDetail !== null, 'le détail du plan est chargé');
 assert($('[data-capform="remediate"]') !== null, 'formulaire de correction présent');
 assert($('[data-capform="message"]') !== null, 'fil de discussion présent');
-assert($('.tf-panel').textContent.includes('Consignes'), 'les consignes sont affichées');
+assert($('.tf-panel').textContent.includes(QC.cap.instructions), 'les consignes sont affichées');
 
 console.log('\nI. Soumettre la correction');
 const remediateForm = $('[data-capform="remediate"]');
@@ -162,7 +230,7 @@ await new Promise((r) => setTimeout(r, 10));
 const cap1 = st.caps.caps.find((c) => c.id === st.capDetail.id);
 eq(cap1.status, 'submitted', 'le plan passe à « submitted »');
 assert(cap1.supplier_response_summary.includes('GOTS'), 'la réponse du fournisseur est enregistrée');
-assert(st.notice && st.notice.includes('Correction soumise'), 'confirmation affichée');
+assert(st.notice === QC.notice.remediationDemo, 'confirmation affichée', st.notice);
 
 console.log('\nJ. Ajouter un message au fil');
 const msgForm = $('[data-capform="message"]');
@@ -200,7 +268,9 @@ assert($$('.tf-bar__fill.is-critical, .tf-bar__fill.is-low').length > 0, 'les sc
 console.log('\nM. Accessibilité (vérifiée sur une vue tabulaire)');
 nav('caps');
 assert($$('.tf-table').length > 0, 'une vue tabulaire est affichée');
-eq(document.documentElement.getAttribute('lang'), 'fr', 'langue déclarée');
+/* La langue déclarée est celle que le runtime a détectée (jsdom annonce en-US),
+   pas un « fr » figé : ce qui compte est que <html lang> suive la langue active. */
+eq(document.documentElement.getAttribute('lang'), window.TracefabI18n.language, 'langue déclarée');
 assert(!!document.title, 'titre de document présent');
 eq(document.querySelectorAll('h1').length, 1, 'un seul h1');
 assert(!!document.querySelector('meta[name="viewport"]'), 'viewport déclaré');

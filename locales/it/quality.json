@@ -1,0 +1,170 @@
+{
+  "quality": {
+    "meta": {
+      "title": "TRACEFAB — Quality Center",
+      "description": "TRACEFAB Quality Center — ci si può fidare dei dati? Punteggi spiegabili, issue azionabili e piani di azione correttiva."
+    },
+    "loading": "Caricamento del Quality Center…",
+    "error": {
+      "title": "Qualità non disponibile",
+      "retry": "Riprova"
+    },
+    "auth": {
+      "label": "TRACEFAB · Quality Center",
+      "title": "Controllare la qualità dei dati.",
+      "body": "Punteggi spiegabili, issue azionabili e piani di azione correttiva. Questi indicatori di preparazione non costituiscono mai una certificazione."
+    },
+    "topbar": {
+      "label": "Quality Center",
+      "refresh": "Aggiorna",
+      "demo": "Modalità dimostrazione"
+    },
+    "nav": {
+      "group": "Qualità",
+      "overview": "Panoramica",
+      "issues": "Issue",
+      "caps": "Piani di azione",
+      "scores": "Punteggi",
+      "surfaces": "Aree",
+      "evidence": "Evidence Center",
+      "brandConsole": "Brand Console",
+      "supplierPortal": "Supplier Portal",
+      "home": "Home"
+    },
+    "aria": {
+      "trustTiles": "Indicatori di affidabilità",
+      "otherSurfaces": "Altre aree",
+      "qualityCenter": "Quality Center",
+      "actions": "Azioni"
+    },
+    "disclaimer": "Questi punteggi sono indicatori di preparazione, spiegabili fino al documento che li genera. Non costituiscono mai una certificazione giuridica né una dichiarazione di conformità.",
+    "tiles": {
+      "completeness": "Completezza dei dati",
+      "evidence": "Copertura delle prove",
+      "freshness": "Aggiornamento",
+      "consistency": "Coerenza",
+      "product": "Qualità prodotto",
+      "supplier": "Qualità fornitore",
+      "critical": "Issue critiche",
+      "open": "Da trattare"
+    },
+    "overview": {
+      "title": "Ci si può fidare dei dati?",
+      "sub": "Punteggi spiegabili, issue azionabili e piani di azione correttiva.",
+      "priority": "Priorità",
+      "critical": "Issue critiche",
+      "seeAll": "Vedi tutte le issue",
+      "noCritical": "Nessuna issue critica. Le issue restanti sono nella scheda Issue.",
+      "loop": "Ciclo di correzione",
+      "openCaps": "Piani di azione in corso",
+      "openCapsCta": "Apri i piani di azione",
+      "noCaps": "Nessun piano di azione in corso."
+    },
+    "table": {
+      "subject": "Oggetto",
+      "issue": "Issue",
+      "severity": "Gravità",
+      "status": "Stato",
+      "action": "Azione",
+      "plan": "Piano",
+      "supplier": "Fornitore",
+      "due": "Scadenza"
+    },
+    "issues": {
+      "title": "Issue",
+      "sub": "Critica, avviso, da rivedere, risolta — ogni riga porta all'azione che la chiude.",
+      "severityLabel": "Gravità",
+      "statusLabel": "Stato",
+      "allSeverities": "Tutte",
+      "blocking": "Bloccanti",
+      "warnings": "Avvisi",
+      "info": "Informazione",
+      "allStatuses": "Tutti",
+      "stOpen": "Da trattare",
+      "stAcknowledged": "Presa in carico",
+      "stWaived": "Derogate",
+      "bCritical": "Critica",
+      "bWarning": "Avviso",
+      "bResolved": "Risolta",
+      "bReview": "Da rivedere",
+      "countOne": "{count} issue",
+      "countMany": "{count} issue",
+      "none": "Nessuna issue per questi filtri."
+    },
+    "actions": {
+      "ack": "Prendi in carico",
+      "waive": "Deroga",
+      "cap": "Piano di azione"
+    },
+    "severity": {
+      "blocking": "Critica",
+      "warning": "Avviso",
+      "info": "Informazione"
+    },
+    "status": {
+      "open": "Da trattare",
+      "acknowledged": "Presa in carico",
+      "waived": "Derogata",
+      "resolved": "Risolta"
+    },
+    "capStatus": {
+      "requested": "Richiesto",
+      "submitted": "Correzione inviata",
+      "approved": "Approvato",
+      "rejected": "Rifiutato",
+      "closed": "Chiuso"
+    },
+    "caps": {
+      "title": "Piani di azione correttiva",
+      "sub": "Richiedere, correggere, rivedere. Il ciclo che trasforma un'issue in dati affidabili.",
+      "stRequested": "Richiesti",
+      "stSubmitted": "Correzioni inviate",
+      "stApproved": "Approvati",
+      "stRejected": "Rifiutati",
+      "none": "Nessun piano di azione. Aprine uno da un'issue."
+    },
+    "cap": {
+      "back": "← Torna all'elenco",
+      "meta": "{supplier} · scadenza {date} · priorità {priority}",
+      "instructions": "Consegne",
+      "supplierResponse": "Risposta del fornitore",
+      "submittedOn": "Inviata il {date}",
+      "reviewApproved": "Revisione — approvata",
+      "reviewRejected": "Revisione — rifiutata",
+      "remediateLabel": "Sintesi della correzione",
+      "remediatePlaceholder": "Che cosa è stato corretto, e come.",
+      "messageLabel": "Messaggio (facoltativo)",
+      "messagePlaceholder": "Contesto per il marchio",
+      "submitRemediation": "Invia la correzione",
+      "reviewNotes": "Note di revisione",
+      "reviewPlaceholder": "Motivo dell'approvazione o del rifiuto.",
+      "approve": "Approva",
+      "reject": "Rifiuta",
+      "thread": "Discussione",
+      "noMessages": "Nessun messaggio.",
+      "addMessage": "Aggiungi un messaggio",
+      "threadPlaceholder": "Domanda, precisazione, sollecito…",
+      "send": "Invia"
+    },
+    "scores": {
+      "title": "Punteggi",
+      "sub": "Quattro dimensioni spiegabili: completezza, aggiornamento, copertura delle prove, coerenza.",
+      "computedOn": "calcolato il {date}",
+      "completeness": "Completezza",
+      "freshness": "Aggiornamento",
+      "evidence": "Prove",
+      "consistency": "Coerenza",
+      "none": "Nessun punteggio calcolato."
+    },
+    "notice": {
+      "ackDemo": "Issue presa in carico (modalità dimostrazione).",
+      "waiveDemo": "Deroga registrata (modalità dimostrazione).",
+      "saved": "Azione registrata.",
+      "reviewDemo": "Revisione registrata (modalità dimostrazione).",
+      "reviewSaved": "Revisione registrata.",
+      "remediationDemo": "Correzione inviata (modalità dimostrazione).",
+      "remediationSaved": "Correzione inviata.",
+      "summaryRequired": "!La sintesi della correzione è obbligatoria."
+    }
+  }
+}

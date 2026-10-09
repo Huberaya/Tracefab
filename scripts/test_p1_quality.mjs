@@ -11,6 +11,7 @@ const schemaBindingMigration = await readFile(new URL('../prisma/migrations/2026
 const clerkSyncFunctions = await readFile(new URL('../prisma/migrations/20261006123000_clerk_sync_security_functions/migration.sql', import.meta.url), 'utf8');
 const schemaCatalog = await readFile(new URL('../api/_lib/schema-catalog.ts', import.meta.url), 'utf8');
 const catalog = JSON.parse(await readFile(new URL('../catalog/questionnaires/product-data-core/1.0.json', import.meta.url), 'utf8'));
+const qualityFr = JSON.parse(await readFile(new URL('../locales/fr/quality.json', import.meta.url), 'utf8')).quality;
 
 assert(index.includes("/^quality\\/overview$/"), 'quality overview route is not registered');
 assert(index.includes("/^operations\\/overview$/"), 'operations overview route is not registered');
@@ -18,8 +19,24 @@ assert(index.includes("/^webhooks\\/clerk$/"), 'Clerk webhook route is not regis
 assert(overview.includes('withTracefabUserContext'), 'quality overview does not establish RLS context');
 assert(overview.includes('tracefab_can_access_org') && overview.includes('tracefab_can_access_shared_subject'), 'quality overview access guards are incomplete');
 assert(overview.includes('invalid_quality_severity') && overview.includes('invalid_quality_status') && overview.includes('invalid_quality_limit'), 'quality filters are not strictly validated');
-assert(qualityCenter.includes('Acquitter') && qualityCenter.includes('Waiver'), 'Quality Center mutations are not exposed');
-assert(qualityCenter.includes('certification') && qualityCenter.includes('explicables'), 'Quality Center does not explain readiness vs certification');
+/*
+ * La page est passée sur le runtime i18n partagé : le contenu métier vit dans
+ * locales/{lang}/quality.json, plus dans le HTML. Ces deux assertions cherchaient
+ * les libellés français dans le source et échouaient donc sur une migration
+ * RÉUSSIE.
+ *
+ * La garantie visée — « la page expose les mutations » et « la page distingue
+ * préparation et certification » — est vérifiée là où le contenu vit désormais :
+ * la page référence les clés, le dictionnaire français contient le texte. Le
+ * rendu effectif, dans les sept langues, est couvert par test:i18n:quality et
+ * test:quality-center.
+ */
+assert(qualityCenter.includes("tr('quality.actions.ack')") && qualityCenter.includes("tr('quality.actions.waive')"),
+  'Quality Center mutations are not exposed');
+assert(qualityFr.actions.ack && qualityFr.actions.waive, 'Quality Center mutation labels are missing from the dictionary');
+assert(qualityCenter.includes("tr('quality.disclaimer')"), 'Quality Center does not render the readiness disclaimer');
+assert(/préparation/i.test(qualityFr.disclaimer) && /jamais/i.test(qualityFr.disclaimer) && /certification/i.test(qualityFr.disclaimer),
+  'Quality Center does not explain readiness vs certification');
 assert(operations.includes('notifications') && operations.includes('schedulerConfigured'), 'operations view is incomplete');
 assert(webhook.includes('verifyWebhook') && webhook.includes('user.updated'), 'signed Clerk user webhook sync is incomplete');
 assert(webhook.includes('organizationMembership.created') && webhook.includes('clerkMembershipId'), 'Clerk membership sync is incomplete');

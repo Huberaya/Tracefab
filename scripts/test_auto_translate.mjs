@@ -226,12 +226,14 @@ for (const p of pages) {
  * Mesure, pas objectif : ces chiffres épinglent l'état constaté. Si la
  * couverture recule, quelque chose a changé dans ces pages.
  *
- * `operations/index.html` est passé de 1 à 0 : la page a quitté le glossaire
- * pour le runtime partagé (locales/{lang}/operations.json). Ce n'est pas une
- * régression mais la fin d'une couverture illusoire — un glossaire qui traduit
- * des termes isolés laissait intactes toutes les phrases de la page.
+ * `operations` est passé de 1 à 0 et `quality-center` de 7 à 1 : les deux pages
+ * ont quitté le glossaire pour le runtime partagé (locales/{lang}/operations.json
+ * et quality.json). Ce n'est pas une régression mais la fin d'une couverture
+ * illusoire — sur quality-center, le glossaire traduisait 7 termes sur ~130
+ * chaînes ; un moteur de traduction présent donne l'impression du multilingue
+ * alors que l'essentiel de la page reste dans une seule langue.
  */
-const EXPECTED = { 'brand-console/index.html': 55, 'operations/index.html': 0, 'quality-center/index.html': 7, 'supplier-portal/index.html': 33 };
+const EXPECTED = { 'brand-console/index.html': 55, 'operations/index.html': 0, 'quality-center/index.html': 1, 'supplier-portal/index.html': 33 };
 for (const [p, n] of Object.entries(EXPECTED)) {
   eq(coverage[p], n, `${p} : ${n} clés du glossaire présentes`);
 }

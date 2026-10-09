@@ -1,0 +1,170 @@
+{
+  "quality": {
+    "meta": {
+      "title": "TRACEFAB — Quality Center",
+      "description": "TRACEFAB Quality Center — kun je je data vertrouwen? Uitlegbare scores, actionable issues en corrigerende actieplannen."
+    },
+    "loading": "Quality Center wordt geladen…",
+    "error": {
+      "title": "Kwaliteit niet beschikbaar",
+      "retry": "Opnieuw proberen"
+    },
+    "auth": {
+      "label": "TRACEFAB · Quality Center",
+      "title": "De datakwaliteit beheersen.",
+      "body": "Uitlegbare scores, actionable issues en corrigerende actieplannen. Deze gereedheidsindicatoren vormen nooit een certificering."
+    },
+    "topbar": {
+      "label": "Quality Center",
+      "refresh": "Vernieuwen",
+      "demo": "Demonstratiemodus"
+    },
+    "nav": {
+      "group": "Kwaliteit",
+      "overview": "Overzicht",
+      "issues": "Issues",
+      "caps": "Actieplannen",
+      "scores": "Scores",
+      "surfaces": "Onderdelen",
+      "evidence": "Evidence Center",
+      "brandConsole": "Brand Console",
+      "supplierPortal": "Supplier Portal",
+      "home": "Home"
+    },
+    "aria": {
+      "trustTiles": "Vertrouwensindicatoren",
+      "otherSurfaces": "Andere onderdelen",
+      "qualityCenter": "Quality Center",
+      "actions": "Acties"
+    },
+    "disclaimer": "Deze scores zijn gereedheidsindicatoren, uitlegbaar tot op het document dat ze voortbrengt. Ze vormen nooit een juridische certificering of een conformiteitsverklaring.",
+    "tiles": {
+      "completeness": "Datavolledigheid",
+      "evidence": "Dekkingsgraad bewijs",
+      "freshness": "Versheid",
+      "consistency": "Consistentie",
+      "product": "Productkwaliteit",
+      "supplier": "Leverancierskwaliteit",
+      "critical": "Kritieke issues",
+      "open": "Te behandelen"
+    },
+    "overview": {
+      "title": "Kun je je data vertrouwen?",
+      "sub": "Uitlegbare scores, actionable issues en corrigerende actieplannen.",
+      "priority": "Prioriteit",
+      "critical": "Kritieke issues",
+      "seeAll": "Alle issues bekijken",
+      "noCritical": "Geen kritieke issue. De overige issues staan in het tabblad Issues.",
+      "loop": "Correctielus",
+      "openCaps": "Lopende actieplannen",
+      "openCapsCta": "Actieplannen openen",
+      "noCaps": "Geen lopend actieplan."
+    },
+    "table": {
+      "subject": "Object",
+      "issue": "Issue",
+      "severity": "Ernst",
+      "status": "Status",
+      "action": "Actie",
+      "plan": "Plan",
+      "supplier": "Leverancier",
+      "due": "Vervaldag"
+    },
+    "issues": {
+      "title": "Issues",
+      "sub": "Kritiek, waarschuwing, te beoordelen, opgelost — elke regel leidt naar de actie die ze afsluit.",
+      "severityLabel": "Ernst",
+      "statusLabel": "Status",
+      "allSeverities": "Alle",
+      "blocking": "Blokkerend",
+      "warnings": "Waarschuwingen",
+      "info": "Informatie",
+      "allStatuses": "Alle",
+      "stOpen": "Te behandelen",
+      "stAcknowledged": "Bevestigd",
+      "stWaived": "Vrijgesteld",
+      "bCritical": "Kritiek",
+      "bWarning": "Waarschuwing",
+      "bResolved": "Opgelost",
+      "bReview": "Te beoordelen",
+      "countOne": "{count} issue",
+      "countMany": "{count} issues",
+      "none": "Geen issue voor deze filters."
+    },
+    "actions": {
+      "ack": "Bevestigen",
+      "waive": "Vrijstelling",
+      "cap": "Actieplan"
+    },
+    "severity": {
+      "blocking": "Kritiek",
+      "warning": "Waarschuwing",
+      "info": "Informatie"
+    },
+    "status": {
+      "open": "Te behandelen",
+      "acknowledged": "Bevestigd",
+      "waived": "Vrijgesteld",
+      "resolved": "Opgelost"
+    },
+    "capStatus": {
+      "requested": "Aangevraagd",
+      "submitted": "Correctie ingediend",
+      "approved": "Goedgekeurd",
+      "rejected": "Afgewezen",
+      "closed": "Afgesloten"
+    },
+    "caps": {
+      "title": "Corrigerende actieplannen",
+      "sub": "Aanvragen, corrigeren, beoordelen. De lus die van een issue betrouwbare data maakt.",
+      "stRequested": "Aangevraagd",
+      "stSubmitted": "Correcties ingediend",
+      "stApproved": "Goedgekeurd",
+      "stRejected": "Afgewezen",
+      "none": "Geen actieplan. Open er een vanuit een issue."
+    },
+    "cap": {
+      "back": "← Terug naar de lijst",
+      "meta": "{supplier} · vervalt op {date} · prioriteit {priority}",
+      "instructions": "Instructies",
+      "supplierResponse": "Antwoord van de leverancier",
+      "submittedOn": "Ingediend op {date}",
+      "reviewApproved": "Beoordeling — goedgekeurd",
+      "reviewRejected": "Beoordeling — afgewezen",
+      "remediateLabel": "Samenvatting van de correctie",
+      "remediatePlaceholder": "Wat is gecorrigeerd, en hoe.",
+      "messageLabel": "Bericht (optioneel)",
+      "messagePlaceholder": "Context voor het merk",
+      "submitRemediation": "Correctie indienen",
+      "reviewNotes": "Beoordelingsnotities",
+      "reviewPlaceholder": "Reden voor goedkeuring of afwijzing.",
+      "approve": "Goedkeuren",
+      "reject": "Afwijzen",
+      "thread": "Discussielijn",
+      "noMessages": "Geen bericht.",
+      "addMessage": "Bericht toevoegen",
+      "threadPlaceholder": "Vraag, verduidelijking, herinnering…",
+      "send": "Versturen"
+    },
+    "scores": {
+      "title": "Scores",
+      "sub": "Vier uitlegbare dimensies: volledigheid, versheid, dekkingsgraad bewijs, consistentie.",
+      "computedOn": "berekend op {date}",
+      "completeness": "Volledigheid",
+      "freshness": "Versheid",
+      "evidence": "Bewijs",
+      "consistency": "Consistentie",
+      "none": "Geen score berekend."
+    },
+    "notice": {
+      "ackDemo": "Issue bevestigd (demonstratiemodus).",
+      "waiveDemo": "Vrijstelling vastgelegd (demonstratiemodus).",
+      "saved": "Actie vastgelegd.",
+      "reviewDemo": "Beoordeling vastgelegd (demonstratiemodus).",
+      "reviewSaved": "Beoordeling vastgelegd.",
+      "remediationDemo": "Correctie ingediend (demonstratiemodus).",
+      "remediationSaved": "Correctie ingediend.",
+      "summaryRequired": "!De samenvatting van de correctie is verplicht."
+    }
+  }
+}

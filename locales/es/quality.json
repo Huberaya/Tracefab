@@ -1,0 +1,170 @@
+{
+  "quality": {
+    "meta": {
+      "title": "TRACEFAB — Quality Center",
+      "description": "TRACEFAB Quality Center — ¿se puede confiar en los datos? Puntuaciones explicables, issues accionables y planes de acción correctiva."
+    },
+    "loading": "Cargando el Quality Center…",
+    "error": {
+      "title": "Calidad no disponible",
+      "retry": "Reintentar"
+    },
+    "auth": {
+      "label": "TRACEFAB · Quality Center",
+      "title": "Controlar la calidad de los datos.",
+      "body": "Puntuaciones explicables, issues accionables y planes de acción correctiva. Estos indicadores de preparación nunca constituyen una certificación."
+    },
+    "topbar": {
+      "label": "Quality Center",
+      "refresh": "Actualizar",
+      "demo": "Modo demostración"
+    },
+    "nav": {
+      "group": "Calidad",
+      "overview": "Resumen",
+      "issues": "Issues",
+      "caps": "Planes de acción",
+      "scores": "Puntuaciones",
+      "surfaces": "Superficies",
+      "evidence": "Evidence Center",
+      "brandConsole": "Brand Console",
+      "supplierPortal": "Supplier Portal",
+      "home": "Inicio"
+    },
+    "aria": {
+      "trustTiles": "Indicadores de confianza",
+      "otherSurfaces": "Otras superficies",
+      "qualityCenter": "Quality Center",
+      "actions": "Acciones"
+    },
+    "disclaimer": "Estas puntuaciones son indicadores de preparación, explicables hasta el documento que las genera. Nunca constituyen una certificación jurídica ni una declaración de conformidad.",
+    "tiles": {
+      "completeness": "Completitud de los datos",
+      "evidence": "Cobertura de pruebas",
+      "freshness": "Actualización",
+      "consistency": "Coherencia",
+      "product": "Calidad de producto",
+      "supplier": "Calidad de proveedor",
+      "critical": "Issues críticas",
+      "open": "Por tratar"
+    },
+    "overview": {
+      "title": "¿Se puede confiar en los datos?",
+      "sub": "Puntuaciones explicables, issues accionables y planes de acción correctiva.",
+      "priority": "Prioridad",
+      "critical": "Issues críticas",
+      "seeAll": "Ver todas las issues",
+      "noCritical": "Ninguna issue crítica. Las issues restantes están en la pestaña Issues.",
+      "loop": "Ciclo de corrección",
+      "openCaps": "Planes de acción en curso",
+      "openCapsCta": "Abrir los planes de acción",
+      "noCaps": "Ningún plan de acción en curso."
+    },
+    "table": {
+      "subject": "Objeto",
+      "issue": "Issue",
+      "severity": "Gravedad",
+      "status": "Estado",
+      "action": "Acción",
+      "plan": "Plan",
+      "supplier": "Proveedor",
+      "due": "Vencimiento"
+    },
+    "issues": {
+      "title": "Issues",
+      "sub": "Crítica, aviso, por revisar, resuelta — cada fila lleva a la acción que la cierra.",
+      "severityLabel": "Gravedad",
+      "statusLabel": "Estado",
+      "allSeverities": "Todas",
+      "blocking": "Bloqueantes",
+      "warnings": "Avisos",
+      "info": "Información",
+      "allStatuses": "Todos",
+      "stOpen": "Por tratar",
+      "stAcknowledged": "Acusadas",
+      "stWaived": "Eximidas",
+      "bCritical": "Crítica",
+      "bWarning": "Aviso",
+      "bResolved": "Resuelta",
+      "bReview": "Por revisar",
+      "countOne": "{count} issue",
+      "countMany": "{count} issues",
+      "none": "Ninguna issue para estos filtros."
+    },
+    "actions": {
+      "ack": "Acusar recibo",
+      "waive": "Eximir",
+      "cap": "Plan de acción"
+    },
+    "severity": {
+      "blocking": "Crítica",
+      "warning": "Aviso",
+      "info": "Información"
+    },
+    "status": {
+      "open": "Por tratar",
+      "acknowledged": "Acusada",
+      "waived": "Eximida",
+      "resolved": "Resuelta"
+    },
+    "capStatus": {
+      "requested": "Solicitado",
+      "submitted": "Corrección enviada",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "closed": "Cerrado"
+    },
+    "caps": {
+      "title": "Planes de acción correctiva",
+      "sub": "Solicitar, corregir, revisar. El ciclo que convierte una issue en datos fiables.",
+      "stRequested": "Solicitados",
+      "stSubmitted": "Correcciones enviadas",
+      "stApproved": "Aprobados",
+      "stRejected": "Rechazados",
+      "none": "Ningún plan de acción. Abra uno desde una issue."
+    },
+    "cap": {
+      "back": "← Volver a la lista",
+      "meta": "{supplier} · vence el {date} · prioridad {priority}",
+      "instructions": "Consignas",
+      "supplierResponse": "Respuesta del proveedor",
+      "submittedOn": "Enviada el {date}",
+      "reviewApproved": "Revisión — aprobada",
+      "reviewRejected": "Revisión — rechazada",
+      "remediateLabel": "Resumen de la corrección",
+      "remediatePlaceholder": "Qué se corrigió, y cómo.",
+      "messageLabel": "Mensaje (opcional)",
+      "messagePlaceholder": "Contexto para la marca",
+      "submitRemediation": "Enviar la corrección",
+      "reviewNotes": "Notas de revisión",
+      "reviewPlaceholder": "Motivo de la aprobación o del rechazo.",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "thread": "Hilo de conversación",
+      "noMessages": "Ningún mensaje.",
+      "addMessage": "Añadir un mensaje",
+      "threadPlaceholder": "Pregunta, precisión, recordatorio…",
+      "send": "Enviar"
+    },
+    "scores": {
+      "title": "Puntuaciones",
+      "sub": "Cuatro dimensiones explicables: completitud, actualización, cobertura de pruebas, coherencia.",
+      "computedOn": "calculada el {date}",
+      "completeness": "Completitud",
+      "freshness": "Actualización",
+      "evidence": "Pruebas",
+      "consistency": "Coherencia",
+      "none": "Ninguna puntuación calculada."
+    },
+    "notice": {
+      "ackDemo": "Issue acusada (modo demostración).",
+      "waiveDemo": "Exención registrada (modo demostración).",
+      "saved": "Acción registrada.",
+      "reviewDemo": "Revisión registrada (modo demostración).",
+      "reviewSaved": "Revisión registrada.",
+      "remediationDemo": "Corrección enviada (modo demostración).",
+      "remediationSaved": "Corrección enviada.",
+      "summaryRequired": "!El resumen de la corrección es obligatorio."
+    }
+  }
+}
