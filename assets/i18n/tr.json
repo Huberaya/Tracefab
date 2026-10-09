@@ -41,7 +41,17 @@
     "pagerPrev": "Önceki",
     "pagerNext": "Sonraki"
   },
-  "console": {},
+  "console": {
+    "pdSearchLabel": "Katalogda ara",
+    "pdSearchPlaceholder": "Ad veya referans",
+    "pdAllCategories": "Tüm kategoriler",
+    "pdAllStatuses": "Tüm durumlar",
+    "pdAllReadiness": "Tüm olgunluk düzeyleri",
+    "pdClearFilters": "Filtreleri temizle",
+    "pdMatching": "Eşleşme",
+    "pdNoMatch": "Bu filtrelere uyan ürün yok",
+    "pdNoMatchHint": "Aramayı genişletin veya tüm katalogu görmek için filtreleri temizleyin."
+  },
   "portal": {
     "spDemoBanner": "Demo modu — aşağıdaki veriler gösterim amaçlıdır. Clerk ve Tracefab API'lerini bağlamak için ?demo=0 adresini açın.",
     "spHeroTag": "Ortak tedarikçi kasası · AB ticari sırlar direktifi",

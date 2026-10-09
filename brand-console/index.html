@@ -136,6 +136,19 @@
     .input, .select, .textarea { width: 100%; border: 1px solid #d8e1d8; border-radius: 10px; padding: 11px 12px; background: white; color: var(--ink); outline: none; }
     .input:focus, .select:focus, .textarea:focus { border-color: #58a887; box-shadow: 0 0 0 3px rgba(88,168,135,.13); }
     .filters .input { max-width: 300px; }
+    /* Barre de filtres du catalogue. Les trois facettes reprennent les
+       colonnes de la table : on filtre sur ce qu'on voit. Le comptage
+       n'apparait que lorsqu'un filtre est actif, sinon il repeterait ce que
+       la pagination annonce deja. */
+    .filters--catalogue { align-items: center; }
+    .filters--catalogue .select { width: auto; min-width: 150px; min-height: var(--tf-touch-min); }
+    .filters--catalogue .input { min-height: var(--tf-touch-min); flex: 1 1 220px; }
+    .filters-count { margin: 0 0 0 auto; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .filters-count strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+    @media (max-width: 559px) {
+      .filters--catalogue .select, .filters--catalogue .input { width: 100%; flex-basis: 100%; }
+      .filters-count { margin-left: 0; }
+    }
     label { display: grid; gap: 7px; color: #53625a; font-size: 12px; font-weight: 750; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .field-full { grid-column: 1 / -1; }
@@ -1054,15 +1067,15 @@
     <!-- i18n consolide : catalogue unique /assets/i18n, servi par le runtime
          partage tf-i18n.js. TF_I18N_SKIP_META protege le titre propre de
          cette page : sans lui elle heriterait du titre de la landing. -->
-    <script src="/assets/js/tf-actions.js?v=ecfb6008"></script>
+    <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=c1be45a1"></script>
+    <script src="/assets/i18n/en.js?v=6c33c75d"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
 <body>
   <div id="app"></div>
   <script src="/assets/js/tf-demo-figures.js?v=3d451782"></script>
-    <script src="/assets/js/brand-console.1.js?v=982efec8"></script>
+    <script src="/assets/js/brand-console.1.js?v=e499dede"></script>
 </body>
 </html>

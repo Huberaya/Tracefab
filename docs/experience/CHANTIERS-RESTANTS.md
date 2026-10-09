@@ -856,11 +856,100 @@ attrapées :
 100 lignes », ce qui ne tenait que grâce au défaut. Il vérifie maintenant une
 page bornée **et** le total annoncé par le compteur.
 
-### Ce que la pagination ne règle pas
+### Ce que la pagination ne réglait pas
 
-Parcourir 50 pages pour trouver une référence reste pénible. **La recherche et
-le filtrage du catalogue sont le prochain besoin réel** — la pagination en est
-le préalable, pas le remplaçant.
+Parcourir 50 pages pour trouver une référence restait pénible. La recherche et
+le filtrage sont traités au **§13**.
+
+## 13 · Le catalogue était lisible mais pas trouvable — RÉGLÉ
+
+### Le besoin
+
+La pagination a ramené le catalogue de 86 543 px à 2 235 px, mais atteindre
+une référence précise supposait toujours de parcourir 50 pages. Lisible n'est
+pas trouvable.
+
+### Ce qui a été fait
+
+Une barre de recherche et trois facettes, posées sur la classe `.filters` qui
+existait déjà dans la vue `Data Requests` — pas une seconde convention
+concurrente.
+
+- **recherche texte** sur le nom et la référence, insensible à la casse **et
+  aux accents** (`NFD` puis suppression des diacritiques) ;
+- **trois facettes** — catégorie, statut, maturité — dont les options sont
+  **construites à partir des données**, jamais écrites en dur : une liste figée
+  se désynchronise en silence dès qu'une catégorie apparaît ;
+- **cumul en ET** : les facettes et le texte se croisent, ils ne s'additionnent
+  pas ;
+- **état vide dédié** quand rien ne correspond, avec son propre bouton
+  d'effacement — pas un tableau vide ;
+- comptage `Matching 155 of 1,248`, affiché **seulement** si un filtre est
+  actif, sinon il répéterait ce que la pagination annonce déjà ;
+- libellés dans les **9 locales**.
+
+### Deux pièges d'implémentation, traités
+
+**Le focus volé.** `render()` remplace tout le DOM. Sans précaution, taper un
+caractère vide le champ de son focus et de son curseur : la recherche au fil
+de la frappe devient inutilisable dès le deuxième caractère. `render()`
+mémorise désormais l'élément actif et sa sélection, puis les restaure. Vérifié
+jusqu'au cas de l'édition **en milieu de chaîne**, où un curseur qui saute à la
+fin est tout aussi gênant.
+
+Le filtre existant de `Data Requests` masque des lignes dans le DOM sans
+re-rendu — il ne rencontrait donc pas ce problème, mais cette approche est
+incompatible avec une pagination, qui doit connaître le nombre filtré pour
+découper. D'où un filtrage piloté par l'état.
+
+**La page orpheline.** Filtrer depuis la page 3 sans revenir à la page 1
+laisse l'utilisateur devant un sous-ensemble arbitraire. Les deux gestionnaires
+— texte et facette — remettent la page à zéro.
+
+### Le garde-fou
+
+`npm run test:catalogue` — 8 sections dans un vrai navigateur.
+
+| section | ce qu'elle prouve |
+|---|---|
+| A | recherche par nom et par référence |
+| B | casse et accents indifférents |
+| C | facettes issues des données, cumul en ET, et zéro sur un texte absent |
+| D | filtrer depuis la page 3 ramène page 1, **par le texte comme par la facette** |
+| E | état vide dédié et son bouton d'effacement |
+| F | focus et curseur conservés pendant la frappe, y compris en milieu de chaîne |
+| G | libellés traduits |
+| H | 390 px : aucun champ sous 40 px, aucun débordement |
+
+### Ce que la mutation a révélé sur mon propre test
+
+Première version de la section D : « aller en dernière page, filtrer, vérifier
+qu'on est page 1 ». Elle passait — **y compris après avoir supprimé la remise à
+zéro**. Le filtre ne laissait qu'une seule page, donc le *bornage* de la
+pagination ramenait déjà à la page 1 et masquait la régression.
+
+Refaite sur un filtre qui laisse **7 pages**, où seule la remise à zéro peut
+expliquer le retour en page 1. Puis la même omission est apparue sur le second
+chemin : la section ne testait que la facette, pas la saisie texte. Les deux
+sont désormais couverts séparément.
+
+| mutation | ce qui échoue |
+|---|---|
+| facette sans remise à zéro | D — reste page 3 |
+| recherche sans remise à zéro | D — reste page 3 |
+| restauration du focus retirée | F — focus perdu, un seul caractère sur quatre |
+| `toLowerCase()` retiré | B — 0 résultat en majuscules |
+| filtre de catégorie retiré | C — 1 248 produits « tous conformes » |
+
+Une suite qui ne tombe jamais ne prouve rien. Celle-ci est tombée cinq fois sur
+commande — **et la première rédaction avait un trou que seule la mutation a
+montré**.
+
+### Reste à faire sur le catalogue
+
+Le tri par colonne n'existe pas. Et le jeu de démonstration reste pauvre :
+presque toutes les références affichent **0 % de complétude**, ce qui donne une
+table techniquement correcte mais peu parlante.
 
 ## Déjà réglé — ne pas reprendre
 

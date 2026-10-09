@@ -1604,7 +1604,16 @@
     "sxPublicPassport": "Openbaar paspoort bekijken",
     "orgSwitcher": "Actieve organisatie",
     "cnFilterRequests": "Verzoeken filteren",
-    "qcProductQuality": "PRODUCTKWALITEIT"
+    "qcProductQuality": "PRODUCTKWALITEIT",
+    "pdSearchLabel": "Zoek in de catalogus",
+    "pdSearchPlaceholder": "Naam of referentie",
+    "pdAllCategories": "Alle categorieën",
+    "pdAllStatuses": "Alle statussen",
+    "pdAllReadiness": "Alle gereedheid",
+    "pdClearFilters": "Filters wissen",
+    "pdMatching": "Overeenkomsten",
+    "pdNoMatch": "Geen product voldoet aan deze filters",
+    "pdNoMatchHint": "Verruim de zoekopdracht of wis de filters om de volledige catalogus te zien."
   },
   "portal": {
     "sites": "Productielocaties",

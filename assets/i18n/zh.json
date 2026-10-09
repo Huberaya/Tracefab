@@ -41,7 +41,17 @@
     "pagerPrev": "上一页",
     "pagerNext": "下一页"
   },
-  "console": {},
+  "console": {
+    "pdSearchLabel": "搜索目录",
+    "pdSearchPlaceholder": "名称或编号",
+    "pdAllCategories": "全部类别",
+    "pdAllStatuses": "全部状态",
+    "pdAllReadiness": "全部就绪度",
+    "pdClearFilters": "清除筛选",
+    "pdMatching": "匹配",
+    "pdNoMatch": "没有产品符合这些筛选条件",
+    "pdNoMatchHint": "请放宽搜索条件，或清除筛选以查看完整目录。"
+  },
   "portal": {
     "spDemoBanner": "演示模式 — 以下数据仅为演示数据。打开 ?demo=0 以连接 Clerk 和 Tracefab API。",
     "spHeroTag": "共享供应商保险库 · 欧盟商业秘密指令",

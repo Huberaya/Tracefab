@@ -1604,7 +1604,16 @@
     "sxPublicPassport": "Vedi il passaporto pubblico",
     "orgSwitcher": "Organizzazione attiva",
     "cnFilterRequests": "Filtra le richieste",
-    "qcProductQuality": "QUALITÀ PRODOTTO"
+    "qcProductQuality": "QUALITÀ PRODOTTO",
+    "pdSearchLabel": "Cerca nel catalogo",
+    "pdSearchPlaceholder": "Nome o riferimento",
+    "pdAllCategories": "Tutte le categorie",
+    "pdAllStatuses": "Tutti gli stati",
+    "pdAllReadiness": "Tutte le maturità",
+    "pdClearFilters": "Azzera i filtri",
+    "pdMatching": "Corrispondenze",
+    "pdNoMatch": "Nessun prodotto corrisponde a questi filtri",
+    "pdNoMatchHint": "Amplia la ricerca o azzera i filtri per rivedere tutto il catalogo."
   },
   "portal": {
     "sites": "Stabilimenti Produttivi",

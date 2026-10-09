@@ -26,7 +26,10 @@
     },
   };
 
-  ['click', 'change', 'submit'].forEach(function (type) {
+  // 'input' sert la recherche au fil de la frappe. Il bulle comme les autres,
+  // et le filtre data-tf-on empeche tout gestionnaire existant de le recevoir :
+  // sans data-tf-on="input" explicite, un element reste sur 'click'.
+  ['click', 'change', 'submit', 'input'].forEach(function (type) {
     document.addEventListener(type, function (event) {
       var target = event.target;
       if (!target || typeof target.closest !== 'function') return;

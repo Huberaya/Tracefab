@@ -1604,7 +1604,16 @@
     "sxPublicPassport": "Ver el pasaporte público",
     "orgSwitcher": "Organización activa",
     "cnFilterRequests": "Filtrar solicitudes",
-    "qcProductQuality": "CALIDAD DE PRODUCTO"
+    "qcProductQuality": "CALIDAD DE PRODUCTO",
+    "pdSearchLabel": "Buscar en el catálogo",
+    "pdSearchPlaceholder": "Nombre o referencia",
+    "pdAllCategories": "Todas las categorías",
+    "pdAllStatuses": "Todos los estados",
+    "pdAllReadiness": "Todas las madureces",
+    "pdClearFilters": "Borrar filtros",
+    "pdMatching": "Coincidencias",
+    "pdNoMatch": "Ningún producto coincide con estos filtros",
+    "pdNoMatchHint": "Amplíe la búsqueda o borre los filtros para ver todo el catálogo."
   },
   "portal": {
     "sites": "Centros de producción",

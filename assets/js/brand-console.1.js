@@ -13,6 +13,7 @@
         materials: [],
         products: [],
         pages: {},
+        filtres: { products: { q: '', category: '', status: '', readiness: '' } },
         requests: [],
         questionnaires: [],
         schemaCatalog: [],
@@ -145,6 +146,73 @@
           precedent = n;
         }
         return sortie;
+      }
+
+      /* Filtrage du catalogue ----------------------------------------------
+       *
+       * La pagination a rendu le catalogue lisible, pas trouvable : parcourir
+       * 50 pages pour atteindre une reference n'est pas une recherche. Trois
+       * facettes et un champ texte suffisent ici, parce que ce sont les
+       * colonnes que la table affiche deja — on filtre sur ce qu'on voit.
+       */
+      function normaliser(valeur) {
+        // Sans depliage des accents, « Trousers » se trouve mais pas
+        // « Dérogation » tape sans accent. NFD + suppression des diacritiques
+        // rend la recherche indifferente aux accents comme a la casse.
+        return String(valeur || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
+
+      function produitsFiltres() {
+        const f = state.filtres.products;
+        const q = normaliser(f.q).trim();
+        return state.products.filter((p) => {
+          if (f.category && String(p.category || '') !== f.category) return false;
+          if (f.status && String(p.status || '') !== f.status) return false;
+          if (f.readiness && String(p.dataReadiness || 'in_progress') !== f.readiness) return false;
+          if (!q) return true;
+          return normaliser(p.name).includes(q) || normaliser(p.reference).includes(q);
+        });
+      }
+
+      function filtresActifs() {
+        const f = state.filtres.products;
+        return Boolean(f.q || f.category || f.status || f.readiness);
+      }
+
+      /* Les options viennent des donnees, jamais d'une liste ecrite en dur :
+       * une liste figee se desynchronise en silence des qu'une categorie
+       * apparait, et l'utilisateur ne peut plus la filtrer. */
+      function optionsFacette(champ, defaut, etiquette) {
+        const actuel = state.filtres.products[champ === 'dataReadiness' ? 'readiness' : champ];
+        return [...new Set(state.products.map((p) => String(p[champ] || defaut)).filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b))
+          .map((v) => `<option value="${esc(v)}"${v === actuel ? ' selected' : ''}>`
+            + `${esc(etiquette ? etiquette(v) : v)}</option>`)
+          .join('');
+      }
+
+      function barreFiltres(info) {
+        const f = state.filtres.products;
+        const select = (champ, cleTout, options) => `
+          <select class="select" data-tf-act="ff" data-tf-on="change" data-tf-arg="${champ}"
+                  aria-label="${esc(bt(cleTout))}">
+            <option value="">${esc(bt(cleTout))}</option>${options}
+          </select>`;
+        return `
+          <div class="filters filters--catalogue" role="search">
+            <input id="pd-recherche" type="search" class="input"
+                   value="${esc(f.q)}" placeholder="${esc(bt('pdSearchPlaceholder'))}"
+                   aria-label="${esc(bt('pdSearchLabel'))}"
+                   data-tf-act="fq" data-tf-on="input" autocomplete="off">
+            ${select('category', 'pdAllCategories', optionsFacette('category', '', null))}
+            ${select('status', 'pdAllStatuses', optionsFacette('status', '', (v) => statusLabel(v) || v))}
+            ${select('readiness', 'pdAllReadiness', optionsFacette('dataReadiness', 'in_progress', (v) => statusLabel(v) || v))}
+            ${filtresActifs() ? `<button type="button" class="btn btn-secondary btn-small"
+              data-tf-act="fx">${esc(bt('pdClearFilters'))}</button>` : ''}
+            ${filtresActifs() ? `<p class="filters-count">${esc(bt('pdMatching'))}
+              <strong>${moneyless(info.total)}</strong> ${esc(bt('pagerOf'))}
+              <strong>${moneyless(state.products.length)}</strong></p>` : ''}
+          </div>`;
       }
 
       function barrePagination(cle, info) {
@@ -1112,6 +1180,22 @@
         }
       }
 
+      function memoriserFocus() {
+        const el = document.activeElement;
+        if (!el || !el.id || typeof el.selectionStart !== 'number') return null;
+        return { id: el.id, debut: el.selectionStart, fin: el.selectionEnd };
+      }
+
+      function restaurerFocus(memo) {
+        if (!memo) return;
+        const el = document.getElementById(memo.id);
+        if (!el) return;
+        el.focus();
+        // setSelectionRange leve sur les types qui n'ont pas de selection
+        // (number, email selon les navigateurs) : le focus suffit alors.
+        try { el.setSelectionRange(memo.debut, memo.fin); } catch (e) { /* sans selection */ }
+      }
+
       function render() {
         if (state.configError && !state.demo && !state.user) {
           app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>${esc(bt('cnAuthUnavailable'))}</h1><p>${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
@@ -1138,7 +1222,13 @@
           state.view === 'productDetail' ? productDetailView() :
           state.view === 'supplierDetail' ? supplierDetailView() :
           requestDetailView();
+        // render() remplace tout le DOM. Sans cette precaution, taper un
+        // caractere dans un champ de recherche le vide de son focus et de son
+        // curseur des le re-rendu : la recherche au fil de la frappe devient
+        // inutilisable. On ne restaure que les champs porteurs d'un id.
+        const focusAvant = memoriserFocus();
         app.innerHTML = shell(content); bind();
+        restaurerFocus(focusAvant);
       }
 
       function renderAuth() {
@@ -2015,8 +2105,9 @@
       }
 
       function productsView() {
-        const tranche = trancher('products', state.products);
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        const resultats = produitsFiltres();
+        const tranche = trancher('products', resultats);
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
@@ -4134,6 +4225,25 @@
         p32: function (event) { filterIssues('review'); },
         p33: function (event) { filterIssues('resolved'); },
         p34: function (event) { state.view='supplyChain';render(); },
+        fq: function (event) {
+          state.filtres.products.q = this.value;
+          // Toute modification de filtre ramene page 1 : rester page 37 d'une
+          // liste qui n'en compte plus que 2 afficherait un tableau vide.
+          state.pages.products = 1;
+          render();
+        },
+        ff: function (event) {
+          const champ = this.dataset.tfArg;
+          if (!Object.prototype.hasOwnProperty.call(state.filtres.products, champ)) return;
+          state.filtres.products[champ] = this.value;
+          state.pages.products = 1;
+          render();
+        },
+        fx: function (event) {
+          state.filtres.products = { q: '', category: '', status: '', readiness: '' };
+          state.pages.products = 1;
+          render();
+        },
         pg: function (event) {
           const [cle, n] = String(this.dataset.tfArg || '').split(':');
           if (!cle || !n) return;

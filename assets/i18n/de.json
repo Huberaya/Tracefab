@@ -1604,7 +1604,16 @@
     "sxPublicPassport": "Öffentlichen Pass ansehen",
     "orgSwitcher": "Aktive Organisation",
     "cnFilterRequests": "Anfragen filtern",
-    "qcProductQuality": "PRODUKTQUALITÄT"
+    "qcProductQuality": "PRODUKTQUALITÄT",
+    "pdSearchLabel": "Katalog durchsuchen",
+    "pdSearchPlaceholder": "Name oder Referenz",
+    "pdAllCategories": "Alle Kategorien",
+    "pdAllStatuses": "Alle Status",
+    "pdAllReadiness": "Alle Reifegrade",
+    "pdClearFilters": "Filter zurücksetzen",
+    "pdMatching": "Treffer",
+    "pdNoMatch": "Kein Produkt entspricht diesen Filtern",
+    "pdNoMatchHint": "Erweitern Sie die Suche oder setzen Sie die Filter zurück, um den gesamten Katalog zu sehen."
   },
   "portal": {
     "sites": "Produktionsstätten",

@@ -1604,7 +1604,16 @@
     "sxPublicPassport": "Ver o passaporte público",
     "orgSwitcher": "Organização ativa",
     "cnFilterRequests": "Filtrar pedidos",
-    "qcProductQuality": "QUALIDADE DO PRODUTO"
+    "qcProductQuality": "QUALIDADE DO PRODUTO",
+    "pdSearchLabel": "Pesquisar no catálogo",
+    "pdSearchPlaceholder": "Nome ou referência",
+    "pdAllCategories": "Todas as categorias",
+    "pdAllStatuses": "Todos os estados",
+    "pdAllReadiness": "Todas as maturidades",
+    "pdClearFilters": "Limpar filtros",
+    "pdMatching": "Correspondências",
+    "pdNoMatch": "Nenhum produto corresponde a estes filtros",
+    "pdNoMatchHint": "Alargue a pesquisa ou limpe os filtros para ver todo o catálogo."
   },
   "portal": {
     "sites": "Instalações de Produção",
