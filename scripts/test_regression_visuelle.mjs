@@ -79,14 +79,42 @@ async function empreinte(navigateur) {
     };
     return { sans: mesurer('sans-serif'), serif: mesurer('serif'), mono: mesurer('monospace') };
   });
-  // La rasterisation, pas seulement les metriques : c'est elle qui decide si
-  // deux environnements peuvent partager une reference en pixels.
-  await page.setViewportSize({ width: 1400, height: 400 });
+  // La rasterisation, pas seulement les metriques — et surtout LES PILES
+  // REELLES, pas des familles generiques.
+  //
+  // Premiere tentative : un temoin en sans-serif / serif / monospace. Le
+  // runner a rendu ce temoin au pixel pres comme ici, puis a signale 2 a 6 %
+  // d'ecart sur les pages. La raison est dans la pile : les feuilles declarent
+  // 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  // Helvetica, Arial, sans-serif. Les deux premieres sont bloquees avec les
+  // fontes distantes, donc le rendu depend de la resolution d'Helvetica et
+  // d'Arial — que fontconfig aliase sur un runner et pas forcement ici. Une
+  // sonde en « sans-serif » nu saute justement ces etapes.
+  //
+  // On lit donc les piles dans la feuille de style et on les rend telles
+  // quelles. Si elles changent, l'empreinte change et le test l'annonce.
+  const css = readFileSync('assets/design-system/tracefab-core.css', 'utf8');
+  const pile = (nom) => {
+    const m = new RegExp(`--tf-font-${nom}:([^;]+)`).exec(css);
+    if (!m) throw new Error(`pile de polices --tf-font-${nom} introuvable`);
+    return m[1].trim();
+  };
+  const piles = [pile('text'), pile('mono'), 'sans-serif', 'serif', 'monospace'];
+  // ET A PLUSIEURS TAILLES, dont de petites.
+  //
+  // Deuxieme tentative manquee : un temoin uniquement a 64 px. Le runner l'a
+  // encore rendu a l'identique. Or la repartition des ecarts le disait : 0,33 %
+  // sur l'accueil, compose en tres grands caracteres, contre 2 a 6 % sur les
+  // consoles, denses en texte de 11 a 14 px. Les deux machines resolvent bien
+  // la meme police (Arial -> Liberation Sans), mais ne l'instruisent pas de la
+  // meme facon : le hinting et le lissage ne se voient qu'aux petites tailles,
+  // la ou la grille de pixels contraint le glyphe. Un temoin en gros corps est
+  // precisement l'endroit ou cette difference ne se voit pas.
+  const tailles = [11, 13, 16, 64];
+  await page.setViewportSize({ width: 1400, height: 1200 });
   await page.setContent(`<!doctype html><html><body style="margin:0;background:#fff">
     <div id="t" style="display:inline-block;padding:8px;background:#fff">
-      <div style="font:100px sans-serif;white-space:nowrap">Traçabilité textile 0123456789 WAVE</div>
-      <div style="font:100px serif;white-space:nowrap">Traçabilité textile 0123456789 WAVE</div>
-      <div style="font:100px monospace;white-space:nowrap">Traçabilité textile 0123456789 WAVE</div>
+      ${piles.flatMap((p) => tailles.map((t) => `<div style="font-size:${t}px;font-family:${p};white-space:nowrap">Traçabilité textile 0123456789 WAVE</div>`)).join('')}
     </div></body></html>`);
   const image = await page.locator('#t').screenshot();
   const rendu = createHash('sha256').update(image).digest('hex').slice(0, 24);
@@ -96,6 +124,10 @@ async function empreinte(navigateur) {
 
 const nav = await chromium.launch();
 const ENV_COURANT = await empreinte(nav);
+// Toujours journalise, y compris quand la garde laisse passer : sans cette
+// ligne, un environnement qui coincide a tort reste indetectable dans les
+// journaux de CI. C'est ce qui a fait perdre deux cycles.
+console.log(`  empreinte de rendu : ${ENV_COURANT.rendu} (Chromium ${ENV_COURANT.navigateur})`);
 
 if (!MAJ && existsSync(EMPREINTE)) {
   const attendu = JSON.parse(readFileSync(EMPREINTE, 'utf8'));
