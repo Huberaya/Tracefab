@@ -56,7 +56,12 @@ const REFERENCE = new Set(['pef_emission_factors', 'green_claims_rules', 'tracef
 let echecs = 0;
 const ko = (m) => { console.log(`  ECHEC ${m}`); echecs += 1; };
 const ok = (m) => console.log(`  ok    ${m}`);
-const cli = (u) => new pg.Client({ connectionString: u, ssl: { rejectUnauthorized: false } });
+// Neon impose TLS ; un Postgres jetable de CI n'en a pas. Demander du TLS a
+// un serveur qui n'en fait pas echoue a la connexion, donc on suit l'URL.
+const cli = (u) => new pg.Client({
+  connectionString: u,
+  ssl: /sslmode=(require|verify-full|verify-ca)/.test(u) ? { rejectUnauthorized: false } : false,
+});
 
 const proprio = cli(URL_PROPRIO);
 await proprio.connect();
@@ -74,11 +79,20 @@ if (moi.rows[0].bypass) {
 ok(`role de test « ${moi.rows[0].r} », BYPASSRLS=false`);
 
 /* --- inventaire ----------------------------------------------------------- */
-const tables = (await proprio.query(`
-  select c.relname from pg_class c
+// On enumere TOUTES les tables, pas seulement celles deja marquees RLS.
+// Filtrer sur relrowsecurity rendrait le test aveugle a la seule chose qu'il
+// doit attraper : une table a qui on retire la RLS sortirait de la liste et
+// cesserait d'etre surveillee, en silence, sans faire rougir quoi que ce soit.
+const inventaire = (await proprio.query(`
+  select c.relname, c.relrowsecurity from pg_class c
   join pg_namespace n on n.oid = c.relnamespace
-  where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
-  order by c.relname`)).rows.map((r) => r.relname);
+  where n.nspname = 'public' and c.relkind = 'r'
+  order by c.relname`)).rows;
+
+const tables = inventaire.map((r) => r.relname);
+const sansRls = inventaire.filter((r) => !r.relrowsecurity && !REFERENCE.has(r.relname)).map((r) => r.relname);
+if (sansRls.length) ko(`${sansRls.length} table(s) de locataire sans ROW LEVEL SECURITY : ${sansRls.join(' · ')}`);
+else ok(`${tables.length} tables inventoriees, toutes les tables de locataire portent la RLS`);
 
 const total = {};
 for (const t of tables) {
@@ -125,6 +139,15 @@ const duo = (await proprio.query(`
   from organization_memberships m join users u on u.id = m.user_id
   order by m.organization_id, m.created_at`)).rows;
 
+// Les tables porteuses d'un identifiant : on releve QUELLES lignes sont
+// visibles, pas combien. Comparer des cardinalites est un piege — deux
+// locataires symetriques voient le meme nombre de lignes tout en etant
+// parfaitement cloisonnes, et le test conclurait a tort a une absence
+// d'isolation. Ce sont les identites qui tranchent.
+const avecId = new Set((await proprio.query(`
+  select table_name from information_schema.columns
+  where table_schema = 'public' and column_name = 'id'`)).rows.map((r) => r.table_name));
+
 const voirAvecContexte = async (userId, email) => {
   await app.query('begin');
   await app.query('select set_config($1,$2,true)', ['tracefab.user_id', userId]);
@@ -132,8 +155,19 @@ const voirAvecContexte = async (userId, email) => {
   const vues = {};
   for (const t of tables) {
     if (REFERENCE.has(t)) continue;
-    const v = await compter(t);
-    vues[t] = (v && typeof v === 'object') ? -1 : v;
+    await app.query('savepoint s');
+    try {
+      const r = avecId.has(t)
+        ? await app.query(`select id::text from "${t}"`)
+        : await app.query(`select count(*)::int n from "${t}"`);
+      await app.query('release savepoint s');
+      vues[t] = avecId.has(t)
+        ? new Set(r.rows.map((x) => x.id))
+        : new Set(r.rows[0].n > 0 ? [`anonyme:${r.rows[0].n}`] : []);
+    } catch {
+      await app.query('rollback to savepoint s');
+      vues[t] = null;
+    }
   }
   await app.query('rollback');
   return vues;
@@ -146,25 +180,40 @@ if (duo.length < 2) {
 } else {
   // Deux locataires qui possedent effectivement des lignes, sinon comparer
   // deux ensembles vides ne demontre rien.
+  const taille = (v) => Object.values(v).reduce((n, s) => n + (s ? s.size : 0), 0);
   const candidats = [];
   for (const d of duo.slice(0, 12)) {
     const vues = await voirAvecContexte(d.user_id, d.email);
-    const somme = Object.values(vues).filter((n) => n > 0).reduce((a, b) => a + b, 0);
-    if (somme > 0) candidats.push({ ...d, vues, somme });
+    if (taille(vues) > 0) candidats.push({ ...d, vues });
     if (candidats.length === 2) break;
   }
   if (candidats.length < 2) {
     ko('impossible de trouver deux locataires porteurs de donnees — epreuve differentielle non concluante');
   } else {
     const [a, b] = candidats;
-    const ecarts = tables.filter((t) => !REFERENCE.has(t) && a.vues[t] !== b.vues[t]);
-    couvert = tables.filter((t) => !REFERENCE.has(t) && (a.vues[t] > 0 || b.vues[t] > 0)).length;
+    const tenant = tables.filter((t) => !REFERENCE.has(t));
+    const memeEnsemble = (x, y) => x && y && x.size === y.size && [...x].every((i) => y.has(i));
+
+    const ecarts = tenant.filter((t) => !memeEnsemble(a.vues[t], b.vues[t]));
+    couvert = tenant.filter((t) => (a.vues[t]?.size || 0) + (b.vues[t]?.size || 0) > 0).length;
     differencie = ecarts.length > 0;
-    console.log(`        locataire 1 : ${a.email} — ${a.somme} ligne(s) visibles`);
-    console.log(`        locataire 2 : ${b.email} — ${b.somme} ligne(s) visibles`);
-    if (differencie) ok(`les deux locataires voient des ensembles differents sur ${ecarts.length} table(s) : ${ecarts.slice(0, 5).join(' · ')}`);
-    else ko('les deux locataires voient exactement la meme chose partout — l isolation ne discrimine rien');
-    const toutVu = tables.filter((t) => !REFERENCE.has(t) && (a.vues[t] === total[t] && total[t] > 0));
+
+    console.log(`        locataire 1 : ${a.email} — ${taille(a.vues)} ligne(s) visibles`);
+    console.log(`        locataire 2 : ${b.email} — ${taille(b.vues)} ligne(s) visibles`);
+
+    if (differencie) ok(`les deux locataires voient des lignes differentes sur ${ecarts.length} table(s) : ${ecarts.slice(0, 5).join(' · ')}`);
+    else ko('les deux locataires voient exactement les memes lignes partout — l isolation ne discrimine rien');
+
+    // Une ligne visible des deux cotes n'est pas forcement une fuite (une
+    // relation marque-fournisseur est legitimement partagee), mais si AUCUNE
+    // table ne les separe, le cloisonnement est illusoire.
+    const communes = tenant
+      .map((t) => [t, [...(a.vues[t] || [])].filter((i) => b.vues[t]?.has(i)).length])
+      .filter(([, n]) => n > 0);
+    console.log(`        lignes visibles des deux cotes : ${communes.reduce((n, [, c]) => n + c, 0)}`
+      + (communes.length ? ` (${communes.map(([t, n]) => `${t}:${n}`).join(' · ')})` : ''));
+
+    const toutVu = tenant.filter((t) => total[t] > 0 && a.vues[t]?.size === total[t]);
     if (toutVu.length) ko(`${toutVu.length} table(s) entierement visibles par un seul locataire : ${toutVu.join(' · ')}`);
     else ok('aucune table de locataire n est integralement visible par un seul utilisateur');
   }

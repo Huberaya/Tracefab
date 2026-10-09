@@ -203,9 +203,41 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: socle
-    # Sans secret, l'etage est saute plutot que rouge : un echec doit toujours
-    # designer un vrai probleme.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # Ce job ne depend plus d'aucun secret.
+    #
+    # Avant, il verifiait la presence de secrets.DATABASE_URL et sautait ses
+    # etapes quand il etait absent. Le depot n'a jamais eu le moindre secret :
+    # le job annoncait donc « isolation RLS executee » sans jamais rien
+    # executer, et affichait vert. Un vert obtenu sans travail est pire qu'un
+    # rouge : il eteint la vigilance.
+    #
+    # Brancher la base de production aurait ete le mauvais remede — exposer
+    # des identifiants de production a tout workflow, et faire tourner
+    # l'epreuve sur des donnees reelles. On monte un Postgres jetable a la
+    # place : l'epreuve tourne a chaque poussee, y compris depuis un fork.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tracefab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Base jetable, detruite avec le runner. Le mot de passe n'ouvre rien.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
+      TF_APP_PASSWORD: isolation_ci_jetable
+      TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
+      # Le contexte `secrets` n'est pas disponible dans un `if:` d'etape : il
+      # faut le faire transiter par l'env du job. Sans ce detour, le workflow
+      # echoue au parsing.
+      TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -214,26 +246,29 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      - name: Verifier la presence du secret
-        id: secret
-        run: |
-          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::DATABASE_URL absent : les scenarios croises executes sont sautes."
-          fi
-
       - name: Installer les dependances
-        if: steps.secret.outputs.present == 'true'
         run: npm ci
 
       - name: Generer le client Prisma
-        if: steps.secret.outputs.present == 'true'
         run: npm run db:generate
 
-      - name: Scenarios croises executes contre Postgres
-        if: steps.secret.outputs.present == 'true'
+      - name: Appliquer les migrations sur la base jetable
+        # npm run db:deploy, pas npx prisma : npx va chercher au registre
+        # quand le binaire local n'est pas trouve, et installe un homonyme.
+        run: npm run db:deploy
+
+      - name: Creer le role tracefab_app et deux locataires
+        run: node scripts/seed_rls_fixture.mjs
+
+      - name: Isolation RLS prouvee par execution
+        # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
+        # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
+        run: npm run test:neon:rls
+
+      - name: Scenarios croises contre la base de production
+        # Optionnels, et clairement annonces comme tels. L'etancheite est deja
+        # prouvee ci-dessus sans eux.
+        if: ${{ env.TF_SECRET_PRODUCTION != '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
