@@ -149,9 +149,16 @@ const readDict = async (lang, scope) => JSON.parse(await readFile(at(`locales/${
 const CONSOLE_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
 const PORTAL_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
 
+/* Nombre de clés attendu par portée.
+   console  : 25 — les libellés de la console marque n'ont pas bougé.
+   supplier : 50 — les 25 libellés d'origine, plus 25 clés ajoutées quand les
+              étiquettes de statut (24) et le libellé du champ « État » ont cessé
+              d'être codés en dur dans supplier-portal/index.html. Un fournisseur
+              turc ou chinois lisait « Brouillon » et des dates au format français. */
+const EXPECTED_KEYS = { console: 25, supplier: 50 };
 for (const [scope, langs] of [['console', CONSOLE_LANGS], ['supplier', PORTAL_LANGS]]) {
   const ref = Object.keys(await readDict(langs[0], scope)).sort();
-  eq(ref.length, 25, `${scope}.json : 25 clés (${langs[0]})`);
+  eq(ref.length, EXPECTED_KEYS[scope], `${scope}.json : ${EXPECTED_KEYS[scope]} clés (${langs[0]})`);
   for (const lang of langs) {
     const keys = Object.keys(await readDict(lang, scope)).sort();
     eq(JSON.stringify(keys), JSON.stringify(ref), `${scope}/${lang} a exactement les mêmes clés`);
@@ -160,7 +167,10 @@ for (const [scope, langs] of [['console', CONSOLE_LANGS], ['supplier', PORTAL_LA
 
 /* Chaque clé appelée dans le code doit exister dans toutes les langues. */
 const calledKeys = (html, fn) =>
-  [...new Set([...html.matchAll(new RegExp(`(?<![a-zA-Z.])${fn}\\(['"]([a-zA-Z]+)['"]\\)`, 'g'))].map((m) => m[1]))];
+/* [a-zA-Z0-9_] et non [a-zA-Z] : les clés de statut s'appellent status_draft ou
+   status_needs_review. Sans underscore elles restaient invisibles à ce contrôle,
+   qui serait passé à côté de toute clé mal orthographiée. */
+  [...new Set([...html.matchAll(new RegExp(`(?<![a-zA-Z.])${fn}\\(['"]([a-zA-Z0-9_]+)['"]\\)`, 'g'))].map((m) => m[1]))];
 
 for (const [name, html, fn, scope, langs] of [
   ['brand-console', consoleHtml, 'bt', 'console', CONSOLE_LANGS],

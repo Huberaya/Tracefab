@@ -58,6 +58,7 @@
     "test:quality-center:browser": "node scripts/test_quality_center_browser.mjs",
     "test:supplier-portal:surface": "node scripts/test_supplier_portal_surface.mjs",
     "test:supplier-portal": "node scripts/test_supplier_portal.mjs",
+    "test:supplier-portal:i18n": "node scripts/test_supplier_portal_i18n.mjs",
     "test:private-storage": "node scripts/test_private_storage.mjs",
     "test:notification-scheduler": "node scripts/test_notification_scheduler.mjs",
     "test:notification-observability": "node scripts/test_notification_observability.mjs",

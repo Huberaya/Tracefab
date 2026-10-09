@@ -26,6 +26,17 @@ function eq(actual, expected, name) {
 
 const html = await readFile(new URL('supplier-portal/index.html', root), 'utf8');
 
+/**
+ * Le portail délègue ses libellés de statut à public/i18n-core.js. Sans runtime,
+ * `t(clé)` renvoie la clé et statusLabel retombe sur le jeton brut : ce test
+ * mesurait donc un chemin que le navigateur n'emprunte jamais. On lui fournit le
+ * VRAI dictionnaire français — ce test assertit du texte français partout
+ * ailleurs, c'est la langue cohérente ici.
+ */
+const frDictionary = JSON.parse(
+  await readFile(new URL('locales/fr/supplier.json', root), 'utf8'),
+);
+
 const pageErrors = [];
 const virtualConsole = new VirtualConsole();
 virtualConsole.on('jsdomError', (e) => pageErrors.push(e.message));
@@ -35,6 +46,22 @@ const dom = new JSDOM(html, {
   pretendToBeVisual: true,
   url: 'https://tracefab.vercel.app/supplier-portal/?demo=1',
   virtualConsole,
+  beforeParse(win) {
+    try { win.localStorage.setItem('tracefab_lang', 'fr'); } catch { /* ignore */ }
+    win.TracefabI18n = {
+      language: 'fr',
+      missing: [],
+      t(key) {
+        const value = frDictionary[key];
+        return value === undefined ? null : value;
+      },
+      init(options) {
+        this.language = (options && options.language) || 'fr';
+        return Promise.resolve(this.language);
+      },
+      apply() {},
+    };
+  },
 });
 const { window } = dom;
 const { document } = window;
