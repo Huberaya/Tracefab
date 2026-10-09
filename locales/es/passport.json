@@ -75,6 +75,15 @@
       "understood": "Entendido",
       "sendError": "Error al enviar",
       "alertPrefix": "Error:"
+    },
+    "error": {
+      "title": "Pasaporte no disponible",
+      "body": "No se ha podido cargar el pasaporte solicitado. Compruebe el enlace recibido o inténtelo de nuevo.",
+      "reason": "Motivo indicado",
+      "retry": "Reintentar"
+    },
+    "demo": {
+      "banner": "Datos de demostración — este pasaporte no describe ninguna empresa real y no constituye una verificación."
     }
   }
 }

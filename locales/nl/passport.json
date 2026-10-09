@@ -75,6 +75,15 @@
       "understood": "Begrepen",
       "sendError": "Fout bij het versturen",
       "alertPrefix": "Fout:"
+    },
+    "error": {
+      "title": "Paspoort niet beschikbaar",
+      "body": "Het gevraagde paspoort kon niet worden geladen. Controleer de ontvangen link of probeer het opnieuw.",
+      "reason": "Gemelde reden",
+      "retry": "Opnieuw proberen"
+    },
+    "demo": {
+      "banner": "Demonstratiegegevens — dit paspoort beschrijft geen echt bedrijf en is geen controle."
     }
   }
 }

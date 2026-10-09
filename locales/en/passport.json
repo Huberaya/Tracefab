@@ -75,6 +75,15 @@
       "understood": "Understood",
       "sendError": "Error while sending",
       "alertPrefix": "Error:"
+    },
+    "error": {
+      "title": "Passport unavailable",
+      "body": "The requested passport could not be loaded. Check the link you received or try again.",
+      "reason": "Reported reason",
+      "retry": "Try again"
+    },
+    "demo": {
+      "banner": "Demonstration data — this passport describes no real company and is not a verification."
     }
   }
 }

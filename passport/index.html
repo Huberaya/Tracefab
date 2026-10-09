@@ -196,6 +196,45 @@
       font-family: var(--mono);
     }
 
+    /* État d'erreur : remplace le repli silencieux qui présentait un
+       fournisseur inventé comme vérifié. */
+    .error-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 18px;
+      padding: 36px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .error-card h1 { margin: 0 0 10px; font-size: 1.35rem; }
+
+    .error-card .error-reason {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--card-border);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    /* Démonstration explicite : les valeurs de démo doivent être identifiables. */
+    .demo-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(37, 99, 235, 0.35);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      color: var(--ink);
+    }
+
     .nda-banner {
       display: flex;
       align-items: center;
@@ -451,7 +490,7 @@
       </a>
       <div style="display:flex;align-items:center;gap:10px">
         <select class="verified-seal" id="lang-select" aria-label="Language" style="cursor:pointer;background:transparent;font-family:inherit"></select>
-        <div class="verified-seal">
+        <div class="verified-seal" id="verified-seal">
           <span>✓</span> <span data-i18n="passport.nav.verified">Profil Industriel Vérifié</span>
         </div>
       </div>
@@ -506,11 +545,25 @@
 
       const urlParams = new URLSearchParams(window.location.search);
       const ref = urlParams.get('ref') || urlParams.get('token') || 'nhan-textile-pt';
+      /**
+       * La démonstration n'est servie que sur demande explicite (?demo=1).
+       *
+       * Avant, tout échec d'API — référence inconnue, réseau coupé, serveur en
+       * panne — basculait silencieusement sur un fournisseur inventé dont les
+       * trois certificats portaient isVerified: true. Un visiteur lisait donc un
+       * profil « vérifié » qui ne correspondait à aucune entreprise, et un
+       * incident de production ressemblait à un passeport valide.
+       */
+      const demoRequested = (() => {
+        const flag = urlParams.get('demo');
+        return flag === null ? false : !['0', 'false', 'off'].includes(String(flag).toLowerCase());
+      })();
 
       let state = {
         data: null,
         loading: true,
         error: null,
+        demo: false,
         modalOpen: false
       };
 
@@ -524,9 +577,29 @@
           state.data = await res.json();
           state.loading = false;
         } catch (e) {
-          // If server call fails, fallback to realistic verified demo supplier
-          console.warn('API error, loading verified demonstration passport:', e.message);
-          state.data = {
+          if (demoRequested) {
+            console.warn('API indisponible — passeport de démonstration affiché (?demo=1) :', e.message);
+            state.data = demoPassport();
+            state.demo = true;
+          } else {
+            state.data = null;
+            state.error = e && e.message ? e.message : String(e);
+          }
+          state.loading = false;
+          render();
+          return;
+        }
+        state.loading = false;
+        render();
+      }
+
+      /**
+       * Passeport de démonstration. Servi uniquement derrière ?demo=1 et
+       * étiqueté comme tel à l'écran : ces valeurs ne décrivent aucune
+       * entreprise réelle et ne doivent jamais passer pour des données vérifiées.
+       */
+      function demoPassport() {
+        return {
             passport: {
               id: 'demo-passport-1',
               slug: 'nhan-textile-pt',
@@ -572,15 +645,32 @@
               mode: 'redacted',
               legalBasis: 'Directive (UE) 2016/943 sur la protection des secrets d\'affaires'
             }
-          };
-          state.loading = false;
-        }
-        render();
+        };
       }
 
       function render() {
         const app = document.getElementById('app');
         if (state.loading) return;
+
+        /* Sans donnée, on affiche l'échec — jamais un profil inventé. Le sceau
+           « Profil Industriel Vérifié » est masqué : il affirmerait le contraire
+           de ce que l'écran montre. */
+        const seal = document.getElementById('verified-seal');
+        if (state.error || !state.data) {
+          if (seal) seal.style.display = 'none';
+          app.innerHTML = `
+            <div class="error-card" role="alert">
+              <h1>${esc(t('passport.error.title'))}</h1>
+              <p style="color:var(--muted);margin:0">${esc(t('passport.error.body'))}</p>
+              ${state.error ? `<div class="error-reason">${esc(t('passport.error.reason'))} : ${esc(state.error)}</div>` : ''}
+              <p style="margin:20px 0 0">
+                <a class="badge badge-country" href="${esc(window.location.pathname + window.location.search)}">${esc(t('passport.error.retry'))}</a>
+              </p>
+            </div>`;
+          return;
+        }
+        if (seal && !state.demo) seal.style.display = '';
+        else if (seal && state.demo) seal.style.display = 'none';
 
         const d = state.data;
         const sup = d.supplier;
@@ -588,6 +678,7 @@
         const score = d.qualityScore;
 
         app.innerHTML = `
+          ${state.demo ? `<div class="demo-banner" role="status"><span>◆</span><span>${esc(t('passport.demo.banner'))}</span></div>` : ''}
           <div class="hero-card">
             <div class="hero-top">
               <div class="supplier-title">

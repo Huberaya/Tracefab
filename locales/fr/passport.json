@@ -75,6 +75,15 @@
       "understood": "Compris",
       "sendError": "Erreur lors de l'envoi",
       "alertPrefix": "Erreur :"
+    },
+    "error": {
+      "title": "Passeport indisponible",
+      "body": "Le passeport demandé n’a pas pu être chargé. Vérifiez le lien reçu ou réessayez.",
+      "reason": "Motif signalé",
+      "retry": "Réessayer"
+    },
+    "demo": {
+      "banner": "Données de démonstration — ce passeport ne décrit aucune entreprise réelle et ne constitue pas une vérification."
     }
   }
 }

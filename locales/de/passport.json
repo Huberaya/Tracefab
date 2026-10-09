@@ -75,6 +75,15 @@
       "understood": "Verstanden",
       "sendError": "Fehler beim Senden",
       "alertPrefix": "Fehler:"
+    },
+    "error": {
+      "title": "Pass nicht verfügbar",
+      "body": "Der angeforderte Pass konnte nicht geladen werden. Prüfen Sie den erhaltenen Link oder versuchen Sie es erneut.",
+      "reason": "Gemeldeter Grund",
+      "retry": "Erneut versuchen"
+    },
+    "demo": {
+      "banner": "Demonstrationsdaten — dieser Pass beschreibt kein reales Unternehmen und ist keine Prüfung."
     }
   }
 }

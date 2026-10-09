@@ -75,6 +75,15 @@
       "understood": "Ho capito",
       "sendError": "Errore durante l'invio",
       "alertPrefix": "Errore:"
+    },
+    "error": {
+      "title": "Passaporto non disponibile",
+      "body": "Il passaporto richiesto non è stato caricato. Verifica il link ricevuto o riprova.",
+      "reason": "Motivo segnalato",
+      "retry": "Riprova"
+    },
+    "demo": {
+      "banner": "Dati di dimostrazione — questo passaporto non descrive alcuna azienda reale e non costituisce una verifica."
     }
   }
 }

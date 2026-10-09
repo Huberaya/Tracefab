@@ -84,6 +84,17 @@ const serveLocally = requestInterceptor((request) => {
   return new Response('', { status: 404 });
 });
 
+/* Passeport valide minimal : toutes les sections que la page rend. */
+const PASSPORT_PAYLOAD = {
+  passport: { id: 'p1', slug: 'atelier-rivage', headline: 'Filature intégrée de lin', tradeSecretMode: 'redacted', viewsCount: 3, lastViewedAt: '2026-01-01T00:00:00.000Z' },
+  supplier: { legalName: 'Atelier Rivage SAS', displayName: 'Atelier Rivage', countryCode: 'FR', activityTypes: ['spinning'], profileSummary: 'Filature de lin peigné.', employeeCountRange: '51-250', yearEstablished: 2001, profileCompletion: 82, contactName: 'Claire Rivage' },
+  sites: [{ id: 's1', name: 'Atelier de Roubaix', countryCode: 'FR', city: 'Roubaix', address: '12 rue du Lin', activityTypes: ['spinning'], isActive: true }],
+  certifications: [{ id: 'c1', standardName: 'GOTS', standardCode: 'GOTS 7.0', issuerName: 'Control Union', certificateNumber: 'CU-1', issuedAt: '2025-01-15', expiresAt: '2027-01-14', isVerified: true }],
+  materials: [{ id: 'm1', name: 'Lin peigné', materialType: 'yarn', originCountryCode: 'FR', composition: { linen: 100 } }],
+  qualityScore: { completeness: 82, freshness: 78, documentationCoverage: 90, consistency: 84 },
+  tradeSecretProtection: { exactAddressesMasked: true, mode: 'redacted', legalBasis: 'Directive (UE) 2016/943' },
+};
+
 async function mount() {
   const errors = [];
   const vc = new VirtualConsole();
@@ -94,17 +105,26 @@ async function mount() {
     url: 'https://tracefab.vercel.app/passport?ref=demo',
     virtualConsole: vc,
     resources: { interceptors: [serveLocally] },
+    beforeParse(window) {
+      /* Le stub doit être posé AVANT l'exécution du script : la page appelle
+         fetch() pendant le parse, donc un stub installé après la construction
+         n'était jamais utilisé. Ce test rendait en réalité le repli de
+         démonstration, aujourd'hui supprimé — d'où un payload de passeport
+         valide, qui exerce le vrai chemin de rendu. */
+      window.fetch = async (url) => {
+        const rel = String(url).replace(/^\/+/, '');
+        if (rel.startsWith('api/')) {
+          return { ok: true, status: 200, json: async () => PASSPORT_PAYLOAD };
+        }
+        for (const candidate of [rel, `public/${rel}`]) {
+          try {
+            return { ok: true, status: 200, json: async () => JSON.parse(await readFile(at(candidate), 'utf8')) };
+          } catch { /* candidat suivant */ }
+        }
+        return { ok: false, status: 404, json: async () => null };
+      };
+    },
   });
-  dom.window.fetch = async (url) => {
-    const rel = String(url).replace(/^\/+/, '');
-    for (const candidate of [rel, `public/${rel}`]) {
-      try {
-        return { ok: true, status: 200, json: async () => JSON.parse(await readFile(at(candidate), 'utf8')) };
-      } catch { /* candidat suivant : /api/passport/... tombe ici, ce qui déclenche
-                  le repli de démonstration — le chemin de rendu que l'on teste. */ }
-    }
-    return { ok: false, status: 404, json: async () => null };
-  };
   /* Attendre le rendu effectif (le gabarit est injecté après le fetch), pas une
      simple attente de dictionnaire : sinon on asserte sur une page vide. */
   for (let i = 0; i < 200; i += 1) {
@@ -252,7 +272,11 @@ console.log('\nF. Les 7 dictionnaires sont complets, distincts et cohérents');
 // ---------------------------------------------------------------------------
 
 const reference = Object.keys(dicts.fr).sort().join('|');
-eq(Object.keys(dicts.fr).length, 56, '56 chaînes par langue');
+/* 61 = les 56 chaînes d'origine + 5 ajoutées avec l'état d'erreur :
+   error.title, error.body, error.reason, error.retry et demo.banner.
+   Avant, un échec d'API affichait un fournisseur inventé sans aucun texte
+   d'erreur à traduire. */
+eq(Object.keys(dicts.fr).length, 61, '61 chaînes par langue');
 for (const lang of LANGS) {
   eq(Object.keys(dicts[lang]).sort().join('|'), reference, `${lang} expose exactement le même jeu de clés que fr`);
   const empty = Object.entries(dicts[lang]).filter(([, v]) => !String(v || '').trim());

@@ -75,6 +75,15 @@
       "understood": "Compreendido",
       "sendError": "Erro ao enviar",
       "alertPrefix": "Erro:"
+    },
+    "error": {
+      "title": "Passaporte indisponível",
+      "body": "Não foi possível carregar o passaporte pedido. Verifique a ligação recebida ou tente novamente.",
+      "reason": "Motivo indicado",
+      "retry": "Tentar novamente"
+    },
+    "demo": {
+      "banner": "Dados de demonstração — este passaporte não descreve nenhuma empresa real e não constitui uma verificação."
     }
   }
 }
