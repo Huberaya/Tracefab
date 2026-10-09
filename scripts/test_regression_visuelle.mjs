@@ -39,7 +39,63 @@ const SEUIL_PCT = 0.10;
 
 mkdirSync(DOSSIER, { recursive: true });
 
+/**
+ * Empreinte de l'environnement de rendu.
+ *
+ * Une reference en pixels n'a de sens que dans l'environnement qui l'a
+ * produite. Les fontes distantes sont bloquees pour la stabilite, mais le
+ * repli retombe sur les polices SYSTEME, qui different d'une machine a
+ * l'autre. Un meme code rend donc differemment ici et sur un runner, et le
+ * test rougit pour une raison etrangere au code — c'est exactement ce qui
+ * est arrive sur la CI.
+ *
+ * On mesure donc la largeur reellement rendue d'un texte temoin dans les
+ * trois familles de repli. C'est le signal direct : si les polices
+ * disponibles changent, ces largeurs changent.
+ */
+const EMPREINTE = join(DOSSIER, '_environnement.json');
+
+async function empreinte(navigateur) {
+  const page = await navigateur.newPage();
+  const largeurs = await page.evaluate(() => {
+    const mesurer = (famille) => {
+      const el = document.createElement('span');
+      el.textContent = 'Traçabilité textile 0123456789 WAVE';
+      el.style.cssText = `position:absolute;white-space:nowrap;font:100px ${famille}`;
+      document.body.appendChild(el);
+      const l = Math.round(el.getBoundingClientRect().width * 100) / 100;
+      el.remove();
+      return l;
+    };
+    return { sans: mesurer('sans-serif'), serif: mesurer('serif'), mono: mesurer('monospace') };
+  });
+  await page.close();
+  return { navigateur: navigateur.version(), largeurs };
+}
+
 const nav = await chromium.launch();
+const ENV_COURANT = await empreinte(nav);
+
+if (!MAJ && existsSync(EMPREINTE)) {
+  const attendu = JSON.parse(readFileSync(EMPREINTE, 'utf8'));
+  const memeRendu = JSON.stringify(attendu.largeurs) === JSON.stringify(ENV_COURANT.largeurs)
+    && attendu.navigateur === ENV_COURANT.navigateur;
+  if (!memeRendu) {
+    await nav.close();
+    console.log('\n  TEST NON EXECUTE — environnement de rendu different de la reference.');
+    console.log(`    reference : Chromium ${attendu.navigateur} · largeurs ${JSON.stringify(attendu.largeurs)}`);
+    console.log(`    ici       : Chromium ${ENV_COURANT.navigateur} · largeurs ${JSON.stringify(ENV_COURANT.largeurs)}`);
+    console.log('\n  Les polices systeme de repli ne sont pas les memes : comparer des');
+    console.log('  pixels ici n\'apprendrait rien sur le code. AUCUNE verification');
+    console.log('  visuelle n\'a donc eu lieu. Pour couvrir cette machine, rejouer la');
+    console.log('  reference avec « npm run test:regression -- --maj » puis la relire.\n');
+    // Sortie 0 assumee : ce test est volontairement hors de la boucle CI
+    // (voir .github/workflows/ci.yml). Le rendre rouge ici punirait une
+    // machine saine. Le message ci-dessus dit sans ambiguite que rien n'a
+    // ete verifie.
+    process.exit(0);
+  }
+}
 let echecs = 0, compares = 0, ecrits = 0, nouveaux = 0;
 const vus = new Set();
 
@@ -89,7 +145,9 @@ for (const s of SURFACES) {
 await nav.close();
 
 if (MAJ) {
+  writeFileSync(EMPREINTE, `${JSON.stringify(ENV_COURANT, null, 2)}\n`);
   console.log(`\n  ${ecrits} reference(s) ecrite(s) dans ${DOSSIER}/`);
+  console.log(`  empreinte de rendu : Chromium ${ENV_COURANT.navigateur}`);
   console.log('  Relire les images modifiees avant de commiter : c est la revue.');
   process.exit(0);
 }

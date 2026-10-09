@@ -3,8 +3,13 @@
 Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
 la base Neon de production. Pas en relisant les en-têtes.
 
-**0 PR ouverte · dernière CI verte · Neon : 35/35 migrations appliquées,
-dont la 35 `public_read_context`.**
+**0 PR ouverte · Neon : 35/35 migrations appliquées, dont la 35
+`public_read_context`.**
+
+> **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
+> que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les
+> deux causes et leur correction sont au §11. La règle qui manquait : après
+> chaque poussée, lire la conclusion des jobs avant d'annoncer quoi que ce soit.
 
 > Ce bloc ne porte plus de SHA. Il en portait un, `5b78ac6`, resté figé
 > pendant que `main` avançait de sept commits : un en-tête qui se périme à
@@ -458,138 +463,6 @@ correction : **0 infraction** et **54/54**.
 Le **test de régression** existe désormais : `npm run test:regression`
 (§10).
 
-## 10 · Le test de régression — RÉGLÉ
-
-Dernier des neuf contrôles exigés après chaque phase, et le seul resté à zéro
-script. Il avait été laissé ouvert pour une raison juste : **une régression se
-mesure contre une référence validée**, et les phases 6 à 12 n'étaient pas
-validées. Elles le sont depuis le chantier 7.
-
-### Ce que ce test attrape et que les autres ne voient pas
-
-Les 62 autres gardes vérifient une règle **connue à l'avance** : des jetons,
-du contraste, des routes, des clés i18n. Celui-ci répond à la seule question
-qu'aucune règle ne couvre — *« quelque chose a-t-il bougé que personne n'a
-voulu ? »* — en comparant le rendu de **19 surfaces × 2 écrans** à une
-référence versionnée.
-
-### Le travail n'était pas de comparer, il était de rendre reproductible
-
-Une référence bâtie sur une page instable fige du bruit et sonne dans le vide à
-chaque exécution. Avant d'écrire la moindre image, j'ai donc capturé chaque
-surface **deux fois de suite** et comparé. Quatre sources de bruit sont
-apparues et ont été neutralisées :
-
-| Bruit | Pourquoi c'est fatal | Traitement |
-|---|---|---|
-| Fontes distantes | selon que le réseau répond, Inter Tight arrive ou non, et toute la métrique du texte change | requêtes `fonts.googleapis`/`gstatic` bloquées — rendu toujours en police de repli |
-| Horloge, `Math.random` | une date ou un « il y a 3 min » diffère à chaque passage | `Date` et `Math.random` figés à l'injection |
-| Animations | une transition à mi-course rend un pixel différent | `animation`/`transition` coupées avant capture |
-| Compteurs animés | `requestAnimationFrame` ignore une horloge figée — **0,003 % d'écart résiduel mesuré sur l'accueil** | `[data-tf-count]` poussés à leur valeur finale |
-
-Mesure de contrôle après traitement : **19 surfaces, écart 0,000 %**. C'est
-cette mesure, et non une intuition, qui autorisait à écrire la référence.
-
-### Éprouvé par mutation
-
-| Mutation | Détectée |
-|---|---|
-| couleur du socle `#097b53` → `#0d8a5e` (écart imperceptible à l'œil) | 0,274 % à 0,690 % sur de nombreuses surfaces |
-| `p { margin: 1em 0 }` retiré d'une seule page | 3,578 % bureau · 7,687 % mobile |
-
-Seuil retenu : **0,10 %**. En dessous, c'est de l'anticrénelage ; au-dessus,
-c'est un déplacement de bloc, une couleur ou une typographie.
-
-### Une limite à connaître
-
-La référence est **liée à son environnement de rendu**. Les fontes distantes
-sont bloquées, mais le repli dépend des polices système : une autre machine
-peut produire un écart de masse. Le test n'est donc **pas** branché sur la CI —
-il tournerait en rouge pour une raison étrangère au code. Il se lance en local
-avant livraison. Le jour où l'on voudra l'automatiser, il faudra figer le rendu
-dans un conteneur, pas ajuster le seuil.
-
-### Trouvé en chemin, non corrigé
-
-La vue `products` de la console rend **1 249 lignes de tableau d'un bloc —
-86 543 px de haut**, soit 96 écrans, sans pagination ni virtualisation. La
-capture Chrome échouait dessus. La référence plafonne à 6 000 px, ce qui règle
-le test mais **pas le défaut** : une table de 1 248 produits sans pagination
-contredit l'intention « centre de contrôle » et pèse sur le navigateur.
-
-### Le garde-fou
-
-`npm run test:regression` · `-- --maj` réécrit la référence, qui est
-versionnée : une évolution de rendu se relit en revue sous forme d'images
-modifiées. Le test échoue aussi sur une **référence orpheline**, pour qu'une
-surface retirée ne laisse pas croire à une couverture disparue.
-
-## 9 · Le système de design n'atteignait que la moitié du produit — RÉGLÉ
-
-**L'intitulé du chantier sous-estimait le défaut.** « Cinq surfaces sur neuf ne
-chargent pas `tracefab-core.css` » décrivait un symptôme. La mesure a montré
-trois choses, dont deux n'étaient pas dans l'énoncé :
-
-| Mesure | Résultat |
-|---|---|
-| Surfaces chargeant `tracefab-core.css` | **4 / 9** |
-| Surfaces chargeant la fonte **Inter Tight** | **4 / 9** — dont `brand-console`, qui chargeait le socle mais déclarait `Inter` et n'embarquait **aucune** fonte |
-| Jetons locaux dupliquant un jeton du socle | **30 sur 32**, écart de 1 à 15 points RVB |
-
-Les cinq pages orphelines ne référençaient **aucun** token `--tf-*` ni aucune
-classe `.tf-*` : elles étaient autonomes, avec un **vocabulaire parallèle
-hérité** (`--green`, `--dark`, `--muted`, `--line`). Ajouter la feuille sans
-toucher au vocabulaire n'aurait donc rien propagé — seulement injecté un reset
-global et 128 jetons inutilisés. Le vrai défaut était la **duplication**, pas
-l'absence de balise.
-
-### Ce qui a été fait
-
-Les jetons locaux pointent désormais sur le socle (`--green:
-var(--tf-trust-verified-ink)`). Les exceptions sont **explicites et
-commentées** : le socle modélise ses pastels en `rgba` quand ces surfaces
-utilisent des aplats, et il n'offre pas de jeton de filet.
-
-Le reset de `tracefab-core.css` (`p{margin:0}`, `body{line-height:1.58}`,
-`button{padding:0}`) a été neutralisé là où il déplaçait la mise en page :
-`p{margin:1em 0}` reproduit exactement la marge par défaut du navigateur, qui
-suit la taille de police, et `.dpp-tab-btn{line-height:normal}` rend aux
-onglets du passeport les 9 px qu'ils perdaient.
-
-### La mesure qui a servi d'arbitre
-
-Une sonde injecte `tracefab-core.css` dans la page **déjà corrigée** et compte
-les propriétés calculées qui bougent. Tant que le compte n'est pas nul, la page
-n'a pas absorbé le socle. Point de départ : **54** propriétés sur 5 pages.
-Arrivée : **0**.
-
-### Une correction de contraste révélée par l'alignement
-
-L'alias a fait tomber trois surfaces à **4,50** sur la pastille `#e4f3ec` —
-97 éléments en infraction. `--tf-trust-verified-ink` avait été calculé contre
-`#f7f8f4` et `#eaf5ef`, **jamais contre ce fond-là**. Corrigé **dans le socle**
-(`#0a7d54` → `#097b53`), pas sur les éléments : 4,62 au minimum sur les cinq
-fonds réels. C'est le bénéfice attendu d'une source unique — la correction
-porte partout d'un coup.
-
-### Le garde-fou
-
-`npm run test:systeme-design` — 4 règles, **4 mutations capturées** : socle
-retiré d'une surface, fonte retirée, `Inter` redéclaré en dur, alias retombé en
-valeur dupliquée. La liste des exceptions tolérées vit dans le script : toute
-nouvelle exception doit y être ajoutée sciemment.
-
-Un faux positif au premier essai : un commentaire HTML citant `<style>` pour
-expliquer l'ordre de chargement était pris pour la vraie balise, et le contrôle
-accusait une page correcte. **Un contrôle qui échoue peut être un contrôle
-faux.**
-
-### Vérifications
-
-9/9 surfaces conformes · accessibilité **19 surfaces, 0 infraction** · **0**
-cible tactile sous 40 px · **62** scripts `test:*` verts · build, `tsc`,
-`api:typecheck` verts.
-
 ## 8 · Périmètre — VÉRIFIÉ, ET LE DOCUMENT AVAIT DÉRIVÉ
 
 Cette section n'est pas un chantier : c'est la frontière du document. Les
@@ -663,6 +536,237 @@ sans nommer de garde. Un registre qui s'auto-absout est exactement le défaut
 que ce test attrape.
 
 ---
+
+## 9 · Le système de design n'atteignait que la moitié du produit — RÉGLÉ
+
+**L'intitulé du chantier sous-estimait le défaut.** « Cinq surfaces sur neuf ne
+chargent pas `tracefab-core.css` » décrivait un symptôme. La mesure a montré
+trois choses, dont deux n'étaient pas dans l'énoncé :
+
+| Mesure | Résultat |
+|---|---|
+| Surfaces chargeant `tracefab-core.css` | **4 / 9** |
+| Surfaces chargeant la fonte **Inter Tight** | **4 / 9** — dont `brand-console`, qui chargeait le socle mais déclarait `Inter` et n'embarquait **aucune** fonte |
+| Jetons locaux dupliquant un jeton du socle | **30 sur 32**, écart de 1 à 15 points RVB |
+
+Les cinq pages orphelines ne référençaient **aucun** token `--tf-*` ni aucune
+classe `.tf-*` : elles étaient autonomes, avec un **vocabulaire parallèle
+hérité** (`--green`, `--dark`, `--muted`, `--line`). Ajouter la feuille sans
+toucher au vocabulaire n'aurait donc rien propagé — seulement injecté un reset
+global et 128 jetons inutilisés. Le vrai défaut était la **duplication**, pas
+l'absence de balise.
+
+### Ce qui a été fait
+
+Les jetons locaux pointent désormais sur le socle (`--green:
+var(--tf-trust-verified-ink)`). Les exceptions sont **explicites et
+commentées** : le socle modélise ses pastels en `rgba` quand ces surfaces
+utilisent des aplats, et il n'offre pas de jeton de filet.
+
+Le reset de `tracefab-core.css` (`p{margin:0}`, `body{line-height:1.58}`,
+`button{padding:0}`) a été neutralisé là où il déplaçait la mise en page :
+`p{margin:1em 0}` reproduit exactement la marge par défaut du navigateur, qui
+suit la taille de police, et `.dpp-tab-btn{line-height:normal}` rend aux
+onglets du passeport les 9 px qu'ils perdaient.
+
+### La mesure qui a servi d'arbitre
+
+Une sonde injecte `tracefab-core.css` dans la page **déjà corrigée** et compte
+les propriétés calculées qui bougent. Tant que le compte n'est pas nul, la page
+n'a pas absorbé le socle. Point de départ : **54** propriétés sur 5 pages.
+Arrivée : **0**.
+
+### Une correction de contraste révélée par l'alignement
+
+L'alias a fait tomber trois surfaces à **4,50** sur la pastille `#e4f3ec` —
+97 éléments en infraction. `--tf-trust-verified-ink` avait été calculé contre
+`#f7f8f4` et `#eaf5ef`, **jamais contre ce fond-là**. Corrigé **dans le socle**
+(`#0a7d54` → `#097b53`), pas sur les éléments : 4,62 au minimum sur les cinq
+fonds réels. C'est le bénéfice attendu d'une source unique — la correction
+porte partout d'un coup.
+
+### Le garde-fou
+
+`npm run test:systeme-design` — 4 règles, **4 mutations capturées** : socle
+retiré d'une surface, fonte retirée, `Inter` redéclaré en dur, alias retombé en
+valeur dupliquée. La liste des exceptions tolérées vit dans le script : toute
+nouvelle exception doit y être ajoutée sciemment.
+
+Un faux positif au premier essai : un commentaire HTML citant `<style>` pour
+expliquer l'ordre de chargement était pris pour la vraie balise, et le contrôle
+accusait une page correcte. **Un contrôle qui échoue peut être un contrôle
+faux.**
+
+### Vérifications
+
+9/9 surfaces conformes · accessibilité **19 surfaces, 0 infraction** · **0**
+cible tactile sous 40 px · **62** scripts `test:*` verts · build, `tsc`,
+`api:typecheck` verts.
+
+## 10 · Le test de régression — RÉGLÉ
+
+Dernier des neuf contrôles exigés après chaque phase, et le seul resté à zéro
+script. Il avait été laissé ouvert pour une raison juste : **une régression se
+mesure contre une référence validée**, et les phases 6 à 12 n'étaient pas
+validées. Elles le sont depuis le chantier 7.
+
+### Ce que ce test attrape et que les autres ne voient pas
+
+Les 62 autres gardes vérifient une règle **connue à l'avance** : des jetons,
+du contraste, des routes, des clés i18n. Celui-ci répond à la seule question
+qu'aucune règle ne couvre — *« quelque chose a-t-il bougé que personne n'a
+voulu ? »* — en comparant le rendu de **19 surfaces × 2 écrans** à une
+référence versionnée.
+
+### Le travail n'était pas de comparer, il était de rendre reproductible
+
+Une référence bâtie sur une page instable fige du bruit et sonne dans le vide à
+chaque exécution. Avant d'écrire la moindre image, j'ai donc capturé chaque
+surface **deux fois de suite** et comparé. Quatre sources de bruit sont
+apparues et ont été neutralisées :
+
+| Bruit | Pourquoi c'est fatal | Traitement |
+|---|---|---|
+| Fontes distantes | selon que le réseau répond, Inter Tight arrive ou non, et toute la métrique du texte change | requêtes `fonts.googleapis`/`gstatic` bloquées — rendu toujours en police de repli |
+| Horloge, `Math.random` | une date ou un « il y a 3 min » diffère à chaque passage | `Date` et `Math.random` figés à l'injection |
+| Animations | une transition à mi-course rend un pixel différent | `animation`/`transition` coupées avant capture |
+| Compteurs animés | `requestAnimationFrame` ignore une horloge figée — **0,003 % d'écart résiduel mesuré sur l'accueil** | `[data-tf-count]` poussés à leur valeur finale |
+
+Mesure de contrôle après traitement : **19 surfaces, écart 0,000 %**. C'est
+cette mesure, et non une intuition, qui autorisait à écrire la référence.
+
+### Éprouvé par mutation
+
+| Mutation | Détectée |
+|---|---|
+| couleur du socle `#097b53` → `#0d8a5e` (écart imperceptible à l'œil) | 0,274 % à 0,690 % sur de nombreuses surfaces |
+| `p { margin: 1em 0 }` retiré d'une seule page | 3,578 % bureau · 7,687 % mobile |
+
+Seuil retenu : **0,10 %**. En dessous, c'est de l'anticrénelage ; au-dessus,
+c'est un déplacement de bloc, une couleur ou une typographie.
+
+### Une limite à connaître
+
+La référence est **liée à son environnement de rendu**. Les fontes distantes
+sont bloquées, mais le repli dépend des polices système : une autre machine
+peut produire un écart de masse.
+
+> **Correction.** La version précédente de ce paragraphe affirmait que le test
+> « n'est pas branché sur la CI ». C'était **faux**, et je l'avais écrit sans
+> ouvrir `ci.yml` : la boucle de la CI lançait *tous* les scripts `test:*` sauf
+> `neon`, `staging` et `test:p2`. `test:regression` en faisait donc partie, et
+> il a fait rougir la CI. L'exclusion est maintenant **réelle** : elle est
+> écrite nommément dans `.github/workflows/ci.yml`, avec son motif.
+
+Deux garde-fous posés depuis :
+
+- la boucle de la CI exclut `test:regression` **par son nom**, à côté de `neon`
+  et `staging`, motif documenté sur place ;
+- le script enregistre une **empreinte de l'environnement de rendu** à côté de
+  la référence (version de Chromium et largeur réellement rendue d'un texte
+  témoin en `sans-serif`, `serif` et `monospace`). Sur une machine dont les
+  polices système diffèrent, il affiche `TEST NON EXECUTE` et dit explicitement
+  qu'aucune vérification n'a eu lieu, au lieu d'accuser le code.
+
+Vérifié par mutation : largeur de repli modifiée dans l'empreinte → le test
+refuse de comparer et le dit. Le jour où l'on voudra l'automatiser vraiment, il
+faudra figer le rendu dans un conteneur, pas ajuster le seuil.
+
+### Trouvé en chemin, non corrigé
+
+La vue `products` de la console rend **1 249 lignes de tableau d'un bloc —
+86 543 px de haut**, soit 96 écrans, sans pagination ni virtualisation. La
+capture Chrome échouait dessus. La référence plafonne à 6 000 px, ce qui règle
+le test mais **pas le défaut** : une table de 1 248 produits sans pagination
+contredit l'intention « centre de contrôle » et pèse sur le navigateur.
+
+### Le garde-fou
+
+`npm run test:regression` · `-- --maj` réécrit la référence, qui est
+versionnée : une évolution de rendu se relit en revue sous forme d'images
+modifiées. Le test échoue aussi sur une **référence orpheline**, pour qu'une
+surface retirée ne laisse pas croire à une couverture disparue.
+
+## 11 · La CI était rouge depuis trois livraisons — RÉGLÉ
+
+### Ce qui s'est passé
+
+Les livraisons #38, #39 et #40 ont toutes échoué sur GitHub Actions. Je
+validais la suite en local, je la déclarais verte, et je poussais sans jamais
+ouvrir la CI. L'écart entre « vert chez moi » et « vert sur la CI » est
+précisément ce que la CI existe pour révéler.
+
+Sur la livraison #40 : `Socle` ✅ · `Parcours` ✅ · `Vérification` ❌ ·
+`Base — isolation RLS exécutée` ❌.
+
+### Cause 1 — la chaîne de migrations ne passait pas sur une base vierge
+
+La migration 35 `20261009180000_public_read_context` se terminait par cinq
+`GRANT EXECUTE ON FUNCTION … TO tracefab_app`. **Aucune migration antérieure ne
+crée ce rôle** : en CI il est créé par `scripts/seed_rls_fixture.mjs`, qui
+tourne *après* `db:deploy`. Sur Neon la migration passait parce que le rôle y
+préexistait ; sur une base neuve, toute la chaîne s'arrêtait là.
+
+Reproduit sur une base vierge avant de corriger :
+
+```
+Applying migration `20261009180000_public_read_context`
+Error: P3018 — Database error code: 42704
+role "tracefab_app" does not exist
+```
+
+Un rôle est une donnée d'**infrastructure**, pas de schéma. La migration ne
+doit donc pas exiger son existence : les cinq `GRANT` sont désormais encadrés
+par `IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app')`. Là où
+le rôle existe, les droits sont posés comme avant ; là où il n'existe pas
+encore, `seed_rls_fixture.mjs` les pose ensuite via son
+`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public`. Vérifié en rejouant les
+**35 migrations depuis une base vide** : chaîne complète appliquée.
+
+### Cause 1 bis — la fixture ne publiait aucun produit
+
+Une fois les migrations passées, l'étage base échouait encore, et pour une
+bonne raison : la section E de `test:neon:rls` vérifie la lecture publique, or
+la fixture CI ne créait que des brouillons. Le test disait donc vrai en
+échouant — *« aucun produit publié : la lecture publique ne peut pas être
+prouvée »*.
+
+Corrigé du bon côté : la fixture publie maintenant **un produit et garde un
+brouillon par locataire**. La CI prouve désormais pour de bon que le produit
+publié est lisible anonymement et que le brouillon reste invisible — ce qui
+n'était jusqu'ici vérifié que sur Neon.
+
+### Cause 2 — le test de régression tournait en CI
+
+La boucle de la CI lance tous les scripts `test:*` sauf `neon`, `staging` et
+`test:p2`. `test:regression` y entrait donc, avec une référence en pixels
+capturée ici : les polices système du runner diffèrent, l'écart est massif,
+l'échec est garanti. Voir §10 pour la correction et la documentation du motif.
+
+### Le vrai manquement
+
+Aucune de ces deux causes n'est grave. Ce qui l'est, c'est d'avoir annoncé
+« vert » trois fois sans regarder. La règle, maintenant appliquée : **après
+chaque poussée, lire la conclusion des jobs avant d'annoncer le résultat.**
+
+### Outil posé au passage
+
+Corriger une migration déjà appliquée désaligne le `checksum` que Prisma
+stocke en base. J'ai donc ajouté `scripts/verifier_checksums_migrations.mjs` :
+sans argument il compare et signale, avec `--appliquer` il réaligne dans une
+transaction puis **relit depuis la base** pour confirmer.
+
+Mesure faite plutôt que supposée : j'avais annoncé que ce désalignement
+casserait les déploiements Neon. **C'est faux pour cette version de Prisma.**
+Checksum volontairement corrompu, puis :
+
+| commande | résultat observé |
+|---|---|
+| `prisma migrate deploy` | code 0 — « No pending migrations to apply. » |
+| `prisma migrate status` | « Database schema is up to date! » |
+
+Prisma 6 ne revérifie pas le checksum des migrations déjà appliquées. Le
+réalignement sur Neon reste de l'hygiène recommandée, **pas une urgence**.
 
 ## Déjà réglé — ne pas reprendre
 

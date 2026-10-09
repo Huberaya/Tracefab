@@ -203,11 +203,22 @@ CREATE POLICY users_update_worker ON users
 -- des lignes a l'interieur d'un droit deja accorde.
 -- ---------------------------------------------------------------------------
 
-GRANT EXECUTE ON FUNCTION tracefab_public_context() TO tracefab_app;
-GRANT EXECUTE ON FUNCTION tracefab_product_is_public(uuid) TO tracefab_app;
-GRANT EXECUTE ON FUNCTION tracefab_material_is_public(uuid) TO tracefab_app;
-GRANT EXECUTE ON FUNCTION tracefab_supplier_site_is_public(uuid) TO tracefab_app;
-GRANT EXECUTE ON FUNCTION tracefab_public_brand(uuid) TO tracefab_app;
+-- Le role est une donnee d'infrastructure, pas de schema : il existe deja en
+-- production mais pas sur une base vierge, ou il est cree APRES les migrations
+-- (scripts/seed_rls_fixture.mjs, qui pose ensuite GRANT EXECUTE ON ALL
+-- FUNCTIONS). Un GRANT inconditionnel faisait donc echouer toute la chaine de
+-- migrations sur une base neuve avec « role tracefab_app does not exist ».
+DO $grants$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
+    GRANT EXECUTE ON FUNCTION tracefab_public_context() TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_product_is_public(uuid) TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_material_is_public(uuid) TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_supplier_site_is_public(uuid) TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_public_brand(uuid) TO tracefab_app;
+  END IF;
+END
+$grants$;
 
 -- ---------------------------------------------------------------------------
 -- 7. Publication initiale

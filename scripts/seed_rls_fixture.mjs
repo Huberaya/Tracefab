@@ -109,12 +109,19 @@ for (const l of locataires) {
     `insert into suppliers (id, organization_id) values ($1, $2)
      on conflict (id) do nothing`, [fournisseurId, orgId]);
 
+  // Le produit 1 est PUBLIE (public_slug + statut actif), le produit 2 reste
+  // brouillon. Sans ce contraste la section E de test:neon:rls n'a rien a
+  // prouver : elle verifie justement qu'un produit publie est lisible
+  // anonymement et qu'un brouillon ne l'est pas.
   for (const n of [1, 2]) {
+    const publie = n === 1;
     await db.query(
-      `insert into tracefab_products (id, brand_organization_id, reference, name)
-       values ($1, $2, $3, $4) on conflict (id) do nothing`,
+      `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug)
+       values ($1, $2, $3, $4, $5, $6) on conflict (id) do nothing`,
       [uuid(`prod-${l.cle}-${n}`), orgId, `${l.cle.toUpperCase()}-00${n}`,
-        `Article ${n} ${l.nom}`]);
+        `Article ${n} ${l.nom}`,
+        publie ? 'active' : 'draft',
+        publie ? `${l.cle}-00${n}` : null]);
   }
 
   // Le declencheur tracefab_validate_document_location impose le bucket prive,
