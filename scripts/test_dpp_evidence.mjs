@@ -210,6 +210,33 @@ await controle('les classes et etats ajoutes ont une regle CSS', () => {
     'data-dpp-state="non-renseigne" sans regle : l’absence ne se distinguerait pas d’une valeur sourcee');
 });
 
+/* --- 5. Le test doit pouvoir tourner en CI --------------------------------
+ *
+ * jsdom 30 exige Node ^22.22.2 alors que la CI est epinglee sur Node 20 : le
+ * test passait en local et mourait en CI sans qu'aucune etape de verification
+ * ne l'ait execute. Verifier ici que la plage d'engines admet le Node de la CI
+ * fait echouer le changement en local, au lieu de le decouvrir sur un run. */
+await controle('jsdom est compatible avec le Node epingle en CI', () => {
+  const ci = readFileSync('.github/workflows/ci.yml', 'utf8');
+  const m = ci.match(/NODE_VERSION:\s*'?([0-9]+)/);
+  assert.ok(m, 'NODE_VERSION introuvable dans .github/workflows/ci.yml');
+  const majeurCi = Number(m[1]);
+  const engines = JSON.parse(readFileSync('node_modules/jsdom/package.json', 'utf8')).engines;
+  const plage = engines && engines.node;
+  assert.ok(plage, 'jsdom ne declare aucune plage engines.node');
+  // Trois formes suffisent ici : ^X, >=X et X.Y ou X, separees par ||.
+  const admis = plage.split('||').map((p) => p.trim()).some((p) => {
+    const n = p.match(/(\d+)(?:\.(\d+))?/);
+    if (!n) return false;
+    const majeur = Number(n[1]);
+    if (p.startsWith('^')) return majeur === majeurCi;
+    if (p.startsWith('>=')) return majeurCi >= majeur;
+    return majeur === majeurCi;
+  });
+  assert.ok(admis,
+    `jsdom exige node "${plage}" mais la CI est sur Node ${majeurCi} : le test n'y tournerait pas`);
+});
+
 console.log('');
 if (echecs > 0) {
   console.log(`test:dpp:evidence — ${echecs} échec(s) sur ${verifies + echecs} contrôles.`);
