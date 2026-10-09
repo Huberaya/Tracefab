@@ -92,6 +92,7 @@
     "test:vault:register": "node scripts/test_vault_register.mjs",
     "test:i18n:serving": "node scripts/test_i18n_serving.mjs",
     "test:i18n:invitation": "node scripts/test_i18n_invitation.mjs",
+    "test:i18n:passport": "node scripts/test_i18n_passport.mjs",
     "test:typecheck:baseline": "node scripts/test_typecheck_baseline.mjs",
     "test:i18n:unified": "node scripts/test_i18n_unified.mjs",
     "test:deploy:config": "node scripts/test_deploy_config.mjs",

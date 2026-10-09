@@ -66,8 +66,31 @@ const publicPassportPath = path.resolve('passport/index.html');
 assert(fs.existsSync(publicPassportPath), 'passport/index.html must exist');
 const publicPassport = fs.readFileSync(publicPassportPath, 'utf8');
 assert(publicPassport.includes('Universal Supplier Passport'), 'Page must contain title');
-assert(publicPassport.includes('Protection des Secrets d\'Affaires Active'), 'Page must state Trade Secret Protection Directive');
-assert(publicPassport.includes('Demander accès complet (NDA)'), 'Page must contain CTA for brands');
+/*
+ * La page est passée sur le runtime i18n partagé : le contenu métier vit dans
+ * locales/{lang}/passport.json, plus dans le HTML. Ces trois assertions
+ * cherchaient les libellés français dans le source de la page — elles
+ * échouaient donc sur une migration RÉUSSIE.
+ *
+ * La garantie visée (« la page énonce la directive sur les secrets d'affaires »,
+ * « la page porte un CTA pour les marques ») est intacte, mais elle se vérifie
+ * désormais en deux endroits : la page référence la clé, et le dictionnaire
+ * français contient le texte. Le rendu effectif est couvert par
+ * test:i18n:passport, qui monte la page dans jsdom.
+ */
+const passportFr = JSON.parse(
+  fs.readFileSync(path.resolve('locales/fr/passport.json'), 'utf8'),
+).passport;
+assert(publicPassport.includes("t('passport.nda.title')"), 'Page must render the trade-secret notice');
+assert(
+  String(passportFr.nda?.title || '').includes("Protection des Secrets d'Affaires Active"),
+  'Trade Secret Protection Directive must be stated in the French dictionary',
+);
+assert(publicPassport.includes("t('passport.hero.requestFull')"), 'Page must render the CTA for brands');
+assert(
+  String(passportFr.hero?.requestFull || '').includes('Demander accès complet (NDA)'),
+  'The CTA wording must be present in the French dictionary',
+);
 assert(publicPassport.includes('/api/passport/'), 'Page must call passport API');
 console.log('✓ Public Verifiable Passport Viewer (passport/index.html) verified');
 

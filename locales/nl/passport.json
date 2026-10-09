@@ -1,0 +1,80 @@
+{
+  "passport": {
+    "meta": {
+      "title": "Universeel Leverancierspaspoort | TRACEFAB Verified",
+      "description": "Geverifieerd Universeel Leverancierspaspoort op Tracefab. Industriële identiteit, actieve certificeringen en MVO-conformiteit."
+    },
+    "nav": {
+      "passport": "Universeel Leverancierspaspoort",
+      "verified": "Geverifieerd Industrieel Profiel"
+    },
+    "loading": "Leverancierspaspoort wordt geladen…",
+    "hero": {
+      "foundedIn": "Opgericht in {year}",
+      "headcount": "Personeel: {range}",
+      "audited": "✓ Geaudit profiel",
+      "requestFull": "Volledige toegang aanvragen (NDA)"
+    },
+    "kpi": {
+      "profile": "Profielvolledigheid",
+      "evidence": "Documentair Bewijs",
+      "certifications": "Actieve Certificeringen",
+      "sites": "Opgegeven Locaties"
+    },
+    "nda": {
+      "title": "Bescherming van bedrijfsgeheimen actief (EU-richtlijn 2016/943)",
+      "body": "Exacte fabrieksadressen, nominale productiecapaciteiten en exclusieve onderaannemingsrelaties worden standaard verborgen. Geaudite merken kunnen directe toegang aanvragen om de ruwe bewijsstukken te ontgrendelen."
+    },
+    "certs": {
+      "title": "🏅 Erkende Certificeringen & Labels",
+      "count": "{count} actief",
+      "verified": "✓ AI-geverifieerd",
+      "issuer": "Uitgever:",
+      "issuerFallback": "Geaccrediteerde instantie",
+      "number": "Registratienr.:",
+      "validUntil": "Geldig tot:"
+    },
+    "sites": {
+      "title": "🏭 Geverifieerde Productielocaties",
+      "count": "{count} locatie(s)",
+      "active": "Actief",
+      "location": "Locatie:",
+      "address": "Adres:",
+      "activities": "Activiteiten:"
+    },
+    "materials": {
+      "title": "🧵 Beschikbare Materialen & Circulaire Capaciteiten",
+      "count": "{count} referentie(s)",
+      "typeFallback": "Stof",
+      "origin": "Vezelherkomst:",
+      "composition": "Samenstelling:"
+    },
+    "sticky": {
+      "title": "Vertegenwoordigt u een modemerk of een opdrachtgever?",
+      "body": "Koppel uw merkconsole aan dit paspoort om de gegevens met 1 klik te importeren.",
+      "cta": "Volledige toegang aanvragen"
+    },
+    "modal": {
+      "eyebrow": "Toegang voor Opdrachtgevers",
+      "title": "Volledige toegang aanvragen",
+      "intro": "Vul dit formulier in om het kwaliteitsteam van {supplier} op de hoogte te brengen. Als u al een Tracefab-merkaccount hebt, worden uw omgevingen automatisch gekoppeld.",
+      "supplierFallback": "deze leverancier",
+      "nameLabel": "Uw voor- en achternaam *",
+      "namePlaceholder": "bijv. Marie Dupont",
+      "emailLabel": "Uw zakelijke e-mail *",
+      "emailPlaceholder": "marie@mijnmerk.com",
+      "companyLabel": "Naam van uw merk / bedrijf *",
+      "companyPlaceholder": "bijv. Maison Denim Paris",
+      "messageLabel": "Bericht of gewenste omvang (optioneel)",
+      "messagePlaceholder": "Wij willen uw GOTS-certificaten controleren voor onze herfstcollectie 2026…",
+      "ndaLabel": "Ik accepteer de vertrouwelijkheidsvoorwaarden (NDA) en verplicht mij de industriële gegevens van deze leverancier niet aan derden bekend te maken.",
+      "cancel": "Annuleren",
+      "submit": "Toegangsaanvraag versturen",
+      "success": "Toegangsaanvraag verstuurd!",
+      "notified": "De leverancier is op de hoogte gebracht van uw aanvraag.",
+      "understood": "Begrepen",
+      "sendError": "Fout bij het versturen",
+      "alertPrefix": "Fout:"
+    }
+  }
+}

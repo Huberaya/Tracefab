@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Passeport Fournisseur Universel | TRACEFAB Verified</title>
-  <meta name="description" content="Passeport Fournisseur Universel vérifié sur Tracefab. Identité industrielle, certifications actives et conformité traçabilité sous protection des secrets d'affaires.">
+  <title data-i18n="passport.meta.title">Passeport Fournisseur Universel | TRACEFAB Verified</title>
+  <meta name="description" data-i18n-attr="content:passport.meta.description" content="Passeport Fournisseur Universel vérifié sur Tracefab. Identité industrielle, certifications actives et conformité RSE.">
 
   <!-- Open Graph -->
   <meta property="og:title" content="Passeport Fournisseur Universel — TRACEFAB">
@@ -437,6 +437,7 @@
       margin-top: 2px;
     }
   </style>
+  <script src="/i18n-core.js"></script>
 </head>
 <body>
   <div class="container">
@@ -445,17 +446,20 @@
         <div class="brand-mark">tf</div>
         <div class="brand-name">
           tracefab
-          <small>Universal Supplier Passport</small>
+          <small data-i18n="passport.nav.passport">Universal Supplier Passport</small>
         </div>
       </a>
-      <div class="verified-seal">
-        <span>✓</span> Profil Industriel Vérifié
+      <div style="display:flex;align-items:center;gap:10px">
+        <select class="verified-seal" id="lang-select" aria-label="Language" style="cursor:pointer;background:transparent;font-family:inherit"></select>
+        <div class="verified-seal">
+          <span>✓</span> <span data-i18n="passport.nav.verified">Profil Industriel Vérifié</span>
+        </div>
       </div>
     </header>
 
     <div id="app">
       <div style="text-align:center;padding:80px 20px;color:var(--muted)">
-        Chargement du passeport fournisseur…
+        <span data-i18n="passport.loading">Chargement du passeport fournisseur…</span>
       </div>
     </div>
   </div>
@@ -464,6 +468,42 @@
 
   <script>
     (async function() {
+      /*
+       * Tout le texte vient de locales/{lang}/passport.json.
+       *
+       * Les 56 chaînes vivaient en dur ici, en français, dans le HTML et dans
+       * les gabarits. Un passeport fournisseur est lu par des donneurs d'ordre
+       * étrangers : c'est précisément son objet.
+       *
+       * `t()` renvoie la clé quand le dictionnaire ne l'a pas — la convention de
+       * brand-console. Une clé manquante doit rester visible pour être comblée,
+       * jamais se déguiser en texte plausible.
+       */
+      const t = (key, values) => {
+        const value = window.TracefabI18n ? window.TracefabI18n.t(key, values) : null;
+        return value === null || value === undefined ? key : value;
+      };
+
+      const LANG_NAMES = { en: 'English', fr: 'Français', de: 'Deutsch', it: 'Italiano', es: 'Español', nl: 'Nederlands', pt: 'Português' };
+      const langSelect = document.getElementById('lang-select');
+      function renderLangSelect() {
+        const langs = window.TracefabI18n ? window.TracefabI18n.LANGS : Object.keys(LANG_NAMES);
+        const active = window.TracefabI18n ? window.TracefabI18n.language : null;
+        langSelect.innerHTML = langs
+          .map((code) => `<option value="${code}"${code === active ? ' selected' : ''}>${LANG_NAMES[code] || code}</option>`)
+          .join('');
+      }
+      langSelect.addEventListener('change', () => {
+        if (window.TracefabI18n) window.TracefabI18n.setLanguage(langSelect.value);
+      });
+      /* Changer de langue doit retraduire ce qui est DÉJÀ affiché, pas seulement
+         le prochain rendu : le gabarit est réinjecté, et un modal ouvert aussi. */
+      document.addEventListener('tracefab:lang', () => {
+        renderLangSelect();
+        render();
+        if (document.getElementById('modal-container').innerHTML.trim()) window.openRequestModal();
+      });
+
       const urlParams = new URLSearchParams(window.location.search);
       const ref = urlParams.get('ref') || urlParams.get('token') || 'nhan-textile-pt';
 
@@ -554,15 +594,15 @@
                 <h1>${esc(sup.displayName || sup.legalName)}</h1>
                 <div class="supplier-meta">
                   <span class="badge badge-country">🇵🇹 ${esc(sup.countryCode || 'PT')}</span>
-                  <span>Fondé en <strong>${sup.yearEstablished || '1998'}</strong></span>
+                  <span>${esc(t('passport.hero.foundedIn', { year: sup.yearEstablished || '1998' }))}</span>
                   <span>·</span>
-                  <span>Effectif : <strong>${sup.employeeCountRange || '251-1000'}</strong></span>
+                  <span>${esc(t('passport.hero.headcount', { range: sup.employeeCountRange || '251-1000' }))}</span>
                   <span>·</span>
-                  <span style="color:#10b981">✓ Profil audité</span>
+                  <span style="color:#10b981">${esc(t('passport.hero.audited'))}</span>
                 </div>
               </div>
               <button class="btn btn-emerald" onclick="openRequestModal()">
-                Demander accès complet (NDA)
+                ${esc(t('passport.hero.requestFull'))}
               </button>
             </div>
 
@@ -572,19 +612,19 @@
 
             <div class="kpi-row">
               <div class="kpi-box">
-                <div class="kpi-label">Complétude Profil</div>
+                <div class="kpi-label">${esc(t('passport.kpi.profile'))}</div>
                 <div class="kpi-val" style="color:#10b981">${moneyless(sup.profileCompletion)}%</div>
               </div>
               <div class="kpi-box">
-                <div class="kpi-label">Preuves Documentaires</div>
+                <div class="kpi-label">${esc(t('passport.kpi.evidence'))}</div>
                 <div class="kpi-val" style="color:#38bdf8">${score ? moneyless(score.documentationCoverage) : '100'}%</div>
               </div>
               <div class="kpi-box">
-                <div class="kpi-label">Certifications Actives</div>
+                <div class="kpi-label">${esc(t('passport.kpi.certifications'))}</div>
                 <div class="kpi-val" style="color:#f59e0b">${d.certifications.length}</div>
               </div>
               <div class="kpi-box">
-                <div class="kpi-label">Sites Déclarés</div>
+                <div class="kpi-label">${esc(t('passport.kpi.sites'))}</div>
                 <div class="kpi-val" style="color:#a855f7">${d.sites.length}</div>
               </div>
             </div>
@@ -593,8 +633,8 @@
           <div class="nda-banner">
             <div class="nda-icon">🛡️</div>
             <div class="nda-content">
-              <strong>Protection des Secrets d'Affaires Active (Directive UE 2016/943)</strong><br>
-              Les adresses physiques exactes des usines, capacités de production nominales et relations exclusives de sous-traitance sont masquées par défaut. Les marques auditées peuvent formuler une demande d'accès direct pour déverrouiller les pièces justificatives brutes.
+              <strong>${esc(t('passport.nda.title'))}</strong><br>
+              ${esc(t('passport.nda.body'))}
             </div>
           </div>
 
@@ -602,20 +642,20 @@
             <!-- Certifications -->
             <div class="card">
               <div class="card-head">
-                <h2>🏅 Certifications & Labels Reconnus</h2>
-                <span class="card-badge">${d.certifications.length} actives</span>
+                <h2>${esc(t('passport.certs.title'))}</h2>
+                <span class="card-badge">${esc(t('passport.certs.count', { count: d.certifications.length }))}</span>
               </div>
               <div class="item-list">
                 ${d.certifications.map((c) => `
                   <div class="item-box">
                     <div class="item-top">
                       <strong>${esc(c.standardName)}</strong>
-                      <span class="cert-verified">✓ Vérifié IA</span>
+                      <span class="cert-verified">${esc(t('passport.certs.verified'))}</span>
                     </div>
                     <div class="item-desc">
-                      Émetteur : <strong>${esc(c.issuerName || 'Organisme accrédité')}</strong><br>
-                      N° Enregistrement : <code>${esc(c.certificateNumber || 'CU812345')}</code><br>
-                      Valide jusqu’au : <strong>${date(c.expiresAt)}</strong>
+                      ${esc(t('passport.certs.issuer'))} <strong>${esc(c.issuerName || t('passport.certs.issuerFallback'))}</strong><br>
+                      ${esc(t('passport.certs.number'))} <code>${esc(c.certificateNumber || 'CU812345')}</code><br>
+                      ${esc(t('passport.certs.validUntil'))} <strong>${date(c.expiresAt)}</strong>
                     </div>
                   </div>
                 `).join('')}
@@ -625,20 +665,20 @@
             <!-- Sites Industriels -->
             <div class="card">
               <div class="card-head">
-                <h2>🏭 Sites de Production Vérifiés</h2>
-                <span class="card-badge">${d.sites.length} site(s)</span>
+                <h2>${esc(t('passport.sites.title'))}</h2>
+                <span class="card-badge">${esc(t('passport.sites.count', { count: d.sites.length }))}</span>
               </div>
               <div class="item-list">
                 ${d.sites.map((s) => `
                   <div class="item-box">
                     <div class="item-top">
                       <strong>${esc(s.name)}</strong>
-                      <span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399">Actif</span>
+                      <span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399">${esc(t('passport.sites.active'))}</span>
                     </div>
                     <div class="item-desc">
-                      Localisation : <strong>${esc(s.city || 'Portugal')}, ${esc(s.countryCode)}</strong><br>
-                      Adresse : <em style="color:#94a3b8">${esc(s.address)}</em><br>
-                      Activités : ${(s.activityTypes || []).map((a) => `<span class="badge" style="background:rgba(255,255,255,0.06);margin-right:4px">${esc(a)}</span>`).join('')}
+                      ${esc(t('passport.sites.location'))} <strong>${esc(s.city || 'Portugal')}, ${esc(s.countryCode)}</strong><br>
+                      ${esc(t('passport.sites.address'))} <em style="color:#94a3b8">${esc(s.address)}</em><br>
+                      ${esc(t('passport.sites.activities'))} ${(s.activityTypes || []).map((a) => `<span class="badge" style="background:rgba(255,255,255,0.06);margin-right:4px">${esc(a)}</span>`).join('')}
                     </div>
                   </div>
                 `).join('')}
@@ -649,19 +689,19 @@
           <!-- Matériaux & Savoir-faire -->
           <div class="card" style="margin-bottom:24px">
             <div class="card-head">
-              <h2>🧵 Matières & Capacités Circulaires Disponibles</h2>
-              <span class="card-badge">${d.materials.length} référence(s)</span>
+              <h2>${esc(t('passport.materials.title'))}</h2>
+              <span class="card-badge">${esc(t('passport.materials.count', { count: d.materials.length }))}</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px">
               ${d.materials.map((m) => `
                 <div class="item-box">
                   <div class="item-top">
                     <strong>${esc(m.name)}</strong>
-                    <span class="badge badge-country">${esc(m.materialType || 'Tissu')}</span>
+                    <span class="badge badge-country">${esc(m.materialType || t('passport.materials.typeFallback'))}</span>
                   </div>
                   <div class="item-desc" style="margin-top:6px">
-                    Origine fibre : <strong>${esc(m.originCountryCode || 'Portugal')}</strong><br>
-                    ${m.composition ? `Composition : <code>${typeof m.composition === 'string' ? esc(m.composition) : esc(JSON.stringify(m.composition))}</code>` : ''}
+                    ${esc(t('passport.materials.origin'))} <strong>${esc(m.originCountryCode || 'Portugal')}</strong><br>
+                    ${m.composition ? `${esc(t('passport.materials.composition'))} <code>${typeof m.composition === 'string' ? esc(m.composition) : esc(JSON.stringify(m.composition))}</code>` : ''}
                   </div>
                 </div>
               `).join('')}
@@ -671,11 +711,11 @@
           <!-- Sticky Bar for Inbound Conversion -->
           <div class="sticky-bar">
             <div class="sticky-text">
-              <strong>Vous représentez une marque de mode ou un donneur d'ordre ?</strong>
-              <p>Connectez votre console de marque à ce passeport pour importer les données en 1 clic.</p>
+              <strong>${esc(t('passport.sticky.title'))}</strong>
+              <p>${esc(t('passport.sticky.body'))}</p>
             </div>
             <button class="btn btn-primary" onclick="openRequestModal()">
-              Demander l’accès complet
+              ${esc(t('passport.sticky.cta'))}
             </button>
           </div>
         `;
@@ -687,7 +727,11 @@
       }
       function date(d) {
         if (!d) return '—';
-        return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+        /* La locale suit la langue active : afficher « 12 mars 2026 » à un
+           lecteur allemand pendant que tout le reste est en allemand serait une
+           demi-traduction. */
+        const locale = { fr: 'fr-FR', en: 'en-GB', de: 'de-DE', it: 'it-IT', es: 'es-ES', nl: 'nl-NL', pt: 'pt-PT' }[window.TracefabI18n?.language || 'fr'] || 'fr-FR';
+        return new Date(d).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
       }
       function moneyless(n) { return Math.round(Number(n) || 0); }
 
@@ -698,40 +742,40 @@
             <div class="modal-box">
               <div class="modal-head">
                 <div>
-                  <div style="font-size:11px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:0.5px">Accès Donneur d'Ordre</div>
-                  <h3>Demander l'accès complet</h3>
+                  <div style="font-size:11px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:0.5px">${esc(t('passport.modal.eyebrow'))}</div>
+                  <h3>${esc(t('passport.modal.title'))}</h3>
                 </div>
                 <button class="close-btn" onclick="closeRequestModal()">×</button>
               </div>
               <p style="font-size:12.5px;color:var(--muted);margin-bottom:20px;line-height:1.5">
-                Remplissez ce formulaire pour notifier l'équipe qualité de <strong>${esc(state.data?.supplier?.displayName || 'ce fournisseur')}</strong>. Si vous disposez déjà d'un compte marque Tracefab, vos espaces seront interconnectés automatiquement.
+                ${esc(t('passport.modal.intro', { supplier: esc(state.data?.supplier?.displayName || t('passport.modal.supplierFallback')) }))}
               </p>
               <form id="access-form" onsubmit="submitAccessRequest(event)">
                 <div class="form-group">
-                  <label>Votre nom & prénom *</label>
-                  <input class="input" name="requesterName" required placeholder="ex. Marie Dupont">
+                  <label>${esc(t('passport.modal.nameLabel'))}</label>
+                  <input class="input" name="requesterName" required placeholder="${esc(t('passport.modal.namePlaceholder'))}">
                 </div>
                 <div class="form-group">
-                  <label>Votre email professionnel *</label>
-                  <input class="input" name="requesterEmail" type="email" required placeholder="marie@mamarque.com">
+                  <label>${esc(t('passport.modal.emailLabel'))}</label>
+                  <input class="input" name="requesterEmail" type="email" required placeholder="${esc(t('passport.modal.emailPlaceholder'))}">
                 </div>
                 <div class="form-group">
-                  <label>Nom de votre marque / entreprise *</label>
-                  <input class="input" name="requesterCompany" required placeholder="ex. Maison Denim Paris">
+                  <label>${esc(t('passport.modal.companyLabel'))}</label>
+                  <input class="input" name="requesterCompany" required placeholder="${esc(t('passport.modal.companyPlaceholder'))}">
                 </div>
                 <div class="form-group">
-                  <label>Message ou périmètre souhaité (facultatif)</label>
-                  <textarea class="textarea" name="message" rows="3" placeholder="Nous souhaitons auditer vos certificats GOTS pour notre collection automne 2026..."></textarea>
+                  <label>${esc(t('passport.modal.messageLabel'))}</label>
+                  <textarea class="textarea" name="message" rows="3" placeholder="${esc(t('passport.modal.messagePlaceholder'))}"></textarea>
                 </div>
                 <div class="form-group" style="margin-top:14px">
                   <label class="checkbox-label">
                     <input type="checkbox" name="ndaAccepted" required checked>
-                    <span>J’accepte les conditions de confidentialité (NDA) et m’engage à ne pas divulguer les données industrielles de ce fournisseur à des tiers.</span>
+                    <span>${esc(t('passport.modal.ndaLabel'))}</span>
                   </label>
                 </div>
                 <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:24px">
-                  <button type="button" class="btn" style="background:rgba(255,255,255,0.08);color:#fff" onclick="closeRequestModal()">Annuler</button>
-                  <button type="submit" class="btn btn-emerald">Envoyer la demande d'accès</button>
+                  <button type="button" class="btn" style="background:rgba(255,255,255,0.08);color:#fff" onclick="closeRequestModal()">${esc(t('passport.modal.cancel'))}</button>
+                  <button type="submit" class="btn btn-emerald">${esc(t('passport.modal.submit'))}</button>
                 </div>
               </form>
             </div>
@@ -762,26 +806,31 @@
             body: JSON.stringify(body)
           });
           const result = await res.json();
-          if (!res.ok) throw new Error(result.error || 'Erreur lors de l’envoi');
+          if (!res.ok) throw new Error(result.error || t('passport.modal.sendError'));
 
           document.getElementById('modal-container').innerHTML = `
             <div class="modal-backdrop" onclick="closeRequestModal()">
               <div class="modal-box" style="text-align:center">
                 <div style="font-size:42px;margin-bottom:12px">🎉</div>
-                <h3 style="font-size:20px;margin-bottom:8px">Demande d'accès transmise !</h3>
+                <h3 style="font-size:20px;margin-bottom:8px">${esc(t('passport.modal.success'))}</h3>
                 <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:24px">
-                  ${esc(result.message || 'Le fournisseur a été notifié de votre demande.')}
+                  ${esc(result.message || t('passport.modal.notified'))}
                 </p>
-                <button class="btn btn-primary" onclick="closeRequestModal()">Compris</button>
+                <button class="btn btn-primary" onclick="closeRequestModal()">${esc(t('passport.modal.understood'))}</button>
               </div>
             </div>
           `;
         } catch (err) {
-          alert('Erreur : ' + err.message);
+          alert(t('passport.modal.alertPrefix') + ' ' + err.message);
         }
       };
 
-      fetchPassport();
+      /* Le contenu s'affiche d'abord en français, puis est traduit dès que le
+         dictionnaire arrive : aucun fetch ne bloque le premier rendu. */
+      renderLangSelect();
+      const start = () => { renderLangSelect(); fetchPassport(); };
+      if (window.TracefabI18n) window.TracefabI18n.init({ scope: 'passport', fallback: 'fr' }).then(start, start);
+      else start();
     })();
   </script>
 </body>

@@ -1,0 +1,80 @@
+{
+  "passport": {
+    "meta": {
+      "title": "Passaporte Universal de Fornecedor | TRACEFAB Verified",
+      "description": "Passaporte Universal de Fornecedor verificado na Tracefab. Identidade industrial, certificações ativas e conformidade RSE."
+    },
+    "nav": {
+      "passport": "Passaporte Universal de Fornecedor",
+      "verified": "Perfil Industrial Verificado"
+    },
+    "loading": "A carregar o passaporte do fornecedor…",
+    "hero": {
+      "foundedIn": "Fundada em {year}",
+      "headcount": "Efetivo: {range}",
+      "audited": "✓ Perfil auditado",
+      "requestFull": "Pedir acesso completo (NDA)"
+    },
+    "kpi": {
+      "profile": "Completude do Perfil",
+      "evidence": "Provas Documentais",
+      "certifications": "Certificações Ativas",
+      "sites": "Instalações Declaradas"
+    },
+    "nda": {
+      "title": "Proteção de Segredos de Negócio Ativa (Diretiva UE 2016/943)",
+      "body": "Os endereços exatos das fábricas, as capacidades de produção nominais e as relações exclusivas de subcontratação estão ocultados por predefinição. As marcas auditadas podem pedir acesso direto para desbloquear os documentos comprovativos originais."
+    },
+    "certs": {
+      "title": "🏅 Certificações e Rótulos Reconhecidos",
+      "count": "{count} ativas",
+      "verified": "✓ Verificado por IA",
+      "issuer": "Emissor:",
+      "issuerFallback": "Organismo acreditado",
+      "number": "N.º de registo:",
+      "validUntil": "Válido até:"
+    },
+    "sites": {
+      "title": "🏭 Instalações de Produção Verificadas",
+      "count": "{count} instalação(ões)",
+      "active": "Ativa",
+      "location": "Localização:",
+      "address": "Morada:",
+      "activities": "Atividades:"
+    },
+    "materials": {
+      "title": "🧵 Materiais e Capacidades Circulares Disponíveis",
+      "count": "{count} referência(s)",
+      "typeFallback": "Tecido",
+      "origin": "Origem da fibra:",
+      "composition": "Composição:"
+    },
+    "sticky": {
+      "title": "Representa uma marca de moda ou um adjudicante?",
+      "body": "Ligue a sua consola de marca a este passaporte para importar os dados em 1 clique.",
+      "cta": "Pedir o acesso completo"
+    },
+    "modal": {
+      "eyebrow": "Acesso para Adjudicantes",
+      "title": "Pedir o acesso completo",
+      "intro": "Preencha este formulário para notificar a equipa de qualidade de {supplier}. Se já tiver uma conta de marca Tracefab, os seus espaços serão interligados automaticamente.",
+      "supplierFallback": "este fornecedor",
+      "nameLabel": "Nome e apelido *",
+      "namePlaceholder": "ex. Marie Dupont",
+      "emailLabel": "Email profissional *",
+      "emailPlaceholder": "marie@aminhamarca.com",
+      "companyLabel": "Nome da sua marca / empresa *",
+      "companyPlaceholder": "ex. Maison Denim Paris",
+      "messageLabel": "Mensagem ou âmbito pretendido (facultativo)",
+      "messagePlaceholder": "Gostaríamos de auditar os vossos certificados GOTS para a nossa coleção de outono 2026…",
+      "ndaLabel": "Aceito as condições de confidencialidade (NDA) e comprometo-me a não divulgar a terceiros os dados industriais deste fornecedor.",
+      "cancel": "Cancelar",
+      "submit": "Enviar o pedido de acesso",
+      "success": "Pedido de acesso enviado!",
+      "notified": "O fornecedor foi notificado do seu pedido.",
+      "understood": "Compreendido",
+      "sendError": "Erro ao enviar",
+      "alertPrefix": "Erro:"
+    }
+  }
+}

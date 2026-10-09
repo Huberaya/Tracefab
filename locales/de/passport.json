@@ -1,0 +1,80 @@
+{
+  "passport": {
+    "meta": {
+      "title": "Universeller Lieferantenpass | TRACEFAB Verified",
+      "description": "Verifizierter Universeller Lieferantenpass auf Tracefab. Industrielle Identität, aktive Zertifizierungen und CSR-Konformität."
+    },
+    "nav": {
+      "passport": "Universeller Lieferantenpass",
+      "verified": "Verifiziertes Industrieprofil"
+    },
+    "loading": "Lieferantenpass wird geladen…",
+    "hero": {
+      "foundedIn": "Gegründet {year}",
+      "headcount": "Beschäftigte: {range}",
+      "audited": "✓ Auditiertes Profil",
+      "requestFull": "Vollzugriff anfragen (NDA)"
+    },
+    "kpi": {
+      "profile": "Profilvollständigkeit",
+      "evidence": "Dokumentarische Nachweise",
+      "certifications": "Aktive Zertifizierungen",
+      "sites": "Erklärte Standorte"
+    },
+    "nda": {
+      "title": "Schutz von Geschäftsgeheimnissen aktiv (EU-Richtlinie 2016/943)",
+      "body": "Genaue Werksadressen, nominale Produktionskapazitäten und exklusive Unterauftragsverhältnisse sind standardmäßig ausgeblendet. Auditierte Marken können einen Direktzugriff beantragen, um die rohen Belege freizuschalten."
+    },
+    "certs": {
+      "title": "🏅 Anerkannte Zertifizierungen & Labels",
+      "count": "{count} aktiv",
+      "verified": "✓ KI-geprüft",
+      "issuer": "Aussteller:",
+      "issuerFallback": "Akkreditierte Stelle",
+      "number": "Registrierungsnr.:",
+      "validUntil": "Gültig bis:"
+    },
+    "sites": {
+      "title": "🏭 Verifizierte Produktionsstandorte",
+      "count": "{count} Standort(e)",
+      "active": "Aktiv",
+      "location": "Standort:",
+      "address": "Adresse:",
+      "activities": "Tätigkeiten:"
+    },
+    "materials": {
+      "title": "🧵 Verfügbare Materialien & Kreislaufkapazitäten",
+      "count": "{count} Referenz(en)",
+      "typeFallback": "Gewebe",
+      "origin": "Faserherkunft:",
+      "composition": "Zusammensetzung:"
+    },
+    "sticky": {
+      "title": "Vertreten Sie eine Modemarke oder einen Auftraggeber?",
+      "body": "Verbinden Sie Ihre Markenkonsolen mit diesem Pass, um die Daten mit 1 Klick zu importieren.",
+      "cta": "Vollzugriff anfragen"
+    },
+    "modal": {
+      "eyebrow": "Zugriff für Auftraggeber",
+      "title": "Vollzugriff anfragen",
+      "intro": "Füllen Sie dieses Formular aus, um das Qualitätsteam von {supplier} zu benachrichtigen. Wenn Sie bereits ein Tracefab-Markenkonto haben, werden Ihre Bereiche automatisch verbunden.",
+      "supplierFallback": "diesem Lieferanten",
+      "nameLabel": "Ihr Vor- und Nachname *",
+      "namePlaceholder": "z. B. Marie Dupont",
+      "emailLabel": "Ihre geschäftliche E-Mail *",
+      "emailPlaceholder": "marie@meinemarke.com",
+      "companyLabel": "Name Ihrer Marke / Ihres Unternehmens *",
+      "companyPlaceholder": "z. B. Maison Denim Paris",
+      "messageLabel": "Nachricht oder gewünschter Umfang (optional)",
+      "messagePlaceholder": "Wir möchten Ihre GOTS-Zertifikate für unsere Herbstkollektion 2026 prüfen…",
+      "ndaLabel": "Ich akzeptiere die Vertraulichkeitsbedingungen (NDA) und verpflichte mich, die Industriedaten dieses Lieferanten nicht an Dritte weiterzugeben.",
+      "cancel": "Abbrechen",
+      "submit": "Zugriffsanfrage senden",
+      "success": "Zugriffsanfrage gesendet!",
+      "notified": "Der Lieferant wurde über Ihre Anfrage informiert.",
+      "understood": "Verstanden",
+      "sendError": "Fehler beim Senden",
+      "alertPrefix": "Fehler:"
+    }
+  }
+}

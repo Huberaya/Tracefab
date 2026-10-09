@@ -1,0 +1,80 @@
+{
+  "passport": {
+    "meta": {
+      "title": "Universal Supplier Passport | TRACEFAB Verified",
+      "description": "Verified Universal Supplier Passport on Tracefab. Industrial identity, active certifications and CSR compliance."
+    },
+    "nav": {
+      "passport": "Universal Supplier Passport",
+      "verified": "Verified Industrial Profile"
+    },
+    "loading": "Loading the supplier passport…",
+    "hero": {
+      "foundedIn": "Founded in {year}",
+      "headcount": "Headcount: {range}",
+      "audited": "✓ Audited profile",
+      "requestFull": "Request full access (NDA)"
+    },
+    "kpi": {
+      "profile": "Profile Completeness",
+      "evidence": "Documentary Evidence",
+      "certifications": "Active Certifications",
+      "sites": "Declared Sites"
+    },
+    "nda": {
+      "title": "Trade Secret Protection Active (EU Directive 2016/943)",
+      "body": "Exact factory addresses, nominal production capacities and exclusive subcontracting relationships are masked by default. Audited brands can request direct access to unlock the raw supporting documents."
+    },
+    "certs": {
+      "title": "🏅 Recognised Certifications & Labels",
+      "count": "{count} active",
+      "verified": "✓ AI verified",
+      "issuer": "Issuer:",
+      "issuerFallback": "Accredited body",
+      "number": "Registration No.:",
+      "validUntil": "Valid until:"
+    },
+    "sites": {
+      "title": "🏭 Verified Production Sites",
+      "count": "{count} site(s)",
+      "active": "Active",
+      "location": "Location:",
+      "address": "Address:",
+      "activities": "Activities:"
+    },
+    "materials": {
+      "title": "🧵 Available Materials & Circular Capacities",
+      "count": "{count} reference(s)",
+      "typeFallback": "Fabric",
+      "origin": "Fibre origin:",
+      "composition": "Composition:"
+    },
+    "sticky": {
+      "title": "Do you represent a fashion brand or a contracting party?",
+      "body": "Connect your brand console to this passport to import the data in 1 click.",
+      "cta": "Request full access"
+    },
+    "modal": {
+      "eyebrow": "Contracting Party Access",
+      "title": "Request full access",
+      "intro": "Fill in this form to notify the quality team at {supplier}. If you already have a Tracefab brand account, your workspaces will be interconnected automatically.",
+      "supplierFallback": "this supplier",
+      "nameLabel": "Your first & last name *",
+      "namePlaceholder": "e.g. Marie Dupont",
+      "emailLabel": "Your work email *",
+      "emailPlaceholder": "marie@mybrand.com",
+      "companyLabel": "Your brand / company name *",
+      "companyPlaceholder": "e.g. Maison Denim Paris",
+      "messageLabel": "Message or requested scope (optional)",
+      "messagePlaceholder": "We would like to audit your GOTS certificates for our autumn 2026 collection…",
+      "ndaLabel": "I accept the confidentiality terms (NDA) and undertake not to disclose this supplier's industrial data to third parties.",
+      "cancel": "Cancel",
+      "submit": "Send the access request",
+      "success": "Access request sent!",
+      "notified": "The supplier has been notified of your request.",
+      "understood": "Understood",
+      "sendError": "Error while sending",
+      "alertPrefix": "Error:"
+    }
+  }
+}

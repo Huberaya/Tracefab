@@ -42,6 +42,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 
 os.environ.setdefault("XDG_RUNTIME_DIR", "/tmp/runtime-tracefab-test-pg")
 pathlib.Path(os.environ["XDG_RUNTIME_DIR"]).mkdir(parents=True, exist_ok=True)
@@ -79,6 +80,66 @@ except Exception as exc:  # noqa: BLE001
 
 PGINSTALL = pathlib.Path(PostgresServer.__init__.__globals__["__file__"]).parent / "pginstall"
 PSQL = PGINSTALL / "bin" / "psql"
+
+# --- Libérer le répertoire de données avant de démarrer --------------------
+"""
+Indispensable, et pas une précaution théorique.
+
+Chaque test démarre son propre serveur sur le MÊME TRACEFAB_PGDATA. Quand un test
+se termine, Node sort et Python arrête PostgreSQL — mais cet arrêt prend
+plusieurs secondes. Dans la suite complète, le test suivant démarre pendant ce
+créneau et `ensure_postgres_running()` trouve un postmaster encore vivant sur le
+même répertoire.
+
+C'est l'instabilité mesurée : `test:neon:bulk:chantier8` échouait dans la suite
+et passait toujours seul. Un test dont le résultat dépend de la vitesse de la
+machine n'est pas un test vert.
+
+Attendre n'est PAS le bon remède : un serveur orphelin — laissé par un run tué
+par `timeout`, ce qui arrive — ne s'arrêterait jamais, et chaque test perdrait
+alors 120 s avant de se déclarer indisponible. Ce répertoire appartient à la
+suite de test : s'il est occupé, on arrête l'occupant et on démarre.
+"""
+
+
+def _pgdata_owner() -> int | None:
+    """PID du postmaster qui occupe TRACEFAB_PGDATA, ou None."""
+    pid_file = PGDATA / "postmaster.pid"
+    if not pid_file.exists():
+        return None
+    try:
+        pid = int(pid_file.read_text().split("\n", 1)[0].strip())
+    except (ValueError, OSError):
+        return None
+    if pid <= 0:
+        return None
+    try:
+        os.kill(pid, 0)          # ne signale rien : teste seulement l'existence
+    except ProcessLookupError:
+        return None
+    except PermissionError:
+        return pid
+    return pid
+
+
+if _pgdata_owner() is not None:
+    from embedded_postgres._commands import pg_ctl  # type: ignore
+
+    print(
+        "TRACEFAB_PGDATA occupé par le postmaster %d — arrêt avant démarrage"
+        % _pgdata_owner(),
+        flush=True,
+    )
+    try:
+        pg_ctl(["-w", "stop"], pgdata=PGDATA, user=None, timeout=60)
+    except Exception as exc:  # noqa: BLE001
+        print("arrêt du postmaster existant en échec : %s" % exc, flush=True)
+
+    _deadline = time.time() + 60
+    while _pgdata_owner() is not None and time.time() < _deadline:
+        time.sleep(0.5)
+    if _pgdata_owner() is not None:
+        unavailable("le postmaster existant refuse de s'arrêter")
 
 # --- Écoute TCP, écrite AVANT le démarrage ----------------------------------
 # Aucune modification de postgresql.conf : le port par défaut (5432) est celui
