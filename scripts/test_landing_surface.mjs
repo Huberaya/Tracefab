@@ -10,7 +10,11 @@
  *   npm run test:landing
  */
 import { readFile } from 'node:fs/promises';
-import { JSDOM, VirtualConsole } from 'jsdom';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import jsdomPkg from 'jsdom';
+
+const { JSDOM, VirtualConsole, requestInterceptor } = jsdomPkg;
 
 const root = new URL('../', import.meta.url);
 
@@ -24,29 +28,60 @@ function eq(actual, expected, name) {
 }
 
 /* ---------------------------------------------------------- build the DOM -- */
-let html = await readFile(new URL('index.html', root), 'utf8');
+/*
+ * La landing est passée d'un moteur embarqué (public/i18n-engine.js, dictionnaire
+ * inline) au runtime partagé public/i18n-core.js, qui charge
+ * /locales/{lang}/landing.json. Le test sert donc les VRAIS fichiers au lieu
+ * d'inliner le moteur : inliner un fichier que la page ne charge plus aurait
+ * fait passer le test à côté de l'intégration réelle.
+ */
+const html = await readFile(new URL('index.html', root), 'utf8');
 const originalHtml = html;
-const engine = await readFile(new URL('public/i18n-engine.js', root), 'utf8');
-
-// Serve the engine inline so the page runs with the real i18n bridge attached.
-html = html.replace(
-  '<script src="/i18n-engine.js"></script>',
-  `<script>${engine}</script>`,
-);
-if (!html.includes('Universal i18n Bridge for TRACEFAB')) {
-  console.error('Could not inline the i18n engine — the test would not exercise the real integration.');
-  process.exit(1);
-}
+const at = (p) => new URL(p, root);
+const serveLocally = requestInterceptor((request) => {
+  const rel = new URL(request.url).pathname.replace(/^\/+/, '');
+  for (const candidate of [rel, `public/${rel}`]) {
+    const full = fileURLToPath(at(candidate));
+    if (existsSync(full)) {
+      const body = readFileSync(full, 'utf8');
+      const type = candidate.endsWith('.json') ? 'application/json' : 'application/javascript';
+      return new Response(body, { headers: { 'Content-Type': `${type}; charset=utf-8` } });
+    }
+  }
+  return new Response('', { status: 404 });
+});
 
 const virtualConsole = new VirtualConsole();
 const pageErrors = [];
-virtualConsole.on('jsdomError', (e) => pageErrors.push(e.message));
+/* Filtrer par NOM, jamais en bloc : une erreur environnementale masquerait une
+   vraie régression. */
+virtualConsole.on('jsdomError', (e) => {
+  if (/fonts\.googleapis\.com|Could not load link|jsdelivr/.test(e.message)) return;
+  pageErrors.push(e.message);
+});
+
+/*
+ * fetch doit être en place AVANT le parse : i18n-core.js appelle fetch() dès
+ * l'exécution de son script, donc un stub installé après la construction du DOM
+ * arrive trop tard et le dictionnaire ne se charge jamais.
+ */
+const localFetch = async (url) => {
+  const rel = String(url).replace(/^\/+/, '');
+  for (const candidate of [rel, `public/${rel}`]) {
+    try {
+      return { ok: true, status: 200, json: async () => JSON.parse(await readFile(at(candidate), 'utf8')) };
+    } catch { /* candidat suivant */ }
+  }
+  return { ok: false, status: 404, json: async () => null };
+};
 
 const dom = new JSDOM(html, {
   runScripts: 'dangerously',
   pretendToBeVisual: true,
   url: 'https://tracefab.vercel.app/',
   virtualConsole,
+  resources: { interceptors: [serveLocally] },
+  beforeParse(w) { w.fetch = localFetch; },
 });
 const { window } = dom;
 const { document } = window;
@@ -62,7 +97,11 @@ if (document.readyState !== 'complete') {
 
 console.log('\nA. Page executed without errors');
 assert(pageErrors.length === 0, 'no uncaught page errors', pageErrors.join(' | '));
-assert(typeof window.applyLanguage === 'function', 'i18n engine attached window.applyLanguage');
+for (let i = 0; i < 250 && !(window.TracefabI18n && window.TracefabI18n.isReady); i += 1) {
+  await new Promise((r) => setTimeout(r, 20));
+}
+assert(typeof window.TracefabI18n === 'object', 'le runtime partagé est attaché à window.TracefabI18n');
+assert(window.TracefabI18n.isReady === true, 'et son dictionnaire est chargé');
 
 /* ------------------------------------------------------------ structure ---- */
 console.log('\nB. Hero orbit structure');
@@ -243,17 +282,45 @@ assert(document.getElementById('demo-form') !== null, 'demo form present');
 
 /* ------------------------------------------------------------- i18n keys --- */
 console.log('\nN. i18n key coverage');
+/*
+ * La garantie visée est inchangée : chaque clé référencée par la page doit
+ * exister dans toutes les langues. Seule la source change — le dictionnaire
+ * n'est plus inline dans un moteur, il est dans locales/{lang}/landing.json.
+ *
+ * Les clés des panneaux construits par le JavaScript ne sont pas dans le
+ * balisage : elles sont lues dans le script, sinon cette section ne couvrirait
+ * qu'une partie de la page.
+ */
 const keys = [...new Set([...originalHtml.matchAll(/data-i18n="([^"]+)"/g)].map((m) => m[1]))];
-const dictMatch = engine.match(/const UI_DICTIONARY = (\{[\s\S]*?\n  \});/);
-assert(!!dictMatch, 'UI_DICTIONARY parsed from the engine');
-const dict = new Function(`return ${dictMatch[1]}`)();
-const langs = Object.keys(dict);
-assert(langs.length >= 6, `engine covers ${langs.length} languages (${langs.join(', ')})`);
-for (const key of keys) {
-  const missing = langs.filter((l) => !(key in (dict[l] || {})));
-  assert(missing.length === 0, `key "${key}" translated in every language`,
-    missing.length ? `missing in: ${missing.join(', ')}` : '');
+/* Les clés d'attributs (aria-label, placeholder, content du <head>) vivent dans
+   data-i18n-attr sous la forme « attribut:clé » : les ignorer ferait passer pour
+   orphelines des chaînes bel et bien utilisées. */
+for (const m of originalHtml.matchAll(/data-i18n-attr="([^"]+)"/g)) {
+  for (const pair of m[1].split(',')) keys.push(pair.split(':')[1]);
 }
+const scriptBody = originalHtml.slice(originalHtml.indexOf('<script>'));
+for (const m of scriptBody.matchAll(/tr\('(landing\.[a-z0-9_.]+)'/g)) keys.push(m[1]);
+for (const m of scriptBody.matchAll(/(?:name|state|label): '(landing\.[a-z0-9_.]+)'/g)) keys.push(m[1]);
+for (const m of scriptBody.matchAll(/\['(landing\.[a-z0-9_.]+)'/g)) keys.push(m[1]);
+const uniq = [...new Set(keys)];
+assert(uniq.length > 300, `la page référence ${uniq.length} clés i18n`);
+
+const flat = (o, p = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object')
+  ? flat(v, p ? `${p}.${k}` : k) : [p ? `${p}.${k}` : k]);
+const langs = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
+const sets = {};
+for (const l of langs) {
+  const doc = JSON.parse(await readFile(at(`locales/${l}/landing.json`), 'utf8'));
+  sets[l] = new Set(flat(doc));
+}
+assert(langs.every((l) => sets[l].size === sets.en.size),
+  `les 7 dictionnaires ont la même taille (${langs.map((l) => sets[l].size).join('/')})`);
+const missingAny = uniq.filter((k) => langs.some((l) => !sets[l].has(k)));
+assert(missingAny.length === 0, 'chaque clé référencée existe dans les 7 langues',
+  missingAny.length ? `manquantes : ${missingAny.slice(0, 6).join(', ')}` : '');
+const deadKeys = [...sets.en].filter((k) => !uniq.includes(k));
+assert(deadKeys.length === 0, 'aucune clé du dictionnaire n’est orpheline',
+  deadKeys.length ? `orphelines : ${deadKeys.slice(0, 6).join(', ')}` : '');
 
 /* ------------------------------------------------------------ summary ------ */
 console.log(`\n${'='.repeat(64)}`);

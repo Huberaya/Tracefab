@@ -182,7 +182,15 @@ console.log('\nH. Les dictionnaires morts sont identifiés');
 const unused = await stat(new URL('public/translations_deep.json', root)).then(() => true, () => false);
 assert(unused, 'translations_deep.json existe toujours — documenté comme non chargé');
 const indexHtml = await readFile(new URL('index.html', root), 'utf8');
-assert(indexHtml.includes('/i18n-engine.js'), 'la landing conserve son moteur existant (migration non régressive)');
+/*
+ * Cette assertion épinglait l'ÉTAT INTÉMÉDIAIRE : « la landing conserve son
+ * moteur existant (migration non régressive) ». La migration est faite — la
+ * landing charge le runtime partagé et locales/{lang}/landing.json (384 clés ×
+ * 7 langues). L'assertion est donc inversée, pas supprimée : elle vérifie
+ * désormais que la quatrième source de traduction a bien disparu.
+ */
+assert(indexHtml.includes('/i18n-core.js') && !indexHtml.includes('/i18n-engine.js'),
+  'la landing a quitté i18n-engine.js pour le runtime partagé');
 
 console.log(`\n${'='.repeat(64)}`);
 if (failures) {

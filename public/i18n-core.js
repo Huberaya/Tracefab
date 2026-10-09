@@ -6,6 +6,17 @@
  * brandTranslations map, translations_deep.json), two of which nothing loads.
  * Adding a language meant editing JavaScript in several files.
  *
+ * État après la migration de la landing : i18n-engine.js est SUPPRIMÉ (son
+ * dictionnaire inline décrivait une page qui n'existe plus) et toutes les
+ * surfaces sauf brand-console et supplier-portal chargent ce runtime.
+ *
+ * Il reste donc DEUX sources vivantes, vérifié par grep sur les <script src> :
+ *   · locales/{lang}/{scope}.json, chargé ici — les 11 surfaces HTML ;
+ *   · public/auto-translate.js + public/translations_deep.json, qu'il fetch —
+ *     brand-console et supplier-portal.
+ * translations_deep.json n'est pas du code mort : c'est le glossaire que
+ * auto-translate.js charge. Le supprimer casserait ces deux surfaces.
+ *
  * This runtime makes `locales/{lang}/{scope}.json` the single live source:
  * adding a language is adding a directory, adding a surface is adding a file.
  *

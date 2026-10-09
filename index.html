@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TRACEFAB — The intelligence layer for the global textile supply chain</title>
-  <meta name="description" content="TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product Passport readiness in one intelligent infrastructure for the global textile supply chain.">
+  <title data-i18n="landing.seo.title">TRACEFAB — The intelligence layer for the global textile supply chain</title>
+  <meta name="description" content="TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product Passport readiness in one intelligent infrastructure for the global textile supply chain." data-i18n-attr="content:landing.seo.description">
   <meta name="theme-color" content="#06120d">
 
   <link rel="alternate" hreflang="en" href="https://tracefab.vercel.app/?lang=en">
@@ -16,8 +16,8 @@
   <link rel="alternate" hreflang="pt" href="https://tracefab.vercel.app/?lang=pt">
   <link rel="alternate" hreflang="x-default" href="https://tracefab.vercel.app/">
 
-  <meta property="og:title" content="TRACEFAB — Know your product. Know your supply chain. Prove it.">
-  <meta property="og:description" content="Supplier data, evidence, quality, traceability and DPP readiness in one intelligent infrastructure.">
+  <meta property="og:title" content="TRACEFAB — Know your product. Know your supply chain. Prove it." data-i18n-attr="content:landing.seo.og_title">
+  <meta property="og:description" content="Supplier data, evidence, quality, traceability and DPP readiness in one intelligent infrastructure." data-i18n-attr="content:landing.seo.og_description">
   <meta property="og:type" content="website">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1573,52 +1573,53 @@ a { color: inherit; text-decoration: none; }
 </head>
 
 <body>
-  <a class="tf-skip" href="#main">Skip to content</a>
+  <a class="tf-skip" href="#main" data-i18n="landing.a11y.skip_to_content">Skip to content</a>
 
   <!-- ======================================================================
        HEADER
        ====================================================================== -->
   <header class="tf-header tf-surface tf-surface--dark" id="tf-header">
     <div class="tf-shell tf-shell--wide">
-      <nav class="tf-nav" id="tf-nav" aria-label="Main">
+      <nav class="tf-nav" id="tf-nav" aria-label="Main" data-i18n-attr="aria-label:landing.header_nav.main_al">
         <div class="tf-header__bar">
-          <a href="/" class="tf-wordmark" aria-label="TRACEFAB home">
+          <a href="/" class="tf-wordmark" aria-label="TRACEFAB home" data-i18n-attr="aria-label:landing.header_nav.tracefab_home_al">
             <span class="tf-wordmark__mark" aria-hidden="true">tf</span>
             <span class="tf-wordmark__name">TRACEFAB</span>
           </a>
 
           <ul class="tf-nav__list">
-            <li><a class="tf-nav__link" href="#why" data-i18n="nav_why">Why TRACEFAB</a></li>
-            <li><a class="tf-nav__link" href="#layers" data-i18n="nav_platform">Platform</a></li>
-            <li><a class="tf-nav__link" href="#wow-ecosystem" data-i18n="nav_supply_chain">Supply Chain</a></li>
-            <li><a class="tf-nav__link" href="#product-intelligence">Product Intelligence</a></li>
-            <li><a class="tf-nav__link" href="/dpp/" data-i18n="nav_dpp">DPP</a></li>
-            <li><a class="tf-nav__link" href="#resources">Resources</a></li>
+            <li><a class="tf-nav__link" href="#why" data-i18n="landing.header_nav.why_tracefab">Why TRACEFAB</a></li>
+            <li><a class="tf-nav__link" href="#layers" data-i18n="landing.header_nav.platform">Platform</a></li>
+            <li><a class="tf-nav__link" href="#wow-ecosystem" data-i18n="landing.header_nav.supply_chain">Supply Chain</a></li>
+            <li><a class="tf-nav__link" href="#product-intelligence" data-i18n="landing.header_nav.product_intelligence">Product Intelligence</a></li>
+            <li><a class="tf-nav__link" href="/dpp/" data-i18n="landing.header_nav.dpp">DPP</a></li>
+            <li><a class="tf-nav__link" href="#resources" data-i18n="landing.header_nav.resources">Resources</a></li>
           </ul>
 
           <div class="tf-header__actions">
             <div class="tf-lang" id="tf-lang">
               <button class="tf-lang__btn" id="lang-menu-btn" type="button"
                       aria-haspopup="true" aria-expanded="false" aria-controls="tf-lang-menu"
-                      aria-label="Choose language">
+                      aria-label="Choose language" data-i18n-attr="aria-label:landing.header_nav.choose_language_al">
                 <span id="current-lang-code">EN</span>
                 <span aria-hidden="true">▾</span>
               </button>
-              <div class="tf-lang__menu" id="tf-lang-menu" role="menu" aria-label="Language">
+              <div class="tf-lang__menu" id="tf-lang-menu" role="menu" aria-label="Language" data-i18n-attr="aria-label:landing.header_nav.language_al">
                 <button class="tf-lang__option" role="menuitemradio" aria-checked="true"  data-lang="en" type="button"><span>English</span><span>EN</span></button>
                 <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="fr" type="button"><span>Français</span><span>FR</span></button>
                 <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="de" type="button"><span>Deutsch</span><span>DE</span></button>
                 <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="it" type="button"><span>Italiano</span><span>IT</span></button>
                 <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="es" type="button"><span>Español</span><span>ES</span></button>
                 <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="nl" type="button"><span>Nederlands</span><span>NL</span></button>
+                <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="pt" type="button"><span>Português</span><span>PT</span></button>
               </div>
             </div>
 
-            <a href="/brand-console/" class="tf-btn tf-btn--ghost tf-btn--sm" data-i18n="nav_signin">Sign in</a>
-            <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-demo-open data-i18n="nav_demo">Request a demo</button>
+            <a href="/brand-console/" class="tf-btn tf-btn--ghost tf-btn--sm" data-i18n="landing.header_nav.sign_in">Sign in</a>
+            <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-demo-open data-i18n="landing.header_nav.request_a_demo">Request a demo</button>
 
             <button class="tf-burger" id="tf-burger" type="button"
-                    aria-expanded="false" aria-controls="tf-nav-panel" aria-label="Open menu">
+                    aria-expanded="false" aria-controls="tf-nav-panel" aria-label="Open menu" data-i18n-attr="aria-label:landing.header_nav.open_menu_al">
               <span class="tf-burger__box" aria-hidden="true"><i></i><i></i><i></i></span>
             </button>
           </div>
@@ -1626,15 +1627,15 @@ a { color: inherit; text-decoration: none; }
 
         <div class="tf-nav__panel" id="tf-nav-panel">
           <ul>
-            <li><a href="#why" data-i18n="nav_why">Why TRACEFAB</a></li>
-            <li><a href="#layers" data-i18n="nav_platform">Platform</a></li>
-            <li><a href="#wow-ecosystem" data-i18n="nav_supply_chain">Supply Chain</a></li>
-            <li><a href="#product-intelligence">Product Intelligence</a></li>
-            <li><a href="/dpp/" data-i18n="nav_dpp">DPP</a></li>
-            <li><a href="#resources">Resources</a></li>
+            <li><a href="#why" data-i18n="landing.header_nav.why_tracefab">Why TRACEFAB</a></li>
+            <li><a href="#layers" data-i18n="landing.header_nav.platform">Platform</a></li>
+            <li><a href="#wow-ecosystem" data-i18n="landing.header_nav.supply_chain">Supply Chain</a></li>
+            <li><a href="#product-intelligence" data-i18n="landing.header_nav.product_intelligence">Product Intelligence</a></li>
+            <li><a href="/dpp/" data-i18n="landing.header_nav.dpp">DPP</a></li>
+            <li><a href="#resources" data-i18n="landing.header_nav.resources">Resources</a></li>
           </ul>
-          <a href="/brand-console/" class="tf-btn tf-btn--ghost" data-i18n="nav_signin">Sign in</a>
-          <button type="button" class="tf-btn tf-btn--primary" data-demo-open data-i18n="nav_demo">Request a demo</button>
+          <a href="/brand-console/" class="tf-btn tf-btn--ghost" data-i18n="landing.header_nav.sign_in">Sign in</a>
+          <button type="button" class="tf-btn tf-btn--primary" data-demo-open data-i18n="landing.header_nav.request_a_demo">Request a demo</button>
         </div>
       </nav>
     </div>
@@ -1652,34 +1653,34 @@ a { color: inherit; text-decoration: none; }
       <div class="tf-shell tf-hero__inner">
         <div class="tf-hero__copy">
           <span class="tf-capsule">
-            <span class="tf-capsule__beacon" aria-hidden="true"></span>
+            <span class="tf-capsule__beacon" aria-hidden="true"></span><span data-i18n="landing.hero.european_textile_data_infrastr">
             European textile data infrastructure
-          </span>
+          </span></span>
 
           <h1 class="tf-display-1 tf-hero__title" id="hero-title">
-            <span class="ln">Know your product.</span>
-            <span class="ln">Know your supply chain.</span>
-            <span class="ln ln--accent">Prove it.</span>
+            <span class="ln" data-i18n="landing.hero.know_your_product">Know your product.</span>
+            <span class="ln" data-i18n="landing.hero.know_your_supply_chain">Know your supply chain.</span>
+            <span class="ln ln--accent" data-i18n="landing.hero.prove_it">Prove it.</span>
           </h1>
 
-          <p class="tf-lead tf-hero__lead">
+          <p class="tf-lead tf-hero__lead" data-i18n="landing.hero.tracefab_connects_supplier_dat">
             TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product
             Passport readiness in one intelligent infrastructure.
           </p>
 
           <div class="tf-hero__ctas">
-            <a href="#wow-ecosystem" class="tf-btn tf-btn--primary tf-btn--lg">Explore TRACEFAB</a>
-            <button type="button" class="tf-btn tf-btn--ghost tf-btn--lg" data-demo-open>Request a demo</button>
+            <a href="#wow-ecosystem" class="tf-btn tf-btn--primary tf-btn--lg" data-i18n="landing.hero.explore_tracefab">Explore TRACEFAB</a>
+            <button type="button" class="tf-btn tf-btn--ghost tf-btn--lg" data-demo-open data-i18n="landing.hero.request_a_demo">Request a demo</button>
           </div>
 
           <div class="tf-hero__note">
-            <span class="tf-demo-mark">Demonstration data — not a live customer dataset</span>
+            <span class="tf-demo-mark" data-i18n="landing.hero.demonstration_data_not_a_live">Demonstration data — not a live customer dataset</span>
           </div>
         </div>
 
         <!-- Orbit: TRACEFAB core + 10 connected domains -->
         <div class="tf-orbit-wrap tf-deploy" id="tf-orbit">
-          <h2 class="tf-visually-hidden">The TRACEFAB data core and the ten domains it connects</h2>
+          <h2 class="tf-visually-hidden" data-i18n="landing.hero.the_tracefab_data_core_and_the">The TRACEFAB data core and the ten domains it connects</h2>
 
           <div class="tf-orbit-frame">
             <svg class="tf-orbit-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
@@ -1714,50 +1715,50 @@ a { color: inherit; text-decoration: none; }
               <div>
                 <div class="tf-core__mark" aria-hidden="true">tf</div>
                 <div class="tf-core__name">TRACEFAB</div>
-                <div class="tf-core__state" id="tf-core-state">10 domains connected</div>
-                <div class="tf-core__stat" id="tf-core-stat">1,248</div>
+                <div class="tf-core__state" id="tf-core-state" data-i18n="landing.hero.10_domains_connected">10 domains connected</div>
+                <div class="tf-core__stat" id="tf-core-stat" data-i18n="landing.hero.1_248">1,248</div>
               </div>
             </div>
 
             <button class="tf-node" type="button" style="--i:0;left:50.00%;top:12.00%" data-node="0">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Suppliers</span>
+              <span class="tf-node__name" data-i18n="landing.hero.suppliers">Suppliers</span>
             </button>
             <button class="tf-node" type="button" style="--i:1;left:72.34%;top:19.26%" data-node="1">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Products</span>
+              <span class="tf-node__name" data-i18n="landing.hero.products">Products</span>
             </button>
             <button class="tf-node" type="button" style="--i:2;left:86.14%;top:38.26%" data-node="2">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Materials</span>
+              <span class="tf-node__name" data-i18n="landing.hero.materials">Materials</span>
             </button>
             <button class="tf-node" type="button" style="--i:3;left:86.14%;top:61.74%" data-node="3">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Facilities</span>
+              <span class="tf-node__name" data-i18n="landing.hero.facilities">Facilities</span>
             </button>
             <button class="tf-node" type="button" style="--i:4;left:72.34%;top:80.74%" data-node="4">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Documents</span>
+              <span class="tf-node__name" data-i18n="landing.hero.documents">Documents</span>
             </button>
             <button class="tf-node" type="button" style="--i:5;left:50.00%;top:88.00%" data-node="5">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Certifications</span>
+              <span class="tf-node__name" data-i18n="landing.hero.certifications">Certifications</span>
             </button>
             <button class="tf-node" type="button" style="--i:6;left:27.66%;top:80.74%" data-node="6">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Evidence</span>
+              <span class="tf-node__name" data-i18n="landing.hero.evidence">Evidence</span>
             </button>
             <button class="tf-node" type="button" style="--i:7;left:13.86%;top:61.74%" data-node="7">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Quality</span>
+              <span class="tf-node__name" data-i18n="landing.hero.quality">Quality</span>
             </button>
             <button class="tf-node" type="button" style="--i:8;left:13.86%;top:38.26%" data-node="8">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">Traceability</span>
+              <span class="tf-node__name" data-i18n="landing.hero.traceability">Traceability</span>
             </button>
             <button class="tf-node" type="button" style="--i:9;left:27.66%;top:19.26%" data-node="9">
               <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name">DPP</span>
+              <span class="tf-node__name" data-i18n="landing.hero.dpp">DPP</span>
             </button>
           </div>
         </div>
@@ -1771,73 +1772,73 @@ a { color: inherit; text-decoration: none; }
     <section class="tf-proof tf-surface tf-surface--light" aria-labelledby="proof-title">
       <div class="tf-shell tf-shell--wide">
         <div class="tf-proof__head">
-          <h2 class="tf-visually-hidden" id="proof-title">TRACEFAB at a glance</h2>
-          <span class="tf-label">One tenant, at a glance</span>
-          <span class="tf-demo-mark">Demonstration data</span>
+          <h2 class="tf-visually-hidden" id="proof-title" data-i18n="landing.proof.tracefab_at_a_glance">TRACEFAB at a glance</h2>
+          <span class="tf-label" data-i18n="landing.proof.one_tenant_at_a_glance">One tenant, at a glance</span>
+          <span class="tf-demo-mark" data-i18n="landing.proof.demonstration_data">Demonstration data</span>
         </div>
 
         <div class="tf-proof__grid">
           <div class="tf-proof__group">
-            <span class="tf-label tf-label--accent">Supply chain</span>
+            <span class="tf-label tf-label--accent" data-i18n="landing.proof.supply_chain">Supply chain</span>
             <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--lg">1,248</span>
-              <span class="tf-label">Products</span>
+              <span class="tf-metric tf-metric--lg" data-i18n="landing.proof.1_248">1,248</span>
+              <span class="tf-label" data-i18n="landing.proof.products">Products</span>
             </div>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--md">86<span class="tf-proof__unit"> / </span>214</span>
-              <span class="tf-label">Suppliers / facilities</span>
+              <span class="tf-label" data-i18n="landing.proof.suppliers_facilities">Suppliers / facilities</span>
             </div>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--md">18</span>
-              <span class="tf-label">Countries of origin</span>
+              <span class="tf-label" data-i18n="landing.proof.countries_of_origin">Countries of origin</span>
             </div>
           </div>
 
           <div class="tf-proof__group">
-            <span class="tf-label tf-label--accent">Data</span>
+            <span class="tf-label tf-label--accent" data-i18n="landing.proof.data">Data</span>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--lg">92.4<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label">Data quality</span>
+              <span class="tf-label" data-i18n="landing.proof.data_quality">Data quality</span>
             </div>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--md">84<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label">Evidence coverage</span>
+              <span class="tf-label" data-i18n="landing.proof.evidence_coverage">Evidence coverage</span>
             </div>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--md">78<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label">Verified data</span>
+              <span class="tf-label" data-i18n="landing.proof.verified_data">Verified data</span>
             </div>
           </div>
 
           <div class="tf-proof__group">
-            <span class="tf-label tf-label--accent">Traceability</span>
+            <span class="tf-label tf-label--accent" data-i18n="landing.proof.traceability">Traceability</span>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--lg">91<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label">Products traceable</span>
+              <span class="tf-label" data-i18n="landing.proof.products_traceable">Products traceable</span>
             </div>
             <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md">Tier 1–4</span>
-              <span class="tf-label">Mapped depth</span>
+              <span class="tf-metric tf-metric--md" data-i18n="landing.proof.tier_14">Tier 1–4</span>
+              <span class="tf-label" data-i18n="landing.proof.mapped_depth">Mapped depth</span>
             </div>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--md">9</span>
-              <span class="tf-label">Custody stages</span>
+              <span class="tf-label" data-i18n="landing.proof.custody_stages">Custody stages</span>
             </div>
           </div>
 
           <div class="tf-proof__group">
-            <span class="tf-label tf-label--accent">Readiness</span>
+            <span class="tf-label tf-label--accent" data-i18n="landing.proof.readiness">Readiness</span>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--lg">88<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label">DPP readiness</span>
+              <span class="tf-label" data-i18n="landing.proof.dpp_readiness">DPP readiness</span>
             </div>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--md">17</span>
-              <span class="tf-label">Missing data items</span>
+              <span class="tf-label" data-i18n="landing.proof.missing_data_items">Missing data items</span>
             </div>
             <div class="tf-proof__item">
               <span class="tf-metric tf-metric--md">8</span>
-              <span class="tf-label">Certificates expiring</span>
+              <span class="tf-label" data-i18n="landing.proof.certificates_expiring">Certificates expiring</span>
             </div>
           </div>
         </div>
@@ -1852,9 +1853,9 @@ a { color: inherit; text-decoration: none; }
       <div class="tf-shell tf-stack tf-stack-7" style="position:relative;z-index:1">
 
         <div class="tf-heading tf-reveal">
-          <span class="tf-label tf-label--accent">The living supply chain graph</span>
-          <h2 class="tf-display-2" id="wow-title">Your entire textile ecosystem.<br>One connected data foundation.</h2>
-          <p class="tf-lead">
+          <span class="tf-label tf-label--accent" data-i18n="landing.wow_ecosystem.the_living_supply_chain_graph">The living supply chain graph</span>
+          <h2 class="tf-display-2" id="wow-title" data-i18n="landing.wow_ecosystem.your_entire_textile_ecosystem">Your entire textile ecosystem.<br data-i18n="landing.wow_ecosystem.one_connected_data_foundation">One connected data foundation.</h2>
+          <p class="tf-lead" data-i18n="landing.wow_ecosystem.nine_custody_stages_from_field">
             Nine custody stages, from field to passport. Hover or select any stage to inspect the
             supplier, country, facility, certificate, document, data quality and verification status
             behind it — simultaneously.
@@ -1864,73 +1865,73 @@ a { color: inherit; text-decoration: none; }
         <!-- matrix: rows = attributes, columns = stages -->
         <div class="tf-chain-scroll tf-reveal" id="tf-chain">
           <div class="tf-chain-grid" role="presentation">
-            <div class="tf-chain-rowhead">Stage</div>
-            <button class="tf-chain-stephead" type="button" data-step="0"><span class="tf-chain-stephead__n">01</span><span class="tf-chain-stephead__t">Fiber</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="1"><span class="tf-chain-stephead__n">02</span><span class="tf-chain-stephead__t">Material</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="2"><span class="tf-chain-stephead__n">03</span><span class="tf-chain-stephead__t">Spinning</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="3"><span class="tf-chain-stephead__n">04</span><span class="tf-chain-stephead__t">Weaving</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="4"><span class="tf-chain-stephead__n">05</span><span class="tf-chain-stephead__t">Dyeing</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="5"><span class="tf-chain-stephead__n">06</span><span class="tf-chain-stephead__t">Cutting</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="6"><span class="tf-chain-stephead__n">07</span><span class="tf-chain-stephead__t">Assembly</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="7"><span class="tf-chain-stephead__n">08</span><span class="tf-chain-stephead__t">Product</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="8"><span class="tf-chain-stephead__n">09</span><span class="tf-chain-stephead__t">DPP</span></button>
+            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.stage">Stage</div>
+            <button class="tf-chain-stephead" type="button" data-step="0"><span class="tf-chain-stephead__n">01</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.fiber">Fiber</span></button>
+            <button class="tf-chain-stephead" type="button" data-step="1"><span class="tf-chain-stephead__n">02</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.material">Material</span></button>
+            <button class="tf-chain-stephead" type="button" data-step="2"><span class="tf-chain-stephead__n">03</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.spinning">Spinning</span></button>
+            <button class="tf-chain-stephead" type="button" data-step="3"><span class="tf-chain-stephead__n">04</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.weaving">Weaving</span></button>
+            <button class="tf-chain-stephead" type="button" data-step="4"><span class="tf-chain-stephead__n">05</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.dyeing">Dyeing</span></button>
+            <button class="tf-chain-stephead" type="button" data-step="5"><span class="tf-chain-stephead__n">06</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.cutting">Cutting</span></button>
+            <button class="tf-chain-stephead" type="button" data-step="6"><span class="tf-chain-stephead__n">07</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.assembly">Assembly</span></button>
+            <button class="tf-chain-stephead" type="button" data-step="7"><span class="tf-chain-stephead__n">08</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.product">Product</span></button>
+            <button class="tf-chain-stephead" type="button" data-step="8"><span class="tf-chain-stephead__n">09</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.dpp">DPP</span></button>
 
-            <div class="tf-chain-rowhead">Supplier</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="0">Ege Organic Co-op</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="1">Aegean Gin House</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="2">Filatura Guimarães</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="3">Portugal Textile Mill</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="4">EcoDye Aquitaine</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="5">Atelier Barcelos</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="6">Atelier Milano</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="7">Maison Tracefab</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="8">GS1 Resolver</div>
+            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.supplier">Supplier</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="0" data-i18n="landing.wow_ecosystem.ege_organic_co_op">Ege Organic Co-op</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="1" data-i18n="landing.wow_ecosystem.aegean_gin_house">Aegean Gin House</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="2" data-i18n="landing.wow_ecosystem.filatura_guimaraes">Filatura Guimarães</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="3" data-i18n="landing.wow_ecosystem.portugal_textile_mill">Portugal Textile Mill</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="4" data-i18n="landing.wow_ecosystem.ecodye_aquitaine">EcoDye Aquitaine</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="5" data-i18n="landing.wow_ecosystem.atelier_barcelos">Atelier Barcelos</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="6" data-i18n="landing.wow_ecosystem.atelier_milano">Atelier Milano</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="7" data-i18n="landing.wow_ecosystem.maison_tracefab">Maison Tracefab</div>
+            <div class="tf-chain-cell tf-chain-cell--strong" data-col="8" data-i18n="landing.wow_ecosystem.gs1_resolver">GS1 Resolver</div>
 
-            <div class="tf-chain-rowhead">Country</div>
-            <div class="tf-chain-cell" data-col="0">Türkiye</div>
-            <div class="tf-chain-cell" data-col="1">Türkiye</div>
-            <div class="tf-chain-cell" data-col="2">Portugal</div>
-            <div class="tf-chain-cell" data-col="3">Portugal</div>
-            <div class="tf-chain-cell" data-col="4">France</div>
-            <div class="tf-chain-cell" data-col="5">Portugal</div>
-            <div class="tf-chain-cell" data-col="6">Italy</div>
-            <div class="tf-chain-cell" data-col="7">France</div>
-            <div class="tf-chain-cell" data-col="8">European Union</div>
+            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.country">Country</div>
+            <div class="tf-chain-cell" data-col="0" data-i18n="landing.wow_ecosystem.turkiye">Türkiye</div>
+            <div class="tf-chain-cell" data-col="1" data-i18n="landing.wow_ecosystem.turkiye">Türkiye</div>
+            <div class="tf-chain-cell" data-col="2" data-i18n="landing.wow_ecosystem.portugal">Portugal</div>
+            <div class="tf-chain-cell" data-col="3" data-i18n="landing.wow_ecosystem.portugal">Portugal</div>
+            <div class="tf-chain-cell" data-col="4" data-i18n="landing.wow_ecosystem.france">France</div>
+            <div class="tf-chain-cell" data-col="5" data-i18n="landing.wow_ecosystem.portugal">Portugal</div>
+            <div class="tf-chain-cell" data-col="6" data-i18n="landing.wow_ecosystem.italy">Italy</div>
+            <div class="tf-chain-cell" data-col="7" data-i18n="landing.wow_ecosystem.france">France</div>
+            <div class="tf-chain-cell" data-col="8" data-i18n="landing.wow_ecosystem.european_union">European Union</div>
 
-            <div class="tf-chain-rowhead">Facility</div>
-            <div class="tf-chain-cell" data-col="0">Izmir Basin · Plot 482</div>
-            <div class="tf-chain-cell" data-col="1">Gin House 12</div>
-            <div class="tf-chain-cell" data-col="2">Ring Mill · Porto Valley</div>
-            <div class="tf-chain-cell" data-col="3">Santo Tirso Loom House</div>
-            <div class="tf-chain-cell" data-col="4">Castres Wet Processing</div>
-            <div class="tf-chain-cell" data-col="5">Cutting Floor 2</div>
-            <div class="tf-chain-cell" data-col="6">Milan Assembly Unit</div>
-            <div class="tf-chain-cell" data-col="7">Paris Design HQ</div>
-            <div class="tf-chain-cell" data-col="8">CIRPASS endpoint</div>
+            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.facility">Facility</div>
+            <div class="tf-chain-cell" data-col="0" data-i18n="landing.wow_ecosystem.izmir_basin_plot_482">Izmir Basin · Plot 482</div>
+            <div class="tf-chain-cell" data-col="1" data-i18n="landing.wow_ecosystem.gin_house_12">Gin House 12</div>
+            <div class="tf-chain-cell" data-col="2" data-i18n="landing.wow_ecosystem.ring_mill_porto_valley">Ring Mill · Porto Valley</div>
+            <div class="tf-chain-cell" data-col="3" data-i18n="landing.wow_ecosystem.santo_tirso_loom_house">Santo Tirso Loom House</div>
+            <div class="tf-chain-cell" data-col="4" data-i18n="landing.wow_ecosystem.castres_wet_processing">Castres Wet Processing</div>
+            <div class="tf-chain-cell" data-col="5" data-i18n="landing.wow_ecosystem.cutting_floor_2">Cutting Floor 2</div>
+            <div class="tf-chain-cell" data-col="6" data-i18n="landing.wow_ecosystem.milan_assembly_unit">Milan Assembly Unit</div>
+            <div class="tf-chain-cell" data-col="7" data-i18n="landing.wow_ecosystem.paris_design_hq">Paris Design HQ</div>
+            <div class="tf-chain-cell" data-col="8" data-i18n="landing.wow_ecosystem.cirpass_endpoint">CIRPASS endpoint</div>
 
-            <div class="tf-chain-rowhead">Certificate</div>
-            <div class="tf-chain-cell" data-col="0">GOTS CU-881294</div>
-            <div class="tf-chain-cell" data-col="1">GOTS Scope</div>
-            <div class="tf-chain-cell" data-col="2">OEKO-TEX STeP</div>
-            <div class="tf-chain-cell" data-col="3">ISO 17025</div>
-            <div class="tf-chain-cell" data-col="4">ZDHC MRSL v3.1</div>
-            <div class="tf-chain-cell" data-col="5">SMETA 4-Pillar</div>
-            <div class="tf-chain-cell" data-col="6">SA8000</div>
-            <div class="tf-chain-cell" data-col="7">ESPR draft</div>
+            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.certificate">Certificate</div>
+            <div class="tf-chain-cell" data-col="0" data-i18n="landing.wow_ecosystem.gots_cu_881294">GOTS CU-881294</div>
+            <div class="tf-chain-cell" data-col="1" data-i18n="landing.wow_ecosystem.gots_scope">GOTS Scope</div>
+            <div class="tf-chain-cell" data-col="2" data-i18n="landing.wow_ecosystem.oeko_tex_step">OEKO-TEX STeP</div>
+            <div class="tf-chain-cell" data-col="3" data-i18n="landing.wow_ecosystem.iso_17025">ISO 17025</div>
+            <div class="tf-chain-cell" data-col="4" data-i18n="landing.wow_ecosystem.zdhc_mrsl_v3_1">ZDHC MRSL v3.1</div>
+            <div class="tf-chain-cell" data-col="5" data-i18n="landing.wow_ecosystem.smeta_4_pillar">SMETA 4-Pillar</div>
+            <div class="tf-chain-cell" data-col="6" data-i18n="landing.wow_ecosystem.sa8000">SA8000</div>
+            <div class="tf-chain-cell" data-col="7" data-i18n="landing.wow_ecosystem.espr_draft">ESPR draft</div>
             <div class="tf-chain-cell" data-col="8">—</div>
 
-            <div class="tf-chain-rowhead">Document</div>
-            <div class="tf-chain-cell" data-col="0">Transaction cert.</div>
-            <div class="tf-chain-cell" data-col="1">Lot analysis A-118</div>
-            <div class="tf-chain-cell" data-col="2">Yarn spec Ne 30/1</div>
-            <div class="tf-chain-cell" data-col="3">Lab report #302</div>
-            <div class="tf-chain-cell" data-col="4">Effluent report</div>
-            <div class="tf-chain-cell" data-col="5">Cut plan CP-2291</div>
-            <div class="tf-chain-cell" data-col="6">Social audit 2026</div>
-            <div class="tf-chain-cell" data-col="7">Composition BOM</div>
-            <div class="tf-chain-cell" data-col="8">JSON-LD passport</div>
+            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.document">Document</div>
+            <div class="tf-chain-cell" data-col="0" data-i18n="landing.wow_ecosystem.transaction_cert">Transaction cert.</div>
+            <div class="tf-chain-cell" data-col="1" data-i18n="landing.wow_ecosystem.lot_analysis_a_118">Lot analysis A-118</div>
+            <div class="tf-chain-cell" data-col="2" data-i18n="landing.wow_ecosystem.yarn_spec_ne_30_1">Yarn spec Ne 30/1</div>
+            <div class="tf-chain-cell" data-col="3" data-i18n="landing.wow_ecosystem.lab_report_302">Lab report #302</div>
+            <div class="tf-chain-cell" data-col="4" data-i18n="landing.wow_ecosystem.effluent_report">Effluent report</div>
+            <div class="tf-chain-cell" data-col="5" data-i18n="landing.wow_ecosystem.cut_plan_cp_2291">Cut plan CP-2291</div>
+            <div class="tf-chain-cell" data-col="6" data-i18n="landing.wow_ecosystem.social_audit_2026">Social audit 2026</div>
+            <div class="tf-chain-cell" data-col="7" data-i18n="landing.wow_ecosystem.composition_bom">Composition BOM</div>
+            <div class="tf-chain-cell" data-col="8" data-i18n="landing.wow_ecosystem.json_ld_passport">JSON-LD passport</div>
 
-            <div class="tf-chain-rowhead">Data quality</div>
+            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.data_quality">Data quality</div>
             <div class="tf-chain-cell tf-chain-cell--num" data-col="0">96%</div>
             <div class="tf-chain-cell tf-chain-cell--num" data-col="1">94%</div>
             <div class="tf-chain-cell tf-chain-cell--num" data-col="2">91%</div>
@@ -1941,16 +1942,16 @@ a { color: inherit; text-decoration: none; }
             <div class="tf-chain-cell tf-chain-cell--num" data-col="7">92%</div>
             <div class="tf-chain-cell tf-chain-cell--num" data-col="8">88%</div>
 
-            <div class="tf-chain-rowhead">Status</div>
-            <div class="tf-chain-cell" data-col="0"><span class="tf-badge tf-badge--verified">Verified</span></div>
-            <div class="tf-chain-cell" data-col="1"><span class="tf-badge tf-badge--documented">Documented</span></div>
-            <div class="tf-chain-cell" data-col="2"><span class="tf-badge tf-badge--verified">Verified</span></div>
-            <div class="tf-chain-cell" data-col="3"><span class="tf-badge tf-badge--certified">Certified</span></div>
-            <div class="tf-chain-cell" data-col="4"><span class="tf-badge tf-badge--verified">Verified</span></div>
-            <div class="tf-chain-cell" data-col="5"><span class="tf-badge tf-badge--documented">Documented</span></div>
-            <div class="tf-chain-cell" data-col="6"><span class="tf-badge tf-badge--review">Needs review</span></div>
-            <div class="tf-chain-cell" data-col="7"><span class="tf-badge tf-badge--declared">Declared</span></div>
-            <div class="tf-chain-cell" data-col="8"><span class="tf-badge tf-badge--certified">Passport ready</span></div>
+            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.status">Status</div>
+            <div class="tf-chain-cell" data-col="0"><span class="tf-badge tf-badge--verified" data-i18n="landing.wow_ecosystem.verified">Verified</span></div>
+            <div class="tf-chain-cell" data-col="1"><span class="tf-badge tf-badge--documented" data-i18n="landing.wow_ecosystem.documented">Documented</span></div>
+            <div class="tf-chain-cell" data-col="2"><span class="tf-badge tf-badge--verified" data-i18n="landing.wow_ecosystem.verified">Verified</span></div>
+            <div class="tf-chain-cell" data-col="3"><span class="tf-badge tf-badge--certified" data-i18n="landing.wow_ecosystem.certified">Certified</span></div>
+            <div class="tf-chain-cell" data-col="4"><span class="tf-badge tf-badge--verified" data-i18n="landing.wow_ecosystem.verified">Verified</span></div>
+            <div class="tf-chain-cell" data-col="5"><span class="tf-badge tf-badge--documented" data-i18n="landing.wow_ecosystem.documented">Documented</span></div>
+            <div class="tf-chain-cell" data-col="6"><span class="tf-badge tf-badge--review" data-i18n="landing.wow_ecosystem.needs_review">Needs review</span></div>
+            <div class="tf-chain-cell" data-col="7"><span class="tf-badge tf-badge--declared" data-i18n="landing.wow_ecosystem.declared">Declared</span></div>
+            <div class="tf-chain-cell" data-col="8"><span class="tf-badge tf-badge--certified" data-i18n="landing.wow_ecosystem.passport_ready">Passport ready</span></div>
           </div>
 
           <!-- mobile: interactive vertical stack -->
@@ -1960,43 +1961,43 @@ a { color: inherit; text-decoration: none; }
         <!-- inspector -->
         <div class="tf-inspector tf-reveal" id="tf-inspector" aria-live="polite">
           <div>
-            <span class="tf-label tf-label--accent" id="insp-tier">Tier 2 · Weaving</span>
-            <h3 class="tf-h2" id="insp-name" style="margin-top:12px">Portugal Textile Mill</h3>
-            <p class="tf-small" id="insp-loc" style="margin:8px 0 0">Santo Tirso Loom House · Portugal</p>
-            <p class="tf-body" id="insp-desc" style="margin-top:16px;max-width:56ch">
+            <span class="tf-label tf-label--accent" id="insp-tier" data-i18n="landing.wow_ecosystem.tier_2_weaving">Tier 2 · Weaving</span>
+            <h3 class="tf-h2" id="insp-name" style="margin-top:12px" data-i18n="landing.wow_ecosystem.portugal_textile_mill">Portugal Textile Mill</h3>
+            <p class="tf-small" id="insp-loc" style="margin:8px 0 0" data-i18n="landing.wow_ecosystem.santo_tirso_loom_house_portuga">Santo Tirso Loom House · Portugal</p>
+            <p class="tf-body" id="insp-desc" style="margin-top:16px;max-width:56ch" data-i18n="landing.wow_ecosystem.185_g_m2_single_jersey_and_3_1">
               185 g/m² single jersey and 3/1 cotton twills. ISO 17025 accredited laboratory reports on
               burst strength and shrinkage, with digital custody transfer to Tier 1 assembly.
             </p>
             <div class="tf-inspector__tags" id="insp-tags">
-              <span class="tf-chip">GOTS 6.0</span>
-              <span class="tf-chip">ISO 17025</span>
-              <span class="tf-chip">Mass balance conserved</span>
+              <span class="tf-chip" data-i18n="landing.wow_ecosystem.gots_6_0">GOTS 6.0</span>
+              <span class="tf-chip" data-i18n="landing.wow_ecosystem.iso_17025">ISO 17025</span>
+              <span class="tf-chip" data-i18n="landing.wow_ecosystem.mass_balance_conserved">Mass balance conserved</span>
             </div>
           </div>
 
           <div class="tf-inspector__facts">
             <div class="tf-inspector__fact">
-              <span class="tf-label">Data quality</span>
+              <span class="tf-label" data-i18n="landing.wow_ecosystem.data_quality">Data quality</span>
               <span class="tf-metric tf-metric--md" id="insp-quality">87%</span>
             </div>
             <div class="tf-inspector__fact">
-              <span class="tf-label">Certificates</span>
+              <span class="tf-label" data-i18n="landing.wow_ecosystem.certificates">Certificates</span>
               <span class="tf-metric tf-metric--md" id="insp-certs">3</span>
             </div>
             <div class="tf-inspector__fact">
-              <span class="tf-label">Products</span>
+              <span class="tf-label" data-i18n="landing.wow_ecosystem.products">Products</span>
               <span class="tf-metric tf-metric--md" id="insp-styles">12</span>
             </div>
             <div class="tf-inspector__fact">
-              <span class="tf-label">Evidence</span>
-              <span class="tf-metric tf-metric--md tf-accent" id="insp-proof">Verified</span>
+              <span class="tf-label" data-i18n="landing.wow_ecosystem.evidence">Evidence</span>
+              <span class="tf-metric tf-metric--md tf-accent" id="insp-proof" data-i18n="landing.wow_ecosystem.verified">Verified</span>
             </div>
           </div>
         </div>
 
         <div class="tf-row tf-row--between tf-row--wrap" style="gap:16px">
-          <span class="tf-demo-mark">Demonstration data — illustrative supply chain</span>
-          <a href="/brand-console/" class="tf-btn tf-btn--ghost tf-btn--sm">Open the Brand Console</a>
+          <span class="tf-demo-mark" data-i18n="landing.wow_ecosystem.demonstration_data_illustrativ">Demonstration data — illustrative supply chain</span>
+          <a href="/brand-console/" class="tf-btn tf-btn--ghost tf-btn--sm" data-i18n="landing.wow_ecosystem.open_the_brand_console">Open the Brand Console</a>
         </div>
       </div>
     </section>
@@ -2007,9 +2008,9 @@ a { color: inherit; text-decoration: none; }
     <section class="tf-section tf-surface tf-surface--light" id="layers" aria-labelledby="layers-title">
       <div class="tf-shell">
         <div class="tf-heading tf-reveal" style="margin-bottom:var(--tf-space-8)">
-          <span class="tf-label">The TRACEFAB architecture</span>
-          <h2 class="tf-display-3" id="layers-title">Seven layers.<br>One chain of custody for your data.</h2>
-          <p class="tf-lead">
+          <span class="tf-label" data-i18n="landing.layers.the_tracefab_architecture">The TRACEFAB architecture</span>
+          <h2 class="tf-display-3" id="layers-title" data-i18n="landing.layers.seven_layers">Seven layers.<br data-i18n="landing.layers.one_chain_of_custody_for_your">One chain of custody for your data.</h2>
+          <p class="tf-lead" data-i18n="landing.layers.every_tracefab_surface_reads_f">
             Every TRACEFAB surface reads from the same stack. Each layer answers one question, and each
             answer is only as strong as the layer beneath it.
           </p>
@@ -2017,84 +2018,84 @@ a { color: inherit; text-decoration: none; }
 
         <div class="tf-layers tf-reveal">
           <div class="tf-layer">
-            <div class="tf-layer__n">LAYER 01</div>
+            <div class="tf-layer__n" data-i18n="landing.layers.layer_01">LAYER 01</div>
             <div>
-              <h3 class="tf-h3">Supply chain</h3>
-              <span class="tf-layer__q">Who makes what?</span>
+              <h3 class="tf-h3" data-i18n="landing.layers.supply_chain">Supply chain</h3>
+              <span class="tf-layer__q" data-i18n="landing.layers.who_makes_what">Who makes what?</span>
             </div>
             <div class="tf-layer__chips">
-              <span class="tf-chip">Suppliers</span><span class="tf-chip">Factories</span><span class="tf-chip">Sites</span><span class="tf-chip">Materials</span><span class="tf-chip">Processes</span>
+              <span class="tf-chip" data-i18n="landing.layers.suppliers">Suppliers</span><span class="tf-chip" data-i18n="landing.layers.factories">Factories</span><span class="tf-chip" data-i18n="landing.layers.sites">Sites</span><span class="tf-chip" data-i18n="landing.layers.materials">Materials</span><span class="tf-chip" data-i18n="landing.layers.processes">Processes</span>
             </div>
           </div>
 
           <div class="tf-layer">
-            <div class="tf-layer__n">LAYER 02</div>
+            <div class="tf-layer__n" data-i18n="landing.layers.layer_02">LAYER 02</div>
             <div>
-              <h3 class="tf-h3">Product data</h3>
-              <span class="tf-layer__q">What is the product?</span>
+              <h3 class="tf-h3" data-i18n="landing.layers.product_data">Product data</h3>
+              <span class="tf-layer__q" data-i18n="landing.layers.what_is_the_product">What is the product?</span>
             </div>
             <div class="tf-layer__chips">
-              <span class="tf-chip">Products</span><span class="tf-chip">Composition</span><span class="tf-chip">Materials</span><span class="tf-chip">Components</span><span class="tf-chip">Identifiers</span>
+              <span class="tf-chip" data-i18n="landing.layers.products">Products</span><span class="tf-chip" data-i18n="landing.layers.composition">Composition</span><span class="tf-chip" data-i18n="landing.layers.materials">Materials</span><span class="tf-chip" data-i18n="landing.layers.components">Components</span><span class="tf-chip" data-i18n="landing.layers.identifiers">Identifiers</span>
             </div>
           </div>
 
           <div class="tf-layer">
-            <div class="tf-layer__n">LAYER 03</div>
+            <div class="tf-layer__n" data-i18n="landing.layers.layer_03">LAYER 03</div>
             <div>
-              <h3 class="tf-h3">Evidence</h3>
-              <span class="tf-layer__q">Can we prove it?</span>
+              <h3 class="tf-h3" data-i18n="landing.layers.evidence">Evidence</h3>
+              <span class="tf-layer__q" data-i18n="landing.layers.can_we_prove_it">Can we prove it?</span>
             </div>
             <div class="tf-layer__chips">
-              <span class="tf-chip">Documents</span><span class="tf-chip">Certificates</span><span class="tf-chip">Declarations</span><span class="tf-chip">Audits</span><span class="tf-chip">Tests</span><span class="tf-chip">Evidence</span>
+              <span class="tf-chip" data-i18n="landing.layers.documents">Documents</span><span class="tf-chip" data-i18n="landing.layers.certificates">Certificates</span><span class="tf-chip" data-i18n="landing.layers.declarations">Declarations</span><span class="tf-chip" data-i18n="landing.layers.audits">Audits</span><span class="tf-chip" data-i18n="landing.layers.tests">Tests</span><span class="tf-chip" data-i18n="landing.layers.evidence">Evidence</span>
             </div>
           </div>
 
           <div class="tf-layer">
-            <div class="tf-layer__n">LAYER 04</div>
+            <div class="tf-layer__n" data-i18n="landing.layers.layer_04">LAYER 04</div>
             <div>
-              <h3 class="tf-h3">Data quality</h3>
-              <span class="tf-layer__q">Can we trust it?</span>
+              <h3 class="tf-h3" data-i18n="landing.layers.data_quality">Data quality</h3>
+              <span class="tf-layer__q" data-i18n="landing.layers.can_we_trust_it">Can we trust it?</span>
             </div>
             <div class="tf-layer__chips">
-              <span class="tf-badge tf-badge--declared tf-badge--plain">Declared</span>
-              <span class="tf-badge tf-badge--documented tf-badge--plain">Documented</span>
-              <span class="tf-badge tf-badge--verified tf-badge--plain">Verified</span>
-              <span class="tf-badge tf-badge--certified tf-badge--plain">Certified</span>
-              <span class="tf-badge tf-badge--review tf-badge--plain">Needs review</span>
-              <span class="tf-badge tf-badge--missing tf-badge--plain">Missing</span>
+              <span class="tf-badge tf-badge--declared tf-badge--plain" data-i18n="landing.layers.declared">Declared</span>
+              <span class="tf-badge tf-badge--documented tf-badge--plain" data-i18n="landing.layers.documented">Documented</span>
+              <span class="tf-badge tf-badge--verified tf-badge--plain" data-i18n="landing.layers.verified">Verified</span>
+              <span class="tf-badge tf-badge--certified tf-badge--plain" data-i18n="landing.layers.certified">Certified</span>
+              <span class="tf-badge tf-badge--review tf-badge--plain" data-i18n="landing.layers.needs_review">Needs review</span>
+              <span class="tf-badge tf-badge--missing tf-badge--plain" data-i18n="landing.layers.missing">Missing</span>
             </div>
           </div>
 
           <div class="tf-layer">
-            <div class="tf-layer__n">LAYER 05</div>
+            <div class="tf-layer__n" data-i18n="landing.layers.layer_05">LAYER 05</div>
             <div>
-              <h3 class="tf-h3">Traceability</h3>
-              <span class="tf-layer__q">Where did it come from?</span>
+              <h3 class="tf-h3" data-i18n="landing.layers.traceability">Traceability</h3>
+              <span class="tf-layer__q" data-i18n="landing.layers.where_did_it_come_from">Where did it come from?</span>
             </div>
             <div class="tf-layer__chips">
-              <span class="tf-chip">Fiber</span><span class="tf-chip">Material</span><span class="tf-chip">Processing</span><span class="tf-chip">Manufacturing</span><span class="tf-chip">Product</span>
+              <span class="tf-chip" data-i18n="landing.layers.fiber">Fiber</span><span class="tf-chip" data-i18n="landing.layers.material">Material</span><span class="tf-chip" data-i18n="landing.layers.processing">Processing</span><span class="tf-chip" data-i18n="landing.layers.manufacturing">Manufacturing</span><span class="tf-chip" data-i18n="landing.layers.product">Product</span>
             </div>
           </div>
 
           <div class="tf-layer">
-            <div class="tf-layer__n">LAYER 06</div>
+            <div class="tf-layer__n" data-i18n="landing.layers.layer_06">LAYER 06</div>
             <div>
-              <h3 class="tf-h3">Intelligence</h3>
-              <span class="tf-layer__q">What does the data tell us?</span>
+              <h3 class="tf-h3" data-i18n="landing.layers.intelligence">Intelligence</h3>
+              <span class="tf-layer__q" data-i18n="landing.layers.what_does_the_data_tell_us">What does the data tell us?</span>
             </div>
             <div class="tf-layer__chips">
-              <span class="tf-chip">Risk</span><span class="tf-chip">Gaps</span><span class="tf-chip">Quality</span><span class="tf-chip">Supplier performance</span><span class="tf-chip">Product readiness</span><span class="tf-chip">Regulatory readiness</span>
+              <span class="tf-chip" data-i18n="landing.layers.risk">Risk</span><span class="tf-chip" data-i18n="landing.layers.gaps">Gaps</span><span class="tf-chip" data-i18n="landing.layers.quality">Quality</span><span class="tf-chip" data-i18n="landing.layers.supplier_performance">Supplier performance</span><span class="tf-chip" data-i18n="landing.layers.product_readiness">Product readiness</span><span class="tf-chip" data-i18n="landing.layers.regulatory_readiness">Regulatory readiness</span>
             </div>
           </div>
 
           <div class="tf-layer">
-            <div class="tf-layer__n">LAYER 07</div>
+            <div class="tf-layer__n" data-i18n="landing.layers.layer_07">LAYER 07</div>
             <div>
-              <h3 class="tf-h3">Digital Product Passport</h3>
-              <span class="tf-layer__q">What can we publish?</span>
+              <h3 class="tf-h3" data-i18n="landing.layers.digital_product_passport">Digital Product Passport</h3>
+              <span class="tf-layer__q" data-i18n="landing.layers.what_can_we_publish">What can we publish?</span>
             </div>
             <div class="tf-layer__chips">
-              <span class="tf-chip">DPP readiness</span><span class="tf-chip">Product passport</span><span class="tf-chip">Public product data</span><span class="tf-chip">Consumer experience</span>
+              <span class="tf-chip" data-i18n="landing.layers.dpp_readiness">DPP readiness</span><span class="tf-chip" data-i18n="landing.layers.product_passport">Product passport</span><span class="tf-chip" data-i18n="landing.layers.public_product_data">Public product data</span><span class="tf-chip" data-i18n="landing.layers.consumer_experience">Consumer experience</span>
             </div>
           </div>
         </div>
@@ -2107,9 +2108,9 @@ a { color: inherit; text-decoration: none; }
     <section class="tf-section tf-surface tf-surface--light" id="who" aria-labelledby="who-title">
       <div class="tf-shell">
         <div class="tf-heading tf-reveal" style="margin-bottom:var(--tf-space-7)">
-          <span class="tf-label">Who opens TRACEFAB</span>
-          <h2 class="tf-display-3" id="who-title">Three people. Three questions. One dataset.</h2>
-          <p class="tf-lead">
+          <span class="tf-label" data-i18n="landing.who.who_opens_tracefab">Who opens TRACEFAB</span>
+          <h2 class="tf-display-3" id="who-title" data-i18n="landing.who.three_people_three_questions_o">Three people. Three questions. One dataset.</h2>
+          <p class="tf-lead" data-i18n="landing.who.the_same_record_answers_a_foun">
             The same record answers a founder, a compliance lead and a factory — without any of them
             seeing what they should not.
           </p>
@@ -2117,33 +2118,33 @@ a { color: inherit; text-decoration: none; }
 
         <div class="tf-grid tf-grid--3 tf-reveal">
           <article class="tf-persona">
-            <span class="tf-label">CEO / Founder</span>
-            <p class="tf-persona__q">Where is my exposure?</p>
-            <p class="tf-body">
+            <span class="tf-label" data-i18n="landing.who.ceo_founder">CEO / Founder</span>
+            <p class="tf-persona__q" data-i18n="landing.who.where_is_my_exposure">Where is my exposure?</p>
+            <p class="tf-body" data-i18n="landing.who.one_figure_per_collection_how">
               One figure per collection: how much of the range you can actually prove today, and what
               is missing before a regulator asks.
             </p>
-            <a class="tf-persona__go" href="/brand-console/">Start with Overview</a>
+            <a class="tf-persona__go" href="/brand-console/" data-i18n="landing.who.start_with_overview">Start with Overview</a>
           </article>
 
           <article class="tf-persona">
-            <span class="tf-label">Sustainability &amp; Compliance</span>
-            <p class="tf-persona__q">Will this hold up in an audit?</p>
-            <p class="tf-body">
+            <span class="tf-label" data-i18n="landing.who.sustainability_compliance">Sustainability &amp; Compliance</span>
+            <p class="tf-persona__q" data-i18n="landing.who.will_this_hold_up_in_an_audit">Will this hold up in an audit?</p>
+            <p class="tf-body" data-i18n="landing.who.every_score_resolves_to_a_docu">
               Every score resolves to a document, an issuer and a date. Six trust levels, none of them
               invented — and the gap list that closes each one.
             </p>
-            <a class="tf-persona__go" href="/quality-center/">Start with Quality Center</a>
+            <a class="tf-persona__go" href="/quality-center/" data-i18n="landing.who.start_with_quality_center">Start with Quality Center</a>
           </article>
 
           <article class="tf-persona">
-            <span class="tf-label">Supplier</span>
-            <p class="tf-persona__q">What do you need from me?</p>
-            <p class="tf-body">
+            <span class="tf-label" data-i18n="landing.who.supplier">Supplier</span>
+            <p class="tf-persona__q" data-i18n="landing.who.what_do_you_need_from_me">What do you need from me?</p>
+            <p class="tf-body" data-i18n="landing.who.a_short_list_of_typed_question">
               A short list of typed questions, one place to answer them, and answers you reuse across
               every brand you work with.
             </p>
-            <a class="tf-persona__go" href="/supplier-portal/">Start with Supplier Portal</a>
+            <a class="tf-persona__go" href="/supplier-portal/" data-i18n="landing.who.start_with_supplier_portal">Start with Supplier Portal</a>
           </article>
         </div>
       </div>
@@ -2156,47 +2157,47 @@ a { color: inherit; text-decoration: none; }
       <div class="tf-shell">
         <div class="tf-row tf-row--between tf-row--wrap tf-reveal" style="align-items:flex-end;gap:var(--tf-space-5);margin-bottom:var(--tf-space-8)">
           <div class="tf-heading" style="max-width:720px">
-            <span class="tf-label">Overview → Explore → Inspect → Act</span>
-            <h2 class="tf-display-3" id="why-title" data-i18n="sec2_title">Complexity you can finally operate.</h2>
+            <span class="tf-label" data-i18n="landing.why.overview_explore_inspect_act">Overview → Explore → Inspect → Act</span>
+            <h2 class="tf-display-3" id="why-title" data-i18n="landing.why.complexity_you_can_finally_ope">Complexity you can finally operate.</h2>
           </div>
-          <a href="/brand-console/" class="tf-btn tf-btn--dark" data-i18n="sec2_btn">Explore the platform</a>
+          <a href="/brand-console/" class="tf-btn tf-btn--dark" data-i18n="landing.why.explore_the_platform">Explore the platform</a>
         </div>
 
         <div class="tf-grid tf-grid--3 tf-reveal">
           <article class="tf-card tf-card--hover">
-            <span class="tf-label">Collect</span>
-            <h3 class="tf-h3" style="margin-top:14px" data-i18n="sec2_c1_title">Structured requests, not file drops</h3>
-            <p class="tf-body" style="margin-top:10px" data-i18n="sec2_c1_desc">
+            <span class="tf-label" data-i18n="landing.why.collect">Collect</span>
+            <h3 class="tf-h3" style="margin-top:14px" data-i18n="landing.why.structured_requests_not_file_d">Structured requests, not file drops</h3>
+            <p class="tf-body" style="margin-top:10px" data-i18n="landing.why.a_data_request_becomes_typed_d">
               A data request becomes typed data points with required evidence attached — reviewed,
               accepted or rejected, never a folder of PDFs.
             </p>
             <div class="tf-row tf-row--wrap" style="gap:6px;margin-top:18px">
-              <span class="tf-chip">Data points</span><span class="tf-chip">Versioned answers</span>
+              <span class="tf-chip" data-i18n="landing.why.data_points">Data points</span><span class="tf-chip" data-i18n="landing.why.versioned_answers">Versioned answers</span>
             </div>
           </article>
 
           <article class="tf-card tf-card--hover">
-            <span class="tf-label">Verify</span>
-            <h3 class="tf-h3" style="margin-top:14px" data-i18n="sec2_c2_title">Six levels of trust, not five stars</h3>
-            <p class="tf-body" style="margin-top:10px" data-i18n="sec2_c2_desc">
+            <span class="tf-label" data-i18n="landing.why.verify">Verify</span>
+            <h3 class="tf-h3" style="margin-top:14px" data-i18n="landing.why.six_levels_of_trust_not_five_s">Six levels of trust, not five stars</h3>
+            <p class="tf-body" style="margin-top:10px" data-i18n="landing.why.declared_documented_verified_c">
               Declared, documented, verified, certified, needs review, missing. Every score is
               explainable down to the document that produced it.
             </p>
             <div class="tf-row tf-row--wrap" style="gap:6px;margin-top:18px">
-              <span class="tf-badge tf-badge--verified">Verified</span>
-              <span class="tf-badge tf-badge--certified">Certified</span>
+              <span class="tf-badge tf-badge--verified" data-i18n="landing.why.verified">Verified</span>
+              <span class="tf-badge tf-badge--certified" data-i18n="landing.why.certified">Certified</span>
             </div>
           </article>
 
           <article class="tf-card tf-card--hover">
-            <span class="tf-label">Protect</span>
-            <h3 class="tf-h3" style="margin-top:14px" data-i18n="sec2_c3_title">Supplier secrets stay supplier secrets</h3>
-            <p class="tf-body" style="margin-top:10px" data-i18n="sec2_c3_desc">
+            <span class="tf-label" data-i18n="landing.why.protect">Protect</span>
+            <h3 class="tf-h3" style="margin-top:14px" data-i18n="landing.why.supplier_secrets_stay_supplier">Supplier secrets stay supplier secrets</h3>
+            <p class="tf-body" style="margin-top:10px" data-i18n="landing.why.evidence_is_private_by_default">
               Evidence is private by default and shared by scope. A supplier declares compliance
               without exposing pricing, formulas or sub-contractors.
             </p>
             <div class="tf-row tf-row--wrap" style="gap:6px;margin-top:18px">
-              <span class="tf-chip">Row-level security</span><span class="tf-chip">Scoped sharing</span>
+              <span class="tf-chip" data-i18n="landing.why.row_level_security">Row-level security</span><span class="tf-chip" data-i18n="landing.why.scoped_sharing">Scoped sharing</span>
             </div>
           </article>
         </div>
@@ -2210,50 +2211,50 @@ a { color: inherit; text-decoration: none; }
       <div class="tf-shell">
         <div class="tf-pi">
           <div class="tf-card tf-reveal">
-            <span class="tf-label">Product</span>
-            <h3 class="tf-h2" style="margin-top:12px" id="pi-title">Organic Cotton T-Shirt</h3>
-            <p class="tf-code" style="margin-top:10px;display:inline-block">AW26-0248</p>
+            <span class="tf-label" data-i18n="landing.product_intelligence.product">Product</span>
+            <h3 class="tf-h2" style="margin-top:12px" id="pi-title" data-i18n="landing.product_intelligence.organic_cotton_t_shirt">Organic Cotton T-Shirt</h3>
+            <p class="tf-code" style="margin-top:10px;display:inline-block" data-i18n="landing.product_intelligence.aw26_0248">AW26-0248</p>
             <div style="margin-top:var(--tf-space-6);display:grid;gap:var(--tf-space-4)">
               <div class="tf-metric-block">
                 <span class="tf-metric tf-metric--md">92<span style="font-size:.55em">%</span></span>
-                <span class="tf-label">Data quality</span>
+                <span class="tf-label" data-i18n="landing.product_intelligence.data_quality">Data quality</span>
               </div>
               <div class="tf-metric-block">
                 <span class="tf-metric tf-metric--md">88<span style="font-size:.55em">%</span></span>
-                <span class="tf-label">DPP readiness</span>
+                <span class="tf-label" data-i18n="landing.product_intelligence.dpp_readiness">DPP readiness</span>
               </div>
             </div>
             <div class="tf-row tf-row--wrap" style="gap:6px;margin-top:var(--tf-space-6)">
-              <span class="tf-badge tf-badge--verified">Tier 1–4 traced</span>
-              <span class="tf-badge tf-badge--review">2 open items</span>
+              <span class="tf-badge tf-badge--verified" data-i18n="landing.product_intelligence.tier_14_traced">Tier 1–4 traced</span>
+              <span class="tf-badge tf-badge--review" data-i18n="landing.product_intelligence.2_open_items">2 open items</span>
             </div>
           </div>
 
           <div class="tf-stack tf-stack-6 tf-reveal">
             <div>
-              <span class="tf-label">Inspect</span>
-              <div class="tf-pi__tabs" role="tablist" aria-label="Product views" style="margin-top:14px" id="tf-pi-tabs"></div>
+              <span class="tf-label" data-i18n="landing.product_intelligence.inspect">Inspect</span>
+              <div class="tf-pi__tabs" role="tablist" aria-label="Product views" style="margin-top:14px" id="tf-pi-tabs" data-i18n-attr="aria-label:landing.product_intelligence.product_views_al"></div>
               <div class="tf-pi__panel" id="tf-pi-panel" role="tabpanel" tabindex="0"
                    aria-labelledby="tf-pi-tab-overview" style="margin-top:14px"></div>
             </div>
 
             <div>
-              <span class="tf-label">Product lineage</span>
+              <span class="tf-label" data-i18n="landing.product_intelligence.product_lineage">Product lineage</span>
               <ul class="tf-lineage" style="margin-top:14px">
-                <li><span class="tf-lineage__i">01</span><span class="tf-lineage__t">Fiber</span><span class="tf-lineage__s">Ege Organic Co-op · Türkiye</span></li>
-                <li><span class="tf-lineage__i">02</span><span class="tf-lineage__t">Spinner</span><span class="tf-lineage__s">Filatura Guimarães · Portugal</span></li>
-                <li><span class="tf-lineage__i">03</span><span class="tf-lineage__t">Yarn</span><span class="tf-lineage__s">Ne 30/1 combed compact</span></li>
-                <li><span class="tf-lineage__i">04</span><span class="tf-lineage__t">Fabric</span><span class="tf-lineage__s">185 g/m² single jersey</span></li>
-                <li><span class="tf-lineage__i">05</span><span class="tf-lineage__t">Dye house</span><span class="tf-lineage__s">EcoDye Aquitaine · France</span></li>
-                <li><span class="tf-lineage__i">06</span><span class="tf-lineage__t">Manufacturer</span><span class="tf-lineage__s">Atelier Milano · Italy</span></li>
-                <li><span class="tf-lineage__i">07</span><span class="tf-lineage__t">Finished product</span><span class="tf-lineage__s">AW26-0248</span></li>
-                <li><span class="tf-lineage__i">08</span><span class="tf-lineage__t">DPP</span><span class="tf-lineage__s">CIRPASS 1.2 draft</span></li>
+                <li><span class="tf-lineage__i">01</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.fiber">Fiber</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.ege_organic_co_op_turkiye">Ege Organic Co-op · Türkiye</span></li>
+                <li><span class="tf-lineage__i">02</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.spinner">Spinner</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.filatura_guimaraes_portugal">Filatura Guimarães · Portugal</span></li>
+                <li><span class="tf-lineage__i">03</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.yarn">Yarn</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.ne_30_1_combed_compact">Ne 30/1 combed compact</span></li>
+                <li><span class="tf-lineage__i">04</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.fabric">Fabric</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.185_g_m2_single_jersey">185 g/m² single jersey</span></li>
+                <li><span class="tf-lineage__i">05</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.dye_house">Dye house</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.ecodye_aquitaine_france">EcoDye Aquitaine · France</span></li>
+                <li><span class="tf-lineage__i">06</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.manufacturer">Manufacturer</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.atelier_milano_italy">Atelier Milano · Italy</span></li>
+                <li><span class="tf-lineage__i">07</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.finished_product">Finished product</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.aw26_0248">AW26-0248</span></li>
+                <li><span class="tf-lineage__i">08</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.dpp">DPP</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.cirpass_1_2_draft">CIRPASS 1.2 draft</span></li>
               </ul>
             </div>
 
             <div class="tf-row tf-row--wrap" style="gap:12px">
-              <a href="/brand-console/" class="tf-btn tf-btn--dark tf-btn--sm">Open product intelligence</a>
-              <span class="tf-demo-mark">Demonstration data</span>
+              <a href="/brand-console/" class="tf-btn tf-btn--dark tf-btn--sm" data-i18n="landing.product_intelligence.open_product_intelligence">Open product intelligence</a>
+              <span class="tf-demo-mark" data-i18n="landing.product_intelligence.demonstration_data">Demonstration data</span>
             </div>
           </div>
         </div>
@@ -2266,47 +2267,47 @@ a { color: inherit; text-decoration: none; }
     <section class="tf-section tf-surface tf-surface--light" id="supply-chain" style="--tf-sf-bg:var(--tf-paper-2)" aria-labelledby="reach-title">
       <div class="tf-shell">
         <div class="tf-heading tf-heading--center tf-reveal" style="margin-bottom:var(--tf-space-8)">
-          <span class="tf-label">Europe to the world</span>
-          <h2 class="tf-display-3" id="reach-title">Built for Europe. Ready for any origin.</h2>
-          <p class="tf-lead">
+          <span class="tf-label" data-i18n="landing.supply_chain.europe_to_the_world">Europe to the world</span>
+          <h2 class="tf-display-3" id="reach-title" data-i18n="landing.supply_chain.built_for_europe_ready_for_any">Built for Europe. Ready for any origin.</h2>
+          <p class="tf-lead" data-i18n="landing.supply_chain.tracefab_ships_with_european_r">
             TRACEFAB ships with European regulatory depth — ESPR, AGEC, CIRPASS — and no country
             assumption. Any origin, any tier, any script.
           </p>
         </div>
 
-        <div class="tf-reach tf-reveal" role="list" aria-label="Supported origins">
-          <span class="tf-chip" role="listitem">France</span>
-          <span class="tf-chip" role="listitem">Portugal</span>
-          <span class="tf-chip" role="listitem">Italy</span>
-          <span class="tf-chip" role="listitem">Germany</span>
-          <span class="tf-chip" role="listitem">Spain</span>
-          <span class="tf-chip" role="listitem">Netherlands</span>
-          <span class="tf-chip" role="listitem">Türkiye</span>
-          <span class="tf-chip" role="listitem">Morocco</span>
-          <span class="tf-chip" role="listitem">Tunisia</span>
-          <span class="tf-chip" role="listitem">India</span>
-          <span class="tf-chip" role="listitem">Bangladesh</span>
-          <span class="tf-chip" role="listitem">Vietnam</span>
-          <span class="tf-chip" role="listitem">China</span>
-          <span class="tf-chip" role="listitem">United States</span>
-          <span class="tf-chip" role="listitem">+ any country</span>
+        <div class="tf-reach tf-reveal" role="list" aria-label="Supported origins" data-i18n-attr="aria-label:landing.supply_chain.supported_origins_al">
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.france">France</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.portugal">Portugal</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.italy">Italy</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.germany">Germany</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.spain">Spain</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.netherlands">Netherlands</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.turkiye">Türkiye</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.morocco">Morocco</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.tunisia">Tunisia</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.india">India</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.bangladesh">Bangladesh</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.vietnam">Vietnam</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.china">China</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.united_states">United States</span>
+          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.any_country">+ any country</span>
         </div>
 
         <div class="tf-grid tf-grid--3 tf-reveal" style="margin-top:var(--tf-space-8)">
           <article class="tf-hub">
-            <span class="tf-label">Tier 1 &amp; 2 hub</span>
-            <h3 class="tf-h3">Portugal</h3>
-            <p class="tf-body">Porto &amp; Guimarães — GOTS organic jersey, spinning and cut-and-sew mapped to facility level.</p>
+            <span class="tf-label" data-i18n="landing.supply_chain.tier_1_2_hub">Tier 1 &amp; 2 hub</span>
+            <h3 class="tf-h3" data-i18n="landing.supply_chain.portugal">Portugal</h3>
+            <p class="tf-body" data-i18n="landing.supply_chain.porto_guimaraes_gots_organic_j">Porto &amp; Guimarães — GOTS organic jersey, spinning and cut-and-sew mapped to facility level.</p>
           </article>
           <article class="tf-hub">
-            <span class="tf-label">Luxury weaving</span>
-            <h3 class="tf-h3">Italy</h3>
-            <p class="tf-body">Biella &amp; Prato — traceable fine spinning, ZDHC-compliant finishing, closed-loop recycled fibre.</p>
+            <span class="tf-label" data-i18n="landing.supply_chain.luxury_weaving">Luxury weaving</span>
+            <h3 class="tf-h3" data-i18n="landing.supply_chain.italy">Italy</h3>
+            <p class="tf-body" data-i18n="landing.supply_chain.biella_prato_traceable_fine_sp">Biella &amp; Prato — traceable fine spinning, ZDHC-compliant finishing, closed-loop recycled fibre.</p>
           </article>
           <article class="tf-hub">
-            <span class="tf-label">European flax</span>
-            <h3 class="tf-h3">France</h3>
-            <p class="tf-body">Normandy &amp; Hauts-de-France — field-to-yarn flax lots meeting AGEC traceability requirements.</p>
+            <span class="tf-label" data-i18n="landing.supply_chain.european_flax">European flax</span>
+            <h3 class="tf-h3" data-i18n="landing.supply_chain.france">France</h3>
+            <p class="tf-body" data-i18n="landing.supply_chain.normandy_hauts_de_france_field">Normandy &amp; Hauts-de-France — field-to-yarn flax lots meeting AGEC traceability requirements.</p>
           </article>
         </div>
       </div>
@@ -2318,20 +2319,20 @@ a { color: inherit; text-decoration: none; }
     <section class="tf-section tf-surface tf-surface--dark" aria-labelledby="promise-title">
       <div class="tf-tex tf-tex--warp" aria-hidden="true"></div>
       <div class="tf-shell tf-stack tf-stack-7" style="position:relative;z-index:1;text-align:center">
-        <span class="tf-label tf-label--accent" style="justify-content:center">The promise</span>
+        <span class="tf-label tf-label--accent" style="justify-content:center" data-i18n="landing.promise.the_promise">The promise</span>
         <ul class="tf-promise__list" id="tf-promise">
-          <li>See it.</li>
-          <li>Structure it.</li>
-          <li>Verify it.</li>
-          <li>Trace it.</li>
-          <li>Prove it.</li>
+          <li data-i18n="landing.promise.see_it">See it.</li>
+          <li data-i18n="landing.promise.structure_it">Structure it.</li>
+          <li data-i18n="landing.promise.verify_it">Verify it.</li>
+          <li data-i18n="landing.promise.trace_it">Trace it.</li>
+          <li data-i18n="landing.promise.prove_it">Prove it.</li>
         </ul>
         <div class="tf-stack tf-stack-4" style="align-items:center">
           <h2 class="tf-display-3" id="promise-title">TRACEFAB</h2>
-          <p class="tf-lead" style="text-align:center">The intelligence layer for the global textile supply chain.</p>
+          <p class="tf-lead" style="text-align:center" data-i18n="landing.promise.the_intelligence_layer_for_the">The intelligence layer for the global textile supply chain.</p>
           <div class="tf-row tf-row--wrap" style="gap:12px;justify-content:center">
-            <a href="/brand-console/" class="tf-btn tf-btn--primary">Explore TRACEFAB</a>
-            <button type="button" class="tf-btn tf-btn--ghost" data-demo-open>Request a demo</button>
+            <a href="/brand-console/" class="tf-btn tf-btn--primary" data-i18n="landing.promise.explore_tracefab">Explore TRACEFAB</a>
+            <button type="button" class="tf-btn tf-btn--ghost" data-demo-open data-i18n="landing.promise.request_a_demo">Request a demo</button>
           </div>
         </div>
       </div>
@@ -2343,24 +2344,24 @@ a { color: inherit; text-decoration: none; }
     <section class="tf-section tf-surface tf-surface--light" id="resources" aria-labelledby="resources-title">
       <div class="tf-shell">
         <div class="tf-heading tf-reveal" style="margin-bottom:var(--tf-space-7)">
-          <span class="tf-label">Resources</span>
-          <h2 class="tf-display-3" id="resources-title">Go deeper</h2>
+          <span class="tf-label" data-i18n="landing.resources.resources">Resources</span>
+          <h2 class="tf-display-3" id="resources-title" data-i18n="landing.resources.go_deeper">Go deeper</h2>
         </div>
         <div class="tf-res tf-reveal">
           <a href="/supplier-portal/">
-            <span class="tf-label">Suppliers</span>
-            <span class="tf-h3">Supplier Portal</span>
-            <span class="tf-body">Complete your profile, add facilities and materials, answer requests, upload evidence.</span>
+            <span class="tf-label" data-i18n="landing.resources.suppliers">Suppliers</span>
+            <span class="tf-h3" data-i18n="landing.resources.supplier_portal">Supplier Portal</span>
+            <span class="tf-body" data-i18n="landing.resources.complete_your_profile_add_faci">Complete your profile, add facilities and materials, answer requests, upload evidence.</span>
           </a>
           <a href="/quality-center/">
-            <span class="tf-label">Data quality</span>
-            <span class="tf-h3">Quality Center</span>
-            <span class="tf-body">Completeness, evidence coverage, verification rate and the actions that close each gap.</span>
+            <span class="tf-label" data-i18n="landing.resources.data_quality">Data quality</span>
+            <span class="tf-h3" data-i18n="landing.resources.quality_center">Quality Center</span>
+            <span class="tf-body" data-i18n="landing.resources.completeness_evidence_coverage">Completeness, evidence coverage, verification rate and the actions that close each gap.</span>
           </a>
           <a href="/dpp/">
-            <span class="tf-label">Public</span>
-            <span class="tf-h3">Consumer passport</span>
-            <span class="tf-body">What a customer sees when they scan the product: origin, composition, care, repair.</span>
+            <span class="tf-label" data-i18n="landing.resources.public">Public</span>
+            <span class="tf-h3" data-i18n="landing.resources.consumer_passport">Consumer passport</span>
+            <span class="tf-body" data-i18n="landing.resources.what_a_customer_sees_when_they">What a customer sees when they scan the product: origin, composition, care, repair.</span>
           </a>
         </div>
       </div>
@@ -2374,47 +2375,47 @@ a { color: inherit; text-decoration: none; }
     <div class="tf-shell">
       <div class="tf-footer__grid">
         <div class="tf-stack tf-stack-4">
-          <a href="/" class="tf-wordmark" aria-label="TRACEFAB home">
+          <a href="/" class="tf-wordmark" aria-label="TRACEFAB home" data-i18n-attr="aria-label:landing.footer.tracefab_home_al">
             <span class="tf-wordmark__mark" aria-hidden="true">tf</span>
             <span class="tf-wordmark__name">TRACEFAB</span>
           </a>
-          <p class="tf-body" style="max-width:38ch" data-i18n="footer_desc">
+          <p class="tf-body" style="max-width:38ch" data-i18n="landing.footer.european_textile_data_and_digi">
             European textile data and Digital Product Passport infrastructure.
           </p>
-          <span class="tf-demo-mark">Product surfaces show demonstration data</span>
+          <span class="tf-demo-mark" data-i18n="landing.footer.product_surfaces_show_demonstr">Product surfaces show demonstration data</span>
         </div>
 
         <nav class="tf-footer__col" aria-label="Platform">
-          <span class="tf-label">Platform</span>
-          <a href="#layers" data-i18n="nav_platform">Architecture</a>
-          <a href="#who">Who it is for</a>
-          <a href="#wow-ecosystem" data-i18n="nav_supply_chain">Supply chain</a>
-          <a href="#product-intelligence">Product intelligence</a>
-          <a href="/brand-console/">Brand Console</a>
+          <span class="tf-label" data-i18n="landing.footer.platform">Platform</span>
+          <a href="#layers" data-i18n="landing.footer.architecture">Architecture</a>
+          <a href="#who" data-i18n="landing.footer.who_it_is_for">Who it is for</a>
+          <a href="#wow-ecosystem" data-i18n="landing.footer.supply_chain">Supply chain</a>
+          <a href="#product-intelligence" data-i18n="landing.footer.product_intelligence">Product intelligence</a>
+          <a href="/brand-console/" data-i18n="landing.footer.brand_console">Brand Console</a>
         </nav>
 
         <nav class="tf-footer__col" aria-label="Surfaces">
-          <span class="tf-label">Surfaces</span>
-          <a href="/supplier-portal/">Supplier Portal</a>
-          <a href="/quality-center/">Quality Center</a>
-          <a href="/dpp/">Consumer passport</a>
-          <a href="/operations/">Operations</a>
+          <span class="tf-label" data-i18n="landing.footer.surfaces">Surfaces</span>
+          <a href="/supplier-portal/" data-i18n="landing.footer.supplier_portal">Supplier Portal</a>
+          <a href="/quality-center/" data-i18n="landing.footer.quality_center">Quality Center</a>
+          <a href="/dpp/" data-i18n="landing.footer.consumer_passport">Consumer passport</a>
+          <a href="/operations/" data-i18n="landing.footer.operations">Operations</a>
         </nav>
 
         <nav class="tf-footer__col" aria-label="Regulation">
-          <span class="tf-label">Regulation</span>
-          <a href="#layers">ESPR</a>
-          <a href="#layers">CIRPASS</a>
-          <a href="#layers">AGEC Art. 13</a>
-          <a href="#layers">CSRD</a>
+          <span class="tf-label" data-i18n="landing.footer.regulation">Regulation</span>
+          <a href="#layers" data-i18n="landing.footer.espr">ESPR</a>
+          <a href="#layers" data-i18n="landing.footer.cirpass">CIRPASS</a>
+          <a href="#layers" data-i18n="landing.footer.agec_art_13">AGEC Art. 13</a>
+          <a href="#layers" data-i18n="landing.footer.csrd">CSRD</a>
         </nav>
       </div>
 
       <hr class="tf-rule" style="margin-block:var(--tf-space-7) var(--tf-space-5)">
 
       <div class="tf-row tf-row--between tf-row--wrap" style="gap:12px">
-        <span class="tf-small" data-i18n="footer_rights">© 2026 TRACEFAB. All rights reserved.</span>
-        <span class="tf-small">DPP readiness is a preparation indicator, not a legal certification.</span>
+        <span class="tf-small" data-i18n="landing.footer.2026_tracefab_all_rights_reser">© 2026 TRACEFAB. All rights reserved.</span>
+        <span class="tf-small" data-i18n="landing.footer.dpp_readiness_is_a_preparation">DPP readiness is a preparation indicator, not a legal certification.</span>
       </div>
     </div>
   </footer>
@@ -2424,48 +2425,52 @@ a { color: inherit; text-decoration: none; }
        ====================================================================== -->
   <dialog class="tf-dialog" id="demo-modal" aria-labelledby="demo-title">
     <form method="dialog" id="demo-form">
-      <span class="tf-label tf-label--accent">TRACEFAB enterprise</span>
-      <h2 class="tf-h1" id="demo-title" style="margin-top:12px">Request a demo</h2>
-      <p class="tf-body" style="margin:12px 0 24px">
+      <span class="tf-label tf-label--accent" data-i18n="landing.footer.tracefab_enterprise">TRACEFAB enterprise</span>
+      <h2 class="tf-h1" id="demo-title" style="margin-top:12px" data-i18n="landing.footer.request_a_demo">Request a demo</h2>
+      <p class="tf-body" style="margin:12px 0 24px" data-i18n="landing.footer.see_how_tracefab_structures_yo">
         See how TRACEFAB structures your textile supply chain data and produces ESPR-ready passports.
       </p>
 
       <div class="tf-field">
-        <label for="demo-name">Full name</label>
-        <input id="demo-name" name="name" type="text" autocomplete="name" required placeholder="Marie Dupont">
+        <label for="demo-name" data-i18n="landing.footer.full_name">Full name</label>
+        <input id="demo-name" name="name" type="text" autocomplete="name" required placeholder="Marie Dupont" data-i18n-attr="placeholder:landing.footer.marie_dupont_ph">
       </div>
       <div class="tf-field">
-        <label for="demo-email">Work email</label>
-        <input id="demo-email" name="email" type="email" autocomplete="email" required placeholder="m.dupont@brand.com">
+        <label for="demo-email" data-i18n="landing.footer.work_email">Work email</label>
+        <input id="demo-email" name="email" type="email" autocomplete="email" required placeholder="m.dupont@brand.com" data-i18n-attr="placeholder:landing.footer.m_dupont_brand_com_ph">
       </div>
       <div class="tf-field">
-        <label for="demo-company">Brand or atelier</label>
-        <input id="demo-company" name="company" type="text" autocomplete="organization" required placeholder="Maison / manufacturer">
+        <label for="demo-company" data-i18n="landing.footer.brand_or_atelier">Brand or atelier</label>
+        <input id="demo-company" name="company" type="text" autocomplete="organization" required placeholder="Maison / manufacturer" data-i18n-attr="placeholder:landing.footer.maison_manufacturer_ph">
       </div>
 
       <p class="tf-small" id="demo-status" role="status" style="margin:0 0 16px"></p>
 
       <div class="tf-row" style="gap:10px;justify-content:flex-end">
-        <button type="button" class="tf-btn tf-btn--ghost" data-demo-close>Cancel</button>
-        <button type="submit" class="tf-btn tf-btn--primary">Send request</button>
+        <button type="button" class="tf-btn tf-btn--ghost" data-demo-close data-i18n="landing.footer.cancel">Cancel</button>
+        <button type="submit" class="tf-btn tf-btn--primary" data-i18n="landing.footer.send_request">Send request</button>
       </div>
     </form>
   </dialog>
 
-  <script src="/i18n-engine.js"></script>
+  <script src="/i18n-core.js"></script>
   <script>
   (function () {
     'use strict';
 
     /* ------------------------------------------------------------------
-       Resilient language control.
-       i18n-engine.js owns window.applyLanguage / setLanguage / toggleLangMenu.
-       If the engine is unavailable we degrade gracefully instead of throwing.
+       Contrôle de langue résilient.
+       Le runtime partagé (i18n-core.js) possède la langue : on la lit et on
+       l'écrit chez lui, plus dans un localStorage privé à cette page. Deux
+       clés de stockage signifiaient que le choix fait sur la landing ne
+       suivait pas l'utilisateur sur les autres surfaces.
        ------------------------------------------------------------------ */
+    var I18N = function () { return window.TracefabI18n || null; };
     var LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
 
     function currentLang() {
-      try { return localStorage.getItem('tracefab_lang') || 'en'; } catch (e) { return 'en'; }
+      var r = I18N();
+      return r ? r.language : 'en';
     }
 
     function paintLang(lang) {
@@ -2483,12 +2488,9 @@ a { color: inherit; text-decoration: none; }
       // Prefer the engine's own public API; never redefine it here (a local
       // `function setLanguage` would shadow window.setLanguage depending on
       // script order — see docs/UX_AUDIT_PHASE1.md, finding B6).
-      if (typeof window.setLanguage === 'function') {
-        window.setLanguage(lang);
-      } else if (typeof window.applyLanguage === 'function') {
-        window.applyLanguage(lang);
-      } else {
-        try { localStorage.setItem('tracefab_lang', lang); } catch (e) {}
+      var r = I18N();
+      if (r) { r.setLanguage(lang); } else {
+        try { localStorage.setItem('tracefab.lang', lang); } catch (e) {}
       }
       paintLang(lang);
       closeLang();
@@ -2526,7 +2528,40 @@ a { color: inherit; text-decoration: none; }
         if (e.key === 'Escape') { closeLang(); closeNav(); }
       });
     }
-    paintLang(currentLang());
+    /*
+     * Amorçage : le contenu s'affiche d'abord en anglais (langue d'écriture de
+     * la page), puis apply() retraduit dès que le dictionnaire arrive. Aucun
+     * fetch ne bloque le premier rendu — et si le runtime est absent, la page
+     * reste lisible dans sa langue d'origine au lieu d'être vide.
+     */
+    /*
+     * Changer de langue doit retraduire ce que le JavaScript a construit : les
+     * données portent des clés, le rendu les résout, donc repeindre suffit.
+     */
+    document.addEventListener('tracefab:lang', function () {
+      paintLang(window.TracefabI18n ? window.TracefabI18n.language : 'en');
+      paintCore(coreIdx);
+      paintStep(stepIdx);
+      paintPiPanel(piIdx);
+    });
+
+    function bootI18n() {
+      /*
+       * L'appel est écrit `TracefabI18n.init(...)` et non via l'alias local `r` :
+       * le contrôle de service (test:i18n:serving) découvre le scope de chaque
+       * surface en lisant cet appel. Passer par un alias rendrait la page
+       * indétectable et ferait sauter la garantie « chaque scope déclaré existe
+       * dans toutes les langues qu'elle propose ».
+       */
+      if (!window.TracefabI18n) { paintLang('en'); return; }
+      window.TracefabI18n.init({ scope: 'landing', fallback: 'en' }).then(function () {
+        paintLang(window.TracefabI18n.language);
+        /* Le premier rendu traduit : les panneaux peints au chargement l'ont été
+           avant l'arrivée du dictionnaire. */
+        paintCore(coreIdx); paintStep(stepIdx); paintPiPanel(piIdx);
+      }, function () { paintLang('en'); });
+    }
+    bootI18n();
 
     /* ------------------------------------------------------------------
        Mobile navigation
@@ -2534,17 +2569,30 @@ a { color: inherit; text-decoration: none; }
     var nav = document.getElementById('tf-nav');
     var burger = document.getElementById('tf-burger');
 
+    /*
+     * Les clés sont toujours COMPLÈTES (« landing.… »), ici comme dans le
+     * balisage : un helper qui préfixe en cachette rend les clés invisibles à
+     * tout contrôle qui lit le source, et deux conventions pour la même chose
+     * finissent par diverger.
+     */
+    function tr(key, fallback) {
+      var r = I18N();
+      var v = r ? r.t(key) : null;
+      return v === null ? fallback : v;
+    }
     function closeNav() {
       if (!nav || !burger) return;
       nav.classList.remove('is-open');
       burger.setAttribute('aria-expanded', 'false');
-      burger.setAttribute('aria-label', 'Open menu');
+      burger.setAttribute('aria-label', tr('landing.header_nav.open_menu_al', 'Open menu'));
     }
     if (burger) {
       burger.addEventListener('click', function () {
         var open = nav.classList.toggle('is-open');
         burger.setAttribute('aria-expanded', open ? 'true' : 'false');
-        burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        burger.setAttribute('aria-label', open
+          ? tr('landing.header_nav.close_menu_al', 'Close menu')
+          : tr('landing.header_nav.open_menu_al', 'Open menu'));
       });
       Array.prototype.forEach.call(
         document.querySelectorAll('#tf-nav-panel a'),
@@ -2582,18 +2630,18 @@ a { color: inherit; text-decoration: none; }
        Hero orbit — the core is the readout
        ------------------------------------------------------------------ */
     var DOMAINS = [
-      { name: 'Suppliers',      state: 'Tier 1–4 mapped',    stat: '86' },
-      { name: 'Products',       state: 'Active references',  stat: '1,248' },
-      { name: 'Materials',      state: 'Composition records',stat: '412' },
-      { name: 'Facilities',     state: 'Sites geolocated',   stat: '214' },
-      { name: 'Documents',      state: 'Private evidence',   stat: '3,907' },
-      { name: 'Certifications', state: 'Standards tracked',  stat: '268' },
-      { name: 'Evidence',       state: 'Coverage',           stat: '84%' },
-      { name: 'Quality',        state: 'Verified data',      stat: '78%' },
-      { name: 'Traceability',   state: 'Products traceable', stat: '91%' },
-      { name: 'DPP',            state: 'Readiness',          stat: '88%' }
+            { name: 'landing.hero.suppliers', state: 'landing.hero.dom_tier_14_mapped', stat: '86' },
+            { name: 'landing.hero.products', state: 'landing.hero.dom_active_references', stat: '1,248' },
+            { name: 'landing.hero.materials', state: 'landing.hero.dom_composition_records', stat: '412' },
+            { name: 'landing.hero.facilities', state: 'landing.hero.dom_sites_geolocated', stat: '214' },
+            { name: 'landing.hero.documents', state: 'landing.hero.dom_private_evidence', stat: '3,907' },
+            { name: 'landing.hero.certifications', state: 'landing.hero.dom_standards_tracked', stat: '268' },
+            { name: 'landing.hero.evidence', state: 'landing.hero.dom_coverage', stat: '84%' },
+            { name: 'landing.hero.quality', state: 'landing.proof.verified_data', stat: '78%' },
+            { name: 'landing.hero.traceability', state: 'landing.proof.products_traceable', stat: '91%' },
+            { name: 'landing.header_nav.dpp', state: 'landing.proof.readiness', stat: '88%' }
     ];
-    var DEFAULT = { state: '10 domains connected', stat: '1,248' };
+    var DEFAULT = { state: 'landing.hero.10_domains_connected', stat: '1,248' };
 
     var coreState = document.getElementById('tf-core-state');
     var coreStat = document.getElementById('tf-core-stat');
@@ -2601,10 +2649,15 @@ a { color: inherit; text-decoration: none; }
     var links = document.querySelectorAll('.tf-orbit-link');
     var activeNode = null;
 
+    /* Les indices courants sont mémorisés pour pouvoir repeindre exactement ce
+       qui est affiché quand la langue change — sans repartir de l'état initial. */
+    var coreIdx = null;
+    var stepIdx = 0;
     function paintCore(i) {
+      coreIdx = i;
       var d = i === null ? DEFAULT : DOMAINS[i];
       if (!d || !coreState || !coreStat) return;
-      coreState.textContent = d.state;
+      coreState.textContent = tr(d.state, d.state);
       coreStat.textContent = d.stat;
     }
 
@@ -2620,7 +2673,8 @@ a { color: inherit; text-decoration: none; }
 
     Array.prototype.forEach.call(nodes, function (n) {
       var i = Number(n.dataset.node);
-      n.setAttribute('aria-label', DOMAINS[i].name + ' — ' + DOMAINS[i].state + ' ' + DOMAINS[i].stat);
+      n.setAttribute('aria-label', tr(DOMAINS[i].name, DOMAINS[i].name) + ' — '
+        + tr(DOMAINS[i].state, DOMAINS[i].state) + ' ' + DOMAINS[i].stat);
       n.addEventListener('mouseenter', function () { setActive(i); });
       n.addEventListener('focus', function () { setActive(i); });
       n.addEventListener('mouseleave', function () { if (activeNode === null) setActive(null); else setActive(activeNode); });
@@ -2695,6 +2749,7 @@ a { color: inherit; text-decoration: none; }
       var d = STAGES[i];
       if (!d) return;
       activeStep = i;
+      stepIdx = i;
       inspTier.textContent = d.tier;
       inspName.textContent = d.name;
       inspLoc.textContent = d.loc;
@@ -2753,9 +2808,10 @@ a { color: inherit; text-decoration: none; }
 
         var dl = document.createElement('dl');
         dl.className = 'tf-chain-card__dl';
-        [['Supplier', d.supplier], ['Country', d.country], ['Facility', d.facility],
-         ['Certificate', d.certificate], ['Document', d.document],
-         ['Data quality', d.quality], ['Status', d.status]].forEach(function (pair) {
+        [[tr('landing.wow_ecosystem.supplier','Supplier'), d.supplier], [tr('landing.wow_ecosystem.country','Country'), d.country],
+         [tr('landing.wow_ecosystem.facility','Facility'), d.facility], [tr('landing.wow_ecosystem.certificate','Certificate'), d.certificate],
+         [tr('landing.wow_ecosystem.document','Document'), d.document], [tr('landing.proof.data_quality','Data quality'), d.quality],
+         [tr('landing.wow_ecosystem.status','Status'), d.status]].forEach(function (pair) {
           var dt = document.createElement('dt'); dt.textContent = pair[0];
           var dd = document.createElement('dd'); dd.textContent = pair[1];
           dl.appendChild(dt); dl.appendChild(dd);
@@ -2775,77 +2831,79 @@ a { color: inherit; text-decoration: none; }
        clicks the first thing that looks interactive, so it has to answer.
        ------------------------------------------------------------------ */
     var PI_TABS = [
-      { id: 'overview', label: 'Overview', facts: [
-        ['Data quality', '92%'], ['DPP readiness', '88%'],
-        ['Traceability', 'Tier 1–4'], ['Open items', '2'] ],
-        badges: [['Tier 1–4 traced', 'verified'], ['2 open items', 'review']] },
+      { id: 'overview', label: 'landing.product_intelligence.tab_overview', facts: [
+        ['landing.proof.data_quality', '92%'], ['landing.proof.dpp_readiness', '88%'],
+        ['landing.hero.traceability', 'Tier 1–4'], ['landing.product_intelligence.fact_open_items', '2'] ],
+        badges: [['landing.product_intelligence.tier_14_traced', 'verified'], ['landing.product_intelligence.2_open_items', 'review']] },
 
-      { id: 'composition', label: 'Composition', facts: [
-        ['Organic cotton', '85%'], ['Recycled cotton', '15%'],
-        ['Mass balance', '100% reconciled'], ['Elastane', '0%'] ],
-        badges: [['BOM reconciled', 'verified']] },
+      { id: 'composition', label: 'landing.layers.composition', facts: [
+        ['landing.product_intelligence.fact_organic_cotton', '85%'], ['landing.product_intelligence.fact_recycled_cotton', '15%'],
+        ['landing.product_intelligence.fact_mass_balance', '100% reconciled'], ['landing.product_intelligence.fact_elastane', '0%'] ],
+        badges: [['landing.product_intelligence.badge_bom_reconciled', 'verified']] },
 
-      { id: 'materials', label: 'Materials', facts: [
-        ['Yarn', 'Ne 30/1 combed compact'], ['Fabric', '185 g/m² single jersey'],
-        ['Materials on record', '2'], ['Lot references', '6'] ],
-        badges: [['Mass balance conserved', 'verified']] },
+      { id: 'materials', label: 'landing.hero.materials', facts: [
+        ['landing.product_intelligence.yarn', 'Ne 30/1 combed compact'], ['landing.product_intelligence.fabric', '185 g/m² single jersey'],
+        ['landing.product_intelligence.fact_materials_on_record', '2'], ['landing.product_intelligence.fact_lot_references', '6'] ],
+        badges: [['landing.wow_ecosystem.mass_balance_conserved', 'verified']] },
 
-      { id: 'supply', label: 'Supply chain', facts: [
-        ['Suppliers', '6'], ['Countries', '4'],
-        ['Custody stages', '9'], ['Facilities', '7'] ],
-        badges: [['All stages mapped', 'verified'], ['1 stage needs review', 'review']] },
+      { id: 'supply', label: 'landing.proof.supply_chain', facts: [
+        ['landing.hero.suppliers', '6'], ['landing.product_intelligence.fact_countries', '4'],
+        ['landing.proof.custody_stages', '9'], ['landing.hero.facilities', '7'] ],
+        badges: [['landing.product_intelligence.badge_all_stages_mapped', 'verified'], ['landing.product_intelligence.badge_1_stage_needs_review', 'review']] },
 
-      { id: 'manufacturing', label: 'Manufacturing', facts: [
-        ['Cutting', 'Atelier Barcelos · PT'], ['Assembly', 'Atelier Milano · IT'],
-        ['Styles on line', '42'], ['Cut plan', 'CP-2291'] ],
-        badges: [['SMETA 4-Pillar', 'certified']] },
+      { id: 'manufacturing', label: 'landing.layers.manufacturing', facts: [
+        ['landing.wow_ecosystem.cutting', 'Atelier Barcelos · PT'], ['landing.wow_ecosystem.assembly', 'Atelier Milano · IT'],
+        ['landing.product_intelligence.fact_styles_on_line', '42'], ['landing.product_intelligence.fact_cut_plan', 'CP-2291'] ],
+        badges: [['landing.wow_ecosystem.smeta_4_pillar', 'certified']] },
 
-      { id: 'suppliers', label: 'Suppliers', facts: [
-        ['Active suppliers', '6'], ['Average data quality', '89%'],
-        ['Best submission rate', '94%'], ['Needing review', '1'] ],
-        badges: [['Atelier Milano', 'review']] },
+      { id: 'suppliers', label: 'landing.hero.suppliers', facts: [
+        ['landing.product_intelligence.fact_active_suppliers', '6'], ['landing.product_intelligence.fact_average_data_quality', '89%'],
+        ['landing.product_intelligence.fact_best_submission_rate', '94%'], ['landing.product_intelligence.fact_needing_review', '1'] ],
+        badges: [['landing.wow_ecosystem.atelier_milano', 'review']] },
 
-      { id: 'evidence', label: 'Evidence', facts: [
-        ['Documents', '14'], ['Verified', '11'],
-        ['Pending review', '3'], ['Storage', 'Private, hashed'] ],
-        badges: [['11 verified', 'verified'], ['3 pending', 'documented']] },
+      { id: 'evidence', label: 'landing.hero.evidence', facts: [
+        ['landing.hero.documents', '14'], ['landing.wow_ecosystem.verified', '11'],
+        ['landing.product_intelligence.fact_pending_review', '3'], ['landing.product_intelligence.fact_storage', 'Private, hashed'] ],
+        badges: [['landing.product_intelligence.badge_11_verified', 'verified'], ['landing.product_intelligence.badge_3_pending', 'documented']] },
 
-      { id: 'certifications', label: 'Certifications', facts: [
-        ['Active certificates', '4'], ['Expiring in 90 days', '0'],
-        ['Standards', 'GOTS · OEKO-TEX · ZDHC · SMETA'], ['Expired', '0'] ],
-        badges: [['4 active', 'certified']] },
+      { id: 'certifications', label: 'landing.hero.certifications', facts: [
+        ['landing.product_intelligence.fact_active_certificates', '4'], ['landing.product_intelligence.fact_expiring_in_90_days', '0'],
+        ['landing.product_intelligence.fact_standards', 'GOTS · OEKO-TEX · ZDHC · SMETA'], ['landing.product_intelligence.fact_expired', '0'] ],
+        badges: [['landing.product_intelligence.badge_4_active', 'certified']] },
 
-      { id: 'quality', label: 'Quality', facts: [
-        ['Open issues', '2'], ['Critical', '1'],
-        ['Needs review', '1'], ['Blocking', '0'] ],
-        badges: [['1 critical', 'missing'], ['1 review', 'review']] },
+      { id: 'quality', label: 'landing.hero.quality', facts: [
+        ['landing.product_intelligence.fact_open_issues', '2'], ['landing.product_intelligence.fact_critical', '1'],
+        ['landing.wow_ecosystem.needs_review', '1'], ['landing.product_intelligence.fact_blocking', '0'] ],
+        badges: [['landing.product_intelligence.badge_1_critical', 'missing'], ['landing.product_intelligence.badge_1_review', 'review']] },
 
-      { id: 'dpp', label: 'DPP', facts: [
-        ['Readiness', '88%'], ['Missing items', '2'],
-        ['Schema', 'CIRPASS 1.2 draft'], ['Resolver', 'GS1 Digital Link'] ],
-        badges: [['2 items missing', 'review']] },
+      { id: 'dpp', label: 'landing.header_nav.dpp', facts: [
+        ['landing.proof.readiness', '88%'], ['landing.product_intelligence.fact_missing_items', '2'],
+        ['landing.product_intelligence.fact_schema', 'CIRPASS 1.2 draft'], ['landing.product_intelligence.fact_resolver', 'GS1 Digital Link'] ],
+        badges: [['landing.product_intelligence.badge_2_items_missing', 'review']] },
 
-      { id: 'history', label: 'History', facts: [
-        ['Revisions', '7'], ['Last revision', '12 days ago'],
-        ['Contributors', '3'], ['Audit trail', 'Immutable'] ],
-        badges: [['Sealed', 'certified']] }
+      { id: 'history', label: 'landing.product_intelligence.tab_history', facts: [
+        ['landing.product_intelligence.fact_revisions', '7'], ['landing.product_intelligence.fact_last_revision', '12 days ago'],
+        ['landing.product_intelligence.fact_contributors', '3'], ['landing.product_intelligence.fact_audit_trail', 'Immutable'] ],
+        badges: [['landing.product_intelligence.badge_sealed', 'certified']] }
     ];
 
     var piTabs = document.getElementById('tf-pi-tabs');
     var piPanel = document.getElementById('tf-pi-panel');
 
+    var piIdx = 0;
     function paintPiPanel(i) {
       var t = PI_TABS[i];
       if (!t || !piPanel) return;
       piPanel.textContent = '';
       piPanel.setAttribute('aria-labelledby', 'tf-pi-tab-' + t.id);
+      piIdx = i;
 
       t.facts.forEach(function (pair) {
         var box = document.createElement('div');
         box.className = 'tf-pi__fact';
         var lab = document.createElement('span');
         lab.className = 'tf-label';
-        lab.textContent = pair[0];
+        lab.textContent = tr(pair[0], pair[0]);
         var val = document.createElement('span');
         val.className = 'tf-pi__v';
         val.textContent = pair[1];
@@ -2854,6 +2912,7 @@ a { color: inherit; text-decoration: none; }
       });
 
       t.badges.forEach(function (b) {
+        b = [tr(b[0], b[0]), b[1]];
         var badge = document.createElement('span');
         badge.className = 'tf-badge tf-badge--' + b[1];
         badge.textContent = b[0];
@@ -2862,6 +2921,10 @@ a { color: inherit; text-decoration: none; }
 
       Array.prototype.forEach.call(piTabs.children, function (btn, k) {
         var on = k === i;
+        /* Le libellé est résolu ici, pas à la construction : les boutons sont
+           créés au chargement, avant l'arrivée du dictionnaire, et un libellé
+           figé à ce moment-là resterait une clé visible. */
+        if (PI_TABS[k]) btn.textContent = tr(PI_TABS[k].label, PI_TABS[k].label);
         btn.classList.toggle('is-on', on);
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
         btn.tabIndex = on ? 0 : -1;
@@ -2876,7 +2939,7 @@ a { color: inherit; text-decoration: none; }
         btn.id = 'tf-pi-tab-' + t.id;
         btn.setAttribute('role', 'tab');
         btn.setAttribute('aria-selected', 'false');
-        btn.textContent = t.label;
+        btn.textContent = tr(t.label, t.label);
         btn.addEventListener('click', function () { paintPiPanel(i); });
         btn.addEventListener('keydown', function (e) {
           var dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
