@@ -76,7 +76,12 @@
     "test:landing-performance": "node scripts/test_landing_performance.mjs",
     "test:chantier5-console": "node scripts/test_chantier5_console.mjs",
     "test:console-css": "node scripts/test_console_css.mjs",
-    "test:copy": "node scripts/test_hardcoded_copy.mjs"
+    "test:copy": "node scripts/test_hardcoded_copy.mjs",
+    "serve": "node scripts/dev_static_server.mjs --port 3000",
+    "test:journeys": "node scripts/test_journeys_e2e.mjs",
+    "test:cross-tenant": "node scripts/test_cross_tenant.mjs",
+    "audit:personas": "node scripts/persona_audit.mjs --base http://127.0.0.1:3000",
+    "audit:e2e": "python3 scripts/e2e_audit.py"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",
@@ -101,5 +106,8 @@
   "overrides": {
     "deepmerge-ts": "8.0.2",
     "effect": "3.20.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
