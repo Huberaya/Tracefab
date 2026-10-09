@@ -128,6 +128,72 @@ try {
     return el ? (el.textContent || '').trim() : null;
   });
   ok(mono === 'MR', `le monogramme suit la marque reelle (${mono})`);
+  // L'elagage recursif ne doit pas separer un intitule de sa valeur : « 2.1 m³ »
+  // sans « Water consumption » n'informe personne.
+  const lisible = await page.evaluate(() => {
+    const vu = (el) => {
+      if (el.hidden) return '';
+      const st = getComputedStyle(el);
+      // On traverse les onglets inactifs : « display:none » y est l'etat normal
+      // d'un panneau non selectionne, pas une preuve de retrait. Seul
+      // `data-dpp-retire` / `hidden` atteste d'un retrait deliberé.
+      if (el.hasAttribute('data-dpp-retire')) return '';
+      if (st.visibility === 'hidden') return '';
+      if (st.display === 'none' && !el.classList.contains('tab-content-panel')) return '';
+      return [...el.childNodes].map((n) => (n.nodeType === 3 ? n.textContent
+        : n.nodeType === 1 ? vu(n) : '')).join(' ');
+    };
+    return vu(document.body).replace(/\s+/g, ' ');
+  });
+  for (const [etiquette, valeur] of [['Water consumption', '2.1 m³'], ['carbon footprint', '4.8 kg']]) {
+    ok(new RegExp(etiquette, 'i').test(lisible) && lisible.includes(valeur),
+      `« ${etiquette} » reste affiche avec sa valeur (${valeur})`);
+  }
+
+  // --- B bis. les allegations non alimentees disparaissent ---
+  console.log('\n  B bis. allegations de demonstration en mode reel');
+  const ALLEGATIONS = ['GOTS', 'REACH', 'SMETA', 'certified materials', 'Non-toxic', 'biodegrad'];
+  const texteVisible = () => page.evaluate(() => {
+    const vu = (el) => {
+      if (el.hidden) return '';
+      const st = getComputedStyle(el);
+      // On traverse les onglets inactifs : « display:none » y est l'etat normal
+      // d'un panneau non selectionne, pas une preuve de retrait. Seul
+      // `data-dpp-retire` / `hidden` atteste d'un retrait deliberé.
+      if (el.hasAttribute('data-dpp-retire')) return '';
+      if (st.visibility === 'hidden') return '';
+      if (st.display === 'none' && !el.classList.contains('tab-content-panel')) return '';
+      return [...el.childNodes].map((n) => (n.nodeType === 3 ? n.textContent
+        : n.nodeType === 1 ? vu(n) : '')).join(' ');
+    };
+    return vu(document.body);
+  });
+  const vivant = await texteVisible();
+  for (const mot of ALLEGATIONS) {
+    ok(!new RegExp(mot, 'i').test(vivant),
+      `« ${mot} » n'est plus affiche sur un passeport reel`);
+  }
+  const avis = await page.evaluate(() => ({
+    retires: document.querySelectorAll('[data-dpp-retire]').length,
+    visiblesRetires: [...document.querySelectorAll('[data-dpp-retire]')].filter((e) => !e.hidden).length,
+    avis: document.querySelectorAll('[data-dpp-avis]').length,
+    panneaux: document.querySelectorAll('.tab-content-panel').length,
+  }));
+  ok(avis.retires > 0, `${avis.retires} blocs non alimentes ont ete retires`);
+  ok(avis.visiblesRetires === 0, 'aucun bloc retire ne reste visible');
+  ok(avis.avis > 0 && avis.avis <= avis.panneaux,
+    `une mention par panneau concerne (${avis.avis} pour ${avis.panneaux} panneaux)`);
+
+  // la page de demonstration, elle, garde toute sa richesse
+  await page.unroute('**/api/dpp/**');
+  await page.goto(`${BASE}/dpp/`, { waitUntil: 'networkidle' });
+  const vitrine = await texteVisible();
+  const presentes = ALLEGATIONS.filter((m) => new RegExp(m, 'i').test(vitrine));
+  ok(presentes.length >= 3,
+    `la page de demonstration conserve son contenu (${presentes.length} allegations affichees, banniere visible)`);
+  ok(await page.evaluate(() => {
+    const b = document.getElementById('dpp-demo-banner'); return b ? !b.hidden : false;
+  }), 'et sa banniere de demonstration');
 
   // --- C. passeport inconnu : retour assume a la demonstration ---
   console.log('\n  C. passeport inconnu');

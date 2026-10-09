@@ -2300,6 +2300,7 @@
     "gs1Standard": "Estándar GS1 2026",
     "gs1Uri": "URI oficial GS1 Digital Link:",
     "gs1Ai01": "Identificador de aplicación (AI 01)",
-    "jsonExport": "Exportar CIRPASS JSON-LD"
+    "jsonExport": "Exportar CIRPASS JSON-LD",
+    "sectionIndisponible": "La marca no ha publicado esta información para este producto."
   }
 }

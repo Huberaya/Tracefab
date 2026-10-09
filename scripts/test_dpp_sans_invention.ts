@@ -30,6 +30,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { buildPassJson } from '../api/_lib/wallet/apple-pass-generator.js';
 import { generateGoogleWalletPass } from '../api/_lib/wallet/google-wallet-generator.js';
 import type { DppPassData } from '../api/_lib/wallet/types.js';
+import { buildGs1DigitalLink } from '../api/_lib/plm-erp/gtin-engine.js';
 
 let echecs = 0;
 const ok = (cond: boolean, message: string) => {
@@ -174,6 +175,34 @@ const resolveur = readFileSync('api/_lib/wallet/dpp-data-resolver.ts', 'utf8')
 for (const motif of ['78', '3.42', '0.85', "'B'", '250', 'Coton peigné', 'Filature ➔']) {
   ok(!resolveur.includes(motif), `le resolveur n'a plus le repli « ${motif} »`);
 }
+
+// --- G. lien GS1 : plus de prefixe d'entreprise invente ---
+// Le resolveur fabriquait « urn:epc:id:sgtin:3760123.… ». 3760123 est un
+// prefixe GS1 qui appartient a une entreprise reelle, et TRACEFAB ne l'a pas
+// achete : le code-barres de chaque passeport designait donc quelqu'un d'autre.
+console.log('\n  G. lien GS1');
+for (const motif of ['3760123', 'urn:epc:id:sgtin', 'sgtin']) {
+  ok(!resolveur.includes(motif), `le resolveur n'emet plus « ${motif} »`);
+}
+const AVEC_GTIN: DppPassData = { ...RENSEIGNE, gtin: '03760123456789',
+  digitalLinkUri: buildGs1DigitalLink({ gtin: '03760123456789', linkType: 'gs1:pip' }) };
+ok(decodeURIComponent(String(AVEC_GTIN.digitalLinkUri))
+  === 'https://id.tracefab.com/01/03760123456789?linkType=gs1:pip',
+  `le lien GS1 est canonique (${AVEC_GTIN.digitalLinkUri})`);
+const avecQr = buildPassJson(AVEC_GTIN) as any;
+ok(avecQr.barcodes[0].message === AVEC_GTIN.digitalLinkUri,
+  'le QR porte le lien GS1 quand le GTIN existe');
+// Sans GTIN il n'y a pas de Digital Link possible : le QR retombe sur l'URL du
+// passeport plutot que d'inventer un identifiant.
+const SANS_GTIN: DppPassData = { ...RENSEIGNE, gtin: undefined, digitalLinkUri: undefined };
+const sansQr = buildPassJson(SANS_GTIN) as any;
+ok(sansQr.barcodes[0].message === SANS_GTIN.dppUrl,
+  'sans GTIN, le QR retombe sur l\'URL du passeport');
+ok(!JSON.stringify(sansQr).includes('id.tracefab.com/01/'),
+  'sans GTIN, aucun Digital Link n\'est fabrique');
+const sansQrG = generateGoogleWalletPass(SANS_GTIN) as any;
+ok(!JSON.stringify(sansQrG).includes('id.tracefab.com/01/'),
+  'idem cote Google Wallet');
 
 console.log(echecs
   ? `\n  ${echecs} echec(s).\n`

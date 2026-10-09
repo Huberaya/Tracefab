@@ -15,7 +15,7 @@ Je ne l'ai pas supposé : je l'ai reproduit. Un worktree de `b61d771` sur un
 cluster PostgreSQL 17.11 neuf donne bien `P3018` / `42704` /
 `role "tracefab_app" does not exist`
 (`preuves-1a/A1-echec-commit-audite.txt`). Le même protocole à HEAD applique
-les 35 migrations sans erreur (`preuves-1a/A2-succes-head.txt`).
+les 36 migrations sans erreur (`preuves-1a/A2-succes-head.txt`).
 
 **Les quatre autres défauts, eux, étaient réels.** Un audit périmé n'est pas un
 audit faux.
@@ -139,7 +139,7 @@ qu'elle n'avait pas.
 | Preuve | Nature |
 |---|---|
 | `preuves-1a/A1-echec-commit-audite.txt` | Échec reproduit sur cluster neuf au commit audité |
-| `preuves-1a/A2-succes-head.txt` | 35 migrations appliquées à HEAD |
+| `preuves-1a/A2-succes-head.txt` | 36 migrations appliquées à HEAD |
 | `preuves-1a/C1-wallet-public-refuse.txt` | Routes Wallet publiques : 404 contre PostgreSQL réel, sous `tracefab_app` |
 
 Quatre gardes exécutables ajoutées, **toutes vérifiées par mutation** — un test
@@ -175,16 +175,26 @@ environnement : aucun accès à la base de production. Le basculement de
 qui transforme toute l'isolation RLS en protection effective plutôt qu'en
 dispositif dormant. À faire en premier, et à faire en connaissant le point 5.
 
-**Constaté, non corrigé — hors périmètre d'un chantier de correctifs :**
+**Les trois points « constatés, non corrigés » du rapport initial ont depuis
+été corrigés**, sur votre demande de tout reprendre avant le chantier 1B :
 
-- `digitalLinkUri` compose un URN SGTIN avec un préfixe GS1 fixe (`3760123`)
-  qui n'appartient pas aux marques concernées.
-- La page DPP publique n'hydrate que 5 rubriques ; le reste de son contenu
-  demeure statique, donc inchangé entre un passeport réel et la démonstration.
-- `public_slug` n'est unique que par marque. Quatre marques portent aujourd'hui
-  `mb-shirt-001` : une URL publique sans marque reste ambiguë. L'ordre est
-  figé pour être déterministe, ce qui rend le comportement stable sans lever
-  l'ambiguïté.
+| Point | Correction | Garde |
+|---|---|---|
+| Préfixe GS1 `3760123` inventé | `buildGs1DigitalLink`, et `digitalLinkUri` indéfini sans GTIN (repli sur l'URL du passeport) | `test:dpp-sans-invention` §G |
+| Page DPP publique : 5 rubriques hydratées | 10 rubriques ; en mode réel, retrait de tout bloc non alimenté + mention par onglet | `test:dpp-public` §B bis |
+| `public_slug` unique par marque seulement | Refus `409 ambiguous_public_identifier` + migration 36 (déduplication puis index unique global partiel) | `test:neon:dpp-ambigu`, en base réelle |
+
+Chacune de ces gardes a été mutée pour vérifier qu'elle échoue bien quand on
+réintroduit le défaut — une garde non mutée ne prouve rien, comme l'avait
+montré la fausse garde de `test:regression`.
+
+Deux limites assumées subsistent :
+
+- **Bloqué par absence de secret** — le basculement `DATABASE_URL` ci-dessus.
+- Le pays de fabrication n'apparaît plus sur le passeport public en mode réel :
+  la pastille « Made in Portugal » était figée et la donnée disponible est un
+  code pays (`PT`). L'afficher demande une table de noms de pays localisés.
+  C'est une amélioration fonctionnelle, pas la correction d'un mensonge.
 
 **Je m'arrête ici, comme demandé.** Aucun nouveau chantier fonctionnel n'a été
 ouvert. La branche `correctifs/chantier-1a` est poussée et verte ; elle n'a pas

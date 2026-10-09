@@ -1,0 +1,27 @@
+PREUVE D1 — identifiant public ambigu, contre PostgreSQL 17.11
+Date : 2026-10-09T20:43:58+00:00
+
+Montage : deux marques, meme reference interne MB-SHIRT-001.
+  Alpha cree le 2026-01-01, Beta le 2026-02-01.
+
+1) Etat d'avant la migration 36 (index global retire) : collision
+     mb-shirt-001 | Chemise Alpha
+     mb-shirt-001 | Chemise Beta
+
+2) Apres rejeu de la migration 36 : la plus ancienne garde son slug
+     mb-shirt-001           | Chemise Alpha
+     mb-shirt-001-bbbbbbbb  | Chemise Beta
+
+3) Nouvelle collision tentee :
+     ERROR: duplicate key value violates unique constraint
+            "tracefab_products_public_slug_global_key"
+
+4) Resolution par la route publique /api/dpp/:id
+  slug unique (Alpha)      : 200 {"dpp":{"productId":"aaaaaaaa-0000-0000-0000-000000000001","brandName":"Marque non communiquée","brandLegalNam
+  slug désambigué (Beta)   : 200 {"dpp":{"productId":"bbbbbbbb-0000-0000-0000-000000000002","brandName":"Marque non communiquée","brandLegalNam
+  reference partagée       : 409 {"error":"ambiguous_public_identifier"}
+  inconnu                  : 404 {"error":"product_passport_not_found"}
+
+Le cas 'reference partagee' n'est PAS couvert par l'index : reference
+n'est unique que par marque. Il est refuse par le resolveur, qui lit deux
+lignes pour savoir s'il y en a plus d'une.

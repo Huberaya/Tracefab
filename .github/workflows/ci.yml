@@ -295,6 +295,13 @@ jobs:
         # TF_RLS_APP_URL vient de l'env du job, deja pointe sur la base jetable.
         run: npm run test:neon:rls:auth
 
+      - name: Identifiant public ambigu refuse en base reelle
+        # `public_slug` n'etait unique que par marque : deux marques utilisant
+        # la meme reference de catalogue rendaient l'URL publique ambigue, et la
+        # resolution servait silencieusement le passeport du voisin. Le defaut
+        # etait dans les DONNEES, donc il se verifie en base, pas en unitaire.
+        run: npm run test:neon:dpp-ambigu
+
       - name: Scenarios croises contre la base de production
         # Optionnels, et clairement annonces comme tels. L'etancheite est deja
         # prouvee ci-dessus sans eux.

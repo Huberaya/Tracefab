@@ -103,7 +103,8 @@
     "test:pilot": "npx tsx scripts/seed_pilot.ts --dry-run",
     "pilot:seed": "npx tsx scripts/seed_pilot.ts",
     "test:systeme-design": "node scripts/test_systeme_design.mjs",
-    "test:regression": "node scripts/test_regression_visuelle.mjs"
+    "test:regression": "node scripts/test_regression_visuelle.mjs",
+    "test:neon:dpp-ambigu": "npx tsx scripts/test_neon_dpp_ambigu.ts"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",

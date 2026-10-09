@@ -97,6 +97,78 @@
         if (dpp.productName) document.title = dpp.productName + ' — Digital Product Passport | TRACEFAB';
         if (banner) banner.hidden = true;
         document.documentElement.setAttribute('data-dpp-source', 'live');
+        // LES BLOCS NON ALIMENTES NE RESTENT PAS A L'ECRAN.
+        //
+        // La page statique porte une centaine d'elements de demonstration :
+        // « GOTS Certified », « 100% certified materials », « REACH », des
+        // teneurs en microfibres, une chaine detaillee tier par tier. L'API
+        // n'expose rien de tout cela. En mode live, la banniere de
+        // demonstration disparait — et ces affirmations restaient affichees
+        // comme si elles decrivaient le produit scanne.
+        //
+        // On parcourt donc chaque panneau et on retire les blocs qui ne
+        // contiennent aucune valeur reellement hydratee. Un bloc survit s'il
+        // porte un [data-dpp-field] renseigne. Le reste cede la place a une
+        // mention unique par panneau.
+        // `.trust-pill-bar` est inclus : les pastilles du hero — « ✓ 100%
+        // certified materials », « GOTS Certified », « OEKO-TEX Class 1 »,
+        // « Made in Portugal » — sont des allegations figees, et le hero est
+        // la premiere chose que lit la personne qui scanne.
+        // `.trust-pill-bar` est inclus : les pastilles du hero — « ✓ 100%
+        // certified materials », « GOTS Certified », « OEKO-TEX Class 1 »,
+        // « Made in Portugal » — sont des allegations figees, et le hero est
+        // la premiere chose que lit la personne qui scanne.
+        //
+        // La descente est RECURSIVE. Une premiere version ne traitait que les
+        // enfants directs du panneau : la carte de composition survivait parce
+        // qu'elle contenait la composition reelle, en emportant avec elle la
+        // ligne voisine « GOTS v6.0 », qui elle n'est adossee a rien.
+        //
+        // Elle s'arrete en revanche des qu'un element contient DIRECTEMENT une
+        // valeur hydratee. Sans cette borne, on separerait l'intitule de sa
+        // valeur — « 2.1 m³ » sans « Consommation d'eau » n'informe personne.
+        // Elements marques a la main dans le HTML : commentaires et identifiants
+        // de demonstration qui cohabitent avec une vraie valeur dans la meme
+        // carte (« -64% thanks to GOTS-certified… » colle a la consommation
+        // d'eau reelle). L'elagage s'arrete au parent direct d'une valeur, donc
+        // il ne peut pas les atteindre — ils sont donc designes explicitement.
+        document.querySelectorAll('[data-dpp-static]').forEach((el) => {
+          el.hidden = true;
+          el.setAttribute('data-dpp-retire', '');
+        });
+        const VIVANT = '[data-dpp-field]:not([data-dpp-missing]):not([data-dpp-retire])';
+        const hydrate = (el) => (el.matches(VIVANT) || !!el.querySelector(VIVANT))
+          && !el.hasAttribute('data-dpp-retire');
+        const porteDirectement = (el) => !!el.querySelector(':scope > ' + VIVANT);
+        let retires = 0;
+        const elaguer = (parent) => {
+          [...parent.children].forEach((enfant) => {
+            if (!hydrate(enfant)) {
+              enfant.hidden = true;
+              enfant.setAttribute('data-dpp-retire', '');
+              retires += 1;
+              return;
+            }
+            if (!porteDirectement(enfant)) elaguer(enfant);
+          });
+        };
+        document.querySelectorAll('.tab-content-panel, .trust-pill-bar').forEach((panneau) => {
+          elaguer(panneau);
+          // La mention n'a de sens que dans un panneau d'onglet : une barre de
+          // pastilles vide se passe d'explication.
+          if (panneau.classList.contains('tab-content-panel')
+            && panneau.querySelector('[data-dpp-retire]') && !panneau.querySelector('[data-dpp-avis]')) {
+            const avis = document.createElement('p');
+            avis.setAttribute('data-dpp-avis', '');
+            avis.setAttribute('data-i18n', 'dpp.sectionIndisponible');
+            avis.style.cssText = 'font-size:13px;color:var(--text-muted);margin:16px 0;';
+            avis.textContent = window.TFi18n && window.TFi18n.t
+              ? window.TFi18n.t('dpp.sectionIndisponible', 'The brand has not published this information for this product.')
+              : 'The brand has not published this information for this product.';
+            panneau.appendChild(avis);
+          }
+        });
+        document.documentElement.setAttribute('data-dpp-retires', String(retires));
           // Nombre de rubriques non renseignees par la marque : la page peut
           // expliquer les tirets au lieu de les laisser sans justification.
           document.documentElement.setAttribute('data-dpp-missing-count', String(manquants.length));

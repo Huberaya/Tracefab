@@ -2126,7 +2126,8 @@ window.TF_I18N_BUNDLES.en = {
     gs1Standard: "GS1 standard 2026",
     gs1Uri: "Official GS1 Digital Link URI:",
     gs1Ai01: "Application identifier (AI 01)",
-    jsonExport: "Export CIRPASS JSON-LD"
+    jsonExport: "Export CIRPASS JSON-LD",
+    sectionIndisponible: "The brand has not published this information for this product."
   },
 
   // --- Quality Center ----------------------------------------------------

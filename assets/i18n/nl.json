@@ -2300,6 +2300,7 @@
     "gs1Standard": "GS1-standaard 2026",
     "gs1Uri": "Officiële GS1 Digital Link-URI:",
     "gs1Ai01": "Toepassingsidentificatie (AI 01)",
-    "jsonExport": "CIRPASS JSON-LD exporteren"
+    "jsonExport": "CIRPASS JSON-LD exporteren",
+    "sectionIndisponible": "Het merk heeft deze informatie niet gepubliceerd voor dit product."
   }
 }

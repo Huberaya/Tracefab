@@ -1,7 +1,24 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { DppPassData } from './types.js';
+import { buildGs1DigitalLink } from '../plm-erp/gtin-engine.js';
 
 type PrismaTx = PrismaClient | Prisma.TransactionClient;
+
+/**
+ * Plusieurs produits publies repondent au meme identifiant public.
+ *
+ * Distinct de « introuvable » : la donnee existe, mais rien ne permet de
+ * decider laquelle est demandee. Les routes publiques doivent le signaler
+ * plutot que de choisir a la place du lecteur.
+ */
+export class IdentifiantPublicAmbigu extends Error {
+  readonly identifiant: string;
+  constructor(identifiant: string) {
+    super(`identifiant public ambigu : ${identifiant}`);
+    this.name = 'IdentifiantPublicAmbigu';
+    this.identifiant = identifiant;
+  }
+}
 
 /**
  * `care_instructions` est un objet JSON libre (`@default("{}")`), valide par
@@ -34,7 +51,7 @@ export async function resolveDppPassData(
     // QUEL produit par reference, SKU ou GTIN — brouillons compris — et la
     // route /api/dpp/:id est anonyme. Sous BYPASSRLS rien ne s'y opposait.
     // Un produit n'est public que s'il porte un public_slug.
-    const product = await (tx as any).tracefab_products.findFirst({
+    const correspondants = await (tx as any).tracefab_products.findMany({
       where: {
         public_slug: { not: null },
         OR: [
@@ -74,15 +91,31 @@ export async function resolveDppPassData(
         },
       },
     },
-    // public_slug n'est unique QUE par marque
-    // (tracefab_products_brand_organization_id_public_slug_key). Quatre
-    // marques distinctes portent aujourd'hui le slug « mb-shirt-001 », donc une
-    // URL publique sans marque est ambigue. Sans tri explicite PostgreSQL rend
-    // une ligne arbitraire : le DPP servi pour une meme URL pouvait changer
-    // d'une requete a l'autre. A defaut de pouvoir lever l'ambiguite ici, on la
-    // rend au moins deterministe et stable.
+    // AUCUN DES CRITERES CI-DESSUS N'EST UNIQUE AU NIVEAU MONDIAL.
+    //
+    // `public_slug` ne l'est que par marque
+    // (tracefab_products_brand_organization_id_public_slug_key), et la
+    // migration 35 le retro-remplit avec `lower(reference)` : deux marques
+    // employant la meme reference produisent donc le meme slug public.
+    // `reference` et `sku` ont exactement le meme defaut, et rien n'impose
+    // l'unicite d'un GTIN dans product_identifiers.
+    //
+    // Un `findFirst` trie rendait alors une ligne « deterministe mais
+    // arbitraire » : stable d'une requete a l'autre, et potentiellement le
+    // passeport d'UNE AUTRE MARQUE. Pour un produit de tracabilite, servir les
+    // donnees du voisin est pire que ne rien servir.
+    //
+    // On lit donc deux lignes pour savoir s'il y en a plus d'une, et on refuse
+    // si c'est le cas. Le tri reste, pour que la ligne retenue dans le cas non
+    // ambigu ne depende pas du plan d'execution.
     orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
+    take: 2,
   });
+
+  if (correspondants.length > 1) {
+    throw new IdentifiantPublicAmbigu(cleanId);
+  }
+  const product = correspondants[0] ?? null;
 
   if (!product) {
     return null;
@@ -124,7 +157,23 @@ export async function resolveDppPassData(
     : undefined;
 
   const dppUrl = `${baseUrl}/p/${gtin || product.reference}`;
-  const digitalLinkUri = `urn:epc:id:sgtin:3760123.${product.reference.replace(/[^0-9]/g, '').slice(-3) || '001'}.${product.version || 1}`;
+  // LIEN NUMERIQUE GS1 — seulement quand un GTIN reel existe.
+  //
+  // L'expression precedente fabriquait un URN EPC :
+  //
+  //     urn:epc:id:sgtin:3760123.<3 chiffres de la reference>.<version>
+  //
+  // Trois problemes. `3760123` est un prefixe d'entreprise GS1 en dur, qui
+  // n'appartient pas aux marques servies — l'URN designait donc le produit de
+  // quelqu'un d'autre. Les trois derniers chiffres de la reference ne sont pas
+  // une reference article. Et le numero de VERSION du produit etait place en
+  // numero de serie, ce qui n'a aucun sens : deux exemplaires partagent une
+  // version, un numero de serie les distingue.
+  //
+  // On s'en remet au constructeur canonique du depot, alimente par le GTIN
+  // reellement enregistre. Sans GTIN, il n'existe pas de lien numerique GS1
+  // valide : le champ reste vide et le code QR retombe sur l'URL du passeport.
+  const digitalLinkUri = gtin ? buildGs1DigitalLink({ gtin, linkType: 'gs1:pip' }) : undefined;
 
   return {
     productId: product.id,

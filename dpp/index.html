@@ -730,7 +730,7 @@
          description lui sont propres, d'ou TF_I18N_SKIP_META. -->
     <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=0301922d"></script>
+    <script src="/assets/i18n/en.js?v=b743b5c2"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
     <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
@@ -781,7 +781,7 @@
         <span>•</span>
         <span>GTIN: <span data-tf-demo data-dpp-field="gtin">3760123456789</span></span>
         <span>•</span>
-        <span>Batch: 2026-FW</span>
+        <span data-dpp-static>Batch: 2026-FW</span>
       </div>
       <p class="product-summary" data-i18n="dpp.heroDesc">Iconic T-shirt in 185 gsm regenerative organic cotton jersey. Traced from seed to finished garment with 100% documented evidence.
       </p>
@@ -845,11 +845,11 @@
           <div class="comp-item-title">
             <div class="comp-bullet" style="background:var(--primary);"></div>
             <div>
-              <strong data-i18n="dpp.matCombed">85% combed organic cotton</strong>
-              <div style="font-size:11px;color:var(--text-muted);" data-i18n="dpp.matOrigin">Origin: Portugal (São Martinho farm)</div>
+              <strong data-tf-demo data-dpp-field="certifiedComposition" data-i18n="dpp.matCombed">85% combed organic cotton</strong>
+              <div style="font-size:11px;color:var(--text-muted);" data-i18n="dpp.matOrigin" data-dpp-static>Origin: Portugal (São Martinho farm)</div>
             </div>
           </div>
-          <span style="font-weight:600;color:var(--primary);">GOTS v6.0</span>
+          <span style="font-weight:600;color:var(--primary);" data-dpp-static>GOTS v6.0</span>
         </div>
 
         <div class="comp-item">
@@ -967,7 +967,7 @@
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;" data-i18n="dpp.impEcoScore">European textile eco-score</div>
           <div style="display:flex;gap:4px;align-items:center;">
-            <span style="display:inline-block;padding:6px 14px;font-size:22px;font-weight:600;border-radius:6px;background:#16a34a;color:#ffffff;box-shadow:0 2px 8px rgba(22,163,74,0.3);">A</span>
+            <span data-tf-demo data-dpp-field="pefGrade" style="display:inline-block;padding:6px 14px;font-size:22px;font-weight:600;border-radius:6px;background:#16a34a;color:#ffffff;box-shadow:0 2px 8px rgba(22,163,74,0.3);">A</span>
             <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:600;border-radius:6px;background:#e2e8f0;color:#64748b;">B</span>
             <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:600;border-radius:6px;background:#e2e8f0;color:#64748b;">C</span>
             <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:600;border-radius:6px;background:#e2e8f0;color:#64748b;">D</span>
@@ -984,12 +984,12 @@
         <div class="info-card">
           <span data-i18n="dpp.impCarbon">Actual carbon footprint</span>
           <strong data-tf-demo data-dpp-field="carbonFootprintKgCo2e" data-dpp-suffix=" kg CO₂e">2.15 kg CO₂e</strong>
-          <p data-i18n="dpp.impVsRef">-48% versus the conventional baseline (PEFCR 2024).</p>
+          <p data-i18n="dpp.impVsRef" data-dpp-static>-48% versus the conventional baseline (PEFCR 2024).</p>
         </div>
         <div class="info-card">
           <span data-i18n="dpp.impWater">Water consumption</span>
-          <strong data-i18n="dpp.impWaterValue">1,480 litres</strong>
-          <p data-i18n="dpp.impThanksTo">-64% thanks to GOTS-certified rain-fed organic cotton.</p>
+          <strong data-tf-demo data-dpp-field="waterScarcityM3" data-dpp-suffix=" m³" data-i18n="dpp.impWaterValue">1,480 litres</strong>
+          <p data-i18n="dpp.impThanksTo" data-dpp-static>-64% thanks to GOTS-certified rain-fed organic cotton.</p>
         </div>
         <div class="info-card">
           <span data-i18n="dpp.impMicroplastics">Microplastic release</span>
@@ -999,7 +999,7 @@
         <div class="info-card">
           <span data-i18n="dpp.impCircular">Circularity and recyclability</span>
           <strong data-tf-demo data-dpp-field="circularityScore" data-dpp-suffix="%">95%</strong>
-          <p data-i18n="dpp.impMonoFibre">Single-material fibre, recyclable in a closed loop.</p>
+          <p data-i18n="dpp.impMonoFibre" data-dpp-static>Single-material fibre, recyclable in a closed loop.</p>
         </div>
       </div>
 
@@ -1209,7 +1209,7 @@
 
   <script src="/assets/js/dpp.1.js?v=d931442c"></script>
 
-  <script src="/assets/js/dpp.2.js?v=c5cbb185"></script>
+  <script src="/assets/js/dpp.2.js?v=518a48f7"></script>
 
 </body>
 </html>

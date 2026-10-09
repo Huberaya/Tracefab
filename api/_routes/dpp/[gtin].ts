@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { prisma } from '../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
-import { resolveDppPassData } from '../../_lib/wallet/dpp-data-resolver.js';
+import { resolveDppPassData, IdentifiantPublicAmbigu } from '../../_lib/wallet/dpp-data-resolver.js';
 import { withTracefabPublicContext } from '../../_lib/context.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -32,6 +32,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
   } catch (err: unknown) {
+    // Ambigu n'est pas introuvable : plusieurs produits publies repondent
+    // a cet identifiant. Choisir pour le lecteur reviendrait a lui servir
+    // le passeport d'une autre marque.
+    if (err instanceof IdentifiantPublicAmbigu) {
+      return json(res, 409, { error: 'ambiguous_public_identifier' });
+    }
     console.error('DPP data resolution error:', err);
     return json(res, 500, { error: 'internal_error' });
   }

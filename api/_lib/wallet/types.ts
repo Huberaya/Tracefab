@@ -49,7 +49,8 @@ export interface DppPassData {
   waterScarcityM3?: number;
   circularityScore?: number;
   dppUrl: string;
-  digitalLinkUri: string;
+  /** Lien numerique GS1. Absent quand le produit n'a pas de GTIN enregistre. */
+  digitalLinkUri?: string;
   /** Date de derniere mise a jour verifiee. Absente si rien ne l'etablit. */
   verificationDate?: string;
   transactionCertificateNumber?: string;

@@ -3,7 +3,7 @@
 Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
 la base Neon de production. Pas en relisant les en-têtes.
 
-**0 PR ouverte · Neon : 35/35 migrations appliquées, dont la 35
+**0 PR ouverte · Neon : 36/36 migrations appliquées, dont la 36
 `public_read_context`.**
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
@@ -1145,11 +1145,59 @@ le test s'abstient en l'annonçant et sort en 0.
 Autrement dit, l'exclusion masquait depuis le début une garde qui n'aurait pas
 protégé. C'est l'exclusion qui tenait la CI verte, pas la garde.
 
+### F — Identifiant public ambigu
+
+**Corrigé.** `public_slug` était remplie par `lower(reference)` et n'était
+unique que *par marque*. Deux marques référençant toutes deux `MB-SHIRT-001`
+rendaient donc l'URL publique ambiguë, et `findFirst` tranchait — de façon
+stable, ce qui ressemblait à de la correction, mais pouvait servir le passeport
+du voisin sous l'URL de la première.
+
+La résolution lit désormais deux lignes (`take: 2`) et lève
+`IdentifiantPublicAmbigu` s'il y en a plus d'une ; les trois routes publiques
+rendent **409 `ambiguous_public_identifier`**, distinct du 404. La migration 36
+déduplique les `public_slug` existants puis pose un index unique global partiel.
+`reference`, `sku` et le GTIN restent non uniques par construction : aucun index
+ne les corrige, c'est le refus qui protège.
+
+Gardé par `npm run test:neon:dpp-ambigu`, exécuté en base réelle dans le job
+`base-de-donnees` — le défaut était un défaut de données, il se vérifie en base.
+
+### G — Lien GS1 fabriqué
+
+**Corrigé.** `digitalLinkUri` composait `urn:epc:id:sgtin:3760123.…`. Ce préfixe
+appartient à une entreprise réelle que TRACEFAB n'est pas : le code-barres de
+chaque passeport désignait donc un tiers. Le résolveur appelle maintenant
+`buildGs1DigitalLink`, et laisse `digitalLinkUri` **indéfini en l'absence de
+GTIN** — les deux générateurs retombent alors sur l'URL du passeport. Gardé par
+la section G de `test:dpp-sans-invention`.
+
+### H — Allégations non adossées sur la page publique
+
+**Corrigé.** La page n'hydratait que 5 rubriques ; tout le reste — « GOTS
+Certified », « OEKO-TEX Class 1 », « ✓ 100% certified materials », « -64% thanks
+to GOTS-certified rain-fed organic cotton » — restait affiché tel quel sur le
+passeport d'un vrai produit. Dix rubriques sont désormais hydratées, et en mode
+réel la page **retire** tout bloc qu'aucune donnée n'alimente, avec une mention
+par onglet concerné (`dpp.sectionIndisponible`).
+
+Le retrait descend récursivement, mais s'arrête au parent direct d'une valeur
+réelle : sans cette borne on séparerait l'intitulé de sa valeur, et « 2.1 m³ »
+sans « Water consumption » n'informe personne. Les commentaires de démonstration
+qui cohabitent avec une vraie valeur dans la même carte sont hors de portée de
+cette règle ; ils sont donc désignés à la main par `data-dpp-static`.
+
+La page de démonstration (`/dpp/`) conserve l'intégralité de sa richesse, sous
+sa bannière. Gardé par `test:dpp-public`, dont le balayage traverse les onglets
+inactifs — une première version ne lisait que l'onglet actif et laissait passer
+deux allégations.
+
 ### Reste ouvert
 - Aucun accès à la base de production : `/tmp/neon.env` est absent de cet
   environnement. Le basculement de `DATABASE_URL` de `neondb_owner` vers
   `tracefab_app` reste à faire, et c'est lui qui rend le défaut B visible.
-- `digitalLinkUri` compose un URN SGTIN avec un préfixe GS1 fixe
-  (`3760123`) qui n'appartient pas aux marques concernées.
-- La page DPP publique n'hydrate que 5 rubriques ; le reste de son contenu
-  demeure statique.
+  **C'est le seul point bloqué par un élément que je n'ai pas.**
+- Le pays de fabrication n'est plus affiché sur le passeport public en mode
+  réel : la pastille « Made in Portugal » était figée, et la donnée disponible
+  est un code pays (`PT`). L'afficher proprement demande une table de noms de
+  pays localisés — amélioration fonctionnelle, pas correction d'un mensonge.

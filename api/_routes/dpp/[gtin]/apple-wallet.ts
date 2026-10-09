@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { generateApplePkpass } from '../../../_lib/wallet/apple-pass-generator.js';
-import { resolveDppPassData } from '../../../_lib/wallet/dpp-data-resolver.js';
+import { resolveDppPassData, IdentifiantPublicAmbigu } from '../../../_lib/wallet/dpp-data-resolver.js';
 import { withTracefabPublicContext } from '../../../_lib/context.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -42,6 +42,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.status(200).send(pkpassBuffer);
   } catch (err: unknown) {
+    // Ambigu n'est pas introuvable : plusieurs produits publies repondent
+    // a cet identifiant. Choisir pour le lecteur reviendrait a lui servir
+    // le passeport d'une autre marque.
+    if (err instanceof IdentifiantPublicAmbigu) {
+      return json(res, 409, { error: 'ambiguous_public_identifier' });
+    }
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error('Consumer Apple Wallet error:', errMsg);
     return json(res, 500, { error: 'wallet_generation_failed', detail: errMsg });
