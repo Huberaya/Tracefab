@@ -299,5 +299,52 @@ console.log('\nG. Une clé absente ne produit jamais une valeur inventée');
   );
 }
 
+// ---------------------------------------------------------------------------
+console.log('\nH. Un repli ne prime jamais sur le dictionnaire de la portée');
+// ---------------------------------------------------------------------------
+
+{
+  /* Test unitaire de la fusion de load() : les deux fichiers sont servis avec une
+     clé homonyme volontaire. Avant la correction, translation.json écrasait la
+     portée — aucune collision n'existe aujourd'hui, donc seule cette injection
+     peut le démontrer. */
+  /* Chargé en script externe et non inliné : le source du runtime contient la
+     séquence fermante </script> dans un commentaire, ce qui tronquait le bloc
+     et produisait une SyntaxError silencieuse. */
+  const dom = new JSDOM('<!doctype html><html><body><script src="/i18n-core.js"></script></body></html>', {
+    runScripts: 'dangerously',
+    url: 'https://tracefab.vercel.app/',
+    virtualConsole: new VirtualConsole(),
+    resources: { interceptors: [serveLocally] },
+  });
+  for (let i = 0; i < 200 && !dom.window.TracefabI18n; i += 1) {
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  assert(!!dom.window.TracefabI18n, 'le runtime est chargé');
+  const served = {
+    '/locales/fr/demo.json': { clePartagee: 'valeur de la portée' },
+    '/locales/fr/translation.json': {
+      clePartagee: 'valeur périmée du repli',
+      cleDuRepliSeul: 'fournie uniquement par le repli',
+    },
+  };
+  dom.window.fetch = async (url) => ({
+    ok: true,
+    status: 200,
+    json: async () => (Object.prototype.hasOwnProperty.call(served, String(url)) ? served[String(url)] : null),
+  });
+  await dom.window.TracefabI18n.init({ scope: 'demo', fallback: 'fr', language: 'fr', languages: ['fr'] });
+  eq(
+    dom.window.TracefabI18n.t('clePartagee'),
+    'valeur de la portée',
+    'sur une clé homonyme, la portée l’emporte sur le repli',
+  );
+  eq(
+    dom.window.TracefabI18n.t('cleDuRepliSeul'),
+    'fournie uniquement par le repli',
+    'le repli complète toujours ce que la portée ne fournit pas',
+  );
+}
+
 console.log(`\n${failures === 0 ? 'SUCCÈS' : 'ÉCHEC'} — ${checks - failures}/${checks} vérifications`);
 process.exit(failures === 0 ? 0 : 1);

@@ -79,13 +79,29 @@
 
   function load(lang) {
     if (dictionaries[lang]) return Promise.resolve(dictionaries[lang]);
+    /*
+     * Le premier fichier est le dictionnaire de la portée ; les suivants sont des
+     * replis. Ils étaient fusionnés dans le même accumulateur, donc le repli
+     * ÉCRASAIT la portée sur toute clé homonyme — l'inverse d'un repli. Aucune
+     * collision n'existe aujourd'hui entre translation.json et les 9 portées
+     * (vérifié), mais un dictionnaire plat comme supplier.json rend l'accident
+     * possible à tout moment.
+     */
     var urls = ['/locales/' + lang + '/' + scope + '.json', '/locales/' + lang + '/translation.json'];
-    return urls.reduce(function (chain, url) {
+    return urls.reduce(function (chain, url, index) {
       return chain.then(function (acc) {
         return fetch(url, { headers: { Accept: 'application/json' } })
           .then(function (response) { return response.ok ? response.json() : null; })
           .catch(function () { return null; })
-          .then(function (json) { return json ? flatten(json, '', acc) : acc; });
+          .then(function (json) {
+            if (!json) return acc;
+            if (index === 0) return flatten(json, '', acc);
+            var fallback = flatten(json, '', {});
+            Object.keys(fallback).forEach(function (key) {
+              if (!Object.prototype.hasOwnProperty.call(acc, key)) acc[key] = fallback[key];
+            });
+            return acc;
+          });
       });
     }, Promise.resolve({})).then(function (dict) {
       dictionaries[lang] = dict;
