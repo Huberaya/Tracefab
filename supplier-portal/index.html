@@ -1199,10 +1199,11 @@ a { color: inherit; text-decoration: none; }
       /**
        * Locale BCP-47 dérivée de la langue active.
        *
-       * La locale française était codée en dur : un fournisseur turc ou chinois — le portail
-       * propose ces deux langues — voyait des dates et des nombres au format
-       * français quelle que soit la langue choisie. La locale suit maintenant
-       * state.lang, resynchronisé depuis TracefabI18n.language après init().
+       * La locale française était codée en dur : un fournisseur turc ou
+       * chinois — le portail propose ces deux langues — voyait des dates et
+       * des nombres au format français quelle que soit la langue choisie.
+       * La locale suit maintenant state.lang, resynchronisé depuis
+       * TracefabI18n.language après init().
        */
       const LOCALES = { en:'en-GB', fr:'fr-FR', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT', tr:'tr-TR', zh:'zh-CN' };
       const locale = () => LOCALES[state.lang] || state.lang || 'en-GB';
