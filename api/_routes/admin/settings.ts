@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           where: {
             organization_id: orgId,
             status: 'active',
-            role: { in: ADMIN_ROLES as unknown as string[] },
+            role: { in: [...ADMIN_ROLES] },
           },
           select: { user_id: true, role: true, status: true, created_at: true },
           orderBy: { created_at: 'asc' },

@@ -85,16 +85,46 @@ const parse = (text) => {
   return counts;
 };
 
+/*
+ * LE CLIENT PEUT ÊTRE GÉNÉRÉ, OU PAS — ET LE TEST DOIT LE SAVOIR
+ *
+ * Les 90 erreurs de la baseline n'existent que parce que le client Prisma est un
+ * placeholder. Depuis `npm run prisma:generate:offline` il peut être généré hors
+ * ligne ; `api:typecheck` remonte alors 0 erreur.
+ *
+ * Deux issues possibles, aucune tolérance dans les deux :
+ *   - client généré  → zéro erreur exigé. Une erreur est une régression réelle,
+ *     plus du bruit attribuable à un client absent.
+ *   - client absent  → l'ensemble figé doit être reproduit à l'identique.
+ *
+ * Sans cette distinction, générer le client ferait échouer le test pour un
+ * progrès — et l'assouplir pour le laisser passer retirerait toute protection.
+ */
+async function clientIsGenerated() {
+  const { statSync } = await import('node:fs');
+  try {
+    const dts = new URL('node_modules/.prisma/client/index.d.ts', root);
+    /* Le placeholder fait quelques dizaines d'octets ; un client typé, plusieurs
+       mégaoctets. Le seuil distingue les deux sans dépendre d'une version. */
+    return statSync(dts).size > 1_000_000;
+  } catch {
+    return false;
+  }
+}
+const generated = await clientIsGenerated();
+console.log(`  client Prisma : ${generated ? 'généré (0 erreur attendue)' : 'placeholder (baseline figée)'}`);
+
 const current = parse(out);
 const currentTotal = [...current.values()].reduce((a, b) => a + b, 0);
 
 if (write) {
   const payload = {
     _comment:
-      'Ensemble figé des erreurs de `npm run api:typecheck`. Les 90 proviennent du client ' +
-      'Prisma non généré ; voir l’en-tête de scripts/test_typecheck_baseline.mjs. Régénérer ' +
-      'avec `npm run test:typecheck:baseline -- --write` après avoir corrigé une erreur ou ' +
-      'après un `prisma generate` réussi.',
+      'Ensemble figé des erreurs de `npm run api:typecheck` lorsque le client Prisma ' +
+      'n\'est PAS généré. Toutes proviennent du placeholder .prisma/client ; voir ' +
+      'l\'en-tête de scripts/test_typecheck_baseline.mjs. Régénérer avec ' +
+      '`npm run test:typecheck:baseline -- --write` après avoir corrigé une erreur. ' +
+      'Client généré, cette baseline est ignorée : zéro erreur est alors exigé.',
     _generatedAt: new Date().toISOString(),
     _total: currentTotal,
     errors: Object.fromEntries([...current.entries()].sort()),
@@ -111,11 +141,32 @@ const bad = (l, d) => { failures += 1; checks += 1; console.error(`  FAIL  ${l}\
 const assert = (c, l, d) => (c ? ok(l) : bad(l, d ?? 'assertion failed'));
 
 console.log('\nA. Le typage s’exécute réellement');
-assert(currentTotal > 0, `tsc a produit des erreurs analysables (${currentTotal})`, 'sortie vide : le test ne prouverait rien');
+/*
+ * « Il y a des erreurs » n'est une preuve que lorsque le client est absent :
+ * c'est ce qui garantit que tsc a vraiment analysé l'API. Client généré, c'est
+ * l'inverse qu'on exige — et la preuve que tsc a tourné vient alors du fait que
+ * la commande s'est exécutée sans erreur de lancement.
+ */
+if (generated) {
+  assert(
+    currentTotal === 0,
+    'client généré : le typage de l’API ne remonte aucune erreur',
+    `${currentTotal} erreur(s) — avec un client généré, ce sont de vraies régressions :\n        ` +
+      [...current.keys()].slice(0, 8).join('\n        '),
+  );
+} else {
+  assert(currentTotal > 0, `tsc a produit des erreurs analysables (${currentTotal})`, 'sortie vide : le test ne prouverait rien');
+}
 assert(
-  /\bnpx tsc\b|\btsc --noEmit\b/.test(out) || currentTotal > 0,
+  /\bnpx tsc\b|\btsc --noEmit\b/.test(out) || currentTotal > 0 || generated,
   'la commande de typage est bien celle du dépôt',
 );
+
+if (generated) {
+  console.log('\nB–D. Baseline sans objet : le client est généré, zéro erreur est déjà exigé en A.');
+  console.log(`\n${failures === 0 ? 'SUCCÈS' : 'ÉCHEC'} — ${checks - failures}/${checks} vérifications`);
+  process.exit(failures === 0 ? 0 : 1);
+}
 
 let baseline;
 try {

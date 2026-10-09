@@ -1561,13 +1561,29 @@ model crm_companies {
   collected_at           DateTime?          @db.Timestamptz(6)
   owner_user_id          String?            @db.Uuid
   organization_id        String?            @db.Uuid
-  linked_organization    organizations @relation("crm_companies_linked", fields: [organization_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  linked_organization    organizations? @relation("crm_companies_linked", fields: [organization_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   campaign_id            String?            @db.Uuid
   owner_name             String?
   notes                  String?
   estimated_value_eur    Int?
   last_contact_at        DateTime?          @db.Timestamptz(6)
   next_contact_at        DateTime?          @db.Timestamptz(6)
+  /*
+   * Colonnes ajoutées par la migration
+   * 20261008140000_admin_command_center_operations mais jamais déclarées ici.
+   *
+   * L'absence de `converted_at` faisait ÉCHOUER `prisma validate` : l'index
+   * idx_crm_companies_org_converted juste en dessous référence ce champ. Le
+   * schéma ne validait donc pour personne, et `stage.ts` sélectionne et écrit
+   * ces deux colonnes — avec un client généré, la conversion prospect → client
+   * levait à l'exécution.
+   *
+   * `converted_at` est exigée par la contrainte CHECK
+   * crm_companies_customer_requires_converted_at : un client sans date de
+   * conversion fausserait la durée moyenne avant conversion (§15).
+   */
+  converted_at           DateTime?          @db.Timestamptz(6)
+  converted_value_eur    Int?
   created_at             DateTime           @default(now()) @db.Timestamptz(6)
   updated_at             DateTime           @default(now()) @db.Timestamptz(6)
   crm_contacts           crm_contacts[]
@@ -1682,9 +1698,9 @@ model crm_tasks {
   platform_organization_id String           @db.Uuid
   organizations            organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   company_id               String?          @db.Uuid
-  crm_companies            crm_companies @relation(fields: [company_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  crm_companies            crm_companies? @relation(fields: [company_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   contact_id               String?          @db.Uuid
-  crm_contacts             crm_contacts @relation(fields: [contact_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  crm_contacts             crm_contacts? @relation(fields: [contact_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   type                     crm_task_type    @default(follow_up)
   title                    String
   detail                   String?
@@ -1710,7 +1726,7 @@ model crm_meetings {
   company_id               String           @db.Uuid
   crm_companies            crm_companies @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   contact_id               String?          @db.Uuid
-  crm_contacts             crm_contacts @relation(fields: [contact_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  crm_contacts             crm_contacts? @relation(fields: [contact_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   subject                  String
   starts_at                DateTime         @db.Timestamptz(6)
   ends_at                  DateTime?        @db.Timestamptz(6)
@@ -1736,7 +1752,7 @@ model crm_pilots {
      client. Sans ce lien, les pourcentages ci-dessous sont DÉCLARÉS par l'équipe
      et l'interface le dit — ils ne sont jamais présentés comme des mesures. */
   organization_id          String?          @db.Uuid
-  linked_organization      organizations @relation("crm_pilots_linked", fields: [organization_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  linked_organization      organizations? @relation("crm_pilots_linked", fields: [organization_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   starts_at                DateTime?        @db.Timestamptz(6)
   ends_at                  DateTime?        @db.Timestamptz(6)
   status                   crm_pilot_status @default(planned)
@@ -1821,7 +1837,13 @@ model crm_saved_views {
   created_at               DateTime @default(now()) @db.Timestamptz(6)
   updated_at               DateTime @default(now()) @db.Timestamptz(6)
 
-  crm_saved_views          crm_saved_views[]
+  /*
+   * Il y avait ici `crm_saved_views crm_saved_views[]`, une auto-relation sans
+   * côté opposé. Elle ne correspond à rien : la table n'a aucune colonne
+   * auto-référente (voir 20261008160000_admin_command_center_acquisition), et
+   * sa seule clé étrangère pointe vers organizations. Le champ faisait échouer
+   * la validation du schéma entier.
+   */
   @@unique([platform_organization_id, name], map: "uq_crm_saved_views_org_name")
   @@index([platform_organization_id, created_at], map: "idx_crm_saved_views_org_created")
 }
@@ -1853,7 +1875,7 @@ model crm_leads {
   platform_organization_id String           @db.Uuid
   organizations          organizations @relation(fields: [platform_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   campaign_id            String?            @db.Uuid
-  crm_campaigns          crm_campaigns @relation(fields: [campaign_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  crm_campaigns          crm_campaigns? @relation(fields: [campaign_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   company_name           String
   contact_name           String?
   contact_job_title      String?
@@ -1867,7 +1889,7 @@ model crm_leads {
   status                 crm_lead_status    @default(new)
   discard_reason         String?
   converted_company_id   String?            @db.Uuid
-  converted_company      crm_companies @relation(fields: [converted_company_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  converted_company      crm_companies? @relation(fields: [converted_company_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   converted_at           DateTime?          @db.Timestamptz(6)
   duplicate_key          String
   source                 String?

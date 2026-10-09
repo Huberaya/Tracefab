@@ -16,7 +16,13 @@ import type { ConnectedSummary, ConnectedView, SupplierMetrics } from './crm-lin
  */
 
 /** Statuts qui signifient « réellement embarqué », pas « invité ». */
-export const ONBOARDED_STATUSES = ['submitted', 'approved'];
+/*
+ * `as const` : sans lui le type est string[] et Prisma refuse la valeur dans
+ * `onboarding_status: { in: ... }`. Le `as unknown as string[]` qui suivait
+ * était un contournement écrit quand le client n'était pas généré — il masquait
+ * le type au lieu de le satisfaire.
+ */
+export const ONBOARDED_STATUSES = ['submitted', 'approved'] as const;
 
 export async function loadConnectedCompanies(
   tx: Prisma.TransactionClient,
@@ -75,7 +81,7 @@ export async function loadConnectedCompanies(
       by: ['organization_id'],
       where: {
         organization_id: { in: visibleOrgs },
-        onboarding_status: { in: ONBOARDED_STATUSES as unknown as string[] },
+        onboarding_status: { in: [...ONBOARDED_STATUSES] },
       },
       _count: { _all: true },
     })) as unknown as { organization_id: string; _count: { _all: number } }[])
