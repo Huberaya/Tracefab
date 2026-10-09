@@ -285,8 +285,10 @@ console.log('\n  E. matrice d’accès (rôle tracefab_app, sans BYPASSRLS)');
   });
   ok('rôle applicatif posé par bootstrap_app_role (étape du runbook)');
 }
-const URL_APP = process.env.TF_RLS_APP_URL || URL_DB(PREPROD);
-const app = new pg.Client({ connectionString: URL_APP, database: PREPROD });
+// Le rôle applicatif est forcé sur la base de préprod dédiée (jamais sur la base
+// partagée de la suite, qui porte d'autres fixtures et fausserait l'inventaire).
+const URL_APP = (process.env.TF_RLS_APP_URL || URL_DB(PREPROD)).replace(/\/[^/?]+(\?|$)/, `/${PREPROD}$1`);
+const app = new pg.Client({ connectionString: URL_APP.replace(/\/[^/?]+(\?|$)/, `/${PREPROD}$1`) });
 await app.connect();
 {
   const r = await app.query('SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user');
