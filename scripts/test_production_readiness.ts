@@ -121,11 +121,29 @@ for (const doc of [
   'docs/operations/variables-environnement.md',
   'docs/operations/runbook-sauvegarde-restauration.md',
   'docs/operations/checklist-mise-en-production.md',
+  'docs/commercial/demo-scriptee.md',
+  'docs/commercial/dossier-securite.md',
 ]) {
   let present = true;
   try { read(doc); } catch { present = false; }
   check(`document d exploitation present : ${doc.split('/').pop()}`, present);
 }
+
+/* ----------------------------------- 5. le dossier securite ne surpromet pas */
+
+// Un dossier sécurité qui perdrait sa section de limites deviendrait un
+// engagement qu'on ne tient pas. On verrouille donc sa presence.
+const securite = read('docs/commercial/dossier-securite.md');
+check('le dossier securite declare ce qui manque',
+  /##\s*Ce que nous n'avons pas encore/.test(securite));
+check('l absence de limitation de debit y est ecrite',
+  /limitation de d[ée]bit/i.test(securite) && /absente/i.test(securite));
+check('le dossier securite ne revendique aucune certification obtenue',
+  !/nous sommes certifi|certification obtenue|conforme ESPR/i.test(securite));
+
+const demo = read('docs/commercial/demo-scriptee.md');
+check('la demo rappelle que la maturite DPP n est pas une certification',
+  /pas une certification/i.test(demo));
 
 /* ------------------------------------------------------------------ verdict */
 
