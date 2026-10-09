@@ -1,0 +1,88 @@
+# Figer la reference de regression visuelle — acte volontaire.
+#
+# POURQUOI CE WORKFLOW EXISTE
+#
+# La comparaison de pixels n'a de sens qu'entre deux rendus produits par la
+# MEME pile graphique. Le binaire de navigateur est epingle, les fontes sont
+# statiques — mais freetype/fontconfig dependent de l'OS : la meme page rend
+# differemment sur un poste Debian et sur le runner ubuntu de la CI, de
+# quelques pourcents de pixels sur les pages denses en texte. Une reference
+# generee sur un poste ferait donc rougir la CI sans la moindre cause au code.
+#
+# La reference se genere donc ICI, dans l'environnement ou elle est comparee
+# (job identique a celui de la boucle de verification) : c'est la seule facon
+# de figer l'empreinte de rendu sans mentir. Les images atterrissent sur la
+# branche sous forme de diff — la revue reste humaine.
+#
+# Declenchement manuel uniquement : c'est un acte volontaire, comme --maj.
+#   gh workflow run figer-reference-visuelle.yml --ref <branche>
+#
+# A REJOUER quand l'environnement de rendu bouge : migration de l'image
+# ubuntu-latest, mise a jour de playwright, changement de fontes.
+
+name: Figer la reference visuelle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: '20'
+  TF_BASE_URL: http://127.0.0.1:3000
+
+jobs:
+  figer:
+    name: Regenerer les references dans l'environnement de comparaison
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Generer le client Prisma
+        run: npm run db:generate
+
+      - name: Installer Chromium pour Playwright (repli du navigateur epingle)
+        run: npx playwright install --with-deps chromium
+
+      - name: Demarrer le serveur de previsualisation
+        run: |
+          nohup npm run serve > /tmp/serve.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -sf "$TF_BASE_URL/" >/dev/null && echo "serveur pret" && exit 0
+            sleep 0.5
+          done
+          echo "::error::le serveur n'a pas repondu sur $TF_BASE_URL"
+          cat /tmp/serve.log || true
+          exit 1
+
+      - name: Regenerer les references (--maj)
+        run: npm run test:regression -- --maj
+
+      - name: Pousser les references sur la branche
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/regression/reference
+          if git diff --cached --quiet; then
+            echo "Aucune reference modifiee : rien a pousser."
+          else
+            git commit -m "reference visuelle : regeneree dans l'environnement CI"
+            git push
+          fi
+
+      - name: Archiver les references
+        uses: actions/upload-artifact@v4
+        with:
+          name: references-regression-visuelle
+          path: tests/regression/reference
+          retention-days: 30

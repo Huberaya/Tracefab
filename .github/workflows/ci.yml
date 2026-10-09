@@ -117,10 +117,12 @@ jobs:
         # deploye : elles ont leur propre etage.
         #
         # test:regression fait partie de la boucle depuis 20261009 : fontes
-        # statiques versionnees (assets/css/fonts.css) et navigateur de test
-        # epingle (@sparticuz/chromium, repli Chromium Playwright fige) — le
-        # rendu ne depend plus de la machine. Seuil 0,10 % intact. S'il ne
-        # peut pas se comparer, il sort NON EXECUTE (2), jamais vert.
+        # statiques, navigateur epingle, options de rendu figees. La REFERENCE
+        # est generee dans cet environnement meme (workflow
+        # figer-reference-visuelle) — la pile rasterisante depend de l'OS, une
+        # reference de poste rougirait ici sans cause au code. Seuil 0,10 %
+        # intact. Hors de sa pile de rendu, le test sort NON EXECUTE (2),
+        # jamais vert.
         run: |
           set -u
           scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2').join(' '))")
