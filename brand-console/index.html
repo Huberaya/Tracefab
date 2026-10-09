@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tracefab — Brand Console</title>
   <meta name="description" content="Tracefab Brand Console — collect, review and improve supplier data." data-i18n-attr="content:console.cnMetaDesc">
+  <!-- Systeme de jetons partage. Place avant le <style> en ligne pour que
+       les declarations propres a la console conservent la priorite. -->
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css?v=d4cc6def">
   <style>
     :root {
       --ink: #17231f;
-      --muted: #71807a;
+      --muted: #63706b;
       --paper: #f7f8f4;
       --panel: #ffffff;
       --line: #e2e8df;
@@ -17,7 +20,7 @@
       --green-soft: #e4f3ec;
       --yellow: #d79621;
       --yellow-soft: #fff3d8;
-      --red: #bd514e;
+      --red: #b04b49;
       --red-soft: #ffebea;
       --shadow: 0 16px 45px rgba(20, 42, 34, .08);
       --radius: 18px;
@@ -89,11 +92,11 @@
     .clickable:hover td { background: #fbfcfa; }
     .status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 800; background: #edf1ed; color: #5b6962; }
     .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-    .status-sent, .status-in_progress { background: #e8f1ff; color: #3970b3; }
-    .status-submitted { background: var(--yellow-soft); color: #9a680e; }
+    .status-sent, .status-in_progress { background: #e8f1ff; color: #386eb0; }
+    .status-submitted { background: var(--yellow-soft); color: #95650e; }
     .status-approved, .status-verified_by_reviewer { background: var(--green-soft); color: var(--green); }
     .status-changes_requested, .status-needs_review { background: var(--red-soft); color: var(--red); }
-    .status-draft { background: #f0f1f0; color: #69766e; }
+    .status-draft { background: #f0f1f0; color: #636f68; }
     .progress { height: 7px; background: #e9eee9; border-radius: 99px; overflow: hidden; min-width: 82px; }
     .progress > span { display: block; height: 100%; background: var(--green); border-radius: inherit; }
     .progress-line { display: flex; align-items: center; gap: 9px; }
@@ -172,7 +175,7 @@
     .score-name { color: var(--muted); font-size: 11px; font-weight: 750; }
     .score-value { font-size: 26px; font-weight: 800; letter-spacing: -.06em; margin: 10px 0; }
     .issue { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding: 15px 0; border-top: 1px solid #edf0eb; }
-    .severity { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 850; padding: 5px 7px; border-radius: 6px; background: var(--yellow-soft); color: #9a680e; }
+    .severity { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 850; padding: 5px 7px; border-radius: 6px; background: var(--yellow-soft); color: #95650e; }
     .severity-blocking { background: var(--red-soft); color: var(--red); }
     .severity-info { background: var(--green-soft); color: var(--green); }
     .issue strong { display: block; font-size: 13px; }
@@ -249,7 +252,7 @@
     }
     .annotation-bubble {
       background: #fffbeb;
-      border-left: 3px solid #d97706;
+      border-left: 3px solid #b06005;
       padding: 10px 12px;
       border-radius: 6px;
       font-size: 12px;
@@ -347,7 +350,7 @@
       font-weight: 750;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #71807a;
+      color: #63706b;
     }
 
     .mc-domain-badge {
@@ -445,7 +448,7 @@
 
     .lineage-step-sub {
       font-size: 10px;
-      color: #71807a;
+      color: #63706b;
       font-family: var(--font-mono, monospace);
     }
 
@@ -562,7 +565,7 @@
     .dc-step-num {
       font-family: var(--font-mono, monospace);
       font-size: 9.5px;
-      color: #71807a;
+      color: #63706b;
       font-weight: 750;
       margin-bottom: 4px;
     }
@@ -580,7 +583,7 @@
 
     .dc-step-sub {
       font-size: 10px;
-      color: #71807a;
+      color: #63706b;
     }
 
     /* Statuses Pills Row */
@@ -651,7 +654,7 @@
     .eq-score-label {
       font-family: var(--font-mono, monospace);
       font-size: 10px;
-      color: #71807a;
+      color: #63706b;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       margin-bottom: 4px;
@@ -995,6 +998,17 @@
     .risk-dim__val.is-muted { font-size:12px; font-weight:650; color:var(--muted); }
     /* l ornement d angle de .kpi passe par-dessus le libelle a 390px */
     .cert-table .status { white-space: nowrap; }
+    /* Deux bandes etaient figees a 5 et 7 colonnes, sans repli mobile :
+       elles forcaient un defilement horizontal de toute la page. */
+    @media (max-width: 760px) {
+      .eq-score-strip { grid-template-columns: repeat(2, 1fr); }
+      .dc-lifecycle-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 420px) {
+      .eq-score-strip, .dc-lifecycle-strip { grid-template-columns: 1fr; }
+      .eq-severity-tabs { flex-wrap: wrap; }
+    }
+
     @media (max-width: 720px) {
       .dpp-hero { grid-template-columns: 1fr; gap: 16px; }
       .dpp-hero > * { min-width: 0; }
@@ -1019,13 +1033,13 @@
          cette page : sans lui elle heriterait du titre de la landing. -->
     <script src="/assets/js/tf-actions.js?v=ecfb6008"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=fc02b6f5"></script>
+    <script src="/assets/i18n/en.js?v=82445cd3"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
 <body>
   <div id="app"></div>
   <script src="/assets/js/tf-demo-figures.js?v=3d451782"></script>
-    <script src="/assets/js/brand-console.1.js?v=d9e7505f"></script>
+    <script src="/assets/js/brand-console.1.js?v=e5b821a1"></script>
 </body>
 </html>

@@ -120,7 +120,7 @@
   /* ── Fragments ───────────────────────────────────────────────────────── */
 
   function chip(level) {
-    return '<span class="status" style="color:var(--tf-trust-' + level + ');background:var(--tf-trust-' + level +
+    return '<span class="status" style="color:var(--tf-trust-' + level + '-ink);background:var(--tf-trust-' + level +
       '-bg)">' + esc(t('pi.trust.' + level, level)) + '</span>';
   }
 
@@ -268,7 +268,7 @@
           return ['<strong>' + esc(t('pi.docs.' + e.k, e.k)) + '</strong>',
             esc(e.issuer),
             '<span class="meta" style="text-transform:none">' + esc(fmtDate(e.date)) + '</span>',
-            '<span class="meta" style="text-transform:none;' + (expired ? 'color:var(--tf-trust-missing)' : '') + '">' + esc(fmtDate(e.exp)) + '</span>',
+            '<span class="meta" style="text-transform:none;' + (expired ? 'color:var(--tf-trust-missing-ink)' : '') + '">' + esc(fmtDate(e.exp)) + '</span>',
             chip(e.level)];
         })) +
         '<p class="meta" style="margin-top:13px;text-transform:none;letter-spacing:0">' + esc(t('pi.notes.evidence', '')) + '</p>';
@@ -312,7 +312,7 @@
         '<div class="card dpp-hero">' +
           '<div><div class="eyebrow">' + esc(t('pi.dpp.title', '')) + '</div>' +
           '<p style="margin:9px 0 0;color:var(--tf-ink-muted);max-width:60ch">' + esc(t('pi.dpp.lead', '')) + '</p>' +
-          '<p class="meta" style="margin:13px 0 0;text-transform:none;letter-spacing:0;color:var(--tf-trust-review)">' + esc(t('pi.dpp.legal', '')) + '</p></div>' +
+          '<p class="meta" style="margin:13px 0 0;text-transform:none;letter-spacing:0;color:var(--tf-trust-review-ink)">' + esc(t('pi.dpp.legal', '')) + '</p></div>' +
           '<div class="dpp-gauge-box"><div class="dpp-gauge-val">' + P.scoreDpp + '%</div>' +
           '<div class="dpp-gauge-label">' + esc(t('pi.dpp.score', '')) + '</div></div>' +
         '</div>' +
@@ -324,7 +324,7 @@
             }).join('') + '</div></div>' +
           '<div class="card panel"><div class="panel-head"><h2>' + esc(t('pi.dpp.missing', '')) + '</h2></div><div class="pillar-items">' +
             P.dppGaps.map(function (k) {
-              return '<div class="pillar-item"><span class="check-icon" style="color:var(--tf-trust-review)">⚠</span>' +
+              return '<div class="pillar-item"><span class="check-icon" style="color:var(--tf-trust-review-ink)">⚠</span>' +
                 '<span class="pillar-item-label">' + esc(t('pi.dpp.items.' + k, k)) + '</span></div>';
             }).join('') + '</div></div>' +
         '</div>';

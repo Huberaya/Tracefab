@@ -471,9 +471,9 @@ tbody tr:last-child td { border-bottom: 0; }
 
 /* Expiry is the thing auditors check first, so it gets its own alert bar. */
 
-.ev-alert__i[data-sev='critical'] { color: var(--tf-trust-missing); }
+.ev-alert__i[data-sev='critical'] { color: var(--tf-trust-missing-ink); }
 
-.ev-alert__i[data-sev='warning'] { color: var(--tf-trust-review); }
+.ev-alert__i[data-sev='warning'] { color: var(--tf-trust-review-ink); }
 
 /* ── QUALITY CENTER (PHASE 8) ───────────────────────────────────────────── */
 
@@ -535,11 +535,11 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .mc-alert:hover .mc-alert__go { color: var(--tf-emerald-deep); }
 
-.mc-alert[data-sev="critical"] .mc-alert__n { color: var(--tf-trust-missing); }
+.mc-alert[data-sev="critical"] .mc-alert__n { color: var(--tf-trust-missing-ink); }
 
-.mc-alert[data-sev="warning"]  .mc-alert__n { color: var(--tf-trust-review); }
+.mc-alert[data-sev="warning"]  .mc-alert__n { color: var(--tf-trust-review-ink); }
 
-.mc-alert[data-sev="review"]   .mc-alert__n { color: var(--tf-trust-documented); }
+.mc-alert[data-sev="review"]   .mc-alert__n { color: var(--tf-trust-documented-ink); }
 
 /* demo marker */
 .mc-demo {
@@ -553,11 +553,11 @@ tbody tr:last-child td { border-bottom: 0; }
 
 /* Severity token — same trust palette, table-weight. */
 
-.mc-sev[data-sev="critical"] { color: var(--tf-trust-missing); background: var(--tf-trust-missing-bg); }
+.mc-sev[data-sev="critical"] { color: var(--tf-trust-missing-ink); background: var(--tf-trust-missing-bg); }
 
-.mc-sev[data-sev="warning"] { color: var(--tf-trust-review);  background: var(--tf-trust-review-bg); }
+.mc-sev[data-sev="warning"] { color: var(--tf-trust-review-ink);  background: var(--tf-trust-review-bg); }
 
-.mc-sev[data-sev="review"] { color: var(--tf-trust-documented); background: var(--tf-trust-documented-bg); }
+.mc-sev[data-sev="review"] { color: var(--tf-trust-documented-ink); background: var(--tf-trust-documented-bg); }
 
 /* Empty state — an answer, not a blank panel. */
 
@@ -646,13 +646,13 @@ tbody tr:last-child td { border-bottom: 0; }
 .pi-event[data-level="verified"]::before,
 .pi-event[data-level="certified"]::before { border-color: var(--tf-emerald); background: var(--tf-emerald); }
 
-.pi-event[data-level="review"]::before { border-color: var(--tf-trust-review); background: var(--tf-trust-review); }
+.pi-event[data-level="review"]::before { border-color: var(--tf-trust-review-ink); background: var(--tf-trust-review); }
 
-.pi-event[data-level="missing"]::before { border-color: var(--tf-trust-missing); background: var(--tf-trust-missing); }
+.pi-event[data-level="missing"]::before { border-color: var(--tf-trust-missing-ink); background: var(--tf-trust-missing); }
 
-.pi-event[data-level="documented"]::before { border-color: var(--tf-trust-documented); background: var(--tf-trust-documented); }
+.pi-event[data-level="documented"]::before { border-color: var(--tf-trust-documented-ink); background: var(--tf-trust-documented); }
 
-.pi-event[data-level="declared"]::before { border-color: var(--tf-trust-declared); background: var(--tf-trust-declared); }
+.pi-event[data-level="declared"]::before { border-color: var(--tf-trust-declared-ink); background: var(--tf-trust-declared); }
 
 .pi-event__d { font-family: var(--tf-font-mono); font-size: var(--tf-size-3xs); letter-spacing: var(--tf-track-wide); text-transform: uppercase; color: var(--tf-ink-faint); }
 
@@ -716,7 +716,7 @@ tbody tr:last-child td { border-bottom: 0; }
   font-size: var(--tf-size-3xs);
   letter-spacing: var(--tf-track-wide);
   text-transform: uppercase;
-  color: var(--tf-trust-review);
+  color: var(--tf-trust-review-ink);
 }
 
 .pi-reqnote[hidden] { display: none; }

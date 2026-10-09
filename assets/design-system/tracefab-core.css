@@ -67,13 +67,13 @@
   /* ---- Semantic text ------------------------------------------------- */
   --tf-ink:            var(--tf-charcoal-950);
   --tf-ink-soft:       #434a47;
-  --tf-ink-muted:      #6b746f;
-  --tf-ink-faint:      #959c98;
+  --tf-ink-muted:      #666f6a;
+  --tf-ink-faint:      #696e6b;
 
   --tf-ink-inv:        #f2f5f3;
   --tf-ink-inv-soft:   rgba(242, 245, 243, 0.72);
   --tf-ink-inv-muted:  rgba(242, 245, 243, 0.50);
-  --tf-ink-inv-faint:  rgba(242, 245, 243, 0.32);
+  --tf-ink-inv-faint:  rgba(242, 245, 243, 0.48);
 
   /* ---- Hairlines ----------------------------------------------------- */
   --tf-line-light:        rgba(10, 12, 11, 0.12);
@@ -90,6 +90,15 @@
   --tf-trust-documented: #2f6f94;
   --tf-trust-verified:   var(--tf-emerald);
   --tf-trust-certified:  var(--tf-emerald-deep);
+
+  /* Variantes texte : l echelle de confiance garde sa couleur pour les
+     pastilles et les aplats, mais le TEXTE exige 4,5:1 (WCAG 1.4.3). */
+  --tf-trust-missing-ink:    #b5452c;
+  --tf-trust-review-ink:     #8f6413;
+  --tf-trust-declared-ink:   #646e6a;
+  --tf-trust-documented-ink: #2f6f94;
+  --tf-trust-verified-ink:   #0a7d54;
+  --tf-trust-certified-ink:  #05603f;
 
   --tf-trust-missing-bg:    rgba(192, 73, 47, 0.10);
   --tf-trust-review-bg:     rgba(180, 126, 24, 0.12);
@@ -542,12 +551,12 @@ a { color: inherit; text-decoration: none; }
   background: currentColor;
   flex: none;
 }
-.tf-trust[data-level="missing"]    { color: var(--tf-trust-missing);    background: var(--tf-trust-missing-bg);    border-color: rgba(192,73,47,0.26); }
-.tf-trust[data-level="review"]     { color: var(--tf-trust-review);     background: var(--tf-trust-review-bg);     border-color: rgba(180,126,24,0.3); }
-.tf-trust[data-level="declared"]   { color: var(--tf-trust-declared);   background: var(--tf-trust-declared-bg);   border-color: rgba(122,135,130,0.3); }
-.tf-trust[data-level="documented"] { color: var(--tf-trust-documented); background: var(--tf-trust-documented-bg); border-color: rgba(47,111,148,0.3); }
-.tf-trust[data-level="verified"]   { color: var(--tf-trust-verified);   background: var(--tf-trust-verified-bg);   border-color: rgba(15,185,124,0.32); }
-.tf-trust[data-level="certified"]  { color: var(--tf-trust-certified);  background: var(--tf-trust-certified-bg);  border-color: rgba(7,135,90,0.34); }
+.tf-trust[data-level="missing"]    { color: var(--tf-trust-missing-ink);    background: var(--tf-trust-missing-bg);    border-color: rgba(192,73,47,0.26); }
+.tf-trust[data-level="review"]     { color: var(--tf-trust-review-ink);     background: var(--tf-trust-review-bg);     border-color: rgba(180,126,24,0.3); }
+.tf-trust[data-level="declared"]   { color: var(--tf-trust-declared-ink);   background: var(--tf-trust-declared-bg);   border-color: rgba(122,135,130,0.3); }
+.tf-trust[data-level="documented"] { color: var(--tf-trust-documented-ink); background: var(--tf-trust-documented-bg); border-color: rgba(47,111,148,0.3); }
+.tf-trust[data-level="verified"]   { color: var(--tf-trust-verified-ink);   background: var(--tf-trust-verified-bg);   border-color: rgba(15,185,124,0.32); }
+.tf-trust[data-level="certified"]  { color: var(--tf-trust-certified-ink);  background: var(--tf-trust-certified-bg);  border-color: rgba(7,135,90,0.34); }
 .tf-on-dark .tf-trust[data-level="certified"] { color: var(--tf-emerald-bri); }
 .tf-on-dark .tf-trust[data-level="declared"]  { color: #a9b4af; }
 

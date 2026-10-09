@@ -808,7 +808,7 @@
               <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || bt('shDemoAccount'))}</span><button class="link-button" data-action="signout">${bt('signOut')}</button></div></div></div>
             </aside>
             <main class="main">
-              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">${esc(bt("newRequest"))}</button></div></header>
+              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org" aria-label="${esc(bt('orgSwitcher'))}">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">${esc(bt("newRequest"))}</button></div></header>
               <section class="content">${content}</section>
             </main>
           </div>
@@ -853,7 +853,9 @@
       }
 
       function brandLangSwitcher() {
-        return `<select class="org-select" id="brand-lang-select" data-tf-act="p01" data-tf-on="change" style="margin-right:8px;font-family:inherit;font-weight:700;">
+
+        const T = window.TF_I18N;
+        return `<select class="org-select" id="brand-lang-select" aria-label="${(T && T.t) ? T.t('nav.language', 'Language') : 'Language'}" data-tf-act="p01" data-tf-on="change" style="margin-right:8px;font-family:inherit;font-weight:700;">
           <option value="en" ${state.lang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
           <option value="fr" ${state.lang === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
           <option value="de" ${state.lang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch</option>
@@ -1888,7 +1890,7 @@
             <div class="dc-step-card active" style="background:#0b7656;color:#ffffff;border-color:#07523e;">
               <div class="dc-step-num" style="color:#ffffff;">${bt('rqStep07')}</div>
               <div class="dc-step-label" style="color:#ffffff;">${bt('rqVerifiedData')}</div>
-              <div class="dc-step-sub" style="color:rgba(255,255,255,0.8);">${bt('rqEsprOk')}</div>
+              <div class="dc-step-sub" style="color:rgba(255,255,255,0.94);">${bt('rqEsprOk')}</div>
             </div>
           </div>
         </div>
@@ -1908,7 +1910,7 @@
             <span class="dc-pill-badge">${counts.submitted}</span>
           </div>
           <div class="dc-status-pill" data-tf-act="p24">
-            <span style="color:#d97706;">${bt('rqUnderReview')}</span>
+            <span style="color:#b06005;">${bt('rqUnderReview')}</span>
             <span class="dc-pill-badge">${state.requests.filter(r => r.status === 'changes_requested').length}</span>
           </div>
           <div class="dc-status-pill" data-tf-act="p25">
@@ -1924,7 +1926,7 @@
         <div class="card panel">
           <div class="filters">
             <input class="input" id="request-search" placeholder="${bt('rqSearch')}">
-            <select class="select" id="request-filter" style="max-width:200px">
+            <select class="select" id="request-filter" aria-label="${esc(bt('cnFilterRequests'))}" style="max-width:200px">
               <option value="all">${bt('rqAllStatuses')}</option>
               <option value="sent">${bt('rqMissing')}</option>
               <option value="in_progress">${bt('rqFilling')}</option>
@@ -2397,7 +2399,7 @@
             </div>
 
             <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcEsprConformity')}</div>
+              <div class="eq-score-label">${bt('qcProductQuality')}</div>
               <div class="eq-score-num" style="color:#b45309;">88.0%</div>
               <div class="eq-score-desc">${bt('qcDppEligible')}</div>
             </div>

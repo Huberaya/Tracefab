@@ -339,7 +339,9 @@
       var root$ = svg('svg', {
         class: 'tf-core__svg',
         viewBox: '0 0 ' + W + ' ' + H,
-        role: 'img',
+        // role=group et non img : ce schema CONTIENT des commandes focusables,
+        // ce qu un role=img interdit (axe « nested-interactive »).
+        role: 'group',
         'aria-label': t('core.title', 'Living data core')
       });
 
@@ -408,8 +410,10 @@
         }
 
         // --- node plate
-        var ng = svg('g', { class: 'tf-node-g', tabindex: '0', role: 'button',
-          'aria-label': t(base + 'label', key) + ' — ' + t(base + 'value', '') });
+        // Sans aria-label : le nom accessible se calcule depuis les <text> du
+        // noeud, donc il CONTIENT le texte visible par construction
+        // (WCAG 2.5.3 « Label in Name »).
+        var ng = svg('g', { class: 'tf-node-g', tabindex: '0', role: 'button' });
         ng.style.setProperty('--tf-node-delay', (260 + i * 62) + 'ms');
 
         ng.appendChild(svg('rect', {

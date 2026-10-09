@@ -179,11 +179,21 @@ assert.ok(
 // couvre desormais tout fichier HTML suivi par git.
 {
   const { execSync } = await import('node:child_process');
-  const INTERDIT = /DPP Conforme|DPP Compliant|DPP Konform|DPP Conform\b|certifié ESPR|Conforme Règlementation/;
-  const suivis = execSync('git ls-files "*.html"', { encoding: 'utf8' })
+  // Casse-insensible : « DPP compliant » en minuscules traversait le filet
+    // et s'affichait dans la console. Et le filet ne lisait que les fichiers
+    // HTML, alors que la copie vit dans le catalogue i18n et les bundles :
+    // « ESPR CONFORMITY » y a prospere dans six langues.
+    const INTERDIT = new RegExp([
+      'DPP\\s*(?:Conforme|Compliant|Konform|Conform\\b)',
+      'certifi(?:é|ed)\\s*ESPR',
+      'ESPR[\\s/-]*(?:CONFORMITY|CONFORMIT[ÀÉ]|KONFORMITÄT|CONFORMIDAD|CONFORMITEIT|CONFORMIDADE|compliant|conforme|konform)',
+      '(?:CONFORMIT[ÀÉY]|KONFORMITÄT|CONFORMIDAD|CONFORMITEIT|CONFORMIDADE|RÉGULARITÉ)\\s*ESPR',
+      'Conforme\\s*Règlementation',
+    ].join('|'), 'i');
+  const suivis = execSync('git ls-files "*.html" "assets/i18n/*" "assets/js/*.js"', { encoding: 'utf8' })
     .split('\n')
     .filter(Boolean);
-  assert.ok(suivis.length > 0, 'le filet doit inspecter au moins un fichier HTML');
+  assert.ok(suivis.length > 10, 'le filet doit inspecter HTML, catalogue i18n et bundles');
   for (const fichier of suivis) {
     const contenu = await readFile(fichier, 'utf8');
     const trouve = contenu.match(INTERDIT);
@@ -192,7 +202,7 @@ assert.ok(
       `${fichier} revendique une certification reglementaire : « ${trouve && trouve[0]} »`,
     );
   }
-  console.log(`✓ ${suivis.length} fichiers HTML sans revendication de conformite`);
+  console.log(`✓ ${suivis.length} fichiers (HTML + i18n + bundles) sans revendication de conformite`);
 }
 
 for (const lang of ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt']) {

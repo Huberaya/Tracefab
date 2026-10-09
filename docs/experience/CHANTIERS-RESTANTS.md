@@ -348,12 +348,50 @@ place n'y est déclaré absent. Vérifié par trois mutations : ajouter une orig
 CSP non déclarée, remettre un engagement à blanc, redéclarer la limitation de
 débit absente.
 
-## 7 · Processus — phases 6 à 12 jamais validées
+## 7 · Processus — phases 6 à 12 jamais validées — TRAITÉ
 
 Le cahier des charges impose un arrêt et une validation après chaque phase.
-La phase 4 a été validée, la 5 autorisée. Les suivantes ont été livrées
-sans validation formelle. Elles passent `test:phases` (40/40) et l'audit
-personas, mais l'arrêt prévu n'a pas eu lieu.
+La phase 4 a été validée, la 5 autorisée. Les sept suivantes ont été livrées
+d'affilée, sans arrêt.
+
+### Ce que le comptage a montré
+
+Sur les neuf contrôles imposés après chaque phase, **l'accessibilité n'avait
+aucun script** : jamais mesurée, sur aucune surface, en douze phases. Et
+`audit_phases_9_12.mjs` ne couvrait que les phases 9 à 12 — **les phases 6, 7
+et 8 n'avaient aucun audit**.
+
+### Ce qui a été fait
+
+| Livrable | Résultat |
+|---|---|
+| `scripts/test_accessibilite.mjs` → `test:accessibilite` | **19 surfaces**, vues profondes comprises, WCAG 2.1 AA |
+| `scripts/audit_phases_6_8.mjs` → `test:phases:6-8` | **54 contrôles** |
+| `docs/experience/VALIDATION-PHASES-6-12.md` | dossier de validation rétrospective, **94/94** |
+
+Première mesure d'accessibilité : **8 surfaces sur 9 en échec, 12 infractions
+sérieuses ou critiques**. Premier passage de l'audit 6–8 : **46/54**. Après
+correction : **0 infraction** et **54/54**.
+
+### Trois trouvailles de fond
+
+1. **`tracefab-core.css` n'était chargé que par 3 pages sur 9.** La console de
+   marque ne chargeait pas le système de jetons — d'où `--muted` dupliqué en
+   dur dans cinq fichiers. Corrigé pour la console ; cinq surfaces restent à
+   converger.
+2. **Allégations de conformité réglementaire en six langues**
+   (`ESPR CONFORMITY`, `ESPR / DPP compliant`…), posées sur le 88 % de
+   readiness. Consigne explicite enfreinte. Le garde-fou les manquait : il
+   était sensible à la casse et ne lisait que les fichiers HTML. Durci —
+   **35 fichiers** scannés au lieu de 9.
+3. **La 5ᵉ dimension du Quality Center était « ESPR Conformity »** au lieu de
+   **Product Quality** exigé par le cahier des charges. Rétablie.
+
+### Ce qui reste
+
+Le **test de régression** reste à 0 script, volontairement : il se mesure
+contre une référence validée, qui n'existera qu'après votre arbitrage sur le
+dossier de validation. Voir `VALIDATION-PHASES-6-12.md` §5.
 
 ## 8 · Hors périmètre
 
