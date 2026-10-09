@@ -2133,7 +2133,9 @@
     "btnGotIt": "Compreendido",
     "errNotFound": "Passaporte não encontrado.",
     "errSend": "Erro ao enviar",
-    "errPrefix": "Erro:"
+    "errPrefix": "Erro:",
+    "brandLine": "Passaporte universal de fornecedor",
+    "demoBanner": "Passaporte de demonstração — fornecedor fictício, não uma empresa real."
   },
   "invite": {
     "metaTitle": "Tracefab — Aceitar um convite",

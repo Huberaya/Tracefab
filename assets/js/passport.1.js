@@ -33,9 +33,16 @@
           }
           state.data = await res.json();
           state.loading = false;
+          // Donnees reelles : la banniere de demonstration n'a plus lieu d'etre.
+          const b = document.getElementById('passport-demo-banner');
+          if (b) b.hidden = true;
+          document.body.removeAttribute('data-tf-demo');
         } catch (e) {
           // If server call fails, fallback to realistic verified demo supplier
           console.warn('API error, loading verified demonstration passport:', e.message);
+          // Repli sur un fournisseur fictif : la banniere reste visible et la
+          // page entiere se declare comme donnee de demonstration.
+          document.body.setAttribute('data-tf-demo', '');
           state.data = {
             passport: {
               id: 'demo-passport-1',

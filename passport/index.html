@@ -232,6 +232,26 @@
       background: var(--tf-trust-review-bg);
     }
     .nda-icon { font-size: var(--tf-size-lg); line-height: 1.2; opacity: .85; }
+
+    /* Les donnees affichees ici sont inventees quand l'API ne repond pas.
+       Les presenter comme « audited » et « AI verified » sans le dire serait
+       une affirmation fausse au sujet d'un fournisseur nomme. */
+    .pp-demo-banner {
+      display: flex;
+      gap: var(--tf-s3);
+      align-items: center;
+      padding: var(--tf-s3) var(--tf-s4);
+      margin-bottom: var(--tf-s5);
+      border: 1px solid var(--tf-line-dark-soft);
+      border-left: 2px solid var(--tf-trust-review);
+      border-radius: var(--tf-r-md);
+      background: var(--tf-trust-review-bg);
+      font-size: var(--tf-size-2xs);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--tf-ink-inv-soft);
+    }
+    .pp-demo-banner[hidden] { display: none; }
     .nda-content { font-size: var(--tf-size-xs); line-height: 1.6; color: var(--tf-ink-inv-soft); }
     .nda-content strong {
       display: block;
@@ -587,12 +607,16 @@
 </head>
 <body>
   <div class="container">
+    <div id="passport-demo-banner" class="pp-demo-banner">
+      <span aria-hidden="true">&#9888;</span>
+      <span data-i18n="passport.demoBanner">Demonstration passport — sample supplier, not a real company.</span>
+    </div>
     <header class="top-nav">
       <a href="/" class="brand-logo">
         <div class="brand-mark">tf</div>
         <div class="brand-name">
           tracefab
-          <small>Universal Supplier Passport</small>
+          <small data-i18n="passport.brandLine">Universal Supplier Passport</small>
         </div>
       </a>
       <div class="nav-right">

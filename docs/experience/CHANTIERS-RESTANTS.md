@@ -156,11 +156,73 @@ aussi figé. Le garde-fou de copie ne l'avait pas vu. Les deux chaînes sont
 passées en clés (`console.pxProductIntel`, `console.pxVersion`), traduites
 dans les sept locales.
 
-## 4 · i18n résiduelle sur deux de ces pages
+## 4 · i18n résiduelle — le constat était faux, le vrai défaut était ailleurs
 
-`passport/` porte 6 attributs `data-i18n`, `operations/` en porte 1. Les
-deux chargent pourtant le catalogue. L'essentiel de leur copie reste figé
-dans le balisage.
+**Ce que ce paragraphe affirmait :** « `passport/` porte 6 attributs
+`data-i18n`, `operations/` en porte 1. L'essentiel de leur copie reste figé
+dans le balisage. »
+
+**Mesure :** 3 attributs dans `passport/index.html`, 0 dans `operations/`. Et
+surtout, l'attribut `data-i18n` est la mauvaise métrique pour ces pages : leur
+copie est rendue en JavaScript, pas écrite dans le balisage.
+
+| | appels de résolveur | clés déclarées | locales |
+|---|---:|---:|---:|
+| `passport.1.js` | 53 `pt_()` | 59 | 7 |
+| `operations.1.js` | 33 `o()` | 30 | 7 |
+
+Chaînes visibles codées en dur dans les deux paquets : **0** pour le passeport,
+et pour operations uniquement des noms propres techniques (`tracefab`,
+`Vercel Cron`). Vérifié aussi au navigateur : sur `/passport/`, 46 des 83 nœuds
+de texte changent entre EN et FR ; les 37 restants sont des noms de langues,
+des noms propres (`Nhãn Textile Portugal`, `GOTS`) et des données de
+démonstration — tous légitimement non traduits.
+
+**Résidu réel : une seule chaîne.** `<small>Universal Supplier Passport</small>`
+dans l'ossature du passeport, sans `data-i18n`. Corrigée
+(`passport.brandLine`), traduite dans les sept locales.
+
+### Le vrai défaut, trouvé en mesurant
+
+Quand l'API ne répond pas, `/passport/` bascule **en silence** sur un
+fournisseur fictif et l'affiche comme un fait établi :
+
+- « PROFIL AUDITÉ », « ✓ AI VERIFIED »
+- 92 % de complétude, 100 % de preuves documentaires, 3 certifications
+- un certificateur nommé : **Control Union Certifications B.V.**, une
+  entreprise qui existe réellement
+
+Aucune mention de démonstration, nulle part. Ce n'est pas un défaut
+cosmétique : c'est une affirmation fausse au sujet d'un tiers nommé, sur une
+page publique, dans un produit dont l'argument central est la preuve. Cela
+contredit frontalement la consigne « les chiffres de démonstration doivent
+être clairement identifiés comme tels ».
+
+Les autres surfaces le faisaient correctement — `/dpp/` porte une bannière,
+la console affiche « Demo mode », `/product-intelligence/` annonce
+« DEMONSTRATION RECORD ». Le passeport était le seul à se taire, et rien ne
+pouvait le signaler.
+
+**Corrigé :** bannière de démonstration sur le modèle de celle du DPP, visible
+par défaut, masquée dès que de vraies données arrivent ; `data-tf-demo` posé
+sur la page entière en mode repli ; sept locales.
+
+### Le garde-fou
+
+`npm run test:demo-declaree` — une page servie sans API affiche des données de
+repli ; si elles contiennent des chiffres ou des mentions de confiance
+(`verified`, `audited`, `certified` et leurs équivalents), la page doit porter
+un marqueur de démonstration visible. Une page sans rien d'affirmatif (état
+d'erreur, formulaire) n'a rien à déclarer.
+
+État des huit surfaces : six affirment et déclarent, deux n'affirment rien.
+Vérifié par mutation — retirer la bannière du passeport fait échouer le test.
+
+### Noté, non traité
+
+`tr` et `zh` n'ont ni `passport.*` ni `ops.*` : décision close (ces deux
+locales sont limitées au portail). À rouvrir si des fournisseurs turcs ou
+chinois doivent lire leur propre passeport public.
 
 ## 5 · Pas de cache long sur `/assets/`
 

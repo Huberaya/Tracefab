@@ -2133,7 +2133,9 @@
     "btnGotIt": "Verstanden",
     "errNotFound": "Pass nicht gefunden.",
     "errSend": "Fehler beim Senden",
-    "errPrefix": "Fehler:"
+    "errPrefix": "Fehler:",
+    "brandLine": "Universeller Lieferantenpass",
+    "demoBanner": "Demonstrationspass — Beispiellieferant, kein reales Unternehmen."
   },
   "invite": {
     "metaTitle": "Tracefab — Einladung annehmen",

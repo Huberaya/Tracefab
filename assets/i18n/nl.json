@@ -2133,7 +2133,9 @@
     "btnGotIt": "Begrepen",
     "errNotFound": "Paspoort niet gevonden.",
     "errSend": "Fout bij het verzenden",
-    "errPrefix": "Fout:"
+    "errPrefix": "Fout:",
+    "brandLine": "Universeel leverancierspaspoort",
+    "demoBanner": "Demonstratiepaspoort — voorbeeldleverancier, geen echt bedrijf."
   },
   "invite": {
     "metaTitle": "Tracefab — Een uitnodiging accepteren",

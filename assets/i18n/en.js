@@ -1897,6 +1897,8 @@ window.TF_I18N_BUNDLES.en = {
   // --- Passeport Fournisseur Universel (public) --------------------------
   passport: {
     metaTitle: "Universal Supplier Passport | TRACEFAB Verified",
+    brandLine: "Universal Supplier Passport",
+    demoBanner: "Demonstration passport \u2014 sample supplier, not a real company.",
     metaDesc: "Universal Supplier Passport verified on Tracefab. Industrial identity, active certifications and traceability compliance under trade secret protection.",
     ogTitle: "Universal Supplier Passport — TRACEFAB",
     ogDesc: "Industrial identity, certified sites and verified CSR compliance.",
