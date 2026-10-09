@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('--- Chantier 5 : Test Suite - Corrective Action Plans (CAP) & Remediation Workflow ---');
 
@@ -61,7 +62,7 @@ console.log('✓ API index routing table verified');
 
 // 5. Verify Brand Console UX
 const brandConsolePath = path.resolve('brand-console/index.html');
-const brandConsole = fs.readFileSync(brandConsolePath, 'utf8');
+const brandConsole = pageSource('brand-console/index.html');
 assert(brandConsole.includes('data-action="open-cap-modal"'), 'Brand console must provide button to open CAP modal');
 assert(brandConsole.includes('id="create-cap-form"'), 'Brand console must provide CAP creation form');
 assert(brandConsole.includes('data-action="open-review-cap-modal"'), 'Brand console must provide review CAP button');
@@ -71,7 +72,7 @@ console.log('✓ Brand Console UI/UX integration verified');
 
 // 6. Verify Supplier Portal UX
 const supplierPortalPath = path.resolve('supplier-portal/index.html');
-const supplierPortal = fs.readFileSync(supplierPortalPath, 'utf8');
+const supplierPortal = pageSource('supplier-portal/index.html');
 // La copie n'est plus en dur : le balisage appelle la cle, et le catalogue
 // francais conserve le libelle d'origine.
 assert(supplierPortal.includes("t('spCapTitle')"), 'Supplier portal must display received CAPs');

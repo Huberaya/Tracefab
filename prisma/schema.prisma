@@ -1431,6 +1431,17 @@ enum verification_status {
   expired
 }
 
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model rate_limit_counters {
+  bucket_key   String
+  window_start DateTime @db.Timestamptz(6)
+  hits         Int      @default(0)
+  expires_at   DateTime @db.Timestamptz(6)
+
+  @@id([bucket_key, window_start])
+  @@index([expires_at], map: "idx_rate_limit_expires")
+}
+
 enum tracefab_notification_event {
   request_sent
   request_submitted

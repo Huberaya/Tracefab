@@ -30,6 +30,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECK = process.argv.includes('--check');
@@ -68,8 +69,8 @@ function parseLangs(block) {
   return out;
 }
 
-const consoleSrc = readFileSync(join(ROOT, 'brand-console/index.html'), 'utf8');
-const portalSrc = readFileSync(join(ROOT, 'supplier-portal/index.html'), 'utf8');
+const consoleSrc = pageSource('brand-console/index.html');
+const portalSrc = pageSource('supplier-portal/index.html');
 const C = parseLangs(extractBlock(consoleSrc, 'brandTranslations') || '{}');
 const P = parseLangs(extractBlock(portalSrc, 'translations') || '{}');
 

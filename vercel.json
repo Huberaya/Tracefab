@@ -64,7 +64,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev; connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev https://api.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev; connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev https://api.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
         }
       ]
     },

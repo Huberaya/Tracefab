@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { pageSource } from './lib/page_source.mjs';
 
 // 1. Static Contract Assertions
-const supplierPortalHtml = await readFile(new URL('../supplier-portal/index.html', import.meta.url), 'utf8');
+const supplierPortalHtml = pageSource('supplier-portal/index.html');
 const bomImportRoute = await readFile(new URL('../api/_routes/supplier/materials/import-bom.ts', import.meta.url), 'utf8');
 const bomImportLib = await readFile(new URL('../api/_lib/bom-importer.ts', import.meta.url), 'utf8');
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');

@@ -21,6 +21,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const COUCHES = 7;
@@ -32,7 +33,7 @@ const ok = (cond, label, detail = '') => {
   if (cond) { console.log(`  OK    ${label}`); } else { ko += 1; console.log(`  ECHEC ${label}${detail ? ` — ${detail}` : ''}`); }
 };
 
-const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+const html = pageSource('index.html');
 const css = readFileSync(join(ROOT, 'assets/design-system/tracefab-site.css'), 'utf8');
 const js = readFileSync(join(ROOT, 'assets/js/tf-landing.js'), 'utf8');
 

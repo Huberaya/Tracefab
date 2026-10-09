@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('=== TEST SUITE CHANTIER 3: MOTEUR D’AGRÉGATION ESG & CALCULATEUR PEF/ACV ===');
 
@@ -139,7 +140,7 @@ console.log('✓ API endpoints properly wired');
 
 // 5. Verify Brand Console UI
 console.log('5. Checking Brand Console UI implementation...');
-const brandConsole = await readFile('brand-console/index.html', 'utf8');
+const brandConsole = pageSource('brand-console/index.html');
 assert.ok(brandConsole.includes("bt('qcPefTitle')"), 'Must have PEF section in Brand Console');
 assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.qcPefTitle, 'Évaluation Environnementale & Empreinte PEF', 'la copie FR doit rester au catalogue');
 assert.ok(brandConsole.includes('data-action="calculate-pef"'), 'Must have calculate-pef button action');
@@ -150,7 +151,7 @@ console.log('✓ Brand Console PEF integration verified');
 
 // 6. Verify DPP Consumer Passport
 console.log('6. Checking DPP consumer passport...');
-const dppFile = await readFile('dpp/index.html', 'utf8');
+const dppFile = pageSource('dpp/index.html');
 // Chantier 7 : la copie du DPP public est passee au catalogue i18n. On verifie
 // desormais la cle dans le balisage ET la copie francaise dans fr.json.
 const dppFr = JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).dpp;

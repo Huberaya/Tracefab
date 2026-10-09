@@ -14,7 +14,8 @@
  *
  * Usage : npx tsx scripts/test_production_readiness.ts
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -144,6 +145,80 @@ check('le dossier securite ne revendique aucune certification obtenue',
 const demo = read('docs/commercial/demo-scriptee.md');
 check('la demo rappelle que la maturite DPP n est pas une certification',
   /pas une certification/i.test(demo));
+
+/* ------------------------------ 6. securite et performance (chantier 16) */
+
+// La limitation de debit est le seul manque du lot qui soit exploitable par
+// un tiers : /api/dpp/:gtin est public par construction. On verrouille donc
+// sa presence, et surtout ses deux etages — un limiteur en memoire seul est
+// multiplie par le nombre d'instances serverless, ce n'est pas un plafond.
+const routeur = read('api/index.ts');
+check('le routeur central evalue la limitation de debit',
+  /evaluate\(path, req\)/.test(routeur) && /from '\.\/_lib\/rate-limit\.js'/.test(routeur));
+check('le routeur repond 429 quand le plafond est atteint',
+  /json\(res, 429, \{ error: 'rate_limited'/.test(routeur));
+check('le plafond est evalue avant le chargement du module de route',
+  routeur.indexOf('evaluate(path, req)') < routeur.indexOf('await route.load()'));
+
+const limiteur = read('api/_lib/rate-limit.ts');
+check('le limiteur a un etage partage en base, pas seulement en memoire',
+  /ON CONFLICT \(bucket_key, window_start\)/.test(limiteur) && /rate_limit_counters/.test(limiteur));
+check('le limiteur laisse passer quand la base est injoignable',
+  /databaseDisabledUntil/.test(limiteur));
+check('l adresse du client est reduite par HMAC, jamais stockee en clair',
+  /createHmac\('sha256'/.test(limiteur));
+check('le limiteur ignore x-forwarded-for comme premiere source',
+  /x-vercel-forwarded-for/.test(limiteur) && /hops\[hops\.length - 1\]/.test(limiteur));
+check('l etage memoire est borne contre l epuisement',
+  /MEMORY_MAX_ENTRIES/.test(limiteur));
+
+const migrationLimite = read('prisma/migrations/20261008100000_rate_limit_counters/migration.sql');
+check('la table de compteurs porte RLS, comme toutes les autres',
+  /ENABLE ROW LEVEL SECURITY/.test(migrationLimite) && /FORCE ROW LEVEL SECURITY/.test(migrationLimite));
+
+// 36 findMany n'avaient aucun take. Le plafond est pose sur le client pour
+// couvrir aussi les requetes qui ne sont pas encore ecrites.
+const client = read('api/_lib/prisma.ts');
+// Ancre sur la structure, pas sur la presence du mot : `$allModelsInactif`
+// contiendrait encore `$allModels` et laisserait passer un plafond debranche.
+check('le client Prisma plafonne tout findMany sans take',
+  /\$allModels\s*:\s*\{/.test(client)
+  && /async findMany\(\{\s*args,\s*query/.test(client)
+  && /take:\s*ROW_CEILING/.test(client));
+check('une troncature reelle est journalisee, jamais silencieuse',
+  /tracefab-row-ceiling-v1/.test(client));
+
+// CSP : retirer 'unsafe-inline' de script-src n'a de valeur que si plus
+// aucun script inline ni aucun attribut on*= ne subsiste. Verifier la seule
+// directive laisserait une politique que la page viole a chaque chargement.
+const vercel = read('vercel.json');
+const csp = (vercel.match(/"Content-Security-Policy"[\s\S]{0,80}?"value":\s*"([^"]+)"/) || [])[1] || '';
+const scriptSrc = (csp.match(/script-src([^;]*)/) || [])[1] || '';
+check('script-src n autorise plus unsafe-inline', !/unsafe-inline/.test(scriptSrc));
+check('script-src n autorise pas unsafe-eval', !/unsafe-eval/.test(scriptSrc));
+
+const pages = execSync('git ls-files "*.html"', { encoding: 'utf8' }).trim().split('\n');
+const inlineBlocks: string[] = [];
+const inlineHandlers: string[] = [];
+for (const page of pages) {
+  const src = read(page);
+  for (const m of src.matchAll(/<script([^>]*)>/g)) {
+    const attrs = m[1] || '';
+    if (!/\bsrc=/.test(attrs) && !/ld\+json/.test(attrs)) inlineBlocks.push(page);
+  }
+  for (const m of src.matchAll(/\son(?:click|change|submit|load|error|input|focus|blur)\s*=\s*"/g)) {
+    const lineStart = src.lastIndexOf('\n', m.index) + 1;
+    const before = src.slice(lineStart, m.index);
+    if (before.includes('//') || before.includes('<!--')) continue;
+    inlineHandlers.push(`${page}`);
+  }
+}
+check('aucun bloc <script> executable ne reste dans le HTML',
+  inlineBlocks.length === 0, inlineBlocks.join(', '));
+check('aucun attribut on*= ne reste dans le HTML',
+  inlineHandlers.length === 0, inlineHandlers.join(', '));
+check('la delegation d evenements existe et est partagee',
+  existsSync(join(ROOT, 'assets/js/tf-actions.js')));
 
 /* ------------------------------------------------------------------ verdict */
 

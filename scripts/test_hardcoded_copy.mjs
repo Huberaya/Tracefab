@@ -19,6 +19,7 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { pageSource } from './lib/page_source.mjs';
 
 const argv = process.argv;
 const BASE = argv.includes('--base') ? argv[argv.indexOf('--base') + 1] : 'http://127.0.0.1:3000';
@@ -90,7 +91,13 @@ const fixtureVocab = (url) => {
   const words = new Set();
   for (const rel of SOURCES[url] || []) {
     let src = '';
-    try { src = readFileSync(new URL('../' + rel, import.meta.url), 'utf8'); } catch { continue; }
+    // Le vocabulaire de demonstration est extrait de la source de la page.
+    // Depuis le durcissement CSP, cette source est repartie entre le HTML et
+    // /assets/js/ : lire le seul HTML ne trouverait plus aucune fixture, et
+    // 85 valeurs de demonstration seraient signalees comme copie non traduite.
+    try {
+      src = rel.endsWith('.html') ? pageSource(rel) : readFileSync(new URL('../' + rel, import.meta.url), 'utf8');
+    } catch { continue; }
     // On ancre sur « prop: "valeur" ». Un balayage naif des guillemets se
     // desynchronise sur les apostrophes de texte (facility's) et perd alors
     // de vrais litteraux : l'ancrage sur le nom de propriete y resiste.

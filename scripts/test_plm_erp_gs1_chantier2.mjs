@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('=== TEST SUITE CHANTIER 2: INTEROPÉRABILITÉ PLM/ERP & GS1 ===');
 
@@ -91,7 +92,7 @@ assert(indexTs.includes('gs1/digital-link') || indexTs.includes('gs1\\/digital\\
 
 // 8. Verify Brand Console UI Wiring
 console.log('8. Checking Brand Console UI Wiring...');
-const brandConsoleHtml = await readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8');
+const brandConsoleHtml = pageSource('brand-console/index.html');
 assert(brandConsoleHtml.includes("navButton('integrations'") || brandConsoleHtml.includes('data-view="integrations"'), 'Nav must include integrations tab');
 assert(brandConsoleHtml.includes('function integrationsView()'), 'Must declare integrationsView()');
 assert(brandConsoleHtml.includes('id="plm-import-form"'), 'Must have import form in modal');

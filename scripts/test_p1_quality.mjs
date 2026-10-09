@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
+import { pageSource } from './lib/page_source.mjs';
 
 const overview = await readFile(new URL('../api/_routes/quality/overview.ts', import.meta.url), 'utf8');
 const webhook = await readFile(new URL('../api/_routes/webhooks/clerk.ts', import.meta.url), 'utf8');
-const qualityCenter = await readFile(new URL('../quality-center/index.html', import.meta.url), 'utf8');
-const operations = await readFile(new URL('../operations/index.html', import.meta.url), 'utf8');
+const qualityCenter = pageSource('quality-center/index.html');
+const operations = pageSource('operations/index.html');
 const index = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../prisma/migrations/20261006110000_quality_center_shared_access/migration.sql', import.meta.url), 'utf8');
 

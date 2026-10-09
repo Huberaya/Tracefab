@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { pageSource } from './lib/page_source.mjs';
 
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -87,10 +88,7 @@ assert(
 );
 
 // 3. Verify UI integration in Brand Console
-const brandConsoleHtml = await readFile(
-  new URL('../brand-console/index.html', import.meta.url),
-  'utf8',
-);
+const brandConsoleHtml = pageSource('brand-console/index.html');
 assert(
   brandConsoleHtml.includes('name="productId"'),
   'Brand Console new-request modal must offer product association',
