@@ -947,7 +947,7 @@ montré**.
 
 ### Reste à faire sur le catalogue
 
-Le tri par colonne n'existe pas. Le jeu de démonstration est traité au **§14**.
+Le tri par colonne est traité au **§16**. Le jeu de démonstration au **§14**.
 
 ## 14 · La démonstration se contredisait elle-même — RÉGLÉ
 
@@ -1053,7 +1053,8 @@ nombre figé ne peut plus passer pour un nombre calculé.
 
 ### Reste à faire
 
-Le tri par colonne du catalogue. Le slug partagé est traité au §15.
+Le tri par colonne du catalogue et l'onboarding Marque sont traités au **§16**.
+Le slug partagé au **§15**.
 
 ## 15 · Publier n'était pas une décision — RÉGLÉ
 
@@ -1152,6 +1153,94 @@ Le **409 n'est pas encore atteint en production** : aucun code n'écrit
 `public_slug`, donc aucune ambiguïté ne peut s'y produire aujourd'hui. La
 protection est posée avant l'ouverture, pas après un incident. L'acte de
 publier lui-même — le bouton, la route d'écriture, l'audit — reste à construire.
+
+## 16 · Ce qui restait ouvert après l'audit — RÉGLÉ
+
+Trois points, mesurés un par un plutôt que repris du relevé. L'audit Market
+Readiness §3 note les fonctionnalités de A à E ; « B » signifie *partiellement
+fonctionnelle*. Huit items portaient cette note — **cinq étaient déjà fermés**
+quand on les a mesurés, ce qui est la raison pour laquelle ce chantier commence
+par un relevé et non par une liste recopiée.
+
+### Déjà clos, vérifié et non repris
+
+| Item noté B | Ce que la mesure a montré |
+|---|---|
+| Téléchargement des preuves Marque, « sans isolation tenant » | la route appelle `tracefab_can_access_document()` dans le contexte utilisateur et répond 404 sinon |
+| Acquittement & dérogation, « aucun bouton » | présents dans `assets/js/brand-console.1.js` |
+| Partage des matières | `api/_routes/supplier/shares.ts` |
+| Data points produits et injection des réponses | `api/_lib/data-points.ts`, `product_id` sélectionné et sérialisé |
+| Scan antivirus, « pas de service raccordé » | `scanWithAntivirus()` fait un vrai POST avec jeton et **échoue fermé** (non configuré ou réponse invalide), avec une sonde `probeAntivirus()`. Ce qui reste est du provisionnement, pas du code |
+
+### 1 — le tri par colonne du catalogue
+
+Le filtrage et la pagination rendaient le catalogue trouvable, pas parcourable :
+savoir quels produits sont incomplets ne dit pas lesquels le sont le plus. Les
+cinq colonnes affichées deviennent triables.
+
+La logique vit dans `assets/js/tf-sort.js`, module partagé sans DOM qui
+s'accroche à `globalThis` (`== window` dans le navigateur) : la même source sert
+la console **et** le test, qui l'exécute au lieu de la relire. Deux règles y sont
+explicites : les valeurs vides tombent toujours en dernier quel que soit le sens
+(« pas de donnée » n'est pas une valeur haute), et un départage par référence
+rend l'ordre déterministe au lieu de le laisser dépendre du cache. Le départage
+ne suit pas le sens : c'est un tri stable, et le test le dit.
+
+Les en-têtes sont de vrais `<button>` avec `aria-sort`, pas des `<th>`
+cliquables. Le plancher tactile de 40 px s'applique, non exempté. L'anneau de
+focus est sur `--ink` : `--green` pointe un jeton sémantique « vérifié » qui n'a
+rien à dire sur un état de focus.
+
+### 2 — les preuves inventées du passeport public
+
+La section « Certificates and legal evidence » était entièrement statique :
+numéros de certificat, dates de validité, organisme accrédité, verdicts
+« Audited » et « Compliant ». L'API ne sert **aucune** certification — aucune
+source possible. Quand un vrai passeport était hydraté, le bandeau de démo se
+cachait et les champs réels remplaçaient la démo, mais ces preuves inventées
+restaient à l'écran, attribuées au produit scanné.
+
+Elles sont retirées à l'hydratation et une mention dit pourquoi. Au passage,
+deux défauts de la même famille : « Non renseigné » était un littéral français
+codé dans le composant (il vient désormais du catalogue), et `data-dpp-state`,
+posé par le JS depuis toujours, n'avait **aucune règle CSS** — l'absence
+s'affichait exactement comme une valeur sourcée.
+
+### 3 — l'onboarding Marque
+
+`api/_routes/organizations.ts` accepte GET et POST, et
+`tracefab_create_organization()` crée l'organisation **et** son premier
+membership owner atomiquement. Le front ne faisait qu'un GET au démarrage : un
+utilisateur sans rattachement Marque ouvrait la console sur des tableaux vides,
+sans issue. Un backend sans bouton est une fonctionnalité morte.
+
+Une porte dans `render()` propose la création. Trois champs, pas plus — la
+raison sociale est la seule donnée que la route exige. Le refus métier reste sur
+le formulaire (`role="alert"`, code d'erreur affiché) plutôt que dans
+`state.configError`, qui ferait croire à une panne. La sortie d'onboarding n'est
+pas devinée : après le POST, `sync()` recharge les memberships et la porte se
+referme d'elle-même.
+
+### Ce qui a été exécuté
+
+- `test:catalogue:tri` — **25 contrôles**, exécute `tf-sort.js` dans Node.
+  Contre-vérifié : casser « vide en dernier » ⇒ 2 échecs ; retirer le câblage
+  ⇒ 1 échec.
+- `test:dpp:evidence` — **13 contrôles**, exécute l'hydratation dans jsdom.
+  Contre-vérifié : retirer la neutralisation ⇒ 4 échecs. Un auto-contrôle
+  vérifie que la mesure de visibilité voit le texte en mode démo, sans quoi les
+  contrôles suivants passeraient à vide. Une garde compare `NODE_VERSION` dans
+  `ci.yml` à la plage `engines.node` de jsdom : jsdom 30 exige Node ≥ 22 alors
+  que la CI est sur Node 20, et le test passait en local en mourant en CI.
+- `test:brand-onboarding` — **9 contrôles**, exécute la console dans jsdom avec
+  Clerk et l'API stubbés. Contre-vérifié : porte désactivée ⇒ 5 échecs.
+- Boucle locale : 48 OK / 30 échecs, **liste d'échecs identique** à la base
+  `041598b` mesurée en worktree (+3 = les trois nouveaux tests). Les 30 :
+  13 navigateur indisponible, 12 client Prisma non généré (`binaries.prisma.sh`
+  injoignable), 3 variables d'environnement absentes, 2 staging absent.
+- **Run `38001404152` : `success`**, les quatre jobs verts.
+- i18n : 9 clés d'onboarding et 2 clés DPP ajoutées sur 7 locales, parité
+  `console` à 881 clés et `dpp` à 125 clés vérifiée.
 
 ## Déjà réglé — ne pas reprendre
 
