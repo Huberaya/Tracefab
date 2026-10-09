@@ -185,15 +185,19 @@ i18n + bundles) au lieu de 9.
 
 ## 5. Ce qui reste non outillé, et pourquoi
 
-**Le test de régression reste à 0 script.** Je ne l'ai pas inventé, pour une
-raison de fond : une régression se mesure contre une référence validée. Il n'y
-a pas de référence validée pour les phases 6 à 12 — c'est précisément l'objet
-de ce dossier. Les 73 scripts `test:*` jouent aujourd'hui ce rôle par
-accumulation, mais ce n'est pas un test de régression au sens où vous
-l'entendez. **À construire après votre validation**, en figeant l'état validé
-comme référence.
+**Le test de régression existe désormais** — `npm run test:regression`. Il ne
+pouvait pas être écrit au moment de ce dossier : une régression se mesure
+contre une référence validée, et c'est ce dossier qui produisait la validation.
+Construit depuis : **19 surfaces × 2 écrans**, référence versionnée, rendu
+rendu reproductible (fontes distantes bloquées, horloge et `Math.random` figés,
+animations coupées, compteurs poussés à leur valeur finale), seuil 0,10 %,
+éprouvé par deux mutations. Détail et limites : `CHANTIERS-RESTANTS.md` §10.
 
-**La convergence des feuilles de style** (§4.1) reste à engager sur cinq
+**La convergence des feuilles de style** (§4.1) est **réglée** depuis —
+9/9 surfaces, voir `CHANTIERS-RESTANTS.md` §9. Le texte ci-dessous décrit
+l'état au moment du dossier.
+
+**La convergence des feuilles de style** (§4.1) restait à engager sur cinq
 surfaces.
 
 ---

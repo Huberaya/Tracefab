@@ -104,4 +104,44 @@ const controle = (titre, vrai, detail = '') => {
   controle('aucun jeton local ne duplique un jeton du socle', doublons.length === 0, doublons.join(' · '));
 }
 
+/* --- 4. Aucune chaine de build morte. ------------------------------------
+ * Tailwind vivait ici sans une seule directive @tailwind, sans script npm, et
+ * sans etre installe — build et 62 tests passaient sans lui. Ce n'etait pas du
+ * poids mort inoffensif : sa config declarait une palette forest concurrente
+ * (#2d5a3c contre #1d5339) et, avant correction, une police que l'utilisateur
+ * avait explicitement ecartee. Une config morte est une contradiction en
+ * sommeil.
+ *
+ * La regle est generale, pas nominative : un outil de build n'a le droit
+ * d'exister que s'il est reellement invoque.                               */
+{
+  const OUTILS = [
+    { nom: 'Tailwind', configs: ['tailwind.config.js', 'tailwind.config.ts', 'tailwind.config.mjs'],
+      deps: ['tailwindcss', '@tailwindcss/postcss'], directives: /@tailwind|@apply/ },
+    { nom: 'PostCSS', configs: ['postcss.config.js', 'postcss.config.mjs', 'postcss.config.cjs'],
+      deps: ['postcss', 'autoprefixer'], directives: null },
+  ];
+  const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+  const declarees = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+  const scripts = Object.values(pkg.scripts || {}).join(' ');
+  const sources = execSync('git ls-files "*.css" "*.html" "*.js" "*.ts"', { encoding: 'utf8' })
+    .split('\n').filter(Boolean).filter((f) => !f.startsWith('docs/'));
+
+  const morts = [];
+  for (const o of OUTILS) {
+    const config = o.configs.find((c) => { try { readFileSync(c); return true; } catch { return false; } });
+    const dep = o.deps.find((d) => declarees[d]);
+    if (!config && !dep) continue;                       // absent : rien a dire
+    const invoque = new RegExp(o.deps.map((d) => d.replace(/[/@-]/g, '.')).join('|'), 'i').test(scripts);
+    const utilise = o.directives
+      ? sources.some((f) => o.directives.test(readFileSync(f, 'utf8')))
+      : false;
+    if (!invoque && !utilise) {
+      morts.push(`${o.nom} (${[config, dep].filter(Boolean).join(' + ')}) : aucun script ne l'invoque`
+        + (o.directives ? ' et aucune source ne porte ses directives' : ''));
+    }
+  }
+  controle('aucune chaine de build declaree sans etre invoquee', morts.length === 0, morts.join(' · '));
+}
+
 console.log(`\n  ${faits} regle(s) du systeme de design verifiee(s) sur ${SURFACES.length} surfaces.`);

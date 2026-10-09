@@ -95,7 +95,8 @@
     "test:production-readiness": "npx tsx scripts/test_production_readiness.ts",
     "test:pilot": "npx tsx scripts/seed_pilot.ts --dry-run",
     "pilot:seed": "npx tsx scripts/seed_pilot.ts",
-    "test:systeme-design": "node scripts/test_systeme_design.mjs"
+    "test:systeme-design": "node scripts/test_systeme_design.mjs",
+    "test:regression": "node scripts/test_regression_visuelle.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",
@@ -111,12 +112,8 @@
   },
   "dependencies": {
     "@clerk/backend": "^3.23.0",
-    "@tailwindcss/postcss": "^4.3.3",
     "archiver": "^8.0.0",
-    "autoprefixer": "^10.6.1",
-    "jsonwebtoken": "^9.0.3",
-    "postcss": "^8.5.29",
-    "tailwindcss": "^4.3.3"
+    "jsonwebtoken": "^9.0.3"
   },
   "type": "module",
   "overrides": {

@@ -455,9 +455,74 @@ correction : **0 infraction** et **54/54**.
 
 ### Ce qui reste
 
-Le **test de régression** reste à 0 script, volontairement : il se mesure
-contre une référence validée, qui n'existera qu'après votre arbitrage sur le
-dossier de validation. Voir `VALIDATION-PHASES-6-12.md` §5.
+Le **test de régression** existe désormais : `npm run test:regression`
+(§10).
+
+## 10 · Le test de régression — RÉGLÉ
+
+Dernier des neuf contrôles exigés après chaque phase, et le seul resté à zéro
+script. Il avait été laissé ouvert pour une raison juste : **une régression se
+mesure contre une référence validée**, et les phases 6 à 12 n'étaient pas
+validées. Elles le sont depuis le chantier 7.
+
+### Ce que ce test attrape et que les autres ne voient pas
+
+Les 62 autres gardes vérifient une règle **connue à l'avance** : des jetons,
+du contraste, des routes, des clés i18n. Celui-ci répond à la seule question
+qu'aucune règle ne couvre — *« quelque chose a-t-il bougé que personne n'a
+voulu ? »* — en comparant le rendu de **19 surfaces × 2 écrans** à une
+référence versionnée.
+
+### Le travail n'était pas de comparer, il était de rendre reproductible
+
+Une référence bâtie sur une page instable fige du bruit et sonne dans le vide à
+chaque exécution. Avant d'écrire la moindre image, j'ai donc capturé chaque
+surface **deux fois de suite** et comparé. Quatre sources de bruit sont
+apparues et ont été neutralisées :
+
+| Bruit | Pourquoi c'est fatal | Traitement |
+|---|---|---|
+| Fontes distantes | selon que le réseau répond, Inter Tight arrive ou non, et toute la métrique du texte change | requêtes `fonts.googleapis`/`gstatic` bloquées — rendu toujours en police de repli |
+| Horloge, `Math.random` | une date ou un « il y a 3 min » diffère à chaque passage | `Date` et `Math.random` figés à l'injection |
+| Animations | une transition à mi-course rend un pixel différent | `animation`/`transition` coupées avant capture |
+| Compteurs animés | `requestAnimationFrame` ignore une horloge figée — **0,003 % d'écart résiduel mesuré sur l'accueil** | `[data-tf-count]` poussés à leur valeur finale |
+
+Mesure de contrôle après traitement : **19 surfaces, écart 0,000 %**. C'est
+cette mesure, et non une intuition, qui autorisait à écrire la référence.
+
+### Éprouvé par mutation
+
+| Mutation | Détectée |
+|---|---|
+| couleur du socle `#097b53` → `#0d8a5e` (écart imperceptible à l'œil) | 0,274 % à 0,690 % sur de nombreuses surfaces |
+| `p { margin: 1em 0 }` retiré d'une seule page | 3,578 % bureau · 7,687 % mobile |
+
+Seuil retenu : **0,10 %**. En dessous, c'est de l'anticrénelage ; au-dessus,
+c'est un déplacement de bloc, une couleur ou une typographie.
+
+### Une limite à connaître
+
+La référence est **liée à son environnement de rendu**. Les fontes distantes
+sont bloquées, mais le repli dépend des polices système : une autre machine
+peut produire un écart de masse. Le test n'est donc **pas** branché sur la CI —
+il tournerait en rouge pour une raison étrangère au code. Il se lance en local
+avant livraison. Le jour où l'on voudra l'automatiser, il faudra figer le rendu
+dans un conteneur, pas ajuster le seuil.
+
+### Trouvé en chemin, non corrigé
+
+La vue `products` de la console rend **1 249 lignes de tableau d'un bloc —
+86 543 px de haut**, soit 96 écrans, sans pagination ni virtualisation. La
+capture Chrome échouait dessus. La référence plafonne à 6 000 px, ce qui règle
+le test mais **pas le défaut** : une table de 1 248 produits sans pagination
+contredit l'intention « centre de contrôle » et pèse sur le navigateur.
+
+### Le garde-fou
+
+`npm run test:regression` · `-- --maj` réécrit la référence, qui est
+versionnée : une évolution de rendu se relit en revue sous forme d'images
+modifiées. Le test échoue aussi sur une **référence orpheline**, pour qu'une
+surface retirée ne laisse pas croire à une couverture disparue.
 
 ## 9 · Le système de design n'atteignait que la moitié du produit — RÉGLÉ
 
@@ -560,9 +625,24 @@ déclarés, avec `tailwind.config.js` et `postcss.config.js`. Mais :
 - **aucun script npm** ne les invoque ;
 - le CSS livré vient entièrement de `assets/design-system/`.
 
-C'est du poids mort qui hébergeait une police interdite. J'ai neutralisé la
-contradiction sans toucher aux dépendances : **supprimer quatre paquets et
-deux fichiers de configuration est une décision qui vous revient.**
+**TRANCHÉ — supprimée.** Vérifications avant retrait : `content:` pointait
+`./src/app/**` et `./src/components/**`, deux dossiers **supprimés** du dépôt ;
+aucun fichier de `scripts/`, `api/` ou `assets/` n'importe `postcss` ou
+`autoprefixer` ; les quatre paquets étaient déclarés en **`dependencies`**,
+donc installés en production.
+
+Le motif décisif n'est pas le poids : `tailwind.config.js` déclarait une
+**palette concurrente** du système réel — `forest-500 #2d5a3c` contre
+`--tf-forest-500 #1d5339`, `forest-900 #0c1b11` contre `#071410` — en plus de
+la police écartée. Une config morte n'est pas du lest, c'est une contradiction
+en sommeil qui attend qu'on la rebranche.
+
+Retrait : deux fichiers, quatre dépendances, lockfile régénéré (161 paquets).
+
+Le garde-fou est **général, pas nominatif** : `test:systeme-design` refuse
+*toute* chaîne de build déclarée sans être invoquée. Éprouvé dans les deux
+sens — il rejette un Tailwind qui revient en douce, et il accepte un Tailwind
+assorti d'un script qui l'utilise réellement.
 
 ### Le garde-fou
 
