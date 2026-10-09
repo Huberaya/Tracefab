@@ -14,8 +14,10 @@
 # de figer l'empreinte de rendu sans mentir. Les images atterrissent sur la
 # branche sous forme de diff — la revue reste humaine.
 #
-# Declenchement manuel uniquement : c'est un acte volontaire, comme --maj.
-#   gh workflow run figer-reference-visuelle.yml --ref <branche>
+# Declenchement : acte volontaire, comme --maj.
+#   - sur main : gh workflow run figer-reference-visuelle.yml
+#   - sur une branche : ajouter une ligne a tests/regression/reference/.figer
+#     et pousser (workflow_dispatch n'existe que sur la branche par defaut).
 #
 # A REJOUER quand l'environnement de rendu bouge : migration de l'image
 # ubuntu-latest, mise a jour de playwright, changement de fontes.
@@ -24,6 +26,12 @@ name: Figer la reference visuelle
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      # Marqueur de figage : toucher ce fichier (y ajouter une ligne de date)
+      # et pousser declenche la regeneration. Le workflow ne le modifie pas :
+      # sa propre poussee d'images ne boucle pas.
+      - 'tests/regression/reference/.figer'
 
 permissions:
   contents: write
