@@ -1,0 +1,29 @@
+{
+  "invitation": {
+    "meta": {
+      "title": "Tracefab — Accetta un invito"
+    },
+    "workspace": "area fornitori",
+    "eyebrow": "Invito del team",
+    "title": "Entra in un’organizzazione fornitori.",
+    "intro": "Accedi con l’indirizzo email invitato per accettare questo invito e accedere all’area fornitori Tracefab.",
+    "preparing": "Preparazione dell’invito…",
+    "accept": "Accetta l’invito",
+    "openPortal": "Apri il Portale Fornitori",
+    "verifying": "Verifica della tua identità e dell’invito…",
+    "accepted": "Invito accettato. Il tuo accesso all’organizzazione fornitori è attivo.",
+    "missingToken": "Il link di invito è assente o non valido.",
+    "signInPrompt": "Accedi con l’indirizzo email invitato per continuare.",
+    "signedIn": "Connesso come {email}. Fai clic per accettare l’invito.",
+    "defaultUser": "utente Tracefab",
+    "connectionUnavailable": "Accesso non disponibile.",
+    "genericError": "Impossibile elaborare questo invito.",
+    "errors": {
+      "invalid_invitation_token": "Il link di invito non è valido.",
+      "invalid_or_expired_invitation": "Il link è scaduto o è già stato utilizzato.",
+      "invitation_email_mismatch": "Accedi con l’indirizzo email che ha ricevuto l’invito.",
+      "user_already_member": "Hai già accesso a questa organizzazione.",
+      "unauthorized": "Accedi per continuare."
+    }
+  }
+}

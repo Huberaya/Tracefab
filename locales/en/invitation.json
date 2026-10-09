@@ -1,0 +1,29 @@
+{
+  "invitation": {
+    "meta": {
+      "title": "Tracefab — Accept an invitation"
+    },
+    "workspace": "supplier workspace",
+    "eyebrow": "Team invitation",
+    "title": "Join a supplier organisation.",
+    "intro": "Sign in with the invited email address to accept this invitation and access the Tracefab supplier workspace.",
+    "preparing": "Preparing the invitation…",
+    "accept": "Accept the invitation",
+    "openPortal": "Open the Supplier Portal",
+    "verifying": "Verifying your identity and the invitation…",
+    "accepted": "Invitation accepted. Your access to the supplier organisation is active.",
+    "missingToken": "The invitation link is missing or invalid.",
+    "signInPrompt": "Sign in with the invited email address to continue.",
+    "signedIn": "Signed in as {email}. Click to accept the invitation.",
+    "defaultUser": "Tracefab user",
+    "connectionUnavailable": "Sign-in unavailable.",
+    "genericError": "This invitation could not be processed.",
+    "errors": {
+      "invalid_invitation_token": "The invitation link is invalid.",
+      "invalid_or_expired_invitation": "The link has expired or has already been used.",
+      "invitation_email_mismatch": "Sign in with the email address that received the invitation.",
+      "user_already_member": "You already have access to this organisation.",
+      "unauthorized": "Sign in to continue."
+    }
+  }
+}

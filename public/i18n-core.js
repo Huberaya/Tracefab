@@ -21,6 +21,11 @@
  *   <script src="/i18n-core.js"></script>
  *   <h1 data-i18n="chain.title">Chaîne</h1>
  *   TracefabI18n.init({ scope: 'app' }).then(() => render());
+ *
+ * Une chaîne qui porte une valeur connue seulement à l'exécution s'écrit avec un
+ * jeton `{nom}` dans le dictionnaire et ses valeurs dans l'attribut voisin :
+ *   <p data-i18n="invite.signedIn" data-i18n-values='{"email":"a@b.c"}'>…</p>
+ * En JavaScript : `TracefabI18n.t('invite.signedIn', { email })`.
  */
 (function () {
   'use strict';
@@ -77,13 +82,61 @@
     });
   }
 
-  function t(key) {
+  /**
+   * Remplace les jetons `{nom}` d'une chaîne traduite.
+   *
+   * Un jeton absent de `values` est LAISSÉ TEL QUEL, jamais vidé : c'est le même
+   * engagement que pour une clé absente — une donnée manquante doit rester
+   * visible, pas se transformer en trou dans une phrase.
+   */
+  function format(template, values) {
+    return String(template).replace(/\{([a-zA-Z0-9_]+)\}/g, function (match, name) {
+      return Object.prototype.hasOwnProperty.call(values, name) ? values[name] : match;
+    });
+  }
+
+  /**
+   * Traduit une clé.
+   *
+   * `values` est optionnel : `t('k')` se comporte exactement comme avant, donc
+   * les surfaces déjà migrées ne changent pas. Certaines chaînes ne peuvent pas
+   * être du simple texte — « Connecté en tant que {email} » porte une adresse
+   * connue seulement à l'exécution. Sans interpolation, le seul recours serait
+   * de découper la phrase en morceaux et de la recoller en JavaScript, ce qui
+   * réintroduit de la grammaire dans le composant : exactement ce que cette
+   * architecture est censée empêcher, et ce qui casse dès qu'une langue place
+   * le sujet ailleurs.
+   */
+  function t(key, values) {
     var dict = dictionaries[language] || {};
-    if (Object.prototype.hasOwnProperty.call(dict, key)) return dict[key];
-    var fb = dictionaries[fallback] || {};
-    if (Object.prototype.hasOwnProperty.call(fb, key)) return fb[key];
-    if (missing.indexOf(key) === -1) missing.push(key);
-    return null;
+    var value = null;
+    if (Object.prototype.hasOwnProperty.call(dict, key)) value = dict[key];
+    else {
+      var fb = dictionaries[fallback] || {};
+      if (Object.prototype.hasOwnProperty.call(fb, key)) value = fb[key];
+    }
+    if (value === null || value === undefined) {
+      if (missing.indexOf(key) === -1) missing.push(key);
+      return null;
+    }
+    return values ? format(value, values) : value;
+  }
+
+  /**
+   * Lit `data-i18n-values`, un objet JSON de valeurs d'interpolation.
+   *
+   * Un JSON invalide est ignoré plutôt que de lever : une faute de frappe dans un
+   * attribut ne doit pas interrompre la traduction de toute la page. Les jetons
+   * non fournis restent visibles, ce qui rend l'oubli repérable au lieu de le
+   * masquer derrière un texte tronqué.
+   */
+  function readValues(el) {
+    var raw = el.getAttribute('data-i18n-values');
+    if (!raw) return null;
+    try {
+      var parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (e) { return null; }
   }
 
   /** Remplace les textes marqués. Un texte non traduit conserve sa valeur d'origine. */
@@ -93,7 +146,7 @@
       if (!el.hasAttribute('data-i18n-default')) {
         el.setAttribute('data-i18n-default', el.textContent);
       }
-      var value = t(el.getAttribute('data-i18n'));
+      var value = t(el.getAttribute('data-i18n'), readValues(el));
       el.textContent = value === null ? el.getAttribute('data-i18n-default') : value;
     });
     Array.prototype.forEach.call(scopeRoot.querySelectorAll('[data-i18n-attr]'), function (el) {

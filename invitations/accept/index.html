@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tracefab — Accepter une invitation</title>
+  <title data-i18n="invitation.meta.title">Tracefab — Accepter une invitation</title>
   <style>
     :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color:#17231f; background:#f7f8f4; --green:#0b7656; --dark:#07523e; --line:#e2e8df; --muted:#71807a; }
     * { box-sizing:border-box; } body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 20% 10%, #e7f5ed, transparent 42%), #f7f8f4; }
@@ -11,17 +11,27 @@
     .brand { display:flex; align-items:center; gap:11px; margin-bottom:34px; } .mark { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; background:#d7f3e4; color:var(--dark); font-weight:900; letter-spacing:-.08em; } .name { font-weight:800; font-size:19px; letter-spacing:-.04em; } .name small { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.12em; margin-top:2px; }
     .eyebrow { color:var(--green); text-transform:uppercase; letter-spacing:.14em; font-size:11px; font-weight:800; margin-bottom:10px; } h1 { margin:0; letter-spacing:-.055em; font-size:36px; line-height:1.05; } p { color:var(--muted); line-height:1.65; } .message { margin-top:22px; padding:15px; border-radius:12px; background:#f3f6f2; color:#53625a; font-size:14px; } .message.error { color:#9d3937; background:#ffebea; } .message.success { color:#07523e; background:#e4f3ec; }
     .actions { margin-top:24px; display:flex; gap:10px; flex-wrap:wrap; } button,.link { border:0; border-radius:11px; padding:11px 16px; font:inherit; font-size:13px; font-weight:750; text-decoration:none; cursor:pointer; } button { background:var(--green); color:white; } button:disabled { opacity:.55; cursor:wait; } .link { background:white; color:var(--dark); border:1px solid var(--line); } #clerk-sign-in { margin-top:22px; }
+    /* Sélecteur de langue : discret, mais présent — un fournisseur allemand qui
+       reçoit ce lien doit pouvoir le lire sans changer la langue de son
+       navigateur. */
+    .brandrow { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:34px; }
+    .brandrow .brand { margin-bottom:0; }
+    .lang { border:1px solid var(--line); background:white; border-radius:9px; padding:6px 8px; font:inherit; font-size:12px; font-weight:700; color:var(--dark); cursor:pointer; }
   </style>
+  <script src="/i18n-core.js"></script>
 </head>
 <body>
   <main class="card">
-    <div class="brand"><div class="mark">tf</div><div class="name">tracefab<small>supplier workspace</small></div></div>
-    <div class="eyebrow">Invitation d’équipe</div>
-    <h1>Rejoindre une organisation fournisseur.</h1>
-    <p id="intro">Connectez-vous avec l’adresse email invitée pour accepter cette invitation et accéder à l’espace fournisseur Tracefab.</p>
+    <div class="brandrow">
+      <div class="brand"><div class="mark">tf</div><div class="name">tracefab<small data-i18n="invitation.workspace">espace fournisseur</small></div></div>
+      <select class="lang" id="lang-select" aria-label="Language"></select>
+    </div>
+    <div class="eyebrow" data-i18n="invitation.eyebrow">Invitation d’équipe</div>
+    <h1 data-i18n="invitation.title">Rejoindre une organisation fournisseur.</h1>
+    <p id="intro" data-i18n="invitation.intro">Connectez-vous avec l’adresse email invitée pour accepter cette invitation et accéder à l’espace fournisseur Tracefab.</p>
     <div id="message" class="message">Préparation de l’invitation…</div>
     <div id="clerk-sign-in"></div>
-    <div class="actions" id="actions" hidden><button id="accept-button" type="button">Accepter l’invitation</button><a class="link" href="/supplier-portal/">Ouvrir le Supplier Portal</a></div>
+    <div class="actions" id="actions" hidden><button id="accept-button" type="button" data-i18n="invitation.accept">Accepter l’invitation</button><a class="link" href="/supplier-portal/" data-i18n="invitation.openPortal">Ouvrir le Supplier Portal</a></div>
   </main>
   <script>
     (() => {
@@ -31,38 +41,98 @@
       const signIn = document.getElementById('clerk-sign-in');
       const actions = document.getElementById('actions');
       const acceptButton = document.getElementById('accept-button');
+      const langSelect = document.getElementById('lang-select');
       let clerk;
       let accepted = false;
-      function show(text, kind) { message.textContent = text; message.className = `message ${kind || ''}`; }
-      function errorLabel(error) {
-        return ({ invalid_invitation_token:'Le lien d’invitation est invalide.', invalid_or_expired_invitation:'Le lien est expiré ou a déjà été utilisé.', invitation_email_mismatch:'Connectez-vous avec l’adresse email qui a reçu l’invitation.', user_already_member:'Vous avez déjà accès à cette organisation.', unauthorized:'Connectez-vous pour continuer.' })[error] || error || 'Impossible de traiter cette invitation.';
+
+      /*
+       * Tout le texte vient de locales/{lang}/invitation.json.
+       *
+       * Avant cette migration, les 21 chaînes vivaient en dur ici : une page
+       * d'acceptation d'invitation est justement celle que lit quelqu'un qui ne
+       * travaille pas dans la langue de l'organisation qui l'invite.
+       *
+       * `t()` renvoie la clé quand le dictionnaire ne l'a pas — la convention
+       * déjà en vigueur dans brand-console. Une clé manquante doit rester
+       * visible pour être comblée, jamais se déguiser en texte plausible.
+       */
+      const t = (key, values) => {
+        const value = window.TracefabI18n ? window.TracefabI18n.t(key, values) : null;
+        return value === null || value === undefined ? key : value;
+      };
+
+      /* Message courant, mémorisé en clé et non en texte : changer de langue doit
+         retraduire ce qui est déjà affiché, pas seulement les libellés fixes. */
+      let current = { key: 'invitation.preparing', kind: '', values: null };
+      function say(key, kind, values) {
+        current = { key, kind: kind || '', values: values || null };
+        message.className = `message ${current.kind}`;
+        message.textContent = t(key, current.values);
       }
+
+      const ERROR_KEYS = {
+        invalid_invitation_token: 'invitation.errors.invalid_invitation_token',
+        invalid_or_expired_invitation: 'invitation.errors.invalid_or_expired_invitation',
+        invitation_email_mismatch: 'invitation.errors.invitation_email_mismatch',
+        user_already_member: 'invitation.errors.user_already_member',
+        unauthorized: 'invitation.errors.unauthorized',
+      };
+      function errorKey(error) { return ERROR_KEYS[error] || 'invitation.genericError'; }
+
+      function renderLangSelect() {
+        const names = { en: 'English', fr: 'Français', de: 'Deutsch', it: 'Italiano', es: 'Español', nl: 'Nederlands', pt: 'Português' };
+        const langs = window.TracefabI18n ? window.TracefabI18n.LANGS : Object.keys(names);
+        langSelect.innerHTML = langs
+          .map((code) => `<option value="${code}"${code === window.TracefabI18n.language ? ' selected' : ''}>${names[code] || code}</option>`)
+          .join('');
+      }
+      langSelect.addEventListener('change', () => {
+        if (window.TracefabI18n) window.TracefabI18n.setLanguage(langSelect.value);
+      });
+      document.addEventListener('tracefab:lang', () => {
+        renderLangSelect();
+        message.textContent = t(current.key, current.values);
+      });
+
       async function accept() {
         if (accepted || !clerk?.user || !token) return;
-        accepted = true; acceptButton.disabled = true; show('Validation de votre identité et de l’invitation…');
+        accepted = true; acceptButton.disabled = true; say('invitation.verifying');
         try {
           const authToken = await clerk.session.getToken();
           const response = await fetch('/api/invitations/accept', { method:'POST', headers:{ 'Content-Type':'application/json', ...(authToken ? { Authorization:`Bearer ${authToken}` } : {}) }, body:JSON.stringify({ invitationToken:token }) });
           const payload = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`);
-          show('Invitation acceptée. Votre accès à l’organisation fournisseur est actif.', 'success');
+          say('invitation.accepted', 'success');
           actions.hidden = false; acceptButton.hidden = true;
-        } catch (error) { accepted = false; acceptButton.disabled = false; show(errorLabel(error.message), 'error'); actions.hidden = false; }
+        } catch (error) { accepted = false; acceptButton.disabled = false; say(errorKey(error.message), 'error'); actions.hidden = false; }
       }
+
+      function signedInMessage() {
+        const email = clerk?.user?.primaryEmailAddress?.emailAddress;
+        say('invitation.signedIn', '', { email: email || t('invitation.defaultUser') });
+      }
+
       async function boot() {
-        if (!token || token.length > 256) { show('Le lien d’invitation est absent ou invalide.', 'error'); return; }
+        if (!token || token.length > 256) { say('invitation.missingToken', 'error'); return; }
         try {
           const config = await fetch('/api/config').then((response) => response.json());
           if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
           await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js'; script.onload = resolve; script.onerror = () => reject(new Error('clerk_sdk_unavailable')); document.head.appendChild(script); });
           clerk = new window.Clerk(config.publishableKey); await clerk.load();
-          clerk.addListener(() => { if (clerk.user) { signIn.hidden = true; actions.hidden = false; show(`Connecté en tant que ${clerk.user.primaryEmailAddress?.emailAddress || 'utilisateur Tracefab'}. Cliquez pour accepter l’invitation.`); } });
-          if (clerk.user) { signIn.hidden = true; actions.hidden = false; show(`Connecté en tant que ${clerk.user.primaryEmailAddress?.emailAddress || 'utilisateur Tracefab'}. Cliquez pour accepter l’invitation.`); }
-          else { clerk.mountSignIn(signIn, { routing:'hash', appearance:{ elements:{ card:'shadow-none', rootBox:'w-full' } } }); show('Connectez-vous avec l’adresse email invitée pour continuer.'); }
-        } catch (error) { show(error.message || 'Connexion indisponible.', 'error'); }
+          clerk.addListener(() => { if (clerk.user) { signIn.hidden = true; actions.hidden = false; signedInMessage(); } });
+          if (clerk.user) { signIn.hidden = true; actions.hidden = false; signedInMessage(); }
+          else { clerk.mountSignIn(signIn, { routing:'hash', appearance:{ elements:{ card:'shadow-none', rootBox:'w-full' } } }); say('invitation.signInPrompt'); }
+        } catch (error) { say(error.message || 'invitation.connectionUnavailable', 'error'); }
       }
+
       acceptButton.addEventListener('click', () => accept());
-      boot();
+      /* Le contenu est d'abord rendu en français, puis traduit dès que le
+         dictionnaire arrive : aucun fetch ne bloque le premier affichage. */
+      say('invitation.preparing');
+      renderLangSelect();
+      const start = () => { renderLangSelect(); message.textContent = t(current.key, current.values); boot(); };
+      if (window.TracefabI18n) window.TracefabI18n.init({ scope: 'invitation', fallback: 'fr' }).then(start, start);
+      else start();
     })();
   </script>
 </body>

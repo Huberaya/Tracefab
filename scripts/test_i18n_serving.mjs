@@ -222,11 +222,21 @@ assert(
   config.routes.some((r) => r.src === '/i18n-core.js' && r.dest === '/public/i18n-core.js'),
   'et mappé sur /i18n-core.js',
 );
+/*
+ * Le chemin COMPLET de la surface doit être la destination d'une route.
+ *
+ * L'assertion précédente ne retenait que le premier segment
+ * (`surface.split('/')[0]`) : pour `invitations/accept/index.html` elle
+ * cherchait `/invitations/index.html`, une destination qui n'a jamais existé.
+ * Autrement dit elle aurait validé une route absente, et invalidé la bonne.
+ * Une surface imbriquée n'est pas un cas exotique : c'est celle qui a fait
+ * tomber le test dès qu'on l'a branchée sur le runtime.
+ */
 for (const surface of surfaces) {
-  const dir = surface.split('/')[0];
   assert(
-    config.routes.some((r) => r.dest === `/${dir}/index.html`),
-    `la surface /${dir} a une route`,
+    config.routes.some((r) => r.dest === `/${surface}`),
+    `la surface ${surface} est servie par une route`,
+    `aucune route de vercel.json n'a pour dest /${surface}`,
   );
 }
 /* Le JSON doit être valide et non vide, sinon le runtime se replie en silence. */
