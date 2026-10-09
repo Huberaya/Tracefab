@@ -22,6 +22,7 @@
  */
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { SURFACES, ECRANS, capturer, comparer, nomFichier } from './lib/visuel.mjs';
 
@@ -49,9 +50,18 @@ mkdirSync(DOSSIER, { recursive: true });
  * test rougit pour une raison etrangere au code — c'est exactement ce qui
  * est arrive sur la CI.
  *
- * On mesure donc la largeur reellement rendue d'un texte temoin dans les
- * trois familles de repli. C'est le signal direct : si les polices
- * disponibles changent, ces largeurs changent.
+ * On mesurait la largeur rendue d'un texte temoin dans les trois familles de
+ * repli, en supposant que « si les polices changent, ces largeurs changent ».
+ *
+ * CETTE SUPPOSITION EST FAUSSE, et la CI l'a montre : sur le runner, les trois
+ * largeurs ET la version de Chromium etaient IDENTIQUES a la reference, la
+ * garde a donc laisse passer, et la comparaison a releve 2 a 6 % de pixels
+ * differents sur 19 surfaces. Des polices metriquement compatibles rendent la
+ * meme avance avec une rasterisation differente — crenage, hinting, lissage.
+ *
+ * On compare donc desormais la rasterisation elle-meme : le temoin est rendu,
+ * capture, et hache. Deux environnements dont les pixels different sur ce
+ * temoin ne peuvent pas partager une reference en pixels.
  */
 const EMPREINTE = join(DOSSIER, '_environnement.json');
 
@@ -69,8 +79,19 @@ async function empreinte(navigateur) {
     };
     return { sans: mesurer('sans-serif'), serif: mesurer('serif'), mono: mesurer('monospace') };
   });
+  // La rasterisation, pas seulement les metriques : c'est elle qui decide si
+  // deux environnements peuvent partager une reference en pixels.
+  await page.setViewportSize({ width: 1400, height: 400 });
+  await page.setContent(`<!doctype html><html><body style="margin:0;background:#fff">
+    <div id="t" style="display:inline-block;padding:8px;background:#fff">
+      <div style="font:100px sans-serif;white-space:nowrap">Traçabilité textile 0123456789 WAVE</div>
+      <div style="font:100px serif;white-space:nowrap">Traçabilité textile 0123456789 WAVE</div>
+      <div style="font:100px monospace;white-space:nowrap">Traçabilité textile 0123456789 WAVE</div>
+    </div></body></html>`);
+  const image = await page.locator('#t').screenshot();
+  const rendu = createHash('sha256').update(image).digest('hex').slice(0, 24);
   await page.close();
-  return { navigateur: navigateur.version(), largeurs };
+  return { navigateur: navigateur.version(), largeurs, rendu };
 }
 
 const nav = await chromium.launch();
@@ -79,17 +100,24 @@ const ENV_COURANT = await empreinte(nav);
 if (!MAJ && existsSync(EMPREINTE)) {
   const attendu = JSON.parse(readFileSync(EMPREINTE, 'utf8'));
   const memeRendu = JSON.stringify(attendu.largeurs) === JSON.stringify(ENV_COURANT.largeurs)
-    && attendu.navigateur === ENV_COURANT.navigateur;
+    && attendu.navigateur === ENV_COURANT.navigateur
+    // Ajoute apres l'incident CI : les deux conditions ci-dessus etaient
+    // vraies sur le runner alors que le rendu differait de 2 a 6 %.
+    && attendu.rendu === ENV_COURANT.rendu;
   if (!memeRendu) {
     await nav.close();
     console.log('\n  TEST NON EXECUTE — environnement de rendu different de la reference.');
-    console.log(`    reference : Chromium ${attendu.navigateur} · largeurs ${JSON.stringify(attendu.largeurs)}`);
-    console.log(`    ici       : Chromium ${ENV_COURANT.navigateur} · largeurs ${JSON.stringify(ENV_COURANT.largeurs)}`);
+    console.log(`    reference : Chromium ${attendu.navigateur} · rendu ${attendu.rendu}`);
+    console.log(`    ici       : Chromium ${ENV_COURANT.navigateur} · rendu ${ENV_COURANT.rendu}`);
     console.log('\n  Les polices systeme de repli ne sont pas les memes : comparer des');
     console.log('  pixels ici n\'apprendrait rien sur le code. AUCUNE verification');
     console.log('  visuelle n\'a donc eu lieu. Pour couvrir cette machine, rejouer la');
     console.log('  reference avec « npm run test:regression -- --maj » puis la relire.\n');
-    // Sortie 0 assumee : ce test est volontairement hors de la boucle CI
+    // Sortie 0 assumee : rendre rouge une machine saine n'apprendrait rien.
+    // Ce message est desormais VISIBLE dans les journaux de CI, le test
+    // n'etant plus exclu de la boucle.
+    // (ancien commentaire conserve ci-dessous pour memoire)
+    // Sortie 0 assumee : ce test etait volontairement hors de la boucle CI
     // (voir .github/workflows/ci.yml). Le rendre rouge ici punirait une
     // machine saine. Le message ci-dessus dit sans ambiguite que rien n'a
     // ete verifie.

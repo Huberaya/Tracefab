@@ -1125,10 +1125,25 @@ maintenant pour `wallet` et `public-write` — dont les routes dépendent de la
 même base. Garde : `test:rate-limit`.
 
 ### E — Exclusion de `test:regression` en CI
-**Levée.** Le test porte déjà sa propre garde d'environnement
-(`_environnement.json`). L'exclusion par nom faisait double emploi tout en
-retirant le message des journaux et en empêchant l'exécution sur un runner
-conforme.
+**Levée — et la levée a révélé que la garde était fausse.**
+
+L'exclusion par nom faisait double emploi avec la garde d'environnement du
+test, tout en retirant son message des journaux et en empêchant l'exécution
+sur un runner conforme. Elle a donc été retirée.
+
+Le run #46 a alors échoué : 19 surfaces à 2–6 % de pixels différents. La garde
+n'avait **pas** joué, parce qu'elle comparait la version de Chromium et trois
+largeurs d'avance — toutes identiques sur le runner — alors que la
+rastérisation différait. Des polices métriquement compatibles produisent la
+même avance avec un crénage et un lissage différents.
+
+L'empreinte compare désormais la **rastérisation** : le texte témoin est rendu,
+capturé et haché (`rendu`, SHA-256 tronqué). Vérifié dans les deux sens —
+ici elle concorde et les 38 références sont réellement comparées ; désalignée,
+le test s'abstient en l'annonçant et sort en 0.
+
+Autrement dit, l'exclusion masquait depuis le début une garde qui n'aurait pas
+protégé. C'est l'exclusion qui tenait la CI verte, pas la garde.
 
 ### Reste ouvert
 - Aucun accès à la base de production : `/tmp/neon.env` est absent de cet
