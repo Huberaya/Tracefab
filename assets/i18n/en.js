@@ -500,6 +500,11 @@ window.TF_I18N_BUNDLES.en = {
   // --- portees applicatives (console, portail, DPP public) ---------------
   shared: {
     stDraft: "Draft",
+    pagerLabel: "Pagination",
+    pagerShowing: "Showing",
+    pagerOf: "of",
+    pagerPrev: "Previous",
+    pagerNext: "Next",
     stSent: "Sent",
     stInProgress: "In progress",
     stSubmitted: "Submitted",

@@ -38,7 +38,11 @@ export const SURFACES = [
  * consigne au registre — mais une reference ne doit pas dependre du millieme
  * ecran d'un tableau non pagine.
  */
-export const HAUTEUR_MAX = 6000;
+// Aligne sur le budget de hauteur de test:pagination : au dela, une page
+// n'est plus une page mais un export, et c'est un defaut a corriger — pas une
+// reference a rallonger. 6000 px etait trop bas : l'accueil fait 6 071 px en
+// bureau et 9 443 px en mobile, et se faisait donc tronquer.
+export const HAUTEUR_MAX = 12000;
 
 export const ECRANS = [
   { nom: 'bureau', width: 1280, height: 900 },
@@ -106,8 +110,12 @@ export async function capturer(nav, base, s, ecran) {
   await pg.waitForTimeout(250);
 
   const hauteur = await pg.evaluate(() => document.documentElement.scrollHeight);
+  // fullPage reste indispensable AVEC clip : sans lui, la zone demandee est
+  // intersectee avec le viewport, et une page de 86 000 px se reduisait a ses
+  // 900 premiers pixels — une reference qui ne couvrait presque rien sans
+  // jamais le dire.
   const png = hauteur > HAUTEUR_MAX
-    ? await pg.screenshot({ clip: { x: 0, y: 0, width: ecran.width, height: HAUTEUR_MAX } })
+    ? await pg.screenshot({ fullPage: true, clip: { x: 0, y: 0, width: ecran.width, height: HAUTEUR_MAX } })
     : await pg.screenshot({ fullPage: true });
   await pg.close();
   return png;

@@ -34,7 +34,12 @@
     "overview": "概览",
     "requests": "数据请求",
     "certifications": "认证资质",
-    "signOut": "退出登录"
+    "signOut": "退出登录",
+    "pagerLabel": "分页",
+    "pagerShowing": "显示",
+    "pagerOf": "共",
+    "pagerPrev": "上一页",
+    "pagerNext": "下一页"
   },
   "console": {},
   "portal": {

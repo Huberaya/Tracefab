@@ -676,13 +676,12 @@ Vérifié par mutation : largeur de repli modifiée dans l'empreinte → le test
 refuse de comparer et le dit. Le jour où l'on voudra l'automatiser vraiment, il
 faudra figer le rendu dans un conteneur, pas ajuster le seuil.
 
-### Trouvé en chemin, non corrigé
+### Trouvé en chemin — corrigé depuis, voir §12
 
-La vue `products` de la console rend **1 249 lignes de tableau d'un bloc —
-86 543 px de haut**, soit 96 écrans, sans pagination ni virtualisation. La
-capture Chrome échouait dessus. La référence plafonne à 6 000 px, ce qui règle
-le test mais **pas le défaut** : une table de 1 248 produits sans pagination
-contredit l'intention « centre de contrôle » et pèse sur le navigateur.
+La vue `products` rendait **1 248 lignes d'un bloc, 86 543 px de haut**, soit
+96 écrans, sans pagination ni virtualisation. La capture Chrome échouait
+dessus. Plafonner la référence réglait le test mais **pas le défaut**. C'est
+l'objet du §12, et le plafond est passé de 6 000 à 12 000 px.
 
 ### Le garde-fou
 
@@ -771,6 +770,97 @@ Checksum volontairement corrompu, puis :
 
 Prisma 6 ne revérifie pas le checksum des migrations déjà appliquées. Le
 réalignement sur Neon reste de l'hygiène recommandée, **pas une urgence**.
+
+## 12 · Les tables déversaient tout leur contenu — RÉGLÉ
+
+### Le constat, mesuré
+
+En énumérant les 17 vues de la console dans le navigateur plutôt qu'en
+lisant le code :
+
+| vue | lignes rendues | hauteur de page |
+|---|---|---|
+| `products` | 1 248 | **86 543 px** — 96 écrans |
+| `risk` | 1 248 | **88 789 px** — 99 écrans |
+| `suppliers` | 86 | 6 365 px |
+| les 14 autres | ≤ 5 | ≤ 1 700 px |
+
+Je ne connaissais que `products`. **`risk` était pire**, et personne ne l'avait
+vu : rien ne surveillait la hauteur des pages. Un budget que l'on ne mesure pas
+dérive toujours dans le même sens.
+
+### Ce qui a été fait
+
+Un composant de pagination **partagé** — pas une rustine dans `products`. Trois
+vues l'utilisent. 25 lignes par page.
+
+- `state.pages` retient la page **par liste** : inspecter une référence puis
+  revenir au tableau ne renvoie pas au début, et `risk` n'hérite pas de la page
+  de `products` ;
+- la page demandée est **bornée** à l'exécution, pour qu'une liste qui rétrécit
+  (filtre, suppression, changement d'organisation) ne laisse pas l'utilisateur
+  sur une page devenue vide ;
+- fenêtre glissante `1 … 4 5 6 7 … 50`, neuf entrées au plus, pour que la barre
+  tienne sur une ligne ;
+- en dessous de 560 px, seuls « précédent », la page courante et « suivant »
+  restent : le comptage au-dessus donne déjà la position ;
+- libellés dans les **9 locales**, sans interpolation, conformément à la règle
+  i18n du projet.
+
+| vue | avant | après | facteur |
+|---|---|---|---|
+| `products` | 86 543 px | **2 235 px** | ÷ 39 |
+| `risk` | 88 789 px | **4 481 px** | ÷ 20 |
+| `suppliers` | 6 365 px | **2 235 px** | ÷ 3 |
+
+### Un défaut de mon propre outillage, découvert au passage
+
+En réécrivant la référence visuelle, les anciennes images sont apparues en
+`1280x900` — exactement la taille du viewport. Cause : `screenshot({ clip })`
+**sans** `fullPage: true` intersecte la zone demandée avec le viewport.
+
+Conséquence : **toute surface de plus de 6 000 px n'était comparée que sur ses
+900 premiers pixels**, sans que rien ne le signale. La page d'accueil
+(6 071 px en bureau, 9 443 px en mobile) en faisait partie — la surface la plus
+importante du projet était quasiment hors couverture pendant que j'annonçais
+19 surfaces vérifiées.
+
+Corrigé, et le plafond porté à **12 000 px**, aligné sur le budget de hauteur
+de `test:pagination` : un seul seuil dans tout le projet. L'accueil est
+désormais capturé en entier.
+
+### Le garde-fou
+
+`npm run test:pagination` — 6 sections, exécutées dans un vrai navigateur, sur
+des noms de vues **énumérés à l'exécution** et non écrits en dur :
+
+| section | ce qu'elle prouve |
+|---|---|
+| A | les 17 vues tiennent sous 12 000 px |
+| B | les listes longues portent une barre de pagination |
+| C | bornes : « précédent » inactif page 1, dernière page = reste exact (23), « suivant » inactif |
+| D | pages `99999`, `-7` et `abc` ramenées dans le domaine, jamais de table vide |
+| E | état de page indépendant par liste, conservé au retour |
+| F | 390 px : 0 cible sous 40 px, 0 débordement |
+
+Vérifié par mutation — trois régressions réintroduites une à une, toutes
+attrapées :
+
+| mutation | ce qui a échoué |
+|---|---|
+| bornage retiré | D — page 99999 → `undefined`, 0 ligne |
+| `products` redéversé | A, B, C, D — 1 248 lignes, 86 622 px |
+| « suivant » jamais désactivé | C |
+
+`J08` du parcours e2e a été **renforcé**, pas affaibli : il exigeait « plus de
+100 lignes », ce qui ne tenait que grâce au défaut. Il vérifie maintenant une
+page bornée **et** le total annoncé par le compteur.
+
+### Ce que la pagination ne règle pas
+
+Parcourir 50 pages pour trouver une référence reste pénible. **La recherche et
+le filtrage du catalogue sont le prochain besoin réel** — la pagination en est
+le préalable, pas le remplaçant.
 
 ## Déjà réglé — ne pas reprendre
 

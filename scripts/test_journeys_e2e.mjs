@@ -154,8 +154,15 @@ async function run() {
   // 08 — Descente catalogue -> produit, le coeur du principe Explore/Inspect.
   await journey('J08', 'Console : catalogue -> fiche produit', async (page) => {
     await console_(page, 'products');
+    // Le catalogue est pagine : une page bornee, et un compteur qui annonce
+    // le catalogue entier. Verifier les deux est plus fort que l'ancien
+    // « plus de 100 lignes », qui ne tenait que parce que la vue deversait
+    // ses 1 248 references d'un bloc sur 86 543 px.
     const n = await page.locator('[data-product-id]').count();
-    ok(n > 100, `catalogue trop court : ${n} lignes`);
+    ok(n > 0 && n <= 25, `page de catalogue hors bornes : ${n} lignes`);
+    const total = Number((await page.locator('.pager-count strong').last().innerText())
+      .replace(/[^\d]/g, ''));
+    ok(total > 100, `catalogue trop court : ${total} references annoncees`);
     await page.locator('[data-product-id]').first().click();
     await delay(600);
     const h = await page.locator('h1, h2').first().innerText();

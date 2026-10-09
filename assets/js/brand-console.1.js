@@ -12,6 +12,7 @@
         suppliers: [],
         materials: [],
         products: [],
+        pages: {},
         requests: [],
         questionnaires: [],
         schemaCatalog: [],
@@ -96,6 +97,80 @@
       const locale = () => BCP47[state.lang] || 'en-GB';
       const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle: 'medium' }).format(new Date(value)) : '—';
       const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits: 0 });
+
+      /* Pagination partagee -------------------------------------------------
+       *
+       * Le catalogue rendait ses 1 248 lignes d'un seul bloc : 86 543 px de
+       * haut, soit 96 ecrans. Le registre de risque faisait pire encore avec
+       * 88 789 px. A cette taille la page n'est plus lisible, le navigateur
+       * ne sait meme plus la capturer, et chaque re-rendu reconstruit des
+       * milliers de noeuds pour n'en montrer qu'une vingtaine.
+       *
+       * On ne rend donc qu'une page a la fois. state.pages retient la page
+       * courante PAR LISTE : revenir sur une vue ne renvoie pas l'utilisateur
+       * au debut, ce qui est exactement ce qu'on attend quand on inspecte une
+       * ligne puis qu'on revient au tableau.
+       */
+      const PAR_PAGE = 25;
+
+      function trancher(cle, liste) {
+        const total = liste.length;
+        const nbPages = Math.max(1, Math.ceil(total / PAR_PAGE));
+        // La liste peut avoir retreci depuis le dernier rendu (filtre,
+        // suppression, changement d'organisation) : on borne au lieu de
+        // laisser l'utilisateur sur une page devenue vide.
+        const page = Math.min(Math.max(1, Number(state.pages[cle] || 1)), nbPages);
+        const debut = (page - 1) * PAR_PAGE;
+        return {
+          lignes: liste.slice(debut, debut + PAR_PAGE),
+          total, nbPages, page,
+          premier: total ? debut + 1 : 0,
+          dernier: Math.min(debut + PAR_PAGE, total),
+        };
+      }
+
+      /* Fenetre glissante : 1 … 4 5 [6] 7 8 … 50. Jamais plus de neuf
+       * entrees, pour que la barre tienne sur une ligne, y compris en 390 px
+       * de large. null = separateur. */
+      function numerosPages(page, nbPages) {
+        const retenus = new Set([1, nbPages, page, page - 1, page + 1]);
+        if (page <= 3) [2, 3, 4].forEach((n) => retenus.add(n));
+        if (page >= nbPages - 2) [nbPages - 1, nbPages - 2, nbPages - 3].forEach((n) => retenus.add(n));
+        const tries = [...retenus].filter((n) => n >= 1 && n <= nbPages).sort((x, y) => x - y);
+        const sortie = [];
+        let precedent = 0;
+        for (const n of tries) {
+          if (precedent && n - precedent > 1) sortie.push(null);
+          sortie.push(n);
+          precedent = n;
+        }
+        return sortie;
+      }
+
+      function barrePagination(cle, info) {
+        // Sous un ecran de lignes, une barre de pagination n'apporte rien
+        // qu'un encombrement : on ne l'affiche pas.
+        if (info.total <= PAR_PAGE) return '';
+        const numero = (n) => (n === null
+          ? '<span class="pager-gap" aria-hidden="true">…</span>'
+          : `<button type="button" class="pager-num${n === info.page ? ' is-current' : ''}"`
+            + ` data-tf-act="pg" data-tf-arg="${esc(cle)}:${n}"`
+            + `${n === info.page ? ' aria-current="page"' : ''}>${moneyless(n)}</button>`);
+        const etape = (vers, libelle, inactif) => `<button type="button" class="pager-step"`
+          + ` data-tf-act="pg" data-tf-arg="${esc(cle)}:${vers}"${inactif ? ' disabled' : ''}>`
+          + `${esc(bt(libelle))}</button>`;
+        return `
+          <nav class="pager" aria-label="${esc(bt('pagerLabel'))}">
+            <p class="pager-count">${esc(bt('pagerShowing'))}
+              <strong>${moneyless(info.premier)}–${moneyless(info.dernier)}</strong>
+              ${esc(bt('pagerOf'))} <strong>${moneyless(info.total)}</strong></p>
+            <div class="pager-controls">
+              ${etape(info.page - 1, 'pagerPrev', info.page === 1)}
+              ${numerosPages(info.page, info.nbPages).map(numero).join('')}
+              ${etape(info.page + 1, 'pagerNext', info.page === info.nbPages)}
+            </div>
+          </nav>`;
+      }
 
       function notify(message, isError = false) {
         state.toast = { message, isError };
@@ -1940,11 +2015,13 @@
       }
 
       function productsView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${state.products.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        const tranche = trancher('products', state.products);
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>${bt('cnThOrganisation')}</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${suppliers().map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">${bt('sxPartnerActive')}</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">${bt('cnSupplierProfileBtn')}</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
+        const tranche = trancher('suppliers', suppliers());
+        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>${bt('cnThOrganisation')}</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">${bt('sxPartnerActive')}</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">${bt('cnSupplierProfileBtn')}</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>${barrePagination('suppliers', tranche)}` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || bt('cnMaterialLabel'); }
@@ -2240,7 +2317,8 @@
         const produitsExposes = new Set(r.rows.filter((x) => x.cat === 'riskCatProduct')
           .map((x) => x.subject)).size;
 
-        const lignes = r.rows.map((x) => `
+        const trancheRisque = trancher('risk', r.rows);
+        const lignes = trancheRisque.lignes.map((x) => `
           <tr>
             <td><span class="${pastille[x.sev]}">${esc(bt(sevKey[x.sev]))}</span></td>
             <td>${esc(bt(x.cat))}</td>
@@ -2319,7 +2397,7 @@
                 <th style="text-align:right">${esc(bt('riskColAction'))}</th>
               </tr></thead>
               <tbody>${lignes}</tbody>
-            </table></div>` : `<div class="empty">
+            </table></div>${barrePagination('risk', trancheRisque)}` : `<div class="empty">
               <div class="empty-icon">○</div>
               <strong>${esc(bt('riskEmpty'))}</strong>
               <p class="meta">${esc(bt('riskEmptyNote'))}</p>
@@ -4056,6 +4134,16 @@
         p32: function (event) { filterIssues('review'); },
         p33: function (event) { filterIssues('resolved'); },
         p34: function (event) { state.view='supplyChain';render(); },
+        pg: function (event) {
+          const [cle, n] = String(this.dataset.tfArg || '').split(':');
+          if (!cle || !n) return;
+          state.pages[cle] = Number(n);
+          render();
+          // Sans cela on change de page en restant au bas de l'ecran
+          // precedent, et rien ne semble avoir bouge.
+          const haut = document.querySelector('.table-wrap');
+          if (haut) haut.scrollIntoView({ block: 'start' });
+        },
       });
     })();
   

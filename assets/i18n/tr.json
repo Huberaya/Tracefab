@@ -34,7 +34,12 @@
     "overview": "Genel Bakış",
     "requests": "Veri Talepleri",
     "certifications": "Sertifikalar",
-    "signOut": "Çıkış Yap"
+    "signOut": "Çıkış Yap",
+    "pagerLabel": "Sayfalama",
+    "pagerShowing": "Gösterilen",
+    "pagerOf": "toplam",
+    "pagerPrev": "Önceki",
+    "pagerNext": "Sonraki"
   },
   "console": {},
   "portal": {

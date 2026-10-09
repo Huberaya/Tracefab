@@ -735,7 +735,12 @@
     "overview": "Vue d’ensemble",
     "requests": "Demandes de données",
     "certifications": "Certifications",
-    "signOut": "Déconnexion"
+    "signOut": "Déconnexion",
+    "pagerLabel": "Pagination",
+    "pagerShowing": "Affichage",
+    "pagerOf": "sur",
+    "pagerPrev": "Précédent",
+    "pagerNext": "Suivant"
   },
   "console": {
     "navMain": "Console Principale",

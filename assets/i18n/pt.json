@@ -735,7 +735,12 @@
     "overview": "Visão geral",
     "requests": "Pedidos de dados",
     "certifications": "Certificações",
-    "signOut": "Terminar sessão"
+    "signOut": "Terminar sessão",
+    "pagerLabel": "Paginação",
+    "pagerShowing": "A mostrar",
+    "pagerOf": "de",
+    "pagerPrev": "Anterior",
+    "pagerNext": "Seguinte"
   },
   "console": {
     "navMain": "Consola Principal",
