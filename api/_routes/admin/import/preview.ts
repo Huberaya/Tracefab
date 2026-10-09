@@ -3,12 +3,9 @@ import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { isUnauthorized } from '../../../_lib/auth.js';
 import { isAdminAccessDenied, requirePlatformAdmin } from '../../../_lib/admin-access.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
-import { parseCsvRows } from '../../../_lib/bulk-operations/csv-parser.js';
+import { readImportPayload, importPayloadStatus } from '../../../_lib/import-payload.js';
 import { buildImportPreview } from '../../../_lib/crm-import.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
-
-/** Fichiers au-delà de 2 Mo : un CSV de prospection raisonnable tient en dessous. */
-const MAX_CSV_BYTES = 2 * 1024 * 1024;
 
 /**
  * POST /api/admin/import/preview
@@ -27,19 +24,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const admin = await requirePlatformAdmin(req);
     const body = { ...((req.body || {}) as Record<string, unknown>) };
 
-    const csv = typeof body.csv === 'string' ? body.csv : '';
-    if (!csv.trim()) return json(res, 422, { error: 'csv_required' });
-    if (Buffer.byteLength(csv, 'utf8') > MAX_CSV_BYTES) {
-      return json(res, 413, { error: 'crm_import_file_too_large' });
+    /*
+     * §8 — CSV ou Excel. La même fonction sert ici et à /commit : accepter un
+     * classeur à l'aperçu puis le refuser à l'import serait le pire des
+     * comportements. La détection se fait sur le contenu, pas sur le nom.
+     */
+    const payload = readImportPayload(body);
+    if (payload.status === 'error') {
+      return json(res, importPayloadStatus(payload.error), {
+        error: payload.error,
+        ...(payload.detail ? { detail: payload.detail } : {}),
+        ...(payload.error === 'import_file_has_no_data_rows'
+          ? { details: ['headers_and_at_least_one_row_required'] } : {}),
+      });
     }
 
     const source = typeof body.source === 'string' ? body.source.trim() : '';
     if (!source) return json(res, 422, { error: 'crm_import_source_required' });
 
-    const records = parseCsvRows(csv) as Array<Record<string, unknown>>;
-    if (!records.length) {
-      return json(res, 422, { error: 'csv_has_no_data_rows', details: ['headers_and_at_least_one_row_required'] });
-    }
+    const records = payload.records as Array<Record<string, unknown>>;
 
     const mapping = body.mapping && typeof body.mapping === 'object'
       ? (body.mapping as Record<string, string | null>)
@@ -61,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       skipDuplicates: body.skip_duplicates === true,
     });
 
-    return json(res, 200, { preview, writes: 'none' });
+    return json(res, 200, { preview, writes: 'none', format: payload.format });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     if (isAdminAccessDenied(error)) return json(res, 403, { error: 'admin_access_denied' });

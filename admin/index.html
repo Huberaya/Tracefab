@@ -319,6 +319,9 @@ const state = {
   campaigns: null, leads: null, campaign: null, lead: null, leadCampaign: '', leadStatus: '',
   lists: { items: [] }, activeList: null,
   importStep: null, importCsv: '', importMapping: {}, importPreview: null,
+  /* §8 : un classeur Excel arrive en base64, pas en texte. Le garder séparé du
+     CSV évite de faire passer du binaire par un textarea — et de le corrompre. */
+  importFile: null, importFileName: '', importFormat: '',
   importSource: '', importDetail: '', importSkip: true, importResult: null,
   selected: null,          // id de l'entreprise ouverte
   detail: null,            // { company, contacts, activities }
@@ -1629,8 +1632,13 @@ function modalImport() {
           <input type="text" id="im-source" value="${esc(state.importSource)}" placeholder="${esc(t('import.sourcePlaceholder'))}" required></label>
         <label class="full">${esc(t('import.sourceDetail'))}
           <input type="text" id="im-detail" value="${esc(state.importDetail)}"></label>
+        <label class="full">${esc(t('import.file'))}
+          <input type="file" id="im-file" accept=".csv,.xlsx" aria-describedby="im-file-hint"></label>
+        <div class="hint" id="im-file-hint">${state.importFileName
+          ? esc(t('import.fileChosen')) + ' : ' + esc(state.importFileName)
+          : esc(t('import.fileHint'))}</div>
         <label class="full">${esc(t('import.csv'))}
-          <textarea id="im-csv" rows="8" placeholder="${esc(t('import.csvPlaceholder'))}">${esc(state.importCsv)}</textarea></label>
+          <textarea id="im-csv" rows="8" placeholder="${esc(t('import.csvPlaceholder'))}"${state.importFile ? ' disabled' : ''}>${esc(state.importCsv)}</textarea></label>
         <div class="hint">${esc(t('import.hint'))}</div>
       </div>
       <div class="modalfoot">
@@ -2715,6 +2723,7 @@ function bind() {
   on('list-delete', 'click', deleteList);
   on('export-csv', 'click', exportCsv);
   on('import-open', 'click', openImport);
+  on('im-file', 'change', handleImportFile);
   on('im-preview', 'click', () => runImportPreview());
   on('im-repreview', 'click', () => { state.importMapping = readImportMapping(); runImportPreview(state.importMapping); });
   on('im-commit', 'click', commitImport);
@@ -3021,6 +3030,11 @@ function openImport() {
   state.importPreview = null;
   state.importResult = null;
   state.formError = null;
+  /* Un classeur choisi à l'ouverture précédente doit repartir : sinon il serait
+     renvoyé à l'aperçu sans être visible, le textarea étant masqué par son nom. */
+  state.importFile = null;
+  state.importFileName = '';
+  state.importFormat = '';
   render();
 }
 
@@ -3035,29 +3049,84 @@ function readImportMapping() {
   return mapping;
 }
 
+/*
+ * §8 — CSV ou Excel.
+ *
+ * Un .csv est lu en TEXTE et versé dans le textarea : l'utilisateur peut encore
+ * le relire et le corriger avant l'aperçu, comme avant.
+ * Un .xlsx est lu en BASE64 : le passer par un textarea le corromprait.
+ *
+ * La décision se prend sur les quatre premiers octets, pas sur l'extension : un
+ * classeur renommé .csv doit rester lisible, et un texte renommé .xlsx ne doit
+ * pas être envoyé au lecteur ZIP.
+ */
+async function handleImportFile() {
+  const input = document.getElementById('im-file');
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  state.formError = null;
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  const isZip = bytes.length > 3 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+  if (isZip) {
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
+    }
+    state.importFile = btoa(binary);
+    state.importFileName = file.name;
+    state.importFormat = 'xlsx';
+    state.importCsv = '';
+  } else {
+    state.importFile = null;
+    state.importFileName = file.name;
+    state.importFormat = 'csv';
+    /* Blob.text() retire un BOM initial : c'est souhaitable ici, le serveur
+       retirerait de toute façon le même BOM. */
+    state.importCsv = await file.text();
+  }
+  render();
+}
+
 async function runImportPreview(mapping) {
   const csv = (document.getElementById('im-csv') || {}).value;
-  if (csv === undefined) { /* étape mapping : le textarea n'est plus dans le DOM */ }
-  else state.importCsv = csv;
+  /* À l'étape mapping le textarea n'est plus dans le DOM, et il est désactivé
+     quand un classeur est chargé : dans les deux cas on ne doit pas écraser ce
+     qui a été lu. */
+  const csvField = document.getElementById('im-csv');
+  if (csvField && !csvField.disabled) state.importCsv = csv;
   const src = (document.getElementById('im-source') || {}).value;
   if (src !== undefined) state.importSource = src;
   const det = (document.getElementById('im-detail') || {}).value;
   if (det !== undefined) state.importDetail = det;
 
   if (!state.importSource.trim()) { state.formError = t('import.sourceRequired'); render(); return; }
-  if (!state.importCsv.trim()) { state.formError = t('import.csvRequired'); render(); return; }
+  if (!state.importFile && !state.importCsv.trim()) {
+    state.formError = t('import.csvRequired'); render(); return;
+  }
 
   state.saving = true;
   render();
   try {
     if (state.demo) {
+      /* La démonstration ne peut pas lire un classeur binaire : il n'y a ni
+         serveur ni parseur dans cette page. Le dire vaut mieux que de simuler
+         un aperçu qui ne correspondrait pas au fichier choisi. */
+      if (state.importFile) {
+        state.formError = t('import.demoNoBinary');
+        state.saving = false;
+        state.importStep = 'file';
+        render();
+        return;
+      }
       state.importPreview = demoImportPreview();
       state.importStep = 'review';
     } else {
       const res = await api('/api/admin/import/preview', {
         method: 'POST',
         body: JSON.stringify({
-          csv: state.importCsv,
+          ...(state.importFile ? { file: state.importFile } : { csv: state.importCsv }),
           source: state.importSource,
           source_detail: state.importDetail || null,
           mapping: mapping || {},
@@ -3112,7 +3181,10 @@ async function commitImport() {
     const res = await api('/api/admin/import/commit', {
       method: 'POST',
       body: JSON.stringify({
-        csv: state.importCsv,
+        /* Même règle qu'à l'aperçu : un classeur part en base64. Envoyer `csv`
+           ici alors que l'aperçu a reçu `file` ferait échouer l'import après un
+           aperçu réussi — exactement ce que le helper partagé empêche côté API. */
+        ...(state.importFile ? { file: state.importFile } : { csv: state.importCsv }),
         source: state.importSource,
         source_detail: state.importDetail || null,
         mapping: state.importMapping || {},
@@ -3123,6 +3195,9 @@ async function commitImport() {
     state.modal = null;
     state.importStep = null;
     state.importCsv = '';
+    state.importFile = null;
+    state.importFileName = '';
+    state.importFormat = '';
     state.importPreview = null;
     state.error = null;
     await loadView();

@@ -536,6 +536,11 @@ EN = {
   "history.truncatedWhy": "Too many records to serve at once, so the oldest ones are cut. Filter or export to see the rest.",
   "history.empty": "No history yet",
   "history.emptyBody": "Nothing has been recorded for this company yet — no activity, no task, no meeting.",
+  # Chantier Admin 08 — §8 import CSV ou Excel
+  "import.file": "File",
+  "import.fileHint": "CSV or Excel (.xlsx). The format is read from the content, not from the file name.",
+  "import.fileChosen": "Selected file",
+  "import.demoNoBinary": "Demonstration mode cannot read a binary workbook. Paste a CSV sample to explore the import.",
 }
 
 FR = {
@@ -1062,6 +1067,11 @@ FR = {
   "history.truncatedWhy": "Trop d'enregistrements à servir d'un coup : les plus anciens sont coupés. Filtrez ou exportez pour voir le reste.",
   "history.empty": "Aucun historique pour l'instant",
   "history.emptyBody": "Rien n'a encore été enregistré pour cette entreprise : aucune activité, aucune tâche, aucun rendez-vous.",
+  # Chantier Admin 08 — §8 import CSV ou Excel
+  "import.file": "Fichier",
+  "import.fileHint": "CSV ou Excel (.xlsx). Le format est lu dans le contenu, pas dans le nom du fichier.",
+  "import.fileChosen": "Fichier choisi",
+  "import.demoNoBinary": "Le mode démonstration ne peut pas lire un classeur binaire. Collez un exemple CSV pour explorer l'import.",
 }
 
 DE = {
@@ -1588,6 +1598,11 @@ DE = {
   "history.truncatedWhy": "Zu viele Datensätze für eine Antwort: die ältesten wurden abgeschnitten. Filtern oder exportieren Sie, um den Rest zu sehen.",
   "history.empty": "Noch kein Verlauf",
   "history.emptyBody": "Für dieses Unternehmen wurde noch nichts erfasst — keine Aktivität, keine Aufgabe, kein Termin.",
+  # Chantier Admin 08 — §8 import CSV ou Excel
+  "import.file": "Datei",
+  "import.fileHint": "CSV oder Excel (.xlsx). Das Format wird aus dem Inhalt gelesen, nicht aus dem Dateinamen.",
+  "import.fileChosen": "Gewählte Datei",
+  "import.demoNoBinary": "Der Demonstrationsmodus kann keine binäre Arbeitsmappe lesen. Fügen Sie ein CSV-Beispiel ein, um den Import zu erkunden.",
 }
 
 IT = {
@@ -2114,6 +2129,11 @@ IT = {
   "history.truncatedWhy": "Troppi record per una sola risposta: i più vecchi sono tagliati. Filtra o esporta per vedere il resto.",
   "history.empty": "Ancora nessuno storico",
   "history.emptyBody": "Non è ancora stato registrato nulla per questa azienda: nessuna attività, nessun task, nessuna riunione.",
+  # Chantier Admin 08 — §8 import CSV ou Excel
+  "import.file": "File",
+  "import.fileHint": "CSV o Excel (.xlsx). Il formato è letto dal contenuto, non dal nome del file.",
+  "import.fileChosen": "File selezionato",
+  "import.demoNoBinary": "La modalità dimostrazione non può leggere una cartella di lavoro binaria. Incolla un esempio CSV per esplorare l'importazione.",
 }
 
 ES = {
@@ -2640,6 +2660,11 @@ ES = {
   "history.truncatedWhy": "Demasiados registros para una sola respuesta: los más antiguos se cortan. Filtra o exporta para ver el resto.",
   "history.empty": "Todavía no hay historial",
   "history.emptyBody": "Aún no se ha registrado nada para esta empresa: ninguna actividad, ninguna tarea, ninguna reunión.",
+  # Chantier Admin 08 — §8 import CSV ou Excel
+  "import.file": "Archivo",
+  "import.fileHint": "CSV o Excel (.xlsx). El formato se lee del contenido, no del nombre del archivo.",
+  "import.fileChosen": "Archivo seleccionado",
+  "import.demoNoBinary": "El modo demostración no puede leer un libro binario. Pega un ejemplo CSV para explorar la importación.",
 }
 
 NL = {
@@ -3166,6 +3191,11 @@ NL = {
   "history.truncatedWhy": "Te veel records voor één antwoord: de oudste zijn afgekapt. Filter of exporteer om de rest te zien.",
   "history.empty": "Nog geen geschiedenis",
   "history.emptyBody": "Er is nog niets vastgelegd voor dit bedrijf — geen activiteit, geen taak, geen afspraak.",
+  # Chantier Admin 08 — §8 import CSV ou Excel
+  "import.file": "Bestand",
+  "import.fileHint": "CSV of Excel (.xlsx). Het formaat wordt uit de inhoud gelezen, niet uit de bestandsnaam.",
+  "import.fileChosen": "Gekozen bestand",
+  "import.demoNoBinary": "De demonstratiemodus kan geen binair werkmap lezen. Plak een CSV-voorbeeld om de import te verkennen.",
 }
 
 PT = {
@@ -3692,6 +3722,11 @@ PT = {
   "history.truncatedWhy": "Demasiados registos para uma só resposta: os mais antigos são cortados. Filtre ou exporte para ver o resto.",
   "history.empty": "Ainda sem histórico",
   "history.emptyBody": "Ainda nada foi registado para esta empresa: nenhuma atividade, nenhuma tarefa, nenhuma reunião.",
+  # Chantier Admin 08 — §8 import CSV ou Excel
+  "import.file": "Ficheiro",
+  "import.fileHint": "CSV ou Excel (.xlsx). O formato é lido do conteúdo, não do nome do ficheiro.",
+  "import.fileChosen": "Ficheiro escolhido",
+  "import.demoNoBinary": "O modo de demonstração não consegue ler um livro binário. Cole um exemplo CSV para explorar a importação.",
 }
 
 DICTS = {"en": EN, "fr": FR, "de": DE, "it": IT, "es": ES, "nl": NL, "pt": PT}

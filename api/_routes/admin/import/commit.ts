@@ -3,12 +3,14 @@ import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { isUnauthorized } from '../../../_lib/auth.js';
 import { isAdminAccessDenied, requirePlatformAdmin } from '../../../_lib/admin-access.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
-import { parseCsvRows } from '../../../_lib/bulk-operations/csv-parser.js';
+import { readImportPayload, importPayloadStatus } from '../../../_lib/import-payload.js';
 import { buildImportPreview } from '../../../_lib/crm-import.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { auditAdmin } from '../../../_lib/crm-audit-write.js';
 
-const MAX_CSV_BYTES = 2 * 1024 * 1024;
+/* La limite de taille vit dans import-payload.ts : la duplicer ici ferait
+   diverger l'aperçu et l'import. Seule la limite de LIGNES reste propre au
+   commit — c'est lui qui écrit. */
 const MAX_ROWS_PER_IMPORT = 2000;
 
 /**
@@ -31,10 +33,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const admin = await requirePlatformAdmin(req);
     const body = { ...((req.body || {}) as Record<string, unknown>) };
 
-    const csv = typeof body.csv === 'string' ? body.csv : '';
-    if (!csv.trim()) return json(res, 422, { error: 'csv_required' });
-    if (Buffer.byteLength(csv, 'utf8') > MAX_CSV_BYTES) {
-      return json(res, 413, { error: 'crm_import_file_too_large' });
+    /* §8 — même lecture qu'à l'aperçu : voir import-payload.ts. */
+    const payload = readImportPayload(body);
+    if (payload.status === 'error') {
+      return json(res, importPayloadStatus(payload.error), {
+        error: payload.error,
+        ...(payload.detail ? { detail: payload.detail } : {}),
+        ...(payload.error === 'import_file_has_no_data_rows'
+          ? { details: ['headers_and_at_least_one_row_required'] } : {}),
+      });
     }
 
     const source = typeof body.source === 'string' ? body.source.trim() : '';
@@ -42,10 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const onDuplicate = body.duplicates === 'abort' ? 'abort' : 'skip';
 
-    const records = parseCsvRows(csv) as Array<Record<string, unknown>>;
-    if (!records.length) {
-      return json(res, 422, { error: 'csv_has_no_data_rows', details: ['headers_and_at_least_one_row_required'] });
-    }
+    const records = payload.records as Array<Record<string, unknown>>;
     if (records.length > MAX_ROWS_PER_IMPORT) {
       return json(res, 413, { error: 'crm_import_file_too_large', limit: MAX_ROWS_PER_IMPORT });
     }
