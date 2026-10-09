@@ -29,6 +29,8 @@
     "test:onboarding:chantier6": "node scripts/test_supplier_onboarding_chantier6.mjs",
     "test:neon:security": "node scripts/test_neon_security.mjs",
     "test:neon:rls": "node scripts/test_rls_isolation.mjs",
+    "test:neon:dpp-provenance": "npx tsx scripts/test_neon_dpp_provenance.mjs",
+    "test:neon:auth-provisioning": "npx tsx scripts/test_neon_auth_provisioning.mjs",
     "test:neon:supplier": "node scripts/test_neon_supplier_flow.mjs",
     "test:neon:supplier:advanced": "node scripts/test_neon_supplier_advanced.mjs",
     "test:neon:product": "node scripts/test_neon_product_flow.mjs",
@@ -103,6 +105,7 @@
     "test:regression": "node scripts/test_regression_visuelle.mjs"
   },
   "devDependencies": {
+    "@prisma/adapter-pg": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "@types/archiver": "^8.0.0",
     "@types/jsonwebtoken": "^9.0.10",

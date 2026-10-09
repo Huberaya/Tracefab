@@ -90,10 +90,13 @@ for (const l of locataires) {
     `insert into suppliers (id, organization_id) values ($1, $2)
      on conflict (id) do nothing`, [fournisseurId, orgId]);
 
-  // Le produit 1 est PUBLIE (public_slug + statut actif), le produit 2 reste
-  // brouillon. Sans ce contraste la section E de test:neon:rls n'a rien a
-  // prouver : elle verifie justement qu'un produit publie est lisible
-  // anonymement et qu'un brouillon ne l'est pas.
+  // Le produit 1 est PUBLIE : public_slug + statut actif + un dpp_records en
+  // readiness_status 'published', relu (reviewed_at). La publication publique
+  // exige cet etat explicite depuis la migration 20261010120000 : un simple
+  // statut actif, ou un slug pose en l'absence d'etat publie, ne suffit plus.
+  // Le produit 2 reste brouillon. Sans ce contraste la section E de
+  // test:neon:rls n'a rien a prouver : elle verifie justement qu'un produit
+  // publie est lisible anonymement et qu'un brouillon ne l'est pas.
   for (const n of [1, 2]) {
     const publie = n === 1;
     await db.query(
@@ -103,6 +106,17 @@ for (const l of locataires) {
         `Article ${n} ${l.nom}`,
         publie ? 'active' : 'draft',
         publie ? `${l.cle}-00${n}` : null]);
+    if (publie) {
+      // L'acte de publication, avec son auteur : reviewed_by = l'utilisateur
+      // du locataire, reviewed_at = maintenant. C'est « l'autorisation
+      // demonstrable » exigee par la barriere de lecture publique.
+      await db.query(
+        `insert into dpp_records (id, product_id, product_version, requirement_profile_key,
+           requirement_profile_version, readiness_status, reviewed_at, reviewed_by)
+         values ($1, $2, 1, 'espr-textile', '1', 'published', now(), $3)
+         on conflict (id) do nothing`,
+        [uuid(`dpp-${l.cle}-1`), uuid(`prod-${l.cle}-1`), userId]);
+    }
   }
 
   // Le declencheur tracefab_validate_document_location impose le bucket prive,

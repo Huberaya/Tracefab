@@ -282,6 +282,17 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
+      - name: Provenance des donnees DPP / Wallet — aucune substitution
+        # Chaque donnee servie est reliee a sa source ou explicitement absente.
+        # Le test rougit si une valeur fictive ressort comme reelle, si un
+        # produit non publie resout, ou si un GTIN inconnu fabrique une fiche.
+        run: npm run test:neon:dpp-provenance
+
+      - name: Provisionnement utilisateur et politiques INSERT/UPDATE
+        # Premiere connexion et reconnexion sous le role runtime reel, sans
+        # BYPASSRLS : c'est la bascule que l'upsert nu cassait silencieusement.
+        run: npm run test:neon:auth-provisioning
+
       - name: Scenarios croises contre la base de production
         # Optionnels, et clairement annonces comme tels. L'etancheite est deja
         # prouvee ci-dessus sans eux.
