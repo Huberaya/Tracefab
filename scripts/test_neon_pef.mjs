@@ -1,9 +1,23 @@
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
+import { ensureBrandOwnerFixture, requireTestDatabase } from './_lib/test-database.mjs';
 
-const prisma = new PrismaClient();
+/*
+ * Le client vient du helper, pas de `new PrismaClient()` : généré en
+ * engineType « client », il exige un adaptateur de pilote, et c'est le helper
+ * qui démarre la base locale quand DATABASE_URL est absent.
+ */
+const { prisma } = await requireTestDatabase();
 
 async function run() {
+  /*
+   * Ce test cherche un propriétaire de marque actif et s'arrête s'il n'y en a
+   * pas. Sur une base de test fraîchement migrée il n'y a aucune ligne : la
+   * fixture le crée une fois, de façon idempotente. Ce que mesure ce test, ce
+   * sont les allégations, pas la création d'organisation.
+   */
+  await ensureBrandOwnerFixture(prisma);
+
   console.log('Testing PEF Calculator & ESG Aggregation on Neon database...');
 
   try {

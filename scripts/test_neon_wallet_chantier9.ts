@@ -1,16 +1,30 @@
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
+import { ensureProductWithMaterialsFixture, requireTestDatabase } from './_lib/test-database.mjs';
 import { resolveDppPassData } from '../api/_lib/wallet/dpp-data-resolver.ts';
 import { generateApplePkpass, buildPassJson } from '../api/_lib/wallet/apple-pass-generator.ts';
 import { generateGoogleWalletPass } from '../api/_lib/wallet/google-wallet-generator.ts';
 
-const prisma = new PrismaClient();
+/*
+ * Le client vient du helper, pas de `new PrismaClient()` : généré en
+ * engineType « client », il exige un adaptateur de pilote, et c'est le helper
+ * qui démarre la base locale quand DATABASE_URL est absent.
+ */
+const { prisma } = await requireTestDatabase();
 
 async function run() {
   console.log('=== TEST INTEGRATION NEON CHANTIER 9: LIVE DPP & WALLET GENERATION ===\n');
 
   try {
     // 1. Fetch a real product from Neon DB
+    /*
+     * Ce test suppose un produit composé déjà présent. Il ne passait auparavant
+     * que parce qu'il tournait après test:neon:bulk:chantier8, qui en crée : une
+     * dépendance à l'ordre d'exécution, pas une propriété du wallet. La fixture
+     * le garantit, de façon idempotente.
+     */
+    await ensureProductWithMaterialsFixture(prisma);
+
     const product = await prisma.tracefab_products.findFirst({
       where: {
         product_materials: { some: {} },

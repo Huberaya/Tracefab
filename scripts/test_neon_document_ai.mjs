@@ -2,8 +2,14 @@
  * Live Neon Database Integration Test: Document AI & Automated Verification
  */
 import { PrismaClient } from '@prisma/client';
+import { requireTestDatabase } from './_lib/test-database.mjs';
 
-const prisma = new PrismaClient();
+/*
+ * Le client vient du helper, pas de `new PrismaClient()` : généré en
+ * engineType « client », il exige un adaptateur de pilote, et c'est le helper
+ * qui démarre la base locale quand DATABASE_URL est absent.
+ */
+const { prisma } = await requireTestDatabase();
 
 try {
   const userId = 'd0000000-0000-0000-0000-000000000001';

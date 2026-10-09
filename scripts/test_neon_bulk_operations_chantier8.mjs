@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
+import { requireTestDatabase } from './_lib/test-database.mjs';
 import { bulkImportProducts, bulkImportSuppliers, parseCompositionString } from '../api/_lib/bulk-operations/bulk-importer.ts';
 import { exportProductsCsv, exportSuppliersCsv, exportAuditDossierJson } from '../api/_lib/bulk-operations/compliance-exporter.ts';
 import { parseCsvRows } from '../api/_lib/bulk-operations/csv-parser.ts';
 
-const prisma = new PrismaClient();
+/*
+ * Le client vient du helper, pas de `new PrismaClient()` : généré en
+ * engineType « client », il exige un adaptateur de pilote, et c'est le helper
+ * qui démarre la base locale quand DATABASE_URL est absent.
+ */
+const { prisma } = await requireTestDatabase();
 
 async function run() {
   console.log('=== TEST INTEGRATION NEON CHANTIER 8: BULK IMPORT & REGULATORY EXPORT ===\n');
