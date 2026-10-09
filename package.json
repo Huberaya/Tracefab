@@ -118,7 +118,8 @@
     "test:admin:chantier04": "node scripts/test_admin_chantier04.mjs",
     "test:admin:chantier05": "node scripts/test_admin_chantier05.mjs",
     "test:admin:chantier06": "node scripts/test_admin_chantier06.mjs",
-    "test:admin:chantier07": "node scripts/test_admin_chantier07.mjs"
+    "test:admin:chantier07": "node scripts/test_admin_chantier07.mjs",
+    "test:admin:chantier10": "node scripts/test_admin_chantier10.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",

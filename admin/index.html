@@ -854,6 +854,71 @@ const measured = (v) => (v === null || v === undefined ? t('common.notMeasured')
 const stageTag = (s) => `<span class="tag s-${esc(s)}">${esc(t('stage.' + s))}</span>`;
 const priorityTag = (p) => `<span class="tag p-${esc(p)}">${esc(t('priority.' + p))}</span>`;
 
+/*
+ * Libellé du `kind` d'une ligne d'historique (§10 HISTORY).
+ *
+ * Chaque source a son propre préfixe d'enum : une tâche est un `taskType`, une
+ * réunion un `meetMode`, une activité un `activity`. Et une valeur d'enum que la
+ * table de traduction ne connaît pas ne doit pas s'afficher comme une clé cassée
+ * (`taskType.machin`) : on retombe sur la valeur brute, qui reste lisible.
+ */
+function kindLabel(entry) {
+  const prefix = entry.source === 'task' ? 'taskType.'
+    : entry.source === 'meeting' ? 'meetMode.' : 'activity.';
+  const key = prefix + entry.kind;
+  const label = t(key);
+  return label === key ? String(entry.kind) : label;
+}
+
+/*
+ * Jumeau de `api/_lib/crm-history.ts` pour le mode démonstration uniquement.
+ *
+ * En mode réel, l'historique vient du serveur et cette fonction n'est jamais
+ * appelée. En démo, les dates sont dynamiques (`inDays`), donc le résultat ne
+ * peut pas être collé une fois pour toutes : il faut le recalculer.
+ *
+ * Cette duplication est un risque assumé et CONTRÔLÉ : test_admin_chantier10
+ * exécute le module TypeScript réel et compare sa sortie à celle-ci, entrée par
+ * entrée. Si l'une des deux règles change sans l'autre, le test échoue. Sans ce
+ * contrôle, la démo afficherait un historique construit autrement que le vrai —
+ * c'est-à-dire une démonstration qui ment sur §14.
+ */
+function mergeHistory(activities, tasks, meetings) {
+  const out = [];
+  const iso = (v) => {
+    if (typeof v !== 'string' || !v) return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  };
+  const first = (...c) => { for (const x of c) { const d = iso(x); if (d) return d; } return null; };
+  for (const a of activities || []) {
+    const at = iso(a.occurred_at) || iso(a.created_at);
+    if (!at) continue;
+    out.push({ key: `activity:${a.id || at}`, source: 'activity', at,
+      title: a.summary || '', detail: a.detail || null, actor: a.actor_name || null,
+      kind: a.type || null, status: null });
+  }
+  for (const k of tasks || []) {
+    const at = k.status === 'done'
+      ? first(k.completed_at, k.due_at, k.created_at)
+      : first(k.due_at, k.created_at);
+    if (!at) continue;
+    out.push({ key: `task:${k.id || at}`, source: 'task', at,
+      title: k.title || '', detail: k.detail || null, actor: k.assignee_name || null,
+      kind: k.type || null, status: k.status || null });
+  }
+  for (const m of meetings || []) {
+    const at = iso(m.starts_at) || iso(m.created_at);
+    if (!at) continue;
+    out.push({ key: `meeting:${m.id || at}`, source: 'meeting', at,
+      title: m.subject || '',
+      detail: [m.outcome, m.notes].filter(Boolean).join('\n') || null,
+      actor: m.attendees || null, kind: m.mode || null, status: null });
+  }
+  out.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  return out;
+}
+
 function field(label, value, cls) {
   const shown = value === null || value === undefined || value === ''
     ? `<span class="v none">${esc(t('common.notProvided'))}</span>`
@@ -1156,8 +1221,11 @@ function viewCompany() {
     ['activity', t('company.tabActivity')],
     ['notes', t('company.tabNotes') + (d.activities?.filter((a) => a.type === 'note').length
       ? ` (${d.activities.filter((a) => a.type === 'note').length})` : '')],
+    ['tasks', t('company.tabTasks') + (d.tasks?.length ? ` (${d.tasks.length})` : '')],
     ['emails', t('company.tabEmails') + (d.activities?.filter((a) => a.type === 'email').length
       ? ` (${d.activities.filter((a) => a.type === 'email').length})` : '')],
+    ['meetings', t('company.tabMeetings') + (d.meetings?.length ? ` (${d.meetings.length})` : '')],
+    ['history', t('company.tabHistory') + (d.history?.entries?.length ? ` (${d.history.entries.length})` : '')],
   ];
 
   const nextAction = c.next_contact_at
@@ -1282,6 +1350,93 @@ function viewCompany() {
             ${a.detail ? `<span style="white-space:pre-wrap">${esc(a.detail)}</span>` : ''}
             <span>${esc(a.actor_name || '—')}</span></span></li>`).join('')}</ul></div>`
       : `<div class="empty"><b>${esc(t('emails.empty'))}</b>${esc(t('emails.emptyBody'))}</div>`}`;
+  } else if (state.tab === 'tasks') {
+    /*
+     * §10 TASKS. Les tâches n'écrivent PAS dans crm_activities : sans cet onglet,
+     * elles sont invisibles depuis la fiche entreprise alors qu'elles existent en
+     * base. Le tri suit taskBucket — l'échéance dépassée avant le reste, comme
+     * dans la vue Tasks : ce qui est en retard est ce qu'on regarde en premier.
+     */
+    const ORDER = ['overdue', 'today', 'upcoming', 'undated', 'closed'];
+    const all = d.tasks || [];
+    const sorted = [...all].sort((a, b) => {
+      const d1 = ORDER.indexOf(taskBucket(a));
+      const d2 = ORDER.indexOf(taskBucket(b));
+      if (d1 !== d2) return d1 - d2;
+      const ta = a.due_at ? new Date(a.due_at).getTime() : Infinity;
+      const tb = b.due_at ? new Date(b.due_at).getTime() : Infinity;
+      return ta - tb;
+    });
+    body = sorted.length ? `<div class="tblwrap"><table>
+      <thead><tr><th>${esc(t('common.type'))}</th><th>${esc(t('tasks.task'))}</th>
+        <th>${esc(t('tasks.due'))}</th><th>${esc(t('common.priority'))}</th>
+        <th>${esc(t('common.status'))}</th><th>${esc(t('tasks.owner'))}</th></tr></thead>
+      <tbody>${sorted.map((k) => `<tr>
+        <td class="meta">${esc(t('taskType.' + k.type))}</td>
+        <td><div class="co">${esc(k.title)}</div>
+          ${k.detail ? `<div class="meta">${esc(k.detail)}</div>` : ''}</td>
+        <td class="mono ${taskBucket(k) === 'overdue' ? 'late' : ''}">${esc(fmtDateTime(k.due_at) || t('tasks.noDate'))}</td>
+        <td>${priorityTag(k.priority)}</td>
+        <td class="meta">${esc(t('tasks.' + taskBucket(k)))}</td>
+        <td class="meta">${esc(k.assignee_name || '—')}</td></tr>`).join('')}</tbody></table></div>`
+      : `<div class="empty"><b>${esc(t('tasks.empty'))}</b>${esc(t('tasks.emptyBody'))}</div>`;
+  } else if (state.tab === 'meetings') {
+    /*
+     * §10 MEETINGS. Contrairement aux tâches, une réunion écrit dans
+     * crm_activities — elle apparaît donc aussi dans ACTIVITY. La différence :
+     * ici on lit l'enregistrement lui-même (lieu, participants, compte rendu),
+     * pas la ligne de journal qui en résume l'existence.
+     */
+    const all = d.meetings || [];
+    const row = (m) => `<div class="card">
+      <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+        <h2 style="margin:0">${esc(m.subject)}</h2>
+        <span class="tag p-medium">${esc(t('meetMode.' + m.mode))}</span>
+      </div>
+      <div class="mono" style="margin-top:6px">${esc(fmtDateTime(m.starts_at) || '')}${m.ends_at ? ` → ${esc(fmtDateTime(m.ends_at))}` : ''}</div>
+      ${m.location ? `<div class="meta" style="margin-top:6px"><b>${esc(t('meetings.location'))}</b> · ${esc(m.location)}</div>` : ''}
+      ${m.attendees ? `<div class="meta"><b>${esc(t('meetings.attendees'))}</b> · ${esc(m.attendees)}</div>` : ''}
+      ${m.outcome ? `<div style="margin-top:10px"><b>${esc(t('meetings.outcome'))}</b>
+        <p style="margin:4px 0 0;line-height:1.7;white-space:pre-wrap">${esc(m.outcome)}</p></div>` : ''}
+      ${m.notes ? `<div style="margin-top:10px"><b>${esc(t('common.detail'))}</b>
+        <p style="margin:4px 0 0;line-height:1.7;white-space:pre-wrap">${esc(m.notes)}</p></div>` : ''}
+    </div>`;
+    const now = Date.now();
+    const upcoming = all.filter((m) => m.starts_at && new Date(m.starts_at).getTime() >= now);
+    const past = all.filter((m) => !m.starts_at || new Date(m.starts_at).getTime() < now);
+    const group = (label, list) => list.length
+      ? `<div class="card"><h2>${esc(label)}</h2></div>${list.map(row).join('')}` : '';
+    body = all.length
+      ? `${group(t('meetings.upcoming'), upcoming)}${group(t('meetings.past'), past)}`
+      : `<div class="empty"><b>${esc(t('meetings.empty'))}</b>${esc(t('meetings.emptyBody'))}</div>`;
+  } else if (state.tab === 'history') {
+    /*
+     * §10 HISTORY — l'union des sources, servie par crm-history.ts.
+     *
+     * Cet onglet existe parce que ACTIVITY ne suffit pas : les tâches n'y sont
+     * jamais journalisées. §14 promet que la conversion conserve l'intégralité de
+     * l'historique commercial ; cet onglet est ce qui rend la promesse vérifiable
+     * à l'écran, chaque ligne portant sa provenance.
+     */
+    const h = d.history || { entries: [], truncated: false };
+    const e = h.entries || [];
+    body = `${h.truncated ? `<div class="warn">${esc(t('history.truncated'))}
+        <div class="meta" style="margin-top:6px">${esc(t('history.truncatedWhy'))}</div></div>` : ''}
+    <div class="card"><h2>${esc(t('history.sources'))}</h2>
+      <div class="tags">
+        <span class="tag">${esc(t('history.sourceActivity'))} <b class="num">${fmtInt((d.activities || []).length)}</b></span>
+        <span class="tag">${esc(t('history.sourceTask'))} <b class="num">${fmtInt((d.tasks || []).length)}</b></span>
+        <span class="tag">${esc(t('history.sourceMeeting'))} <b class="num">${fmtInt((d.meetings || []).length)}</b></span>
+      </div>
+      <p class="hint" style="margin-top:10px">${esc(t('history.sourcesHint'))}</p></div>
+    ${e.length ? `<div class="card"><h2>${esc(t('company.tabHistory'))}</h2>
+      <ul class="timeline">${e.map((x) => `
+        <li><span class="tl-d">${esc(fmtDate(x.at) || '')}</span>
+          <span class="tl-b"><b>${esc(x.title || '—')}</b>
+            ${x.detail ? `<span style="white-space:pre-wrap">${esc(x.detail)}</span>` : ''}
+            <span>${esc(t('history.source' + x.source.charAt(0).toUpperCase() + x.source.slice(1)))}${x.kind ? ` · ${esc(kindLabel(x))}` : ''}${x.actor ? ` · ${esc(x.actor)}` : ''}</span>
+          </span></li>`).join('')}</ul></div>`
+      : `<div class="empty"><b>${esc(t('history.empty'))}</b>${esc(t('history.emptyBody'))}</div>`}`;
   }
 
   return `
@@ -2673,12 +2828,20 @@ async function openCompany(id) {
   try {
     if (state.demo) {
       const company = demoCompanies().find((c) => c.id === id) || null;
+      const activities = [
+        { id:'a1', type:'created', summary:`Prospect créé : ${company?.name || ''}`, actor_name:'Founder', occurred_at:new Date().toISOString() },
+      ];
+      const tasks = demoTasks().filter((k) => k.company_id === id);
+      const meetings = demoMeetings().filter((m) => m.company_id === id);
       state.detail = {
         company,
         contacts: demoContacts().filter((c) => c.company_id === id),
-        activities: [
-          { id:'a1', type:'created', summary:`Prospect créé : ${company?.name || ''}`, actor_name:'Founder', occurred_at:new Date().toISOString() },
-        ],
+        activities,
+        tasks,
+        meetings,
+        /* Recalculé, pas collé : les dates de la démo sont dynamiques. Voir
+           mergeHistory() pour le contrôle qui empêche la divergence. */
+        history: { entries: mergeHistory(activities, tasks, meetings), truncated: false },
         /* Sortie réelle de assessOpportunity() sur les champs de d1 : la démo
            montre le même résultat que le serveur, pas une variante écrite à la
            main qui divergerait silencieusement. */

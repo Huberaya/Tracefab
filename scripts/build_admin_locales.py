@@ -522,6 +522,20 @@ EN = {
   "leads.status.converted": "Converted",
   "leads.status.discarded": "Discarded",
 
+  # Chantier Admin 10 — §10 TASKS, MEETINGS, HISTORY
+  "company.tabTasks": "Tasks",
+  "company.tabMeetings": "Meetings",
+  "company.tabHistory": "History",
+  "tasks.today": "Today",
+  "history.sources": "Sources",
+  "history.sourcesHint": "Every record attached to this company, from every source. Tasks are never written to the activity log, so this is the only place where nothing is lost.",
+  "history.sourceActivity": "Activity",
+  "history.sourceTask": "Task",
+  "history.sourceMeeting": "Meeting",
+  "history.truncated": "This history is incomplete",
+  "history.truncatedWhy": "Too many records to serve at once, so the oldest ones are cut. Filter or export to see the rest.",
+  "history.empty": "No history yet",
+  "history.emptyBody": "Nothing has been recorded for this company yet — no activity, no task, no meeting.",
 }
 
 FR = {
@@ -1034,6 +1048,20 @@ FR = {
   "leads.status.converted": "Converti",
   "leads.status.discarded": "Écarté",
 
+  # Chantier Admin 10 — §10 TASKS, MEETINGS, HISTORY
+  "company.tabTasks": "Tâches",
+  "company.tabMeetings": "Rendez-vous",
+  "company.tabHistory": "Historique",
+  "tasks.today": "Aujourd'hui",
+  "history.sources": "Sources",
+  "history.sourcesHint": "Tous les enregistrements rattachés à cette entreprise, quelle que soit leur source. Les tâches ne sont jamais écrites dans le journal d'activité : c'est donc le seul endroit où rien ne se perd.",
+  "history.sourceActivity": "Activité",
+  "history.sourceTask": "Tâche",
+  "history.sourceMeeting": "Rendez-vous",
+  "history.truncated": "Cet historique est incomplet",
+  "history.truncatedWhy": "Trop d'enregistrements à servir d'un coup : les plus anciens sont coupés. Filtrez ou exportez pour voir le reste.",
+  "history.empty": "Aucun historique pour l'instant",
+  "history.emptyBody": "Rien n'a encore été enregistré pour cette entreprise : aucune activité, aucune tâche, aucun rendez-vous.",
 }
 
 DE = {
@@ -1546,6 +1574,20 @@ DE = {
   "leads.status.converted": "Umgewandelt",
   "leads.status.discarded": "Abgelehnt",
 
+  # Chantier Admin 10 — §10 TASKS, MEETINGS, HISTORY
+  "company.tabTasks": "Aufgaben",
+  "company.tabMeetings": "Termine",
+  "company.tabHistory": "Verlauf",
+  "tasks.today": "Heute",
+  "history.sources": "Quellen",
+  "history.sourcesHint": "Alle Datensätze zu diesem Unternehmen, aus jeder Quelle. Aufgaben werden nie ins Aktivitätsprotokoll geschrieben — hier geht nichts verloren.",
+  "history.sourceActivity": "Aktivität",
+  "history.sourceTask": "Aufgabe",
+  "history.sourceMeeting": "Termin",
+  "history.truncated": "Dieser Verlauf ist unvollständig",
+  "history.truncatedWhy": "Zu viele Datensätze für eine Antwort: die ältesten wurden abgeschnitten. Filtern oder exportieren Sie, um den Rest zu sehen.",
+  "history.empty": "Noch kein Verlauf",
+  "history.emptyBody": "Für dieses Unternehmen wurde noch nichts erfasst — keine Aktivität, keine Aufgabe, kein Termin.",
 }
 
 IT = {
@@ -2058,6 +2100,20 @@ IT = {
   "leads.status.converted": "Convertito",
   "leads.status.discarded": "Scartato",
 
+  # Chantier Admin 10 — §10 TASKS, MEETINGS, HISTORY
+  "company.tabTasks": "Task",
+  "company.tabMeetings": "Riunioni",
+  "company.tabHistory": "Storico",
+  "tasks.today": "Oggi",
+  "history.sources": "Fonti",
+  "history.sourcesHint": "Tutti i record collegati a questa azienda, da ogni fonte. I task non vengono mai scritti nel registro attività: qui non si perde nulla.",
+  "history.sourceActivity": "Attività",
+  "history.sourceTask": "Task",
+  "history.sourceMeeting": "Riunione",
+  "history.truncated": "Questo storico è incompleto",
+  "history.truncatedWhy": "Troppi record per una sola risposta: i più vecchi sono tagliati. Filtra o esporta per vedere il resto.",
+  "history.empty": "Ancora nessuno storico",
+  "history.emptyBody": "Non è ancora stato registrato nulla per questa azienda: nessuna attività, nessun task, nessuna riunione.",
 }
 
 ES = {
@@ -2570,6 +2626,20 @@ ES = {
   "leads.status.converted": "Convertido",
   "leads.status.discarded": "Descartado",
 
+  # Chantier Admin 10 — §10 TASKS, MEETINGS, HISTORY
+  "company.tabTasks": "Tareas",
+  "company.tabMeetings": "Reuniones",
+  "company.tabHistory": "Historial",
+  "tasks.today": "Hoy",
+  "history.sources": "Fuentes",
+  "history.sourcesHint": "Todos los registros vinculados a esta empresa, de cada fuente. Las tareas nunca se escriben en el registro de actividad: aquí no se pierde nada.",
+  "history.sourceActivity": "Actividad",
+  "history.sourceTask": "Tarea",
+  "history.sourceMeeting": "Reunión",
+  "history.truncated": "Este historial está incompleto",
+  "history.truncatedWhy": "Demasiados registros para una sola respuesta: los más antiguos se cortan. Filtra o exporta para ver el resto.",
+  "history.empty": "Todavía no hay historial",
+  "history.emptyBody": "Aún no se ha registrado nada para esta empresa: ninguna actividad, ninguna tarea, ninguna reunión.",
 }
 
 NL = {
@@ -3082,6 +3152,20 @@ NL = {
   "leads.status.converted": "Geconverteerd",
   "leads.status.discarded": "Afgewezen",
 
+  # Chantier Admin 10 — §10 TASKS, MEETINGS, HISTORY
+  "company.tabTasks": "Taken",
+  "company.tabMeetings": "Afspraken",
+  "company.tabHistory": "Geschiedenis",
+  "tasks.today": "Vandaag",
+  "history.sources": "Bronnen",
+  "history.sourcesHint": "Alle records bij dit bedrijf, uit elke bron. Taken worden nooit in het activiteitenlogboek geschreven: hier gaat niets verloren.",
+  "history.sourceActivity": "Activiteit",
+  "history.sourceTask": "Taak",
+  "history.sourceMeeting": "Afspraak",
+  "history.truncated": "Deze geschiedenis is onvolledig",
+  "history.truncatedWhy": "Te veel records voor één antwoord: de oudste zijn afgekapt. Filter of exporteer om de rest te zien.",
+  "history.empty": "Nog geen geschiedenis",
+  "history.emptyBody": "Er is nog niets vastgelegd voor dit bedrijf — geen activiteit, geen taak, geen afspraak.",
 }
 
 PT = {
@@ -3594,6 +3678,20 @@ PT = {
   "leads.status.converted": "Convertido",
   "leads.status.discarded": "Descartado",
 
+  # Chantier Admin 10 — §10 TASKS, MEETINGS, HISTORY
+  "company.tabTasks": "Tarefas",
+  "company.tabMeetings": "Reuniões",
+  "company.tabHistory": "Histórico",
+  "tasks.today": "Hoje",
+  "history.sources": "Fontes",
+  "history.sourcesHint": "Todos os registos ligados a esta empresa, de cada fonte. As tarefas nunca são escritas no registo de atividade: aqui nada se perde.",
+  "history.sourceActivity": "Atividade",
+  "history.sourceTask": "Tarefa",
+  "history.sourceMeeting": "Reunião",
+  "history.truncated": "Este histórico está incompleto",
+  "history.truncatedWhy": "Demasiados registos para uma só resposta: os mais antigos são cortados. Filtre ou exporte para ver o resto.",
+  "history.empty": "Ainda sem histórico",
+  "history.emptyBody": "Ainda nada foi registado para esta empresa: nenhuma atividade, nenhuma tarefa, nenhuma reunião.",
 }
 
 DICTS = {"en": EN, "fr": FR, "de": DE, "it": IT, "es": ES, "nl": NL, "pt": PT}
@@ -3621,6 +3719,8 @@ def used_keys():
                  # Chantier Admin 02 — construites par NAV_OPS.map(id => t('nav.' + id))
                  "tasks","activities","meetings","pilots","customers","analytics"],
         "taskType.": ["call","email","follow_up","book_demo","prepare_demo","send_proposal","follow_pilot","other"],
+        # Chantier Admin 10 — construit par t('tasks.' + taskBucket(k)) dans la fiche entreprise
+        "tasks.": ["overdue","today","upcoming","undated","closed"],
         "meetMode.": ["onsite","video","call"],
         "pilotStatus.": ["planned","active","completed","abandoned"],
         "interest.": ["unknown","low","medium","high"],

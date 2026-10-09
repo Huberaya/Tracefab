@@ -7,6 +7,7 @@ import { parseCompanyInput } from '../../../_lib/crm.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { auditAdmin } from '../../../_lib/crm-audit-write.js';
 import { assessOpportunity } from '../../../_lib/crm-opportunity.js';
+import { buildCompanyHistory } from '../../../_lib/crm-history.js';
 
 /**
  * GET   /api/admin/companies/:companyId — fiche complète (entreprise, contacts, activité)
@@ -16,6 +17,16 @@ import { assessOpportunity } from '../../../_lib/crm-opportunity.js';
  * de pipeline est toujours journalisé. Un PATCH silencieux sur `stage` rendrait
  * l'historique commercial faux.
  */
+
+/*
+ * Bornes de lecture. Elles existent pour qu'une entreprise très active ne fasse
+ * pas exploser la réponse — mais une borne qui coupe sans le dire transformerait
+ * l'onglet HISTORY en promesse fausse. D'où les compteurs servis à côté.
+ */
+const ACTIVITY_LIMIT = 500;
+const TASK_LIMIT = 200;
+const MEETING_LIMIT = 200;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') return read(req, res);
   if (req.method === 'PATCH') return update(req, res);
@@ -32,7 +43,15 @@ async function read(req: VercelRequest, res: VercelResponse) {
         where: { id: companyId, platform_organization_id: admin.platformOrganizationId },
         include: {
           crm_contacts: { orderBy: { created_at: 'asc' } },
-          crm_activities: { orderBy: { occurred_at: 'desc' }, take: 100 },
+          crm_activities: { orderBy: { occurred_at: 'desc' }, take: ACTIVITY_LIMIT },
+          /*
+           * §10 : TASKS et MEETINGS. Les réunions apparaissent déjà dans la
+           * timeline (meetings.ts écrit une crm_activities), les tâches NON —
+           * tasks.ts n'en écrit aucune. Servir les tâches séparément est donc la
+           * seule façon de ne pas les perdre de l'historique commercial (§14).
+           */
+          crm_tasks: { orderBy: { due_at: 'asc' }, take: TASK_LIMIT },
+          crm_meetings: { orderBy: { starts_at: 'desc' }, take: MEETING_LIMIT },
         },
       });
       return company;
@@ -43,6 +62,8 @@ async function read(req: VercelRequest, res: VercelResponse) {
     const company = result as Record<string, unknown> & {
       crm_contacts: unknown[];
       crm_activities: unknown[];
+      crm_tasks: unknown[];
+      crm_meetings: unknown[];
     };
     /*
      * §4 : l'opportunité TRACEFAB est DÉRIVÉE côté serveur, à partir des champs
@@ -51,10 +72,28 @@ async function read(req: VercelRequest, res: VercelResponse) {
      */
     const opportunity = assessOpportunity(company);
 
+    /*
+     * §10 HISTORY — union des sources, construite côté serveur.
+     *
+     * Une borne atteinte EST une troncature : on la déclare. L'interface affiche
+     * alors que l'historique est incomplet plutôt que de le laisser croire entier.
+     */
+    const history = buildCompanyHistory({
+      activities: company.crm_activities,
+      tasks: company.crm_tasks,
+      meetings: company.crm_meetings,
+      activitiesTruncated: company.crm_activities.length >= ACTIVITY_LIMIT,
+      tasksTruncated: company.crm_tasks.length >= TASK_LIMIT,
+      meetingsTruncated: company.crm_meetings.length >= MEETING_LIMIT,
+    });
+
     return json(res, 200, {
       company,
       contacts: company.crm_contacts,
       activities: company.crm_activities,
+      tasks: company.crm_tasks,
+      meetings: company.crm_meetings,
+      history,
       opportunity,
     });
   } catch (error) {
