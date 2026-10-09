@@ -223,7 +223,12 @@ jobs:
     # place : l'epreuve tourne a chaque poussee, y compris depuis un fork.
     services:
       postgres:
-        image: postgres:17
+        # Miroir public ECR de l'image officielle postgres:17 (contenu
+        # identique). Docker Hub limite les pulls anonymes depuis les runners
+        # partages : « Docker pull failed » en boucle alors que le code n'est
+        # pas en cause. A retester depuis docker.io quand les quotas le
+        # permettent.
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
