@@ -8,6 +8,7 @@ import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { auditAdmin } from '../../../_lib/crm-audit-write.js';
 import { assessOpportunity } from '../../../_lib/crm-opportunity.js';
 import { buildCompanyHistory } from '../../../_lib/crm-history.js';
+import { annotateContacts } from '../../../_lib/crm-titles.js';
 
 /**
  * GET   /api/admin/companies/:companyId — fiche complète (entreprise, contacts, activité)
@@ -89,7 +90,9 @@ async function read(req: VercelRequest, res: VercelResponse) {
 
     return json(res, 200, {
       company,
-      contacts: company.crm_contacts,
+      /* §6 : mêmes titres prioritaires que dans /contacts — un contact ne peut
+         pas être prioritaire dans une vue et inconnu dans l'autre. */
+      contacts: annotateContacts(company.crm_contacts as Array<Record<string, unknown>>),
       activities: company.crm_activities,
       tasks: company.crm_tasks,
       meetings: company.crm_meetings,

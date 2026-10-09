@@ -160,6 +160,21 @@ tbody tr:hover{background:#fafcf9}
 .pcard b{display:block;font-size:12.5px;letter-spacing:-.01em;line-height:1.3}
 .pcard .m{color:var(--muted);font-size:11px;margin-top:3px}
 .pcard .row{display:flex;gap:5px;align-items:center;margin-top:6px;flex-wrap:wrap}
+/*
+ * Glisser-déposer du pipeline (§5).
+ * Chaque état visuel correspond à un état réel : `.dragging` = la carte est
+ * tenue, `.dropover` = la colonne accepterait le dépôt, `.pending` = l'écriture
+ * est en cours et la carte n'est plus cliquable tant que le serveur n'a pas
+ * répondu. Aucune animation décorative.
+ */
+.pcard[draggable="true"]{cursor:grab}
+.pcard.dragging{opacity:.45}
+.pcard.pending{opacity:.6;pointer-events:none}
+.pcard:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.colbody.dropover{outline:2px dashed var(--green);outline-offset:-4px}
+/* Région vivante : un glisser-déposer est invisible au lecteur d'écran, le
+   résultat du déplacement doit donc être annoncé. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 /* --- détail -------------------------------------------------------------- */
 .head{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
@@ -865,6 +880,22 @@ const priorityTag = (p) => `<span class="tag p-${esc(p)}">${esc(t('priority.' + 
  * table de traduction ne connaît pas ne doit pas s'afficher comme une clé cassée
  * (`taskType.machin`) : on retombe sur la valeur brute, qui reste lisible.
  */
+/*
+ * §6 — Cellule de titre de poste.
+ *
+ * `priority_title` vient du serveur (crm-titles.ts) : la page ne recopie pas la
+ * liste de correspondance. La valeur SAISIE reste affichée telle quelle — le
+ * produit signale une cible prioritaire, il ne réécrit pas ce que l'utilisateur
+ * a entré. Un titre non reconnu ne produit aucun badge : mieux vaut rien qu'un
+ * faux positif qui ferait perdre du temps commercial.
+ */
+function titleCell(value, priority) {
+  const shown = esc(value || '—');
+  return priority
+    ? `${shown} <span class="tag p-high">${esc(t('contacts.priorityTitle'))}</span>`
+    : shown;
+}
+
 function kindLabel(entry) {
   const prefix = entry.source === 'task' ? 'taskType.'
     : entry.source === 'meeting' ? 'meetMode.' : 'activity.';
@@ -1101,9 +1132,12 @@ function viewPipeline() {
     const cards = state.companies.items.filter((c) => c.stage === s);
     return `<div class="col">
       <div class="colhead"><b>${esc(t('stage.' + s))}</b><span class="c">${cards.length}</span></div>
-      <div class="colbody">
+      <div class="colbody" data-drop="${esc(s)}" role="list"
+        aria-label="${esc(t('stage.' + s))}">
         ${cards.map((c) => `
-          <div class="pcard" data-open="${esc(c.id)}">
+          <div class="pcard" data-open="${esc(c.id)}" data-drag="${esc(c.id)}"
+            data-stage="${esc(c.stage)}" draggable="true" tabindex="0" role="listitem"
+            aria-label="${esc(c.name)} — ${esc(t('stage.' + c.stage))}. ${esc(t('pipeline.dragHelp'))}">
             <b>${esc(c.name)}</b>
             <div class="m">${esc(c.country_code || '—')} · ${esc(fmtInt(c.product_count))} ${esc(t('common.products'))}</div>
             <div class="row">${priorityTag(c.priority)}
@@ -1113,7 +1147,9 @@ function viewPipeline() {
       </div>
     </div>`;
   }).join('')}</div>
-  <p class="hint">${esc(t('pipeline.hint'))}</p>`;
+  <p class="hint">${esc(t('pipeline.hint'))}</p>
+  <p class="hint">${esc(t('pipeline.keyboardHint'))}</p>
+  <div class="sr-only" role="status" aria-live="polite" id="pipeline-live"></div>`;
 }
 
 function viewContacts() {
@@ -1122,7 +1158,7 @@ function viewContacts() {
     <tr data-contact="${esc(c.id)}">
       <td><div class="co">${esc([c.first_name, c.last_name].filter(Boolean).join(' ') || '—')}</div>
         <div class="meta">${esc(c.email || '—')}</div></td>
-      <td>${esc(c.job_title || '—')}</td>
+      <td>${titleCell(c.job_title, c.priority_title)}</td>
       <td>${esc(c.crm_companies?.name || '—')}</td>
       <td>${c.is_decision_maker ? `<span class="tag p-high">${esc(t('contacts.decisionMaker'))}</span>` : '—'}</td>
       <td class="num">${esc(c.influence_level)}</td>
@@ -1273,7 +1309,7 @@ function viewCompany() {
         <tbody>${d.contacts.map((k) => `
           <tr>
             <td class="co">${esc([k.first_name, k.last_name].filter(Boolean).join(' ') || '—')}</td>
-            <td>${esc(k.job_title || '—')}</td>
+            <td>${titleCell(k.job_title, k.priority_title)}</td>
             <td class="mono">${esc(k.email || '—')}</td>
             <td class="mono">${esc(k.phone || '—')}</td>
             <td>${k.is_decision_maker ? esc(t('common.yes')) : esc(t('common.no'))}</td>
@@ -1528,7 +1564,11 @@ function modalContact() {
     <div class="form">
       ${inp('first_name', t('contacts.firstName'))}
       ${inp('last_name', t('contacts.lastName'))}
-      ${inp('job_title', t('contacts.jobTitle'))}
+      ${inp('job_title', t('contacts.jobTitle'), '', 'list="job-title-list" aria-describedby="job-title-hint"')}
+      <datalist id="job-title-list">
+        ${(state.contacts.priority_titles || []).map((x) => `<option value="${esc(x)}"></option>`).join('')}
+      </datalist>
+      <div class="hint" id="job-title-hint">${esc(t('contacts.jobTitleHint'))}</div>
       ${inp('email', t('contacts.email'))}
       ${inp('phone', t('contacts.phone'))}
       ${inp('linkedin_url', t('contacts.linkedin'))}
@@ -2652,6 +2692,21 @@ function bind() {
     go('prospects');
   }));
   all('[data-open]').forEach((el) => el.addEventListener('click', () => openCompany(el.dataset.open)));
+  /*
+   * §5 — glisser-déposer du pipeline.
+   * Les écouteurs sont posés sur le tableau, pas sur chaque carte : le tableau
+   * est re-rendu à chaque déplacement, et des écouteurs par carte seraient
+   * perdus au premier rendu.
+   */
+  const board = document.querySelector('.board');
+  if (board) {
+    board.addEventListener('dragstart', onPipelineDragStart);
+    board.addEventListener('dragend', onPipelineDragEnd);
+    board.addEventListener('dragover', onPipelineDragOver);
+    board.addEventListener('dragleave', onPipelineDragLeave);
+    board.addEventListener('drop', onPipelineDrop);
+    board.addEventListener('keydown', onPipelineKeydown);
+  }
   all('[data-campaign]').forEach((el) => el.addEventListener('click', () => openCampaign(el.dataset.campaign)));
   all('[data-lead]').forEach((el) => el.addEventListener('click', () => openLead(el.dataset.lead)));
   all('[data-promote]').forEach((el) => el.addEventListener('click', () => promoteLead(el.dataset.promote)));
@@ -2823,8 +2878,42 @@ async function loadCompanies() {
   state.companies = await api(`/api/admin/companies?${queryString()}`);
 }
 
+/*
+ * §6 — Les dix titres prioritaires, en démonstration seulement.
+ *
+ * En mode réel la liste vient de l'API (`priority_titles`) : la page n'a pas de
+ * système de modules et ne peut pas importer crm-titles.ts. En démonstration
+ * aucun appel réseau n'est possible, d'où cet exemplaire — et test_admin_chantier06
+ * vérifie qu'il est IDENTIQUE au module serveur. Sans ce contrôle, ajouter un
+ * titre d'un côté sans l'autre passerait inaperçu.
+ */
+const DEMO_PRIORITY_TITLES = [
+  'CEO', 'Founder', 'COO', 'Supply Chain Director', 'Sustainability Director',
+  'Procurement Director', 'Compliance Director', 'Digital Product Manager',
+  'Product Development Director', 'CSR/ESG Manager',
+];
+
 async function loadContacts() {
-  if (state.demo) { state.contacts = { items: demoContacts() }; return; }
+  if (state.demo) {
+    /*
+     * En démonstration aucun serveur n'annote : sans cette étape le badge
+     * prioritaire n'apparaîtrait JAMAIS dans la démo, alors que c'est
+     * précisément ce qu'on montre à un prospect.
+     *
+     * La comparaison est exacte et insensible à la casse, volontairement plus
+     * simple que crm-titles.ts : la reconnaissance fine (C.E.O., équivalents
+     * étrangers) reste du côté serveur, et la liste comparée est celle que le
+     * test vérifie identique au module. Le rendu, lui, n'a qu'un seul chemin :
+     * `priority_title`.
+     */
+    const known = new Map(DEMO_PRIORITY_TITLES.map((x) => [x.toLowerCase(), x]));
+    const items = demoContacts().map((c) => ({
+      ...c,
+      priority_title: known.get(String(c.job_title || '').toLowerCase()) || null,
+    }));
+    state.contacts = { items, priority_titles: DEMO_PRIORITY_TITLES };
+    return;
+  }
   state.contacts = await api('/api/admin/contacts');
 }
 
@@ -3631,30 +3720,158 @@ async function saveModal() {
   }
 }
 
-async function moveStage(stage) {
-  const company = state.detail?.company;
-  if (!company || company.stage === stage) return;
-  if (state.demo) { state.error = t('common.demoReadOnly'); render(); return; }
+/*
+ * §5 — UNE SEULE porte d'écriture pour un changement de stade.
+ *
+ * La fiche détail et le glisser-déposer du pipeline appellent tous les deux cette
+ * fonction. Deux chemins d'écriture finissent toujours par diverger, et un
+ * mouvement de pipeline non journalisé rendrait l'historique commercial faux.
+ *
+ * Le passage à LOST exige une raison (§5) : sans elle, un portefeuille perd ses
+ * clients sans qu'on puisse jamais dire pourquoi.
+ */
+async function applyStageMove(companyId, stage) {
+  if (!companyId || !stage) return null;
+  const current = (state.companies.items || []).find((c) => c.id === companyId);
+  if (current && current.stage === stage) return null;   // déposer sur sa propre colonne : rien à faire
+  if (state.detail?.company?.id === companyId && state.detail.company.stage === stage) return null;
 
   let lostReason = null;
   if (stage === 'lost') {
     lostReason = window.prompt(t('pipeline.lostReasonPrompt'));
-    if (!lostReason) { render(); return; }
+    if (!lostReason) return null;                        // abandon : on ne force pas la perte
   }
-  try {
-    const res = await api(`/api/admin/companies/${encodeURIComponent(company.id)}/stage`, {
-      method: 'PATCH',
-      body: JSON.stringify({ stage, lost_reason: lostReason }),
-    });
+
+  const res = await api(`/api/admin/companies/${encodeURIComponent(companyId)}/stage`, {
+    method: 'PATCH',
+    body: JSON.stringify({ stage, lost_reason: lostReason }),
+  });
+
+  /* La liste est rafraîchie depuis la RÉPONSE DU SERVEUR : déplacer la carte
+     avant confirmation ferait mentir le tableau si l'écriture échouait. */
+  if (state.detail?.company?.id === companyId) {
     state.detail.company = res.company;
     state.detail.activities = (await api(
-      `/api/admin/companies/${encodeURIComponent(company.id)}/activities`,
+      `/api/admin/companies/${encodeURIComponent(companyId)}/activities`,
     )).items;
+  }
+  if (state.view === 'pipeline' || state.view === 'prospects' || state.view === 'customers') {
+    await loadCompanies();
+  }
+  return res.company;
+}
+
+/* Déplacement depuis la fiche ouverte : délègue à la porte unique. */
+async function moveStage(stage) {
+  const company = state.detail?.company;
+  if (!company || company.stage === stage) return;
+  if (state.demo) { state.error = t('common.demoReadOnly'); render(); return; }
+  try {
+    await applyStageMove(company.id, stage);
     state.error = null;
   } catch (e) {
     state.error = e.message;
   }
   render();
+}
+
+/*
+ * Glisser-déposer du pipeline (§5).
+ *
+ * L'ordre des étapes compte : dragstart mémorise la carte, dragover doit appeler
+ * preventDefault pour que le dépôt soit autorisé, drop écrit. Sans preventDefault
+ * le navigateur annule silencieusement le drop et rien ne se passe.
+ */
+let dragCompanyId = null;
+
+function announce(message) {
+  const live = document.getElementById('pipeline-live');
+  if (live) live.textContent = message;
+}
+
+function onPipelineDragStart(event) {
+  const card = event.target.closest('[data-drag]');
+  if (!card) return;
+  dragCompanyId = card.dataset.drag;
+  card.classList.add('dragging');
+  /* dataTransfer est obligatoire pour que Firefox accepte le glissement ; sans
+     setData, le drag démarre puis s'annule sans erreur. */
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', dragCompanyId);
+  }
+}
+
+function onPipelineDragEnd() {
+  dragCompanyId = null;
+  document.querySelectorAll('.pcard.dragging').forEach((el) => el.classList.remove('dragging'));
+  document.querySelectorAll('.colbody.dropover').forEach((el) => el.classList.remove('dropover'));
+}
+
+function onPipelineDragOver(event) {
+  const zone = event.target.closest('[data-drop]');
+  if (!zone || !dragCompanyId) return;
+  event.preventDefault();                       // sans ceci, aucun drop n'est possible
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  zone.classList.add('dropover');
+}
+
+function onPipelineDragLeave(event) {
+  const zone = event.target.closest('[data-drop]');
+  if (zone && !zone.contains(event.relatedTarget)) zone.classList.remove('dropover');
+}
+
+async function onPipelineDrop(event) {
+  const zone = event.target.closest('[data-drop]');
+  if (!zone) return;
+  event.preventDefault();
+  zone.classList.remove('dropover');
+  const id = dragCompanyId || (event.dataTransfer && event.dataTransfer.getData('text/plain'));
+  const stage = zone.dataset.drop;
+  onPipelineDragEnd();
+  if (!id || !stage) return;
+  await moveCompanyTo(id, stage);
+}
+
+/* Écriture déclenchée par le tableau, avec retour lisible et accessible. */
+async function moveCompanyTo(companyId, stage) {
+  const card = document.querySelector(`[data-drag="${companyId}"]`);
+  const name = card ? (card.querySelector('b')?.textContent || companyId) : companyId;
+  if (state.demo) {
+    state.error = t('common.demoReadOnly');
+    announce(t('common.demoReadOnly'));
+    render();
+    return;
+  }
+  if (card) card.classList.add('pending');
+  try {
+    const updated = await applyStageMove(companyId, stage);
+    state.error = null;
+    if (updated) announce(`${name} — ${t('stage.' + updated.stage)}`);
+  } catch (e) {
+    state.error = e.message;
+    announce(e.message);
+    if (card) card.classList.remove('pending');
+  }
+  render();
+}
+
+/*
+ * Le glisser-déposer est inaccessible au clavier et au lecteur d'écran : sans
+ * équivalent, §5 ne serait utilisable qu'à la souris. Ctrl/Cmd + flèche déplace
+ * d'un stade, et le résultat passe par la région vivante.
+ */
+async function onPipelineKeydown(event) {
+  const card = event.target.closest('[data-drag]');
+  if (!card) return;
+  if (!(event.ctrlKey || event.metaKey)) return;
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+  event.preventDefault();
+  const cols = [...STAGES, STAGE_LOST];
+  const at = cols.indexOf(card.dataset.stage);
+  const next = cols[at + (event.key === 'ArrowRight' ? 1 : -1)];
+  if (!next) return;
+  await moveCompanyTo(card.dataset.drag, next);
 }
 
 /* ---------------------------------------------------------------- langue */

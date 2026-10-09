@@ -4,6 +4,7 @@ import { isUnauthorized } from '../../_lib/auth.js';
 import { isAdminAccessDenied, requirePlatformAdmin } from '../../_lib/admin-access.js';
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { CONTACT_STATUSES, parseContactInput } from '../../_lib/crm.js';
+import { annotateContacts, PRIORITY_TITLES } from '../../_lib/crm-titles.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { auditAdmin } from '../../_lib/crm-audit-write.js';
 
@@ -57,7 +58,7 @@ async function list(req: VercelRequest, res: VercelResponse) {
     const limitRaw = Number(first(req.query.limit) ?? 100);
     const limit = Number.isInteger(limitRaw) && limitRaw > 0 && limitRaw <= 500 ? limitRaw : 100;
 
-    const items = (await withTracefabUserContext(admin.userId, admin.userEmail, (tx) =>
+    const result = (await withTracefabUserContext(admin.userId, admin.userEmail, (tx) =>
       tx.crm_contacts.findMany({
         where,
         orderBy: [{ is_decision_maker: 'desc' }, { influence_level: 'desc' }, { created_at: 'asc' }],
@@ -66,7 +67,25 @@ async function list(req: VercelRequest, res: VercelResponse) {
       }),
     )) as unknown;
 
-    return json(res, 200, { items, limit });
+    /*
+     * §6 — les titres prioritaires sont reconnus ICI, pas dans le composant.
+     *
+     * La page n'a pas de système de modules : recopier la liste côté client
+     * donnerait deux sources de vérité qui divergeraient au premier ajout de
+     * titre. `priority_title` vaut le titre canonique ou null — jamais un
+     * booléen deviné : c'est la forme saisie qui reste affichée, le produit ne
+     * réécrit pas ce que l'utilisateur a entré.
+     */
+    const items = annotateContacts(
+      (Array.isArray(result) ? (result as Array<Record<string, unknown>>) : []),
+    );
+
+    /*
+     * La liste canonique est SERVIE, pas recopiée dans le composant : la page
+     * n'a pas de système de modules et ne peut pas importer crm-titles.ts. Un
+     * second exemplaire côté client divergerait au premier titre ajouté.
+     */
+    return json(res, 200, { items, limit, priority_titles: [...PRIORITY_TITLES] });
   } catch (error) {
     return fail(res, error, 'GET /api/admin/contacts');
   }

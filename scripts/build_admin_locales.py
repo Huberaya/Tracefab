@@ -541,6 +541,11 @@ EN = {
   "import.fileHint": "CSV or Excel (.xlsx). The format is read from the content, not from the file name.",
   "import.fileChosen": "Selected file",
   "import.demoNoBinary": "Demonstration mode cannot read a binary workbook. Paste a CSV sample to explore the import.",
+  # Chantier Admin 05/06 — §5 glisser-déposer, §6 titres prioritaires
+  "pipeline.dragHelp": "Drag to another column to change the stage.",
+  "pipeline.keyboardHint": "Keyboard: focus a card, then Ctrl + left or right arrow moves it one stage.",
+  "contacts.jobTitleHint": "The ten priority titles are suggested as you type. Any other title stays valid.",
+  "contacts.priorityTitle": "Priority target",
 }
 
 FR = {
@@ -1072,6 +1077,11 @@ FR = {
   "import.fileHint": "CSV ou Excel (.xlsx). Le format est lu dans le contenu, pas dans le nom du fichier.",
   "import.fileChosen": "Fichier choisi",
   "import.demoNoBinary": "Le mode démonstration ne peut pas lire un classeur binaire. Collez un exemple CSV pour explorer l'import.",
+  # Chantier Admin 05/06 — §5 glisser-déposer, §6 titres prioritaires
+  "pipeline.dragHelp": "Glissez vers une autre colonne pour changer de stade.",
+  "pipeline.keyboardHint": "Clavier : sélectionnez une carte, puis Ctrl + flèche gauche ou droite la déplace d'un stade.",
+  "contacts.jobTitleHint": "Les dix titres prioritaires sont suggérés à la saisie. Tout autre titre reste valable.",
+  "contacts.priorityTitle": "Cible prioritaire",
 }
 
 DE = {
@@ -1603,6 +1613,11 @@ DE = {
   "import.fileHint": "CSV oder Excel (.xlsx). Das Format wird aus dem Inhalt gelesen, nicht aus dem Dateinamen.",
   "import.fileChosen": "Gewählte Datei",
   "import.demoNoBinary": "Der Demonstrationsmodus kann keine binäre Arbeitsmappe lesen. Fügen Sie ein CSV-Beispiel ein, um den Import zu erkunden.",
+  # Chantier Admin 05/06 — §5 glisser-déposer, §6 titres prioritaires
+  "pipeline.dragHelp": "In eine andere Spalte ziehen, um die Phase zu ändern.",
+  "pipeline.keyboardHint": "Tastatur: Karte fokussieren, dann Strg + Pfeil links oder rechts verschiebt sie um eine Phase.",
+  "contacts.jobTitleHint": "Die zehn vorrangigen Titel werden beim Tippen vorgeschlagen. Jeder andere Titel bleibt gültig.",
+  "contacts.priorityTitle": "Vorrangiges Ziel",
 }
 
 IT = {
@@ -2134,6 +2149,11 @@ IT = {
   "import.fileHint": "CSV o Excel (.xlsx). Il formato è letto dal contenuto, non dal nome del file.",
   "import.fileChosen": "File selezionato",
   "import.demoNoBinary": "La modalità dimostrazione non può leggere una cartella di lavoro binaria. Incolla un esempio CSV per esplorare l'importazione.",
+  # Chantier Admin 05/06 — §5 glisser-déposer, §6 titres prioritaires
+  "pipeline.dragHelp": "Trascina in un'altra colonna per cambiare fase.",
+  "pipeline.keyboardHint": "Tastiera: seleziona una scheda, poi Ctrl + freccia sinistra o destra la sposta di una fase.",
+  "contacts.jobTitleHint": "I dieci titoli prioritari sono suggeriti durante la digitazione. Ogni altro titolo resta valido.",
+  "contacts.priorityTitle": "Target prioritario",
 }
 
 ES = {
@@ -2665,6 +2685,11 @@ ES = {
   "import.fileHint": "CSV o Excel (.xlsx). El formato se lee del contenido, no del nombre del archivo.",
   "import.fileChosen": "Archivo seleccionado",
   "import.demoNoBinary": "El modo demostración no puede leer un libro binario. Pega un ejemplo CSV para explorar la importación.",
+  # Chantier Admin 05/06 — §5 glisser-déposer, §6 titres prioritaires
+  "pipeline.dragHelp": "Arrastra a otra columna para cambiar de etapa.",
+  "pipeline.keyboardHint": "Teclado: selecciona una tarjeta y Ctrl + flecha izquierda o derecha la mueve una etapa.",
+  "contacts.jobTitleHint": "Los diez títulos prioritarios se sugieren al escribir. Cualquier otro título sigue siendo válido.",
+  "contacts.priorityTitle": "Objetivo prioritario",
 }
 
 NL = {
@@ -3196,6 +3221,11 @@ NL = {
   "import.fileHint": "CSV of Excel (.xlsx). Het formaat wordt uit de inhoud gelezen, niet uit de bestandsnaam.",
   "import.fileChosen": "Gekozen bestand",
   "import.demoNoBinary": "De demonstratiemodus kan geen binair werkmap lezen. Plak een CSV-voorbeeld om de import te verkennen.",
+  # Chantier Admin 05/06 — §5 glisser-déposer, §6 titres prioritaires
+  "pipeline.dragHelp": "Sleep naar een andere kolom om de fase te wijzigen.",
+  "pipeline.keyboardHint": "Toetsenbord: focus een kaart, dan verplaatst Ctrl + pijl links of rechts haar één fase.",
+  "contacts.jobTitleHint": "De tien prioritaire titels worden voorgesteld tijdens het typen. Elke andere titel blijft geldig.",
+  "contacts.priorityTitle": "Prioritaire doelgroep",
 }
 
 PT = {
@@ -3727,6 +3757,11 @@ PT = {
   "import.fileHint": "CSV ou Excel (.xlsx). O formato é lido do conteúdo, não do nome do ficheiro.",
   "import.fileChosen": "Ficheiro escolhido",
   "import.demoNoBinary": "O modo de demonstração não consegue ler um livro binário. Cole um exemplo CSV para explorar a importação.",
+  # Chantier Admin 05/06 — §5 glisser-déposer, §6 titres prioritaires
+  "pipeline.dragHelp": "Arraste para outra coluna para mudar de fase.",
+  "pipeline.keyboardHint": "Teclado: foque um cartão e Ctrl + seta esquerda ou direita move-o uma fase.",
+  "contacts.jobTitleHint": "Os dez títulos prioritários são sugeridos ao escrever. Qualquer outro título continua válido.",
+  "contacts.priorityTitle": "Alvo prioritário",
 }
 
 DICTS = {"en": EN, "fr": FR, "de": DE, "it": IT, "es": ES, "nl": NL, "pt": PT}
