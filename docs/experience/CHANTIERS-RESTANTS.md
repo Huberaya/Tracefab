@@ -1126,6 +1126,25 @@ reprise n'a fait qu'ajouter une colonne.
   garde, la dépublication, et le refus d'un slug partagé par deux marques.
 - Le compte de migrations annoncé en tête de ce document est passé à 36/36 —
   `test:chantiers` compare l'annonce au dépôt et a échoué jusqu'à la mise à jour.
+- **Run `37993558935` sur `a50df34` : `success`**, les quatre jobs verts. Les
+  douze étapes du job base ont tourné, dont « Appliquer les migrations sur la
+  base jetable » (la 36ᵉ appliquée en CI) et « Aucune donnée de passeport n'est
+  fabriquée » (36 contrôles). Seule « Scénarios croisés contre la base de
+  production » reste sautée, faute du secret — comme prévu.
+
+### Un faux rouge, à ne pas relire comme un échec du code
+
+Les deux premiers runs de ce chantier (`37991876345`, `37992708449`) sont
+**rouges sans avoir exécuté une seule vérification** : le job base mourait sur
+« Initialize containers — Docker pull failed with exit code 1 ». Les pulls
+anonymes depuis un runner GitHub partagent une limite de débit Docker Hub par
+plage d'adresses, et elle était atteinte par d'autres projets. C'est exactement
+le signal faux que le §11 décrit : un rouge qui ne dit rien du code poussé.
+
+L'image du service passe donc au miroir ECR public
+(`public.ecr.aws/docker/library/postgres:17`) — même image, registre sans
+limite. Correctif identique à `a6f8404` sur `correctifs/chantier-1a`, dont le
+run était passé vert.
 
 ### Ce qui reste ouvert
 
