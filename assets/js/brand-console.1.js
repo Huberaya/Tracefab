@@ -19,6 +19,11 @@
          * chaque « effacer les filtres », et inversement. champ vide = ordre
          * renvoye par l'API, qui est l'ordre de creation. */
         tri: { champ: '', sens: 'asc' },
+        /* Onboarding Marque : l'erreur de creation est affichee sur le
+         * formulaire lui-meme. La noyer dans state.configError ferait croire
+         * a une panne de la console alors que c'est un refus metier. */
+        onboardingError: '',
+        onboardingEnCours: false,
         requests: [],
         questionnaires: [],
         schemaCatalog: [],
@@ -1315,6 +1320,18 @@
         }
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>${esc(bt('cnLoadingTitle'))}</h1><p>${esc(bt('cnLoadingSub'))}</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }
+        /*
+         * Aucun rattachement Marque : la console n'a rien a montrer. Elle
+         * affichait jusqu'ici des tableaux vides sans issue, alors que
+         * POST /api/organizations existe et cree l'organisation ET son
+         * premier membership owner de maniere atomique. Un backend sans
+         * bouton est une fonctionnalite morte : on propose l'action.
+         */
+        if (!state.memberships.some((m) => m.organizations && m.organizations.type === 'brand')) {
+          app.innerHTML = onboardingMarqueView();
+          bind();
+          return;
+        }
         const content = state.view === 'overview' ? overview() :
           state.view === 'requests' ? requestsView() :
           state.view === 'questionnaires' ? questionnairesBuilderView() :
@@ -1342,6 +1359,50 @@
         const focusAvant = memoriserFocus();
         app.innerHTML = shell(content); bind();
         restaurerFocus(focusAvant);
+      }
+
+      /* Creation de l'organisation Marque ---------------------------------
+       *
+       * Trois champs, pas plus : la raison sociale est la seule donnee que la
+       * route exige. Le nom d'affichage et le code pays sont optionnels et le
+       * restent — un formulaire d'onboarding qui exige ce que l'API n'exige pas
+       * fabrique de la friction, pas de la qualite.
+       */
+      function onboardingMarqueView() {
+        const erreur = state.onboardingError
+          ? `<p class="form-error" role="alert">${esc(bt('obError'))} <code>${esc(state.onboardingError)}</code></p>`
+          : '';
+        return `
+          <div class="auth-screen">
+            <div class="auth-card auth-card--onboarding">
+              <div class="auth-copy">
+                <div class="brand"><div class="brand-mark">tf</div>
+                  <div class="brand-name">tracefab<small>brand console</small></div></div>
+                <h1>${esc(bt('obTitle'))}</h1>
+                <p>${esc(bt('obLead'))}</p>
+              </div>
+              <form class="onboarding-form" data-tf-act="ob1" data-tf-on="submit">
+                <label>
+                  <span>${esc(bt('obLegalName'))}</span>
+                  <input class="input" name="legalName" required maxlength="180" autocomplete="organization">
+                </label>
+                <label>
+                  <span>${esc(bt('obDisplayName'))}</span>
+                  <input class="input" name="displayName" maxlength="180" autocomplete="off">
+                </label>
+                <label>
+                  <span>${esc(bt('obCountry'))}</span>
+                  <input class="input" name="countryCode" maxlength="2" inputmode="latin"
+                         pattern="[A-Za-z]{2}" placeholder="PT" aria-describedby="ob-country-hint">
+                  <small id="ob-country-hint" class="meta">${esc(bt('obCountryHint'))}</small>
+                </label>
+                ${erreur}
+                <button type="submit" class="btn btn-primary" data-ob-submit>
+                  ${esc(state.onboardingEnCours ? bt('obCreating') : bt('obSubmit'))}
+                </button>
+              </form>
+            </div>
+          </div>`;
       }
 
       function renderAuth() {
@@ -4378,6 +4439,34 @@
           state.filtres.products[champ] = this.value;
           state.pages.products = 1;
           render();
+        },
+        ob1: async function (event) {
+          event.preventDefault();
+          const donnees = new FormData(this);
+          const legalName = String(donnees.get('legalName') || '').trim();
+          // La route repond 400 sur une raison sociale vide ; le dire ici evite
+          // un aller-retour reseau pour un cas que le client connait deja.
+          if (!legalName) { state.onboardingError = 'invalid_organization'; render(); return; }
+          const corps = { legalName, type: 'brand' };
+          const displayName = String(donnees.get('displayName') || '').trim();
+          if (displayName) corps.displayName = displayName;
+          const countryCode = String(donnees.get('countryCode') || '').trim().toUpperCase();
+          if (countryCode) corps.countryCode = countryCode;
+          state.onboardingError = '';
+          state.onboardingEnCours = true;
+          render();
+          try {
+            await api('/api/organizations', { method: 'POST', body: JSON.stringify(corps) });
+            state.onboardingEnCours = false;
+            // sync() recharge /api/me et /api/organizations : la porte
+            // d'onboarding se referme d'elle-meme des qu'un membership owner
+            // existe, sans qu'on ait a deviner l'etat resultant.
+            await sync();
+          } catch (erreur) {
+            state.onboardingEnCours = false;
+            state.onboardingError = (erreur && erreur.message) || 'request_failed';
+            render();
+          }
         },
         ps: function (event) {
           const champ = this.dataset.tfArg;
