@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRACEFAB — Product Intelligence</title>
+  <meta name="description" content="One product, eleven lenses: composition, materials, supply chain, manufacturing, suppliers, evidence, certifications, quality, DPP readiness and full history.">
+  <meta name="theme-color" content="#040b08">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040b08'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230fb97c' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M8 25l5-6 6 3 5-15' fill='none' stroke='%230fb97c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css?v=2c246dca">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-console.css?v=2597fb68">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
+</head>
+<body>
+  <a class="tf-skip" href="#pi-main" data-i18n="common.skip">Skip to main content</a>
+
+  <div class="demo-banner" data-i18n="pi.demoBanner">
+    Demonstration record — every figure on this page is demonstration data.
+  </div>
+
+  <div class="app">
+    <!-- ── Sidebar : same domain grouping as the Brand Console ───────── -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">tf</div>
+        <div class="brand-name">tracefab<small data-i18n="pi.console">product intelligence</small></div>
+      </div>
+
+      <nav class="nav" aria-label="Console">
+        <div class="nav-section-title" data-i18n="pi.nav.main">Main console</div>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">⌂</span><span data-i18n="pi.nav.overview">Overview</span></button>
+        <button type="button" class="active"><span class="nav-icon">◇</span><span data-i18n="pi.nav.products">Products</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">◎</span><span data-i18n="pi.nav.suppliers">Suppliers</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">⬡</span><span data-i18n="pi.nav.materials">Materials</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">☍</span><span data-i18n="pi.nav.supplyChain">Supply chain</span></button>
+        <div class="nav-section-title" data-i18n="pi.nav.collection">Collection &amp; compliance</div>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">↗</span><span data-i18n="pi.nav.dataCollection">Data collection</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">▤</span><span data-i18n="pi.nav.evidence">Evidence</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">✓</span><span data-i18n="pi.nav.certifications">Certifications</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/quality-center/"><span class="nav-icon">◒</span><span data-i18n="pi.nav.quality">Quality</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">⚠</span><span data-i18n="pi.nav.risk">Risk</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/dpp/"><span class="nav-icon">▣</span><span data-i18n="pi.nav.dpp">DPP</span></button>
+        <div class="nav-section-title" data-i18n="pi.nav.governance">Governance</div>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">☷</span><span data-i18n="pi.nav.reports">Reports</span></button>
+        <button type="button" data-tf-act="nav" data-tf-arg="/brand-console/"><span class="nav-icon">⚙</span><span data-i18n="pi.nav.settings">Settings</span></button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="user-mini">
+          <div class="avatar">CM</div>
+          <div>
+            <strong data-tf-demo>Camille Martin</strong>
+            <span data-i18n="pi.demoUser">Demonstration workspace</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Main ──────────────────────────────────────────────────────── -->
+    <main class="main">
+      <header class="topbar">
+        <div class="crumb">
+          <a href="/brand-console/" data-i18n="pi.nav.products">Products</a>
+          <span> / </span>
+          <strong data-i18n="pi.product.name">Organic Cotton T-Shirt</strong>
+        </div>
+        <div class="top-actions">
+          <select class="org-select" id="pi-lang" aria-label="Language">
+            <option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option>
+            <option value="it">IT</option><option value="es">ES</option><option value="nl">NL</option>
+          </select>
+          <a class="btn btn-secondary btn-small" href="/dpp/" data-i18n="pi.actions.viewPassport">View public passport</a>
+          <button class="btn btn-primary btn-small" type="button" data-i18n="pi.actions.requestData">Request data</button>
+        </div>
+      </header>
+
+      <section class="content" id="pi-main">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">
+              <span data-i18n="pi.product.collection">Autumn / Winter 2026</span> ·
+              <span id="pi-ref" data-i18n="pi.product.ref">AW26-0248</span>
+            </div>
+            <h1 data-i18n="pi.product.name">Organic Cotton T-Shirt</h1>
+            <p class="pi-reqnote" id="pi-reqnote" hidden></p>
+            <p data-i18n="pi.product.lead">
+              Every value below carries a level of proof. Nothing is asserted without a document behind it.
+            </p>
+          </div>
+          <div class="actions">
+            <span class="mc-demo" data-i18n="common.demoData">Demonstration data</span>
+          </div>
+        </div>
+
+        <div class="eyebrow" style="margin-bottom:10px" data-i18n="pi.sections.signals">Product signals</div>
+        <div class="mc-band mc-band--4 is-dark" id="pi-metrics"></div>
+
+        <div style="height:28px"></div>
+
+        <div class="pi-tabs" id="pi-tabs" role="tablist" aria-label="Product views"></div>
+        <div class="pi-panel" id="pi-panel" role="tabpanel" tabindex="0"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/assets/i18n/en.js?v=0301922d"></script>
+  <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
+    <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
+  <script src="/assets/js/tf-product.js?v=173ec907"></script>
+  <script src="/assets/js/product-intelligence.0.js?v=ef1e1365"></script>
+</body>
+</html>

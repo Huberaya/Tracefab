@@ -1,0 +1,23 @@
+-- Migration: 20261007120000_force_rls_schema_bindings
+--
+-- Complement de la fiche 2 de l'audit Market Readiness (FORCE ROW LEVEL
+-- SECURITY). La migration 20261006100000 avait couvert les tables metier,
+-- mais tracefab_schema_bindings a ete creee ensuite et conservait un simple
+-- ENABLE.
+--
+-- Pourquoi c'est un trou reel et pas une formalite :
+--   tracefab_schema_bindings porte product_id, material_id et supplier_id,
+--   et definit deux policies d'autorisation par sous-requete EXISTS
+--   (schema_bindings_select_authorized / schema_bindings_insert_authorized).
+--   Sans FORCE, ces policies ne s'appliquent PAS au proprietaire de la base.
+--   Or Prisma se connecte sous neondb_owner : les policies etaient donc
+--   integralement court-circuitees sur toutes les requetes applicatives,
+--   exposant la cartographie schema <-> produit / matiere / fournisseur
+--   entre organisations.
+--
+-- tracefab_schema_catalog est volontairement laissee en ENABLE seul : elle
+-- ne contient aucune donnee de locataire (schema_key, version, titre,
+-- actif) et sa policy est explicitement publique
+-- (FOR SELECT TO PUBLIC USING (active = true)).
+
+ALTER TABLE tracefab_schema_bindings FORCE ROW LEVEL SECURITY;

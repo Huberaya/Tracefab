@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
-import { prisma } from '../../../_lib/prisma.js';
+import { withTracefabPublicContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { validateGtin, buildGs1DigitalLink } from '../../../_lib/plm-erp/gtin-engine.js';
-import { fetchLatestDppRecord, fetchDppRequirementProfile, buildDppSummary } from '../../../_lib/dpp.js';
+import { fetchLatestDppRecord, buildDppSummary } from '../../../_lib/dpp.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -23,7 +23,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const linkType = (req.query.linkType as string) || 'gs1:dpp';
 
   // Find product with this GTIN
-  const identifier = await prisma.product_identifiers.findFirst({
+  // Chaque lecture est enveloppee separement : le corps de cette route ecrit
+  // dans `res` entre deux requetes, et une transaction ne doit pas rester
+  // ouverte pendant l'ecriture de la reponse.
+  //
+  // La barriere de publication n'est pas codee ici : product_identifiers n'est
+  // lisible en contexte public que pour un produit portant un public_slug, donc
+  // un GTIN de brouillon ne resout simplement pas.
+  const identifier = await withTracefabPublicContext((tx) => tx.product_identifiers.findFirst({
     where: {
       identifier_value: cleanGtin,
       identifier_type: { in: ['gtin', 'ean', 'upc'] },
@@ -38,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       },
     },
-  });
+  }));
 
   if (!identifier || !identifier.tracefab_products) {
     return json(res, 404, {
@@ -71,15 +78,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (linkType === 'gs1:epcis') {
-    const links = await prisma.supply_chain_links.findMany({ where: { product_id: product.id } });
-    const nodeIds = [...new Set(links.flatMap((l) => [l.source_node_id, l.target_node_id]))];
-    const nodes = await prisma.supply_chain_nodes.findMany({
-      where: {
-        OR: [
-          { product_id: product.id },
-          ...(nodeIds.length > 0 ? [{ id: { in: nodeIds } }] : []),
-        ],
-      },
+    const { links, nodes } = await withTracefabPublicContext(async (tx) => {
+      const links = await tx.supply_chain_links.findMany({ where: { product_id: product.id } });
+      const nodeIds = [...new Set(links.flatMap((l) => [l.source_node_id, l.target_node_id]))];
+      const nodes = await tx.supply_chain_nodes.findMany({
+        where: {
+          OR: [
+            { product_id: product.id },
+            ...(nodeIds.length > 0 ? [{ id: { in: nodeIds } }] : []),
+          ],
+        },
+      });
+      return { links, nodes };
     });
 
     return json(res, 200, {
@@ -93,17 +103,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Default: Digital Product Passport (gs1:dpp)
-  const latestDpp = await fetchLatestDppRecord(prisma, product.id);
-  /* Le caractère bloquant d'une exigence vient du profil, pas d'une supposition :
-     ce champ est publié aux tiers par cette route. */
-  const dppProfile = latestDpp
-    ? await fetchDppRequirementProfile(
-        prisma,
-        latestDpp.requirement_profile_key,
-        latestDpp.requirement_profile_version,
-      )
-    : null;
-  const dppSummary = buildDppSummary(latestDpp, product.id, product.version, dppProfile);
+  const latestDpp = await withTracefabPublicContext((tx) => fetchLatestDppRecord(tx, product.id));
+  const dppSummary = buildDppSummary(latestDpp, product.id, product.version);
   const acceptHeader = req.headers.accept || '';
 
   if (acceptHeader.includes('text/html') && !req.query.format) {

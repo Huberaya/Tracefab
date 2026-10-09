@@ -1,22 +1,17 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { pageSource } from './lib/page_source.mjs';
 
 // 1. Static Contract Assertions
 const dppRoute = await readFile(new URL('../api/_routes/dpp/validate.ts', import.meta.url), 'utf8');
 const dppLib = await readFile(new URL('../api/_lib/dpp-validator.ts', import.meta.url), 'utf8');
-const dppHtml = await readFile(new URL('../dpp/index.html', import.meta.url), 'utf8');
+const dppHtml = pageSource('dpp/index.html');
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 
 assert(indexTs.includes('dpp/validate'), 'dpp/validate route missing in api/index.ts');
 assert(dppRoute.includes('validateDppCompliance'), 'validateDppCompliance missing in dpp route');
 assert(dppLib.includes('frenchAgecArticle13'), 'frenchAgecArticle13 missing in dpp-validator.ts');
-/*
- * Insensible à la casse : la page porte « ESPR » en capitales (4 occurrences) et
- * « CIRPASS » (1). L'ancienne assertion cherchait 'espr' en minuscules et échouait
- * donc sur un contenu pourtant présent.
- */
-const dppLower = dppHtml.toLowerCase();
-assert(dppLower.includes('espr') && dppLower.includes('cirpass'), 'CIRPASS/ESPR markers missing in dpp consumer page');
+assert(dppHtml.includes('espr') && dppHtml.includes('CIRPASS'), 'CIRPASS/ESPR markers missing in dpp consumer page');
 
 // 2. Functional Inline Testing: Valid DPP Payload
 function validateDpp(payload) {

@@ -1,0 +1,27 @@
+{
+  "dpp": {
+    "productId": "demo-product-0001",
+    "brandName": "Atelier Demo",
+    "productName": "Organic Cotton Essential",
+    "productReference": "AT-ESS-001",
+    "sku": "AT-ESS-001",
+    "gtin": "3760123456789",
+    "category": "T-shirt",
+    "countryOfManufacture": "PT",
+    "countryOfDesign": "FR",
+    "weightGrams": 185,
+    "pefScore": 78,
+    "pefGrade": "A",
+    "carbonFootprintKgCo2e": 2.15,
+    "waterScarcityM3": 0.85,
+    "circularityScore": 95,
+    "verificationDate": "2026-10-08",
+    "careInstructions": "Machine wash at 30°C inside out with similar colours. Gentle spin (600 rpm). Do not tumble dry. Iron on low heat.",
+    "recyclingInstructions": "Single-material product, highly recyclable. At end of life, drop it in a textile collection point or return it in store."
+  },
+  "links": {
+    "appleWalletUrl": "/api/dpp/3760123456789/apple-wallet",
+    "googleWalletUrl": "/api/dpp/3760123456789/google-wallet",
+    "digitalLinkUri": "urn:epc:id:sgtin:3760123.001.1"
+  }
+}

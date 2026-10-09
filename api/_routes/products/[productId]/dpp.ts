@@ -5,7 +5,7 @@ import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, optionalString } from '../../../_lib/data-requests.js';
 import { accessibleProduct } from '../../../_lib/quality.js';
-import { buildDppSummary, fetchDppRequirementProfile, fetchLatestDppRecord } from '../../../_lib/dpp.js';
+import { buildDppSummary, fetchLatestDppRecord } from '../../../_lib/dpp.js';
 
 function routeProductId(req: VercelRequest) {
   const value = req.query.productId;
@@ -32,10 +32,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
       const product = await accessibleProduct(tx, productId);
       if (!product) return null;
-
-      // The profile decides which requirements are blocking; the summary must not
-      // guess it, so it is read from dpp_requirement_profiles and passed through.
-      const profile = await fetchDppRequirementProfile(tx, profileKey, profileVersion);
 
       if (req.method === 'POST') {
         // Execute readiness computation stored procedure
@@ -79,12 +75,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           )
         `;
         const computedRecord = computedRows[0];
-        return buildDppSummary(computedRecord, productId, 1, profile);
+        return buildDppSummary(computedRecord, productId);
       }
 
       // GET: fetch latest record or initial empty summary
       const latestRecord = await fetchLatestDppRecord(tx, productId);
-      return buildDppSummary(latestRecord, productId, 1, profile);
+      return buildDppSummary(latestRecord, productId);
     });
 
     if (!result) {

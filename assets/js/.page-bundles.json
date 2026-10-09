@@ -1,0 +1,37 @@
+{
+  "brand-console/index.html": [
+    "/assets/js/tf-skip-meta.js",
+    "/assets/js/brand-console.1.js"
+  ],
+  "dpp/index.html": [
+    "/assets/js/tf-skip-meta.js",
+    "/assets/js/dpp.1.js",
+    "/assets/js/dpp.2.js"
+  ],
+  "index.html": [
+    "/assets/js/index.0.js"
+  ],
+  "invitations/accept/index.html": [
+    "/assets/js/tf-skip-meta.js",
+    "/assets/js/invitations-accept.1.js"
+  ],
+  "operations/index.html": [
+    "/assets/js/tf-skip-meta.js",
+    "/assets/js/operations.1.js"
+  ],
+  "passport/index.html": [
+    "/assets/js/tf-skip-meta.js",
+    "/assets/js/passport.1.js"
+  ],
+  "product-intelligence/index.html": [
+    "/assets/js/product-intelligence.0.js"
+  ],
+  "quality-center/index.html": [
+    "/assets/js/tf-skip-meta.js",
+    "/assets/js/quality-center.1.js"
+  ],
+  "supplier-portal/index.html": [
+    "/assets/js/supplier-portal.0.js",
+    "/assets/js/supplier-portal.1.js"
+  ]
+}

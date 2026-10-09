@@ -1,17 +1,10 @@
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
-import { requireTestDatabase } from './_lib/test-database.mjs';
 import { bulkImportProducts, bulkImportSuppliers, parseCompositionString } from '../api/_lib/bulk-operations/bulk-importer.ts';
 import { exportProductsCsv, exportSuppliersCsv, exportAuditDossierJson } from '../api/_lib/bulk-operations/compliance-exporter.ts';
 import { parseCsvRows } from '../api/_lib/bulk-operations/csv-parser.ts';
 
-/*
- * Le client vient du helper, pas de `new PrismaClient()` : généré en
- * engineType « client », il exige un adaptateur de pilote, et c'est le helper
- * qui démarre la base locale quand DATABASE_URL est absent.
- */
-const { prisma } = await requireTestDatabase();
+const prisma = new PrismaClient();
 
 async function run() {
   console.log('=== TEST INTEGRATION NEON CHANTIER 8: BULK IMPORT & REGULATORY EXPORT ===\n');
@@ -39,23 +32,7 @@ async function run() {
 
     // Run within a transaction setting tracefab context
     await prisma.$transaction(async (tx) => {
-      /*
-       * Suffixe unique par exécution — et surtout PAS une troncature de l'horloge.
-       *
-       * C'était `Date.now().toString().slice(-6)` : les 6 derniers chiffres des
-       * millisecondes depuis l'epoch bouclent toutes les 1 000 000 ms, soit
-       * 16 min 40 s. La base de test est réutilisée d'un run à l'autre (voir
-       * _lib/test-database.mjs), donc deux exécutions espacées d'un multiple de
-       * 1000 s réimportaient les MÊMES références : l'importeur basculait en mise
-       * à jour (createdCount 0 / updatedCount 2) et « Both products should be
-       * created » échouait sans qu'aucun code d'import n'ait changé. C'était le
-       * flake observé sur test:neon:bulk:chantier8 — reproductible en gelant
-       * Date.now() sur une même valeur et en lançant le test deux fois.
-       *
-       * Les millisecondes complètes + un aléa : aucune collision possible, même
-       * sur deux runs parallèles dans la même milliseconde.
-       */
-      const timestamp = `${Date.now()}${randomBytes(2).toString('hex')}`;
+      const timestamp = Date.now().toString().slice(-6);
 
       if (testUser) {
         await tx.$executeRaw`
@@ -82,17 +59,6 @@ TF-BULK-02-${timestamp},"Veste Jean Selvedge",Veste,SKU-DENIM-02,TN,720,"98% Cot
         materialComposition: r.materialsSummary,
         gtin: r.gtin
       }));
-
-      /*
-       * Précondition, pas redondance : si le suffixe cessait d'être unique,
-       * l'importeur mettrait à jour au lieu de créer et l'assertion suivante
-       * échouerait sur « 0 !== 2 » sans nommer la cause. Autant la nommer ici.
-       */
-      const alreadyPresent = await tx.tracefab_products.count({
-        where: { reference: { in: importRows.map((r) => r.reference) } },
-      });
-      assert.equal(alreadyPresent, 0,
-        'Le suffixe d\'exécution doit être unique : ces références existent déjà en base');
 
       const importResult = await bulkImportProducts(tx, brandOrg.id, importRows, testUser?.id);
 

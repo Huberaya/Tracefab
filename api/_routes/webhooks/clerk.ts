@@ -1,7 +1,8 @@
 import { createClerkClient } from '@clerk/backend';
 import { verifyWebhook } from '@clerk/backend/webhooks';
 import { membership_role, organization_type } from '@prisma/client';
-import { prisma } from '../../_lib/prisma.js';
+import type { Prisma } from '@prisma/client';
+import { withTracefabWorkerContext } from '../../_lib/context.js';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 
@@ -41,24 +42,24 @@ function userFromEvent(event: ClerkEventData) {
   return { clerkUserId, email, fullName: names.join(' ') || email };
 }
 
-async function upsertUserFromClerkEvent(event: ClerkEventData) {
+async function upsertUserFromClerkEvent(tx: Prisma.TransactionClient, event: ClerkEventData) {
   const user = userFromEvent(event);
-  return prisma.user.upsert({
+  return tx.user.upsert({
     where: { clerkUserId: user.clerkUserId },
     create: user,
     update: { email: user.email, fullName: user.fullName },
   });
 }
 
-async function ensureUser(clerkUserId: string, data: ClerkEventData) {
-  const existing = await prisma.user.findUnique({ where: { clerkUserId } });
+async function ensureUser(tx: Prisma.TransactionClient, clerkUserId: string, data: ClerkEventData) {
+  const existing = await tx.user.findUnique({ where: { clerkUserId } });
   if (existing) return existing;
 
   const publicUserData = data.public_user_data && typeof data.public_user_data === 'object' ? data.public_user_data as ClerkEventData : {};
   const identifier = stringValue(publicUserData.identifier);
   if (identifier?.includes('@')) {
     const fullName = [stringValue(publicUserData.first_name), stringValue(publicUserData.last_name)].filter(Boolean).join(' ') || identifier;
-    return prisma.user.upsert({
+    return tx.user.upsert({
       where: { clerkUserId },
       create: { clerkUserId, email: identifier.toLowerCase(), fullName },
       update: { email: identifier.toLowerCase(), fullName },
@@ -71,7 +72,7 @@ async function ensureUser(clerkUserId: string, data: ClerkEventData) {
   const email = clerkUser.emailAddresses.find(({ id }) => id === clerkUser.primaryEmailAddressId)?.emailAddress;
   if (!email) throw new Error('clerk_primary_email_required');
   const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || email;
-  return prisma.user.upsert({
+  return tx.user.upsert({
     where: { clerkUserId },
     create: { clerkUserId, email, fullName },
     update: { email, fullName },
@@ -92,9 +93,9 @@ function organizationData(data: ClerkEventData) {
   return { clerkOrganizationId, displayName, legalName: stringValue(metadata.legal_name) ?? displayName, slug, type };
 }
 
-async function syncOrganization(data: ClerkEventData) {
+async function syncOrganization(tx: Prisma.TransactionClient, data: ClerkEventData) {
   const org = organizationData(data);
-  const rows = await prisma.$queryRaw`SELECT * FROM tracefab_sync_clerk_organization(${org.clerkOrganizationId}, ${org.legalName}, ${org.displayName}, ${org.type}::organization_type)`;
+  const rows = await tx.$queryRaw`SELECT * FROM tracefab_sync_clerk_organization(${org.clerkOrganizationId}, ${org.legalName}, ${org.displayName}, ${org.type}::organization_type)`;
   if (!Array.isArray(rows) || !rows[0]) throw new Error('clerk_organization_sync_failed');
   return rows[0];
 }
@@ -110,21 +111,21 @@ function membershipData(data: ClerkEventData) {
   return { clerkOrganizationId, clerkUserId, clerkMembershipId, role };
 }
 
-async function syncMembership(data: ClerkEventData) {
+async function syncMembership(tx: Prisma.TransactionClient, data: ClerkEventData) {
   const membership = membershipData(data);
-  const user = await ensureUser(membership.clerkUserId, data);
-  const organizationRows = await prisma.$queryRaw<Array<{ id: string }>>`SELECT id FROM organizations WHERE clerk_organization_id = ${membership.clerkOrganizationId}`;
+  const user = await ensureUser(tx, membership.clerkUserId, data);
+  const organizationRows = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM organizations WHERE clerk_organization_id = ${membership.clerkOrganizationId}`;
   const organization = organizationRows[0];
   if (!organization) throw new Error('clerk_organization_not_synced');
-  const rows = await prisma.$queryRaw`SELECT * FROM tracefab_sync_clerk_membership(${membership.clerkMembershipId}, ${organization.id}::uuid, ${user.id}::uuid, ${membership.role}::membership_role)`;
+  const rows = await tx.$queryRaw`SELECT * FROM tracefab_sync_clerk_membership(${membership.clerkMembershipId}, ${organization.id}::uuid, ${user.id}::uuid, ${membership.role}::membership_role)`;
   if (!Array.isArray(rows) || !rows[0]) throw new Error('clerk_membership_sync_failed');
   return rows[0];
 }
 
-async function revokeMembership(data: ClerkEventData) {
+async function revokeMembership(tx: Prisma.TransactionClient, data: ClerkEventData) {
   const clerkMembershipId = stringValue(data.id);
   if (!clerkMembershipId) return;
-  await prisma.$executeRaw`SELECT tracefab_revoke_clerk_membership(${clerkMembershipId})`;
+  await tx.$executeRaw`SELECT tracefab_revoke_clerk_membership(${clerkMembershipId})`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -144,22 +145,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const event = await verifyWebhook(requestForVerification(req, rawBody), { signingSecret: process.env.CLERK_WEBHOOK_SIGNING_SECRET.trim() }) as unknown as ClerkWebhookEvent;
     verified = true;
     eventType = event.type || eventType;
-    if (eventType === 'user.created' || eventType === 'user.updated') await upsertUserFromClerkEvent(event.data);
-    else if (eventType === 'user.deleted') {
-      const clerkUserId = stringValue(event.data.id);
-      if (clerkUserId) await prisma.user.updateMany({ where: { clerkUserId }, data: { email: `deleted+${clerkUserId}@invalid.tracefab.local`, fullName: 'Deleted Clerk user' } });
-    } else if (eventType === 'organization.created' || eventType === 'organization.updated') await syncOrganization(event.data);
-    else if (eventType === 'organization.deleted') {
-      const organizationId = stringValue(event.data.id);
-      if (organizationId) {
-        const organization = await prisma.organizations.findUnique({ where: { clerkOrganizationId: organizationId }, select: { id: true } });
-        if (organization) {
-          await prisma.organizations.update({ where: { id: organization.id }, data: { status: 'archived' } });
-          await prisma.organization_memberships.updateMany({ where: { organization_id: organization.id }, data: { status: 'revoked' } });
+    // Clerk parle au nom du systeme, pas d'un utilisateur connecte : il n'y a
+    // aucun tracefab.user_email a poser. Sans contexte worker, les politiques
+    // RLS refusent ces ecritures des que l'application tourne en tracefab_app.
+    await withTracefabWorkerContext(async (tx) => {
+      if (eventType === 'user.created' || eventType === 'user.updated') await upsertUserFromClerkEvent(tx, event.data);
+      else if (eventType === 'user.deleted') {
+        const clerkUserId = stringValue(event.data.id);
+        if (clerkUserId) await tx.user.updateMany({ where: { clerkUserId }, data: { email: `deleted+${clerkUserId}@invalid.tracefab.local`, fullName: 'Deleted Clerk user' } });
+      } else if (eventType === 'organization.created' || eventType === 'organization.updated') await syncOrganization(tx, event.data);
+      else if (eventType === 'organization.deleted') {
+        const organizationId = stringValue(event.data.id);
+        if (organizationId) {
+          const organization = await tx.organizations.findUnique({ where: { clerkOrganizationId: organizationId }, select: { id: true } });
+          if (organization) {
+            await tx.organizations.update({ where: { id: organization.id }, data: { status: 'archived' } });
+            await tx.organization_memberships.updateMany({ where: { organization_id: organization.id }, data: { status: 'revoked' } });
+          }
         }
-      }
-    } else if (eventType === 'organizationMembership.created' || eventType === 'organizationMembership.updated') await syncMembership(event.data);
-    else if (eventType === 'organizationMembership.deleted') await revokeMembership(event.data);
+      } else if (eventType === 'organizationMembership.created' || eventType === 'organizationMembership.updated') await syncMembership(tx, event.data);
+      else if (eventType === 'organizationMembership.deleted') await revokeMembership(tx, event.data);
+    });
     return json(res, 200, { ok: true, eventType });
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : 'unknown_error';

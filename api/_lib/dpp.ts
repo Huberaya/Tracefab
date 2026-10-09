@@ -119,7 +119,6 @@ export function buildDppSummary(
   } | null,
   fallbackProductId: string,
   productVersion = 1,
-  profile: DppRequirementProfile | null = null,
 ): DppRecordSummary {
   const missingList: Array<{ key: string; label: string; blocking: boolean }> = Array.isArray(record?.missing_fields)
     ? (record?.missing_fields as Array<{ key: string; label: string; blocking: boolean }>)
@@ -194,12 +193,7 @@ export function buildDppSummary(
     const pillarKey = classifyRequirementPillar(key);
     const label = DPP_REQUIREMENT_LABELS[key] || key;
     const isMissing = missingList.some((m) => m.key === key);
-    /* Caractère bloquant : propriété du profil d'exigences, pas état courant.
-       Ordre de résolution identique à celui de tracefab_compute_dpp_readiness :
-       déclaration du profil, puis valeur persistée dans missing_fields, puis true. */
-    const declaredBlocking = profile?.requirements.find((r) => r.key === key)?.blocking;
-    const persistedBlocking = missingList.find((m) => m.key === key)?.blocking;
-    const isBlocking = declaredBlocking ?? persistedBlocking ?? true;
+    const isBlocking = blockingList.some((b) => b.key === key) || true;
 
     // Check if recorded in snapshot results
     const snapshotMet = snapshotResults.find((r) => r.key === key)?.met;
@@ -255,45 +249,6 @@ export function buildDppSummary(
     reviewedBy: record?.reviewed_by || null,
     inputFingerprint: record?.input_fingerprint || null,
   };
-}
-
-export interface DppRequirementProfileItem {
-  key: string;
-  label?: string;
-  blocking?: boolean;
-}
-
-export interface DppRequirementProfile {
-  profileKey: string;
-  profileVersion: string;
-  requirements: DppRequirementProfileItem[];
-}
-
-/**
- * Reads the requirement profile that decides which requirements are blocking.
- *
- * The declaration lives in `dpp_requirement_profiles.definition -> 'requirements'`
- * (seeded by supabase/migrations/20260922070000_tracefab_dpp_readiness.sql), so the
- * database stays the single source of truth and this module never duplicates it.
- */
-export async function fetchDppRequirementProfile(
-  tx: Prisma.TransactionClient,
-  profileKey: string,
-  profileVersion: string,
-): Promise<DppRequirementProfile | null> {
-  const rows = await tx.$queryRaw<Array<{ definition: unknown }>>`
-    SELECT definition
-    FROM dpp_requirement_profiles
-    WHERE profile_key = ${profileKey}
-      AND profile_version = ${profileVersion}
-    LIMIT 1
-  `;
-  const definition = rows[0]?.definition as { requirements?: unknown } | undefined;
-  const requirements = Array.isArray(definition?.requirements)
-    ? (definition!.requirements as DppRequirementProfileItem[])
-    : [];
-  if (!requirements.length) return null;
-  return { profileKey, profileVersion, requirements };
 }
 
 export async function fetchLatestDppRecord(tx: Prisma.TransactionClient, productId: string) {

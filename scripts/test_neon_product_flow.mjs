@@ -1,14 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
-import { requireTestDatabase } from './_lib/test-database.mjs';
 
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL is required');
+  process.exit(2);
+}
 
-/*
- * Le client vient du helper, pas de `new PrismaClient()` : généré en
- * engineType « client », il exige un adaptateur de pilote, et c'est le helper
- * qui démarre la base locale quand DATABASE_URL est absent.
- */
-const { prisma } = await requireTestDatabase();
+const prisma = new PrismaClient();
 const role = `tracefab_product_rls_test_${process.pid}`;
 const ownerA = randomUUID();
 const viewerA = randomUUID();

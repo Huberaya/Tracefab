@@ -1,13 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import { requireTestDatabase } from './_lib/test-database.mjs';
 import { randomUUID } from 'crypto';
 
-/*
- * Le client vient du helper, pas de `new PrismaClient()` : généré en
- * engineType « client », il exige un adaptateur de pilote, et c'est le helper
- * qui démarre la base locale quand DATABASE_URL est absent.
- */
-const { prisma } = await requireTestDatabase();
+const prisma = new PrismaClient();
 
 async function runTests() {
   console.log('=== TEST SUITE CHANTIER 7: MASS BALANCE & ANTI-FRAUD ENGINE (NEON POSTGRES VIA PRISMA) ===\n');

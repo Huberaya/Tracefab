@@ -1,8 +1,9 @@
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { pageSource } from './lib/page_source.mjs';
 
 const [html, reminderRoute, reminderMigration, email] = await Promise.all([
-  readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8'),
+  pageSource('brand-console/index.html'),
   readFile(new URL('../api/_routes/data-requests/[requestId]/remind.ts', import.meta.url), 'utf8'),
   readFile(new URL('../prisma/migrations/20261006130000_tracefab_manual_data_request_reminders/migration.sql', import.meta.url), 'utf8'),
   readFile(new URL('../api/_lib/email.ts', import.meta.url), 'utf8'),

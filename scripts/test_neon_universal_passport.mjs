@@ -1,13 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import { requireTestDatabase } from './_lib/test-database.mjs';
 import assert from 'node:assert/strict';
 
-/*
- * Le client vient du helper, pas de `new PrismaClient()` : généré en
- * engineType « client », il exige un adaptateur de pilote, et c'est le helper
- * qui démarre la base locale quand DATABASE_URL est absent.
- */
-const { prisma } = await requireTestDatabase();
+const prisma = new PrismaClient();
 
 async function run() {
   console.log('--- Live Neon Integration Test: Universal Supplier Passport (1-Clic) & Virality ---');

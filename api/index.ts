@@ -1,66 +1,12 @@
 import type { VercelRequest, VercelResponse } from './_lib/vercel-types.js';
 import { json } from './_lib/http.js';
+import { correlationId, reportError } from './_lib/error-reporting.js';
+import { applyHeaders, evaluate } from './_lib/rate-limit.js';
 
 type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;
 type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default: RouteHandler }> };
 
 const routes: Route[] = [
-  /*
-   * TRACEFAB COMMAND CENTER (Chantier Admin 01). Placées en tête : aucun autre
-   * motif ne commence par `admin`, donc rien ne peut les masquer.
-   *
-   * L'ordre interne est porteur. Le routeur prend le premier motif qui matche :
-   * `companies/([^/]+)/activities` et `.../stage` doivent donc précéder
-   * `companies/([^/]+)`, sinon ce dernier avalerait les deux.
-   */
-  { pattern: /^admin\/access$/, params: [], load: () => import('./_routes/admin/access.js') },
-  { pattern: /^admin\/dashboard$/, params: [], load: () => import('./_routes/admin/dashboard.js') },
-  { pattern: /^admin\/companies$/, params: [], load: () => import('./_routes/admin/companies.js') },
-  /*
-   * `companies/export` DOIT précéder `companies/([^/]+)` : le routeur prend le
-   * premier motif qui matche, et `export` serait sinon lu comme un identifiant
-   * d'entreprise. C'est le même ordre porteur que `/activities` et `/stage`.
-   */
-  { pattern: /^admin\/companies\/export$/, params: [], load: () => import('./_routes/admin/companies/export.js') },
-  { pattern: /^admin\/companies\/([^\/]+)\/activities$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId]/activities.js') },
-  { pattern: /^admin\/companies\/([^\/]+)\/stage$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId]/stage.js') },
-  { pattern: /^admin\/companies\/([^\/]+)$/, params: ['companyId'], load: () => import('./_routes/admin/companies/[companyId].js') },
-  { pattern: /^admin\/contacts$/, params: [], load: () => import('./_routes/admin/contacts.js') },
-  { pattern: /^admin\/contacts\/([^\/]+)$/, params: ['contactId'], load: () => import('./_routes/admin/contacts/[contactId].js') },
-  /*
-   * Chantier Admin 02 — opérationnel. `tasks`, `meetings`, `pilots` : la
-   * collection avant l'élément. `activities` et `analytics` sont globaux.
-   */
-  { pattern: /^admin\/tasks$/, params: [], load: () => import('./_routes/admin/tasks.js') },
-  { pattern: /^admin\/tasks\/([^\/]+)$/, params: ['taskId'], load: () => import('./_routes/admin/tasks/[taskId].js') },
-  { pattern: /^admin\/meetings$/, params: [], load: () => import('./_routes/admin/meetings.js') },
-  { pattern: /^admin\/meetings\/([^\/]+)$/, params: ['meetingId'], load: () => import('./_routes/admin/meetings/[meetingId].js') },
-  { pattern: /^admin\/pilots$/, params: [], load: () => import('./_routes/admin/pilots.js') },
-  { pattern: /^admin\/pilots\/([^\/]+)$/, params: ['pilotId'], load: () => import('./_routes/admin/pilots/[pilotId].js') },
-  { pattern: /^admin\/activities$/, params: [], load: () => import('./_routes/admin/activities.js') },
-  /* Chantier Admin 05 — boucle commerciale quotidienne (§12, §1). */
-  { pattern: /^admin\/notes$/, params: [], load: () => import('./_routes/admin/notes.js') },
-  { pattern: /^admin\/emails$/, params: [], load: () => import('./_routes/admin/emails.js') },
-  { pattern: /^admin\/opportunities$/, params: [], load: () => import('./_routes/admin/opportunities.js') },
-  { pattern: /^admin\/analytics$/, params: [], load: () => import('./_routes/admin/analytics.js') },
-  /* Chantier Admin 03 — acquisition : import CSV, listes, export. */
-  { pattern: /^admin\/import\/preview$/, params: [], load: () => import('./_routes/admin/import/preview.js') },
-  { pattern: /^admin\/import\/commit$/, params: [], load: () => import('./_routes/admin/import/commit.js') },
-  { pattern: /^admin\/lists$/, params: [], load: () => import('./_routes/admin/lists.js') },
-  { pattern: /^admin\/lists\/([^\/]+)$/, params: ['listId'], load: () => import('./_routes/admin/lists/[listId].js') },
-  /* Chantier Admin 04 — journal d'audit (§16) et réglages (§1). */
-  { pattern: /^admin\/audit$/, params: [], load: () => import('./_routes/admin/audit.js') },
-  { pattern: /^admin\/settings$/, params: [], load: () => import('./_routes/admin/settings.js') },
-  /* Chantier Admin 06 — comptes connectés (§1 Suppliers, §1 Product Usage). */
-  { pattern: /^admin\/suppliers$/, params: [], load: () => import('./_routes/admin/suppliers.js') },
-  { pattern: /^admin\/product-usage$/, params: [], load: () => import('./_routes/admin/product-usage.js') },
-  /* Chantier Admin 07 — campagnes et leads (§1). L'ordre est porteur : le
-     segment littéral `promote` reste devant le paramètre, comme pour companies. */
-  { pattern: /^admin\/campaigns$/, params: [], load: () => import('./_routes/admin/campaigns.js') },
-  { pattern: /^admin\/campaigns\/([^\/]+)$/, params: ['campaignId'], load: () => import('./_routes/admin/campaigns/[campaignId].js') },
-  { pattern: /^admin\/leads$/, params: [], load: () => import('./_routes/admin/leads.js') },
-  { pattern: /^admin\/leads\/([^\/]+)\/promote$/, params: ['leadId'], load: () => import('./_routes/admin/leads/[leadId]/promote.js') },
-  { pattern: /^admin\/leads\/([^\/]+)$/, params: ['leadId'], load: () => import('./_routes/admin/leads/[leadId].js') },
   { pattern: /^catalog\/products\/import$/, params: [], load: () => import('./_routes/catalog/products/import.js') },
   { pattern: /^catalog\/products\/export$/, params: [], load: () => import('./_routes/catalog/products/export.js') },
   { pattern: /^catalog\/products\/import\-jobs\/([^\/]+)$/, params: ['jobId'], load: () => import('./_routes/catalog/products/import-jobs/[jobId].js') },
@@ -79,14 +25,13 @@ const routes: Route[] = [
   { pattern: /^data\-request\-items\/([^\/]+)\/response$/, params: ['itemId'], load: () => import('./_routes/data-request-items/[itemId]/response.js') },
   { pattern: /^data\-requests\/([^\/]+)\/items\/from\-template$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items/from-template.js') },
   { pattern: /^data\-requests\/([^\/]+)\/items$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items.js') },
-  { pattern: /^data\-requests\/([^\/]+)\/remind$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/remind.js') },
   { pattern: /^data\-requests\/([^\/]+)\/send$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/send.js') },
   { pattern: /^data\-requests\/([^\/]+)\/submit$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/submit.js') },
+  { pattern: /^data\-requests\/([^\/]+)\/remind$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/remind.js') },
   { pattern: /^data\-requests\/([^\/]+)$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId].js') },
   { pattern: /^data\-requests$/, params: [], load: () => import('./_routes/data-requests.js') },
   { pattern: /^data\-responses\/([^\/]+)\/review$/, params: ['responseId'], load: () => import('./_routes/data-responses/[responseId]/review.js') },
   { pattern: /^documents\/upload\-intent$/, params: [], load: () => import('./_routes/documents/upload-intent.js') },
-  { pattern: /^documents$/, params: [], load: () => import('./_routes/documents.js') },
   { pattern: /^documents\/([^\/]+)\/security\-report$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/security-report.js') },
   { pattern: /^documents\/([^\/]+)\/download$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/download.js') },
   { pattern: /^documents\/([^\/]+)\/verify\-ai$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/verify-ai.js') },
@@ -99,9 +44,9 @@ const routes: Route[] = [
   { pattern: /^internal\/p2\/readiness$/, params: [], load: () => import('./_routes/internal/p2-readiness.js') },
   { pattern: /^operations\/overview$/, params: [], load: () => import('./_routes/operations/overview.js') },
   { pattern: /^organization\/storage\/usage$/, params: [], load: () => import('./_routes/organization/storage/usage.js') },
+  { pattern: /^integrations\/plm$/, params: [], load: () => import('./_routes/integrations/plm.js') },
   { pattern: /^integrations\/ingest$/, params: [], load: () => import('./_routes/integrations/ingest.js') },
   { pattern: /^integrations\/jobs$/, params: [], load: () => import('./_routes/integrations/jobs.js') },
-  { pattern: /^integrations\/plm$/, params: [], load: () => import('./_routes/integrations/plm.js') },
   { pattern: /^integrations$/, params: [], load: () => import('./_routes/integrations.js') },
   { pattern: /^gs1\/digital\-link\/([^\/]+)$/, params: ['gtin'], load: () => import('./_routes/gs1/digital-link/[gtin].js') },
   { pattern: /^invitations\/accept$/, params: [], load: () => import('./_routes/invitations/accept.js') },
@@ -109,9 +54,6 @@ const routes: Route[] = [
   { pattern: /^materials\/([^\/]+)$/, params: ['materialId'], load: () => import('./_routes/materials/[materialId].js') },
   { pattern: /^materials$/, params: [], load: () => import('./_routes/materials.js') },
   { pattern: /^mass\-balance\/certificates$/, params: [], load: () => import('./_routes/mass-balance/certificates.js') },
-  { pattern: /^traceability\/audit\-chain$/, params: [], load: () => import('./_routes/traceability/audit-chain.js') },
-  { pattern: /^traceability\/lineage\-graph$/, params: [], load: () => import('./_routes/traceability/lineage-graph.js') },
-  { pattern: /^traceability\/mass\-balance$/, params: [], load: () => import('./_routes/traceability/mass-balance.js') },
   { pattern: /^me$/, params: [], load: () => import('./_routes/me.js') },
   { pattern: /^organizations\/([^\/]+)\/invitations$/, params: ['organizationId'], load: () => import('./_routes/organizations/[organizationId]/invitations.js') },
   { pattern: /^organizations$/, params: [], load: () => import('./_routes/organizations.js') },
@@ -126,13 +68,13 @@ const routes: Route[] = [
   { pattern: /^pef\/factors$/, params: [], load: () => import('./_routes/pef/factors.js') },
   { pattern: /^products\/([^\/]+)\/green\-claims\/audit$/, params: ['productId'], load: () => import('./_routes/products/[productId]/green-claims/audit.js') },
   { pattern: /^products\/([^\/]+)\/green\-claims$/, params: ['productId'], load: () => import('./_routes/products/[productId]/green-claims.js') },
+  { pattern: /^dpp\/validate$/, params: [], load: () => import('./_routes/dpp/validate.js') },
+  { pattern: /^dpp\/portfolio$/, params: [], load: () => import('./_routes/dpp/portfolio.js') },
   { pattern: /^dpp\/([^\/]+)\/apple\-wallet$/, params: ['gtin'], load: () => import('./_routes/dpp/[gtin]/apple-wallet.js') },
   { pattern: /^dpp\/([^\/]+)\/google\-wallet$/, params: ['gtin'], load: () => import('./_routes/dpp/[gtin]/google-wallet.js') },
-  { pattern: /^dpp\/validate$/, params: [], load: () => import('./_routes/dpp/validate.js') },
   { pattern: /^dpp\/([^\/]+)$/, params: ['gtin'], load: () => import('./_routes/dpp/[gtin].js') },
   { pattern: /^green\-claims\/rules$/, params: [], load: () => import('./_routes/green-claims/rules.js') },
   { pattern: /^products\/([^\/]+)\/dpp\/publish\-review$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/publish-review.js') },
-  { pattern: /^products\/([^\/]+)\/dpp\/agec\-article13$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/agec-article13.js') },
   { pattern: /^products\/([^\/]+)\/dpp$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp.js') },
   { pattern: /^products\/([^\/]+)\/wallet\/apple$/, params: ['productId'], load: () => import('./_routes/products/[productId]/wallet/apple.js') },
   { pattern: /^products\/([^\/]+)\/wallet\/google$/, params: ['productId'], load: () => import('./_routes/products/[productId]/wallet/google.js') },
@@ -144,9 +86,12 @@ const routes: Route[] = [
   { pattern: /^products\/([^\/]+)\/supply\-chain$/, params: ['productId'], load: () => import('./_routes/products/[productId]/supply-chain.js') },
   { pattern: /^products\/([^\/]+)$/, params: ['productId'], load: () => import('./_routes/products/[productId].js') },
   { pattern: /^products$/, params: [], load: () => import('./_routes/products.js') },
-  { pattern: /^quality\/overview$/, params: [], load: () => import('./_routes/quality/overview.js') },
   { pattern: /^quality\/audit\-pack$/, params: [], load: () => import('./_routes/quality/audit-pack.js') },
   { pattern: /^quality\/calculate\-index$/, params: [], load: () => import('./_routes/quality/calculate-index.js') },
+  { pattern: /^traceability\/audit\-chain$/, params: [], load: () => import('./_routes/traceability/audit-chain.js') },
+  { pattern: /^traceability\/lineage\-graph$/, params: [], load: () => import('./_routes/traceability/lineage-graph.js') },
+  { pattern: /^traceability\/mass\-balance$/, params: [], load: () => import('./_routes/traceability/mass-balance.js') },
+  { pattern: /^quality\/overview$/, params: [], load: () => import('./_routes/quality/overview.js') },
   { pattern: /^schema\-bindings$/, params: [], load: () => import('./_routes/schema-bindings.js') },
   { pattern: /^quality\/products\/([^\/]+)$/, params: ['productId'], load: () => import('./_routes/quality/products/[productId].js') },
   { pattern: /^quality\/suppliers\/([^\/]+)$/, params: ['supplierId'], load: () => import('./_routes/quality/suppliers/[supplierId].js') },
@@ -159,8 +104,8 @@ const routes: Route[] = [
   { pattern: /^quality\/caps$/, params: [], load: () => import('./_routes/quality/caps.js') },
   { pattern: /^questionnaires\/([^\/]+)$/, params: ['questionnaireKey'], load: () => import('./_routes/questionnaires/[questionnaireKey].js') },
   { pattern: /^questionnaires$/, params: [], load: () => import('./_routes/questionnaires.js') },
-  { pattern: /^supplier\/certifications\/([^\/]+)\/auto\-verify$/, params: ['certificationId'], load: () => import('./_routes/supplier/certifications/[certificationId]/auto-verify.js') },
   { pattern: /^supplier\/certifications\/ocr\-extract$/, params: [], load: () => import('./_routes/supplier/certifications/ocr-extract.js') },
+  { pattern: /^supplier\/certifications\/([^\/]+)\/auto\-verify$/, params: ['certificationId'], load: () => import('./_routes/supplier/certifications/[certificationId]/auto-verify.js') },
   { pattern: /^supplier\/certifications\/([^\/]+)$/, params: ['certificationId'], load: () => import('./_routes/supplier/certifications/[certificationId].js') },
   { pattern: /^supplier\/certifications$/, params: [], load: () => import('./_routes/supplier/certifications.js') },
   { pattern: /^supplier\/data\-points\/([^\/]+)$/, params: ['dataPointId'], load: () => import('./_routes/supplier/data-points/[dataPointId].js') },
@@ -171,6 +116,7 @@ const routes: Route[] = [
   { pattern: /^supplier\/storage\/usage$/, params: [], load: () => import('./_routes/supplier/storage/usage.js') },
   { pattern: /^supplier\/documents$/, params: [], load: () => import('./_routes/supplier/documents.js') },
   { pattern: /^supplier\/member\-invitations\/([^\/]+)$/, params: ['invitationId'], load: () => import('./_routes/supplier/member-invitations/[invitationId].js') },
+  { pattern: /^supplier\/shares$/, params: [], load: () => import('./_routes/supplier/shares.js') },
   { pattern: /^supplier\/members$/, params: [], load: () => import('./_routes/supplier/members.js') },
   { pattern: /^supplier\/onboarding$/, params: [], load: () => import('./_routes/supplier/onboarding.js') },
   { pattern: /^supplier\/passport\/access\-requests$/, params: [], load: () => import('./_routes/supplier/passport/access-requests.js') },
@@ -181,7 +127,6 @@ const routes: Route[] = [
   { pattern: /^supplier\/profile\/submit$/, params: [], load: () => import('./_routes/supplier/profile/submit.js') },
   { pattern: /^supplier\/profile$/, params: [], load: () => import('./_routes/supplier/profile.js') },
   { pattern: /^supplier\/quality$/, params: [], load: () => import('./_routes/supplier/quality.js') },
-  { pattern: /^supplier\/shares$/, params: [], load: () => import('./_routes/supplier/shares.js') },
   { pattern: /^supplier\/sites\/([^\/]+)$/, params: ['siteId'], load: () => import('./_routes/supplier/sites/[siteId].js') },
   { pattern: /^supplier\/sites$/, params: [], load: () => import('./_routes/supplier/sites.js') },
   { pattern: /^suppliers\/([^\/]+)\/profile\/submit$/, params: ['supplierId'], load: () => import('./_routes/suppliers/[supplierId]/profile/submit.js') },
@@ -199,27 +144,58 @@ function requestPath(req: VercelRequest) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const path = requestPath(req);
+  const route = routes.find((candidate) => candidate.pattern.test(path));
+  if (!route) return json(res, 404, { error: 'route_not_found' });
+  const match = route.pattern.exec(path);
+  if (match) {
+    const query = { ...req.query };
+    route.params.forEach((param, index) => { query[param] = decodeURIComponent(match[index + 1]); });
+    req.query = query;
+  }
+  // Limitation de debit.
+  //
+  // Placee ici, apres la resolution de la route et AVANT route.load() : une
+  // requete rejetee ne declenche pas le chargement du module, donc pas le
+  // demarrage a froid qu'elle cherchait peut-etre a provoquer.
+  //
+  // Le limiteur ne jette jamais. Si lui-meme echoue, la requete passe : un
+  // limiteur casse ne doit pas rendre le service indisponible.
   try {
-    const route = routes.find((candidate) => candidate.pattern.test(path));
-    if (!route) return json(res, 404, { error: 'route_not_found' });
-    const match = route.pattern.exec(path);
-    if (match) {
-      const query = { ...req.query };
-      route.params.forEach((param, index) => { query[param] = decodeURIComponent(match[index + 1]); });
-      req.query = query;
+    const decision = await evaluate(path, req);
+    applyHeaders(res, decision);
+    if (!decision.allowed) {
+      return json(res, 429, { error: 'rate_limited', retryAfterSeconds: decision.resetSeconds });
     }
+  } catch {
+    // Volontairement silencieux cote client. L'incident reste visible par
+    // l'absence des en-tetes RateLimit-* sur la reponse.
+  }
+
+  // Barriere d'erreur centrale.
+  //
+  // Sans elle, une exception non rattrapee dans un gestionnaire remonte au
+  // runtime serverless : le client recoit un 500 opaque, l'erreur n'atterrit
+  // nulle part, et personne n'est prevenu. 13 des 125 routes n'ont aucun
+  // try/catch, et des helpers comme storage.ts jettent sur mauvaise
+  // configuration. Le chargement dynamique du module peut echouer lui aussi.
+  const correlation = correlationId();
+  try {
     const module = await route.load();
     return await module.default(req, res);
   } catch (error) {
-    /*
-     * Repli fermé. Sans ce bloc, toute exception remonte à Vercel : un
-     * `decodeURIComponent` sur une URL malformée (`/api/products/%`) lève
-     * URIError, un gestionnaire qui échoue laisse passer l'erreur du framework,
-     * laquelle peut emporter du SQL, des chemins de fichiers ou des trames de
-     * pile. On journalise côté serveur et on renvoie un corps générique.
-     */
-    console.error('Unhandled API route failure', { path, error });
-    if (res.headersSent) return res.end();
-    return json(res, 500, { error: 'internal_error' });
+    await reportError(error, {
+      route: route.pattern.source,
+      method: req.method,
+      path,
+      status: 500,
+    }, correlation);
+
+    // Un gestionnaire peut avoir deja commence a repondre avant de jeter.
+    // Ecrire une seconde fois provoquerait une erreur par-dessus l'erreur.
+    if (res.headersSent || res.writableEnded) return undefined;
+
+    // Le client recoit l'identifiant de correlation, et rien d'autre : le
+    // detail de l'exception reste dans le journal et le collecteur.
+    return json(res, 500, { error: 'internal_error', correlationId: correlation });
   }
 }

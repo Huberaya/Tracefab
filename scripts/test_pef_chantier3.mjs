@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('=== TEST SUITE CHANTIER 3: MOTEUR D’AGRÉGATION ESG & CALCULATEUR PEF/ACV ===');
 
@@ -139,22 +140,84 @@ console.log('✓ API endpoints properly wired');
 
 // 5. Verify Brand Console UI
 console.log('5. Checking Brand Console UI implementation...');
-const brandConsole = await readFile('brand-console/index.html', 'utf8');
-assert.ok(brandConsole.includes('Évaluation Environnementale & Empreinte PEF'), 'Must have PEF section in Brand Console');
+const brandConsole = pageSource('brand-console/index.html');
+assert.ok(brandConsole.includes("bt('qcPefTitle')"), 'Must have PEF section in Brand Console');
+assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.qcPefTitle, 'Évaluation Environnementale & Empreinte PEF', 'la copie FR doit rester au catalogue');
 assert.ok(brandConsole.includes('data-action="calculate-pef"'), 'Must have calculate-pef button action');
-assert.ok(brandConsole.includes('Éco-Score Textile'), 'Must have Éco-Score badge in Brand Console');
+assert.ok(brandConsole.includes("bt('qcEcoScore')"), 'Must have Éco-Score badge in Brand Console');
+assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.qcEcoScore, 'Éco-Score Textile', 'la copie FR du badge Eco-Score doit rester au catalogue');
 assert.ok(brandConsole.includes('pefAssessment'), 'Must bind pefAssessment to state');
 console.log('✓ Brand Console PEF integration verified');
 
 // 6. Verify DPP Consumer Passport
 console.log('6. Checking DPP consumer passport...');
-const dppFile = await readFile('dpp/index.html', 'utf8');
-assert.ok(dppFile.includes('Éco-Score Textile Européen'), 'Must have official Éco-Score in DPP passport');
-// Le passeport doit nommer les cadres applicables, sans en revendiquer la conformité :
-// le schéma TRACEFAB ne contient aucun champ AGEC Art. 13, une telle revendication
-// serait factuellement fausse. L'ancienne assertion exigeait « Conforme Loi AGEC & ESPR ».
-assert.ok(dppFile.includes('Loi AGEC') && dppFile.includes('ESPR'), 'Must name the AGEC & ESPR frameworks');
-assert.ok(!dppFile.includes('Conforme Loi AGEC'), 'Must not claim AGEC conformity it cannot evidence');
+const dppFile = pageSource('dpp/index.html');
+// Chantier 7 : la copie du DPP public est passee au catalogue i18n. On verifie
+// desormais la cle dans le balisage ET la copie francaise dans fr.json.
+const dppFr = JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).dpp;
+assert.ok(dppFile.includes('data-i18n="dpp.impEcoScore"'), 'Must have official Éco-Score in DPP passport');
+assert.strictEqual(dppFr.impEcoScore, 'Éco-Score Textile Européen', 'la copie FR de l’Éco-Score doit rester au catalogue');
+// Reformule le 7 octobre 2026. Cette assertion verrouillait le mot
+// « Conforme », qui presentait le passeport comme certifie au regard de la Loi
+// AGEC et du reglement ESPR. La regle du projet est explicite : la preparation
+// n'est pas une certification. Le referentiel doit rester cite — c'est l'objet
+// du test — mais sans affirmer la conformite.
+assert.ok(dppFile.includes('data-i18n="dpp.impMethod"'), 'Must cite the EU ESPR & AGEC frameworks');
+assert.strictEqual(dppFr.impMethod, 'Méthodologie Loi AGEC & ESPR', 'la copie FR du referentiel doit rester au catalogue');
+assert.ok(
+  !/DPP Conforme|DPP Compliant|certifié ESPR/.test(dppFile),
+  'DPP must never claim regulatory certification',
+);
+// Etendu au chantier 7. Verifier le seul balisage ne suffisait plus : la copie
+// du DPP vit desormais dans le catalogue i18n, et la cle badgeEu y rendait
+// « DPP Compliant » a l'ecran alors que le fichier HTML, lui, passait le test.
+// Chantier 10. Les deux garde-fous ci-dessus ne couvraient que dpp/index.html
+// et la portee `dpp` des catalogues. Deux fichiers y echappaient tout en etant
+// deployes : p/at-ess-001.html (un DPP statique fantome, masque en production
+// par la reecriture /p/(.*) -> /dpp/) et archive/index.legacy-2026-10-07.html.
+// Les deux revendiquaient « DPP Conforme » et « certifié ESPR ». Le filet
+// couvre desormais tout fichier HTML suivi par git.
+{
+  const { execSync } = await import('node:child_process');
+  // Casse-insensible : « DPP compliant » en minuscules traversait le filet
+    // et s'affichait dans la console. Et le filet ne lisait que les fichiers
+    // HTML, alors que la copie vit dans le catalogue i18n et les bundles :
+    // « ESPR CONFORMITY » y a prospere dans six langues.
+    const INTERDIT = new RegExp([
+      'DPP\\s*(?:Conforme|Compliant|Konform|Conform\\b)',
+      'certifi(?:é|ed)\\s*ESPR',
+      'ESPR[\\s/-]*(?:CONFORMITY|CONFORMIT[ÀÉ]|KONFORMITÄT|CONFORMIDAD|CONFORMITEIT|CONFORMIDADE|compliant|conforme|konform)',
+      '(?:CONFORMIT[ÀÉY]|KONFORMITÄT|CONFORMIDAD|CONFORMITEIT|CONFORMIDADE|RÉGULARITÉ)\\s*ESPR',
+      'Conforme\\s*Règlementation',
+    ].join('|'), 'i');
+  const suivis = execSync('git ls-files "*.html" "assets/i18n/*" "assets/js/*.js"', { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  assert.ok(suivis.length > 10, 'le filet doit inspecter HTML, catalogue i18n et bundles');
+  for (const fichier of suivis) {
+    const contenu = await readFile(fichier, 'utf8');
+    const trouve = contenu.match(INTERDIT);
+    assert.ok(
+      !trouve,
+      `${fichier} revendique une certification reglementaire : « ${trouve && trouve[0]} »`,
+    );
+  }
+  console.log(`✓ ${suivis.length} fichiers (HTML + i18n + bundles) sans revendication de conformite`);
+}
+
+for (const lang of ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt']) {
+  const nom = lang === 'en' ? null : `../assets/i18n/${lang}.json`;
+  const scope = nom
+    ? JSON.parse(await readFile(new URL(nom, import.meta.url), 'utf8')).dpp
+    : null;
+  if (!scope) continue;
+  for (const [cle, valeur] of Object.entries(scope)) {
+    assert.ok(
+      !/DPP Conforme|DPP Compliant|DPP Konform|DPP Conform\b|certifié ESPR/.test(valeur),
+      `la copie ${lang}.dpp.${cle} ne doit pas revendiquer une certification : ${valeur}`,
+    );
+  }
+}
 console.log('✓ DPP consumer passport integration verified');
 
 console.log('✓ Chantier 3 (Moteur d’Agrégation ESG & Calculateur PEF/ACV) verified successfully!');

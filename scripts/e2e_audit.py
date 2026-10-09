@@ -3,31 +3,34 @@ import re
 
 print("=== TRACEFAB END-TO-END VALIDATION AUDIT (PHASE 12) ===")
 
+# Les marqueurs visent des ancres insensibles a la locale : identifiants de
+# section et cles i18n. Une copie traduite ne doit plus faire tomber l'audit.
 files = {
     "index.html": [
         "KNOW YOUR PRODUCT",
         "LIVING DATA CORE",
-        "Multi-Echelon",
+        'id="supply-chain"',
+        'data-i18n="spine.',
         "Tracefab"
     ],
     "brand-console/index.html": [
         "MISSION CONTROL CENTER",
         "PRODUCT LINEAGE",
-        "POUVEZ-VOUS FAIRE CONFIANCE",
+        "qcTrustQuestion",
         "TRACEFAB Intelligence",
-        "CHAÎNE DE GARDE CERTIFIÉE ISO 22095",
+        "ISO 22095 CERTIFIED CHAIN OF CUSTODY",
         "Clerk"
     ],
     "supplier-portal/index.html": [
-        "COFFRE-FORT FOURNISSEUR",
-        "Vos données. Votre profil.",
+        "spHeroTag",
+        "spHeroTitle",
         "Supplier Profile 82% Completion Bar",
         "Clerk"
     ],
     "dpp/index.html": [
-        "Passeport Numérique",
+        "data-i18n=\"dpp.metaTitle\"",
         "CIRPASS",
-        "Indice de Réparabilité",
+        "data-i18n=\"dpp.cirIndex\"",
         "GS1 Digital Link"
     ]
 }

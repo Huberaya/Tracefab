@@ -1,0 +1,911 @@
+    (() => {
+      'use strict';
+      const app = document.getElementById('app');
+      
+      // Le dictionnaire inline de cette page a ete fusionne dans le
+        // catalogue unique /assets/i18n (portees 'shared' et 'translations').
+        // Regenerable par scripts/build_app_i18n.mjs.
+
+      function t(key) {
+        const T = window.TF_I18N;
+        if (!T) return key;
+        // Portee portail d'abord, puis le fonds commun. Le repli etait
+        // francais : une cle absente en turc rendait du francais. Il est
+        // desormais anglais, conformement a la langue source du produit.
+        return T.t('portal.' + key, null) || T.t('shared.' + key, key);
+      }
+
+      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof window !== 'undefined' && window.TF_I18N ? window.TF_I18N.lang : null) || (typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'en', demo:new URLSearchParams(location.search).has('demo') };
+  // Status chips used to read French in every language because this was a
+  // hardcoded map. They now resolve through the catalogue.
+  const STATUS_KEYS = {
+    "draft": "stDraft",
+    "sent": "stSent",
+    "in_progress": "stInProgress",
+    "submitted": "stSubmitted",
+    "changes_requested": "stChangesRequested",
+    "approved": "stApproved",
+    "cancelled": "stCancelled",
+    "verified_by_reviewer": "stVerified",
+    "needs_review": "stNeedsReview",
+    "open": "stOpen",
+    "acknowledged": "stAcknowledged",
+    "waived": "stWaived",
+    "resolved": "stResolved",
+    "not_started": "stNotStarted",
+    "data_ready": "stDataReady",
+    "ready_to_publish": "stReadyToPublish",
+    "review_required": "stReviewRequired",
+    "active": "stActive",
+    "completed": "stCompleted",
+    "invited": "stInvited",
+    "declared": "stDeclared",
+    "documented": "stDocumented",
+    "uploaded": "stUploaded",
+    "scanning": "stScanning",
+    "available": "stAvailable",
+    "rejected": "stRejected",
+    "deleted": "stDeleted",
+    "suspended": "stSuspended",
+    "revoked": "stRevoked"
+  };
+  const statusLabel = (value) => value ? t(STATUS_KEYS[value] || value) : '—';
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
+      const first = (value) => String(value || '').trim().split(/\s+/).map((part) => part[0]).join('').slice(0,2).toUpperCase() || 'TF';
+      const status = (value) => `<span class="status status-${esc(value)}">${esc(statusLabel(value) || '—')}</span>`;
+      const pct = (value) => Math.max(0, Math.min(100, Number(value || 0)));
+      // Dates and numbers used to render French whatever the chosen language.
+      const BCP47 = { fr:'fr-FR', en:'en-GB', de:'de-DE', it:'it-IT', es:'es-ES', nl:'nl-NL', pt:'pt-PT', tr:'tr-TR', zh:'zh-CN' };
+      const locale = () => BCP47[state.lang] || 'en-GB';
+      const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle:'medium' }).format(new Date(value)) : '—';
+      const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits:0 });
+      function notify(message, isError = false) { state.toast = { message, isError }; render(); setTimeout(() => { state.toast = null; render(); }, 3500); }
+      async function api(path, options = {}) { const headers = { 'Content-Type':'application/json', ...(options.headers || {}) }; if (!state.demo && state.selectedOrganizationId) headers['X-Tracefab-Organization-Id'] = state.selectedOrganizationId; if (!state.demo && state.clerk?.session) { const token = await state.clerk.session.getToken(); if (token) headers.Authorization = `Bearer ${token}`; } const response = await fetch(path, { ...options, headers }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`); return payload; }
+
+      function demoData() {
+        state.user = { id:'demo-user-1', fullName:'Rui Costa', email:'rui@nhan-textile.example' };
+        state.memberships = [{ organization_id:'demo-supplier-org', role:'owner', organizations:{ id:'demo-supplier-org', type:'supplier', display_name:'Nhãn Textile', legal_name:'Nhãn Textile', country_code:'PT', status:'active' } }, { organization_id:'demo-supplier-org-2', role:'manager', organizations:{ id:'demo-supplier-org-2', type:'supplier', display_name:'Nhãn Atelier', legal_name:'Nhãn Atelier', country_code:'PT', status:'active' } }];
+        state.organizations = state.memberships.map((membership) => ({ organizationId:membership.organization_id, role:membership.role, organization:membership.organizations, supplier:{ id:membership.organization_id === 'demo-supplier-org' ? 'demo-supplier-profile' : 'demo-supplier-profile-2', onboarding_status:'in_progress', profileCompletion:membership.organization_id === 'demo-supplier-org' ? '72' : '48' } }));
+        state.selectedOrganizationId = state.selectedOrganizationId || 'demo-supplier-org';
+        state.supplier = { id:state.selectedOrganizationId === 'demo-supplier-org' ? 'demo-supplier-profile' : 'demo-supplier-profile-2', organizationId:state.selectedOrganizationId };
+        state.profile = { id:'demo-supplier-profile', organizationId:'demo-supplier-org', onboardingStatus:'in_progress', activityTypes:['spinning','cutting','sewing'], profileVersion:2, profileCompletion:'72', profileSummary:'Cotton and linen garment manufacturing for European brands.', contactName:'Rui Costa', contactEmail:'rui@nhan-textile.example', contactPhone:'+351 210 000 000', employeeCountRange:'51-250', yearEstablished:2008, lastSubmittedAt:null };
+        state.sites = [{ id:'demo-site-1', supplierId:'demo-supplier-profile', name:'Nhãn Porto', countryCode:'PT', address:'Rua da Indústria 10', city:'Porto', postalCode:'4000-000', activityTypes:['cutting','sewing'], isActive:true }];
+        state.certifications = [{ id:'demo-certification-1', supplierId:'demo-supplier-profile', supplierSiteId:'demo-site-1', standardName:'GOTS', standardCode:'CU-12345', issuerName:'Control Union', certificateNumber:'CU-12345', issuedAt:'2025-01-15', expiresAt:'2027-01-14', status:'declared', documentId:null }];
+        state.certificationCatalog = [{ code:'GOTS', name:'Global Organic Textile Standard', issuer:'Global Standard gGmbH', referenceVersion:'7.0', claimCaveat:'Reference catalogue; a declaration does not amount to a verification.' }, { code:'OEKO-TEX-100', name:'OEKO-TEX STANDARD 100', issuer:'OEKO-TEX Association', referenceVersion:'2026.1', claimCaveat:'Reference catalogue; a declaration does not amount to a verification.' }];
+        state.materials = [{ id:'demo-material-1', ownerOrganizationId:'demo-supplier-org', materialType:'fiber', name:'Organic Cotton', composition:{}, originCountryCode:'PT' }];
+        state.schemaCatalog = [{ key:'material-data-core', version:'1.0', title:'Material data core', subjectTypes:['material'], fields:[] }];
+        state.documents = [{ id:'demo-document-1', ownerOrganizationId:'demo-supplier-org', originalFilename:'gots-2025.pdf', contentType:'application/pdf', byteSize:24576, kind:'certificate', status:'available', visibility:'private', documentId:'demo-document-1', createdAt:new Date().toISOString(), availableAt:new Date().toISOString() }];
+        state.shares = [{ id:'demo-share-1', granteeOrganization:{ display_name:'Atelier Demo' }, status:'active', scope:{ certificates:true, dataPoints:true } }, { id:'demo-share-2', granteeOrganization:{ display_name:'Maison Rivage' }, status:'active', scope:{ certificates:true } }];
+        state.dataPointDefinitions = { country_of_manufacture:{ dataType:'country', description:'ISO alpha-2 country code.' }, annual_production_capacity:{ dataType:'number', description:'Declared annual capacity.' }, material_composition:{ dataType:'json', description:'List of materials and percentages.' } };
+        state.dataPoints = [{ id:'demo-point-1', ownerOrganizationId:'demo-supplier-org', supplierId:'demo-supplier-profile', dataKey:'annual_production_capacity', value:125000, dataType:'number', status:'documented', sourceDocumentId:'demo-document-1', version:2, validFrom:'2026-01-01', validUntil:null }, { id:'demo-point-2', ownerOrganizationId:'demo-supplier-org', supplierSiteId:'demo-site-1', dataKey:'country_of_manufacture', value:'PT', dataType:'country', status:'declared', sourceDocumentId:null, version:1, validFrom:null, validUntil:null }];
+        state.members = [{ id:'demo-member-1', organizationId:'demo-supplier-org', userId:'demo-user-1', role:'owner', status:'active', user:{ fullName:'Rui Costa', email:'rui@nhan-textile.example' } }, { id:'demo-member-2', organizationId:'demo-supplier-org', userId:'demo-user-2', role:'manager', status:'active', user:{ fullName:'Ana Silva', email:'ana@nhan-textile.example' } }];
+        state.memberInvitations = [{ id:'demo-invitation-1', email:'production@nhan-textile.example', targetRole:'contributor', expiresAt:new Date(Date.now()+5*86400000).toISOString(), createdAt:new Date().toISOString() }];
+        state.canManageMembers = true;
+        state.quality = { score:{ completeness:'72', freshness:'80', documentationCoverage:'25', consistency:'90', missingFields:['rsl_test_report'], blockingIssues:[] }, issues:[{ id:'demo-quality-issue-1', severity:'warning', status:'open', ruleKey:'supplier_missing_evidence', message:'Documentary coverage still deserves a review by the quality team.', detectedAt:new Date().toISOString() }] };
+        state.requests = [
+          { id:'demo-supplier-request-1', brandOrganizationId:'demo-brand-org', supplierOrganizationId:'demo-supplier-org', title:'Product data — autumn collection', questionnaireKey:'product-data-core', questionnaireVersion:'1.0', status:'in_progress', dueAt:new Date(Date.now()+5*86400000).toISOString(), completionPercentage:'40', lastActivityAt:new Date().toISOString(), items:[
+            { id:'demo-item-1', label:'Product description', fieldKey:'product_description', dataType:'text', required:true, evidenceRequired:false, helpText:'Describe the product and its intended use.', validationRules:{ minLength:10, maxLength:2000 }, responses:[] },
+            { id:'demo-item-2', label:'Country of manufacture', fieldKey:'country_of_manufacture', dataType:'country', required:true, evidenceRequired:false, helpText:'Use the ISO 3166-1 alpha-2 country code.', validationRules:{}, responses:[{ id:'demo-response-2', value:'PT', status:'declared', isCurrent:true, responseVersion:1 }] },
+            { id:'demo-item-3', label:'Main material percentage', fieldKey:'main_material_percentage', dataType:'percentage', required:true, evidenceRequired:true, helpText:'Percentage by mass of the main material.', validationRules:{ min:0, max:100 }, responses:[] },
+            { id:'demo-item-4', label:'Material composition', fieldKey:'material_composition', dataType:'json', required:true, evidenceRequired:true, helpText:'Provide an array of materials and their percentages.', validationRules:{ jsonShape:'material_composition' }, responses:[] },
+          ] },
+          { id:'demo-supplier-request-2', brandOrganizationId:'demo-brand-org-2', supplierOrganizationId:'demo-supplier-org', title:'Origin and composition — natural linen line', questionnaireKey:'product-data-core', questionnaireVersion:'1.0', status:'submitted', dueAt:new Date(Date.now()+2*86400000).toISOString(), completionPercentage:'100', lastActivityAt:new Date(Date.now()-86400000).toISOString(), items:[] },
+        ];
+      }
+      async function sync() {
+        state.loading = true; render();
+        try {
+          if (state.demo) { demoData(); state.loading = false; render(); return; }
+          const me = await api('/api/me');
+          state.user = me.user; state.memberships = me.memberships || [];
+          const supplierMemberships = state.memberships.filter((membership) => membership.organizations?.type === 'supplier');
+          const storedOrganizationId = localStorage.getItem('tracefab_supplier_organization_id');
+          state.selectedOrganizationId = supplierMemberships.some((membership) => membership.organization_id === storedOrganizationId) ? storedOrganizationId : supplierMemberships[0]?.organization_id || null;
+          if (!state.selectedOrganizationId) {
+            state.view = 'selfOnboarding';
+            state.loading = false;
+            render();
+            return;
+          }
+          const organizationPayload = await api(`/api/supplier/organizations?organizationId=${encodeURIComponent(state.selectedOrganizationId)}`);
+          state.organizations = organizationPayload.organizations || [];
+          const [profilePayload, requests] = await Promise.all([api('/api/supplier/profile'), api(`/api/data-requests?scope=supplier&organizationId=${encodeURIComponent(state.selectedOrganizationId)}`)]);
+          state.supplier = profilePayload.supplier; state.profile = profilePayload.profile; state.requests = requests.requests || [];
+          const optional = await Promise.allSettled([api('/api/supplier/sites'), api('/api/supplier/certifications'), api(`/api/materials?organizationId=${encodeURIComponent(state.selectedOrganizationId)}`), api('/api/supplier/documents'), api('/api/supplier/data-points'), api('/api/supplier/members'), api('/api/supplier/quality'), api('/api/supplier/shares'), api('/api/catalog/certification-standards')]);
+          state.sites = optional[0].status === 'fulfilled' ? optional[0].value.sites || [] : state.sites;
+          state.certifications = optional[1].status === 'fulfilled' ? optional[1].value.certifications || [] : state.certifications;
+          state.materials = optional[2].status === 'fulfilled' ? optional[2].value.materials || [] : state.materials;
+          state.documents = optional[3].status === 'fulfilled' ? optional[3].value.documents || [] : state.documents;
+          state.dataPoints = optional[4].status === 'fulfilled' ? optional[4].value.dataPoints || [] : state.dataPoints;
+          state.dataPointDefinitions = optional[4].status === 'fulfilled' ? optional[4].value.definitions || state.dataPointDefinitions : state.dataPointDefinitions;
+          state.members = optional[5].status === 'fulfilled' ? optional[5].value.members || [] : state.members;
+          state.memberInvitations = optional[5].status === 'fulfilled' ? optional[5].value.invitations || [] : state.memberInvitations;
+          state.canManageMembers = optional[5].status === 'fulfilled' ? Boolean(optional[5].value.canManage) : false;
+          state.quality = optional[6].status === 'fulfilled' ? optional[6].value : state.quality;
+          state.shares = optional[7].status === 'fulfilled' ? optional[7].value.shares || state.shares : state.shares;
+          state.certificationCatalog = optional[8].status === 'fulfilled' ? optional[8].value.standards || state.certificationCatalog : state.certificationCatalog;
+          state.optionalErrors = optional.filter((result) => result.status === 'rejected').map((result) => result.reason?.message || 'optional_data_unavailable');
+          state.loading = false; render();
+        } catch (error) { state.loading = false; state.configError = error.message; render(); }
+      }
+      function viewLabel() { return ({ overview:t('spNavOverview'), requests:t('spNavRequests'), profile:t('spNavProfile'), sites:t('spNavSites'), certifications:t('spNavCerts'), materials:t('spNavMaterials'), documents:t('spNavDocuments'), dataPoints:t('spNavDataPoints'), members:t('spNavMembers'), quality:t('spNavQuality'), passport:t('spNavPassport'), massBalance:t('spNavMassBalance'), requestDetail:t('spNavRequestDetail'), selfOnboarding:t('spNavOnboarding') })[state.view] || t('spNavOverview'); }
+      function currentOrg() { return state.organizations.find((entry) => entry.organizationId === state.selectedOrganizationId)?.organization || state.memberships.find((membership) => membership.organization_id === state.selectedOrganizationId)?.organizations; }
+      function langSwitcher() {
+        return `<select class="lang-switcher-select" id="lang-switch" title="${t('spLangTitle')}">
+          <option value="en" ${state.lang === 'en' ? 'selected' : ''}>🇬🇧 EN (English)</option>
+          <option value="fr" ${state.lang === 'fr' ? 'selected' : ''}>🇫🇷 FR (Français)</option>
+          <option value="de" ${state.lang === 'de' ? 'selected' : ''}>🇩🇪 DE (Deutsch)</option>
+          <option value="it" ${state.lang === 'it' ? 'selected' : ''}>🇮🇹 IT (Italiano)</option>
+          <option value="es" ${state.lang === 'es' ? 'selected' : ''}>🇪🇸 ES (Español)</option>
+          <option value="nl" ${state.lang === 'nl' ? 'selected' : ''}>🇳🇱 NL (Nederlands)</option>
+          <option value="pt" ${state.lang === 'pt' ? 'selected' : ''}>🇵🇹 PT (Português)</option>
+          <option value="tr" ${state.lang === 'tr' ? 'selected' : ''}>🇹🇷 TR (Türkçe)</option>
+          <option value="zh" ${state.lang === 'zh' ? 'selected' : ''}>🇨🇳 ZH (中文)</option>
+        </select>`;
+      }
+
+      function organizationSwitcher() { if (state.organizations.length < 2) return currentOrg() ? `<span class="meta">${esc(currentOrg().display_name || currentOrg().legal_name)}</span>` : ''; return `<label style="min-width:220px"><span class="meta">${t('spActiveOrg')}</span><select class="select" id="organization-switcher">${state.organizations.map((entry) => `<option value="${esc(entry.organizationId)}" ${entry.organizationId === state.selectedOrganizationId ? 'selected' : ''}>${esc(entry.organization.display_name || entry.organization.legal_name)}</option>`).join('')}</select></label>`; }
+      function openRequests() { return state.requests.filter((request) => !['approved','cancelled'].includes(request.status)); }
+      function shell(content) {
+        const userName = state.user?.fullName || state.user?.email || 'Utilisateur';
+        return `${state.demo ? `<div class="demo-banner">${esc(t('spDemoBanner')).replace('?demo=0', '<code>?demo=0</code>')}</div>` : ''}<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><nav class="nav">${navButton('overview','⌂',t('overview'))}${navButton('requests','↗',t('requests'))}${navButton('sites','▦',t('sites'))}${navButton('certifications','✓',t('certifications'))}${navButton('materials','◇',t('materials'))}${navButton('documents','▤',t('documents'))}${navButton('dataPoints','⌁',t('dataPoints'))}${navButton('members','♙',t('members'))}${navButton('quality','◒',t('quality'))}${navButton('massBalance','⚖',t('spNavMassBalance'))}${navButton('passport','✦',t('spNavPassport'))}${navButton('profile','◎',t('profile'))}</nav><div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || t('spDemoMode'))}</span><button class="link-button" data-action="signout">${esc(t("signOut"))}</button></div></div></div></aside><main class="main"><header class="topbar"><div class="crumb">Supplier Portal <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${langSwitcher()} ${organizationSwitcher()}</div></header><section class="content">${content}</section></main></div>${state.modal ? modalView(state.modal) : ''}${state.toast ? `<div class="toast ${state.toast.isError ? 'error' : ''}">${esc(state.toast.message)}</div>` : ''}`;
+      }
+
+      function modalView(type) {
+        if (type === 'import-bom') {
+          return `<div class="modal-backdrop" style="display:grid;position:fixed;inset:0;background:rgba(7,18,14,0.65);backdrop-filter:blur(6px);z-index:200;place-items:center;padding:20px;">
+            <div class="card panel" style="max-width:700px;width:100%;box-shadow:var(--shadow-xl);border-radius:18px;max-height:90vh;overflow-y:auto;padding:28px;">
+              <div class="panel-head" style="margin-bottom:14px;">
+                <div>
+                  <div class="eyebrow">${t('spBomEyebrow')}</div>
+                  <h2 style="font-size:20px;font-weight:800;margin-top:2px;">${t('spBomTitle')}</h2>
+                  <p style="font-size:12.5px;color:var(--muted);margin-top:2px;">${t('spBomIntro')}</p>
+                </div>
+                <button type="button" class="btn btn-secondary btn-small" data-action="close-modal">✕ ${t('spClose')}</button>
+              </div>
+
+              <div style="background:#f8faf8;border:1px solid #edf0eb;border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--muted);">
+                <strong style="color:var(--ink);display:block;margin-bottom:4px;">${t('spExpectedFormat')}</strong>
+                <code>Material; Percentage; Type; Country; Standard; LicenseNumber; SupplierBatch</code>
+                <div style="margin-top:6px;">Exemple : <code>Organic Cotton; 85%; fiber; PT; GOTS; CU-881294; LOT-2026-089</code></div>
+              </div>
+
+              <form id="bom-import-form" data-tf-act="p01" data-tf-on="submit">
+                <div class="form-grid">
+                  <label class="field-full">
+                    ${t('spCsvContent')}
+                    <textarea class="textarea" id="bom-csv-input" rows="8" placeholder="Material; Percentage; Type; Country; Standard; LicenseNumber; SupplierBatch
+Combed Organic Cotton; 85%; fiber; PT; GOTS; CU-881294; LOT-2026-089
+GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required style="font-family:var(--font-mono);font-size:12px;"></textarea>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;" class="field-full">
+                    <input type="checkbox" id="bom-autosave" checked> ${t('spAutoSaveComponents')}
+                  </label>
+                </div>
+
+                <div id="bom-preview-area" style="margin-top:16px;display:none;"></div>
+
+                <div class="form-actions" style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px;">
+                  <button type="button" class="btn btn-secondary" data-action="close-modal">${t('spCancel')}</button>
+                  <button type="button" class="btn btn-secondary" data-tf-act="p02">${t('spCheckBom')}</button>
+                  <button type="submit" class="btn btn-primary" id="bom-submit-btn">📥 ${t('spImportAndSave')}</button>
+                </div>
+              </form>
+            </div>
+          </div>`;
+        }
+        return '';
+      }
+      function navButton(view, icon, label) { return `<button class="${state.view === view ? 'active' : ''}" data-view="${view}"><span class="nav-icon">${icon}</span>${label}</button>`; }
+      function render() {
+        if (state.configError && !state.demo && !state.user) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Supplier Portal</div><h1>${t('spConnectionUnavailable')}</h1><p>${esc(state.configError)}. Vérifiez Clerk et la configuration de l’API, ou ouvrez <code>?demo=1</code> ${t('spToBrowseInterface')}</p><button class="btn btn-secondary" data-action="retry">${t('spRetry')}</button></div></div>`; bind(); return; }
+        if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>${t('spLoadingSpace')}</h1><p>${t('spLoadingDetail')}</p></div></div>`; return; }
+        if (!state.user && !state.demo) { renderAuth(); return; }
+        if (state.view === 'selfOnboarding') { app.innerHTML = selfOnboardingView(); bind(); return; }
+        const content = state.view === 'overview' ? overview() : state.view === 'requests' ? requestsView() : state.view === 'profile' ? profileView() : state.view === 'sites' ? sitesView() : state.view === 'certifications' ? certificationsView() : state.view === 'materials' ? materialsView() : state.view === 'documents' ? documentsView() : state.view === 'dataPoints' ? dataPointsView() : state.view === 'members' ? membersView() : state.view === 'quality' ? qualityView() : state.view === 'massBalance' ? massBalanceSupplierView() : state.view === 'passport' ? passportView() : requestDetailView();
+        app.innerHTML = shell(content); bind();
+      }
+      function renderAuth() { app.innerHTML = `<div class="auth-screen"><div class="auth-card"><div class="auth-copy"><div class="brand"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><h1>${t('spAuthTitle')}</h1><p>${t('spAuthSub')}</p><ul><li>${t('spAuthArg1')}</li><li>${t('spAuthArg2')}</li><li>${t('spAuthArg3')}</li></ul></div><div class="auth-box"><div class="eyebrow">${t('spSupplierSpace')}</div><h2>${t('spSignIn')}</h2><p>${t('spAuthAccess')}</p><div id="clerk-sign-in"></div></div></div></div>`; if (state.clerk) state.clerk.mountSignIn(document.getElementById('clerk-sign-in'), { appearance:{ elements:{ card:'shadow-none', rootBox:'w-full' } } }); }
+
+      function selfOnboardingView() {
+        const userName = state.user?.fullName || state.user?.email || '';
+        return `<div class="auth-screen"><div class="config-error" style="max-width:680px;text-align:left"><div class="brand" style="margin-bottom:20px"><div class="brand-mark">tf</div><div class="brand-name">tracefab<small>supplier portal</small></div></div><div class="eyebrow">${t('spWelcome')}</div><h1 style="font-size:26px;margin:8px 0 12px">${t('spOnbTitle')}</h1><p style="color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:22px">${t('spOnbIntro')}</p><form id="self-onboarding-form"><div class="form-grid"><label class="field-full">${t('spLegalName')}<input class="input" name="legalName" required placeholder="e.g. Nhãn Textile Lda or Tissages du Nord SAS"></label><label>${t('spTradeName')}<input class="input" name="displayName" placeholder="e.g. Nhãn Textile"></label><label>${t('spHqCountry')}<input class="input" name="countryCode" required maxlength="2" placeholder="PT" style="text-transform:uppercase"></label><label>${t('spMainContact')}<input class="input" name="contactName" value="${esc(userName)}" placeholder="${t('spPhFullName')}"></label><label>${t('spBusinessPhone')}<input class="input" name="contactPhone" placeholder="+351 253 000 000"></label><label class="field-full">${t('spMainActivities')}<input class="input" name="activityTypes" placeholder="spinning, weaving, dyeing, confection, packaging"></label><label class="field-full">${t('spCompanyIntro')}<textarea class="textarea" name="profileSummary" rows="3" placeholder="${t('spPhCompanyIntro')}"></textarea></label></div><div class="form-actions" style="margin-top:20px"><button type="button" class="btn btn-secondary" data-action="signout">${t('spSignOut')}</button><button class="btn btn-primary" type="submit">${t('spCreateSpace')}</button></div></form></div></div>`;
+      }
+
+            // Dimensions de conformite reellement calculees, lues dans
+      // state.quality.score. Le panneau les ecrivait en dur : trois pastilles
+      // « (100%) » affichees a cote d'un total de 72 %, et une phrase parlant
+      // de « 3 etapes » quand une seule etait montree. Une pastille qui
+      // affirme un chiffre qu'elle ne lit pas finit toujours par mentir.
+      const SP_DIMENSIONS = [
+        { cle: 'completeness', labelKey: 'spDimCompleteness', vue: 'profile' },
+        { cle: 'freshness', labelKey: 'spDimFreshness', vue: 'dataPoints' },
+        { cle: 'documentationCoverage', labelKey: 'spDimDocumentation', vue: 'documents' },
+        { cle: 'consistency', labelKey: 'spDimConsistency', vue: 'quality' },
+      ];
+      // Seuil au-dela duquel une dimension n'appelle plus d'action.
+      const SP_SEUIL = 70;
+      const SP_CHAMPS = { active_site: 'spFieldActiveSite', rsl_test_report: 'spFieldRslReport', annual_production_capacity: 'spFieldAnnualCapacity', country_of_manufacture: 'spFieldCountryMfg' };
+      // Une cle machine ne doit jamais atteindre l'ecran telle quelle : on
+      // traduit si la cle est connue, sinon on humanise le symbole.
+      function fieldLabel(k) {
+        if (!k) return '';
+        if (SP_CHAMPS[k]) return t(SP_CHAMPS[k]);
+        const s = String(k).replace(/_/g, ' ').trim();
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      }
+
+      function spDimensions() {
+        const score = state.quality?.score || {};
+        return SP_DIMENSIONS
+          .filter((d) => score[d.cle] !== undefined && score[d.cle] !== null && score[d.cle] !== '')
+          .map((d) => ({ ...d, label: t(d.labelKey), valeur: pct(score[d.cle]) }));
+      }
+
+      // Le francais insere une espace insecable avant le deux-points ; les
+      // autres langues le collent au mot. Sans cela l'anglais rendait
+      // « Weakest area : Evidence coverage ».
+      const sp2pts = () => (state.lang === 'fr' ? '\u00a0: ' : ': ');
+
+      function spProgressPanel() {
+        const dims = spDimensions();
+        const titre = esc(t('spProfileTitle'));
+        if (!dims.length) {
+          return `<div class="sp-progress-panel">
+            <div class="sp-progress-title">${titre}</div>
+            <div class="sp-progress-lead">${esc(t('spNoScore'))}</div>
+          </div>`;
+        }
+
+        const global = pct(state.profile?.profileCompletion ?? state.quality?.score?.completeness ?? 0);
+        const faible = dims.slice().sort((a, b) => a.valeur - b.valeur)[0];
+        const aTraiter = faible.valeur < SP_SEUIL;
+
+        const manquants = (state.quality?.score?.missingFields || [])
+          .map((f) => (SP_CHAMPS[f] ? t(SP_CHAMPS[f]) : f))
+          .filter(Boolean);
+        const ligneManquants = manquants.length
+          ? `<div class="sp-progress-missing">${esc(t('spMissingField'))}${sp2pts()}${esc(manquants.join(', '))}</div>`
+          : '';
+
+        const accroche = aTraiter
+          ? `${esc(t('spWeakest'))}${sp2pts()}<strong>${esc(faible.label)}</strong> — ${faible.valeur}%`
+          : esc(t('spAllOnTarget'));
+
+        const pastilles = dims.map((d) => `<button type="button"
+            class="sp-check-pill ${d.valeur >= SP_SEUIL ? 'sp-pill-done' : 'sp-pill-pending'}"
+            data-tf-act="p03" data-tf-arg="${d.vue}">
+            ${d.valeur >= SP_SEUIL ? '✓' : '⏳'} ${esc(d.label)} ${d.valeur}%
+          </button>`).join('');
+
+        const action = aTraiter
+          ? `<button type="button" class="sp-focus-btn" data-tf-act="p03" data-tf-arg="${faible.vue}">
+              ${esc(t('spFixNow'))} · ${esc(faible.label)}
+            </button>`
+          : '';
+
+        return `<div class="sp-progress-panel">
+          <div class="sp-progress-head">
+            <div>
+              <div class="sp-progress-title">${titre}</div>
+              <div class="sp-progress-lead">${accroche}</div>
+              ${ligneManquants}
+            </div>
+            <div class="sp-progress-pct">${global}%<span>${esc(t('spComplete'))}</span></div>
+          </div>
+          <div class="sp-bar-outer"><div class="sp-bar-inner" style="width:${global}%;"></div></div>
+          <div class="sp-checklist-row">${pastilles}</div>
+          ${action}
+        </div>`;
+      }
+
+      function overview() {
+        const dueSoon = openRequests().filter((request) => request.dueAt && new Date(request.dueAt).getTime() - Date.now() < 7*86400000);
+        const completionPct = state.profile?.profileCompletion || 82;
+
+        return `<div>
+          <!-- Mission Hero Banner -->
+          <div class="sp-hero-card">
+            <div class="sp-hero-tag">${esc(t('spHeroTag'))}</div>
+            <h1 class="sp-hero-h1">${esc(t('spHeroTitle'))}</h1>
+            <p class="sp-hero-sub">${esc(t('spHeroSub'))}</p>
+          </div>
+
+          ${spProgressPanel()}
+
+          <!-- 4 Core Supplier Action Modules -->
+          <div class="sp-actions-grid">
+            <div class="sp-action-card" data-tf-act="p04">
+              <div class="sp-card-icon">◎</div>
+              <div class="sp-card-title">${t('spTileProfile')}</div>
+              <div class="sp-card-desc">${t('spTileProfileDesc')}</div>
+            </div>
+            <div class="sp-action-card" data-tf-act="p05">
+              <div class="sp-card-icon">▦</div>
+              <div class="sp-card-title">${t('spTileSites')}</div>
+              <div class="sp-card-desc">${t('spTileSitesDesc')}</div>
+            </div>
+            <div class="sp-action-card" data-tf-act="p06">
+              <div class="sp-card-icon">✓</div>
+              <div class="sp-card-title">${t('spTileCerts')}</div>
+              <div class="sp-card-desc">${t('spCertsScopes')}</div>
+            </div>
+            <div class="sp-action-card" data-tf-act="p07">
+              <div class="sp-card-icon">▤</div>
+              <div class="sp-card-title">${t('spTileVault')}</div>
+              <div class="sp-card-desc">${t('spTileVaultDesc')}</div>
+            </div>
+          </div>
+
+          <!-- Operational Metric Cards -->
+          <div class="grid kpis">
+            <div class="card kpi">
+              <div class="kpi-label">${t('spOpenRequests')}</div>
+              <div class="kpi-value">${moneyless(openRequests().length)}</div>
+              <div class="kpi-note">${t('spAwaitingAnswer')}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">${t('spDeadlinesNear')}</div>
+              <div class="kpi-value">${moneyless(dueSoon.length)}</div>
+              <div class="kpi-note">${t('spWithin7Days')}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">${t('spAnswersSubmitted')}</div>
+              <div class="kpi-value">${moneyless(state.requests.filter((request) => request.status === 'submitted').length)}</div>
+              <div class="kpi-note">${t('spValidatedByBrands')}</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">${t('spActiveShares')}</div>
+              <div class="kpi-value">${moneyless(state.shares?.length || 4)}</div>
+              <div class="kpi-note">${t('spConnectedBrands')}</div>
+            </div>
+          </div>
+
+          <!-- Active Requests Split -->
+          <div class="grid split">
+            <div class="card panel">
+              <div class="panel-head">
+                <h2>${t('spPriorityRequests')}</h2>
+                <button class="btn btn-secondary btn-small" data-view="requests">${t('spAllRequests')}</button>
+              </div>
+              ${requestList(openRequests().slice(0,4))}
+            </div>
+
+            <div class="card panel">
+              <div class="panel-head">
+                <h2>${t('spTileBom')}</h2>
+                <span class="status status-approved">CSV / Excel</span>
+              </div>
+              <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+                ${t('spBomDrop')}
+              </p>
+              <button class="btn btn-primary" data-tf-act="p08" style="width:100%;">
+                📥 ${t('spBomImportBtn')}
+              </button>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      function requestList(items) {
+        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>${t('spNoRequest')}</strong><p>${t('spNoRequestHint')}</p></div>`;
+        return `<div class="grid">${items.map((request) => `<div class="request-card clickable" data-request-id="${esc(request.id)}"><div class="request-card-head"><div><h3>${esc(request.title)}</h3><p>${t('spQuestionnaire')} <code>${esc(request.questionnaireKey || '—')} · v${esc(request.questionnaireVersion || '—')}</code>}</p></div>${status(request.status)}</div><div class="progress-line"><div class="progress" style="flex:1"><span style="width:${pct(request.completionPercentage)}%"></span></div><small>${moneyless(request.completionPercentage)}%</small></div><div class="meta">${t('spDueOn')} ${date(request.dueAt)}</div></div>`).join('')}</div>`;
+      }
+      function requestsView() { return `<div class="page-head"><div><div class="eyebrow">${t('spDataCollection')}</div><h1>${t('spDataRequests')}</h1><p>${t('spDataRequestsDesc')}</p></div></div><div class="card panel">${requestList(state.requests)}</div>`; }
+      function profileView() {
+        const p = state.profile || {};
+        return `<div class="page-head"><div><button class="link-button" data-view="overview">${t('spBackHome')}</button><div class="eyebrow" style="margin-top:20px">${t('spYourOrg')}</div><h1>${t('spMyProfile')}</h1><p>${t('spEditableNote')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="submit-profile">${t('spSubmitProfile')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${t('spMainInfo')}</h2>${status(p.onboardingStatus)}</div><form id="profile-form"><div class="form-grid"><label class="field-full">${t('spActivitySummary')}<textarea class="textarea" name="profileSummary" rows="5" maxlength="10000">${esc(p.profileSummary || '')}</textarea></label><label>${t('spContactName')}<input class="input" name="contactName" value="${esc(p.contactName || '')}" maxlength="180"></label><label>${t('spContactEmail')}<input class="input" name="contactEmail" type="email" value="${esc(p.contactEmail || '')}" maxlength="320"></label><label>${t('spPhone')}<input class="input" name="contactPhone" value="${esc(p.contactPhone || '')}" maxlength="80"></label><label>${t('spHeadcount')}<select class="select" name="employeeCountRange"><option value="">${t('spNotProvided')}</option>${['1-10','11-50','51-250','251-1000','1000+'].map((value) => `<option value="${value}" ${p.employeeCountRange === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label>${t('spFoundedYear')}<input class="input" name="yearEstablished" type="number" min="1800" max="${new Date().getFullYear()}" value="${esc(p.yearEstablished || '')}"></label><label class="field-full">${t('spActivities')} <span class="meta">${t('spCommaSeparated')}</span><input class="input" name="activityTypes" value="${esc((p.activityTypes || []).join(', '))}" placeholder="spinning, cutting, sewing"></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">${t('spSaveChanges')}</button></div></form></div><div class="card panel"><div class="panel-head"><h2>${t('spProfileState')}</h2><strong>${moneyless(p.profileCompletion)}%</strong></div><div class="progress" style="margin:12px 0 20px"><span style="width:${pct(p.profileCompletion)}%"></span></div><dl style="display:grid;gap:14px;margin:0"><div><dt class="meta">${t('spVersion')}</dt><dd style="margin:4px 0;font-weight:750">${esc(p.profileVersion || '—')}</dd></div><div><dt class="meta">${t('spLastSubmission')}</dt><dd style="margin:4px 0;font-weight:750">${date(p.lastSubmittedAt)}</dd></div><div><dt class="meta">${t('spSupplierId')}</dt><dd style="margin:4px 0;font-weight:750;word-break:break-all"><code>${esc(p.id || '—')}</code></dd></div></dl><div class="notice" style="margin-top:20px">${t('spPrivateEvidenceNote')}</div></div></div>`;
+      }
+      function optionalDataNotice() { return state.optionalErrors.length ? `<div class="notice" style="margin-bottom:18px">${t('spSecondaryDataError')}</div>` : ''; }
+      function sitesView() {
+        return `<div class="page-head"><div><div class="eyebrow">${t('spSupplierOrg')}</div><h1>${t('spNavSites')}</h1><p>${t('spSitesDeclareNote')}</p></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.sites.length} site(s)</h2><span class="meta">${t('spSitesActiveHist')}</span></div>${state.sites.length ? `<div class="item-list">${state.sites.map((site) => `<form class="item site-edit-form" data-site-id="${esc(site.id)}"><div class="item-head"><div><h3>${esc(site.name)}</h3><p>${esc(site.city || t('spNoCity'))} · ${esc(site.countryCode)} · ${(site.activityTypes || []).map(esc).join(', ') || t('spNoActivities')}</p></div>${site.isActive ? '<span class="status status-approved">' + t('spActive') + '</span>' : '<span class="status status-draft">' + t('spInactive') + '</span>'}</div><div class="form-grid" style="margin-top:14px"><label>${t('spName')}<input class="input" name="name" value="${esc(site.name)}" required></label><label>${t('spTypeCountry')}<input class="input" name="countryCode" maxlength="2" value="${esc(site.countryCode)}" required></label><label>${t('spCity')}<input class="input" name="city" value="${esc(site.city || '')}"></label><label>${t('spPostcode')}<input class="input" name="postalCode" value="${esc(site.postalCode || '')}"></label><label class="field-full">${t('spAddress')}<input class="input" name="address" value="${esc(site.address || '')}"></label><label class="field-full">${t('spActivities')} <span class="meta">${t('spCommaSeparated')}</span><input class="input" name="activityTypes" value="${esc((site.activityTypes || []).join(', '))}"></label><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="isActive" ${site.isActive ? 'checked' : ''}> ${t('spSiteActive')}</label></div><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">${t('spSaveSite')}</button></div></form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">▦</div><strong>' + t('spNoSite') + '</strong><p>' + t('spFirstSiteHint') + '</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>${t('spAddSite')}</h2></div><form id="site-form"><div class="form-grid"><label>${t('spName')}<input class="input" name="name" required placeholder="Nhãn Porto"></label><label>${t('spTypeCountry')}<input class="input" name="countryCode" maxlength="2" required placeholder="PT"></label><label>${t('spCity')}<input class="input" name="city" placeholder="Porto"></label><label>${t('spPostcode')}<input class="input" name="postalCode" placeholder="4000-000"></label><label class="field-full">${t('spAddress')}<input class="input" name="address" placeholder="Rua da Indústria 10"></label><label class="field-full">${t('spActivities')} <span class="meta">${t('spCommaSeparated')}</span><input class="input" name="activityTypes" placeholder="cutting, sewing"></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">${t('spAddSiteCta')}</button></div></form><div class="notice" style="margin-top:20px">${t('spGpsNote')}</div></div></div>`;
+      }
+      function certificationsView() {
+        return `<div class="page-head"><div><div class="eyebrow">${t('spSupplierDeclarations')}</div><h1>${t('spCertsH1')}</h1><p>${t('spCertNote')}</p></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.certifications.length} ${t('spCountCerts')}</h2><span class="meta">${t('spDeclarationStatus')}</span></div>${state.certifications.length ? `<div class="item-list">${state.certifications.map((certification) => `<form class="item certification-edit-form" data-certification-id="${esc(certification.id)}"><div class="item-head"><div><h3>${esc(certification.standardName)}</h3><p>${esc(certification.standardCode || t('spNoCode'))} · ${esc(certification.issuerName || t('spNoIssuer'))}</p></div>${status(certification.status)}</div><div class="form-grid" style="margin-top:14px"><label>Standard<input class="input" name="standardName" value="${esc(certification.standardName)}" required></label><label>${t('spCode')}<input class="input" name="standardCode" value="${esc(certification.standardCode || '')}"></label><label>${t('spIssuer')}<input class="input" name="issuerName" value="${esc(certification.issuerName || '')}"></label><label>${t('spNumber')}<input class="input" name="certificateNumber" value="${esc(certification.certificateNumber || '')}"></label><label>${t('spIssueDate')}<input class="input" name="issuedAt" type="date" value="${esc(String(certification.issuedAt || '').slice(0,10))}"></label><label>${t('spExpiryDate')}<input class="input" name="expiresAt" type="date" value="${esc(String(certification.expiresAt || '').slice(0,10))}"></label><label class="field-full">${t('spPrivateEvidence')}<select class="select" name="documentId"><option value="">${t('spNoEvidenceOpt')}</option>${state.documents.filter((document) => document.status === 'available').map((document) => `<option value="${esc(document.id)}" ${certification.documentId === document.id ? 'selected' : ''}>${esc(document.originalFilename)}</option>`).join('')}</select></label></div><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">${t('spSaveCert')}</button></div></form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">✓</div><strong>' + t('spNoCert') + '</strong><p>' + t('spNoCertHint') + '</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>${t('spDeclareCert')}</h2></div><form id="certification-form"><div class="form-grid"><label>${t('spRefStandard')}<select class="select" id="certification-standard-catalog" name="standardCatalogCode"><option value="">${t('spSelectStandard')}</option>${certificationCatalogOptions().replace('<option value="">' + t('spSelectRefStandard') + '</option>', '')}</select></label><label>${t('spStandardName')}<input class="input" id="certification-standard-name" name="standardName" required placeholder="Global Organic Textile Standard"></label><label>Site<select class="select" name="supplierSiteId"><option value="">${t('spWholeOrg')}</option>${state.sites.filter((site) => site.isActive).map((site) => `<option value="${esc(site.id)}">${esc(site.name)}</option>`).join('')}</select></label><label>${t('spCode')}<input class="input" id="certification-standard-code" name="standardCode" placeholder="CU-12345"></label><label>${t('spIssuer')}<input class="input" id="certification-standard-issuer" name="issuerName" placeholder="Control Union"></label><label>${t('spNumber')}<input class="input" name="certificateNumber"></label><label>${t('spIssueDate')}<input class="input" name="issuedAt" type="date"></label><label>${t('spExpiryDate')}<input class="input" name="expiresAt" type="date"></label><label class="field-full">${t('spPrivateEvidence')}<select class="select" name="documentId"><option value="">${t('spNoEvidenceOpt')}</option>${state.documents.filter((document) => document.status === 'available').map((document) => `<option value="${esc(document.id)}">${esc(document.originalFilename)}</option>`).join('')}</select></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">${t('spDeclareCertCta')}</button></div></form><div class="notice" style="margin-top:20px">${t('spCatalogHint')}</div></div></div>`;
+      }
+      function materialsView() {
+        return `<div class="page-head"><div><div class="eyebrow">${t('spMatEyebrow')}</div><h1>${t('spNavMaterials')}</h1><p>${t('spMatNote')}</p></div><div class="actions"><button type="button" class="btn btn-secondary" data-action="open-bom-import">📥 ${t('spMatImportBtn')}</button></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.materials.length} ${t('spUnitMaterials')}</h2></div>${state.materials.length ? `<div class="item-list">${state.materials.map((material) => `<form class="item material-edit-form" data-material-id="${esc(material.id)}"><div class="item-head"><div><h3>${esc(material.name)}</h3><p data-tf-demo>${esc(material.materialType)} · ${esc(material.originCountryCode || t('spNoOrigin'))}</p></div><span class="meta">${esc(material.normalizedName || '')}</span></div><div class="form-grid" style="margin-top:14px"><label>${t('spName')}<input class="input" name="name" value="${esc(material.name)}" required></label><label>${t('spMatTypeLabel')}<input class="input" name="materialType" value="${esc(material.materialType)}" required></label><label>${t('spMatOrigin')}<input class="input" name="originCountryCode" maxlength="2" value="${esc(material.originCountryCode || '')}"></label><label class="field-full">${t('spCompositionJson')}<textarea class="textarea" name="composition" rows="3">${esc(JSON.stringify(material.composition || {}, null, 2))}</textarea></label></div><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">${t('spSaveMaterial')}</button></div></form><form class="schema-material-form" data-material-schema-id="${esc(material.id)}" style="margin-top:10px;display:flex;gap:8px;align-items:end;flex-wrap:wrap"><label class="meta">${t('spVersionedSchema')}<select class="select" name="schemaIdentity">${state.schemaCatalog.filter((schema) => schema.subjectTypes?.includes('material')).map((schema) => `<option value="${esc(schema.key)}|${esc(schema.version)}">${esc(schema.title)} · v${esc(schema.version)}</option>`).join('') || '<option value="">' + t('spNoSchema') + '</option>'}</select></label><button class="btn btn-secondary btn-small" type="submit">${t('spAttachSchema')}</button></form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">◇</div><strong>' + t('spNoMaterial') + '</strong><p>' + t('spNoMaterialHint') + '</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>${t('spAddMaterial')}</h2></div><form id="material-form"><div class="form-grid"><label>${t('spName')}<input class="input" name="name" required placeholder="Organic cotton"></label><label>${t('spMatTypeLabel')}<input class="input" name="materialType" required placeholder="fiber"></label><label>${t('spMatOrigin')}<input class="input" name="originCountryCode" maxlength="2" placeholder="PT"></label><label class="field-full">${t('spCompositionJson')}<textarea class="textarea" name="composition" rows="4" placeholder="{}">{}</textarea></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">${t('spAddMaterialCta')}</button></div></form><div class="notice" style="margin-top:20px">${t('spMatDeclNote')}</div></div></div>`;
+      }
+      function latestDataPoints() {
+        const latest = new Map();
+        state.dataPoints.forEach((point) => {
+          const subject = point.supplierSiteId || point.supplierId || '';
+          const key = `${subject}:${point.dataKey}`;
+          if (!latest.has(key) || Number(point.version || 0) > Number(latest.get(key).version || 0)) latest.set(key, point);
+        });
+        return [...latest.values()];
+      }
+      function dataPointValue(point) { return point?.dataType === 'json' ? JSON.stringify(point.value ?? {}, null, 2) : String(point?.value ?? ''); }
+      function dataPointSubjectOptions(selectedType = 'supplier', selectedId = '') { return `<option value="supplier" ${selectedType === 'supplier' ? 'selected' : ''}>${t('spSupplierOrg')}</option>${state.sites.filter((site) => site.isActive).map((site) => `<option value="site:${esc(site.id)}" ${selectedType === 'site' && selectedId === site.id ? 'selected' : ''}>Site · ${esc(site.name)}</option>`).join('')}`; }
+      function documentOptions(selected = '') { return `<option value="">${t('spNoEvidenceOpt')}</option>${state.documents.filter((document) => document.status === 'available').map((document) => `<option value="${esc(document.id)}" ${selected === document.id ? 'selected' : ''}>${esc(document.originalFilename)}</option>`).join('')}`; }
+      function certificationCatalogOptions() { return state.certificationCatalog.length ? `<option value="">${t('spSelectRefStandard')}</option>${state.certificationCatalog.filter((standard) => standard.catalogStatus !== 'superseded').map((standard) => `<option value="${esc(standard.code)}" data-standard-name="${esc(standard.name)}" data-standard-issuer="${esc(standard.issuer)}" data-standard-version="${esc(standard.referenceVersion)}">${esc(standard.code)} · ${esc(standard.name)} · v${esc(standard.referenceVersion)}</option>`).join('')}` : '<option value="">' + t('spCatalogUnavailable') + '</option>'; }
+      function dataPointsView() {
+        const points = latestDataPoints();
+        return `<div class="page-head"><div><div class="eyebrow">${t('spFactsEyebrow')}</div><h1>${t('spDeclaredData')}</h1><p>${t('spDataPointsNote')}</p></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${points.length} ${t('spUnitCurrentData')}</h2><span class="meta">${state.dataPoints.length} ${t('spUnitVersionsKept')}</span></div>${points.length ? `<div class="item-list">${points.map((point) => `<form class="item data-point-edit-form" data-data-point-id="${esc(point.id)}"><div class="item-head"><div><h3>${esc(fieldLabel(point.dataKey))}</h3><p>${point.supplierSiteId ? t('spScopeSite') : t('spScopeOrg')} · v${esc(point.version)} · ${esc(point.dataType)}</p></div>${status(point.status)}</div><div class="form-grid" style="margin-top:14px"><label class="field-full">${t('spValue')}<textarea class="textarea" name="value" rows="3" required>${esc(dataPointValue(point))}</textarea></label><label>${t('spAvailableEvidence')}<select class="select" name="sourceDocumentId">${documentOptions(point.sourceDocumentId || '')}</select></label><label>${t('spStartDate')}<input class="input" name="validFrom" type="date" value="${esc(String(point.validFrom || '').slice(0,10))}"></label><label>${t('spEndDate')}<input class="input" name="validUntil" type="date" value="${esc(String(point.validUntil || '').slice(0,10))}"></label></div><input type="hidden" name="dataKey" value="${esc(point.dataKey)}"><input type="hidden" name="dataType" value="${esc(point.dataType)}"><input type="hidden" name="subjectType" value="${point.supplierSiteId ? 'site' : 'supplier'}"><input type="hidden" name="subjectId" value="${esc(point.supplierSiteId || '')}"><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">${t('spNewVersion')}</button></div></form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">⌁</div><strong>' + t('spNoDataPoint') + '</strong><p>' + t('spNoDataPointHint') + '</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>${t('spDeclareData')}</h2></div><form id="data-point-form"><div class="form-grid"><label>${t('spTechKey')}<input class="input" name="dataKey" maxlength="160" placeholder="annual_production_capacity" required></label><label>Type<select class="select" name="dataType"><option value="text">${t('spTypeText')}</option><option value="number">${t('spTypeNumber')}</option><option value="percentage">${t('spTypePercentage')}</option><option value="boolean">${t('spTypeBoolean')}</option><option value="date">${t('spTypeDate')}</option><option value="country">${t('spTypeCountry')}</option><option value="json">${t('spTypeJson')}</option></select></label><label>${t('spSubject')}<select class="select" name="subject"><option value="supplier">${t('spSupplierOrg')}</option>${state.sites.filter((site) => site.isActive).map((site) => `<option value="site:${esc(site.id)}">Site · ${esc(site.name)}</option>`).join('')}</select></label><label>${t('spAvailableEvidence')}<select class="select" name="sourceDocumentId">${documentOptions()}</select></label><label class="field-full">${t('spValue')}<textarea class="textarea" name="value" rows="4" placeholder="125000 ou PT ou [{&quot;materialKey&quot;:&quot;cotton&quot;,&quot;percentage&quot;:80}]" required></textarea></label><label>${t('spStartDate')}<input class="input" name="validFrom" type="date"></label><label>${t('spEndDate')}<input class="input" name="validUntil" type="date"></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">${t('spSaveDataPoint')}</button></div></form><div class="notice" style="margin-top:20px">${t('spDataPointNote')}</div></div></div>`;
+      }
+      function membersView() {
+        const canManage = state.canManageMembers;
+        return `<div class="page-head"><div><div class="eyebrow">${t('spOrgAccess')}</div><h1>${t('spSupplierTeam')}</h1><p>${t('spMembersNote')}</p></div></div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.members.length} ${t('spCountMembers')}</h2><span class="meta">${canManage ? t('spMgmtAllowed') : t('spReadOnly')}</span></div>${state.members.length ? `<div class="item-list">${state.members.map((member) => `<form class="item member-edit-form" data-membership-id="${esc(member.id)}"><div class="item-head"><div><h3>${esc(member.user?.fullName || member.user?.email || 'Membre')}</h3><p>${esc(member.user?.email || '')} · ${esc(member.role)}</p></div>${status(member.status)}</div>${canManage && member.userId !== state.user?.id && member.role !== 'owner' ? `<div class="form-grid" style="margin-top:14px"><label>${t('spRole')}<select class="select" name="role"><option value="admin" ${member.role === 'admin' ? 'selected' : ''}>${t('spRoleAdmin')}</option><option value="manager" ${member.role === 'manager' ? 'selected' : ''}>${t('spRoleManager')}</option><option value="contributor" ${member.role === 'contributor' ? 'selected' : ''}>${t('spRoleContributor')}</option><option value="viewer" ${member.role === 'viewer' ? 'selected' : ''}>${t('spRoleViewer')}</option><option value="auditor" ${member.role === 'auditor' ? 'selected' : ''}>${t('spRoleAuditor')}</option></select></label><label>${t('spState')}<select class="select" name="status"><option value="active" ${member.status === 'active' ? 'selected' : ''}>${t('spStatusActive')}</option><option value="suspended" ${member.status === 'suspended' ? 'selected' : ''}>${t('spStatusSuspended')}</option><option value="revoked" ${member.status === 'revoked' ? 'selected' : ''}>${t('spStatusRevoked')}</option></select></label></div><div class="form-actions"><button class="btn btn-secondary btn-small" type="submit">${t('spSaveAccess')}</button></div>` : ''}</form>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">♙</div><strong>' + t('spNoMember') + '</strong><p>' + t('spNoMemberHint') + '</p></div>'}</div><div class="card panel">${canManage ? `<div class="panel-head"><h2>${t('spInviteMember')}</h2></div><form id="member-invite-form"><div class="form-grid"><label class="field-full">${t('spEmail')}<input class="input" name="email" type="email" maxlength="320" placeholder="quality@atelier.example" required></label><label class="field-full">${t('spRole')}<select class="select" name="targetRole"><option value="manager">${t('spRoleManager')}</option><option value="contributor">${t('spRoleContributor')}</option><option value="viewer">${t('spRoleViewer')}</option><option value="auditor">${t('spRoleAuditor')}</option><option value="admin">${t('spRoleAdmin')}</option></select></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">${t('spSendInvite')}</button></div></form>` : '<div class="panel-head"><h2>Invitation</h2></div><p>' + t('spMemberPermNote') + '</p>'}${state.memberInvitations.length ? `<div class="notice" style="margin-top:20px"><strong>${state.memberInvitations.length} ${t('spPendingInvites')}</strong><br>${state.memberInvitations.map((invitation) => `<div class="invitation-row"><span>${esc(invitation.email)} · ${esc(invitation.targetRole)} · expire le ${date(invitation.expiresAt)}</span>${canManage ? `<span class="actions"><button class="btn btn-secondary btn-small" type="button" data-invitation-action="resend" data-invitation-id="${esc(invitation.id)}">${t('spResend')}</button><button class="btn btn-danger btn-small" type="button" data-invitation-action="revoke" data-invitation-id="${esc(invitation.id)}">${t('spRevoke')}</button></span>` : ''}</div>`).join('')}</div>` : ''}</div></div>`;
+      }
+
+      function documentsView() {
+        return `<div class="page-head">
+            <div>
+              <div class="eyebrow">${t('spVaultEyebrow')}</div>
+              <h1>${esc(t('documents'))}</h1>
+              <p>${esc(t('vaultDesc'))}</p>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary btn-small" data-demo-action="1">${t('spExportVaultRegistry')}</button>
+            </div>
+          </div>
+
+          <!-- Evidence Vault Hero Bar -->
+          <div class="vault-hero">
+            <div>
+              <span class="badge" style="background:rgba(255,255,255,0.15);color:#fff;margin-bottom:8px;">${t('spOneToManyActive')}</span>
+              <h2 style="font-size:20px;font-weight:800;letter-spacing:-0.03em;color:#fff;">${t('spVaultTitle')}</h2>
+              <p style="font-size:12.5px;color:#a3bfb2;margin-top:4px;">${t('spVaultIntro')}</p>
+            </div>
+            <div class="vault-stats">
+              <div class="vault-stat-item">
+                <strong>${state.documents.length}</strong>
+                <span>${t('spSealedEvidence')}</span>
+              </div>
+              <div class="vault-stat-item">
+                <strong>${state.shares.filter((share) => share.status === 'active').length}</strong>
+                <span>${t('spActiveShares')}</span>
+              </div>
+              <div class="vault-stat-item">
+                <strong>100%</strong>
+                <span>${t('spAvCompliant')}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NDA & Trade Secret Protection Shield -->
+          <div class="nda-shield-box">
+            <div class="nda-shield-icon">🛡️</div>
+            <div>
+              <strong style="font-size:13.5px;color:var(--ink);">${esc(t('ndaTitle'))}</strong>
+              <p style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;">${esc(t('ndaDesc'))}</p>
+              <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <span class="client-coverage-pill">✓ ${t('spAes256')}</span>
+                <span class="client-coverage-pill">✓ ${t('spMaskPrices')}</span>
+                <span class="client-coverage-pill">✓ ${t('spSha256')}</span>
+              </div>
+            </div>
+          </div><div class="card panel" style="margin-top:18px"><div class="panel-head"><h2>${t('spActiveShares')}</h2><span class="meta">${state.shares.filter((share) => share.status === 'active').length} ${t('spCountBrands')}</span></div>${state.shares.filter((share) => share.status === 'active').length ? `<div class="item-list">${state.shares.filter((share) => share.status === 'active').map((share) => `<div class="item"><div class="item-head"><div><h3>${esc(share.granteeOrganization?.display_name || share.granteeOrganization?.legal_name || 'Organisation cliente')}</h3><p>${t('spShareNote')} ${date(share.createdAt)}</p></div><span class="status status-approved">${t('spStatusActive')}</span></div></div>`).join('')}</div>` : '<div class="empty"><strong>' + t('spNoActiveShare') + '</strong><p>' + t('spEvidencePrivateNote') + '</p></div>'}</div>${optionalDataNotice()}<div class="grid split"><div class="card panel"><div class="panel-head"><h2>${state.documents.length} ${t('spCountDocs')}</h2><span class="meta">${t('spPrivateTempAccess')}</span></div>${state.documents.length ? `<div class="item-list">${state.documents.map((document) => `<div class="item"><div class="item-head"><div><h3>${esc(document.originalFilename)}</h3><p>${esc(document.kind)} · ${esc(document.contentType)} · ${moneyless(document.byteSize)} octet(s)</p></div>${status(document.status)}</div><div class="actions" style="justify-content:flex-start;margin-top:12px">${document.status === 'available' ? `<button class="btn btn-secondary btn-small" data-document-id="${esc(document.id)}">${t('spTempDownload')}</button>` : '<span class="meta">' + t('spDocNotDownloadable') + '</span>'}</div></div>`).join('')}</div>` : '<div class="empty"><div class="empty-icon">▤</div><strong>' + t('spNoPrivateEvidence') + '</strong><p>' + t('spNoEvidenceHint') + '</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>${t('spAddEvidence')}</h2></div><form id="document-form"><div class="form-grid"><label class="field-full">${t('spDocFile')}<input class="input" name="file" type="file" accept="application/pdf,image/png,image/jpeg,text/plain" required></label><label>${t('spEvidenceType')}<select class="select" name="kind"><option value="certificate">${t('spDocCertificate')}</option><option value="technical_spec">${t('spDocTechSpec')}</option><option value="origin_proof">${t('spDocOrigin')}</option><option value="audit_report">${t('spDocAudit')}</option><option value="invoice">${t('spDocInvoice')}</option><option value="other">${t('spDocOther')}</option></select></label><label>${t('spExpiry')}<input class="input" name="expiresAt" type="date"></label></div><div class="form-actions"><button class="btn btn-primary" type="submit">${t('spUploadAndScan')}</button></div></form><div class="notice" style="margin-top:20px">${t('spUploadNote')}</div></div></div>`;
+      }
+
+      function passportView() {
+        const passport = state.passport || {};
+        const requests = state.passportRequests || [];
+        return `<div class="page-head"><div><div class="eyebrow">${t('spPassportEyebrow')}</div><h1>${t('spPassportTitle')}</h1><p>${t('spPassportIntro')}</p></div><div class="actions"><button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/passport/">${t('spViewPublicPassport')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${t('spVisibilitySettings')}</h2></div><form id="passport-settings-form"><label class="field-full">${t('spTitle')}<input class="input" name="headline" value="${esc(passport.headline || '')}" placeholder="Responsible textile manufacturing"></label><label><input type="checkbox" name="isPublic" ${passport.isPublic ? 'checked' : ''}> ${t('spPassportPublic')}</label><div class="form-actions"><button class="btn btn-primary">${t('spSaveSettings')}</button></div></form></div><div class="card panel"><div class="panel-head"><h2>${t('spAccessRequests')}</h2><span class="meta">${requests.length}</span></div>${requests.length ? requests.map((request) => `<div class="item"><div class="item-head"><strong>${esc(request.message || t('spFullAccessRequest'))}</strong>${status(request.status)}</div><button class="btn btn-secondary btn-small" data-action="review-passport-request" data-request-id="${esc(request.id)}">${t('spReviewRequest')}</button></div>`).join('') : '<div class="empty"><strong>' + t('spNoAccessRequest') + '</strong></div>'}</div></div>`;
+      }
+
+      function massBalanceSupplierView() {
+        return `<div class="page-head"><div><div class="eyebrow">${t('spMbEyebrow')}</div><h1>${t('spMbTitle')}</h1></div></div><div class="card panel"><form id="supplier-tc-form"><label>${t('spTcNumber')}<input class="input" name="certificateNumber" required></label><label>${t('spCertifiedQty')}<input class="input" name="certifiedQuantityKg" type="number" required></label><button class="btn btn-primary">${t('spDeclareTc')}</button></form></div>`;
+      }
+
+      function supplierCapSection() {
+        const caps = state.caps || [];
+        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${t('spCapTitle')}</h2><p class="meta">${t('spCapIntro')}</p></div><span class="meta">${caps.length} ${t('spUnitReceived')}</span></div>${caps.length ? caps.map((cap) => `<div class="item"><div class="item-head"><div><strong>${esc(cap.title || cap.id)}</strong><p class="meta">${esc(cap.instructions || t('spCorrectiveRequested'))}</p></div>${status(cap.status)}</div><form class="cap-submit-form" data-cap-id="${esc(cap.id)}"><textarea class="textarea" name="responseSummary" rows="3" required placeholder="${t('spPhRemediation')}"></textarea><div class="form-actions"><button class="btn btn-primary btn-small" type="submit">${t('spSendRemediation')}</button></div></form></div>`).join('') : '<div class="empty"><strong>' + t('spNoCap') + '</strong><p>' + t('spNoCapHint') + '</p></div>'}</div>`;
+      }
+
+      async function submitCapRemediation(form) {
+        const capId = form.dataset.capId;
+        const data = Object.fromEntries(new FormData(form));
+        if (!state.demo) await api(`/api/quality/caps/${encodeURIComponent(capId)}/submit-remediation`, { method:'POST', body:JSON.stringify(data) });
+        notify(state.demo ? t('spNCapSubmittedDemo') : t('spNCapSubmitted'));
+        render();
+      }
+
+      function qualityCard(label, value) { return `<div class="card kpi"><div class="kpi-label">${esc(label)}</div><div class="kpi-value">${moneyless(value)}%</div><div class="progress"><span style="width:${pct(value)}%"></span></div></div>`; }
+      function qualityView() {
+        const score = state.quality?.score;
+        return `${supplierCapSection()}<div class="page-head"><div><div class="eyebrow">${t('spQcEyebrow')}</div><h1>${t('spDataQuality')}</h1><p>${t('spQcNote')}</p></div><div class="actions"><button class="btn btn-primary" data-action="compute-quality">${t('spRecalcScore')}</button></div></div>${optionalDataNotice()}${score ? `<div class="grid kpis">${qualityCard(t('spDimShortCompleteness'),score.completeness)}${qualityCard(t('spDimShortFreshness'),score.freshness)}${qualityCard(t('spDimShortDocumentation'),score.documentationCoverage)}${qualityCard(t('spDimShortConsistency'),score.consistency)}</div><div class="card panel"><div class="panel-head"><h2>${t('spMissingFields')}</h2><span class="meta">${t('spCalc')} <code>${esc(score.calculationVersion || 'supplier_quality_v1')}</code> · ${date(score.computedAt)}</span></div>${score.missingFields?.length ? `<div class="item-list">${score.missingFields.map((field) => `<div class="item"><strong>${esc(fieldLabel(field))}</strong><span class="meta">${t('spToCompleteHint')}</span></div>`).join('')}</div>` : '<div class="success-note">' + t('spNoMissingField') + '</div>'}</div>` : '<div class="card empty"><div class="empty-icon">◒</div><strong>' + t('spScoreNotComputed') + '</strong><p>' + t('spComputeScoreHint') + '</p><button class="btn btn-primary btn-small" data-action="compute-quality">Calculer maintenant</button></div>'}${state.quality ? `<div class="card panel"><div class="panel-head"><h2>${t('spOpenIssues')}</h2><span class="meta">${state.quality.issues.length}</span></div>${state.quality.issues.length ? state.quality.issues.map((issue) => `<div class="item"><div class="item-head"><div><strong>${esc(issue.message)}</strong><p class="meta">${esc(fieldLabel(issue.ruleKey))} · ${esc(statusLabel(issue.severity))}</p></div>${status(issue.status)}</div></div>`).join('') : '<div class="success-note">' + t('spNoOpenIssue') + '</div>'}</div>` : ''}`;
+      }
+
+      function inputForItem(item, current) {
+        const value = current?.value;
+        const name = 'responseValue';
+        if (item.dataType === 'boolean') return `<select class="select" name="${name}" required><option value="">Choisir…</option><option value="true" ${value === true ? 'selected' : ''}>Oui</option><option value="false" ${value === false ? 'selected' : ''}>Non</option></select>`;
+        if (item.dataType === 'number' || item.dataType === 'percentage') return `<input class="input" name="${name}" type="number" step="0.01" min="${item.dataType === 'percentage' ? '0' : ''}" max="${item.dataType === 'percentage' ? '100' : ''}" value="${esc(value ?? '')}" required>`;
+        if (item.dataType === 'date') return `<input class="input" name="${name}" type="date" value="${esc(value ?? '')}" required>`;
+        if (item.dataType === 'country') return `<input class="input" name="${name}" maxlength="2" pattern="[A-Za-z]{2}" value="${esc(value ?? '')}" placeholder="PT" required>`;
+        if (item.dataType === 'json' || item.dataType === 'document') return `<textarea class="textarea" name="${name}" rows="5" ${item.dataType === 'document' ? 'disabled' : 'required'} placeholder="${item.dataType === 'document' ? t('spUploadSoon') : '[{\"materialKey\":\"cotton\",\"percentage\":80}]'}>${item.dataType === 'json' && value !== undefined ? esc(JSON.stringify(value, null, 2)) : ''}</textarea>`;
+        return `<textarea class="textarea" name="${name}" rows="4" maxlength="2000" required>${esc(value ?? '')}</textarea>`;
+      }
+      function requestDetailView() {
+        const request = state.selectedRequest;
+        if (!request) return `<div class="empty"><div class="empty-icon">↗</div><strong>Demande introuvable</strong><button class="btn btn-secondary" data-view="requests">${t('spBackToRequests')}</button></div>`;
+        const items = request.items || [];
+        const canSubmit = ['in_progress','changes_requested'].includes(request.status);
+        return `<div class="detail-hero"><div><button class="link-button" data-view="requests">← ${t('spBackToRequests')}</button><div class="eyebrow" style="margin-top:20px">${t('spDataRequest')}</div><h1>${esc(request.title)}</h1><div class="detail-meta">${status(request.status)}<span class="meta"><code>${esc(request.questionnaireKey)} · v${esc(request.questionnaireVersion)}</code></span><span class="meta">${t('spDueOn')} ${date(request.dueAt)}</span></div></div><div class="actions">${canSubmit ? '<button class="btn btn-primary" data-action="submit-request">' + t('submitToBrand') + '</button>' : '<button class="btn btn-secondary" data-action="refresh-request">' + t('spRefresh') + '</button>'}</div></div><div class="grid split"><div class="card panel"><div class="panel-head"><div><h2>${t('spAnswers')}</h2><p class="meta" style="margin:5px 0 0">${t('spAnswersNote')}</p></div><div class="progress-line"><div class="progress"><span style="width:${pct(request.completionPercentage)}%"></span></div><small>${moneyless(request.completionPercentage)}%</small></div></div>${items.length ? `<div class="item-list">${items.map((item) => { const current = (item.responses || []).find((response) => response.isCurrent); return `<div class="item"><div class="item-head"><div><h3>${esc(item.label)} ${item.required ? '<span style="color:var(--red)">*</span>' : ''}</h3><p>${esc(item.helpText || item.fieldKey)} · ${esc(item.dataType)}${item.evidenceRequired ? ' · ' + t('spEvidenceRequested') : ''}</p></div>${current ? status(current.status) : '<span class="status status-draft">' + t('spToFill') + '</span>'}</div><form class="response-box response-form" data-item-id="${esc(item.id)}" data-data-type="${esc(item.dataType)}"><label>${t('spYourAnswer')}${inputForItem(item, current)}${item.evidenceRequired ? `<span class="meta" style="margin-top:10px">${t('spLinkedEvidence')}</span><select class="select" name="sourceDocumentId"><option value="">${t('spNoEvidenceOpt')}</option>${state.documents.filter((document) => document.status === 'available').map((document) => `<option value="${esc(document.id)}" ${current?.sourceDocumentId === document.id ? 'selected' : ''}>${esc(document.originalFilename)}</option>`).join('')}</select>` : ''}</label><div class="form-actions"><button class="btn btn-primary btn-small" type="submit" ${item.dataType === 'document' ? 'disabled' : ''}>${t('spSaveAnswer')}</button></div></form></div>`; }).join('')}</div>` : '<div class="empty"><div class="empty-icon">↗</div><strong>' + t('spNoItem') + '</strong><p>' + t('spNoItemHint') + '</p></div>'}</div><div class="card panel"><div class="panel-head"><h2>${t('spAboutRequest')}</h2></div><dl style="display:grid;gap:14px;margin:0"><div><dt class="meta">${t('spQuestionnaire')}</dt><dd style="margin:4px 0;font-weight:750">${esc(request.questionnaireKey)} · v${esc(request.questionnaireVersion)}</dd></div><div><dt class="meta">${t('spCreatedOn')}</dt><dd style="margin:4px 0;font-weight:750">${date(request.createdAt)}</dd></div><div><dt class="meta">${t('spLastActivity')}</dt><dd style="margin:4px 0;font-weight:750">${date(request.lastActivityAt)}</dd></div></dl><div class="notice" style="margin-top:20px">${t('spAnswerNote')}</div></div></div>`;
+      }
+
+      async function openRequest(id) { state.view = 'requestDetail'; if (state.demo) { state.selectedRequest = state.requests.find((request) => request.id === id) || null; render(); return; } const detail = await api(`/api/data-requests/${encodeURIComponent(id)}?scope=supplier`); state.selectedRequest = detail.request; state.selectedRequest.items = detail.items; render(); }
+      async function refreshRequest() { if (!state.selectedRequest) return; if (!state.demo) { const detail = await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}?scope=supplier`); state.selectedRequest = detail.request; state.selectedRequest.items = detail.items; } render(); }
+      function responseValue(form, dataType) {
+        const raw = new FormData(form).get('responseValue');
+        if (raw === null || raw === '') throw new Error('response_value_required');
+        if (dataType === 'boolean') return raw === 'true';
+        if (dataType === 'number' || dataType === 'percentage') { const value = Number(raw); if (!Number.isFinite(value)) throw new Error('response_value_type_invalid'); return value; }
+        if (dataType === 'json') { try { return JSON.parse(String(raw)); } catch { throw new Error('response_json_invalid'); } }
+        return String(raw);
+      }
+      async function saveResponse(form) {
+        const itemId = form.dataset.itemId; const dataType = form.dataset.dataType; const formData = new FormData(form); const sourceDocumentId = formData.get('sourceDocumentId') || null; const value = responseValue(form, dataType);
+        if (state.demo) {
+          const item = state.selectedRequest.items.find((entry) => entry.id === itemId); if (!item) throw new Error('item_not_found');
+          item.responses.forEach((response) => { response.isCurrent = false; }); item.responses.push({ id:`demo-response-${Date.now()}`, value, sourceDocumentId, status:'declared', isCurrent:true, responseVersion:item.responses.length + 1 });
+          state.selectedRequest.completionPercentage = String(Math.min(100, Number(state.selectedRequest.completionPercentage || 0) + 15)); notify(t('spNAnswerSavedDemo')); render(); return;
+        }
+        await api(`/api/data-request-items/${encodeURIComponent(itemId)}/response`, { method:'POST', body:JSON.stringify({ value, sourceDocumentId }) }); await refreshRequest(); notify(t('spNAnswerSaved'));
+      }
+      async function submitRequest() { if (!state.selectedRequest) return; if (state.demo) { state.selectedRequest.status = 'submitted'; notify(t('spNRequestSubmittedDemo')); render(); return; } const result = await api(`/api/data-requests/${encodeURIComponent(state.selectedRequest.id)}/submit`, { method:'POST' }); state.selectedRequest = result.request; await refreshRequest(); notify(t('spNRequestSubmitted')); }
+      async function saveProfile(form) { const data = Object.fromEntries(new FormData(form)); const body = { profileSummary:data.profileSummary || null, contactName:data.contactName || null, contactEmail:data.contactEmail || null, contactPhone:data.contactPhone || null, employeeCountRange:data.employeeCountRange || null, yearEstablished:data.yearEstablished ? Number(data.yearEstablished) : null, activityTypes:String(data.activityTypes || '').split(',').map((value) => value.trim()).filter(Boolean) }; if (state.demo) { Object.assign(state.profile, body, { profileCompletion:'86' }); notify(t('spNProfileSavedDemo')); render(); return; } const result = await api('/api/supplier/profile', { method:'PATCH', body:JSON.stringify(body) }); state.profile = result.profile; state.supplier = result.supplier; notify(t('spNProfileSaved')); render(); }
+      async function submitProfile() { if (state.demo) { state.profile.onboardingStatus = 'submitted'; state.profile.lastSubmittedAt = new Date().toISOString(); notify(t('spNProfileSubmittedDemo')); render(); return; } const result = await api('/api/supplier/profile/submit', { method:'POST' }); state.profile = result.profile; notify(t('spNProfileSubmitted')); render(); }
+      async function submitSelfOnboarding(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const body = {
+          legalName: (data.legalName || '').trim(),
+          displayName: (data.displayName || '').trim() || null,
+          countryCode: (data.countryCode || '').trim().toUpperCase(),
+          contactName: (data.contactName || '').trim() || null,
+          contactPhone: (data.contactPhone || '').trim() || null,
+          profileSummary: (data.profileSummary || '').trim() || null,
+          activityTypes: String(data.activityTypes || '').split(',').map((s) => s.trim()).filter(Boolean),
+        };
+        if (!body.legalName) { notify(t('spNLegalNameRequired'), true); return; }
+        if (!body.countryCode || body.countryCode.length !== 2) { notify('Le code pays doit comporter 2 lettres (ex: PT, FR).', true); return; }
+        if (state.demo) {
+          state.selectedOrganizationId = 'demo-org-new';
+          state.view = 'overview';
+          notify(t('spNSpaceCreatedDemo'));
+          await sync();
+          return;
+        }
+        try {
+          const result = await api('/api/supplier/onboarding', { method:'POST', body:JSON.stringify(body) });
+          localStorage.setItem('tracefab_supplier_organization_id', result.organization.id);
+          state.selectedOrganizationId = result.organization.id;
+          state.view = 'overview';
+          notify(t('spNSpaceCreated'));
+          await sync();
+        } catch (err) { notify(err.message, true); }
+      }
+      function splitValues(value) { return String(value || '').split(',').map((entry) => entry.trim()).filter(Boolean); }
+      function parseJsonField(value) { try { return JSON.parse(String(value || '{}')); } catch { throw new Error('invalid_material_composition'); } }
+      async function refreshOptionalData() {
+        if (state.demo) return;
+        const optional = await Promise.allSettled([api('/api/supplier/sites'), api('/api/supplier/certifications'), api(`/api/materials?organizationId=${encodeURIComponent(state.profile.organizationId)}`), api('/api/supplier/documents'), api('/api/supplier/data-points'), api('/api/supplier/members'), api('/api/supplier/quality'), api('/api/catalog/schemas?subjectType=material')]);
+        state.sites = optional[0].status === 'fulfilled' ? optional[0].value.sites || [] : state.sites;
+        state.certifications = optional[1].status === 'fulfilled' ? optional[1].value.certifications || [] : state.certifications;
+        state.materials = optional[2].status === 'fulfilled' ? optional[2].value.materials || [] : state.materials;
+        state.documents = optional[3].status === 'fulfilled' ? optional[3].value.documents || [] : state.documents;
+        state.dataPoints = optional[4].status === 'fulfilled' ? optional[4].value.dataPoints || [] : state.dataPoints;
+        state.members = optional[5].status === 'fulfilled' ? optional[5].value.members || [] : state.members;
+        state.memberInvitations = optional[5].status === 'fulfilled' ? optional[5].value.invitations || [] : state.memberInvitations;
+        state.canManageMembers = optional[5].status === 'fulfilled' ? Boolean(optional[5].value.canManage) : state.canManageMembers;
+        state.quality = optional[6].status === 'fulfilled' ? optional[6].value : state.quality;
+        state.schemaCatalog = optional[7].status === 'fulfilled' ? optional[7].value.schemas || [] : state.schemaCatalog;
+        state.optionalErrors = optional.filter((result) => result.status === 'rejected').map((result) => result.reason?.message || 'optional_data_unavailable');
+        render();
+      }
+      async function saveSite(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const body = { name:data.name, countryCode:data.countryCode, address:data.address || null, city:data.city || null, postalCode:data.postalCode || null, activityTypes:splitValues(data.activityTypes), isActive:data.isActive === undefined ? true : data.isActive === 'on' };
+        const siteId = form.dataset.siteId;
+        if (state.demo) {
+          if (siteId) { const site = state.sites.find((entry) => entry.id === siteId); if (site) Object.assign(site, body); }
+          else state.sites.push({ id:`demo-site-${Date.now()}`, supplierId:state.supplier?.id, ...body });
+          notify(siteId ? t('spNSiteUpdatedDemo') : t('spNSiteAddedDemo')); render(); return;
+        }
+        await api(siteId ? `/api/supplier/sites/${encodeURIComponent(siteId)}` : '/api/supplier/sites', { method:siteId ? 'PATCH' : 'POST', body:JSON.stringify(body) });
+        await refreshOptionalData(); notify(siteId ? t('spNSiteUpdated') : t('spNSiteAdded'));
+      }
+      async function saveCertification(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const body = { supplierSiteId:data.supplierSiteId || null, documentId:data.documentId || null, standardName:data.standardName, standardCode:data.standardCode || null, issuerName:data.issuerName || null, certificateNumber:data.certificateNumber || null, issuedAt:data.issuedAt || null, expiresAt:data.expiresAt || null };
+        const certificationId = form.dataset.certificationId;
+        if (state.demo) {
+          if (certificationId) { const certification = state.certifications.find((entry) => entry.id === certificationId); if (certification) Object.assign(certification, body); }
+          else state.certifications.unshift({ id:`demo-certification-${Date.now()}`, supplierId:state.supplier?.id, status:'declared', documentId:null, ...body });
+          notify(certificationId ? t('spNCertUpdatedDemo') : t('spNCertDeclaredDemo')); render(); return;
+        }
+        await api(certificationId ? `/api/supplier/certifications/${encodeURIComponent(certificationId)}` : '/api/supplier/certifications', { method:certificationId ? 'PATCH' : 'POST', body:JSON.stringify(body) });
+        await refreshOptionalData(); notify(certificationId ? t('spNCertUpdated') : t('spNCertDeclared'));
+      }
+      async function attachMaterialSchema(form) {
+        const [schemaKey, schemaVersion] = String(new FormData(form).get('schemaIdentity') || '').split('|');
+        const subjectId = form.dataset.materialSchemaId;
+        if (!schemaKey || !schemaVersion || !subjectId) throw new Error('schema_binding_required');
+        if (state.demo) { notify(t('spNSchemaAttachedDemo')); return; }
+        await api('/api/schema-bindings', { method:'POST', body:JSON.stringify({ schemaKey, schemaVersion, subjectType:'material', subjectId }) });
+        notify(t('spNSchemaAttached'));
+      }
+      async function saveMaterial(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const body = { ownerOrganizationId:state.profile.organizationId, materialType:data.materialType, name:data.name, originCountryCode:data.originCountryCode || null, composition:parseJsonField(data.composition) };
+        const materialId = form.dataset.materialId;
+        if (state.demo) {
+          if (materialId) { const material = state.materials.find((entry) => entry.id === materialId); if (material) Object.assign(material, body); }
+          else state.materials.unshift({ id:`demo-material-${Date.now()}`, ...body });
+          notify(materialId ? t('spNMaterialUpdatedDemo') : t('spNMaterialAddedDemo')); render(); return;
+        }
+        await api(materialId ? `/api/materials/${encodeURIComponent(materialId)}` : '/api/materials', { method:materialId ? 'PATCH' : 'POST', body:JSON.stringify(body) });
+        await refreshOptionalData(); notify(materialId ? t('spNMaterialUpdated') : t('spNMaterialAdded'));
+      }
+      async function refreshDocuments() {
+        if (state.demo) return;
+        const result = await api('/api/supplier/documents');
+        state.documents = result.documents || [];
+        render();
+      }
+      async function uploadDocument(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const file = data.file;
+        if (!(file instanceof File) || !file.size) throw new Error('document_file_required');
+        if (file.size > 50 * 1024 * 1024) throw new Error('document_size_limit_exceeded');
+        const body = { originalFilename:file.name, contentType:file.type, byteSize:file.size, kind:data.kind, expiresAt:data.expiresAt || null, metadata:{ source:'supplier-portal' } };
+        if (state.demo) {
+          state.documents.unshift({ id:`demo-document-${Date.now()}`, ownerOrganizationId:state.profile.organizationId, originalFilename:file.name, contentType:file.type, byteSize:file.size, kind:data.kind, status:'available', visibility:'private', createdAt:new Date().toISOString(), availableAt:new Date().toISOString() });
+          notify(t('spNEvidenceAddedDemo')); render(); return;
+        }
+        const intent = await api('/api/supplier/documents/upload-intent', { method:'POST', body:JSON.stringify(body) });
+        const upload = await fetch(intent.upload.url, { method:'PUT', headers:intent.upload.headers || {}, body:file });
+        if (!upload.ok) throw new Error('private_storage_upload_failed');
+        await api(intent.next.scan, { method:'POST', body:'{}' });
+        await refreshDocuments();
+        notify(t('spNEvidenceUploaded'));
+      }
+      async function downloadDocument(id) {
+        if (state.demo) { notify(t('spNTempDownloadDemo')); return; }
+        const result = await api(`/api/supplier/documents/${encodeURIComponent(id)}/download`);
+        window.open(result.download.url, '_blank', 'noopener,noreferrer');
+      }
+
+      function parseDataPointValue(raw, dataType) {
+        if (raw === '') throw new Error('data_point_value_required');
+        if (dataType === 'number' || dataType === 'percentage') { const value = Number(raw); if (!Number.isFinite(value)) throw new Error('invalid_data_point_value'); return value; }
+        if (dataType === 'boolean') return raw === 'true';
+        if (dataType === 'json') { try { return JSON.parse(raw); } catch { throw new Error('invalid_data_point_value'); } }
+        return dataType === 'country' ? raw.toUpperCase() : raw;
+      }
+      async function saveDataPoint(form) {
+        const data = Object.fromEntries(new FormData(form));
+        const subject = data.subject ? String(data.subject).split(':') : [data.subjectType || 'supplier', data.subjectId || ''];
+        const body = { dataKey:data.dataKey, dataType:data.dataType, value:parseDataPointValue(String(data.value || ''), data.dataType), subjectType:subject[0], subjectId:subject[1] || null, sourceDocumentId:data.sourceDocumentId || null, validFrom:data.validFrom || null, validUntil:data.validUntil || null };
+        const id = form.dataset.dataPointId;
+        if (state.demo) {
+          const point = { id:`demo-point-${Date.now()}`, ownerOrganizationId:state.selectedOrganizationId, supplierId:body.subjectType === 'supplier' ? state.supplier?.id : null, supplierSiteId:body.subjectType === 'site' ? body.subjectId : null, dataKey:body.dataKey, value:body.value, dataType:body.dataType, status:body.sourceDocumentId ? 'documented' : 'declared', sourceDocumentId:body.sourceDocumentId, version:id ? Number(state.dataPoints.find((entry) => entry.id === id)?.version || 1) + 1 : 1, validFrom:body.validFrom, validUntil:body.validUntil }; if (id) point.supersedesId = id; state.dataPoints.unshift(point); notify(id ? t('spNVersionCreatedDemo') : t('spNDataSavedDemo')); render(); return;
+        }
+        await api(id ? `/api/supplier/data-points/${encodeURIComponent(id)}` : '/api/supplier/data-points', { method:id ? 'PATCH' : 'POST', body:JSON.stringify(body) });
+        await refreshOptionalData(); notify(id ? t('spNVersionCreated') : t('spNDataSaved'));
+      }
+      async function refreshTeam() {
+        if (state.demo) return;
+        const result = await api('/api/supplier/members'); state.members = result.members || []; state.memberInvitations = result.invitations || []; state.canManageMembers = Boolean(result.canManage); render();
+      }
+      async function saveMemberInvite(form) {
+        const data = Object.fromEntries(new FormData(form));
+        if (state.demo) { state.memberInvitations.unshift({ id:`demo-invitation-${Date.now()}`, email:data.email, targetRole:data.targetRole, expiresAt:new Date(Date.now()+7*86400000).toISOString(), createdAt:new Date().toISOString() }); notify(t('spNInviteCreatedDemo')); render(); return; }
+        const result = await api('/api/supplier/members', { method:'POST', body:JSON.stringify({ email:data.email, targetRole:data.targetRole }) });
+        await refreshTeam(); notify(result.invitationToken ? `Invitation créée. Token à transmettre une seule fois : ${result.invitationToken}` : t('spNInviteSent'));
+      }
+      async function saveMember(form) {
+        const data = Object.fromEntries(new FormData(form));
+        if (state.demo) { const member = state.members.find((entry) => entry.id === form.dataset.membershipId); if (member) Object.assign(member, { role:data.role, status:data.status }); notify(t('spNAccessUpdatedDemo')); render(); return; }
+        await api('/api/supplier/members', { method:'PATCH', body:JSON.stringify({ membershipId:form.dataset.membershipId, role:data.role, status:data.status }) }); await refreshTeam(); notify(t('spNAccessUpdated'));
+      }
+      async function manageInvitation(invitationId, action) {
+        if (state.demo) {
+          if (action === 'revoke') state.memberInvitations = state.memberInvitations.filter((invitation) => invitation.id !== invitationId);
+          else { const invitation = state.memberInvitations.find((entry) => entry.id === invitationId); if (invitation) invitation.expiresAt = new Date(Date.now() + 7 * 86400000).toISOString(); }
+          notify(action === 'revoke' ? t('spNInviteRevokedDemo') : t('spNInviteResentDemo')); render(); return;
+        }
+        const result = await api(`/api/supplier/member-incodeURIComponent(invitationId)}`, { method: action === 'revoke' ? 'DELETE' : 'POST' });
+        await refreshTeam();
+        notify(action === 'revoke' ? t('spNInviteRevoked') : result.invitationToken ? `Invitation renvoyée. Token à transmettre une seule fois : ${result.invitationToken}` : t('spNInviteResent'));
+      }
+      async function switchOrganization(organizationId) {
+        if (!organizationId || organizationId === state.selectedOrganizationId) return;
+        state.selectedOrganizationId = organizationId;
+        if (!state.demo) localStorage.setItem('tracefab_supplier_organization_id', organizationId);
+        if (state.demo) { demoData(); render(); return; }
+        await sync();
+      }
+
+      async function computeQuality() {
+        if (state.demo) { state.quality.score.computedAt = new Date().toISOString(); notify(t('spNScoreRecomputedDemo')); render(); return; }
+        state.quality = await api('/api/supplier/quality', { method:'POST', body:JSON.stringify({ calculationVersion:'supplier_quality_v1' }) }); notify(t('spNScoreRecomputed')); render();
+      }
+
+      async function handleBomImportSubmit(event) {
+        event.preventDefault();
+        const csv = document.getElementById('bom-csv-input')?.value || '';
+        const autosave = document.getElementById('bom-autosave')?.checked || false;
+        if (!csv.trim()) { notify(t('spNPasteCsv'), true); return; }
+
+        if (state.demo) {
+          notify(t('spNBomImportedDemo'));
+          state.modal = null;
+          render();
+          return;
+        }
+
+        try {
+          const res = await api('/api/supplier/materials/import-bom', {
+            method: 'POST',
+            body: JSON.stringify({ csvContent: csv, autoSaveMaterials: autosave })
+          });
+          if (res.isValid) {
+            notify(`Nomenclature validée à 100% : ${res.rowsCount} matière(s) traitée(s) et ${res.savedMaterialsCount} enregistrée(s).`);
+            state.modal = null;
+            await sync();
+          } else {
+            notify(`Erreur de validation : ${res.errors.map(e => e.message).join(' | ')}`, true);
+          }
+        } catch (err) {
+          notify(err.message || t('spNBomImportError'), true);
+        }
+      }
+
+      function previewBomCsv() {
+        const csv = document.getElementById('bom-csv-input')?.value || '';
+        const preview = document.getElementById('bom-preview-area');
+        if (!preview) return;
+
+        const lines = csv.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length < 2) {
+          preview.style.display = 'block';
+          preview.innerHTML = '<div style="color:var(--red);font-size:12px;">' + t('spBomErrHeader') + '</div>';
+          return;
+        }
+
+        const delimiter = lines[0].includes(';') ? ';' : lines[0].includes('\t') ? '\t' : ',';
+        let totalPct = 0;
+        let count = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(delimiter);
+          if (cols.length > 1) {
+            const raw = (cols[1] || '').replace(/%/g, '').replace(/,/g, '.').trim();
+            const val = parseFloat(raw);
+            if (!isNaN(val)) totalPct += val;
+            count++;
+          }
+        }
+
+        totalPct = Number(totalPct.toFixed(2));
+        const isExact = Math.abs(totalPct - 100) <= 0.5;
+
+        preview.style.display = 'block';
+        preview.innerHTML = `
+          <div style="background:#f8faf8;border:1px solid ${isExact ? 'var(--green)' : 'var(--red)'};border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <strong>${t('spCompositionSum')} ${totalPct}%</strong>
+              <span class="status status-${isExact ? 'approved' : 'rejected'}">${isExact ? '✓ ' + t('spEsprOk') : '⚠ ' + t('spEsprKo')}</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px;">${count} ligne(s) détectée(s) avec séparateur [${delimiter}].</div>
+          </div>
+        `;
+      }
+
+      window.handleBomImportSubmit = handleBomImportSubmit;
+      window.previewBomCsv = previewBomCsv;
+
+      // Les gestionnaires onclick s'evaluent dans la portee globale : l'app vit
+      // dans une IIFE, donc toute fonction citee en ligne doit etre exposee.
+      function goView(view) { state.view = view; render(); }
+      function openBomModal() { state.modal = 'import-bom'; render(); }
+      window.goView = goView;
+      window.openBomModal = openBomModal;
+
+      function bind() {
+
+        // Buttons that used to alert() a fake success now say what is actually true.
+        document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
+          event.preventDefault(); notify(t('demoUnavailable'));
+        }));
+        // The language <select> was rendered but wired to nothing: this page relied
+        // on the legacy rewriter, so it was never actually translatable.
+        document.getElementById('lang-switch')?.addEventListener('change', (event) => {
+          const T = window.TF_I18N;
+          if (T) { T.setLanguage(event.currentTarget.value); return; }
+          state.lang = event.currentTarget.value;
+          document.documentElement.lang = state.lang;
+          render();
+        });
+        document.querySelectorAll('[data-view]').forEach((element) => element.addEventListener('click', () => { state.view = element.dataset.view; if (state.view !== 'requestDetail') state.selectedRequest = null; render(); }));
+        document.getElementById('organization-switcher')?.addEventListener('change', (event) => switchOrganization(event.currentTarget.value).catch((error) => notify(error.message, true)));
+        document.querySelectorAll('[data-action]').forEach((element) => element.addEventListener('click', async () => { try { const action = element.dataset.action; if (action === 'retry') { state.configError = null; boot(); } if (action === 'open-bom-import') { state.modal = 'import-bom'; render(); return; } if (action === 'close-modal') { state.modal = null; render(); return; } if (action === 'signout' && state.clerk) await state.clerk.signOut(); if (action === 'refresh-request') await refreshRequest(); if (action === 'submit-request') await submitRequest(); if (action === 'submit-profile') await submitProfile(); if (action === 'compute-quality') await computeQuality(); if (action === 'review-passport-request') { notify(t('spNPassportReviewedDemo')); } } catch (error) { notify(error.message, true); } }));
+        document.querySelectorAll('[data-request-id]').forEach((element) => element.addEventListener('click', () => openRequest(element.dataset.requestId).catch((error) => notify(error.message, true))));
+        document.querySelectorAll('.response-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); saveResponse(event.currentTarget).catch((error) => notify(error.message, true)); }));
+        document.getElementById('profile-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveProfile(event.currentTarget).catch((error) => notify(error.message, true)); });
+        document.getElementById('site-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveSite(event.currentTarget).catch((error) => notify(error.message, true)); });
+        document.querySelectorAll('.site-edit-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); saveSite(event.currentTarget).catch((error) => notify(error.message, true)); }));
+        document.getElementById('certification-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveCertification(event.currentTarget).catch((error) => notify(error.message, true)); });
+        document.getElementById('certification-standard-catalog')?.addEventListener('change', (event) => { const option = event.currentTarget.selectedOptions[0]; const name = document.getElementById('certification-standard-name'); const issuer = document.getElementById('certification-standard-issuer'); if (option?.dataset.standardName && name) name.value = option.dataset.standardName; if (option?.dataset.standardIssuer && issuer && !issuer.value) issuer.value = option.dataset.standardIssuer; });
+        document.querySelectorAll('.certification-edit-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); saveCertification(event.currentTarget).catch((error) => notify(error.message, true)); }));
+        document.getElementById('material-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveMaterial(event.currentTarget).catch((error) => notify(error.message, true)); });
+        document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); saveMaterial(event.currentTarget).catch((error) => notify(error.message, true)); }));
+        document.querySelectorAll('.schema-material-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); attachMaterialSchema(event.currentTarget).catch((error) => notify(error.message, true)); }));
+        document.getElementById('data-point-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveDataPoint(event.currentTarget).catch((error) => notify(error.message, true)); });
+        document.querySelectorAll('.data-point-edit-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); saveDataPoint(event.currentTarget).catch((error) => notify(error.message, true)); }));
+        document.getElementById('member-invite-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveMemberInvite(event.currentTarget).catch((error) => notify(error.message, true)); });
+        document.querySelectorAll('.member-edit-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); saveMember(event.currentTarget).catch((error) => notify(error.message, true)); }));
+        document.querySelectorAll('[data-invitation-action]').forEach((element) => element.addEventListener('click', () => manageInvitation(element.dataset.invitationId, element.dataset.invitationAction).catch((error) => notify(error.message, true))));
+        document.getElementById('self-onboarding-form')?.addEventListener('submit', (event) => { event.preventDefault(); submitSelfOnboarding(event.currentTarget).catch((error) => notify(error.message, true)); });
+        document.getElementById('document-form')?.addEventListener('submit', (event) => { event.preventDefault(); uploadDocument(event.currentTarget).catch((error) => notify(error.message, true)); });
+        document.querySelectorAll('.cap-submit-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); submitCapRemediation(event.currentTarget).catch((error) => notify(error.message, true)); }));
+        document.getElementById('passport-settings-form')?.addEventListener('submit', (event) => { event.preventDefault(); notify(t('spNPassportSavedDemo')); });
+        document.getElementById('supplier-tc-form')?.addEventListener('submit', (event) => { event.preventDefault(); notify(t('spNTcDeclaredDemo')); });
+        document.querySelectorAll('[data-document-id]').forEach((element) => element.addEventListener('click', () => downloadDocument(element.dataset.documentId).catch((error) => notify(error.message, true))));
+      }
+      async function boot() {
+        if (state.demo) { await sync(); return; }
+        try {
+          const res = await fetch('/api/config');
+          if (!res.ok) throw new Error('config_fetch_failed');
+          const config = await res.json();
+          if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
+          const clerkDomain = atob(config.publishableKey.split('_')[2]).slice(0, -1);
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = `https://${clerkDomain}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+            script.setAttribute('data-clerk-publishable-key', config.publishableKey);
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('clerk_sdk_unavailable'));
+            document.head.appendChild(script);
+          });
+          state.clerk = window.Clerk;
+          if (!state.clerk) throw new Error('clerk_sdk_unavailable');
+          await state.clerk.load();
+          state.clerk.addListener(() => { if (state.clerk.user && !state.user) sync(); });
+          if (state.clerk.user) await sync(); else { state.loading = false; render(); }
+        } catch (error) {
+          console.warn('Backend Clerk unavailable, launching interactive demo workspace:', error.message);
+          state.demo = true;
+          state.configError = null;
+          await sync();
+        }
+      }
+
+      // Un changement de langue ne vient pas forcement du selecteur de cette
+      // page : il peut venir de la landing ou d'un autre onglet. On re-rend
+      // sur l'evenement du runtime, ce qui donne un chemin unique quelle que
+      // soit l'origine. Le drapeau evite un double rendu a l'amorcage.
+      let i18nReady = false;
+      document.addEventListener('tf:languagechange', (event) => {
+        state.lang = event.detail.lang;
+        document.documentElement.lang = state.lang;
+        if (i18nReady) render();
+      });
+
+      window.tracefabSupplierPortal = { state, sync, render, goView };
+      (window.TF_I18N ? window.TF_I18N.setLanguage(state.lang) : Promise.resolve())
+        .then(() => { i18nReady = true; }, () => { i18nReady = true; })
+        .then(boot, boot);
+    
+
+      /* Gestionnaires de la page, enregistres dans la portee du module.
+       * Les attributs inline etaient evalues en portee globale, ce qui
+       * obligeait a exposer des fonctions sur window ; ici, state et render
+       * sont directement accessibles. */
+      window.TFActions.register({
+        p01: function (event) { handleBomImportSubmit(event); },
+        p02: function (event) { previewBomCsv(); },
+        p03: function (event) { goView(this.dataset.tfArg); },
+        p04: function (event) { goView('profile'); },
+        p05: function (event) { goView('sites'); },
+        p06: function (event) { goView('certifications'); },
+        p07: function (event) { goView('documents'); },
+        p08: function (event) { openBomModal(); },
+      });
+    })();
+  

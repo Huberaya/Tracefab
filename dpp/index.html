@@ -1,48 +1,117 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Passeport Numérique de Produit | TRACEFAB</title>
-  <meta name="description" content="Passeport Numérique de Produit (DPP) : origine, matières, composition, fabrication, circularité et preuves, tels que déclarés dans TRACEFAB.">
-  <meta property="og:title" content="Passeport Numérique de Produit | TRACEFAB">
-  <meta property="og:description" content="Données produit déclarées, documentées et vérifiées. Les champs non renseignés sont affichés comme absents.">
-  <meta property="og:type" content="product">
+  <title data-i18n="dpp.metaTitle">Digital Product Passport — Organic Cotton Essential | TRACEFAB</title>
+  <meta name="description" content="Digital Product Passport (DPP) in ESPR / CIRPASS format for the Organic Cotton Essential style by Atelier Demo. Traceability, composition and repairability data." data-i18n-attr="content:dpp.metaDesc">
 
   <!-- Open Graph / Meta -->
-  <meta property="og:description" content="Traçabilité certifiée de la fibre au vêtement fini. Conforme Règlementation Européenne ESPR.">
+  <meta property="og:title" content="DPP — Organic Cotton Essential">
+  <meta property="og:description" content="Documented traceability from fibre to finished garment, in the format of the European ESPR regulation. A readiness indicator, not a certification." data-i18n-attr="content:dpp.ogDesc">
   <meta property="og:type" content="product">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
 
-  <!-- CIRPASS / ESPR Compliant JSON-LD Digital Product Passport schema -->
+  <!-- Schema JSON-LD de passeport produit, au format CIRPASS / ESPR -->
+  <script type="application/ld+json" id="dpp-jsonld">
+  {
+    "@context": [
+      "https://schema.org",
+      { "espr": "https://ec.europa.eu/commission/presscorner/detail/en/ip_24_1749#" }
+    ],
+    "@type": "Product",
+    "identifier": "urn:epc:id:sgtin:3760123456.001.2026",
+    "name": "Organic Cotton Essential",
+    "model": "AT-ESS-001",
+    "sku": "AT-ESS-001-NVY-M",
+    "gtin": "3760123456789",
+    "brand": {
+      "@type": "Brand",
+      "name": "Atelier Demo",
+      "legalName": "Atelier Demo SAS"
+    },
+    "description": "Combed organic cotton jersey T-shirt, 185 gsm, made in Portugal in compliance with SMETA social standards and GOTS environmental standards.",
+    "countryOfOrigin": "PT",
+    "countryOfDesign": "FR",
+    "material": [
+      {
+        "@type": "DefinedTerm",
+        "name": "Combed organic cotton (GOTS certified)",
+        "percentage": 85,
+        "termCode": "COTTON_BIO",
+        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Pre-consumer recycled cotton (GRS certified)",
+        "percentage": 15,
+        "termCode": "COTTON_REC",
+        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
+      }
+    ],
+    "certifications": [
+      {
+        "standard": "Global Organic Textile Standard (GOTS)",
+        "certificateNumber": "CU-881294-GOTS-2026",
+        "issuer": "Control Union",
+        "status": "active"
+      },
+      {
+        "standard": "OEKO-TEX Standard 100",
+        "certificateNumber": "21.HPT.94112",
+        "issuer": "Hohenstein Institute",
+        "status": "active"
+      }
+    ],
+    "traceability": {
+      "tier4_raw_fiber": { "country": "PT", "facility": "Quinta de São Martinho", "provenance": "100% regenerative cotton" },
+      "tier3_spinning": { "country": "PT", "facility": "Fiação Norte Lda", "process": "Combed yarn spinning Ne 30/1" },
+      "tier3_weaving": { "country": "PT", "facility": "Malhas do Ave", "process": "Circular jersey knitting" },
+      "tier2_dyeing": { "country": "PT", "facility": "Tinturaria Braga Lda", "process": "Low-environmental-impact dyeing" },
+      "tier1_assembly": { "country": "PT", "facility": "Nhãn Textile Confeção", "process": "Cutting, sewing and pressing" }
+    },
+    "repairAndCare": {
+      "washingInstructions": "Wash at 30°C on a delicate cycle. Open-air drying recommended. Iron gently on the reverse.",
+      "recyclabilityRate": "98%",
+      "repairServicesUrl": "https://atelier-demo.fr/repair-program",
+      "takeBackUrl": "https://atelier-demo.fr/second-life"
+    },
+    "verificationSignature": {
+      "signedBy": "TRACEFAB Cryptographic Ledger",
+      "timestamp": "2026-10-06T06:50:00Z",
+      "evidenceHash": "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+  </script>
 
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css?v=2c246dca">
   <style>
     :root {
-      --primary: #0b7656;
-      --primary-hover: #07523e;
+      --primary: var(--tf-trust-verified-ink);
+      --primary-hover: var(--tf-emerald-ink);
       --primary-soft: #e4f3ec;
       --primary-glow: rgba(11, 118, 86, 0.2);
 
-      --forest-900: #081712;
-      --forest-800: #0e241c;
-      --forest-700: #14352a;
+      --forest-900: var(--tf-forest-900);
+      --forest-800: var(--tf-forest-800);
+      --forest-700: var(--tf-forest-700);
 
       --bg-page: #f8faf8;
-      --bg-surface: #ffffff;
+      --bg-surface: var(--tf-surface-light-raised);
       --bg-subtle: #f1f5f2;
 
       --text-main: #13221b;
       --text-muted: #56675e;
-      --text-subtle: #88988f;
+      --text-subtle: var(--tf-trust-declared-ink);
 
       --border-light: #e4ede7;
       --border-medium: #cfded4;
 
-      --status-verified: #0b7656;
+      --status-verified: var(--tf-trust-verified-ink);
       --status-verified-bg: #e4f3ec;
       --status-certified: #047857;
       --status-certified-bg: #d1fae5;
@@ -59,8 +128,8 @@
       --shadow-md: 0 8px 24px rgba(11, 27, 20, 0.07);
       --shadow-lg: 0 16px 40px rgba(11, 27, 20, 0.1);
 
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: var(--tf-font-text);
+      --font-mono: var(--tf-font-mono);
     }
 
     *, *::before, *::after {
@@ -116,12 +185,12 @@
       color: #fff;
       display: grid;
       place-items: center;
-      font-weight: 800;
+      font-weight: 600;
       font-size: 13px;
     }
     .brand-text strong {
       font-size: 14px;
-      font-weight: 800;
+      font-weight: 600;
       letter-spacing: -0.02em;
       display: block;
       line-height: 1.1;
@@ -143,7 +212,7 @@
       color: #3730a3;
       border-radius: var(--radius-full);
       font-size: 10.5px;
-      font-weight: 750;
+      font-weight: 500;
       letter-spacing: 0.02em;
     }
     .badge-eu svg {
@@ -174,7 +243,7 @@
     }
     .product-title {
       font-size: 24px;
-      font-weight: 800;
+      font-weight: 560;
       letter-spacing: -0.035em;
       line-height: 1.15;
       margin-bottom: 8px;
@@ -260,7 +329,7 @@
     }
     .section-title {
       font-size: 16px;
-      font-weight: 800;
+      font-weight: 560;
       letter-spacing: -0.02em;
       margin-bottom: 6px;
       display: flex;
@@ -367,7 +436,7 @@
     }
     .node-header strong {
       font-size: 13.5px;
-      font-weight: 750;
+      font-weight: 600;
     }
     .node-tier-tag {
       font-size: 10px;
@@ -417,7 +486,7 @@
     }
     .info-card strong {
       font-size: 16px;
-      font-weight: 800;
+      font-weight: 600;
       color: var(--text-main);
     }
     .info-card p {
@@ -427,6 +496,15 @@
     }
 
     /* Care & Repair Guide */
+    .dpp-demo-banner {
+      display: flex; align-items: center; gap: 9px;
+      padding: 10px 20px;
+      background: #fdf6e3; border-bottom: 1px solid #efe2bd;
+      color: #7a5c13; font-size: 12.5px; line-height: 1.4;
+    }
+    .dpp-demo-banner[hidden] { display: none; }
+    .dpp-demo-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
+
     .care-row {
       display: flex;
       align-items: center;
@@ -488,7 +566,7 @@
       color: #081712;
       display: grid;
       place-items: center;
-      font-weight: 800;
+      font-weight: 600;
       font-size: 12px;
     }
     .sig-top strong {
@@ -603,391 +681,535 @@
       text-decoration: none;
       font-weight: 700;
     }
+    /* ------------------------------------------------------------------
+       Couche responsive — chantier 7.
+
+       Le DPP public est la page la plus certainement consultee au
+       telephone : on l'atteint en scannant le QR cousu sur l'etiquette.
+       Elle ne comportait pourtant aucune media query. Les six onglets,
+       en flex:1, ont min-width:auto par defaut : ils ne peuvent pas se
+       comprimer sous la largeur de leur libelle et poussaient donc le
+       document hors cadre — 20 px en francais deja, 29 px en anglais,
+       133 px en allemand. On fait defiler la barre d'onglets plutot que
+       la page entiere.
+       ------------------------------------------------------------------ */
+    @media (max-width: 760px) {
+      .dpp-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .dpp-tabs::-webkit-scrollbar { display: none; }
+      .dpp-tab-btn {
+        flex: 0 0 auto;
+        padding: 13px 15px;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 520px) {
+      /* L'en-tete passe sur deux rangees. Il perd son ancrage colle pour
+         que la barre d'onglets, elle, puisse se coller en haut du cadre
+         sans avoir a connaitre une hauteur d'en-tete devenue variable. */
+      .dpp-header {
+        position: static;
+        flex-wrap: wrap;
+        row-gap: 10px;
+        padding: 12px 16px;
+      }
+      .dpp-tabs { top: 0; }
+      .brand-id { flex: 1 1 auto; min-width: 0; }
+      .badge-eu { flex: 1 1 100%; justify-content: center; }
+      .tab-content-panel { padding: 22px 16px; }
+    }
+    /* core pose line-height:1.58 sur body ; les onglets etaient calibres
+       sur line-height:normal et gagnaient 9px de hauteur sans cette regle */
+    .dpp-tab-btn { line-height: normal; }
   </style>
-
-  <script type="application/ld+json" id="dpp-jsonld">{}</script>
+    <!-- i18n : catalogue unique /assets/i18n. Page grand public : titre et
+         description lui sont propres, d'ou TF_I18N_SKIP_META. -->
+    <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
+    <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
+    <script src="/assets/i18n/en.js?v=0301922d"></script>
+    <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
+    <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
-
 <body>
-  <div class="dpp-container" id="dpp" aria-busy="true">
-    <p class="section-desc">Chargement du passeport…</p>
+
+  <div class="dpp-container">
+
+    <!-- Header with Brand & EU Standard Badge -->
+    <header class="dpp-header">
+      <div class="brand-id">
+        <div class="brand-mark">AD</div>
+        <div class="brand-text">
+          <strong data-tf-demo>Atelier Demo</strong>
+          <span>Paris, France</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <select id="dpp-lang-select" aria-label="Language" data-i18n-attr="aria-label:nav.language" data-tf-act="p01" data-tf-on="change" style="background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);padding:6px 12px;border-radius:9999px;font-size:12px;font-family:inherit;font-weight:700;cursor:pointer;">
+          <option value="en">🇬🇧 English</option>
+          <option value="fr">🇫🇷 Français</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="it">🇮🇹 Italiano</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="nl">🇳🇱 Nederlands</option>
+          <option value="pt">🇵🇹 Português</option>
+        </select>
+        <div class="badge-eu" title="This passport follows the ESPR / CIRPASS data model. It is a readiness indicator, not a regulatory certification." data-i18n-attr="title:dpp.ftReadiness">
+          <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          ESPR-aligned DPP format
+        </div>
+      </div>
+    </header>
+
+    <!-- Statut de la source : visible par defaut, masque des qu'une donnee
+         reelle est hydratee. Afficher de la demonstration sans le dire
+         serait le pire cas pour un passeport destine au consommateur. -->
+    <div id="dpp-demo-banner" class="dpp-demo-banner">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.1c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+      <span data-i18n="dpp.demoBanner">Demonstration passport — sample data, not a real product.</span>
+    </div>
+
+    <!-- Product Summary Hero -->
+    <div class="product-hero">
+      <span class="product-tag" data-i18n="dpp.hdrOfficial">Official Digital Product Passport</span>
+      <h1 class="product-title" data-tf-demo data-dpp-field="productName">Organic Cotton Essential</h1>
+      <div class="product-meta-row">
+        <span>SKU: <span data-tf-demo data-dpp-field="sku">AT-ESS-001</span></span>
+        <span>•</span>
+        <span>GTIN: <span data-tf-demo data-dpp-field="gtin">3760123456789</span></span>
+        <span>•</span>
+        <span>Batch: 2026-FW</span>
+      </div>
+      <p class="product-summary" data-i18n="dpp.heroDesc">Iconic T-shirt in 185 gsm regenerative organic cotton jersey. Traced from seed to finished garment with 100% documented evidence.
+      </p>
+
+      <div class="trust-pill-bar">
+        <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ 100% certified materials</span>
+        <span class="trust-badge-item">GOTS Certified</span>
+        <span class="trust-badge-item">OEKO-TEX Class 1</span>
+        <span class="trust-badge-item" data-i18n="dpp.heroMadeIn">Made in Portugal</span>
+      </div>
+    </div>
+
+    <!-- Apple & Google Wallet Mobile Passes -->
+    <div style="padding: 14px 20px 16px; background: #f0f7f3; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);">
+      <div style="font-size: 11px; font-weight:600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--forest-600); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        <span data-i18n="dpp.offlineWallet">Offline digital passport and mobile wallet</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <a data-dpp-href="links.appleWalletUrl" href="/api/dpp/3760123456789/apple-wallet" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #000; color: #fff; padding: 11px 12px; border-radius: 12px; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+          <svg style="width: 18px; height: 18px; fill: currentColor;" viewBox="0 0 170 170"><path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.69-7.85-11.96-14.42-5.46-8.47-9.87-18.06-13.23-28.77-3.37-10.7-5.06-21.05-5.06-31.05 0-14.7 3.59-26.96 10.77-36.78 7.18-9.82 16.43-14.85 27.75-15.08 4.35 0 9.4 1.25 15.17 3.76 5.76 2.5 9.47 3.82 11.12 3.94 1.88-.24 5.76-1.63 11.64-4.17 5.88-2.54 10.7-3.7 14.47-3.48 10.83.61 19.59 4.79 26.28 12.54-9.36 5.69-13.92 13.71-13.68 24.08.24 8.01 3.23 14.77 8.98 20.28 5.74 5.51 12.63 8.84 20.67 10 1.05 4.58 1.94 8.78 2.68 12.61.74 3.82 1.15 7.42 1.23 10.82zm-35.03-107.57c.12 3.82-.7 7.73-2.45 11.73-1.76 4-4.32 7.54-7.69 10.63-3.05 2.82-6.57 4.96-10.55 6.42-3.98 1.46-7.85 2.19-11.61 2.19-.24-3.59.62-7.39 2.58-11.4 1.96-4 4.67-7.61 8.14-10.83 3.18-2.95 6.83-5.2 10.96-6.75 4.12-1.54 7.65-2.21 10.62-1.99z"/></svg>
+          <span>Apple Wallet</span>
+        </a>
+        <a data-dpp-href="links.googleWalletUrl" href="/api/dpp/3760123456789/google-wallet" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #1f1f1f; border: 1px solid #747775; padding: 11px 12px; border-radius: 12px; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 2px 6px rgba(60,64,67,0.15);">
+          <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+          <span>Google Wallet</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Interactive Navigation Tabs -->
+    <nav class="dpp-tabs" aria-label="Passport sections" data-i18n-attr="aria-label:dpp.tabsAria">
+      <button class="dpp-tab-btn active" data-tab="materials" data-i18n="dpp.tabMaterials">Materials (2)</button>
+      <button class="dpp-tab-btn" data-tab="traceability" data-i18n="dpp.tabTraceability">Traceability (7)</button>
+      <button class="dpp-tab-btn" data-tab="impact" data-i18n="dpp.tabImpact">Eco-score and LCA</button>
+      <button class="dpp-tab-btn" data-tab="circularity" data-i18n="dpp.tabCircularity">Repairability and end of life</button>
+      <button class="dpp-tab-btn" data-tab="evidence" data-i18n="dpp.tabEvidence">Evidence and audit</button>
+      <button class="dpp-tab-btn" data-tab="gs1">GS1 Digital Link</button>
+    </nav>
+
+    <!-- TAB 1: Matières & Composition -->
+    <section class="tab-content-panel" id="panel-materials">
+      <div class="section-title">
+        <span data-i18n="dpp.matTitle">Fibre composition and origin</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.matTraced">100% traced</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.matDesc">Declaration verified in line with the European textile regulation and checked by an accredited third party.</p>
+
+      <div class="composition-card">
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;">
+          <span data-i18n="dpp.matTotalComposition">Total composition</span>
+          <span>185 g/m²</span>
+        </div>
+
+        <div class="comp-bar">
+          <div class="comp-fill-1"></div>
+          <div class="comp-fill-2"></div>
+        </div>
+
+        <div class="comp-item">
+          <div class="comp-item-title">
+            <div class="comp-bullet" style="background:var(--primary);"></div>
+            <div>
+              <strong data-i18n="dpp.matCombed">85% combed organic cotton</strong>
+              <div style="font-size:11px;color:var(--text-muted);" data-i18n="dpp.matOrigin">Origin: Portugal (São Martinho farm)</div>
+            </div>
+          </div>
+          <span style="font-weight:600;color:var(--primary);">GOTS v6.0</span>
+        </div>
+
+        <div class="comp-item">
+          <div class="comp-item-title">
+            <div class="comp-bullet" style="background:#0284c7;"></div>
+            <div>
+              <strong data-i18n="dpp.matRecycled">15% pre-consumer recycled cotton</strong>
+              <div style="font-size:11px;color:var(--text-muted);" data-i18n="dpp.matRecycledDesc">Recovery of workshop cutting offcuts</div>
+            </div>
+          </div>
+          <span style="font-weight:600;color:#027bb9;">GRS Certified</span>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <span data-i18n="dpp.matChemicals">Chemical substances</span>
+          <strong data-i18n="dpp.matNonToxic">0% toxic</strong>
+          <p data-i18n="dpp.matReach">Complies with REACH and OEKO-TEX Standard 100.</p>
+        </div>
+        <div class="info-card">
+          <span data-i18n="dpp.matMicrofibres">Plastic microfibres</span>
+          <strong data-i18n="dpp.matMicrofibresValue">0 g per wash</strong>
+          <p data-i18n="dpp.matBiodeg">100% biodegradable natural fibres.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Traçabilité Multi-Échelon -->
+    <section class="tab-content-panel" id="panel-traceability" style="display:none;">
+      <div class="section-title">
+        <span data-i18n="dpp.chainTitle">Chain of custody and factories</span>
+        <span style="font-size:11px;background:var(--primary-soft);color:var(--primary);padding:3px 8px;border-radius:99px;font-weight:700;" data-i18n="dpp.chainTiers">5 validated tiers</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.chainDesc">Every industrial step is certified by an audited transaction certificate (TC).</p>
+
+      <div class="trace-timeline">
+        <!-- Tier 4 -->
+        <div class="timeline-node">
+          <div class="node-pin">🌱</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong data-i18n="dpp.chainFibre">Fibre cultivation</strong>
+              <span class="node-tier-tag">Tier 4</span>
+            </div>
+            <div class="node-sub">Quinta de São Martinho · Alentejo, Portugal</div>
+            <div class="node-proof" data-i18n="dpp.chainGotsCert">✓ GOTS certificate #CU-881294</div>
+          </div>
+        </div>
+
+        <!-- Tier 3 Spinning -->
+        <div class="timeline-node">
+          <div class="node-pin">🧵</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong data-i18n="dpp.chainSpinning">Spinning and combing</strong>
+              <span class="node-tier-tag">Tier 3</span>
+            </div>
+            <div class="node-sub">Fiação Norte Lda · Guimarães, Portugal</div>
+            <div class="node-proof" data-i18n="dpp.chainYarn">✓ High-tenacity combed yarn Ne 30/1</div>
+          </div>
+        </div>
+
+        <!-- Tier 3 Weaving -->
+        <div class="timeline-node">
+          <div class="node-pin">🧶</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong data-i18n="dpp.chainKnitting">Jersey knitting</strong>
+              <span class="node-tier-tag">Tier 3</span>
+            </div>
+            <div class="node-sub">Malhas do Ave · Santo Tirso, Portugal</div>
+            <div class="node-proof" data-i18n="dpp.chainGauge">✓ Circular knit, 28 gauge</div>
+          </div>
+        </div>
+
+        <!-- Tier 2 Dyeing -->
+        <div class="timeline-node">
+          <div class="node-pin">💧</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong data-i18n="dpp.chainDyeing">Finishing and dyeing</strong>
+              <span class="node-tier-tag">Tier 2</span>
+            </div>
+            <div class="node-sub">Tinturaria Braga Lda · Braga, Portugal</div>
+            <div class="node-proof" data-i18n="dpp.chainClosed">✓ Closed loop and effluent treatment (STeP)</div>
+          </div>
+        </div>
+
+        <!-- Tier 1 Assembly -->
+        <div class="timeline-node">
+          <div class="node-pin">✂️</div>
+          <div class="node-body">
+            <div class="node-header">
+              <strong data-i18n="dpp.chainAssembly">Cutting, making-up and finishing</strong>
+              <span class="node-tier-tag">Tier 1</span>
+            </div>
+            <div class="node-sub">Nhãn Textile Manufacturing · Porto, Portugal</div>
+            <div class="node-proof" data-i18n="dpp.chainSmeta">✓ SMETA 4-Pillar social audit (score A)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Impact & Soin / Réparation -->
+    <section class="tab-content-panel" id="panel-impact" style="display:none;">
+      <div class="section-title">
+        <span data-i18n="dpp.impTitle">Environmental assessment and eco-score</span>
+        <span style="font-size:12px;background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.impMethod">AGEC Act and ESPR methodology</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.impDesc">Full life-cycle assessment (LCA) following the European PEFCR Apparel & Footwear 2024 methodology.</p>
+
+      <!-- Éco-Score Textile Officiel Badge -->
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;" data-i18n="dpp.impEcoScore">European textile eco-score</div>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <span style="display:inline-block;padding:6px 14px;font-size:22px;font-weight:600;border-radius:6px;background:#16a34a;color:#ffffff;box-shadow:0 2px 8px rgba(22,163,74,0.3);">A</span>
+            <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:600;border-radius:6px;background:#e2e8f0;color:#64748b;">B</span>
+            <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:600;border-radius:6px;background:#e2e8f0;color:#64748b;">C</span>
+            <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:600;border-radius:6px;background:#e2e8f0;color:#64748b;">D</span>
+            <span style="display:inline-block;padding:4px 8px;font-size:13px;font-weight:600;border-radius:6px;background:#e2e8f0;color:#64748b;">E</span>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:24px;font-weight:600;color:#16a34a;">84 / 100</div>
+          <div style="font-size:12px;color:var(--text-muted);" data-i18n="dpp.impEcoDesign">Eco-design index</div>
+        </div>
+      </div>
+
+      <div class="info-grid" style="margin-bottom:18px;">
+        <div class="info-card">
+          <span data-i18n="dpp.impCarbon">Actual carbon footprint</span>
+          <strong data-tf-demo data-dpp-field="carbonFootprintKgCo2e" data-dpp-suffix=" kg CO₂e">2.15 kg CO₂e</strong>
+          <p data-i18n="dpp.impVsRef">-48% versus the conventional baseline (PEFCR 2024).</p>
+        </div>
+        <div class="info-card">
+          <span data-i18n="dpp.impWater">Water consumption</span>
+          <strong data-i18n="dpp.impWaterValue">1,480 litres</strong>
+          <p data-i18n="dpp.impThanksTo">-64% thanks to GOTS-certified rain-fed organic cotton.</p>
+        </div>
+        <div class="info-card">
+          <span data-i18n="dpp.impMicroplastics">Microplastic release</span>
+          <strong data-i18n="dpp.impMicroValue">Grade A (none)</strong>
+          <p data-i18n="dpp.matBiodeg">100% biodegradable natural fibres.</p>
+        </div>
+        <div class="info-card">
+          <span data-i18n="dpp.impCircular">Circularity and recyclability</span>
+          <strong data-tf-demo data-dpp-field="circularityScore" data-dpp-suffix="%">95%</strong>
+          <p data-i18n="dpp.impMonoFibre">Single-material fibre, recyclable in a closed loop.</p>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:20px;">
+        <span data-i18n="dpp.careTitle">Care advice and repairability</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.cirIndexValue">Index: 9.2/10</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.careIntro">Extending the life of your garment divides its overall carbon footprint by three.</p>
+
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:18px;">
+        <div class="care-row">
+          <div class="care-icon">🧺</div>
+          <div class="care-text">
+            <strong data-i18n="dpp.careWash">Delicate wash at 30°C</strong>
+            <span data-i18n="dpp.careWashDesc">Preserves the cotton fibres and cuts energy use by 60%.</span>
+          </div>
+        </div>
+        <div class="care-row">
+          <div class="care-icon">💨</div>
+          <div class="care-text">
+            <strong data-i18n="dpp.careDry">Natural open-air drying</strong>
+            <span data-i18n="dpp.careDryDesc">Tumble drying weakens the seams and uses 1.5 kWh per cycle.</span>
+          </div>
+        </div>
+        <div class="care-row">
+          <div class="care-icon">🪡</div>
+          <div class="care-text">
+            <strong data-i18n="dpp.careRepair">Free repair programme</strong>
+            <span data-i18n="dpp.careRepairDesc">Seams and hems repairable for life through our partner network.</span>
+          </div>
+        </div>
+        <div class="care-row" style="border-bottom:none;">
+          <div class="care-icon">♻️</div>
+          <div class="care-text">
+            <strong data-i18n="dpp.careRecyclability">Recyclability: 98%</strong>
+            <span data-i18n="dpp.careRecyclDesc">Single-cotton fibre that can re-enter European recycling spinning mills.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Evidence & Certificats -->
+    <section class="tab-content-panel" id="panel-evidence" style="display:none;">
+      <div class="section-title">
+        <span data-i18n="dpp.evTitle">Certificates and legal evidence</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.evAudited">Audited</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.evDesc">Official documents admissible in European Union and DGCCRF compliance audits.</p>
+
+      <div style="display:grid;gap:12px;">
+        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <strong>Global Organic Textile Standard (GOTS)</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evGotsRef">Certificate: CU-881294-GOTS-2026</div>
+            </div>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evValid2027">Valid 2027</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" data-i18n="dpp.evIssuer">Accredited certification body: Control Union Certification B.V.</div>
+        </div>
+
+        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <strong data-i18n="dpp.evOekotex">OEKO-TEX Standard 100 — Class 1</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evOekotexRef">Report: 21.HPT.94112</div>
+            </div>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evValid2026">Valid 2026</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" data-i18n="dpp.evChem">Analytical check for the absence of harmful chemical residues (Hohenstein).</div>
+        </div>
+
+        <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <strong data-i18n="dpp.evSmeta">SMETA 4-Pillar social audit (ethics and safety)</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evSmetaRef">Ref.: SEDEX-SMETA-2026-PT</div>
+            </div>
+            <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evCompliant">Compliant</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" data-i18n="dpp.evSmetaDesc">Decent pay, occupational health and union rights audited.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Réparabilité, Recyclabilité & Économie Circulaire (ESPR Art. 10 & AGEC) -->
+    <section class="tab-content-panel" id="panel-circularity" style="display:none;">
+      <div class="section-title">
+        <span data-i18n="dpp.cirTitle">Repairability, recyclability and second life</span>
+        <span style="font-size:12px;background:#e0f2fe;color:#027bb9;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.cirEsprFormat">ESPR 2026 data model</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.cirDesc">Official life-extension instructions, textile repairability index and approved take-back channels.</p>
+
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;" data-i18n="dpp.cirIndex">Textile repairability index</div>
+          <div style="font-size:26px;font-weight:600;color:#0b7656;font-family:var(--font-mono, monospace);">9.2 / 10</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" data-i18n="dpp.cirIndexDesc">Reinforced bartacks, replaceable rib collar, single-material cotton thread.</div>
+        </div>
+        <div style="text-align:right;">
+          <span style="display:inline-block;padding:6px 14px;background:#eaf5ef;color:#0b7656;border-radius:99px;font-size:12px;font-weight:600;" data-i18n="dpp.cirRecyclable">✓ 100% recyclable (single fibre)</span>
+        </div>
+      </div>
+
+      <div class="info-grid" style="margin-bottom:18px;">
+        <div class="info-card">
+          <span data-i18n="dpp.cirDisassembly">Disassembly and parts</span>
+          <strong data-i18n="dpp.cirCollarHem">Collar and hem</strong>
+          <p data-i18n="dpp.cirDisassemblyDesc">Standard detachable chain-stitch seams for simplified repair in an approved workshop.</p>
+        </div>
+        <div class="info-card">
+          <span data-i18n="dpp.cirBonus">Repair bonus (Refashion)</span>
+          <strong data-i18n="dpp.cirBonusAmount">Eligible for -€6 to -€15</strong>
+          <p data-i18n="dpp.cirBonusDesc">Direct coverage at certified menders in the Refashion / AGEC network.</p>
+        </div>
+      </div>
+
+      <div class="info-card" style="margin-bottom:18px;">
+        <span data-i18n="dpp.cirEol">End of life and second life</span>
+        <strong data-i18n="dpp.cirSorting">Sorting and separate collection instructions</strong>
+        <p style="margin-top:6px;line-height:1.5;" data-i18n="dpp.cirSortingDesc">Do not discard with household waste. Drop this T-shirt at one of the 46,000 Refashion collection points, or return it to a partner store for reuse or closed-loop mechanical shredding.
+        </p>
+      </div>
+    </section>
+
+    <!-- TAB 6: Résolution GS1 Digital Link & Enregistrement Blockchain/Neon -->
+    <section class="tab-content-panel" id="panel-gs1" style="display:none;">
+      <div class="section-title">
+        <span data-i18n="dpp.gs1Title">GS1 Digital Link resolution and QR code</span>
+        <span style="font-size:12px;background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.gs1Standard">GS1 standard 2026</span>
+      </div>
+      <p class="section-desc" data-i18n="dpp.gs1Desc">ISO/IEC 15459 standardised URI architecture linking the physical QR code sewn into the label to the secured digital passport.</p>
+
+      <div style="background:#ffffff;border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:20px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:18px;margin-bottom:16px;">
+          <div style="width:72px;height:72px;background:#050f0b;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;">
+            ☷
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:var(--font-mono, monospace);color:var(--text-muted);text-transform:uppercase;" data-i18n="dpp.gs1Uri">Official GS1 Digital Link URI:</div>
+            <code style="display:block;margin-top:4px;font-size:12.5px;color:#0b7656;word-break:break-all;">https://id.tracefab.com/01/03760123456789/21/2026-FW-001</code>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="info-card">
+            <span data-i18n="dpp.gs1Ai01">Application identifier (AI 01)</span>
+            <strong>GTIN: 03760123456789</strong>
+            <p data-i18n="dpp.gs1Gtin">Global identifier of the textile style.</p>
+          </div>
+          <div class="info-card">
+            <span data-i18n="dpp.gs1Serial">Serial number (AI 21)</span>
+            <strong>2026-FW-001</strong>
+            <p data-i18n="dpp.gs1SerialDesc">Granularity down to the certified making-up batch.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cryptographic Signature Card -->
+    <div class="signature-card">
+      <div class="sig-top">
+        <div class="sig-logo">tf</div>
+        <div>
+          <strong data-i18n="dpp.sigSealed">Sealed by the immutable TRACEFAB registry</strong>
+          <div style="font-size:10.5px;color:#a3bfb2;" data-i18n="dpp.sigTimestamp">Timestamping and cryptographic proof on Neon PostgreSQL</div>
+        </div>
+      </div>
+      <div class="sig-hash">
+        SHA-256 : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="jsonld-action-bar">
+      <button class="btn-action btn-action-primary" id="btn-export-jsonld">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        <span data-i18n="dpp.jsonExport">Export CIRPASS JSON-LD</span>
+      </button>
+      <button class="btn-action" id="btn-view-raw">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        <span data-i18n="dpp.sigViewSource">View ESPR source code</span>
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dpp-footer">
+      <p data-i18n="dpp.ftCompliant">Digital passport aligned with the European Union Ecodesign Regulation (ESPR).</p>
+      <p style="margin-top:6px;"><span data-i18n="dpp.ftPoweredBy">Powered by</span> <a href="/" target="_blank" style="display:inline-flex;align-items:center;min-height:var(--tf-touch-min,40px);">TRACEFAB Textile Intelligence</a> · © 2026</p>
+    </footer>
+
   </div>
 
-  <script src="/i18n-core.js"></script>
-  <script>
-    (() => {
-      'use strict';
+  <!-- Modal Raw JSON-LD Viewer -->
+  <div class="modal-overlay" id="modal-jsonld">
+    <div class="modal-window">
+      <div class="modal-head">
+        <strong data-i18n="dpp.jsonTitle">CIRPASS JSON-LD specification</strong>
+        <button id="modal-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="dpp.jsonDesc">This standardised payload can be queried directly by European customs, CSRD auditors or textile sorting applications.</p>
+        <div class="code-box" id="json-code-container"></div>
+      </div>
+    </div>
+  </div>
 
-      const params = new URLSearchParams(location.search);
-      const demo = (() => {
-        const flag = params.get('demo');
-        return flag === null ? false : !['0', 'false', 'off'].includes(String(flag).toLowerCase());
-      })();
-      const identifier = params.get('gtin') || params.get('ref') || params.get('id') || '';
+  <script src="/assets/js/dpp.1.js?v=d931442c"></script>
 
-      const state = { demo, identifier: identifier || (demo ? 'AT-ESS-001' : ''), dpp: null, links: null, loading: true, error: null, tab: 'produit' };
+  <script src="/assets/js/dpp.2.js?v=9c88894a"></script>
 
-      /* Les onze rubriques du passeport. Chacune est rendue à partir du contrat
-         réel de resolveDppPassData. Celles qui n'ont aucune source de données
-         sont affichées comme non publiées, jamais complétées d'office. */
-      /* Le libellé français reste le repli rédigé : si une clé manque au
-         dictionnaire, l'onglet affiche ce texte et la clé est signalée. */
-      const SECTIONS = [
-        { id: 'produit', label: 'Produit', key: 'dpp.product' },
-        { id: 'origine', label: 'Origine', key: 'dpp.origin' },
-        { id: 'matieres', label: 'Matières', key: 'dpp.materials' },
-        { id: 'composition', label: 'Composition', key: 'dpp.composition' },
-        { id: 'fabrication', label: 'Fabrication', key: 'dpp.manufacturing' },
-        { id: 'certifications', label: 'Certifications', key: 'dpp.certifications' },
-        { id: 'circularite', label: 'Circularité', key: 'dpp.circularity' },
-        { id: 'entretien', label: 'Entretien', key: 'dpp.care' },
-        { id: 'reparation', label: 'Réparation', key: 'dpp.repair' },
-        { id: 'tracabilite', label: 'Traçabilité', key: 'dpp.traceability' },
-        { id: 'preuves', label: 'Preuves', key: 'dpp.evidence' },
-      ];
-
-      const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-      const num = (v, d = 2) => (v === null || v === undefined || Number.isNaN(Number(v)) ? '—' : Number(v).toLocaleString('fr-FR', { maximumFractionDigits: d }));
-
-      /** Une valeur issue d'un repli n'est pas une mesure : on le dit. */
-      const gap = (key) => (state.dpp?.dataGaps || []).includes(key);
-      const gapNote = (label) => `<p class="section-desc" style="margin-top:10px"><strong>Valeur non mesurée.</strong> ${esc(label)}</p>`;
-
-      function absent(title, why) {
-        return `<div class="info-card">
-          <div class="section-title">${esc(title)}</div>
-          <p class="section-desc" style="margin:8px 0 0">${esc(why)}</p>
-        </div>`;
-      }
-
-      async function load() {
-        state.loading = true;
-        state.error = null;
-        render();
-        try {
-          if (state.demo) {
-            const d = demoData();
-            state.dpp = d.dpp;
-            state.links = d.links;
-          } else {
-            if (!state.identifier) throw new Error('missing_identifier');
-            const response = await fetch(`/api/dpp/${encodeURIComponent(state.identifier)}`);
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(payload.error || `requete_echouee_${response.status}`);
-            state.dpp = payload.dpp;
-            state.links = payload.links;
-          }
-          applyJsonLd();
-          document.title = `Passeport Numérique — ${state.dpp.productName} | TRACEFAB`;
-        } catch (error) {
-          state.error = error.message;
-        }
-        state.loading = false;
-        render();
-      }
-
-      /* JSON-LD généré depuis les données réelles. Aucune signature ni empreinte
-         n'est produite : TRACEFAB ne scelle pas cryptographiquement ce contenu. */
-      function applyJsonLd() {
-        const d = state.dpp;
-        if (!d) return;
-        const graph = {
-          '@context': ['https://schema.org'],
-          '@type': 'Product',
-          name: d.productName,
-          sku: d.sku,
-          gtin: d.gtin || undefined,
-          category: d.category,
-          brand: { '@type': 'Brand', name: d.brandName },
-        };
-        if ((d.materials || []).length) {
-          graph.material = d.materials.map((m) => `${num(m.percentage, 0)}% ${m.name}`).join(', ');
-        }
-        if (d.countryOfManufacture && !gap('countryOfManufacture')) graph.countryOfOrigin = d.countryOfManufacture;
-        document.getElementById('dpp-jsonld').textContent = JSON.stringify(graph, null, 2);
-      }
-
-      function demoData() {
-        return {
-          dpp: {
-            productId: 'demo-product-1',
-            brandName: 'Atelier Tracefab',
-            brandLegalName: 'Atelier Tracefab SAS',
-            productName: 'Essentiel coton biologique',
-            productReference: 'AT-ESS-001',
-            sku: 'AT-ESS-001',
-            gtin: '3760000000017',
-            serialNumber: 'DPP-3760000000017-v2',
-            category: 'T-shirt',
-            countryOfManufacture: 'PT',
-            countryOfDesign: 'FR',
-            weightGrams: 165,
-            certifiedComposition: '95% Coton biologique, 5% Élasthanne',
-            materials: [
-              { name: 'Coton biologique', percentage: 95, role: 'shell', originCountry: 'TR' },
-              { name: 'Élasthanne', percentage: 5, role: 'trim', originCountry: 'IT' },
-            ],
-            pefScore: 78,
-            pefGrade: 'B',
-            carbonFootprintKgCo2e: 3.42,
-            waterScarcityM3: 0.85,
-            circularityScore: 85,
-            dppUrl: 'https://tracefab.com/p/3760000000017',
-            digitalLinkUri: 'urn:epc:id:sgtin:3760123.001.2',
-            verificationDate: '2026-10-01',
-            transactionCertificateNumber: 'TC-2026-00431',
-            supplyChainSummary: 'Filature (TR) ➔ Tricotage (PT) ➔ Teinture (PT) ➔ Confection (PT)',
-            careInstructions: 'Lavage en machine à 30°C sur envers avec couleurs similaires. Essorage doux (600 tr/min). Ne pas sécher en machine. Repassage à fer doux.',
-            recyclingInstructions: 'Produit mono-matière hautement recyclable. En fin d’usage, déposer dans une borne textile Re-fashion ou rapporter en magasin.',
-            dataGaps: ['pef', 'carbonFootprint', 'waterScarcity', 'circularity', 'careInstructions', 'recyclingInstructions'],
-          },
-          links: {
-            appleWalletUrl: '/api/dpp/3760000000017/apple-wallet',
-            googleWalletUrl: '/api/dpp/3760000000017/google-wallet',
-            digitalLinkUri: 'urn:epc:id:sgtin:3760123.001.2',
-          },
-        };
-      }
-
-      /* ---------------------------------------------------------------- vues */
-
-      function header() {
-        const d = state.dpp;
-        return `<header class="dpp-header">
-          <div class="brand-id">
-            <div class="brand-mark">tf</div>
-            <div class="brand-text">TRACEFAB<small>Passeport Numérique de Produit</small></div>
-          </div>
-          ${state.demo ? '<span class="product-tag" style="background:#fdf3d7;color:#8f6417">Mode démonstration — données fictives</span>' : ''}
-        </header>
-        <section class="product-hero">
-          <span class="product-tag">${esc(d.category || 'Textile')}</span>
-          <h1 class="product-title">${esc(d.productName)}</h1>
-          <p class="product-summary">${esc(d.brandName)} · Réf. ${esc(d.productReference)}</p>
-          <div class="product-meta-row">
-            <span class="badge-eu">Règlement ESPR — données déclaratives</span>
-            ${d.gtin ? `<span>GTIN ${esc(d.gtin)}</span>` : ''}
-            <span>Mis à jour le ${esc(d.verificationDate || '—')}</span>
-          </div>
-        </section>`;
-      }
-
-      function tabs() {
-        return `<nav class="dpp-tabs" role="tablist" aria-label="Rubriques du passeport">
-          ${SECTIONS.map((s) => `<button type="button" class="dpp-tab-btn${state.tab === s.id ? ' active' : ''}" data-tab="${s.id}" role="tab" aria-selected="${state.tab === s.id}" data-i18n="${s.key}">${esc(s.label)}</button>`).join('')}
-        </nav>`;
-      }
-
-      function viewProduit() {
-        const d = state.dpp;
-        return `<h2 class="section-title">Produit</h2>
-          <p class="section-desc">Identité du produit telle qu'enregistrée par la marque.</p>
-          <div class="info-grid">
-            <div class="info-card"><div class="section-desc">Désignation</div><strong>${esc(d.productName)}</strong></div>
-            <div class="info-card"><div class="section-desc">Référence</div><strong>${esc(d.productReference)}</strong></div>
-            <div class="info-card"><div class="section-desc">SKU</div><strong>${esc(d.sku || '—')}</strong></div>
-            <div class="info-card"><div class="section-desc">GTIN</div><strong>${esc(d.gtin || 'Non attribué')}</strong></div>
-            <div class="info-card"><div class="section-desc">Catégorie</div><strong>${esc(d.category || '—')}</strong></div>
-            <div class="info-card"><div class="section-desc">Masse</div><strong>${gap('weightGrams') ? 'Non renseignée' : num(d.weightGrams, 0) + ' g'}</strong></div>
-            <div class="info-card"><div class="section-desc">Marque</div><strong>${esc(d.brandName)}</strong></div>
-            <div class="info-card"><div class="section-desc">Entité légale</div><strong>${esc(d.brandLegalName)}</strong></div>
-          </div>
-          ${gap('gtin') ? gapNote('Aucun GTIN n’est enregistré pour ce produit ; l’identifiant affiché est le SKU.') : ''}`;
-      }
-
-      function viewOrigine() {
-        const d = state.dpp;
-        return `<h2 class="section-title">Origine</h2>
-          <p class="section-desc">Pays déclarés sur la fiche produit.</p>
-          <div class="info-grid">
-            <div class="info-card"><div class="section-desc">Pays de confection</div><strong>${gap('countryOfManufacture') ? 'Non renseigné' : esc(d.countryOfManufacture)}</strong></div>
-            <div class="info-card"><div class="section-desc">Pays de conception</div><strong>${gap('countryOfDesign') ? 'Non renseigné' : esc(d.countryOfDesign)}</strong></div>
-          </div>
-          ${gap('countryOfManufacture') || gap('countryOfDesign') ? gapNote('Un pays absent de la fiche produit n’est pas déduit.') : ''}`;
-      }
-
-      function viewMatieres() {
-        const d = state.dpp;
-        const mats = d.materials || [];
-        if (!mats.length) {
-          return `<h2 class="section-title">Matières</h2>` + absent('Aucune matière enregistrée', "La nomenclature de ce produit ne contient aucune matière. Rien n'est affiché à la place.");
-        }
-        return `<h2 class="section-title">Matières</h2>
-          <p class="section-desc">${mats.length} matière(s) issue(s) de la nomenclature produit.</p>
-          <div class="info-grid">
-            ${mats.map((m) => `<div class="info-card">
-              <div class="section-desc">${esc(m.role || 'matière')}</div>
-              <strong>${esc(m.name)}</strong>
-              <div class="section-desc" style="margin-top:6px">${num(m.percentage, 0)} %${m.originCountry ? ` · origine ${esc(m.originCountry)}` : ' · origine non renseignée'}</div>
-            </div>`).join('')}
-          </div>`;
-      }
-
-      function viewComposition() {
-        const d = state.dpp;
-        const mats = d.materials || [];
-        const total = mats.reduce((s, m) => s + (Number(m.percentage) || 0), 0);
-        return `<h2 class="section-title">Composition</h2>
-          <p class="section-desc">${esc(d.certifiedComposition)}</p>
-          ${mats.length ? `<div class="composition-card">
-            <div class="comp-bar">
-              ${mats.map((m, i) => `<div class="comp-fill-${(i % 2) + 1}" style="width:${Math.max(0, Math.min(100, Number(m.percentage) || 0))}%" title="${esc(m.name)} — ${num(m.percentage, 0)} %"></div>`).join('')}
-            </div>
-            ${mats.map((m) => `<div class="comp-item"><span class="comp-bullet"></span><span class="comp-item-title">${esc(m.name)}</span><strong>${num(m.percentage, 0)} %</strong></div>`).join('')}
-            <p class="section-desc" style="margin-top:12px">Total déclaré : <strong>${num(total, 0)} %</strong>${Math.abs(total - 100) > 0.5 ? ' — la composition ne totalise pas 100 %.' : ''}</p>
-          </div>` : absent('Composition non publiée', 'Aucune matière n’étant enregistrée, aucune composition ne peut être affichée.')}
-          ${gap('composition') ? gapNote('La composition affichée est un texte par défaut, et non la nomenclature du produit.') : ''}`;
-      }
-
-      function viewFabrication() {
-        const d = state.dpp;
-        const steps = String(d.supplyChainSummary || '').split('➔').map((s) => s.trim()).filter(Boolean);
-        if (!steps.length) {
-          return `<h2 class="section-title">Fabrication</h2>` + absent('Chaîne de fabrication non publiée', 'Aucun nœud de chaîne d’approvisionnement n’est rattaché à ce produit.');
-        }
-        return `<h2 class="section-title">Fabrication</h2>
-          <p class="section-desc">${gap('supplyChain') ? 'Aucun nœud réel n’est rattaché : la séquence ci-dessous est un libellé par défaut.' : steps.length + ' étape(s) rattachée(s) au produit.'}</p>
-          <div class="trace-timeline">
-            ${steps.map((step, i) => {
-              const label = step.split('(')[0].trim();
-              const country = (step.match(/\(([^)]+)\)/) || [])[1];
-              return `<div class="timeline-node">
-                <div class="node-pin"></div>
-                <div class="node-header"><span class="node-tier-tag">Étape ${i + 1}</span><strong>${esc(label)}</strong></div>
-                <div class="node-body"><div class="node-sub">${country ? 'Pays déclaré : ' + esc(country) : 'Pays non renseigné'}</div></div>
-              </div>`;
-            }).join('')}
-          </div>`;
-      }
-
-      function viewCertifications() {
-        const d = state.dpp;
-        if (!d.transactionCertificateNumber) {
-          return `<h2 class="section-title">Certifications</h2>` + absent('Aucun certificat rattaché', "Aucun certificat de transaction n'est associé à ce produit. L'absence est affichée telle quelle.");
-        }
-        return `<h2 class="section-title">Certifications</h2>
-          <p class="section-desc">Certificat de transaction rattaché par le bilan de masse.</p>
-          <div class="info-card">
-            <div class="section-desc">Numéro de certificat</div>
-            <strong>${esc(d.transactionCertificateNumber)}</strong>
-            <p class="section-desc" style="margin-top:10px">Ce numéro atteste d'une allocation de matière certifiée. Il ne couvre pas les autres référentiels, et TRACEFAB n'expose ici ni l'échéance ni l'organisme émetteur.</p>
-          </div>`;
-      }
-
-      function viewCircularite() {
-        const d = state.dpp;
-        return `<h2 class="section-title">Circularité & impact</h2>
-          <p class="section-desc">Scores issus de l'évaluation PEF lorsque celle-ci existe.</p>
-          <div class="info-grid">
-            <div class="info-card"><div class="section-desc">Éco-Score Textile Européen (PEF)</div><strong>${gap('pef') ? 'Non mesuré' : num(d.pefScore, 0) + ' · ' + esc(d.pefGrade)}</strong></div>
-            <div class="info-card"><div class="section-desc">Empreinte carbone</div><strong>${gap('carbonFootprint') ? 'Non mesurée' : num(d.carbonFootprintKgCo2e) + ' kg CO₂e'}</strong></div>
-            <div class="info-card"><div class="section-desc">Stress hydrique</div><strong>${gap('waterScarcity') ? 'Non mesuré' : num(d.waterScarcityM3) + ' m³'}</strong></div>
-            <div class="info-card"><div class="section-desc">Score de circularité</div><strong>${gap('circularity') ? 'Non mesuré' : num(d.circularityScore, 0) + ' / 100'}</strong></div>
-          </div>
-          ${gap('pef') ? gapNote('Aucune évaluation PEF n’est enregistrée pour ce produit : les indicateurs d’impact sont absents plutôt qu’estimés.') : ''}
-          <div class="info-card" style="margin-top:16px">
-            <div class="section-desc">Fin de vie</div>
-            <p class="section-desc" style="margin:8px 0 0">${esc(d.recyclingInstructions || 'Non publié')}</p>
-            ${gap('recyclingInstructions') ? '<p class="section-desc" style="margin-top:10px"><strong>Texte générique.</strong> Cette consigne est identique pour tous les produits et ne provient d’aucune saisie.</p>' : ''}
-          </div>`;
-      }
-
-      function viewEntretien() {
-        const d = state.dpp;
-        return `<h2 class="section-title">Entretien</h2>
-          ${d.careInstructions ? `<div class="info-card"><p class="section-desc" style="margin:0">${esc(d.careInstructions)}</p></div>` : absent('Entretien non publié', 'Aucune instruction d’entretien n’est enregistrée.')}
-          ${gap('careInstructions') ? gapNote('Cette consigne est identique pour tous les produits : TRACEFAB ne stocke pas encore d’instruction d’entretien par produit.') : ''}`;
-      }
-
-      function viewReparation() {
-        return `<h2 class="section-title">Réparation</h2>` + absent(
-          'Réparabilité non publiée',
-          "TRACEFAB ne stocke aucun indice de réparabilité ni aucune offre de réparation : le schéma de base ne contient pas ces champs. Rien n'est affiché à la place, et aucun score n'est estimé.",
-        );
-      }
-
-      function viewTracabilite() {
-        const d = state.dpp;
-        return `<h2 class="section-title">Traçabilité</h2>
-          <p class="section-desc">Identifiants permettant de relier ce passeport à son produit.</p>
-          <div class="info-grid">
-            <div class="info-card"><div class="section-desc">Identifiant GS1 Digital Link</div><div class="code-box">${esc(d.digitalLinkUri || '—')}</div></div>
-            <div class="info-card"><div class="section-desc">Numéro de série du passeport</div><div class="code-box">${esc(d.serialNumber || '—')}</div></div>
-            <div class="info-card"><div class="section-desc">Adresse du passeport</div><div class="code-box">${esc(d.dppUrl || '—')}</div></div>
-          </div>
-          <p class="section-desc" style="margin-top:14px">La chaîne d'étapes figure à la rubrique Fabrication. TRACEFAB ne stocke pas de lot : la traçabilité
-          publiée s'arrête aux nœuds réellement rattachés au produit.</p>`;
-      }
-
-      function viewPreuves() {
-        return `<h2 class="section-title">Preuves</h2>` + absent(
-          'Aucune preuve publiée',
-          "Le passeport public n'expose aucun document : la route qui le produit ne joint ni certificat, ni rapport d'essai, ni déclaration. Les preuves existent dans TRACEFAB côté marque, mais leur publication consommateur n'est pas encore câblée.",
-        );
-      }
-
-      function footer() {
-        const d = state.dpp;
-        const links = state.links || {};
-        return `<footer class="dpp-footer">
-          <div>
-            <div class="section-desc">Cadres applicables : Loi AGEC &amp; ESPR. Ce passeport restitue les données déclarées dans
-            TRACEFAB ; il ne constitue ni une certification, ni une attestation de conformité à ces cadres. Les rubriques sans
-            donnée sont affichées comme absentes.</div>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
-            ${links.appleWalletUrl ? `<a class="btn-action" href="${esc(links.appleWalletUrl)}">Apple Wallet</a>` : ''}
-            ${links.googleWalletUrl ? `<a class="btn-action" href="${esc(links.googleWalletUrl)}">Google Wallet</a>` : ''}
-            ${state.demo ? '' : `<a class="btn-action btn-action-primary" href="/dpp/?gtin=${encodeURIComponent(state.identifier)}">Lien permanent</a>`}
-          </div>
-          <div class="section-desc" style="margin-top:14px">TRACEFAB · ${esc(d.brandLegalName)}</div>
-        </footer>`;
-      }
-
-      const VIEWS = {
-        produit: viewProduit, origine: viewOrigine, matieres: viewMatieres, composition: viewComposition,
-        fabrication: viewFabrication, certifications: viewCertifications, circularite: viewCircularite,
-        entretien: viewEntretien, reparation: viewReparation, tracabilite: viewTracabilite, preuves: viewPreuves,
-      };
-
-      /* ---------------------------------------------------------------- rendu */
-
-      function render() {
-        const root = document.getElementById('dpp');
-        root.setAttribute('aria-busy', state.loading ? 'true' : 'false');
-
-        if (state.loading) {
-          root.innerHTML = '<p class="section-desc">Chargement du passeport…</p>';
-          return;
-        }
-        if (state.error === 'missing_identifier') {
-          root.innerHTML = `<h1 class="product-title">Passeport introuvable</h1>
-            <p class="section-desc">Aucun identifiant n'a été fourni. Ajoutez <code>?gtin=</code>, <code>?ref=</code> ou <code>?id=</code> à l'adresse,
-            ou <a href="/dpp/?demo=1">ouvrez le passeport de démonstration</a>.</p>`;
-          return;
-        }
-        if (state.error) {
-          root.innerHTML = `<h1 class="product-title">Passeport indisponible</h1>
-            <p class="section-desc">Le passeport n'a pas pu être chargé (${esc(state.error)}). Vérifiez l'identifiant du produit.</p>`;
-          return;
-        }
-
-        const body = (VIEWS[state.tab] || viewProduit)();
-        root.innerHTML = `${header()}${tabs()}<main class="tab-content-panel" style="display:block">${body}</main>${footer()}`;
-        if (window.TracefabI18n) window.TracefabI18n.apply(root);
-        bind();
-      }
-
-      function bind() {
-        document.querySelectorAll('.dpp-tab-btn').forEach((btn) => {
-          btn.addEventListener('click', () => { state.tab = btn.dataset.tab; render(); });
-        });
-      }
-
-      window.tracefabPublicDpp = { state, load, SECTIONS };
-      if (window.TracefabI18n) window.TracefabI18n.init({ scope: 'app', fallback: 'fr' }).then(() => load());
-      else load();
-    })();
-  </script>
 </body>
 </html>

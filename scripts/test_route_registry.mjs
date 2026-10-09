@@ -1,259 +1,100 @@
-#!/usr/bin/env node
-/**
- * TRACEFAB route registry integrity.
- *
- * Two failure modes have already shipped in this repo:
- *
- *  1. A handler file exists under api/_routes/ but was never added to the
- *     dispatcher in api/index.ts -> the feature answers 404. `supplier/shares`
- *     did exactly this: the Supplier Portal called it on every load and the
- *     404 was swallowed by Promise.allSettled, so the sharing view rendered
- *     permanently empty with nothing in the console.
- *
- *  2. A route is registered and fully implemented but no surface calls it ->
- *     the feature is unreachable (the five CAP endpoints, Phase 8).
- *
- * Failure mode 1 is a hard failure: a UI calling a route that cannot answer is
- * a defect today, whatever the intent. Failure mode 2 is reported as a warning,
- * because an endpoint may legitimately be built ahead of its interface.
- *
- *   npm run test:route-registry
- */
-import { readFile, readdir } from 'node:fs/promises';
+/* ==========================================================================
+   Integrite de la table de routage de api/index.ts.
+
+   Contexte : api/index.ts resout les requetes avec
+       routes.find((c) => c.pattern.test(path))
+   puis, si rien ne matche, repond 404 route_not_found. Il n'y a aucun
+   catch-all et aucune resolution par systeme de fichiers.
+
+   Consequence : un handler ecrit sous api/_routes/ mais absent de la table
+   est du code mort, injoignable, et le defaut est totalement silencieux.
+   C'est exactement ce qui est arrive a 10 routes, dont deux appelees par
+   l'interface (la relance fournisseur et les partages fournisseur), qui
+   repondaient 404 en production.
+
+   Ce test verifie trois proprietes :
+     1. tout fichier de route est enregistre
+     2. toute route enregistree pointe vers un fichier existant
+     3. aucun motif n'en masque un autre (ordre de la table)
+   ========================================================================== */
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const root = new URL('../', import.meta.url);
-const fsPath = (u) => u.pathname;
-
+const ROUTES_DIR = 'api/_routes';
+const INDEX = 'api/index.ts';
+const src = readFileSync(INDEX, 'utf8');
 let failures = 0;
-let checks = 0;
-const ok = (n) => { checks++; console.log(`  ok    ${n}`); };
-const bad = (n, d) => { failures++; console.error(`  FAIL  ${n}\n        ${d}`); };
+const fail = (msg) => { console.error('  ECHEC ' + msg); failures++; };
 
-/* ---------------------------------------------------------------- routes -- */
-
-const router = await readFile(new URL('api/index.ts', root), 'utf8');
-const registered = [...router.matchAll(/pattern:\s*\/\^([^\$]+)\$\//g)].map((m) =>
-  m[1].replace(/\\\//g, '/').replace(/\\-/g, '-'),
-);
-const routeMatchers = registered.map((r) => ({
-  route: r,
-  re: new RegExp(`^/api/${r}$`),
+/* --- table de routage telle qu'elle est reellement evaluee -------------- */
+const ROUTE_RE =
+  /\{ pattern: (\/\^.*?\$\/), params: \[([^\]]*)\], load: \(\) => import\('\.\/_routes\/([^']+)\.js'\) \}/g;
+const routes = [...src.matchAll(ROUTE_RE)].map((m, i) => ({
+  order: i,
+  pattern: eval(m[1]), // eslint-disable-line no-eval -- litteral issu du source
+  params: m[2].split(',').map((s) => s.trim().replace(/'/g, '')).filter(Boolean),
+  mod: m[3],
 }));
-console.log(`\nRegistre : ${registered.length} motifs déclarés dans api/index.ts`);
 
-/* --------------------------------------------------------------- surfaces -- */
+if (routes.length === 0) fail('aucune route parsee — le format de api/index.ts a change');
+console.log(`  ${routes.length} routes dans la table`);
 
-const SURFACES = [
-  'index.html',
-  'brand-console/index.html',
-  'supplier-portal/index.html',
-  'quality-center/index.html',
-  'operations/index.html',
-  'dpp/index.html',
-  'passport/index.html',
-  'evidence/index.html',
-  'traceability/index.html',
-];
-
-const surfaceCalls = new Map();
-const missingSurfaces = [];
-for (const surface of SURFACES) {
-  let html;
-  try {
-    html = await readFile(new URL(surface, root), 'utf8');
-  } catch {
-    // Une surface déclarée mais absente doit se voir : c'est ainsi qu'une
-    // nouvelle interface peut rester hors du radar du contrôle.
-    missingSurfaces.push(surface);
-    continue;
+/* --- 1. tout fichier de route est enregistre ---------------------------- */
+const files = [];
+(function walk(dir) {
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e);
+    if (statSync(p).isDirectory()) walk(p);
+    else if (e.endsWith('.ts')) files.push(relative(ROUTES_DIR, p).slice(0, -3));
   }
-  const literals = new Set();
-  for (const m of html.matchAll(/['"`]\/api\/[^'"`\s]*/g)) {
-    const path = m[0].slice(1).split(/['"`]/)[0];
-    if (path) literals.add(path);
-  }
-  surfaceCalls.set(surface, [...literals].sort());
-}
-const totalCalls = [...surfaceCalls.values()].reduce((a, c) => a + c.length, 0);
-console.log(`Surfaces : ${surfaceCalls.size} fichier(s), ${totalCalls} appel(s) /api/* distinct(s)`);
-if (missingSurfaces.length) {
-  console.warn(`\n  ATTENTION — surface(s) déclarée(s) mais introuvable(s) : ${missingSurfaces.join(', ')}`);
+})(ROUTES_DIR);
+
+const registered = new Set(routes.map((r) => r.mod));
+const orphans = files.filter((f) => !registered.has(f));
+if (orphans.length) {
+  fail(`${orphans.length} fichier(s) de route non enregistre(s) dans ${INDEX} :`);
+  orphans.forEach((o) => console.error(`          - ${ROUTES_DIR}/${o}.ts`));
+} else {
+  console.log(`  ${files.length} fichiers de route, tous enregistres`);
 }
 
-/**
- * A literal may embed `${...}` (one path segment) and a query string, and nested
- * backticks can leave an interpolation unterminated. Reduce it to a concrete
- * path the route patterns can be tested against.
- */
-function analyze(literal) {
-  let path = literal.split(/[?#]/)[0];
-  const unterminated = /\$\{[^}]*$/.test(path);
-  if (unterminated) path = path.replace(/\$\{[^}]*$/, '');
-  return { sample: path.replace(/\$\{[^}]*\}/g, 'SEGMENT'), unterminated };
+/* --- 2. toute route pointe vers un fichier existant --------------------- */
+const dangling = routes.filter((r) => !existsSync(join(ROUTES_DIR, r.mod + '.ts')));
+if (dangling.length) {
+  fail(`${dangling.length} route(s) pointant vers un fichier inexistant :`);
+  dangling.forEach((d) => console.error(`          - ${d.mod}`));
+} else {
+  console.log('  aucune route ne pointe vers un fichier manquant');
 }
 
-console.log('\n1. Chaque appel d’interface aboutit à une route déclarée');
-const dangling = [];
-for (const [surface, calls] of surfaceCalls) {
-  for (const call of calls) {
-    const { sample, unterminated } = analyze(call);
-    const match = routeMatchers.find(({ re }) => re.test(sample) || (unterminated && re.test(`${sample}SEGMENT`)));
-    if (!match) dangling.push({ surface, call });
+/* --- 3. aucun motif n'en masque un autre -------------------------------- */
+/* Un motif place avant un autre le masque s'il capture aussi le chemin
+   concret que le second est cense servir. On reconstruit pour chaque route
+   un chemin representatif en remplacant les segments parametres. */
+const sample = (r) => {
+  let i = 0;
+  return r.pattern.source
+    .replace(/^\^/, '')
+    .replace(/\$$/, '')
+    .replace(/\(\[\^\\\/\]\+\)/g, () => `sample${i++}`)
+    .replace(/\\([-/])/g, '$1');
+};
+
+let shadowed = 0;
+for (const r of routes) {
+  const path = sample(r);
+  if (/[\\(\[*+?]/.test(path)) continue; // motif trop complexe pour un echantillon fiable
+  const winner = routes.find((c) => c.pattern.test(path));
+  if (winner && winner.mod !== r.mod) {
+    fail(`"${path}" devrait atteindre ${r.mod} mais est capture par ${winner.mod} (declare plus haut)`);
+    shadowed++;
   }
 }
-if (dangling.length === 0) {
-  ok(`${totalCalls} appel(s) d’interface résolvent tous vers une route déclarée`);
-} else {
-  bad(
-    `${dangling.length} appel(s) d’interface vers une route non déclarée (404 en production)`,
-    dangling.map((d) => `${d.call}  <- ${d.surface}`).join('\n        '),
-  );
-}
+if (!shadowed) console.log('  aucun motif n\'en masque un autre');
 
-/* ------------------------------------------------- handlers non déclarés -- */
-
-async function walk(dir, out = []) {
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) await walk(full, out);
-    else if (entry.name.endsWith('.ts')) out.push(full);
-  }
-  return out;
-}
-
-const routesDir = fsPath(new URL('api/_routes', root));
-const handlerFiles = (await walk(routesDir)).map((f) =>
-  relative(routesDir, f).replace(/\\/g, '/').replace(/\.ts$/, ''),
-);
-const registeredFiles = new Set(
-  [...router.matchAll(/import\('\.\/_routes\/([^']+)\.js'\)/g)].map((m) => m[1]),
-);
-const orphans = handlerFiles.filter((f) => !registeredFiles.has(f)).sort();
-
-console.log(`\n2. Handlers présents sous api/_routes (${handlerFiles.length}) déclarés dans le registre`);
-if (orphans.length === 0) {
-  ok('aucun handler orphelin');
-} else {
-  console.warn(
-    `\n  ATTENTION — ${orphans.length} handler(s) écrit(s) mais non déclarés, donc inatteignables :\n` +
-      orphans.map((o) => `        ${o}`).join('\n'),
-  );
-  // Un orphelin appelé par une interface est déjà couvert par le contrôle 1.
-  // Ici on vérifie seulement que le registre ne déclare pas un fichier absent.
-}
-
-const phantom = [...registeredFiles].filter((f) => !handlerFiles.includes(f));
-if (phantom.length === 0) {
-  ok('le registre ne pointe vers aucun fichier inexistant');
-} else {
-  bad('le registre pointe vers des fichiers absents', phantom.join('\n        '));
-}
-
-/* ------------------------------------------ routes déclarées, jamais appelées -- */
-
-/**
- * L'inverse du contrôle 1 : une route peut exister sans interface. Ce n'est pas
- * un échec — `/api/data-requests/:id/items` est un primitive de bas niveau, les
- * items étant instanciés depuis un questionnaire via `/items/from-template`, et
- * son GET est couvert par `/api/data-requests/:id`. Mais une route que personne
- * n'appelle doit rester visible, pas disparaître du radar : c'est ainsi que les
- * cinq endpoints CAP ont attendu la phase 8.
- */
-console.log('\n3. Routes déclarées mais appelées par aucune surface');
-const neverCalled = routeMatchers
-  .filter(({ re }) => {
-    for (const calls of surfaceCalls.values()) {
-      for (const call of calls) {
-        const { sample, unterminated } = analyze(call);
-        if (re.test(sample) || (unterminated && re.test(`${sample}SEGMENT`))) return false;
-      }
-    }
-    return true;
-  })
-  .map(({ route }) => `/api/${route.replace(/\(\[\^\/\]\+\)/g, '{id}')}`);
-if (neverCalled.length) {
-  console.warn(
-    `\n  À SUIVRE — ${neverCalled.length} route(s) déclarée(s) qu'aucune surface n'appelle :\n` +
-      neverCalled.sort().map((r) => `        ${r}`).join('\n'),
-  );
-} else {
-  ok('toutes les routes déclarées sont appelées');
-}
-
-/* ------------------------------------------------------------- résultat -- */
-
-console.log(`\n${'='.repeat(64)}`);
-console.log(`\n3. Aucune route n'est masquée par un motif paramétrique antérieur`);
-/* Le registre est parcouru dans l'ordre : le premier motif qui correspond gagne.
-   Une route littérale déclarée APRÈS un motif `([^\/]+)` couvrant le même préfixe
-   est inatteignable — c'était le risque réel pour supplier/certifications/ocr-extract
-   face à supplier/certifications/([^\/]+). */
-const ordered = [];
-for (const m of router.matchAll(
-  /pattern: (\/\^[^\n]*?), params: \[([^\]]*)\], load: \(\) => import\('\.\/_routes\/([^']+)\.js'\)/g,
-)) {
-  let re;
-  try {
-    re = new Function(`return ${m[1]}`)();
-  } catch {
-    continue;
-  }
-  ordered.push({ source: m[1], re, file: m[3] });
-}
-ok(`${ordered.length} motifs analysés dans l'ordre du registre`);
-
-/* Chemin d'exemple pour chaque motif : les groupes deviennent un segment générique. */
-function samplePath(source) {
-  const body = source.replace(/^\/\^/, '').replace(/\$\/$/, '').replace(/\$$/, '');
-  return body
-    .replace(/\(\[\^\\\/\]\+\)/g, 'x1')
-    .replace(/\\\//g, '/')
-    .replace(/\\\-/g, '-');
-}
-
-const shadowed = [];
-ordered.forEach((entry, index) => {
-  const sample = samplePath(entry.source);
-  if (!sample || !entry.re.test(sample)) return;
-  const earlier = ordered.slice(0, index).find((candidate) => candidate.re.test(sample));
-  if (earlier && earlier.file !== entry.file) {
-    shadowed.push(`${entry.file} masqué par ${earlier.file} (chemin ${sample})`);
-  }
-});
-if (shadowed.length === 0) {
-  ok('aucune route masquée');
-} else {
-  bad('route(s) inatteignable(s) car masquée(s)', shadowed.join('\n        '));
-}
-
-/* Les quatre anciens orphelins doivent résoudre vers leur propre gestionnaire. */
-for (const [path, file] of [
-  ['supplier/certifications/ocr-extract', 'supplier/certifications/ocr-extract'],
-  ['quality/audit-pack', 'quality/audit-pack'],
-  ['quality/calculate-index', 'quality/calculate-index'],
-  ['integrations/plm', 'integrations/plm'],
-]) {
-  const hit = ordered.find((e) => e.re.test(path));
-  if (hit && hit.file === file) ok(`${path} résout vers ${file}`);
-  else bad(`${path} ne résout pas vers ${file}`, hit ? `résout vers ${hit.file}` : 'aucune route');
-}
-/* Et le motif paramétrique voisin doit continuer de fonctionner. */
-const byId = ordered.find((e) => e.re.test('supplier/certifications/7f3a'));
-if (byId && byId.file === 'supplier/certifications/[certificationId]') {
-  ok('supplier/certifications/{id} résout toujours vers [certificationId]');
-} else {
-  bad(
-    'supplier/certifications/{id} ne résout plus vers [certificationId]',
-    byId ? `résout vers ${byId.file}` : 'aucune route',
-  );
-}
-
+/* --- resultat ----------------------------------------------------------- */
 if (failures) {
-  console.error(`test:route-registry FAILED — ${failures} échec(s), ${checks} contrôle(s) réussi(s).`);
+  console.error(`\nIntegrite du routeur : ${failures} probleme(s).`);
   process.exit(1);
 }
-console.log(`test:route-registry passed — ${checks} contrôles, 0 échec.`);
-if (orphans.length) {
-  console.log(`(${orphans.length} handler(s) orphelin(s) signalés ci-dessus — à exposer ou à retirer.)`);
-}
+console.log('\nIntegrite du routeur : OK.');

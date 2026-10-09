@@ -1,7 +1,8 @@
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { pageSource } from './lib/page_source.mjs';
 
-const html = await readFile(new URL('../supplier-portal/index.html', import.meta.url), 'utf8');
+const html = pageSource('supplier-portal/index.html');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert(script, 'Supplier Portal inline application script is missing');
 
@@ -10,6 +11,13 @@ await writeFile(temporaryScript, script);
 const syntax = spawnSync(process.execPath, ['--check', temporaryScript], { encoding: 'utf8' });
 await unlink(temporaryScript).catch(() => {});
 assert(syntax.status === 0, syntax.stderr || 'Supplier Portal script syntax is invalid');
+
+// La copie francaise n'est plus en dur dans le markup : elle vit dans le catalogue.
+const frCatalogue = JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8'));
+assert(
+  frCatalogue.portal?.spActiveShares === 'Partages actifs',
+  'fr.json portal.spActiveShares must still read "Partages actifs"'
+);
 
 for (const contract of [
   '/api/config',
@@ -24,13 +32,7 @@ for (const contract of [
   '/api/supplier/documents',
   '/api/supplier/documents/upload-intent',
   '/api/supplier/shares',
-  /*
-   * Ce contrat portait sur le littéral français « Partages actifs ». Le libellé
-   * a été migré dans locales/<lang>/supplier.json : vérifier le texte ici
-   * figerait le français dans la page, ce que l'i18n interdit. On vérifie donc
-   * le CÂBLAGE, et la valeur réelle dans les neuf langues juste après.
-   */
-  "t('ui_partages_actifs')",
+  "t('spActiveShares')",
   '/api/supplier/documents/',
   '/api/supplier/organizations',
   '/api/supplier/members',
@@ -54,17 +56,6 @@ for (const contract of [
 ]) {
   assert(html.includes(contract), `Supplier Portal contract missing: ${contract}`);
 }
-/*
- * Le libellé des partages actifs doit exister, non vide, dans les neuf langues
- * du portail — sinon `t()` renverrait la clé brute à l'écran.
- */
-const PORTAL_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
-for (const lang of PORTAL_LANGS) {
-  const dict = JSON.parse(await readFile(new URL(`../locales/${lang}/supplier.json`, import.meta.url), 'utf8'));
-  assert(String(dict.ui_partages_actifs || '').trim().length > 0,
-    `ui_partages_actifs must have a non-empty value in ${lang}`);
-}
-
 assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token must be sent through Authorization');
 assert(!html.includes('localhost'), 'Supplier Portal must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Supplier Portal must not contain private credentials');

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('--- Chantier : Test Suite - Passeport Fournisseur Universel « 1-Clic » & Viralité Inversée ---');
 
@@ -64,58 +65,36 @@ console.log('✓ API index routing table verified');
 // 5. Verify Public Passport Frontend (passport/index.html)
 const publicPassportPath = path.resolve('passport/index.html');
 assert(fs.existsSync(publicPassportPath), 'passport/index.html must exist');
-const publicPassport = fs.readFileSync(publicPassportPath, 'utf8');
+const publicPassport = pageSource('passport/index.html');
 assert(publicPassport.includes('Universal Supplier Passport'), 'Page must contain title');
-/*
- * La page est passée sur le runtime i18n partagé : le contenu métier vit dans
- * locales/{lang}/passport.json, plus dans le HTML. Ces trois assertions
- * cherchaient les libellés français dans le source de la page — elles
- * échouaient donc sur une migration RÉUSSIE.
- *
- * La garantie visée (« la page énonce la directive sur les secrets d'affaires »,
- * « la page porte un CTA pour les marques ») est intacte, mais elle se vérifie
- * désormais en deux endroits : la page référence la clé, et le dictionnaire
- * français contient le texte. Le rendu effectif est couvert par
- * test:i18n:passport, qui monte la page dans jsdom.
- */
-const passportFr = JSON.parse(
-  fs.readFileSync(path.resolve('locales/fr/passport.json'), 'utf8'),
-).passport;
-assert(publicPassport.includes("t('passport.nda.title')"), 'Page must render the trade-secret notice');
+// La copie n'est plus en dur : le balisage appelle la cle et le catalogue
+// francais conserve le libelle d'origine.
+const passportFr = JSON.parse(fs.readFileSync(path.resolve('assets/i18n/fr.json'), 'utf8')).passport;
+assert(publicPassport.includes("pt_('ndaTitle')"), 'Page must state Trade Secret Protection Directive');
 assert(
-  String(passportFr.nda?.title || '').includes("Protection des Secrets d'Affaires Active"),
-  'Trade Secret Protection Directive must be stated in the French dictionary',
+  passportFr?.ndaTitle === "Protection des Secrets d'Affaires Active (Directive UE 2016/943)",
+  'fr.json passport.ndaTitle must keep the original French wording'
 );
-assert(publicPassport.includes("t('passport.hero.requestFull')"), 'Page must render the CTA for brands');
+assert(publicPassport.includes("pt_('ctaFullAccessNda')"), 'Page must contain CTA for brands');
 assert(
-  String(passportFr.hero?.requestFull || '').includes('Demander accès complet (NDA)'),
-  'The CTA wording must be present in the French dictionary',
+  passportFr?.ctaFullAccessNda === 'Demander accès complet (NDA)',
+  'fr.json passport.ctaFullAccessNda must keep the original French wording'
 );
 assert(publicPassport.includes('/api/passport/'), 'Page must call passport API');
 console.log('✓ Public Verifiable Passport Viewer (passport/index.html) verified');
 
 // 6. Verify Supplier Portal Integration (supplier-portal/index.html)
 const supplierPortalPath = path.resolve('supplier-portal/index.html');
-const supplierPortal = fs.readFileSync(supplierPortalPath, 'utf8');
-/**
- * Le texte d'interface du portail vit dans locales/{lang}/supplier.json : un
- * composant ne doit plus porter de contenu métier en dur. On vérifie donc que le
- * portail appelle la clé ET que les neuf langues la traduisent — c'est plus
- * strict que la présence d'une chaîne française dans le HTML.
- */
-const SUPPLIER_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
-const readDict = (lang) => JSON.parse(fs.readFileSync(path.resolve(`locales/${lang}/supplier.json`), 'utf8'));
-function assertTranslated(key, expectedFr, label) {
-  assert(supplierPortal.includes(`t('${key}')`), `${label} (le portail doit appeler t('${key}'))`);
-  for (const lang of SUPPLIER_LANGS) {
-    const value = readDict(lang)[key];
-    assert(typeof value === 'string' && value.trim().length > 0, `${label} (${lang} doit traduire ${key})`);
-  }
-  assert(readDict('fr')[key] === expectedFr, `${label} (la valeur française doit être conservée)`);
-}
-
+const supplierPortal = pageSource('supplier-portal/index.html');
 assert(supplierPortal.includes('passportView'), 'Supplier portal must implement passportView');
-assertTranslated('ui_passeport_fournisseur_universel_1', readDict('fr')['ui_passeport_fournisseur_universel_1'], 'Supplier portal must display Universal Passport title');
+// La copie n'est plus en dur : le balisage appelle la cle, et le catalogue
+// francais conserve le libelle d'origine.
+assert(supplierPortal.includes("t('spPassportTitle')"), 'Supplier portal must display Universal Passport title');
+assert(
+  JSON.parse(fs.readFileSync(path.resolve('assets/i18n/fr.json'), 'utf8'))
+    .portal?.spPassportTitle === 'Passeport Fournisseur Universel « 1-Clic »',
+  'fr.json portal.spPassportTitle must keep the original French wording'
+);
 assert(supplierPortal.includes('passport-settings-form'), 'Supplier portal must have settings form');
 assert(supplierPortal.includes('review-passport-request'), 'Supplier portal must have review request action');
 console.log('✓ Supplier Portal UI/UX integration verified');

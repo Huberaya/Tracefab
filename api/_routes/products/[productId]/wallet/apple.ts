@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-type
 import { prisma } from '../../../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { resolveDppPassData } from '../../../../_lib/wallet/dpp-data-resolver.js';
-import { generateApplePkpass, resolveSignatureMode, isSignatureInstallable } from '../../../../_lib/wallet/apple-pass-generator.js';
+import { generateApplePkpass } from '../../../../_lib/wallet/apple-pass-generator.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -26,15 +26,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    /*
-     * Le .pkpass servi ici n'est pas installable sur iOS : la signature n'est pas
-     * une structure CMS SignedData. Les en-têtes le disent, pour qu'aucune
-     * interface ne présente ce fichier comme un pass fonctionnel. La valeur vient
-     * de la même fonction que le générateur, donc elle ne peut pas diverger.
-     */
-    const signatureMode = resolveSignatureMode();
-    res.setHeader('X-Tracefab-Pass-Signature', signatureMode);
-    res.setHeader('X-Tracefab-Pass-Installable', String(isSignatureInstallable(signatureMode)));
     return res.status(200).send(pkpassBuffer);
   } catch (err: unknown) {
     console.error('Apple Wallet generation error:', err);

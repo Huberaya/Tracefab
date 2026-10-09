@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { pageSource } from './lib/page_source.mjs';
 
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -65,7 +66,7 @@ assert(
 
 // 3. Verify Brand Console UI
 console.log('3. Checking Brand Console UI implementation...');
-const brandConsoleHtml = await readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8');
+const brandConsoleHtml = pageSource('brand-console/index.html');
 assert(
   brandConsoleHtml.includes('data-action="acknowledge-issue"'),
   'Brand console must offer acknowledge button on issues',
@@ -94,9 +95,15 @@ assert(
   brandConsoleHtml.includes('waiveIssue('),
   'Brand console must implement waiveIssue handler',
 );
+// Chantier 8 : le badge est passe au catalogue (console.cnWaiverGranted).
 assert(
-  brandConsoleHtml.includes('Dérogation accordée'),
+  brandConsoleHtml.includes("bt('cnWaiverGranted')"),
   'Brand console must display waiver reason badge when issue is waived',
+);
+assert(
+  JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.cnWaiverGranted
+    === 'Dérogation accordée :',
+  'la copie FR du badge de derogation doit rester au catalogue',
 );
 
 // 4. Pure State Machine Simulation of Issue Lifecycle and Score Recovery

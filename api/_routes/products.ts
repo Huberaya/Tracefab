@@ -5,6 +5,7 @@ import { withTracefabUserContext } from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
 import { activeBrandOrganizationIds, isUuid, PRODUCT_SELECT, serializeProduct } from '.././_lib/products.js';
+import { pageArgs, readPageRequest, slicePage } from '.././_lib/pagination.js';
 
 type CreateProductBody = {
   brandOrganizationId?: string;
@@ -44,7 +45,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return json(res, 400, { error: 'invalid_organization_id' });
       }
 
-      const products = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      // Pagination par curseur. `OFFSET` reparcourt et jette toutes les
+      // lignes sautees a chaque page : son cout croit avec le numero de
+      // page. Un curseur sur un identifiant indexe reste constant, et ne
+      // decale pas les pages quand un produit est cree pendant le parcours.
+      const page = readPageRequest(req);
+      if (!page) return json(res, 400, { error: 'invalid_pagination' });
+
+      const rows = await withTracefabUserContext(user.id, user.email, async (tx) => {
         const organizationIds = await activeBrandOrganizationIds(tx, user.id);
         if (requestedOrganizationId && !organizationIds.includes(requestedOrganizationId)) {
           return [];
@@ -56,11 +64,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               : { in: organizationIds },
           },
           select: PRODUCT_SELECT,
-          orderBy: { created_at: 'desc' },
+          // `id` departage les ex aequo : sans lui, deux produits crees dans
+          // la meme milliseconde rendraient l'ordre non deterministe et le
+          // curseur sauterait ou repeterait des lignes.
+          orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+          ...pageArgs(page),
         });
       });
 
-      return json(res, 200, { products: products.map(serializeProduct) });
+      const { items, nextCursor } = slicePage(rows, page);
+      // `nextCursor` est ajoute, rien n'est retire : les clients actuels,
+      // qui lisent `products` et ignorent le reste, continuent de marcher.
+      return json(res, 200, { products: items.map(serializeProduct), nextCursor });
     }
 
     const body = await readJsonBody<CreateProductBody>(req);

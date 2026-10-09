@@ -1,0 +1,286 @@
+#
+# TRACEFAB — integration continue
+#
+# Trois etages, du plus rapide au plus couteux, pour que l'echec le plus
+# probable soit aussi le plus vite signale :
+#
+#   1. socle        types, compilation, isolation multi-locataires  (~1 min)
+#   2. verification 63 scripts test:* + audit statique end-to-end
+#   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
+#
+# L'etage base de donnees ne se declenche que si le secret DATABASE_URL existe,
+# pour qu'un fork ou une contribution externe ne voie pas un echec qui ne lui
+# appartient pas.
+#
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # Une nouvelle poussee annule la precedente sur la meme reference : inutile de
+  # payer deux fois pour un etat depasse.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  TF_BASE: http://127.0.0.1:3000
+
+jobs:
+  # --------------------------------------------------------------- 1. socle
+  socle:
+    name: Socle — types, compilation, isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Generer le client Prisma
+        run: npm run db:generate
+
+      - name: Verification des types applicatifs
+        run: npx tsc --noEmit
+
+      - name: Verification des types de l'API
+        run: npm run api:typecheck
+
+      - name: Isolation multi-locataires
+        # Toute route nouvelle doit declarer son modele d'acces. Une route non
+        # classee et non authentifiee fait echouer cette etape.
+        run: npm run test:cross-tenant
+
+      - name: Garde-fous de mise en production
+        # Barriere d'erreur centrale, caviardage des secrets reellement
+        # execute, et contrat de variables d'environnement a jour.
+        run: npm run test:production-readiness
+
+  # -------------------------------------------------- 2. suite de verification
+  verification:
+    name: Verification — suite de tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: socle
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Generer le client Prisma
+        run: npm run db:generate
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Compilation complete
+        # `build` enchaine deja types, schema, routes, i18n et les tests de
+        # chantier : c'est la porte d'entree historique du depot.
+        run: npm run build
+
+      - name: Audit statique end-to-end
+        run: npm run audit:e2e
+
+      - name: Demarrer le serveur de previsualisation
+        # dev_static_server applique les reecritures de vercel.json. Servir
+        # autrement reviendrait a tester un routage qui n'existe pas en production.
+        run: |
+          # nohup + redirection : sans cela le runner peut rester bloque en fin
+          # de job sur le descripteur de sortie encore tenu par le serveur.
+          nohup npm run serve > /tmp/serve.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -sf "$TF_BASE/" >/dev/null && echo "serveur pret" && exit 0
+            sleep 0.5
+          done
+          echo "::error::le serveur n'a pas repondu sur $TF_BASE"
+          cat /tmp/serve.log || true
+          exit 1
+
+      - name: Suite complete des scripts test:*
+        # Les suites neon et staging exigent une base ou un environnement
+        # deploye : elles ont leur propre etage.
+        #
+        # test:regression est exclu pour une raison differente et assumee : sa
+        # reference est une image, donc liee a son environnement de rendu. Les
+        # fontes distantes sont bloquees, mais le repli depend des polices
+        # systeme, qui different entre le poste de developpement et le runner.
+        # Le laisser ici le ferait rougir pour une raison etrangere au code ;
+        # l'automatiser suppose de figer le rendu dans un conteneur.
+        run: |
+          set -u
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression').join(' '))")
+          echoues=''
+          for s in $scripts; do
+            if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
+              echo "OK    $s"
+            else
+              echo "ECHEC $s"
+              echoues="$echoues $s"
+            fi
+          done
+          if [ -n "$echoues" ]; then
+            echo "::group::Journaux des suites en echec"
+            for s in $echoues; do echo "----- $s -----"; tail -40 "/tmp/$s.log"; done
+            echo "::endgroup::"
+            echo "::error::suites en echec :$echoues"
+            exit 1
+          fi
+
+      - name: Journaux en cas d'echec
+        if: failure()
+        run: tail -n 60 /tmp/*.log || true
+
+  # ------------------------------------------------------------ 3. parcours
+  parcours:
+    name: Parcours — navigateur reel
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: socle
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Generer le client Prisma
+        run: npm run db:generate
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Demarrer le serveur de previsualisation
+        run: |
+          # nohup + redirection : sans cela le runner peut rester bloque en fin
+          # de job sur le descripteur de sortie encore tenu par le serveur.
+          nohup npm run serve > /tmp/serve.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -sf "$TF_BASE/" >/dev/null && echo "serveur pret" && exit 0
+            sleep 0.5
+          done
+          echo "::error::le serveur n'a pas repondu sur $TF_BASE"
+          cat /tmp/serve.log || true
+          exit 1
+
+      - name: 20 parcours end-to-end non mockes
+        run: npm run test:journeys -- --base "$TF_BASE"
+
+      - name: Trois personas — dirigeant, conformite, fournisseur
+        # Critere d'acceptation du cahier des charges : si un persona se perd,
+        # la livraison est refusee.
+        run: npm run audit:personas
+
+      - name: Phases 9 a 12 — tracabilite, DPP, passeport public, i18n
+        run: npm run test:phases
+
+      - name: Captures en cas d'echec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures-parcours
+          path: |
+            .visual/**
+            /tmp/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ----------------------------------------------- 4. base de donnees reelle
+  base-de-donnees:
+    name: Base — isolation RLS executee
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: socle
+    # Ce job ne depend plus d'aucun secret.
+    #
+    # Avant, il verifiait la presence de secrets.DATABASE_URL et sautait ses
+    # etapes quand il etait absent. Le depot n'a jamais eu le moindre secret :
+    # le job annoncait donc « isolation RLS executee » sans jamais rien
+    # executer, et affichait vert. Un vert obtenu sans travail est pire qu'un
+    # rouge : il eteint la vigilance.
+    #
+    # Brancher la base de production aurait ete le mauvais remede — exposer
+    # des identifiants de production a tout workflow, et faire tourner
+    # l'epreuve sur des donnees reelles. On monte un Postgres jetable a la
+    # place : l'epreuve tourne a chaque poussee, y compris depuis un fork.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tracefab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Base jetable, detruite avec le runner. Le mot de passe n'ouvre rien.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
+      TF_APP_PASSWORD: isolation_ci_jetable
+      TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
+      # Le contexte `secrets` n'est pas disponible dans un `if:` d'etape : il
+      # faut le faire transiter par l'env du job. Sans ce detour, le workflow
+      # echoue au parsing.
+      TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Generer le client Prisma
+        run: npm run db:generate
+
+      - name: Appliquer les migrations sur la base jetable
+        # npm run db:deploy, pas npx prisma : npx va chercher au registre
+        # quand le binaire local n'est pas trouve, et installe un homonyme.
+        run: npm run db:deploy
+
+      - name: Creer le role tracefab_app et deux locataires
+        run: node scripts/seed_rls_fixture.mjs
+
+      - name: Isolation RLS prouvee par execution
+        # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
+        # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
+        run: npm run test:neon:rls
+
+      - name: Scenarios croises contre la base de production
+        # Optionnels, et clairement annonces comme tels. L'etancheite est deja
+        # prouvee ci-dessus sans eux.
+        if: ${{ env.TF_SECRET_PRODUCTION != '' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          npm run test:neon:security
+          npm run test:neon:supplier
+          npm run test:neon:product
+          npm run test:neon:quality
+          npm run test:neon:collection

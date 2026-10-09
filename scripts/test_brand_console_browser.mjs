@@ -3,7 +3,10 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright';
 
 const port = 4173;
-const server = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], {
+// On sert via dev_static_server.mjs, seul serveur local qui applique les
+// reecritures de vercel.json. Un test qui valide contre un serveur ignorant le
+// routage de production ne prouve rien sur la production.
+const server = spawn(process.execPath, ['scripts/dev_static_server.mjs', '--port', String(port)], {
   cwd: new URL('..', import.meta.url),
   stdio: 'ignore',
 });
@@ -12,19 +15,23 @@ try {
   await delay(350);
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await page.goto(`http://127.0.0.1:${port}/brand-console/?demo=1`, { waitUntil: 'domcontentloaded' });
+  // Ce scenario verifie des libelles francais : la locale par defaut du site
+  // est l'anglais depuis la couche i18n, donc on force la langue.
+  await page.goto(`http://127.0.0.1:${port}/brand-console/?demo=1&lang=fr`, { waitUntil: 'domcontentloaded' });
 
   // Exercise the French native UI explicitly; the console defaults to English when no preference exists.
   await page.locator('#brand-lang-select').selectOption('fr');
   await page.locator('h1.mc-headline').waitFor();
   await page.locator('button[data-view="products"]').click();
   await page.locator('[data-product-id="demo-product-1"]').click();
-  await page.getByRole('heading', { name: 'Essentiel coton' }).waitFor();
+  // Fixture de demonstration : anglicisee par la regle « donnees de demo », donc
+  // insensible a la locale.
+  await page.getByRole('heading', { name: 'Cotton Essential' }).waitFor();
 
   await page.locator('#material-form select[name="materialId"]').selectOption('demo-material-1');
   await page.locator('#material-form input[name="percentage"]').fill('80');
   await page.locator('#material-form button[type="submit"]').click();
-  await page.getByText('Coton biologique').first().waitFor();
+  await page.getByText('Organic cotton').first().waitFor();
 
   await page.locator('#identifier-form select[name="identifierType"]').selectOption('ean');
   await page.locator('#identifier-form input[name="identifierValue"]').fill('3760123456789');

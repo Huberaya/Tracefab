@@ -1,207 +1,196 @@
-# Tracefab
+# TRACEFAB
 
-Infrastructure de données fournisseurs pour la traçabilité textile, la qualité des données et la préparation au Digital Product Passport.
+**The intelligence layer for the global textile supply chain.**
+
+TRACEFAB transforme les données fragmentées de la chaîne textile mondiale en une
+intelligence produit structurée, fiable, traçable et réutilisable : collecte
+fournisseur, preuves documentaires, qualité de la donnée, traçabilité et
+préparation au Digital Product Passport (DPP).
+
+> Voir — Structurer — Vérifier — Tracer — Prouver.
+
+---
 
 ## Statut
 
-**P2 en cours — Chantier 9 / Référentiel des certifications / readiness infrastructure staging / E2E Playwright non mocké — base Chantier 23, Notification Observability et Neon + Clerk**
+🚧 **Transformation en cours** — état mesuré du dépôt et feuille de route en
+12 chantiers :
+[`docs/audit/01-world-class-transformation-audit.md`](docs/audit/01-world-class-transformation-audit.md)
 
-Le repository contient les fondations d'architecture, l'onboarding fournisseur, le parcours produit, la collecte, la chaîne privée de documents/certifications, le moteur de qualité, le graphe de traçabilité et la première projection versionnée de préparation DPP. Le P2 ajoute le catalogue versionné des standards de certification sous `/api/catalog/certification-standards`, la readiness protégée des intégrations réelles sous `/api/internal/p2/readiness` et un test Playwright staging strictement non mocké ; sa validation finale attend encore les credentials réels S3/antivirus/Resend/webhook d'alerte. Le schéma Neon est appliqué via Prisma avec une identité Clerk côté serveur. Le Chantier 18 ajoute une Brand Console statique sous `/brand-console/` avec produits, révisions, composition, identifiants, fournisseurs, demandes, revue et qualité. Le Chantier 19 ajoute un Supplier Portal approfondi sous `/supplier-portal/` pour le profil, les sites, les matériaux, les certificats déclarés, la qualité fournisseur, les demandes de données, les réponses versionnées et la soumission. Le Chantier 20 ajoute le stockage privé des preuves avec URLs présignées, contrôle serveur, hash SHA-256, antivirus contractuel et téléchargements temporaires. Le Chantier 21 ajoute la planification Vercel Cron des relances et l'enchaînement sécurisé de l'outbox. Le Chantier 22 ajoute les logs corrélés, l'état protégé de l'outbox et les alertes webhook timeout-safe pour les échecs de notification. Le Chantier 23 ajoute les data points structurés, la gestion d'équipe et le contexte multi-organisation du Supplier Portal, avec acceptation Clerk des invitations, renvoi/révocation et durcissement RLS Neon. Le bucket, le scanner antivirus, la configuration Cron, le webhook d'alerte et les memberships réels restent des dépendances d'infrastructure à activer sur staging/production.
+| | |
+|---|---|
+| **Backend / données** | ✅ Solide : multi-tenant RLS, 125 routes API, moteur qualité, collecte, preuves, DPP readiness |
+| **Frontends** | 🟠 Fonctionnels : Brand Console (17 vues), Supplier Portal (14 vues), pages publiques en démo |
+| **Infra externe** | 🟠 En contrat : S3 privé, antivirus, Resend prod et webhook d'alerte à raccorder sur staging |
+| **Décisions de conception** | 📚 28 docs d'architecture dans `docs/architecture/` |
+
+---
 
 ## Principes
 
-- Le produit central est la donnée fournisseur structurée, pas le QR code.
-- Le système est multi-tenant dès la première migration.
-- Une donnée déclarée n'est pas automatiquement vérifiée.
-- Les documents sont privés par défaut.
-- Les données peuvent être partagées par périmètre entre un fournisseur et ses marques clientes.
-- Le domaine TRACEFAB reste séparé du domaine marketplace Ethimarket.
-- Le modèle DPP est versionné et adaptable aux exigences réglementaires futures.
+1. **Le produit central est la donnée** fournisseur structurée — pas le QR code.
+2. **Multi-tenant dès la première migration** (RLS forcée, contexte Clerk transactionnel).
+3. **Une donnée déclarée n'est pas une preuve.** L'enum `data_value_status` porte sept états distincts : `declared`, `documented`, `checked_for_consistency`, `verified_by_reviewer`, `certified_by_third_party`, `expired`, `needs_review`.
+4. **Les documents sont privés par défaut** ; partage par périmètre explicite.
+5. **Le DPP est une projection versionnée**, jamais une affirmation de conformité réglementaire.
+6. Le domaine TRACEFAB reste séparé de la marketplace Ethimarket.
 
-## Structure
+---
 
-```text
-docs/architecture/
-  01-system-context.md
-  02-multi-tenancy-and-security.md
-  03-data-model.md
-  04-api-and-evolution.md
-  05-rls-test-plan.md
-  06-supplier-profile.md
-  07-product-data.md
-  08-data-collection.md
-  09-documents-and-certifications.md
-  10-data-quality.md
-  11-traceability.md
-  12-dpp-readiness.md
-  13-neon-clerk.md
-  14-transactional-email.md
-  15-product-api.md
-  16-data-collection-api.md
-  17-data-collection-productization.md
-  18-notification-outbox.md
-  19-collection-reminders.md
-  20-quality-center-api.md
-  21-brand-console.md
-  22-supplier-portal.md
-  23-private-evidence-storage.md
-  24-notification-scheduler.md
-  25-notification-observability.md
-  26-supplier-portal-advanced.md
-
-brand-console/
-  index.html
-
-supplier-portal/
-  index.html
-
-api/
-  config.ts
-  health.ts
-  me.ts
-  supplier/profile.ts
-  supplier/profile/submit.ts
-  supplier/sites.ts
-  supplier/sites/[siteId].ts
-  supplier/certifications.ts
-  supplier/certifications/[certificationId].ts
-  supplier/quality.ts
-  supplier/documents.ts
-  supplier/documents/upload-intent.ts
-  supplier/documents/[documentId]/scan.ts
-  supplier/documents/[documentId]/download.ts
-  supplier/organizations.ts
-  supplier/members.ts
-  supplier/member-invitations/[invitationId].ts
-  supplier/data-points.ts
-  supplier/data-points/[dataPointId].ts
-  documents/[documentId]/download.ts
-  organizations.ts
-  organizations/[organizationId]/invitations.ts
-  suppliers.ts
-  invitations/accept.ts
-  suppliers/[supplierId]/profile.ts
-  suppliers/[supplierId]/profile/submit.ts
-  products.ts
-  products/[productId].ts
-  products/[productId]/revision.ts
-  products/[productId]/materials.ts
-  products/[productId]/identifiers.ts
-  materials.ts
-  materials/[materialId].ts
-  data-requests.ts
-  data-requests/[requestId].ts
-  data-requests/[requestId]/items.ts
-  data-requests/[requestId]/items/from-template.ts
-  data-requests/[requestId]/send.ts
-  data-requests/[requestId]/submit.ts
-  data-request-items/[itemId]/response.ts
-  data-responses/[responseId]/review.ts
-  internal/notification-outbox/process.ts
-  internal/notification-outbox/reminders.ts
-  internal/notification-outbox/schedule.ts
-  internal/notification-outbox/health.ts
-  quality/suppliers/[supplierId].ts
-  quality/products/[productId].ts
-  quality-issues/[issueId]/acknowledge.ts
-  quality-issues/[issueId]/waive.ts
-  questionnaires.ts
-  questionnaires/[questionnaireKey].ts
-
-api/_lib/
-  auth.ts
-  context.ts
-  http.ts
-  prisma.ts
-  sql-errors.ts
-  email.ts
-  products.ts
-  data-requests.ts
-  questionnaires.ts
-  notifications.ts
-  notification-outbox.ts
-  notification-reminders.ts
-  notification-observability.ts
-  data-points.ts
-  worker-auth.ts
-  quality.ts
-
-auth and database:
-  prisma/schema.prisma
-  prisma/migrations/20260923130000_tracefab_neon_initial/migration.sql
-  prisma/migrations/20260923160000_tracefab_product_api_functions/migration.sql
-  prisma/migrations/20260923170000_fix_data_collection_workflow_context/migration.sql
-  prisma/migrations/20260923180000_fix_data_response_progress_guard/migration.sql
-  prisma/migrations/20260923190000_tracefab_notification_outbox/migration.sql
-  prisma/migrations/20260923200000_tracefab_collection_reminders/migration.sql
-  .env.example
-
-scripts/
-  validate_schema.py
-  build_neon_migration.py
-  test_neon_security.mjs
-  test_neon_supplier_flow.mjs
-  test_neon_supplier_advanced.mjs
-  test_neon_product_flow.mjs
-  test_neon_quality_flow.mjs
-  test_neon_data_collection_flow.mjs
-  test_brand_console.mjs
-  test_brand_console_browser.mjs
-  test_supplier_portal.mjs
-  test_supplier_portal_browser.mjs
-  test_private_storage.mjs
-  test_notification_scheduler.mjs
-  test_notification_observability.mjs
-  test_supplier_advanced.mjs
-  test_questionnaires.mjs
-  test_email_delivery.mjs
-
-src/domain/tracefab/
-  types.ts
-  index.ts
-
-supabase/migrations/
-  20260922000000_tracefab_core.sql
-  20260922010000_tracefab_supplier_profile.sql
-  20260922020000_tracefab_product_data.sql
-  20260922030000_tracefab_data_collection.sql
-  20260922040000_tracefab_documents_certifications.sql
-  20260922050000_tracefab_data_quality.sql
-  20260922060000_tracefab_traceability.sql
-  20260922070000_tracefab_dpp_readiness.sql
-```
-
-## Appliquer la migration Neon
-
-La migration Prisma/Neon a été appliquée au projet Tracefab vide après revue :
+## Démarrage rapide
 
 ```bash
 npm install
-npm run db:generate
-DATABASE_URL="..." npm run db:status
-DATABASE_URL="..." npm run db:deploy
+cp .env.example .env          # puis renseigner DATABASE_URL, Clerk, etc.
+npm run db:generate           # génère le client Prisma
+DATABASE_URL="…" npm run db:deploy
 ```
 
-Avant toute évolution en production :
+| Besoin | Commande |
+|---|---|
+| Vérifier les types | `npm run typecheck` puis `npm run api:typecheck` |
+| Valider le schéma historique | `npm run schema:static` |
+| Tests complets (matrice offline) | `npm test` |
+| Tests contre une base Neon | `npm run test:neon:security`, `test:neon:supplier:advanced`, `test:neon:quality`, … |
+| Parcours navigateur (mode démo) | `npm run test:brand-console:browser`, `test:supplier-portal:browser` |
+| Copie métier non traduite | `npm run test:copy` |
+| Cibles tactiles et feuille console | `npm run test:touch`, `npm run test:console-css` |
+| Statut des migrations | `npm run db:status` |
 
-1. utiliser une branche Neon dédiée ;
-2. sauvegarder ou vérifier le point de restauration ;
-3. générer une migration Prisma après revue ;
-4. exécuter les tests RLS avec un contexte Clerk simulé ;
-5. configurer un stockage objet privé séparé pour les documents.
+La build Vercel (`npm run build`) enchaîne typecheck, schéma et les suites de
+non-régression ; elle échoue volontairement au premier test rouge.
 
-Les fichiers sous `supabase/migrations/` sont conservés comme historique de conception des chantiers. Ils ne doivent pas être appliqués directement à Neon : la migration canonique est sous `prisma/migrations/`.
+---
 
-La création initiale d'une organisation et de son membership owner passe par `tracefab_create_organization(...)` ou `POST /api/organizations`. Le runtime Vercel expose aussi `GET /api/health` et `GET /api/me` pour la vérification Clerk et la synchronisation de `users`. Le Chantier 10 ajoute `POST /api/organizations/:organizationId/invitations`, `POST /api/invitations/accept`, `GET/PATCH /api/suppliers/:supplierId/profile` et `POST /api/suppliers/:supplierId/profile/submit`. Les invitations générées par l'API renvoient le token brut une seule fois au backend appelant uniquement en mode manuel ou après échec d'envoi ; seul son hash SHA-256 entre en SQL. Le Chantier 11 ajoute l'envoi Resend lorsque `RESEND_API_KEY`, `EMAIL_FROM` et `TRACEFAB_APP_URL` sont configurés. Le Chantier 12 ajoute l'API Product Data, les matériaux, la composition versionnée, les identifiants et les révisions produit. Pour le parcours fournisseur, `tracefab_invite_supplier(...)`, `tracefab_accept_organization_invitation(...)`, `tracefab_update_supplier_profile(...)` et `tracefab_submit_supplier_profile(...)` sont les fonctions de transition sécurisées. Pour les produits, `tracefab_create_product(...)`, `tracefab_update_product_data(...)` et `tracefab_start_product_revision(...)` centralisent les mutations sensibles. Pour la collecte, `tracefab_create_data_request(...)`, `tracefab_send_data_request(...)`, `tracefab_submit_data_response(...)`, `tracefab_submit_data_request(...)` et `tracefab_review_data_response(...)` pilotent le workflow. Pour les documents et certifications, `tracefab_register_document(...)`, `tracefab_finalize_document_upload(...)`, `tracefab_register_certification(...)` et `tracefab_review_certification(...)` encadrent les transitions. Pour la qualité, `tracefab_compute_supplier_quality(...)`, `tracefab_compute_product_quality(...)`, `tracefab_acknowledge_quality_issue(...)` et `tracefab_waive_quality_issue(...)` produisent et traitent les findings. Pour la traçabilité, `tracefab_create_supply_chain_node(...)`, `tracefab_add_supply_chain_link(...)` et `tracefab_get_product_traceability(...)` encadrent le graphe produit. Pour la préparation DPP, `tracefab_compute_dpp_readiness(...)` et `tracefab_mark_dpp_ready_to_publish(...)` produisent une projection interne, sans publication publique. Le Chantier 13 expose `GET/POST /api/data-requests`, le détail et les items d'une demande, l'envoi, la réponse fournisseur versionnée, la soumission et la revue marque via les fonctions SQL de collecte. Le Chantier 14 ajoute le catalogue questionnaire versionné (`/api/questionnaires`), l'initialisation d'items depuis un template et la validation serveur des réponses. Le Chantier 15 ajoute la file durable `tracefab_notification_outbox`, les déclenchements transactionnels des notifications de collecte et le worker privé `POST /api/internal/notification-outbox/process`. Le Chantier 16 ajoute les relances dues/overdue via `POST /api/internal/notification-outbox/reminders`, avec idempotence quotidienne et fenêtre configurable. Le Chantier 17 ajoute le Quality Center API pour les scores fournisseur/produit, les issues explicables, l'acquittement et le waiver contrôlé. Le Chantier 18 ajoute une Brand Console approfondie sous `/brand-console/` pour l'authentification Clerk, le catalogue produit et ses révisions, la composition et les identifiants, les fournisseurs, les demandes de données, la revue et la qualité produit. Les contrats statiques et un parcours navigateur Playwright en mode démonstration sont disponibles via `npm run test:brand-console` et `npm run test:brand-console:browser`. Le Chantier 19 ajoute un Supplier Portal approfondi sous `/supplier-portal/` pour le profil fournisseur, les sites, les certificats, les matériaux, les demandes de données, les réponses item par item et la soumission ; les contrats et le parcours Playwright sont disponibles via `npm run test:supplier-portal` et `npm run test:supplier-portal:browser`. L'historique des réponses reste conservé et les brouillons sont masqués côté fournisseur. L'email d'invitation fournisseur est livré via l'adaptateur Resend lorsque les variables serveur sont configurées ; sinon le backend reste en mode livraison manuelle contrôlée. Le scanner antivirus est livré sous forme de contrat HTTP à connecter à un service réel ; les recalculs asynchrones et les imports catalogue restent à implémenter dans des fonctions ou services de confiance.
+## Surfaces
 
-## Ce qui n'est pas encore implémenté
+| URL | Surface | Description |
+|---|---|---|
+| `/` | Landing publique | Positionnement, chaîne supply chain interactive, i18n 7 langues |
+| `/brand-console/` | Brand Console | Vue marque : produits, fournisseurs, collecte, qualité, risque, DPP… (17 vues) |
+| `/supplier-portal/` | Supplier Portal | Vue fournisseur : profil, sites, certificats, demandes, preuves… (14 vues) |
+| `/quality-center/` | Quality Center | Scores, issues explicables, acquittements et waivers |
+| `/dpp/` · `/p/:gtin` | Passeport produit public | Démo publique + GS1 digital link |
+| `/passport/` | Passeport fournisseur universel | Partage contrôlé avec demandes d'accès |
+| `/product-intelligence/` | Fiche produit démo | 11 onglets d'analyse (données de démonstration) |
+| `/operations/` | Opérations | Santé de l'outbox de notifications et dépendances |
+| `/invitations/accept` | Acceptation d'invitation | Flow Clerk + API |
 
-- intégration d'un webhook d'alerte réel et tableaux de bord externes ;
-- gestion Supplier Portal résiduelle : synchronisation d'annuaire Clerk automatique et migration vers des schémas JSON pilotés par catalogue externe ;
-- Quality Center frontend complet ;
-- suppression objet interactive, rétention et nettoyage Storage ;
-- OCR/Document Intelligence ;
-- rendu public DPP ;
-- API publique et connecteurs ERP/PLM/PIM.
+Chaque SPA fonctionne sur la vraie API, et bascule en mode démonstration avec
+`?demo=1` (balisé par une bannière).
 
-Voir `docs/architecture/` pour les décisions et contrats versionnés des chantiers 1 à 23 et de l'intégration Neon/Clerk. Les contrats se vérifient avec `npm run test:private-storage`, `npm run test:notification-scheduler`, `npm run test:notification-observability` et `npm run test:supplier-advanced`. Avec une base de test configurée, `npm run test:neon:supplier:advanced` vérifie aussi l'isolation tenant, le versionnement des data points et les garde-fous RLS.
+> `/passport/` n'a pas de route déclarée dans `vercel.json` : il est servi par
+> `handle: filesystem` et le build `**/*.html`. Cela fonctionne, mais repose sur
+> une règle implicite.
+
+---
+
+## Architecture
+
+```text
+api/                  125 routes serverless, routeur central api/index.ts
+  _routes/            124 handlers par domaine
+  _lib/               auth Clerk, contexte RLS, stockage SigV4, moteurs métier
+prisma/               schéma (44 modèles) + 32 migrations Neon canoniques
+supabase/migrations/  historique de conception (ne pas appliquer sur Neon)
+brand-console/ supplier-portal/ dpp/ passport/ quality-center/
+operations/ product-intelligence/ invitations/      SPA statiques
+assets/               design system CSS + catalogue i18n (1 626 clés, 7 langues)
+src/                  domaine TypeScript + renderer Next.js DPP (expérimental)
+catalog/              référentiels versionnés : schémas, questionnaires, standards
+scripts/              107 scripts de test et d'outillage
+docs/                 architecture (28), expérience (26), opérations, audit
+```
+
+### API par domaine
+
+| Domaine | Exemples de routes |
+|---|---|
+| Organisations & équipes | `organizations`, `organizations/:id/invitations`, `invitations/accept`, `webhooks/clerk` |
+| Fournisseurs | `supplier/profile`, `supplier/sites`, `supplier/members`, `supplier/onboarding`, `supplier/passport` |
+| Produits | `products`, `products/:id/revision`, `/materials`, `/identifiers`, `/data-points` |
+| Collecte | `data-requests`, `/items/from-template`, `/send`, `/submit`, `/remind`, `data-responses/:id/review` |
+| Preuves & certifications | `documents/upload-intent`, `/download`, `/verify-ai`, `supplier/certifications`, `catalog/certification-standards` |
+| Qualité | `quality/overview`, `quality/products/:id`, `quality-issues/:id/acknowledge`, `quality/caps` |
+| Supply chain & traçabilité | `products/:id/supply-chain/*`, `traceability/lineage-graph`, `traceability/audit-chain`, `mass-balance/*` |
+| DPP & wallets | `products/:id/dpp`, `dpp/:gtin`, `dpp/:gtin/apple-wallet`, `gs1/digital-link/:gtin` |
+| Conformité | `products/:id/pef`, `products/:id/green-claims`, `catalog/audit-export` |
+| Intégrations | `integrations/plm`, `integrations/ingest` (parsers Centric, Lectra, SAP, GS1 EPCIS) |
+| Interne | `internal/notification-outbox/*` (worker, rappels, santé), `internal/p2/readiness`, `operations/overview` |
+
+Les mutations sensibles passent par des fonctions SQL `SECURITY DEFINER`
+(`tracefab_invite_supplier`, `tracefab_review_data_response`,
+`tracefab_compute_dpp_readiness`, …) : l'API ne contourne jamais les
+transitions d'état.
+
+---
+
+## Sécurité
+
+- **Clerk** côté serveur : `verifyToken` + allow-list d'origines (`TRACEFAB_AUTHORIZED_PARTIES`).
+- **RLS activée sur 45 tables, forcée sur 44** ; contexte utilisateur injecté par transaction (`tracefab.user_id`).
+- **Documents privés** : URLs présignées SigV4 générées côté serveur, hash SHA-256, contrat antivirus, contrôle tenant au téléchargement.
+- **Invitations** : token renvoyé une seule fois, seul le hash SHA-256 est stocké.
+- **Notifications** : outbox transactionnelle, rappels planifiés (Vercel Cron), worker protégé par secret, Notification Observability (logs corrélés, alertes webhook timeout-safe).
+- **Audit log** append-only (who / what / when / before / after).
+- Headers stricts dans `vercel.json` (HSTS, CSP, nosniff, frame-deny…).
+- Détails : `docs/architecture/02-multi-tenancy-and-security.md` et `docs/operations/production-hardening.md`.
+
+---
+
+## Dépendances externes (staging / production)
+
+| Service | Variable(s) | État |
+|---|---|---|
+| PostgreSQL Neon | `DATABASE_URL` | Schéma déployable via Prisma |
+| Clerk (auth) | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, webhook | À configurer en `pk_live_` |
+| Email transactionnel | `RESEND_API_KEY`, `EMAIL_FROM`, `TRACEFAB_APP_URL` | Fallback manuel contrôlé si absent |
+| Stockage privé S3 | `PRIVATE_STORAGE_*` | Contrat signé, bucket à provisionner |
+| Scanner antivirus | `PRIVATE_STORAGE_ANTIVIRUS_URL/TOKEN` | Contrat HTTP à raccorder |
+| Cron Vercel | `CRON_SECRET` | Route planifiée déclarée dans `vercel.json` |
+| Alerte incidents | `TRACEFAB_NOTIFICATION_ALERT_URL/TOKEN` | Optionnel |
+
+L'état réel de ces intégrations est vérifiable via `GET /api/internal/p2/readiness`.
+
+---
+
+## Ce qui reste à faire
+
+Douze chantiers, chacun adossé à un constat vérifiable — détail et commandes
+de vérification dans l'audit.
+
+**Produit** — moteur de questions sur données réelles pour *TRACEFAB
+Intelligence* (la vue sert aujourd'hui des données de démonstration) ·
+passeports publics dynamiques (`dpp/index.html` ne contient aucun `fetch`,
+alors que `/api/dpp/:gtin` existe) · command palette et recherche globale ·
+centre de notifications in-app · carte géographique.
+
+**Plateforme** — pagination et rate limiting API · CI GitHub Actions
+(`.github/workflows/` n'existe pas encore).
+
+**Infrastructure** — raccorder S3 privé, antivirus, Resend production et le
+webhook d'alerte.
+
+> L'externalisation des chaînes métier est **terminée** : la mesure du jour
+> (`npm run test:copy`, 612 chaînes sur 9 pages) ne relève aucune copie non
+> traduite hors invariants justifiés — marque, normes, toponymes, données de
+> démonstration.
+
+Feuille de route complète et chiffrée :
+[`docs/audit/01-world-class-transformation-audit.md`](docs/audit/01-world-class-transformation-audit.md).
+
+---
+
+## Documentation
+
+| Dossier | Contenu |
+|---|---|
+| `docs/architecture/` | 28 documents : modèle de données, multi-tenancy, RLS, API, collecte, qualité, traçabilité, DPP, stockage, notifications, Neon/Clerk… |
+| `docs/experience/` | 26 documents : chantiers UX, personas, i18n, landing, bilans |
+| `docs/operations/` | Durcissement production, réconciliation Neon |
+| `docs/audit/` | État mesuré du dépôt et feuille de route (8 octobre 2026) |
+| `TRACEFAB_MARKET_READINESS_AUDIT.md` | Audit de maturité du 6 octobre 2026 (source historique) |
+
+---
+
+*TRACEFAB — See it. Structure it. Verify it. Trace it. Prove it.*

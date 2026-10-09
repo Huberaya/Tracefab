@@ -3,6 +3,7 @@ import { prisma } from '../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { getPublicSupplierPassport } from '../../_lib/supplier-passport/passport-manager.js';
+import { withTracefabPublicContext } from '../../_lib/context.js';
 
 function routeTokenOrSlug(req: VercelRequest) {
   const value = req.query.tokenOrSlug;
@@ -20,7 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'token_or_slug_required' });
     }
 
-    const passportData = await getPublicSupplierPassport(prisma, tokenOrSlug);
+    const passportData = await withTracefabPublicContext(
+      (tx) => getPublicSupplierPassport(tx, tokenOrSlug),
+    );
 
     // Support HTML redirect if browser requests HTML directly
     const acceptHeader = req.headers.accept || '';

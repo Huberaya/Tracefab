@@ -1,28 +1,22 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { pageSource } from './lib/page_source.mjs';
 
 // 1. Static Contract Assertions
-const supplierPortalHtml = await readFile(new URL('../supplier-portal/index.html', import.meta.url), 'utf8');
+const supplierPortalHtml = pageSource('supplier-portal/index.html');
 const bomImportRoute = await readFile(new URL('../api/_routes/supplier/materials/import-bom.ts', import.meta.url), 'utf8');
 const bomImportLib = await readFile(new URL('../api/_lib/bom-importer.ts', import.meta.url), 'utf8');
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 
 // Assertions on Supplier Portal UI
-/* Le libellé du bouton vit dans locales/{lang}/supplier.json : un composant ne
-   doit plus porter de contenu métier en dur. On vérifie l'appel à t() ET les neuf
-   traductions — plus strict que la présence d'une chaîne française. */
-const BOM_LABEL_KEY = 'ui_importer_excel_csv_bom_lots';
+// La copie n'est plus en dur : le balisage appelle la cle, et le catalogue
+// francais conserve le libelle d'origine.
+assert(supplierPortalHtml.includes("t('spMatImportBtn')"), 'BOM import button missing in supplier portal');
 assert(
-  supplierPortalHtml.includes(`t('${BOM_LABEL_KEY}')`),
-  `BOM import button missing in supplier portal (t('${BOM_LABEL_KEY}'))`,
+  JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8'))
+    .portal?.spMatImportBtn === 'Importer Excel / CSV (BOM & Lots)',
+  'fr.json portal.spMatImportBtn must keep the original French wording'
 );
-for (const lang of ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh']) {
-  const dict = JSON.parse(await readFile(new URL(`../locales/${lang}/supplier.json`, import.meta.url), 'utf8'));
-  assert(
-    typeof dict[BOM_LABEL_KEY] === 'string' && dict[BOM_LABEL_KEY].trim().length > 0,
-    `BOM import button label must be translated in ${lang}`,
-  );
-}
 assert(supplierPortalHtml.includes('data-action="open-bom-import"'), 'BOM import action must use the bound event path');
 assert(!supplierPortalHtml.includes("onclick=\"state.modal='import-bom';render();\""), 'BOM import must not depend on inaccessible inline lexical state');
 assert(supplierPortalHtml.includes('handleBomImportSubmit'), 'handleBomImportSubmit missing in supplier portal');

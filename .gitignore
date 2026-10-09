@@ -17,3 +17,12 @@ uploads/
 .next/
 *.tsbuildinfo
 
+
+# Visual regression output (screenshots, reports)
+.visual/
+.gh_token
+*.token
+
+# Caches Python des scripts utilitaires
+__pycache__/
+*.pyc

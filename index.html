@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title data-i18n="landing.seo.title">TRACEFAB — The intelligence layer for the global textile supply chain</title>
-  <meta name="description" content="TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product Passport readiness in one intelligent infrastructure for the global textile supply chain." data-i18n-attr="content:landing.seo.description">
-  <meta name="theme-color" content="#06120d">
+  <title>TRACEFAB — The intelligence layer for the global textile supply chain</title>
+  <meta name="description" content="TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product Passport readiness in one intelligent infrastructure for textile and apparel brands.">
+  <meta name="theme-color" content="#040b08">
+  <meta name="color-scheme" content="dark light">
 
+  <link rel="canonical" href="https://tracefab.vercel.app/">
   <link rel="alternate" hreflang="en" href="https://tracefab.vercel.app/?lang=en">
   <link rel="alternate" hreflang="fr" href="https://tracefab.vercel.app/?lang=fr">
   <link rel="alternate" hreflang="de" href="https://tracefab.vercel.app/?lang=de">
@@ -16,2989 +18,618 @@
   <link rel="alternate" hreflang="pt" href="https://tracefab.vercel.app/?lang=pt">
   <link rel="alternate" hreflang="x-default" href="https://tracefab.vercel.app/">
 
-  <meta property="og:title" content="TRACEFAB — Know your product. Know your supply chain. Prove it." data-i18n-attr="content:landing.seo.og_title">
-  <meta property="og:description" content="Supplier data, evidence, quality, traceability and DPP readiness in one intelligent infrastructure." data-i18n-attr="content:landing.seo.og_description">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TRACEFAB">
+  <meta property="og:title" content="TRACEFAB — Know your product. Know your supply chain. Prove it.">
+  <meta property="og:description" content="Supplier data, evidence, quality, traceability and DPP readiness in one intelligent infrastructure.">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040b08'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230fb97c' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M8 25l5-6 6 3 5-15' fill='none' stroke='%230fb97c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-
-  <!-- ======================================================================
-       DESIGN SYSTEM — canonical source: assets/design-system/tracefab-ds.css
-       Regenerate with `npm run ds:sync`. Do not hand-edit between the markers.
-       ====================================================================== -->
-  <style data-tf-ds>
-/* TF:DS:BEGIN */
-/* ==========================================================================
-   TRACEFAB DESIGN SYSTEM — v3.0
-   « Simple to understand. Deep to explore. Powerful to operate. »
-
-   SOURCE OF TRUTH. Do not hand-edit the copy inlined in the static surfaces:
-   edit this file, then run `npm run ds:sync` to propagate it.
-   `npm run ds:check` fails if a surface drifted from this file.
-
-   Layers
-     0. Reset & primitives
-     1. Tokens (color, type, space, radius, shadow, motion, z, trust levels)
-     2. Surface contexts (light / dark) — components read context vars only
-     3. Typography
-     4. Layout primitives
-     5. Components (button, card, badge, metric, nav, chip, rule)
-     6. Textile textures
-     7. Motion + accessibility
-   ========================================================================== */
-
-/* --------------------------------------------------------------------------
-   0. RESET
-   -------------------------------------------------------------------------- */
-*, *::before, *::after { box-sizing: border-box; }
-
-/* --------------------------------------------------------------------------
-   1. TOKENS
-   -------------------------------------------------------------------------- */
-:root {
-  /* --- Charcoal / ink: the neutral spine. The design must hold up in
-         near-monochrome; colour is information, never decoration. --- */
-  --tf-ink-900: #0a0f0c;
-  --tf-ink-800: #111815;
-  --tf-ink-700: #1b2420;
-  --tf-ink-600: #2b3732;
-  --tf-ink-500: #46544d;
-  --tf-ink-400: #5a6860;
-  --tf-ink-300: #647264;   /* dimmest TEXT level — 4.56:1 on paper-2. #97a49d was 2.33:1. */
-
-  /* --- Deep forest: institutional anchor --- */
-  --tf-forest-900: #06120d;
-  --tf-forest-800: #0a1f16;
-  --tf-forest-700: #0f2e20;
-  --tf-forest-600: #16402d;
-  --tf-forest-500: #1c5a3e;
-  --tf-forest-400: #2a7a55;
-
-  /* --- Off white / paper --- */
-  --tf-paper:      #fafaf7;
-  --tf-paper-2:    #f3f3ee;
-  --tf-paper-3:    #ebeae3;
-  --tf-paper-line: #e0dfd6;
-  --tf-white:      #ffffff;
-
-  /* --- Emerald accent. Sparing: reserved for "verified / live / primary". --- */
-  --tf-emerald-700: #07523e;
-  --tf-emerald-600: #0b7656;
-  --tf-emerald-500: #10b981;
-  --tf-emerald-400: #34d399;
-  --tf-emerald-100: #d9f3e8;
-
-  /* --- Trust scale (6 regulatory levels, per docs/DESIGN_SYSTEM.md §2) --- */
-  --tf-certified:    #047857;  --tf-certified-bg:    #d7f2e6;
-  --tf-verified:     #0b7656;  --tf-verified-bg:     #dff2ea;
-  --tf-documented:   #3f4f8f;  --tf-documented-bg:   #e8ebf8;
-  --tf-declared:     #1f6f9c;  --tf-declared-bg:     #e2f0f8;
-  --tf-review:       #8a5607;  --tf-review-bg:       #fbeed4;
-  --tf-missing:      #b3261e;  --tf-missing-bg:      #fbe4e2;
-
-  /* --- Type --- */
-  --tf-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --tf-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-
-  /* Editorial scale — very large titles, very large numbers, tiny tech labels */
-  --tf-text-display-1: clamp(52px, 8.4vw, 124px);
-  --tf-text-display-2: clamp(40px, 6.2vw, 86px);
-  --tf-text-display-3: clamp(32px, 4.4vw, 58px);
-  --tf-text-h1:        clamp(28px, 3.4vw, 44px);
-  --tf-text-h2:        clamp(23px, 2.5vw, 33px);
-  --tf-text-h3:        clamp(19px, 1.7vw, 22px);
-  --tf-text-lead:      clamp(16px, 1.35vw, 20px);
-  --tf-text-body:      15px;
-  --tf-text-small:     13px;
-  --tf-text-label:     11px;
-  --tf-text-metric-xl: clamp(46px, 6.6vw, 92px);
-  --tf-text-metric-lg: clamp(32px, 4vw, 52px);
-  --tf-text-metric-md: clamp(24px, 2.6vw, 32px);
-
-  --tf-tracking-tight: -0.045em;
-  --tf-tracking-snug:  -0.025em;
-  --tf-tracking-label:  0.14em;
-  --tf-leading-display: 0.98;
-  --tf-leading-tight:   1.14;
-  --tf-leading-body:    1.62;
-
-  /* --- Space (8pt base, editorial rhythm) --- */
-  --tf-space-1: 4px;   --tf-space-2: 8px;   --tf-space-3: 12px;
-  --tf-space-4: 16px;  --tf-space-5: 24px;  --tf-space-6: 32px;
-  --tf-space-7: 48px;  --tf-space-8: 64px;  --tf-space-9: 96px;
-  --tf-space-10: 128px; --tf-space-11: 160px;
-  --tf-section-y: clamp(72px, 10vw, 148px);
-  --tf-gutter: clamp(20px, 5vw, 64px);
-  --tf-shell: 1320px;
-  --tf-shell-wide: 1520px;
-
-  /* --- Radius: precise, architectural — small radii read as engineered --- */
-  --tf-radius-xs: 4px;
-  --tf-radius-sm: 8px;
-  --tf-radius-md: 12px;
-  --tf-radius-lg: 18px;
-  --tf-radius-xl: 26px;
-  --tf-radius-pill: 999px;
-
-  /* --- Shadow --- */
-  --tf-shadow-xs: 0 1px 2px rgba(10, 15, 12, 0.05);
-  --tf-shadow-sm: 0 2px 8px rgba(10, 15, 12, 0.06);
-  --tf-shadow-md: 0 10px 30px -12px rgba(10, 15, 12, 0.16);
-  --tf-shadow-lg: 0 28px 64px -24px rgba(10, 15, 12, 0.26);
-  --tf-shadow-glow: 0 0 0 1px rgba(16, 185, 129, 0.28), 0 12px 40px -12px rgba(16, 185, 129, 0.35);
-
-  /* --- Motion: every animation must explain something --- */
-  --tf-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --tf-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --tf-dur-fast: 140ms;
-  --tf-dur: 260ms;
-  --tf-dur-slow: 520ms;
-  --tf-dur-flow: 3600ms;   /* data-flow along connectors */
-
-  /* --- Z --- */
-  --tf-z-base: 0;
-  --tf-z-sticky: 100;
-  --tf-z-nav: 150;
-  --tf-z-overlay: 200;
-  --tf-z-toast: 300;
-}
-
-/* --------------------------------------------------------------------------
-   2. SURFACE CONTEXTS
-   Components read ONLY the context vars, so the same component markup works
-   on light and dark grounds without duplication.
-   -------------------------------------------------------------------------- */
-.tf-surface,
-:root {
-  --tf-sf-bg:        var(--tf-paper);
-  --tf-sf-bg-alt:    var(--tf-paper-2);
-  --tf-sf-raised:    var(--tf-white);
-  --tf-sf-line:      var(--tf-paper-line);
-  --tf-sf-line-soft: rgba(10, 15, 12, 0.08);
-  --tf-sf-text:      var(--tf-ink-800);
-  --tf-sf-text-mute: var(--tf-ink-400);
-  --tf-sf-text-dim:  var(--tf-ink-300);
-  --tf-sf-accent:    var(--tf-emerald-600);
-  --tf-sf-accent-hi: var(--tf-emerald-500);
-  --tf-sf-shadow:    var(--tf-shadow-sm);
-}
-
-.tf-surface--dark {
-  --tf-sf-bg:        var(--tf-forest-900);
-  --tf-sf-bg-alt:    var(--tf-forest-800);
-  --tf-sf-raised:    rgba(255, 255, 255, 0.045);
-  --tf-sf-line:      rgba(255, 255, 255, 0.12);
-  --tf-sf-line-soft: rgba(255, 255, 255, 0.07);
-  --tf-sf-text:      #f2f6f3;
-  --tf-sf-text-mute: #a8bdb2;
-  --tf-sf-text-dim:  #7d9488;
-  --tf-sf-accent:    var(--tf-emerald-400);
-  --tf-sf-accent-hi: var(--tf-emerald-400);
-  --tf-sf-shadow:    0 10px 40px -18px rgba(0, 0, 0, 0.8);
-
-  background-color: var(--tf-sf-bg);
-  color: var(--tf-sf-text);
-}
-
-.tf-surface--light {
-  background-color: var(--tf-sf-bg);
-  color: var(--tf-sf-text);
-}
-
-/* --------------------------------------------------------------------------
-   3. TYPOGRAPHY
-   -------------------------------------------------------------------------- */
-body {
-  margin: 0;
-  font-family: var(--tf-font-sans);
-  font-size: var(--tf-text-body);
-  line-height: var(--tf-leading-body);
-  color: var(--tf-sf-text);
-  background-color: var(--tf-sf-bg);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  overflow-x: hidden;
-}
-
-a { color: inherit; text-decoration: none; }
-
-.tf-display-1, .tf-display-2, .tf-display-3, .tf-h1, .tf-h2, .tf-h3 {
-  margin: 0;
-  font-weight: 800;
-  letter-spacing: var(--tf-tracking-tight);
-  line-height: var(--tf-leading-display);
-  text-wrap: balance;
-}
-.tf-display-1 { font-size: var(--tf-text-display-1); font-weight: 820; }
-.tf-display-2 { font-size: var(--tf-text-display-2); }
-.tf-display-3 { font-size: var(--tf-text-display-3); }
-.tf-h1 { font-size: var(--tf-text-h1); line-height: var(--tf-leading-tight); }
-.tf-h2 { font-size: var(--tf-text-h2); line-height: var(--tf-leading-tight); letter-spacing: var(--tf-tracking-snug); }
-.tf-h3 { font-size: var(--tf-text-h3); font-weight: 700; letter-spacing: var(--tf-tracking-snug); line-height: 1.3; }
-
-.tf-lead {
-  margin: 0;
-  font-size: var(--tf-text-lead);
-  line-height: 1.6;
-  color: var(--tf-sf-text-mute);
-  max-width: 62ch;
-  text-wrap: pretty;
-}
-
-.tf-body { font-size: var(--tf-text-body); line-height: var(--tf-leading-body); color: var(--tf-sf-text-mute); }
-.tf-small { font-size: var(--tf-text-small); color: var(--tf-sf-text-mute); }
-
-/* Technical label — the small caps mono voice of the system */
-.tf-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--tf-font-mono);
-  font-size: var(--tf-text-label);
-  font-weight: 600;
-  letter-spacing: var(--tf-tracking-label);
-  text-transform: uppercase;
-  color: var(--tf-sf-text-mute);
-}
-.tf-label--accent { color: var(--tf-sf-accent); }
-
-/* Numbers: tabular, so dashboards do not jitter */
-.tf-metric {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-  letter-spacing: var(--tf-tracking-tight);
-  line-height: 0.9;
-  font-weight: 800;
-  margin: 0;
-}
-.tf-metric--xl { font-size: var(--tf-text-metric-xl); }
-.tf-metric--lg { font-size: var(--tf-text-metric-lg); }
-.tf-metric--md { font-size: var(--tf-text-metric-md); }
-
-.tf-code {
-  font-family: var(--tf-font-mono);
-  font-size: 12px;
-  letter-spacing: -0.01em;
-  padding: 2px 7px;
-  border-radius: var(--tf-radius-xs);
-  background: var(--tf-sf-line-soft);
-  border: 1px solid var(--tf-sf-line);
-  color: var(--tf-sf-text);
-  white-space: nowrap;
-}
-
-.tf-accent { color: var(--tf-sf-accent); }
-
-/* --------------------------------------------------------------------------
-   4. LAYOUT PRIMITIVES
-   -------------------------------------------------------------------------- */
-.tf-shell {
-  width: min(var(--tf-shell), 100% - (var(--tf-gutter) * 2));
-  margin-inline: auto;
-}
-.tf-shell--wide { width: min(var(--tf-shell-wide), 100% - (var(--tf-gutter) * 2)); }
-
-.tf-section { padding-block: var(--tf-section-y); position: relative; }
-
-.tf-stack { display: flex; flex-direction: column; }
-.tf-stack-2 { gap: var(--tf-space-2); }
-.tf-stack-3 { gap: var(--tf-space-3); }
-.tf-stack-4 { gap: var(--tf-space-4); }
-.tf-stack-5 { gap: var(--tf-space-5); }
-.tf-stack-6 { gap: var(--tf-space-6); }
-.tf-stack-7 { gap: var(--tf-space-7); }
-
-.tf-row { display: flex; align-items: center; }
-.tf-row--gap-3 { gap: var(--tf-space-3); }
-.tf-row--gap-4 { gap: var(--tf-space-4); }
-.tf-row--between { justify-content: space-between; }
-.tf-row--wrap { flex-wrap: wrap; }
-
-.tf-grid { display: grid; gap: var(--tf-space-5); }
-.tf-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.tf-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.tf-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-
-.tf-rule {
-  height: 1px;
-  border: 0;
-  margin: 0;
-  background: var(--tf-sf-line);
-}
-
-/* Section heading block: tiny label, monumental title, measured lead */
-.tf-heading { display: flex; flex-direction: column; gap: var(--tf-space-5); max-width: 900px; }
-.tf-heading--center { margin-inline: auto; text-align: center; align-items: center; }
-.tf-heading--center .tf-lead { margin-inline: auto; }
-
-/* --------------------------------------------------------------------------
-   5. COMPONENTS
-   -------------------------------------------------------------------------- */
-
-/* --- Buttons ---------------------------------------------------------- */
-.tf-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 13px 24px;
-  border-radius: var(--tf-radius-pill);
-  border: 1px solid transparent;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background-color var(--tf-dur) var(--tf-ease),
-              color var(--tf-dur) var(--tf-ease),
-              border-color var(--tf-dur) var(--tf-ease),
-              transform var(--tf-dur-fast) var(--tf-ease),
-              box-shadow var(--tf-dur) var(--tf-ease);
-}
-.tf-btn:hover { transform: translateY(-1px); }
-.tf-btn:active { transform: translateY(0); }
-.tf-btn:focus-visible {
-  outline: 2px solid var(--tf-sf-accent-hi);
-  outline-offset: 3px;
-}
-
-.tf-btn--primary {
-  background: var(--tf-emerald-600);
-  color: #ffffff;
-  box-shadow: 0 8px 24px -10px rgba(11, 118, 86, 0.7);
-}
-.tf-btn--primary:hover { background: var(--tf-emerald-700); }
-
-.tf-btn--dark {
-  background: var(--tf-ink-800);
-  color: #ffffff;
-}
-.tf-btn--dark:hover { background: var(--tf-ink-900); }
-
-.tf-btn--ghost {
-  background: transparent;
-  color: var(--tf-sf-text);
-  border-color: var(--tf-sf-line);
-}
-.tf-btn--ghost:hover { border-color: var(--tf-sf-text-mute); background: var(--tf-sf-line-soft); }
-
-.tf-btn--quiet {
-  background: transparent;
-  color: var(--tf-sf-text);
-  padding-inline: 4px;
-}
-.tf-btn--quiet:hover { color: var(--tf-sf-accent); }
-
-.tf-btn--lg { padding: 16px 30px; font-size: 15px; }
-.tf-btn--sm { padding: 9px 16px; font-size: 13px; }
-
-/* --- Cards ------------------------------------------------------------ */
-.tf-card {
-  background: var(--tf-sf-raised);
-  border: 1px solid var(--tf-sf-line);
-  border-radius: var(--tf-radius-lg);
-  box-shadow: var(--tf-sf-shadow);
-  padding: var(--tf-space-6);
-  transition: border-color var(--tf-dur) var(--tf-ease),
-              box-shadow var(--tf-dur) var(--tf-ease),
-              transform var(--tf-dur) var(--tf-ease);
-}
-.tf-card--hover:hover {
-  border-color: var(--tf-sf-text-dim);
-  box-shadow: var(--tf-shadow-md);
-  transform: translateY(-2px);
-}
-.tf-card--flush { padding: 0; overflow: hidden; }
-.tf-card--accent { border-left: 3px solid var(--tf-sf-accent); }
-
-/* --- Badges / trust pills --------------------------------------------- */
-.tf-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: var(--tf-radius-pill);
-  font-family: var(--tf-font-mono);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.tf-badge::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  flex: none;
-}
-.tf-badge--plain::before { display: none; }
-
-.tf-badge--certified   { background: var(--tf-certified-bg);   color: var(--tf-certified); }
-.tf-badge--verified    { background: var(--tf-verified-bg);    color: var(--tf-verified); }
-.tf-badge--documented  { background: var(--tf-documented-bg);  color: var(--tf-documented); }
-.tf-badge--declared    { background: var(--tf-declared-bg);    color: var(--tf-declared); }
-.tf-badge--review      { background: var(--tf-review-bg);      color: var(--tf-review); }
-.tf-badge--missing     { background: var(--tf-missing-bg);     color: var(--tf-missing); }
-.tf-badge--neutral     { background: var(--tf-sf-line-soft);   color: var(--tf-sf-text-mute); }
-
-/* --- Metric block: very large number + tiny technical label ------------ */
-.tf-metric-block { display: flex; flex-direction: column; gap: 10px; }
-.tf-metric-block .tf-label { margin-top: 2px; }
-
-/* --- Chip -------------------------------------------------------------- */
-.tf-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 11px;
-  border-radius: var(--tf-radius-xs);
-  border: 1px solid var(--tf-sf-line);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--tf-sf-text-mute);
-  background: var(--tf-sf-line-soft);
-}
-
-/* --- Eyebrow capsule (hero label) -------------------------------------- */
-.tf-capsule {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 16px;
-  border-radius: var(--tf-radius-pill);
-  border: 1px solid var(--tf-sf-line);
-  background: var(--tf-sf-line-soft);
-  font-family: var(--tf-font-mono);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: var(--tf-tracking-label);
-  text-transform: uppercase;
-  color: var(--tf-sf-accent);
-}
-.tf-capsule__beacon {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--tf-sf-accent-hi);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tf-sf-accent-hi) 22%, transparent);
-}
-
-/* --- Demo-data marker: demonstration values must never be mistaken
-         for production data (brief §8). ---------------------------------- */
-.tf-demo-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 10px;
-  border-radius: var(--tf-radius-xs);
-  border: 1px dashed var(--tf-sf-line);
-  font-family: var(--tf-font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--tf-sf-text-mute);
-}
-
-/* --------------------------------------------------------------------------
-   5b. APPLICATION LAYER
-   The marketing system above is editorial: monumental type, generous air.
-   A console is the opposite — dense, scannable, keyboard-fast. Same tokens,
-   different density. Every app surface reads from here so Brand Console,
-   Supplier Portal, Quality Center and Operations cannot drift apart.
-   -------------------------------------------------------------------------- */
-
-/* --- brand mark (shared by the marketing header and the app chrome) ------- */
-.tf-wordmark { display: inline-flex; align-items: center; gap: 10px; flex: none; }
-.tf-wordmark__mark {
-  width: 30px; height: 30px;
-  display: grid; place-items: center;
-  border-radius: var(--tf-radius-sm);
-  background: var(--tf-emerald-600);
-  color: #fff;
-  font-family: var(--tf-font-mono);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-.tf-wordmark__name {
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-/* --- app shell ----------------------------------------------------------- */
-.tf-app {
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  min-height: 100vh;
-  background: var(--tf-sf-bg);
-  color: var(--tf-sf-text);
-}
-.tf-app__side {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  height: 100vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--tf-space-5);
-  padding: var(--tf-space-5) var(--tf-space-4);
-  border-right: 1px solid var(--tf-sf-line);
-  background: var(--tf-sf-bg-alt);
-}
-.tf-app__main { min-width: 0; display: flex; flex-direction: column; }
-
-.tf-app__topbar {
-  position: sticky;
-  top: 0;
-  z-index: var(--tf-z-sticky);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--tf-space-4);
-  padding: var(--tf-space-4) var(--tf-space-6);
-  border-bottom: 1px solid var(--tf-sf-line);
-  background: color-mix(in srgb, var(--tf-sf-bg) 88%, transparent);
-  backdrop-filter: blur(10px);
-}
-.tf-app__body { padding: var(--tf-space-6); display: flex; flex-direction: column; gap: var(--tf-space-6); }
-
-/* --- side navigation ----------------------------------------------------- */
-.tf-sidenav { display: flex; flex-direction: column; gap: 2px; }
-.tf-sidenav__group {
-  margin-top: var(--tf-space-4);
-  margin-bottom: var(--tf-space-2);
-  font-family: var(--tf-font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: var(--tf-tracking-label);
-  text-transform: uppercase;
-  color: var(--tf-sf-text-dim);
-}
-.tf-sidenav__link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: var(--tf-radius-sm);
-  font-size: 13.5px;
-  font-weight: 550;
-  color: var(--tf-sf-text-mute);
-  cursor: pointer;
-  background: none;
-  border: 0;
-  width: 100%;
-  text-align: left;
-  font-family: inherit;
-  transition: background-color var(--tf-dur-fast) var(--tf-ease), color var(--tf-dur-fast) var(--tf-ease);
-}
-.tf-sidenav__link:hover { background: var(--tf-sf-line-soft); color: var(--tf-sf-text); }
-.tf-sidenav__link.is-on {
-  background: var(--tf-sf-line-soft);
-  color: var(--tf-sf-text);
-  font-weight: 700;
-  box-shadow: inset 2px 0 0 var(--tf-sf-accent);
-}
-.tf-sidenav__count {
-  font-family: var(--tf-font-mono);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  color: var(--tf-sf-text-dim);
-}
-
-/* --- dense metric tile --------------------------------------------------- */
-.tf-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: var(--tf-space-4);
-  border: 1px solid var(--tf-sf-line);
-  border-radius: var(--tf-radius-md);
-  background: var(--tf-sf-raised);
-}
-.tf-tile__v {
-  font-size: clamp(22px, 2.4vw, 30px);
-  font-weight: 800;
-  letter-spacing: var(--tf-tracking-tight);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.tf-tile--alert { border-color: color-mix(in srgb, var(--tf-missing) 45%, var(--tf-sf-line)); }
-.tf-tile--alert .tf-tile__v { color: var(--tf-missing); }
-.tf-tile--warn { border-color: color-mix(in srgb, var(--tf-review) 45%, var(--tf-sf-line)); }
-.tf-tile--warn .tf-tile__v { color: var(--tf-review); }
-.tf-tilegrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
-  gap: var(--tf-space-3);
-}
-
-/* --- data table ---------------------------------------------------------- */
-.tf-tablewrap { overflow-x: auto; border: 1px solid var(--tf-sf-line); border-radius: var(--tf-radius-md); background: var(--tf-sf-raised); }
-.tf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.tf-table th {
-  position: sticky; top: 0;
-  text-align: left;
-  padding: 10px 14px;
-  background: var(--tf-sf-bg-alt);
-  border-bottom: 1px solid var(--tf-sf-line);
-  font-family: var(--tf-font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: var(--tf-tracking-label);
-  text-transform: uppercase;
-  color: var(--tf-sf-text-mute);
-  white-space: nowrap;
-}
-.tf-table td {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--tf-sf-line-soft);
-  vertical-align: top;
-  color: var(--tf-sf-text-mute);
-}
-.tf-table tbody tr:last-child td { border-bottom: 0; }
-.tf-table tbody tr { transition: background-color var(--tf-dur-fast) var(--tf-ease); }
-.tf-table tbody tr:hover { background: var(--tf-sf-line-soft); }
-.tf-table strong { color: var(--tf-sf-text); font-weight: 650; }
-.tf-table .tf-sub { display: block; margin-top: 3px; font-size: 11px; color: var(--tf-sf-text-dim); }
-.tf-table .tf-num { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; color: var(--tf-sf-text); }
-
-/* --- filters & form controls --------------------------------------------- */
-.tf-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tf-space-3); }
-.tf-field-inline { display: flex; flex-direction: column; gap: 5px; }
-.tf-select, .tf-input, .tf-textarea {
-  font-family: inherit;
-  font-size: 13px;
-  padding: 9px 12px;
-  border: 1px solid var(--tf-sf-line);
-  border-radius: var(--tf-radius-sm);
-  background: var(--tf-sf-raised);
-  color: var(--tf-sf-text);
-  min-width: 150px;
-}
-.tf-textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
-.tf-select:focus-visible, .tf-input:focus-visible, .tf-textarea:focus-visible {
-  outline: 2px solid var(--tf-sf-accent-hi);
-  outline-offset: 1px;
-}
-
-/* --- workflow status ----------------------------------------------------- */
-.tf-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 9px;
-  border-radius: var(--tf-radius-pill);
-  font-family: var(--tf-font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.tf-status--requested { background: var(--tf-declared-bg); color: var(--tf-declared); }
-.tf-status--submitted { background: var(--tf-documented-bg); color: var(--tf-documented); }
-.tf-status--approved  { background: var(--tf-certified-bg); color: var(--tf-certified); }
-.tf-status--rejected  { background: var(--tf-missing-bg); color: var(--tf-missing); }
-.tf-status--closed    { background: var(--tf-sf-line-soft); color: var(--tf-sf-text-mute); }
-
-/* --- score bars ---------------------------------------------------------- */
-.tf-bar { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(70px, 2fr) 40px; gap: 10px; align-items: center; font-size: 11.5px; color: var(--tf-sf-text-mute); }
-.tf-bar__track { height: 6px; border-radius: var(--tf-radius-pill); background: var(--tf-sf-line); overflow: hidden; }
-.tf-bar__fill { display: block; height: 100%; border-radius: var(--tf-radius-pill); background: var(--tf-sf-accent); transition: width var(--tf-dur-slow) var(--tf-ease); }
-.tf-bar__fill.is-low { background: var(--tf-review); }
-.tf-bar__fill.is-critical { background: var(--tf-missing); }
-.tf-bar__v { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--tf-sf-text); }
-
-/* --- empty / loading / notice -------------------------------------------- */
-.tf-empty {
-  padding: var(--tf-space-7) var(--tf-space-5);
-  text-align: center;
-  border: 1px dashed var(--tf-sf-line);
-  border-radius: var(--tf-radius-md);
-  color: var(--tf-sf-text-mute);
-  font-size: 13px;
-}
-.tf-notice {
-  display: flex;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: var(--tf-radius-sm);
-  border: 1px solid var(--tf-sf-line);
-  background: var(--tf-sf-line-soft);
-  font-size: 13px;
-  color: var(--tf-sf-text);
-}
-.tf-notice--ok { border-color: color-mix(in srgb, var(--tf-verified) 40%, var(--tf-sf-line)); background: var(--tf-verified-bg); color: var(--tf-verified); }
-.tf-notice--err { border-color: color-mix(in srgb, var(--tf-missing) 40%, var(--tf-sf-line)); background: var(--tf-missing-bg); color: var(--tf-missing); }
-
-/* --- panel / drawer ------------------------------------------------------ */
-.tf-panel {
-  border: 1px solid var(--tf-sf-line);
-  border-radius: var(--tf-radius-lg);
-  background: var(--tf-sf-raised);
-  padding: var(--tf-space-5);
-}
-.tf-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--tf-space-4);
-  flex-wrap: wrap;
-  margin-bottom: var(--tf-space-4);
-}
-
-/* --- app responsive ------------------------------------------------------ */
-@media (max-width: 1024px) {
-  .tf-app { grid-template-columns: minmax(0, 1fr); }
-  .tf-app__side {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    border-right: 0;
-    border-bottom: 1px solid var(--tf-sf-line);
+  <!-- Axe variable, pas cinq instances statiques. Le design system declare
+       huit graisses (400, 480, 500, 520, 540, 560, 600, 620) ; en statique les
+       cinq instances servies les ecrasaient sur trois rendus seulement. La
+       graisse 300 n'est utilisee nulle part sur cette page. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css?v=2c246dca">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-site.css?v=439233d7">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "TRACEFAB",
+    "applicationCategory": "BusinessApplication",
+    "description": "Textile supply chain data, evidence, quality, traceability and Digital Product Passport readiness infrastructure.",
+    "operatingSystem": "Web",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
   }
-  .tf-sidenav { flex-direction: row; flex-wrap: wrap; }
-  .tf-sidenav__group { display: none; }
-  .tf-sidenav__link { width: auto; }
-  .tf-app__body { padding: var(--tf-space-4); }
-}
-
-/* --------------------------------------------------------------------------
-   6. TEXTILE TEXTURES
-   Woven structures rendered as inline SVG at very low opacity. Technology
-   stays dominant; the textile world is felt, not photographed.
-   -------------------------------------------------------------------------- */
-.tf-tex {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.5;
-}
-
-/* Plain weave: warp over weft */
-.tf-tex--weave {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M0 6h24M0 18h24M6 0v24M18 0v24' stroke='%2310b981' stroke-width='0.5' fill='none' opacity='0.22'/%3E%3C/svg%3E");
-  background-size: 24px 24px;
-  mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 72%);
-}
-
-/* Twill: the diagonal of denim */
-.tf-tex--twill {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M-4 4l8-8M0 16L16 0M12 20l8-8' stroke='%23ffffff' stroke-width='0.6' fill='none' opacity='0.16'/%3E%3C/svg%3E");
-  background-size: 16px 16px;
-}
-
-/* Jersey: fine knit columns */
-.tf-tex--jersey {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14'%3E%3Cpath d='M0 7q2.5-7 5 0t5 0' stroke='%2310b981' stroke-width='0.5' fill='none' opacity='0.18'/%3E%3C/svg%3E");
-  background-size: 10px 14px;
-}
-
-/* Warp threads: vertical fibre field */
-.tf-tex--warp {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 0v8M5 0v8' stroke='%23ffffff' stroke-width='0.4' fill='none' opacity='0.12'/%3E%3C/svg%3E");
-  background-size: 8px 8px;
-}
-
-/* --------------------------------------------------------------------------
-   7. MOTION + ACCESSIBILITY
-   -------------------------------------------------------------------------- */
-
-/* Data flowing along a connector: dash offset travel */
-.tf-flow {
-  stroke-dasharray: 5 9;
-  animation: tf-flow var(--tf-dur-flow) linear infinite;
-}
-@keyframes tf-flow {
-  to { stroke-dashoffset: -140; }
-}
-
-/* Scroll reveal — opt-in via [data-reveal]; progressive disclosure */
-.tf-reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity var(--tf-dur-slow) var(--tf-ease), transform var(--tf-dur-slow) var(--tf-ease);
-}
-.tf-reveal.is-in { opacity: 1; transform: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-  .tf-flow { stroke-dasharray: none; }
-  .tf-reveal { opacity: 1; transform: none; }
-}
-
-/* Keyboard focus is never decorative */
-:focus-visible {
-  outline: 2px solid var(--tf-sf-accent-hi);
-  outline-offset: 3px;
-  border-radius: var(--tf-radius-xs);
-}
-
-.tf-visually-hidden {
-  position: absolute;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* --------------------------------------------------------------------------
-   RESPONSIVE
-   Supply-chain graphs collapse to interactive vertical stacks (§28).
-   -------------------------------------------------------------------------- */
-@media (max-width: 1024px) {
-  .tf-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tf-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 720px) {
-  .tf-grid--2,
-  .tf-grid--3,
-  .tf-grid--4 { grid-template-columns: minmax(0, 1fr); }
-  .tf-row--wrap-mobile { flex-direction: column; align-items: stretch; }
-  :root {
-    --tf-space-9: 64px;
-    --tf-space-10: 80px;
-    --tf-space-11: 96px;
-  }
-}
-/* TF:DS:END */
-  </style>
-
-  <!-- ======================================================================
-       PAGE-SPECIFIC STYLES (landing only)
-       ====================================================================== -->
-  <style>
-    /* ---------- skip link ---------- */
-    .tf-skip {
-      position: absolute;
-      left: var(--tf-space-4);
-      top: -100px;
-      z-index: var(--tf-z-toast);
-      padding: 12px 20px;
-      border-radius: var(--tf-radius-sm);
-      background: var(--tf-emerald-600);
-      color: #fff;
-      font-weight: 700;
-      transition: top var(--tf-dur) var(--tf-ease);
-    }
-    .tf-skip:focus { top: var(--tf-space-4); }
-
-    /* ---------- header ---------- */
-    .tf-header {
-      position: sticky;
-      top: 0;
-      z-index: var(--tf-z-nav);
-      background: rgba(6, 18, 13, 0.82);
-      backdrop-filter: blur(20px) saturate(160%);
-      -webkit-backdrop-filter: blur(20px) saturate(160%);
-      border-bottom: 1px solid transparent;
-      transition: border-color var(--tf-dur) var(--tf-ease), background-color var(--tf-dur) var(--tf-ease);
-    }
-    .tf-header.is-scrolled { border-bottom-color: rgba(255, 255, 255, 0.1); }
-
-    .tf-header__bar {
-      display: flex;
-      align-items: center;
-      gap: var(--tf-space-6);
-      height: 72px;
-    }
-
-    .tf-nav__list {
-      display: flex;
-      align-items: center;
-      gap: var(--tf-space-5);
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      flex: 1;
-    }
-    .tf-nav__link {
-      font-size: 13.5px;
-      font-weight: 550;
-      color: var(--tf-sf-text-mute);
-      transition: color var(--tf-dur-fast) var(--tf-ease);
-    }
-    .tf-nav__link:hover { color: var(--tf-sf-text); }
-
-    .tf-header__actions { display: flex; align-items: center; gap: var(--tf-space-3); flex: none; }
-
-    /* language */
-    .tf-lang { position: relative; }
-    .tf-lang__btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 12px;
-      border-radius: var(--tf-radius-pill);
-      border: 1px solid var(--tf-sf-line);
-      background: transparent;
-      color: var(--tf-sf-text);
-      font-family: var(--tf-font-mono);
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 0.08em;
-      cursor: pointer;
-    }
-    .tf-lang__btn:hover { border-color: var(--tf-sf-text-dim); }
-    .tf-lang__menu {
-      position: absolute;
-      right: 0; top: calc(100% + 8px);
-      min-width: 190px;
-      padding: 6px;
-      border-radius: var(--tf-radius-md);
-      background: var(--tf-forest-800);
-      border: 1px solid var(--tf-sf-line);
-      box-shadow: var(--tf-shadow-lg);
-      display: none;
-      z-index: var(--tf-z-overlay);
-    }
-    .tf-lang.is-open .tf-lang__menu { display: block; }
-    .tf-lang__option {
-      display: flex; width: 100%;
-      align-items: center; justify-content: space-between; gap: 10px;
-      padding: 9px 11px;
-      border: 0; border-radius: var(--tf-radius-sm);
-      background: transparent;
-      color: var(--tf-sf-text-mute);
-      font-family: inherit; font-size: 13px; font-weight: 550;
-      text-align: left;
-      cursor: pointer;
-    }
-    .tf-lang__option:hover { background: rgba(255,255,255,0.07); color: var(--tf-sf-text); }
-    .tf-lang__option[aria-checked="true"] { color: var(--tf-sf-accent); }
-    .tf-lang__option span:last-child { font-family: var(--tf-font-mono); font-size: 10px; opacity: .7; }
-
-    /* mobile toggle */
-    .tf-burger {
-      display: none;
-      width: 42px; height: 42px;
-      align-items: center; justify-content: center;
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-sm);
-      background: transparent;
-      cursor: pointer;
-      padding: 0;
-    }
-    .tf-burger__box { position: relative; width: 18px; height: 12px; }
-    .tf-burger__box i {
-      position: absolute; left: 0;
-      display: block; width: 18px; height: 1.5px;
-      background: var(--tf-sf-text);
-      transition: transform var(--tf-dur) var(--tf-ease), opacity var(--tf-dur-fast) linear;
-    }
-    .tf-burger__box i:nth-child(1) { top: 0; }
-    .tf-burger__box i:nth-child(2) { top: 5px; }
-    .tf-burger__box i:nth-child(3) { top: 10px; }
-    .tf-burger[aria-expanded="true"] i:nth-child(1) { transform: translateY(5px) rotate(45deg); }
-    .tf-burger[aria-expanded="true"] i:nth-child(2) { opacity: 0; }
-    .tf-burger[aria-expanded="true"] i:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
-
-    .tf-nav__panel { display: none; }
-
-    /* ---------- hero ---------- */
-    .tf-hero {
-      position: relative;
-      padding-block: clamp(56px, 8vw, 104px) var(--tf-section-y);
-      overflow: hidden;
-    }
-    .tf-hero__glow {
-      position: absolute;
-      inset: -20% -10% auto;
-      height: 720px;
-      background:
-        radial-gradient(680px 380px at 50% 6%, rgba(16,185,129,.13), transparent 70%),
-        radial-gradient(900px 460px at 82% 30%, rgba(28,90,62,.20), transparent 66%);
-      pointer-events: none;
-    }
-    .tf-hero__inner { position: relative; z-index: 1; }
-
-    .tf-hero__copy { max-width: 980px; margin-inline: auto; text-align: center; }
-    .tf-hero__title { margin-block: var(--tf-space-5) var(--tf-space-5); }
-    .tf-hero__title .ln { display: block; }
-    .tf-hero__title .ln--accent { color: var(--tf-sf-accent-hi); }
-    .tf-hero__lead { margin-inline: auto; max-width: 66ch; }
-    .tf-hero__ctas {
-      display: flex; flex-wrap: wrap;
-      justify-content: center; gap: var(--tf-space-3);
-      margin-top: var(--tf-space-6);
-    }
-    .tf-hero__note { margin-top: var(--tf-space-5); display: flex; justify-content: center; }
-
-    /* orbit */
-    .tf-orbit-wrap { margin-top: clamp(48px, 7vw, 88px); }
-    .tf-orbit-frame {
-      position: relative;
-      width: min(760px, 100%);
-      margin-inline: auto;
-      aspect-ratio: 1 / 1;
-    }
-    .tf-orbit-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .tf-orbit-ring { fill: none; stroke: var(--tf-sf-line); stroke-width: 1; }
-    .tf-orbit-ring--dash { stroke-dasharray: 2 5; opacity: .8; }
-    .tf-orbit-link {
-      fill: none;
-      stroke: rgba(255,255,255,.16);
-      stroke-width: 1;
-      transition: stroke var(--tf-dur) var(--tf-ease), opacity var(--tf-dur) var(--tf-ease);
-    }
-    .tf-orbit-link.is-active { stroke: var(--tf-sf-accent-hi); opacity: 1; }
-    .tf-orbit-pulse {
-      fill: none;
-      stroke: var(--tf-emerald-500);
-      stroke-width: 1.4;
-      opacity: .75;
-    }
-
-    .tf-node {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      display: flex; flex-direction: column;
-      align-items: center; gap: 7px;
-      background: none; border: 0; padding: 0;
-      font-family: inherit;
-      cursor: pointer;
-      color: inherit;
-    }
-    .tf-node__dot {
-      width: 13px; height: 13px;
-      border-radius: 50%;
-      background: var(--tf-forest-800);
-      border: 1.5px solid var(--tf-sf-line);
-      box-shadow: 0 0 0 5px rgba(6,18,13,.9);
-      transition: border-color var(--tf-dur) var(--tf-ease),
-                  background-color var(--tf-dur) var(--tf-ease),
-                  box-shadow var(--tf-dur) var(--tf-ease),
-                  transform var(--tf-dur) var(--tf-ease);
-    }
-    .tf-node__name {
-      font-family: var(--tf-font-mono);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--tf-sf-text-dim);
-      white-space: nowrap;
-      transition: color var(--tf-dur) var(--tf-ease);
-    }
-    .tf-node:hover .tf-node__dot,
-    .tf-node.is-active .tf-node__dot,
-    .tf-node:focus-visible .tf-node__dot {
-      background: var(--tf-emerald-500);
-      border-color: var(--tf-emerald-400);
-      box-shadow: 0 0 0 5px rgba(6,18,13,.9), 0 0 22px rgba(16,185,129,.65);
-      transform: scale(1.25);
-    }
-    .tf-node:hover .tf-node__name,
-    .tf-node.is-active .tf-node__name,
-    .tf-node:focus-visible .tf-node__name { color: var(--tf-sf-text); }
-    .tf-node:focus-visible { outline: none; }
-
-    /* core readout */
-    .tf-core {
-      position: absolute;
-      left: 50%; top: 50%;
-      transform: translate(-50%, -50%);
-      width: 40%;
-      aspect-ratio: 1 / 1;
-      display: grid; place-items: center;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 50% 40%, rgba(16,185,129,.16), transparent 62%),
-        var(--tf-forest-800);
-      border: 1px solid rgba(255,255,255,.14);
-      box-shadow: inset 0 0 60px rgba(16,185,129,.10), 0 30px 80px -30px rgba(0,0,0,.9);
-      text-align: center;
-      padding: var(--tf-space-4);
-    }
-    .tf-core__mark {
-      width: 34px; height: 34px;
-      display: grid; place-items: center;
-      margin-inline: auto;
-      border-radius: var(--tf-radius-sm);
-      background: var(--tf-emerald-600);
-      color: #fff;
-      font-family: var(--tf-font-mono); font-size: 14px; font-weight: 700;
-    }
-    .tf-core__name { margin-top: 10px; font-size: 14px; font-weight: 800; letter-spacing: 0.06em; }
-    .tf-core__state {
-      margin-top: 6px;
-      font-family: var(--tf-font-mono);
-      font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--tf-sf-text-dim);
-      min-height: 1.2em;
-    }
-    .tf-core__stat {
-      margin-top: 10px;
-      font-family: var(--tf-font-mono);
-      font-size: clamp(15px, 2.2vw, 22px);
-      font-weight: 700;
-      color: var(--tf-sf-accent-hi);
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* deploy-on-scroll stagger */
-    .tf-deploy .tf-node, .tf-deploy .tf-core, .tf-deploy .tf-orbit-svg {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(.82);
-    }
-    .tf-deploy .tf-orbit-svg { transform: none; }
-    .tf-deploy.is-in .tf-orbit-svg { opacity: 1; transition: opacity var(--tf-dur-slow) var(--tf-ease); }
-    .tf-deploy.is-in .tf-core {
-      opacity: 1; transform: translate(-50%,-50%) scale(1);
-      transition: opacity var(--tf-dur-slow) var(--tf-ease), transform var(--tf-dur-slow) var(--tf-ease);
-    }
-    .tf-deploy.is-in .tf-node {
-      opacity: 1; transform: translate(-50%,-50%) scale(1);
-      transition: opacity var(--tf-dur-slow) var(--tf-ease), transform var(--tf-dur-slow) var(--tf-ease);
-      transition-delay: calc(var(--i) * 55ms + 160ms);
-    }
-    .tf-deploy.is-in .tf-node:hover,
-    .tf-deploy.is-in .tf-node.is-active { transform: translate(-50%,-50%) scale(1); }
-
-    /* ---------- proof band ---------- */
-    .tf-proof { border-top: 1px solid var(--tf-sf-line); }
-    .tf-proof__head {
-      display: flex; align-items: baseline; justify-content: space-between;
-      gap: var(--tf-space-4); flex-wrap: wrap;
-      padding-block: var(--tf-space-5);
-    }
-    .tf-proof__grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 1px;
-      background: var(--tf-sf-line);
-      border-block: 1px solid var(--tf-sf-line);
-    }
-    .tf-proof__group {
-      background: var(--tf-sf-bg);
-      padding: var(--tf-space-6) var(--tf-space-5);
-      display: flex; flex-direction: column; gap: var(--tf-space-5);
-    }
-    .tf-proof__item { display: flex; flex-direction: column; gap: 8px; }
-    .tf-proof__item .tf-label { margin: 0; }
-    .tf-proof__unit { font-size: .5em; font-weight: 700; letter-spacing: 0; }
-
-    /* ---------- personas ---------- */
-    .tf-persona {
-      display: flex; flex-direction: column; gap: var(--tf-space-4);
-      padding: var(--tf-space-6);
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-lg);
-      background: var(--tf-sf-raised);
-      transition: border-color var(--tf-dur) var(--tf-ease), transform var(--tf-dur) var(--tf-ease);
-    }
-    .tf-persona:hover { border-color: var(--tf-sf-accent); transform: translateY(-3px); }
-    .tf-persona__q {
-      font-size: var(--tf-text-h3);
-      font-weight: 700;
-      letter-spacing: var(--tf-tracking-snug);
-      line-height: 1.28;
-      margin: 0;
-    }
-    .tf-persona__go {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-family: var(--tf-font-mono);
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--tf-sf-accent);
-      width: fit-content;
-    }
-    .tf-persona__go::after { content: '→'; transition: transform var(--tf-dur) var(--tf-ease); }
-    .tf-persona:hover .tf-persona__go::after { transform: translateX(4px); }
-
-    /* ---------- supply chain matrix (signature visual) ---------- */
-    .tf-chain-scroll {
-      overflow-x: auto;
-      overscroll-behavior-x: contain;
-      -webkit-overflow-scrolling: touch;
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-lg);
-      background: var(--tf-white);
-    }
-    .tf-chain-grid {
-      display: grid;
-      grid-template-columns: 132px repeat(9, minmax(122px, 1fr));
-      min-width: 1180px;
-    }
-    .tf-chain-grid > * {
-      padding: 12px 12px;
-      border-bottom: 1px solid var(--tf-sf-line-soft);
-      border-right: 1px solid var(--tf-sf-line-soft);
-      min-width: 0;
-    }
-    .tf-chain-grid > *:nth-child(10n + 1) { border-right: 1px solid var(--tf-sf-line); }
-    .tf-chain-rowhead {
-      position: sticky; left: 0;
-      background: var(--tf-sf-bg);
-      z-index: 2;
-      font-family: var(--tf-font-mono);
-      font-size: 10px; font-weight: 700;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--tf-sf-text-mute);
-      display: flex; align-items: center;
-    }
-    .tf-chain-stephead {
-      background: var(--tf-sf-bg);
-      cursor: pointer;
-      border: 0; border-bottom: 1px solid var(--tf-sf-line);
-      border-right: 1px solid var(--tf-sf-line-soft);
-      padding: 14px 12px;
-      text-align: left;
-      font-family: inherit; color: inherit;
-      transition: background-color var(--tf-dur) var(--tf-ease);
-    }
-    .tf-chain-stephead__n {
-      font-family: var(--tf-font-mono); font-size: 10px;
-      color: var(--tf-sf-text-mute); letter-spacing: 0.1em;
-    }
-    .tf-chain-stephead__t {
-      display: block; margin-top: 5px;
-      font-size: 13px; font-weight: 750; letter-spacing: -0.01em;
-      white-space: nowrap;
-    }
-    .tf-chain-cell {
-      font-size: 12.5px;
-      line-height: 1.35;
-      color: var(--tf-sf-text-mute);
-      transition: background-color var(--tf-dur) var(--tf-ease), color var(--tf-dur) var(--tf-ease);
-    }
-    .tf-chain-cell--strong { color: var(--tf-sf-text); font-weight: 650; }
-    .tf-chain-cell--num {
-      font-family: var(--tf-font-mono);
-      font-variant-numeric: tabular-nums;
-      font-weight: 700;
-      color: var(--tf-sf-text);
-    }
-    .tf-chain-grid .is-col-active { background: rgba(16,185,129,.085); }
-    .tf-chain-stephead.is-col-active { background: rgba(16,185,129,.14); }
-    .tf-chain-stephead.is-col-active .tf-chain-stephead__n { color: var(--tf-sf-accent); }
-
-    /* vertical stack variant — the mobile form of the same graph (§28).
-       Declared before the media query so the 720px override wins the cascade. */
-    .tf-chain-stack {
-      display: none;
-      flex-direction: column;
-      gap: var(--tf-space-3);
-      padding: var(--tf-space-4);
-    }
-
-    /* inspector */
-    .tf-inspector {
-      margin-top: var(--tf-space-5);
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-      gap: var(--tf-space-5);
-      padding: var(--tf-space-6);
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-lg);
-      background: var(--tf-sf-raised);
-      box-shadow: var(--tf-shadow-xs);
-    }
-    .tf-inspector__facts {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--tf-space-4);
-      align-content: start;
-    }
-    .tf-inspector__fact { display: flex; flex-direction: column; gap: 6px; }
-    .tf-inspector__tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--tf-space-4); }
-
-    /* ---------- layers spine ---------- */
-    .tf-layers { position: relative; }
-    .tf-layer {
-      display: grid;
-      grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1.05fr);
-      gap: var(--tf-space-5);
-      align-items: start;
-      padding-block: var(--tf-space-6);
-      border-top: 1px solid var(--tf-sf-line);
-      position: relative;
-    }
-    .tf-layer:last-child { border-bottom: 1px solid var(--tf-sf-line); }
-    .tf-layer__n {
-      font-family: var(--tf-font-mono);
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 0.1em;
-      color: var(--tf-sf-accent);
-      padding-top: 6px;
-    }
-    .tf-layer__q {
-      display: block;
-      margin-top: 10px;
-      font-size: var(--tf-text-small);
-      color: var(--tf-sf-text-mute);
-      font-weight: 500;
-    }
-    .tf-layer__chips { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 4px; }
-    .tf-layer::after {
-      content: '';
-      position: absolute;
-      left: 0; top: -1px;
-      width: 0; height: 1px;
-      background: var(--tf-sf-accent);
-      transition: width var(--tf-dur-slow) var(--tf-ease);
-    }
-    .tf-layer:hover::after, .tf-layer:focus-within::after { width: 84px; }
-
-    /* ---------- promise ---------- */
-    .tf-promise__list {
-      display: flex; flex-wrap: wrap;
-      gap: clamp(18px, 4vw, 56px);
-      justify-content: center;
-      list-style: none; margin: 0; padding: 0;
-    }
-    .tf-promise__list li {
-      font-size: clamp(28px, 5.4vw, 64px);
-      font-weight: 820;
-      letter-spacing: var(--tf-tracking-tight);
-      line-height: 1;
-      color: var(--tf-sf-text);
-      opacity: .42;
-      transition: opacity var(--tf-dur) var(--tf-ease), color var(--tf-dur) var(--tf-ease);
-    }
-    .tf-promise__list li.is-on { opacity: 1; color: var(--tf-sf-accent-hi); }
-
-    /* ---------- product intelligence preview ---------- */
-    .tf-pi { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: var(--tf-space-7); align-items: start; }
-    .tf-pi__tabs { display: flex; flex-wrap: wrap; gap: 7px; list-style: none; margin: 0; padding: 0; }
-    .tf-pi__tab {
-      font-family: var(--tf-font-mono);
-      font-size: 10px; font-weight: 700;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      padding: 6px 10px;
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-xs);
-      color: var(--tf-sf-text-mute);
-    }
-    .tf-pi__tab.is-on { border-color: var(--tf-sf-accent); color: var(--tf-sf-accent); background: rgba(11,118,86,.07); }
-    .tf-pi__tab:hover:not(.is-on) { border-color: var(--tf-sf-text-dim); color: var(--tf-sf-text); }
-    .tf-pi__panel {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--tf-space-4) var(--tf-space-5);
-      padding: var(--tf-space-5);
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-md);
-      background: var(--tf-sf-bg-alt);
-      min-height: 132px;
-      align-content: start;
-    }
-    .tf-pi__fact { display: flex; flex-direction: column; gap: 5px; }
-    .tf-pi__v { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-    .tf-pi__panel .tf-badge { justify-self: start; }
-    .tf-lineage { display: flex; flex-direction: column; gap: 0; list-style: none; margin: 0; padding: 0; }
-    .tf-lineage li { display: flex; align-items: center; gap: var(--tf-space-4); padding-block: 9px; }
-    .tf-lineage__i {
-      font-family: var(--tf-font-mono); font-size: 10px;
-      color: var(--tf-sf-text-mute); width: 22px; flex: none;
-    }
-    .tf-lineage__t { font-size: 14px; font-weight: 650; flex: 1; }
-    .tf-lineage__s { font-family: var(--tf-font-mono); font-size: 11px; color: var(--tf-sf-text-mute); }
-
-    /* ---------- hubs / reach ---------- */
-    .tf-reach { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-    .tf-hub {
-      display: flex; flex-direction: column; gap: 12px;
-      padding: var(--tf-space-5);
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-lg);
-      background: var(--tf-sf-raised);
-      transition: border-color var(--tf-dur) var(--tf-ease), transform var(--tf-dur) var(--tf-ease);
-    }
-    .tf-hub:hover { border-color: var(--tf-sf-text-dim); transform: translateY(-2px); }
-
-    /* ---------- resources ---------- */
-    .tf-res { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: var(--tf-space-4); }
-    .tf-res a {
-      display: flex; flex-direction: column; gap: 8px;
-      padding: var(--tf-space-5);
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-md);
-      transition: border-color var(--tf-dur) var(--tf-ease), background-color var(--tf-dur) var(--tf-ease);
-    }
-    .tf-res a:hover { border-color: var(--tf-sf-accent); background: var(--tf-sf-line-soft); }
-
-    /* ---------- footer ---------- */
-    .tf-footer__grid {
-      display: grid;
-      grid-template-columns: minmax(0,1.6fr) repeat(3, minmax(0,1fr));
-      gap: var(--tf-space-7);
-    }
-    .tf-footer__col { display: flex; flex-direction: column; gap: 11px; }
-    .tf-footer__col a { font-size: 13.5px; color: var(--tf-sf-text-mute); width: fit-content; }
-    .tf-footer__col a:hover { color: var(--tf-sf-text); }
-
-    /* ---------- dialog ---------- */
-    .tf-dialog {
-      width: min(560px, calc(100% - 40px));
-      padding: var(--tf-space-7);
-      border: 1px solid var(--tf-paper-line);
-      border-radius: var(--tf-radius-xl);
-      background: var(--tf-white);
-      color: var(--tf-ink-800);
-    }
-    .tf-dialog::backdrop { background: rgba(6,18,13,.72); backdrop-filter: blur(6px); }
-    .tf-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: var(--tf-space-4); }
-    .tf-field label { font-size: 12px; font-weight: 700; }
-    .tf-field input {
-      padding: 12px 14px;
-      border: 1px solid var(--tf-paper-line);
-      border-radius: var(--tf-radius-sm);
-      font-family: inherit; font-size: 14px;
-      background: var(--tf-white); color: var(--tf-ink-800);
-    }
-    .tf-field input:focus-visible { outline: 2px solid var(--tf-emerald-600); outline-offset: 1px; }
-
-    /* ---------- responsive ---------- */
-    @media (max-width: 1080px) {
-      .tf-nav__list { display: none; }
-      .tf-burger { display: inline-flex; }
-      .tf-header__actions .tf-btn--ghost,
-      .tf-header__actions .tf-btn--primary { display: none; }
-      .tf-nav__panel {
-        display: none;
-        border-top: 1px solid var(--tf-sf-line);
-        padding: var(--tf-space-5) 0 var(--tf-space-6);
-      }
-      .tf-nav.is-open .tf-nav__panel { display: block; }
-      .tf-nav__panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-      .tf-nav__panel a {
-        display: block; padding: 12px 4px;
-        font-size: 16px; font-weight: 600;
-        border-bottom: 1px solid var(--tf-sf-line-soft);
-      }
-      .tf-nav__panel .tf-btn { margin-top: var(--tf-space-4); width: 100%; }
-      .tf-proof__grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
-      .tf-pi { grid-template-columns: minmax(0,1fr); }
-      .tf-footer__grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--tf-space-6); }
-      .tf-res { grid-template-columns: minmax(0,1fr); }
-    }
-
-    @media (max-width: 720px) {
-      .tf-proof__grid { grid-template-columns: minmax(0,1fr); }
-      .tf-pi__panel { grid-template-columns: minmax(0,1fr); }
-      .tf-inspector { grid-template-columns: minmax(0,1fr); }
-      .tf-layer { grid-template-columns: minmax(0,1fr); gap: var(--tf-space-4); }
-      .tf-layer__n { padding-top: 0; }
-      .tf-layer:hover::after, .tf-layer:focus-within::after { width: 56px; }
-      .tf-footer__grid { grid-template-columns: minmax(0,1fr); }
-
-      /* supply-chain graph becomes an interactive vertical stack (§28) */
-      .tf-chain-grid { display: none; }
-      .tf-chain-stack { display: flex; }
-
-      /* the orbit does too: a radial graph at 360px is a diagram of overlaps.
-         It becomes a list of tappable domains above a persistent readout. */
-      .tf-orbit-frame {
-        aspect-ratio: auto;
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--tf-space-3);
-      }
-      .tf-orbit-svg { display: none; }
-      .tf-core {
-        position: static;
-        transform: none;
-        width: 100%;
-        aspect-ratio: auto;
-        grid-column: 1 / -1;
-        border-radius: var(--tf-radius-lg);
-        padding: var(--tf-space-6) var(--tf-space-5);
-        order: -1;
-      }
-      .tf-node {
-        position: static;
-        transform: none;
-        flex-direction: row;
-        justify-content: flex-start;
-        gap: 10px;
-        padding: 12px 14px;
-        border: 1px solid var(--tf-sf-line);
-        border-radius: var(--tf-radius-sm);
-        background: var(--tf-sf-raised);
-      }
-      .tf-node__dot { box-shadow: none; flex: none; }
-      .tf-node__name { font-size: 10.5px; }
-      .tf-deploy .tf-node,
-      .tf-deploy .tf-core,
-      .tf-deploy.is-in .tf-node:hover,
-      .tf-deploy.is-in .tf-node.is-active { transform: none; }
-    }
-
-    .tf-chain-card {
-      width: 100%;
-      text-align: left;
-      padding: var(--tf-space-5);
-      border: 1px solid var(--tf-sf-line);
-      border-radius: var(--tf-radius-md);
-      background: var(--tf-sf-raised);
-      color: inherit; font-family: inherit;
-      cursor: pointer;
-      transition: border-color var(--tf-dur) var(--tf-ease), background-color var(--tf-dur) var(--tf-ease);
-    }
-    .tf-chain-card.is-active { border-color: var(--tf-sf-accent); background: rgba(16,185,129,.09); }
-    .tf-chain-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-    .tf-chain-card__t { font-size: 15px; font-weight: 750; }
-    .tf-chain-card__dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin-top: 12px; }
-    .tf-chain-card__dl dt {
-      font-family: var(--tf-font-mono); font-size: 9.5px;
-      letter-spacing: .1em; text-transform: uppercase; color: var(--tf-sf-text-mute);
-    }
-    .tf-chain-card__dl dd { margin: 0; font-size: 12.5px; color: var(--tf-sf-text-mute); }
-
-    @media (prefers-reduced-motion: reduce) {
-      .tf-deploy .tf-node, .tf-deploy .tf-core, .tf-deploy .tf-orbit-svg { opacity: 1; transform: translate(-50%,-50%); }
-      .tf-deploy .tf-orbit-svg { transform: none; }
-      .tf-promise__list li { opacity: .85; }
-    }
-  </style>
+  </script>
+  <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
 
 <body>
-  <a class="tf-skip" href="#main" data-i18n="landing.a11y.skip_to_content">Skip to content</a>
+<a class="tf-skip" href="#main" data-i18n="common.skip">Skip to main content</a>
 
-  <!-- ======================================================================
-       HEADER
-       ====================================================================== -->
-  <header class="tf-header tf-surface tf-surface--dark" id="tf-header">
-    <div class="tf-shell tf-shell--wide">
-      <nav class="tf-nav" id="tf-nav" aria-label="Main" data-i18n-attr="aria-label:landing.header_nav.main_al">
-        <div class="tf-header__bar">
-          <a href="/" class="tf-wordmark" aria-label="TRACEFAB home" data-i18n-attr="aria-label:landing.header_nav.tracefab_home_al">
-            <span class="tf-wordmark__mark" aria-hidden="true">tf</span>
-            <span class="tf-wordmark__name">TRACEFAB</span>
-          </a>
+<!-- ══════════════════════════════════════════════════════════════════════
+     HEADER
+     ══════════════════════════════════════════════════════════════════ -->
+<header class="tf-header">
+  <div class="tf-header__shell">
+    <a href="/" class="tf-brand">
+      <svg class="tf-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="4" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.3"/>
+        <path d="M3 11h26M3 16h26M3 21h26" stroke="currentColor" stroke-opacity=".26" stroke-width="1"/>
+        <path d="M8 25.5l5-6.5 6 3 5-15.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>
+        <span class="tf-brand__word">TRACEFAB</span>
+        <span class="tf-brand__sub">DATA × TEXTILE × TRUST</span>
+      </span>
+    </a>
 
-          <ul class="tf-nav__list">
-            <li><a class="tf-nav__link" href="#why" data-i18n="landing.header_nav.why_tracefab">Why TRACEFAB</a></li>
-            <li><a class="tf-nav__link" href="#layers" data-i18n="landing.header_nav.platform">Platform</a></li>
-            <li><a class="tf-nav__link" href="#wow-ecosystem" data-i18n="landing.header_nav.supply_chain">Supply Chain</a></li>
-            <li><a class="tf-nav__link" href="#product-intelligence" data-i18n="landing.header_nav.product_intelligence">Product Intelligence</a></li>
-            <li><a class="tf-nav__link" href="/dpp/" data-i18n="landing.header_nav.dpp">DPP</a></li>
-            <li><a class="tf-nav__link" href="#resources" data-i18n="landing.header_nav.resources">Resources</a></li>
-          </ul>
+    <nav class="tf-nav" aria-label="Primary">
+      <a href="#why" data-i18n="nav.why">Why TRACEFAB</a>
+      <a href="#platform" data-i18n="nav.platform">Platform</a>
+      <a href="#supply-chain" data-i18n="nav.supplyChain">Supply Chain</a>
+      <a href="#layer-02" data-i18n="nav.productIntel">Product Intelligence</a>
+      <a href="#layer-07" data-i18n="nav.dpp">DPP</a>
+      <a href="#resources" data-i18n="nav.resources">Resources</a>
+    </nav>
 
-          <div class="tf-header__actions">
-            <div class="tf-lang" id="tf-lang">
-              <button class="tf-lang__btn" id="lang-menu-btn" type="button"
-                      aria-haspopup="true" aria-expanded="false" aria-controls="tf-lang-menu"
-                      aria-label="Choose language" data-i18n-attr="aria-label:landing.header_nav.choose_language_al">
-                <span id="current-lang-code">EN</span>
-                <span aria-hidden="true">▾</span>
-              </button>
-              <div class="tf-lang__menu" id="tf-lang-menu" role="menu" aria-label="Language" data-i18n-attr="aria-label:landing.header_nav.language_al">
-                <button class="tf-lang__option" role="menuitemradio" aria-checked="true"  data-lang="en" type="button"><span>English</span><span>EN</span></button>
-                <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="fr" type="button"><span>Français</span><span>FR</span></button>
-                <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="de" type="button"><span>Deutsch</span><span>DE</span></button>
-                <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="it" type="button"><span>Italiano</span><span>IT</span></button>
-                <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="es" type="button"><span>Español</span><span>ES</span></button>
-                <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="nl" type="button"><span>Nederlands</span><span>NL</span></button>
-                <button class="tf-lang__option" role="menuitemradio" aria-checked="false" data-lang="pt" type="button"><span>Português</span><span>PT</span></button>
-              </div>
-            </div>
+    <div class="tf-header__actions">
+      <div class="tf-lang">
+        <button type="button" id="lang-menu-btn" class="tf-lang__btn" aria-expanded="false" aria-haspopup="true">
+          <span class="tf-visually-hidden" data-i18n="nav.language">Language</span>
+          <span data-tf-lang-code>EN</span>
+          <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
+        <div class="tf-lang__menu" role="menu"></div>
+      </div>
 
-            <a href="/brand-console/" class="tf-btn tf-btn--ghost tf-btn--sm" data-i18n="landing.header_nav.sign_in">Sign in</a>
-            <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-demo-open data-i18n="landing.header_nav.request_a_demo">Request a demo</button>
+      <a href="/brand-console/" class="tf-btn tf-btn--ghost-dark tf-btn--sm" data-i18n="nav.signIn">Sign in</a>
+      <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-tf-open-demo data-i18n="nav.demo">Request a demo</button>
 
-            <button class="tf-burger" id="tf-burger" type="button"
-                    aria-expanded="false" aria-controls="tf-nav-panel" aria-label="Open menu" data-i18n-attr="aria-label:landing.header_nav.open_menu_al">
-              <span class="tf-burger__box" aria-hidden="true"><i></i><i></i><i></i></span>
-            </button>
-          </div>
-        </div>
-
-        <div class="tf-nav__panel" id="tf-nav-panel">
-          <ul>
-            <li><a href="#why" data-i18n="landing.header_nav.why_tracefab">Why TRACEFAB</a></li>
-            <li><a href="#layers" data-i18n="landing.header_nav.platform">Platform</a></li>
-            <li><a href="#wow-ecosystem" data-i18n="landing.header_nav.supply_chain">Supply Chain</a></li>
-            <li><a href="#product-intelligence" data-i18n="landing.header_nav.product_intelligence">Product Intelligence</a></li>
-            <li><a href="/dpp/" data-i18n="landing.header_nav.dpp">DPP</a></li>
-            <li><a href="#resources" data-i18n="landing.header_nav.resources">Resources</a></li>
-          </ul>
-          <a href="/brand-console/" class="tf-btn tf-btn--ghost" data-i18n="landing.header_nav.sign_in">Sign in</a>
-          <button type="button" class="tf-btn tf-btn--primary" data-demo-open data-i18n="landing.header_nav.request_a_demo">Request a demo</button>
-        </div>
-      </nav>
+      <button type="button" class="tf-burger" aria-expanded="false" aria-controls="tf-drawer"
+              data-i18n-attr="aria-label:nav.openMenu" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
-  </header>
+  </div>
+  <div class="tf-progress" aria-hidden="true"><span class="tf-progress__fill"></span></div>
+</header>
 
-  <main id="main">
+<div class="tf-drawer" id="tf-drawer">
+  <a class="tf-drawer__link" href="#supply-chain"><span data-i18n="nav.supplyChain">Supply Chain</span><b class="tf-drawer__num">01</b></a>
+  <a class="tf-drawer__link" href="#platform"><span data-i18n="nav.platform">Platform</span><b class="tf-drawer__num">02</b></a>
+  <a class="tf-drawer__link tf-drawer__link--sub" href="#layer-02"><span data-i18n="nav.productIntel">Product Intelligence</span><b class="tf-drawer__num"></b></a>
+  <a class="tf-drawer__link tf-drawer__link--sub" href="#layer-07"><span data-i18n="nav.dpp">DPP</span><b class="tf-drawer__num"></b></a>
+  <a class="tf-drawer__link" href="#why"><span data-i18n="nav.why">Why TRACEFAB</span><b class="tf-drawer__num">03</b></a>
+  <a class="tf-drawer__link" href="#resources"><span data-i18n="nav.resources">Resources</span><b class="tf-drawer__num"></b></a>
+  <div class="tf-drawer__actions">
+    <a href="/brand-console/" class="tf-btn tf-btn--ghost-dark tf-btn--block" data-i18n="nav.signIn">Sign in</a>
+    <button type="button" class="tf-btn tf-btn--primary tf-btn--block" data-tf-open-demo data-i18n="nav.demo">Request a demo</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px" data-tf-lang-row></div>
+  </div>
+</div>
 
-    <!-- ====================================================================
-         HERO — TRACEFAB living data core
-         ==================================================================== -->
-    <section class="tf-hero tf-surface tf-surface--dark" aria-labelledby="hero-title">
-      <div class="tf-hero__glow" aria-hidden="true"></div>
-      <div class="tf-tex tf-tex--weave" aria-hidden="true"></div>
+<main id="main">
 
-      <div class="tf-shell tf-hero__inner">
-        <div class="tf-hero__copy">
-          <span class="tf-capsule">
-            <span class="tf-capsule__beacon" aria-hidden="true"></span><span data-i18n="landing.hero.european_textile_data_infrastr">
-            European textile data infrastructure
-          </span></span>
+  <!-- ════════════════════════════════════════════════════════════════════
+       HERO
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="tf-hero tf-on-dark" id="top">
+    <div class="tf-weave" aria-hidden="true"></div>
+    <div class="tf-aurora tf-hero__glow-a" aria-hidden="true"></div>
+    <div class="tf-aurora tf-hero__glow-b" aria-hidden="true"></div>
+    <div class="tf-grid-rules" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
 
-          <h1 class="tf-display-1 tf-hero__title" id="hero-title">
-            <span class="ln" data-i18n="landing.hero.know_your_product">Know your product.</span>
-            <span class="ln" data-i18n="landing.hero.know_your_supply_chain">Know your supply chain.</span>
-            <span class="ln ln--accent" data-i18n="landing.hero.prove_it">Prove it.</span>
-          </h1>
+    <div class="tf-container">
+      <div class="tf-hero__lead">
+        <span class="tf-capsule" data-tf-reveal>
+          <i class="tf-beacon" aria-hidden="true"></i>
+          <span data-i18n="hero.label">European textile data infrastructure</span>
+        </span>
 
-          <p class="tf-lead tf-hero__lead" data-i18n="landing.hero.tracefab_connects_supplier_dat">
-            TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product
-            Passport readiness in one intelligent infrastructure.
-          </p>
+        <h1 class="tf-hero__title" data-tf-reveal data-tf-delay="60">
+          <span data-i18n="hero.line1">Know your product.</span>
+          <span data-i18n="hero.line2">Know your supply chain.</span>
+          <span class="tf-accent" data-i18n="hero.line3">Prove it.</span>
+        </h1>
 
-          <div class="tf-hero__ctas">
-            <a href="#wow-ecosystem" class="tf-btn tf-btn--primary tf-btn--lg" data-i18n="landing.hero.explore_tracefab">Explore TRACEFAB</a>
-            <button type="button" class="tf-btn tf-btn--ghost tf-btn--lg" data-demo-open data-i18n="landing.hero.request_a_demo">Request a demo</button>
-          </div>
+        <p class="tf-hero__sub" data-tf-reveal data-tf-delay="140" data-i18n="hero.sub">
+          TRACEFAB connects supplier data, evidence, quality, traceability and Digital Product
+          Passport readiness in one intelligent infrastructure.
+        </p>
 
-          <div class="tf-hero__note">
-            <span class="tf-demo-mark" data-i18n="landing.hero.demonstration_data_not_a_live">Demonstration data — not a live customer dataset</span>
-          </div>
+        <div class="tf-hero__cta" data-tf-reveal data-tf-delay="200">
+          <a href="#supply-chain" class="tf-btn tf-btn--primary" data-i18n="hero.ctaPrimary">Explore TRACEFAB</a>
+          <button type="button" class="tf-btn tf-btn--ghost-dark" data-tf-open-demo data-i18n="hero.ctaSecondary">Request a demo</button>
         </div>
 
-        <!-- Orbit: TRACEFAB core + 10 connected domains -->
-        <div class="tf-orbit-wrap tf-deploy" id="tf-orbit">
-          <h2 class="tf-visually-hidden" data-i18n="landing.hero.the_tracefab_data_core_and_the">The TRACEFAB data core and the ten domains it connects</h2>
-
-          <div class="tf-orbit-frame">
-            <svg class="tf-orbit-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-              <circle class="tf-orbit-ring tf-orbit-ring--dash" cx="50" cy="50" r="14" vector-effect="non-scaling-stroke"></circle>
-              <circle class="tf-orbit-ring" cx="50" cy="50" r="26" vector-effect="non-scaling-stroke"></circle>
-              <circle class="tf-orbit-ring tf-orbit-ring--dash" cx="50" cy="50" r="38" vector-effect="non-scaling-stroke"></circle>
-
-              <g class="tf-orbit-links">
-                <path class="tf-orbit-link" data-link="0" d="M50 50 L50.00 12.00" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="1" d="M50 50 L72.34 19.26" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="2" d="M50 50 L86.14 38.26" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="3" d="M50 50 L86.14 61.74" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="4" d="M50 50 L72.34 80.74" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="5" d="M50 50 L50.00 88.00" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="6" d="M50 50 L27.66 80.74" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="7" d="M50 50 L13.86 61.74" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="8" d="M50 50 L13.86 38.26" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-link" data-link="9" d="M50 50 L27.66 19.26" vector-effect="non-scaling-stroke"></path>
-              </g>
-
-              <g class="tf-orbit-pulses">
-                <path class="tf-orbit-pulse tf-flow" data-link="0" d="M50 50 L50.00 12.00" vector-effect="non-scaling-stroke"></path>
-                <path class="tf-orbit-pulse tf-flow" data-link="2" d="M50 50 L86.14 38.26" vector-effect="non-scaling-stroke" style="animation-delay:-900ms"></path>
-                <path class="tf-orbit-pulse tf-flow" data-link="4" d="M50 50 L72.34 80.74" vector-effect="non-scaling-stroke" style="animation-delay:-1800ms"></path>
-                <path class="tf-orbit-pulse tf-flow" data-link="6" d="M50 50 L27.66 80.74" vector-effect="non-scaling-stroke" style="animation-delay:-2700ms"></path>
-                <path class="tf-orbit-pulse tf-flow" data-link="8" d="M50 50 L13.86 38.26" vector-effect="non-scaling-stroke" style="animation-delay:-1350ms"></path>
-                <path class="tf-orbit-pulse tf-flow" data-link="9" d="M50 50 L27.66 19.26" vector-effect="non-scaling-stroke" style="animation-delay:-3100ms"></path>
-              </g>
-            </svg>
-
-            <div class="tf-core" id="tf-core" aria-live="polite">
-              <div>
-                <div class="tf-core__mark" aria-hidden="true">tf</div>
-                <div class="tf-core__name">TRACEFAB</div>
-                <div class="tf-core__state" id="tf-core-state" data-i18n="landing.hero.10_domains_connected">10 domains connected</div>
-                <div class="tf-core__stat" id="tf-core-stat" data-i18n="landing.hero.1_248">1,248</div>
-              </div>
-            </div>
-
-            <button class="tf-node" type="button" style="--i:0;left:50.00%;top:12.00%" data-node="0">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.suppliers">Suppliers</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:1;left:72.34%;top:19.26%" data-node="1">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.products">Products</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:2;left:86.14%;top:38.26%" data-node="2">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.materials">Materials</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:3;left:86.14%;top:61.74%" data-node="3">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.facilities">Facilities</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:4;left:72.34%;top:80.74%" data-node="4">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.documents">Documents</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:5;left:50.00%;top:88.00%" data-node="5">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.certifications">Certifications</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:6;left:27.66%;top:80.74%" data-node="6">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.evidence">Evidence</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:7;left:13.86%;top:61.74%" data-node="7">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.quality">Quality</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:8;left:13.86%;top:38.26%" data-node="8">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.traceability">Traceability</span>
-            </button>
-            <button class="tf-node" type="button" style="--i:9;left:27.66%;top:19.26%" data-node="9">
-              <span class="tf-node__dot" aria-hidden="true"></span>
-              <span class="tf-node__name" data-i18n="landing.hero.dpp">DPP</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         PROOF BAND — the numbers, immediately. A CEO should get the scale of
-         the system before being asked to read anything.
-         ==================================================================== -->
-    <section class="tf-proof tf-surface tf-surface--light" aria-labelledby="proof-title">
-      <div class="tf-shell tf-shell--wide">
-        <div class="tf-proof__head">
-          <h2 class="tf-visually-hidden" id="proof-title" data-i18n="landing.proof.tracefab_at_a_glance">TRACEFAB at a glance</h2>
-          <span class="tf-label" data-i18n="landing.proof.one_tenant_at_a_glance">One tenant, at a glance</span>
-          <span class="tf-demo-mark" data-i18n="landing.proof.demonstration_data">Demonstration data</span>
-        </div>
-
-        <div class="tf-proof__grid">
-          <div class="tf-proof__group">
-            <span class="tf-label tf-label--accent" data-i18n="landing.proof.supply_chain">Supply chain</span>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--lg" data-i18n="landing.proof.1_248">1,248</span>
-              <span class="tf-label" data-i18n="landing.proof.products">Products</span>
-            </div>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md">86<span class="tf-proof__unit"> / </span>214</span>
-              <span class="tf-label" data-i18n="landing.proof.suppliers_facilities">Suppliers / facilities</span>
-            </div>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md">18</span>
-              <span class="tf-label" data-i18n="landing.proof.countries_of_origin">Countries of origin</span>
-            </div>
-          </div>
-
-          <div class="tf-proof__group">
-            <span class="tf-label tf-label--accent" data-i18n="landing.proof.data">Data</span>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--lg">92.4<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label" data-i18n="landing.proof.data_quality">Data quality</span>
-            </div>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md">84<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label" data-i18n="landing.proof.evidence_coverage">Evidence coverage</span>
-            </div>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md">78<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label" data-i18n="landing.proof.verified_data">Verified data</span>
-            </div>
-          </div>
-
-          <div class="tf-proof__group">
-            <span class="tf-label tf-label--accent" data-i18n="landing.proof.traceability">Traceability</span>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--lg">91<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label" data-i18n="landing.proof.products_traceable">Products traceable</span>
-            </div>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md" data-i18n="landing.proof.tier_14">Tier 1–4</span>
-              <span class="tf-label" data-i18n="landing.proof.mapped_depth">Mapped depth</span>
-            </div>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md">9</span>
-              <span class="tf-label" data-i18n="landing.proof.custody_stages">Custody stages</span>
-            </div>
-          </div>
-
-          <div class="tf-proof__group">
-            <span class="tf-label tf-label--accent" data-i18n="landing.proof.readiness">Readiness</span>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--lg">88<span class="tf-proof__unit">%</span></span>
-              <span class="tf-label" data-i18n="landing.proof.dpp_readiness">DPP readiness</span>
-            </div>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md">17</span>
-              <span class="tf-label" data-i18n="landing.proof.missing_data_items">Missing data items</span>
-            </div>
-            <div class="tf-proof__item">
-              <span class="tf-metric tf-metric--md">8</span>
-              <span class="tf-label" data-i18n="landing.proof.certificates_expiring">Certificates expiring</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         THE WOW MOMENT — the living supply chain
-         ==================================================================== -->
-    <section class="tf-section tf-surface tf-surface--light" id="wow-ecosystem" style="--tf-sf-bg:var(--tf-paper-2)" aria-labelledby="wow-title">
-      <div class="tf-tex tf-tex--weave" aria-hidden="true" style="opacity:.5"></div>
-      <div class="tf-shell tf-stack tf-stack-7" style="position:relative;z-index:1">
-
-        <div class="tf-heading tf-reveal">
-          <span class="tf-label tf-label--accent" data-i18n="landing.wow_ecosystem.the_living_supply_chain_graph">The living supply chain graph</span>
-          <h2 class="tf-display-2" id="wow-title" data-i18n="landing.wow_ecosystem.your_entire_textile_ecosystem">Your entire textile ecosystem.<br data-i18n="landing.wow_ecosystem.one_connected_data_foundation">One connected data foundation.</h2>
-          <p class="tf-lead" data-i18n="landing.wow_ecosystem.nine_custody_stages_from_field">
-            Nine custody stages, from field to passport. Hover or select any stage to inspect the
-            supplier, country, facility, certificate, document, data quality and verification status
-            behind it — simultaneously.
-          </p>
-        </div>
-
-        <!-- matrix: rows = attributes, columns = stages -->
-        <div class="tf-chain-scroll tf-reveal" id="tf-chain">
-          <div class="tf-chain-grid" role="presentation">
-            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.stage">Stage</div>
-            <button class="tf-chain-stephead" type="button" data-step="0"><span class="tf-chain-stephead__n">01</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.fiber">Fiber</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="1"><span class="tf-chain-stephead__n">02</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.material">Material</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="2"><span class="tf-chain-stephead__n">03</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.spinning">Spinning</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="3"><span class="tf-chain-stephead__n">04</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.weaving">Weaving</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="4"><span class="tf-chain-stephead__n">05</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.dyeing">Dyeing</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="5"><span class="tf-chain-stephead__n">06</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.cutting">Cutting</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="6"><span class="tf-chain-stephead__n">07</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.assembly">Assembly</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="7"><span class="tf-chain-stephead__n">08</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.product">Product</span></button>
-            <button class="tf-chain-stephead" type="button" data-step="8"><span class="tf-chain-stephead__n">09</span><span class="tf-chain-stephead__t" data-i18n="landing.wow_ecosystem.dpp">DPP</span></button>
-
-            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.supplier">Supplier</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="0" data-i18n="landing.wow_ecosystem.ege_organic_co_op">Ege Organic Co-op</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="1" data-i18n="landing.wow_ecosystem.aegean_gin_house">Aegean Gin House</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="2" data-i18n="landing.wow_ecosystem.filatura_guimaraes">Filatura Guimarães</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="3" data-i18n="landing.wow_ecosystem.portugal_textile_mill">Portugal Textile Mill</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="4" data-i18n="landing.wow_ecosystem.ecodye_aquitaine">EcoDye Aquitaine</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="5" data-i18n="landing.wow_ecosystem.atelier_barcelos">Atelier Barcelos</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="6" data-i18n="landing.wow_ecosystem.atelier_milano">Atelier Milano</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="7" data-i18n="landing.wow_ecosystem.maison_tracefab">Maison Tracefab</div>
-            <div class="tf-chain-cell tf-chain-cell--strong" data-col="8" data-i18n="landing.wow_ecosystem.gs1_resolver">GS1 Resolver</div>
-
-            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.country">Country</div>
-            <div class="tf-chain-cell" data-col="0" data-i18n="landing.wow_ecosystem.turkiye">Türkiye</div>
-            <div class="tf-chain-cell" data-col="1" data-i18n="landing.wow_ecosystem.turkiye">Türkiye</div>
-            <div class="tf-chain-cell" data-col="2" data-i18n="landing.wow_ecosystem.portugal">Portugal</div>
-            <div class="tf-chain-cell" data-col="3" data-i18n="landing.wow_ecosystem.portugal">Portugal</div>
-            <div class="tf-chain-cell" data-col="4" data-i18n="landing.wow_ecosystem.france">France</div>
-            <div class="tf-chain-cell" data-col="5" data-i18n="landing.wow_ecosystem.portugal">Portugal</div>
-            <div class="tf-chain-cell" data-col="6" data-i18n="landing.wow_ecosystem.italy">Italy</div>
-            <div class="tf-chain-cell" data-col="7" data-i18n="landing.wow_ecosystem.france">France</div>
-            <div class="tf-chain-cell" data-col="8" data-i18n="landing.wow_ecosystem.european_union">European Union</div>
-
-            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.facility">Facility</div>
-            <div class="tf-chain-cell" data-col="0" data-i18n="landing.wow_ecosystem.izmir_basin_plot_482">Izmir Basin · Plot 482</div>
-            <div class="tf-chain-cell" data-col="1" data-i18n="landing.wow_ecosystem.gin_house_12">Gin House 12</div>
-            <div class="tf-chain-cell" data-col="2" data-i18n="landing.wow_ecosystem.ring_mill_porto_valley">Ring Mill · Porto Valley</div>
-            <div class="tf-chain-cell" data-col="3" data-i18n="landing.wow_ecosystem.santo_tirso_loom_house">Santo Tirso Loom House</div>
-            <div class="tf-chain-cell" data-col="4" data-i18n="landing.wow_ecosystem.castres_wet_processing">Castres Wet Processing</div>
-            <div class="tf-chain-cell" data-col="5" data-i18n="landing.wow_ecosystem.cutting_floor_2">Cutting Floor 2</div>
-            <div class="tf-chain-cell" data-col="6" data-i18n="landing.wow_ecosystem.milan_assembly_unit">Milan Assembly Unit</div>
-            <div class="tf-chain-cell" data-col="7" data-i18n="landing.wow_ecosystem.paris_design_hq">Paris Design HQ</div>
-            <div class="tf-chain-cell" data-col="8" data-i18n="landing.wow_ecosystem.cirpass_endpoint">CIRPASS endpoint</div>
-
-            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.certificate">Certificate</div>
-            <div class="tf-chain-cell" data-col="0" data-i18n="landing.wow_ecosystem.gots_cu_881294">GOTS CU-881294</div>
-            <div class="tf-chain-cell" data-col="1" data-i18n="landing.wow_ecosystem.gots_scope">GOTS Scope</div>
-            <div class="tf-chain-cell" data-col="2" data-i18n="landing.wow_ecosystem.oeko_tex_step">OEKO-TEX STeP</div>
-            <div class="tf-chain-cell" data-col="3" data-i18n="landing.wow_ecosystem.iso_17025">ISO 17025</div>
-            <div class="tf-chain-cell" data-col="4" data-i18n="landing.wow_ecosystem.zdhc_mrsl_v3_1">ZDHC MRSL v3.1</div>
-            <div class="tf-chain-cell" data-col="5" data-i18n="landing.wow_ecosystem.smeta_4_pillar">SMETA 4-Pillar</div>
-            <div class="tf-chain-cell" data-col="6" data-i18n="landing.wow_ecosystem.sa8000">SA8000</div>
-            <div class="tf-chain-cell" data-col="7" data-i18n="landing.wow_ecosystem.espr_draft">ESPR draft</div>
-            <div class="tf-chain-cell" data-col="8">—</div>
-
-            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.document">Document</div>
-            <div class="tf-chain-cell" data-col="0" data-i18n="landing.wow_ecosystem.transaction_cert">Transaction cert.</div>
-            <div class="tf-chain-cell" data-col="1" data-i18n="landing.wow_ecosystem.lot_analysis_a_118">Lot analysis A-118</div>
-            <div class="tf-chain-cell" data-col="2" data-i18n="landing.wow_ecosystem.yarn_spec_ne_30_1">Yarn spec Ne 30/1</div>
-            <div class="tf-chain-cell" data-col="3" data-i18n="landing.wow_ecosystem.lab_report_302">Lab report #302</div>
-            <div class="tf-chain-cell" data-col="4" data-i18n="landing.wow_ecosystem.effluent_report">Effluent report</div>
-            <div class="tf-chain-cell" data-col="5" data-i18n="landing.wow_ecosystem.cut_plan_cp_2291">Cut plan CP-2291</div>
-            <div class="tf-chain-cell" data-col="6" data-i18n="landing.wow_ecosystem.social_audit_2026">Social audit 2026</div>
-            <div class="tf-chain-cell" data-col="7" data-i18n="landing.wow_ecosystem.composition_bom">Composition BOM</div>
-            <div class="tf-chain-cell" data-col="8" data-i18n="landing.wow_ecosystem.json_ld_passport">JSON-LD passport</div>
-
-            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.data_quality">Data quality</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="0">96%</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="1">94%</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="2">91%</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="3">87%</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="4">93%</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="5">89%</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="6">84%</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="7">92%</div>
-            <div class="tf-chain-cell tf-chain-cell--num" data-col="8">88%</div>
-
-            <div class="tf-chain-rowhead" data-i18n="landing.wow_ecosystem.status">Status</div>
-            <div class="tf-chain-cell" data-col="0"><span class="tf-badge tf-badge--verified" data-i18n="landing.wow_ecosystem.verified">Verified</span></div>
-            <div class="tf-chain-cell" data-col="1"><span class="tf-badge tf-badge--documented" data-i18n="landing.wow_ecosystem.documented">Documented</span></div>
-            <div class="tf-chain-cell" data-col="2"><span class="tf-badge tf-badge--verified" data-i18n="landing.wow_ecosystem.verified">Verified</span></div>
-            <div class="tf-chain-cell" data-col="3"><span class="tf-badge tf-badge--certified" data-i18n="landing.wow_ecosystem.certified">Certified</span></div>
-            <div class="tf-chain-cell" data-col="4"><span class="tf-badge tf-badge--verified" data-i18n="landing.wow_ecosystem.verified">Verified</span></div>
-            <div class="tf-chain-cell" data-col="5"><span class="tf-badge tf-badge--documented" data-i18n="landing.wow_ecosystem.documented">Documented</span></div>
-            <div class="tf-chain-cell" data-col="6"><span class="tf-badge tf-badge--review" data-i18n="landing.wow_ecosystem.needs_review">Needs review</span></div>
-            <div class="tf-chain-cell" data-col="7"><span class="tf-badge tf-badge--declared" data-i18n="landing.wow_ecosystem.declared">Declared</span></div>
-            <div class="tf-chain-cell" data-col="8"><span class="tf-badge tf-badge--certified" data-i18n="landing.wow_ecosystem.passport_ready">Passport ready</span></div>
-          </div>
-
-          <!-- mobile: interactive vertical stack -->
-          <div class="tf-chain-stack" id="tf-chain-stack"></div>
-        </div>
-
-        <!-- inspector -->
-        <div class="tf-inspector tf-reveal" id="tf-inspector" aria-live="polite">
-          <div>
-            <span class="tf-label tf-label--accent" id="insp-tier" data-i18n="landing.wow_ecosystem.tier_2_weaving">Tier 2 · Weaving</span>
-            <h3 class="tf-h2" id="insp-name" style="margin-top:12px" data-i18n="landing.wow_ecosystem.portugal_textile_mill">Portugal Textile Mill</h3>
-            <p class="tf-small" id="insp-loc" style="margin:8px 0 0" data-i18n="landing.wow_ecosystem.santo_tirso_loom_house_portuga">Santo Tirso Loom House · Portugal</p>
-            <p class="tf-body" id="insp-desc" style="margin-top:16px;max-width:56ch" data-i18n="landing.wow_ecosystem.185_g_m2_single_jersey_and_3_1">
-              185 g/m² single jersey and 3/1 cotton twills. ISO 17025 accredited laboratory reports on
-              burst strength and shrinkage, with digital custody transfer to Tier 1 assembly.
-            </p>
-            <div class="tf-inspector__tags" id="insp-tags">
-              <span class="tf-chip" data-i18n="landing.wow_ecosystem.gots_6_0">GOTS 6.0</span>
-              <span class="tf-chip" data-i18n="landing.wow_ecosystem.iso_17025">ISO 17025</span>
-              <span class="tf-chip" data-i18n="landing.wow_ecosystem.mass_balance_conserved">Mass balance conserved</span>
-            </div>
-          </div>
-
-          <div class="tf-inspector__facts">
-            <div class="tf-inspector__fact">
-              <span class="tf-label" data-i18n="landing.wow_ecosystem.data_quality">Data quality</span>
-              <span class="tf-metric tf-metric--md" id="insp-quality">87%</span>
-            </div>
-            <div class="tf-inspector__fact">
-              <span class="tf-label" data-i18n="landing.wow_ecosystem.certificates">Certificates</span>
-              <span class="tf-metric tf-metric--md" id="insp-certs">3</span>
-            </div>
-            <div class="tf-inspector__fact">
-              <span class="tf-label" data-i18n="landing.wow_ecosystem.products">Products</span>
-              <span class="tf-metric tf-metric--md" id="insp-styles">12</span>
-            </div>
-            <div class="tf-inspector__fact">
-              <span class="tf-label" data-i18n="landing.wow_ecosystem.evidence">Evidence</span>
-              <span class="tf-metric tf-metric--md tf-accent" id="insp-proof" data-i18n="landing.wow_ecosystem.verified">Verified</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="tf-row tf-row--between tf-row--wrap" style="gap:16px">
-          <span class="tf-demo-mark" data-i18n="landing.wow_ecosystem.demonstration_data_illustrativ">Demonstration data — illustrative supply chain</span>
-          <a href="/brand-console/" class="tf-btn tf-btn--ghost tf-btn--sm" data-i18n="landing.wow_ecosystem.open_the_brand_console">Open the Brand Console</a>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         THE FIRST SECTION — the seven-layer architecture spine
-         ==================================================================== -->
-    <section class="tf-section tf-surface tf-surface--light" id="layers" aria-labelledby="layers-title">
-      <div class="tf-shell">
-        <div class="tf-heading tf-reveal" style="margin-bottom:var(--tf-space-8)">
-          <span class="tf-label" data-i18n="landing.layers.the_tracefab_architecture">The TRACEFAB architecture</span>
-          <h2 class="tf-display-3" id="layers-title" data-i18n="landing.layers.seven_layers">Seven layers.<br data-i18n="landing.layers.one_chain_of_custody_for_your">One chain of custody for your data.</h2>
-          <p class="tf-lead" data-i18n="landing.layers.every_tracefab_surface_reads_f">
-            Every TRACEFAB surface reads from the same stack. Each layer answers one question, and each
-            answer is only as strong as the layer beneath it.
-          </p>
-        </div>
-
-        <div class="tf-layers tf-reveal">
-          <div class="tf-layer">
-            <div class="tf-layer__n" data-i18n="landing.layers.layer_01">LAYER 01</div>
-            <div>
-              <h3 class="tf-h3" data-i18n="landing.layers.supply_chain">Supply chain</h3>
-              <span class="tf-layer__q" data-i18n="landing.layers.who_makes_what">Who makes what?</span>
-            </div>
-            <div class="tf-layer__chips">
-              <span class="tf-chip" data-i18n="landing.layers.suppliers">Suppliers</span><span class="tf-chip" data-i18n="landing.layers.factories">Factories</span><span class="tf-chip" data-i18n="landing.layers.sites">Sites</span><span class="tf-chip" data-i18n="landing.layers.materials">Materials</span><span class="tf-chip" data-i18n="landing.layers.processes">Processes</span>
-            </div>
-          </div>
-
-          <div class="tf-layer">
-            <div class="tf-layer__n" data-i18n="landing.layers.layer_02">LAYER 02</div>
-            <div>
-              <h3 class="tf-h3" data-i18n="landing.layers.product_data">Product data</h3>
-              <span class="tf-layer__q" data-i18n="landing.layers.what_is_the_product">What is the product?</span>
-            </div>
-            <div class="tf-layer__chips">
-              <span class="tf-chip" data-i18n="landing.layers.products">Products</span><span class="tf-chip" data-i18n="landing.layers.composition">Composition</span><span class="tf-chip" data-i18n="landing.layers.materials">Materials</span><span class="tf-chip" data-i18n="landing.layers.components">Components</span><span class="tf-chip" data-i18n="landing.layers.identifiers">Identifiers</span>
-            </div>
-          </div>
-
-          <div class="tf-layer">
-            <div class="tf-layer__n" data-i18n="landing.layers.layer_03">LAYER 03</div>
-            <div>
-              <h3 class="tf-h3" data-i18n="landing.layers.evidence">Evidence</h3>
-              <span class="tf-layer__q" data-i18n="landing.layers.can_we_prove_it">Can we prove it?</span>
-            </div>
-            <div class="tf-layer__chips">
-              <span class="tf-chip" data-i18n="landing.layers.documents">Documents</span><span class="tf-chip" data-i18n="landing.layers.certificates">Certificates</span><span class="tf-chip" data-i18n="landing.layers.declarations">Declarations</span><span class="tf-chip" data-i18n="landing.layers.audits">Audits</span><span class="tf-chip" data-i18n="landing.layers.tests">Tests</span><span class="tf-chip" data-i18n="landing.layers.evidence">Evidence</span>
-            </div>
-          </div>
-
-          <div class="tf-layer">
-            <div class="tf-layer__n" data-i18n="landing.layers.layer_04">LAYER 04</div>
-            <div>
-              <h3 class="tf-h3" data-i18n="landing.layers.data_quality">Data quality</h3>
-              <span class="tf-layer__q" data-i18n="landing.layers.can_we_trust_it">Can we trust it?</span>
-            </div>
-            <div class="tf-layer__chips">
-              <span class="tf-badge tf-badge--declared tf-badge--plain" data-i18n="landing.layers.declared">Declared</span>
-              <span class="tf-badge tf-badge--documented tf-badge--plain" data-i18n="landing.layers.documented">Documented</span>
-              <span class="tf-badge tf-badge--verified tf-badge--plain" data-i18n="landing.layers.verified">Verified</span>
-              <span class="tf-badge tf-badge--certified tf-badge--plain" data-i18n="landing.layers.certified">Certified</span>
-              <span class="tf-badge tf-badge--review tf-badge--plain" data-i18n="landing.layers.needs_review">Needs review</span>
-              <span class="tf-badge tf-badge--missing tf-badge--plain" data-i18n="landing.layers.missing">Missing</span>
-            </div>
-          </div>
-
-          <div class="tf-layer">
-            <div class="tf-layer__n" data-i18n="landing.layers.layer_05">LAYER 05</div>
-            <div>
-              <h3 class="tf-h3" data-i18n="landing.layers.traceability">Traceability</h3>
-              <span class="tf-layer__q" data-i18n="landing.layers.where_did_it_come_from">Where did it come from?</span>
-            </div>
-            <div class="tf-layer__chips">
-              <span class="tf-chip" data-i18n="landing.layers.fiber">Fiber</span><span class="tf-chip" data-i18n="landing.layers.material">Material</span><span class="tf-chip" data-i18n="landing.layers.processing">Processing</span><span class="tf-chip" data-i18n="landing.layers.manufacturing">Manufacturing</span><span class="tf-chip" data-i18n="landing.layers.product">Product</span>
-            </div>
-          </div>
-
-          <div class="tf-layer">
-            <div class="tf-layer__n" data-i18n="landing.layers.layer_06">LAYER 06</div>
-            <div>
-              <h3 class="tf-h3" data-i18n="landing.layers.intelligence">Intelligence</h3>
-              <span class="tf-layer__q" data-i18n="landing.layers.what_does_the_data_tell_us">What does the data tell us?</span>
-            </div>
-            <div class="tf-layer__chips">
-              <span class="tf-chip" data-i18n="landing.layers.risk">Risk</span><span class="tf-chip" data-i18n="landing.layers.gaps">Gaps</span><span class="tf-chip" data-i18n="landing.layers.quality">Quality</span><span class="tf-chip" data-i18n="landing.layers.supplier_performance">Supplier performance</span><span class="tf-chip" data-i18n="landing.layers.product_readiness">Product readiness</span><span class="tf-chip" data-i18n="landing.layers.regulatory_readiness">Regulatory readiness</span>
-            </div>
-          </div>
-
-          <div class="tf-layer">
-            <div class="tf-layer__n" data-i18n="landing.layers.layer_07">LAYER 07</div>
-            <div>
-              <h3 class="tf-h3" data-i18n="landing.layers.digital_product_passport">Digital Product Passport</h3>
-              <span class="tf-layer__q" data-i18n="landing.layers.what_can_we_publish">What can we publish?</span>
-            </div>
-            <div class="tf-layer__chips">
-              <span class="tf-chip" data-i18n="landing.layers.dpp_readiness">DPP readiness</span><span class="tf-chip" data-i18n="landing.layers.product_passport">Product passport</span><span class="tf-chip" data-i18n="landing.layers.public_product_data">Public product data</span><span class="tf-chip" data-i18n="landing.layers.consumer_experience">Consumer experience</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         WHO IT IS FOR — the three people who have to get it in seconds (§31)
-         ==================================================================== -->
-    <section class="tf-section tf-surface tf-surface--light" id="who" aria-labelledby="who-title">
-      <div class="tf-shell">
-        <div class="tf-heading tf-reveal" style="margin-bottom:var(--tf-space-7)">
-          <span class="tf-label" data-i18n="landing.who.who_opens_tracefab">Who opens TRACEFAB</span>
-          <h2 class="tf-display-3" id="who-title" data-i18n="landing.who.three_people_three_questions_o">Three people. Three questions. One dataset.</h2>
-          <p class="tf-lead" data-i18n="landing.who.the_same_record_answers_a_foun">
-            The same record answers a founder, a compliance lead and a factory — without any of them
-            seeing what they should not.
-          </p>
-        </div>
-
-        <div class="tf-grid tf-grid--3 tf-reveal">
-          <article class="tf-persona">
-            <span class="tf-label" data-i18n="landing.who.ceo_founder">CEO / Founder</span>
-            <p class="tf-persona__q" data-i18n="landing.who.where_is_my_exposure">Where is my exposure?</p>
-            <p class="tf-body" data-i18n="landing.who.one_figure_per_collection_how">
-              One figure per collection: how much of the range you can actually prove today, and what
-              is missing before a regulator asks.
-            </p>
-            <a class="tf-persona__go" href="/brand-console/" data-i18n="landing.who.start_with_overview">Start with Overview</a>
-          </article>
-
-          <article class="tf-persona">
-            <span class="tf-label" data-i18n="landing.who.sustainability_compliance">Sustainability &amp; Compliance</span>
-            <p class="tf-persona__q" data-i18n="landing.who.will_this_hold_up_in_an_audit">Will this hold up in an audit?</p>
-            <p class="tf-body" data-i18n="landing.who.every_score_resolves_to_a_docu">
-              Every score resolves to a document, an issuer and a date. Six trust levels, none of them
-              invented — and the gap list that closes each one.
-            </p>
-            <a class="tf-persona__go" href="/quality-center/" data-i18n="landing.who.start_with_quality_center">Start with Quality Center</a>
-          </article>
-
-          <article class="tf-persona">
-            <span class="tf-label" data-i18n="landing.who.supplier">Supplier</span>
-            <p class="tf-persona__q" data-i18n="landing.who.what_do_you_need_from_me">What do you need from me?</p>
-            <p class="tf-body" data-i18n="landing.who.a_short_list_of_typed_question">
-              A short list of typed questions, one place to answer them, and answers you reuse across
-              every brand you work with.
-            </p>
-            <a class="tf-persona__go" href="/supplier-portal/" data-i18n="landing.who.start_with_supplier_portal">Start with Supplier Portal</a>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         WHY — overview → explore → inspect → act
-         ==================================================================== -->
-    <section class="tf-section tf-surface tf-surface--light" id="why" style="--tf-sf-bg:var(--tf-paper-2)" aria-labelledby="why-title">
-      <div class="tf-shell">
-        <div class="tf-row tf-row--between tf-row--wrap tf-reveal" style="align-items:flex-end;gap:var(--tf-space-5);margin-bottom:var(--tf-space-8)">
-          <div class="tf-heading" style="max-width:720px">
-            <span class="tf-label" data-i18n="landing.why.overview_explore_inspect_act">Overview → Explore → Inspect → Act</span>
-            <h2 class="tf-display-3" id="why-title" data-i18n="landing.why.complexity_you_can_finally_ope">Complexity you can finally operate.</h2>
-          </div>
-          <a href="/brand-console/" class="tf-btn tf-btn--dark" data-i18n="landing.why.explore_the_platform">Explore the platform</a>
-        </div>
-
-        <div class="tf-grid tf-grid--3 tf-reveal">
-          <article class="tf-card tf-card--hover">
-            <span class="tf-label" data-i18n="landing.why.collect">Collect</span>
-            <h3 class="tf-h3" style="margin-top:14px" data-i18n="landing.why.structured_requests_not_file_d">Structured requests, not file drops</h3>
-            <p class="tf-body" style="margin-top:10px" data-i18n="landing.why.a_data_request_becomes_typed_d">
-              A data request becomes typed data points with required evidence attached — reviewed,
-              accepted or rejected, never a folder of PDFs.
-            </p>
-            <div class="tf-row tf-row--wrap" style="gap:6px;margin-top:18px">
-              <span class="tf-chip" data-i18n="landing.why.data_points">Data points</span><span class="tf-chip" data-i18n="landing.why.versioned_answers">Versioned answers</span>
-            </div>
-          </article>
-
-          <article class="tf-card tf-card--hover">
-            <span class="tf-label" data-i18n="landing.why.verify">Verify</span>
-            <h3 class="tf-h3" style="margin-top:14px" data-i18n="landing.why.six_levels_of_trust_not_five_s">Six levels of trust, not five stars</h3>
-            <p class="tf-body" style="margin-top:10px" data-i18n="landing.why.declared_documented_verified_c">
-              Declared, documented, verified, certified, needs review, missing. Every score is
-              explainable down to the document that produced it.
-            </p>
-            <div class="tf-row tf-row--wrap" style="gap:6px;margin-top:18px">
-              <span class="tf-badge tf-badge--verified" data-i18n="landing.why.verified">Verified</span>
-              <span class="tf-badge tf-badge--certified" data-i18n="landing.why.certified">Certified</span>
-            </div>
-          </article>
-
-          <article class="tf-card tf-card--hover">
-            <span class="tf-label" data-i18n="landing.why.protect">Protect</span>
-            <h3 class="tf-h3" style="margin-top:14px" data-i18n="landing.why.supplier_secrets_stay_supplier">Supplier secrets stay supplier secrets</h3>
-            <p class="tf-body" style="margin-top:10px" data-i18n="landing.why.evidence_is_private_by_default">
-              Evidence is private by default and shared by scope. A supplier declares compliance
-              without exposing pricing, formulas or sub-contractors.
-            </p>
-            <div class="tf-row tf-row--wrap" style="gap:6px;margin-top:18px">
-              <span class="tf-chip" data-i18n="landing.why.row_level_security">Row-level security</span><span class="tf-chip" data-i18n="landing.why.scoped_sharing">Scoped sharing</span>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         PRODUCT INTELLIGENCE
-         ==================================================================== -->
-    <section class="tf-section tf-surface tf-surface--light" id="product-intelligence" aria-labelledby="pi-title">
-      <div class="tf-shell">
-        <div class="tf-pi">
-          <div class="tf-card tf-reveal">
-            <span class="tf-label" data-i18n="landing.product_intelligence.product">Product</span>
-            <h3 class="tf-h2" style="margin-top:12px" id="pi-title" data-i18n="landing.product_intelligence.organic_cotton_t_shirt">Organic Cotton T-Shirt</h3>
-            <p class="tf-code" style="margin-top:10px;display:inline-block" data-i18n="landing.product_intelligence.aw26_0248">AW26-0248</p>
-            <div style="margin-top:var(--tf-space-6);display:grid;gap:var(--tf-space-4)">
-              <div class="tf-metric-block">
-                <span class="tf-metric tf-metric--md">92<span style="font-size:.55em">%</span></span>
-                <span class="tf-label" data-i18n="landing.product_intelligence.data_quality">Data quality</span>
-              </div>
-              <div class="tf-metric-block">
-                <span class="tf-metric tf-metric--md">88<span style="font-size:.55em">%</span></span>
-                <span class="tf-label" data-i18n="landing.product_intelligence.dpp_readiness">DPP readiness</span>
-              </div>
-            </div>
-            <div class="tf-row tf-row--wrap" style="gap:6px;margin-top:var(--tf-space-6)">
-              <span class="tf-badge tf-badge--verified" data-i18n="landing.product_intelligence.tier_14_traced">Tier 1–4 traced</span>
-              <span class="tf-badge tf-badge--review" data-i18n="landing.product_intelligence.2_open_items">2 open items</span>
-            </div>
-          </div>
-
-          <div class="tf-stack tf-stack-6 tf-reveal">
-            <div>
-              <span class="tf-label" data-i18n="landing.product_intelligence.inspect">Inspect</span>
-              <div class="tf-pi__tabs" role="tablist" aria-label="Product views" style="margin-top:14px" id="tf-pi-tabs" data-i18n-attr="aria-label:landing.product_intelligence.product_views_al"></div>
-              <div class="tf-pi__panel" id="tf-pi-panel" role="tabpanel" tabindex="0"
-                   aria-labelledby="tf-pi-tab-overview" style="margin-top:14px"></div>
-            </div>
-
-            <div>
-              <span class="tf-label" data-i18n="landing.product_intelligence.product_lineage">Product lineage</span>
-              <ul class="tf-lineage" style="margin-top:14px">
-                <li><span class="tf-lineage__i">01</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.fiber">Fiber</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.ege_organic_co_op_turkiye">Ege Organic Co-op · Türkiye</span></li>
-                <li><span class="tf-lineage__i">02</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.spinner">Spinner</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.filatura_guimaraes_portugal">Filatura Guimarães · Portugal</span></li>
-                <li><span class="tf-lineage__i">03</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.yarn">Yarn</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.ne_30_1_combed_compact">Ne 30/1 combed compact</span></li>
-                <li><span class="tf-lineage__i">04</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.fabric">Fabric</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.185_g_m2_single_jersey">185 g/m² single jersey</span></li>
-                <li><span class="tf-lineage__i">05</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.dye_house">Dye house</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.ecodye_aquitaine_france">EcoDye Aquitaine · France</span></li>
-                <li><span class="tf-lineage__i">06</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.manufacturer">Manufacturer</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.atelier_milano_italy">Atelier Milano · Italy</span></li>
-                <li><span class="tf-lineage__i">07</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.finished_product">Finished product</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.aw26_0248">AW26-0248</span></li>
-                <li><span class="tf-lineage__i">08</span><span class="tf-lineage__t" data-i18n="landing.product_intelligence.dpp">DPP</span><span class="tf-lineage__s" data-i18n="landing.product_intelligence.cirpass_1_2_draft">CIRPASS 1.2 draft</span></li>
-              </ul>
-            </div>
-
-            <div class="tf-row tf-row--wrap" style="gap:12px">
-              <a href="/brand-console/" class="tf-btn tf-btn--dark tf-btn--sm" data-i18n="landing.product_intelligence.open_product_intelligence">Open product intelligence</a>
-              <span class="tf-demo-mark" data-i18n="landing.product_intelligence.demonstration_data">Demonstration data</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         GLOBAL REACH
-         ==================================================================== -->
-    <section class="tf-section tf-surface tf-surface--light" id="supply-chain" style="--tf-sf-bg:var(--tf-paper-2)" aria-labelledby="reach-title">
-      <div class="tf-shell">
-        <div class="tf-heading tf-heading--center tf-reveal" style="margin-bottom:var(--tf-space-8)">
-          <span class="tf-label" data-i18n="landing.supply_chain.europe_to_the_world">Europe to the world</span>
-          <h2 class="tf-display-3" id="reach-title" data-i18n="landing.supply_chain.built_for_europe_ready_for_any">Built for Europe. Ready for any origin.</h2>
-          <p class="tf-lead" data-i18n="landing.supply_chain.tracefab_ships_with_european_r">
-            TRACEFAB ships with European regulatory depth — ESPR, AGEC, CIRPASS — and no country
-            assumption. Any origin, any tier, any script.
-          </p>
-        </div>
-
-        <div class="tf-reach tf-reveal" role="list" aria-label="Supported origins" data-i18n-attr="aria-label:landing.supply_chain.supported_origins_al">
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.france">France</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.portugal">Portugal</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.italy">Italy</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.germany">Germany</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.spain">Spain</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.netherlands">Netherlands</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.turkiye">Türkiye</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.morocco">Morocco</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.tunisia">Tunisia</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.india">India</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.bangladesh">Bangladesh</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.vietnam">Vietnam</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.china">China</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.united_states">United States</span>
-          <span class="tf-chip" role="listitem" data-i18n="landing.supply_chain.any_country">+ any country</span>
-        </div>
-
-        <div class="tf-grid tf-grid--3 tf-reveal" style="margin-top:var(--tf-space-8)">
-          <article class="tf-hub">
-            <span class="tf-label" data-i18n="landing.supply_chain.tier_1_2_hub">Tier 1 &amp; 2 hub</span>
-            <h3 class="tf-h3" data-i18n="landing.supply_chain.portugal">Portugal</h3>
-            <p class="tf-body" data-i18n="landing.supply_chain.porto_guimaraes_gots_organic_j">Porto &amp; Guimarães — GOTS organic jersey, spinning and cut-and-sew mapped to facility level.</p>
-          </article>
-          <article class="tf-hub">
-            <span class="tf-label" data-i18n="landing.supply_chain.luxury_weaving">Luxury weaving</span>
-            <h3 class="tf-h3" data-i18n="landing.supply_chain.italy">Italy</h3>
-            <p class="tf-body" data-i18n="landing.supply_chain.biella_prato_traceable_fine_sp">Biella &amp; Prato — traceable fine spinning, ZDHC-compliant finishing, closed-loop recycled fibre.</p>
-          </article>
-          <article class="tf-hub">
-            <span class="tf-label" data-i18n="landing.supply_chain.european_flax">European flax</span>
-            <h3 class="tf-h3" data-i18n="landing.supply_chain.france">France</h3>
-            <p class="tf-body" data-i18n="landing.supply_chain.normandy_hauts_de_france_field">Normandy &amp; Hauts-de-France — field-to-yarn flax lots meeting AGEC traceability requirements.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         PROMISE
-         ==================================================================== -->
-    <section class="tf-section tf-surface tf-surface--dark" aria-labelledby="promise-title">
-      <div class="tf-tex tf-tex--warp" aria-hidden="true"></div>
-      <div class="tf-shell tf-stack tf-stack-7" style="position:relative;z-index:1;text-align:center">
-        <span class="tf-label tf-label--accent" style="justify-content:center" data-i18n="landing.promise.the_promise">The promise</span>
-        <ul class="tf-promise__list" id="tf-promise">
-          <li data-i18n="landing.promise.see_it">See it.</li>
-          <li data-i18n="landing.promise.structure_it">Structure it.</li>
-          <li data-i18n="landing.promise.verify_it">Verify it.</li>
-          <li data-i18n="landing.promise.trace_it">Trace it.</li>
-          <li data-i18n="landing.promise.prove_it">Prove it.</li>
-        </ul>
-        <div class="tf-stack tf-stack-4" style="align-items:center">
-          <h2 class="tf-display-3" id="promise-title">TRACEFAB</h2>
-          <p class="tf-lead" style="text-align:center" data-i18n="landing.promise.the_intelligence_layer_for_the">The intelligence layer for the global textile supply chain.</p>
-          <div class="tf-row tf-row--wrap" style="gap:12px;justify-content:center">
-            <a href="/brand-console/" class="tf-btn tf-btn--primary" data-i18n="landing.promise.explore_tracefab">Explore TRACEFAB</a>
-            <button type="button" class="tf-btn tf-btn--ghost" data-demo-open data-i18n="landing.promise.request_a_demo">Request a demo</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         RESOURCES
-         ==================================================================== -->
-    <section class="tf-section tf-surface tf-surface--light" id="resources" aria-labelledby="resources-title">
-      <div class="tf-shell">
-        <div class="tf-heading tf-reveal" style="margin-bottom:var(--tf-space-7)">
-          <span class="tf-label" data-i18n="landing.resources.resources">Resources</span>
-          <h2 class="tf-display-3" id="resources-title" data-i18n="landing.resources.go_deeper">Go deeper</h2>
-        </div>
-        <div class="tf-res tf-reveal">
-          <a href="/supplier-portal/">
-            <span class="tf-label" data-i18n="landing.resources.suppliers">Suppliers</span>
-            <span class="tf-h3" data-i18n="landing.resources.supplier_portal">Supplier Portal</span>
-            <span class="tf-body" data-i18n="landing.resources.complete_your_profile_add_faci">Complete your profile, add facilities and materials, answer requests, upload evidence.</span>
-          </a>
-          <a href="/quality-center/">
-            <span class="tf-label" data-i18n="landing.resources.data_quality">Data quality</span>
-            <span class="tf-h3" data-i18n="landing.resources.quality_center">Quality Center</span>
-            <span class="tf-body" data-i18n="landing.resources.completeness_evidence_coverage">Completeness, evidence coverage, verification rate and the actions that close each gap.</span>
-          </a>
-          <a href="/dpp/">
-            <span class="tf-label" data-i18n="landing.resources.public">Public</span>
-            <span class="tf-h3" data-i18n="landing.resources.consumer_passport">Consumer passport</span>
-            <span class="tf-body" data-i18n="landing.resources.what_a_customer_sees_when_they">What a customer sees when they scan the product: origin, composition, care, repair.</span>
-          </a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ======================================================================
-       FOOTER
-       ====================================================================== -->
-  <footer class="tf-section tf-surface tf-surface--dark" style="--tf-section-y:var(--tf-space-9)">
-    <div class="tf-shell">
-      <div class="tf-footer__grid">
-        <div class="tf-stack tf-stack-4">
-          <a href="/" class="tf-wordmark" aria-label="TRACEFAB home" data-i18n-attr="aria-label:landing.footer.tracefab_home_al">
-            <span class="tf-wordmark__mark" aria-hidden="true">tf</span>
-            <span class="tf-wordmark__name">TRACEFAB</span>
-          </a>
-          <p class="tf-body" style="max-width:38ch" data-i18n="landing.footer.european_textile_data_and_digi">
-            European textile data and Digital Product Passport infrastructure.
-          </p>
-          <span class="tf-demo-mark" data-i18n="landing.footer.product_surfaces_show_demonstr">Product surfaces show demonstration data</span>
-        </div>
-
-        <nav class="tf-footer__col" aria-label="Platform">
-          <span class="tf-label" data-i18n="landing.footer.platform">Platform</span>
-          <a href="#layers" data-i18n="landing.footer.architecture">Architecture</a>
-          <a href="#who" data-i18n="landing.footer.who_it_is_for">Who it is for</a>
-          <a href="#wow-ecosystem" data-i18n="landing.footer.supply_chain">Supply chain</a>
-          <a href="#product-intelligence" data-i18n="landing.footer.product_intelligence">Product intelligence</a>
-          <a href="/brand-console/" data-i18n="landing.footer.brand_console">Brand Console</a>
-        </nav>
-
-        <nav class="tf-footer__col" aria-label="Surfaces">
-          <span class="tf-label" data-i18n="landing.footer.surfaces">Surfaces</span>
-          <a href="/supplier-portal/" data-i18n="landing.footer.supplier_portal">Supplier Portal</a>
-          <a href="/quality-center/" data-i18n="landing.footer.quality_center">Quality Center</a>
-          <a href="/dpp/" data-i18n="landing.footer.consumer_passport">Consumer passport</a>
-          <a href="/operations/" data-i18n="landing.footer.operations">Operations</a>
-        </nav>
-
-        <nav class="tf-footer__col" aria-label="Regulation">
-          <span class="tf-label" data-i18n="landing.footer.regulation">Regulation</span>
-          <a href="#layers" data-i18n="landing.footer.espr">ESPR</a>
-          <a href="#layers" data-i18n="landing.footer.cirpass">CIRPASS</a>
-          <a href="#layers" data-i18n="landing.footer.agec_art_13">AGEC Art. 13</a>
-          <a href="#layers" data-i18n="landing.footer.csrd">CSRD</a>
-        </nav>
+        <span class="tf-hero__scroll" data-tf-reveal data-tf-delay="320">
+          <span data-i18n="hero.scroll">Unfold the system</span>
+          <i aria-hidden="true"></i>
+        </span>
       </div>
 
-      <hr class="tf-rule" style="margin-block:var(--tf-space-7) var(--tf-space-5)">
+      <!-- HERO VISUAL — the data core -->
+      <div class="tf-core" id="tf-core">
+        <div class="tf-core__frame">
+          <div class="tf-core__bar">
+            <div class="tf-core__bar-left">
+              <i class="tf-beacon" aria-hidden="true"></i>
+              <span class="tf-core__bar-title" data-i18n="core.title">Living data core</span>
+              <span class="tf-demo-tag" data-i18n="common.demoData">Demonstration data</span>
+            </div>
+            <div class="tf-core__bar-right">
+              <span class="tf-core__stat"><b data-tf-count data-i18n="core.stat1">1,248</b><em data-i18n="core.stat1Label">Connected products</em></span>
+              <span class="tf-core__stat"><b data-tf-count data-i18n="core.stat2">214</b><em data-i18n="core.stat2Label">Facilities mapped</em></span>
+              <span class="tf-core__stat"><b class="is-accent" data-tf-count data-i18n="core.stat3">92.4%</b><em data-i18n="core.stat3Label">Data quality</em></span>
+            </div>
+          </div>
 
-      <div class="tf-row tf-row--between tf-row--wrap" style="gap:12px">
-        <span class="tf-small" data-i18n="landing.footer.2026_tracefab_all_rights_reser">© 2026 TRACEFAB. All rights reserved.</span>
-        <span class="tf-small" data-i18n="landing.footer.dpp_readiness_is_a_preparation">DPP readiness is a preparation indicator, not a legal certification.</span>
+          <div class="tf-core__stage">
+            <div class="tf-core__inspect" role="status" aria-live="polite"></div>
+          </div>
+          <div class="tf-core__list"></div>
+
+          <div class="tf-core__bar" style="border-bottom:0;border-top:1px solid var(--tf-line-dark-faint)">
+            <div class="tf-core__bar-left">
+              <i class="tf-beacon" aria-hidden="true"></i>
+              <span class="tf-label tf-label--xs" data-i18n="core.footLeft">All seven layers synchronised</span>
+            </div>
+            <span class="tf-label tf-label--xs" data-i18n="core.footRight">ESPR · AGEC Art. 13 · CSRD · GS1 Digital Link</span>
+          </div>
+        </div>
       </div>
     </div>
-  </footer>
+  </section>
 
-  <!-- ======================================================================
-       DEMO REQUEST
-       ====================================================================== -->
-  <dialog class="tf-dialog" id="demo-modal" aria-labelledby="demo-title">
-    <form method="dialog" id="demo-form">
-      <span class="tf-label tf-label--accent" data-i18n="landing.footer.tracefab_enterprise">TRACEFAB enterprise</span>
-      <h2 class="tf-h1" id="demo-title" style="margin-top:12px" data-i18n="landing.footer.request_a_demo">Request a demo</h2>
-      <p class="tf-body" style="margin:12px 0 24px" data-i18n="landing.footer.see_how_tracefab_structures_yo">
-        See how TRACEFAB structures your textile supply chain data and produces ESPR-ready passports.
+  <!-- ════════════════════════════════════════════════════════════════════
+       TICKER — Europe → World
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="tf-ticker tf-on-dark" aria-hidden="true">
+    <div class="tf-ticker__track">
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i1">France</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i2">Portugal</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i3">Italy</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i13">ESPR 2024/1781</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i4">Germany</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i5">Türkiye</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i17">GOTS</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i6">Morocco</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i7">Tunisia</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i14">AGEC Article 13</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i8">India</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i18">GRS</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i9">Bangladesh</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i10">Vietnam</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i15">CSRD</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i11">China</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i19">OEKO-TEX</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i12">United States</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i16">GS1 Digital Link</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i20">ZDHC MRSL</span></span>
+      <span class="tf-ticker__item"><i></i><span data-i18n="ticker.i21">CIRPASS</span></span>
+      <!-- duplicated for a seamless loop -->
+      <span class="tf-ticker__item"><i></i>France</span>
+      <span class="tf-ticker__item"><i></i>Portugal</span>
+      <span class="tf-ticker__item"><i></i>Italy</span>
+      <span class="tf-ticker__item"><i></i>ESPR 2024/1781</span>
+      <span class="tf-ticker__item"><i></i>Germany</span>
+      <span class="tf-ticker__item"><i></i>Türkiye</span>
+      <span class="tf-ticker__item"><i></i>GOTS</span>
+      <span class="tf-ticker__item"><i></i>Morocco</span>
+      <span class="tf-ticker__item"><i></i>Tunisia</span>
+      <span class="tf-ticker__item"><i></i>AGEC Article 13</span>
+      <span class="tf-ticker__item"><i></i>India</span>
+      <span class="tf-ticker__item"><i></i>GRS</span>
+      <span class="tf-ticker__item"><i></i>Bangladesh</span>
+      <span class="tf-ticker__item"><i></i>Vietnam</span>
+      <span class="tf-ticker__item"><i></i>CSRD</span>
+      <span class="tf-ticker__item"><i></i>China</span>
+      <span class="tf-ticker__item"><i></i>OEKO-TEX</span>
+      <span class="tf-ticker__item"><i></i>United States</span>
+      <span class="tf-ticker__item"><i></i>GS1 Digital Link</span>
+      <span class="tf-ticker__item"><i></i>ZDHC MRSL</span>
+      <span class="tf-ticker__item"><i></i>CIRPASS</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       THE WOW MOMENT — your entire textile ecosystem
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="tf-section tf-eco tf-on-dark" id="supply-chain">
+    <div class="tf-warp" aria-hidden="true"></div>
+    <div class="tf-grid-rules" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+    <div class="tf-container">
+      <div class="tf-eco__head">
+        <div data-tf-reveal>
+          <span class="tf-eyebrow"><span data-i18n="eco.index">01</span> — <span data-i18n="eco.label">The connected foundation</span></span>
+          <h2 class="tf-eco__title" style="margin-top:20px">
+            <span data-i18n="eco.line1">Your entire textile ecosystem.</span>
+            <span data-i18n="eco.line2">One connected data foundation.</span>
+          </h2>
+        </div>
+        <div data-tf-reveal data-tf-delay="120">
+          <p class="tf-lead tf-inv" data-i18n="eco.lead">
+            A textile chain is not a list of suppliers. It is a sequence of transformations, each with
+            its own company, site, certificate, document and level of proof. TRACEFAB holds all of it
+            in one continuous model — and lets you read it one dimension at a time, or all at once.
+          </p>
+        </div>
+      </div>
+
+      <div class="tf-chain" id="tf-chain" data-tf-reveal data-tf-delay="60">
+        <div class="tf-chain__toolbar">
+          <div class="tf-chain__lenses" data-tf-lenses></div>
+          <span class="tf-demo-tag" data-i18n="common.demoData">Demonstration data</span>
+        </div>
+
+        <div class="tf-chain__scroll">
+          <div class="tf-chain__grid" data-tf-grid></div>
+        </div>
+
+        <div class="tf-chain__vertical" data-tf-vertical></div>
+
+        <div class="tf-dossier" data-tf-dossier></div>
+
+        <div class="tf-chain__foot">
+          <span class="tf-label tf-label--xs" data-i18n="chain.footLeft">Demonstration chain · Organic Cotton T-Shirt AW26-0248</span>
+          <span class="tf-label tf-label--xs" data-i18n="chain.footRight">9 stages · 4 tiers · 3 countries</span>
+        </div>
+      </div>
+
+      <p class="tf-label" style="margin-top:18px" data-i18n="eco.hint">
+        Select a stage to open its dossier. Toggle dimensions to read the same chain through a different lens.
       </p>
+    </div>
+  </section>
 
+  <!-- ════════════════════════════════════════════════════════════════════
+       LAYER SPINE — the architecture
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="tf-section tf-spine tf-on-light" id="platform">
+    <div class="tf-grid-rules" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+    <div class="tf-container">
+      <div class="tf-spine__head">
+        <div data-tf-reveal>
+          <span class="tf-eyebrow"><span data-i18n="spine.index">02</span> — <span data-i18n="spine.label">Platform architecture</span></span>
+          <h2 class="tf-display-1" style="margin-top:20px">
+            <span style="display:block" data-i18n="spine.line1">Seven layers.</span>
+            <span style="display:block" data-i18n="spine.line2">One continuous chain of proof.</span>
+          </h2>
+        </div>
+        <div data-tf-reveal data-tf-delay="120">
+          <p class="tf-lead" data-i18n="spine.lead">
+            Simple to understand. Deep to explore. Powerful to operate. Each layer answers one
+            question, and hands its answer to the next.
+          </p>
+        </div>
+      </div>
+
+      <div class="tf-spine__list">
+
+        <div class="tf-layer" id="layer-01" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l1.num">Layer 01</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l1.out">Network</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l1.name">Supply Chain</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l1.q">Who makes what?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l1.desc">Suppliers, factories, sites, materials and processes mapped across every tier — not a vendor list, a production network.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l1.chips">Suppliers · Factories · Sites · Materials · Processes</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l1.value">214</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l1.valueLabel">Facilities mapped</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-02" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l2.num">Layer 02</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l2.out">Product</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l2.name">Product Data</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l2.q">What is the product?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l2.desc">Composition, components, materials and identifiers resolved to the percentage, versioned on every revision.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l2.chips">Products · Composition · Materials · Components · Identifiers</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l2.value">1,248</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l2.valueLabel">Products connected</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-03" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l3.num">Layer 03</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l3.out">Proof</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l3.name">Evidence</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l3.q">Can we prove it?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l3.desc">Documents, certificates, declarations, audits and test reports stored with issuer, scope, validity and integrity seal.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l3.chips">Documents · Certificates · Declarations · Audits · Tests</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l3.value">9,847</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l3.valueLabel">Evidence items</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-04" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l4.num">Layer 04</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l4.out">Trust level</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l4.name">Data Quality</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l4.q">Can we trust it?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l4.desc">Every value carries a level: declared, documented, verified, certified, needs review or missing. Trust becomes measurable.</p>
+            <div class="tf-layer__chips" style="gap:6px">
+              <span class="tf-trust" data-level="missing" data-i18n="chain.status.missing">Missing</span>
+              <span class="tf-trust" data-level="review" data-i18n="chain.status.review">Needs review</span>
+              <span class="tf-trust" data-level="declared" data-i18n="chain.status.declared">Declared</span>
+              <span class="tf-trust" data-level="documented" data-i18n="chain.status.documented">Documented</span>
+              <span class="tf-trust" data-level="verified" data-i18n="chain.status.verified">Verified</span>
+              <span class="tf-trust" data-level="certified" data-i18n="chain.status.certified">Certified</span>
+            </div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l4.value">92.4%</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l4.valueLabel">Data quality</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-05" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l5.num">Layer 05</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l5.out">Chain</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l5.name">Traceability</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l5.q">Where did it come from?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l5.desc">Fibre to material to processing to manufacturing to product — a continuous custody chain, not disconnected claims.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l5.chips">Fibre → Material → Processing → Manufacturing → Product</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l5.value">91%</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l5.valueLabel">Products traceable</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-06" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail">
+            <span class="tf-layer__num" data-i18n="spine.layers.l6.num">Layer 06</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l6.out">Signals</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l6.name">Intelligence</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l6.q">What does the data tell us?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l6.desc">Risk, gaps, supplier performance, product readiness and regulatory readiness computed from your own data — never invented.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l6.chips">Risk · Gaps · Quality · Supplier performance · Readiness</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l6.value">42</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l6.valueLabel">Open signals</span>
+          </div>
+        </div>
+
+        <div class="tf-layer" id="layer-07" tabindex="0" data-tf-reveal>
+          <div class="tf-layer__rail" data-tf-terminal>
+            <span class="tf-layer__num" data-i18n="spine.layers.l7.num">Layer 07</span>
+            <span class="tf-layer__pass"><span class="tf-layer__pass-mark" aria-hidden="true"></span><span data-i18n="spine.layers.l7.out">Passport</span></span>
+          </div>
+          <div class="tf-layer__head">
+            <span class="tf-layer__name" data-i18n="spine.layers.l7.name">DPP</span>
+            <span class="tf-layer__q" data-i18n="spine.layers.l7.q">What can we publish?</span>
+          </div>
+          <div class="tf-layer__body">
+            <p class="tf-layer__desc" data-i18n="spine.layers.l7.desc">A readiness indicator, a product passport and a public consumer experience. A readiness score, never a legal certification.</p>
+            <div class="tf-layer__chips"><span class="tf-layer__chip" data-i18n="spine.layers.l7.chips">DPP readiness · Product passport · Public data · Consumer view</span></div>
+          </div>
+          <div class="tf-layer__aside">
+            <b data-tf-count data-i18n="spine.layers.l7.value">88%</b>
+            <span class="tf-label tf-label--xs" data-i18n="spine.layers.l7.valueLabel">DPP readiness</span>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="tf-body-sm" style="margin-top:20px" data-i18n="common.demoNote">
+        All figures on this page are demonstration data.
+      </p>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       PROMISE BAND
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="tf-section tf-section--tight tf-promise tf-on-dark" id="why">
+    <div class="tf-weave" aria-hidden="true"></div>
+    <div class="tf-container">
+      <div data-tf-reveal>
+        <span class="tf-eyebrow"><span data-i18n="promise.index">03</span> — <span data-i18n="promise.label">Why TRACEFAB</span></span>
+        <h2 class="tf-display-2" style="margin:20px 0 40px;max-width:20ch">
+          <span style="display:block" data-i18n="promise.line1">The intelligence layer</span>
+          <span style="display:block;color:var(--tf-ink-inv-soft)" data-i18n="promise.line2">for the global textile supply chain.</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="tf-container" style="padding-inline:0">
+      <div class="tf-promise__grid">
+        <div class="tf-promise__cell" data-tf-reveal>
+          <span class="tf-promise__verb" data-i18n="promise.c1Verb">See it.</span>
+          <p class="tf-promise__txt" data-i18n="promise.c1Txt">Every supplier, site, material and transformation in one connected model — including the tiers you have never been able to reach.</p>
+        </div>
+        <div class="tf-promise__cell" data-tf-reveal data-tf-delay="90">
+          <span class="tf-promise__verb" data-i18n="promise.c2Verb">Structure it.</span>
+          <p class="tf-promise__txt" data-i18n="promise.c2Txt">Spreadsheets and PDFs become structured data points, bound to products, versioned and comparable across your whole catalogue.</p>
+        </div>
+        <div class="tf-promise__cell" data-tf-reveal data-tf-delay="180">
+          <span class="tf-promise__verb" data-i18n="promise.c3Verb">Verify it.</span>
+          <p class="tf-promise__txt" data-i18n="promise.c3Txt">Every value carries a level of proof, from a simple declaration to a third-party certificate, with expiry and integrity tracked.</p>
+        </div>
+        <div class="tf-promise__cell" data-tf-reveal data-tf-delay="270">
+          <span class="tf-promise__verb" style="color:var(--tf-emerald)" data-i18n="promise.c4Verb">Prove it.</span>
+          <p class="tf-promise__txt" data-i18n="promise.c4Txt">Regulatory readiness, audit packs and Digital Product Passport preparation generated from the data you already hold.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tf-container" style="margin-top:clamp(32px,4vw,56px)">
+      <p class="tf-display-3" data-tf-reveal data-i18n="promise.kicker" style="max-width:30ch">
+        See it. Structure it. Verify it. Trace it. Prove it.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px" data-tf-reveal data-tf-delay="90">
+        <button type="button" class="tf-btn tf-btn--primary" data-tf-open-demo data-i18n="nav.demo">Request a demo</button>
+        <a href="/dpp/" class="tf-btn tf-btn--ghost-dark" data-i18n="footer.platform4">Public DPP</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     FOOTER
+     ══════════════════════════════════════════════════════════════════ -->
+<footer class="tf-footer tf-on-dark" id="resources">
+  <div class="tf-grid-rules" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="tf-container">
+    <div class="tf-footer__top">
+      <div>
+        <a href="/" class="tf-brand">
+          <svg class="tf-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="4" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.3"/>
+            <path d="M3 11h26M3 16h26M3 21h26" stroke="currentColor" stroke-opacity=".26" stroke-width="1"/>
+            <path d="M8 25.5l5-6.5 6 3 5-15.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>
+            <span class="tf-brand__word">TRACEFAB</span>
+            <span class="tf-brand__sub">DATA × TEXTILE × TRUST</span>
+          </span>
+        </a>
+        <p class="tf-footer__statement" data-i18n="footer.statement">
+          The intelligence layer for the global textile supply chain.
+        </p>
+        <span class="tf-label tf-label--xs" data-i18n="footer.europe">European by design · Global by architecture</span>
+      </div>
+
+      <div>
+        <h3 data-i18n="footer.colPlatform">Platform</h3>
+        <ul>
+          <li><a href="/brand-console/" data-i18n="footer.platform1">Brand Console</a></li>
+          <li><a href="/supplier-portal/" data-i18n="footer.platform2">Supplier Portal</a></li>
+          <li><a href="/quality-center/" data-i18n="footer.platform3">Quality Center</a></li>
+          <li><a href="/dpp/" data-i18n="footer.platform4">Public DPP</a></li>
+          <li><a href="/product-intelligence/" data-i18n="footer.platform5">Product Intelligence</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 data-i18n="footer.colDomains">Domains</h3>
+        <ul>
+          <li><a href="#layer-01" data-i18n="footer.domains1">Supply chain mapping</a></li>
+          <li><a href="#layer-03" data-i18n="footer.domains2">Evidence &amp; certifications</a></li>
+          <li><a href="#layer-04" data-i18n="footer.domains3">Data quality</a></li>
+          <li><a href="#layer-05" data-i18n="footer.domains4">Traceability</a></li>
+          <li><a href="#layer-07" data-i18n="footer.domains5">DPP readiness</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 data-i18n="footer.colResources">Resources</h3>
+        <ul>
+          <li><a href="/docs/architecture/01-system-context.md" data-i18n="footer.resources1">Platform architecture</a></li>
+          <li><a href="/docs/DESIGN_SYSTEM.md" data-i18n="footer.resources2">Design system</a></li>
+          <li><a href="/docs/architecture/15-product-api.md" data-i18n="footer.resources3">API reference</a></li>
+          <li><a href="/docs/architecture/02-multi-tenancy-and-security.md" data-i18n="footer.resources4">Security &amp; multi-tenancy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tf-footer__bottom">
+      <span class="tf-label tf-label--xs" data-i18n="footer.rights">© 2026 TRACEFAB. All rights reserved.</span>
+      <span class="tf-label tf-label--xs" data-i18n="footer.legal">DPP readiness is a preparation indicator, not a legal certification.</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     DEMO MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="tf-modal" id="tf-demo-modal" role="dialog" aria-modal="true" aria-labelledby="tf-demo-title">
+  <div class="tf-modal__panel">
+    <span class="tf-eyebrow" data-i18n="modal.eyebrow">Request a demo</span>
+    <h2 id="tf-demo-title" data-i18n="modal.title">See TRACEFAB on your own supply chain.</h2>
+    <p class="tf-body-sm" style="color:var(--tf-ink-inv-muted);margin-bottom:24px" data-i18n="modal.lead">
+      Tell us a little about your organisation and we will prepare a walkthrough using a chain that looks like yours.
+    </p>
+
+    <form novalidate>
       <div class="tf-field">
-        <label for="demo-name" data-i18n="landing.footer.full_name">Full name</label>
-        <input id="demo-name" name="name" type="text" autocomplete="name" required placeholder="Marie Dupont" data-i18n-attr="placeholder:landing.footer.marie_dupont_ph">
+        <label for="tf-f-name" data-i18n="modal.name">Full name</label>
+        <input id="tf-f-name" name="name" type="text" autocomplete="name" required>
       </div>
       <div class="tf-field">
-        <label for="demo-email" data-i18n="landing.footer.work_email">Work email</label>
-        <input id="demo-email" name="email" type="email" autocomplete="email" required placeholder="m.dupont@brand.com" data-i18n-attr="placeholder:landing.footer.m_dupont_brand_com_ph">
+        <label for="tf-f-email" data-i18n="modal.email">Work email</label>
+        <input id="tf-f-email" name="email" type="email" autocomplete="email" required>
       </div>
       <div class="tf-field">
-        <label for="demo-company" data-i18n="landing.footer.brand_or_atelier">Brand or atelier</label>
-        <input id="demo-company" name="company" type="text" autocomplete="organization" required placeholder="Maison / manufacturer" data-i18n-attr="placeholder:landing.footer.maison_manufacturer_ph">
+        <label for="tf-f-company" data-i18n="modal.company">Company</label>
+        <input id="tf-f-company" name="company" type="text" autocomplete="organization">
       </div>
-
-      <p class="tf-small" id="demo-status" role="status" style="margin:0 0 16px"></p>
-
-      <div class="tf-row" style="gap:10px;justify-content:flex-end">
-        <button type="button" class="tf-btn tf-btn--ghost" data-demo-close data-i18n="landing.footer.cancel">Cancel</button>
-        <button type="submit" class="tf-btn tf-btn--primary" data-i18n="landing.footer.send_request">Send request</button>
+      <div class="tf-field">
+        <label for="tf-f-role" data-i18n="modal.role">Role</label>
+        <select id="tf-f-role" name="role">
+          <option data-i18n="modal.roleBrand">Brand / Manufacturer</option>
+          <option data-i18n="modal.roleSupplier">Supplier</option>
+          <option data-i18n="modal.roleConsultant">Consultant / Auditor</option>
+          <option data-i18n="modal.roleOther">Other</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:22px">
+        <button type="submit" class="tf-btn tf-btn--primary" data-i18n="modal.submit">Request a demo</button>
+        <button type="button" class="tf-btn tf-btn--ghost-dark" data-tf-close-demo data-i18n="modal.cancel">Cancel</button>
       </div>
     </form>
-  </dialog>
 
-  <script src="/i18n-core.js"></script>
-  <script>
-  (function () {
-    'use strict';
+    <div data-tf-demo-success hidden>
+      <h3 class="tf-display-3" style="margin-bottom:10px" data-i18n="modal.successTitle">Request recorded.</h3>
+      <p class="tf-body-sm" style="color:var(--tf-ink-inv-muted);margin-bottom:22px" data-i18n="modal.successTxt">
+        This demonstration form is not connected to a mailbox yet. Nothing was transmitted.
+      </p>
+      <button type="button" class="tf-btn tf-btn--ghost-dark" data-tf-close-demo data-i18n="modal.close">Close</button>
+    </div>
+  </div>
+</div>
 
-    /* ------------------------------------------------------------------
-       Contrôle de langue résilient.
-       Le runtime partagé (i18n-core.js) possède la langue : on la lit et on
-       l'écrit chez lui, plus dans un localStorage privé à cette page. Deux
-       clés de stockage signifiaient que le choix fait sur la landing ne
-       suivait pas l'utilisateur sur les autres surfaces.
-       ------------------------------------------------------------------ */
-    var I18N = function () { return window.TracefabI18n || null; };
-    var LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt'];
-
-    function currentLang() {
-      var r = I18N();
-      return r ? r.language : 'en';
-    }
-
-    function paintLang(lang) {
-      if (LANGS.indexOf(lang) === -1) lang = 'en';
-      var code = document.getElementById('current-lang-code');
-      if (code) code.textContent = lang.toUpperCase();
-      document.documentElement.lang = lang;
-      Array.prototype.forEach.call(
-        document.querySelectorAll('.tf-lang__option'),
-        function (b) { b.setAttribute('aria-checked', b.dataset.lang === lang ? 'true' : 'false'); }
-      );
-    }
-
-    function setLang(lang) {
-      // Prefer the engine's own public API; never redefine it here (a local
-      // `function setLanguage` would shadow window.setLanguage depending on
-      // script order — see docs/UX_AUDIT_PHASE1.md, finding B6).
-      var r = I18N();
-      if (r) { r.setLanguage(lang); } else {
-        try { localStorage.setItem('tracefab.lang', lang); } catch (e) {}
-      }
-      paintLang(lang);
-      closeLang();
-    }
-
-    var langWrap = document.getElementById('tf-lang');
-    var langBtn = document.getElementById('lang-menu-btn');
-
-    // NOTE: the menu keeps id="tf-lang-menu" on purpose. The legacy engine's
-    // setLanguage writes an inline `display:none` onto #lang-dropdown-menu,
-    // which would outrank the .is-open class rule and stop the menu reopening.
-    function openLang() {
-      if (!langWrap) return;
-      langWrap.classList.add('is-open');
-      langBtn.setAttribute('aria-expanded', 'true');
-    }
-    function closeLang() {
-      if (!langWrap) return;
-      langWrap.classList.remove('is-open');
-      langBtn.setAttribute('aria-expanded', 'false');
-    }
-
-    if (langBtn) {
-      langBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        langWrap.classList.contains('is-open') ? closeLang() : openLang();
-      });
-      Array.prototype.forEach.call(document.querySelectorAll('.tf-lang__option'), function (b) {
-        b.addEventListener('click', function () { setLang(b.dataset.lang); });
-      });
-      document.addEventListener('click', function (e) {
-        if (!langWrap.contains(e.target)) closeLang();
-      });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { closeLang(); closeNav(); }
-      });
-    }
-    /*
-     * Amorçage : le contenu s'affiche d'abord en anglais (langue d'écriture de
-     * la page), puis apply() retraduit dès que le dictionnaire arrive. Aucun
-     * fetch ne bloque le premier rendu — et si le runtime est absent, la page
-     * reste lisible dans sa langue d'origine au lieu d'être vide.
-     */
-    /*
-     * Changer de langue doit retraduire ce que le JavaScript a construit : les
-     * données portent des clés, le rendu les résout, donc repeindre suffit.
-     */
-    document.addEventListener('tracefab:lang', function () {
-      paintLang(window.TracefabI18n ? window.TracefabI18n.language : 'en');
-      paintCore(coreIdx);
-      paintStep(stepIdx);
-      paintPiPanel(piIdx);
-    });
-
-    function bootI18n() {
-      /*
-       * L'appel est écrit `TracefabI18n.init(...)` et non via l'alias local `r` :
-       * le contrôle de service (test:i18n:serving) découvre le scope de chaque
-       * surface en lisant cet appel. Passer par un alias rendrait la page
-       * indétectable et ferait sauter la garantie « chaque scope déclaré existe
-       * dans toutes les langues qu'elle propose ».
-       */
-      if (!window.TracefabI18n) { paintLang('en'); return; }
-      window.TracefabI18n.init({ scope: 'landing', fallback: 'en' }).then(function () {
-        paintLang(window.TracefabI18n.language);
-        /* Le premier rendu traduit : les panneaux peints au chargement l'ont été
-           avant l'arrivée du dictionnaire. */
-        paintCore(coreIdx); paintStep(stepIdx); paintPiPanel(piIdx);
-      }, function () { paintLang('en'); });
-    }
-    bootI18n();
-
-    /* ------------------------------------------------------------------
-       Mobile navigation
-       ------------------------------------------------------------------ */
-    var nav = document.getElementById('tf-nav');
-    var burger = document.getElementById('tf-burger');
-
-    /*
-     * Les clés sont toujours COMPLÈTES (« landing.… »), ici comme dans le
-     * balisage : un helper qui préfixe en cachette rend les clés invisibles à
-     * tout contrôle qui lit le source, et deux conventions pour la même chose
-     * finissent par diverger.
-     */
-    function tr(key, fallback) {
-      var r = I18N();
-      var v = r ? r.t(key) : null;
-      return v === null ? fallback : v;
-    }
-    function closeNav() {
-      if (!nav || !burger) return;
-      nav.classList.remove('is-open');
-      burger.setAttribute('aria-expanded', 'false');
-      burger.setAttribute('aria-label', tr('landing.header_nav.open_menu_al', 'Open menu'));
-    }
-    if (burger) {
-      burger.addEventListener('click', function () {
-        var open = nav.classList.toggle('is-open');
-        burger.setAttribute('aria-expanded', open ? 'true' : 'false');
-        burger.setAttribute('aria-label', open
-          ? tr('landing.header_nav.close_menu_al', 'Close menu')
-          : tr('landing.header_nav.open_menu_al', 'Open menu'));
-      });
-      Array.prototype.forEach.call(
-        document.querySelectorAll('#tf-nav-panel a'),
-        function (a) { a.addEventListener('click', closeNav); }
-      );
-    }
-
-    /* ------------------------------------------------------------------
-       Header scroll state
-       ------------------------------------------------------------------ */
-    var header = document.getElementById('tf-header');
-    function onScroll() {
-      if (!header) return;
-      header.classList.toggle('is-scrolled', window.scrollY > 8);
-    }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-
-    /* ------------------------------------------------------------------
-       Scroll reveal + hero deploy (progressive disclosure)
-       ------------------------------------------------------------------ */
-    var revealTargets = document.querySelectorAll('.tf-reveal, .tf-deploy');
-    if ('IntersectionObserver' in window) {
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) {
-          if (en.isIntersecting) { en.target.classList.add('is-in'); io.unobserve(en.target); }
-        });
-      }, { rootMargin: '0px 0px -12% 0px', threshold: 0.12 });
-      Array.prototype.forEach.call(revealTargets, function (el) { io.observe(el); });
-    } else {
-      Array.prototype.forEach.call(revealTargets, function (el) { el.classList.add('is-in'); });
-    }
-
-    /* ------------------------------------------------------------------
-       Hero orbit — the core is the readout
-       ------------------------------------------------------------------ */
-    var DOMAINS = [
-            { name: 'landing.hero.suppliers', state: 'landing.hero.dom_tier_14_mapped', stat: '86' },
-            { name: 'landing.hero.products', state: 'landing.hero.dom_active_references', stat: '1,248' },
-            { name: 'landing.hero.materials', state: 'landing.hero.dom_composition_records', stat: '412' },
-            { name: 'landing.hero.facilities', state: 'landing.hero.dom_sites_geolocated', stat: '214' },
-            { name: 'landing.hero.documents', state: 'landing.hero.dom_private_evidence', stat: '3,907' },
-            { name: 'landing.hero.certifications', state: 'landing.hero.dom_standards_tracked', stat: '268' },
-            { name: 'landing.hero.evidence', state: 'landing.hero.dom_coverage', stat: '84%' },
-            { name: 'landing.hero.quality', state: 'landing.proof.verified_data', stat: '78%' },
-            { name: 'landing.hero.traceability', state: 'landing.proof.products_traceable', stat: '91%' },
-            { name: 'landing.header_nav.dpp', state: 'landing.proof.readiness', stat: '88%' }
-    ];
-    var DEFAULT = { state: 'landing.hero.10_domains_connected', stat: '1,248' };
-
-    var coreState = document.getElementById('tf-core-state');
-    var coreStat = document.getElementById('tf-core-stat');
-    var nodes = document.querySelectorAll('.tf-node');
-    var links = document.querySelectorAll('.tf-orbit-link');
-    var activeNode = null;
-
-    /* Les indices courants sont mémorisés pour pouvoir repeindre exactement ce
-       qui est affiché quand la langue change — sans repartir de l'état initial. */
-    var coreIdx = null;
-    var stepIdx = 0;
-    function paintCore(i) {
-      coreIdx = i;
-      var d = i === null ? DEFAULT : DOMAINS[i];
-      if (!d || !coreState || !coreStat) return;
-      coreState.textContent = tr(d.state, d.state);
-      coreStat.textContent = d.stat;
-    }
-
-    function setActive(i) {
-      Array.prototype.forEach.call(nodes, function (n) {
-        n.classList.toggle('is-active', Number(n.dataset.node) === i);
-      });
-      Array.prototype.forEach.call(links, function (l) {
-        l.classList.toggle('is-active', Number(l.dataset.link) === i);
-      });
-      paintCore(i);
-    }
-
-    Array.prototype.forEach.call(nodes, function (n) {
-      var i = Number(n.dataset.node);
-      n.setAttribute('aria-label', tr(DOMAINS[i].name, DOMAINS[i].name) + ' — '
-        + tr(DOMAINS[i].state, DOMAINS[i].state) + ' ' + DOMAINS[i].stat);
-      n.addEventListener('mouseenter', function () { setActive(i); });
-      n.addEventListener('focus', function () { setActive(i); });
-      n.addEventListener('mouseleave', function () { if (activeNode === null) setActive(null); else setActive(activeNode); });
-      n.addEventListener('click', function () {
-        activeNode = (activeNode === i) ? null : i;
-        setActive(activeNode);
-        var target = document.getElementById('wow-ecosystem');
-        if (activeNode !== null && target) {
-          target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-        }
-      });
-    });
-
-    function prefersReducedMotion() {
-      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    }
-
-    /* ------------------------------------------------------------------
-       Supply chain matrix — column inspection
-       ------------------------------------------------------------------ */
-    var STAGES = [
-      { tier: 'Tier 4 · Fiber',      name: 'Ege Organic Co-op',        loc: 'Izmir Basin · Plot 482 · Türkiye',
-        desc: 'Non-GMO organic cotton harvested under GOTS scope certificate CU-881294, with verified water stewardship and no synthetic pesticides.',
-        tags: ['GOTS organic', 'Regenerative', 'Water −45%'], quality: '96%', certs: '2', styles: '14', proof: 'Verified',
-        supplier: 'Ege Organic Co-op', country: 'Türkiye', facility: 'Izmir Basin · Plot 482', certificate: 'GOTS CU-881294', document: 'Transaction cert.', status: 'Verified', step: 'Fiber' },
-      { tier: 'Tier 3 · Material',   name: 'Aegean Gin House',         loc: 'Gin House 12 · Türkiye',
-        desc: 'Ginning and baling of lot A-118 with fibre length and micronaire analysis attached to the custody transfer.',
-        tags: ['GOTS scope', 'Lot analysis', 'Bale ledger'], quality: '94%', certs: '1', styles: '14', proof: 'Documented',
-        supplier: 'Aegean Gin House', country: 'Türkiye', facility: 'Gin House 12', certificate: 'GOTS Scope', document: 'Lot analysis A-118', status: 'Documented', step: 'Material' },
-      { tier: 'Tier 3 · Spinning',   name: 'Filatura Guimarães',       loc: 'Ring Mill · Porto Valley · Portugal',
-        desc: 'Combed compact ring-spun yarn, count Ne 30/1. Continuous mass-balance records with digital custody transfer at every batch.',
-        tags: ['OEKO-TEX STeP', 'Mass balance', 'Ne 30/1'], quality: '91%', certs: '3', styles: '28', proof: 'Verified',
-        supplier: 'Filatura Guimarães', country: 'Portugal', facility: 'Ring Mill · Porto Valley', certificate: 'OEKO-TEX STeP', document: 'Yarn spec Ne 30/1', status: 'Verified', step: 'Spinning' },
-      { tier: 'Tier 2 · Weaving',    name: 'Portugal Textile Mill',    loc: 'Santo Tirso Loom House · Portugal',
-        desc: '185 g/m² single jersey and 3/1 cotton twills. ISO 17025 accredited laboratory reports on burst strength and shrinkage, with digital custody transfer to Tier 1 assembly.',
-        tags: ['GOTS 6.0', 'ISO 17025', 'Mass balance conserved'], quality: '87%', certs: '3', styles: '12', proof: 'Verified',
-        supplier: 'Portugal Textile Mill', country: 'Portugal', facility: 'Santo Tirso Loom House', certificate: 'ISO 17025', document: 'Lab report #302', status: 'Certified', step: 'Weaving' },
-      { tier: 'Tier 2 · Dyeing',     name: 'EcoDye Aquitaine',         loc: 'Castres Wet Processing · France',
-        desc: 'Closed-loop water recycling with no discharge of hazardous substances, conforming to ZDHC MRSL v3.1.',
-        tags: ['ZDHC MRSL v3.1', 'Bluesign', 'Effluent recycled 92%'], quality: '93%', certs: '4', styles: '18', proof: 'Verified',
-        supplier: 'EcoDye Aquitaine', country: 'France', facility: 'Castres Wet Processing', certificate: 'ZDHC MRSL v3.1', document: 'Effluent report', status: 'Verified', step: 'Dyeing' },
-      { tier: 'Tier 1 · Cutting',    name: 'Atelier Barcelos',         loc: 'Cutting Floor 2 · Portugal',
-        desc: 'Automated precision cutting with marker efficiency recorded per cut plan and reconciled against the fabric receipt.',
-        tags: ['SMETA 4-Pillar', 'Cut plan CP-2291', 'Marker 87%'], quality: '89%', certs: '2', styles: '42', proof: 'Documented',
-        supplier: 'Atelier Barcelos', country: 'Portugal', facility: 'Cutting Floor 2', certificate: 'SMETA 4-Pillar', document: 'Cut plan CP-2291', status: 'Documented', step: 'Cutting' },
-      { tier: 'Tier 1 · Assembly',   name: 'Atelier Milano',           loc: 'Milan Assembly Unit · Italy',
-        desc: 'Garment assembly audited under SA8000. Two data items are still outstanding: wage benchmark evidence and the sub-contracting declaration.',
-        tags: ['SA8000', 'Living wage', '2 items open'], quality: '84%', certs: '2', styles: '42', proof: 'Needs review',
-        supplier: 'Atelier Milano', country: 'Italy', facility: 'Milan Assembly Unit', certificate: 'SA8000', document: 'Social audit 2026', status: 'Needs review', step: 'Assembly' },
-      { tier: 'Product',             name: 'Maison Tracefab',          loc: 'Paris Design HQ · France',
-        desc: 'Finished reference AW26-0248 reconciling 100% of its mass balance. Composition is declared; supporting evidence is still being collected.',
-        tags: ['AW26-0248', 'BOM reconciled', 'ESPR draft'], quality: '92%', certs: '1', styles: '1', proof: 'Declared',
-        supplier: 'Maison Tracefab', country: 'France', facility: 'Paris Design HQ', certificate: 'ESPR draft', document: 'Composition BOM', status: 'Declared', step: 'Product' },
-      { tier: 'Layer 07 · Passport', name: 'GS1 Resolver Node',        loc: 'CIRPASS 1.2 endpoint · European Union',
-        desc: 'Public consumer passport exposing origin, composition, care and repair without disclosing upstream trade secrets.',
-        tags: ['GS1 Digital Link', 'JSON-LD', 'Take-back active'], quality: '88%', certs: '0', styles: '1', proof: 'Passport ready',
-        supplier: 'GS1 Resolver', country: 'European Union', facility: 'CIRPASS endpoint', certificate: '—', document: 'JSON-LD passport', status: 'Passport ready', step: 'DPP' }
-    ];
-
-    var inspTier = document.getElementById('insp-tier');
-    var inspName = document.getElementById('insp-name');
-    var inspLoc = document.getElementById('insp-loc');
-    var inspDesc = document.getElementById('insp-desc');
-    var inspQuality = document.getElementById('insp-quality');
-    var inspCerts = document.getElementById('insp-certs');
-    var inspStyles = document.getElementById('insp-styles');
-    var inspProof = document.getElementById('insp-proof');
-    var inspTags = document.getElementById('insp-tags');
-    var activeStep = 3; // weaving, matches the default inspector copy
-
-    function paintStep(i) {
-      var d = STAGES[i];
-      if (!d) return;
-      activeStep = i;
-      stepIdx = i;
-      inspTier.textContent = d.tier;
-      inspName.textContent = d.name;
-      inspLoc.textContent = d.loc;
-      inspDesc.textContent = d.desc;
-      inspQuality.textContent = d.quality;
-      inspCerts.textContent = d.certs;
-      inspStyles.textContent = d.styles;
-      inspProof.textContent = d.proof;
-      // Build chips from data without ever interpolating into markup.
-      inspTags.textContent = '';
-      d.tags.forEach(function (t) {
-        var chip = document.createElement('span');
-        chip.className = 'tf-chip';
-        chip.textContent = t;
-        inspTags.appendChild(chip);
-      });
-
-      Array.prototype.forEach.call(document.querySelectorAll('.tf-chain-stephead'), function (h) {
-        h.classList.toggle('is-col-active', Number(h.dataset.step) === i);
-        h.setAttribute('aria-pressed', Number(h.dataset.step) === i ? 'true' : 'false');
-      });
-      Array.prototype.forEach.call(document.querySelectorAll('.tf-chain-cell'), function (c) {
-        c.classList.toggle('is-col-active', Number(c.dataset.col) === i);
-      });
-      Array.prototype.forEach.call(document.querySelectorAll('.tf-chain-card'), function (c) {
-        c.classList.toggle('is-active', Number(c.dataset.step) === i);
-      });
-    }
-
-    Array.prototype.forEach.call(document.querySelectorAll('.tf-chain-stephead'), function (h) {
-      var i = Number(h.dataset.step);
-      h.addEventListener('mouseenter', function () { paintStep(i); });
-      h.addEventListener('focus', function () { paintStep(i); });
-      h.addEventListener('click', function () { paintStep(i); });
-    });
-
-    // Build the mobile vertical stack from the same stage data
-    var stack = document.getElementById('tf-chain-stack');
-    if (stack) {
-      STAGES.forEach(function (d, i) {
-        var card = document.createElement('button');
-        card.type = 'button';
-        card.className = 'tf-chain-card';
-        card.dataset.step = String(i);
-        card.setAttribute('aria-pressed', 'false');
-
-        var head = document.createElement('div');
-        head.className = 'tf-chain-card__head';
-        var num = document.createElement('span');
-        num.className = 'tf-chain-stephead__n';
-        num.textContent = '0' + (i + 1);
-        var title = document.createElement('span');
-        title.className = 'tf-chain-card__t';
-        title.textContent = d.step;
-        head.appendChild(num); head.appendChild(title);
-
-        var dl = document.createElement('dl');
-        dl.className = 'tf-chain-card__dl';
-        [[tr('landing.wow_ecosystem.supplier','Supplier'), d.supplier], [tr('landing.wow_ecosystem.country','Country'), d.country],
-         [tr('landing.wow_ecosystem.facility','Facility'), d.facility], [tr('landing.wow_ecosystem.certificate','Certificate'), d.certificate],
-         [tr('landing.wow_ecosystem.document','Document'), d.document], [tr('landing.proof.data_quality','Data quality'), d.quality],
-         [tr('landing.wow_ecosystem.status','Status'), d.status]].forEach(function (pair) {
-          var dt = document.createElement('dt'); dt.textContent = pair[0];
-          var dd = document.createElement('dd'); dd.textContent = pair[1];
-          dl.appendChild(dt); dl.appendChild(dd);
-        });
-
-        card.appendChild(head); card.appendChild(dl);
-        card.addEventListener('click', function () { paintStep(i); });
-        stack.appendChild(card);
-      });
-    }
-
-    paintStep(activeStep);
-
-    /* ------------------------------------------------------------------
-       Product intelligence tabs — real tabs. The previous build styled eleven
-       pills with an "active" state and wired none of them; a technical buyer
-       clicks the first thing that looks interactive, so it has to answer.
-       ------------------------------------------------------------------ */
-    var PI_TABS = [
-      { id: 'overview', label: 'landing.product_intelligence.tab_overview', facts: [
-        ['landing.proof.data_quality', '92%'], ['landing.proof.dpp_readiness', '88%'],
-        ['landing.hero.traceability', 'Tier 1–4'], ['landing.product_intelligence.fact_open_items', '2'] ],
-        badges: [['landing.product_intelligence.tier_14_traced', 'verified'], ['landing.product_intelligence.2_open_items', 'review']] },
-
-      { id: 'composition', label: 'landing.layers.composition', facts: [
-        ['landing.product_intelligence.fact_organic_cotton', '85%'], ['landing.product_intelligence.fact_recycled_cotton', '15%'],
-        ['landing.product_intelligence.fact_mass_balance', '100% reconciled'], ['landing.product_intelligence.fact_elastane', '0%'] ],
-        badges: [['landing.product_intelligence.badge_bom_reconciled', 'verified']] },
-
-      { id: 'materials', label: 'landing.hero.materials', facts: [
-        ['landing.product_intelligence.yarn', 'Ne 30/1 combed compact'], ['landing.product_intelligence.fabric', '185 g/m² single jersey'],
-        ['landing.product_intelligence.fact_materials_on_record', '2'], ['landing.product_intelligence.fact_lot_references', '6'] ],
-        badges: [['landing.wow_ecosystem.mass_balance_conserved', 'verified']] },
-
-      { id: 'supply', label: 'landing.proof.supply_chain', facts: [
-        ['landing.hero.suppliers', '6'], ['landing.product_intelligence.fact_countries', '4'],
-        ['landing.proof.custody_stages', '9'], ['landing.hero.facilities', '7'] ],
-        badges: [['landing.product_intelligence.badge_all_stages_mapped', 'verified'], ['landing.product_intelligence.badge_1_stage_needs_review', 'review']] },
-
-      { id: 'manufacturing', label: 'landing.layers.manufacturing', facts: [
-        ['landing.wow_ecosystem.cutting', 'Atelier Barcelos · PT'], ['landing.wow_ecosystem.assembly', 'Atelier Milano · IT'],
-        ['landing.product_intelligence.fact_styles_on_line', '42'], ['landing.product_intelligence.fact_cut_plan', 'CP-2291'] ],
-        badges: [['landing.wow_ecosystem.smeta_4_pillar', 'certified']] },
-
-      { id: 'suppliers', label: 'landing.hero.suppliers', facts: [
-        ['landing.product_intelligence.fact_active_suppliers', '6'], ['landing.product_intelligence.fact_average_data_quality', '89%'],
-        ['landing.product_intelligence.fact_best_submission_rate', '94%'], ['landing.product_intelligence.fact_needing_review', '1'] ],
-        badges: [['landing.wow_ecosystem.atelier_milano', 'review']] },
-
-      { id: 'evidence', label: 'landing.hero.evidence', facts: [
-        ['landing.hero.documents', '14'], ['landing.wow_ecosystem.verified', '11'],
-        ['landing.product_intelligence.fact_pending_review', '3'], ['landing.product_intelligence.fact_storage', 'Private, hashed'] ],
-        badges: [['landing.product_intelligence.badge_11_verified', 'verified'], ['landing.product_intelligence.badge_3_pending', 'documented']] },
-
-      { id: 'certifications', label: 'landing.hero.certifications', facts: [
-        ['landing.product_intelligence.fact_active_certificates', '4'], ['landing.product_intelligence.fact_expiring_in_90_days', '0'],
-        ['landing.product_intelligence.fact_standards', 'GOTS · OEKO-TEX · ZDHC · SMETA'], ['landing.product_intelligence.fact_expired', '0'] ],
-        badges: [['landing.product_intelligence.badge_4_active', 'certified']] },
-
-      { id: 'quality', label: 'landing.hero.quality', facts: [
-        ['landing.product_intelligence.fact_open_issues', '2'], ['landing.product_intelligence.fact_critical', '1'],
-        ['landing.wow_ecosystem.needs_review', '1'], ['landing.product_intelligence.fact_blocking', '0'] ],
-        badges: [['landing.product_intelligence.badge_1_critical', 'missing'], ['landing.product_intelligence.badge_1_review', 'review']] },
-
-      { id: 'dpp', label: 'landing.header_nav.dpp', facts: [
-        ['landing.proof.readiness', '88%'], ['landing.product_intelligence.fact_missing_items', '2'],
-        ['landing.product_intelligence.fact_schema', 'CIRPASS 1.2 draft'], ['landing.product_intelligence.fact_resolver', 'GS1 Digital Link'] ],
-        badges: [['landing.product_intelligence.badge_2_items_missing', 'review']] },
-
-      { id: 'history', label: 'landing.product_intelligence.tab_history', facts: [
-        ['landing.product_intelligence.fact_revisions', '7'], ['landing.product_intelligence.fact_last_revision', '12 days ago'],
-        ['landing.product_intelligence.fact_contributors', '3'], ['landing.product_intelligence.fact_audit_trail', 'Immutable'] ],
-        badges: [['landing.product_intelligence.badge_sealed', 'certified']] }
-    ];
-
-    var piTabs = document.getElementById('tf-pi-tabs');
-    var piPanel = document.getElementById('tf-pi-panel');
-
-    var piIdx = 0;
-    function paintPiPanel(i) {
-      var t = PI_TABS[i];
-      if (!t || !piPanel) return;
-      piPanel.textContent = '';
-      piPanel.setAttribute('aria-labelledby', 'tf-pi-tab-' + t.id);
-      piIdx = i;
-
-      t.facts.forEach(function (pair) {
-        var box = document.createElement('div');
-        box.className = 'tf-pi__fact';
-        var lab = document.createElement('span');
-        lab.className = 'tf-label';
-        lab.textContent = tr(pair[0], pair[0]);
-        var val = document.createElement('span');
-        val.className = 'tf-pi__v';
-        val.textContent = pair[1];
-        box.appendChild(lab); box.appendChild(val);
-        piPanel.appendChild(box);
-      });
-
-      t.badges.forEach(function (b) {
-        b = [tr(b[0], b[0]), b[1]];
-        var badge = document.createElement('span');
-        badge.className = 'tf-badge tf-badge--' + b[1];
-        badge.textContent = b[0];
-        piPanel.appendChild(badge);
-      });
-
-      Array.prototype.forEach.call(piTabs.children, function (btn, k) {
-        var on = k === i;
-        /* Le libellé est résolu ici, pas à la construction : les boutons sont
-           créés au chargement, avant l'arrivée du dictionnaire, et un libellé
-           figé à ce moment-là resterait une clé visible. */
-        if (PI_TABS[k]) btn.textContent = tr(PI_TABS[k].label, PI_TABS[k].label);
-        btn.classList.toggle('is-on', on);
-        btn.setAttribute('aria-selected', on ? 'true' : 'false');
-        btn.tabIndex = on ? 0 : -1;
-      });
-    }
-
-    if (piTabs && piPanel) {
-      PI_TABS.forEach(function (t, i) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'tf-pi__tab';
-        btn.id = 'tf-pi-tab-' + t.id;
-        btn.setAttribute('role', 'tab');
-        btn.setAttribute('aria-selected', 'false');
-        btn.textContent = tr(t.label, t.label);
-        btn.addEventListener('click', function () { paintPiPanel(i); });
-        btn.addEventListener('keydown', function (e) {
-          var dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-          if (!dir) return;
-          e.preventDefault();
-          var next = (i + dir + PI_TABS.length) % PI_TABS.length;
-          piTabs.children[next].focus();
-          paintPiPanel(next);
-        });
-        piTabs.appendChild(btn);
-      });
-      paintPiPanel(0);
-    }
-
-    /* ------------------------------------------------------------------
-       Promise sequence — one word lights at a time, then holds
-       ------------------------------------------------------------------ */
-    var promise = document.getElementById('tf-promise');
-    if (promise && !prefersReducedMotion() && 'IntersectionObserver' in window) {
-      var items = promise.querySelectorAll('li');
-      var pio = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) {
-          if (!en.isIntersecting) return;
-          pio.unobserve(en.target);
-          Array.prototype.forEach.call(items, function (li, k) {
-            setTimeout(function () { li.classList.add('is-on'); }, 140 * k);
-          });
-        });
-      }, { threshold: 0.4 });
-      pio.observe(promise);
-    } else if (promise) {
-      Array.prototype.forEach.call(promise.querySelectorAll('li'), function (li) { li.classList.add('is-on'); });
-    }
-
-    /* ------------------------------------------------------------------
-       Demo dialog — native <dialog>, no focus-trap hand-rolling
-       ------------------------------------------------------------------ */
-    var dlg = document.getElementById('demo-modal');
-    var status = document.getElementById('demo-status');
-
-    function openDemo() { if (dlg && typeof dlg.showModal === 'function') { status.textContent = ''; dlg.showModal(); } }
-    function closeDemo() { if (dlg && dlg.open) dlg.close(); }
-
-    Array.prototype.forEach.call(document.querySelectorAll('[data-demo-open]'), function (b) {
-      b.addEventListener('click', function () { closeNav(); openDemo(); });
-    });
-    Array.prototype.forEach.call(document.querySelectorAll('[data-demo-close]'), function (b) {
-      b.addEventListener('click', closeDemo);
-    });
-
-    var form = document.getElementById('demo-form');
-    if (form) {
-      form.addEventListener('submit', function () {
-        // No demo-request endpoint exists in the API yet; acknowledge locally
-        // rather than pretending to persist. Wired up when the route lands.
-        status.textContent = 'Thanks — this demonstration build records nothing. Our team will reach out.';
-      });
-    }
-  })();
-  </script>
+<script src="/assets/i18n/en.js?v=0301922d"></script>
+<script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
+  <script src="/assets/js/index.0.js?v=65e736ef"></script>
+<script src="/assets/js/tf-landing.js?v=09027282" defer></script>
 </body>
 </html>

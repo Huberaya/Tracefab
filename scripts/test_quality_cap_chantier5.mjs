@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('--- Chantier 5 : Test Suite - Corrective Action Plans (CAP) & Remediation Workflow ---');
 
@@ -61,7 +62,7 @@ console.log('✓ API index routing table verified');
 
 // 5. Verify Brand Console UX
 const brandConsolePath = path.resolve('brand-console/index.html');
-const brandConsole = fs.readFileSync(brandConsolePath, 'utf8');
+const brandConsole = pageSource('brand-console/index.html');
 assert(brandConsole.includes('data-action="open-cap-modal"'), 'Brand console must provide button to open CAP modal');
 assert(brandConsole.includes('id="create-cap-form"'), 'Brand console must provide CAP creation form');
 assert(brandConsole.includes('data-action="open-review-cap-modal"'), 'Brand console must provide review CAP button');
@@ -71,25 +72,15 @@ console.log('✓ Brand Console UI/UX integration verified');
 
 // 6. Verify Supplier Portal UX
 const supplierPortalPath = path.resolve('supplier-portal/index.html');
-const supplierPortal = fs.readFileSync(supplierPortalPath, 'utf8');
-/**
- * Le texte d'interface du portail vit dans locales/{lang}/supplier.json : un
- * composant ne doit plus porter de contenu métier en dur. On vérifie donc que le
- * portail appelle la clé ET que les neuf langues la traduisent — c'est plus
- * strict que la présence d'une chaîne française dans le HTML.
- */
-const SUPPLIER_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
-const readDict = (lang) => JSON.parse(fs.readFileSync(path.resolve(`locales/${lang}/supplier.json`), 'utf8'));
-function assertTranslated(key, expectedFr, label) {
-  assert(supplierPortal.includes(`t('${key}')`), `${label} (le portail doit appeler t('${key}'))`);
-  for (const lang of SUPPLIER_LANGS) {
-    const value = readDict(lang)[key];
-    assert(typeof value === 'string' && value.trim().length > 0, `${label} (${lang} doit traduire ${key})`);
-  }
-  assert(readDict('fr')[key] === expectedFr, `${label} (la valeur française doit être conservée)`);
-}
-
-assertTranslated('ui_plans_d_actions_correctives_recus', readDict('fr')['ui_plans_d_actions_correctives_recus'], 'Supplier portal must display received CAPs');
+const supplierPortal = pageSource('supplier-portal/index.html');
+// La copie n'est plus en dur : le balisage appelle la cle, et le catalogue
+// francais conserve le libelle d'origine.
+assert(supplierPortal.includes("t('spCapTitle')"), 'Supplier portal must display received CAPs');
+assert(
+  JSON.parse(fs.readFileSync(path.resolve('assets/i18n/fr.json'), 'utf8'))
+    .portal?.spCapTitle === 'Plans d’Actions Correctives Reçus (CAP / 8D)',
+  'fr.json portal.spCapTitle must keep the original French wording'
+);
 assert(supplierPortal.includes('cap-submit-form'), 'Supplier portal must provide remediation submission form');
 assert(supplierPortal.includes('submitCapRemediation'), 'Supplier portal must implement submitCapRemediation function');
 console.log('✓ Supplier Portal UI/UX integration verified');

@@ -2,23 +2,19 @@
   "builds": [
     {
       "src": "api/index.ts",
-      "use": "@vercel/node@23.0.0",
-      "config": { "includeFiles": ["catalog/**/*.json"] }
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "catalog/**/*.json"
+        ]
+      }
     },
     {
       "src": "**/*.html",
       "use": "@vercel/static"
     },
     {
-      "src": "public/**/*",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "assets/**/*",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "locales/**/*",
+      "src": "assets/**",
       "use": "@vercel/static"
     }
   ],
@@ -26,23 +22,86 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
-        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
-        { "key": "Origin-Agent-Cluster", "value": "?1" },
-        { "key": "X-DNS-Prefetch-Control", "value": "off" },
-        { "key": "X-Permitted-Cross-Domain-Policies", "value": "none" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev; connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev https://api.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests" }
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=()"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Origin-Agent-Cluster",
+          "value": "?1"
+        },
+        {
+          "key": "X-DNS-Prefetch-Control",
+          "value": "off"
+        },
+        {
+          "key": "X-Permitted-Cross-Domain-Policies",
+          "value": "none"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev; connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev https://api.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/assets/js/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/design-system/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/i18n/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, must-revalidate"
+        }
       ]
     },
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
       ]
     }
   ],
@@ -68,11 +127,19 @@
       "dest": "/brand-console/index.html"
     },
     {
+      "src": "/product-intelligence(?:/)?",
+      "dest": "/product-intelligence/index.html"
+    },
+    {
       "src": "/dpp(?:/)?",
       "dest": "/dpp/index.html"
     },
     {
       "src": "/p/(.*)",
+      "dest": "/dpp/index.html?gtin=$1"
+    },
+    {
+      "src": "/dpp/([^/]+)",
       "dest": "/dpp/index.html?gtin=$1"
     },
     {
@@ -82,35 +149,6 @@
     {
       "src": "/operations(?:/)?",
       "dest": "/operations/index.html"
-    },
-    {
-      "src": "/evidence(?:/)?",
-      "dest": "/evidence/index.html"
-    },
-    {
-      "src": "/traceability(?:/)?",
-      "dest": "/traceability/index.html"
-    },
-    {
-      "src": "/passport(?:/)?",
-      "dest": "/passport/index.html"
-    },
-    {
-      "src": "/admin(?:/)?",
-      "dest": "/admin/index.html"
-    },
-    {
-      "src": "/i18n-core.js",
-      "dest": "/public/i18n-core.js"
-    },
-
-    {
-      "src": "/auto-translate.js",
-      "dest": "/public/auto-translate.js"
-    },
-    {
-      "src": "/translations_deep.json",
-      "dest": "/public/translations_deep.json"
     },
     {
       "handle": "filesystem"

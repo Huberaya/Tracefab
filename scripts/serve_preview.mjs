@@ -2,20 +2,8 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 
-const PORT = Number(process.env.PORT || 3000);
+const PORT = 3000;
 const ROOT = process.cwd();
-
-/*
- * Les routes sont lues depuis vercel.json, pas recopiées à la main.
- *
- * Une liste codée en dur dérive : `/i18n-core.js` en était absent, donc aucune des
- * surfaces i18n ne pouvait charger son runtime en preview — exactement la classe de
- * défaut du Chantier 29, mais côté aperçu local. En dérivant du fichier qui décide
- * en production, l'aperçu ne peut plus s'en écarter.
- */
-const ROUTES = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8')).routes
-  .filter((r) => r.dest && !r.dest.includes('$1'))
-  .map((r) => ({ re: new RegExp(`^${r.src}$`), dest: r.dest.split('?')[0] }));
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -44,9 +32,9 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   let pathname = decodeURIComponent(url.pathname);
 
-  // Mirror vercel.json so the preview matches production routing.
-  const mapped = ROUTES.find((r) => r.re.test(pathname));
-  if (mapped) pathname = mapped.dest;
+  if (pathname === '/') {
+    pathname = '/brand-console/index.html';
+  }
 
   const filePath = path.join(ROOT, pathname);
 

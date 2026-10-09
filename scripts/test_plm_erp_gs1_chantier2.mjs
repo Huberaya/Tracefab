@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('=== TEST SUITE CHANTIER 2: INTEROPÉRABILITÉ PLM/ERP & GS1 ===');
 
@@ -91,7 +92,7 @@ assert(indexTs.includes('gs1/digital-link') || indexTs.includes('gs1\\/digital\\
 
 // 8. Verify Brand Console UI Wiring
 console.log('8. Checking Brand Console UI Wiring...');
-const brandConsoleHtml = await readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8');
+const brandConsoleHtml = pageSource('brand-console/index.html');
 assert(brandConsoleHtml.includes("navButton('integrations'") || brandConsoleHtml.includes('data-view="integrations"'), 'Nav must include integrations tab');
 assert(brandConsoleHtml.includes('function integrationsView()'), 'Must declare integrationsView()');
 assert(brandConsoleHtml.includes('id="plm-import-form"'), 'Must have import form in modal');
@@ -100,6 +101,7 @@ assert(brandConsoleHtml.includes('Centric Software'), 'Must display Centric Soft
 assert(brandConsoleHtml.includes('Lectra (Kubix Link)'), 'Must display Lectra');
 assert(brandConsoleHtml.includes('SAP S/4HANA Fashion'), 'Must display SAP S/4HANA');
 assert(brandConsoleHtml.includes('GS1 EPCIS 2.0'), 'Must display GS1 EPCIS');
-assert(brandConsoleHtml.includes('Identité Numérique GS1 & Digital Link'), 'Must display GS1 Digital Link section');
+assert(brandConsoleHtml.includes("bt('igGs1Title')"), 'Must display GS1 Digital Link section');
+assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.igGs1Title, 'Identité Numérique GS1 & Digital Link', 'la copie FR doit rester au catalogue');
 
 console.log('✓ Chantier 2 (Interopérabilité PLM/ERP & GS1) verified successfully!');

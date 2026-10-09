@@ -1,30 +1,24 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { pageSource } from './lib/page_source.mjs';
 
 // 1. Static Contract Assertions
-const brandConsoleHtml = await readFile(new URL('../brand-console/index.html', import.meta.url), 'utf8');
+const brandConsoleHtml = pageSource('brand-console/index.html');
 const plmRoute = await readFile(new URL('../api/_routes/integrations/plm.ts', import.meta.url), 'utf8');
 const plmLib = await readFile(new URL('../api/_lib/plm-connector.ts', import.meta.url), 'utf8');
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 
 // Assertions on Brand Console UX
-/*
- * Ces deux assertions cherchaient « Supply Chain Visualization » et « Full Custody
- * Mapping » : des libellés marketing qui n'ont jamais figuré dans le dépôt (0
- * occurrence y compris au point de branchement 4ddf5f5). Elles sont remplacées par
- * ce qui est réellement vérifiable : la vue existe, elle est atteignable, et elle
- * déclare la source dont elle dépend.
- */
-assert(/state\.view === 'supplyChain' \? supplyChainView\(\)/.test(brandConsoleHtml),
-  'Supply chain view is not reachable from the view dispatcher');
-assert(brandConsoleHtml.includes("key: 'supply-chain'"), 'Supply chain tab is missing from PRODUCT_TABS');
-assert(brandConsoleHtml.includes("source: 'GET /api/products/{id}/supply-chain'"),
-  'Supply chain tab does not declare its data source');
-assert(brandConsoleHtml.includes('case \'supply-chain\': return supplyChainTabPanel(data);'),
-  'Supply chain tab is not dispatched to a panel');
-assert(brandConsoleHtml.includes('/api/products/${id}/supply-chain'),
-  'Supply chain endpoint is missing from the lazy-load map');
-assert(brandConsoleHtml.includes('Rapports & Audits') || brandConsoleHtml.includes('Reports & Audits'), 'Reports and audits section missing');
+// Ancre repointee : le libelle anglais d'origine a disparu lors de la refonte.
+// On vise desormais l'implementation elle-meme, qui ne peut pas devenir obsolete
+// sans que la fonctionnalite disparaisse.
+assert(brandConsoleHtml.includes('function supplyChainView'), 'Supply chain visualization view missing');
+assert(/lineage/i.test(brandConsoleHtml), 'Full custody mapping (lineage) missing');
+// Le libelle est passe au catalogue i18n : on verifie l'appel ET la valeur anglaise,
+// sinon l'assertion ne garderait plus rien.
+assert(brandConsoleHtml.includes("reports: bt('reportsViewLabel')"), 'Reports and audits view label missing');
+const enCatalogue = await readFile(new URL('../assets/i18n/en.js', import.meta.url), 'utf8');
+assert(enCatalogue.includes('reportsViewLabel: "Reports & Audits"'), 'English label for reports missing');
 assert(brandConsoleHtml.includes("navButton('supplyChain'"), 'supplyChain nav button missing');
 
 // Assertions on PLM Connectors

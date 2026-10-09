@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { pageSource } from './lib/page_source.mjs';
 
 console.log('=== TEST SUITE CHANTIER 4: DIRECTIVE ALLÉGATIONS VERTES & ANTI-GREENWASHING ===');
 
@@ -80,8 +81,9 @@ console.log('✓ API endpoints properly wired');
 
 // 5. Verify Brand Console UI Integration
 console.log('5. Checking Brand Console UI implementation...');
-const brandConsole = await readFile('brand-console/index.html', 'utf8');
-assert.ok(brandConsole.includes('Bouclier Anti-Greenwashing & Allégations Vertes'), 'Must have Green Claims section');
+const brandConsole = pageSource('brand-console/index.html');
+assert.ok(brandConsole.includes("bt('qcGreenShield')"), 'Must have Green Claims section');
+assert.strictEqual(JSON.parse(await readFile(new URL('../assets/i18n/fr.json', import.meta.url), 'utf8')).console.qcGreenShield, 'Bouclier Anti-Greenwashing & Allégations Vertes', 'la copie FR doit rester au catalogue');
 assert.ok(brandConsole.includes('data-action="audit-green-claims"'), 'Must have audit-green-claims button');
 assert.ok(brandConsole.includes('id="green-claim-form"'), 'Must have claim registration form');
 assert.ok(brandConsole.includes('greenClaimsAudit'), 'Must bind audit results');

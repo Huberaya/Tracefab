@@ -285,7 +285,7 @@ phase3_css = '''
       --tf-text-secondary: #90a498;
       --tf-border-glass: rgba(255, 255, 255, 0.08);
       --tf-border-accent: rgba(16, 185, 129, 0.3);
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-sans: 'Inter Tight', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', Menlo, Consolas, monospace;
     }
 

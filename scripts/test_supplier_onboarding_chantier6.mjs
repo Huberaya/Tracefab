@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { pageSource } from './lib/page_source.mjs';
 
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -64,10 +65,7 @@ assert(
 
 // 3. Verify Supplier Portal UI
 console.log('3. Checking Supplier Portal UI implementation...');
-const supplierPortalHtml = await readFile(
-  new URL('../supplier-portal/index.html', import.meta.url),
-  'utf8',
-);
+const supplierPortalHtml = pageSource('supplier-portal/index.html');
 assert(
   supplierPortalHtml.includes("state.view = 'selfOnboarding'"),
   'Supplier portal must transition to selfOnboarding instead of throwing error',
