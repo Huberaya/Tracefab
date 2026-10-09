@@ -1,0 +1,16 @@
+PREUVE C — routes Wallet publiques, exécutées contre PostgreSQL 17.11
+Rôle applicatif : tracefab_app (NOBYPASSRLS), base tf_audit_apres
+Date : 2026-10-09T19:23:19+00:00
+
+AVANT (commit b61d771 .. b0c976f) : la route appelait getFallbackDppData()
+  sans jamais consulter la base. Tout identifiant produisait un laissez-
+  passer portant : composition « 100% Coton Biologique Régénératif »,
+  2,15 kg CO2e, grade A, circularité 92, chaîne « Ferme Izmir → Hub Lyon »
+  et le certificat de transaction GOTS « TC-CU-881294-GOTS-2026 ».
+
+APRÈS : résolution du produit réellement publié (public_slug non nul),
+  sous contexte public, refus sinon.
+
+  GTIN inexistant      : 404 {"error":"product_passport_not_found"}
+  GTIN de la fiction   : 404 {"error":"product_passport_not_found"}
+  identifiant vide     : 400 {"error":"missing_identifier"}

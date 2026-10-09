@@ -116,15 +116,30 @@ jobs:
         # Les suites neon et staging exigent une base ou un environnement
         # deploye : elles ont leur propre etage.
         #
-        # test:regression est exclu pour une raison differente et assumee : sa
-        # reference est une image, donc liee a son environnement de rendu. Les
-        # fontes distantes sont bloquees, mais le repli depend des polices
-        # systeme, qui different entre le poste de developpement et le runner.
-        # Le laisser ici le ferait rougir pour une raison etrangere au code ;
-        # l'automatiser suppose de figer le rendu dans un conteneur.
+          # test:regression N'EST PLUS EXCLU.
+          #
+          # Il l'etait parce que sa reference est une image, liee a son
+          # environnement de rendu : les fontes distantes sont bloquees, mais
+          # le repli depend des polices systeme, qui different entre le poste
+          # de developpement et le runner.
+          #
+          # C'etait une exclusion de trop. Le test porte deja sa propre garde :
+          # il compare l'empreinte de rendu courante (version de Chromium et
+          # largeurs mesurees d'une chaine temoin en sans-serif, serif et
+          # monospace) a celle enregistree dans
+          # tests/regression/reference/_environnement.json. Quand elles
+          # different, il s'arrete en annoncant explicitement qu'AUCUNE
+          # verification visuelle n'a eu lieu, et sort en 0.
+          #
+          # L'exclusion par nom faisait donc double emploi, tout en etant pire :
+          # elle retirait ce message des journaux de CI, et elle aurait empeche
+          # le test de s'executer meme sur un runner dont l'environnement
+          # correspond a la reference. Le laisser dans la boucle rend la
+          # couverture reelle visible, et la rendra effective le jour ou les
+          # deux environnements coincideront.
         run: |
           set -u
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression').join(' '))")
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2').join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -271,6 +286,14 @@ jobs:
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
+
+      - name: Provisionnement des comptes sous le role applicatif
+        # requireClerkUser provisionnait l'utilisateur HORS contexte : sous
+        # tracefab_app, la premiere connexion comme la reconnexion violaient
+        # les politiques de la table users. Le defaut etait masque parce que
+        # l'application tourne encore sous un role privilegie.
+        # TF_RLS_APP_URL vient de l'env du job, deja pointe sur la base jetable.
+        run: npm run test:neon:rls:auth
 
       - name: Scenarios croises contre la base de production
         # Optionnels, et clairement annonces comme tels. L'etancheite est deja

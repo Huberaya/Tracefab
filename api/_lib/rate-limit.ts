@@ -110,29 +110,88 @@ function isExempt(path: string): boolean {
 }
 
 /**
- * Presence de justificatifs d'authentification. On ne les VERIFIE pas ici —
- * ce serait payer une verification Clerk sur chaque requete, y compris celles
- * qu'on s'apprete a rejeter. On se contente de constater leur absence, qui
- * elle est une preuve : sans justificatif, la requete est anonyme.
+ * Chemins servis sans authentification : passeport public, lien numerique GS1,
+ * passeport fournisseur et sa demande d'acces anonyme, table de facteurs PEF.
  *
- * Une requete qui presente un justificatif invalide obtient donc le budget
- * `credentialed`. C'est acceptable : la route la rejettera, et le budget reste
- * attache a l'empreinte client, pas au justificatif.
+ * Ces routes ne sont JAMAIS appelees avec des justificatifs par nos propres
+ * surfaces. Un justificatif presente dessus ne peut donc venir que d'un client
+ * qui cherche a changer de classe.
  */
+const CHEMINS_PUBLICS: RegExp[] = [
+  /^dpp\/[^/]+$/,
+  /^gs1\/digital-link\/[^/]+$/,
+  /^passport\/[^/]+$/,
+  /^passport\/[^/]+\/request-access$/,
+  /^pef\/factors$/,
+];
+
+const CHEMINS_WALLET: RegExp[] = [
+  /\/(apple|google)-wallet$/,
+  /\/wallet\/(apple|google)$/,
+];
+
+const estWallet = (path: string) => CHEMINS_WALLET.some((r) => r.test(path));
+const estPublic = (path: string) => CHEMINS_PUBLICS.some((r) => r.test(path));
+
+/**
+ * Un justificatif STRUCTURELLEMENT plausible.
+ *
+ * CE QUI NE VA PAS AVEC « l'en-tete est non vide ».
+ *
+ * La version precedente se contentait de constater la presence de l'en-tete,
+ * en assumant que « la route rejettera de toute facon ». Le raisonnement
+ * oublie que le budget est consomme AVANT la route : `Authorization: Bearer x`
+ * faisait passer une ecriture anonyme de 10 par 5 minutes a 600 par minute,
+ * soit un facteur 300, et un laissez-passer Wallet de 20 a 600 par minute.
+ * Le rejet par la route ne repare rien : il arrive apres la depense, et pour
+ * une route authentifiee cette depense inclut un appel reseau a Clerk.
+ *
+ * On ne verifie toujours pas la signature — ce serait payer Clerk sur chaque
+ * requete, y compris celles qu'on s'apprete a rejeter. Mais on exige la forme
+ * d'un JWT : trois segments base64url, une charge utile decodable portant
+ * `sub`, et une expiration non depassee. C'est gratuit, et cela suffit a ce
+ * qu'aucun budget ne s'obtienne « par simple ajout d'un en-tete ».
+ */
+function jetonPlausible(valeur: string): boolean {
+  const parts = valeur.split('.');
+  if (parts.length !== 3) return false;
+  if (!parts.every((p) => p.length > 0 && /^[A-Za-z0-9_-]+$/.test(p))) return false;
+  try {
+    const charge = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as Record<string, unknown>;
+    if (typeof charge.sub !== 'string' || charge.sub.length === 0) return false;
+    if (typeof charge.exp === 'number' && charge.exp * 1000 < Date.now()) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function carriesCredentials(req: VercelRequest): boolean {
   const auth = req.headers.authorization;
-  if (typeof auth === 'string' && auth.trim().length > 0) return true;
+  if (typeof auth === 'string' && /^Bearer\s+/i.test(auth)) {
+    if (jetonPlausible(auth.replace(/^Bearer\s+/i, '').trim())) return true;
+  }
   const cookie = req.headers.cookie;
-  if (typeof cookie === 'string' && /(^|;\s*)__session=/.test(cookie)) return true;
+  const session = typeof cookie === 'string' ? /(^|;\s*)__session=([^;]+)/.exec(cookie) : null;
+  if (session && jetonPlausible(decodeURIComponent(session[2]).trim())) return true;
   return false;
 }
 
+/**
+ * La nature de la ROUTE prime sur ce que le client declare.
+ *
+ * L'ordre precedent interrogeait d'abord les justificatifs : un en-tete, choisi
+ * par le client, decidait donc de la classe avant le chemin, qui lui ne l'est
+ * pas. Les routes publiques et Wallet conservent desormais leur budget quoi
+ * que presente l'appelant.
+ */
 export function classify(path: string, req: VercelRequest): RateLimitClass {
   if (isExempt(path)) return 'exempt';
+  const ecriture = WRITE_METHODS.has((req.method || 'GET').toUpperCase());
+  if (estWallet(path)) return 'wallet';
+  if (estPublic(path)) return ecriture ? 'public-write' : 'public-read';
   if (carriesCredentials(req)) return 'credentialed';
-  if (/\/(apple|google)-wallet$/.test(path) || /\/wallet\/(apple|google)$/.test(path)) return 'wallet';
-  if (WRITE_METHODS.has((req.method || 'GET').toUpperCase())) return 'public-write';
-  return 'public-read';
+  return ecriture ? 'public-write' : 'public-read';
 }
 
 /**
@@ -312,11 +371,29 @@ export async function evaluate(
 
   const databaseHits = key ? await touchDatabase(key, budget, now) : null;
   if (databaseHits === null) {
+    // PANNE DU COMPTEUR DURABLE — la reponse depend de la criticite.
+    //
+    // L'etage memoire survit, mais une fonction serverless est repliquee :
+    // le plafond effectif devient `limite x nombre d'instances`, c'est-a-dire
+    // un plafond qu'un attaquant releve en ouvrant des connexions. Accorder
+    // cela a toutes les classes etait un fail-open deguise.
+    //
+    // Les classes `wallet` et `public-write` refusent desormais. Ce n'est pas
+    // une perte de disponibilite : le compteur vit dans le MEME PostgreSQL que
+    // les donnees metier. S'il est injoignable, la signature d'un laissez-
+    // passer et l'ecriture d'une demande d'acces echoueraient de toute facon —
+    // on refuse simplement plus tot, et sans avoir paye le travail.
+    //
+    // `public-read` et `credentialed` continuent sous le seul etage memoire :
+    // leur cout unitaire est faible, et couper la lecture publique d'un
+    // passeport ou l'usage d'une console authentifiee pendant un incident de
+    // base serait une punition disproportionnee.
+    const refuseEnPanne = klass === 'wallet' || klass === 'public-write';
     return {
-      allowed: true,
+      allowed: !refuseEnPanne,
       klass,
       limit: budget.limit,
-      remaining: Math.max(0, budget.limit - memoryHits),
+      remaining: refuseEnPanne ? 0 : Math.max(0, budget.limit - memoryHits),
       resetSeconds,
       enforcedBy: 'memoire',
     };

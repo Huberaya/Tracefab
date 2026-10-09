@@ -4,6 +4,21 @@ import type { DppPassData } from './types.js';
 type PrismaTx = PrismaClient | Prisma.TransactionClient;
 
 /**
+ * `care_instructions` est un objet JSON libre (`@default("{}")`), valide par
+ * la route d'ecriture comme « objet, ni tableau ni null », sans schema impose.
+ * On n'en retient que les valeurs textuelles non vides, et on ne rend rien
+ * quand l'objet est vide — ce qui est le cas par defaut pour la quasi-totalite
+ * des produits.
+ */
+function consignesEntretien(brut: unknown): string | undefined {
+  if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return undefined;
+  const morceaux = Object.values(brut as Record<string, unknown>)
+    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    .map((v) => v.trim());
+  return morceaux.length ? morceaux.join(' ') : undefined;
+}
+
+/**
  * Resolves full product passport data from the database for DPP viewing and Wallet generation.
  */
 export async function resolveDppPassData(
@@ -92,47 +107,73 @@ export async function resolveDppPassData(
     originCountry: m.materials?.origin_country_code || undefined,
   }));
 
+  // Pas de matiere declaree => pas de composition. L'ancien repli annoncait
+  // « 100% Coton peigne » pour n'importe quel produit, ce qui est une
+  // allegation de composition sur un produit dont on ne sait rien.
   const compSummary = materials.length
     ? materials.map((m: any) => `${m.percentage}% ${m.name}`).join(', ')
-    : '100% Coton peigné';
+    : undefined;
 
   // Format supply chain summary
   const nodes = product.supply_chain_nodes || [];
+  // Idem : une chaine d'approvisionnement non saisie reste vide. Afficher
+  // « Filature -> Tissage -> Ennoblissement -> Confection auditee » revenait a
+  // decrire, et a qualifier d'auditee, une chaine inconnue.
   const supplyChainSummary = nodes.length
     ? nodes.map((n: any) => `${n.label || 'Étape'} (${n.process_code || n.node_type}${n.supplier_sites?.country_code ? `, ${n.supplier_sites.country_code}` : ''})`).join(' ➔ ')
-    : 'Filature ➔ Tissage ➔ Ennoblissement ➔ Confection auditée';
+    : undefined;
 
   const dppUrl = `${baseUrl}/p/${gtin || product.reference}`;
   const digitalLinkUri = `urn:epc:id:sgtin:3760123.${product.reference.replace(/[^0-9]/g, '').slice(-3) || '001'}.${product.version || 1}`;
 
   return {
     productId: product.id,
-    brandName: brand?.display_name || 'Tracefab Brand',
+    brandName: brand?.display_name || 'Marque non communiquée',
     // Jamais la raison sociale sur une surface publique : elle n'apporte rien
     // au consommateur et elle identifie l'entreprise au registre.
-    brandLegalName: brand?.display_name || 'Tracefab Brand',
+    brandLegalName: brand?.display_name || 'Marque non communiquée',
+    brandCountry: brand?.country_code || undefined,
     productName: product.name,
     productReference: product.reference,
     sku: product.sku || product.reference,
     gtin,
     serialNumber: `DPP-${gtin || product.reference}-v${product.version}`,
     category: product.category || 'Textile',
-    countryOfManufacture: product.country_of_manufacture || 'PT',
-    countryOfDesign: product.country_of_design || 'FR',
-    weightGrams: product.weight_grams ? Number(product.weight_grams) : 250,
+    // AUCUNE VALEUR PAR DEFAUT SOUS CETTE LIGNE.
+    //
+    // Chacun de ces champs portait un repli : PT, FR, 250 g, et surtout un
+    // profil environnemental complet (score 78, grade B, 3,42 kg CO2e,
+    // 0,85 m3, circularite 85) servi a tout produit depourvu d'analyse PEF.
+    // Rien ne distinguait ce profil d'une mesure reelle, ni dans la reponse
+    // d'API, ni sur le laissez-passer Wallet. `undefined` est la seule
+    // reponse honnete a « quelle est l'empreinte de ce produit ? » quand elle
+    // n'a pas ete calculee.
+    countryOfManufacture: product.country_of_manufacture || undefined,
+    countryOfDesign: product.country_of_design || undefined,
+    weightGrams: product.weight_grams ? Number(product.weight_grams) : undefined,
     certifiedComposition: compSummary,
     materials,
-    pefScore: pef ? Number(pef.pef_eco_score) : 78,
-    pefGrade: (pef ? pef.pef_grade : 'B') as any,
-    carbonFootprintKgCo2e: pef ? Number(pef.carbon_footprint_kg_co2e) : 3.42,
-    waterScarcityM3: pef ? Number(pef.water_scarcity_m3) : 0.85,
-    circularityScore: pef ? Number(pef.circularity_score) : 85,
+    pefScore: pef ? Number(pef.pef_eco_score) : undefined,
+    pefGrade: (pef ? pef.pef_grade : undefined) as any,
+    carbonFootprintKgCo2e: pef ? Number(pef.carbon_footprint_kg_co2e) : undefined,
+    waterScarcityM3: pef ? Number(pef.water_scarcity_m3) : undefined,
+    circularityScore: pef ? Number(pef.circularity_score) : undefined,
     dppUrl,
     digitalLinkUri,
-    verificationDate: (product.updated_at || new Date()).toISOString().slice(0, 10),
+    // Date de derniere modification du produit, pas une date de verification
+    // par un tiers. On ne la rend que si elle existe reellement.
+    verificationDate: product.updated_at ? product.updated_at.toISOString().slice(0, 10) : undefined,
     transactionCertificateNumber: mb ? `TC-VERIFIED-MB-${mb.id.slice(0, 8)}` : undefined,
     supplyChainSummary,
-    careInstructions: 'Machine wash at 30°C inside out with similar colours. Gentle spin (600 rpm). Do not tumble dry. Iron on low heat.',
-    recyclingInstructions: 'Single-material product, highly recyclable. At end of life, drop it in a textile collection point or return it in store.',
+    // Consignes d'entretien et de fin de vie : elles dependent de la matiere
+    // reelle. « Produit monomatiere, hautement recyclable » applique a tout le
+    // catalogue est faux des qu'un produit melange deux fibres. Tant qu'elles
+    // ne sont pas saisies par la marque, on n'affiche rien.
+    careInstructions: consignesEntretien(product.care_instructions),
+    // Aucune colonne ne porte de consigne de fin de vie. L'ancien texte
+    // (« Produit monomatiere, hautement recyclable ») etait donc affirme pour
+    // tout le catalogue, y compris pour des produits multi-fibres ou il est
+    // faux. Tant que la donnee n'existe pas, la rubrique reste vide.
+    recyclingInstructions: undefined,
   };
 }

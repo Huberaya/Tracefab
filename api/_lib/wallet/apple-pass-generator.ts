@@ -8,6 +8,31 @@ const MINIMAL_PNG_BUFFER = Buffer.from(
   'base64'
 );
 
+/** Rend la rubrique, ou null quand la donnee n'est pas renseignee. */
+function champ(
+  key: string,
+  label: string,
+  value: string | undefined | null,
+  textAlignment?: string,
+): Record<string, string> | null {
+  const v = typeof value === 'string' ? value.trim() : '';
+  if (!v) return null;
+  return textAlignment ? { key, label, value: v, textAlignment } : { key, label, value: v };
+}
+
+/**
+ * Bilan environnemental partiel : on n'ecrit que les lignes mesurees. Le
+ * gabarit precedent concatenait les trois inconditionnellement, et affichait
+ * « undefined » des qu'une mesure manquait.
+ */
+function bilanPef(data: DppPassData): string | undefined {
+  const lignes: string[] = [];
+  if (typeof data.carbonFootprintKgCo2e === 'number') lignes.push(`• Empreinte carbone: ${data.carbonFootprintKgCo2e} kg CO₂e`);
+  if (typeof data.waterScarcityM3 === 'number') lignes.push(`• Consommation en eau: ${data.waterScarcityM3} m³`);
+  if (typeof data.circularityScore === 'number') lignes.push(`• Score de circularité: ${data.circularityScore}/100`);
+  return lignes.length ? lignes.join('\n') : undefined;
+}
+
 /**
  * Builds the official pass.json structure adhering to Apple Wallet PassKit specification.
  */
@@ -27,96 +52,59 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
     backgroundColor: 'rgb(20, 36, 26)', // Rich luxury deep forest green
     labelColor: 'rgb(168, 189, 173)',
     storeCard: {
+      // Chaque rubrique n'apparait que si la donnee existe. `champ()` rend
+      // null sinon, et le filtre l'ecarte. Avant, l'absence etait comblee :
+      // « Fibres naturelles certifiees », « Tracabilite complete [...]
+      // auditee », « Valide sous registre bilanciel », et un bilan PEF
+      // affichant « undefined kg CO2e » des que l'analyse manquait.
       headerFields: [
-        {
-          key: 'compliance_badge',
-          label: 'RÉGLEMENTATION',
-          value: 'ESPR CONFORME',
-          textAlignment: 'PKTextAlignmentRight',
-        },
-      ],
+        champ('verified_on', 'MISE À JOUR', data.verificationDate, 'PKTextAlignmentRight'),
+      ].filter(Boolean),
       primaryFields: [
-        {
-          key: 'product_name',
-          label: 'MODÈLE CERTIFIÉ',
-          value: data.productName,
-        },
-      ],
+        champ('product_name', 'MODÈLE', data.productName),
+      ].filter(Boolean),
       secondaryFields: [
-        {
-          key: 'pef_grade',
-          label: 'ÉCO-SCORE PEF',
-          value: `Grade ${data.pefGrade} (${data.carbonFootprintKgCo2e} kg CO₂e)`,
-        },
-        {
-          key: 'origin',
-          label: 'CONFECTION',
-          value: data.countryOfManufacture || 'UE',
-          textAlignment: 'PKTextAlignmentRight',
-        },
-      ],
+        champ(
+          'pef_grade',
+          'ÉCO-SCORE PEF',
+          data.pefGrade
+            ? `Grade ${data.pefGrade}${typeof data.carbonFootprintKgCo2e === 'number' ? ` (${data.carbonFootprintKgCo2e} kg CO₂e)` : ''}`
+            : undefined,
+        ),
+        champ('origin', 'CONFECTION', data.countryOfManufacture, 'PKTextAlignmentRight'),
+      ].filter(Boolean),
       auxiliaryFields: [
-        {
-          key: 'composition',
-          label: 'COMPOSITION 100%',
-          value: data.certifiedComposition || 'Fibres naturelles certifiées',
-        },
-        {
-          key: 'gtin',
-          label: 'GS1 GTIN-13',
-          value: data.gtin || data.sku || 'N/A',
-          textAlignment: 'PKTextAlignmentRight',
-        },
-      ],
+        champ('composition', 'COMPOSITION', data.certifiedComposition),
+        champ('gtin', 'GS1 GTIN-13', data.gtin || data.sku, 'PKTextAlignmentRight'),
+      ].filter(Boolean),
       backFields: [
-        {
-          key: 'dpp_url',
-          label: 'PASSEPORT NUMÉRIQUE OFFICIEL (DPP)',
-          value: data.dppUrl,
-        },
-        {
-          key: 'espr_notice',
-          label: 'CADRE RÉGLEMENTAIRE EUROPÉEN',
-          value: 'Ce passeport produit est certifié conforme au Règlement Écoconception ESPR 2024/1781 et à la loi AGEC article 13.',
-        },
-        {
-          key: 'product_id',
-          label: 'RÉFÉRENCE & LOT',
-          value: `${data.productReference} (SKU: ${data.sku})`,
-        },
-        {
-          key: 'materials_detail',
-          label: 'DÉCOMPOSITION DES MATIÈRES CERTIFIÉES',
-          value: data.materials?.length
+        champ('dpp_url', 'PASSEPORT NUMÉRIQUE DE PRODUIT', data.dppUrl),
+        // Ce texte affirmait : « certifie conforme au Reglement Ecoconception
+        // ESPR 2024/1781 et a la loi AGEC article 13 ». Aucune verification de
+        // conformite n'est conduite ici, et un laissez-passer Wallet n'est pas
+        // un acte de certification. La mention decrit desormais ce que le
+        // passeport est reellement : un report de donnees transmises.
+        champ(
+          'espr_notice',
+          'PORTÉE DE CE PASSEPORT',
+          'Ce passeport présente les données transmises par la marque et les '
+            + 'justificatifs qu\'elle a fournis. Il ne constitue pas une attestation '
+            + 'de conformité réglementaire ni une certification par un tiers.',
+        ),
+        champ('product_id', 'RÉFÉRENCE & LOT', `${data.productReference} (SKU: ${data.sku})`),
+        champ(
+          'materials_detail',
+          'DÉCOMPOSITION DES MATIÈRES',
+          data.materials?.length
             ? data.materials.map((m) => `• ${m.percentage}% ${m.name}${m.originCountry ? ` (Origine: ${m.originCountry})` : ''}`).join('\n')
-            : data.certifiedComposition,
-        },
-        {
-          key: 'pef_detail',
-          label: 'BILAN ENVIRONNEMENTAL (ACV PEF)',
-          value: `• Empreinte carbone: ${data.carbonFootprintKgCo2e} kg CO₂e\n• Consommation en eau: ${data.waterScarcityM3} m³\n• Score de circularité: ${data.circularityScore}/100`,
-        },
-        {
-          key: 'supply_chain',
-          label: 'TRAÇABILITÉ SUPPLY CHAIN (TIER 1 À 4)',
-          value: data.supplyChainSummary || 'Traçabilité complète des étapes de filature, tissage, teinture et confection auditée.',
-        },
-        {
-          key: 'tc_ref',
-          label: 'TRANSACTION CERTIFICATE (TC)',
-          value: data.transactionCertificateNumber || 'Validé sous registre bilanciel anti-double dépense',
-        },
-        {
-          key: 'care_instructions',
-          label: "CONSEILS D'ENTRETIEN & DURABILITÉ",
-          value: data.careInstructions || 'Lavage à 30°C sur envers. Séchage à l’air libre. Réparable via notre réseau partenaire.',
-        },
-        {
-          key: 'recycling',
-          label: 'FIN DE VIE & RECYCLAGE',
-          value: data.recyclingInstructions || 'Déposer dans une borne textile Re-fashion ou rapporter en boutique pour recyclage mécanique des fibres.',
-        },
-      ],
+            : undefined,
+        ),
+        champ('pef_detail', 'BILAN ENVIRONNEMENTAL (ACV PEF)', bilanPef(data)),
+        champ('supply_chain', 'TRAÇABILITÉ CHAÎNE D\'APPROVISIONNEMENT', data.supplyChainSummary),
+        champ('tc_ref', 'TRANSACTION CERTIFICATE (TC)', data.transactionCertificateNumber),
+        champ('care_instructions', "CONSEILS D'ENTRETIEN", data.careInstructions),
+        champ('recycling', 'FIN DE VIE & RECYCLAGE', data.recyclingInstructions),
+      ].filter(Boolean),
     },
     barcode: {
       message: data.digitalLinkUri || data.dppUrl,

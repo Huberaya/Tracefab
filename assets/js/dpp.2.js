@@ -57,22 +57,49 @@
       const apply = (payload) => {
         const dpp = payload && payload.dpp;
         if (!dpp) return false;
+        const manquants = [];
         document.querySelectorAll('[data-dpp-field]').forEach((el) => {
-          const v = dig(dpp, el.dataset.dppField);
-          if (v === undefined || v === null || v === '') return;
-          el.textContent = String(v) + (el.dataset.dppSuffix || '');
-          // La valeur n'est plus de la demonstration ni une chaine traduisible :
-          // sans cela le prochain changement de langue la rendrait a nouveau.
-          el.removeAttribute('data-tf-demo');
-          el.removeAttribute('data-i18n');
+            const v = dig(dpp, el.dataset.dppField);
+            // La valeur n'est plus de la demonstration ni une chaine traduisible :
+            // sans cela le prochain changement de langue la rendrait a nouveau.
+            el.removeAttribute('data-tf-demo');
+            el.removeAttribute('data-i18n');
+            if (v === undefined || v === null || v === '') {
+              // ABSENTE DU PASSEPORT REEL.
+              //
+              // La regle precedente — « une valeur absente laisse la valeur
+              // affichee intacte » — etait tenable tant que l'API comblait
+              // tout. Ce n'est plus le cas : un produit sans analyse PEF ou
+              // sans matiere declaree renvoie desormais undefined, parce que
+              // la plateforme a cesse d'inventer. Conserver la valeur statique
+              // reviendrait a presenter un chiffre de demonstration sur une
+              // page dont la banniere de demonstration a disparu — exactement
+              // le scenario que l'on veut rendre impossible.
+              el.textContent = '—';
+              el.setAttribute('data-dpp-missing', '');
+              manquants.push(el.dataset.dppField);
+              return;
+            }
+            el.removeAttribute('data-dpp-missing');
+            el.textContent = String(v) + (el.dataset.dppSuffix || '');
         });
         document.querySelectorAll('[data-dpp-href]').forEach((el) => {
           const v = dig(payload, el.dataset.dppHref);
           if (v) el.setAttribute('href', String(v));
         });
+        // Le monogramme etait fige sur « AD » (Atelier Demo). Affiche a cote
+        // d'une marque reelle, il la contredisait visuellement.
+        const mono = document.querySelector('[data-dpp-initials]');
+        if (mono && dpp.brandName) {
+          mono.textContent = String(dpp.brandName).trim().split(/\s+/)
+            .slice(0, 2).map((m) => m[0] || '').join('').toUpperCase() || '—';
+        }
         if (dpp.productName) document.title = dpp.productName + ' — Digital Product Passport | TRACEFAB';
         if (banner) banner.hidden = true;
         document.documentElement.setAttribute('data-dpp-source', 'live');
+          // Nombre de rubriques non renseignees par la marque : la page peut
+          // expliquer les tirets au lieu de les laisser sans justification.
+          document.documentElement.setAttribute('data-dpp-missing-count', String(manquants.length));
         return true;
       };
 

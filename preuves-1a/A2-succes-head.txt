@@ -1,0 +1,120 @@
+
+> tracefab@0.1.0 db:deploy
+> prisma migrate deploy
+
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "tf_audit_apres", schema "public" at "localhost:5440"
+
+35 migrations found in prisma/migrations
+
+Applying migration `20260923130000_tracefab_neon_initial`
+Applying migration `20260923140000_tracefab_clerk_context`
+Applying migration `20260923150000_fix_invitation_acceptance`
+Applying migration `20260923160000_tracefab_product_api_functions`
+Applying migration `20260923170000_fix_data_collection_workflow_context`
+Applying migration `20260923180000_fix_data_response_progress_guard`
+Applying migration `20260923190000_tracefab_notification_outbox`
+Applying migration `20260923200000_tracefab_collection_reminders`
+Applying migration `20261005090000_supplier_portal_advanced_hardening`
+Applying migration `20261005100000_supplier_invitation_compatibility`
+Applying migration `20261006100000_security_force_rls_and_document_access`
+Applying migration `20261006110000_quality_center_shared_access`
+Applying migration `20261006113000_clerk_directory_membership_sync`
+Applying migration `20261006120000_data_collection_bridge_and_quality_automation`
+Applying migration `20261006120000_external_schema_bindings`
+Applying migration `20261006123000_clerk_sync_security_functions`
+Applying migration `20261006130000_tracefab_manual_data_request_reminders`
+Applying migration `20261006140000_supply_chain_traceability_api`
+Applying migration `20261006160000_dpp_readiness_exposure`
+Applying migration `20261006180000_supplier_self_onboarding`
+Applying migration `20261006190000_catalog_import_export`
+Applying migration `20261006200000_catalog_import_kind`
+Applying migration `20261006200000_document_ai_automated_verification`
+Applying migration `20261006210000_plm_erp_gs1_interoperability`
+Applying migration `20261006220000_esg_pef_footprint_engine`
+Applying migration `20261006220000_production_hardening`
+Applying migration `20261006230000_green_claims_anti_greenwashing_engine`
+Applying migration `20261006240000_quality_corrective_action_plans_cap`
+Applying migration `20261006250000_universal_supplier_passport`
+Applying migration `20261006260000_mass_balance_anti_fraud_engine`
+Applying migration `20261007100000_security_definer_execute_hardening`
+Applying migration `20261007120000_force_rls_schema_bindings`
+Applying migration `20261008100000_rate_limit_counters`
+Applying migration `20261009120000_fix_materials_policy_recursion`
+Applying migration `20261009180000_public_read_context`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20260923130000_tracefab_neon_initial/
+    └─ migration.sql
+  └─ 20260923140000_tracefab_clerk_context/
+    └─ migration.sql
+  └─ 20260923150000_fix_invitation_acceptance/
+    └─ migration.sql
+  └─ 20260923160000_tracefab_product_api_functions/
+    └─ migration.sql
+  └─ 20260923170000_fix_data_collection_workflow_context/
+    └─ migration.sql
+  └─ 20260923180000_fix_data_response_progress_guard/
+    └─ migration.sql
+  └─ 20260923190000_tracefab_notification_outbox/
+    └─ migration.sql
+  └─ 20260923200000_tracefab_collection_reminders/
+    └─ migration.sql
+  └─ 20261005090000_supplier_portal_advanced_hardening/
+    └─ migration.sql
+  └─ 20261005100000_supplier_invitation_compatibility/
+    └─ migration.sql
+  └─ 20261006100000_security_force_rls_and_document_access/
+    └─ migration.sql
+  └─ 20261006110000_quality_center_shared_access/
+    └─ migration.sql
+  └─ 20261006113000_clerk_directory_membership_sync/
+    └─ migration.sql
+  └─ 20261006120000_data_collection_bridge_and_quality_automation/
+    └─ migration.sql
+  └─ 20261006120000_external_schema_bindings/
+    └─ migration.sql
+  └─ 20261006123000_clerk_sync_security_functions/
+    └─ migration.sql
+  └─ 20261006130000_tracefab_manual_data_request_reminders/
+    └─ migration.sql
+  └─ 20261006140000_supply_chain_traceability_api/
+    └─ migration.sql
+  └─ 20261006160000_dpp_readiness_exposure/
+    └─ migration.sql
+  └─ 20261006180000_supplier_self_onboarding/
+    └─ migration.sql
+  └─ 20261006190000_catalog_import_export/
+    └─ migration.sql
+  └─ 20261006200000_catalog_import_kind/
+    └─ migration.sql
+  └─ 20261006200000_document_ai_automated_verification/
+    └─ migration.sql
+  └─ 20261006210000_plm_erp_gs1_interoperability/
+    └─ migration.sql
+  └─ 20261006220000_esg_pef_footprint_engine/
+    └─ migration.sql
+  └─ 20261006220000_production_hardening/
+    └─ migration.sql
+  └─ 20261006230000_green_claims_anti_greenwashing_engine/
+    └─ migration.sql
+  └─ 20261006240000_quality_corrective_action_plans_cap/
+    └─ migration.sql
+  └─ 20261006250000_universal_supplier_passport/
+    └─ migration.sql
+  └─ 20261006260000_mass_balance_anti_fraud_engine/
+    └─ migration.sql
+  └─ 20261007100000_security_definer_execute_hardening/
+    └─ migration.sql
+  └─ 20261007120000_force_rls_schema_bindings/
+    └─ migration.sql
+  └─ 20261008100000_rate_limit_counters/
+    └─ migration.sql
+  └─ 20261009120000_fix_materials_policy_recursion/
+    └─ migration.sql
+  └─ 20261009180000_public_read_context/
+    └─ migration.sql
+      
+All migrations have been successfully applied.

@@ -1,6 +1,25 @@
 import jwt from 'jsonwebtoken';
 import type { DppPassData, GoogleWalletOptions } from './types.js';
 
+/** Rend le module, ou null quand la donnee n'est pas renseignee. */
+function module(
+  id: string,
+  header: string,
+  body: string | undefined | null,
+): Record<string, string> | null {
+  const v = typeof body === 'string' ? body.trim() : '';
+  return v ? { id, header, body: v } : null;
+}
+
+/** N'assemble que les mesures disponibles. */
+function empreinte(data: DppPassData): string | undefined {
+  const bouts: string[] = [];
+  if (typeof data.carbonFootprintKgCo2e === 'number') bouts.push(`${data.carbonFootprintKgCo2e} kg CO₂e`);
+  if (typeof data.waterScarcityM3 === 'number') bouts.push(`${data.waterScarcityM3} m³ eau`);
+  if (!bouts.length) return undefined;
+  return bouts.length === 2 ? `${bouts[0]} (${bouts[1]})` : bouts[0];
+}
+
 export interface GoogleWalletResult {
   saveUrl: string;
   jwtToken: string;
@@ -37,10 +56,12 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
         value: data.productName,
       },
     },
+    // Le sous-titre annoncait « Eco-Score PEF Grade undefined » pour tout
+    // produit sans analyse. A defaut de grade, on affiche la reference.
     subheader: {
       defaultValue: {
         language: 'fr',
-        value: `Éco-Score PEF Grade ${data.pefGrade}`,
+        value: data.pefGrade ? `Éco-Score PEF Grade ${data.pefGrade}` : data.productReference,
       },
     },
     barcode: {
@@ -60,33 +81,23 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
         },
       },
     },
+    // Memes regles que sur le laissez-passer Apple : aucune rubrique n'est
+    // comblee. En particulier, le bloc « CONFORMITE : ESPR UE 2024 / Loi AGEC
+    // Art. 13 » etait affiche sur chaque passeport sans qu'aucune verification
+    // de conformite n'ait lieu, et « Noeuds certifies GOTS/GRS auditables »
+    // decrivait une chaine inconnue comme certifiee.
     textModulesData: [
       {
-        id: 'compliance',
-        header: 'CONFORMITÉ',
-        body: 'ESPR UE 2024 / Loi AGEC Art. 13',
+        id: 'portee',
+        header: 'PORTÉE',
+        body: 'Données transmises par la marque. Ne constitue pas une attestation '
+          + 'de conformité réglementaire ni une certification par un tiers.',
       },
-      {
-        id: 'composition',
-        header: 'COMPOSITION 100%',
-        body: data.certifiedComposition || 'Fibres certifiées',
-      },
-      {
-        id: 'pef',
-        header: 'EMPREINTE CARBONE',
-        body: `${data.carbonFootprintKgCo2e} kg CO₂e (${data.waterScarcityM3} m³ eau)`,
-      },
-      {
-        id: 'origin',
-        header: 'CONFECTION',
-        body: data.countryOfManufacture || 'UE',
-      },
-      {
-        id: 'traceability',
-        header: 'TRAÇABILITÉ SUPPLY CHAIN',
-        body: data.supplyChainSummary || 'Nœuds certifiés GOTS/GRS auditables.',
-      },
-    ],
+      module('composition', 'COMPOSITION', data.certifiedComposition),
+      module('pef', 'EMPREINTE CARBONE', empreinte(data)),
+      module('origin', 'CONFECTION', data.countryOfManufacture),
+      module('traceability', "TRAÇABILITÉ CHAÎNE D'APPROVISIONNEMENT", data.supplyChainSummary),
+    ].filter(Boolean),
     linksModuleData: {
       uris: [
         {

@@ -1,0 +1,11 @@
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "tf_audit_avant", schema "public" at "localhost:5440"
+
+35 migrations found in prisma/migrations
+
+Error: P3009
+
+migrate found failed migrations in the target database, new migrations will not be applied. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve
+The `20261009180000_public_read_context` migration started at 2026-10-09 19:06:34.113690 UTC failed
+
+

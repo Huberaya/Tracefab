@@ -1068,3 +1068,73 @@ Le tri par colonne du catalogue. Et les quatre marques qui partagent le slug
 | Branche parallèle `arena/e72cecf4` | abandonnée — décision close |
 | Copie métier en dur dans les SPA | `test:copy` vert, cécité aux capitales et aux mots isolés levée |
 | Chiffres divergents entre surfaces | `test:coherence`, 336 valeurs sur 48 clés et 7 langues |
+
+## 15. Chantier 1A — correctifs de sécurité et d'honnêteté des données
+
+Déclenché par un audit externe du commit `b61d771`. **Cet audit était périmé** :
+HEAD était alors `b0c976f`, cinq commits plus loin, et son blocage principal
+(section A) était déjà corrigé. Les quatre autres défauts, eux, étaient réels.
+
+### A — Migration 35 sur une base vierge
+Reproduit à l'identique sur un cluster neuf à partir d'un worktree de
+`b61d771` : `P3018` / `42704` / `role "tracefab_app" does not exist`
+(`preuves-1a/A1-echec-commit-audite.txt`). À HEAD, les 35 migrations passent
+(`preuves-1a/A2-succes-head.txt`). La garde `DO $grants$ … IF EXISTS` n'est
+suffisante que parce que `seed_rls_fixture.mjs` réapplique
+`GRANT EXECUTE ON ALL FUNCTIONS` après création du rôle. Vérifié, pas supposé.
+
+### B — Provisionnement des comptes hors contexte RLS
+`requireClerkUser` exécutait son `prisma.user.upsert` **avant** tout armement
+de contexte. Sous `tracefab_app`, `users` porte `FORCE ROW LEVEL SECURITY` et
+exige `tracefab.worker_context = 'true'` en insertion : première connexion et
+reconnexion échouaient toutes deux. Le défaut était masqué par le rôle
+privilégié encore utilisé en production. L'upsert est désormais enveloppé dans
+`withTracefabWorkerContext`. Garde : `test:neon:rls:auth`, exécuté dans l'étage
+base de la CI sous le rôle applicatif réel (positifs, négatifs, isolation
+inter-locataires).
+
+### C — Données fictives servies comme réelles
+Les deux routes Wallet **publiques** ne consultaient pas la base : elles
+rendaient `getFallbackDppData()`, soit un produit entièrement inventé, y
+compris un numéro de certificat de transaction GOTS
+(`TC-CU-881294-GOTS-2026`), un grade PEF A et une empreinte de 2,15 kg CO₂e.
+N'importe quel code-barres produisait ce laissez-passer.
+
+Le résolveur « réel » n'était pas exempt : faute d'analyse PEF il servait
+grade B / 3,42 kg CO₂e / 0,85 m³ / circularité 85, et faute de matière
+« 100% Coton peigné ». Les deux générateurs affichaient en outre sur chaque
+passeport « ESPR CONFORME » et « certifié conforme au Règlement ESPR
+2024/1781 et à la loi AGEC article 13 ».
+
+Correctifs : `fallback-data.ts` supprimé ; routes publiques résolvant le
+produit réellement publié et refusant sinon ; champs de valeur métier rendus
+optionnels dans `DppPassData` ; rubriques omises plutôt que comblées ;
+mentions de conformité remplacées par l'énoncé de la portée réelle. Côté page
+publique, une rubrique absente affiche `—` au lieu de conserver le chiffre de
+démonstration, et la marque affichée est celle du produit. Gardes :
+`test:dpp-sans-invention`, `test:dpp-public`.
+
+### D — Budget de débit obtenu par un en-tête
+`classify()` interrogeait les justificatifs avant le chemin, et
+`carriesCredentials` se contentait d'un en-tête non vide. `Authorization:
+Bearer x` faisait passer une écriture anonyme de 10 par 5 minutes à 600 par
+minute (×300) et un laissez-passer Wallet de 20 à 600. La nature de la route
+prime désormais, et un justificatif doit être structurellement plausible.
+Le repli en panne de compteur, auparavant permissif pour tout le monde, refuse
+maintenant pour `wallet` et `public-write` — dont les routes dépendent de la
+même base. Garde : `test:rate-limit`.
+
+### E — Exclusion de `test:regression` en CI
+**Levée.** Le test porte déjà sa propre garde d'environnement
+(`_environnement.json`). L'exclusion par nom faisait double emploi tout en
+retirant le message des journaux et en empêchant l'exécution sur un runner
+conforme.
+
+### Reste ouvert
+- Aucun accès à la base de production : `/tmp/neon.env` est absent de cet
+  environnement. Le basculement de `DATABASE_URL` de `neondb_owner` vers
+  `tracefab_app` reste à faire, et c'est lui qui rend le défaut B visible.
+- `digitalLinkUri` compose un URN SGTIN avec un préfixe GS1 fixe
+  (`3760123`) qui n'appartient pas aux marques concernées.
+- La page DPP publique n'hydrate que 5 rubriques ; le reste de son contenu
+  demeure statique.

@@ -1,6 +1,7 @@
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import type { VercelRequest } from './vercel-types.js';
 import { prisma } from './prisma.js';
+import { withTracefabWorkerContext } from './context.js';
 
 const clerkSecretKey = process.env.CLERK_SECRET_KEY;
 
@@ -42,11 +43,30 @@ export async function requireClerkUser(req: VercelRequest) {
   if (!email) throw new Error('clerk_email_required');
 
   const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || email;
-  const user = await prisma.user.upsert({
+
+  // Le provisionnement s'execute dans un contexte worker, et uniquement lui.
+  //
+  // POURQUOI. Les politiques de `users` n'autorisent l'INSERT que sous
+  // `tracefab.worker_context` (policy users_insert_worker), et la lecture que
+  // sous ce meme drapeau ou pour soi-meme (users_select_self). Hors contexte,
+  // sous le role applicatif reel `tracefab_app` — NOBYPASSRLS, et la table
+  // porte FORCE ROW LEVEL SECURITY — cet upsert echouait sur
+  // « new row violates row-level security policy for table "users" ».
+  // La reconnexion d'un utilisateur deja provisionne n'allait pas mieux : la
+  // lecture prealable ne voyait aucune ligne, donc Prisma tentait un INSERT
+  // qui butait a son tour sur la politique.
+  //
+  // Le contexte utilisateur ne peut pas servir ici : il faut connaitre
+  // l'utilisateur pour l'armer, et c'est justement ce que cette requete
+  // etablit. Le contexte worker est donc le seul choix correct. Comme il est
+  // large — users_worker_select voit tous les utilisateurs — la fenetre est
+  // reduite au strict minimum : une seule instruction, aucun autre acces, et
+  // le drapeau est transactionnel donc il ne survit pas a la connexion poolee.
+  const user = await withTracefabWorkerContext((tx) => tx.user.upsert({
     where: { clerkUserId: claims.sub },
     create: { clerkUserId: claims.sub, email, fullName },
     update: { email, fullName },
-  });
+  }));
 
   return { clerkUser, user };
 }
