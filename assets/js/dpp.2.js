@@ -38,9 +38,17 @@
      * identifiant est present dans l'URL, on remplace les valeurs de
      * demonstration par les donnees reelles de /api/dpp/:gtin.
      *
-     * Regle : on n'ecrit que ce que l'API renvoie. Une valeur absente laisse
-     * la valeur affichee intacte plutot que de vider le champ — un passeport
-     * public troue inquiete plus qu'il n'informe.
+     * Regle : on n'ecrit que ce que l'API renvoie, ET une valeur absente est
+     * ecrite comme absente.
+     *
+     * La regle precedente laissait le champ intact quand l'API ne renvoyait rien,
+     * au motif qu'« un passeport public troue inquiete plus qu'il n'informe ».
+     * C'est l'inverse qui est vrai : le contenu statique de la page est un
+     * echantillon de demonstration. Le laisser en place quand la donnee reelle
+     * manque, c'est presenter une valeur inventee comme une valeur sourcee — et
+     * rien, a l'ecran, ne permettait de faire la difference.
+     *
+     * Un champ non renseigne affiche donc « Non renseigne », explicitement.
      * =================================================================== */
     (function hydratePassport() {
       const params = new URLSearchParams(location.search);
@@ -59,8 +67,9 @@
         if (!dpp) return false;
         document.querySelectorAll('[data-dpp-field]').forEach((el) => {
           const v = dig(dpp, el.dataset.dppField);
-          if (v === undefined || v === null || v === '') return;
-          el.textContent = String(v) + (el.dataset.dppSuffix || '');
+          const absent = v === undefined || v === null || v === '';
+          el.textContent = absent ? 'Non renseigné' : String(v) + (el.dataset.dppSuffix || '');
+          el.setAttribute('data-dpp-state', absent ? 'non-renseigne' : 'source');
           // La valeur n'est plus de la demonstration ni une chaine traduisible :
           // sans cela le prochain changement de langue la rendrait a nouveau.
           el.removeAttribute('data-tf-demo');
@@ -72,7 +81,15 @@
         });
         if (dpp.productName) document.title = dpp.productName + ' — Digital Product Passport | TRACEFAB';
         if (banner) banner.hidden = true;
-        document.documentElement.setAttribute('data-dpp-source', 'live');
+        /*
+         * Le statut « live » vient de la provenance declaree par l'API, pas du
+         * seul fait qu'une reponse soit arrivee. Un produit publie mais vide de
+         * toute donnee sourcee n'est pas un passeport live : il est incomplet, et
+         * la page doit le dire plutot que d'afficher un statut flatteur au-dessus
+         * de champs « Non renseigne ».
+         */
+        const statut = (dpp.provenance && dpp.provenance.status) || 'incomplete';
+        document.documentElement.setAttribute('data-dpp-source', statut === 'live' ? 'live' : 'incomplete');
         return true;
       };
 

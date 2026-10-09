@@ -16,57 +16,16 @@
  * Usage : node scripts/test_cross_tenant.mjs
  */
 import { readFileSync, existsSync } from 'node:fs';
+/* Le classement des routes vit dans api/_lib/route-access-models.mjs : le
+ * limiteur de debit le lit aussi. Deux copies finiraient par diverger, et
+ * c'est exactement ce qui permettait au limiteur de classer une route
+ * publique comme authentifiee. */
+import { ACCESS_MODELS, CLASSIFIED } from '../api/_lib/route-access-models.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
-
-/* ------------------------------------------------------------------ modeles
- * Chaque route releve d'un des cinq modeles d'acces ci-dessous. Le prefixe est
- * compare au chemin de la route tel qu'il apparait dans api/index.ts.
- */
-const ACCESS_MODELS = {
-  // Donnees d'un locataire : la chaine complete est obligatoire.
-  TENANT: { needs: ['requireClerkUser', 'withTracefabUserContext'] },
-  // Surface publique assumee : passeport consommateur, wallets, sante, config.
-  PUBLIC: { needs: [] },
-  // Taches de fond declenchees par un worker : secret partage obligatoire.
-  WORKER: { needs: ['workerAuthorized', 'cronAuthorized'] },
-  // Webhook externe : la signature de l'emetteur fait foi.
-  WEBHOOK: { needs: ['verifyClerkWebhook', 'Webhook', 'svix'] },
-  // Referentiel sans donnee de locataire : facteurs PEF, catalogues, regles.
-  REFERENCE: { needs: [] },
-};
-
-/* Classement explicite des routes non-TENANT. Tout le reste est TENANT.
- * Chaque entree porte sa justification : une exemption sans raison ecrite est
- * une faille qui attend son heure. */
-const CLASSIFIED = {
-  'webhooks/clerk': ['WEBHOOK', 'Signature Clerk ; cree les comptes, ne lit aucun locataire.'],
-  'passport/[tokenOrSlug]': ['PUBLIC', 'Passeport partage par jeton opaque ; le jeton est le controle d acces.'],
-  'passport/[tokenOrSlug]/request-access': ['PUBLIC', 'Demande d acces depuis un passeport partage, avant toute authentification.'],
-  'pef/factors': ['REFERENCE', 'Facteurs d impact PEF, identiques pour tous.'],
-  'dpp/[gtin]': ['PUBLIC', 'Passeport numerique public : c est sa raison d etre.'],
-  'dpp/[gtin]/google-wallet': ['PUBLIC', 'Carte wallet derivee du passeport public.'],
-  'dpp/[gtin]/apple-wallet': ['PUBLIC', 'Carte wallet derivee du passeport public.'],
-  'products/[productId]/wallet/apple': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
-  'products/[productId]/wallet/google': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
-  'health': ['PUBLIC', 'Sonde de disponibilite, aucune donnee metier.'],
-  'config': ['PUBLIC', 'Configuration client publique (cles publiables).'],
-  'catalog/schemas': ['REFERENCE', 'Schemas de donnees du produit, communs a tous les locataires.'],
-  'catalog/questionnaires': ['REFERENCE', 'Modeles de questionnaires standards.'],
-  'catalog/certification-standards': ['REFERENCE', 'Referentiel de certifications (GOTS, OEKO-TEX...).'],
-  'green-claims/rules': ['REFERENCE', 'Regles reglementaires d allegations environnementales.'],
-  'gs1/digital-link/[gtin]': ['PUBLIC', 'Resolution GS1 Digital Link, norme publique.'],
-  'questionnaires': ['REFERENCE', 'Catalogue de questionnaires, sans requete locataire.'],
-  'questionnaires/[questionnaireKey]': ['REFERENCE', 'Detail d un questionnaire de catalogue.'],
-  'internal/notification-outbox/health': ['WORKER', 'Sonde de la file de notifications.'],
-  'internal/notification-outbox/process': ['WORKER', 'Vide la file ; declenche par cron.'],
-  'internal/notification-outbox/reminders': ['WORKER', 'Programme les relances ; declenche par cron.'],
-  'internal/notification-outbox/schedule': ['WORKER', 'Planifie la file ; declenche par cron.'],
-  'internal/p2/readiness': ['WORKER', 'Diagnostic d infrastructure reserve a l exploitation.'],
-};
 
 /* --------------------------------------------------------- lecture du routeur */
 

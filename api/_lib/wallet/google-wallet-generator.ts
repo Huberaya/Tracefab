@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import type { DppPassData, GoogleWalletOptions } from './types.js';
+import { display } from './display.js';
 
 export interface GoogleWalletResult {
   saveUrl: string;
@@ -18,7 +19,7 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
 
   const genericClass = {
     id: classId,
-    issuerName: data.brandName || 'Tracefab',
+    issuerName: display(data.brandName),
     reviewStatus: 'UNDER_REVIEW',
   };
 
@@ -28,7 +29,7 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
     cardTitle: {
       defaultValue: {
         language: 'fr',
-        value: data.brandName || 'Tracefab',
+        value: display(data.brandName),
       },
     },
     header: {
@@ -69,7 +70,7 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
       {
         id: 'composition',
         header: 'COMPOSITION 100%',
-        body: data.certifiedComposition || 'Fibres certifiées',
+        body: display(data.certifiedComposition),
       },
       {
         id: 'pef',
@@ -79,12 +80,12 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
       {
         id: 'origin',
         header: 'CONFECTION',
-        body: data.countryOfManufacture || 'UE',
+        body: display(data.countryOfManufacture),
       },
       {
         id: 'traceability',
         header: 'TRAÇABILITÉ SUPPLY CHAIN',
-        body: data.supplyChainSummary || 'Nœuds certifiés GOTS/GRS auditables.',
+        body: display(data.supplyChainSummary),
       },
     ],
     linksModuleData: {

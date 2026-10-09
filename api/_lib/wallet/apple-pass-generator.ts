@@ -1,6 +1,7 @@
 import { createHash, createSign } from 'node:crypto';
 import { crc32, deflateRawSync } from 'node:zlib';
 import type { DppPassData, AppleWalletOptions } from './types.js';
+import { display, displayStructured } from './display.js';
 
 // Minimal standard 1x1 transparent PNG buffer
 const MINIMAL_PNG_BUFFER = Buffer.from(
@@ -20,9 +21,9 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
     passTypeIdentifier,
     serialNumber: data.serialNumber || `DPP-${data.gtin || data.productReference}`,
     teamIdentifier,
-    organizationName: data.brandName || 'Tracefab',
+    organizationName: display(data.brandName),
     description: `Passeport Numérique de Produit - ${data.productName}`,
-    logoText: (data.brandName || 'TRACEFAB').toUpperCase(),
+    logoText: display(data.brandName).toUpperCase(),
     foregroundColor: 'rgb(255, 255, 255)',
     backgroundColor: 'rgb(20, 36, 26)', // Rich luxury deep forest green
     labelColor: 'rgb(168, 189, 173)',
@@ -31,7 +32,13 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
         {
           key: 'compliance_badge',
           label: 'RÉGLEMENTATION',
-          value: 'ESPR CONFORME',
+          /*
+           * Jamais une affirmation de conformite reglementaire codee en dur.
+           * C'etait `'ESPR CONFORME'` en dur : une certification legale affirme
+           * sur la carte du consommateur, sans aucun lien avec une donnee.
+           * On enonce l'etat reel des donnees, rien de plus.
+           */
+          value: data.provenance?.status === 'live' ? 'Donnees sourcees' : 'Donnees incompletes',
           textAlignment: 'PKTextAlignmentRight',
         },
       ],
@@ -51,7 +58,7 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
         {
           key: 'origin',
           label: 'CONFECTION',
-          value: data.countryOfManufacture || 'UE',
+          value: display(data.countryOfManufacture),
           textAlignment: 'PKTextAlignmentRight',
         },
       ],
@@ -59,12 +66,12 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
         {
           key: 'composition',
           label: 'COMPOSITION 100%',
-          value: data.certifiedComposition || 'Fibres naturelles certifiées',
+          value: display(data.certifiedComposition),
         },
         {
           key: 'gtin',
           label: 'GS1 GTIN-13',
-          value: data.gtin || data.sku || 'N/A',
+          value: display(data.gtin ?? data.sku),
           textAlignment: 'PKTextAlignmentRight',
         },
       ],
@@ -99,22 +106,22 @@ export function buildPassJson(data: DppPassData, options?: AppleWalletOptions): 
         {
           key: 'supply_chain',
           label: 'TRAÇABILITÉ SUPPLY CHAIN (TIER 1 À 4)',
-          value: data.supplyChainSummary || 'Traçabilité complète des étapes de filature, tissage, teinture et confection auditée.',
+          value: display(data.supplyChainSummary),
         },
         {
           key: 'tc_ref',
           label: 'TRANSACTION CERTIFICATE (TC)',
-          value: data.transactionCertificateNumber || 'Validé sous registre bilanciel anti-double dépense',
+          value: display(data.transactionCertificateNumber),
         },
         {
           key: 'care_instructions',
           label: "CONSEILS D'ENTRETIEN & DURABILITÉ",
-          value: data.careInstructions || 'Lavage à 30°C sur envers. Séchage à l’air libre. Réparable via notre réseau partenaire.',
+          value: displayStructured(data.careInstructions),
         },
         {
           key: 'recycling',
           label: 'FIN DE VIE & RECYCLAGE',
-          value: data.recyclingInstructions || 'Déposer dans une borne textile Re-fashion ou rapporter en boutique pour recyclage mécanique des fibres.',
+          value: displayStructured(data.recyclingInstructions),
         },
       ],
     },

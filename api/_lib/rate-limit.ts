@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
 import type { VercelRequest, VercelResponse } from './vercel-types.js';
+import { accessModelFor } from './route-access-models.mjs';
 
 /**
  * Limitation de debit.
@@ -42,8 +43,14 @@ export type RateLimitDecision = {
   limit: number;
   remaining: number;
   resetSeconds: number;
-  /** 'memoire' quand L2 n'a pas pu etre consulte. Sert au diagnostic. */
-  enforcedBy: 'exempt' | 'memoire' | 'base';
+  /**
+   * Qui a rendu la decision. Sert au diagnostic, et c'est la seule trace
+   * observable d'une degradation :
+   *   'base'            l'etage Postgres a compte — le seul vrai plafond ;
+   *   'memoire'         L2 indisponible, budget nominal applique en memoire ;
+   *   'memoire-degrade' L2 indisponible ET classe sensible : budget reduit.
+   */
+  enforcedBy: 'exempt' | 'memoire' | 'memoire-degrade' | 'base';
 };
 
 function envInteger(name: string, fallback: number, min: number, max: number): number {
@@ -92,47 +99,101 @@ export function budgetFor(klass: RateLimitClass): RateLimitBudget {
   }
 }
 
+/**
+ * Budget applique quand l'etage base n'est pas consultable.
+ *
+ * POURQUOI CE N'EST PAS LE BUDGET NOMINAL
+ *   L'etage memoire est local au processus. Une fonction serverless est
+ *   repliquee : avec N instances chaudes, un budget nominal de L laisse passer
+ *   jusqu'a N x L requetes. Tant que Postgres compte, N est sans effet — c'est
+ *   L2 qui fait plafond. Quand Postgres tombe, N redevient un multiplicateur,
+ *   et personne ne le connait.
+ *
+ *   Le choix n'est donc pas « fail-open » contre « fail-closed », mais : de
+ *   combien réduit-on l'allocation par instance pour les classes où
+ *   la sur-permissivité coûte cher ?
+ *
+ *     wallet        signature cryptographique d'un laissez-passer, cher en CPU ;
+ *     public-write  ecriture anonyme en base, le vecteur d'abus evident.
+ *
+ *   Pour ces deux classes on divise par quatre (25 %, bornable par
+ *   TRACEFAB_RATE_LIMIT_DEGRADED_PERCENT). Pour public-read et credentialed on
+ *   garde le nominal : y degrader transformerait un incident de base en panne
+ *   de lecture pour tout le monde, ce qui est exactement ce que ce module
+ *   cherche a eviter.
+ *
+ *   Ce n'est pas un plafond exact — il ne peut pas l'etre sans coordonner les
+ *   instances. C'est une reduction assumee, documentee et testee.
+ */
+export function degradedBudgetFor(klass: RateLimitClass): RateLimitBudget {
+  const base = budgetFor(klass);
+  if (klass !== 'wallet' && klass !== 'public-write') return base;
+  const percent = envInteger('TRACEFAB_RATE_LIMIT_DEGRADED_PERCENT', 25, 1, 100);
+  return { limit: Math.max(1, Math.floor((base.limit * percent) / 100)), windowSeconds: base.windowSeconds };
+}
+
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-/**
- * Routes dispensees de plafond. La liste est courte et chaque entree se
- * justifie, parce qu'une dispense est un trou.
+/*
+ * La classe d'une requete est une propriete de la ROUTE, pas de la requete.
  *
- * - `health` est interroge en continu par la supervision ; le plafonner
- *   reviendrait a declarer le service en panne un jour de forte charge.
- * - `internal/*` est authentifie par un secret partage et appele par le
- *   planificateur : son debit est deja borne par le cron.
- * - `webhooks/clerk` est signe ; rejeter un webhook pour cause de debit le
- *   ferait rejouer en boucle par l'emetteur, ce qui aggrave la charge.
+ * CE QUI A ETE CORRIGE
+ *   `classify()` commencait par `if (carriesCredentials(req)) return
+ *   'credentialed'`, AVANT de regarder le chemin. Or `carriesCredentials` se
+ *   contentait de constater qu'un en-tete Authorization etait non vide — sans
+ *   rien verifier, ce que son propre commentaire assumait.
+ *
+ *   Consequence mesuree : un client qui ajoutait `Authorization: x` a un appel
+ *   vers une route Wallet passait du budget `wallet` (20 / 60 s) au budget
+ *   `credentialed` (600 / 60 s) — trente fois plus de signatures
+ *   cryptographiques pour un seul en-tete. Sur une ecriture anonyme
+ *   (`public-write`, 10 / 300 s), le meme en-tete donnait 600 / 60 s.
+ *
+ *   Le classement vient desormais du registre partage
+ *   `route-access-models.mjs`, le meme que lit test:cross-tenant. Les en-tetes
+ *   ne sont plus une entree de la decision : il n'y a donc plus rien a falsifier.
  */
-function isExempt(path: string): boolean {
-  return path === 'health' || path.startsWith('internal/') || path.startsWith('webhooks/');
-}
 
 /**
- * Presence de justificatifs d'authentification. On ne les VERIFIE pas ici —
- * ce serait payer une verification Clerk sur chaque requete, y compris celles
- * qu'on s'apprete a rejeter. On se contente de constater leur absence, qui
- * elle est une preuve : sans justificatif, la requete est anonyme.
+ * Chemins dont le debit ne doit pas etre plafonne.
  *
- * Une requete qui presente un justificatif invalide obtient donc le budget
- * `credentialed`. C'est acceptable : la route la rejettera, et le budget reste
- * attache a l'empreinte client, pas au justificatif.
+ * La liste est courte et chaque entree se justifie, parce qu'une dispense est
+ * un trou. `internal/*` et `webhooks/*` ne sont plus dispenses par prefixe :
+ * le registre les classe WORKER et WEBHOOK route par route, donc un chemin
+ * `internal/...` non declare retombe sur TENANT et se voit plafonner. Une
+ * exemption par prefixe etait un trou qui s'agrandissait a chaque route ajoutee.
  */
-function carriesCredentials(req: VercelRequest): boolean {
-  const auth = req.headers.authorization;
-  if (typeof auth === 'string' && auth.trim().length > 0) return true;
-  const cookie = req.headers.cookie;
-  if (typeof cookie === 'string' && /(^|;\s*)__session=/.test(cookie)) return true;
-  return false;
+function isExempt(path: string, model: ReturnType<typeof accessModelFor>): boolean {
+  if (path === 'health') return true;
+  return model === 'WORKER' || model === 'WEBHOOK';
 }
+
+const WALLET_ROUTE = /\/(apple|google)-wallet$|\/wallet\/(apple|google)$/;
 
 export function classify(path: string, req: VercelRequest): RateLimitClass {
-  if (isExempt(path)) return 'exempt';
-  if (carriesCredentials(req)) return 'credentialed';
-  if (/\/(apple|google)-wallet$/.test(path) || /\/wallet\/(apple|google)$/.test(path)) return 'wallet';
-  if (WRITE_METHODS.has((req.method || 'GET').toUpperCase())) return 'public-write';
-  return 'public-read';
+  const model = accessModelFor(path);
+
+  // health est interroge en continu par la supervision ; le plafonner
+  // reviendrait a declarer le service en panne un jour de forte charge.
+  // WORKER est authentifie par un secret partage et borne par le cron ;
+  // WEBHOOK est signe, et le rejeter pour cause de debit le ferait rejouer en
+  // boucle par l'emetteur, ce qui aggrave la charge.
+  if (isExempt(path, model)) return 'exempt';
+
+  // Une carte Wallet est une signature cryptographique : son cout ne depend pas
+  // du fait que la route soit publique. Teste AVANT le modele, pour qu'aucune
+  // route Wallet ne puisse heriter d'un budget de lecture.
+  if (WALLET_ROUTE.test(path)) return 'wallet';
+
+  // Route de locataire : le budget est celui d'un tableau de bord, qui emet
+  // beaucoup d'appels par minute. Accorde sans condition — un appel sans
+  // justificatif recoit exactement le meme budget, donc ajouter un en-tete ne
+  // rapporte rien.
+  if (model === 'TENANT') return 'credentialed';
+
+  // PUBLIC et REFERENCE : la classe est fixee par la route. Un en-tete
+  // Authorization, valide ou non, ne la change pas.
+  return WRITE_METHODS.has((req.method || 'GET').toUpperCase()) ? 'public-write' : 'public-read';
 }
 
 /**
@@ -312,13 +373,22 @@ export async function evaluate(
 
   const databaseHits = key ? await touchDatabase(key, budget, now) : null;
   if (databaseHits === null) {
+    /*
+     * L2 n'a pas pu compter : soit la base est injoignable (ou en
+     * quarantaine), soit aucune cle HMAC n'a pu etre derivee — auquel cas on
+     * refuse d'ecrire une adresse en clair. Dans les deux cas le plafond
+     * partage disparait, et le budget degrade prend le relais pour les classes
+     * sensibles. `allowed` n'est plus vrai par defaut : il est decide.
+     */
+    const degraded = degradedBudgetFor(klass);
+    const isDegraded = degraded.limit !== budget.limit;
     return {
-      allowed: true,
+      allowed: memoryHits <= degraded.limit,
       klass,
-      limit: budget.limit,
-      remaining: Math.max(0, budget.limit - memoryHits),
+      limit: degraded.limit,
+      remaining: Math.max(0, degraded.limit - memoryHits),
       resetSeconds,
-      enforcedBy: 'memoire',
+      enforcedBy: isDegraded ? 'memoire-degrade' : 'memoire',
     };
   }
 

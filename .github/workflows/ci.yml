@@ -124,7 +124,12 @@ jobs:
         # l'automatiser suppose de figer le rendu dans un conteneur.
         run: |
           set -u
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression').join(' '))")
+          # Trois scripts sont exclus ici pour une raison precise : ils exigent
+          # une base reelle et sont executes a l'etage `base-de-donnees`, ou leurs
+          # sections base peuvent effectivement tourner. Les laisser ici les
+          # ferait echouer (test:auth:rls-provisioning sort en code 2 sans
+          # TF_RLS_APP_URL) ou s'annoncer partiellement non executes.
+          scripts=$(node -e "const exclues=new Set(['test:p2','test:regression','test:auth:rls-provisioning','test:rate-limit:abuse','test:dpp:no-fabrication']);console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&!exclues.has(k)).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -271,6 +276,28 @@ jobs:
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
+
+      - name: Provisionnement utilisateur sous RLS
+        # La premiere connexion d'un utilisateur echouait en 42501 des que le
+        # role runtime ne porte pas BYPASSRLS : `users` n'a pas de politique
+        # INSERT « soi-meme » (impossible par construction), seulement
+        # users_insert_worker. Execute avec le role runtime reel.
+        run: npm run test:auth:rls-provisioning
+
+      - name: Le limiteur de debit ne se negocie pas avec un en-tete
+        # TRACEFAB_DATABASE_URL_PROBE fait executer la section F : l'increment
+        # atomique de rate_limit_counters, mesure contre la base jetable.
+        env:
+          TRACEFAB_DATABASE_URL_PROBE: ${{ env.DATABASE_URL }}
+        run: npm run test:rate-limit:abuse
+
+      - name: Aucune donnee de passeport n'est fabriquee
+        # Le resolveur reel est execute contre la base, sous le role runtime, en
+        # contexte public : un produit publie sans donnee doit rendre null partout.
+        env:
+          DPP_TEST_OWNER_URL: ${{ env.DATABASE_URL }}
+          DPP_TEST_APP_URL: ${{ env.TF_RLS_APP_URL }}
+        run: npm run test:dpp:no-fabrication
 
       - name: Scenarios croises contre la base de production
         # Optionnels, et clairement annonces comme tels. L'etancheite est deja
