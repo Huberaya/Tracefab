@@ -19,6 +19,11 @@
 #   - sur une branche : ajouter une ligne a tests/regression/reference/.figer
 #     et pousser (workflow_dispatch n'existe que sur la branche par defaut).
 #
+# Limite connue : la poussee d'images faite par GITHUB_TOKEN ne relance pas
+# librement la CI — le run cree reste en attente d'approbation humaine. Un
+# commit ulterieur pousse depuis un compte authentifie relance la boucle
+# normale sur les memes references.
+#
 # A REJOUER quand l'environnement de rendu bouge : migration de l'image
 # ubuntu-latest, mise a jour de playwright, changement de fontes.
 
