@@ -2116,6 +2116,7 @@
     "errUnavailable": "Connexion indisponible."
   },
   "dpp": {
+    "demoBanner": "Passeport de démonstration — données d'exemple, produit fictif.",
     "badgeEu": "Format EU ESPR / DPP",
     "verifiedOrigin": "✓ Provenance Vérifiée",
     "composition": "Composition des Matières",

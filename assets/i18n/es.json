@@ -2116,6 +2116,7 @@
     "errUnavailable": "Inicio de sesión no disponible."
   },
   "dpp": {
+    "demoBanner": "Pasaporte de demostración — datos de ejemplo, producto no real.",
     "badgeEu": "Formato UE ESPR / DPP",
     "verifiedOrigin": "✓ Procedencia Verificada",
     "composition": "Composición de Materiales",

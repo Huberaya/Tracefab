@@ -2116,6 +2116,7 @@
     "errUnavailable": "Accesso non disponibile."
   },
   "dpp": {
+    "demoBanner": "Passaporto dimostrativo — dati di esempio, prodotto non reale.",
     "badgeEu": "Formato UE ESPR / DPP",
     "verifiedOrigin": "✓ Provenienza Verificata",
     "composition": "Composizione Materiali",

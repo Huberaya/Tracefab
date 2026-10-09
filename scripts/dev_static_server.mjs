@@ -42,22 +42,28 @@ const MIME = {
   '.webmanifest': 'application/manifest+json',
 };
 
-// Mirrors vercel.json "routes"
-const REWRITES = [
-  [/^\/$/, 'index.html'],
-  [/^\/supplier-portal\/?$/, 'supplier-portal/index.html'],
-  [/^\/invitations\/accept\/?$/, 'invitations/accept/index.html'],
-  [/^\/brand-console\/?$/, 'brand-console/index.html'],
-  [/^\/product-intelligence\/?$/, 'product-intelligence/index.html'],
-  [/^\/dpp\/?$/, 'dpp/index.html'],
-  [/^\/p\/.+$/, 'dpp/index.html'],
-  [/^\/quality-center\/?$/, 'quality-center/index.html'],
-  [/^\/operations\/?$/, 'operations/index.html'],
-  [/^\/passport\/?$/, 'passport/index.html'],
-];
+/**
+ * Les reecritures sont LUES depuis vercel.json, pas recopiees.
+ *
+ * Elles l'etaient a la main, et les deux listes ont diverge : une route
+ * ajoutee a vercel.json restait invisible en local, ce qui fait mentir
+ * l'apercu sur le comportement de production. Une seule source de verite.
+ */
+const VERCEL = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
+const REWRITES = (VERCEL.routes || [])
+  .filter((r) => r.src && r.dest && !r.dest.startsWith('/api/'))
+  .map((r) => {
+    const [destPath, destQuery] = String(r.dest).split('?');
+    return {
+      // vercel.json ancre implicitement le motif sur la totalite du chemin.
+      pattern: new RegExp(`^${r.src.replace(/^\^/, '').replace(/\$$/, '')}$`),
+      target: destPath.replace(/^\//, ''),
+      query: destQuery || '',
+    };
+  });
 
 function resolveFile(urlPath) {
-  for (const [pattern, target] of REWRITES) {
+  for (const { pattern, target } of REWRITES) {
     if (pattern.test(urlPath)) return path.join(ROOT, target);
   }
   const clean = urlPath.replace(/^\/+/, '').replace(/\.\./g, '');
