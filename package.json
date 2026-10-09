@@ -93,6 +93,7 @@
     "@types/archiver": "^8.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.43",
+    "pg": "^8.23.1",
     "playwright": "^1.63.0",
     "prisma": "^6.19.3",
     "tsx": "^4.23.15",
