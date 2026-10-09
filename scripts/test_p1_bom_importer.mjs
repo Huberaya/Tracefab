@@ -8,7 +8,21 @@ const bomImportLib = await readFile(new URL('../api/_lib/bom-importer.ts', impor
 const indexTs = await readFile(new URL('../api/index.ts', import.meta.url), 'utf8');
 
 // Assertions on Supplier Portal UI
-assert(supplierPortalHtml.includes('Importer Excel / CSV (BOM & Lots)'), 'BOM import button missing in supplier portal');
+/* Le libellé du bouton vit dans locales/{lang}/supplier.json : un composant ne
+   doit plus porter de contenu métier en dur. On vérifie l'appel à t() ET les neuf
+   traductions — plus strict que la présence d'une chaîne française. */
+const BOM_LABEL_KEY = 'ui_importer_excel_csv_bom_lots';
+assert(
+  supplierPortalHtml.includes(`t('${BOM_LABEL_KEY}')`),
+  `BOM import button missing in supplier portal (t('${BOM_LABEL_KEY}'))`,
+);
+for (const lang of ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh']) {
+  const dict = JSON.parse(await readFile(new URL(`../locales/${lang}/supplier.json`, import.meta.url), 'utf8'));
+  assert(
+    typeof dict[BOM_LABEL_KEY] === 'string' && dict[BOM_LABEL_KEY].trim().length > 0,
+    `BOM import button label must be translated in ${lang}`,
+  );
+}
 assert(supplierPortalHtml.includes('data-action="open-bom-import"'), 'BOM import action must use the bound event path');
 assert(!supplierPortalHtml.includes("onclick=\"state.modal='import-bom';render();\""), 'BOM import must not depend on inaccessible inline lexical state');
 assert(supplierPortalHtml.includes('handleBomImportSubmit'), 'handleBomImportSubmit missing in supplier portal');

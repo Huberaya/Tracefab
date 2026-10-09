@@ -20,6 +20,7 @@
  */
 import { readFile } from 'node:fs/promises';
 import { JSDOM, VirtualConsole } from 'jsdom';
+import ts from 'typescript';
 
 const root = new URL('../', import.meta.url);
 
@@ -240,6 +241,103 @@ const bare = await new Promise(async (resolve) => {
 });
 eq(bare.text.includes('Brouillon'), false, 'sans dictionnaire, aucun libellé français n’est inventé');
 assert(bare.text.length > 200, 'la page reste utilisable sans dictionnaire');
+
+console.log('\nF. Aucune chaîne française ne subsiste dans les autres langues');
+/** Valeurs propres au français : si l'une d'elles s'affiche dans une autre
+ *  langue, la migration est incomplète. On exige >= 6 caractères pour limiter
+ *  les faux positifs sur des fragments courts. */
+/** Les données de démonstration ne sont pas du texte d'interface : une fausse
+ *  adresse ou un faux motif de demande représentent ce qu'un fournisseur aurait
+ *  saisi, pas un libellé de l'application. Elles restent donc non traduites, et
+ *  doivent être retirées du corpus de contrôle — sinon « Certificats et sites
+ *  uniquement » (message d'une demande de démo) ferait échouer le test à tort. */
+const demoBody = (() => {
+  const start = html.indexOf('function demoData()');
+  const end = html.indexOf('\n      function ', start + 10);
+  return start >= 0 && end > start ? html.slice(start, end) : '';
+})();
+assert(demoBody.length > 1000, `le corps de demoData est isolé (${demoBody.length})`);
+
+const frDictValues = [...new Set(Object.values(FR))];
+
+for (const lang of ['tr', 'zh', 'de', 'en']) {
+  const dict = JSON.parse(await readFile(new URL(`locales/${lang}/supplier.json`, root), 'utf8'));
+  /** Le corpus est propre à chaque langue : certains libellés français et
+   *  anglais sont identiques (« Site »), et les comparer à un corpus calculé
+   *  contre le turc faisait échouer l'anglais à tort. */
+  const langSet = new Set(Object.values(dict));
+  const frOnly = frDictValues.filter((v) => v.length >= 6 && !langSet.has(v) && !demoBody.includes(v));
+  assert(frOnly.length > 200, `${lang} : un corpus de contrôle suffisant (${frOnly.length})`);
+  const mounted = await mount(lang);
+  eq(mounted.pageErrors.length, 0, `aucune erreur de page en ${lang}`, mounted.pageErrors.join(' | '));
+  const text = mounted.appText();
+  const dictValues = new Set(Object.values(dict));
+  const leftovers = frOnly.filter((v) => text.includes(v));
+  eq(leftovers.length, 0, `${lang} : aucune chaîne française ne s'affiche`, leftovers.slice(0, 6).join(' | '));
+  const translated = [...dictValues].filter((v) => v.length >= 6 && text.includes(v));
+  assert(translated.length >= 15,
+    `${lang} : des libellés traduits s'affichent réellement (${translated.length})`);
+}
+
+console.log('\nG. Contrôle au niveau du mot : rien de français ne subsiste');
+/**
+ * La section F compare au dictionnaire : une chaîne jamais migrée lui est donc
+ * invisible. C'est exactement ce qui a laissé passer « Annuler », « Fermer » et
+ * « Connexion indisponible ». Ce contrôle ne s'appuie sur aucun dictionnaire —
+ * il cherche des mots français sans ambiguïté dans le rendu.
+ *
+ * Restreint aux langues qui ne partagent pas ces mots : l'italien, l'espagnol
+ * et le portugais emploient legitimately « la », « que », « un », « nos ».
+ * Le néerlandais utilise « de » comme article : il est retiré pour cette langue.
+ */
+/** Mots français à fort signal. Les mots courts ambigus en sont exclus, mesurés
+ *  comme tels : « et » est un verbe turc (« beyan et »), « des » un article
+ *  allemand, « un » un mot turc. Les garder produisait des échecs imaginaires et
+ *  aurait fini par faire ignorer ce contrôle. */
+const FRENCH_WORDS = ['du', 'les', 'une', 'votre', 'vos', 'nos',
+  'mes', 'cette', 'ces', 'pour', 'sans', 'avec', 'dans', 'tous', 'être',
+  'aucun', 'aucune', 'chaque', 'après', 'avant', 'dont',
+  'vous', 'nous', 'elle', 'leur', 'leurs', 'aux',
+  'enregistrer', 'ajouter', 'déclarer', 'renseigner', 'annuler', 'fermer', 'importer',
+  'indisponible', 'rechercher', 'téléverser', 'répondre', 'soumettre', 'créer',
+  'modifier', 'supprimer', 'retour', 'accueil', 'demande', 'demandes', 'réponse',
+  'réponses', 'certificat', 'certificats', 'preuve', 'preuves', 'matériau', 'matériaux',
+  'marque', 'marques', 'fournisseur', 'donnée', 'données', 'vue', 'ouverte', 'ouvertes'];
+const WORD_EXCLUDE = { nl: ['de'], de: [], en: [], tr: [], zh: [] };
+
+/** Les valeurs de démonstration sont du français assumé : on les retire du rendu
+ *  avant de compter, plutôt que d'affaiblir la liste de mots. */
+/** L'extraction par expression régulière se désynchronisait sur les apostrophes
+ *  échappées et laissait passer des phrases entières de démonstration. On passe
+ *  par l'AST : les littéraux de demoData() sont énumérés exactement. */
+const demoStrings = (() => {
+  const open = html.lastIndexOf('<script>') + '<script>'.length;
+  const code = html.slice(open, html.indexOf('</script>', open));
+  const sf = ts.createSourceFile('sp.js', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const out = [];
+  const collect = (node) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) out.push(node.text);
+    else if (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) out.push(node.text);
+    ts.forEachChild(node, collect);
+  };
+  const find = (node) => {
+    if (ts.isFunctionDeclaration(node) && node.name && node.name.text === 'demoData') collect(node);
+    ts.forEachChild(node, find);
+  };
+  find(sf);
+  return out.filter((v) => v.length >= 4);
+})();
+
+for (const lang of ['tr', 'zh', 'de', 'nl', 'en']) {
+  const dict = JSON.parse(await readFile(new URL(`locales/${lang}/supplier.json`, root), 'utf8'));
+  const mounted = await mount(lang);
+  let text = mounted.appText();
+  for (const d of demoStrings) text = text.split(d).join(' ');
+  const allowed = new Set((WORD_EXCLUDE[lang] || []).concat(Object.values(dict)));
+  const found = FRENCH_WORDS.filter((w) => !allowed.has(w)
+    && new RegExp(`\\b${w}\\b`, 'iu').test(text));
+  eq(found.length, 0, `${lang} : aucun mot français dans le rendu`, found.join(', '));
+}
 
 console.log(`\n${'='.repeat(64)}`);
 if (failures) {

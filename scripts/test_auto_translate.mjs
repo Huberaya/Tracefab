@@ -232,8 +232,15 @@ for (const p of pages) {
  * illusoire — sur quality-center, le glossaire traduisait 7 termes sur ~130
  * chaînes ; un moteur de traduction présent donne l'impression du multilingue
  * alors que l'essentiel de la page reste dans une seule langue.
+ *
+ * `supplier-portal` passe de 33 à 4 pour la même raison : tout son texte
+ * d'interface a été déplacé dans locales/{lang}/supplier.json (439 clés x 9
+ * langues, turc et chinois compris). Les 4 occurrences restantes ne sont pas du
+ * texte affiché mais des coïncidences de sous-chaîne, vérifiées une à une :
+ * « Documents » dans refreshDocuments, « Action »/« Actions » dans .sp-actions-grid
+ * et son commentaire CSS, « Mode démonstration » dans un commentaire JS.
  */
-const EXPECTED = { 'brand-console/index.html': 55, 'operations/index.html': 0, 'quality-center/index.html': 1, 'supplier-portal/index.html': 33 };
+const EXPECTED = { 'brand-console/index.html': 55, 'operations/index.html': 0, 'quality-center/index.html': 1, 'supplier-portal/index.html': 4 };
 for (const [p, n] of Object.entries(EXPECTED)) {
   eq(coverage[p], n, `${p} : ${n} clés du glossaire présentes`);
 }
@@ -241,7 +248,7 @@ for (const [p, n] of Object.entries(EXPECTED)) {
    Conservées au fichier (du texte peut apparaître plus tard), mais comptées. */
 const htmlCache = Object.fromEntries(await Promise.all(pages.map(async (p) => [p, await readFile(new URL(p, root), 'utf8')])));
 const dead = keys.filter((k) => !pages.some((p) => htmlCache[p].includes(k)));
-eq(dead.length, 37, '37 clés ne correspondent à aucun texte des 4 pages');
+eq(dead.length, 46, '46 clés ne correspondent à aucun texte des 4 pages');
 
 console.log(`\n${failures === 0 ? 'SUCCÈS' : 'ÉCHEC'} — ${checks - failures}/${checks} vérifications`);
 process.exit(failures === 0 ? 0 : 1);

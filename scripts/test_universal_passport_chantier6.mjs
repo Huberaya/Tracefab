@@ -97,8 +97,25 @@ console.log('✓ Public Verifiable Passport Viewer (passport/index.html) verifie
 // 6. Verify Supplier Portal Integration (supplier-portal/index.html)
 const supplierPortalPath = path.resolve('supplier-portal/index.html');
 const supplierPortal = fs.readFileSync(supplierPortalPath, 'utf8');
+/**
+ * Le texte d'interface du portail vit dans locales/{lang}/supplier.json : un
+ * composant ne doit plus porter de contenu métier en dur. On vérifie donc que le
+ * portail appelle la clé ET que les neuf langues la traduisent — c'est plus
+ * strict que la présence d'une chaîne française dans le HTML.
+ */
+const SUPPLIER_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
+const readDict = (lang) => JSON.parse(fs.readFileSync(path.resolve(`locales/${lang}/supplier.json`), 'utf8'));
+function assertTranslated(key, expectedFr, label) {
+  assert(supplierPortal.includes(`t('${key}')`), `${label} (le portail doit appeler t('${key}'))`);
+  for (const lang of SUPPLIER_LANGS) {
+    const value = readDict(lang)[key];
+    assert(typeof value === 'string' && value.trim().length > 0, `${label} (${lang} doit traduire ${key})`);
+  }
+  assert(readDict('fr')[key] === expectedFr, `${label} (la valeur française doit être conservée)`);
+}
+
 assert(supplierPortal.includes('passportView'), 'Supplier portal must implement passportView');
-assert(supplierPortal.includes('Passeport Fournisseur Universel « 1-Clic »'), 'Supplier portal must display Universal Passport title');
+assertTranslated('ui_passeport_fournisseur_universel_1', readDict('fr')['ui_passeport_fournisseur_universel_1'], 'Supplier portal must display Universal Passport title');
 assert(supplierPortal.includes('passport-settings-form'), 'Supplier portal must have settings form');
 assert(supplierPortal.includes('review-passport-request'), 'Supplier portal must have review request action');
 console.log('✓ Supplier Portal UI/UX integration verified');

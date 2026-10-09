@@ -215,10 +215,28 @@ assert(
   portalSrc.includes('state.ocr'),
   'le résultat est stocké dans l’état du portail',
 );
+/* La mise en garde « extraire ne déclare rien » a quitté le composant pour
+   locales/{lang}/supplier.json : un contenu métier ne doit pas être codé en dur.
+   On vérifie l'appel à t() ET que les neuf langues portent la mise en garde —
+   c'est plus strict que la présence d'une chaîne française dans le HTML. */
+const OCR_KEYS = ['ui_champs_extraits_rien_n_a_ete_enreg', 'ui_recopiez_les_champs_utiles_dans_le'];
+for (const key of OCR_KEYS) {
+  assert(portalSrc.includes(`t('${key}')`), `le portail appelle t('${key}')`);
+}
+const frOcr = JSON.parse(await read('locales/fr/supplier.json'));
 assert(
-  /Rien n’a été enregistré|n’enregistre pas/.test(portalSrc),
+  /Rien n’a été enregistré|enregistre pas/.test(`${frOcr[OCR_KEYS[0]]} ${frOcr[OCR_KEYS[1]]}`),
   'l’interface précise qu’extraire ne déclare rien',
 );
+for (const lang of ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh']) {
+  const dict = JSON.parse(await read(`locales/${lang}/supplier.json`));
+  for (const key of OCR_KEYS) {
+    assert(
+      typeof dict[key] === 'string' && dict[key].trim().length > 0,
+      `${lang} traduit ${key}`,
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 console.log('\nD. calculate-index n’est pas branché sur des composants inventés');

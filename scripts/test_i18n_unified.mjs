@@ -151,11 +151,10 @@ const PORTAL_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
 
 /* Nombre de clés attendu par portée.
    console  : 25 — les libellés de la console marque n'ont pas bougé.
-   supplier : 50 — les 25 libellés d'origine, plus 25 clés ajoutées quand les
-              étiquettes de statut (24) et le libellé du champ « État » ont cessé
-              d'être codés en dur dans supplier-portal/index.html. Un fournisseur
-              turc ou chinois lisait « Brouillon » et des dates au format français. */
-const EXPECTED_KEYS = { console: 25, supplier: 50 };
+   supplier : 439 — 25 libellés d'origine, 25 clés de statut, puis 389 clés
+              issues de la migration complète : tout le texte d'interface du
+              portail était codé en dur dans supplier-portal/index.html. */
+const EXPECTED_KEYS = { console: 25, supplier: 439 };
 for (const [scope, langs] of [['console', CONSOLE_LANGS], ['supplier', PORTAL_LANGS]]) {
   const ref = Object.keys(await readDict(langs[0], scope)).sort();
   eq(ref.length, EXPECTED_KEYS[scope], `${scope}.json : ${EXPECTED_KEYS[scope]} clés (${langs[0]})`);

@@ -31,6 +31,35 @@ const eq = (actual, expected, label) =>
   assert(actual === expected, label, `attendu ${JSON.stringify(expected)}, obtenu ${JSON.stringify(actual)}`);
 
 const portalHtml = await readFile(new URL('supplier-portal/index.html', root), 'utf8');
+
+/**
+ * Le portail délègue ses libellés à public/i18n-core.js. Sans runtime, t(clé)
+ * renvoie la clé : le message de succès du registre s'affichait alors
+ * « ui_registre_exporte ». On fournit le VRAI dictionnaire français — ce test
+ * assertit du texte français, c'est la langue cohérente ici.
+ */
+const portalDict = JSON.parse(
+  await readFile(new URL('locales/fr/supplier.json', root), 'utf8'),
+);
+const portalI18n = (win) => {
+  try { win.localStorage.setItem('tracefab_lang', 'fr'); } catch { /* ignore */ }
+  win.TracefabI18n = {
+    language: 'fr',
+    missing: [],
+    t(key, values) {
+      const value = portalDict[key];
+      if (value === undefined) return null;
+      return values
+        ? String(value).replace(/\{([a-zA-Z0-9_]+)\}/g, (m, n) => (n in values ? values[n] : m))
+        : value;
+    },
+    init(options) {
+      this.language = (options && options.language) || 'fr';
+      return Promise.resolve(this.language);
+    },
+    apply() {},
+  };
+};
 const consoleHtml = await readFile(new URL('brand-console/index.html', root), 'utf8');
 const documentsRoute = await readFile(new URL('api/_routes/documents.ts', root), 'utf8');
 
@@ -79,6 +108,7 @@ const dom0 = new JSDOM(portalHtml, {
   pretendToBeVisual: true,
   url: 'https://tracefab.vercel.app/supplier-portal/?demo=1',
   virtualConsole: new VirtualConsole(),
+  beforeParse: portalI18n,
 });
 if (dom0.window.document.readyState !== 'complete') {
   await new Promise((r) => dom0.window.addEventListener('load', r, { once: true }));
@@ -205,6 +235,7 @@ const dom = new JSDOM(portalHtml, {
   pretendToBeVisual: true,
   url: 'https://tracefab.vercel.app/supplier-portal/?demo=1',
   virtualConsole,
+  beforeParse: portalI18n,
 });
 const { window } = dom;
 const { document } = window;
