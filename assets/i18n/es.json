@@ -2300,6 +2300,7 @@
     "gs1Uri": "URI oficial GS1 Digital Link:",
     "gs1Ai01": "Identificador de aplicación (AI 01)",
     "jsonExport": "Exportar CIRPASS JSON-LD",
+    "demoBanner": "Pasaporte de demostración — datos de ejemplo, producto ficticio.",
     "statusUnverified": "No verificado",
     "statusNotFilled": "No rellenado",
     "statusUnavailable": "No disponible"

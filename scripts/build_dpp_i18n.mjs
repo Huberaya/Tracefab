@@ -154,6 +154,7 @@ const T = {
   jsonExport: ["Export CIRPASS JSON-LD", "Exporter JSON-LD CIRPASS", "CIRPASS JSON-LD exportieren", "Esporta CIRPASS JSON-LD", "Exportar CIRPASS JSON-LD", "CIRPASS JSON-LD exporteren", "Exportar CIRPASS JSON-LD"],
   // Etats explicites affiches par assets/js/dpp.2.js quand une donnee est
   // absente ou non verifiee : jamais une valeur de substitution.
+  demoBanner: ["Demonstration passport — sample data, not a real product.", "Passeport de démonstration — données d'exemple, produit fictif.", "Demonstrationspass — Beispieldaten, kein echtes Produkt.", "Passaporto dimostrativo — dati di esempio, prodotto non reale.", "Pasaporte de demostración — datos de ejemplo, producto ficticio.", "Demonstratiepaspoort — voorbeelddata, geen echt product.", "Passaporte de demonstração — dados de exemplo, produto fictício."],
   statusUnverified: ["Not verified", "Non vérifié", "Nicht verifiziert", "Non verificato", "No verificado", "Niet geverifieerd", "Não verificado"],
   statusNotFilled: ["Not filled in", "Non renseigné", "Nicht ausgefüllt", "Non compilato", "No rellenado", "Niet ingevuld", "Não preenchido"],
   statusUnavailable: ["Unavailable", "Indisponible", "Nicht verfügbar", "Non disponibile", "No disponible", "Niet beschikbaar", "Indisponível"],

@@ -2300,6 +2300,7 @@
     "gs1Uri": "Officiële GS1 Digital Link-URI:",
     "gs1Ai01": "Toepassingsidentificatie (AI 01)",
     "jsonExport": "CIRPASS JSON-LD exporteren",
+    "demoBanner": "Demonstratiepaspoort — voorbeelddata, geen echt product.",
     "statusUnverified": "Niet geverifieerd",
     "statusNotFilled": "Niet ingevuld",
     "statusUnavailable": "Niet beschikbaar"

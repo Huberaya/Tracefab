@@ -92,8 +92,22 @@ async function empreinte(navigateur) {
   return { navigateur: navigateur.version(), largeurs };
 }
 
+
+/**
+ * En CI, les journaux de job ne sont pas lisibles depuis l'API : seules les
+ * annotations le sont. Tout diagnostic doit donc passer par ::error:: /
+ * ::notice:: — sans quoi un echec revient sans cause visible.
+ */
+function annoter(niveau, message) {
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    console.log(`::${niveau}::${message.replace(/\r?\n/g, ' ')}`);
+  }
+  console.log(message);
+}
+
 const nav = await launchTestBrowser();
 const ENV_COURANT = await empreinte(nav);
+annoter('notice', `regression visuelle : Chromium ${ENV_COURANT.navigateur} · largeurs ${JSON.stringify(ENV_COURANT.largeurs)}`);
 
 if (!MAJ && existsSync(EMPREINTE)) {
   const attendu = JSON.parse(readFileSync(EMPREINTE, 'utf8'));
@@ -106,6 +120,7 @@ if (!MAJ && existsSync(EMPREINTE)) {
     && famille(attendu.navigateur) === famille(ENV_COURANT.navigateur);
   if (!memeRendu) {
     await nav.close();
+    annoter('error', `regression visuelle NON EXECUTEE — environnement different (reference Chromium ${attendu.navigateur} / ici ${ENV_COURANT.navigateur}, largeurs ${JSON.stringify(attendu.largeurs)} vs ${JSON.stringify(ENV_COURANT.largeurs)})`);
     console.log('\n  TEST NON EXECUTE — environnement de rendu different de la reference.');
     console.log(`    reference : Chromium ${attendu.navigateur} · largeurs ${JSON.stringify(attendu.largeurs)}`);
     console.log(`    ici       : Chromium ${ENV_COURANT.navigateur} · largeurs ${JSON.stringify(ENV_COURANT.largeurs)}`);
@@ -133,7 +148,7 @@ for (const s of SURFACES) {
     try {
       png = await capturer(nav, BASE, s, ecran);
     } catch (err) {
-      console.log(`  ECHEC ${nom} — capture impossible : ${err.message}`);
+      annoter('error', `regression visuelle : ${nom} — capture impossible : ${err.message}`);
       echecs += 1;
       continue;
     }
@@ -145,7 +160,7 @@ for (const s of SURFACES) {
     }
 
     if (!existsSync(chemin)) {
-      console.log(`  ECHEC ${nom} — aucune reference. Lancer « npm run test:regression -- --maj ».`);
+      annoter('error', `regression visuelle : ${nom} — aucune reference. Lancer « npm run test:regression -- --maj ».`);
       echecs += 1; nouveaux += 1;
       continue;
     }
@@ -153,11 +168,10 @@ for (const s of SURFACES) {
     const d = await comparer(nav, readFileSync(chemin), png);
     compares += 1;
     if (d.dimensions) {
-      console.log(`  ECHEC ${nom} — la page a change de taille : ${d.dimensions}`);
+      annoter('error', `regression visuelle : ${nom} — la page a change de taille : ${d.dimensions}`);
       echecs += 1;
     } else if (d.pct > SEUIL_PCT) {
-      console.log(`  ECHEC ${nom} — ${d.pct.toFixed(3)} % des pixels different `
-        + `(${d.pixels} sur ${d.largeur}x${d.hauteur}), seuil ${SEUIL_PCT} %`);
+      annoter('error', `regression visuelle : ${nom} — ${d.pct.toFixed(3)} % des pixels different (${d.pixels} sur ${d.largeur}x${d.hauteur}), seuil ${SEUIL_PCT} %`);
       echecs += 1;
     } else if (d.pct > 0) {
       console.log(`  ok    ${nom}  ${d.pct.toFixed(3)} % (sous le seuil)`);

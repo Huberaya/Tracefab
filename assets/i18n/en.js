@@ -2176,6 +2176,7 @@ window.TF_I18N_BUNDLES.en = {
     gs1Uri: "Official GS1 Digital Link URI:",
     gs1Ai01: "Application identifier (AI 01)",
     jsonExport: "Export CIRPASS JSON-LD",
+    demoBanner: "Demonstration passport — sample data, not a real product.",
     statusUnverified: "Not verified",
     statusNotFilled: "Not filled in",
     statusUnavailable: "Unavailable"

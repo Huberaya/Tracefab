@@ -2300,6 +2300,7 @@
     "gs1Uri": "Offizielle GS1-Digital-Link-URI:",
     "gs1Ai01": "Anwendungskennzeichen (AI 01)",
     "jsonExport": "CIRPASS JSON-LD exportieren",
+    "demoBanner": "Demonstrationspass — Beispieldaten, kein echtes Produkt.",
     "statusUnverified": "Nicht verifiziert",
     "statusNotFilled": "Nicht ausgefüllt",
     "statusUnavailable": "Nicht verfügbar"
