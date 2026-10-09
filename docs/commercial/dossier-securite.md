@@ -128,29 +128,85 @@ Cette section existe parce qu'elle est la plus utile des huit précédentes.
 
 | Sujet | État | Échéance |
 |---|---|---|
-| **Limitation de débit sur l'API** | **Absente** | Prochain lot sécurité |
-| CSP sans `'unsafe-inline'` | En place avec `'unsafe-inline'` | Prochain lot sécurité |
-| Pagination des listes | Absente | Prochain lot sécurité |
+| Pagination systématique des listes | Partielle | Prochain lot |
+| `style-src` sans `'unsafe-inline'` | En place avec `'unsafe-inline'` | Prochain lot |
 | Test d'intrusion externe | Non réalisé | À planifier |
 | Certification SOC 2 / ISO 27001 | Non engagée | Sur demande client |
 
-**L'absence de limitation de débit est la plus exposée.** L'endpoint de
-passeport public est ouvert par construction : sans plafond, il est
-exploitable en déni de service et en coût d'infrastructure. C'est le premier
-point du prochain lot, et nous préférons l'écrire ici plutôt que de le laisser
-découvrir.
+**Précision sur la CSP.** `script-src` ne contient **pas** `'unsafe-inline'` :
+tout le JavaScript des pages a été sorti du balisage vers `/assets/js/`
+précisément pour cela. La tolérance subsiste uniquement sur `style-src`, du
+fait d'attributs `style=` encore présents dans le balisage. La distinction
+compte : c'est l'injection de script qui exécute du code, pas l'injection de
+style.
+
+**Précision sur la pagination.** Les listes ne sont pas toutes paginées. Un
+plafond de lignes par requête (`TRACEFAB_QUERY_ROW_CEILING`, 5 000 par défaut)
+borne l'exposition en attendant, mais ce n'est pas de la pagination : c'est un
+garde-fou.
+
+**Corrigé depuis la version précédente de ce dossier.** La limitation de débit
+y était déclarée absente, et présentée comme notre exposition principale. Elle
+est en place et appliquée dans le routeur d'API (réponse `429` et en-têtes
+`RateLimit-*`) :
+
+| Classe d'appel | Budget | Fenêtre |
+|---|---:|---|
+| Lecture publique (dont passeport et DPP) | 120 | par minute |
+| Cartes wallet | 20 | par minute |
+| Écriture publique | 10 | par 5 minutes |
+| Appel authentifié | 600 | par minute |
+
+Exemptés : `health`, `internal/*`, `webhooks/*`. Le limiteur est *fail-open* :
+s'il ne peut pas statuer, il laisse passer plutôt que de bloquer le service, et
+se met en quarantaine 30 secondes. C'est un choix de disponibilité, assumé et
+écrit ici.
 
 ---
 
 ## Contacts et escalade
 
-| Sujet | À préciser avant diffusion |
+| Sujet | Engagement |
 |---|---|
-| Signalement de vulnérabilité | adresse dédiée |
-| Délai d'accusé de réception | engagement à définir |
-| Notification d'incident | délai contractuel à définir |
-| Sous-traitants ultérieurs | liste à publier : Clerk, Neon, Vercel, Resend, et l'analyseur antivirus retenu |
+| Signalement de vulnérabilité | `security@tracefab.com` |
+| Accusé de réception | 1 jour ouvré |
+| Notification d'incident au client | 24 heures après prise de connaissance |
+| Sous-traitants ultérieurs | liste complète ci-dessous |
 
-> **À faire avant la première diffusion client.** Les quatre lignes ci-dessus
-> sont les premières questions d'un DPO. Les laisser vides dans un document
-> envoyé coûte plus cher que de ne pas l'envoyer.
+**Sur le délai de 24 heures.** L'article 33(2) du RGPD impose au sous-traitant
+d'informer le responsable de traitement « dans les meilleurs délais », sans
+fixer d'heure. Nous nous engageons sur 24 heures parce que c'est ce qui vous
+laisse le temps de tenir vos propres 72 heures vis-à-vis de votre autorité de
+contrôle. Nous ne notifions pas la CNIL à votre place : cette obligation reste
+la vôtre, et la documenter est le sens de cette ligne.
+
+### Sous-traitants ultérieurs
+
+Liste établie par audit du code, pas de mémoire. Chaque entrée correspond à une
+dépendance effectivement présente dans l'application.
+
+| Sous-traitant | Rôle | Données concernées |
+|---|---|---|
+| **Neon** | PostgreSQL managé | Toutes les données métier |
+| **Vercel** | Hébergement, fonctions, journaux | Trafic, journaux applicatifs |
+| **Clerk** | Authentification et identités | Identités et sessions utilisateur |
+| **Resend** | Courriel transactionnel | Adresses des destinataires |
+| Stockage objet | Documents et preuves | Fichiers téléversés |
+| Service antivirus | Analyse des téléversements | Fichiers téléversés |
+| **jsDelivr** | Diffusion du SDK Clerk au navigateur | Adresse IP du visiteur |
+| **Google Fonts** | Polices de caractères | Adresse IP du visiteur |
+| Apple Wallet | Cartes de passeport produit | Identifiants produit |
+| Google Wallet | Cartes de passeport produit | Identifiants produit |
+
+Le stockage objet et le service antivirus sont configurables par déploiement
+(`PRIVATE_STORAGE_*`) : le fournisseur retenu pour votre contrat est précisé à
+la signature plutôt que fixé ici.
+
+**Point d'honnêteté sur Google Fonts et jsDelivr.** Ces deux services sont
+appelés directement par le navigateur du visiteur, qui leur transmet donc son
+adresse IP. Les polices sont chargées depuis `fonts.googleapis.com` et
+`fonts.gstatic.com` sur l'ensemble des pages ; `cdn.jsdelivr.net` sert le SDK
+Clerk sur la page d'acceptation d'invitation. C'est un point de friction RGPD
+connu, et nous préférons l'écrire que le laisser découvrir. Héberger ces deux
+ressources depuis notre propre domaine supprimerait l'exposition ; c'est au
+programme, ce n'est pas fait.

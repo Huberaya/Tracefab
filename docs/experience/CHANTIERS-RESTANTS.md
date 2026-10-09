@@ -289,18 +289,64 @@ affaiblir l'assertion : retirer le `defer` le fait toujours rougir.
 Chargement réel des neuf pages après bascule : 60/60 requêtes `/assets/`
 versionnées, 0 réponse ≥ 400, 0 erreur JavaScript.
 
-## 6 · Quatre engagements contractuels à trancher
+## 6 · Engagements contractuels — TRANCHÉS
 
-`docs/commercial/dossier-securite.md`, lignes 149 à 152 :
+Les quatre lignes laissées à blanc dans `docs/commercial/dossier-securite.md`
+sont renseignées. Trois relevaient d'une décision commerciale, prise par le
+porteur du produit ; la quatrième était vérifiable dans le code.
 
-| Ligne | État |
+| Ligne | Engagement retenu |
 |---|---|
-| Signalement de vulnérabilité | « adresse dédiée » |
-| Délai d'accusé de réception | « engagement à définir » |
-| Notification d'incident | « délai contractuel à définir » |
-| Sous-traitants ultérieurs | « liste à publier » |
+| Signalement de vulnérabilité | `security@tracefab.com` |
+| Accusé de réception | 1 jour ouvré |
+| Notification d'incident au client | 24 heures après prise de connaissance |
+| Sous-traitants ultérieurs | liste complète, établie par audit |
 
-Décisions juridiques, pas techniques.
+Sur les 24 heures : l'article 33(2) du RGPD impose au sous-traitant d'informer
+le responsable de traitement « dans les meilleurs délais », **sans fixer
+d'heure**. 24 heures est la pratique contractuelle courante ; elle laisse au
+client le temps de tenir ses propres 72 heures vis-à-vis de son autorité de
+contrôle.
+
+### La liste des sous-traitants était incomplète
+
+Elle avait été écrite de mémoire : « Clerk, Neon, Vercel, Resend, et
+l'analyseur antivirus retenu ». L'audit du code en révèle quatre de plus.
+
+| Manquant | Appelé par | Reçoit |
+|---|---|---|
+| **Google Fonts** | le navigateur du visiteur | son adresse IP |
+| **jsDelivr** | le navigateur du visiteur | son adresse IP |
+| Apple Wallet | le serveur | identifiants produit |
+| Google Wallet | le serveur | identifiants produit |
+
+Les deux premiers comptent le plus : ils sont appelés **directement par le
+navigateur**, sur toutes les pages pour les polices. C'est un point de friction
+RGPD connu. Décision : les publier maintenant, internaliser plus tard —
+l'internalisation des polices et du SDK Clerk supprimerait l'exposition à la
+racine.
+
+### Le dossier se trompait aussi en sa défaveur
+
+Il déclarait la limitation de débit **absente**, et la présentait comme
+l'exposition principale du produit. Elle est en place et appliquée dans le
+routeur : réponse `429`, en-têtes `RateLimit-*`, budgets 120 / 20 / 10 / 600.
+Un dossier périmé se trompe dans les deux sens, et les deux coûtent cher :
+l'un fait promettre ce qui n'existe pas, l'autre fait perdre une vente pour un
+défaut déjà réparé.
+
+Deux autres lignes précisées plutôt que corrigées : `script-src` ne contient
+**pas** `'unsafe-inline'` (seul `style-src` le garde), et l'absence de
+pagination est bornée par un plafond de 5 000 lignes par requête.
+
+### Le garde-fou
+
+`npm run test:dossier` vérifie qu'aucun engagement n'est laissé à blanc, que
+chaque origine autorisée par la CSP figure dans la liste des sous-traitants,
+que chaque service appelé par l'API y figure aussi, et qu'aucun contrôle en
+place n'y est déclaré absent. Vérifié par trois mutations : ajouter une origine
+CSP non déclarée, remettre un engagement à blanc, redéclarer la limitation de
+débit absente.
 
 ## 7 · Processus — phases 6 à 12 jamais validées
 
