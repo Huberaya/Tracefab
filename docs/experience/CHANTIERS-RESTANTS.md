@@ -50,24 +50,56 @@ réelle passe aujourd'hui par le code applicatif et le plafond de lignes.
 Mais la **deuxième couche, celle qui devait rattraper une erreur de la
 première, ne protège rien.**
 
-Le correctif : un rôle applicatif dédié, sans `BYPASSRLS` et non
-propriétaire des tables, vers lequel pointerait `DATABASE_URL` — plus un
-test qui **prouve** l'isolation au lieu de compter des drapeaux. Non
-entrepris : changer le rôle de connexion en production casse l'application
-si un droit manque.
+**TRAITÉ — voir `CHANTIER-1-RLS-PREUVE.md`.** Le rôle `tracefab_app`
+(`rolbypassrls=false`, non propriétaire) existe sur Neon. La première requête
+jamais évaluée sous ce rôle a révélé que `materials` était **inexécutable** —
+récursion infinie entre `materials_select_authorized` et
+`product_materials_select_authorized` ; corrigée par la migration
+`20261009120000_fix_materials_policy_recursion`. `npm run test:neon:rls`
+prouve désormais l'étanchéité par exécution, contrôles négatifs inclus.
+
+**Reste à faire :** `DATABASE_URL` pointe toujours `neondb_owner`. Six routes
+publiques lisent des tables de locataire sans contexte — webhook Clerk,
+résolveur GS1, DPP public, cartes wallet, passeport fournisseur. La bascule
+exige d'abord un contexte public explicite. Mesure et procédure dans le
+document dédié.
 
 ## 2 · L'étage base de la CI n'a jamais tourné
 
-`GET /actions/secrets` renvoie **aucun secret**. Le job
-« Base — isolation RLS executee » est donc vert en sautant toutes ses
-étapes utiles : installation, génération Prisma, scénarios croisés.
+**RÉGLÉ.** `GET /actions/secrets` renvoyait **0 secret** et **0 variable**.
+Le job « Base — isolation RLS executee » était vert en sautant installation,
+génération Prisma et scénarios croisés. Preuve conservée — exécution #28,
+commit `b40751d` :
 
-Le nom du job **affirme une exécution qui n'a jamais eu lieu**. Je l'ai
-écrit au chantier 17 avec l'intention « sauté plutôt que rouge » ;
-l'intention était bonne, le résultat ment.
+```
+job « Base — isolation RLS executee » : SUCCESS
+   success    Verifier la presence du secret
+   skipped    Installer les dependances
+   skipped    Generer le client Prisma
+   skipped    Scenarios croises executes contre Postgres
+```
 
-Deux gestes : déposer `DATABASE_URL` en secret du dépôt, et renommer le job
-pour qu'il dise ce qu'il fait quand le secret manque.
+Déposer le secret de production aurait été le mauvais remède : exposer des
+identifiants de production à tout workflow, et faire tourner l'épreuve sur des
+données réelles. Le job monte désormais un **Postgres 17 jetable**, applique
+les 34 migrations, crée le rôle et deux locataires, puis exécute l'épreuve —
+sans aucun secret, y compris depuis un fork. Exécution #30, commit `4c1000f` :
+
+```
+   success    Appliquer les migrations sur la base jetable
+   success    Creer le role tracefab_app et deux locataires
+   success    Isolation RLS prouvee par execution
+```
+
+Le job a d'abord échoué sur `Cannot find package 'pg'` : **`pg` n'avait jamais
+été déclaré** dans `package.json`. Les scripts qui l'importent ne marchaient
+qu'en local, où il avait été posé à la main. Déclaré depuis.
+
+Deux défauts du test lui-même, trouvés en le faisant tourner : il comparait des
+cardinalités (deux locataires symétriques voient le même nombre de lignes tout
+en étant cloisonnés) et il n'inspectait que les tables déjà marquées RLS, donc
+une table dégrèvée sortait de sa surveillance. Les deux corrigés, vérifiés par
+mutation.
 
 ## 3 · Trois surfaces existent et sont injoignables
 
