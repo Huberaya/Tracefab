@@ -1,7 +1,9 @@
 {
   "navigateur": "153.0.8010.0",
+  "source": "@sparticuz/chromium (binaire epingle)",
   "largeurs": {
-    "interTight": 1566,
+    "interTight": 1566.86,
     "jetbrainsMono": 2100
-  }
+  },
+  "temoin": "f9921f936b50d68f"
 }
