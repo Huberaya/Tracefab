@@ -94,7 +94,8 @@
     "audit:e2e": "python3 scripts/e2e_audit.py",
     "test:production-readiness": "npx tsx scripts/test_production_readiness.ts",
     "test:pilot": "npx tsx scripts/seed_pilot.ts --dry-run",
-    "pilot:seed": "npx tsx scripts/seed_pilot.ts"
+    "pilot:seed": "npx tsx scripts/seed_pilot.ts",
+    "test:systeme-design": "node scripts/test_systeme_design.mjs"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",

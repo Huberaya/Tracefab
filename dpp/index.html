@@ -88,29 +88,30 @@
   }
   </script>
 
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css?v=2c246dca">
   <style>
     :root {
-      --primary: #0b7656;
-      --primary-hover: #07523e;
+      --primary: var(--tf-trust-verified-ink);
+      --primary-hover: var(--tf-emerald-ink);
       --primary-soft: #e4f3ec;
       --primary-glow: rgba(11, 118, 86, 0.2);
 
-      --forest-900: #081712;
-      --forest-800: #0e241c;
-      --forest-700: #14352a;
+      --forest-900: var(--tf-forest-900);
+      --forest-800: var(--tf-forest-800);
+      --forest-700: var(--tf-forest-700);
 
       --bg-page: #f8faf8;
-      --bg-surface: #ffffff;
+      --bg-surface: var(--tf-surface-light-raised);
       --bg-subtle: #f1f5f2;
 
       --text-main: #13221b;
       --text-muted: #56675e;
-      --text-subtle: #647069;
+      --text-subtle: var(--tf-trust-declared-ink);
 
       --border-light: #e4ede7;
       --border-medium: #cfded4;
 
-      --status-verified: #0b7656;
+      --status-verified: var(--tf-trust-verified-ink);
       --status-verified-bg: #e4f3ec;
       --status-certified: #047857;
       --status-certified-bg: #d1fae5;
@@ -127,8 +128,8 @@
       --shadow-md: 0 8px 24px rgba(11, 27, 20, 0.07);
       --shadow-lg: 0 16px 40px rgba(11, 27, 20, 0.1);
 
-      --font-sans: 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: var(--tf-font-text);
+      --font-mono: var(--tf-font-mono);
     }
 
     *, *::before, *::after {
@@ -721,6 +722,9 @@
       .badge-eu { flex: 1 1 100%; justify-content: center; }
       .tab-content-panel { padding: 22px 16px; }
     }
+    /* core pose line-height:1.58 sur body ; les onglets etaient calibres
+       sur line-height:normal et gagnaient 9px de hauteur sans cette regle */
+    .dpp-tab-btn { line-height: normal; }
   </style>
     <!-- i18n : catalogue unique /assets/i18n. Page grand public : titre et
          description lui sont propres, d'ou TF_I18N_SKIP_META. -->

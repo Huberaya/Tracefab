@@ -5,9 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tracefab — Quality Center</title>
   <meta name="description" content="Tracefab Quality Center — scores, issues et actions de qualité des données.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/design-system/tracefab-core.css?v=2c246dca">
   <style>
-    :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #17231f; background: #f7f8f4; --green:#0b7656; --dark:#07523e; --muted:#63706b; --line:#e2e8df; --panel:#fff; --yellow:#d79621; --red:#b42318; }
-    * { box-sizing: border-box; } body { margin:0; min-height:100vh; background:linear-gradient(135deg,#f7f8f4 0%,#edf6ef 100%); } button,select { font:inherit; }
+    :root {
+      /* alias vers le systeme de design : une correction de token s y propage */
+      --green: var(--tf-trust-verified-ink); --dark: var(--tf-emerald-ink);
+      --muted: var(--tf-trust-declared-ink); --panel: var(--tf-surface-light-raised);
+      /* surface-specifiques : ecart trop large pour un alias (voir le registre) */
+      --line:#e2e8df; --yellow:#d79621; --red:#b42318;
+    }
+    * { box-sizing: border-box; } body { margin:0; min-height:100vh; background:linear-gradient(135deg,#f7f8f4 0%,#edf6ef 100%);
+      font-family: var(--tf-font-text); color: var(--tf-charcoal-800); }
+    /* core remet p a margin:0 ; 1em reproduit la marge par defaut du navigateur */
+    p { margin: 1em 0; } button,select { font:inherit; }
     .shell { max-width:1280px; margin:0 auto; padding:28px 22px 56px; } .topbar { display:flex; justify-content:space-between; gap:20px; align-items:center; margin-bottom:30px; }
     .brand { display:flex; gap:12px; align-items:center; font-weight:800; } .mark { width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:var(--green);color:#fff;font-weight:900; }
     .brand small { display:block; color:var(--muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; } .actions { display:flex; gap:10px; align-items:center; }

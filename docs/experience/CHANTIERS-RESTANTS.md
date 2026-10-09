@@ -444,8 +444,7 @@ correction : **0 infraction** et **54/54**.
 
 1. **`tracefab-core.css` n'était chargé que par 3 pages sur 9.** La console de
    marque ne chargeait pas le système de jetons — d'où `--muted` dupliqué en
-   dur dans cinq fichiers. Corrigé pour la console ; cinq surfaces restent à
-   converger.
+   dur dans cinq fichiers. **Traité intégralement depuis : voir §9.**
 2. **Allégations de conformité réglementaire en six langues**
    (`ESPR CONFORMITY`, `ESPR / DPP compliant`…), posées sur le 88 % de
    readiness. Consigne explicite enfreinte. Le garde-fou les manquait : il
@@ -459,6 +458,72 @@ correction : **0 infraction** et **54/54**.
 Le **test de régression** reste à 0 script, volontairement : il se mesure
 contre une référence validée, qui n'existera qu'après votre arbitrage sur le
 dossier de validation. Voir `VALIDATION-PHASES-6-12.md` §5.
+
+## 9 · Le système de design n'atteignait que la moitié du produit — RÉGLÉ
+
+**L'intitulé du chantier sous-estimait le défaut.** « Cinq surfaces sur neuf ne
+chargent pas `tracefab-core.css` » décrivait un symptôme. La mesure a montré
+trois choses, dont deux n'étaient pas dans l'énoncé :
+
+| Mesure | Résultat |
+|---|---|
+| Surfaces chargeant `tracefab-core.css` | **4 / 9** |
+| Surfaces chargeant la fonte **Inter Tight** | **4 / 9** — dont `brand-console`, qui chargeait le socle mais déclarait `Inter` et n'embarquait **aucune** fonte |
+| Jetons locaux dupliquant un jeton du socle | **30 sur 32**, écart de 1 à 15 points RVB |
+
+Les cinq pages orphelines ne référençaient **aucun** token `--tf-*` ni aucune
+classe `.tf-*` : elles étaient autonomes, avec un **vocabulaire parallèle
+hérité** (`--green`, `--dark`, `--muted`, `--line`). Ajouter la feuille sans
+toucher au vocabulaire n'aurait donc rien propagé — seulement injecté un reset
+global et 128 jetons inutilisés. Le vrai défaut était la **duplication**, pas
+l'absence de balise.
+
+### Ce qui a été fait
+
+Les jetons locaux pointent désormais sur le socle (`--green:
+var(--tf-trust-verified-ink)`). Les exceptions sont **explicites et
+commentées** : le socle modélise ses pastels en `rgba` quand ces surfaces
+utilisent des aplats, et il n'offre pas de jeton de filet.
+
+Le reset de `tracefab-core.css` (`p{margin:0}`, `body{line-height:1.58}`,
+`button{padding:0}`) a été neutralisé là où il déplaçait la mise en page :
+`p{margin:1em 0}` reproduit exactement la marge par défaut du navigateur, qui
+suit la taille de police, et `.dpp-tab-btn{line-height:normal}` rend aux
+onglets du passeport les 9 px qu'ils perdaient.
+
+### La mesure qui a servi d'arbitre
+
+Une sonde injecte `tracefab-core.css` dans la page **déjà corrigée** et compte
+les propriétés calculées qui bougent. Tant que le compte n'est pas nul, la page
+n'a pas absorbé le socle. Point de départ : **54** propriétés sur 5 pages.
+Arrivée : **0**.
+
+### Une correction de contraste révélée par l'alignement
+
+L'alias a fait tomber trois surfaces à **4,50** sur la pastille `#e4f3ec` —
+97 éléments en infraction. `--tf-trust-verified-ink` avait été calculé contre
+`#f7f8f4` et `#eaf5ef`, **jamais contre ce fond-là**. Corrigé **dans le socle**
+(`#0a7d54` → `#097b53`), pas sur les éléments : 4,62 au minimum sur les cinq
+fonds réels. C'est le bénéfice attendu d'une source unique — la correction
+porte partout d'un coup.
+
+### Le garde-fou
+
+`npm run test:systeme-design` — 4 règles, **4 mutations capturées** : socle
+retiré d'une surface, fonte retirée, `Inter` redéclaré en dur, alias retombé en
+valeur dupliquée. La liste des exceptions tolérées vit dans le script : toute
+nouvelle exception doit y être ajoutée sciemment.
+
+Un faux positif au premier essai : un commentaire HTML citant `<style>` pour
+expliquer l'ordre de chargement était pris pour la vraie balise, et le contrôle
+accusait une page correcte. **Un contrôle qui échoue peut être un contrôle
+faux.**
+
+### Vérifications
+
+9/9 surfaces conformes · accessibilité **19 surfaces, 0 infraction** · **0**
+cible tactile sous 40 px · **62** scripts `test:*` verts · build, `tsc`,
+`api:typecheck` verts.
 
 ## 8 · Périmètre — VÉRIFIÉ, ET LE DOCUMENT AVAIT DÉRIVÉ
 
