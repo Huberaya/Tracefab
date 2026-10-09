@@ -3,8 +3,8 @@
 Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
 la base Neon de production. Pas en relisant les en-têtes.
 
-**0 PR ouverte · dernière CI verte · Neon : 34/34 migrations appliquées,
-dont la 34 `fix_materials_policy_recursion`.**
+**0 PR ouverte · dernière CI verte · Neon : 35/35 migrations appliquées,
+dont la 35 `public_read_context`.**
 
 > Ce bloc ne porte plus de SHA. Il en portait un, `5b78ac6`, resté figé
 > pendant que `main` avançait de sept commits : un en-tête qui se périme à
@@ -31,7 +31,7 @@ vrai, puis la ligne de sonde supprimée.
 
 ---
 
-## 1 · La couche RLS est inerte en production
+## 1 · La couche RLS est inerte en production — RÉGLÉ
 
 **Le plus important de cette liste.**
 
@@ -64,11 +64,72 @@ récursion infinie entre `materials_select_authorized` et
 `20261009120000_fix_materials_policy_recursion`. `npm run test:neon:rls`
 prouve désormais l'étanchéité par exécution, contrôles négatifs inclus.
 
-**Reste à faire :** `DATABASE_URL` pointe toujours `neondb_owner`. Six routes
-publiques lisent des tables de locataire sans contexte — webhook Clerk,
-résolveur GS1, DPP public, cartes wallet, passeport fournisseur. La bascule
-exige d'abord un contexte public explicite. Mesure et procédure dans le
-document dédié.
+### La bascule — RÉGLÉE
+
+La partie restante n'était pas de la plomberie. Sous `tracefab_app` sans
+contexte, neuf tables de locataire rendaient **0 ligne** et six routes
+publiques cassaient. Le réflexe aurait été d'ajouter des politiques de lecture
+publique ; l'investigation a montré que le vrai manque était ailleurs :
+**l'application n'avait jamais défini ce qui est public.**
+
+`/api/dpp/:id` résolvait **n'importe quel** produit par `id`, `reference`,
+`sku` ou GTIN — **brouillons compris**, sans la moindre barrière de
+publication. `BYPASSRLS` faisait que rien ne s'y opposait. Ce n'est pas un
+défaut de RLS, c'est un défaut produit que la RLS a rendu visible.
+
+Trois décisions structurent la migration `20261009180000_public_read_context` :
+
+| Décision | Raison |
+|---|---|
+| Barrière = `public_slug` explicite | Un produit n'est public que si quelqu'un l'a publié. Le statut `active` ne suffit pas : il décrit un cycle de vie interne, pas une intention de publication. |
+| Marque via `tracefab_public_brand(uuid)` | **La RLS filtre des lignes, jamais des colonnes.** Une politique de ligne sur `organizations` aurait publié `legal_name`, `registration_number` et `clerk_organization_id`. La fonction ne projette que `display_name` et `country_code`. |
+| Prédicats en `SECURITY DEFINER` | Une politique qui lit la table qu'elle protège récurse — c'est exactement la panne corrigée par la migration 34. |
+
+Les 8 produits actifs ont reçu un `public_slug` dérivé de `reference`, déjà
+unique par marque : la contrainte `(brand_organization_id, public_slug)` ne
+pouvait donc pas être violée. **Les 9 brouillons restent invisibles.**
+
+Côté application, `withTracefabPublicContext()` pose un drapeau **local à la
+transaction** — une connexion poolée ne peut pas le transporter d'une requête
+anonyme vers la suivante. Le webhook Clerk passe en contexte worker : il parle
+au nom du système, il n'a aucun `user_email` à poser.
+
+### Le garde-fou
+
+`npm run test:neon:rls` gagne une section E de 6 contrôles. **Trois mutations
+ont été injectées en production puis annulées, état vérifié après chaque
+remise en état :**
+
+| Mutation | Capturée par |
+|---|---|
+| un brouillon rendu public | « 1 produit lisible publiquement n'est pas actif : draft:1 » |
+| `organizations` ouverte en lecture publique | « expose 40 lignes — `legal_name` et `registration_number` fuient » |
+| fonction de marque élargie à `legal_name` | « rend les colonnes [country_code, display_name, legal_name] » |
+
+La première mutation a d'abord **échappé** au test, et c'est le résultat le
+plus utile de la séance : le contrôle comparait ce que voit l'application à
+`public_slug IS NOT NULL`, c'est-à-dire **au prédicat que la politique applique
+elle-même**. Tautologie : il ne pouvait détecter qu'une politique cassée, jamais
+une publication abusive. D'où le contrôle E2b, qui s'appuie sur une source
+indépendante — le statut éditorial.
+
+### Trouvé en chemin, non résolu
+
+`public_slug` n'est unique **que par marque**. Quatre marques portent
+aujourd'hui le slug `mb-shirt-001` : une URL publique sans marque est donc
+ambiguë, et `findFirst` sans tri rendait une ligne arbitraire. L'ambiguïté
+préexistait sur `reference` ; elle est désormais au moins **déterministe**
+(`orderBy created_at, id`). La lever vraiment suppose une décision de produit :
+slug global, ou URL portant la marque.
+
+Quatre des huit produits publiés n'ont **ni matière ni identifiant** — ce sont
+des fixtures de bilan matière. Leur DPP public est donc squelettique. Donnée
+préexistante, hors périmètre de cette bascule, mais à voir avant toute
+ouverture réelle au public.
+
+**Reste à faire :** `DATABASE_URL` pointe encore `neondb_owner`. Tout est en
+place pour basculer la variable d'environnement sur `tracefab_app` ; c'est
+désormais un changement de configuration, plus un changement de code.
 
 ## 2 · L'étage base de la CI n'a jamais tourné
 
@@ -88,7 +149,7 @@ job « Base — isolation RLS executee » : SUCCESS
 Déposer le secret de production aurait été le mauvais remède : exposer des
 identifiants de production à tout workflow, et faire tourner l'épreuve sur des
 données réelles. Le job monte désormais un **Postgres 17 jetable**, applique
-les 34 migrations, crée le rôle et deux locataires, puis exécute l'épreuve —
+les migrations, crée le rôle et deux locataires, puis exécute l'épreuve —
 sans aucun secret, y compris depuis un fork. Exécution #30, commit `4c1000f` :
 
 ```

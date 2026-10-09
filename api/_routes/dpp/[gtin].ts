@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { prisma } from '../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { resolveDppPassData } from '../../_lib/wallet/dpp-data-resolver.js';
+import { withTracefabPublicContext } from '../../_lib/context.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -14,7 +15,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const dppData = await resolveDppPassData(prisma, gtinOrRef);
+    // Route anonyme : sans contexte public, chaque table tenant rend 0 ligne
+    // une fois l'application connectee en tracefab_app.
+    const dppData = await withTracefabPublicContext((tx) => resolveDppPassData(tx, gtinOrRef));
     if (!dppData) {
       return json(res, 404, { error: 'product_passport_not_found' });
     }

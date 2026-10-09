@@ -15,18 +15,27 @@ export async function resolveDppPassData(
   if (!cleanId) return null;
 
   // Search by UUID, reference, GTIN or SKU
-  const product = await (tx as any).tracefab_products.findFirst({
-    where: {
-      OR: [
-        { id: cleanId.length === 36 ? cleanId : undefined },
-        { reference: cleanId },
-        { sku: cleanId },
-        { product_identifiers: { some: { identifier_value: cleanId } } },
-      ],
-    },
-    include: {
-      organizations: true,
-      product_identifiers: true,
+    // Barriere de publication. Sans elle, cette fonction resolvait N'IMPORTE
+    // QUEL produit par reference, SKU ou GTIN — brouillons compris — et la
+    // route /api/dpp/:id est anonyme. Sous BYPASSRLS rien ne s'y opposait.
+    // Un produit n'est public que s'il porte un public_slug.
+    const product = await (tx as any).tracefab_products.findFirst({
+      where: {
+        public_slug: { not: null },
+        OR: [
+          { id: cleanId.length === 36 ? cleanId : undefined },
+          { public_slug: cleanId.toLowerCase() },
+          { reference: cleanId },
+          { sku: cleanId },
+          { product_identifiers: { some: { identifier_value: cleanId } } },
+        ],
+      },
+      include: {
+        // `organizations` n'est PAS inclus : la table porte legal_name,
+        // registration_number et clerk_organization_id. RLS filtre des lignes,
+        // pas des colonnes. La marque est lue plus bas par
+        // tracefab_public_brand(), qui ne rend que le nom affiche et le pays.
+        product_identifiers: true,
       product_materials: {
         include: {
           materials: true,
@@ -50,11 +59,27 @@ export async function resolveDppPassData(
         },
       },
     },
+    // public_slug n'est unique QUE par marque
+    // (tracefab_products_brand_organization_id_public_slug_key). Quatre
+    // marques distinctes portent aujourd'hui le slug « mb-shirt-001 », donc une
+    // URL publique sans marque est ambigue. Sans tri explicite PostgreSQL rend
+    // une ligne arbitraire : le DPP servi pour une meme URL pouvait changer
+    // d'une requete a l'autre. A defaut de pouvoir lever l'ambiguite ici, on la
+    // rend au moins deterministe et stable.
+    orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
   });
 
   if (!product) {
     return null;
   }
+
+  // Identite de marque : deux colonnes, obtenues par une fonction dediee.
+  // tracefab_public_brand() ne rend que display_name et country_code, et ne
+  // rend rien si la marque n'a aucun produit publie.
+  const marque = await (tx as any).$queryRaw<Array<{ display_name: string | null; country_code: string | null }>>`
+    SELECT display_name, country_code FROM tracefab_public_brand(${product.brand_organization_id}::uuid)
+  `;
+  const brand = marque?.[0] ?? null;
 
   const gtin = product.product_identifiers?.find((i: any) => i.identifier_type === 'gtin')?.identifier_value || product.sku || '';
   const pef = product.product_pef_assessments?.[0];
@@ -82,8 +107,10 @@ export async function resolveDppPassData(
 
   return {
     productId: product.id,
-    brandName: product.organizations?.display_name || product.organizations?.legal_name || 'Tracefab Brand',
-    brandLegalName: product.organizations?.legal_name || 'Tracefab SAS',
+    brandName: brand?.display_name || 'Tracefab Brand',
+    // Jamais la raison sociale sur une surface publique : elle n'apporte rien
+    // au consommateur et elle identifie l'entreprise au registre.
+    brandLegalName: brand?.display_name || 'Tracefab Brand',
     productName: product.name,
     productReference: product.reference,
     sku: product.sku || product.reference,

@@ -219,6 +219,95 @@ if (duo.length < 2) {
   }
 }
 
+/* --- E. la lecture publique : ouverte juste assez ------------------------- */
+//
+// Le DPP public et le Digital Link GS1 sont anonymes. Ils ne peuvent pas poser
+// de tracefab.user_email. La barriere n'est donc pas « qui es-tu » mais « ce
+// produit est-il publie ». Ces verifications echouent dans les deux sens :
+// si le public ne voit rien le produit est casse, s'il voit trop il y a fuite.
+
+console.log('\n  E. lecture publique (contexte tracefab.public_context)');
+
+const nPublies = Number((await proprio.query(
+  'SELECT count(*) n FROM tracefab_products WHERE public_slug IS NOT NULL')).rows[0].n);
+const nBrouillons = Number((await proprio.query(
+  "SELECT count(*) n FROM tracefab_products WHERE public_slug IS NULL")).rows[0].n);
+
+if (nPublies === 0) {
+  ko('aucun produit publie : la lecture publique ne peut pas etre prouvee');
+} else {
+  // E1. sans le drapeau, rien ne sort — c'est l'etat par defaut
+  const muet = Number((await app.query('SELECT count(*) n FROM tracefab_products')).rows[0].n);
+  if (muet === 0) ok('sans contexte public, tracefab_products ne rend aucune ligne');
+  else ko(`sans contexte public, tracefab_products rend ${muet} ligne(s) — la barriere ne tient pas`);
+
+  // E2. avec le drapeau, exactement les produits publies, ni plus ni moins
+  await app.query('BEGIN');
+  await app.query("SELECT set_config('tracefab.public_context','true',true)");
+  const vus = await app.query('SELECT id, public_slug FROM tracefab_products');
+  const fuite = vus.rows.filter((r) => !r.public_slug).length;
+  if (vus.rows.length === nPublies && fuite === 0) {
+    ok(`en contexte public, exactement les ${nPublies} produit(s) publie(s) sont lisibles`);
+  } else {
+    ko(`en contexte public : ${vus.rows.length} produit(s) lisibles pour ${nPublies} publie(s), `
+      + `dont ${fuite} sans public_slug`);
+  }
+
+  // E2b. oracle INDEPENDANT du predicat de la politique.
+  //
+  // E2 ci-dessus compare ce que voit l'application a « public_slug IS NOT NULL »,
+  // c'est-a-dire au predicat que la politique applique elle-meme : elle ne peut
+  // donc detecter qu'une politique cassee, jamais une publication abusive. Le
+  // statut editorial est une source independante : rien de publie ne doit etre
+  // un brouillon. Une mutation de test l'a prouve en publiant un brouillon sans
+  // faire rougir E2.
+  const statuts = vus.rows.length
+    ? (await proprio.query(
+        'SELECT status, count(*)::int n FROM tracefab_products WHERE id = ANY($1) GROUP BY status',
+        [vus.rows.map((r) => r.id)])).rows
+    : [];
+  const nonActifs = statuts.filter((r) => r.status !== 'active');
+  if (!nonActifs.length) {
+    ok(`tout produit lisible publiquement est en statut actif (${vus.rows.length})`);
+  } else {
+    ko(`${nonActifs.reduce((n, r) => n + r.n, 0)} produit(s) lisibles publiquement ne sont pas actifs : `
+      + nonActifs.map((r) => `${r.status}:${r.n}`).join(' · '));
+  }
+
+  // E3. un brouillon reste invisible meme nomme explicitement
+  if (nBrouillons > 0) {
+    const brouillon = (await proprio.query(
+      'SELECT id FROM tracefab_products WHERE public_slug IS NULL LIMIT 1')).rows[0].id;
+    const t = await app.query('SELECT count(*) n FROM tracefab_products WHERE id = $1', [brouillon]);
+    if (Number(t.rows[0].n) === 0) ok(`un brouillon interroge par son id reste invisible (${nBrouillons} brouillon(s))`);
+    else ko('un brouillon est lisible publiquement quand on l interroge par son id');
+  }
+
+  // E4. organizations ne doit JAMAIS s'ouvrir : RLS filtre des lignes, pas des
+  // colonnes, et la table porte legal_name et registration_number.
+  const orgs = Number((await app.query('SELECT count(*) n FROM organizations')).rows[0].n);
+  if (orgs === 0) ok('organizations reste totalement fermee meme en contexte public');
+  else ko(`organizations expose ${orgs} ligne(s) en contexte public — legal_name et registration_number fuient`);
+
+  // E5. la marque passe par une fonction qui ne projette que deux colonnes
+  const marque = await app.query(
+    'SELECT * FROM tracefab_public_brand((SELECT brand_organization_id FROM tracefab_products WHERE public_slug IS NOT NULL LIMIT 1))');
+  const colonnes = marque.fields.map((c) => c.name).sort();
+  if (marque.rows.length === 1 && colonnes.join(',') === 'country_code,display_name') {
+    ok(`tracefab_public_brand ne rend que ${colonnes.join(' + ')}`);
+  } else {
+    ko(`tracefab_public_brand rend ${marque.rows.length} ligne(s) et les colonnes [${colonnes.join(', ')}]`);
+  }
+  await app.query('ROLLBACK');
+
+  // E6. le drapeau est local a la transaction : il ne doit pas survivre au
+  // ROLLBACK ci-dessus, sinon une connexion poolee le transporterait d'une
+  // requete anonyme vers la suivante.
+  const apres = Number((await app.query('SELECT count(*) n FROM tracefab_products')).rows[0].n);
+  if (apres === 0) ok('le contexte public ne survit pas a la transaction (connexion poolee sure)');
+  else ko(`le contexte public a survecu a la transaction : ${apres} ligne(s) encore visibles`);
+}
+
 await app.end();
 await proprio.end();
 

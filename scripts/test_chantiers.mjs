@@ -63,8 +63,12 @@ function controle(libelle, condition, detail) {
  * de build n'a pas ce droit, elle l'appliquerait.                         */
 {
   const suivis = execSync('git ls-files', { encoding: 'utf8' }).split('\n').filter(Boolean);
+  // Ce fichier-ci doit citer la police interdite pour pouvoir la chercher. Il
+  // s'excluait de fait tant qu'il n'etait pas suivi par git : le controle n'est
+  // devenu faux qu'une fois le garde commite, c'est-a-dire apres la derniere
+  // execution verte. L'exclusion est donc explicite, pas implicite.
   const vivants = suivis.filter((f) => !f.startsWith('docs/') && !f.endsWith('.md')
-    && !f.endsWith('package-lock.json'));
+    && !f.endsWith('package-lock.json') && f !== 'scripts/test_chantiers.mjs');
   const fautifs = vivants.filter((f) => {
     try { return /Plus Jakarta/i.test(readFileSync(f, 'utf8')); } catch { return false; }
   });
