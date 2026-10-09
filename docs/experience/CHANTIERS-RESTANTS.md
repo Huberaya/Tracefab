@@ -3,8 +3,14 @@
 Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
 la base Neon de production. Pas en relisant les en-têtes.
 
-**`main` = `5b78ac6` · 0 PR ouverte · CI run #26 verte · Neon : 33/33
-migrations appliquées.**
+**0 PR ouverte · dernière CI verte · Neon : 34/34 migrations appliquées,
+dont la 34 `fix_materials_policy_recursion`.**
+
+> Ce bloc ne porte plus de SHA. Il en portait un, `5b78ac6`, resté figé
+> pendant que `main` avançait de sept commits : un en-tête qui se périme à
+> chaque commit ne documente rien, il désinforme. Les faits conservés ici
+> sont ceux qui ne bougent qu'avec une décision. `npm run test:chantiers`
+> les vérifie contre le dépôt.
 
 ---
 
@@ -393,10 +399,62 @@ Le **test de régression** reste à 0 script, volontairement : il se mesure
 contre une référence validée, qui n'existera qu'après votre arbitrage sur le
 dossier de validation. Voir `VALIDATION-PHASES-6-12.md` §5.
 
-## 8 · Hors périmètre
+## 8 · Périmètre — VÉRIFIÉ, ET LE DOCUMENT AVAIT DÉRIVÉ
 
-Les chantiers **01 à 12** relèvent de l'autre agent. Ce document ne couvre
-que 13 à 20.
+Cette section n'est pas un chantier : c'est la frontière du document. Les
+chantiers **01 à 12** relèvent de l'autre agent ; celui-ci couvre **13 à 20**,
+documentés dans `chantier-16-securite-performance.md`, `chantier-17-ci.md`,
+`chantier-18-production.md`, `chantier-19-commercial.md` et
+`chantier-20-coherence.md` — tous fusionnés (PR #29 à #32).
+
+La frontière tient. En revanche, **les faits que ce document affirmait ne
+tenaient plus**. Vérification faite contre le dépôt, l'API GitHub et Neon :
+
+| Affirmation du document | Réalité mesurée |
+|---|---|
+| `main` = `5b78ac6` | `main` avait avancé de **sept commits** |
+| Neon : 33/33 migrations | **34/34** — la 34 était appliquée en production |
+| CI run #26 verte | dernière exécution : **#36** |
+| 0 PR ouverte | exact |
+
+### Le tableau « ne pas reprendre » surestimait deux soldes
+
+| Ligne du tableau | Ce que la mesure a montré | Traité |
+|---|---|---|
+| « Plus Jakarta Sans ne survit que dans un artefact de comparaison » | **Faux.** Il survivait dans `tailwind.config.js`, déclaré comme **police par défaut** — une contradiction dormante avec la décision « une seule police d'affichage » | police alignée sur Inter Tight |
+| « 27 cibles tactiles sous 40 px → plancher posé » | Le plancher existait, mais **une cible restait** : le lien de pied du DPP public, 14 px de haut | corrigé — **0 sur les 9 pages** |
+| Branche `arena/e72cecf4` abandonnée | la décision est close, mais **la branche est toujours sur le dépôt distant** | signalé, suppression à votre main |
+
+### Une découverte : la pile Tailwind est morte
+
+`tailwindcss`, `@tailwindcss/postcss`, `autoprefixer` et `postcss` sont
+déclarés, avec `tailwind.config.js` et `postcss.config.js`. Mais :
+
+- **aucune directive `@tailwind` ni `@apply`** dans un seul fichier du dépôt ;
+- **aucun script npm** ne les invoque ;
+- le CSS livré vient entièrement de `assets/design-system/`.
+
+C'est du poids mort qui hébergeait une police interdite. J'ai neutralisé la
+contradiction sans toucher aux dépendances : **supprimer quatre paquets et
+deux fichiers de configuration est une décision qui vous revient.**
+
+### Le garde-fou
+
+`npm run test:chantiers` vérifie désormais ce document contre le dépôt :
+
+1. le compte de migrations annoncé **égale** celui de `prisma/migrations` ;
+2. l'en-tête ne présente **aucun SHA** comme état courant ;
+3. « Plus Jakarta » n'apparaît dans **aucun fichier vivant** — la
+   documentation garde le droit de raconter la décision, une config de build
+   non, car elle l'appliquerait ;
+4. toute section qui se déclare **RÉGLÉ / TRAITÉ / TRANCHÉ / VÉRIFIÉ** doit
+   nommer une commande `test:*` **qui existe réellement** dans
+   `package.json` ;
+5. tout dossier `chantier-NN-*.md` cité existe.
+
+Le point 4 a immédiatement épinglé cette section : elle se déclarait vérifiée
+sans nommer de garde. Un registre qui s'auto-absout est exactement le défaut
+que ce test attrape.
 
 ---
 

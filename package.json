@@ -84,6 +84,7 @@
     "test:demo-declaree": "node scripts/test_demo_declaree.mjs",
     "test:assets": "node scripts/test_asset_versions.mjs",
     "test:dossier": "node scripts/test_dossier_securite.mjs",
+    "test:chantiers": "node scripts/test_chantiers.mjs",
     "test:accessibilite": "node scripts/test_accessibilite.mjs",
     "test:coherence": "node scripts/test_coherence_chiffres.mjs",
     "serve": "node scripts/dev_static_server.mjs --port 3000",
