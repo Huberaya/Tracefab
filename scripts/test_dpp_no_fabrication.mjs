@@ -140,8 +140,32 @@ if (!OWNER || !APP) {
 } else {
   const pg = (await import('pg')).default;
   const { PrismaClient } = await import('@prisma/client');
-  const { PrismaPg } = await import('@prisma/adapter-pg');
   const { resolveDppPassData, isValidGtin } = await import('../api/_lib/wallet/dpp-data-resolver.ts');
+
+  /*
+   * Client Prisma sur le role runtime.
+   *
+   * Le chemin nominal est celui de la production : `new PrismaClient()` lit
+   * DATABASE_URL, exactement comme api/_lib/prisma.ts. C'est ce que fait la CI.
+   *
+   * Le repli sur @prisma/adapter-pg ne sert qu'ici : sur ce poste le client est
+   * genere en engineType « client » (generation hors ligne), qui exige un
+   * adaptateur et leve P2038 sans lui. Le repli ne change rien a ce qui est
+   * mesure — c'est le meme resolveur, la meme base, le meme role.
+   */
+  const clientRuntime = async (url) => {
+    process.env.DATABASE_URL = url;
+    try {
+      // La construction elle-meme peut lever P2038 : elle est donc dans le try.
+      const simple = new PrismaClient();
+      await simple.$queryRaw`select 1`;
+      return simple;
+    } catch (e) {
+      if (!/P2038|driver adapter/i.test(String((e && e.message) || e))) throw e;
+      const { PrismaPg } = await import('@prisma/adapter-pg');
+      return new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+    }
+  };
 
   /* --- validation du GTIN, avant toute resolution ----------------------- */
   const casGtin = [
@@ -223,7 +247,7 @@ if (!OWNER || !APP) {
 
   /* Le resolveur tourne sous le ROLE RUNTIME, en contexte public : c'est la
      configuration de production, pas le proprietaire qui contourne la RLS. */
-  const appPrisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: APP }) });
+  const appPrisma = await clientRuntime(APP);
   const enContextePublic = (fn) => appPrisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('tracefab.public_context', 'true', true)`;
     return fn(tx);
