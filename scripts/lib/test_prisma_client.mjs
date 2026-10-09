@@ -23,9 +23,12 @@
 export async function createTestPrisma(connectionString) {
   const { PrismaClient } = await import('@prisma/client');
 
-  // Chemin CI / poste equipe : client standard (engine natif).
+  // Chemin CI / poste equipe : client standard (engine natif). L'URL du
+  // role applicatif DOIT etre celle fournie — pas DATABASE_URL, qui est le
+  // proprietaire et contourne la RLS : sans cela les assertions « refuse par
+  // la politique » passent faux en CI et vraient localement.
   try {
-    const standard = new PrismaClient();
+    const standard = new PrismaClient({ datasourceUrl: connectionString });
     await standard.$queryRaw`SELECT 1`;
     console.log('  client Prisma : engine standard');
     return standard;
