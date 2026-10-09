@@ -3,8 +3,8 @@
 Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
 la base Neon de production. Pas en relisant les en-têtes.
 
-**0 PR ouverte · Neon : 35/35 migrations appliquées, dont la 35
-`public_read_context`.**
+**0 PR ouverte · Neon : 36/36 migrations appliquées, dont la 35
+`public_read_context` et la 36 `explicit_publication_state` (§15).**
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
 > que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les
@@ -724,7 +724,7 @@ par `IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app')`. Là où
 le rôle existe, les droits sont posés comme avant ; là où il n'existe pas
 encore, `seed_rls_fixture.mjs` les pose ensuite via son
 `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public`. Vérifié en rejouant les
-**35 migrations depuis une base vide** : chaîne complète appliquée.
+**36 migrations depuis une base vide** : chaîne complète appliquée.
 
 ### Cause 1 bis — la fixture ne publiait aucun produit
 
@@ -1053,8 +1053,86 @@ nombre figé ne peut plus passer pour un nombre calculé.
 
 ### Reste à faire
 
-Le tri par colonne du catalogue. Et les quatre marques qui partagent le slug
-`mb-shirt-001`.
+Le tri par colonne du catalogue. Le slug partagé est traité au §15.
+
+## 15 · Publier n'était pas une décision — RÉGLÉ
+
+### Ce qui était vrai
+
+Rien, dans l'API, n'écrivait `public_slug`. La colonne était posée par la
+migration 35 et renseignée par `seed_rls_fixture.mjs`, mais aucun code de
+production ne la faisait varier. Autrement dit : l'acte de publier n'existait
+pas comme opération.
+
+Pire, publication et visibilité étaient découplées de deux façons.
+
+**`status` et `public_slug` étaient indépendants.** Les quatre fonctions
+publiques et la vue `products_select_public` ne testaient que
+`public_slug IS NOT NULL`. Un brouillon portant un slug était donc
+publiquement lisible. Ce n'était pas corrigé, seulement dormant : tant que
+personne ne slugged un brouillon, rien ne se voit.
+
+**Le slug n'est unique que par marque.** `tracefab_products` porte
+`unique(brand_organization_id, public_slug)`, et `product_identifiers` n'est
+unique que par produit — rien n'interdit le même GTIN chez deux marques. Quatre
+marques partagent aujourd'hui `mb-shirt-001`. Une URL publique sans marque est
+donc intrinsèquement ambiguë, et le résolveur tranchait par
+`ORDER BY created_at, id` : déterministe, mais arbitraire. Un consommateur
+pouvait recevoir le passeport d'une autre marque que celle qu'il a scannée.
+
+### La décision
+
+**Refuser plutôt que choisir.** Servir le mauvais passeport attribue des données
+réelles au mauvais produit ; c'est pire qu'une page d'erreur. L'ambiguïté lève
+`DppAmbiguousResolutionError`, et les cinq routes de passeport répondent **409
+`identifier_ambiguous`** — pas 404 : l'identifiant existe, il est seulement
+ambigu.
+
+### Ce qui a été fait
+
+Migration `20261009200000_explicit_publication_state` :
+
+| Élément | Effet |
+|---|---|
+| `published_at`, `published_by` | l'acte de publier devient une donnée, datée et attribuable |
+| garde `tracefab_products_publication_explicite` | refuse un `public_slug` sans `published_at`, à l'INSERT comme à l'UPDATE |
+| reprise des données | les produits slugged existants reçoivent `published_at = '2026-10-09T18:00:00Z'` |
+| 4 fonctions publiques + `products_select_public` | exigent désormais **les deux** conditions |
+
+Le prédicat de publication est écrit **une seule fois, en SQL**, dans le
+résolveur. Deux portes pour la même question doivent partager un seul lecteur :
+si l'application et RLS divergent un jour, ce sera visible.
+
+`published_by` reste `NULL` sur la reprise : l'auteur de la publication passée
+n'est pas connu, et l'inventer serait exactement la fabrication que le §13
+interdit. La colonne est nullable et le reste.
+
+### Retour arrière
+
+`DROP TRIGGER tracefab_products_publication_explicite ON tracefab_products;`
+puis `ALTER TABLE tracefab_products DROP COLUMN published_at, DROP COLUMN published_by;`,
+et rétablir les quatre fonctions dans leur version précédente (conservée en
+commentaire dans le fichier de migration). Aucune donnée n'est perdue : la
+reprise n'a fait qu'ajouter une colonne.
+
+### Ce qui a été exécuté
+
+- **36 migrations depuis une base vide : 0 échec.**
+- Le garde dans cinq directions : slug sans date refusé, slug avec date accepté,
+  retrait de la date refusé, retrait du slug accepté (dépublier reste possible),
+  `published_by` inconnu refusé par la clé étrangère.
+- `test:neon:rls` vert : 46 tables sous RLS, 2 produits publiés lisibles.
+- `test:dpp:no-fabrication` : **36 contrôles** (32 avant ce chantier), dont le
+  garde, la dépublication, et le refus d'un slug partagé par deux marques.
+- Le compte de migrations annoncé en tête de ce document est passé à 36/36 —
+  `test:chantiers` compare l'annonce au dépôt et a échoué jusqu'à la mise à jour.
+
+### Ce qui reste ouvert
+
+Le **409 n'est pas encore atteint en production** : aucun code n'écrit
+`public_slug`, donc aucune ambiguïté ne peut s'y produire aujourd'hui. La
+protection est posée avant l'ouverture, pas après un incident. L'acte de
+publier lui-même — le bouton, la route d'écriture, l'audit — reste à construire.
 
 ## Déjà réglé — ne pas reprendre
 

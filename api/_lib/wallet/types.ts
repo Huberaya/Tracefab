@@ -80,7 +80,12 @@ export interface DppPassData {
     notProvided: string[];
     /** Comment le produit a été résolu — nécessaire pour juger de la confiance. */
     resolvedBy: 'gtin' | 'public_slug' | 'reference' | 'sku' | 'id';
-    /** null quand la résolution est ambiguë entre plusieurs marques. */
+    /**
+     * Toujours 1. Une résolution ambiguë lève DppAmbiguousResolutionError au
+     * lieu de rendre un passeport : plusieurs marques partagent le slug
+     * « mb-shirt-001 », et servir celle qui arrive la première attribuerait des
+     * données réelles au mauvais produit.
+     */
     ambiguousWith: number;
   };
 }

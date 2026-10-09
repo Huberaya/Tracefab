@@ -205,9 +205,12 @@ if (!OWNER || !APP) {
     [brouillonId, 'SONDE-BROUILLON-001', null, 'draft'],
   ]) {
     await owner.query(
-      `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug)
-       values ($1,$2,$3,$4,$5,$6) on conflict (id) do update set status = excluded.status, public_slug = excluded.public_slug`,
-      [id, orgId, ref, `Sonde ${ref}`, statut, slug]);
+      // published_at accompagne le slug : le garde
+      // tracefab_products_publication_explicite refuse un slug sans date.
+      `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug, published_at)
+       values ($1,$2,$3,$4,$5,$6,$7)
+       on conflict (id) do update set status = excluded.status, public_slug = excluded.public_slug, published_at = excluded.published_at`,
+      [id, orgId, ref, `Sonde ${ref}`, statut, slug, slug ? '2026-10-09T18:00:00Z' : null]);
     await owner.query('delete from product_identifiers where product_id = $1', [id]);
   }
   await owner.query(
@@ -338,31 +341,83 @@ if (!OWNER || !APP) {
   else ko('un brouillon a été résolu sur une route publique', brouillon.productReference);
 
   /*
-   * ÉCART CONNU, NON CORRIGÉ (audit C.8) — signalé, pas validé.
+   * PUBLICATION EXPLICITE — l'écart C.8 est refermé, et ces blocs le prouvent.
    *
-   * `public_slug` et `status` sont deux colonnes indépendantes, et les
-   * politiques publiques ne testent que `public_slug IS NOT NULL`. Rien
-   * n'empêche donc un brouillon porteur d'un slug d'être publiquement lisible.
+   * Avant : `public_slug` et `status` étaient deux colonnes indépendantes, les
+   * politiques publiques ne testaient que le slug, et un brouillon slugged était
+   * publiquement lisible. Ce n'était pas corrigé, seulement dormant.
    *
-   * Aujourd'hui l'écart est dormant : la migration 20261009180000 ne pose un
-   * slug que sur les produits `status = 'active'`. Mais c'est une coïncidence de
-   * données, pas une garantie de schéma — et c'est précisément ce que l'audit
-   * reproche : la publication dérive du statut au lieu de reposer sur un état de
-   * publication explicite et une autorisation démontrable.
-   *
-   * Ce bloc MESURE l'écart sans le déclarer conforme. Il n'incrémente ni les
-   * contrôles réussis ni les échecs : un écart connu n'est pas un test passé.
+   * Depuis 20261009200000 : `published_at` accompagne obligatoirement le slug
+   * (garde tracefab_products_publication_explicite), et les politiques comme le
+   * résolveur exigent les deux.
    */
-  const brouillonSlug = 'aaaaaaaa-0000-4000-8000-000000000006';
+  const sondePub = 'aaaaaaaa-0000-4000-8000-000000000006';
   await owner.query(
-    `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug)
-     values ($1,$2,'SONDE-BROUILLON-SLUG','Sonde brouillon avec slug','draft','sonde-brouillon-slug')
-     on conflict (id) do update set public_slug = excluded.public_slug`, [brouillonSlug, orgId]);
-  const ecart = await enContextePublic((tx) => resolveDppPassData(tx, 'sonde-brouillon-slug'));
-  console.log(ecart
-    ? '  ÉCART  un brouillon porteur d’un public_slug EST publiquement résolu (C.8, non corrigé)'
-    : '  ok     l’écart C.8 est refermé : un brouillon n’est plus lisible même avec un slug');
-  await owner.query('delete from tracefab_products where id = $1', [brouillonSlug]);
+    `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug, published_at)
+     values ($1,$2,'SONDE-PUBLICATION','Sonde publication','draft','sonde-publication','2026-10-09T18:00:00Z')
+     on conflict (id) do update set published_at = excluded.published_at`, [sondePub, orgId]);
+
+  // 1. le garde refuse un slug sans date de publication
+  let gardeRefuse = null;
+  try {
+    await owner.query(
+      `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug)
+       values ('aaaaaaaa-0000-4000-8000-000000000007',$1,'SONDE-SANS-DATE','Sonde','draft','sonde-sans-date')`, [orgId]);
+    gardeRefuse = false;
+  } catch (e) { gardeRefuse = e.message; }
+  if (gardeRefuse && /publication_explicite_requise/.test(gardeRefuse)) {
+    ok('un public_slug sans published_at est refusé par le schéma (publication explicite)');
+  } else {
+    ko('le garde n’a pas refusé un slug sans date de publication', String(gardeRefuse));
+  }
+
+  // 2. un brouillon PUBLIÉ explicitement est lisible — publier n'est pas le statut
+  const brouillonPublie = await enContextePublic((tx) => resolveDppPassData(tx, 'sonde-publication'));
+  if (brouillonPublie) {
+    ok('un brouillon publié explicitement est lisible : la publication ne dépend plus du statut');
+  } else {
+    ko('un produit portant slug + published_at n’est pas résolu', 'sonde-publication');
+  }
+
+  // 3. dépublier (retirer le slug) rend le produit illisible
+  await owner.query('update tracefab_products set public_slug = null where id = $1', [sondePub]);
+  const depublie = await enContextePublic((tx) => resolveDppPassData(tx, 'sonde-publication'));
+  if (depublie === null) ok('un produit dépublié n’est plus résolu publiquement');
+  else ko('un produit sans slug est encore résolu', depublie.productReference);
+
+  /*
+   * AMBIGUÏTÉ — quatre marques partagent le slug « mb-shirt-001 ».
+   *
+   * Le comportement précédent servait le premier par created_at : déterministe,
+   * mais arbitraire. Des données réelles attribuées à la mauvaise marque valent
+   * pire qu'un refus.
+   */
+  const orgB = 'aaaaaaaa-0000-4000-8000-000000000008';
+  const prodA = 'aaaaaaaa-0000-4000-8000-000000000009';
+  const prodB = 'aaaaaaaa-0000-4000-8000-00000000000a';
+  await owner.query(
+    `insert into organizations (id, type, legal_name, display_name, country_code)
+     values ($1,'brand','Marque Sonde B','Sonde B','PT') on conflict (id) do nothing`, [orgB]);
+  for (const [id, org] of [[prodA, orgId], [prodB, orgB]]) {
+    await owner.query(
+      `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug, published_at)
+       values ($1,$2,$3,'Sonde slug partage','active','slug-partage','2026-10-09T18:00:00Z')
+       on conflict (id) do update set public_slug = excluded.public_slug`,
+      [id, org, id === prodA ? 'SONDE-AMB-A' : 'SONDE-AMB-B']);
+  }
+  let ambigu = null;
+  try {
+    await enContextePublic((tx) => resolveDppPassData(tx, 'slug-partage'));
+  } catch (e) { ambigu = e; }
+  if (ambigu && ambigu.name === 'DppAmbiguousResolutionError' && ambigu.candidates === 2) {
+    ok('deux marques partageant un slug → refus explicite (409), pas un choix arbitraire');
+  } else {
+    ko('une résolution ambiguë n’a pas été refusée',
+      ambigu ? `${ambigu.name} / ${ambigu.candidates}` : 'aucune erreur levée');
+  }
+
+  await owner.query('delete from tracefab_products where id = any($1::uuid[])', [[sondePub, prodA, prodB]]);
+  await owner.query('delete from organizations where id = $1', [orgB]);
 
   const parReference = await enContextePublic((tx) => resolveDppPassData(tx, 'SONDE-NU-001', undefined, { mode: 'gtin' }));
   if (parReference === null) ok('en mode GTIN, une référence interne ne résout rien');

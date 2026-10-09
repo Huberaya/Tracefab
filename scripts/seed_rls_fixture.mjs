@@ -116,12 +116,18 @@ for (const l of locataires) {
   for (const n of [1, 2]) {
     const publie = n === 1;
     await db.query(
-      `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug)
-       values ($1, $2, $3, $4, $5, $6) on conflict (id) do nothing`,
+      // `published_at` accompagne le slug : depuis la migration
+      // 20261009200000, un public_slug sans date de publication est refuse par
+      // le garde tracefab_products_publication_explicite(), et la publication
+      // publique exige les deux. Sans cette colonne la fixture ne publierait
+      // plus rien et la section E de test:neon:rls echouerait a juste titre.
+      `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug, published_at)
+       values ($1, $2, $3, $4, $5, $6, $7) on conflict (id) do nothing`,
       [uuid(`prod-${l.cle}-${n}`), orgId, `${l.cle.toUpperCase()}-00${n}`,
         `Article ${n} ${l.nom}`,
         publie ? 'active' : 'draft',
-        publie ? `${l.cle}-00${n}` : null]);
+        publie ? `${l.cle}-00${n}` : null,
+        publie ? '2026-10-09T18:00:00Z' : null]);
   }
 
   // Le declencheur tracefab_validate_document_location impose le bucket prive,

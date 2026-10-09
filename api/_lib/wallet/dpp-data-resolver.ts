@@ -1,4 +1,7 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
+// `Prisma` en import de VALEUR : Prisma.sql construit le fragment conditionnel.
+// Un `import type` le rend inutilisable comme valeur (TS1361).
+import { Prisma } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import type { DppPassData } from './types.js';
 
 type PrismaTx = PrismaClient | Prisma.TransactionClient;
@@ -41,6 +44,31 @@ export function isValidGtin(value: string): boolean {
   return (10 - (sum % 10)) % 10 === check;
 }
 
+/**
+ * Résolution ambiguë : plusieurs produits publiés correspondent.
+ *
+ * `public_slug` est unique PAR MARQUE et `product_identifiers` n'est unique que
+ * par produit : quatre marques distinctes portent aujourd'hui le slug
+ * « mb-shirt-001 », et rien n'interdit le même GTIN chez deux marques. Une URL
+ * publique sans marque est donc intrinsèquement ambiguë.
+ *
+ * Le comportement précédent triait par `created_at` et servait le premier :
+ * déterministe, mais arbitraire — un consommateur pouvait recevoir le passeport
+ * d'une autre marque que celle qu'il a scannée. Servir le mauvais passeport est
+ * pire que refuser de répondre : c'est une donnée réelle attribuée au mauvais
+ * produit. On lève donc une erreur, et la route répond 409.
+ */
+export class DppAmbiguousResolutionError extends Error {
+  readonly identifier: string;
+  readonly candidates: number;
+  constructor(identifier: string, candidates: number) {
+    super('dpp_resolution_ambigue');
+    this.name = 'DppAmbiguousResolutionError';
+    this.identifier = identifier;
+    this.candidates = candidates;
+  }
+}
+
 export type DppResolveMode = 'any' | 'gtin';
 
 export type DppResolveOptions = {
@@ -69,33 +97,51 @@ export async function resolveDppPassData(
   if (mode === 'gtin' && !isValidGtin(cleanId)) return null;
 
   /*
-   * Barrière de publication : un produit n'est public que s'il porte un
-   * public_slug. Sans elle, cette fonction résolvait n'importe quel produit,
-   * brouillons compris, sur une route anonyme.
+   * Candidats publiés, en SQL plutôt qu'avec le client Prisma.
+   *
+   * Deux raisons. D'abord `published_at` vient d'être ajouté : l'exprimer dans
+   * un `where` Prisma exigerait un client régénéré, et la condition dépendrait
+   * alors de l'état de la génération. Ensuite, et surtout, le prédicat de
+   * publication doit rester le MÊME partout : `public_slug` ET `published_at`,
+   * exactement ce que testent les politiques RLS. Deux portes pour la même
+   * question doivent partager un seul lecteur.
+   *
+   * Le filtre est explicite ET la politique RLS s'applique : en contexte public
+   * les deux se recoupent ; hors contexte public (rôle BYPASSRLS en production
+   * aujourd'hui) le filtre explicite est ce qui reste.
    */
-  const where = {
-    public_slug: { not: null },
-    ...(mode === 'gtin'
-      ? { product_identifiers: { some: { identifier_type: 'gtin', identifier_value: cleanId } } }
-      : {
-          OR: [
-            { id: cleanId.length === 36 ? cleanId : undefined },
-            { public_slug: cleanId.toLowerCase() },
-            { reference: cleanId },
-            { sku: cleanId },
-            { product_identifiers: { some: { identifier_value: cleanId } } },
-          ],
-        }),
-  };
+  const candidats = await (tx as any).$queryRaw<Array<{ id: string }>>`
+    SELECT p.id
+    FROM tracefab_products p
+    WHERE p.public_slug IS NOT NULL
+      AND p.published_at IS NOT NULL
+      AND ${mode === 'gtin'
+        ? Prisma.sql`EXISTS (
+             SELECT 1 FROM product_identifiers i
+             WHERE i.product_id = p.id
+               AND i.identifier_type = 'gtin'
+               AND i.identifier_value = ${cleanId}
+           )`
+        : Prisma.sql`(
+             p.public_slug = lower(${cleanId})
+             OR p.reference = ${cleanId}
+             OR p.sku = ${cleanId}
+             OR p.id::text = ${cleanId}
+             OR EXISTS (
+               SELECT 1 FROM product_identifiers i
+               WHERE i.product_id = p.id AND i.identifier_value = ${cleanId}
+             )
+           )`}
+    ORDER BY p.created_at ASC, p.id ASC
+  `;
 
-  // public_slug n'est unique QUE par marque. Plusieurs marques peuvent porter le
-  // même slug, donc une URL publique sans marque est ambiguë. On compte les
-  // correspondances et on le déclare dans la provenance plutôt que de laisser le
-  // lecteur croire à une résolution certaine.
-  const matching = await (tx as any).tracefab_products.count({ where });
+  if (!candidats || candidats.length === 0) return null;
+  if (candidats.length > 1) {
+    throw new DppAmbiguousResolutionError(cleanId, candidats.length);
+  }
 
   const product = await (tx as any).tracefab_products.findFirst({
-    where,
+    where: { id: candidats[0].id },
     include: {
       // `organizations` n'est PAS inclus : la table porte legal_name,
       // registration_number et clerk_organization_id. RLS filtre des lignes, pas
@@ -107,9 +153,6 @@ export async function resolveDppPassData(
       mass_balance_reconciliations: { orderBy: { created_at: 'desc' }, take: 1 },
       supply_chain_nodes: { include: { supplier_sites: true } },
     },
-    // À défaut de pouvoir lever l'ambiguïté ici, on la rend au moins déterministe
-    // et stable : sans tri explicite, PostgreSQL rend une ligne arbitraire.
-    orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
   });
 
   if (!product) return null;
@@ -260,7 +303,7 @@ export async function resolveDppPassData(
       sourced,
       notProvided,
       resolvedBy,
-      ambiguousWith: matching,
+      ambiguousWith: 1,
     },
   };
 }

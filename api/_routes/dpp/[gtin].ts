@@ -32,6 +32,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
   } catch (err: unknown) {
+    /*
+     * Plusieurs produits publiés correspondent : on refuse de choisir. Servir
+     * celui qui arrive le premier attribuerait des donnees reelles a la mauvaise
+     * marque. 409, et non 404 : l'identifiant existe, il est seulement ambigu.
+     */
+    if (err instanceof Error && err.name === 'DppAmbiguousResolutionError') {
+      return json(res, 409, { error: 'identifier_ambiguous' });
+    }
     console.error('DPP data resolution error:', err);
     return json(res, 500, { error: 'internal_error' });
   }

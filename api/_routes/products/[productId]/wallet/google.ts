@@ -29,6 +29,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       passObject: walletResult.passObject,
     });
   } catch (err: unknown) {
+    /*
+     * Plusieurs produits publiés correspondent : on refuse de choisir. Servir
+     * celui qui arrive le premier attribuerait des donnees reelles a la mauvaise
+     * marque. 409, et non 404 : l'identifiant existe, il est seulement ambigu.
+     */
+    if (err instanceof Error && err.name === 'DppAmbiguousResolutionError') {
+      return json(res, 409, { error: 'identifier_ambiguous' });
+    }
     console.error('Google Wallet generation error:', err);
     return json(res, 500, { error: 'wallet_generation_failed' });
   }

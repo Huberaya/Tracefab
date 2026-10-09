@@ -52,6 +52,7 @@ model User {
   supply_chain_nodes                                                                  supply_chain_nodes[]
   tracefab_products_tracefab_products_created_byTousers                               tracefab_products[]               @relation("tracefab_products_created_byTousers")
   tracefab_products_tracefab_products_last_data_updated_byTousers                     tracefab_products[]               @relation("tracefab_products_last_data_updated_byTousers")
+  tracefab_products_tracefab_products_published_byTousers                             tracefab_products[]               @relation("tracefab_products_published_byTousers")
   tracefab_schema_bindings                                                            tracefab_schema_bindings[]
   transaction_certificates                                                            transaction_certificates[]
   verification_records                                                                verification_records[]
@@ -747,6 +748,10 @@ model tracefab_products {
   status                                              product_status                    @default(draft)
   version                                             Int                               @default(1)
   public_slug                                         String?
+  // Publication explicite : voir 20261009200000_explicit_publication_state.
+  // `public_slug` seul ne suffit plus a rendre un produit public.
+  published_at                                        DateTime?                         @db.Timestamptz(6)
+  published_by                                        String?                           @db.Uuid
   created_by                                          String?                           @db.Uuid
   created_at                                          DateTime                          @default(now()) @db.Timestamptz(6)
   updated_at                                          DateTime                          @default(now()) @db.Timestamptz(6)
@@ -782,6 +787,7 @@ model tracefab_products {
   organizations                                       organizations                     @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users_tracefab_products_created_byTousers           User?                             @relation("tracefab_products_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
   users_tracefab_products_last_data_updated_byTousers User?                             @relation("tracefab_products_last_data_updated_byTousers", fields: [last_data_updated_by], references: [id], onUpdate: NoAction)
+  users_tracefab_products_published_byTousers         User?                             @relation("tracefab_products_published_byTousers", fields: [published_by], references: [id], onUpdate: NoAction)
   tracefab_schema_bindings                            tracefab_schema_bindings[]
 
   @@unique([brand_organization_id, public_slug])
