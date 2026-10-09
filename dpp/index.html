@@ -342,6 +342,25 @@
       margin-bottom: 18px;
     }
 
+    /* Valeur non sourcee. Le JS pose data-dpp-state depuis l'hydratation, mais
+       aucune regle ne le visait : « Non renseigne » s'affichait exactement
+       comme une valeur sourcee, ce qui annulait l'information qu'il porte. */
+    [data-dpp-state="non-renseigne"] {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* Mention qui remplace les cartes de certificats quand le passeport servi
+       n'en contient aucune. Elle doit se lire comme une absence constatee, pas
+       comme un encart publicitaire : filet discret, aucune couleur d'accent. */
+    .dpp-not-served {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      border-left: 2px solid var(--border-light);
+      padding: 10px 12px;
+      margin: 0 0 12px;
+    }
+
     /* Composition Section */
     .composition-card {
       background: var(--bg-surface);
@@ -730,7 +749,7 @@
          description lui sont propres, d'ou TF_I18N_SKIP_META. -->
     <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=0301922d"></script>
+    <script src="/assets/i18n/en.js?v=b688c61f"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
     <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
@@ -1045,11 +1064,19 @@
     <section class="tab-content-panel" id="panel-evidence" style="display:none;">
       <div class="section-title">
         <span data-i18n="dpp.evTitle">Certificates and legal evidence</span>
-        <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.evAudited">Audited</span>
+        <!-- data-dpp-demo-only : verdict porte sur le produit de demonstration.
+     L'API ne sert aucune certification : sur un passeport reel, ce badge
+     affirmerait une conformite que rien ne source. -->
+        <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.evAudited" data-dpp-demo-only>Audited</span>
       </div>
       <p class="section-desc" data-i18n="dpp.evDesc">Official documents admissible in European Union and DGCCRF compliance audits.</p>
 
-      <div style="display:grid;gap:12px;">
+      <!-- Les trois cartes ci-dessous portent des numeros de certificat, des
+           dates de validite et un organisme accredite qui appartiennent au
+           produit de demonstration. Les afficher au-dessus d'un passeport reel
+           attribuerait ces preuves a un autre produit. -->
+      <p class="dpp-not-served" data-i18n="dpp.evNotServed" hidden>Certificates and audit reports are not part of the served passport.</p>
+      <div style="display:grid;gap:12px;" data-dpp-demo-only>
         <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
@@ -1209,7 +1236,7 @@
 
   <script src="/assets/js/dpp.1.js?v=d931442c"></script>
 
-  <script src="/assets/js/dpp.2.js?v=4b572752"></script>
+  <script src="/assets/js/dpp.2.js?v=7ed2b0f6"></script>
 
 </body>
 </html>

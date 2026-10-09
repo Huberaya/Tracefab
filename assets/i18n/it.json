@@ -2179,6 +2179,8 @@
   },
   "dpp": {
     "demoBanner": "Passaporto dimostrativo — dati di esempio, prodotto non reale.",
+    "notProvided": "Non indicato",
+    "evNotServed": "Certificati e rapporti di audit non fanno parte del passaporto rilasciato.",
     "badgeEu": "Formato UE ESPR / DPP",
     "verifiedOrigin": "✓ Provenienza Verificata",
     "composition": "Composizione Materiali",

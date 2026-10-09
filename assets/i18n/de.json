@@ -2179,6 +2179,8 @@
   },
   "dpp": {
     "demoBanner": "Demo-Pass — Beispieldaten, kein reales Produkt.",
+    "notProvided": "Nicht angegeben",
+    "evNotServed": "Zertifikate und Auditberichte sind nicht Teil des ausgestellten Passes.",
     "badgeEu": "EU-ESPR-/DPP-Format",
     "verifiedOrigin": "✓ Verifizierte Herkunft",
     "composition": "Materialzusammensetzung",

@@ -2005,6 +2005,8 @@ window.TF_I18N_BUNDLES.en = {
   // --- DPP public --------------------------------------------------------
   dpp: {
     demoBanner: "Demonstration passport — sample data, not a real product.",
+    notProvided: "Not provided",
+    evNotServed: "Certificates and audit reports are not part of the served passport.",
     badgeEu: "EU ESPR / DPP format",
     verifiedOrigin: "✓ Verified Provenance",
     composition: "Material Composition",

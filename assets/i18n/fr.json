@@ -2179,6 +2179,8 @@
   },
   "dpp": {
     "demoBanner": "Passeport de démonstration — données d'exemple, produit fictif.",
+    "notProvided": "Non renseigné",
+    "evNotServed": "Les certificats et rapports d’audit ne font pas partie du passeport servi.",
     "badgeEu": "Format EU ESPR / DPP",
     "verifiedOrigin": "✓ Provenance Vérifiée",
     "composition": "Composition des Matières",

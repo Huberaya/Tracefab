@@ -62,13 +62,21 @@
 
       const dig = (obj, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), obj);
 
+      /* « Non renseigne » etait un litteral francais ecrit dans le composant.
+       * Une chaine utilisee dans un rendu est de la copie metier : elle doit
+       * vivre dans le catalogue, et suivre la langue de la page. */
+      const nonRenseigne = () => {
+        const T = window.TF_I18N;
+        return T ? T.t('dpp.notProvided', 'Not provided') : 'Not provided';
+      };
+
       const apply = (payload) => {
         const dpp = payload && payload.dpp;
         if (!dpp) return false;
         document.querySelectorAll('[data-dpp-field]').forEach((el) => {
           const v = dig(dpp, el.dataset.dppField);
           const absent = v === undefined || v === null || v === '';
-          el.textContent = absent ? 'Non renseigné' : String(v) + (el.dataset.dppSuffix || '');
+          el.textContent = absent ? nonRenseigne() : String(v) + (el.dataset.dppSuffix || '');
           el.setAttribute('data-dpp-state', absent ? 'non-renseigne' : 'source');
           // La valeur n'est plus de la demonstration ni une chaine traduisible :
           // sans cela le prochain changement de langue la rendrait a nouveau.
@@ -81,6 +89,17 @@
         });
         if (dpp.productName) document.title = dpp.productName + ' — Digital Product Passport | TRACEFAB';
         if (banner) banner.hidden = true;
+        /*
+         * Contenu de demonstration : numeros de certificat, dates de validite,
+         * organisme accredite, verdicts « Audited » / « Compliant ». L'API ne
+         * sert aucune certification — il n'existe donc aucune source possible
+         * pour ces valeurs. Les laisser en place sous un passeport reel,
+         * bandeau de demo cache, c'est attribuer a un produit scanne des
+         * preuves qui appartiennent a un autre. On les retire et on dit
+         * pourquoi, plutot que d'afficher des cartes vides.
+         */
+        document.querySelectorAll('[data-dpp-demo-only]').forEach((el) => { el.hidden = true; });
+        document.querySelectorAll('.dpp-not-served').forEach((el) => { el.hidden = false; });
         /*
          * Le statut « live » vient de la provenance declaree par l'API, pas du
          * seul fait qu'une reponse soit arrivee. Un produit publie mais vide de

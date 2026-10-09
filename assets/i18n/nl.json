@@ -2179,6 +2179,8 @@
   },
   "dpp": {
     "demoBanner": "Demonstratiepaspoort — voorbeeldgegevens, geen echt product.",
+    "notProvided": "Niet vermeld",
+    "evNotServed": "Certificaten en auditrapporten maken geen deel uit van het geleverde paspoort.",
     "badgeEu": "EU ESPR-/DPP-formaat",
     "verifiedOrigin": "✓ Geverifieerde Herkomst",
     "composition": "Materiaalsamenstelling",

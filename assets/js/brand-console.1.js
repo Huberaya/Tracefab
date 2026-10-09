@@ -14,6 +14,11 @@
         products: [],
         pages: {},
         filtres: { products: { q: '', category: '', status: '', readiness: '', incomplets: false } },
+        /* Tri du catalogue, separe des filtres : filtrer restreint ce qu'on
+         * voit, trier en change l'ordre. Les confondre ferait perdre le tri a
+         * chaque « effacer les filtres », et inversement. champ vide = ordre
+         * renvoye par l'API, qui est l'ordre de creation. */
+        tri: { champ: '', sens: 'asc' },
         requests: [],
         questionnaires: [],
         schemaCatalog: [],
@@ -173,6 +178,47 @@
           if (!q) return true;
           return normaliser(p.name).includes(q) || normaliser(p.reference).includes(q);
         });
+      }
+
+      /* Tri du catalogue --------------------------------------------------
+       *
+       * Le filtre rend le catalogue trouvable, pas parcourable : savoir quels
+       * produits sont incomplets ne dit pas lesquels le sont le plus. Le tri
+       * porte sur les colonnes deja affichees — on trie ce qu'on voit, comme on
+       * filtre ce qu'on voit.
+       *
+       * Les accesseurs vivent ici et non dans la vue, pour que l'en-tete et le
+       * tri ne puissent pas diverger : une colonne affichee sans accesseur
+       * n'est tout simplement pas triable.
+       */
+      const COLONNES_TRI = {
+        name: (p) => TFSort.sansAccents(p.name),
+        category: (p) => TFSort.sansAccents(p.category || ''),
+        status: (p) => TFSort.sansAccents(p.status || ''),
+        dataCompletion: (p) => Number(p.dataCompletion) || 0,
+        dataReadiness: (p) => TFSort.sansAccents(p.dataReadiness || 'in_progress'),
+      };
+
+      function produitsTries(liste) {
+        // Departage par reference : deux produits homonymes ne doivent pas
+        // permuter au gre du cache entre deux rendus.
+        return TFSort.trier(liste, COLONNES_TRI, state.tri, (p) => TFSort.sansAccents(p.reference));
+      }
+
+      /* En-tete triable. C'est un <button>, pas un <th> clickable : au clavier
+       * comme au lecteur d'ecran, un en-tete de tableau n'est pas un element
+       * activable, et un onclick sur <th> ne recoit ni focus ni annonce.
+       * aria-sort porte l'etat courant, y compris « none » sur les autres
+       * colonnes, pour que l'absence de tri soit dite et non devinee. */
+      function enTeteTriable(champ, cle) {
+        const actif = state.tri.champ === champ;
+        const fleche = actif ? (state.tri.sens === 'desc' ? '↓' : '↑') : '↕';
+        return `<th aria-sort="${TFSort.ariaSort(state.tri, champ)}">`
+          + `<button type="button" class="th-sort${actif ? ' is-active' : ''}"`
+          + ` data-tf-act="ps" data-tf-arg="${esc(champ)}">`
+          + `<span>${esc(bt(cle))}</span>`
+          + `<span class="th-sort-ind" aria-hidden="true">${fleche}</span>`
+          + `</button></th>`;
       }
 
       function filtresActifs() {
@@ -2187,9 +2233,13 @@
       }
 
       function productsView() {
-        const resultats = produitsFiltres();
+        /* Filtrage puis tri, dans cet ordre : trier avant de filtrer
+         * couterait des comparaisons sur des lignes qu'on ne montrera pas,
+         * et le compte « N sur M » de la barre de filtres doit porter sur
+         * la liste filtree, pas sur la liste triee. */
+        const resultats = produitsTries(produitsFiltres());
         const tranche = trancher('products', resultats);
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr>${enTeteTriable('name', 'pdProduct')}${enTeteTriable('category', 'pdCategory')}${enTeteTriable('status', 'pdStatus')}${enTeteTriable('dataCompletion', 'pdCompleteness')}${enTeteTriable('dataReadiness', 'pdReadiness')}<th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
@@ -4328,6 +4378,20 @@
           state.filtres.products[champ] = this.value;
           state.pages.products = 1;
           render();
+        },
+        ps: function (event) {
+          const champ = this.dataset.tfArg;
+          // Un en-tete sans colonne connue ne doit rien faire plutot que
+          // basculer sur un tri fantome : l'etat resterait invisible a
+          // l'utilisateur tout en changeant l'ordre des lignes.
+          if (!champ || !Object.prototype.hasOwnProperty.call(COLONNES_TRI, champ)) return;
+          state.tri = TFSort.basculer(state.tri, champ);
+          // Meme raison que pour les filtres : rester page 37 d'un ordre qui
+          // vient de changer afficherait d'autres produits sans raison lisible.
+          state.pages.products = 1;
+          render();
+          const haut = document.querySelector('.table-wrap');
+          if (haut) haut.scrollIntoView({ block: 'start' });
         },
         fx: function (event) {
           state.filtres.products = { q: '', category: '', status: '', readiness: '', incomplets: false };
