@@ -61,6 +61,11 @@ jobs:
         # classee et non authentifiee fait echouer cette etape.
         run: npm run test:cross-tenant
 
+      - name: Garde-fous de mise en production
+        # Barriere d'erreur centrale, caviardage des secrets reellement
+        # execute, et contrat de variables d'environnement a jour.
+        run: npm run test:production-readiness
+
   # -------------------------------------------------- 2. suite de verification
   verification:
     name: Verification — suite de tests
