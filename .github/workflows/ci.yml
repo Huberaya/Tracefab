@@ -229,7 +229,13 @@ jobs:
     # place : l'epreuve tourne a chaque poussee, y compris depuis un fork.
     services:
       postgres:
-        image: postgres:17
+        # Miroir ECR public des images officielles Docker, et non `postgres:17`
+        # depuis Docker Hub : les pulls anonymes depuis un runner GitHub
+        # partagent une limite de debit par plage d'adresses, deja atteinte par
+        # d'autres projets. Le job mourait alors sur « Initialize containers »,
+        # avant la moindre de ses etapes — un echec sans rapport avec le code
+        # pousse, donc un signal faux. Meme image, registre sans limite.
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
