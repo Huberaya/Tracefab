@@ -1,5 +1,5 @@
-import { createHmac } from 'node:crypto';
-import type { VercelRequest, VercelResponse } from './vercel-types.js';
+import { createHmac, createHash } from 'node:crypto';
+import type { VercelRequest as VReq, VercelResponse as VRes } from './vercel-types.js';
 
 /**
  * Limitation de debit.
@@ -24,12 +24,31 @@ import type { VercelRequest, VercelResponse } from './vercel-types.js';
  * moins cher que la requete qu'il empeche : resoudre un passeport DPP joint
  * une dizaine de tables.
  *
- * EN CAS DE PANNE, ON LAISSE PASSER
+ * CE QUI N'EST PLUS VRAI, ET POURQUOI
  *
- * Si la base est injoignable, L2 est ignore et seul L1 s'applique. Un
- * limiteur casse ne doit pas rendre le service indisponible : ce serait
- * transformer un incident de base en panne totale. C'est un choix assume, et
- * c'est la limite la plus importante a connaitre de ce module.
+ * 1. Un en-tete `Authorization` non vide classait la requete « credentialed »
+ *    (600/min) sans rien verifier : ajouter `Authorization: n'importe quoi`
+ *    decuplait le budget d'un attaquant, y compris sur les routes Wallet
+ *    (20/min) et sur la demande d'accès anonyme (10/5 min). Desormais, un
+ *    justificatif PRESENTE n'ouvre aucun droit budgetaire : seule une
+ *    authentification VERIFIEE — signature du jeton contre la cle Clerk —
+ *    reclasse la requete. Un faux jeton reste dans le budget anonyme de la
+ *    route, jamais au-dessus.
+ * 2. « En cas de panne, on laisse passer » est trop grossier. Le comportement
+ *    depend desormais de la criticite de la classe (voir evaluate()) :
+ *    - `public-write` (ecriture anonyme en base) et `wallet` (signature
+ *      cryptographique couteuse) : FAIL-CLOSED. Une panne du compteur ne
+ *      doit pas devenir un accelerateur d'abus ; et ces routes ont de toute
+ *      facon besoin de la base pour servir — l'elargir ne sauverait aucune
+ *      disponibilite honnete.
+ *    - `public-read` (lecture d'un passeport public) et `credentialed`
+ *      (authentification verifiee) : FAIL-OPEN sur le seul etage memoire,
+ *      comme avant. Un passeport public doit rester lisible pendant une
+ *      panne du compteur, et un utilisateur reel ne doit pas etre puni pour
+ *      un incident d'infrastructure. Les rafales restent freinees par L1.
+ *    Ce choix est teste (scripts/test_rate_limit.mjs) et reflete le fait que
+ *    la panne du compteur peut etre locale (table rate_limit_counters
+ *    indisponible pendant que le reste de la base fonctionne).
  */
 
 export type RateLimitClass = 'exempt' | 'public-read' | 'public-write' | 'wallet' | 'credentialed';
@@ -44,6 +63,13 @@ export type RateLimitDecision = {
   resetSeconds: number;
   /** 'memoire' quand L2 n'a pas pu etre consulte. Sert au diagnostic. */
   enforcedBy: 'exempt' | 'memoire' | 'base';
+  /**
+   * Present quand la requete est refusee :
+   * - 'over_budget' : le plafond est atteint (reponse 429) ;
+   * - 'counter_unavailable' : le compteur partage est injoignable et la
+   *   classe est en fail-closed (reponse 503).
+   */
+  reason?: 'over_budget' | 'counter_unavailable';
 };
 
 function envInteger(name: string, fallback: number, min: number, max: number): number {
@@ -81,8 +107,9 @@ export function budgetFor(klass: RateLimitClass): RateLimitBudget {
         windowSeconds: 300,
       };
     case 'credentialed':
-      // Un tableau de bord emet beaucoup d'appels par minute. Trop serrer ici
-      // casserait l'application pour des utilisateurs legitimes.
+      // Un tableau de bord emet beaucoup d'appels par minute. Trop serré ici
+      // casserait l'application pour des utilisateurs legitimes. Ce budget
+      // n'est atteint qu'avec une authentification VERIFIEE.
       return {
         limit: envInteger('TRACEFAB_RATE_LIMIT_CREDENTIALED', 600, 60, 1000000),
         windowSeconds: 60,
@@ -109,28 +136,114 @@ function isExempt(path: string): boolean {
   return path === 'health' || path.startsWith('internal/') || path.startsWith('webhooks/');
 }
 
-/**
- * Presence de justificatifs d'authentification. On ne les VERIFIE pas ici —
- * ce serait payer une verification Clerk sur chaque requete, y compris celles
- * qu'on s'apprete a rejeter. On se contente de constater leur absence, qui
- * elle est une preuve : sans justificatif, la requete est anonyme.
- *
- * Une requete qui presente un justificatif invalide obtient donc le budget
- * `credentialed`. C'est acceptable : la route la rejettera, et le budget reste
- * attache a l'empreinte client, pas au justificatif.
- */
-function carriesCredentials(req: VercelRequest): boolean {
-  const auth = req.headers.authorization;
-  if (typeof auth === 'string' && auth.trim().length > 0) return true;
-  const cookie = req.headers.cookie;
-  if (typeof cookie === 'string' && /(^|;\s*)__session=/.test(cookie)) return true;
-  return false;
+/** Routes de generation de laissez-passer. Couteuses par construction. */
+function isWalletPath(path: string): boolean {
+  return /\/(apple|google)-wallet$/.test(path) || /\/wallet\/(apple|google)$/.test(path);
 }
 
-export function classify(path: string, req: VercelRequest): RateLimitClass {
+/* ------------------------------------------------- verification des jetons */
+
+/**
+ * Verificateur de justificatifs.
+ *
+ * La classe `credentialed` n'est accordee qu'apres verification
+ * cryptographique du jeton. Rien de presentable par un client sans la cle
+ * privee ne peut y acceder : c'est la reponse a « un faux jeton ne doit pas
+ * permettre d'obtenir un budget plus permissif ».
+ *
+ * Par defaut, la verification utilise le secret Clerk du deploiement. Quand
+ * il n'est pas configure (CI, tests sans reseau), AUCUNE requete n'est
+ * consideree comme authentifiee : les budgets restent ceux des routes
+ * publiques. C'est le sens de securite correct — un deploiement qui ne peut
+ * pas verifier ne doit pas faire confiance.
+ */
+export type CredentialVerifier = (token: string) => Promise<boolean>;
+
+let credentialVerifier: CredentialVerifier | null = null;
+
+/** Reservee aux tests et aux deploiements specifiques. */
+export function setCredentialVerifier(verifier: CredentialVerifier | null): void {
+  credentialVerifier = verifier;
+  verificationCache.clear();
+}
+
+/**
+ * Memoire de verification : evite de re-verifier le meme jeton sur chaque
+ * requete d'un tableau de bord. Le jeton n'est jamais stocke en clair —
+ * seule son empreinte SHA-256 sert de cle, avec le resultat booleen.
+ */
+const verificationCache = new Map<string, { verified: boolean; expiresAt: number }>();
+const VERIFICATION_TTL_MS = 60_000;
+
+async function verifyWithClerk(token: string): Promise<boolean> {
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  if (!secretKey) return false;
+  try {
+    const { verifyToken } = await import('@clerk/backend');
+    const authorizedParties = (process.env.TRACEFAB_AUTHORIZED_PARTIES || '')
+      .split(',')
+      .map((party) => party.trim())
+      .filter(Boolean);
+    const claims = authorizedParties.length > 0
+      ? await verifyToken(token, { secretKey, authorizedParties })
+      : await verifyToken(token, { secretKey });
+    return Boolean(claims?.sub);
+  } catch {
+    return false;
+  }
+}
+
+/** Verification avec memoisation. Ne jette jamais : un echec = non verifie. */
+export async function credentialIsVerified(token: string | null, now = Date.now()): Promise<boolean> {
+  if (!token) return false;
+  const cacheKey = createHash('sha256').update(token).digest('hex');
+  const cached = verificationCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.verified;
+  const verifier = credentialVerifier ?? verifyWithClerk;
+  let verified = false;
+  try {
+    verified = await verifier(token);
+  } catch {
+    verified = false;
+  }
+  if (verificationCache.size >= 10000) verificationCache.clear();
+  verificationCache.set(cacheKey, { verified, expiresAt: now + VERIFICATION_TTL_MS });
+  return verified;
+}
+
+/** Extrait le jeton presente (en-tete Bearer ou cookie de session). */
+export function presentedToken(req: VReq): string | null {
+  const auth = req.headers.authorization;
+  if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
+    const token = auth.slice('Bearer '.length).trim();
+    if (token) return token;
+  }
+  const cookie = req.headers.cookie;
+  if (typeof cookie === 'string') {
+    const match = /(^|;\s*)__session=([^;]+)/.exec(cookie);
+    if (match && match[2]) return decodeURIComponent(match[2]);
+  }
+  return null;
+}
+
+/**
+ * Classification d'une requete.
+ *
+ * Ordre deliberement fixe, du plus contraignant au plus large :
+ *   1. dispensees (courte liste explicite) ;
+ *   2. routes Wallet : la classe suit le COUT de la route, jamais les
+ *      en-tetes — un faux jeton ne doit pas diluer le budget de signature ;
+ *   3. authentification VERIFIEE : budget `credentialed` ;
+ *   4. methode d'ecriture : `public-write` (les demandes d'accès anonymes
+ *      gardent leur budget restrictif, jeton presente ou non) ;
+ *   5. lecture : `public-read`.
+ *
+ * Un en-tete `Authorization` non vide ne change donc JAMAIS la classe.
+ */
+export function classify(path: string, req: VReq, authVerified = false): RateLimitClass {
   if (isExempt(path)) return 'exempt';
-  if (carriesCredentials(req)) return 'credentialed';
-  if (/\/(apple|google)-wallet$/.test(path) || /\/wallet\/(apple|google)$/.test(path)) return 'wallet';
+  if (isWalletPath(path)) return 'wallet';
+  if (authVerified) return 'credentialed';
   if (WRITE_METHODS.has((req.method || 'GET').toUpperCase())) return 'public-write';
   return 'public-read';
 }
@@ -144,7 +257,7 @@ export function classify(path: string, req: VercelRequest): RateLimitClass {
  * plateforme ecrit elle-meme, et on ne retient de `x-forwarded-for` que le
  * DERNIER saut, celui qu'un client ne peut pas choisir.
  */
-export function clientAddress(req: VercelRequest): string {
+export function clientAddress(req: VReq): string {
   const first = (value: string | string[] | undefined): string | undefined => {
     if (Array.isArray(value)) return value[0];
     return value;
@@ -237,6 +350,28 @@ export function resetMemory(): void {
 let databaseDisabledUntil = 0;
 
 /**
+ * Compteur partage. Rend le nombre de hits dans la fenetre, ou `null` si
+ * l'etage partage n'a pas pu etre consulte (panne, table absente, coupure
+ * reseau). C'est ce `null` qui declenche la politique de panne par classe.
+ */
+export type DatabaseCounter = (
+  key: string,
+  budget: RateLimitBudget,
+  now: number,
+) => Promise<number | null>;
+
+let databaseCounter: DatabaseCounter | null = null;
+
+/**
+ * Reservee aux tests : injecte un compteur partage (reussite ou panne
+ * simulee) sans dependre de la disponibilite reelle de PostgreSQL.
+ */
+export function setDatabaseCounter(counter: DatabaseCounter | null): void {
+  databaseCounter = counter;
+  resetDatabaseBackoff();
+}
+
+/**
  * Incrementation atomique d'une fenetre fixe. `ON CONFLICT ... DO UPDATE ...
  * RETURNING` fait l'increment et la lecture en une seule instruction : deux
  * instances qui tapent la meme fenetre au meme instant ne peuvent pas lire la
@@ -247,6 +382,7 @@ export async function touchDatabase(
   budget: RateLimitBudget,
   now = Date.now(),
 ): Promise<number | null> {
+  if (databaseCounter) return databaseCounter(key, budget, now);
   if (now < databaseDisabledUntil) return null;
   if (!process.env.DATABASE_URL) return null;
   const windowMs = budget.windowSeconds * 1000;
@@ -286,14 +422,29 @@ export function resetDatabaseBackoff(): void {
   databaseDisabledUntil = 0;
 }
 
+/**
+ * Politique de panne de L2, par criticite de classe.
+ *
+ * Voir l'en-tete du module pour le raisonnement. Retourne `true` si la
+ * requete peut continuer sur le seul etage memoire.
+ */
+export function failOpenWhenCounterUnavailable(klass: RateLimitClass): boolean {
+  return klass === 'public-read' || klass === 'credentialed';
+}
+
 /* ------------------------------------------------------------- decision */
 
 export async function evaluate(
   path: string,
-  req: VercelRequest,
+  req: VReq,
   now = Date.now(),
 ): Promise<RateLimitDecision> {
-  const klass = classify(path, req);
+  // La verification ne peut pas etre poussee au gestionnaire de route :
+  // c'est ici que le budget est choisi, et un budget choisi sur un simple
+  // en-tete serait un budget offert. Le jeton presente est donc verifie —
+  // cryptographiquement, avec memoisation — avant tout reclassement.
+  const authVerified = await credentialIsVerified(presentedToken(req), now);
+  const klass = classify(path, req, authVerified);
   if (klass === 'exempt') {
     return { allowed: true, klass, limit: 0, remaining: 0, resetSeconds: 0, enforcedBy: 'exempt' };
   }
@@ -307,11 +458,31 @@ export async function evaluate(
   // L'etage memoire, lui, reste actif : il ne persiste rien.
   const memoryHits = touchMemory(key || `clair:${clientAddress(req)}:${klass}`, budget, now);
   if (memoryHits > budget.limit) {
-    return { allowed: false, klass, limit: budget.limit, remaining: 0, resetSeconds, enforcedBy: 'memoire' };
+    return {
+      allowed: false,
+      klass,
+      limit: budget.limit,
+      remaining: 0,
+      resetSeconds,
+      enforcedBy: 'memoire',
+      reason: 'over_budget',
+    };
   }
 
   const databaseHits = key ? await touchDatabase(key, budget, now) : null;
   if (databaseHits === null) {
+    // Panne (ou absence) du compteur partage.
+    if (!failOpenWhenCounterUnavailable(klass)) {
+      return {
+        allowed: false,
+        klass,
+        limit: budget.limit,
+        remaining: 0,
+        resetSeconds,
+        enforcedBy: 'memoire',
+        reason: 'counter_unavailable',
+      };
+    }
     return {
       allowed: true,
       klass,
@@ -329,6 +500,7 @@ export async function evaluate(
     remaining: Math.max(0, budget.limit - databaseHits),
     resetSeconds,
     enforcedBy: 'base',
+    ...(databaseHits <= budget.limit ? {} : { reason: 'over_budget' as const }),
   };
 }
 
@@ -337,7 +509,7 @@ export async function evaluate(
  * `draft-ietf-httpapi-ratelimit-headers` : un client qui sait les lire peut
  * ralentir de lui-meme au lieu d'attendre d'etre rejete.
  */
-export function applyHeaders(res: VercelResponse, decision: RateLimitDecision): void {
+export function applyHeaders(res: VRes, decision: RateLimitDecision): void {
   if (decision.klass === 'exempt') return;
   res.setHeader('RateLimit-Limit', String(decision.limit));
   res.setHeader('RateLimit-Remaining', String(decision.remaining));

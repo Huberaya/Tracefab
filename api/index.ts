@@ -158,12 +158,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // requete rejetee ne declenche pas le chargement du module, donc pas le
   // demarrage a froid qu'elle cherchait peut-etre a provoquer.
   //
-  // Le limiteur ne jette jamais. Si lui-meme echoue, la requete passe : un
-  // limiteur casse ne doit pas rendre le service indisponible.
+  // Le limiteur ne jette jamais. S'il echoue lui-meme (exception), la
+  // requete passe et l'incident reste visible par l'absence des en-tetes
+  // RateLimit-* : une exception interne au limiteur ne doit pas devenir une
+  // panne. En revanche, quand le compteur partage est injoignable, ce n'est
+  // plus une exception mais une decision documentee : les classes sensibles
+  // (ecriture anonyme, Wallet) sont refusees en 503 par le module lui-meme.
   try {
     const decision = await evaluate(path, req);
     applyHeaders(res, decision);
     if (!decision.allowed) {
+      if (decision.reason === 'counter_unavailable') {
+        return json(res, 503, {
+          error: 'rate_limiter_unavailable',
+          retryAfterSeconds: decision.resetSeconds,
+        });
+      }
       return json(res, 429, { error: 'rate_limited', retryAfterSeconds: decision.resetSeconds });
     }
   } catch {

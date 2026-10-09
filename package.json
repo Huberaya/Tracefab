@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit",
     "api:typecheck": "tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --skipLibCheck --esModuleInterop --types node --lib ES2020,DOM $(find api -name '*.ts' -print)",
     "test:security:chantier1": "node scripts/test_security_chantier1.mjs",
+    "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs",
     "test:bridge:chantier2": "node scripts/test_collection_bridge_chantier2.mjs",
     "test:supplychain:chantier3": "node scripts/test_supply_chain_chantier3.mjs",
     "test:dpp:chantier4": "node scripts/test_dpp_chantier4.mjs",
