@@ -259,12 +259,22 @@ jobs:
       - name: Generer le client Prisma
         run: npm run db:generate
 
+      - name: Poser le role applicatif avant les migrations
+        # Les migrations reference `tracefab_app` (les GRANT EXECUTE de
+        # 20261009180000_public_read_context). Sur une base vierge, executer
+        # les migrations avant la creation du role echouait avec
+        # « role "tracefab_app" does not exist » (SQLSTATE 42704) — et la CI
+        # ne prouvait plus rien. On pose donc le role (sans BYPASSRLS) avant
+        # la chaine : les GRANT des migrations sont reellement exerces.
+        # Idempotent, et sans effet sur une base ou le role existe deja.
+        run: node scripts/bootstrap_app_role.mjs
+
       - name: Appliquer les migrations sur la base jetable
         # npm run db:deploy, pas npx prisma : npx va chercher au registre
         # quand le binaire local n'est pas trouve, et installe un homonyme.
         run: npm run db:deploy
 
-      - name: Creer le role tracefab_app et deux locataires
+      - name: Creer les deux locataires de l'epreuve
         run: node scripts/seed_rls_fixture.mjs
 
       - name: Isolation RLS prouvee par execution

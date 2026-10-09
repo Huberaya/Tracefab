@@ -28,6 +28,7 @@
  */
 import pg from 'pg';
 import crypto from 'node:crypto';
+import { ensureAppRole } from './lib/tracefab_app_role.mjs';
 
 const URL_PROPRIO = process.env.DATABASE_URL;
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD;
@@ -49,30 +50,10 @@ const db = new pg.Client({
 await db.connect();
 
 /* --- 1. le role applicatif ------------------------------------------------ */
-const existe = await db.query('select 1 from pg_roles where rolname = $1', ['tracefab_app']);
-if (existe.rowCount === 0) {
-  await db.query(`CREATE ROLE tracefab_app LOGIN PASSWORD ${quote(MOT_DE_PASSE)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
-  console.log('  role tracefab_app cree');
-} else {
-  await db.query(`ALTER ROLE tracefab_app WITH LOGIN PASSWORD ${quote(MOT_DE_PASSE)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
-  console.log('  role tracefab_app deja present, attributs reappliques');
-}
-
-const base = (await db.query('select current_database() d')).rows[0].d;
-const proprio = (await db.query('select current_user u')).rows[0].u;
-for (const sql of [
-  `GRANT CONNECT ON DATABASE "${base}" TO tracefab_app`,
-  'GRANT USAGE ON SCHEMA public TO tracefab_app',
-  'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO tracefab_app',
-  'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO tracefab_app',
-  'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO tracefab_app',
-  `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO tracefab_app`,
-  `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO tracefab_app`,
-  `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO tracefab_app`,
-]) {
-  await db.query(sql);
-}
-console.log('  droits applicatifs accordes');
+// Logique partagee avec scripts/bootstrap_app_role.mjs, qui doit etre passe
+// AVANT les migrations sur base vierge. Ici c'est le filet de securite :
+// rejouer le seed sur une base ou le role manquerait encore le pose.
+await ensureAppRole(db, MOT_DE_PASSE);
 
 /* --- 2. deux locataires porteurs de donnees -------------------------------- */
 // Identifiants deterministes : rejouer le script retombe sur les memes lignes.
@@ -143,7 +124,3 @@ console.log(`  total : ${await compte('organizations')} organisations · ${await
 
 await db.end();
 console.log('  base prete pour npm run test:neon:rls');
-
-function quote(s) {
-  return `'${String(s).replace(/'/g, "''")}'`;
-}
