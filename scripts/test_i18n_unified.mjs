@@ -151,10 +151,23 @@ const PORTAL_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
 
 /* Nombre de clés attendu par portée.
    console  : 25 — les libellés de la console marque n'ont pas bougé.
-   supplier : 439 — 25 libellés d'origine, 25 clés de statut, puis 389 clés
-              issues de la migration complète : tout le texte d'interface du
-              portail était codé en dur dans supplier-portal/index.html. */
-const EXPECTED_KEYS = { console: 25, supplier: 439 };
+   supplier : 506 — 25 libellés d'origine, 25 clés de statut, 389 clés de la
+              première passe de migration, puis 67 clés ajoutées ensuite
+              (65 libellés de vues non rendues + `ui_en_attente` +
+              `ui_lignes_detectees_separateur`).
+
+              POURQUOI 65 DE PLUS ALORS QUE LA PREMIÈRE PASSE SE DISAIT COMPLÈTE
+              La passe 1 avait été déclarée close sur la foi d'un contrôle qui
+              lisait le TEXTE RENDU. Or les vues du portail (profil, sites,
+              certificats, matériaux, équipe, documents, passeport, demande) ne
+              se rendent qu'après un clic : leur texte n'était jamais monté, donc
+              jamais inspecté. Les 65 clés couvrent précisément ces vues.
+
+              Le contrôle qui manquait — un scan du SOURCE par AST, indépendant
+              du rendu et du dictionnaire — existe désormais dans
+              scripts/test_supplier_portal_i18n_source.mjs. C'est lui qui aurait
+              dû attraper la passe 1, et c'est lui qui borne la récidive. */
+const EXPECTED_KEYS = { console: 25, supplier: 506 };
 for (const [scope, langs] of [['console', CONSOLE_LANGS], ['supplier', PORTAL_LANGS]]) {
   const ref = Object.keys(await readDict(langs[0], scope)).sort();
   eq(ref.length, EXPECTED_KEYS[scope], `${scope}.json : ${EXPECTED_KEYS[scope]} clés (${langs[0]})`);

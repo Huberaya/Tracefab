@@ -24,7 +24,13 @@ for (const contract of [
   '/api/supplier/documents',
   '/api/supplier/documents/upload-intent',
   '/api/supplier/shares',
-  'Partages actifs',
+  /*
+   * Ce contrat portait sur le littéral français « Partages actifs ». Le libellé
+   * a été migré dans locales/<lang>/supplier.json : vérifier le texte ici
+   * figerait le français dans la page, ce que l'i18n interdit. On vérifie donc
+   * le CÂBLAGE, et la valeur réelle dans les neuf langues juste après.
+   */
+  "t('ui_partages_actifs')",
   '/api/supplier/documents/',
   '/api/supplier/organizations',
   '/api/supplier/members',
@@ -48,6 +54,17 @@ for (const contract of [
 ]) {
   assert(html.includes(contract), `Supplier Portal contract missing: ${contract}`);
 }
+/*
+ * Le libellé des partages actifs doit exister, non vide, dans les neuf langues
+ * du portail — sinon `t()` renverrait la clé brute à l'écran.
+ */
+const PORTAL_LANGS = ['en', 'fr', 'de', 'it', 'es', 'nl', 'pt', 'tr', 'zh'];
+for (const lang of PORTAL_LANGS) {
+  const dict = JSON.parse(await readFile(new URL(`../locales/${lang}/supplier.json`, import.meta.url), 'utf8'));
+  assert(String(dict.ui_partages_actifs || '').trim().length > 0,
+    `ui_partages_actifs must have a non-empty value in ${lang}`);
+}
+
 assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token must be sent through Authorization');
 assert(!html.includes('localhost'), 'Supplier Portal must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Supplier Portal must not contain private credentials');

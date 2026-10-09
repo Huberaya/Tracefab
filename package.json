@@ -59,6 +59,7 @@
     "test:supplier-portal:surface": "node scripts/test_supplier_portal_surface.mjs",
     "test:supplier-portal": "node scripts/test_supplier_portal.mjs",
     "test:supplier-portal:i18n": "node scripts/test_supplier_portal_i18n.mjs",
+    "test:supplier-portal:i18n-source": "node scripts/test_supplier_portal_i18n_source.mjs",
     "test:passport:error": "node scripts/test_passport_error_state.mjs",
     "test:private-storage": "node scripts/test_private_storage.mjs",
     "test:notification-scheduler": "node scripts/test_notification_scheduler.mjs",
