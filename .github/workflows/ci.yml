@@ -26,6 +26,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Moindre privilege : la CI ne lit que le depot. Sans cette ligne, le jeton
+# recoit les droits par defaut du depot (non verifiables depuis la sandbox).
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '20'
   TF_BASE: http://127.0.0.1:3000
