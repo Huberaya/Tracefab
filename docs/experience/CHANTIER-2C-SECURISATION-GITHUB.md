@@ -385,3 +385,130 @@ git log --all -G<motif> -E (motifs de secrets ; sortie limitée aux noms de fich
 - Les SHA ont été vérifiés par l'API GitHub, non par une revue du code des actions.
 - Aucun test de la CI n'a été relancé dans cette phase : aucune modification de code n'a été faite. Les tests verts cités sont ceux de `d06fe79`.
 - Le rapport ne déclare pas le dépôt sécurisé : `main` n'est pas protégée et l'environnement `Production` ne l'est pas non plus.
+
+---
+
+## 12. Chantier 2C.1 — corrections appliquées
+
+Date : 2026-10-10. Point de départ : `d664f11` (identique au distant, arbre propre, `.github/` inchangé depuis `d06fe79`). Le constat P0 du §3.1 a été réévalué sur ce commit et reste exact.
+
+### 12.1 Risque initial (vérifié sur le code)
+
+- `ci.yml`, job `base-de-donnees`, étape `Scenarios croises contre la base de production` : elle exécutait `test:neon:security`, `supplier`, `product`, `quality` et `collection` avec `DATABASE_URL: ${{ secrets.DATABASE_URL }}`.
+- Déclencheurs du workflow : `push` sur `**`, `pull_request`, `workflow_dispatch`. Le secret était donc accessible à tout run, y compris depuis une branche modifiée par un contributeur ayant le droit d'écriture.
+- Opérations de ces suites, relevées dans le code :
+  - `CREATE ROLE`, `GRANT`, `REVOKE`, `DROP ROLE IF EXISTS` sur le cluster ;
+  - `UPDATE` directs, attendus à 0 ligne par RLS mais exécutés ;
+  - `deleteMany` sur les organisations et les utilisateurs ;
+  - création de données (`create`, `createMany`) pour les fixtures.
+- Ces suites ne lisent que `DATABASE_URL`. Aucune garde ne vérifie que la cible est une base de test (contrairement à `test_neon_publication_deploiement.mjs`, qui refuse tout hôte autre que `localhost`, `127.0.0.1` et `::1`).
+
+### 12.2 Corrections appliquées
+
+| Fichier | Modification | Effet |
+|---|---|---|
+| `.github/workflows/ci.yml` | Suppression de l'étape `Scenarios croises contre la base de production` (12 lignes et une ligne vide) | Les cinq suites ne sont plus exécutées par la CI |
+| `.github/workflows/ci.yml` | Suppression de la variable de job `TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}` et de son commentaire | Le job `base-de-donnees` ne référence plus aucun secret |
+| `.github/workflows/ci.yml` | Correction de l'en-tête : « ne se déclenche que si le secret DATABASE_URL existe » remplacé par une description exacte (Postgres jetable en localhost, sans secret) | Documentation conforme au comportement |
+| `.github/workflows/ci.yml` et `figer-reference-visuelle.yml` | Épinglage des actions par SHA (voir 12.4) | Versions figées, lisibles en commentaire |
+
+Ce qui n'a **pas** été modifié : les permissions de `ci.yml` (`contents: read`), celles de `figer-reference-visuelle.yml` (`contents: write`), son déclencheur, son comportement, les tests RLS, d'isolation, de provenance, d'auth et de déploiement (`test:neon:rls`, `test:neon:dpp-provenance`, `test:neon:auth-provisioning`, `test:neon:deploiement-publication`, `test:wallet:signature-production`), qui restent dans le job `base-de-donnees` sur le Postgres jetable.
+
+Vérification : après correction, `grep -n "secrets\." .github/workflows/*.yml` ne renvoie qu'une ligne de commentaire. Aucune étape ne lit le contexte `secrets`.
+
+### 12.3 Diff de retrait (extrait)
+
+```diff
+-      # Le contexte `secrets` n'est pas disponible dans un `if:` d'etape : il
+-      # faut le faire transiter par l'env du job. Sans ce detour, le workflow
+-      # echoue au parsing.
+-      TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}
+     steps:
+...
+-
+-      - name: Scenarios croises contre la base de production
+-        # Optionnels, et clairement annonces comme tels. L'etancheite est deja
+-        # prouvee ci-dessus sans eux.
+-        if: ${{ env.TF_SECRET_PRODUCTION != '' }}
+-        env:
+-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+-        run: |
+-          npm run test:neon:security
+-          npm run test:neon:supplier
+-          npm run test:neon:product
+-          npm run test:neon:quality
+-          npm run test:neon:collection
+```
+
+Le diff complet est dans `git show <commit> -- .github/`.
+
+### 12.4 Actions épinglées par SHA
+
+Chaque SHA a été vérifié avant utilisation (§4) : il pointe vers un commit, et le tag `v4.x` correspondant pointe vers ce même commit.
+
+| Action | Version | SHA | Usages | Fichiers |
+|---|---|---|---|---|
+| `actions/checkout` | v4.4.0 | `11d5960a326750d5838078e36cf38b85af677262` | 5 | `ci.yml` (4), `figer` (1) |
+| `actions/setup-node` | v4.4.0 | `49933ea5288caeca8642d1e84afbd3f7d6820020` | 5 | `ci.yml` (4), `figer` (1) |
+| `actions/upload-artifact` | v4.6.2 | `ea165f8d65b6e75b540449e92b4886f43607fa02` | 2 | `ci.yml` (1), `figer` (1) |
+
+Aucune autre action tierce n'est utilisée dans `.github/workflows/`. Après modification, `grep -n "uses:"` ne renvoie que des références épinglées par SHA de 40 caractères suivies d'un commentaire de version.
+
+### 12.5 Traitement des cinq suites Neon
+
+- **Conservées** dans le dépôt : `scripts/test_neon_security.mjs`, `test_neon_supplier_flow.mjs`, `test_neon_product_flow.mjs`, `test_neon_quality_flow.mjs`, `test_neon_data_collection_flow.mjs`. Les cinq scripts `test:neon:*` restent dans `package.json`.
+- **Retirées de la CI** : elles ne sont exécutées nulle part.
+- **Non exécutées, non simulées, non déclarées vertes.**
+- **Pas de nouveau workflow créé** : `NEON_TEST_DATABASE_URL` n'existe pas, et aucune base de test isolée n'a été formellement identifiée. Créer ce workflow maintenant reviendrait à le rendre dépendant d'un secret non vérifié.
+
+**Workflow dédié proposé (non créé), avec ses prérequis :**
+1. Une base de test distincte, créée pour cet usage, sans lien avec la production. Par exemple un projet ou une branche Neon nommée `tracefab-test`.
+2. Un secret `NEON_TEST_DATABASE_URL` dans un environnement GitHub dédié (`Test-DB`), pas au niveau du dépôt, et distinct de `DATABASE_URL`.
+3. Une garde avant tout test : refus si l'hôte n'est pas un hôte de test identifié, et refus si la base est celle de production. Un simple nom de variable n'est pas une preuve : le script doit vérifier une propriété positive de la cible (par exemple un marqueur dans une table dédiée, ou une liste d'hôtes autorisés, à décider).
+4. Déclenchement `workflow_dispatch` uniquement, depuis `main`.
+5. Le workflow doit échouer s'il ne peut pas identifier la cible, et ne doit jamais se rabattre sur `DATABASE_URL`.
+
+Ce workflow doit être présenté et validé avant création.
+
+### 12.6 Vérifications exécutées
+
+| Vérification | Résultat | Limite |
+|---|---|---|
+| YAML des deux workflows (`pyyaml`) | valide ; `ci.yml` : 4 jobs ; `figer` : 1 job, `contents: write` inchangé | Pas de `actionlint` disponible |
+| Références d'actions | 12 usages, tous épinglés par SHA | — |
+| Secrets référencés dans les workflows | aucun dans les étapes | — |
+| `npm ci` | réussi (`PRISMA_SKIP_ENGINE_DOWNLOAD=1`) | — |
+| `npx tsc --noEmit` (socle) | réussi | — |
+| `npm run test:cross-tenant` (socle) | réussi | — |
+| `npm run test:production-readiness` (socle) | 46/46 garde-fous verts | — |
+| `npm run schema:static` | réussi | — |
+| `npm run test:wallet:signature-production` | réussi, 5 cas de garde affichés | — |
+| `npm run test:rate-limit` | réussi | — |
+| `npm run db:generate` | **ÉCHEC** : téléchargement du binaire `schema-engine` depuis `binaries.prisma.sh`, hôte hors liste autorisée | Bloque tout test Prisma local |
+| `npm run api:typecheck` | **ÉCHEC** : conséquence de l'absence du client Prisma généré (erreurs sur `PrismaClientKnownRequestError`, `membership_role`, `organization_type`) | Non lié au diff de ce chantier |
+| `test:neon:*` (base) | **NON EXÉCUTÉS** : exigent Postgres et client Prisma générés | Exécutés uniquement en CI, dans le job `base-de-donnees` |
+
+Les deux échecs `db:generate` et `api:typecheck` existent avant et après ce chantier : aucune erreur n'a été introduite par les modifications de workflows. Ils ne sont pas des preuves de réussite ni d'échec de la CI.
+
+### 12.7 Blocages et tests non exécutés
+
+- **Tests de base de données (RLS, provenance, auth, déploiement, garde Wallet)** : non exécutés localement. Ils tourneront dans le job `base-de-donnees` de la CI sur le Postgres jetable. Leur résultat ne sera connu qu'après le run CI.
+- **Cinq suites Neon** : non exécutées (voir 12.5).
+- **Sortie de l'étape `schema-engine`** : la sandbox ne peut pas télécharger les binaires Prisma. Ce blocage est propre à l'environnement local.
+
+### 12.8 Risques résiduels
+
+1. **`main` non protégée** (P0 non traité ici) : un contributeur ayant le droit d'écriture peut toujours pousser sur `main` et modifier la CI. La protection de `main` reste la correction prioritaire, à faire par le propriétaire.
+2. **Secret `DATABASE_URL` toujours présent** s'il existe au niveau du dépôt : il n'est plus lu par la CI, mais il reste accessible à quiconque peut modifier un workflow et le faire tourner, tant que l'environnement `Production` n'est pas configuré et qu'aucun secret n'y est déplacé. Recommandation : supprimer ce secret du dépôt après vérification qu'aucun autre usage n'existe.
+3. **Figer les références** : `contents: write` reste en place, sans protection de `main`.
+4. **Épinglage** : les SHA ont été vérifiés via l'API GitHub, non par une revue du code des actions.
+5. **Cinq suites non exécutées** : les régressions sur ces flux ne sont plus détectées tant que le workflow dédié n'existe pas.
+6. **Réglages GitHub non vérifiables** : permissions par défaut du `GITHUB_TOKEN`, actions autorisées, approbation des workflows de fork.
+
+### 12.9 Actions manuelles restantes du propriétaire
+
+1. Protéger `main` (§5).
+2. Configurer l'environnement `Production` (§6).
+3. Vérifier les réglages Actions (§10, point 4).
+4. Décider du secret `DATABASE_URL` au niveau du dépôt : le déplacer ou le supprimer après contrôle.
+5. Préparer la base de test isolée et le secret `NEON_TEST_DATABASE_URL` (§12.5), pour validation avant création du workflow dédié.

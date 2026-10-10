@@ -8,9 +8,8 @@
 #   2. verification 63 scripts test:* + audit statique end-to-end
 #   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
 #
-# L'etage base de donnees ne se declenche que si le secret DATABASE_URL existe,
-# pour qu'un fork ou une contribution externe ne voie pas un echec qui ne lui
-# appartient pas.
+# L'etage base de donnees tourne sur un Postgres jetable du job (localhost) :
+# il n'utilise aucun secret et ne doit jamais pointer vers la production.
 #
 name: CI
 
@@ -42,9 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -78,9 +77,9 @@ jobs:
     timeout-minutes: 25
     needs: socle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -159,9 +158,9 @@ jobs:
     timeout-minutes: 25
     needs: socle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -201,7 +200,7 @@ jobs:
 
       - name: Captures en cas d'echec
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: captures-parcours
           path: |
@@ -252,14 +251,10 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
       TF_APP_PASSWORD: isolation_ci_jetable
       TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
-      # Le contexte `secrets` n'est pas disponible dans un `if:` d'etape : il
-      # faut le faire transiter par l'env du job. Sans ce detour, le workflow
-      # echoue au parsing.
-      TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -315,16 +310,3 @@ jobs:
         # Premiere connexion et reconnexion sous le role runtime reel, sans
         # BYPASSRLS : c'est la bascule que l'upsert nu cassait silencieusement.
         run: npm run test:neon:auth-provisioning
-
-      - name: Scenarios croises contre la base de production
-        # Optionnels, et clairement annonces comme tels. L'etancheite est deja
-        # prouvee ci-dessus sans eux.
-        if: ${{ env.TF_SECRET_PRODUCTION != '' }}
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          npm run test:neon:security
-          npm run test:neon:supplier
-          npm run test:neon:product
-          npm run test:neon:quality
-          npm run test:neon:collection
