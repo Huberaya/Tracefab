@@ -512,3 +512,11 @@ Les deux échecs `db:generate` et `api:typecheck` existent avant et après ce ch
 3. Vérifier les réglages Actions (§10, point 4).
 4. Décider du secret `DATABASE_URL` au niveau du dépôt : le déplacer ou le supprimer après contrôle.
 5. Préparer la base de test isolée et le secret `NEON_TEST_DATABASE_URL` (§12.5), pour validation avant création du workflow dédié.
+
+### 12.10 Résultats CI réels du commit `326c3ae`
+
+- Run `push` `38042673012` : **success** sur les quatre jobs `Socle`, `Verification`, `Parcours`, `Base`.
+- Run `pull_request` `38042675766` (même commit) : **success**.
+- Job `Base` : 14 étapes exécutées et vertes (RLS, provenance DPP, garde Wallet, répétition du déploiement, provisionnement auth). L'étape `Scenarios croises contre la base de production` n'existe plus dans le job.
+- PR #34 : toujours ouverte, non fusionnée, tête `326c3ae`.
+- Le commit du présent rapport, ajouté ensuite, ne modifie aucun workflow ; son propre run CI n'est pas encore relu dans ce document.
