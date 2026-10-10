@@ -299,6 +299,11 @@ jobs:
         # produit non publie resout, ou si un GTIN inconnu fabrique une fiche.
         run: npm run test:neon:dpp-provenance
 
+      - name: Garde de signature des Wallets en production
+        # Aucun passe non signe ne doit sortir en production : cle absente ou
+        # signature en echec => erreur, jamais une signature factice.
+        run: npm run test:wallet:signature-production
+
       - name: Repetition du deploiement de la publication explicite
         # Rejoue la migration 36 sur une base de preprod jetable (etat « 35 »),
         # verifie l'inventaire, la matrice d'acces et les URL, puis execute le
