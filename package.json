@@ -8,6 +8,7 @@
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "npx tsx scripts/test_neon_bulk_operations_chantier8.mjs",
     "test:wallet:chantier9": "npx tsx scripts/test_wallet_chantier9.ts",
+    "test:wallet:signature-production": "npx tsx scripts/test_wallet_signature_production.ts",
     "test:neon:wallet:chantier9": "npx tsx scripts/test_neon_wallet_chantier9.ts",
     "test:storage:chantier10": "npx tsx scripts/test_chantier10_cloud_storage.ts",
     "test:neon:storage:chantier10": "npx tsx scripts/test_neon_chantier10_storage.ts",

@@ -279,6 +279,10 @@ export async function generateApplePkpass(data: DppPassData, options?: AppleWall
       signer.update(manifestBuffer as any);
       signatureBuffer = signer.sign(keyPem);
     } catch (e) {
+      // En production, un passe non signe ne doit JAMAIS sortir : on echoue.
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('apple_wallet_signature_failed: ' + (e as Error).message);
+      }
       console.warn('Production Apple sign failed, falling back to development mock signature:', e);
       signatureBuffer = Buffer.from(
         `PKCS7_DEV_SIGNATURE_${createHash('sha256').update(manifestBuffer as any).digest('hex')}`,
@@ -286,6 +290,11 @@ export async function generateApplePkpass(data: DppPassData, options?: AppleWall
       );
     }
   } else {
+    // En production, l'absence de certificat est une erreur de configuration,
+    // pas un passe a emettre non signe.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('apple_wallet_not_configured: APPLE_PASS_CERTIFICATE_PEM et APPLE_PASS_KEY_PEM requis en production');
+    }
     // Development / test fallback signature
     signatureBuffer = Buffer.from(
       `PKCS7_DEV_SIGNATURE_${createHash('sha256').update(manifestBuffer as any).digest('hex')}`,

@@ -137,10 +137,16 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
       token = jwt.sign(claims, privateKey, { algorithm: 'RS256' });
       isSimulated = false;
     } catch (e) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('google_wallet_signing_failed: ' + (e as Error).message);
+      }
       console.warn('Google Wallet production signing failed, falling back to simulated pass:', e);
       token = jwt.sign(claims, 'tracefab_dev_secret_simulation', { algorithm: 'HS256' });
     }
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('google_wallet_not_configured: GOOGLE_WALLET_PRIVATE_KEY requis en production');
+    }
     token = jwt.sign(claims, 'tracefab_dev_secret_simulation', { algorithm: 'HS256' });
   }
 
