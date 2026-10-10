@@ -3,8 +3,10 @@
 Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
 la base Neon de production. Pas en relisant les en-têtes.
 
-**0 PR ouverte · Neon : 35/35 migrations appliquées, dont la 35
-`public_read_context`.**
+**1 PR ouverte (#34, chantier 1A) · Neon : 36/36 migrations au dépôt — 35
+appliquées sur la base de production ; la 36ᵉ `publication_explicite` (barrière
+de publication des DPP) l'accompagne et ne sera appliquée qu'au déploiement
+vérifié, jamais par ce document.**
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
 > que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
-import type { DppPassData, GoogleWalletOptions } from './types.js';
+import type { DppPassData, SourcedField, GoogleWalletOptions } from './types.js';
+import { fieldDisplay, PROVENANCE_LABELS_FR } from './types.js';
 
 export interface GoogleWalletResult {
   saveUrl: string;
@@ -8,17 +9,27 @@ export interface GoogleWalletResult {
   passObject: Record<string, any>;
 }
 
+/** Champ rendu pour la carte : valeur sourcee ou etat explicite. */
+function champ<T>(field: SourcedField<T> | undefined): string {
+  if (!field) return PROVENANCE_LABELS_FR.unavailable;
+  return fieldDisplay(field);
+}
+
 /**
  * Builds and signs a Google Wallet Pass object for Digital Product Passports.
+ *
+ * Regle chantier 1A-C : aucune valeur substituee, aucune affirmation sans
+ * source (l'ancien « ESPR UE 2024 / Loi AGEC Art. 13 », « Fibres certifiees »,
+ * « Noeuds certifies GOTS/GRS auditables » etaient presents meme sans donnee).
  */
 export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWalletOptions): GoogleWalletResult {
   const issuerId = options?.issuerId || process.env.GOOGLE_WALLET_ISSUER_ID || '3388000000022314567';
   const classId = options?.classId || `${issuerId}.dpp_textile_v1`;
-  const objectId = `${issuerId}.dpp_${(data.gtin || data.productReference).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const objectId = `${issuerId}.dpp_${(data.gtin.value || data.productReference.value || data.productId).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
   const genericClass = {
     id: classId,
-    issuerName: data.brandName || 'Tracefab',
+    issuerName: champ(data.brandName),
     reviewStatus: 'UNDER_REVIEW',
   };
 
@@ -28,25 +39,27 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
     cardTitle: {
       defaultValue: {
         language: 'fr',
-        value: data.brandName || 'Tracefab',
+        value: champ(data.brandName),
       },
     },
     header: {
       defaultValue: {
         language: 'fr',
-        value: data.productName,
+        value: champ(data.productName),
       },
     },
     subheader: {
       defaultValue: {
         language: 'fr',
-        value: `Éco-Score PEF Grade ${data.pefGrade}`,
+        value: data.pefGrade.status === 'sourced' || data.pefGrade.status === 'unverified'
+          ? `Eco-Score PEF ${champ(data.pefGrade)}`
+          : `Eco-Score PEF : ${champ(data.pefGrade)}`,
       },
     },
     barcode: {
       type: 'QR_CODE',
-      value: data.digitalLinkUri || data.dppUrl,
-      alternateText: data.gtin || data.productReference,
+      value: data.digitalLinkUri.value || data.dppUrl,
+      alternateText: data.gtin.value || data.productReference.value || data.productId,
     },
     hexBackgroundColor: '#14241A',
     logo: {
@@ -62,36 +75,42 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
     },
     textModulesData: [
       {
-        id: 'compliance',
-        header: 'CONFORMITÉ',
-        body: 'ESPR UE 2024 / Loi AGEC Art. 13',
+        id: 'provenance',
+        header: 'PROVENANCE DES DONNEES',
+        body: data.presentation.source === 'live'
+          ? 'Donnees sourcees (voir le passeport pour le detail)'
+          : data.presentation.source === 'partial'
+            ? `Donnees partielles : ${data.presentation.missingFieldCount} champ(s) sans source`
+            : 'Aucune donnee sourcee a presenter',
       },
       {
         id: 'composition',
-        header: 'COMPOSITION 100%',
-        body: data.certifiedComposition || 'Fibres certifiées',
+        header: 'COMPOSITION',
+        body: champ(data.composition),
       },
       {
         id: 'pef',
         header: 'EMPREINTE CARBONE',
-        body: `${data.carbonFootprintKgCo2e} kg CO₂e (${data.waterScarcityM3} m³ eau)`,
+        body: data.carbonFootprintKgCo2e.status === 'sourced' || data.carbonFootprintKgCo2e.status === 'unverified'
+          ? `${champ(data.carbonFootprintKgCo2e)} kg CO2e (${champ(data.waterScarcityM3)} m3 eau)`
+          : champ(data.carbonFootprintKgCo2e),
       },
       {
         id: 'origin',
         header: 'CONFECTION',
-        body: data.countryOfManufacture || 'UE',
+        body: champ(data.countryOfManufacture),
       },
       {
         id: 'traceability',
-        header: 'TRAÇABILITÉ SUPPLY CHAIN',
-        body: data.supplyChainSummary || 'Nœuds certifiés GOTS/GRS auditables.',
+        header: 'TRACABILITE SUPPLY CHAIN',
+        body: champ(data.supplyChainSummary),
       },
     ],
     linksModuleData: {
       uris: [
         {
           uri: data.dppUrl,
-          description: 'Consulter le Passeport Numérique Officiel (DPP)',
+          description: 'Consulter le Passeport Numerique de Produit (DPP)',
         },
       ],
     },
@@ -118,10 +137,16 @@ export function generateGoogleWalletPass(data: DppPassData, options?: GoogleWall
       token = jwt.sign(claims, privateKey, { algorithm: 'RS256' });
       isSimulated = false;
     } catch (e) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('google_wallet_signing_failed: ' + (e as Error).message);
+      }
       console.warn('Google Wallet production signing failed, falling back to simulated pass:', e);
       token = jwt.sign(claims, 'tracefab_dev_secret_simulation', { algorithm: 'HS256' });
     }
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('google_wallet_not_configured: GOOGLE_WALLET_PRIVATE_KEY requis en production');
+    }
     token = jwt.sign(claims, 'tracefab_dev_secret_simulation', { algorithm: 'HS256' });
   }
 

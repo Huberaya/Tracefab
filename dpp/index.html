@@ -12,9 +12,7 @@
   <meta property="og:type" content="product">
 
   <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/assets/css/fonts.css?v=c78cbebf">
 
   <!-- Schema JSON-LD de passeport produit, au format CIRPASS / ESPR -->
   <script type="application/ld+json" id="dpp-jsonld">
@@ -730,7 +728,7 @@
          description lui sont propres, d'ou TF_I18N_SKIP_META. -->
     <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=0301922d"></script>
+    <script src="/assets/i18n/en.js?v=8aaca974"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
     <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
@@ -786,8 +784,8 @@
       <p class="product-summary" data-i18n="dpp.heroDesc">Iconic T-shirt in 185 gsm regenerative organic cotton jersey. Traced from seed to finished garment with 100% documented evidence.
       </p>
 
-      <div class="trust-pill-bar">
-        <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ 100% certified materials</span>
+      <div class="trust-pill-bar" tabindex="0" role="group" aria-label="Trust indicators">
+        <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ 100% documented materials</span>
         <span class="trust-badge-item">GOTS Certified</span>
         <span class="trust-badge-item">OEKO-TEX Class 1</span>
         <span class="trust-badge-item" data-i18n="dpp.heroMadeIn">Made in Portugal</span>
@@ -884,7 +882,7 @@
         <span data-i18n="dpp.chainTitle">Chain of custody and factories</span>
         <span style="font-size:11px;background:var(--primary-soft);color:var(--primary);padding:3px 8px;border-radius:99px;font-weight:700;" data-i18n="dpp.chainTiers">5 validated tiers</span>
       </div>
-      <p class="section-desc" data-i18n="dpp.chainDesc">Every industrial step is certified by an audited transaction certificate (TC).</p>
+      <p class="section-desc" data-i18n="dpp.chainDesc">Certification of each industrial step relies on an audited transaction certificate (TC) — indicated only when it exists.</p>
 
       <div class="trace-timeline">
         <!-- Tier 4 -->
@@ -989,7 +987,7 @@
         <div class="info-card">
           <span data-i18n="dpp.impWater">Water consumption</span>
           <strong data-i18n="dpp.impWaterValue">1,480 litres</strong>
-          <p data-i18n="dpp.impThanksTo">-64% thanks to GOTS-certified rain-fed organic cotton.</p>
+          <p data-i18n="dpp.impThanksTo">-64% thanks to rain-fed organic cotton (GOTS certification to be verified).</p>
         </div>
         <div class="info-card">
           <span data-i18n="dpp.impMicroplastics">Microplastic release</span>
@@ -1209,7 +1207,7 @@
 
   <script src="/assets/js/dpp.1.js?v=d931442c"></script>
 
-  <script src="/assets/js/dpp.2.js?v=9c88894a"></script>
+  <script src="/assets/js/dpp.2.js?v=858cc7db"></script>
 
 </body>
 </html>

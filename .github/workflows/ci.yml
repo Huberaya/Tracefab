@@ -8,9 +8,8 @@
 #   2. verification 63 scripts test:* + audit statique end-to-end
 #   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
 #
-# L'etage base de donnees ne se declenche que si le secret DATABASE_URL existe,
-# pour qu'un fork ou une contribution externe ne voie pas un echec qui ne lui
-# appartient pas.
+# L'etage base de donnees tourne sur un Postgres jetable du job (localhost) :
+# il n'utilise aucun secret et ne doit jamais pointer vers la production.
 #
 name: CI
 
@@ -26,6 +25,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Moindre privilege : la CI ne lit que le depot. Sans cette ligne, le jeton
+# recoit les droits par defaut du depot (non verifiables depuis la sandbox).
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '20'
   TF_BASE: http://127.0.0.1:3000
@@ -37,9 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -73,9 +77,9 @@ jobs:
     timeout-minutes: 25
     needs: socle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -116,15 +120,16 @@ jobs:
         # Les suites neon et staging exigent une base ou un environnement
         # deploye : elles ont leur propre etage.
         #
-        # test:regression est exclu pour une raison differente et assumee : sa
-        # reference est une image, donc liee a son environnement de rendu. Les
-        # fontes distantes sont bloquees, mais le repli depend des polices
-        # systeme, qui different entre le poste de developpement et le runner.
-        # Le laisser ici le ferait rougir pour une raison etrangere au code ;
-        # l'automatiser suppose de figer le rendu dans un conteneur.
+        # test:regression fait partie de la boucle depuis 20261009 : fontes
+        # statiques, navigateur epingle, options de rendu figees. La REFERENCE
+        # est generee dans cet environnement meme (workflow
+        # figer-reference-visuelle) — la pile rasterisante depend de l'OS, une
+        # reference de poste rougirait ici sans cause au code. Seuil 0,10 %
+        # intact. Hors de sa pile de rendu, le test sort NON EXECUTE (2),
+        # jamais vert.
         run: |
           set -u
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression').join(' '))")
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2').join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -153,9 +158,9 @@ jobs:
     timeout-minutes: 25
     needs: socle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -195,7 +200,7 @@ jobs:
 
       - name: Captures en cas d'echec
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: captures-parcours
           path: |
@@ -224,7 +229,12 @@ jobs:
     # place : l'epreuve tourne a chaque poussee, y compris depuis un fork.
     services:
       postgres:
-        image: postgres:17
+        # Miroir public ECR de l'image officielle postgres:17 (contenu
+        # identique). Docker Hub limite les pulls anonymes depuis les runners
+        # partages : « Docker pull failed » en boucle alors que le code n'est
+        # pas en cause. A retester depuis docker.io quand les quotas le
+        # permettent.
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -241,14 +251,10 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
       TF_APP_PASSWORD: isolation_ci_jetable
       TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
-      # Le contexte `secrets` n'est pas disponible dans un `if:` d'etape : il
-      # faut le faire transiter par l'env du job. Sans ce detour, le workflow
-      # echoue au parsing.
-      TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -259,12 +265,22 @@ jobs:
       - name: Generer le client Prisma
         run: npm run db:generate
 
+      - name: Poser le role applicatif avant les migrations
+        # Les migrations reference `tracefab_app` (les GRANT EXECUTE de
+        # 20261009180000_public_read_context). Sur une base vierge, executer
+        # les migrations avant la creation du role echouait avec
+        # « role "tracefab_app" does not exist » (SQLSTATE 42704) — et la CI
+        # ne prouvait plus rien. On pose donc le role (sans BYPASSRLS) avant
+        # la chaine : les GRANT des migrations sont reellement exerces.
+        # Idempotent, et sans effet sur une base ou le role existe deja.
+        run: node scripts/bootstrap_app_role.mjs
+
       - name: Appliquer les migrations sur la base jetable
         # npm run db:deploy, pas npx prisma : npx va chercher au registre
         # quand le binaire local n'est pas trouve, et installe un homonyme.
         run: npm run db:deploy
 
-      - name: Creer le role tracefab_app et deux locataires
+      - name: Creer les deux locataires de l'epreuve
         run: node scripts/seed_rls_fixture.mjs
 
       - name: Isolation RLS prouvee par execution
@@ -272,15 +288,25 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
-      - name: Scenarios croises contre la base de production
-        # Optionnels, et clairement annonces comme tels. L'etancheite est deja
-        # prouvee ci-dessus sans eux.
-        if: ${{ env.TF_SECRET_PRODUCTION != '' }}
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          npm run test:neon:security
-          npm run test:neon:supplier
-          npm run test:neon:product
-          npm run test:neon:quality
-          npm run test:neon:collection
+      - name: Provenance des donnees DPP / Wallet — aucune substitution
+        # Chaque donnee servie est reliee a sa source ou explicitement absente.
+        # Le test rougit si une valeur fictive ressort comme reelle, si un
+        # produit non publie resout, ou si un GTIN inconnu fabrique une fiche.
+        run: npm run test:neon:dpp-provenance
+
+      - name: Garde de signature des Wallets en production
+        # Aucun passe non signe ne doit sortir en production : cle absente ou
+        # signature en echec => erreur, jamais une signature factice.
+        run: npm run test:wallet:signature-production
+
+      - name: Repetition du deploiement de la publication explicite
+        # Rejoue la migration 36 sur une base de preprod jetable (etat « 35 »),
+        # verifie l'inventaire, la matrice d'acces et les URL, puis execute le
+        # retour arriere complet et la restauration logique. Rien n'est touche
+        # hors de la base jetable (garde : serveur local uniquement).
+        run: npm run test:neon:deploiement-publication
+
+      - name: Provisionnement utilisateur et politiques INSERT/UPDATE
+        # Premiere connexion et reconnexion sous le role runtime reel, sans
+        # BYPASSRLS : c'est la bascule que l'upsert nu cassait silencieusement.
+        run: npm run test:neon:auth-provisioning

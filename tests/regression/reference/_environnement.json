@@ -1,8 +1,9 @@
 {
-  "navigateur": "153.0.8010.12",
+  "navigateur": "153.0.8010.0",
+  "source": "@sparticuz/chromium (binaire epingle)",
   "largeurs": {
-    "sans": 1641.66,
-    "serif": 1528.58,
-    "mono": 2107.19
-  }
+    "interTight": 1566.86,
+    "jetbrainsMono": 2100
+  },
+  "temoin": "f9921f936b50d68f"
 }

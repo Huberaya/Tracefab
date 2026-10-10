@@ -47,11 +47,19 @@ const controle = (titre, vrai, detail = '') => {
   );
 }
 
-/* --- 2. Une seule police, celle du systeme. ------------------------------
+/* --- 2. Une seule police d'affichage, reellement chargee. ----------------
  * Declarer Inter Tight sans charger la fonte revient a rendre en Inter : le
- * defaut tenait aux deux a la fois, il faut donc verifier les deux.        */
+ * defaut tenait aux deux a la fois, il faut donc verifier les deux.
+ * Depuis 20261009 la fonte est STATIQUE : la surface doit charger
+ * assets/css/fonts.css, qui declare Inter Tight (plus de CDN Google).     */
 {
-  const sansFonte = SURFACES.filter((f) => !/Inter\+Tight/.test(readFileSync(f, 'utf8')));
+  const fontsCss = readFileSync('assets/css/fonts.css', 'utf8');
+  const declareInterTight = /font-family:\s*'Inter Tight'/.test(fontsCss);
+  const sansFonte = SURFACES.filter((f) => {
+    const html = readFileSync(f, 'utf8');
+    const chargeFontsCss = /href="\/assets\/css\/fonts\.css(\?v=[0-9a-f]+)?"/.test(html);
+    return !(declareInterTight && chargeFontsCss) && !/Inter\+Tight/.test(html);
+  });
   controle('les surfaces chargent toutes la fonte Inter Tight', sansFonte.length === 0, sansFonte.join(', '));
 
   const brutes = SURFACES.filter((f) => /font-family:\s*Inter\s*,/i.test(readFileSync(f, 'utf8')));

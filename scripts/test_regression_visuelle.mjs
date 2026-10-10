@@ -14,14 +14,31 @@
  * La reference est versionnee : une evolution de rendu se relit en revue sous
  * forme d'images modifiees, ce qui est precisement l'intention.
  *
+ * Elle est generee DANS l'environnement de comparaison (la CI), via le
+ * workflow `figer-reference-visuelle` (workflow_dispatch) qui rejoue --maj et
+ * pousse les images sur la branche. La pile de rasterisation (freetype,
+ * fontconfig) n'est pas la meme d'une machine a l'autre : un --maj local
+ * figerait la CI sur un rendu etranger et la ferait rougir sans cause au
+ * code. Un --maj local reste utile pour inspecter un changement — il ne doit
+ * pas etre committé.
+ *
  * Le rendu est rendu reproductible dans scripts/lib/visuel.mjs : fontes
  * distantes bloquees, horloge et Math.random figes, animations coupees,
  * compteurs pousses a leur valeur finale. Sans cela la reference figerait du
  * bruit. Mesure de controle avant d'ecrire la premiere reference : deux
  * captures consecutives de chacune des 19 surfaces, ecart 0,000 %.
+ *
+ * DEPUIS 20261009 : les fontes sont STATIQUES (assets/css/fonts.css) et le
+ * navigateur de test est epingle (scripts/lib/launch_chromium.mjs :
+ * @sparticuz/chromium en devDependency exacte, repli Chromium Playwright
+ * 153.0.8010.12 via playwright fige en 1.63.0). Le rendu ne depend plus ni
+ * d'un CDN de fontes, ni d'un telechargement de navigateur, ni des polices
+ * systeme de la machine : l'empattement entre le poste et la CI est celui
+ * que couvre le seuil, plus la variation d'environnement.
  */
-import { chromium } from 'playwright';
+import { launchTestBrowser } from './lib/launch_chromium.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { SURFACES, ECRANS, capturer, comparer, nomFichier } from './lib/visuel.mjs';
 
@@ -49,14 +66,22 @@ mkdirSync(DOSSIER, { recursive: true });
  * test rougit pour une raison etrangere au code — c'est exactement ce qui
  * est arrive sur la CI.
  *
- * On mesure donc la largeur reellement rendue d'un texte temoin dans les
- * trois familles de repli. C'est le signal direct : si les polices
- * disponibles changent, ces largeurs changent.
+ * Depuis les fontes statiques, on mesure la largeur reellement rendue d'un
+ * texte temoin dans les familles versionnees (Inter Tight, JetBrains Mono).
+ * C'est le signal direct : si les woff2 versionnes ne sont pas servis (repli
+ * systeme), ces largeurs changent — et la comparaison de pixels n'aurait
+ * alors plus aucun sens.
  */
 const EMPREINTE = join(DOSSIER, '_environnement.json');
 
 async function empreinte(navigateur) {
   const page = await navigateur.newPage();
+  // Les fontes STATIQUES sont chargees depuis la page locale : leur largeur
+  // rendue est identique partout ou le woff2 versionne est servi. Si une
+  // largeur bouge, c'est que la fonte attendue n'a pas ete servie (repli
+  // systeme) — comparer des pixels n'aurait alors aucun sens.
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.fonts.ready);
   const largeurs = await page.evaluate(() => {
     const mesurer = (famille) => {
       const el = document.createElement('span');
@@ -67,33 +92,74 @@ async function empreinte(navigateur) {
       el.remove();
       return l;
     };
-    return { sans: mesurer('sans-serif'), serif: mesurer('serif'), mono: mesurer('monospace') };
+    return {
+      interTight: mesurer("'Inter Tight'"),
+      jetbrainsMono: mesurer("'JetBrains Mono'"),
+    };
   });
+
+  // Temoin de rasterisation : un rendu fixe, hashé. Il ne depend que de la
+  // pile graphique (freetype/fontconfig/Skia) — pas du contenu des pages.
+  // Si le hash change, la comparaison de pixels parlerait de la machine, pas
+  // du code : le test se declare alors NON EXECUTE plutot que de mentir.
+  await page.setContent(
+    `<link rel="stylesheet" href="${BASE}/assets/css/fonts.css">`
+    + '<div id="temoin" style="width:420px;padding:8px;background:#fff;color:#111">'
+    + '<p style="font-family:Inter Tight;font-size:22px;font-weight:600;margin:0">Traçabilité textile 0123456789 WAVE</p>'
+    + '<p style="font-family:\'JetBrains Mono\';font-size:15px;margin:6px 0 0">TC-00941 · 60% Coton · 1.23 kg CO₂e</p>'
+    + '<p style="font-family:serif;font-size:18px;margin:6px 0 0">abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>'
+    + '</div>',
+    { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.fonts.ready);
+  const temoinPng = await page.screenshot({ clip: { x: 0, y: 0, width: 420, height: 130 } });
+  const temoin = createHash('sha256').update(temoinPng).digest('hex').slice(0, 16);
   await page.close();
-  return { navigateur: navigateur.version(), largeurs };
+  return { navigateur: navigateur.version(), source: navigateur._tfSource || '?', largeurs, temoin };
 }
 
-const nav = await chromium.launch();
+
+/**
+ * En CI, les journaux de job ne sont pas lisibles depuis l'API : seules les
+ * annotations le sont. Tout diagnostic doit donc passer par ::error:: /
+ * ::notice:: — sans quoi un echec revient sans cause visible.
+ */
+function annoter(niveau, message) {
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    console.log(`::${niveau}::${message.replace(/\r?\n/g, ' ')}`);
+  }
+  console.log(message);
+}
+
+const nav = await launchTestBrowser();
 const ENV_COURANT = await empreinte(nav);
+annoter('notice', `regression visuelle : Chromium ${ENV_COURANT.navigateur} via ${ENV_COURANT.source} · temoin ${ENV_COURANT.temoin} · largeurs ${JSON.stringify(ENV_COURANT.largeurs)}`);
 
 if (!MAJ && existsSync(EMPREINTE)) {
   const attendu = JSON.parse(readFileSync(EMPREINTE, 'utf8'));
+  // La famille du navigateur doit correspondre (153.0.8010) ; le niveau
+  // correctif (153.0.8010.0 vs 153.0.8010.12) porte des correctifs de
+  // securite qui ne changent pas le rendu, et l'ecarter ici reintroduirait
+  // le faux-saut qu'on supprime.
+  const famille = (v) => String(v).split('.').slice(0, 3).join('.');
   const memeRendu = JSON.stringify(attendu.largeurs) === JSON.stringify(ENV_COURANT.largeurs)
-    && attendu.navigateur === ENV_COURANT.navigateur;
+    && famille(attendu.navigateur) === famille(ENV_COURANT.navigateur)
+    && (!attendu.temoin || attendu.temoin === ENV_COURANT.temoin);
   if (!memeRendu) {
     await nav.close();
+    annoter('error', `regression visuelle NON EXECUTEE — pile de rendu differente de la reference (reference Chromium ${attendu.navigateur} / ici ${ENV_COURANT.navigateur} via ${ENV_COURANT.source}, temoin ${attendu.temoin || '?'} vs ${ENV_COURANT.temoin}) — la reference se fige avec le workflow « figer-reference-visuelle » ; un --maj local ne doit pas etre committé`);
     console.log('\n  TEST NON EXECUTE — environnement de rendu different de la reference.');
     console.log(`    reference : Chromium ${attendu.navigateur} · largeurs ${JSON.stringify(attendu.largeurs)}`);
     console.log(`    ici       : Chromium ${ENV_COURANT.navigateur} · largeurs ${JSON.stringify(ENV_COURANT.largeurs)}`);
-    console.log('\n  Les polices systeme de repli ne sont pas les memes : comparer des');
-    console.log('  pixels ici n\'apprendrait rien sur le code. AUCUNE verification');
-    console.log('  visuelle n\'a donc eu lieu. Pour couvrir cette machine, rejouer la');
-    console.log('  reference avec « npm run test:regression -- --maj » puis la relire.\n');
-    // Sortie 0 assumee : ce test est volontairement hors de la boucle CI
-    // (voir .github/workflows/ci.yml). Le rendre rouge ici punirait une
-    // machine saine. Le message ci-dessus dit sans ambiguite que rien n'a
-    // ete verifie.
-    process.exit(0);
+    console.log('\n  Les fontes statiques ne rendent pas comme attendu, ou la famille du');
+    console.log('  navigateur a change : comparer des pixels n\'apprendrait rien sur le');
+    console.log('  code. AUCUNE verification visuelle n\'a donc eu lieu. Pour couvrir');
+    console.log('  cette machine, rejouer la reference avec');
+    console.log('  « npm run test:regression -- --maj » puis la relire.\n');
+    // Sortie 2 = NON EXECUTE. La regle du depot s'applique desormais ici
+    // aussi : un test qui ne s'est pas execute ne vaut pas un test qui passe.
+    // Avec les fontes statiques et le navigateur epingle, ce cas ne survient
+    // plus en CI — seulement sur une machine dont le rendu est hors perimetre.
+    process.exit(2);
   }
 }
 let echecs = 0, compares = 0, ecrits = 0, nouveaux = 0;
@@ -108,7 +174,7 @@ for (const s of SURFACES) {
     try {
       png = await capturer(nav, BASE, s, ecran);
     } catch (err) {
-      console.log(`  ECHEC ${nom} — capture impossible : ${err.message}`);
+      annoter('error', `regression visuelle : ${nom} — capture impossible : ${err.message}`);
       echecs += 1;
       continue;
     }
@@ -120,7 +186,7 @@ for (const s of SURFACES) {
     }
 
     if (!existsSync(chemin)) {
-      console.log(`  ECHEC ${nom} — aucune reference. Lancer « npm run test:regression -- --maj ».`);
+      annoter('error', `regression visuelle : ${nom} — aucune reference. Lancer « npm run test:regression -- --maj ».`);
       echecs += 1; nouveaux += 1;
       continue;
     }
@@ -128,11 +194,10 @@ for (const s of SURFACES) {
     const d = await comparer(nav, readFileSync(chemin), png);
     compares += 1;
     if (d.dimensions) {
-      console.log(`  ECHEC ${nom} — la page a change de taille : ${d.dimensions}`);
+      annoter('error', `regression visuelle : ${nom} — la page a change de taille : ${d.dimensions}`);
       echecs += 1;
     } else if (d.pct > SEUIL_PCT) {
-      console.log(`  ECHEC ${nom} — ${d.pct.toFixed(3)} % des pixels different `
-        + `(${d.pixels} sur ${d.largeur}x${d.hauteur}), seuil ${SEUIL_PCT} %`);
+      annoter('error', `regression visuelle : ${nom} — ${d.pct.toFixed(3)} % des pixels different (${d.pixels} sur ${d.largeur}x${d.hauteur}), seuil ${SEUIL_PCT} %`);
       echecs += 1;
     } else if (d.pct > 0) {
       console.log(`  ok    ${nom}  ${d.pct.toFixed(3)} % (sous le seuil)`);
