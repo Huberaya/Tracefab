@@ -10,7 +10,7 @@
  * jour-la. Ce controle rend la classe entiere impossible a reintroduire :
  * chaque privilege doit etre declare, et une omission echoue.
  *
- * Les cinq controles :
+ * Les controles A a J :
  *
  *   A. aucune lecture de `secrets` dans un workflow non declare ;
  *   B. aucune connexion de base venant d'un secret, ni en variable
@@ -258,6 +258,49 @@ for (const file of files) {
     ok(`G. suites de base lancees via la garde de cible (${WRAPPER}) ou par script npm garde`);
   } else {
     ko('G. lance une suite de base en contournant la garde de cible');
+  }
+
+  // ------------------------------------------------- J. permissions et checkout
+  // Chaque workflow doit déclarer ses permissions minimales. Les identifiants
+  // du checkout ne doivent pas rester dans la configuration Git pour les
+  // commandes suivantes.
+  const permissionsWorkflowExplicites = doc.permissions
+    && typeof doc.permissions === 'object'
+    && !Array.isArray(doc.permissions);
+  if (!permissionsWorkflowExplicites) {
+    ko('J. permissions explicites absentes au niveau du workflow');
+  } else {
+    const scopes = [{ label: 'workflow', permissions: doc.permissions }];
+    for (const [jobName, job] of Object.entries(jobs)) {
+      if (job && typeof job === 'object' && job.permissions !== undefined) {
+        scopes.push({ label: `job ${jobName}`, permissions: job.permissions });
+      }
+    }
+    for (const scope of scopes) {
+      if (!scope.permissions || typeof scope.permissions !== 'object' || Array.isArray(scope.permissions)) {
+        ko(`J. permissions invalides dans ${scope.label}`);
+        continue;
+      }
+      for (const [permission, value] of Object.entries(scope.permissions)) {
+        const registeredContentsWrite = permission === 'contents'
+          && value === 'write'
+          && entryFor('writePermissionWorkflows', file);
+        if (value !== 'read' && value !== 'none' && !registeredContentsWrite) {
+          ko(`J. permission ${permission}: ${value} non minimale dans ${scope.label}`);
+        }
+      }
+    }
+  }
+
+  for (const [jobName, job] of Object.entries(jobs)) {
+    if (!job || typeof job !== 'object' || !Array.isArray(job.steps)) continue;
+    for (const step of job.steps) {
+      if (!step || typeof step !== 'object' || typeof step.uses !== 'string') continue;
+      if (!/^actions\/checkout@/.test(step.uses)) continue;
+      if (!step.with || step.with['persist-credentials'] !== false) {
+        ko(`J. ${file} / job ${jobName} : checkout sans persist-credentials: false`);
+      }
+    }
   }
 }
 
