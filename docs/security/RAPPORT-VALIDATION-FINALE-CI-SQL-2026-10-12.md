@@ -3,7 +3,6 @@
 **Date** : 2026-10-12 (Europe/Paris) · **Branche** : `arena/879cd8db-tracefab` · **Pull request** : #36 (brouillon, `OPEN`, non fusionnée)
 **SHA annoncé en début de mission** : `61ae908b852634f4cbd912eb93de6acf8b3b62df`
 **SHA réellement contrôlé (tête de PR avant ce rapport)** : `7145bb94c53d282c183017a4fdfd01c45d821783` (`7145bb9`)
-**SHA de la branche à l'issue de ce rapport** : `5d32e799c8459b4435a70de5dd1a916312556047` (`5d32e79`)
 **SHA produit par ce rapport** : `5d32e799c8459b4435a70de5dd1a916312556047` (`5d32e79`) — commit des deux correctifs candidats, poussé sur la branche de la PR #36 (`7145bb9..5d32e79`, avance rapide). La PR **reste en brouillon et non fusionnée**.
 
 **Périmètre des tests** : une instance PostgreSQL **jetable** créée localement (`embedded-postgres`, PostgreSQL 18.4, `127.0.0.1:55432`), bases `val_*` recréées à volonté, dans un **worktree détaché** (`/tmp/val61`) sur `7145bb9`. **Aucune connexion à une base Neon**, aucune migration distante, aucun merge, aucun déploiement de production, aucun changement de secret, de variable ou de configuration distante. GitHub Actions n'a pas été réactivé ; aucun check-run n'existe sur `61ae908`, `0b6f90e` ni `7145bb9`, ce qui est attendu (Actions désactivé).
@@ -17,11 +16,11 @@
 | 1 | Branche et HEAD figés, différences relevées avant de poursuivre | **RÉUSSI** | `origin/…` = `7145bb9`, 2 commits de plus que le SHA annoncé (`0b6f90e`, `7145bb9`) ; migration et test de privilèges **inchangés** entre les deux (blob `cfbc655e…`) |
 | 2.1 | Les six fonctions existent dans `public` | **RÉUSSI** | 6/6 sur base reconstruite par la chaîne du dépôt |
 | 2.2 | `SECURITY DEFINER` + propriétaire = rôle migrateur | **ÉCHEC sur la chaîne fidèle**, **RÉUSSI après correctif candidat** | sur `7145bb9` : `SQLSTATE 42P17`, migration **refusée par sa propre précondition** (§C). Après correctif : 5 prédicats SECDEF + exemption documentée ; propriétaire = `postgres` pour 6/6 |
-| 2.3 | Aucune `EXECUTE` à `PUBLIC` | **RÉUSSI** (après correctif) | 0/6 ouvertes à `PUBLIC` (6/6 avant, cf. §7 défaut n°1) |
+| 2.3 | Aucune `EXECUTE` à `PUBLIC` | **RÉUSSI** (après correctif) | 0/6 ouvertes à `PUBLIC` (6/6 avant, cf. §H défaut n°1) |
 | 2.4 | Le rôle applicatif conserve ses droits | **RÉUSSI** | `tracefab_app` exécute 6/6 ; tolérance vérifiée branche « rôle absent » |
 | 2.5 | Fonction témoin créée après la migration non exécutable par `PUBLIC` | **RÉUSSI** | `PUBLIC peut exécuter = false` |
 | 2.6 | Fonction obligatoire absente ⇒ échec, jamais succès silencieux | **RÉUSSI** | `42883`, migration non enregistrée (deux variantes : §C-6 et §D-6) |
-| 2.7 | Échec volontaire ⇒ annulation de toutes les modifications | **RÉUSSI** | 5 vérifications (a→e) toutes `ok`, cf. §6 |
+| 2.7 | Échec volontaire ⇒ annulation de toutes les modifications | **RÉUSSI** | 5 vérifications (a→e) toutes `ok`, cf. §F |
 | 3 | `test:neon:privileges` détecte réellement et ne laisse aucun résidu | **RÉUSSI** | exit 1 avec la fonction nommée, exit 0 après refermeture, 0 résidu, 152 fonctions stables |
 | 4 | `test:workflow-policy` + témoins | **RÉUSSI** | exit 0 (19 `ok`) et exit 0 (13 témoins `ok`, 11 diagnostics négatifs) |
 | 5 | Preview lié au SHA final | **RÉUSSI** (réserve de portée en §G.2) | Preview `success` pour `7145bb9`, `ref` = le SHA contrôlé, créé 15:03:54Z ; idem pour la tête de PR actuelle (`5d32e79`, `2550d19`) |
@@ -42,12 +41,12 @@ Les commandes ci-dessous sont reproduites **exactement** ; la chaîne de connexi
    `node .cache/harness/S1_complet.mjs` → **exit 1**, `SQLSTATE 42P17`,
    « Migration refusée : `public.tracefab_public_context()` n'est pas SECURITY DEFINER ».
    Mesure de l'état réel : les **6/6** fonctions sont **exécutables par `PUBLIC`** et la migration n'est **pas enregistrée** dans `_prisma_migrations`. Le correctif de sécurité **ne s'applique donc pas**.
-3. **Correctif candidat n°1** (défaut bloquant §7) appliqué au seul worktree, puis rejoué : `node .cache/harness/S1_complet.mjs` → **exit 0**, `0 échec`.
+3. **Correctif candidat n°1** (défaut bloquant §H) appliqué au seul worktree, puis rejoué : `node .cache/harness/S1_complet.mjs` → **exit 0**, `0 échec`.
 4. **Contrôles négatifs de l'exemption** — `node .cache/harness/S6_exemption_etroite.mjs` → **exit 0** :
    un prédicat privé de `SECURITY DEFINER` fait **toujours** refuser (`42P17`, non enregistrée) ; la fonction exemptée **absente** (renommée pour contourner la dépendance des 10 politiques) fait **toujours** refuser (`42883`, non enregistrée).
-5. **Batterie de scénarios** — `S2_post`, `S3_absente`, `S4_proprietaire`, `S5_rollback` → **exit 0** chacun (détail §C et §6).
+5. **Batterie de scénarios** — `S2_post`, `S3_absente`, `S4_proprietaire`, `S5_rollback` → **exit 0** chacun (détail §C et §F).
 6. **Test de privilèges** — `db:seed-rls` puis `test:neon:privileges` contre la base jetable : exit 1 (état non conforme) → exit 0 (état conforme) → exit 1 (porte rouverte) → exit 0 (refermée) → exit 1 (porte sur fonction non SECDEF, détectée par le contrôle F) → exit 0.
-7. **Analyse statique des suites destructives** — `npm run test:db-routing` : **exit 1 sur `7145bb9` brut** (« suites destructives non déclarées : `scripts/test_routes_tenant_isolation.mjs` »), **exit 0** après correctif candidat n°2 (§7).
+7. **Analyse statique des suites destructives** — `npm run test:db-routing` : **exit 1 sur `7145bb9` brut** (« suites destructives non déclarées : `scripts/test_routes_tenant_isolation.mjs` »), **exit 0** après correctif candidat n°2 (§H, défaut n°2).
 8. **Politique de workflows** — `npm run test:workflow-policy` exit 0 (19 `ok`) ; `npm run test:workflow-policy-temoins` exit 0 (13 témoins `ok`, 11 diagnostics négatifs).
 9. **Preview** — `gh api repos/Huberaya/Tracefab/deployments?per_page=100 --paginate`, puis relevé des statuts de chaque déploiement et `git merge-base --is-ancestor` pour situer chaque SHA déployé par rapport à la tête. Deux relevés espacés (14:47Z puis 15:08Z) : Vercel a traité un arriéré entre-temps, ce qui a fait apparaître les Preview des commits récents.
 10. **Écriture distante, périmètre identifié** — `git push origin HEAD:refs/heads/arena/879cd8db-tracefab` : `7145bb9..5d32e79` (avance rapide, correctifs) puis `5d32e79..2550d19` (ce rapport). Seule la référence de branche de la PR #36 — en brouillon — a été mise à jour. Aucun merge, aucun tag, aucun réglage, aucun secret, aucune protection de branche ; aucun workflow déclenché (Actions désactivé) ; aucune autre référence distante touchée.
