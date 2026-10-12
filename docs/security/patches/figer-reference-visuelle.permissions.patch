@@ -1,0 +1,112 @@
+--- a/.github/workflows/figer-reference-visuelle.yml
++++ b/.github/workflows/figer-reference-visuelle.yml
+@@ -26,6 +26,36 @@
+ #
+ # A REJOUER quand l'environnement de rendu bouge : migration de l'image
+ # ubuntu-latest, mise a jour de playwright, changement de fontes.
++#
++# ---------------------------------------------------------------------------
++# SEPARATION DES POUVOIRS — 2026-10-12
++# ---------------------------------------------------------------------------
++# Ce workflow demandait `permissions: contents: write` AU NIVEAU DU WORKFLOW.
++# Tous ses jobs heritaient donc du droit d'ecriture, y compris celui qui
++# installe les dependances, telecharge un navigateur et execute le code du
++# depot. Un declencheur qui execute du code avec un droit d'ecriture dans le
++# depot transforme ce droit en capacite de commit : c'est la classe de defaut
++# qui a produit l'incident 2C, ou une etape de CI lisait le secret de
++# production.
++#
++# Le droit n'est pas supprime : il est DEPLACE la ou il sert.
++#
++#   job `generer` — `contents: read`. Il installe, execute, mesure, et depose
++#   les images en artefact. Il ne peut rien ecrire dans le depot.
++#
++#   job `pousser` — `contents: write`, mais AUCUNE execution de code du depot.
++#   Il telecharge l'artefact, commit, pousse. Rien d'autre.
++#
++# Ce qui rend la separation utile : un jeton capable d'ecrire n'est jamais
++# detenu par un processus qui execute du code dont il ne maitrise pas le
++# contenu. `npm run test:workflow-policy` verifie cet invariant, et refuse
++# aussi bien le retour du droit au niveau du workflow qu'un job ecrivain qui
++# executerait npm, npx ou node.
++#
++# Validation par le proprietaire : le job `pousser` porte un environnement
++# GitHub. `figer-reference-visuelle` peut y etre associe a des relecteurs
++# obligatoires ; l'acte devient alors explicitement approuve. Le reglage est
++# cote interface, il ne demande aucune modification de ce fichier.
+ 
+ name: Figer la reference visuelle
+ 
+@@ -38,18 +68,21 @@
+       # sa propre poussee d'images ne boucle pas.
+       - 'tests/regression/reference/.figer'
+ 
++# Lecture seule par defaut. Le seul job qui ecrit redemande le droit.
+ permissions:
+-  contents: write
++  contents: read
+ 
+ env:
+   NODE_VERSION: '20'
+   TF_BASE_URL: http://127.0.0.1:3000
+ 
+ jobs:
+-  figer:
++  generer:
+     name: Regenerer les references dans l'environnement de comparaison
+     runs-on: ubuntu-latest
+     timeout-minutes: 20
++    permissions:
++      contents: read
+     steps:
+       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+ 
+@@ -81,7 +114,36 @@
+       - name: Regenerer les references (--maj)
+         run: npm run test:regression -- --maj
+ 
+-      - name: Pousser les references sur la branche
++      - name: Deposer les references en artefact
++        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
++        with:
++          name: references-regression-visuelle
++          path: tests/regression/reference
++          retention-days: 30
++
++  pousser:
++    name: Pousser les references sur la branche
++    needs: generer
++    runs-on: ubuntu-latest
++    timeout-minutes: 10
++    # Le seul job qui detient le droit d'ecriture. Il n'execute aucun code du
++    # depot : ni npm, ni npx, ni node. C'est verifie par la politique des
++    # workflows, pas laisse a la vigilance.
++    permissions:
++      contents: write
++    # Associer cet environnement a des relecteurs obligatoires transforme la
++    # poussee automatique en acte approuve, sans modifier ce fichier.
++    environment: figer-reference-visuelle
++    steps:
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
++
++      - name: Recuperer les references produites
++        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
++        with:
++          name: references-regression-visuelle
++          path: tests/regression/reference
++
++      - name: Commit et poussee si les references ont change
+         run: |
+           git config user.name "github-actions[bot]"
+           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+@@ -92,10 +154,3 @@
+             git commit -m "reference visuelle : regeneree dans l'environnement CI"
+             git push
+           fi
+-
+-      - name: Archiver les references
+-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+-        with:
+-          name: references-regression-visuelle
+-          path: tests/regression/reference
+-          retention-days: 30
