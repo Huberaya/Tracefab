@@ -650,3 +650,61 @@ réactivé et aucune migration ni action de production n'a été effectuée.
 de sélection de tests identifiée par le rapport, mais ne prouve pas l'exécution
 des tests nominaux A1/A3/A4, ne tranche pas les hypothèses de rôles en production
 et ne remplace pas les contrôles d'exécution exigés avant fusion.
+
+---
+
+## 12. Addendum — correctifs appliqués et mesurés (2026-10-12, après le §11)
+
+Suite à la revue indépendante, deux correctifs identifiés comme manquants ont été
+**appliqués sur la branche** (et non seulement préparés), puis éprouvés sur base
+jetable. Cet addendum remplace, sur ces deux points, ce que le §10 listait encore
+comme « à faire ».
+
+### 12.1 Migration `20261012120000_close_public_execute_gap`
+
+- La précondition `SECURITY DEFINER` est **corrigée** (`5d32e79`) : exemption
+  nominative et documentée pour `public.tracefab_public_context()`, seule fonction
+  visée qui n'a pas à être `SECURITY DEFINER` (elle ne lit qu'un réglage de
+  session, aucune table). Tous les autres contrôles — existence, propriétaire,
+  `EXECUTE`, contrôle final « migration sans effet » — sont conservés.
+- Version mesurée : blob `6e003844de53`. Sur une base reconstruite par la chaîne
+  du dépôt (PostgreSQL 18.4, `127.0.0.1:55432`) : **36/36 migrations appliquées**,
+  **0/6** fonction exécutable par `PUBLIC`, propriétaire unique `postgres`,
+  `tracefab_public_context` seul non `SECURITY DEFINER` — c'est-à-dire exactement
+  l'exemption attendue.
+- Les contrôles négatifs restent actifs : prédicat privé de `SECURITY DEFINER`
+  ⇒ `42P17` ; fonction obligatoire absente ⇒ `42883` ; échec volontaire ⇒
+  annulation totale (5 vérifications).
+
+### 12.2 Lanceur des suites destructives — chargeur adapté au contenu
+
+- Le routage de `verify:routes:isolation` par `scripts/run-db-suite.mjs` a révélé
+  que le lanceur choisissait son chargeur sur la **seule extension** : toute suite
+  `.mjs` qui importe des modules TypeScript du dépôt était lancée sous `node` nu et
+  mourait sur `ERR_MODULE_NOT_FOUND` (`test:neon:bulk:chantier8`, puis
+  `verify:routes:isolation`).
+- Correctif appliqué : `scripts/lib/choose-suite-loader.mjs` décide d'après le
+  **contenu** (`import … from '…/x.ts'`, `import('…/x.ts')`, re-export). Le lanceur
+  affiche la décision retenue.
+- Preuve : `npm run test:db-routing` → **exit 0, 40 contrôles ok** (dont 7 sur le
+  chargeur) ; `npm run test:neon:bulk:chantier8` et `npm run verify:routes:isolation`
+  ne produisent plus aucun `ERR_MODULE_NOT_FOUND` et atteignent désormais le
+  **vrai** prérequis (client Prisma non généré). Non-régression : `test:db-guard`
+  43 ok, `test:db-guard-driver` 12 ok, `test:workflow-policy` 19 ok, témoins 13 ok.
+
+### 12.3 Diagnostic de production
+
+- `docs/security/diagnostic-pre-migration-close-public-execute-gap.sql` échouait
+  sur l'état **avant** migration : `aclexplode(COALESCE(proacl, '{}'))` lève
+  `22023 « ACL arrays must be one-dimensional »` dès qu'une fonction n'a pas d'ACL
+  explicite (5 des 6 dans cet état).
+- Correctif appliqué : `aclexplode(COALESCE(proacl, acldefault('f', proowner)))`.
+- Preuve sur bases jetables : base non migrée → critère final **6** ; base migrée →
+  **0** ; lecture seule confirmée (catalogue identique après 1, 2 et 3 exécutions).
+
+### 12.4 Ce qui reste
+
+Le harnais `verify:routes:isolation` (A1–A4) n'a toujours **pas** été exécuté : il
+exige une clé d'instance Clerk **de test** et un environnement où
+`npm run db:generate` aboutit (le binaire Prisma n'est pas joignable ici). Aucune
+doublure d'authentification n'a été introduite pour combler ce manque.

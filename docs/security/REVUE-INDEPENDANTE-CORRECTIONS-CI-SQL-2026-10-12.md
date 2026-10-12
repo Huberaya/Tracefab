@@ -82,3 +82,39 @@ qu'une décision de fusion soit possible.
 renforcés, mais les tests d'exécution correspondant à cette révision ne sont pas
 encore prouvés. Ne pas réactiver GitHub Actions, ne pas exécuter de migration
 Neon et ne pas fusionner dans l'intervalle.
+
+---
+
+## Addendum — état des lieux au 2026-10-12 (branche `arena/879cd8db-tracefab`)
+
+### Le fichier décrit n'est plus la version courante
+
+La migration analysée ci-dessus (`9e73c903833d`, 218 lignes, 4 blocs `DO`) a évolué
+depuis : `cfbc655e4adc` puis `6e003844de53`. Le changement décisif est une
+**précondition `SECURITY DEFINER`** introduite entre-temps, qui rendait la migration
+**impossible à appliquer** sur toute base construite par la chaîne du dépôt :
+`SQLSTATE 42P17`, « `public.tracefab_public_context()` n'est pas `SECURITY DEFINER` »,
+avant toute écriture, les 6/6 fonctions restant alors exécutables par `PUBLIC`.
+
+Une exemption **nominative et documentée** pour cette seule fonction a été appliquée
+(`5d32e79`) : la migration s'applique désormais (36/36), ferme `PUBLIC` (0/6),
+préserve les droits de `tracefab_app` lorsqu'il existe, et continue de refuser
+(`42P17`, `42883`) les cas qui doivent l'être.
+
+### Points de la liste « reste à faire », mis à jour
+
+| Point | État |
+|---|---|
+| 2 — épreuve sur base jetable | **FAIT** : chaîne complète rejouée, 36/36, `PUBLIC` fermé, `tracefab_app` préservé (rôle présent) et branche « rôle absent » tolérée |
+| 3 — rollback complet | **FAIT** : échec provoqué, aucune écriture partielle (5 vérifications) |
+| 4 — contrôles après modification, SHA à l'appui | **FAIT** : `test:neon:privileges` exit 0 sur la base jetable ; politique de workflows exit 0 et témoins exit 0 |
+| 5 — Preview `READY` pour le commit exact | **BLOQUÉ** : le dernier déploiement porte sur un ancêtre, pas sur le HEAD |
+| 6 — réglages de l'environnement `vercel-log-search` | **BLOQUÉ** : API de réglages GitHub inaccessible (403) dans cet environnement |
+
+### Décision
+
+« **Ne pas fusionner en l'état** » est maintenue, pour des motifs **mis à jour** :
+`verify:routes:isolation` (A1–A4) n'a pas encore été exécuté jusqu'à sortie 0 faute
+d'instance Clerk **de test** et de client Prisma générable ; le diagnostic de
+production n'a pas été exécuté sur la cible. Voir
+`docs/security/RAPPORT-VALIDATION-INDEPENDANTE-PR36-2026-10-12.md`.

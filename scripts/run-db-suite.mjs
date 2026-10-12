@@ -16,10 +16,11 @@
  * Variables lues par la garde : voir scripts/lib/require-throwaway-db.mjs
  */
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { chooseSuiteLoader } from './lib/choose-suite-loader.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -51,17 +52,22 @@ const result = requireThrowawayDb({
 for (const line of result.summary) console.log(`  garde cible : ${line}`);
 console.log('');
 
-const isTypeScript = absolute.endsWith('.ts');
+// Le chargeur suit le CONTENU de la suite, pas seulement son extension : un
+// .mjs qui importe des modules TypeScript du depot a besoin de tsx, sinon il
+// meurt sur un ERR_MODULE_NOT_FOUND etrangera a la base et a la garde.
+const chargeur = chooseSuiteLoader(absolute, readFileSync(absolute, 'utf8'));
 const tsxBin = join(ROOT, 'node_modules', '.bin', 'tsx');
 
-if (isTypeScript && !existsSync(tsxBin)) {
-  console.error('  NON EXECUTE — tsx absent : npm ci avant de lancer une suite TypeScript.');
+if (chargeur === 'tsx' && !existsSync(tsxBin)) {
+  console.error('  NON EXECUTE — tsx absent : npm ci avant de lancer une suite qui importe du TypeScript.');
   process.exit(2);
 }
 
+console.log(`  chargeur : ${chargeur}${chargeur === 'tsx' ? ' (la suite importe du TypeScript)' : ''}`);
+
 const child = spawn(
-  isTypeScript ? tsxBin : process.execPath,
-  isTypeScript ? [absolute, ...rest] : [absolute, ...rest],
+  chargeur === 'tsx' ? tsxBin : process.execPath,
+  [absolute, ...rest],
   { stdio: 'inherit', cwd: ROOT, env: process.env },
 );
 

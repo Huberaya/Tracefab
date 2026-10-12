@@ -179,6 +179,30 @@ console.log('\n  B. le lanceur applique bien la garde avant d executer');
   const wrapper = existsSync(join(ROOT, WRAPPER)) ? readFileSync(join(ROOT, WRAPPER), 'utf8') : '';
   wrapper.includes('requireThrowawayDb') ? ok('le lanceur appelle la garde de cible') : ko('le lanceur n appelle pas la garde');
   wrapper.includes("'inherit'") ? ok('le lanceur transmet la sortie et le code de retour') : ko('le lanceur ne relaie pas la sortie');
+
+  // Le lanceur doit confier la suite au chargeur capable de la LIRE : une suite
+  // .mjs qui importe des modules TypeScript du depot ne s execute pas sous node
+  // nu. La decision est eprouvee dans les deux sens, et le fait que le lanceur
+  // la consulte est verifie separement : sans cela, ce controle protegerait une
+  // fonction que personne n appelle.
+  const { chooseSuiteLoader } = await import('./lib/choose-suite-loader.mjs');
+  const casChargeur = [
+    ['scripts/suite.ts', '', 'tsx', 'un fichier .ts est confie a tsx'],
+    ['scripts/suite.mjs', "import { x } from '../api/index.ts'", 'tsx', 'un .mjs qui importe du TypeScript est confie a tsx'],
+    ['scripts/suite.mjs', "const m = await import('../api/_lib/prisma.ts')", 'tsx', 'un import dynamique de TypeScript est confie a tsx'],
+    ['scripts/suite.mjs', "export { x } from './lib/aide.ts'", 'tsx', 'un re-export de TypeScript est confie a tsx'],
+    ['scripts/suite.mjs', "import { x } from './lib/aide.mjs'", 'node', 'un .mjs qui n importe que du JavaScript reste sur node'],
+    ['scripts/suite.mjs', '', 'node', 'un .mjs sans import reste sur node'],
+  ];
+  for (const [fichier, source, attendu, libelle] of casChargeur) {
+    const obtenu = chooseSuiteLoader(fichier, source);
+    obtenu === attendu
+      ? ok(`chargeur : ${libelle}`)
+      : ko(`chargeur : ${libelle} — attendu ${attendu}, obtenu ${obtenu}`);
+  }
+  wrapper.includes('chooseSuiteLoader')
+    ? ok('le lanceur consulte cette decision avant d executer la suite')
+    : ko('le lanceur choisit son chargeur sans lire le contenu de la suite');
 }
 
 console.log('\n  C. aucune suite destructive non declaree');

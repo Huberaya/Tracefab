@@ -100,10 +100,16 @@ UNION ALL
 SELECT '2-fonctions', e.nom || ' — droits explicites',
        COALESCE((
          SELECT string_agg(DISTINCT CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END, ', ')
-         FROM aclexplode(COALESCE(e.proacl, '{}')) a
+         -- acldefault('f', proprietaire) est l ACL EFFECTIVE quand aucune ACL
+         -- n est declaree : `{proprietaire=X/proprietaire,=X/proprietaire}`,
+         -- c est-a-dire EXECUTE a PUBLIC. Passer '{}' a aclexplode levait
+         -- « ACL arrays must be one-dimensional » (22023) des qu une fonction
+         -- n avait pas d ACL explicite — soit exactement l etat d avant
+         -- migration, celui que ce diagnostic doit mesurer.
+         FROM aclexplode(COALESCE(e.proacl, acldefault('f', e.proowner))) a
          WHERE a.privilege_type = 'EXECUTE'
        ), 'aucun'),
-       'liste des porteurs declares dans pg_proc.proacl'
+       'porteurs declares dans pg_proc.proacl, ou ACL par defaut du proprietaire si aucune n est declaree'
 FROM existantes e
 UNION ALL
 -- H3 : les privileges par defaut pour les objets futurs.
