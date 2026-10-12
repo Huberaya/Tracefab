@@ -29,7 +29,10 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const WORKFLOWS = join(ROOT, '.github', 'workflows');
+// Le dossier analyse est surchargeable pour que les temoins de detection
+// (scripts/test_workflow_policy_detection.mjs) fassent tourner CE script, et
+// non une copie de sa logique, sur des workflows volontairement fautifs.
+const WORKFLOWS = process.env.TRACEFAB_WORKFLOW_DIR || join(ROOT, '.github', 'workflows');
 const REGISTRY = join(ROOT, 'docs', 'security', 'workflow-privileged-allowlist.json');
 const WRAPPER = 'scripts/run-db-suite.mjs';
 

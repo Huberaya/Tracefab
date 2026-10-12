@@ -261,3 +261,122 @@ Le comportement de `ALTER DEFAULT PRIVILEGES` décrit au §3 est stable sur tout
 ces versions (il est signalé depuis la 9.1 et documenté), mais il n'a été
 **mesuré** ici que sur 18.4. L'audit en lecture seule le constatera sur la
 version réelle de la base, ce qui lève la réserve.
+
+## 8. Matrice mesurée des privilèges par défaut (2026-10-12)
+
+La question de la mission — « déterminer précisément les privilèges par défaut
+applicables aux fonctions créées par les rôles concernés, et vérifier la portée
+globale et celle des schémas sans supposer que l'une remplace l'autre » — a été
+tranchée par mesure, sur une base jetable, avec dix combinaisons. Pour chacune,
+deux relevés indépendants : la règle écrite (`pg_default_acl`) **et** le droit
+réel de la fonction créée après elle (`has_function_privilege`).
+
+| Cas mesuré | Règle écrite dans `pg_default_acl` | `PUBLIC` peut exécuter |
+|---|---|---|
+| Aucune règle (témoin) | aucune | **OUI** (défaut implicite) |
+| `FOR ROLE r REVOKE EXECUTE … FROM PUBLIC` (globale) | `(toutes les schémas) → {r=X/r}` | non |
+| `FOR ROLE r IN SCHEMA public REVOKE …` (même schéma) | **aucune** | **OUI** |
+| `FOR ROLE r IN SCHEMA public REVOKE …` (création dans un autre schéma) | **aucune** | **OUI** |
+| globale puis `IN SCHEMA` | `(toutes) → {r=X/r}` | non |
+| `IN SCHEMA` puis globale | `(toutes) → {r=X/r}` | non |
+| `GRANT EXECUTE … TO PUBLIC` puis `REVOKE` (globale) | `(toutes) → {r=X/r}` | non |
+| `IN SCHEMA` : `GRANT` puis `REVOKE` | **aucune** | **OUI** |
+| globale `REVOKE` puis `IN SCHEMA … GRANT EXECUTE TO PUBLIC` | `(toutes) → {r=X/r}` **et** `public → {=X/r}` | **OUI** (porte rouverte) |
+| règle écrite `FOR ROLE autre` que le créateur | aucune pour le créateur | **OUI** |
+
+Trois enseignements qui changent le correctif :
+
+1. **Seule la forme globale ferme le défaut.** La forme `IN SCHEMA` n'écrit
+   aucune règle quand il n'y a rien à retirer : `REVOKE` ne retire que ce qui a
+   été accordé, et le défaut intégré pour les fonctions n'est pas une
+   attribution stockée. Le durcissement `20261007100000` a donc échoué pour
+   cette raison exacte, et non par erreur de portée.
+2. **La porte peut se rouvrir silencieusement.** Un
+   `ALTER DEFAULT PRIVILEGES … IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO
+   PUBLIC` ajoute une règle qui, fusionnée avec la règle globale, redonne le
+   défaut intégré — et `proacl` redevient **NULL**, c'est-à-dire
+   indistinguable d'un objet jamais touché. Une vérification qui testerait
+   `proacl IS NULL` conclurait « défaut implicite » et se tromperait sur les
+   deux cas à la fois.
+3. **La seule mesure qui tranche est `has_function_privilege('public', oid,
+   'EXECUTE')`**, jamais la lecture d'une colonne. C'est ce que font
+   `test_neon_privileges.mjs` (§A), l'audit en lecture seule, et le contrôle
+   négatif §G du même test, qui rouvre la porte exprès dans une transaction
+   annulée et exige que le détecteur la voie.
+
+Corollaire mesuré au passage : sur PostgreSQL 15+, un rôle non propriétaire ne
+peut **pas** créer de fonction dans `public` (le `CREATE` sur le schéma n'est
+plus accordé à `PUBLIC`) — la sonde s'est fait refuser avec `42501` avant
+d'obtenir ce droit explicitement. Le créateur est donc, en pratique, le
+propriétaire de la base, et c'est lui que la règle globale doit viser.
+
+## 9. Plan d'application et de retour arrière (préparé, non appliqué)
+
+Aucune de ces étapes n'a été exécutée : elles exigent une autorisation
+explicite. Elles sont écrites pour être suivies telles quelles.
+
+**Avant tout** — l'audit en lecture seule, avec la cible déclarée à l'avance :
+
+```bash
+# chaîne en lecture seule, fournie par un mécanisme sécurisé (jamais dans un chat)
+DATABASE_URL=... node scripts/audit_neon_readonly.mjs --expect-database=<nom exact de la base>
+```
+
+Relevé à consigner : rôle de connexion, `rolsuper`/`rolbypassrls` du rôle
+applicatif, nombre de tables et de politiques, `pg_default_acl`, et pour
+chacune des cinq fonctions `has_function_privilege('public', …, 'EXECUTE')`.
+Le script sort en 3 si la base jointe n'est pas celle déclarée, et en 2 sans
+cible : il n'existe aucun repli silencieux.
+
+**Décision** — trois cas, trois conduites :
+
+- `neondb_owner` (ou tout rôle `BYPASSRLS`) porte la connexion applicative :
+  la migration de privilèges **ne suffit pas** ; la RLS n'est pas évaluée pour
+  ce rôle. La remédiation est un changement de rôle de connexion côté Vercel,
+  avec son propre plan (§5 de ce document).
+- Les cinq fonctions sont déjà fermées à `PUBLIC` : la migration est un
+  **no-op** vérifié ; ne pas l'appliquer pour « faire quelque chose ».
+- Les cinq fonctions sont ouvertes à `PUBLIC` (l'état attendu d'après le code) :
+  appliquer la migration.
+
+**Application** — par la voie du dépôt, jamais à la main :
+
+```bash
+npx prisma migrate status      # doit lister 20261012120000 comme non appliquée
+npx prisma migrate deploy      # applique, dans l'ordre, sur la base ciblée
+```
+
+La migration se vérifie elle-même : si une fonction créée à la fin n'est pas
+protégée de `PUBLIC`, elle **échoue** (`insufficient_privilege`) et n'est donc
+pas enregistrée comme appliquée. Empreinte du fichier appliqué, à consigner
+au rapport :
+
+```
+00c11a307ca0ae0a94a1a08e7910369a65112d7931064282afd37d317f96e7f2  migration.sql
+```
+
+**Après application** — deux contrôles, dont un sur la base réelle :
+
+```bash
+npm run test:neon:privileges   # A à G ; G rouvre la porte dans une transaction annulée
+```
+
+Le contrôle D crée une fonction témoin **dans une transaction annulée** ; le
+contrôle G fait de même. Aucun objet ne subsiste. À défaut d'autorisation pour
+exécuter cette suite contre la production, le même constat s'obtient en lecture
+pure : relancer l'audit et vérifier que le compteur « fonctions SECURITY
+DEFINER exécutables par PUBLIC » est à zéro.
+
+**Retour arrière** — le rollback est écrit dans la migration elle-même (§3,
+lignes 78-84) et se limite à rendre `EXECUTE` à `PUBLIC` :
+
+```sql
+ALTER DEFAULT PRIVILEGES FOR ROLE <créateur> GRANT EXECUTE ON FUNCTIONS TO PUBLIC;
+GRANT EXECUTE ON FUNCTION tracefab_material_visible_via_product(uuid) TO PUBLIC;
+-- … et les quatre autres, telles quelles dans le fichier de migration
+```
+
+Il n'est volontairement pas mis dans `prisma/migrations/` : un rollback
+enregistré comme migration serait rejoué comme une régression par la chaîne
+suivante. Il s'exécute à la main, sous autorisation, et se termine par un
+nouvel audit pour constater le retour à l'état antérieur.
