@@ -110,7 +110,7 @@ const TEMOINS = [
   {
     nom: 'job-base-jetable.yml',
     faute: 'aucune — temoin : base jetable montee par le job, aucun secret',
-    contenu: `name: Temoin\non:\n  push:\njobs:\n  base:\n    name: Base — isolation RLS executee\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17\n        env:\n          POSTGRES_DB: tracefab_test\n    env:\n      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test\n    steps:\n      - uses: ${EPINGLE}\n      - run: npm run test:neon:rls\n`,
+    contenu: `name: Temoin\non:\n  push:\npermissions:\n  contents: read\njobs:\n  base:\n    name: Base — isolation RLS executee\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17\n        env:\n          POSTGRES_DB: tracefab_test\n    env:\n      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test\n    steps:\n      - uses: ${EPINGLE}\n        with:\n          persist-credentials: false\n      - run: npm run test:neon:rls\n`,
     attenduCode: 0,
     attendu: 'Politique des workflows : OK',
   },
