@@ -160,6 +160,28 @@ Tous exécutés today, sur cette branche. « Isolé » = PostgreSQL 18.4 jetable
 **Non exécuté, donc non réussi** : aucune suite de navigateur, aucune suite
 contre Neon, aucune exécution en CI (workflow désactivé).
 
+### 5.1 Observation nouvelle : un échec de déploiement non reproductible
+
+Pendant ce chantier, le déploiement Preview du commit `4a5b70c` — **un commit
+de documentation seule** — a échoué (`dpl_7XwXhdxafNRZhGu8GGxDixnSRuYg`). Le
+commit suivant, `0a7df1b`, qui contient **tout** `4a5b70c` plus des
+modifications de code, a réussi (`7010746458`). Le commit `826bc11` de la
+branche isolée a également réussi.
+
+Conclusion, dans les deux sens :
+
+- l'échec de `4a5b70c` était **transitoire** (infrastructure ou téléchargement
+  des binaires Prisma pendant l'installation), et non un effet du contenu ;
+- mais il faut en tirer la conséquence inverse de celle qu'on serait tenté
+  d'écrire : **un déploiement rouge ne prouve pas à lui seul un défaut de
+  code**. En revanche, un déploiement **vert** prouve bien que l'installation,
+  la génération et la vérification du client ont réussi — c'est un passage
+  obligé, sans échappatoire (`postinstall`).
+
+Les journaux de cet échec sont hors d'atteinte d'ici : ils ne sont pas
+exploitables pour trancher entre les deux causes transitoires possibles, et je
+ne les invente pas.
+
 ## 6. État de la CI et raisons du blocage
 
 - État : `disabled_manually`. **Métadonnée disponible** : workflow créé le
