@@ -232,6 +232,87 @@ console.log('\n  D. parametres host=, sockets Unix, valeurs encodees, formes mal
   });
 }
 
+// ---------------------------------------------------------------------------
+// E. Divergences avec le pilote — ajoutees par la revue du 2026-10-12
+// ---------------------------------------------------------------------------
+// La garde ne protege que si elle classe la MEME cible que celle que le pilote
+// joindra. Ce bloc vient d'un test differentiel contre `pg-connection-string`,
+// la bibliotheque que `pg` utilise pour lire la chaine : il a revele que la
+// garde lisait le PREMIER parametre `host` la ou le pilote retient le DERNIER
+// (`config[cle] = valeur` sur chaque entree de `searchParams`). Une URL
+// `…@db.interne/base?host=localhost&host=<hote manage>` etait donc classee
+// « jetable locale » alors que la suite destructive aurait tourne contre
+// l'hote manage. Contournement reel, corrige, et verrouille ici.
+console.log('\n  E. divergence garde/pilote : parametres host= repetes et sockets');
+
+{
+  withEnv({
+    TRACEFAB_ALLOW_NONLOCAL_TEST_DB: 'true',
+    TRACEFAB_TEST_DB_HOST_ALLOWLIST: 'db.interne,ep-manage.neon.tech',
+    TRACEFAB_TEST_DB_NAME_ALLOWLIST: 'base',
+  }, () => {
+    const v = classifyTarget('postgresql://u:p@db.interne:5432/base?host=localhost&host=ep-manage.neon.tech');
+    !v.allowed && v.code === 'ambiguous_host_param'
+      ? ok('host= repete (local puis manage) : refuse — le pilote joint le dernier, la cible est ambigue')
+      : ko(`contournement accepte (${v.code}) : le pilote joindrait ep-manage.neon.tech`);
+  });
+
+  withEnv({
+    TRACEFAB_ALLOW_NONLOCAL_TEST_DB: 'true',
+    TRACEFAB_TEST_DB_HOST_ALLOWLIST: 'db.interne,ep-manage.neon.tech',
+    TRACEFAB_TEST_DB_NAME_ALLOWLIST: 'base',
+  }, () => {
+    const v = classifyTarget('postgresql://u:p@db.interne:5432/base?host=ep-manage.neon.tech&host=localhost');
+    !v.allowed ? ok(`host= repete (manage puis local) : refuse (${v.code})`) : ko('host= repete accepte');
+  });
+
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@localhost:5432/tracefab_test?host=localhost&host=localhost');
+    v.allowed && v.code === 'throwaway_local'
+      ? ok('host= repete a valeurs IDENTIQUES : accepte (pas d ambiguite)')
+      : ko(`valeurs identiques refusees a tort (${v.code})`);
+  });
+
+  withEnv({}, () => {
+    // Le pilote ignore `HOST` (majuscules) : la cible reelle reste l'autorite.
+    const v = classifyTarget('postgresql://u:p@ep-manage.neon.tech:5432/base?HOST=localhost');
+    !v.allowed && v.code === 'managed_host'
+      ? ok('HOST= en majuscules : la garde suit le pilote (autorite managee), pas le parametre')
+      : ko(`verdict incoherent avec le pilote (${v.code})`);
+  });
+
+  withEnv({}, () => {
+    // Le pilote accepte une autorite vide avec identifiants ; la garde doit
+    // classer la socket que le pilote joint, pas refuser faute d'analyse.
+    const v = classifyTarget('postgresql://u:p@/tracefab_test?host=/var/run/postgresql');
+    v.allowed && v.code === 'throwaway_local'
+      ? ok('socket Unix avec identifiants : reconnue locale, comme le pilote')
+      : ko(`socket Unix avec identifiants classee ${v.code}`);
+  });
+
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@/tracefab_test?host=%2Fvar%2Frun%2Fpostgresql');
+    v.allowed && v.code === 'throwaway_local'
+      ? ok('socket Unix encodee avec identifiants : reconnue locale')
+      : ko(`socket encodee classee ${v.code}`);
+  });
+
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u@tracefab_test');
+    !v.allowed ? ok(`autorite vide sans parametre host : refusee (${v.code}), jamais supposee locale`) : ko('autorite vide acceptee');
+  });
+
+  withEnv({}, () => {
+    // `hostaddr` n'est jamais lu par node-postgres (il n'est qu'EMIS, apres
+    // resolution DNS, dans une reconstruction de chaine) : la cible reelle
+    // reste l'autorite. La garde doit donc suivre l'autorite.
+    const v = classifyTarget('postgresql://u:p@localhost:5432/tracefab_test?hostaddr=ep-manage.neon.tech');
+    v.allowed && v.code === 'throwaway_local'
+      ? ok('hostaddr= seul : la garde suit l autorite (le pilote ignore hostaddr)')
+      : ko(`hostaddr change le verdict (${v.code}) alors que le pilote l ignore`);
+  });
+}
+
 console.log('\n  C. ce qui ne doit JAMAIS sortir dans un message');
 
 withEnv({}, () => {

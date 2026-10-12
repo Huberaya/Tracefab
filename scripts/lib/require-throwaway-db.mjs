@@ -100,7 +100,17 @@ export function classifyTarget(rawValue) {
     // s'ecrit `postgresql:///dbname?host=/var/run/postgresql`.
     parsed = new URL(raw);
   } catch {
-    return { allowed: false, code: 'unparseable', reason: 'valeur de connexion non analysable' };
+    // `new URL` refuse une autorite vide avec identifiants
+    // (`postgresql://utilisateur@/base?host=/var/run/postgresql`), que le pilote
+    // accepte : `pg-connection-string` remplace `@/` par un hote factice avant
+    // d'analyser. On fait la meme chose, sinon une socket Unix legitime serait
+    // classee « non analysable » — un refus, donc sans danger, mais qui rendrait
+    // la garde infidele au pilote qu'elle surveille.
+    try {
+      parsed = new URL(raw.replace('@/', '@___hote_vide___/'));
+    } catch {
+      return { allowed: false, code: 'unparseable', reason: 'valeur de connexion non analysable' };
+    }
   }
 
   // Un point final designe le meme hote (nom absolu). Sans normalisation,
@@ -109,7 +119,18 @@ export function classifyTarget(rawValue) {
   // qu'il figurait dans la liste blanche. On retire donc au plus un point final.
   const brut = (parsed.hostname || '').toLowerCase();
   const hostnameUrl = brut.endsWith('.') ? brut.slice(0, -1) : brut;
-  const socketHost = (parsed.searchParams.get('host') || '').trim();
+  // `host=` peut apparaitre PLUSIEURS FOIS. Le pilote garde la DERNIERE valeur
+  // (`pg-connection-string` fait `config[cle] = valeur` sur chaque entree de
+  // `searchParams`, donc la derniere ecrase les precedentes). Lire la premiere
+  // avec `searchParams.get()` laissait passer un contournement reel, mesure le
+  // 2026-10-12 : `…@db.interne/base?host=localhost&host=<hote manage>` etait
+  // classe « cible jetable locale » alors que le pilote joint l'hote manage.
+  // Deux valeurs differentes rendent la cible ambiguE : elle n'est pas
+  // classable avec certitude, donc elle est refusee — c'est le principe de la
+  // garde. Des valeurs identiques ne sont pas ambiguës.
+  const hostsParam = parsed.searchParams.getAll('host').map((v) => v.trim());
+  const hostsDistincts = [...new Set(hostsParam)];
+  const socketHost = hostsDistincts.length === 1 ? hostsDistincts[0] : '';
   const database = decodeURIComponent((parsed.pathname || '').replace(/^\//, '')).toLowerCase();
   // L'hote EFFECTIF : celui que le pilote joindra reellement. Un `host=/chemin`
   // est une socket Unix locale ; tout autre `host=` est un nom d'hote, et il
@@ -130,6 +151,17 @@ export function classifyTarget(rawValue) {
     local: isLocal,
     explicitOptIn,
   };
+
+  // 0. Ambiguite : la cible n'est pas classable avec certitude. Refus.
+  if (hostsDistincts.length > 1) {
+    return {
+      ...info,
+      local: false,
+      allowed: false,
+      code: 'ambiguous_host_param',
+      reason: `plusieurs valeurs differentes pour « host » (${hostsDistincts.length}) — cible ambigue, refusee`,
+    };
+  }
 
   // 1. Refus inconditionnels, quel que soit le reste de la configuration.
   // Le protocole d'abord : ce depot ne parle que PostgreSQL, et un schema
