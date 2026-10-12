@@ -140,7 +140,7 @@ console.log('  client Prisma genere et verifie.');
 // Hors Vercel, ces controles restent dans la CI et ne ralentissent pas npm
 // install des developpeurs.
 if (isDeployment) {
-  for (const scriptName of ['typecheck', 'api:typecheck']) {
+  for (const scriptName of ['typecheck', 'api:typecheck', 'test:router-load']) {
     console.log(`\\n  verification statique obligatoire — npm run ${scriptName}`);
     const check = spawnSync('npm', ['run', scriptName], {
       stdio: 'inherit',
