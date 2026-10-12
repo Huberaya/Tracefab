@@ -1,38 +1,49 @@
 # PREPARE — NON INSTALLE. Aucun fichier de .github/workflows n'a ete cree.
 #
 # Destination si vous l'autorisez : .github/workflows/vercel-log-search.yml
-# Nature de l'action : niveau C (ecriture GitHub + secret + execution d'un
-# workflow). Elle ne doit pas etre executee sans votre accord explicite, et elle
-# suppose que GitHub Actions soit actif sur le depot.
 #
-# Ce que ce workflow ferait : lire, en GET seulement, les journaux du
-# deploiement `6968252029` et n'afficher que les lignes portant l'identifiant de
-# correlation `fd30b689-f50f-44f0-a0dd-43e5e1e51f0e`. Il n'ecrit rien, ne
-# redeploie rien, ne modifie aucune variable.
+# POURQUOI CETTE VOIE EXISTE : l'environnement d'analyse n'a pas d'acces reseau
+# a api.vercel.com (HTTP 000 mesure). Les runners GitHub, eux, ont un acces
+# Internet complet. Ce workflow fait donc la requete a votre place, et n'affiche
+# que les lignes portant l'identifiant de correlation.
 #
-# Deux consequences a valider avant de l'installer :
-#   1. le secret `VERCEL_READONLY_TOKEN` doit etre cree dans Settings > Secrets
-#      (le workflow seul ne suffit pas) ;
-#   2. mon propre controle `test:workflow-policy` leverait deux alertes tant que
-#      ce fichier n'est pas declare au registre : l'alerte A (secret lu sans
-#      declaration) et l'alerte C (action non epinglee par SHA). La declaration
-#      correspondante est proposee en bas de ce fichier, et les actions doivent
-#      etre epinglees sur le SHA utilise par le reste du depot.
+# NATURE DE L'ACTION : niveau C — ecriture GitHub (fichier de workflow, donc une
+# execution d'Actions), et lecture d'un secret que VOUS creez. Le jeton n'a pas
+# a etre transmis ici : il reste dans le magasin de secrets GitHub.
+#
+# TROIS CONSEQUENCES A VALIDER AVANT INSTALLATION
+#   1. vous devez creer le secret `VERCEL_READONLY_TOKEN` (Settings > Secrets and
+#      variables > Actions). Un secret au niveau du depot est lisible par tout
+#      workflow declenche sur un push de n'importe quelle branche : tout
+#      collaborateur ayant le droit d'ecriture peut donc, s'il le veut, pousser
+#      un workflow qui le lit. C'est le mecanisme de l'incident 2C, et c'est
+#      pourquoi la variante recommandee place le secret dans un ENVIRONNEMENT
+#      `vercel-log-search` avec relecteurs obligatoires (voir la ligne
+#      `environment:` ci-dessous, volontairement activee).
+#   2. l'environnement `vercel-log-search` doit exister avant la premiere
+#      execution, sinon le job echoue sur « environment not found ». Creation :
+#      Settings > Environments > New environment, puis Required reviewers.
+#   3. le declencheur `push` est volontairement limite a la branche de travail
+#      `arena/879cd8db-tracefab`. `workflow_dispatch` n'apparait dans l'interface
+#      que si le fichier est aussi sur la branche par defaut : ce n'est PAS le
+#      cas ici, et `main` reste intacte.
+#
+# Si vous preferez le chemin le plus court sans rien creer cote GitHub :
+# `sh scripts/diagnose_production_incident.sh` depuis un poste qui joint Vercel,
+# et seule la valeur de `error.message` remonte ici.
 
 name: Recherche dans les journaux Vercel (lecture seule)
 
 on:
+  push:
+    branches:
+      - arena/879cd8db-tracefab
   workflow_dispatch:
-    inputs:
-      deploiement:
-        description: Identifiant du deploiement a interroger
-        required: true
-        default: '6968252029'
 
 permissions: {}
 
 concurrency:
-  group: vercel-log-search
+  group: vercel-log-search-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -40,29 +51,67 @@ jobs:
     name: Lire les journaux et filtrer sur l identifiant de correlation
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Le secret vit dans cet environnement, avec relecteurs obligatoires : un
+    # workflow pousse par un collaborateur ne peut pas le lire sans approbation.
+    environment: vercel-log-search
     steps:
-      - uses: actions/checkout@v4
+      - name: Recuperer le depot
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
+
+      - name: Refuser d'avance un secret absent
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_READONLY_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Le secret VERCEL_READONLY_TOKEN est absent ou vide : le controle n'a pas pu tourner, il ne passe pas."
+            exit 2
+          fi
 
       - name: Interroger l API Vercel en lecture seule
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_READONLY_TOKEN }}
-          TF_DEPLOYMENT_ID: ${{ inputs.deploiement }}
+          TF_DEPLOYMENT_ID: '6968252029'
+          TF_CORRELATION_ID: 'fd30b689-f50f-44f0-a0dd-43e5e1e51f0e'
         run: node scripts/diagnose_production_incident.mjs
+
+      - name: Rappeler ce que la sortie signifie
+        if: always()
+        run: |
+          echo "Sortie 0 : la ligne a ete trouvee et affichee ci-dessus."
+          echo "Sortie 1 : rien dans les journaux de BUILD — attendu pour un internal_error, qui est un evenement d'execution."
+          echo "Sortie 2 : le controle n'a pas pu tourner (jeton, refus, reseau)."
 
 # ---------------------------------------------------------------------------
 # Declaration a ajouter dans docs/security/workflow-privileged-allowlist.json,
-# dans le compartiment « secretUsingWorkflows », si ce workflow est installe :
+# compartiment « secretUsingWorkflows », au moment ou ce fichier est installe.
+# Sans elle, mon propre controle `npm run test:workflow-policy` leve l'alerte A
+# (secret lu sans declaration) et l'alerte F (job rattache a un environnement).
+# L'alerte C ne se declenche pas : les deux actions sont epinglees par SHA avec
+# leur version lisible ("v4.4.0" — un simple "# v4" ne suffit pas, le controle
+# exige un numero de version complet). Le tout est verifie en executant le
+# controle sur une copie de ce fichier, avec et sans declaration.
 #
+#   "secretUsingWorkflows": {
 #   "vercel-log-search.yml": {
 #     "secret": "VERCEL_READONLY_TOKEN",
-#     "portee": "job `recherche` uniquement, workflow declenche manuellement",
-#     "justification": "Retrouver la ligne de journal qui manque au diagnostic : le bac a sable d'analyse n'a pas d'acces reseau a api.vercel.com, donc la lecture doit se faire depuis un environnement qui l'a.",
+#     "portee": "job `recherche` uniquement, secret d'environnement `vercel-log-search` avec relecteurs obligatoires ; declencheur limite a la branche de travail",
+#     "justification": "Retrouver la ligne de journal qui manque au diagnostic du chantier 5 : le bac a sable d'analyse n'a aucun acces reseau a api.vercel.com, donc la lecture doit partir d'un environnement qui l'a.",
 #     "lecture_seule": "Le script appele n'emet que des GET. Une interception de test prouve hors ligne qu'aucune autre methode n'est construite et qu'aucun hote autre que api.vercel.com n'est joint.",
-#     "rotation": "Jeton dedie, distinct de tout jeton d'administration, a revoquer des la ligne recuperee.",
-#     "journal": "La sortie est caviardee par le script (jeton, entetes d'autorisation, chaines de connexion)."
+#     "rotation": "Jeton dedie, distinct de tout jeton d'administration, revoque des la ligne recuperee.",
+#     "journal": "La sortie est caviardee par le script : jeton, entetes d'autorisation, chaines de connexion, identifiants opaques."
+#   }
+#   },
+#   "environmentBoundJobs": {
+#   "vercel-log-search.yml": {
+#     "environnement": "vercel-log-search",
+#     "job": "recherche",
+#     "pourquoi": "Le jeton ne doit pas etre lisible par un workflow pousse par n'importe quel collaborateur ayant le droit d'ecriture. Place dans un environnement avec relecteurs obligatoires, il exige une approbation explicite avant chaque execution.",
+#     "reglage_attendu": "Settings > Environments > vercel-log-search > Required reviewers : le proprietaire. Sans ce reglage, l'environnement n'ajoute aucune barriere et le secret equivaut a un secret de depot."
+#   }
 #   }
 # ---------------------------------------------------------------------------
