@@ -22,10 +22,9 @@
 #   2. l'environnement `vercel-log-search` doit exister avant la premiere
 #      execution, sinon le job echoue sur « environment not found ». Creation :
 #      Settings > Environments > New environment, puis Required reviewers.
-#   3. le declencheur `push` est volontairement limite a la branche de travail
-#      `arena/879cd8db-tracefab`. `workflow_dispatch` n'apparait dans l'interface
-#      que si le fichier est aussi sur la branche par defaut : ce n'est PAS le
-#      cas ici, et `main` reste intacte.
+#   3. aucun declencheur `push` n'est configure. `workflow_dispatch` doit
+#      rester inutilise tant que les protections de l'environnement
+#      `vercel-log-search` n'ont pas ete verifiees dans les parametres GitHub.
 #
 # Si vous preferez le chemin le plus court sans rien creer cote GitHub :
 # `sh scripts/diagnose_production_incident.sh` depuis un poste qui joint Vercel,
