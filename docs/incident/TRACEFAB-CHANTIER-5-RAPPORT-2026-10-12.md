@@ -1073,3 +1073,121 @@ Preuve de révocation, à produire sans divulguer la valeur :
   pas été touchée ; aucun déploiement n'a été déclenché.
 - Le diagnostic de production reste **NON VÉRIFIÉ** : il manque toujours une
   ligne de journal, et cette ligne ne contient aucun secret.
+
+---
+
+## 15. Pourquoi la ligne est introuvable — et la preuve permanente qui la remplace
+
+### 15.1 Ce n'est pas une erreur de recherche : le journal d'exécution a expiré
+
+Vercel ne conserve les **journaux d'exécution** que très peu de temps :
+
+| Formule | Rétention des journaux d'exécution |
+|---|---|
+| Hobby | **1 heure** |
+| Pro | **1 jour** |
+| Pro + Observability Plus | 30 jours |
+| Enterprise | 3 jours |
+
+*(source : documentation Vercel « Runtime Logs » ; les journaux de **build**, eux,
+sont conservés pour la durée de vie du déploiement.)*
+
+Le rapport d'erreur portant `fd30b689-…` a été émis le **2026-10-09** : trois
+jours avant cette recherche. Il n'a donc pas pu être retrouvé — non pas parce
+qu'il est caché, mais parce qu'il n'existe plus. Chercher cet identifiant précis
+est une impasse, et le refaire ne donnera rien.
+
+### 15.2 La preuve permanente, et elle est décisive : les journaux de BUILD
+
+Deux déploiements de Vercel portent le commit de production `b0c976f`. Leurs
+journaux de build sont **toujours consultables**. Liens directs :
+
+- `https://vercel.com/baya-ibraimmayoanouedu-8164s-projects/tracefab/A7R5Ez84oc5xqehUpQFpYoztRH7T`
+- `https://vercel.com/baya-ibraimmayoanouedu-8164s-projects/tracefab/EreL5oPC7ZxQYEQcgoeXvoNC5qWU`
+
+Ce qu'il faut y chercher, dans cet ordre — une simple recherche du mot
+`prisma` (insensible à la casse) couvre les quatre premiers :
+
+| À chercher | Ce que sa présence — ou son absence — établit |
+|---|---|
+| `prisma` | une génération a été tentée, et laquelle |
+| `Generated Prisma Client` | le client a bien été généré pendant le build |
+| `npm run build` | la commande de build du projet a été exécutée |
+| `did not initialize yet` | le client déployé est un paquet factice qui ne sait pas se connecter |
+| `postinstall` | les cycles de vie d'installation ont tourné |
+
+**Pourquoi ces journaux sont décisifs.** Le `vercel.json` du commit déployé
+contient un tableau `builds` :
+
+```json
+"builds": [
+  { "src": "api/index.ts", "use": "@vercel/node", "config": { "includeFiles": ["catalog/**/*.json"] } },
+  { "src": "**/*.html", "use": "@vercel/static" },
+  { "src": "assets/**", "use": "@vercel/static" }
+]
+```
+
+La documentation Vercel est explicite : **la présence d'un tableau `builds` fait
+ignorer les réglages de build du projet**. Or c'est `npm run build` qui contient
+`db:generate` (donc `prisma generate`), et c'est `postinstall` qui, sur la
+branche de correction, garantit la génération. Autrement dit : si les journaux
+de build ne montrent aucune génération Prisma, la cause est établie par un
+document permanent, et le §5.5 est confirmé — sans avoir besoin du journal
+d'exécution disparu.
+
+Si au contraire `Generated Prisma Client` apparaît, alors le client existait au
+build, et **c'est le §5.5 qui est faux** : je le réécrirai.
+
+### 15.3 Obtenir un identifiant FRAIS, dans la fenêtre de rétention
+
+`fd30b689-…` n'a rien de particulier : n'importe quelle occurrence **récente**
+porte exactement la même information. La marche à suivre tient en deux gestes,
+à enchaîner en moins d'une heure :
+
+1. ouvrir `https://tracefab.vercel.app/api/health` — le corps de la réponse
+   contient un **nouvel** `correlationId` (c'est le mécanisme même du code
+   déployé : `api/index.ts` renvoie l'identifiant au client) ;
+2. aussitôt : projet Vercel → **Logs** (temps réel) → rechercher `Prisma`.
+
+Les champs utiles de la ligne cherchée sont `schema`, `correlationId`,
+`release`, `error.name` et `error.message` — c'est `error.message` qui tranche.
+Le payload déployé est produit par `api/_lib/error-reporting.ts`, qui écrit
+**toujours** sur `console.error` avant toute autre chose.
+
+### 15.4 Le collecteur, s'il est configuré — une piste qui ne dépend pas de la rétention
+
+Le même module envoie le rapport identique à `TRACEFAB_ERROR_WEBHOOK_URL` (avec
+`TRACEFAB_ERROR_WEBHOOK_TOKEN` en en-tête, facultatif) **en plus** du journal.
+Si cette variable est définie dans les réglages du projet, le JSON exact de
+l'erreur — identifiant et message compris — a été POSTé à ce collecteur. C'est
+un endroit à chercher qui, lui, ne périme pas. Il suffit de regarder si la
+variable est définie : projet → Settings → Environment Variables.
+
+### 15.5 Une observation qui vaut un journal, et qui prend dix secondes
+
+Le gestionnaire `GET /api/health` renvoie **lui-même** `503
+database_unavailable` **sans** identifiant de corrélation quand la base est
+injoignable : son bloc `catch` le fait explicitement. Or la production renvoie
+`500 internal_error` **avec** identifiant. Donc ce n'est pas la base qui a
+répondu ainsi, c'est la barrière d'erreur centrale, qui entoure le **chargement
+du module** et l'appel du gestionnaire.
+
+Il reste deux façons d'échouer au chargement du module, et une seule
+observation les sépare :
+
+| Observation | Conclusion |
+|---|---|
+| l'application n'affiche **aucune** donnée venant de la base (produits, fournisseurs, tableau de bord vides ou en erreur) | cohérent avec un client Prisma absent ou non généré — et avec une variable `DATABASE_URL` absente au démarrage |
+| l'application affiche **des** données par ailleurs | le module s'est chargé : le §5.5 serait faux, et le journal devient indispensable |
+
+Autrement dit : ouvrir l'application et regarder si les données s'affichent
+apporte une information exploitable immédiatement.
+
+### 15.6 Où chercher, en résumé
+
+| Endroit | Y trouver | Durée de vie |
+|---|---|---|
+| Journaux de **build** du déploiement (liens au §15.2) | la génération Prisma a-t-elle tourné ? | **permanente** |
+| `TRACEFAB_ERROR_WEBHOOK_URL`, si défini | le JSON exact de l'erreur (`error.message`) | selon le collecteur |
+| Projet → Logs (temps réel), juste après avoir ouvert `/api/health` | la même ligne, avec un identifiant frais | 1 h (Hobby) / 1 j (Pro) |
+| `fd30b689-…` précisément | **rien** : expiré le 2026-10-10 | expirée |
