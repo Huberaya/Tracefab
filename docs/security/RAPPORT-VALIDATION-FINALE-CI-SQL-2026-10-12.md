@@ -3,7 +3,8 @@
 **Date** : 2026-10-12 (Europe/Paris) · **Branche** : `arena/879cd8db-tracefab` · **Pull request** : #36 (brouillon, `OPEN`, non fusionnée)
 **SHA annoncé en début de mission** : `61ae908b852634f4cbd912eb93de6acf8b3b62df`
 **SHA réellement contrôlé (tête de PR avant ce rapport)** : `7145bb94c53d282c183017a4fdfd01c45d821783` (`7145bb9`)
-**SHA produit par ce rapport** : voir §12 (commit de correctifs candidats), branche toujours en brouillon.
+**SHA de la branche à l'issue de ce rapport** : `5d32e799c8459b4435a70de5dd1a916312556047` (`5d32e79`)
+**SHA produit par ce rapport** : `5d32e799c8459b4435a70de5dd1a916312556047` (`5d32e79`) — commit des deux correctifs candidats, poussé sur la branche de la PR #36 (`7145bb9..5d32e79`, avance rapide). La PR **reste en brouillon et non fusionnée**.
 
 **Périmètre des tests** : une instance PostgreSQL **jetable** créée localement (`embedded-postgres`, PostgreSQL 18.4, `127.0.0.1:55432`), bases `val_*` recréées à volonté, dans un **worktree détaché** (`/tmp/val61`) sur `7145bb9`. **Aucune connexion à une base Neon**, aucune migration distante, aucun merge, aucun déploiement de production, aucun changement de secret, de variable ou de configuration distante. GitHub Actions n'a pas été réactivé ; aucun check-run n'existe sur `61ae908`, `0b6f90e` ni `7145bb9`, ce qui est attendu (Actions désactivé).
 
@@ -250,7 +251,7 @@ Après les deux correctifs candidats (§H), tout ce qui peut être mesuré sans 
 - **Confinement** : tous les tests ont visé une instance PostgreSQL **locale et jetable** (bases `val_*`, base `tracefab_test`), dans un worktree détaché. Aucun accès Neon, Vercel ou GitHub n'a été utilisé pour écrire autre chose que le commit de correctifs de la branche de PR.
 - **Secrets** : aucune valeur secrète lue, affichée ou commitée. Chaîne de connexion locale uniquement, non sensible ; le jeton `vcp_…` reste traité comme exposé (§I.8).
 - **Workflows** : `ci.yml` conserve `permissions: contents: read`, les actions restent épinglées, `persist-credentials: false` est vérifié, le déclencheur `push` du workflow d'exploitation est retiré. **Aucun workflow n'a été activé** ; deux vérifications statiques les couvrent (`test:workflow-policy`, `-temoins`).
-- **GitHub** : PR #36 toujours `OPEN` et **brouillon**, non fusionnée. Les commits de correctifs candidats y sont ajoutés pour revue. Aucun changement de protection de branche, de secret ou de réglage n'a été tenté (ces API répondent 403 depuis cet environnement).
+- **GitHub** : PR #36 toujours `OPEN` et **brouillon**, non fusionnée. Le commit `5d32e79` (correctifs candidats + ce rapport) y est ajouté pour revue ; l'écriture distante se limite à cette référence de branche. Aucun changement de protection de branche, de secret ou de réglage n'a été tenté (ces API répondent 403 depuis cet environnement).
 - **Vercel** : aucune configuration, variable ni déploiement modifié. Aucun Preview ne peut être rattaché au SHA final (§G).
 - **Neon** : aucune connexion, aucune migration. L'état distant est **inconnu** et doit être considéré comme non conforme jusqu'à preuve du contraire.
 - **RLS / privilèges / multi-locataire** : les politiques RLS **n'ont pas été modifiées ni désactivées** ; seul `EXECUTE` à `PUBLIC` est refermé, ce qui est l'objet de la migration. Le maintien des droits de `tracefab_app` est vérifié avant/après. Aucun `GRANT` large n'a été ajouté.
