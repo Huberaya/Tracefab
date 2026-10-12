@@ -163,7 +163,7 @@ if (execution.status !== 0) {
 }
 
 let url;
-try { url = new URL(URL); } catch { url = null; }
+try { url = new globalThis.URL(URL); } catch { url = null; }
 
 const fuites = [];
 if (sortie.includes('postgresql://')) fuites.push('schema postgresql://');
@@ -189,6 +189,51 @@ const attendus = [
 ];
 for (const [nom, motif] of attendus) {
   motif.test(sortie) ? ok(`le rapport constate : ${nom}`) : ko(`le rapport ne constate pas : ${nom}`);
+}
+
+// ---------------------------------------------------------------------------
+// D. La cible declaree est respectee : aucun repli silencieux
+// ---------------------------------------------------------------------------
+console.log('\n  D. la cible declaree est respectee\n');
+
+{
+  // `URL` est ici le nom de la variable d'environnement : le constructeur
+  // global est donc atteint explicitement, faute de quoi `new URL(...)` leve.
+  let nomBase = null;
+  try {
+    const u = new globalThis.URL(URL);
+    nomBase = decodeURIComponent((u.pathname || '').replace(/^\//, ''));
+  } catch { /* signale juste en dessous */ }
+
+  if (!nomBase) {
+    ko('nom de base illisible : le controle de cible ne peut pas conclure');
+  } else {
+    // La bonne cible declaree : le rapport doit etre produit.
+    const bon = spawnSync(process.execPath, [AUDIT, `--expect-database=${nomBase}`],
+      { cwd: ROOT, encoding: 'utf8', env: { ...process.env } });
+    bon.status === 0
+      ? ok(`--expect-database=${nomBase} — rapport produit`)
+      : ko(`--expect-database=${nomBase} sort en code ${bon.status} alors que la cible correspond`);
+
+    // La mauvaise cible declaree : aucun rapport ne doit sortir.
+    const cibleFausse = `${nomBase}_cible_qui_n_existe_pas`;
+    const mauvais = spawnSync(process.execPath, [AUDIT, `--expect-database=${cibleFausse}`],
+      { cwd: ROOT, encoding: 'utf8', env: { ...process.env } });
+    const sortieMauvaise = `${mauvais.stdout || ''}${mauvais.stderr || ''}`;
+    if (mauvais.status !== 3) {
+      ko(`une cible declaree fausse sort en code ${mauvais.status}, attendu 3`);
+    } else if (/RLS sur le schema public/.test(sortieMauvaise)) {
+      ko('un rapport a ete produit malgre une cible declaree fausse');
+    } else {
+      ok('une cible declaree fausse est refusee (exit 3) sans produire de rapport');
+    }
+
+    // Et le nom de la base jointe doit apparaitre : l audit identifie ce qu il
+    // a examine, sans divulguer la chaine de connexion.
+    sortie.includes(nomBase)
+      ? ok('l audit nomme la base examinee sans imprimer la chaine de connexion')
+      : ko('l audit n identifie pas la base examinee');
+  }
 }
 
 console.log('\n  --------------------------------------------');

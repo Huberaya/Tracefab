@@ -172,3 +172,47 @@ BEGIN
   END IF;
 END
 $grants$;
+
+-- ---------------------------------------------------------------------------
+-- 4. La migration verifie son propre effet, et echoue si elle ne l'a pas eu
+-- ---------------------------------------------------------------------------
+-- Une migration de privilege qui reussit sans avoir change le privilege est
+-- exactement le defaut qu'elle corrige : le durcissement 20261007100000 a
+-- pose une instruction sans effet, et personne ne l'a vu parce que la
+-- migration s'est terminee en vert.
+--
+-- Verification par mesure, pas par relecture : une fonction temoin est creee,
+-- son droit d'execution est interroge, puis la fonction est supprimee. Si
+-- PUBLIC peut encore executer une fonction creee maintenant, la migration
+-- echoue — et une migration qui echoue ne s'applique pas.
+--
+-- La sonde est creee et supprimee dans la meme migration : rien ne subsiste.
+-- Elle porte un nom improbable et un commentaire qui dit d'ou elle vient, au
+-- cas ou une interruption laisserait la trace.
+-- ---------------------------------------------------------------------------
+
+DO $auto_controle$
+DECLARE
+  public_peut boolean;
+  temoin_oid oid;
+BEGIN
+  CREATE FUNCTION tracefab__autocontrole_defaut_execute()
+    RETURNS boolean LANGUAGE sql STABLE AS $sonde$ SELECT true $sonde$;
+
+  SELECT has_function_privilege('public', 'tracefab__autocontrole_defaut_execute()', 'EXECUTE')
+    INTO public_peut;
+
+  DROP FUNCTION tracefab__autocontrole_defaut_execute();
+
+  IF public_peut THEN
+    RAISE EXCEPTION
+      'Migration sans effet : une fonction creee par % est encore executable par PUBLIC. '
+      'La forme utile est globale, sans IN SCHEMA : '
+      'ALTER DEFAULT PRIVILEGES FOR ROLE % REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;',
+      current_user, current_user
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
+  RAISE NOTICE 'Verification : une fonction creee par % n est pas executable par PUBLIC.', current_user;
+END
+$auto_controle$;

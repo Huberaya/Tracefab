@@ -200,6 +200,66 @@ if (!existe) {
     : ko('D. la fonction temoin subsiste : le ROLLBACK n a pas fonctionne');
 }
 
+// ---------------------------------------------------------------------------
+// F. Un role non privilegie se voit REFUSER l execution
+// ---------------------------------------------------------------------------
+// L'invariant A dit que PUBLIC ne peut pas executer ces fonctions. Un
+// invariant sur le pseudo-role PUBLIC pourrait etre vrai alors qu'un role
+// reel, lui, passe — par heritage, par un GRANT nominatif oublie, ou par une
+// adhesion de role. La seule mesure qui tranche est celle-ci : creer un role
+// qui n'a rien recu, et constater le refus.
+//
+// Le role est cree dans une transaction qui est TOUJOURS annulee : rien ne
+// subsiste, et le test est rejouable.
+{
+  const FONCTIONS_A_FERMER = [
+    'tracefab_material_visible_via_product(uuid)',
+    'tracefab_product_is_public(uuid)',
+    'tracefab_material_is_public(uuid)',
+    'tracefab_supplier_site_is_public(uuid)',
+    'tracefab_public_brand(uuid)',
+  ];
+
+  await db.query('BEGIN');
+  try {
+    const nomRole = 'tracefab_sondage_sans_droit';
+    const dejaLa = (await db.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [nomRole])).rows.length > 0;
+    if (dejaLa) {
+      ko(`F. le role sonde ${nomRole} existe deja : le controle serait fausse`);
+    } else {
+      await db.query(`CREATE ROLE ${nomRole} NOLOGIN`);
+      const resultats = [];
+      for (const signature of FONCTIONS_A_FERMER) {
+        const existe = (await db.query('SELECT to_regprocedure($1) AS oid', [signature])).rows[0].oid;
+        if (!existe) continue;
+        const peut = (await db.query('SELECT has_function_privilege($1, $2::regprocedure, $3) AS peut',
+          [nomRole, signature, 'EXECUTE'])).rows[0].peut;
+        resultats.push([signature, peut]);
+      }
+      const ouvertes = resultats.filter(([, peut]) => peut);
+      if (resultats.length === 0) {
+        ok('F. aucune des fonctions visees n existe ici : rien a mesurer');
+      } else if (ouvertes.length === 0) {
+        ok(`F. un role sans aucun droit ne peut executer aucune des ${resultats.length} fonction(s) visees`);
+      } else {
+        ko(`F. ${ouvertes.length} fonction(s) restent executables par un role sans droit`);
+        for (const [signature] of ouvertes) console.log(`          ${signature}`);
+        console.error('\n  Le pseudo-role PUBLIC peut etre ferme alors qu un role reel passe encore,');
+        console.error('  par heritage ou par un GRANT nominatif oublie. Chercher un GRANT explicit.');
+      }
+    }
+  } catch (error) {
+    ko(`F. le controle de refus n a pas pu s executer : ${String(error.message).split('\n')[0]}`);
+  } finally {
+    await db.query('ROLLBACK').catch(() => {});
+  }
+
+  const reste = (await db.query("SELECT count(*)::int AS n FROM pg_roles WHERE rolname = 'tracefab_sondage_sans_droit'")).rows[0].n;
+  reste === 0
+    ? ok('F. le role sonde a bien ete annule par ROLLBACK')
+    : ko('F. le role sonde subsiste : le ROLLBACK n a pas fonctionne');
+}
+
 await db.end();
 
 if (APP_URL) {

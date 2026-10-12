@@ -43,6 +43,7 @@
  * audit qui a constate.
  */
 import pg from 'pg';
+import { createHash } from 'node:crypto';
 
 const RAW_URL = process.env.DATABASE_URL;
 if (!RAW_URL || !RAW_URL.trim()) {
@@ -50,6 +51,43 @@ if (!RAW_URL || !RAW_URL.trim()) {
   console.error('  Fournir une chaine de connexion EN LECTURE SEULE, ou un role en lecture seule.');
   console.error('  Sortie 2 : un audit qui n a pas tourne ne constate rien.\n');
   process.exit(2);
+}
+
+// ---------------------------------------------------------------------------
+// Cible declaree, et non deduite
+// ---------------------------------------------------------------------------
+// Un audit qui se rabat silencieusement sur une autre base produit un rapport
+// sur la mauvaise cible, presente comme un constat sur celle qu'on croit avoir
+// examinee. Le nom de la base attendue se declare donc a l'avance :
+//
+//   --expect-database=<nom>            ou   TRACEFAB_AUDIT_EXPECT_DATABASE=<nom>
+//
+// Si la base reellement jointe porte un autre nom, l'audit refuse de produire
+// un rapport plutot que de le produire sur la mauvaise cible. Un repli local
+// est impossible : ce script ne lit que DATABASE_URL, ne la devine pas et n'a
+// aucune valeur par defaut.
+const ARG_ATTENDU = process.argv.find((a) => a.startsWith('--expect-database='));
+const BASE_ATTENDUE = (ARG_ATTENDU ? ARG_ATTENDU.split('=')[1] : process.env.TRACEFAB_AUDIT_EXPECT_DATABASE || '').trim();
+
+/** Classe d'hote, sans jamais nommer l'hote. */
+function classeHote(url) {
+  try {
+    const u = new URL(url);
+    const h = (u.hostname || '').toLowerCase();
+    if (!h) return u.searchParams.get('host') ? 'socket local' : 'inconnue';
+    if (['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(h)) return 'local (jetable presume)';
+    if (/\.neon\.tech$/.test(h)) return 'base managee (Neon)';
+    if (/\.supabase\.(co|in)$/.test(h)) return 'base managee (Supabase)';
+    if (/\.rds\.amazonaws\.com$/.test(h)) return 'base managee (RDS)';
+    return 'distant (hebergeur non reconnu)';
+  } catch {
+    return 'non analysable';
+  }
+}
+
+/** Empreinte de la cible : corrélable dans un journal, non réversible. */
+function empreinteCible(url) {
+  return createHash('sha256').update(url).digest('hex').slice(0, 12);
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +192,29 @@ try {
 await db.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY');
 
 const identite = (await db.query(REQUETES.identite)).rows[0];
+
+// Bloc de cible : etabli APRES connexion, sans divulguer la chaine.
+const CLASSE = classeHote(RAW_URL);
+const EMPREINTE = empreinteCible(RAW_URL);
+console.log('');
+console.log('  CIBLE EXAMINEE');
+console.log(`    base declaree   : ${BASE_ATTENDUE || '(non declaree — utiliser --expect-database=<nom>)'}`);
+console.log(`    base jointe     : ${identite.base}`);
+console.log(`    role de connexion: ${identite.role_effectif}`);
+console.log(`    classe d hote   : ${CLASSE}`);
+console.log(`    empreinte cible : ${EMPREINTE}`);
+
+if (BASE_ATTENDUE && identite.base !== BASE_ATTENDUE) {
+  console.error('');
+  console.error('  REFUS — la base jointe ne correspond pas a la base declaree.');
+  console.error(`  declaree : ${BASE_ATTENDUE}   jointe : ${identite.base}`);
+  console.error('  Aucun rapport n est produit : un constat sur la mauvaise cible est pire');
+  console.error('  qu aucun constat. Sortie 3.');
+  console.error('');
+  await db.end();
+  process.exit(3);
+}
+
 if (identite.role_effectif === 'neondb_owner') {
   console.log('\n  AVERTISSEMENT — le role effectif est `neondb_owner`.');
   console.log('  Ce role porte BYPASSRLS : les politiques de securite ne sont PAS evaluees');
@@ -179,6 +240,7 @@ const ligne = (titre) => console.log(`\n  ${titre}\n  ${'-'.repeat(titre.length)
 
 console.log('\n  ============================================================');
 console.log('  AUDIT EN LECTURE SEULE — etat constate dans la base');
+console.log(`  base=${identite.base}  role=${identite.role_effectif}  empreinte=${EMPREINTE}`);
 console.log('  ============================================================');
 
 ligne('1. Identite de la connexion');
