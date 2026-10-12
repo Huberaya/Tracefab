@@ -8,9 +8,9 @@
 #   2. verification 63 scripts test:* + audit statique end-to-end
 #   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
 #
-# L'etage base de donnees ne se declenche que si le secret DATABASE_URL existe,
-# pour qu'un fork ou une contribution externe ne voie pas un echec qui ne lui
-# appartient pas.
+# L'etage base de donnees monte un Postgres jetable : il ne lit aucun secret.
+# Les suites qui ecrivent passent par scripts/run-db-suite.mjs, donc par la
+# garde de cible — une cible non jetable est refusee meme fournie a la main.
 #
 name: CI
 
@@ -37,9 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -66,6 +66,35 @@ jobs:
         # execute, et contrat de variables d'environnement a jour.
         run: npm run test:production-readiness
 
+      - name: Garde de cible des suites destructives
+        # Aucune suite qui ecrit en base ne s'execute sans avoir prouve que sa
+        # cible est jetable. La garde est eprouvee dans les deux sens.
+        run: npm run test:db-guard
+
+      - name: Routage des suites destructives
+        # Toute suite ecrivant en base doit passer par le lanceur garde. Une
+        # suite destructive non declaree fait echouer la CI.
+        run: npm run test:db-routing
+
+      - name: Politique des workflows
+        # Aucun secret lu, aucune action non epinglee, aucun privilege
+        # d'ecriture non declare.
+        run: npm run test:workflow-policy
+
+      - name: Controle du client Prisma — eprouve dans les deux sens
+        run: npm run test:prisma-client
+
+      - name: Client Prisma du paquet
+        # Mode de defaillance exact de l'incident du 2026-10-12 : echoue si le
+        # client n'est pas genere ou si le schema a evolue sans regeneration.
+        run: npm run verify:prisma-client
+
+      - name: Chargement des modules de route
+        # Les 125 routes doivent se charger. Un client Prisma non initialise
+        # fait echouer ce chargement, et la production repond alors
+        # internal_error avec un identifiant de correlation.
+        run: npm run test:router-load
+
   # -------------------------------------------------- 2. suite de verification
   verification:
     name: Verification — suite de tests
@@ -73,9 +102,9 @@ jobs:
     timeout-minutes: 25
     needs: socle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -153,9 +182,9 @@ jobs:
     timeout-minutes: 25
     needs: socle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -195,7 +224,7 @@ jobs:
 
       - name: Captures en cas d'echec
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: captures-parcours
           path: |
@@ -241,14 +270,13 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
       TF_APP_PASSWORD: isolation_ci_jetable
       TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
-      # Le contexte `secrets` n'est pas disponible dans un `if:` d'etape : il
-      # faut le faire transiter par l'env du job. Sans ce detour, le workflow
-      # echoue au parsing.
-      TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}
+      # Aucun secret n'est injecte dans ce job, et le contexte `secrets` n'y
+      # est plus lu du tout : `npm run test:workflow-policy` le verifie a
+      # chaque execution.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -265,22 +293,28 @@ jobs:
         run: npm run db:deploy
 
       - name: Creer le role tracefab_app et deux locataires
-        run: node scripts/seed_rls_fixture.mjs
+        # Via npm run db:seed-rls, donc via la garde de cible : ce script cree
+        # un role, accorde des privileges et ecrit des lignes. Meme sur la
+        # base jetable de ce job, il ne s execute qu apres avoir prouve sa
+        # cible — c est la garde, pas la bonne volonte, qui protege.
+        run: npm run db:seed-rls
 
       - name: Isolation RLS prouvee par execution
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
-      - name: Scenarios croises contre la base de production
-        # Optionnels, et clairement annonces comme tels. L'etancheite est deja
-        # prouvee ci-dessus sans eux.
-        if: ${{ env.TF_SECRET_PRODUCTION != '' }}
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          npm run test:neon:security
-          npm run test:neon:supplier
-          npm run test:neon:product
-          npm run test:neon:quality
-          npm run test:neon:collection
+      - name: Audit en lecture seule — la session ne peut pas ecrire
+        # La lecture seule est appliquee par le serveur, et le test le prouve
+        # en TENTANT une ecriture : elle doit etre refusee avec « read-only
+        # transaction ». Le rapport est relu avant affichage pour verifier
+        # qu il ne divulgue ni chaine de connexion ni identifiant.
+        run: npm run test:audit-script
+
+      - name: Privileges d execution des fonctions SECURITY DEFINER
+        # Aucune fonction SECURITY DEFINER ne doit etre executable par PUBLIC,
+        # et le role applicatif doit pouvoir executer ce dont les politiques
+        # ont besoin. C'est la regression constatee : la migration
+        # 20261009120000 a rendu tracefab_material_visible_via_product
+        # executable par PUBLIC.
+        run: npm run test:neon:privileges
