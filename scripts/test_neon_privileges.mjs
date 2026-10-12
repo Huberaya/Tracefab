@@ -145,7 +145,7 @@ const cible = 'public.tracefab_material_visible_via_product(uuid)';
 const existe = (await db.query('SELECT to_regprocedure($1) AS oid', [cible])).rows[0].oid;
 
 if (!existe) {
-  console.log(`  ---- C. ${cible} absente de cette base : verification ignoree`);
+  ko(`C. fonction obligatoire absente de cette base : ${cible}`);
 } else {
   const etat = (await db.query(`
     SELECT EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') AS public_peut,
@@ -178,7 +178,7 @@ if (!existe) {
 {
   await db.query('BEGIN');
   try {
-    await db.query(`CREATE FUNCTION tracefab_privilege_probe() RETURNS boolean LANGUAGE sql STABLE AS $probe$ SELECT true $probe$`);
+    await db.query(`CREATE FUNCTION public.tracefab_privilege_probe() RETURNS boolean LANGUAGE sql STABLE AS $probe$ SELECT true $probe$`);
     const temoin = (await db.query(`
       SELECT EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') AS public_peut, p.proacl::text AS acl
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -237,7 +237,10 @@ if (!existe) {
       const resultats = [];
       for (const signature of FONCTIONS_A_FERMER) {
         const existe = (await db.query('SELECT to_regprocedure($1) AS oid', [signature])).rows[0].oid;
-        if (!existe) continue;
+        if (!existe) {
+          ko(`F. fonction obligatoire absente de cette base : ${signature}`);
+          continue;
+        }
         const peut = (await db.query('SELECT has_function_privilege($1, $2::regprocedure, $3) AS peut',
           [nomRole, signature, 'EXECUTE'])).rows[0].peut;
         resultats.push([signature, peut]);
