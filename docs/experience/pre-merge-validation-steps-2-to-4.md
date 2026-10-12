@@ -288,3 +288,321 @@ Aucune écriture n'a été faite sur GitHub hormis les commits de documentation 
 branche de travail ; aucun workflow n'a été activé, désactivé ou modifié ; aucun
 secret, variable ou réglage de production n'a été touché ; aucune migration n'a été
 appliquée ailleurs que sur une base jetable locale.
+
+---
+
+# Levée des blocages — mise à jour du 2026-10-12 (soir)
+
+**Commit examiné :** `ba5f159` (tête de la PR #36 avant cette mise à jour ; les
+sections 0 à 5 ci-dessus sont conservées telles quelles, elles rapportent l'état
+antérieur et restent la trace des mesures de l'époque).
+
+Statuts employés : `RÉUSSI` (mesuré, preuve reproductible) · `ÉCHEC` (mesuré, et
+le résultat est un défaut) · `BLOQUÉ` (prérequis ou accès manquant) ·
+`NON EXÉCUTÉ` (aucune mesure, donc aucun verdict).
+
+---
+
+## 6. Contrôle A — routes métier : dispositif d'épreuve et mesures
+
+### 6.1 Le mécanisme retenu, et pourquoi c'est le plus sûr
+
+**Instance Clerk de TEST** (clé `sk_test_…`), jamais l'instance de production.
+Les identités sont créées dans cette instance par l'API dorsale
+(`clerk.users.createUser`), les jetons sont de **vrais jetons de session**
+(`clerk.sessions.createSession` puis `clerk.sessions.getToken`) : ils traversent
+le vrai `verifyToken` du code applicatif. Aucune doublure d'authentification
+n'est posée dans le code applicatif, et aucune ne serait atteignable en
+production : le dispositif vit dans un harnais, hors des chemins de requête.
+
+Ce mécanisme est préférable à une injection d'identité parce qu'il éprouve la
+chaîne réelle (signature, `sub`, `clerk.users.getUser`, `prisma.user.upsert`) au
+lieu de la contourner. Il est préférable à l'instance de production parce
+qu'aucune donnée réelle n'est touchée et qu'aucun secret de production n'est
+exposé à un harnais.
+
+### 6.2 Ce qui a été livré
+
+| Élément | Fichier | Rôle |
+|---|---|---|
+| Harnais d'épreuve | `scripts/test_routes_tenant_isolation.mjs` (nouveau) | gardes, identités de test, cas A1–A4, bilan |
+| Commande dédiée | `package.json` → `verify:routes:isolation` | **hors** du préfixe `test:` : la boucle de CI ne l'attrape pas, donc pas de rouge ni de faux vert en attendant l'instance de test |
+| Fixture | réutilise `npm run db:seed-rls` (Maison Alpha / Maison Beta) | deux locataires porteurs de données, avec l'adhésion `viewer` croisée ajoutée par le harnais pour le cas A3 |
+
+### 6.3 Les quatre cas définis, et l'attendu tiré du code
+
+| Cas | Requête | Attendu | Source de l'attendu |
+|---|---|---|---|
+| A1 accès autorisé | jeton alpha → `GET /api/organizations` | 200, ses organisations, **pas** celles de Beta | `api/_routes/organizations.ts` L20-36 |
+| A2 absence d'authentification | sans en-tête → les trois routes | 401 `unauthorized` | `api/_lib/auth.ts` L16-21, L54-56 |
+| A3 permissions insuffisantes | jeton alpha (`viewer` de Beta) → `POST /api/products` sur Beta | 403 `brand_product_role_required` | `api/_routes/products.ts` L88-95 ; `tracefab_create_product` (`20260923160000` L122-126) ; mapping `api/_lib/sql-errors.ts` L32 |
+| A4 isolation entre deux organisations | jetons alpha et beta → `GET /api/products`, `?organizationId=<Beta>` avec jeton alpha, `GET /api/suppliers` | aucune organisation en commun ; liste **vide** sur la cible croisée, jamais une fuite | `api/_routes/products.ts` L57-59 ; `api/_routes/suppliers.ts` L21-56 |
+
+### 6.4 Mesures réelles obtenues
+
+| Mesure | Commande | Résultat | Statut |
+|---|---|---|---|
+| Refus par défaut du harnais, 7 configurations | voir §6.5 | codes 3, 2, 2, 3, 3, 3, 3 | `RÉUSSI` |
+| Refus sans jeton sur les trois routes | `/tmp/harness_routes.mjs` (arbre `44d49121`) | 401 ×3 | `RÉUSSI` (déjà au §1) |
+| Isolation RLS **avant** migration | `npm run test:neon:rls` sur base jetable recréée (35/36 migrations) | 14 contrôles `ok`, 0 échec, 47 tables sous RLS | `RÉUSSI` |
+| Isolation RLS **après** migration | idem, base 36/36 | **sortie identique**, 14 `ok`, 0 échec | `RÉUSSI` |
+| Cas A1, A3, A4 (fonctionnement nominal) | `npm run verify:routes:isolation` | **aucune mesure** : le harnais s'arrête avant | `NON EXÉCUTÉ` |
+
+### 6.5 Matrice de refus du harnais (mesurée, sortie réelle)
+
+| Configuration | Sortie | Message |
+|---|---|---|
+| aucun drapeau | 3 | « REFUS — ce harnais ne s execute pas par accident » |
+| drapeau, aucune base | 2 | « NON EXECUTE — DATABASE_URL absent(s) » |
+| drapeau + base jetable locale, clé absente | 2 | « NON EXECUTE — CLERK_SECRET_KEY absente » |
+| clé au préfixe de production (chaîne factice) | 3 | « REFUS — ne porte pas le prefixe d une instance de test » |
+| cible = hôte managé (Neon) | 3 | « REFUS — hote de base managee — jamais jetable, quelle que soit la declaration » |
+| contexte `VERCEL_ENV=production` | 3 | « REFUS — contexte de deploiement de production » |
+| tout fourni sauf un client Prisma réel | 3 | « REFUS — le client Prisma lit la base « inconnue » alors que la cible declaree est « tracefab_apres » » |
+
+Cette dernière ligne est volontaire : la vérification préalable exige que le
+client lise **la base déclarée** et qu'il y trouve la fixture. Une doublure de
+client — qui rend des résultats vides — franchissait une simple sonde
+`SELECT 1` et le harnais se serait mis à mesurer sa propre doublure. Le défaut a
+été trouvé puis corrigé **pendant** ce chantier ; il est consigné ici parce
+qu'il change ce que le harnais est autorisé à affirmer.
+
+### 6.6 Ce qui manque, et qui peut le fournir
+
+| Prérequis | Qui | Comment |
+|---|---|---|
+| Instance **Clerk de test** + clé `sk_test_…` | propriétaire | l'instance se crée dans le tableau de bord Clerk ; la clé se fournit par un mécanisme sécurisé — **jamais** dans ce rapport, un ticket ou un commit |
+| Client Prisma réellement généré | propriétaire (poste avec réseau) ou CI | `npm ci` puis `npm run db:generate` ; ici la tentative échoue pour une raison mesurée : `request to https://binaries.prisma.sh/…/libquery_engine.so.node.sha256 failed` (réseau sortant fermé) |
+
+**Risque résiduel.** Le fonctionnement nominal et l'isolation **des routes**
+restent non vérifiés. Ce qui est vérifié est l'invariant dont elles dépendent
+(RLS exécutée par un rôle sans `BYPASSRLS`) et le refus par défaut.
+
+**Critère de clôture.** `npm run verify:routes:isolation` avec une clé de test et
+un client Prisma généré, sortie 0, sur les quatre cas A1–A4.
+
+---
+
+## 7. Contrôle B — migration : diagnostic de production prêt, mesures locales faites
+
+### 7.1 Livrable : la lecture seule qui tranche les hypothèses
+
+`docs/security/diagnostic-pre-migration-close-public-execute-gap.sql` — **une
+seule instruction `SELECT`**, aucune écriture. Il relève : le rôle exécuteur et
+sa qualité de superutilisateur (section 1) ; pour chacune des six fonctions, son
+propriétaire, `SECURITY DEFINER`, l'`EXECUTE` de `PUBLIC` et celui de
+`tracefab_app`, les porteurs explicites (section 2) ; les privilèges par défaut
+enregistrés pour les fonctions (section 3) ; les rôles porteurs d'un `EXECUTE`
+et les rôles de connexion (section 4) ; les politiques qui appellent ces
+fonctions (section 5) ; et le critère de la migration — le nombre de fonctions
+encore ouvertes à `PUBLIC` (section 6).
+
+**Comment comparer aux hypothèses du rapport :** H1 (le rôle qui jouera la
+migration est le propriétaire des six) se lit en comparant la section 1 à la
+section 2 ; H2 (aucun rôle non-propriétaire ne dépend de l'`EXECUTE` de
+`PUBLIC`) se lit en section 4 ; H3 (les privilèges par défaut portent bien la
+forme globale) se lit en section 3. **La section 6 doit valoir 0 après
+application.** Si H1 est fausse — fonctions créées par un autre rôle que celui
+qui joue la migration — l'auto-contrôle de la migration mesure un autre rôle que
+celui des objets : vert, faille ouverte. C'est le risque 1 du §2.4.
+
+### 7.2 Le diagnostic exécuté sur deux bases jetables locales (vérification de l'outil)
+
+| Base | `PUBLIC` peut exécuter | Critère section 6 | Statut |
+|---|---|---|---|
+| `tracefab_avant` (35/36, migration cible non appliquée) | **true** sur les six | **6** | `RÉUSSI` — l'outil détecte la faille |
+| `tracefab_apres` (36/36) | **false** sur les six | **0** | `RÉUSSI` — l'outil confirme la fermeture |
+
+Lecture complémentaire : après migration, `tracefab_app` **garde** `EXECUTE` sur
+les six ; deux lignes de privilèges par défaut coexistent pour le même rôle
+(`{postgres=X/postgres}` global, de la migration, et `{tracefab_app=X/postgres}`
+dans le schéma `public`, de la fixture) — et la mesure qui compte :
+
+| Sonde | `tracefab_avant` | `tracefab_apres` |
+|---|---|---|
+| fonction neuve créée dans `public` → `PUBLIC` peut exécuter | true | **false** |
+| idem → `tracefab_app` peut exécuter | true | true |
+
+La coexistence des deux lignes de défauts **ne rouvre donc pas** la faille : le
+retrait global l'emporte sur la liste du schéma, qui ne fait qu'ajouter
+`tracefab_app`. C'était l'une des craintes raisonnables ; elle est mesurée, pas
+supposée.
+
+**Note d'instrument.** Sur la machine d'atelier, le diagnostic a listé un rôle
+`app_role` porteur d'un `EXECUTE` : c'est un rôle créé par **mes propres sondes
+antérieures** (`.cache/harness/probe_adp2.mjs`), pas un rôle de production. Il
+est signalé ici pour que la lecture d'une future exécution ne prête pas à
+confusion.
+
+### 7.3 Preuves encore manquantes
+
+| Preuve | Qui peut la fournir | Critère |
+|---|---|---|
+| Sortie du diagnostic **en production/préproduction** | propriétaire (accès base) | section 6 = 0 après application ; section 2 : propriétaire = rôle exécuteur ; section 4 : aucun rôle inattendu |
+| Application de la migration | propriétaire, **opération de niveau D** | autorisation spécifique, relevé avant, application, relevé après |
+
+**Risque résiduel.** Tant que le diagnostic n'a pas tourné en production, H1 et
+H2 restent des hypothèses. Une application aveugle pourrait laisser la faille
+ouverte tout en affichant un auto-contrôle vert.
+
+**Ce qui n'est PAS un risque, et qui est établi :** la migration n'est appliquée
+par **aucune** chaîne automatique. `prisma migrate deploy` n'existe que dans
+`package.json` (`db:deploy`, appelé par la CI sur base jetable), et
+`scripts/prisma-generate.mjs` — le seul chemin obligatoire au déploiement Vercel
+— ne le lance pas. **Fusionner la PR n'applique donc pas la migration.**
+
+---
+
+## 8. Contrôle C — CI GitHub : inventaire, corrections, décisions
+
+### 8.1 Diff exact `main` → tête de PR, fichier par fichier
+
+`git diff main ba5f159 -- .github/workflows/ci.yml` : **1 fichier, 63
+insertions, 29 suppressions**. Ce qui disparaît :
+
+| Ligne retirée | Ce qu'elle permettait |
+|---|---|
+| `TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}` | injecter le secret de production dans le job `base-de-donnees` |
+| `- name: Scenarios croises contre la base de production` + `if: ${{ env.TF_SECRET_PRODUCTION != '' }}` | exécuter cinq suites destructives sur cette base |
+| `DATABASE_URL: ${{ secrets.DATABASE_URL }}` (étape) | la cible réelle de ces suites |
+
+Ce qui apparaît : une étape « Garde de cible des suites destructives », des
+actions tierces épinglées par SHA, et un étage base de données sans aucune
+lecture de secret.
+
+### 8.2 Toutes les commandes pouvant écrire dans une base (inventaire mesuré)
+
+| Commande | Écrit ? | Derrière la garde ? |
+|---|---|---|
+| `test:neon:security`, `:product`, `:supplier`, `:supplier:advanced`, `:quality`, `:collection`, `:bulk`, `:wallet`, `:storage`, `:privileges` | oui (rôles, privilèges, lignes) | **oui** |
+| `db:seed-rls` | oui (rôle + deux locataires) | **oui** |
+| `pilot:seed` | **oui** (un locataire complet) | **non → corrigé** (§8.3) |
+| `test:neon:rls` | non (lecture seule, mesuré) | **non → corrigé** (§8.3) |
+| `test:audit-script` | non (session en lecture seule, prouvé) | **non → corrigé** (§8.3) |
+| `test:pilot` (`--dry-run`) | non, et sort 0 sans base | sans objet |
+| `db:migrations:check`, `verify:prisma-client`, `test:prisma-client`, `postinstall` | non | sans objet |
+| `diagnose:prod` | non (journaux Vercel) | sans objet |
+| `db:deploy` | **oui** (migrations) | non — c'est l'opération de niveau D elle-même |
+
+### 8.3 Corrections appliquées sur la branche, et leurs mesures
+
+| Correction | Fichier | Mesure |
+|---|---|---|
+| Toutes les variables de connexion **présentes** sont vérifiées (`DATABASE_URL` **et** `TF_RLS_APP_URL`), pas seulement la première | `scripts/run-db-suite.mjs` | une suite avec `TF_RLS_APP_URL` visant un hôte managé est **refusée avant connexion** (sortie 3) ; une suite qui ne fournit qu'une variable reste acceptée |
+| `test:neon:rls` passe par la garde | `package.json` | cible locale jetable : **14 `ok`, 0 échec** (aucune régression) |
+| `pilot:seed` passe par la garde | `package.json` | cible managée **avec la dérogation complète** (`TRACEFAB_ALLOW_NONLOCAL_TEST_DB=true` + hôte + base déclarés) : **REFUS**, sortie 3 |
+| La suite d'audit refuse une cible non autorisée avant de se connecter | `scripts/test_audit_neon_readonly.mjs` | avec base jetable : **sortie 0**, 17 contrôles `ok`, 0 échec (dont la preuve d'écriture refusée « read-only transaction ») ; sans base : sortie 2, inchangée |
+
+Ce que cela démontre, exactement : **même si un secret existe et qu'on le
+branche à la main**, une cible de base managée est refusée — le refus est
+antérieur à toute lecture d'opt-in. Le refus ne dépend pas de la bonne volonté
+de l'auteur d'une poussée.
+
+### 8.4 Un défaut mesuré, introduit par cette PR : le rouge certain de l'étage `verification`
+
+`test:audit-script` est **absent de `main`** et apporté par cette PR. La boucle
+de l'étage `verification` (qui n'a **pas** de base de données) sélectionne toutes
+les clés `test:*` sauf `neon`, `staging`, `p2`, `regression` — donc celle-ci —
+et cette suite **sort en 2 quand aucune cible n'est fournie** (« un test qui ne
+tourne pas ne vaut pas un test qui passe »). Mesuré : `npm run test:audit-script`
+sans `DATABASE_URL` → **code 2**. La boucle marque `ECHEC` dès qu'une suite sort
+non-zéro : **si la CI était réactivée, l'étage `verification` serait rouge**, et
+ce rouge serait imputable à cette PR. Le même contrôle, exécuté là où une base
+existe, passe (sortie 0, mesuré).
+
+La correction est **préparée, non appliquée** (elle touche la définition de la
+CI, donc une décision du propriétaire) :
+
+`docs/security/patches/ci.yml.garde-de-cible-et-moindre-privilege.patch`
+— applicable (`git apply --check` : ok), YAML résultant valide, trois
+modifications :
+
+1. exclure `test:audit-script` de la boucle sans base (il tourne déjà dans
+   l'étage base de données, avec la base jetable) ;
+2. ajouter `permissions: contents: read` au workflow ;
+3. corriger le compte annoncé dans l'en-tête (« 63 scripts » alors que la boucle
+   en sélectionne 75 : 65 sur `main`, 75 ici).
+
+### 8.5 Jetons `GITHUB_TOKEN` et workflow à écriture
+
+* `ci.yml` — ni sur `main` ni sur la branche — ne déclare de bloc
+  `permissions:`. Le jeton hérite donc du réglage du dépôt. Le correctif
+  (`contents: read`) est dans le patch ci-dessus.
+* `Figer la reference visuelle` est **`active`** et porte
+  `permissions: contents: write` **au niveau du workflow** : tous ses jobs
+  héritent du droit d'écriture, y compris ceux qui installent des dépendances et
+  exécutent le code du dépôt. La version durcie préparée
+  (`docs/security/patches/figer-reference-visuelle.durci.yml`) passe le workflow
+  à `contents: read`, réserve `contents: write` au seul job qui pousse, et reste
+  un YAML valide (vérifié). Le patch correspondant
+  (`figer-reference-visuelle.permissions.patch`) **s'applique** sur la branche
+  qui porte le fichier (`arena/91844ee9-tracefab`), vérifié par
+  `git apply --check`.
+* Aucune activation, désactivation ni modification de workflow n'a été faite ici.
+
+### 8.6 Décisions du propriétaire, et ce qui n'a pas été fait
+
+| Décision | Pourquoi elle n'appartient pas à l'exécution automatique |
+|---|---|
+| Appliquer le patch `ci.yml` (boucle + `permissions`) | change ce que la CI exécutera et ce que son jeton peut faire |
+| Réactiver `CI` | niveau C ; et la démonstration « ne peut pas toucher la production » doit alors être refaite sur le fichier de `main` (§3.2) |
+| Désactiver ou durcir `Figer la reference visuelle` | workflow de l'auteur, toujours `active`, à écriture |
+| Trancher l'existence du secret `DATABASE_URL` | le dépôt se contredit (§4) ; l'API refuse (403) |
+
+Aucun workflow activé, désactivé ou modifié ; aucun secret, paramètre GitHub ni
+protection de branche touché ; la CI reste `disabled_manually`.
+
+---
+
+## 9. Statut de chaque point, preuve à l'appui
+
+| # | Point | Statut | Preuve |
+|---|---|---|---|
+| 1 | Refus par défaut des trois routes (401 sans jeton) | `RÉUSSI` | §1 et §6.5 (re-mesuré à `44d49121`) |
+| 2 | Fonctionnement nominal des trois routes (A1, A3, A4) | `NON EXÉCUTÉ` | harnais livré, arrêt motivé avant mesure (§6.5) |
+| 3 | Isolation RLS des deux locataires, avant migration | `RÉUSSI` | 14 `ok`, 0 échec (base jetable 35/36) |
+| 4 | Isolation RLS après migration (non-régression) | `RÉUSSI` | sortie identique (base jetable 36/36) |
+| 5 | Diagnostic de production (propriétaire des six fonctions, rôle migrateur, `EXECUTE`, défauts) | `RÉUSSI` pour l'outil, `BLOQUÉ` pour la production | §7.1-7.2 / §7.3 |
+| 6 | Fermeture de la faille sur les fonctions futures | `RÉUSSI` | sonde : `false` après migration, malgré la fixture (§7.2) |
+| 7 | Application de la migration en production | `NON EXÉCUTÉ` | niveau D, autorisation absente (§2.4) |
+| 8 | Chaîne automatique de déploiement : n'applique aucune migration | `RÉUSSI` | `prisma-generate.mjs` ne lance pas `migrate deploy` (§7.3) |
+| 9 | Inventaire des commandes écrivant en base | `RÉUSSI` | §8.2 |
+| 10 | Garde de cible étendue aux variables de connexion présentes | `RÉUSSI` | §8.3 (refus mesuré sur `TF_RLS_APP_URL`) |
+| 11 | Cible managée refusée même avec dérogation complète | `RÉUSSI` | §8.3, sortie 3 |
+| 12 | Rouge certain de l'étage `verification` si la CI est réactivée | `ÉCHEC` (état de la PR) | §8.4, code 2 mesuré ; patch préparé |
+| 13 | Moindre privilège du jeton (`permissions`) | `BLOQUÉ` (décision) | §8.5, patch prêt |
+| 14 | Workflow `active` à `contents: write` | `BLOQUÉ` (décision) | §8.5, patch prêt et vérifié |
+
+---
+
+## 10. Décision de validation pré-fusion
+
+**PR NON FUSIONNABLE en l'état**, sur la base des seules preuves disponibles :
+
+1. **Deux des quatre cas d'épreuve des trois routes n'ont jamais été exécutés.**
+   Le refus est prouvé ; le fonctionnement et l'isolation des routes ne le sont
+   pas. Fusionner reviendrait à valider sur une analyse statique, ce que la
+   consigne interdit explicitement.
+2. **Un défaut mesuré est introduit par cette PR** : si la CI est réactivée,
+   l'étage `verification` échoue sur `test:audit-script` (code 2 sans base,
+   mesuré). Le correctif est prêt mais non appliqué — c'est une décision du
+   propriétaire.
+3. **La migration n'est pas applicable en l'état** : ses hypothèses H1 et H2 ne
+   sont pas vérifiées en production, et le diagnostic qui les tranche n'a pas
+   encore tourné là-bas. Fusionner ne l'applique pas (établi), mais laisser
+   croire qu'elle est prête à l'être serait une affirmation sans preuve.
+4. **Le durcissement du jeton du workflow n'est pas appliqué** : le correctif qui
+   rend l'étage base de données définitivement aveugle à tout secret est prêt,
+   à l'identique de ce qui est demandé depuis le début du chantier.
+
+**Ce qui la rendrait fusionnable, dans cet ordre :**
+
+1. appliquer `docs/security/patches/ci.yml.garde-de-cible-et-moindre-privilege.patch`
+   (le rouge mesuré disparaît, le jeton passe en lecture seule) ;
+2. fournir une instance Clerk **de test** et exécuter
+   `npm run verify:routes:isolation` jusqu'à sortie 0 sur A1–A4, dans un
+   environnement où `npm run db:generate` fonctionne ;
+3. décider du sort de `Figer la reference visuelle` (durcissement ou
+   désactivation) ;
+4. et, séparément de la fusion, exécuter le diagnostic en production avant toute
+   application de la migration.
