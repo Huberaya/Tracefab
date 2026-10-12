@@ -786,3 +786,93 @@ le rapport annonçait 33 fichiers là où l'arbre en comptait déjà 37. C'est
 exactement le type d'écart qu'une relecture par diff attrape et qu'une annonce
 sans relecture laisse passer : les compteurs des §10.4 et §10.6 ont été
 recalculés sur l'arbre, pas recopiés.
+
+---
+
+## 11. Pièce jointe `vercel.txt` annoncée et non reçue — ce qui est préparé à la place
+
+Le 2026-10-12, l'utilisateur a annoncé un fichier `vercel.txt` « pour faire le
+travail sur Vercel ». **Le fichier n'est pas arrivé dans l'espace de travail** :
+`/home/user/uploads` n'existe pas, `find / -iname "vercel.txt"` ne renvoie rien,
+et aucun fichier n'a été modifié dans l'intervalle. Aucun contenu n'a donc été
+lu, et rien n'est supposé ici sur ce qu'il contenait.
+
+### 11.1 La limite est réseau, pas une question d'autorisation
+
+Test de sortie refait ce jour, sans aucun secret dans la commande :
+
+| Hôte | Résultat |
+|---|---|
+| `api.vercel.com/v6/deployments?limit=1` | **HTTP 000** |
+| `vercel.com` | **HTTP 000** |
+| `registry.npmjs.org/-/ping` | **HTTP 200** |
+
+L'accès sortant du bac à sable est restreint à quelques hôtes (GitHub, registre
+npm, PyPI). **Un jeton Vercel, même valide, ne change rien** : `api.vercel.com`
+n'est pas joignable d'ici. Ni les journaux de build, ni les journaux
+d'exécution, ni les métadonnées du déploiement ne peuvent être lus dans cet
+environnement. Le jeton annoncé **n'a pas été lu, affiché, copié, testé ni
+enregistré** — conforme aux règles de la session, y compris pour une pièce
+jointe déposée volontairement.
+
+En conséquence : **la cause de l'incident de production reste NON VÉRIFIÉE**, et
+le restera tant qu'une ligne de journal n'aura pas été obtenue. Le §5.5 reste une
+reproduction fidèle sur l'arbre déployé, pas un constat sur la production.
+
+### 11.2 Ce qui a été livré à la place, et qui est utilisable sans cet accès
+
+1. **`scripts/diagnose_production_incident.mjs`** — lecture seule stricte : que
+   des `GET` construits, aucun hôte autre que `api.vercel.com`, délai de 20 s,
+   sorties distinctes **0** (ligne trouvée et affichée), **1** (rien trouvé —
+   et l'absence est présentée comme une absence, avec le renvoi vers les
+   journaux d'exécution), **2** (le contrôle n'a pas pu tourner). Tout ce qui est
+   affiché passe par un caviardage : jeton, `Bearer …`, chaînes de connexion,
+   identifiants opaques.
+2. **`scripts/diagnose_production_incident.sh`** — saisie **masquée** du jeton,
+   transmis par l'environnement du processus fils : il n'entre ni dans
+   l'historique du shell, ni dans `ps`, ni dans un fichier. Refuse les textes de
+   remplacement.
+3. **`scripts/lib/fake-vercel-api.mjs` + `scripts/test_diagnose_incident_offline.mjs`**
+   — 20 vérifications hors ligne, **0 échec** (`npm run test:diagnose-incident`) :
+   sans jeton → 2 ; refus 403 → 2 ; ligne trouvée → 0 avec jeton et chaîne de
+   connexion **masqués** ; rien trouvé → 1 ; aucune méthode d'écriture dans le
+   source et **seulement des GET** dans le journal des requêtes interceptées ;
+   un jeton présent dans un corps d'erreur reste masqué ; une requête vers un
+   autre hôte et une méthode `POST` sont **refusées** par l'interception
+   elle-même. L'interception ne s'active que sous `TF_FAKE_VERCEL` : sans cette
+   variable, le module ne touche pas à `fetch`.
+4. **`docs/security/patches/vercel-log-search.workflow.yml`** — workflow
+   **préparé, NON installé** : lecture des journaux depuis la CI, classe
+   **niveau C** (écriture GitHub + création d'un secret + exécution). Il rappelle
+   les deux conséquences à valider : créer le secret `VERCEL_READONLY_TOKEN`, et
+   déclarer le fichier au registre sinon **mes propres contrôles** lèveraient
+   l'alerte A (secret lu sans déclaration) et C (action non épinglée).
+5. **`docs/incident/TRACEFAB-RECHERCHE-CORRELATIONID-2026-10-12.md`** — les trois
+   voies (tableau de bord, script local, workflow), la table de décision qui
+   associe chaque valeur possible de `error.message` à sa conclusion — **y
+   compris le cas où la ligne contredit le §5.5 et où c'est le §5.5 qui devra
+   être réécrit** — et les règles de sécurité applicables au jeton.
+
+### 11.3 Ce qui manque, réduit à une ligne
+
+Une seule information débloque le diagnostic, et elle ne contient aucun secret :
+la valeur de `error.message` du rapport d'erreur portant
+`fd30b689-f50f-44f0-a0dd-43e5e1e51f0e`, telle qu'elle apparaît dans l'onglet
+Logs du déploiement `6968252029`. Si ce déploiement n'a plus ses journaux, un
+déploiement postérieur au 2026-10-09 fait l'affaire.
+
+### 11.4 Hygiène du jeton déjà transmis
+
+Un jeton qui a transité par une pièce jointe doit être considéré comme **exposé**,
+même s'il n'a jamais servi : ne pas le coller à nouveau (chat, ticket, commit),
+préférer un jeton dédié à portée minimale, identifier ses consommateurs
+légitimes **avant** révocation, puis le révoquer et prouver la révocation par la
+liste des jetons du fournisseur — jamais en publiant la valeur.
+
+### 11.5 État du dépôt après ce tour
+
+Fichiers ajoutés : les cinq ci-dessus (§11.2) plus deux entrées `package.json`
+(`diagnose:prod`, `test:diagnose-incident`). Batterie : **15 cibles, 0 échec**.
+Rien d'écrit hors de la branche `arena/879cd8db-tracefab` : aucun workflow créé,
+aucun secret créé ou lu, aucun réglage GitHub, Vercel ou Neon modifié, `main`
+intacte.

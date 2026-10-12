@@ -1,0 +1,68 @@
+# PREPARE — NON INSTALLE. Aucun fichier de .github/workflows n'a ete cree.
+#
+# Destination si vous l'autorisez : .github/workflows/vercel-log-search.yml
+# Nature de l'action : niveau C (ecriture GitHub + secret + execution d'un
+# workflow). Elle ne doit pas etre executee sans votre accord explicite, et elle
+# suppose que GitHub Actions soit actif sur le depot.
+#
+# Ce que ce workflow ferait : lire, en GET seulement, les journaux du
+# deploiement `6968252029` et n'afficher que les lignes portant l'identifiant de
+# correlation `fd30b689-f50f-44f0-a0dd-43e5e1e51f0e`. Il n'ecrit rien, ne
+# redeploie rien, ne modifie aucune variable.
+#
+# Deux consequences a valider avant de l'installer :
+#   1. le secret `VERCEL_READONLY_TOKEN` doit etre cree dans Settings > Secrets
+#      (le workflow seul ne suffit pas) ;
+#   2. mon propre controle `test:workflow-policy` leverait deux alertes tant que
+#      ce fichier n'est pas declare au registre : l'alerte A (secret lu sans
+#      declaration) et l'alerte C (action non epinglee par SHA). La declaration
+#      correspondante est proposee en bas de ce fichier, et les actions doivent
+#      etre epinglees sur le SHA utilise par le reste du depot.
+
+name: Recherche dans les journaux Vercel (lecture seule)
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploiement:
+        description: Identifiant du deploiement a interroger
+        required: true
+        default: '6968252029'
+
+permissions: {}
+
+concurrency:
+  group: vercel-log-search
+  cancel-in-progress: false
+
+jobs:
+  recherche:
+    name: Lire les journaux et filtrer sur l identifiant de correlation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Interroger l API Vercel en lecture seule
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_READONLY_TOKEN }}
+          TF_DEPLOYMENT_ID: ${{ inputs.deploiement }}
+        run: node scripts/diagnose_production_incident.mjs
+
+# ---------------------------------------------------------------------------
+# Declaration a ajouter dans docs/security/workflow-privileged-allowlist.json,
+# dans le compartiment « secretUsingWorkflows », si ce workflow est installe :
+#
+#   "vercel-log-search.yml": {
+#     "secret": "VERCEL_READONLY_TOKEN",
+#     "portee": "job `recherche` uniquement, workflow declenche manuellement",
+#     "justification": "Retrouver la ligne de journal qui manque au diagnostic : le bac a sable d'analyse n'a pas d'acces reseau a api.vercel.com, donc la lecture doit se faire depuis un environnement qui l'a.",
+#     "lecture_seule": "Le script appele n'emet que des GET. Une interception de test prouve hors ligne qu'aucune autre methode n'est construite et qu'aucun hote autre que api.vercel.com n'est joint.",
+#     "rotation": "Jeton dedie, distinct de tout jeton d'administration, a revoquer des la ligne recuperee.",
+#     "journal": "La sortie est caviardee par le script (jeton, entetes d'autorisation, chaines de connexion)."
+#   }
+# ---------------------------------------------------------------------------
