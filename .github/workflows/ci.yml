@@ -5,7 +5,7 @@
 # probable soit aussi le plus vite signale :
 #
 #   1. socle        types, compilation, isolation multi-locataires  (~1 min)
-#   2. verification 63 scripts test:* + audit statique end-to-end
+#   2. verification suites test:* sans base + audit statique end-to-end
 #   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
 #
 # L'etage base de donnees monte un Postgres jetable : il ne lit aucun secret.
@@ -150,8 +150,9 @@ jobs:
           exit 1
 
       - name: Suite complete des scripts test:*
-        # Les suites neon et staging exigent une base ou un environnement
-        # deploye : elles ont leur propre etage.
+        # Les suites neon, staging et test:audit-script exigent une base ou un
+        # environnement deploye : elles ont leur propre etage. test:audit-script
+        # s'execute dans le job base de donnees contre PostgreSQL jetable.
         #
         # test:regression est exclu pour une raison differente et assumee : sa
         # reference est une image, donc liee a son environnement de rendu. Les
@@ -161,7 +162,7 @@ jobs:
         # l'automatiser suppose de figer le rendu dans un conteneur.
         run: |
           set -u
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression').join(' '))")
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script').join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
