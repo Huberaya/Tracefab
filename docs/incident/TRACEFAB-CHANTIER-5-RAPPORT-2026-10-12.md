@@ -952,3 +952,69 @@ aucune configuration : il n'ajoute aucune barrière, et c'est un choix à assume
 
 **Le jeton n'a jamais à passer par cette conversation.** La seule chose qui doit
 remonter jusqu'ici est la valeur de `error.message` — une phrase, aucun secret.
+
+---
+
+## 13. Test du relais GitHub : il ne peut pas tourner — et pourquoi
+
+Après le refus du jeton, j'ai construit la seule voie qui atteignait Vercel
+depuis cette session : faire porter la requête par un runner GitHub. **Le test
+est concluant, mais négatif** : les workflows ne s'exécutent pas dans ce dépôt.
+
+### 13.1 Ce que j'ai mesuré, dans l'ordre
+
+| Mesure | Résultat |
+|---|---|
+| `gh api …/actions/workflows` | `CI` → **`disabled_manually`** ; `Figer la reference visuelle` → `active` |
+| exécutions sur `arena/879cd8db-tracefab` (toutes dates) | **0** |
+| dernière exécution du dépôt, toutes branches | **2026-10-10T10:18:56Z** |
+| dernier push d'une branche | `arena/91844ee9-tracefab` : 2026-10-10T10:18:50Z ; **ma branche : 2026-10-12T10:19:55Z** |
+| nouvelle exécution après l'installation de `vercel-log-search.yml` (attente de 80 s, 4 relevés) | **aucune** |
+| vérifications attachées à mon commit `0de0601` | `Vercel Preview Comments` seulement — aucune vérification d'Actions |
+| `gh api …/actions/secrets` (lecture **et** écriture) | **403** « Resource not accessible by integration » |
+
+Autrement dit : mon push du 2026-10-12 n'a déclenché **aucun** workflow, y compris
+le fichier de workflow que je venais d'installer. Les exécutions s'arrêtent au
+2026-10-10T10:18:56Z, soit l'instant où `CI` a été désactivé manuellement.
+
+### 13.2 Ce que cela ferme, définitivement
+
+1. **Le relais GitHub est inerte** tant que les exécutions de workflows sont
+   désactivées. Le fichier `.github/workflows/vercel-log-search.yml` est
+   installé, déclaré au registre, validé par `test:workflow-policy` (0 échec) —
+   et il ne s'exécutera pas. Il est conservé parce qu'il ne gêne rien et servira
+   si les exécutions reviennent ; il peut être retiré sur demande.
+2. **Je ne peux pas poser de secret** : lecture et écriture des secrets
+   d'Actions répondent **403**. Même si un jeton m'était transmis, je n'aurais
+   aucun moyen de le placer dans le magasin de secrets GitHub — donc aucun moyen
+   de le faire servir.
+3. **`workflow_dispatch` est fermé de toute façon** : le déclenchement manuel
+   n'apparaît que si le fichier est présent sur la branche par défaut, et `main`
+   ne doit pas être modifiée.
+
+Ces trois points ne dépendent ni d'une règle de la session, ni d'une
+autorisation : ce sont des constats.
+
+### 13.3 Ce qui reste ouvert, et ce que cela coûte
+
+| Voie | Ce que vous faites | Ce que je fais | Ce que cela suppose |
+|---|---|---|---|
+| **A. Tableau de bord** *(recommandée)* | onglet Logs du déploiement `6968252029`, rechercher `fd30b689-…` | je conclus, ou je corrige le §5.5 | rien |
+| **B. Script local** | `sh scripts/diagnose_production_incident.sh` sur un poste qui joint Vercel | idem, à partir d'une sortie déjà caviardée | rien |
+| **C. Relais GitHub** | réactiver les exécutions Actions, créer l'environnement `vercel-log-search` et son secret, puis déclencher une exécution par un commit depuis l'interface web (un push par intégration ne déclenche rien, c'est mesuré) | je lis les journaux par l'API et je conclus | une règle que vous avez fixée serait levée : c'est vous qui décidez |
+
+**Aucune de ces voies ne demande que le jeton transite par cette conversation**,
+et c'est heureux : la voie C elle-même exige qu'il soit saisi dans GitHub, pas
+transmis ici. Le refus n'était donc pas un obstacle posé par principe ; c'est le
+seul chemin qui existe.
+
+### 13.4 Confirmations d'état
+
+- `CI` est `disabled_manually` : **je n'ai touché ni son état, ni aucun réglage
+  du dépôt**. Le seul fichier ajouté est `vercel-log-search.yml`, sur la branche
+  de travail, sans privilège (`permissions: {}`), déclaré au registre.
+- Batterie après installation : `test:workflow-policy` **0 échec**,
+  `test:diagnose-incident` **0 échec**.
+- Aucun secret n'a été créé, lu, modifié ou supprimé. Aucun jeton n'a transité.
+- Aucune fusion, aucun déploiement, aucune migration : `main` intacte
+  (`b0c976f`), production intacte.
