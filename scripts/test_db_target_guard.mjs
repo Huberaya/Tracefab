@@ -56,6 +56,18 @@ withEnv({
   v.allowed && v.code === 'allowlisted_remote' ? ok('cible distante explicitement autorisee (3 declarations)') : ko(`cible distante autorisee refusee (${v.code})`);
 });
 
+withEnv({
+  TRACEFAB_ALLOW_NONLOCAL_TEST_DB: 'true',
+  TRACEFAB_TEST_DB_HOST_ALLOWLIST: 'test-db.internal.example',
+  TRACEFAB_TEST_DB_NAME_ALLOWLIST: 'tracefab_test',
+}, () => {
+  // L'hote effectif est celui du parametre, et il est declare : l'autorisation
+  // doit donc fonctionner. Sans ce temoin, un durcissement trop large passerait
+  // inapercu en refusant toute cible distante.
+  const v = classifyTarget('postgresql://u:p@passerelle.example:5432/tracefab_test?host=test-db.internal.example');
+  v.allowed && v.code === 'allowlisted_remote' ? ok('hote effectif declare par parametre : autorisation maintenue') : ko(`cible distante declaree refusee (${v.code})`);
+});
+
 console.log('\n  B. ce qui doit etre REFUSE');
 
 withEnv({ VERCEL_ENV: 'production' }, () => {
@@ -73,6 +85,35 @@ withEnv({
 }, () => {
   const v = classifyTarget(`postgresql://neondb_owner:${SECRET_PASSWORD}@${SECRET_HOST}/tracefab_test`);
   !v.allowed && v.code === 'managed_host' ? ok('hote manage refuse meme avec opt-in et autre liste blanche') : ko(`hote manage accepte (${v.code})`);
+});
+withEnv({}, () => {
+  // Le pilote joint l'hote du parametre, pas celui de l'URL. Declarer
+  // « localhost » dans l'autorite ne rend pas la cible locale.
+  const v = classifyTarget(`postgresql://u:p@localhost:5432/tracefab_test?host=${SECRET_HOST}`);
+  !v.allowed && v.code === 'managed_host' ? ok('contournement par ?host= vers un hote manage : refuse') : ko(`contournement par ?host= accepte (${v.code})`);
+});
+withEnv({}, () => {
+  const v = classifyTarget('postgresql://u:p@127.0.0.1:5432/tracefab_test?host=db.entreprise.example');
+  !v.allowed ? ok('contournement par ?host= vers un hote distant : refuse') : ko('contournement par ?host= distant accepte');
+});
+withEnv({
+  TRACEFAB_ALLOW_NONLOCAL_TEST_DB: 'true',
+  TRACEFAB_TEST_DB_HOST_ALLOWLIST: 'test-db.internal.example',
+  TRACEFAB_TEST_DB_NAME_ALLOWLIST: 'tracefab_test',
+}, () => {
+  const v = classifyTarget('postgresql://u:p@127.0.0.1:5432/tracefab_test?host=db.entreprise.example');
+  !v.allowed && v.code === 'host_not_allowlisted' ? ok('hote effectif hors liste blanche : refuse malgre l opt-in') : ko(`hote effectif hors liste accepte (${v.code})`);
+});
+withEnv({
+  TRACEFAB_ALLOW_NONLOCAL_TEST_DB: 'true',
+  TRACEFAB_TEST_DB_HOST_ALLOWLIST: SECRET_HOST,
+  TRACEFAB_TEST_DB_NAME_ALLOWLIST: 'tracefab_test',
+}, () => {
+  // Cas le plus dangereux : quelqu'un declare la plateforme de production dans
+  // la liste blanche pour « tester en preproduction ». La liste blanche ne doit
+  // pas pouvoir rendre jetable un hote manage.
+  const v = classifyTarget(`postgresql://neondb_owner:${SECRET_PASSWORD}@${SECRET_HOST}/tracefab_test`);
+  !v.allowed && v.code === 'managed_host' ? ok('hote manage inscrit dans la liste blanche : refuse quand meme') : ko(`hote manage declare accepte (${v.code})`);
 });
 withEnv({}, () => {
   const v = classifyTarget('postgresql://u:p@db.entreprise.example:5432/tracefab_production');

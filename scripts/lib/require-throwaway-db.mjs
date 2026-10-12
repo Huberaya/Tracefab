@@ -29,10 +29,21 @@
  * CE QUI EST TOUJOURS REFUSE
  *
  *   — un contexte de deploiement de production (`VERCEL_ENV`, `NODE_ENV`) ;
- *   — un hote de base managee connu (`*.neon.tech`, `*.supabase.*`) s'il
- *     n'est pas explicitement autorise ;
+ *   — un hote de base managee connu (`*.neon.tech`, `*.supabase.*`,
+ *     `*.rds.amazonaws.com`, …), SANS EXCEPTION : un hote manage n'est jamais
+ *     jetable par nature, une liste blanche ne le rend pas jetable, et le
+ *     declarer reviendrait a declarer la plateforme qui heberge la production ;
  *   — un nom de base evoquant la production ;
  *   — une cible illisible ou non parsable.
+ *
+ * TOUS LES CAS PRECEDENTS SONT JUGES SUR L'HOTE REELLEMENT JOINT
+ *
+ * Un parametre `host=` dans la chaine de connexion l'emporte sur l'hote
+ * present dans l'URL (c'est ce que fait `pg-connection-string`, donc ce que
+ * fait le pilote au moment de se connecter). Une chaine ecrite
+ * `postgresql://…@localhost/…?host=<hote distant>` joint donc l'hote distant
+ * tout en paraissant locale. La classification porte sur l'hote effectif,
+ * jamais sur celui que l'URL affiche.
  *
  * CE QUI N'EST JAMAIS AFFICHE
  *
@@ -92,10 +103,15 @@ export function classifyTarget(rawValue) {
     return { allowed: false, code: 'unparseable', reason: 'valeur de connexion non analysable' };
   }
 
-  const host = (parsed.hostname || '').toLowerCase();
+  const hostnameUrl = (parsed.hostname || '').toLowerCase();
   const socketHost = (parsed.searchParams.get('host') || '').trim();
   const database = decodeURIComponent((parsed.pathname || '').replace(/^\//, '')).toLowerCase();
-  const isLocal = LOCAL_HOSTS.has(host) || socketHost.startsWith('/');
+  // L'hote EFFECTIF : celui que le pilote joindra reellement. Un `host=/chemin`
+  // est une socket Unix locale ; tout autre `host=` est un nom d'hote, et il
+  // prend le pas sur celui de l'URL.
+  const isSocket = socketHost.startsWith('/');
+  const host = socketHost && !isSocket ? socketHost.toLowerCase() : hostnameUrl;
+  const isLocal = isSocket || LOCAL_HOSTS.has(host);
 
   const allowedHosts = splitList('TRACEFAB_TEST_DB_HOST_ALLOWLIST');
   const allowedNames = splitList('TRACEFAB_TEST_DB_NAME_ALLOWLIST');
@@ -117,6 +133,11 @@ export function classifyTarget(rawValue) {
   if (!isLocal && PRODUCTION_HINTS.test(database)) {
     return { ...info, allowed: false, code: 'production_name', reason: 'le nom de base evoque la production' };
   }
+  // Un hote manage est refuse ici, avant toute lecture d'opt-in ou de liste
+  // blanche : aucune declaration ne le rend jetable.
+  if (MANAGED_HOST_PATTERNS.some((pattern) => pattern.test(host))) {
+    return { ...info, allowed: false, code: 'managed_host', reason: 'hote de base managee — jamais jetable, quelle que soit la declaration' };
+  }
 
   // 2. Cible locale : jetable par construction.
   if (isLocal) {
@@ -128,13 +149,7 @@ export function classifyTarget(rawValue) {
     return { ...info, allowed: false, code: 'remote_not_opted_in', reason: 'cible distante sans opt-in explicite' };
   }
   if (!allowedHosts.includes(host)) {
-    const managed = MANAGED_HOST_PATTERNS.some((pattern) => pattern.test(host));
-    return {
-      ...info,
-      allowed: false,
-      code: managed ? 'managed_host' : 'host_not_allowlisted',
-      reason: managed ? 'hote de base managee non autorise explicitement' : 'hote absent de la liste blanche',
-    };
+    return { ...info, allowed: false, code: 'host_not_allowlisted', reason: 'hote absent de la liste blanche' };
   }
   if (!allowedNames.includes(database)) {
     return { ...info, allowed: false, code: 'name_not_allowlisted', reason: 'nom de base absent de la liste blanche' };
