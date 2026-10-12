@@ -18,7 +18,12 @@
  *   C. toute action tierce epinglee par SHA complet, avec sa version lisible ;
  *   D. tout workflow demandant `contents: write` declare, avec justification ;
  *   E. aucun declencheur qui execute du code de branche avec les privileges
- *      de la branche de base.
+ *      de la branche de base ;
+ *   F. les environnements privilegies sont declares au registre ;
+ *   G. les suites de base passent par la garde de cible ;
+ *   H. un jeton d'ecriture ne cohabite pas avec l'execution de code du depot ;
+ *   I. aucun job ne peut afficher vert sans executer le test qu'il annonce ;
+ *   J. permissions minimales explicites et checkout sans credentials persistants.
  *
  * Le YAML est analyse par la bibliotheque `yaml`, pas par des expressions
  * regulieres : une politique qui se trompe sur l'indentation se croit verte.
