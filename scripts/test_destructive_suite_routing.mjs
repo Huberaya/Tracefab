@@ -87,6 +87,16 @@ const ROLLBACK_ONLY_DB_SUITES = [
 ];
 
 /**
+ * Suites dont l'ecriture est une sonde qui DOIT etre refusee. Elles tentent
+ * une ecriture pour prouver que le serveur la rejette ; si elle reussissait,
+ * la suite echouerait et retirerait la table sonde. La declaration n'est pas
+ * un blanc-seing : la suite verifie que le refus est bien affirme.
+ */
+const REFUSED_WRITE_PROBE_DB_SUITES = [
+  'scripts/test_audit_neon_readonly.mjs',
+];
+
+/**
  * Outils d'exploitation : ils ECRIVENT volontairement vers une cible nommee
  * par l'operateur. Les faire passer par la garde de cible les priverait de
  * leur fonction — amorcer un environnement reel fait partie du metier.
@@ -155,6 +165,7 @@ console.log('\n  C. aucune suite destructive non declaree');
     if (OPERATOR_WRITER_SCRIPTS.includes(rel)) continue;
     if (PATTERN_ONLY_FILES.includes(rel)) continue;
     if (ROLLBACK_ONLY_DB_SUITES.includes(rel)) continue;
+    if (REFUSED_WRITE_PROBE_DB_SUITES.includes(rel)) continue;
     // Une suite invoquee uniquement via le lanceur est couverte.
     const invocations = scriptInvocations(rel);
     if (invocations.length > 0 && invocations.every(([, command]) => command.includes(WRAPPER))) continue;
@@ -231,6 +242,15 @@ for (const rel of READ_ONLY_DB_SUITES) {
   writes
     ? ko(`${rel} est declaree en lecture seule mais contient une ecriture`)
     : ok(`${rel} — confirmee en lecture seule`);
+}
+for (const rel of REFUSED_WRITE_PROBE_DB_SUITES) {
+  if (!existsSync(join(ROOT, rel))) { ko(`${rel} — declaree introuvable`); continue; }
+  const corps = readFileSync(join(ROOT, rel), 'utf8');
+  const tente = /CREATE TABLE tracefab_readonly_probe/.test(corps);
+  const affirme = /UNE ECRITURE A REUSSI/.test(corps) && /read-only transaction/i.test(corps);
+  if (tente && affirme) ok(`${rel} — sonde d ecriture tentee et refus affirme explicitement`);
+  else if (!tente) ko(`${rel} ne tente aucune ecriture : la declaration est fausse`);
+  else ko(`${rel} tente une ecriture sans affirmer le refus attendu`);
 }
 for (const rel of ROLLBACK_ONLY_DB_SUITES) {
   if (!existsSync(join(ROOT, rel))) { ko(`${rel} — declaree introuvable`); continue; }

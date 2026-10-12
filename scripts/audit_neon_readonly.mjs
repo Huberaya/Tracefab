@@ -229,8 +229,9 @@ if (defautFonctions.length === 0) {
   console.log('  Consequence : le defaut integre s applique, et une fonction creee');
   console.log('  ensuite est executable par PUBLIC. C est le defaut que la migration');
   console.log('  20261007100000 croyait fermer avec la forme « IN SCHEMA public ».');
-  console.log('  Forme utile : ALTER DEFAULT PRIVILEGES FOR ROLE <proprietaire>');
-  console.log('                REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;');
+  console.log('  Forme utile : la variante GLOBALE de la commande de defauts, pour le role');
+  console.log('  proprietaire, sans clause de schema. Details et SQL exact :');
+  console.log('  docs/security/PHASE-3-PRIVILEGES-NEON.md, section 3.');
 } else {
   for (const d of defautFonctions) {
     const acl = d.acl || '';
