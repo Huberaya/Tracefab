@@ -24,7 +24,7 @@ Statuts : `CORRIGÉ ET PROUVÉ` · `CORRIGÉ EN ENVIRONNEMENT ISOLÉ` · `PRÉPA
    client déployé est factice. Mesuré (§5.3), avec l'erreur d'aujourd'hui
    (`binaries.prisma.sh` injoignable) comme scénario.
 3. **La garde de cible avait une faille réelle, refermée ici.** Une chaîne
-   `postgresql://…@localhost/…?host=<hôte manage>` était classée **jetable** par
+   `postgresql://<utilisateur>@localhost/<base>?host=<hôte manage>` était classée **jetable** par
    la garde alors que le pilote s'y connecte réellement à l'hôte manage : le
    paramètre l'emporte sur l'autorité de l'URL. C'est exactement « un test qui
    utilise silencieusement une base réelle ». Corrigé, avec quatre témoins
@@ -208,7 +208,7 @@ garde. Je ne fusionne ni l'une ni l'autre.
 **Preuve, mesurée** :
 
 ```
-pg-connection-string.parse("postgresql://u:p@localhost:5432/db?host=ep-xxx.….neon.tech")
+pg-connection-string.parse("postgresql://<utilisateur>@localhost:5432/<base>?host=<hote manage>")
    → host effectif = ep-xxx.….neon.tech
 
 avant correctif : classifyTarget(… ) → ACCEPTEE | classe=throwaway_local
