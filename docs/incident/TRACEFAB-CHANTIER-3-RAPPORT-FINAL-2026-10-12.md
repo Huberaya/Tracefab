@@ -2,7 +2,8 @@
 
 **Date** : 2026-10-12 (Europe/Paris)
 **Dépôt** : `Huberaya/Tracefab` — branche de travail `arena/879cd8db-tracefab`
-**HEAD vérifié** : `2d03cc4` (+ un commit de témoins de détection ajouté par ce rapport)
+**HEAD vérifié** : `1a3d7a7` — 18 commits d'avance sur `main`
+**Livraison** : PR **#36**, ouverte en **brouillon** (non fusionnée, non fusionnable sans décision)
 **Branche de référence** : `main` = `origin/main` = `b0c976f`, inchangée
 **Aucune fusion, aucun déploiement de production, aucune modification de la base Neon.**
 
@@ -18,8 +19,9 @@ branche active      : arena/879cd8db-tracefab
 HEAD                : 2d03cc4
 arbre de travail    : propre avant ce rapport
 main / origin/main  : b0c976f  (aucun commit de ce chantier)
-commits d'avance    : 17
-fichiers changés    : 25 (5 174 insertions, 82 suppressions)
+commits d'avance    : 18
+fichiers changés    : 27 (5 805 insertions, 82 suppressions)
+PR de la branche    : #36, brouillon, ouverte — aucune PR fusionnée
 ```
 
 `git status --porcelain` est vide hors les fichiers de ce rapport : les travaux
@@ -52,6 +54,7 @@ vérifiées une à une comme existantes.
 | `62fc3b3` | revert | retrait du contrôle négatif temporaire |
 | `9a126ee` | rapport de clôture | validation, exécution, limites |
 | `2d03cc4` | client sans moteur | refuser un client qui se construit mais ne peut pas interroger |
+| `1a3d7a7` | témoins de détection | huit workflows fautifs passés à la politique de production ; rapport final |
 
 Aucune branche n'a été fusionnée, aucun commit n'a été réécrit. `21f9340` reste
 dans l'historique **et doit y rester** : c'est la trace datée du contrôle
@@ -215,6 +218,7 @@ lisible par `gh api`) :
 | `21f9340` | génération d'un schéma **absent** (contrôle négatif) | **échec** (`7010111138`) |
 | `62fc3b3` | restauration | succès (`7010151109`) |
 | `2d03cc4` | + contrôle du **moteur** | succès (`7010442465`) |
+| `1a3d7a7` | + témoins de la politique (rapport final) | succès (`7010526262`) |
 
 Conclusion **prouvée** : l'installation exécute réellement la génération dans
 l'environnement de build, un échec de génération **fait échouer le
