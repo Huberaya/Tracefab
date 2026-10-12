@@ -61,6 +61,8 @@ const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_neon_data_collection_flow.mjs',
   'scripts/test_neon_bulk_operations_chantier8.mjs',
   'scripts/test_supplier_advanced.mjs',
+  'scripts/test_routes_tenant_isolation.mjs',   // ecrit users et organization_memberships
+  // dans une base jetable ; deuxiemement gardee par TF_ROUTES_TEST_HARNESS=1.
 ];
 
 /**

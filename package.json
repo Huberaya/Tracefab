@@ -116,7 +116,7 @@
     "audit:workflows": "node scripts/audit_workflows_all_refs.mjs",
     "test:workflow-policy-temoins": "node scripts/test_workflow_policy_detection.mjs",
     "test:error-reporting": "npx tsx scripts/test_error_reporting.ts",
-    "verify:routes:isolation": "npx tsx scripts/test_routes_tenant_isolation.mjs"
+    "verify:routes:isolation": "node scripts/run-db-suite.mjs scripts/test_routes_tenant_isolation.mjs"
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",

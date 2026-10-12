@@ -5,16 +5,32 @@ BEGIN;
 
 SET LOCAL search_path = pg_catalog, public;
 
--- 1. Préconditions : les six fonctions attendues doivent exister dans public,
--- être SECURITY DEFINER et appartenir au rôle qui applique cette migration.
--- Une fonction manquante ou un rôle migrateur différent doit arrêter la
--- migration au lieu de produire un succès partiel ou un durcissement inopérant.
+-- 1. Préconditions : les six fonctions attendues doivent exister dans public et
+-- appartenir au rôle qui applique cette migration. Cinq d'entre elles doivent en
+-- outre être SECURITY DEFINER : elles interrogent des tables depuis les
+-- politiques, et c'est ce qui evite la recursion infinie materials <->
+-- product_materials.
+--
+-- `tracefab_public_context()` fait exception, par conception : elle ne lit
+-- qu'un reglage de session (`current_setting('tracefab.public_context')`) et
+-- n'accede a aucune table. La migration 20261009180000 la cree volontairement
+-- SANS SECURITY DEFINER (lignes 29 a 35), et `scripts/test_neon_privileges.mjs`
+-- ne classe dans son controle A que les fonctions SECURITY DEFINER. L'exiger
+-- ici rendait la migration impossible a appliquer sur toute base construite
+-- par cette chaine — le preflight refusait avant toute ecriture.
+--
+-- Une fonction manquante, une fonction de politique non SECURITY DEFINER ou un
+-- rôle migrateur différent doit arrêter la migration au lieu de produire un
+-- succès partiel ou un durcissement inopérant.
 DO $preflight$
 DECLARE
   signature text;
   function_oid oid;
   owner_oid oid;
   is_secdef boolean;
+  -- Fonctions qui n'ont pas a etre SECURITY DEFINER : elles ne touchent aucune
+  -- table. Exigence du proprietaire conservee pour toutes, sans exception.
+  sans_secdef text[] := ARRAY['public.tracefab_public_context()'];
   signatures text[] := ARRAY[
     'public.tracefab_material_visible_via_product(uuid)',
     'public.tracefab_product_is_public(uuid)',
@@ -36,7 +52,7 @@ BEGIN
       FROM pg_proc p
      WHERE p.oid = function_oid;
 
-    IF NOT is_secdef THEN
+    IF NOT is_secdef AND NOT (signature = ANY(sans_secdef)) THEN
       RAISE EXCEPTION 'Migration refusée : % n''est pas SECURITY DEFINER', signature
         USING ERRCODE = 'invalid_object_definition';
     END IF;
