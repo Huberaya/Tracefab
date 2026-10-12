@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
-    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:supplier-portal && npm run test:questionnaires",
+    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:error-reporting && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:supplier-portal && npm run test:questionnaires",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "node scripts/run-db-suite.mjs scripts/test_neon_bulk_operations_chantier8.mjs",
     "test:wallet:chantier9": "npx tsx scripts/test_wallet_chantier9.ts",
@@ -63,7 +63,7 @@
     "db:status": "prisma migrate status",
     "db:migrations:check": "npx tsx scripts/check_migrations.ts",
     "db:pull": "prisma db pull",
-    "build": "npm run db:generate && npm run verify:prisma-client && npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:assets && npm run test:routes && npm run test:i18n && npm run test:chantier3-risk && npm run test:chantier4-demo && npm run test:chantier5-portail && npm run test:landing-lisibilite && npm run test:landing-spine && npm run test:landing-reperage && npm run test:landing-performance && npm run test:chantier5-console && npm run test:db-guard && npm run test:db-routing && npm run test:workflow-policy && npm run test:workflow-policy-temoins && npm run test:router-load",
+    "build": "npm run db:generate && npm run verify:prisma-client && npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:assets && npm run test:routes && npm run test:i18n && npm run test:chantier3-risk && npm run test:chantier4-demo && npm run test:chantier5-portail && npm run test:landing-lisibilite && npm run test:landing-spine && npm run test:landing-reperage && npm run test:landing-performance && npm run test:chantier5-console && npm run test:db-guard && npm run test:db-routing && npm run test:workflow-policy && npm run test:workflow-policy-temoins && npm run test:router-load && npm run test:error-reporting",
     "test:routes": "node scripts/test_route_registry.mjs",
     "test:i18n": "node scripts/test_i18n_consolidation.mjs",
     "test:phases": "node scripts/audit_phases_9_12.mjs --base http://127.0.0.1:3000",
@@ -111,7 +111,8 @@
     "test:router-load": "npx tsx scripts/test_router_module_load.mjs",
     "db:seed-rls": "node scripts/run-db-suite.mjs scripts/seed_rls_fixture.mjs",
     "audit:workflows": "node scripts/audit_workflows_all_refs.mjs",
-    "test:workflow-policy-temoins": "node scripts/test_workflow_policy_detection.mjs"
+    "test:workflow-policy-temoins": "node scripts/test_workflow_policy_detection.mjs",
+    "test:error-reporting": "npx tsx scripts/test_error_reporting.ts"
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",
