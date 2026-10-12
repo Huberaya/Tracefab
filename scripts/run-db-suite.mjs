@@ -37,7 +37,17 @@ if (!existsSync(absolute)) {
   process.exit(3);
 }
 
-const result = requireThrowawayDb({ purpose: target });
+// Toutes les variables de connexion PRESENTES sont verifiees, pas seulement
+// DATABASE_URL : une suite peut se connecter avec TF_RLS_APP_URL, et cette
+// seconde cible ne doit pas pouvoir viser une autre base que la premiere.
+// Exiger les deux en permanence ferait echouer les suites qui n'en posent
+// qu'une ; elles sont donc verifiees selon ce qui est fourni.
+const variablesPresentes = ['DATABASE_URL', 'TF_RLS_APP_URL']
+  .filter((variable) => (process.env[variable] || '').trim());
+const result = requireThrowawayDb({
+  purpose: target,
+  variables: variablesPresentes.length > 0 ? variablesPresentes : ['DATABASE_URL'],
+});
 for (const line of result.summary) console.log(`  garde cible : ${line}`);
 console.log('');
 

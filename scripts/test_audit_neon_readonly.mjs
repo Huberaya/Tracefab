@@ -22,6 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { assertThrowawayDb } from './lib/require-throwaway-db.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const AUDIT = join(ROOT, 'scripts', 'audit_neon_readonly.mjs');
@@ -113,6 +114,12 @@ if (!URL || !URL.trim()) {
   console.log('  Un controle qui n a pas tourne ne vaut pas un controle qui passe : sortie 2.\n');
   process.exit(2);
 }
+
+// La suite ouvre une connexion et TENTE une ecriture (probe) pour prouver que
+// le serveur la refuse. La session est posee en lecture seule juste apres, mais
+// une cible non jetable ne doit pas etre jointe du tout : la garde de cible du
+// depot tranche avant la connexion, exactement comme pour les autres suites.
+assertThrowawayDb({ purpose: 'scripts/test_audit_neon_readonly.mjs' });
 
 const TLS = /sslmode=(require|verify|prefer)/.test(URL);
 const db = new pg.Client({ connectionString: URL, ssl: TLS ? { rejectUnauthorized: false } : undefined });
