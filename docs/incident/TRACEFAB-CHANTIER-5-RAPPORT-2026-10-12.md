@@ -468,3 +468,296 @@ aucun changement de paramètre GitHub.
 `fd30b689-…`. Le diagnostic est complet au point qu'il ne manque qu'une ligne
 pour être prouvé ; inversement, si cette ligne contredit le §5.5, c'est le
 §5.5 qui devra être corrigé, et je le ferai.
+
+---
+
+## 10. Vérification finale des preuves — 2026-10-12
+
+Six questions ont été posées, dans cet ordre : le diff Prisma exact, la garde
+PostgreSQL et ses tests, les tests RLS perdus quand `DATABASE_URL` manque,
+le contenu réel des deux branches, la recherche de l'identifiant de corrélation,
+et la liste des commandes, fichiers, commits, risques et contrôles bloqués.
+Chaque réponse ci-dessous cite la commande et sa sortie.
+
+> **Ce paragraphe corrige un chiffre du §4.** La garde ne compte plus 20
+> vérifications mais **35** : le §4.1 décrivait la première version. Les 20
+> d'origine sont inchangées et restent listées en §10.2 ; les 15 nouvelles
+> couvrent des cas nommés par la demande.
+
+### 10.1 Diff exact des changements Prisma
+
+Fichiers et commits (commande : `git log --format=%h main..HEAD -- <fichier>`) :
+
+| Fichier | Commits |
+|---|---|
+| `package.json` | `0a7df1b 1a3d7a7 9a126ee 62fc3b3 21f9340 3ba3064` |
+| `scripts/prisma-generate.mjs` | `4545759 b0d332f 50acb92` |
+| `scripts/verify_prisma_client.mjs` | `4545759 2d03cc4 50acb92` |
+| `scripts/test_prisma_client_check.mjs` | `4545759 2d03cc4 50acb92` |
+
+**Génération.** `package.json` reçoit un cycle de vie qui ne dépend plus de
+`@prisma/client` : `"postinstall": "node scripts/prisma-generate.mjs"`. Le
+script génère le client, **vérifie ce qui a été produit**, et sort en erreur si
+quoi que ce soit manque. `@prisma/client` passe des `devDependencies` aux
+`dependencies`, sans quoi la génération ne se déclenche pas sur un déploiement
+qui n'installe que les dépendances de production.
+
+**Validation du client.** `"verify:prisma-client": "node scripts/verify_prisma_client.mjs"`
+est inséré en tête de `build`, juste après la génération. Ce contrôle lit le
+schéma, construit le client, et refuse : un client factice
+(« did not initialize yet »), un client incomplet, un client sans moteur de
+requêtes, ou une surface de client imitée (absence de `$disconnect`).
+
+**Traitement de l'échec de génération.** `scripts/prisma-generate.mjs` sort en
+**1** à chaque étape manquante (`process.exit(1)` aux lignes 69, 87, 95), et
+propage le code de sortie du contrôle final (`process.exit(verification.status ?? 1)`).
+Le contournement du cycle de vie est **fermé** : la ligne 57 calcule
+`const contexte = deployment || (process.env.VERCEL ? 'VERCEL=1' : '')`, donc
+`VERCEL=1` — posé dans **tous** les environnements Vercel, y compris quand
+`VERCEL_ENV` vaut `development` ou n'est pas renseigné — compte comme un
+déploiement. Avant cette correction, `PRISMA_SKIP_POSTINSTALL_GENERATE=true VERCEL=1`
+sortait en **0**.
+
+**Comportement au build.** Une génération qui échoue fait échouer le build par
+trois chemins indépendants : le `postinstall` sort en 1 ; `verify:prisma-client`
+sort en 1 ; `npm run build` propage le code de sortie.
+
+**Preuve qu'une génération ratée ne peut pas produire un faux succès**
+(laboratoire `/tmp/install-fail`, commande `npm run postinstall` dans chaque
+état, puis lecture du code de sortie) :
+
+| État simulé | Attendu | Obtenu |
+|---|---|---|
+| A — la génération échoue | 1 | **1** |
+| B — la génération « réussit » sans rien produire | 1 | **1** |
+| C — le client restant est un stub (« did not initialize yet ») | 1 | **1** |
+| D — le moteur de requêtes est absent | 1 | **1** |
+| E — moteur + client + `@prisma/client` présents (cas conforme) | 0 | **0** |
+
+Le cas E est le témoin négatif : sans lui, les quatre refus ne prouveraient rien.
+Le mécanisme d'origine, lui, a été mesuré : un `prisma generate` qui échoue
+**dans** le `postinstall` de `@prisma/client` rend **exit 0** et laisse un stub —
+c'est l'installation verte sans client du §5.3.
+
+**Limite honnête.** Je ne peux pas exécuter une vraie génération Prisma dans cet
+environnement (`binaries.prisma.sh` est injoignable) ; les cinq états sont donc
+simulés par des clients de forme contrôlée. En revanche la CI au commit de
+production (`b0c976f`) contient l'étape « Générer le client Prisma » **[success]**
+— voir §10.5 : la génération fonctionne bien dans l'environnement de CI réel.
+
+### 10.2 La garde PostgreSQL, son code, ses 35 tests
+
+Code (`scripts/lib/require-throwaway-db.mjs`) — les quatre règles qui décident :
+
+1. **hôte effectif** : un paramètre `?host=` de l'URL prime sur l'autorité de
+   l'URL ; c'est l'hôte *effectif* qui est classé (faille réelle corrigée) ;
+2. **hôtes managés refusés avant l'opt-in** : ni `ALLOW_REMOTE_DB`, ni liste
+   blanche ne peuvent autoriser un hôte de base managée ;
+3. **point final normalisé** : `ep-xxx.eu-central-1.aws.neon.tech.` (FQDN absolu)
+   était accepté quand la liste blanche le contenait — c'était un contournement
+   réel ;
+4. **schéma restreint** : `postgres:` / `postgresql:` seulement ; `mysql://` et
+   les chaînes sans schéma sont refusées avant toute autre analyse.
+
+Résultat complet, `npm run test:db-guard` — **35 vérifications passées, 0 échec** :
+
+- **A — ce qui doit être accepté (5)** : base jetable locale `localhost` ;
+  `127.0.0.1` ; socket Unix ; cible distante explicitement autorisée (3
+  déclarations) ; hôte effectif déclaré par paramètre (autorisation maintenue).
+  *(Ces 5 forment, avec les 13 de B et les 2 de C, les **20 tests** du §4.1.)*
+- **B — ce qui doit être refusé (13)** : contexte de déploiement de production,
+  même en local ; hôte managé sans opt-in ; hôte managé **malgré** opt-in et
+  autre liste blanche ; contournement par `?host=` vers un hôte managé ;
+  contournement par `?host=` vers un hôte distant ; hôte effectif hors liste
+  blanche malgré l'opt-in ; hôte managé inscrit dans la liste blanche ; nom de
+  base évoquant la production ; nom de base « live » ; nom de base hors liste
+  blanche ; valeur non analysable ; valeur absente ; variable non définie.
+- **C — ce qui ne doit jamais sortir dans un message (2)** : aucune fuite de
+  secret dans le rapport de refus ; publication d'une empreinte corrélable.
+- **D — `host=`, sockets Unix, valeurs encodées, formes malformées (15, ajoutés
+  ce tour)** : socket Unix encodée `%2F…` reconnue comme locale ; IPv6 littéral
+  `[::1]` ; hôte en majuscules `LOCALHOST` ; point final `localhost.` ; nom de
+  base encodé `tracefab%5Ftest` décodé ; hôte managé encodé `%65p-…` **refusé** ;
+  hôte managé en majuscules **refusé** ; hôte managé avec point final, **même
+  déclaré**, refusé ; nom de production encodé `prod%2Dduction` refusé ;
+  protocole `mysql://` refusé par défaut ; URL sans schéma refusée ; loopback
+  sous forme décimale refusée (sens sûr) ; hôte vide refusé ; chaîne sans
+  schéma refusée ; valeur faite d'espaces refusée.
+
+Les refus par défaut sont donc **fail-closed** : ce qui n'est pas reconnu comme
+jetable est refusé, y compris des formes qui *pourraient* être locales.
+
+### 10.3 Ce qui serait sauté sans `DATABASE_URL`, et le vert sans exécution
+
+Sur les cinq branches `experience/chantier-1{6,7,8,9,0}`, le job qui porte le nom
+`Base — isolation RLS exécutée` exécute en réalité, quand le secret est présent :
+
+```
+npm run test:neon:security
+npm run test:neon:supplier
+npm run test:neon:product
+npm run test:neon:quality
+npm run test:neon:collection
+```
+
+Trois constats, mesurés et non déduits :
+
+1. **`test:neon:rls` n'est invoqué 0 fois sur les cinq branches** (1 fois sur
+   `main`, 1 fois sur ma branche). La suite qui prouve l'isolation RLS n'est donc
+   pas seulement sautée faute de secret : elle **n'est pas câblée** sur ces
+   branches. Le nom du job annonce une preuve que le fichier ne contient pas.
+2. Sans secret, **toutes** les étapes de base sont conditionnées
+   (`if: steps.secret.outputs.present == 'true'`), y compris l'installation et la
+   génération : le job se termine **vert** en n'ayant rien exécuté.
+3. Côté `main`, la CI du commit de production prouve que la situation est
+   différente : les étapes « Appliquer les migrations sur la base jetable »,
+   « Créer le rôle `tracefab_app` et deux locataires » et « Isolation RLS prouvée
+   par exécution » sont **[success]** — seule « Scénarios croisés contre la base
+   de production » est **[skipped]**. Autrement dit la suite RLS tournait bien
+   sur `main`, et c'est l'étape croisée qui dépendait du secret.
+
+**Qu'aucun job ne puisse annoncer un succès sans avoir exécuté** est désormais
+un contrôle automatique : la section I de `scripts/test_workflow_policy.mjs`,
+avec 11 témoins (`npm run test:workflow-policy-temoins` → **OK**). L'un des
+témoins est le job extrait de `chantier-18` ; il a d'abord été **invisible** au
+contrôle (la boucle lisait la clé YAML au lieu du `job.name` affiché) — c'est la
+réécriture du contrôle qui l'a révélé, pas un raisonnement.
+
+La correction est préparée pour les cinq branches, vérifiée applicable :
+`docs/security/patches/ci-experience-chantier-{16,17,18,19,20}-job-base-sans-faux-vert.patch`.
+Elle renomme le job en `Base — scénarios croisés exécutés` (le nom décrit alors
+ce qu'il fait) et remplace la sortie « `present=false` + notice » par
+`::error::` **et `exit 1`**. Compte de l'alerte I, mesuré en ré-exécutant le
+contrôle sur chaque branche (`grep -c '^  ECHEC I\.'`) :
+
+| Branche | ECHEC I avant | ECHEC I après |
+|---|---|---|
+| `experience/chantier-16` | 1 | **0** |
+| `experience/chantier-17` | 1 | **0** |
+| `experience/chantier-18` | 1 | **0** |
+| `experience/chantier-19` | 1 | **0** |
+| `experience/chantier-20` | 1 | **0** |
+
+Le « 1 avant / 1 après » du tour précédent était un **défaut de mon propre
+comptage** (il comptait les lignes `ok` comme des échecs) ; il est corrigé ici
+par la mesure ci-dessus. **Les patches ne sont pas appliqués sur vos branches** :
+ils sont préparés, testés sur copies de travail, et attendent votre décision.
+
+### 10.4 Contenu réel des deux branches (sans supposer la cumulativité)
+
+| Branche | HEAD | Écart à `main` | Fichiers |
+|---|---|---|---|
+| `arena/879cd8db-tracefab` | `50acb92` | 26 commits | 33 fichiers |
+| `securite/ci-sans-secret-depuis-main` | `826bc11` | 1 commit | 1 fichier (`2 insertions(+), 18 deletions(-)`) |
+
+Les 33 fichiers de ma branche, par répertoire : `scripts` 14, `docs/incident` 6,
+`docs/security` 3, `docs/security/patches` 3, `scripts/lib` 1,
+`prisma/migrations/20261012120000_close_public_execute_gap` 1, `package.json`,
+`package-lock.json`, `api/_lib`, `api`, `.github/workflows` 1 chacun.
+
+**Elles ne se cumulent pas.** Vérifié et non supposé :
+`git apply --check docs/security/patches/ci-main-sans-secret.patch` sur une copie
+de travail détachée sur `origin/arena/879cd8db-tracefab` →
+`error: patch failed: .github/workflows/ci.yml:8` /
+`error: .github/workflows/ci.yml: patch does not apply`. Les deux touchent la
+même section `base-de-donnees` avec une divergence de 64+/14−. Il faudra choisir
+l'une des deux voies, ou que je réécrive le patch court sur la branche longue.
+
+### 10.5 Recherche de l'identifiant de corrélation
+
+Recherche refaite ce tour, pour ne pas recycler une conclusion :
+
+```
+curl -s -o /dev/null -w '%{http_code}' https://tracefab.vercel.app/api/health        → 000
+curl -s -o /dev/null -w '%{http_code}' https://api.vercel.com/v6/deployments/6968252029 → 000
+curl -s -o /dev/null -w '%{http_code}' https://console.neon.tech                    → 000
+```
+
+L'égress HTTP reste fermé (seul `registry.npmjs.org` répond). **Aucune requête
+n'a atteint le site : aucun code de statut, aucun corps de réponse, aucune ligne
+de journal du déploiement `6968252029` n'est cité dans ce rapport.** En
+conséquence : **la cause de l'incident de production reste NON VÉRIFIÉE.** Le
+diagnostic du §5.5 est une reproduction fidèle sur l'arbre déployé, pas un
+constat sur la production.
+
+Ce qui reste cherchable, et où : le journal du déploiement `6968252029`
+(onglet Logs de Vercel), la chaîne `schema: "tracefab-error-report-v1"`
+contenant `fd30b689-f50f-44f0-a0dd-43e5e1e51f0e`, avec trois valeurs possibles
+de `error.message` : `export named 'PrismaClient'`, `Cannot find module
+'.prisma/client/default'`, `Query engine library … could not be found`.
+
+Deux éléments de preuve ont toutefois pu être obtenus par GitHub, qui est
+accessible — ils affinent le diagnostic sans le clore :
+
+- sur le commit de production, le job `Socle` et le job `Base` exécutent bien
+  « Générer le client Prisma » **[success]** : la génération fonctionne dans
+  l'environnement de CI ;
+- le statut du déploiement `6968252029` est `success`, `log_url` pointant vers
+  l'URL de prévisualisation `tracefab-b1i9vcmmb-…vercel.app`. Un déploiement
+  `success` qui sert des `internal_error` est exactement le symptôme du §5.3
+  (installation verte sans client) — cohérent, mais **pas** concluant seul.
+
+### 10.6 Commandes, résultats, fichiers, risques, contrôles bloqués
+
+Batterie complète après les corrections de ce tour
+(`.cache/harness/batterie.sh` avec 14 cibles, code de sortie lu explicitement) :
+
+```
+test:db-guard                OK      test:neon:rls                OK
+test:db-routing              OK      test:error-reporting         OK
+test:workflow-policy         OK      schema:static                OK
+test:workflow-policy-temoins OK      test:security:chantier1      OK
+test:prisma-client           OK      test:routes                  OK
+test:audit-script            OK      test:production-readiness    OK
+test:neon:privileges         OK      test:cross-tenant            OK
+----
+echecs: 0
+```
+
+Fichiers touchés par ce tour : les 7 fichiers de `scripts/` listés en §10.1 plus
+`scripts/lib/require-throwaway-db.mjs`, `scripts/test_db_target_guard.mjs`,
+`scripts/test_workflow_policy.mjs`, `scripts/test_workflow_policy_detection.mjs`,
+et les 5 patches `docs/security/patches/ci-experience-chantier-*`. Commit :
+**`50acb92`** (`main` + 26).
+
+**Risques résiduels, inchangés et assumés :**
+
+1. `prisma generate` et `api:typecheck` ne sont pas exploitables ici (registre
+   de binaires injoignable ; 85 erreurs de types de référence, différentiel
+   85→85). Les cinq états Prisma sont simulés, pas générés.
+2. Les patches CI ne sont pas appliqués : les cinq branches restent vertes à
+   vide, et `test:neon:rls` reste non câblé dessus.
+3. Les deux branches de correction ne se cumulent pas en l'état.
+4. Rien n'a été modifié côté GitHub, Vercel, Neon ni `main`.
+
+**Contrôles bloqués** (avec l'accès précisément manquant) :
+
+| Contrôle | Accès manquant |
+|---|---|
+| Recherche du `correlationId` en production | journaux du déploiement Vercel |
+| Vérifier l'existence du secret `DATABASE_URL` | `gh secret list` → 403 (intégration) |
+| Protection de `main` en détail | `…/branches/main/protection` → 403 |
+| Permissions Actions du dépôt | `…/actions/permissions` → 403 |
+| Audit Neon en lecture seule | chaîne en lecture seule, par mécanisme sécurisé |
+
+### 10.7 Trois défauts trouvés dans mes propres contrôles ce tour
+
+Écrits ici parce qu'ils changent la valeur des preuves ci-dessus :
+
+1. **Comptage d'alertes faux** (§10.3) — le « 1 avant / 1 après » confondait
+   lignes `ok` et `ECHEC`. Recompté : 1 → 0 sur les cinq branches.
+2. **Contrôle de workflow aveugle au nom affiché** — la section I lisait la clé
+   YAML `jobs.<id>.name` au lieu du `name` du job ; un job renommé par la branche
+   (`chantier-18`) était invisible au contrôle. Corrigé, avec un témoin dédié.
+3. **`verify_prisma_client.mjs` cassé sur un cas qu'il devait juger** —
+   `await client.$disconnect?.().catch(...)` jetait un `TypeError` quand
+   `$disconnect` était absent : le contrôle échouait sur une erreur de langage
+   au lieu de nommer le défaut. Correction : vérification de surface explicite,
+   nettoyage protégé, et un cinquième témoin (`client fabriqué à la main`).
+
+Aucun de ces trois défauts n'était dans le code de production : ils étaient dans
+mes contrôles. Ils auraient tous les trois produit des preuves fausses.
+
+**Prochaine action prioritaire, inchangée** : une ligne du journal du
+déploiement `6968252029`. Tant qu'elle manque, la cause en production reste
+`NON VÉRIFIÉE` et je ne l'écrirai pas autrement.
