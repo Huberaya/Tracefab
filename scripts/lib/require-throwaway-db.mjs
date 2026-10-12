@@ -103,14 +103,20 @@ export function classifyTarget(rawValue) {
     return { allowed: false, code: 'unparseable', reason: 'valeur de connexion non analysable' };
   }
 
-  const hostnameUrl = (parsed.hostname || '').toLowerCase();
+  // Un point final designe le meme hote (nom absolu). Sans normalisation,
+  // `ep-xxx.neon.tech.` echappait a la reconnaissance des hotes manages : mesure
+  // faite le 2026-10-12, il etait classe « cible distante autorisee » des lors
+  // qu'il figurait dans la liste blanche. On retire donc au plus un point final.
+  const brut = (parsed.hostname || '').toLowerCase();
+  const hostnameUrl = brut.endsWith('.') ? brut.slice(0, -1) : brut;
   const socketHost = (parsed.searchParams.get('host') || '').trim();
   const database = decodeURIComponent((parsed.pathname || '').replace(/^\//, '')).toLowerCase();
   // L'hote EFFECTIF : celui que le pilote joindra reellement. Un `host=/chemin`
   // est une socket Unix locale ; tout autre `host=` est un nom d'hote, et il
   // prend le pas sur celui de l'URL.
   const isSocket = socketHost.startsWith('/');
-  const host = socketHost && !isSocket ? socketHost.toLowerCase() : hostnameUrl;
+  const hostBrut = socketHost && !isSocket ? socketHost.toLowerCase() : hostnameUrl;
+  const host = hostBrut.endsWith('.') ? hostBrut.slice(0, -1) : hostBrut;
   const isLocal = isSocket || LOCAL_HOSTS.has(host);
 
   const allowedHosts = splitList('TRACEFAB_TEST_DB_HOST_ALLOWLIST');
@@ -126,6 +132,12 @@ export function classifyTarget(rawValue) {
   };
 
   // 1. Refus inconditionnels, quel que soit le reste de la configuration.
+  // Le protocole d'abord : ce depot ne parle que PostgreSQL, et un schema
+  // inattendu est le signe d'une cible mal ecrite. Refus par defaut.
+  const protocole = (parsed.protocol || '').toLowerCase();
+  if (protocole !== 'postgres:' && protocole !== 'postgresql:') {
+    return { ...info, allowed: false, code: 'scheme_not_supported', reason: `protocole inattendu (${protocole.replace(':', '') || 'aucun'}) — ce depot ne parle que PostgreSQL` };
+  }
   const deployment = (process.env.VERCEL_ENV || '').toLowerCase();
   if (deployment === 'production') {
     return { ...info, allowed: false, code: 'production_context', reason: 'contexte de deploiement de production' };

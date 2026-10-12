@@ -144,6 +144,94 @@ withEnv({}, () => {
   !v.allowed && v.code === 'missing' ? ok('variable non definie refusee') : ko('variable non definie acceptee');
 });
 
+
+console.log('\n  D. parametres host=, sockets Unix, valeurs encodees, formes malformees');
+{
+  // --- ce qui doit etre accepte
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql:///tracefab_test?host=%2Fvar%2Frun%2Fpostgresql');
+    v.allowed && v.code === 'throwaway_local' ? ok('socket Unix encodee (%2F...) reconnue comme locale') : ko(`socket Unix encodee : ${v.code}`);
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@[::1]:5432/tracefab_test');
+    v.allowed ? ok('IPv6 litteral [::1] reconnu comme local') : ko(`[::1] refuse (${v.code})`);
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@LOCALHOST:5432/tracefab_test');
+    v.allowed ? ok('hote en majuscules (LOCALHOST) reconnu comme local') : ko(`LOCALHOST refuse (${v.code})`);
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@localhost.:5432/tracefab_test');
+    v.allowed ? ok('point final (localhost.) reconnu comme local') : ko(`localhost. refuse (${v.code})`);
+  });
+  withEnv({
+    TRACEFAB_ALLOW_NONLOCAL_TEST_DB: 'true',
+    TRACEFAB_TEST_DB_HOST_ALLOWLIST: 'hote.example',
+    TRACEFAB_TEST_DB_NAME_ALLOWLIST: 'tracefab_test',
+  }, () => {
+    // Valeur encodee qui DOIT passer : un refus ici serait un faux positif.
+    const v = classifyTarget('postgresql://u:p@hote.example:5432/tracefab%5Ftest');
+    v.allowed && v.code === 'allowlisted_remote' ? ok('nom de base encode (tracefab%5Ftest) decode et reconnu') : ko(`nom encode refuse (${v.code})`);
+  });
+
+  // --- ce qui doit etre refuse
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@localhost/db?host=%65p-xxx.eu-central-1.aws.neon.tech');
+    !v.allowed && v.code === 'managed_host' ? ok('hote manage encode (%65p-...) : refuse') : ko(`hote manage encode accepte (${v.code})`);
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@EP-XXX.EU-CENTRAL-1.AWS.NEON.TECH/db');
+    !v.allowed && v.code === 'managed_host' ? ok('hote manage en majuscules : refuse') : ko(`hote manage majuscules accepte (${v.code})`);
+  });
+  withEnv({
+    TRACEFAB_ALLOW_NONLOCAL_TEST_DB: 'true',
+    TRACEFAB_TEST_DB_HOST_ALLOWLIST: 'ep-xxx.eu-central-1.aws.neon.tech.',
+    TRACEFAB_TEST_DB_NAME_ALLOWLIST: 'db',
+  }, () => {
+    // Point final + liste blanche : deux tours de passe-passe qui, combines,
+    // suffisaient a faire accepter un hote manage avant ce durcissement.
+    const v = classifyTarget('postgresql://u:p@ep-xxx.eu-central-1.aws.neon.tech./db');
+    !v.allowed && v.code === 'managed_host' ? ok('hote manage avec point final, meme declare : refuse') : ko(`hote manage avec point final accepte (${v.code})`);
+  });
+  withEnv({
+    TRACEFAB_ALLOW_NONLOCAL_TEST_DB: 'true',
+    TRACEFAB_TEST_DB_HOST_ALLOWLIST: 'hote.example',
+    TRACEFAB_TEST_DB_NAME_ALLOWLIST: 'prod-duction',
+  }, () => {
+    const v = classifyTarget('postgresql://u:p@hote.example:5432/prod%2Dduction');
+    !v.allowed && v.code === 'production_name' ? ok('nom de production encode (prod%2Dduction) : refuse') : ko(`nom de production encode accepte (${v.code})`);
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('mysql://u:p@localhost:3306/db');
+    !v.allowed && v.code === 'scheme_not_supported' ? ok('protocole inattendu (mysql://) : refuse par defaut') : ko(`protocole inattendu accepte (${v.code})`);
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('localhost:5432/db');
+    !v.allowed ? ok('URL sans schema : refusee') : ko('URL sans schema acceptee');
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@2130706433/db');
+    !v.allowed ? ok('loopback sous forme decimale : refusee (sens sur)') : ko('forme decimale acceptee');
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://utilisateur:motdepasse@/db');
+    !v.allowed ? ok('hote vide : refusee') : ko('hote vide accepte');
+  });
+  withEnv({}, () => {
+    // `new URL()` jette avant meme d'arriver au controle de protocole : le code
+    // est « unparseable ». Les deux codes sont des refus ; ce qui compte est
+    // qu'aucune de ces formes ne soit acceptee.
+    const v = classifyTarget('ceci-n-est-pas-une-url');
+    !v.allowed && ['unparseable', 'scheme_not_supported'].includes(v.code)
+      ? ok(`chaine sans schema : refusee (${v.code})`)
+      : ko(`chaine illisible acceptee ou code inattendu : ${v.code}`);
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('   ');
+    !v.allowed && v.code === 'missing' ? ok('valeur faite d espaces : refusee') : ko(`espaces acceptes (${v.code})`);
+  });
+}
+
 console.log('\n  C. ce qui ne doit JAMAIS sortir dans un message');
 
 withEnv({}, () => {

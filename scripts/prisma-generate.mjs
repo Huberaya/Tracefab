@@ -49,14 +49,20 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const deployment = (process.env.VERCEL_ENV || '').toLowerCase();
-const isDeployment = deployment === 'production' || deployment === 'preview';
+// `VERCEL=1` est pose dans TOUS les environnements Vercel, y compris quand
+// VERCEL_ENV vaut « development » ou n'est pas renseigne. S'en tenir a VERCEL_ENV
+// laissait passer le contournement dans un contexte de build distant — mesure
+// faite le 2026-10-12 : `PRISMA_SKIP_POSTINSTALL_GENERATE=true VERCEL=1` sortait
+// en 0 en sautant la generation. Un paquet sans client part alors en production.
+const contexte = deployment || (process.env.VERCEL ? 'VERCEL=1' : '');
+const isDeployment = contexte !== '';
 const skipRequested = process.env.PRISMA_SKIP_POSTINSTALL_GENERATE === 'true';
 
 if (skipRequested) {
   if (isDeployment) {
     console.error(
       '\n  REFUS — PRISMA_SKIP_POSTINSTALL_GENERATE est interdit dans un deploiement.\n' +
-      `  Contexte detecte : VERCEL_ENV=${deployment}\n` +
+      `  Contexte detecte : ${contexte}\n` +
       '  La generation du client est la condition de demarrage de toute route de donnees.\n' +
       '  La desactiver ici produirait exactement l incident du 2026-10-12.\n',
     );

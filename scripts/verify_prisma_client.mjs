@@ -96,6 +96,19 @@ typeof client.$transaction === 'function'
   ? ok('le client se construit et expose $transaction')
   : ko('le client se construit mais $transaction est absent');
 
+// `$disconnect` fait partie de la surface du client genere. Son absence signale
+// un client fabrique a la main dans le paquet — exactement ce qu'il ne faut pas
+// deployer. La verification est aussi ce qui rend sur a l'appel de nettoyage
+// plus bas : `client.$disconnect?.().catch(...)` jetait un TypeError (et non un
+// diagnostic) quand la methode manquait.
+if (typeof client.$disconnect === 'function') {
+  ok('le client expose $disconnect (surface du client genere)');
+} else {
+  ko('le client se construit mais $disconnect est absent : surface de client imitee');
+  console.error('\n  Un client fabrique a la main ne doit pas etre deploye a la place du');
+  console.error('  client genere. Regenerer : npm run db:generate\n');
+}
+
 // --- 3. Chaque modele du schema a-t-il son delegue ?
 const missing = expectedModels.filter((model) => {
   const delegate = client[model];
@@ -176,7 +189,9 @@ if (moteurOptionnel) {
   }
 }
 
-await client.$disconnect?.().catch(() => {});
+if (typeof client.$disconnect === 'function') {
+  await client.$disconnect().catch(() => {});
+}
 
 console.log('\n  --------------------------------------------');
 if (echecs > 0) {

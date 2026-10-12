@@ -90,6 +90,30 @@ const TEMOINS = [
     attenduCode: 0,
     attendu: 'Politique des workflows : OK',
   },
+  {
+    nom: 'job-vert-sans-execution.yml',
+    faute: 'job de base vert possible sans executer un seul test',
+    // Le secret est declare au registre du temoin, et la suite est lancee par la
+    // garde : le SEUL motif de refus qui reste est le controle I.
+    registre: { secretUsingWorkflows: { 'job-vert-sans-execution.yml': { justification: 'temoin de detection' } } },
+    contenu: `name: Temoin\non:\n  push:\njobs:\n  base:\n    name: Base — isolation RLS executee\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ${EPINGLE}\n      - name: Verifier la presence du secret\n        id: secret\n        run: |\n          if [ -n "\${{ secrets.DATABASE_URL }}" ]; then\n            echo "present=true" >> "$GITHUB_OUTPUT"\n          fi\n      - name: Scenarios croises\n        if: steps.secret.outputs.present == 'true'\n        env:\n          DATABASE_URL: \${{ secrets.DATABASE_URL }}\n        run: node scripts/run-db-suite.mjs scripts/test_neon_security.mjs\n`,
+    attenduCode: 1,
+    attendu: 'conditionne',
+  },
+  {
+    nom: 'job-qui-annonce-sans-executer.yml',
+    faute: 'nom de job qui annonce une execution de base sans aucun test de base',
+    contenu: `name: Temoin\non:\n  push:\njobs:\n  base:\n    name: Base — isolation RLS executee\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ${EPINGLE}\n      - run: echo ok\n`,
+    attenduCode: 1,
+    attendu: 'aucune',
+  },
+  {
+    nom: 'job-base-jetable.yml',
+    faute: 'aucune — temoin : base jetable montee par le job, aucun secret',
+    contenu: `name: Temoin\non:\n  push:\njobs:\n  base:\n    name: Base — isolation RLS executee\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17\n        env:\n          POSTGRES_DB: tracefab_test\n    env:\n      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test\n    steps:\n      - uses: ${EPINGLE}\n      - run: npm run test:neon:rls\n`,
+    attenduCode: 0,
+    attendu: 'Politique des workflows : OK',
+  },
 ];
 
 console.log('\n  LA POLITIQUE DOIT REFUSER CE QUI EST FAUTIF — ET SE TAIRE SINON\n');
@@ -98,11 +122,15 @@ const dossier = mkdtempSync(join(tmpdir(), 'tracefab-workflows-temoins-'));
 try {
   for (const temoin of TEMOINS) {
     writeFileSync(join(dossier, temoin.nom), temoin.contenu);
-    const resultat = spawnSync(process.execPath, [SCRIPT], {
-      cwd: ROOT,
-      encoding: 'utf8',
-      env: { ...process.env, TRACEFAB_WORKFLOW_DIR: dossier },
-    });
+    const env = { ...process.env, TRACEFAB_WORKFLOW_DIR: dossier };
+    if (temoin.registre) {
+      const cheminRegistre = join(dossier, 'registre-temoin.json');
+      writeFileSync(cheminRegistre, JSON.stringify(temoin.registre));
+      env.TRACEFAB_WORKFLOW_REGISTRY = cheminRegistre;
+    } else {
+      delete env.TRACEFAB_WORKFLOW_REGISTRY;
+    }
+    const resultat = spawnSync(process.execPath, [SCRIPT], { cwd: ROOT, encoding: 'utf8', env });
     const sortie = `${resultat.stdout || ''}${resultat.stderr || ''}`;
     const code = resultat.status;
     const codeOk = code === temoin.attenduCode;

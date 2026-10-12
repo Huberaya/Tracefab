@@ -33,7 +33,11 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // (scripts/test_workflow_policy_detection.mjs) fassent tourner CE script, et
 // non une copie de sa logique, sur des workflows volontairement fautifs.
 const WORKFLOWS = process.env.TRACEFAB_WORKFLOW_DIR || join(ROOT, '.github', 'workflows');
-const REGISTRY = join(ROOT, 'docs', 'security', 'workflow-privileged-allowlist.json');
+// Surchargeable comme le dossier analyse : c'est ce qui permet a un temoin de
+// declarer legitimement ses secrets, afin que le controle qu'il eprouve soit le
+// seul a le refuser.
+const REGISTRY = process.env.TRACEFAB_WORKFLOW_REGISTRY
+  || join(ROOT, 'docs', 'security', 'workflow-privileged-allowlist.json');
 const WRAPPER = 'scripts/run-db-suite.mjs';
 
 let echecs = 0;
@@ -190,6 +194,59 @@ for (const file of files) {
         for (const c of commands.slice(0, 4)) console.error(`          ${c}`);
         console.error('          Separer : un job genere (lecture seule), un job pousse (sans execution de code).');
       }
+    }
+  }
+
+
+  // ---------------------------------- I. un job peut-il etre vert sans rien executer ?
+  // Le defaut corrige ici a ete observe sur cinq branches `experience/*` : un job
+  // nomme « Base — isolation RLS executee » dont TOUTES les etapes de base sont
+  // conditionnees a la presence d'un secret. Sans le secret, chaque etape est
+  // sautee et le job affiche vert, sous un nom qui affirme le contraire.
+  //
+  // Un nom de job est une affirmation : il doit correspondre a ce qui s'execute.
+  const SUITE_DB = /npm\s+run\s+(?:test:neon|db:seed-rls)|run-db-suite\.mjs|seed_rls_fixture\.mjs|test_rls_isolation\.mjs/;
+  const annonceExecution = (nom) => /RLS|isolation|base de donnees|database/i.test(nom) && /execut|executee|prouve|reelle|reel/i.test(nom);
+
+  for (const [nomJob, job] of Object.entries(jobs)) {
+    if (!job || typeof job !== 'object') continue;
+    // C'est le nom AFFICHE qui porte l'affirmation, pas la cle YAML.
+    const nomAffiche = typeof job.name === 'string' && job.name.trim() ? job.name.trim() : nomJob;
+    const etapes = Array.isArray(job.steps) ? job.steps : [];
+    const etapesBase = etapes.filter((e) => e && typeof e.run === 'string' && SUITE_DB.test(e.run));
+
+    if (etapesBase.length === 0) {
+      if (annonceExecution(nomAffiche)) {
+        ko(`I. le job « ${nomAffiche} » annonce une execution de base de donnees, et n en contient aucune`);
+        console.error('          Le nom du job affirme un fait que le job ne produit pas.');
+      }
+      continue;
+    }
+
+    const clesEnvSecret = new Set(
+      Object.entries(job.env && typeof job.env === 'object' ? job.env : {})
+        .filter(([, valeur]) => typeof valeur === 'string' && valeur.includes('secrets.'))
+        .map(([cle]) => cle),
+    );
+    const idsEtapesSecret = new Set(
+      etapes.filter((e) => e && typeof e.run === 'string' && e.run.includes('secrets.')).map((e) => e.id).filter(Boolean),
+    );
+    const conditionneeParSecret = (condition) => {
+      if (typeof condition !== 'string' || condition.trim() === '') return false;
+      if (condition.includes('secrets.')) return true;
+      if ([...clesEnvSecret].some((cle) => new RegExp(`env\\.${cle}\\b`).test(condition))) return true;
+      if ([...idsEtapesSecret].some((id) => new RegExp(`steps\\.${id}\\.`).test(condition))) return true;
+      return false;
+    };
+
+    const conditionnees = etapesBase.filter((e) => conditionneeParSecret(e.if));
+    if (conditionnees.length > 0) {
+      ko(`I. le job « ${nomAffiche} » conditionne ${conditionnees.length} etape(s) de base a un secret : vert possible sans rien executer`);
+      for (const e of conditionnees) console.error(`          ${e.name || '(sans nom)'} — if: ${e.if}`);
+      console.error('          Une etape de base ne doit pas dependre de la presence d un secret :');
+      console.error('          soit la base est jetable et montee par le job, soit le job echoue.');
+    } else {
+      ok(`I. le job « ${nomAffiche} » execute ${etapesBase.length} etape(s) de base sans les conditionner a un secret`);
     }
   }
 

@@ -59,6 +59,11 @@ class PrismaClient {
 module.exports = { PrismaClient, Prisma: { defineExtension: (e) => e }, default: {} };
 `;
 
+/** Client fabrique a la main : se construit, tous les modeles sont la, mais la
+ *  surface du client genere manque ($disconnect). C'est ce qu'un paquet qui
+ *  embarque un client bricole produirait, et ce controle doit le refuser. */
+const MANUEL = CONFORMING.replace('  async $disconnect() {}\n', '');
+
 /** Client incomplet : construit, mais un modele du schema manque. */
 const INCOMPLETE = `"use strict";
 const delegate = () => ({ findMany: async () => [] });
@@ -119,9 +124,10 @@ const cases = [
   // panne. Le controle doit le refuser, sans quoi il ne couvre pas la forme de
   // defaillance observee en production le 2026-10-12.
   ['client sans moteur', CONFORMING, 1, 'moteur', { engine: false }],
+  ['client fabrique a la main', MANUEL, 1, 'disconnect', {}],
 ];
 
-console.log('\n  Le controle doit distinguer les quatre etats d un client Prisma\n');
+console.log('\n  Le controle doit distinguer les cinq etats d un client Prisma\n');
 const dirs = [];
 for (const [label, source, expected, needle, options] of cases) {
   const dir = project(label.replace(/\s+/g, '-'), source, options);
@@ -135,6 +141,43 @@ for (const [label, source, expected, needle, options] of cases) {
 }
 
 for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+
+// ---------------------------------------------------------------------------
+// Le contournement de generation ne doit pas s appliquer dans un deploiement
+// ---------------------------------------------------------------------------
+// `PRISMA_SKIP_POSTINSTALL_GENERATE` existe pour les environnements contraints.
+// S il s appliquait dans un build distant, le paquet partirait sans client : le
+// deploiement serait vert et l application repondrait internal_error, soit
+// exactement l incident du 2026-10-09.
+//
+// Le trou ferme ici avait ete mesure : `VERCEL=1` seul (VERCEL_ENV absent ou
+// « development ») laissait passer le contournement.
+console.log('\n  Le contournement doit etre refuse des qu un contexte de deploiement est present\n');
+{
+  const GENERATEUR = join(ROOT, 'scripts', 'prisma-generate.mjs');
+  const CAS = [
+    ['VERCEL_ENV=production', { VERCEL_ENV: 'production' }, 1],
+    ['VERCEL_ENV=preview', { VERCEL_ENV: 'preview' }, 1],
+    ['VERCEL_ENV=development + VERCEL=1', { VERCEL_ENV: 'development', VERCEL: '1' }, 1],
+    ['VERCEL=1 seul (VERCEL_ENV absent)', { VERCEL: '1' }, 1],
+    ['hors Vercel (developpement local)', {}, 0],
+  ];
+  for (const [nom, variables, attendu] of CAS) {
+    const env = { ...process.env };
+    delete env.VERCEL_ENV;
+    delete env.VERCEL;
+    Object.assign(env, variables, { PRISMA_SKIP_POSTINSTALL_GENERATE: 'true' });
+    const resultat = spawnSync(process.execPath, [GENERATEUR], { cwd: ROOT, encoding: 'utf8', env });
+    const sortie = `${resultat.stdout || ''}${resultat.stderr || ''}`;
+    if (resultat.status === attendu) {
+      const motif = attendu === 1 ? 'refuse' : 'honore hors deploiement';
+      ok(`contournement ${motif} — ${nom}`);
+    } else {
+      ko(`contournement ${nom} : sortie ${resultat.status}, attendue ${attendu}`);
+    }
+    if (attendu === 1 && !/REFUS/.test(sortie)) ko(`  le refus de ${nom} ne dit pas pourquoi`);
+  }
+}
 
 console.log('\n  --------------------------------------------');
 console.log(`  ${echecs === 0 ? 'Controle de client Prisma : OK.' : `Controle de client Prisma : ${echecs} echec(s).`}`);
