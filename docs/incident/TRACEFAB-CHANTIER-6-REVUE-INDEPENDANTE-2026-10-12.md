@@ -4,7 +4,7 @@
 
 Périmètre : les correctifs des chantiers 4 (privilèges PostgreSQL / audit Neon en lecture seule) et 5 (sécurisation CI, client Prisma, garde de cible), sur `arena/879cd8db-tracefab`. La revue est indépendante au sens où elle **re-teste les affirmations du rapport précédent** au lieu de les reprendre, et où une divergence trouvée par un test différentiel a été corrigée dans la foulée.
 
-Repères : `main` = **`b0c976f`** · branche de revue = **`601bde5`** (38 commits, 47 fichiers, +9562/−109) · `securite/ci-sans-secret-depuis-main` = **`826bc11`** (1 commit, 1 fichier) · PR #36 = brouillon, tête `601bde5`.
+Repères : `main` = **`b0c976f`** · branche de revue = **`601bde5`** — l'état de code revu, 47 fichiers, +9562/−109 au-dessus de `main` · `securite/ci-sans-secret-depuis-main` = **`826bc11`** (1 commit, 1 fichier) · PR #36 = **brouillon**, tête `601bde5` au moment de la revue, puis `dcc8c10` (ce rapport, documentation seule : aucun fichier de code touché après la revue).
 
 ---
 
@@ -428,4 +428,4 @@ Aucun de ces cinq points n'est un travail que je puisse faire sans vous. En reva
 - **Aucune réactivation de CI**, **aucun réglage** GitHub, Vercel ou Neon modifié.
 - **Aucun test destructif** contre une base réelle ou partagée.
 - **Aucun secret dans ce rapport** : aucune valeur, aucune chaîne de connexion, aucun jeton.
-- Modifications de cette revue, toutes sur la branche `arena/879cd8db-tracefab`, poussée en `601bde5` : `scripts/lib/require-throwaway-db.mjs` (correction), `scripts/test_db_target_guard.mjs` (section E), `scripts/test_db_guard_vs_driver.mjs` (nouveau), `package.json` (script `test:db-guard-driver`, branché dans `build`).
+- Modifications de code de cette revue, toutes sur la branche `arena/879cd8db-tracefab`, poussée en `601bde5`, puis ce rapport (`dcc8c10`, documentation seule) : `scripts/lib/require-throwaway-db.mjs` (correction), `scripts/test_db_target_guard.mjs` (section E), `scripts/test_db_guard_vs_driver.mjs` (nouveau), `package.json` (script `test:db-guard-driver`, branché dans `build`).
