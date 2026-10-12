@@ -606,3 +606,47 @@ protection de branche touché ; la CI reste `disabled_manually`.
    désactivation) ;
 4. et, séparément de la fusion, exécuter le diagnostic en production avant toute
    application de la migration.
+
+
+---
+
+## 11. Addendum — correction du rouge CI appliquée sur la branche (2026-10-12)
+
+### Changement
+
+Après la revue du rapport de chantier, le correctif ciblé de `.github/workflows/ci.yml`
+a été appliqué directement sur `arena/879cd8db-tracefab` :
+
+- le job `verification` exclut désormais `test:audit-script` de sa boucle
+  `test:*` qui ne dispose pas de base de données ;
+- `test:audit-script` reste exécuté dans le job de base de données, contre le
+  PostgreSQL jetable, avec `DATABASE_URL` local au service du job ;
+- le workflow déclare `permissions: contents: read` ;
+- le titre de l'étage a été corrigé pour ne plus annoncer un nombre de scripts
+  non garanti.
+
+Fichier relu sur la branche après l'écriture :
+`.github/workflows/ci.yml`, blob `2aa11779789e0aec4f6d86f8933ab65b64aff372`.
+
+### Preuves et limites
+
+| Contrôle | Statut | Preuve |
+|---|---|---|
+| Exclusion de `test:audit-script` de la boucle sans base | RÉUSSI — contrôle statique | Expression de sélection relue sur la branche |
+| Maintien de `test:audit-script` dans le job PostgreSQL jetable | RÉUSSI — contrôle statique | Étape dédiée conservée dans le job base de données |
+| Permissions du workflow CI limitées à `contents: read` | RÉUSSI — contrôle statique | Bloc `permissions` relu |
+| Quatre checkouts CI sans identifiants persistants | RÉUSSI — contrôle statique | Quatre occurrences de `persist-credentials: false` |
+| Réexécution du test `test:audit-script` sans base dans la boucle de vérification | NON EXÉCUTÉ après correction | CI désactivée ; aucun run n'a été lancé |
+| Réexécution de l'ensemble des tests de politique de workflows | NON EXÉCUTÉ après correction | Aucun run GitHub Actions sur le HEAD courant |
+| Vérification de la CI par un run GitHub Actions sur le HEAD courant | BLOQUÉ / NON EXÉCUTÉ | CI toujours désactivée manuellement |
+
+### État du HEAD après la correction
+
+Le commit de correction est `0b6f90ef94f46735f2d9b6e69f9da8bb5d3ef278`.
+La PR #36 reste ouverte, en brouillon et non fusionnée. Aucun workflow n'a été
+réactivé et aucune migration ni action de production n'a été effectuée.
+
+**Décision inchangée : NON FUSIONNABLE.** Cette correction retire la régression
+de sélection de tests identifiée par le rapport, mais ne prouve pas l'exécution
+des tests nominaux A1/A3/A4, ne tranche pas les hypothèses de rôles en production
+et ne remplace pas les contrôles d'exécution exigés avant fusion.
