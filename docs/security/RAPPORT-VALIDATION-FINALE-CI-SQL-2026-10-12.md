@@ -24,8 +24,9 @@
 | 2.7 | Échec volontaire ⇒ annulation de toutes les modifications | **RÉUSSI** | 5 vérifications (a→e) toutes `ok`, cf. §6 |
 | 3 | `test:neon:privileges` détecte réellement et ne laisse aucun résidu | **RÉUSSI** | exit 1 avec la fonction nommée, exit 0 après refermeture, 0 résidu, 152 fonctions stables |
 | 4 | `test:workflow-policy` + témoins | **RÉUSSI** | exit 0 (19 `ok`) et exit 0 (13 témoins `ok`, 11 diagnostics négatifs) |
-| 5 | Preview lié au SHA final | **BLOQUÉ / NON EXÉCUTÉ** | aucun déploiement Vercel pour `7145bb9` ; seul un **ancêtre** (`b02c2d7`) a un Preview `success` ; journaux Vercel inaccessibles depuis cet environnement |
-| 5 | Diff restant et modifications sans rapport | **RÉUSSI** | 57 fichiers, 11 475 +/126 −, catégorisé en §8 |
+| 5 | Preview lié au SHA final | **RÉUSSI** (réserve de portée en §G.2) | Preview `success` pour `7145bb9`, `ref` = le SHA contrôlé, créé 15:03:54Z ; idem pour la tête de PR actuelle (`5d32e79`, `2550d19`) |
+| 5 | Journaux des deux Preview d'ancêtres en échec | **BLOQUÉ** | `api.vercel.com` injoignable, aucun jeton exploitable ; cause non établie (§G.4) |
+| 5 | Diff restant et modifications sans rapport | **RÉUSSI** | 57 fichiers, 11 475 +/126 −, catégorisé ci-dessous |
 
 ---
 
@@ -48,7 +49,8 @@ Les commandes ci-dessous sont reproduites **exactement** ; la chaîne de connexi
 6. **Test de privilèges** — `db:seed-rls` puis `test:neon:privileges` contre la base jetable : exit 1 (état non conforme) → exit 0 (état conforme) → exit 1 (porte rouverte) → exit 0 (refermée) → exit 1 (porte sur fonction non SECDEF, détectée par le contrôle F) → exit 0.
 7. **Analyse statique des suites destructives** — `npm run test:db-routing` : **exit 1 sur `7145bb9` brut** (« suites destructives non déclarées : `scripts/test_routes_tenant_isolation.mjs` »), **exit 0** après correctif candidat n°2 (§7).
 8. **Politique de workflows** — `npm run test:workflow-policy` exit 0 (19 `ok`) ; `npm run test:workflow-policy-temoins` exit 0 (13 témoins `ok`, 11 diagnostics négatifs).
-9. **Preview** — `gh api repos/Huberaya/Tracefab/deployments?per_page=100 --paginate` puis relevé des statuts ; `git merge-base --is-ancestor` pour situer chaque SHA déployé par rapport à la tête.
+9. **Preview** — `gh api repos/Huberaya/Tracefab/deployments?per_page=100 --paginate`, puis relevé des statuts de chaque déploiement et `git merge-base --is-ancestor` pour situer chaque SHA déployé par rapport à la tête. Deux relevés espacés (14:47Z puis 15:08Z) : Vercel a traité un arriéré entre-temps, ce qui a fait apparaître les Preview des commits récents.
+10. **Écriture distante, périmètre identifié** — `git push origin HEAD:refs/heads/arena/879cd8db-tracefab` : `7145bb9..5d32e79` (avance rapide, correctifs) puis `5d32e79..2550d19` (ce rapport). Seule la référence de branche de la PR #36 — en brouillon — a été mise à jour. Aucun merge, aucun tag, aucun réglage, aucun secret, aucune protection de branche ; aucun workflow déclenché (Actions désactivé) ; aucune autre référence distante touchée.
 
 ---
 
@@ -160,24 +162,33 @@ scenario 5 : 0 echec(s)      [exit 0]
 
 ## G. Étape 5 — Preview et diff
 
-### Preview rattaché au SHA final : **BLOQUÉ / NON EXÉCUTÉ**
+### Preview rattaché au SHA final : **RÉUSSI**, avec une réserve de portée mesurée
 
-Relevé `gh api …/deployments?per_page=100 --paginate` (343 entrées) croisé avec l'ascendance de `7145bb9` :
+Relevé `gh api repos/Huberaya/Tracefab/deployments?per_page=100 --paginate`, croisé avec l'ascendance de la tête de PR.
+Vercel a traité un **arriéré** de déploiements pour cette branche entre 14:50Z et 15:07Z (aucun déploiement n'existait pour les commits récents lors du premier relevé à 14:47Z). État final, du plus ancien au plus récent :
 
-| Commit (ancien → récent) | Date du commit | Déploiement Preview | État |
+| Commit | Date du commit | Déploiement Preview | État |
 |---|---|---|---|
 | `dcc8c10` | 11:01 | oui | success |
-| `44d49121c`, `e0e175b98` | 13:15 | oui | success |
+| `44d49121c`, `e0e175b98` | 13:14 / 13:15 | oui | success |
 | `46fbcc9` | 11:55 | oui | **failure** |
+| `e069883` … `137d65b`, `961a0d8` | 16:33 → 16:35 | oui | *inactive* (remplacés) |
 | `911f53a` | 16:33 | oui | **failure** |
-| `b02c2d7` | 16:36 | oui (**créé à 16:50**) | **success** |
-| `239e6e3`, `cd94221`, `b47445d`, `025b82d`, `8a9711e`, `61ae908`, `0b6f90e`, `7145bb9` | 16:37 → 16:46 | **aucun** | — |
+| `b02c2d7` | 16:36 | oui | success |
+| `239e6e3`, `cd94221`, `b47445d`, `025b82d`, `8a9711e` | 16:37 → 16:39 | oui | *inactive* (remplacés) |
+| `61ae908` | 16:40 | oui (créé 14:58:04Z) | success |
+| `0b6f90e` | 16:45 | oui (créé 15:03:00Z) | success |
+| **`7145bb9` (SHA contrôlé)** | 16:46 | **oui** (créé 15:03:54Z) | **success** |
+| `5d32e79` (correctifs) | 16:57 | oui (créé 15:07:06Z) | success |
+| `2550d19` (tête de PR) | 16:59 | oui (créé 15:07:21Z) | success |
 
 Conclusions factuelles :
-1. **Aucun déploiement n'est rattaché à `7145bb9`** (ni à `0b6f90e`, `61ae908`, `8a9711e`) ⇒ le contrôle « Preview du SHA final » est **NON EXÉCUTÉ**, faute d'artefact.
-2. Le Preview le plus récent de la branche porte sur un **ancêtre** (`b02c2d7`, 16:36), état `success`, créé à **16:50** — donc *après* les commits plus récents, sans qu'aucun déploiement ne suive. Cela **n'autorise pas** à considérer le SHA final comme validé par un Preview.
-3. Deux Preview d'ancêtres sont en **échec** (`46fbcc9`, `911f53a`). Les journaux ne sont pas consultables depuis cet environnement (`api.vercel.com` injoignable ; aucun jeton exploitable — celui présenté par le propriétaire est traité comme exposé, cf. §9). **Cause non prouvée**, mais un fait mesuré la rend plausible : `npm run build` exécute `test:db-routing`, qui **échouait** (exit 1) sur la branche avant correctif (§7, défaut n°2). Aucune conclusion ne peut être tirée sans les journaux Vercel.
-4. **Un build réussi, des tests locaux réussis et une validation de la base de production sont trois choses distinctes** : ici, seul le deuxième point dispose de preuves.
+
+1. **Le SHA contrôlé dispose bien d'un Preview en succès, rattaché à ce SHA précis** : `sha`/`ref` = `7145bb94c53d282c183017a4fdfd01c45d821783`, état `success`, « Deployment has completed », créé à 15:03:54Z. Le contrôle « relever l'état du Preview lié au SHA final et vérifier qu'il correspond au HEAD contrôlé » est donc **RÉUSSI**. Les commits de correctifs et la tête de PR actuelle ont également un Preview `success` : la tête n'est pas cassée côté déploiement.
+2. **Réserve de portée, mesurée** — un Preview vert **ne prouve pas la conformité de la CI**. Le commit `61ae908` obtient un Preview `success` alors que, sur son propre arbre, `node scripts/test_destructive_suite_routing.mjs` sort en **exit 1** (« suites destructives non declarees : scripts/test_routes_tenant_isolation.mjs » ; mesuré dans un worktree détaché sur ce commit, dépendances partagées). Ce contrôle est pourtant exécuté par `npm run build`. Le Preview n'exerce donc pas les contrôles de scripts de la CI : **build réussi ≠ tests réussis ≠ base de production validée**.
+3. Les états *inactive* ne sont pas des échecs : Vercel marque obsolètes les Preview remplacés par un plus récent.
+4. Deux Preview d'ancêtres restent en **échec** (`46fbcc9`, `911f53a`). Leur cause **n'est pas établie** : `api.vercel.com` est injoignable depuis cet environnement (HTTP 000) et aucun jeton exploitable n'existe — celui communiqué par le propriétaire est traité comme exposé (§I.8). Aucune conclusion n'en est tirée.
+5. **Aucun check-run GitHub** n'existe sur ces SHA : GitHub Actions reste désactivé. Les seuls artefacts CI/CD disponibles sont donc les Preview ci-dessus, dont la portée est limitée comme dit au point 2.
 
 ### Diff restant (`main` → `7145bb9`) : 57 fichiers, 11 475 +/126 −
 
@@ -225,7 +236,7 @@ Modifications **sans rapport avec la présente mission** à signaler au proprié
 4. **Version de PostgreSQL** : la validation a été faite sur PostgreSQL 18.4. La version de la cible Neon n'a pas été confirmée ; le correctif n'emploie que des fonctions de catalogue standard, mais ce point reste à confirmer côté cible.
 5. **CI non exécutée de bout en bout.** Les étapes exigeant le client Prisma (`tsc --noEmit`, `api:typecheck`, `test:prisma-client`, `test:router-load`, `test:error-reporting`) n'ont **pas** pu tourner ici. Elles ne sont donc **pas** validées.
 6. **`scripts/test_routes_tenant_isolation.mjs` n'a pas été exécuté** (il exige une clé Clerk **de test** et `TF_ROUTES_TEST_HARNESS=1`) : seul son câblage est prouvé, pas ses assertions.
-7. **Preview du SHA final inexistant** ; les deux échecs de Preview sur des ancêtres ne sont pas expliqués par des journaux, seulement rapprochés d'une cause plausible (défaut n°2, corrigé).
+7. **Portée du Preview** : le SHA contrôlé et la tête de PR ont un Preview `success`, mais ce vert ne couvre **pas** les contrôles de scripts de la CI (démontré en §G.2 : `61ae908` est vert en Preview et rouge en `test:db-routing`). Deux échecs de Preview sur des ancêtres (`46fbcc9`, `911f53a`) restent **inexpliqués**, faute de journaux accessibles. Aucun check-run GitHub n'existe (Actions désactivé).
 8. **Jetons et secrets** : le jeton `vcp_…` communiqué en clair le 2026-10-12 est traité comme **exposé** — jamais lu, jamais copié, jamais utilisé, jamais commité ; sa révocation doit être **prouvée par le propriétaire**. Aucune valeur secrète ne figure dans ce rapport.
 9. **Portée du diff** : 6 fichiers applicatifs `api/**` et 25 documents `docs/**` sont inclus dans la branche sans lien avec la présente mission et **non validés** par ce rapport.
 
@@ -238,7 +249,7 @@ Modifications **sans rapport avec la présente mission** à signaler au proprié
 1. **la migration de sécurité ne s'applique pas** — elle est refusée par sa propre précondition sur une base construite par la chaîne du dépôt (`42P17`), ce qui laisse les **6/6** fonctions visées exécutables par `PUBLIC` : le correctif est inopérant ;
 2. **la CI `verification` (et `npm run build`) sort en exit 1** — une suite qui écrit en base n'était pas branchée sur le lanceur gardé.
 
-En revanche, la **détection** et les **garde-fous** sont de bonne qualité et le restent : le refus est explicite (`42P17`, `42883`, `42501`), jamais un succès silencieux ; l'annulation en cas d'échec est **totale** (5 vérifications) ; le détecteur de privilèges attrape réellement une porte rouverte (par la fonction nommée) et ses sondes ne laissent **aucun** résidu ; la politique de workflows et ses témoins sont éprouvés dans les deux sens. La CI, elle, est aujourd'hui **incapable** de le prouver : aucun check-run n'existe sur le SHA final.
+En revanche, la **détection** et les **garde-fous** sont de bonne qualité et le restent : le refus est explicite (`42P17`, `42883`, `42501`), jamais un succès silencieux ; l'annulation en cas d'échec est **totale** (5 vérifications) ; le détecteur de privilèges attrape réellement une porte rouverte (par la fonction nommée) et ses sondes ne laissent **aucun** résidu ; la politique de workflows et ses témoins sont éprouvés dans les deux sens. La CI, elle, reste **incapable** de le prouver : aucun check-run GitHub n'existe sur ces SHA (Actions désactivé) et les Preview Vercel, tous `success` y compris sur des commits dont les contrôles de scripts échouent, ne couvrent pas cette vérification (§G.2).
 
 Après les deux correctifs candidats (§H), tout ce qui peut être mesuré sans la base de production est **vert** : migration appliquée, `0/6` portes ouvertes, rôle applicatif préservé, exemption étroite prouvée par des contrôles négatifs, `test:db-routing` et `test:workflow-policy` verts.
 
@@ -252,7 +263,7 @@ Après les deux correctifs candidats (§H), tout ce qui peut être mesuré sans 
 - **Secrets** : aucune valeur secrète lue, affichée ou commitée. Chaîne de connexion locale uniquement, non sensible ; le jeton `vcp_…` reste traité comme exposé (§I.8).
 - **Workflows** : `ci.yml` conserve `permissions: contents: read`, les actions restent épinglées, `persist-credentials: false` est vérifié, le déclencheur `push` du workflow d'exploitation est retiré. **Aucun workflow n'a été activé** ; deux vérifications statiques les couvrent (`test:workflow-policy`, `-temoins`).
 - **GitHub** : PR #36 toujours `OPEN` et **brouillon**, non fusionnée. Le commit `5d32e79` (correctifs candidats + ce rapport) y est ajouté pour revue ; l'écriture distante se limite à cette référence de branche. Aucun changement de protection de branche, de secret ou de réglage n'a été tenté (ces API répondent 403 depuis cet environnement).
-- **Vercel** : aucune configuration, variable ni déploiement modifié. Aucun Preview ne peut être rattaché au SHA final (§G).
+- **Vercel** : aucune configuration, variable ni déploiement modifié (aucun appel d'écriture ; les relevés passent par l'API GitHub). Des Preview `success` existent pour le SHA contrôlé `7145bb9` et pour la tête de PR `2550d19` ; leur portée est limitée (§G.2). La cause des deux échecs d'ancêtres reste inconnue.
 - **Neon** : aucune connexion, aucune migration. L'état distant est **inconnu** et doit être considéré comme non conforme jusqu'à preuve du contraire.
 - **RLS / privilèges / multi-locataire** : les politiques RLS **n'ont pas été modifiées ni désactivées** ; seul `EXECUTE` à `PUBLIC` est refermé, ce qui est l'objet de la migration. Le maintien des droits de `tracefab_app` est vérifié avant/après. Aucun `GRANT` large n'a été ajouté.
 - **Vulnérabilités résiduelles** : la faille `EXECUTE` reste ouverte **en production** jusqu'à application autorisée ; les assertions du harnais de routes (clé Clerk de test absente) et les étapes CI dépendant du client Prisma ne sont **pas** couvertes.
@@ -265,7 +276,7 @@ Après les deux correctifs candidats (§H), tout ce qui peut être mesuré sans 
 |---|---|---|
 | Application de la migration corrigée sur Neon | niveau D — autorisation requise | accord explicite + rôle propriétaire + `test:neon:privileges` après coup |
 | Relevé de l'état `EXECUTE`/`SECURITY DEFINER` en production | aucune connexion autorisée | accès lecture seule encadré |
-| Preview et journaux Vercel par SHA | `api.vercel.com` injoignable, aucun jeton exploitable | accès Vercel encadré, ou relevé par le propriétaire |
+| Journaux des deux Preview d'ancêtres en échec (`46fbcc9`, `911f53a`) | `api.vercel.com` injoignable (HTTP 000), aucun jeton exploitable | accès Vercel encadré, ou relevé par le propriétaire (l'état des Preview du SHA contrôlé, lui, a été relevé) |
 | Exécution complète de la CI | Actions désactivé + client Prisma non générable ici | réactivation encadrée, hors de cette mission |
 | `scripts/test_routes_tenant_isolation.mjs` | clé Clerk **de test** absente | fourniture par mécanisme sécurisé |
 | Réglages Actions/secrets/protection de `main` | API GitHub en 403 | accès administrateur |
