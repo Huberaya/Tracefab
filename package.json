@@ -107,7 +107,7 @@
     "test:neon:privileges": "node scripts/run-db-suite.mjs scripts/test_neon_privileges.mjs",
     "verify:prisma-client": "node scripts/verify_prisma_client.mjs",
     "test:prisma-client": "node scripts/test_prisma_client_check.mjs",
-    "postinstall": "prisma generate --schema prisma/__controle_negatif_absent__.prisma",
+    "postinstall": "node scripts/prisma-generate.mjs",
     "test:router-load": "npx tsx scripts/test_router_module_load.mjs",
     "db:seed-rls": "node scripts/run-db-suite.mjs scripts/seed_rls_fixture.mjs"
   },
