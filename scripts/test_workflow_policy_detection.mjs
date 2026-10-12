@@ -86,7 +86,7 @@ const TEMOINS = [
   {
     nom: 'propre.yml',
     faute: 'aucune — temoin negatif : le detecteur ne doit pas crier au loup',
-    contenu: `name: Propre\non:\n  push:\n    branches: [main]\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ${EPINGLE}\n      - run: npm ci\n      - run: npm test\n`,
+    contenu: `name: Propre\non:\n  push:\n    branches: [main]\npermissions:\n  contents: read\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ${EPINGLE}\n        with:\n          persist-credentials: false\n      - run: npm ci\n      - run: npm test\n`,
     attenduCode: 0,
     attendu: 'Politique des workflows : OK',
   },
