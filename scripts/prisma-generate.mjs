@@ -132,3 +132,28 @@ if (verification.status !== 0) {
 }
 
 console.log('  client Prisma genere et verifie.');
+
+// Vercel utilise un tableau `builds` dans vercel.json : sa Build Command
+// configuree dans le tableau de bord et le script npm `build` ne sont pas
+// executes. Les controles TypeScript doivent donc etre rattaches au seul
+// point de passage obligatoire observe dans le build : postinstall.
+// Hors Vercel, ces controles restent dans la CI et ne ralentissent pas npm
+// install des developpeurs.
+if (isDeployment) {
+  for (const scriptName of ['typecheck', 'api:typecheck']) {
+    console.log(`\\n  verification statique obligatoire — npm run ${scriptName}`);
+    const check = spawnSync('npm', ['run', scriptName], {
+      stdio: 'inherit',
+      cwd: ROOT,
+      shell: process.platform === 'win32',
+    });
+    if (check.error || check.status !== 0) {
+      console.error(
+        `\\n  ECHEC — ${scriptName} n'a pas reussi dans le build Vercel.\\n` +
+        '  Le deploiement doit rester rouge tant que les erreurs de types ne sont pas corrigees.\\n',
+      );
+      process.exit(check.status ?? 1);
+    }
+  }
+  console.log('  controles TypeScript Vercel : tous verts.');
+}
