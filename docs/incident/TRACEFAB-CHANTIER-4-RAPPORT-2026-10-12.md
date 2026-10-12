@@ -171,6 +171,7 @@ et les deux portaient sur des commits **de documentation seule** :
 | `7010746458` | `0a7df1b` | 6 fichiers, dont le code de `4a5b70c` **et** des modifications | succès |
 | `7010775542` | `1cf5fdf` | 1 fichier, documentation | **failure** (`dpl_DnQBwcNWEPwM3tteamEfEHL73mwe`) |
 | `7010717749` | `826bc11` | correctif CI (branche isolée) | succès |
+| `7010818118` | `27705b7` | 1 fichier, documentation | succès |
 
 Ce qui est établi, et ce qui ne l'est pas :
 
@@ -180,10 +181,13 @@ Ce qui est établi, et ce qui ne l'est pas :
   **fait échouer** le déploiement (contrôle négatif `7010111138`), et un
   déploiement **vert** prouve que l'installation, la génération et la
   vérification ont eu lieu, puisque `postinstall` est le passage obligé ;
-- **non établi** : la cause de ces deux échecs. Le schéma observé (échec sur
-  les commits sans changement de `package.json`) **suggère** un chemin de cache
-  d'installation, mais deux occurrences ne font pas une preuve, et je ne
-  transforme pas une suggestion en conclusion ;
+- **non établi** : la cause de ces échecs. Une hypothèse de travail — « les
+  commits sans changement de dépendances empruntent un chemin de cache » — a
+  été **mise en défaut** par la mesure : le troisième commit de documentation
+  seule (`27705b7`, déploiement `7010818118`) a **réussi**. Le schéma ne tient
+  donc pas, et les échecs sont **intermittents**, sans corrélation de contenu
+  établie. Je ne remplace pas une hypothèse réfutée par une autre : la cause
+  reste à lire dans les journaux ;
 - **conséquence honnête** : un déploiement rouge **ne prouve rien à lui seul**.
   La flakiness ajoute des faux négatifs, jamais de faux positifs — l'argument
   « vert ⇒ génération vérifiée » reste valide, l'argument inverse n'a jamais
