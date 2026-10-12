@@ -109,7 +109,8 @@
     "test:prisma-client": "node scripts/test_prisma_client_check.mjs",
     "postinstall": "node scripts/prisma-generate.mjs",
     "test:router-load": "npx tsx scripts/test_router_module_load.mjs",
-    "db:seed-rls": "node scripts/run-db-suite.mjs scripts/seed_rls_fixture.mjs"
+    "db:seed-rls": "node scripts/run-db-suite.mjs scripts/seed_rls_fixture.mjs",
+    "audit:workflows": "node scripts/audit_workflows_all_refs.mjs"
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",
