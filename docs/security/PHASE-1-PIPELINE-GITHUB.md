@@ -109,7 +109,7 @@ La garde est éprouvée dans les deux sens — c'est la seule façon d'établir
 qu'un contrôle refuse quelque chose.
 
 ```
-$ DATABASE_URL="postgresql://neondb_owner:…@ep-fake-999.eu-central-1.aws.neon.tech/neondb" \
+$ DATABASE_URL="<chaine-neon-jamais-reelle>" \
     node scripts/run-db-suite.mjs scripts/test_neon_security.mjs
   REFUS — cible non autorisee pour : scripts/test_neon_security.mjs
   DATABASE_URL -> REFUSEE | classe=remote_not_opted_in | base=neondb | empreinte=1f2e815c4c37
