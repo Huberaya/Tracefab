@@ -108,6 +108,20 @@ const TEMOINS = [
     attendu: 'aucune',
   },
   {
+    nom: 'permissions-absentes.yml',
+    faute: 'permissions minimales non declarees',
+    contenu: `name: Temoin\non:\n  workflow_dispatch:\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ${EPINGLE}\n        with:\n          persist-credentials: false\n      - run: echo ok\n`,
+    attenduCode: 1,
+    attendu: 'permissions explicites absentes',
+  },
+  {
+    nom: 'checkout-credentials.yml',
+    faute: 'identifiants du checkout conserves par defaut',
+    contenu: `name: Temoin\non:\n  workflow_dispatch:\npermissions:\n  contents: read\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ${EPINGLE}\n      - run: echo ok\n`,
+    attenduCode: 1,
+    attendu: 'checkout sans persist-credentials: false',
+  },
+  {
     nom: 'job-base-jetable.yml',
     faute: 'aucune — temoin : base jetable montee par le job, aucun secret',
     contenu: `name: Temoin\non:\n  push:\npermissions:\n  contents: read\njobs:\n  base:\n    name: Base — isolation RLS executee\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17\n        env:\n          POSTGRES_DB: tracefab_test\n    env:\n      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test\n    steps:\n      - uses: ${EPINGLE}\n        with:\n          persist-credentials: false\n      - run: npm run test:neon:rls\n`,
