@@ -27,20 +27,32 @@ let echecs = 0;
 const ok = (m) => console.log(`  ok    ${m}`);
 const ko = (m) => { echecs += 1; console.log(`  ECHEC ${m}`); };
 
-/** Motifs d'ecriture : SQL et mutations Prisma. */
+/**
+ * Motifs d'ecriture : SQL et mutations Prisma.
+ *
+ * Les mutations Prisma exigent qu'un IDENTIFIANT precede immediatement le
+ * point. Sans cette contrainte, `createHash('sha256').update(x)` etait pris
+ * pour une ecriture de base : le caractere qui precede `.update(` y est une
+ * parenthese fermante, pas un nom de delegue. Un detecteur qui crie a tort
+ * finit par etre desactive, donc le motif est resserre plutot que le fichier
+ * mis en exception.
+ */
 const WRITE_PATTERNS = [
   /INSERT\s+INTO/i, /UPDATE\s+[\w".]+\s+SET/i, /DELETE\s+FROM/i,
   /CREATE\s+(?:OR\s+REPLACE\s+)?(?:TABLE|ROLE|POLICY|INDEX|FUNCTION|TRIGGER|SCHEMA|TYPE)/i,
   /DROP\s+(?:TABLE|ROLE|POLICY|FUNCTION|TRIGGER|SCHEMA|TYPE|DATABASE)/i,
   /ALTER\s+(?:TABLE|ROLE|DEFAULT\s+PRIVILEGES|POLICY)/i,
   /GRANT\s+/i, /REVOKE\s+/i,
-  /\.create\(/, /\.createMany\(/, /\.update\(/, /\.updateMany\(/,
-  /\.delete\(/, /\.deleteMany\(/, /\.upsert\(/,
+  /[A-Za-z_$][\w$]*\.(?:create|createMany|update|updateMany|delete|deleteMany|upsert)\(/,
   /\$executeRaw/,
 ];
 
-/** Suites qui ecrivent et ne doivent jamais s'executer hors lanceur. */
-const MUST_ROUTE_THROUGH_WRAPPER = [
+/**
+ * Suites qui ECRIVENT en base. Elles ne doivent jamais s'executer hors du
+ * lanceur garde : c'est la garde, pas la bonne volonte, qui empeche qu'une
+ * cible de production soit atteinte.
+ */
+const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_neon_security.mjs',
   'scripts/test_neon_supplier_flow.mjs',
   'scripts/test_neon_supplier_advanced.mjs',
@@ -48,10 +60,28 @@ const MUST_ROUTE_THROUGH_WRAPPER = [
   'scripts/test_neon_quality_flow.mjs',
   'scripts/test_neon_data_collection_flow.mjs',
   'scripts/test_neon_bulk_operations_chantier8.mjs',
-  'scripts/test_neon_wallet_chantier9.ts',
-  'scripts/test_neon_chantier10_storage.ts',
   'scripts/test_supplier_advanced.mjs',
 ];
+
+/**
+ * Suites qui NE ECRIVENT PAS mais qui lisent des donnees metier — noms de
+ * produits, compositions, identifiants d'organisation — et les impriment.
+ * Elles sont routees par la meme garde, pour une autre raison : brancher un
+ * test sur une base de production y ferait entrer des donnees d'entreprise
+ * dans les journaux d'execution.
+ *
+ * Les declarer ici plutot que dans la liste precedente n'est pas cosmetique :
+ * la section A2 verifie que la classification correspond au contenu. Une suite
+ * classee destructrice qui n'ecrit plus, ou classee en lecture qui se met a
+ * ecrire, fait echouer la politique.
+ */
+const DATA_READING_DB_SUITES = [
+  'scripts/test_neon_wallet_chantier9.ts',
+  'scripts/test_neon_chantier10_storage.ts',
+];
+
+/** Toutes les suites qui doivent passer par le lanceur garde. */
+const MUST_ROUTE_THROUGH_WRAPPER = [...DESTRUCTIVE_DB_SUITES, ...DATA_READING_DB_SUITES];
 
 /**
  * Suites destructives presentes dans le depot mais rattachees a aucune
@@ -174,6 +204,44 @@ console.log('\n  C. aucune suite destructive non declaree');
   undeclared.length === 0
     ? ok('toute suite ecrivant en base est soit gardee, soit declaree')
     : ko(`suites destructives non declarees : ${undeclared.join(', ')}`);
+}
+
+console.log('\n  A2. la classification correspond au contenu, et le detecteur voit encore');
+{
+  // Une garde dont le detecteur ne voit plus rien fait passer tout le monde :
+  // il faut donc verifier que le detecteur detecte encore, ET que chaque suite
+  // est rangee du bon cote.
+  const ecriventPas = [];
+  for (const rel of DESTRUCTIVE_DB_SUITES) {
+    if (!existsSync(join(ROOT, rel))) continue;
+    const corps = readFileSync(join(ROOT, rel), 'utf8');
+    if (!WRITE_PATTERNS.some((motif) => motif.test(corps))) ecriventPas.push(rel);
+  }
+  ecriventPas.length === 0
+    ? ok(`les ${DESTRUCTIVE_DB_SUITES.length} suites classies destructrices portent bien un motif d ecriture`)
+    : ko(`classies destructrices mais sans ecriture detectee : ${ecriventPas.join(', ')}`);
+
+  const ecrivent = [];
+  for (const rel of DATA_READING_DB_SUITES) {
+    if (!existsSync(join(ROOT, rel))) continue;
+    const corps = readFileSync(join(ROOT, rel), 'utf8');
+    if (WRITE_PATTERNS.some((motif) => motif.test(corps))) ecrivent.push(rel);
+  }
+  ecrivent.length === 0
+    ? ok(`les ${DATA_READING_DB_SUITES.length} suites classies en lecture seule n ecrivent pas`)
+    : ko(`classies en lecture seule mais contiennent une ecriture : ${ecrivent.join(', ')}`);
+
+  // Et un temoin positif : le motif resserre doit encore reconnaitre une
+  // mutation Prisma reelle, et ignorer une chaine de hachage.
+  const mutation = "await prisma.product.update({ where: { id }, data });";
+  const hachage = "return createHash('sha256').update(url).digest('hex');";
+  const motif = /[A-Za-z_$][\w$]*\.(?:create|createMany|update|updateMany|delete|deleteMany|upsert)\(/;
+  motif.test(mutation)
+    ? ok('une mutation Prisma reelle est reconnue')
+    : ko('une mutation Prisma reelle n est plus reconnue');
+  !motif.test(hachage)
+    ? ok('une chaine de hachage n est plus prise pour une ecriture')
+    : ko('une chaine de hachage est encore prise pour une ecriture');
 }
 
 console.log('\n  D. le registre des suites non rattachees reste exact');

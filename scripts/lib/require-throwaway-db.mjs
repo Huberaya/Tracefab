@@ -189,7 +189,8 @@ export function requireThrowawayDb({
     if (exitOnFailure) {
       console.error(`\n  REFUS — cible non autorisee pour : ${purpose}`);
       for (const entry of refused) console.error(`  ${describeTarget(entry.variable, entry.verdict)}`);
-      console.error('  Cette suite ecrit des roles, des privileges ou des donnees.');
+      console.error('  Cette suite touche une base de donnees : elle peut y ecrire des roles,');
+      console.error('  des privileges ou des donnees, ou y lire des donnees metier.');
       console.error('  Pour une cible distante, il faut explicitement :');
       console.error('    TRACEFAB_ALLOW_NONLOCAL_TEST_DB=true');
       console.error('    TRACEFAB_TEST_DB_HOST_ALLOWLIST=<hote>');
