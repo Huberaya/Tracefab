@@ -1018,3 +1018,58 @@ seul chemin qui existe.
 - Aucun secret n'a été créé, lu, modifié ou supprimé. Aucun jeton n'a transité.
 - Aucune fusion, aucun déploiement, aucune migration : `main` intacte
   (`b0c976f`), production intacte.
+
+---
+
+## 14. Journalisation d'un incident d'hygiène : un identifiant d'accès a été collé dans la conversation
+
+**2026-10-12.** Un identifiant d'accès Vercel a été collé directement dans le
+message de l'utilisateur, accompagné de l'URL du site. Voici ce qui a été fait
+de cet identifiant, et ce qui n'en a pas été fait. La valeur n'est reproduite
+nulle part dans ce rapport.
+
+### 14.1 Traitement : ni utilisé, ni copié, ni testé, ni stocké
+
+| Vérification | Résultat |
+|---|---|
+| recherche sur tout le disque du bac à sable d'un fichier contenant ce préfixe (hors `node_modules` et `.git`), **en n'imprimant que les noms de fichiers** | **aucun fichier** — rien n'a été écrit, ni dans le dépôt, ni ailleurs |
+| requête vers `https://tracefab.vercel.app/` (sans aucun identifiant) | **HTTP 000** |
+| requête vers `https://api.vercel.com/v6/deployments` (sans aucun identifiant) | **HTTP 000** |
+| `gh api …/actions/secrets` (dépôt) | **403** « Resource not accessible by integration » |
+
+Aucune commande n'a contenu la valeur, aucun fichier ne la contient, aucun test
+d'authentification n'a été tenté. Elle n'a servi à rien — et elle n'aurait rien
+pu servir :
+
+1. **l'accès réseau de cette session à Vercel est fermé** (HTTP 000, mesuré
+   trois fois au cours de la journée, dont à l'instant) : aucun identifiant ne
+   lève une restriction réseau ;
+2. **je ne peux pas déposer d'identifiant dans un secret GitHub** (403 en
+   lecture comme en écriture) : il n'existe donc aucun chemin par lequel un
+   identifiant reçu ici pourrait être utilisé par un runner ;
+3. les workflows ne s'exécutent plus dans ce dépôt depuis le
+   2026-10-10T10:18:56Z (§13), donc le relais GitHub est lui aussi inerte.
+
+### 14.2 Action demandée, et sa preuve
+
+**Révoquer cet identifiant maintenant**, sans attendre la fin du travail : il
+n'apporterait rien de plus, et il reste lisible dans l'historique de la
+conversation.
+
+Preuve de révocation, à produire sans divulguer la valeur :
+
+1. la liste des jetons du compte (et, le cas échéant, ceux de l'équipe) ne doit
+   plus le mentionner ;
+2. un appel quelconque effectué avec lui doit répondre **401** ou **403** ;
+3. si l'identifiant avait des consommateurs légitimes (CI, script local,
+   intégration), ils doivent être identifiés **avant** la révocation, puis
+   remplacés — un identifiant de diagnostic n'en a normalement aucun.
+
+### 14.3 Ce que cet incident ne change pas
+
+- Aucun secret n'a été créé, lu, modifié ou supprimé côté GitHub, Vercel ou
+  Neon.
+- `main` reste `b0c976f` ; `CI` reste `disabled_manually` ; la production n'a
+  pas été touchée ; aucun déploiement n'a été déclenché.
+- Le diagnostic de production reste **NON VÉRIFIÉ** : il manque toujours une
+  ligne de journal, et cette ligne ne contient aucun secret.
