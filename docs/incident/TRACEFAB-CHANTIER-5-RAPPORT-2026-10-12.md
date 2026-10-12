@@ -648,7 +648,7 @@ ils sont préparés, testés sur copies de travail, et attendent votre décision
 | Branche | HEAD | Écart à `main` | Fichiers |
 |---|---|---|---|
 | `arena/879cd8db-tracefab` (poussé) | `ae40e64` | 25 commits | 33 fichiers |
-| `arena/879cd8db-tracefab` (local, fin de tour) | `bff267b` | 28 commits | 38 fichiers |
+| `arena/879cd8db-tracefab` (local, après correctifs et §10) | `bff267b` | 28 commits | 38 fichiers |
 | `securite/ci-sans-secret-depuis-main` | `826bc11` | 1 commit | 1 fichier (`2 insertions(+), 18 deletions(-)`) |
 
 Les 38 fichiers de ma branche, par répertoire : `scripts` 14,
@@ -720,8 +720,9 @@ Fichiers touchés par ce tour : les 7 fichiers de `scripts/` listés en §10.1 p
 `scripts/test_workflow_policy.mjs`, `scripts/test_workflow_policy_detection.mjs`,
 et les 5 patches `docs/security/patches/ci-experience-chantier-*`. Commits :
 **`50acb92`** (correctifs de code), **`6d30db3`** (ce §10), **`bff267b`**
-(patch `chantier-20` oublié par un glob — voir §10.8). État du dépôt : arbre
-propre, `main` + 28 commits, 38 fichiers.
+(patch `chantier-20` oublié par un glob — voir §10.8), puis le commit qui
+clôt ce tour en documentant cet état. État du dépôt : arbre propre, 38 fichiers
+au-dessus de `main`.
 
 **Risques résiduels, inchangés et assumés :**
 
