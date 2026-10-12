@@ -647,13 +647,14 @@ ils sont préparés, testés sur copies de travail, et attendent votre décision
 
 | Branche | HEAD | Écart à `main` | Fichiers |
 |---|---|---|---|
-| `arena/879cd8db-tracefab` | `50acb92` | 26 commits | 33 fichiers |
+| `arena/879cd8db-tracefab` (poussé) | `ae40e64` | 25 commits | 33 fichiers |
+| `arena/879cd8db-tracefab` (local, fin de tour) | `bff267b` | 28 commits | 38 fichiers |
 | `securite/ci-sans-secret-depuis-main` | `826bc11` | 1 commit | 1 fichier (`2 insertions(+), 18 deletions(-)`) |
 
-Les 33 fichiers de ma branche, par répertoire : `scripts` 14, `docs/incident` 6,
-`docs/security` 3, `docs/security/patches` 3, `scripts/lib` 1,
-`prisma/migrations/20261012120000_close_public_execute_gap` 1, `package.json`,
-`package-lock.json`, `api/_lib`, `api`, `.github/workflows` 1 chacun.
+Les 38 fichiers de ma branche, par répertoire : `scripts` 14,
+`docs/security/patches` 8, `docs/incident` 6, `docs/security` 3, `scripts/lib` 1,
+`prisma/migrations/20261012120000_close_public_execute_gap` 1, puis 1 chacun pour
+`package.json`, `package-lock.json`, `api/_lib`, `api`, `.github/workflows`.
 
 **Elles ne se cumulent pas.** Vérifié et non supposé :
 `git apply --check docs/security/patches/ci-main-sans-secret.patch` sur une copie
@@ -717,8 +718,10 @@ echecs: 0
 Fichiers touchés par ce tour : les 7 fichiers de `scripts/` listés en §10.1 plus
 `scripts/lib/require-throwaway-db.mjs`, `scripts/test_db_target_guard.mjs`,
 `scripts/test_workflow_policy.mjs`, `scripts/test_workflow_policy_detection.mjs`,
-et les 5 patches `docs/security/patches/ci-experience-chantier-*`. Commit :
-**`50acb92`** (`main` + 26).
+et les 5 patches `docs/security/patches/ci-experience-chantier-*`. Commits :
+**`50acb92`** (correctifs de code), **`6d30db3`** (ce §10), **`bff267b`**
+(patch `chantier-20` oublié par un glob — voir §10.8). État du dépôt : arbre
+propre, `main` + 28 commits, 38 fichiers.
 
 **Risques résiduels, inchangés et assumés :**
 
@@ -761,3 +764,24 @@ mes contrôles. Ils auraient tous les trois produit des preuves fausses.
 **Prochaine action prioritaire, inchangée** : une ligne du journal du
 déploiement `6968252029`. Tant qu'elle manque, la cause en production reste
 `NON VÉRIFIÉE` et je ne l'écrirai pas autrement.
+
+### 10.8 État du dépôt à la fin de ce tour, et un défaut d'exécution de plus
+
+- Branche : `arena/879cd8db-tracefab`, `main` = `b0c976f`.
+- Commits de ce tour : `50acb92` (durcissement), `6d30db3` (§10), `bff267b`
+  (patch `chantier-20`), plus le commit de ce bloc.
+- Arbre de travail : **propre** (`git status --short` vide).
+- Batterie : 14 cibles, **0 échec** (§10.6), re-mesurée après les correctifs.
+- Rien d'écrit hors de cette branche : aucun push sur `main`, aucune fusion,
+  aucun déploiement, aucune migration jouée, aucun secret supprimé ou lu,
+  aucun réglage GitHub/Vercel/Neon modifié.
+
+**Quatrième défaut trouvé ce tour — dans ma propre exécution, pas dans un
+contrôle.** Le premier `git add` des cinq patches utilisait
+`docs/security/patches/ci-experience-chantier-1*-…` : ce motif couvre 16 à 19 mais
+**pas 20** (la chaîne commence par `2`). Le commit `50acb92` annonçait donc cinq
+patches et n'en contenait que quatre ; le cinquième est ajouté par `bff267b`, et
+le rapport annonçait 33 fichiers là où l'arbre en comptait déjà 37. C'est
+exactement le type d'écart qu'une relecture par diff attrape et qu'une annonce
+sans relecture laisse passer : les compteurs des §10.4 et §10.6 ont été
+recalculés sur l'arbre, pas recopiés.
