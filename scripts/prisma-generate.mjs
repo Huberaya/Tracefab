@@ -97,4 +97,32 @@ if (result.status !== 0) {
   process.exit(result.status ?? 1);
 }
 
-console.log('  client Prisma genere.');
+// ---------------------------------------------------------------------------
+// 4. Verifier ce qui vient d'etre genere, ici et maintenant
+// ---------------------------------------------------------------------------
+// Generer ne suffit pas : `@prisma/client` s'installe avec un repli factice, et
+// une generation qui ne produit rien d'exploitable laisserait un paquet vert.
+// La verification est donc exécutée DANS le même processus de build, pas dans
+// un script que quelqu'un pensera peut-être à lancer.
+//
+// Ce point est décisif : sur Vercel, avec `builds` dans vercel.json, les
+// réglages de build du projet sont ignorés et `npm run build` n'est pas
+// exécuté. L'installation est le seul passage obligé. Une vérification placée
+// dans `npm run build` ne protège pas le déploiement ; placée ici, elle le
+// protège.
+const verification = spawnSync(
+  process.execPath,
+  [join(ROOT, 'scripts', 'verify_prisma_client.mjs')],
+  { stdio: 'inherit', cwd: ROOT },
+);
+
+if (verification.status !== 0) {
+  console.error(
+    '\n  ECHEC — le client genere ne passe pas la verification.\n' +
+    '  Un client factice ou incomplet ne doit pas pouvoir etre deploye :\n' +
+    '  c est l etat qui a produit internal_error sur toute route de donnees.\n',
+  );
+  process.exit(verification.status ?? 1);
+}
+
+console.log('  client Prisma genere et verifie.');
