@@ -81,16 +81,27 @@ class PrismaClient {
 module.exports = { PrismaClient, Prisma: { defineExtension: (e) => e }, default: {} };
 `;
 
-function project(label, clientSource) {
+function project(label, clientSource, { engine = true } = {}) {
   const dir = mkdtempSync(join(tmpdir(), `tracefab-prisma-${label}-`));
   mkdirSync(join(dir, 'prisma'), { recursive: true });
   mkdirSync(join(dir, 'scripts'), { recursive: true });
   mkdirSync(join(dir, 'node_modules', '@prisma', 'client'), { recursive: true });
+  mkdirSync(join(dir, 'node_modules', '.prisma', 'client'), { recursive: true });
   cpSync(join(ROOT, 'prisma', 'schema.prisma'), join(dir, 'prisma', 'schema.prisma'));
   cpSync(join(ROOT, 'scripts', 'verify_prisma_client.mjs'), join(dir, 'scripts', 'verify_prisma_client.mjs'));
   writeFileSync(join(dir, 'node_modules', '@prisma', 'client', 'package.json'),
     JSON.stringify({ name: '@prisma/client', version: '0.0.0-shim', main: 'index.js' }));
   writeFileSync(join(dir, 'node_modules', '@prisma', 'client', 'index.js'), clientSource);
+
+  // Le client genere vit dans node_modules/.prisma/client, et la resolution
+  // passe par le specifieur `.prisma/client/default` — celui que @prisma/client
+  // utilise reellement. Le moteur, lui, est copie a cote : quand il manque, le
+  // client se construit et echoue a la premiere requete.
+  writeFileSync(join(dir, 'node_modules', '.prisma', 'client', 'default.js'),
+    `module.exports = require('../../../@prisma/client/index.js');\n`);
+  if (engine) {
+    writeFileSync(join(dir, 'node_modules', '.prisma', 'client', 'libquery_engine-debian-openssl-3.0.x.so.node'), 'moteur factice pour la sonde\n');
+  }
   return dir;
 }
 
@@ -101,15 +112,19 @@ function run(dir) {
 }
 
 const cases = [
-  ['client factice', STUB, 1, 'repli factice'],
-  ['client conforme', CONFORMING, 0, 'conforme'],
-  ['client incomplet', INCOMPLETE, 1, 'delegue'],
+  ['client factice', STUB, 1, 'repli factice', {}],
+  ['client conforme', CONFORMING, 0, 'conforme', {}],
+  ['client incomplet', INCOMPLETE, 1, 'delegue', {}],
+  // Un client complet mais prive de son moteur : c'est le vert qui precede la
+  // panne. Le controle doit le refuser, sans quoi il ne couvre pas la forme de
+  // defaillance observee en production le 2026-10-12.
+  ['client sans moteur', CONFORMING, 1, 'moteur', { engine: false }],
 ];
 
-console.log('\n  Le controle doit distinguer les trois etats d un client Prisma\n');
+console.log('\n  Le controle doit distinguer les quatre etats d un client Prisma\n');
 const dirs = [];
-for (const [label, source, expected, needle] of cases) {
-  const dir = project(label.replace(/\s+/g, '-'), source);
+for (const [label, source, expected, needle, options] of cases) {
+  const dir = project(label.replace(/\s+/g, '-'), source, options);
   dirs.push(dir);
   const { code, out } = run(dir);
   const verdictOk = code === expected;

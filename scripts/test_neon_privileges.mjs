@@ -65,7 +65,10 @@ console.log(`  connexion etablie | proprietaire : ${proprio}`);
 // ---------------------------------------------------------------------------
 // A. Aucune fonction SECURITY DEFINER executable par PUBLIC
 // ---------------------------------------------------------------------------
-const publiques = (await db.query(`
+// La requete est nommee, et non inline, pour que le controle negatif G teste
+// EXACTEMENT le detecteur de production. Un controle negatif qui reecrit sa
+// propre requete ne prouve rien sur celle qui tourne.
+const REQUETE_FONCTIONS_PUBLIQUES = `
   SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args,
          pg_get_userbyid(p.proowner) AS proprietaire,
          has_function_privilege('public', p.oid, 'EXECUTE') AS public_peut
@@ -73,7 +76,9 @@ const publiques = (await db.query(`
   JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.prokind = 'f' AND p.prosecdef
     AND has_function_privilege('public', p.oid, 'EXECUTE')
-  ORDER BY p.proname`)).rows;
+  ORDER BY p.proname`;
+
+const publiques = (await db.query(REQUETE_FONCTIONS_PUBLIQUES)).rows;
 
 const totalSecdef = (await db.query(`
   SELECT count(*)::int AS n FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -258,6 +263,45 @@ if (!existe) {
   reste === 0
     ? ok('F. le role sonde a bien ete annule par ROLLBACK')
     : ko('F. le role sonde subsiste : le ROLLBACK n a pas fonctionne');
+}
+
+// ---------------------------------------------------------------------------
+// G. CONTROLE NEGATIF — le detecteur attrape-t-il une porte rouverte ?
+// ---------------------------------------------------------------------------
+// A dit « aucune fonction executable par PUBLIC ». Un constat vide ne prouve
+// pas que la mesure fonctionne : elle pourrait interroger la mauvaise colonne
+// et renvoyer zero quoi qu'il arrive. On rouvre donc la porte exprès, dans une
+// transaction annulee, et on EXIGE que le detecteur de A la voie.
+//
+// Ce scenario n'est pas theorique : mesure faite sur base jetable (sonde du
+// 2026-10-12), un ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ...
+// TO PUBLIC re-ouvre l'execution par PUBLIC pour les fonctions a venir, alors
+// que la regle globale, elle, reste fermee. C'est le chemin par lequel la
+// fermeture peut etre defaite sans qu'aucune ligne existante ne change.
+{
+  await db.query('BEGIN');
+  try {
+    await db.query(`CREATE FUNCTION tracefab_controle_negatif() RETURNS int LANGUAGE sql SECURITY DEFINER AS $cn$ SELECT 1 $cn$`);
+    await db.query('GRANT EXECUTE ON FUNCTION tracefab_controle_negatif() TO PUBLIC');
+
+    const vue = (await db.query(REQUETE_FONCTIONS_PUBLIQUES)).rows;
+    const attrapee = vue.some((f) => f.proname === 'tracefab_controle_negatif');
+
+    attrapee
+      ? ok('G. porte rouverte exprès : le detecteur de A la vue immediatement')
+      : ko('G. une fonction SECURITY DEFINER rendue executable par PUBLIC n a PAS ete vue par le detecteur de A — le constat A ne prouve rien');
+  } catch (error) {
+    ko(`G. le controle negatif n a pas pu s executer : ${String(error.message).split('\n')[0]}`);
+  } finally {
+    await db.query('ROLLBACK').catch(() => {});
+  }
+
+  const reste = (await db.query(`
+    SELECT count(*)::int AS n FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'tracefab_controle_negatif'`)).rows[0].n;
+  reste === 0
+    ? ok('G. la porte rouverte a ete refermee par ROLLBACK : la base est dans son etat initial')
+    : ko('G. la fonction de controle negatif subsiste : le ROLLBACK n a pas fonctionne');
 }
 
 await db.end();

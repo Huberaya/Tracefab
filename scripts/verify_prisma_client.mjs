@@ -31,7 +31,8 @@
  * et ce script n'emet aucune requete. Une valeur de connexion factice et non
  * routable est fournie uniquement pour satisfaire la resolution de `env()`.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -113,6 +114,67 @@ if (missing.length === 0) {
 // TypeScript) n'est pas verifiable par Node seul : c'est le role de
 // `npm run test:router-load`, qui s'execute sous tsx et couvre le mode de
 // defaillance exact observe en production.
+
+// --- 4. Le moteur de requetes voyage-t-il avec le client ?
+// Un client genere sans son moteur se construit, expose ses delegues, et
+// echoue a la PREMIERE requete — le vert qui precede la panne. Le generateur
+// `prisma-client-js` copie ce moteur a cote du client ; une generation faite
+// avec `--no-engine`, ou un fichier perdu en route, donne un paquet qui a
+// l'air complet et ne peut pas interroger la base.
+//
+// Ce controle est STRUCTUREL, et volontairement : il ne tente aucune
+// connexion. Une sonde qui interrogerait vraiment un serveur depuis
+// l'installation toucherait une base reelle — ce depot interdit que
+// l'installation se connecte a la production. Le comportement, lui, est
+// mesure par les trois controles precedents et par `test:router-load`.
+let schemaSource = '';
+try {
+  schemaSource = readFileSync(resolve(ROOT, 'prisma/schema.prisma'), 'utf8');
+} catch {
+  schemaSource = '';
+}
+const moteurOptionnel =
+  /engineType\s*=\s*['"]client['"]/.test(schemaSource) ||
+  /previewFeatures\s*=\s*\[[^\]]*queryCompiler/.test(schemaSource);
+
+if (moteurOptionnel) {
+  console.log('  ---- le schema declare un generateur sans moteur natif');
+  console.log('          (engineType = client / queryCompiler) : presence du moteur non exigee.');
+} else {
+  let dossierClient = null;
+  try {
+    dossierClient = dirname(createRequire(import.meta.url).resolve('.prisma/client/default'));
+  } catch (error) {
+    ko(`dossier du client genere introuvable : ${String(error.message).split('\n')[0]}`);
+  }
+
+  if (dossierClient) {
+    let fichiers = [];
+    try {
+      fichiers = readdirSync(dossierClient);
+    } catch (error) {
+      ko(`dossier ${dossierClient} illisible : ${String(error.message).split('\n')[0]}`);
+    }
+
+    const moteurs = fichiers.filter((f) => /^lib?query_engine/i.test(f) && /\.(node|so|dll|dylib)$/i.test(f));
+    const familles = { linux: /debian|linux|musl|rhel|ubuntu|alpine|openssl/i, darwin: /darwin|apple|macos/i, win32: /windows|win32/i };
+    const familleCourante = familles[process.platform];
+    const compatible = !familleCourante || moteurs.length === 0 ? true : moteurs.some((f) => familleCourante.test(f));
+
+    if (moteurs.length === 0) {
+      ko(`aucun moteur de requetes dans ${dossierClient} (${fichiers.length} fichiers)`);
+      console.error(`          contenu : ${fichiers.slice(0, 8).join(', ')}${fichiers.length > 8 ? '…' : ''}`);
+      console.error('          Le client se construirait, puis echouerait a la premiere requete');
+      console.error('          avec « Query engine library ... could not be found » :');
+      console.error('          la panne surviendrait apres un deploiement vert.');
+      console.error('          Regenerer : npm run db:generate (reseau vers binaries.prisma.sh requis).');
+    } else if (!compatible) {
+      ko(`moteur(s) ${moteurs.join(', ')} inutilisable(s) sur cette plateforme (${process.platform})`);
+    } else {
+      ok(`moteur de requetes present dans le paquet : ${moteurs.join(', ')}`);
+    }
+  }
+}
 
 await client.$disconnect?.().catch(() => {});
 
