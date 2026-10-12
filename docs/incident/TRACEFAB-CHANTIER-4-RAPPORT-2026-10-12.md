@@ -160,27 +160,50 @@ Tous exécutés today, sur cette branche. « Isolé » = PostgreSQL 18.4 jetable
 **Non exécuté, donc non réussi** : aucune suite de navigateur, aucune suite
 contre Neon, aucune exécution en CI (workflow désactivé).
 
-### 5.1 Observation nouvelle : un échec de déploiement non reproductible
+### 5.1 Observation nouvelle : des échecs de déploiement non reproductibles
 
-Pendant ce chantier, le déploiement Preview du commit `4a5b70c` — **un commit
-de documentation seule** — a échoué (`dpl_7XwXhdxafNRZhGu8GGxDixnSRuYg`). Le
-commit suivant, `0a7df1b`, qui contient **tout** `4a5b70c` plus des
-modifications de code, a réussi (`7010746458`). Le commit `826bc11` de la
-branche isolée a également réussi.
+Pendant ce chantier, **deux des six derniers déploiements Preview ont échoué**,
+et les deux portaient sur des commits **de documentation seule** :
 
-Conclusion, dans les deux sens :
+| Déploiement | Commit | Contenu | État |
+|---|---|---|---|
+| `7010547028` | `4a5b70c` | 1 fichier, documentation | **failure** (`dpl_7XwXhdxafNRZhGu8GGxDixnSRuYg`) |
+| `7010746458` | `0a7df1b` | 6 fichiers, dont le code de `4a5b70c` **et** des modifications | succès |
+| `7010775542` | `1cf5fdf` | 1 fichier, documentation | **failure** (`dpl_DnQBwcNWEPwM3tteamEfEHL73mwe`) |
+| `7010717749` | `826bc11` | correctif CI (branche isolée) | succès |
 
-- l'échec de `4a5b70c` était **transitoire** (infrastructure ou téléchargement
-  des binaires Prisma pendant l'installation), et non un effet du contenu ;
-- mais il faut en tirer la conséquence inverse de celle qu'on serait tenté
-  d'écrire : **un déploiement rouge ne prouve pas à lui seul un défaut de
-  code**. En revanche, un déploiement **vert** prouve bien que l'installation,
-  la génération et la vérification du client ont réussi — c'est un passage
-  obligé, sans échappatoire (`postinstall`).
+Ce qui est établi, et ce qui ne l'est pas :
 
-Les journaux de cet échec sont hors d'atteinte d'ici : ils ne sont pas
-exploitables pour trancher entre les deux causes transitoires possibles, et je
-ne les invente pas.
+- **établi** : l'échec n'est pas un effet du contenu — `0a7df1b` contient tout
+  `4a5b70c` **plus** du code, et il a réussi ;
+- **établi** : la garantie centrale tient toujours. Un échec de génération
+  **fait échouer** le déploiement (contrôle négatif `7010111138`), et un
+  déploiement **vert** prouve que l'installation, la génération et la
+  vérification ont eu lieu, puisque `postinstall` est le passage obligé ;
+- **non établi** : la cause de ces deux échecs. Le schéma observé (échec sur
+  les commits sans changement de `package.json`) **suggère** un chemin de cache
+  d'installation, mais deux occurrences ne font pas une preuve, et je ne
+  transforme pas une suggestion en conclusion ;
+- **conséquence honnête** : un déploiement rouge **ne prouve rien à lui seul**.
+  La flakiness ajoute des faux négatifs, jamais de faux positifs — l'argument
+  « vert ⇒ génération vérifiée » reste valide, l'argument inverse n'a jamais
+  été avancé.
+
+Ces échecs sont **Preview** : la production n'a pas été touchée (dernier
+déploiement de production `6968252029` = `b0c976f`, inchangé).
+
+**Pour trancher, deux commandes côté propriétaire** (les journaux sont hors
+d'atteinte d'ici) :
+
+```
+npx vercel inspect dpl_7XwXhdxafNRZhGu8GGxDixnSRuYg --logs
+npx vercel inspect dpl_DnQBwcNWEPwM3tteamEfEHL73mwe --logs
+```
+
+Si la trace désigne le téléchargement des binaires Prisma pendant
+l'installation, la parade est de fixer la version du moteur ou de le mettre en
+cache ; si elle désigne autre chose, c'est cette autre chose qu'il faudra
+corriger — et le remède ne sera pas le même.
 
 ## 6. État de la CI et raisons du blocage
 
