@@ -190,6 +190,8 @@ Conclusions factuelles :
 4. Deux Preview d'ancêtres restent en **échec** (`46fbcc9`, `911f53a`). Leur cause **n'est pas établie** : `api.vercel.com` est injoignable depuis cet environnement (HTTP 000) et aucun jeton exploitable n'existe — celui communiqué par le propriétaire est traité comme exposé (§I.8). Aucune conclusion n'en est tirée.
 5. **Aucun check-run GitHub** n'existe sur ces SHA : GitHub Actions reste désactivé. Les seuls artefacts CI/CD disponibles sont donc les Preview ci-dessus, dont la portée est limitée comme dit au point 2.
 
+**Addendum de relevé (15:20Z)** — après le relevé ci-dessus, la tête de PR est passée à `c8904f741f3a8637eec47ba58a99a21092c7d170` (`c8904f7`, commit de **documentation seule**). Vercel n'avait produit aucun déploiement pour ce SHA à l'heure de la rédaction, alors que l'arriéré précédent a fini par être traité : l'absence de déploiement sur un commit récent n'est donc pas, en soi, un échec. Le SHA contrôlé `7145bb9` et le commit de correctifs `5d32e79` restent ceux vérifiés dans ce rapport.
+
 ### Diff restant (`main` → `7145bb9`) : 57 fichiers, 11 475 +/126 −
 
 | Catégorie | Fichiers | Nature |
