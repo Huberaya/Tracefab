@@ -71,11 +71,11 @@ console.log(`  connexion etablie | proprietaire : ${proprio}`);
 const REQUETE_FONCTIONS_PUBLIQUES = `
   SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args,
          pg_get_userbyid(p.proowner) AS proprietaire,
-         has_function_privilege('public', p.oid, 'EXECUTE') AS public_peut
+         EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') AS public_peut
   FROM pg_proc p
   JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.prokind = 'f' AND p.prosecdef
-    AND has_function_privilege('public', p.oid, 'EXECUTE')
+    AND EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE')
   ORDER BY p.proname`;
 
 const publiques = (await db.query(REQUETE_FONCTIONS_PUBLIQUES)).rows;
@@ -141,14 +141,14 @@ if (!roleExiste) {
 // ---------------------------------------------------------------------------
 // C. La fonction de la politique materials, mesuree et non lue
 // ---------------------------------------------------------------------------
-const cible = 'tracefab_material_visible_via_product(uuid)';
+const cible = 'public.tracefab_material_visible_via_product(uuid)';
 const existe = (await db.query('SELECT to_regprocedure($1) AS oid', [cible])).rows[0].oid;
 
 if (!existe) {
   console.log(`  ---- C. ${cible} absente de cette base : verification ignoree`);
 } else {
   const etat = (await db.query(`
-    SELECT has_function_privilege('public', $1::regprocedure, 'EXECUTE') AS public_peut,
+    SELECT EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') AS public_peut,
            pg_get_userbyid(p.proowner) AS proprietaire,
            p.prosecdef
     FROM pg_proc p WHERE p.oid = $1::regprocedure`, [cible])).rows[0];
@@ -180,7 +180,7 @@ if (!existe) {
   try {
     await db.query(`CREATE FUNCTION tracefab_privilege_probe() RETURNS boolean LANGUAGE sql STABLE AS $probe$ SELECT true $probe$`);
     const temoin = (await db.query(`
-      SELECT has_function_privilege('public', p.oid, 'EXECUTE') AS public_peut, p.proacl::text AS acl
+      SELECT EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') AS public_peut, p.proacl::text AS acl
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
       WHERE n.nspname = 'public' AND p.proname = 'tracefab_privilege_probe'`)).rows[0];
 
@@ -218,11 +218,12 @@ if (!existe) {
 // subsiste, et le test est rejouable.
 {
   const FONCTIONS_A_FERMER = [
-    'tracefab_material_visible_via_product(uuid)',
-    'tracefab_product_is_public(uuid)',
-    'tracefab_material_is_public(uuid)',
-    'tracefab_supplier_site_is_public(uuid)',
-    'tracefab_public_brand(uuid)',
+    'public.tracefab_material_visible_via_product(uuid)',
+    'public.tracefab_product_is_public(uuid)',
+    'public.tracefab_material_is_public(uuid)',
+    'public.tracefab_supplier_site_is_public(uuid)',
+    'public.tracefab_public_brand(uuid)',
+    'public.tracefab_public_context()',
   ];
 
   await db.query('BEGIN');
