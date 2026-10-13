@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
+    "postinstall": "prisma generate",
     "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:supplier-portal && npm run test:questionnaires",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "npx tsx scripts/test_neon_bulk_operations_chantier8.mjs",
@@ -102,21 +103,21 @@
     "test:regression": "node scripts/test_regression_visuelle.mjs"
   },
   "devDependencies": {
-    "@prisma/client": "^6.19.3",
     "@types/archiver": "^8.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.43",
     "axe-core": "^4.14.0",
     "pg": "^8.23.1",
     "playwright": "^1.63.0",
-    "prisma": "^6.19.3",
     "tsx": "^4.23.15",
     "typescript": "^5.9.2"
   },
   "dependencies": {
     "@clerk/backend": "^3.23.0",
+    "@prisma/client": "^6.19.3",
     "archiver": "^8.0.0",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^6.19.3"
   },
   "type": "module",
   "overrides": {
