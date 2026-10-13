@@ -66,7 +66,8 @@ const TABLE = [
   ['host= repete, local puis manage', 'postgresql://u:p@db.interne:5432/tracefab_test?host=localhost&host=ep-x.eu-central-1.aws.neon.tech'],
   ['host= repete, manage puis local', 'postgresql://u:p@db.interne:5432/tracefab_test?host=ep-x.eu-central-1.aws.neon.tech&host=localhost'],
   ['HOST= en majuscules (ignore par le pilote)', 'postgresql://u:p@ep-x.eu-central-1.aws.neon.tech:5432/tracefab_test?HOST=localhost'],
-  ['hostaddr= seul (ignore par le pilote)', 'postgresql://u:p@localhost:5432/tracefab_test?hostaddr=ep-x.neon.tech'],
+  ['hostaddr= seul (pg ignore, Prisma non eprouve)', 'postgresql://u:p@localhost:5432/tracefab_test?hostaddr=ep-x.neon.tech'],
+  ['HOSTADDR= majuscules', 'postgresql://u:p@localhost:5432/tracefab_test?HOSTADDR=1.2.3.4'],
   ['socket Unix par parametre', 'postgresql:///tracefab_test?host=/var/run/postgresql'],
   ['socket Unix avec identifiants', 'postgresql://u:p@/tracefab_test?host=/var/run/postgresql'],
   ['socket Unix encodee', 'postgresql://u:p@/tracefab_test?host=%2Fvar%2Frun%2Fpostgresql'],
@@ -111,10 +112,15 @@ for (const [nom, url] of TABLE) {
   // analysable par la classe URL, et c'est justement un des cas de la table.
   // Le motif exige `host=` : `hostaddr=` ne correspond pas.
   const ambigu = new Set([...url.matchAll(/[?&]host=([^&]*)/g)].map((m) => decodeURIComponent(m[1]).trim())).size > 1;
+  const hostaddr = /[?&]hostaddr=/i.test(url);
 
   withEnv(VARIABLES_PERMISSIVES, () => {
     const verdict = classifyTarget(url);
-    if (manage) {
+    if (hostaddr) {
+      !verdict.allowed && verdict.code === 'hostaddr_param'
+        ? ok(`${nom} — hostaddr : refus par conception (${verdict.code}), meme si pg ignore le parametre`)
+        : ko(`${nom} — hostaddr accepte (${verdict.code})`);
+    } else if (manage) {
       // Invariant 2 et 3 : un hote manage ne peut jamais sortir accepte.
       verdict.allowed
         ? ko(`${nom} — le pilote joint ${hote} (hote manage) et la garde ACCEPTE (${verdict.code})`)

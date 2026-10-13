@@ -28,12 +28,18 @@
  *
  * CE QUI EST TOUJOURS REFUSE
  *
- *   — un contexte de deploiement de production (`VERCEL_ENV`, `NODE_ENV`) ;
+ *   — un contexte de deploiement de production (`VERCEL_ENV=production`
+ *     OU `NODE_ENV=production`) : les deux signaux sont lus ;
  *   — un hote de base managee connu (`*.neon.tech`, `*.supabase.*`,
  *     `*.rds.amazonaws.com`, …), SANS EXCEPTION : un hote manage n'est jamais
  *     jetable par nature, une liste blanche ne le rend pas jetable, et le
  *     declarer reviendrait a declarer la plateforme qui heberge la production ;
- *   — un nom de base evoquant la production ;
+ *   — un nom de base evoquant la production, Y COMPRIS sur un hote local :
+ *     `tracefab_prod` sur 127.0.0.1 n'est pas une base jetable de CI ;
+ *   — un parametre `hostaddr` (toute casse) : node-pg l'ignore, libpq et
+ *     possiblement Prisma s'en servent pour l'IP reelle. Tant que le parseur
+ *     Prisma n'est pas eprouve hors ligne, la cible est ambigue → refus.
+ *     Cette garde NE PROUVE PAS le comportement du schema-engine Rust ;
  *   — une cible illisible ou non parsable.
  *
  * TOUS LES CAS PRECEDENTS SONT JUGES SUR L'HOTE REELLEMENT JOINT
@@ -170,11 +176,22 @@ export function classifyTarget(rawValue) {
   if (protocole !== 'postgres:' && protocole !== 'postgresql:') {
     return { ...info, allowed: false, code: 'scheme_not_supported', reason: `protocole inattendu (${protocole.replace(':', '') || 'aucun'}) — ce depot ne parle que PostgreSQL` };
   }
-  const deployment = (process.env.VERCEL_ENV || '').toLowerCase();
-  if (deployment === 'production') {
+  const hasHostaddr = [...parsed.searchParams.keys()].some((key) => key.toLowerCase() === 'hostaddr');
+  if (hasHostaddr) {
+    return {
+      ...info,
+      local: false,
+      allowed: false,
+      code: 'hostaddr_param',
+      reason: 'parametre hostaddr present — cible ambigue entre pilotes, refusee',
+    };
+  }
+  const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
+  const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
+  if (vercelEnv === 'production' || nodeEnv === 'production') {
     return { ...info, allowed: false, code: 'production_context', reason: 'contexte de deploiement de production' };
   }
-  if (!isLocal && PRODUCTION_HINTS.test(database)) {
+  if (PRODUCTION_HINTS.test(database)) {
     return { ...info, allowed: false, code: 'production_name', reason: 'le nom de base evoque la production' };
   }
   // Un hote manage est refuse ici, avant toute lecture d'opt-in ou de liste

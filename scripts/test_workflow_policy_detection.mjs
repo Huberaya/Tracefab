@@ -128,6 +128,410 @@ const TEMOINS = [
     attenduCode: 0,
     attendu: 'Politique des workflows : OK',
   },
+  {
+    nom: 'k-direct.yml',
+    faute: 'migration directe npm run db:deploy dans le job',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  base-de-donnees:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npm run db:deploy
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-apres-throwaway.yml',
+    faute: 'throwaway puis migrate nue dans la meme etape',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npm run db:deploy:throwaway && npm run db:deploy
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-npx-yes.yml',
+    faute: 'npx --yes prisma migrate deploy',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npx --yes prisma migrate deploy
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-autre-job.yml',
+    faute: 'migrate nue dans un autre job',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  base-de-donnees:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npm run db:deploy:throwaway
+  autre:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npm run db:deploy
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-throwaway-corps-prisma.yml',
+    faute: 'corps npm db:deploy:throwaway remplace par prisma migrate deploy',
+    scriptsNpm: {
+      'db:deploy': 'prisma migrate deploy',
+      'db:deploy:throwaway': 'prisma migrate deploy',
+    },
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npm run db:deploy:throwaway
+`,
+    attenduCode: 1,
+    attendu: 'n est pas relie au wrapper',
+  },
+  {
+    nom: 'k-throwaway-cle-absente.yml',
+    faute: 'cle npm absente alors que le workflow l appelle',
+    scriptsNpm: { 'db:deploy': 'prisma migrate deploy' },
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npm run db:deploy:throwaway
+`,
+    attenduCode: 1,
+    attendu: 'cle npm est absente',
+  },
+  {
+    nom: 'k-eval.yml',
+    faute: 'eval npm run db:deploy',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: eval npm run db:deploy
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-var-npm.yml',
+    faute: 'substitution $NPM run db:deploy',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: $NPM run db:deploy
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-npm-silent-throwaway.yml',
+    faute: 'aucune — npm run --silent db:deploy:throwaway avec liaison valide',
+    scriptsNpm: {
+      'db:deploy': 'prisma migrate deploy',
+      'db:deploy:throwaway': 'node scripts/db-deploy-throwaway.mjs',
+    },
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npm run --silent db:deploy:throwaway
+`,
+    attenduCode: 0,
+    attendu: 'Politique des workflows : OK',
+  },
+  {
+    nom: 'k-comment-inoffensif.yml',
+    faute: 'aucune — commentaire contenant prisma migrate deploy',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: |
+          # prisma migrate deploy
+          echo ok
+`,
+    attenduCode: 0,
+    attendu: 'Politique des workflows : OK',
+  },
+  {
+    nom: 'k-throwaway-seul.yml',
+    faute: 'aucune — uniquement db:deploy:throwaway',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: npm run db:deploy:throwaway
+`,
+    attenduCode: 0,
+    attendu: 'Politique des workflows : OK',
+  },
+  {
+    nom: 'k-echo-pipe-bash.yml',
+    faute: 'echo prisma migrate deploy | bash',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: echo 'prisma migrate deploy' | bash
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-script-externe.yml',
+    faute: 'bash migrate-ci.sh sans mot-cle migrate dans le YAML',
+    fichiers: { 'migrate-ci.sh': '#!/bin/sh\nprisma migrate deploy\n' },
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: bash migrate-ci.sh
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-script-2sauts.yml',
+    faute: 'script autorise-en-apparence qui appelle un second script migrate',
+    fichiers: {
+      'hop.sh': '#!/bin/sh\nbash inner.sh\n',
+      'inner.sh': '#!/bin/sh\nprisma migrate deploy\n',
+    },
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: bash hop.sh
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-source.yml',
+    faute: 'source migrate-ci.sh',
+    fichiers: { 'migrate-ci.sh': '#!/bin/sh\nprisma migrate deploy\n' },
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: source migrate-ci.sh
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-uses-prisma-migrate.yml',
+    faute: 'uses: action tierce prisma-migrate',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - uses: example/prisma-migrate@11d5960a326750d5838078e36cf38b85af677262 # v1.0.0
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-node-e-migrate.yml',
+    faute: 'node -e spawn prisma migrate',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: node -e "require('child_process').spawn('prisma',['migrate','deploy'])"
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-concat.yml',
+    faute: 'commande construite par concatenation',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: node -e "require('child_process').spawn('pris'+'ma',['migrate','deploy'])"
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
+  {
+    nom: 'k-script-introuvable.yml',
+    faute: 'fichier appele impossible a verifier',
+    contenu: `name: Temoin
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${EPINGLE}
+        with:
+          persist-credentials: false
+      - run: bash absent-ci.sh
+`,
+    attenduCode: 1,
+    attendu: 'migration(s) prisma sans garde',
+  },
 ];
 
 console.log('\n  LA POLITIQUE DOIT REFUSER CE QUI EST FAUTIF — ET SE TAIRE SINON\n');
@@ -136,7 +540,18 @@ const dossier = mkdtempSync(join(tmpdir(), 'tracefab-workflows-temoins-'));
 try {
   for (const temoin of TEMOINS) {
     writeFileSync(join(dossier, temoin.nom), temoin.contenu);
-    const env = { ...process.env, TRACEFAB_WORKFLOW_DIR: dossier };
+    if (temoin.fichiers) {
+      for (const [nomFichier, corps] of Object.entries(temoin.fichiers)) {
+        writeFileSync(join(dossier, nomFichier), corps);
+      }
+    }
+    const env = { ...process.env, TRACEFAB_WORKFLOW_DIR: dossier, TRACEFAB_POLICY_WITNESS: '1' };
+    delete env.TRACEFAB_PACKAGE_JSON;
+    if (temoin.scriptsNpm) {
+      const cheminPkg = join(dossier, `pkg-${temoin.nom}.json`);
+      writeFileSync(cheminPkg, JSON.stringify({ private: true, scripts: temoin.scriptsNpm }));
+      env.TRACEFAB_PACKAGE_JSON = cheminPkg;
+    }
     if (temoin.registre) {
       const cheminRegistre = join(dossier, 'registre-temoin.json');
       writeFileSync(cheminRegistre, JSON.stringify(temoin.registre));
@@ -165,9 +580,82 @@ try {
     }
 
     rmSync(join(dossier, temoin.nom), { force: true });
+    if (temoin.fichiers) {
+      for (const nomFichier of Object.keys(temoin.fichiers)) {
+        rmSync(join(dossier, nomFichier), { force: true });
+      }
+    }
   }
 } finally {
   rmSync(dossier, { recursive: true, force: true });
+}
+
+console.log('\n  MODE INTEGRATION : le package.json du depot, pas un substitut\n');
+
+{
+  const isol = mkdtempSync(join(tmpdir(), 'tracefab-pkg-inject-'));
+  try {
+    const poison = join(isol, 'package-poison.json');
+    const sain = join(isol, 'package-sain.json');
+    writeFileSync(poison, JSON.stringify({
+      private: true,
+      scripts: {
+        'db:deploy': 'prisma migrate deploy',
+        'db:deploy:throwaway': 'prisma migrate deploy',
+      },
+    }));
+    writeFileSync(sain, JSON.stringify({
+      private: true,
+      scripts: {
+        'db:deploy': 'prisma migrate deploy',
+        'db:deploy:throwaway': 'node scripts/db-deploy-throwaway.mjs',
+      },
+    }));
+    const workflowsReels = join(ROOT, '.github', 'workflows');
+
+    function lancer(envExtra) {
+      const env = { ...process.env, ...envExtra };
+      delete env.TRACEFAB_POLICY_WITNESS;
+      if (!('TRACEFAB_WORKFLOW_DIR' in envExtra)) delete env.TRACEFAB_WORKFLOW_DIR;
+      if (!('TRACEFAB_PACKAGE_JSON' in envExtra)) delete env.TRACEFAB_PACKAGE_JSON;
+      if (envExtra.TRACEFAB_POLICY_WITNESS) env.TRACEFAB_POLICY_WITNESS = envExtra.TRACEFAB_POLICY_WITNESS;
+      const resultat = spawnSync(process.execPath, [SCRIPT], { cwd: ROOT, encoding: 'utf8', env });
+      return { status: resultat.status, sortie: `${resultat.stdout || ''}${resultat.stderr || ''}` };
+    }
+
+    {
+      const r = lancer({});
+      r.status === 0 && r.sortie.includes('package.json du depot') && r.sortie.includes('est relie au wrapper')
+        ? ok('integration sans substitut : package.json du depot, sortie 0')
+        : ko(`integration sans substitut status=${r.status}`);
+    }
+    {
+      const r = lancer({ TRACEFAB_PACKAGE_JSON: poison });
+      r.status === 1 && r.sortie.includes('interdit hors TRACEFAB_POLICY_WITNESS=1')
+        ? ok('PACKAGE_JSON seul : integration refusee, depot non remplace')
+        : ko(`PACKAGE_JSON seul status=${r.status}`);
+    }
+    {
+      const r = lancer({ TRACEFAB_WORKFLOW_DIR: workflowsReels });
+      r.status === 0 && r.sortie.includes('package.json du depot')
+        ? ok('WORKFLOW_DIR seul : integration controle toujours le depot')
+        : ko(`WORKFLOW_DIR seul status=${r.status}`);
+    }
+    {
+      const r = lancer({ TRACEFAB_WORKFLOW_DIR: workflowsReels, TRACEFAB_PACKAGE_JSON: poison });
+      r.status === 1 && r.sortie.includes('interdit hors TRACEFAB_POLICY_WITNESS=1')
+        ? ok('les deux variables + faux non conforme : integration refusee')
+        : ko(`combinaison poison status=${r.status}`);
+    }
+    {
+      const r = lancer({ TRACEFAB_WORKFLOW_DIR: workflowsReels, TRACEFAB_PACKAGE_JSON: sain });
+      r.status === 1 && r.sortie.includes('interdit hors TRACEFAB_POLICY_WITNESS=1')
+        ? ok('les deux variables + faux conforme : ne rend pas l integration verte')
+        : ko(`combinaison sain status=${r.status}`);
+    }
+  } finally {
+    rmSync(isol, { recursive: true, force: true });
+  }
 }
 
 console.log('\n  --------------------------------------------');

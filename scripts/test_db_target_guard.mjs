@@ -74,6 +74,18 @@ withEnv({ VERCEL_ENV: 'production' }, () => {
   const v = classifyTarget('postgresql://postgres:postgres@localhost:5432/tracefab_test');
   !v.allowed && v.code === 'production_context' ? ok('refus en contexte de deploiement de production, meme en local') : ko(`contexte production accepte (${v.code})`);
 });
+withEnv({ NODE_ENV: 'production' }, () => {
+  const v = classifyTarget('postgresql://postgres:postgres@localhost:5432/tracefab_test');
+  !v.allowed && v.code === 'production_context' ? ok('refus NODE_ENV=production, meme en local') : ko(`NODE_ENV=production accepte (${v.code})`);
+});
+withEnv({ NODE_ENV: 'test' }, () => {
+  const v = classifyTarget('postgresql://postgres:postgres@localhost:5432/tracefab_test');
+  v.allowed && v.code === 'throwaway_local' ? ok('NODE_ENV=test n empeche pas une cible locale jetable') : ko(`NODE_ENV=test refuse (${v.code})`);
+});
+withEnv({}, () => {
+  const v = classifyTarget('postgresql://postgres:postgres@127.0.0.1:5432/tracefab_prod');
+  !v.allowed && v.code === 'production_name' ? ok('nom tracefab_prod refuse meme en local') : ko(`tracefab_prod local accepte (${v.code})`);
+});
 withEnv({}, () => {
   const v = classifyTarget(`postgresql://neondb_owner:${SECRET_PASSWORD}@${SECRET_HOST}/neondb`);
   !v.allowed ? ok('refus d un hote de base managee sans opt-in') : ko('hote manage refuse NON — il a ete accepte');
@@ -303,13 +315,16 @@ console.log('\n  E. divergence garde/pilote : parametres host= repetes et socket
   });
 
   withEnv({}, () => {
-    // `hostaddr` n'est jamais lu par node-postgres (il n'est qu'EMIS, apres
-    // resolution DNS, dans une reconstruction de chaine) : la cible reelle
-    // reste l'autorite. La garde doit donc suivre l'autorite.
     const v = classifyTarget('postgresql://u:p@localhost:5432/tracefab_test?hostaddr=ep-manage.neon.tech');
-    v.allowed && v.code === 'throwaway_local'
-      ? ok('hostaddr= seul : la garde suit l autorite (le pilote ignore hostaddr)')
-      : ko(`hostaddr change le verdict (${v.code}) alors que le pilote l ignore`);
+    !v.allowed && v.code === 'hostaddr_param'
+      ? ok('hostaddr= : refuse (ambigu entre pilotes), meme si node-pg l ignore')
+      : ko(`hostaddr accepte (${v.code})`);
+  });
+  withEnv({}, () => {
+    const v = classifyTarget('postgresql://u:p@localhost:5432/tracefab_test?HOSTADDR=1.2.3.4');
+    !v.allowed && v.code === 'hostaddr_param'
+      ? ok('HOSTADDR= en majuscules : refuse')
+      : ko(`HOSTADDR accepte (${v.code})`);
   });
 }
 

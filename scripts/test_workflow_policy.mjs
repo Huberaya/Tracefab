@@ -23,7 +23,15 @@
  *   G. les suites de base passent par la garde de cible ;
  *   H. un jeton d'ecriture ne cohabite pas avec l'execution de code du depot ;
  *   I. aucun job ne peut afficher vert sans executer le test qu'il annonce ;
- *   J. permissions minimales explicites et checkout sans credentials persistants.
+ *   J. permissions minimales explicites et checkout sans credentials persistants ;
+ *   K. T1.8 — liste blanche. Seul chemin CI autorise pour une migrate :
+ *      `npm run db:deploy:throwaway` (flags npm optionnels) ou
+ *      `node scripts/db-deploy-throwaway.mjs`, et le corps npm EST le wrapper.
+ *      Tout autre chemin (script local, 2e saut, concat, node -e, uses hors
+ *      liste, fichier introuvable, 2e job) est refuse. Ce n'est PAS un
+ *      parseur shell ni JS.
+ *   L. L lit TOUJOURS le package.json du depot. TRACEFAB_PACKAGE_JSON n'est
+ *      lu que si TRACEFAB_POLICY_WITNESS=1. Hors drapeau, sa presence echoue.
  *
  * Le YAML est analyse par la bibliotheque `yaml`, pas par des expressions
  * regulieres : une politique qui se trompe sur l'indentation se croit verte.
@@ -32,6 +40,11 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
+import {
+  THROWAWAY_NPM_SCRIPT,
+  THROWAWAY_WRAPPER_REL,
+  throwawayNpmBodyIsWrapper,
+} from './lib/throwaway-deploy-binding.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // Le dossier analyse est surchargeable pour que les temoins de detection
@@ -44,6 +57,182 @@ const WORKFLOWS = process.env.TRACEFAB_WORKFLOW_DIR || join(ROOT, '.github', 'wo
 const REGISTRY = process.env.TRACEFAB_WORKFLOW_REGISTRY
   || join(ROOT, 'docs', 'security', 'workflow-privileged-allowlist.json');
 const WRAPPER = 'scripts/run-db-suite.mjs';
+
+const ROOT_PACKAGE_JSON = join(ROOT, 'package.json');
+const WITNESS_MODE = process.env.TRACEFAB_POLICY_WITNESS === '1';
+const PACKAGE_JSON_OVERRIDE = (WITNESS_MODE && process.env.TRACEFAB_PACKAGE_JSON) || '';
+
+function lireScripts(chemin) {
+  try {
+    return JSON.parse(readFileSync(chemin, 'utf8')).scripts || {};
+  } catch {
+    return {};
+  }
+}
+
+const scriptsNpmRoot = lireScripts(ROOT_PACKAGE_JSON);
+const scriptsNpm = PACKAGE_JSON_OVERRIDE ? lireScripts(PACKAGE_JSON_OVERRIDE) : scriptsNpmRoot;
+
+const USES_SANS_MIGRATE = new Set([
+  'actions/checkout',
+  'actions/setup-node',
+  'actions/upload-artifact',
+]);
+
+function texteSansCommentaireShell(run) {
+  return String(run).split('\n').map((ligne) => ligne.replace(/(^|\s)#.*$/, '$1')).join('\n');
+}
+
+function fragmentsExecutables(run) {
+  const fragments = [];
+  for (const ligne of texteSansCommentaireShell(run).split('\n')) {
+    for (const etape of ligne.split(/\s*(?:&&|\|\||;)\s*/)) {
+      for (const tube of etape.split('|')) {
+        const frag = tube.trim();
+        if (frag) fragments.push(frag);
+      }
+    }
+  }
+  return fragments;
+}
+
+function sansPrefixeShell(frag) {
+  let s = frag.trim();
+  s = s.replace(/^(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|\S+)\s+)*/, '');
+  s = s.replace(/^(?:command|time|exec|builtin|nice|nohup|sudo)\s+/, '');
+  return s.trim();
+}
+
+function estFormeMigrateAutorisee(frag) {
+  const t = sansPrefixeShell(frag);
+  const npmThrowaway = /(?:npm\s+run(?:-script)?|yarn(?:\s+run)?|pnpm(?:\s+run)?)\b[\s\S]*\bdb:deploy:throwaway(?:\s|$)/.test(t);
+  const nodeWrapper = /^node\s+scripts\/db-deploy-throwaway\.mjs(?:\s|$)/.test(t);
+  if (!npmThrowaway && !nodeWrapper) return false;
+  return throwawayNpmBodyIsWrapper(scriptsNpm[THROWAWAY_NPM_SCRIPT]);
+}
+
+function estEchoInoffensif(frag) {
+  return /^(echo|printf)\b/.test(sansPrefixeShell(frag));
+}
+
+function pipeVersInterpreteur(run) {
+  return /\|[ \t]*(?:sudo\s+)?(?:bash|sh|zsh|python3?|perl|ruby|node)\b/.test(texteSansCommentaireShell(run));
+}
+
+function estConcatDangereuse(t) {
+  if (/\beval\b/.test(t) && /prisma|db:deploy|migrate/.test(t)) return true;
+  if (/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/.test(t) && /migrate|db:deploy|prisma/.test(t)) return true;
+  if (/\+\s*['"]/.test(t) && /pris|migra|deploy/.test(t)) return true;
+  return false;
+}
+
+function estInterpreteurOpaque(t) {
+  if (/\bnode\s+-[ep]\b/.test(t)) return true;
+  if (/(?:^|\s)(?:bash|sh|zsh|python3?)\s+-c\b/.test(t)) return true;
+  if (/\beval\b/.test(t)) return true;
+  return false;
+}
+
+function extraireFichiersInvoques(run) {
+  const text = texteSansCommentaireShell(run);
+  const found = [];
+  const re = /\b(?:node|nodejs|tsx|python3?|bash|sh|zsh|source)\s+([\w./-]+\.(?:mjs|js|cjs|ts|sh|bash))/g;
+  let m;
+  while ((m = re.exec(text)) !== null) found.push(m[1]);
+  const reExec = /(?:^|[\s;|&])(\.\/[\w./-]+\.(?:mjs|js|cjs|ts|sh|bash))/g;
+  while ((m = reExec.exec(text)) !== null) found.push(m[1]);
+  const reDot = /(?:^|[\s;|&])\.\s+([\w./-]+\.(?:sh|bash))/g;
+  while ((m = reDot.exec(text)) !== null) found.push(m[1]);
+  return [...new Set(found)];
+}
+
+function estWrapperConnu(rel) {
+  const n = String(rel || '').replace(/^\.\//, '').replace(/\\/g, '/');
+  return n === THROWAWAY_WRAPPER_REL || n.endsWith(`/${THROWAWAY_WRAPPER_REL}`);
+}
+
+function dansPerimetre(chemin) {
+  const abs = resolve(chemin);
+  const racines = [ROOT, WORKFLOWS].map((d) => resolve(d));
+  return racines.some((r) => abs === r || abs.startsWith(`${r}/`)) ? abs : null;
+}
+
+function resoudreFichierLocal(rel) {
+  if (!rel || rel.includes('..') || rel.includes('node_modules')) return null;
+  const clean = rel.replace(/^\.\//, '');
+  for (const base of [ROOT, WORKFLOWS]) {
+    const abs = dansPerimetre(join(base, clean));
+    if (abs && existsSync(abs)) return abs;
+  }
+  return null;
+}
+
+function lireTexteBorne(chemin) {
+  try {
+    const buf = readFileSync(chemin);
+    if (buf.length > 256 * 1024) return '';
+    return buf.toString('utf8');
+  } catch {
+    return '';
+  }
+}
+
+function contenuFichierMigrateNUE(chemin) {
+  const texte = lireTexteBorne(chemin);
+  if (!texte) return false;
+  const sansCom = texte.split('\n').map((ligne) => ligne
+    .replace(/(^|\s)#.*$/, '$1')
+    .replace(/\/\/.*$/, '')).join('\n');
+  if (/prisma\s+migrate\s+deploy/.test(sansCom)) return true;
+  if (/(?:npm\s+run(?:-script)?|npx|yarn|pnpm)\s+[^\n]*\bdb:deploy(?!:throwaway)/.test(sansCom)) return true;
+  return false;
+}
+
+function fichierOuSautsMigrateNUE(rel, vus = new Set(), profondeur = 0) {
+  if (profondeur > 2 || estWrapperConnu(rel)) return false;
+  const chemin = resoudreFichierLocal(rel);
+  if (!chemin) return 'introuvable';
+  if (vus.has(chemin)) return false;
+  vus.add(chemin);
+  if (contenuFichierMigrateNUE(chemin)) return true;
+  const texte = lireTexteBorne(chemin);
+  if (!texte) return false;
+  for (const enfant of extraireFichiersInvoques(texte)) {
+    const r = fichierOuSautsMigrateNUE(enfant, vus, profondeur + 1);
+    if (r) return r;
+  }
+  return false;
+}
+
+function usesHorsListe(uses) {
+  const action = String(uses).split('@')[0].toLowerCase();
+  if (action.startsWith('./') || action.startsWith('docker://')) return true;
+  return !USES_SANS_MIGRATE.has(action);
+}
+
+function estMigrateNUE(frag) {
+  if (estEchoInoffensif(frag) || estFormeMigrateAutorisee(frag)) return false;
+  const t = sansPrefixeShell(frag);
+  if (estConcatDangereuse(t) || estConcatDangereuse(frag)) return true;
+  if (estInterpreteurOpaque(t) && /prisma|migrate|db:deploy/.test(t)) return true;
+  if (/prisma\s+migrate\s+deploy/.test(t)) return true;
+  if (/(?:npm\s+run(?:-script)?|npm\s+exec|npx|yarn(?:\s+run)?|pnpm(?:\s+(?:run|exec))?)\b[\s\S]*\bdb:deploy(?!:throwaway)/.test(t)) {
+    return true;
+  }
+  if (/(?:^|[\s$`(])db:deploy(?!:throwaway)/.test(t) && /npm|npx|yarn|pnpm|run-script/.test(t)) {
+    return true;
+  }
+  const appel = t.match(/(?:npm\s+run(?:-script)?|yarn(?:\s+run)?|pnpm(?:\s+run)?)\s+([A-Za-z0-9:_-]+)/);
+  if (appel && scriptsNpm[appel[1]] && /prisma\s+migrate\s+deploy/.test(scriptsNpm[appel[1]])) {
+    return true;
+  }
+  if (estFormeMigrateAutorisee(frag) === false
+    && /db:deploy:throwaway/.test(t)
+    && !throwawayNpmBodyIsWrapper(scriptsNpm[THROWAWAY_NPM_SCRIPT])) {
+    return true;
+  }
+  return false;
+}
 
 let echecs = 0;
 const ok = (m) => console.log(`  ok    ${m}`);
@@ -65,6 +254,44 @@ const entryFor = (bucket, file) => (registry[bucket] || {})[file] || null;
 
 const files = readdirSync(WORKFLOWS).filter((f) => /\.ya?ml$/.test(f)).sort();
 console.log(`\n  ${files.length} workflow(s) analyse(s) : ${files.join(', ')}\n`);
+
+function workflowInvoqueThrowaway(text) {
+  const code = String(text).split('\n').map((line) => line.replace(/\s#.*$/, '')).join('\n');
+  return /\bdb:deploy:throwaway\b/.test(code) || /db-deploy-throwaway\.mjs/.test(code);
+}
+
+let invoqueThrowaway = false;
+for (const file of files) {
+  try {
+    if (workflowInvoqueThrowaway(readFileSync(join(WORKFLOWS, file), 'utf8'))) invoqueThrowaway = true;
+  } catch { /* parse plus bas */ }
+}
+
+function controlerLiaison(scripts, source) {
+  const aCle = Object.prototype.hasOwnProperty.call(scripts, THROWAWAY_NPM_SCRIPT);
+  const liaisonOk = throwawayNpmBodyIsWrapper(scripts[THROWAWAY_NPM_SCRIPT]);
+  const prefixe = source === 'depot' ? 'L. package.json du depot' : 'L. package.json';
+  if (invoqueThrowaway && !aCle) {
+    ko(source === 'depot'
+      ? `L. workflow appelle ${THROWAWAY_NPM_SCRIPT} mais la cle npm est absente du depot`
+      : `L. workflow appelle ${THROWAWAY_NPM_SCRIPT} mais la cle npm est absente`);
+  } else if (aCle && !liaisonOk) {
+    ko(`${prefixe} : ${THROWAWAY_NPM_SCRIPT} n est pas relie au wrapper`);
+  } else if (aCle && liaisonOk) {
+    ok(`${prefixe} : ${THROWAWAY_NPM_SCRIPT} est relie au wrapper`);
+  } else {
+    ok(`${prefixe} : pas de script ${THROWAWAY_NPM_SCRIPT} (aucun workflow ne l appelle)`);
+  }
+}
+
+if (!WITNESS_MODE && process.env.TRACEFAB_PACKAGE_JSON) {
+  ko('L. TRACEFAB_PACKAGE_JSON interdit hors TRACEFAB_POLICY_WITNESS=1 — le controle d integration lit le package.json du depot');
+}
+controlerLiaison(scriptsNpmRoot, 'depot');
+if (PACKAGE_JSON_OVERRIDE) controlerLiaison(scriptsNpm, 'temoin');
+existsSync(join(ROOT, THROWAWAY_WRAPPER_REL))
+  ? ok(`L. wrapper ${THROWAWAY_WRAPPER_REL} present dans le depot`)
+  : ko(`L. wrapper ${THROWAWAY_WRAPPER_REL} absent du depot`);
 
 const PRIORITY_TRIGGERS = ['pull_request_target', 'workflow_run'];
 
@@ -306,6 +533,41 @@ for (const file of files) {
         ko(`J. ${file} / job ${jobName} : checkout sans persist-credentials: false`);
       }
     }
+  }
+
+  // ------------------------------------------------- K. liste blanche migrate (T1.8)
+  // Pas un parseur shell. Refuse par defaut tout chemin qui n'est pas
+  // exactement le wrapper autorise. Fichiers locaux suivis sur 2 sauts.
+  // uses: hors {checkout, setup-node, upload-artifact} = non autorise.
+  const nues = [];
+  for (const [nomJob, job] of Object.entries(jobs)) {
+    if (!job || typeof job !== 'object' || !Array.isArray(job.steps)) continue;
+    for (const step of job.steps) {
+      if (!step || typeof step !== 'object') continue;
+      if (typeof step.uses === 'string' && usesHorsListe(step.uses)) {
+        nues.push({ job: nomJob, frag: `uses: ${step.uses}` });
+      }
+      if (typeof step.run !== 'string') continue;
+      for (const frag of fragmentsExecutables(step.run)) {
+        if (estMigrateNUE(frag)) nues.push({ job: nomJob, frag });
+      }
+      if (pipeVersInterpreteur(step.run) && /prisma|migrate|db:deploy/.test(texteSansCommentaireShell(step.run))) {
+        nues.push({ job: nomJob, frag: step.run });
+      }
+      for (const rel of extraireFichiersInvoques(step.run)) {
+        const r = fichierOuSautsMigrateNUE(rel);
+        if (r === 'introuvable') nues.push({ job: nomJob, frag: `script introuvable ${rel}` });
+        else if (r) nues.push({ job: nomJob, frag: `script ${rel}` });
+      }
+    }
+  }
+  if (nues.length > 0) {
+    ko(`K. ${file} : ${nues.length} migration(s) prisma sans garde`);
+    for (const n of nues.slice(0, 6)) {
+      console.error(`          job ${n.job} : ${String(n.frag).slice(0, 100)}`);
+    }
+  } else {
+    ok(`K. ${file} : aucune migrate prisma nue dans les etapes run`);
   }
 }
 

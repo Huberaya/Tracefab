@@ -77,6 +77,10 @@ jobs:
         # cible est jetable. La garde est eprouvee dans les deux sens.
         run: npm run test:db-guard
 
+      - name: Garde de prisma migrate deploy (base jetable)
+        # db:deploy:throwaway refuse avant le binaire prisma. Aucune connexion.
+        run: npm run test:db-throwaway
+
       - name: Routage des suites destructives
         # Toute suite ecrivant en base doit passer par le lanceur garde. Une
         # suite destructive non declaree fait echouer la CI.
@@ -301,9 +305,11 @@ jobs:
         run: npm run db:generate
 
       - name: Appliquer les migrations sur la base jetable
-        # npm run db:deploy, pas npx prisma : npx va chercher au registre
-        # quand le binaire local n'est pas trouve, et installe un homonyme.
-        run: npm run db:deploy
+        # db:deploy:throwaway, PAS db:deploy. db:deploy est la commande
+        # operationnelle sans garde. Ici : Postgres 17 du service CI,
+        # DATABASE_URL = localhost/tracefab_test, aucun secret. La cible
+        # est classee avant le binaire prisma local. Jamais npx.
+        run: npm run db:deploy:throwaway
 
       - name: Creer le role tracefab_app et deux locataires
         # Via npm run db:seed-rls, donc via la garde de cible : ce script cree
