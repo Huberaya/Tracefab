@@ -120,3 +120,32 @@ SELECT p.oid::regprocedure::text AS function_signature,
      'tracefab_can_access_document'
    ])
  ORDER BY function_signature;
+
+
+-- Q8 — Objets témoins des cinq migrations Prisma marquées finished mais avec applied_steps_count = 0.
+-- Ce contrôle est en lecture seule : il ne prouve pas à lui seul l'origine de chaque objet,
+-- mais permet de repérer immédiatement les objets absents avant toute tentative de réparation.
+WITH expected(object_name, object_kind, present) AS (
+  SELECT 'pef_emission_factors', 'table', to_regclass('public.pef_emission_factors') IS NOT NULL
+  UNION ALL SELECT 'product_pef_assessments', 'table', to_regclass('public.product_pef_assessments') IS NOT NULL
+  UNION ALL SELECT 'tracefab_calculate_product_pef(uuid,numeric,text)', 'function',
+       to_regprocedure('public.tracefab_calculate_product_pef(uuid,numeric,text)') IS NOT NULL
+  UNION ALL SELECT 'green_claims_rules', 'table', to_regclass('public.green_claims_rules') IS NOT NULL
+  UNION ALL SELECT 'tracefab_audit_product_green_claims(uuid)', 'function',
+       to_regprocedure('public.tracefab_audit_product_green_claims(uuid)') IS NOT NULL
+  UNION ALL SELECT 'quality_corrective_action_plans', 'table', to_regclass('public.quality_corrective_action_plans') IS NOT NULL
+  UNION ALL SELECT 'tracefab_create_quality_cap(uuid,uuid,text,text,date,text)', 'function',
+       to_regprocedure('public.tracefab_create_quality_cap(uuid,uuid,text,text,date,text)') IS NOT NULL
+  UNION ALL SELECT 'supplier_universal_passports', 'table', to_regclass('public.supplier_universal_passports') IS NOT NULL
+  UNION ALL SELECT 'supplier_passport_access_requests', 'table', to_regclass('public.supplier_passport_access_requests') IS NOT NULL
+  UNION ALL SELECT 'tracefab_get_or_create_supplier_passport(uuid)', 'function',
+       to_regprocedure('public.tracefab_get_or_create_supplier_passport(uuid)') IS NOT NULL
+  UNION ALL SELECT 'transaction_certificates', 'table', to_regclass('public.transaction_certificates') IS NOT NULL
+  UNION ALL SELECT 'mass_balance_allocations', 'table', to_regclass('public.mass_balance_allocations') IS NOT NULL
+  UNION ALL SELECT 'mass_balance_reconciliations', 'table', to_regclass('public.mass_balance_reconciliations') IS NOT NULL
+  UNION ALL SELECT 'tracefab_reconcile_mass_balance(uuid,integer,numeric,text)', 'function',
+       to_regprocedure('public.tracefab_reconcile_mass_balance(uuid,integer,numeric,text)') IS NOT NULL
+)
+SELECT object_name, object_kind, present
+  FROM expected
+ ORDER BY present, object_kind, object_name;
