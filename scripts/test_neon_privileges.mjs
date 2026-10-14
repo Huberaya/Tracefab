@@ -44,7 +44,13 @@ const NO_PUBLIC = [
 
 const SECURITY_DEFINER = NO_PUBLIC.filter((name) => name !== 'tracefab_public_context');
 
-const RLS_PREDICATES = [
+const APP_EXECUTE_REQUIRED = [
+  'tracefab_material_visible_via_product',
+  'tracefab_public_context',
+  'tracefab_product_is_public',
+  'tracefab_material_is_public',
+  'tracefab_supplier_site_is_public',
+  'tracefab_public_brand',
   'tracefab_can_access_org',
   'tracefab_is_org_member',
   'tracefab_has_org_role',
@@ -125,8 +131,8 @@ try {
     await client.query(`drop role if exists ${testRole}`);
   }
 
-  console.log('\n3. Rôle applicatif — les prédicats RLS ont un GRANT explicite');
-  for (const name of RLS_PREDICATES) {
+  console.log('\n3. Rôle applicatif — les routes et politiques ont un GRANT explicite');
+  for (const name of APP_EXECUTE_REQUIRED) {
     const result = await client.query(
       `select count(*)::int as count,
               coalesce(bool_and(has_function_privilege('tracefab_app', p.oid, 'EXECUTE')), false) as allowed
