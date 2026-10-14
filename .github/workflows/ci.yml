@@ -241,10 +241,6 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
       TF_APP_PASSWORD: isolation_ci_jetable
       TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
-      # Le contexte `secrets` n'est pas disponible dans un `if:` d'etape : il
-      # faut le faire transiter par l'env du job. Sans ce detour, le workflow
-      # echoue au parsing.
-      TF_SECRET_PRODUCTION: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -259,10 +255,20 @@ jobs:
       - name: Generer le client Prisma
         run: npm run db:generate
 
+      - name: Préparer le rôle applicatif avant migrations
+        # Vérifie explicitement localhost/tracefab_test ; aucune base externe
+        # ne peut être ciblée par ce script.
+        run: node scripts/prepare_ci_db_role.mjs
+
       - name: Appliquer les migrations sur la base jetable
         # npm run db:deploy, pas npx prisma : npx va chercher au registre
         # quand le binaire local n'est pas trouve, et installe un homonyme.
         run: npm run db:deploy
+
+      - name: Privilèges SQL après migrations, avant le seed
+        # Vérifie les GRANT conditionnels dans le scénario où tracefab_app
+        # existe déjà, comme en production, avant que le seed n'accorde des droits.
+        run: npm run test:neon:privileges
 
       - name: Creer le role tracefab_app et deux locataires
         run: node scripts/seed_rls_fixture.mjs
@@ -272,15 +278,7 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
-      - name: Scenarios croises contre la base de production
-        # Optionnels, et clairement annonces comme tels. L'etancheite est deja
-        # prouvee ci-dessus sans eux.
-        if: ${{ env.TF_SECRET_PRODUCTION != '' }}
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          npm run test:neon:security
-          npm run test:neon:supplier
-          npm run test:neon:product
-          npm run test:neon:quality
-          npm run test:neon:collection
+      - name: Isolation inter-organisations
+        # Prouve que deux organisations distinctes ne peuvent pas accéder aux
+        # données de l'autre via INSERT, UPDATE, SELECT, DELETE ni fonctions SD.
+        run: npm run test:neon:cross-tenant
