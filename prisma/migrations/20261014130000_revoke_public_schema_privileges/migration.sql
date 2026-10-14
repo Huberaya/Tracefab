@@ -20,6 +20,90 @@
 
 BEGIN;
 
+-- Photographier les droits effectifs du runtime AVANT de retirer PUBLIC.
+-- Si l'application ne dispose que des droits hérités de PUBLIC, ces droits
+-- sont transférés explicitement à tracefab_app avant la révocation. Cela évite
+-- une panne silencieuse des requêtes en production, sans accorder au runtime
+-- plus de droits qu'il n'en avait déjà.
+CREATE TEMP TABLE tracefab_runtime_function_acl_before (
+  routine_oid oid PRIMARY KEY
+) ON COMMIT DROP;
+
+CREATE TEMP TABLE tracefab_public_relation_acl_before (
+  relation_oid oid NOT NULL,
+  relkind "char" NOT NULL,
+  privilege_type text NOT NULL,
+  PRIMARY KEY (relation_oid, privilege_type)
+) ON COMMIT DROP;
+
+DO $preserve_runtime_acl$
+DECLARE
+  f record;
+  r record;
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
+    INSERT INTO tracefab_runtime_function_acl_before (routine_oid)
+    SELECT p.oid
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.prokind IN ('f', 'p')
+       AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+       AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE');
+
+    -- Transférer uniquement EXECUTE PUBLIC qui est actuellement effectif.
+    FOR f IN
+      SELECT p.oid::regprocedure AS signature, p.prokind
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public'
+         AND p.prokind IN ('f', 'p')
+         AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+         AND EXISTS (
+           SELECT 1
+             FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+            WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+         )
+    LOOP
+      EXECUTE format(
+        'GRANT EXECUTE ON %s %s TO tracefab_app',
+        CASE WHEN f.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END,
+        f.signature
+      );
+    END LOOP;
+
+    -- Photographier puis transférer chaque privilège PUBLIC exact sur les
+    -- relations applicatives possédées par le rôle de migration.
+    INSERT INTO tracefab_public_relation_acl_before (relation_oid, relkind, privilege_type)
+    SELECT c.oid, c.relkind, acl.privilege_type
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      CROSS JOIN LATERAL aclexplode(c.relacl) acl
+     WHERE n.nspname = 'public'
+       AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+       AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+       AND acl.grantee = 0;
+
+    FOR r IN
+      SELECT c.oid::regclass AS relation_name, c.relkind, acl.privilege_type
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        CROSS JOIN LATERAL aclexplode(c.relacl) acl
+       WHERE n.nspname = 'public'
+         AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+         AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+         AND acl.grantee = 0
+    LOOP
+      IF r.relkind = 'S' THEN
+        EXECUTE format('GRANT %s ON SEQUENCE %s TO tracefab_app', r.privilege_type, r.relation_name);
+      ELSE
+        EXECUTE format('GRANT %s ON TABLE %s TO tracefab_app', r.privilege_type, r.relation_name);
+      END IF;
+    END LOOP;
+  END IF;
+END
+$preserve_runtime_acl$;
+
 -- Ne pas modifier les fonctions d'extensions détenues par un rôle fournisseur
 -- (ex. cloud_admin sur Neon/pgcrypto). Le rôle de migration ne possède pas
 -- nécessairement ces fonctions et leur EXECUTE PUBLIC n'est pas un droit
@@ -65,24 +149,9 @@ END
 $revoke_owned_relations$;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
-DO $grant_runtime$
-DECLARE
-  f record;
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
-    FOR f IN
-      SELECT p.oid::regprocedure AS signature, p.prokind
-        FROM pg_proc p
-        JOIN pg_namespace n ON n.oid = p.pronamespace
-       WHERE n.nspname = 'public'
-         AND p.prokind IN ('f', 'p')
-         AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
-    LOOP
-      EXECUTE format('GRANT EXECUTE ON %s %s TO tracefab_app', CASE WHEN f.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END, f.signature);
-    END LOOP;
-  END IF;
-END
-$grant_runtime$;
+-- Les droits PUBLIC nécessaires ont été transférés à tracefab_app avant les REVOKE.
+
+
 
 DO $verify_acl$
 DECLARE
@@ -153,22 +222,28 @@ BEGIN
   END IF;
 
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
-    SELECT string_agg(
-             format('%I(%s)', p.proname, pg_get_function_identity_arguments(p.oid)),
-             ', ' ORDER BY p.proname, pg_get_function_identity_arguments(p.oid)
-           )
+    SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text)
       INTO runtime_missing
-      FROM pg_proc p
-      JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public'
-       AND p.prokind IN ('f', 'p')
-       AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
-       AND NOT has_function_privilege('tracefab_app', p.oid, 'EXECUTE');
+      FROM tracefab_runtime_function_acl_before b
+      JOIN pg_proc p ON p.oid = b.routine_oid
+     WHERE NOT has_function_privilege('tracefab_app', b.routine_oid, 'EXECUTE');
 
     IF runtime_missing IS NOT NULL THEN
       RAISE EXCEPTION
-        'Durcissement refusé : tracefab_app perd EXECUTE sur : %',
+        'Durcissement refusé : tracefab_app perd des droits EXECUTE auparavant effectifs sur : %',
         runtime_missing;
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+        FROM tracefab_public_relation_acl_before b
+       WHERE CASE WHEN b.relkind = 'S'
+                  THEN NOT has_sequence_privilege('tracefab_app', b.relation_oid, b.privilege_type)
+                  ELSE NOT has_table_privilege('tracefab_app', b.relation_oid, b.privilege_type)
+             END
+    ) THEN
+      RAISE EXCEPTION
+        'Durcissement refusé : tracefab_app perd un privilège relationnel précédemment accordé à PUBLIC';
     END IF;
   END IF;
 END
