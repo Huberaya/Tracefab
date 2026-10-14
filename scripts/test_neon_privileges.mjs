@@ -32,6 +32,11 @@ const NO_PUBLIC = [
   'tracefab_validate_relationship_organizations',
   'tracefab_validate_document_location',
   'tracefab_validate_share_relationship',
+  'tracefab_get_or_create_supplier_passport',
+  'tracefab_update_supplier_passport',
+  'tracefab_get_public_supplier_passport',
+  'tracefab_request_passport_access',
+  'tracefab_review_passport_access',
 ];
 const SECURITY_DEFINER = NO_PUBLIC.filter((name) => name !== 'tracefab_public_context');
 const APP_EXECUTE_REQUIRED = [
@@ -46,6 +51,11 @@ const APP_EXECUTE_REQUIRED = [
   'tracefab_has_org_role',
   'tracefab_can_access_shared_subject',
   'tracefab_can_access_document',
+  'tracefab_get_or_create_supplier_passport',
+  'tracefab_update_supplier_passport',
+  'tracefab_get_public_supplier_passport',
+  'tracefab_request_passport_access',
+  'tracefab_review_passport_access',
 ];
 const TRIGGER_GUARDS = [
   'tracefab_validate_subject_ownership',
