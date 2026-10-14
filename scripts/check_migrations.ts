@@ -1,59 +1,82 @@
 import { PrismaClient } from '@prisma/client';
 import fs from 'node:fs';
 import path from 'node:path';
+import { compareMigrationHistory } from './lib/migration-history-check.mjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('=== CHECKING NEON POSTGRESQL MIGRATIONS ===\n');
+  console.log('=== CONTRÔLE FAIL-CLOSED DES MIGRATIONS POSTGRESQL ===\n');
 
-  // 1. Get migrations in filesystem
   const migrationsDir = path.resolve(process.cwd(), 'prisma/migrations');
-  const diskMigrations = fs.readdirSync(migrationsDir)
-    .filter(name => fs.statSync(path.join(migrationsDir, name)).isDirectory())
-    .sort();
-
-  console.log(`Discovered ${diskMigrations.length} migration folders on disk.\n`);
-
-  // 2. Query Neon _prisma_migrations
-  let appliedMigrations: any[] = [];
+  let diskMigrations: string[];
   try {
-    appliedMigrations = await prisma.$queryRaw<any[]>`
-      SELECT migration_name, started_at, finished_at, rolled_back_at, applied_steps_count
-      FROM _prisma_migrations
-      ORDER BY started_at ASC
-    `;
-    console.log(`Discovered ${appliedMigrations.length} recorded migrations in Neon database.\n`);
-  } catch (err: any) {
-    console.error('Failed to query _prisma_migrations table:', err.message);
-  }
+    diskMigrations = fs.readdirSync(migrationsDir)
+      .filter((name) => fs.statSync(path.join(migrationsDir, name)).isDirectory())
+      .filter((name) => name !== 'migration_lock.toml')
+      .sort();
 
-  const appliedMap = new Map(appliedMigrations.map(m => [m.migration_name, m]));
-
-  const missingInDb: string[] = [];
-  for (const dirName of diskMigrations) {
-    const record = appliedMap.get(dirName);
-    if (!record) {
-      missingInDb.push(dirName);
-      console.log(`[PENDING] ${dirName} -> NOT RECORDED IN _prisma_migrations`);
-    } else if (!record.finished_at || record.rolled_back_at) {
-      console.log(`[FAILED]  ${dirName} -> recorded but failed or rolled back`);
-    } else {
-      console.log(`[APPLIED] ${dirName} (applied at ${record.finished_at.toISOString()})`);
+    if (diskMigrations.length === 0) {
+      throw new Error('Aucun dossier de migration détecté : le contrôle serait vide de sens.');
     }
+
+    for (const name of diskMigrations) {
+      const sqlPath = path.join(migrationsDir, name, 'migration.sql');
+      if (!fs.existsSync(sqlPath) || fs.statSync(sqlPath).size === 0) {
+        throw new Error(`Fichier migration.sql absent ou vide : ${name}`);
+      }
+    }
+  } catch (error: any) {
+    console.error(`ÉCHEC — lecture du dépôt impossible : ${error?.message ?? 'erreur inconnue'}`);
+    process.exitCode = 1;
+    return;
   }
 
-  console.log('\n--- MIGRATION STATUS SUMMARY ---');
-  if (missingInDb.length === 0) {
-    console.log(`✓ All ${diskMigrations.length} disk migrations are fully applied and recorded in Neon DB!`);
-  } else {
-    console.log(`⚠️ ${missingInDb.length} migration(s) missing from Neon DB:`, missingInDb);
+  console.log(`Dossiers de migration dans le dépôt : ${diskMigrations.length}.\n`);
+
+  let records: any[];
+  try {
+    records = await prisma.$queryRaw<any[]>\`
+      SELECT migration_name, started_at, finished_at, rolled_back_at
+      FROM public."_prisma_migrations"
+      ORDER BY started_at ASC NULLS FIRST, migration_name ASC
+    \`;
+  } catch (error: any) {
+    console.error('ÉCHEC — impossible de lire public."_prisma_migrations".');
+    console.error('Le contrôle ne peut pas conclure et ne doit pas afficher un succès.');
+    console.error(`Détail : ${String(error?.message ?? 'erreur inconnue').split('\\n')[0]}`);
+    process.exitCode = 1;
+    return;
   }
+
+  console.log(`Entrées dans l’historique Prisma : ${records.length}.\n`);
+  const result = compareMigrationHistory(diskMigrations, records);
+
+  for (const name of result.applied) console.log(`[APPLIQUÉE] ${name}`);
+  for (const name of result.pending) console.log(`[EN ATTENTE] ${name}`);
+  for (const name of result.failed) console.log(`[ÉCHEC / NON RÉSOLUE] ${name}`);
+  for (const name of result.unknown) console.log(`[ABSENTE DU DÉPÔT] ${name}`);
+
+  console.log('\n--- RÉSUMÉ ---');
+  console.log(`Dépôt : ${result.diskCount} | Appliquées : ${result.applied.length} | En attente : ${result.pending.length} | Échecs : ${result.failed.length} | Inconnues : ${result.unknown.length}`);
+
+  if (!result.ok) {
+    console.error('\nÉCHEC — divergence détectée. Aucune migration n’a été exécutée.');
+    for (const issue of result.errors) console.error(`  - ${issue}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log('\nSUCCÈS — le dépôt et l’historique Prisma sont cohérents.');
 }
 
 main()
-  .catch(err => {
-    console.error('Migration check failed:', err);
-    process.exit(1);
+  .catch((error: any) => {
+    console.error(`ÉCHEC — contrôle interrompu : ${String(error?.message ?? 'erreur inconnue').split('\\n')[0]}`);
+    process.exitCode = 1;
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect().catch(() => {
+      process.exitCode = 1;
+    });
+  });
