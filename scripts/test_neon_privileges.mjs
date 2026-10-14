@@ -52,17 +52,6 @@ const RLS_PREDICATES = [
   'tracefab_can_access_document',
 ];
 
-// Ces six fonctions sont appelées par les routes/politiques applicatives.
-const APP_FUNCTIONS = [
-  'tracefab_material_visible_via_product',
-  'tracefab_public_context',
-  'tracefab_product_is_public',
-  'tracefab_material_is_public',
-  'tracefab_supplier_site_is_public',
-  'tracefab_public_brand',
-  ...RLS_PREDICATES,
-];
-
 const TRIGGER_GUARDS = [
   'tracefab_validate_subject_ownership',
   'tracefab_validate_membership_mutation',
@@ -140,7 +129,7 @@ try {
   for (const name of RLS_PREDICATES) {
     const result = await client.query(
       `select count(*)::int as count,
-              coalesce(bool_or(has_function_privilege('tracefab_app', p.oid, 'EXECUTE')), false) as allowed
+              coalesce(bool_and(has_function_privilege('tracefab_app', p.oid, 'EXECUTE')), false) as allowed
          from pg_proc p
          join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public' and p.proname = $1 and p.prokind = 'f'`,
