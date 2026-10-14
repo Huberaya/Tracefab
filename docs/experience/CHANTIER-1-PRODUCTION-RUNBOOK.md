@@ -9,8 +9,9 @@ Ce document prépare l'opération ; il n'autorise pas à contourner les critère
 - Le job « Socle — types, compilation, isolation » a réussi sur le dernier run connu.
 - Le run CI #242 (run ID `38641234349`) sur le commit `3dbe2edf76d88541cd5dbc2b32963dfe260331ba` a réussi sur les quatre jobs : socle/types/isolation, base PostgreSQL jetable + RLS, parcours navigateur réel (20 parcours) et suite complète des scripts `test:*`. Le run précédent avait échoué sur deux tests statiques ; leurs assertions ont été corrigées. Toute modification ultérieure de la branche doit être revalidée par une nouvelle CI.
 - La vérification de migration du dépôt indique 39 migrations présentes = 39 attendues dans le dépôt. Ce n'est pas une preuve que les 39 sont appliquées sur Neon.
-- Le Q2 transmis le 14 octobre s'arrête à `20261009180000_public_read_context`. Les quatre migrations de privilèges datées du 14 octobre ne figurent pas dans l'extrait : elles sont donc non confirmées comme appliquées en production. Cinq entrées plus anciennes ont `applied_steps_count = 0`, `finished_at = started_at`, `rolled_back_at = null` et `logs` vide ; leur origine doit être expliquée avant tout déploiement. Les objets Q8 présents ne prouvent pas que ces migrations ont été réellement exécutées.
+- Le Q2 transmis le 14 octobre s'arrête à `20261009180000_public_read_context`. Les cinq migrations de durcissement datées du 14 octobre ne figurent pas dans l'extrait : elles sont donc non confirmées comme appliquées en production. Cinq entrées plus anciennes ont `applied_steps_count = 0`, `finished_at = started_at`, `rolled_back_at = null` et `logs` vide ; leur origine doit être expliquée avant tout déploiement. Les objets Q8 présents ne prouvent pas que ces migrations ont été réellement exécutées.
 - La migration `20261014130000_revoke_public_schema_privileges` limite les changements aux fonctions et relations dont `current_user` est propriétaire afin de ne pas modifier les ACL d'extensions détenues par `cloud_admin`.
+- La migration `20261014140000_remove_public_supplier_passport_share_token` retire le jeton privé `shareToken` du JSON du passeport fournisseur public ; ce correctif est distinct du retrait des privilèges SQL et doit être validé par les tests statiques et d'intégration.
 
 ## 2. Coordination avec la PR #34 — blocage de séquencement
 
@@ -36,7 +37,7 @@ Dans l'environnement de déploiement autorisé, avec la connexion de migration d
 
 - Vérifier l'identité de base et de rôle sans imprimer la chaîne de connexion.
 - Exécuter `prisma migrate status` en mode lecture seule et comparer le résultat à l'inventaire validé.
-- Vérifier que les migrations en attente sont exactement celles approuvées, dans l'ordre. Ne jamais supposer que `migrate deploy` n'appliquera que les quatre migrations de privilèges : Prisma applique toutes les migrations en attente.
+- Vérifier que les migrations en attente sont exactement celles approuvées, dans l'ordre. Ne jamais supposer que `migrate deploy` n'appliquera que les cinq migrations de durcissement : Prisma applique toutes les migrations en attente.
 - Vérifier les droits du rôle de migration sur le schéma `public`, les fonctions applicatives et les relations qu'il doit modifier.
 - Confirmer que la CI correspond au HEAD exact de la PR à fusionner.
 
