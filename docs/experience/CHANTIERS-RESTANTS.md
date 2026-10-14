@@ -3,7 +3,7 @@
 Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
 la base Neon de production. Pas en relisant les en-têtes.
 
-**0 PR ouverte · Neon : 35/35 migrations appliquées, dont la 35
+**0 PR ouverte · Neon : 37/37 migrations dans le dépôt (application en production à revérifier), dont la 35
 `public_read_context`.**
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
