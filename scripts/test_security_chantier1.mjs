@@ -56,13 +56,14 @@ const privilegeHardeningSql = await readFile(
   'utf8',
 );
 assert(
-  privilegeHardeningSql.includes('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC')
+  privilegeHardeningSql.includes('REVOKE EXECUTE ON %s %s FROM PUBLIC')
+    && privilegeHardeningSql.includes("CASE WHEN f.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END")
     && privilegeHardeningSql.includes("p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)"),
-  'Final SQL privilege hardening must revoke PUBLIC EXECUTE from all functions owned by the migration role without attempting to alter provider-owned extension functions',
+  'Final SQL privilege hardening must revoke PUBLIC EXECUTE from all functions and procedures owned by the migration role without attempting to alter provider-owned extension functions',
 );
 assert(
-  privilegeHardeningSql.includes('GRANT EXECUTE ON FUNCTION %s TO tracefab_app'),
-  'Final SQL privilege hardening must preserve runtime EXECUTE for tracefab_app on migration-role-owned functions',
+  privilegeHardeningSql.includes('GRANT EXECUTE ON %s %s TO tracefab_app'),
+  'Final SQL privilege hardening must preserve runtime EXECUTE for tracefab_app on migration-role-owned functions and procedures',
 );
 assert(
   migrationSql.includes('CREATE POLICY documents_select_authorized ON documents'),
