@@ -80,7 +80,7 @@ const catalogue = async (name) => {
             coalesce(bool_and(p.prosecdef), false) as all_security_definer
        from pg_proc p
        join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname = 'public' and p.proname = $1 and p.prokind = 'f'`,
+      where n.nspname = 'public' and p.proname = $1 and p.prokind IN ('f', 'p')`,
     [name],
   );
   return result.rows[0];
@@ -98,14 +98,14 @@ try {
             count(*) FILTER (WHERE p.prosecdef)::int AS security_definer_count
        FROM pg_proc p
        JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = 'public' AND p.prokind = 'f'
+      WHERE n.nspname = 'public' AND p.prokind IN ('f', 'p')
         AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)`,
   );
   const inventory = allFunctions.rows[0];
   if (inventory.total === 0) fail('catalogue : aucune fonction trouvée dans public');
   else pass(`catalogue : ${inventory.total} fonctions, dont ${inventory.security_definer_count} SECURITY DEFINER`);
-  if (inventory.public_execute_count === 0) pass('0 fonction applicative détenue par le rôle de migration exécutable par PUBLIC');
-  else fail(`${inventory.public_execute_count} fonction(s) encore exécutable(s) par PUBLIC`);
+  if (inventory.public_execute_count === 0) pass('0 routine applicative détenue par le rôle de migration exécutable par PUBLIC');
+  else fail(`${inventory.public_execute_count} routine(s) encore exécutable(s) par PUBLIC`);
 
   console.log('\\n1 bis. Tables, vues, séquences et schéma — aucun privilège PUBLIC excessif');
   const publicRelations = await client.query(
@@ -143,11 +143,11 @@ try {
       `SELECT count(*)::int AS missing
          FROM pg_proc p
          JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'public' AND p.prokind = 'f'
+        WHERE n.nspname = 'public' AND p.prokind IN ('f', 'p')
           AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
           AND NOT has_function_privilege('tracefab_app', p.oid, 'EXECUTE')`,
     );
-    if (missingRuntime.rows[0].missing === 0) pass('tracefab_app : EXECUTE effectif sur toutes les fonctions applicatives détenues par le rôle de migration');
+    if (missingRuntime.rows[0].missing === 0) pass('tracefab_app : EXECUTE effectif sur toutes les routines applicatives détenues par le rôle de migration');
     else fail(`tracefab_app : ${missingRuntime.rows[0].missing} fonction(s) sans EXECUTE effectif`);
   }
 
@@ -174,7 +174,7 @@ try {
       `SELECT count(*)::int AS allowed
          FROM pg_proc p
          JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'public' AND p.prokind = 'f'
+        WHERE n.nspname = 'public' AND p.prokind IN ('f', 'p')
           AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
           AND has_function_privilege($1, p.oid, 'EXECUTE')`,
       [testRole],
@@ -220,7 +220,7 @@ try {
         `select coalesce(bool_or(has_function_privilege($2, p.oid, 'EXECUTE')), false) as allowed
            from pg_proc p
            join pg_namespace n on n.oid = p.pronamespace
-          where n.nspname = 'public' and p.proname = $1 and p.prokind = 'f'`,
+          where n.nspname = 'public' and p.proname = $1 and p.prokind IN ('f', 'p')`,
         [name, testRole],
       );
       if (result.rows[0].allowed) fail(`${name} : exécutable par un rôle sans grant`);
@@ -237,7 +237,7 @@ try {
               coalesce(bool_and(has_function_privilege('tracefab_app', p.oid, 'EXECUTE')), false) as allowed
          from pg_proc p
          join pg_namespace n on n.oid = p.pronamespace
-        where n.nspname = 'public' and p.proname = $1 and p.prokind = 'f'`,
+        where n.nspname = 'public' and p.proname = $1 and p.prokind IN ('f', 'p')`,
       [name],
     );
     if (result.rows[0].count === 0) fail(`${name} : fonction absente`);
