@@ -149,6 +149,27 @@ try {
     );
     if (missingRuntime.rows[0].missing === 0) pass('tracefab_app : EXECUTE effectif sur toutes les routines applicatives détenues par le rôle de migration');
     else fail(`tracefab_app : ${missingRuntime.rows[0].missing} fonction(s) sans EXECUTE effectif`);
+
+    console.log('\\n1 ter. Le retrait de PUBLIC ne doit pas priver tracefab_app des droits relationnels attendus');
+    const requiredTablePrivileges = [
+      ['organizations', 'SELECT'], ['organizations', 'INSERT'], ['organizations', 'UPDATE'],
+      ['users', 'SELECT'], ['users', 'INSERT'], ['users', 'UPDATE'],
+      ['organization_memberships', 'SELECT'], ['organization_memberships', 'INSERT'], ['organization_memberships', 'UPDATE'],
+      ['tracefab_products', 'SELECT'], ['tracefab_products', 'INSERT'], ['tracefab_products', 'UPDATE'],
+      ['documents', 'SELECT'], ['documents', 'INSERT'], ['documents', 'UPDATE'],
+      ['suppliers', 'SELECT'], ['suppliers', 'INSERT'], ['suppliers', 'UPDATE'],
+    ];
+    for (const [table, privilege] of requiredTablePrivileges) {
+      const result = await client.query(
+        'SELECT to_regclass($1) IS NOT NULL AS exists, ' +
+        'CASE WHEN to_regclass($1) IS NULL THEN false ' +
+        'ELSE has_table_privilege($2, to_regclass($1), $3) END AS allowed',
+        [`public.${table}`, 'tracefab_app', privilege],
+      );
+      if (!result.rows[0].exists) fail(`${table}: table absente pour le contrôle runtime`);
+      else if (!result.rows[0].allowed) fail(`tracefab_app: privilège ${privilege} perdu sur ${table}`);
+      else pass(`tracefab_app: ${privilege} conservé sur ${table}`);
+    }
   }
 
   console.log('\\n2. Fonctions sensibles connues — contrôle ciblé de non-régression');
