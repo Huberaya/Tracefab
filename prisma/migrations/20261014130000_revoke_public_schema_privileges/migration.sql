@@ -75,7 +75,7 @@ BEGIN
         FROM pg_proc p
         JOIN pg_namespace n ON n.oid = p.pronamespace
        WHERE n.nspname = 'public'
-         AND p.prokind = 'f'
+         AND p.prokind IN ('f', 'p')
          AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
     LOOP
       EXECUTE format('GRANT EXECUTE ON %s %s TO tracefab_app', CASE WHEN f.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END, f.signature);
