@@ -114,6 +114,7 @@ try {
        JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public'
         AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+        AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
         AND c.relacl IS NOT NULL
         AND EXISTS (
           SELECT 1
@@ -186,6 +187,7 @@ try {
          FROM pg_class c
          JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
           AND (
             has_table_privilege($1, c.oid, 'SELECT')
             OR has_table_privilege($1, c.oid, 'INSERT')
@@ -202,6 +204,7 @@ try {
          FROM pg_class c
          JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'public' AND c.relkind = 'S'
+          AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
           AND (
             has_sequence_privilege($1, c.oid, 'USAGE')
             OR has_sequence_privilege($1, c.oid, 'SELECT')
