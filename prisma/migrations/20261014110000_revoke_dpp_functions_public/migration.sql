@@ -42,3 +42,79 @@ BEGIN
   END IF;
 END
 $grants$;
+
+-- Les fonctions d'autorisation des politiques RLS et les gardes de triggers
+-- ont également pu conserver PUBLIC EXECUTE depuis leur création antérieure
+-- à la révocation des privilèges par défaut. PUBLIC n'est pas requis :
+-- tracefab_app reçoit un GRANT direct sur les prédicats appelés par ses
+-- politiques; PostgreSQL n'exige pas EXECUTE PUBLIC à chaque déclenchement.
+DO $hardening$
+DECLARE
+  function_row record;
+  found_count integer;
+  expected_names text[] := ARRAY[
+    'tracefab_can_access_org',
+    'tracefab_is_org_member',
+    'tracefab_has_org_role',
+    'tracefab_can_access_shared_subject',
+    'tracefab_can_access_document',
+    'tracefab_validate_subject_ownership',
+    'tracefab_validate_membership_mutation',
+    'tracefab_validate_relationship_organizations',
+    'tracefab_validate_document_location',
+    'tracefab_validate_share_relationship'
+  ];
+  app_predicates text[] := ARRAY[
+    'tracefab_can_access_org',
+    'tracefab_is_org_member',
+    'tracefab_has_org_role',
+    'tracefab_can_access_shared_subject',
+    'tracefab_can_access_document'
+  ];
+BEGIN
+  SELECT count(DISTINCT p.proname)::integer
+    INTO found_count
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public'
+     AND p.prokind = 'f'
+     AND p.prosecdef
+     AND p.proname = ANY(expected_names);
+
+  IF found_count <> cardinality(expected_names) THEN
+    RAISE EXCEPTION
+      'Hardening SECURITY DEFINER incomplet : % fonctions sur % attendues sont présentes',
+      found_count, cardinality(expected_names);
+  END IF;
+
+  FOR function_row IN
+    SELECT p.proname AS function_name,
+           pg_get_function_identity_arguments(p.oid) AS identity_arguments
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.prokind = 'f'
+       AND p.prosecdef
+       AND p.proname = ANY(expected_names)
+  LOOP
+    EXECUTE format(
+      'REVOKE EXECUTE ON FUNCTION %I.%I(%s) FROM PUBLIC',
+      'public',
+      function_row.function_name,
+      function_row.identity_arguments
+    );
+
+    IF function_row.function_name = ANY(app_predicates)
+       AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
+      EXECUTE format(
+        'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO %I',
+        'public',
+        function_row.function_name,
+        function_row.identity_arguments,
+        'tracefab_app'
+      );
+    END IF;
+  END LOOP;
+END
+$hardening$;
+
