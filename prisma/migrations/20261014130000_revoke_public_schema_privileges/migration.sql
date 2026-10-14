@@ -71,7 +71,7 @@ DECLARE
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
     FOR f IN
-      SELECT p.oid::regprocedure AS signature
+      SELECT p.oid::regprocedure AS signature, p.prokind
         FROM pg_proc p
         JOIN pg_namespace n ON n.oid = p.pronamespace
        WHERE n.nspname = 'public'
