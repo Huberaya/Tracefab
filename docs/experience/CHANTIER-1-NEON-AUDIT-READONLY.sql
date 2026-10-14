@@ -17,6 +17,14 @@ SELECT current_database() AS database_name,
  WHERE r.rolname = current_user
    AND n.nspname = 'public';
 
+-- Q1b — Attributs du rôle applicatif et du propriétaire : ne pas déduire
+-- l'isolation RLS à partir du rôle propriétaire utilisé pour l'audit.
+SELECT rolname, rolcanlogin, rolsuper, rolcreaterole, rolcreatedb,
+       rolinherit, rolbypassrls
+  FROM pg_roles
+ WHERE rolname IN (current_user, 'tracefab_app', 'pg_database_owner')
+ ORDER BY rolname;
+
 -- Q2 — Historique Prisma complet, y compris migrations échouées ou annulées.
 SELECT migration_name, started_at, finished_at, rolled_back_at,
        applied_steps_count, logs
@@ -84,6 +92,32 @@ SELECT c.oid::regclass::text AS object_name,
    AND acl.grantee = 0
  ORDER BY object_name, acl.privilege_type;
 
+-- Q4b — ACL explicites PUBLIC / tracefab_app et privilèges effectifs runtime.
+-- Exécuter AVANT toute migration de révocation pour repérer les accès qui
+-- seraient perdus si l'application dépendait seulement des droits PUBLIC.
+SELECT c.oid::regclass::text AS object_name,
+       c.relkind,
+       pg_get_userbyid(c.relowner) AS owner,
+       CASE WHEN acl.grantee = 0 THEN 'PUBLIC'
+            ELSE pg_get_userbyid(acl.grantee)
+       END AS grantee_name,
+       acl.privilege_type,
+       acl.is_grantable,
+       CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app')
+            THEN CASE WHEN c.relkind = 'S'
+                      THEN has_sequence_privilege('tracefab_app', c.oid, acl.privilege_type)
+                      ELSE has_table_privilege('tracefab_app', c.oid, acl.privilege_type)
+                 END
+            ELSE NULL
+       END AS tracefab_app_effective
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  CROSS JOIN LATERAL aclexplode(c.relacl) acl
+ WHERE n.nspname = 'public'
+   AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+   AND (acl.grantee = 0 OR acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'tracefab_app'))
+ ORDER BY object_name, grantee_name, acl.privilege_type;
+
 -- Q5 — CREATE/USAGE sur le schéma public accordés à PUBLIC.
 SELECT n.nspname,
        acl.privilege_type,
@@ -112,6 +146,23 @@ SELECT pg_get_userbyid(d.defaclrole) AS owner_role,
  WHERE d.defaclobjtype = 'f'
    AND (d.defaclnamespace = 0 OR d.defaclnamespace = 'public'::regnamespace)
  ORDER BY owner_role, scope, grantee_name, acl.privilege_type;
+
+-- Q6b — Privilèges par défaut des tables et séquences (futures migrations).
+SELECT pg_get_userbyid(d.defaclrole) AS owner_role,
+       CASE WHEN d.defaclnamespace = 0 THEN '(global)'
+            ELSE d.defaclnamespace::regnamespace::text
+       END AS scope,
+       d.defaclobjtype,
+       CASE WHEN acl.grantee = 0 THEN 'PUBLIC'
+            ELSE pg_get_userbyid(acl.grantee)
+       END AS grantee_name,
+       acl.privilege_type,
+       acl.is_grantable
+  FROM pg_default_acl d
+  CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+ WHERE d.defaclobjtype IN ('r', 'S')
+   AND (d.defaclnamespace = 0 OR d.defaclnamespace = 'public'::regnamespace)
+ ORDER BY owner_role, scope, d.defaclobjtype, grantee_name, acl.privilege_type;
 
 -- Q7 — Liste compacte des fonctions de TraceFab critiques et droits runtime effectifs.
 SELECT p.oid::regprocedure::text AS function_signature,
@@ -172,3 +223,16 @@ WITH expected(object_name, object_kind, present) AS (
 SELECT object_name, object_kind, present
   FROM expected
  ORDER BY present, object_kind, object_name;
+
+-- Q9 — Anomalies de l'historique Prisma sans exposer le contenu des logs.
+-- Les checksum sont nécessaires pour comparer les entrées à la version exacte
+-- des fichiers de migration ; ne pas réparer ces entrées avant cette comparaison.
+SELECT migration_name, checksum, started_at, finished_at, rolled_back_at,
+       applied_steps_count,
+       (logs IS NOT NULL AND length(trim(logs)) > 0) AS has_nonempty_logs,
+       length(logs) AS logs_length
+  FROM public."_prisma_migrations"
+ WHERE applied_steps_count = 0
+    OR finished_at IS NULL
+    OR rolled_back_at IS NOT NULL
+ ORDER BY started_at, migration_name;
