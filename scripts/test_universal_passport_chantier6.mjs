@@ -18,6 +18,22 @@ assert(migrationSql.includes('tracefab_update_supplier_passport'), 'Migration mu
 assert(migrationSql.includes('tracefab_get_public_supplier_passport'), 'Migration must create tracefab_get_public_supplier_passport');
 assert(migrationSql.includes('tracefab_request_passport_access'), 'Migration must create tracefab_request_passport_access');
 assert(migrationSql.includes('tracefab_review_passport_access'), 'Migration must create tracefab_review_passport_access');
+const publicPassportHardeningPath = path.resolve('prisma/migrations/20261014140000_remove_public_supplier_passport_share_token/migration.sql');
+assert(fs.existsSync(publicPassportHardeningPath), 'Public passport share-token hardening migration must exist');
+const publicPassportHardeningSql = fs.readFileSync(publicPassportHardeningPath, 'utf8');
+assert(
+  publicPassportHardeningSql.includes('REVOKE EXECUTE ON FUNCTION tracefab_get_public_supplier_passport(text) FROM PUBLIC'),
+  'Public passport resolver must not be directly executable by PUBLIC'
+);
+const publicPayloadStart = publicPassportHardeningSql.indexOf('v_result := jsonb_build_object');
+const publicPayloadEnd = publicPassportHardeningSql.indexOf('RETURN v_result', publicPayloadStart);
+assert(publicPayloadStart >= 0 && publicPayloadEnd > publicPayloadStart, 'Hardened public payload construction must exist');
+const publicPayloadSql = publicPassportHardeningSql.slice(publicPayloadStart, publicPayloadEnd);
+assert(
+  !publicPayloadSql.includes("'shareToken', v_passport.share_token"),
+  'Public passport JSON must never return the private share token'
+);
+
 console.log('✓ Migration SQL schema, RLS & procedures verified');
 
 // 2. Verify TypeScript library
