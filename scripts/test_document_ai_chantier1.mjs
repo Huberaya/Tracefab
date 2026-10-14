@@ -35,9 +35,18 @@ assert(
   migrationSql.includes('tracefab_can_access_document'),
   'Function must check document access via tracefab_can_access_document',
 );
+const privilegeHardeningSql = await readFile(
+  new URL('../prisma/migrations/20261014130000_revoke_all_public_function_execute/migration.sql', import.meta.url),
+  'utf8',
+);
 assert(
   migrationSql.includes('GRANT EXECUTE ON FUNCTION tracefab_apply_document_ai_verification'),
-  'Migration must grant execute on tracefab_apply_document_ai_verification to PUBLIC',
+  'Historical migration must define an explicit function grant',
+);
+assert(
+  privilegeHardeningSql.includes('REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;')
+    && privilegeHardeningSql.includes('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO tracefab_app;'),
+  'Final hardening must remove PUBLIC execution while preserving runtime execution',
 );
 
 // 2. Verify Document AI Helper Module
