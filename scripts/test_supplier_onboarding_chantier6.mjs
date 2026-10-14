@@ -39,7 +39,7 @@ assert(
   'Historical migration must define an explicit function grant',
 );
 assert(
-  privilegeHardeningSql.includes('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC')
+  privilegeHardeningSql.includes('REVOKE EXECUTE ON %s %s FROM PUBLIC')
     && privilegeHardeningSql.includes("p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)")
     && privilegeHardeningSql.includes('GRANT EXECUTE ON FUNCTION %s TO tracefab_app'),
   'Final hardening must revoke PUBLIC EXECUTE on migration-role-owned functions while preserving runtime execution and excluding provider-owned extension functions',
