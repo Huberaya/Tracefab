@@ -143,7 +143,7 @@ try {
 
   /* --- 7-8. UPDATE cross-org ---------------------------------------------- */
   const updSup = await tenter(
-    "update suppliers set onboarding_status = 'completed' where id = $1", [supB]);
+    "update suppliers set onboarding_status = 'approved' where id = $1", [supB]);
   if (!updSup.refuse && updSup.rowCount === 0) ok('UPDATE suppliers chez B : 0 ligne touchée');
   else ko(`UPDATE suppliers chez B : ${updSup.refuse ? 'erreur inattendue' : `${updSup.rowCount} ligne(s) touchée(s)`}`);
 
