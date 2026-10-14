@@ -2,8 +2,9 @@
 /**
  * Privilèges des fonctions SQL — contrôle intégral des ACL et du rôle runtime.
  *
- * Le contrôle inspecte toutes les fonctions du schéma public pour éviter
- * qu'une migration future réintroduise EXECUTE PUBLIC sur une fonction.
+ * Le contrôle inspecte toutes les fonctions applicatives possédées par le rôle de migration
+ * pour éviter qu'une migration future réintroduise EXECUTE PUBLIC. Les fonctions
+ * d'extensions possédées par un rôle fournisseur (ex. cloud_admin) sont exclues.
  * Exécution après migrations et avant le seed, sur PostgreSQL jetable.
  */
 import pg from 'pg';
@@ -86,7 +87,7 @@ const catalogue = async (name) => {
 };
 
 try {
-  console.log('\\n1. Audit exhaustif — aucune fonction du schéma public ne doit être exécutable par PUBLIC');
+  console.log('\\n1. Audit — aucune fonction applicative possédée par le rôle de migration ne doit être exécutable par PUBLIC');
   const allFunctions = await client.query(
     `SELECT count(*)::int AS total,
             count(*) FILTER (WHERE EXISTS (
@@ -97,7 +98,8 @@ try {
             count(*) FILTER (WHERE p.prosecdef)::int AS security_definer_count
        FROM pg_proc p
        JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = 'public' AND p.prokind = 'f'`,
+      WHERE n.nspname = 'public' AND p.prokind = 'f'
+        AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)`,
   );
   const inventory = allFunctions.rows[0];
   if (inventory.total === 0) fail('catalogue : aucune fonction trouvée dans public');
@@ -141,6 +143,7 @@ try {
          FROM pg_proc p
          JOIN pg_namespace n ON n.oid = p.pronamespace
         WHERE n.nspname = 'public' AND p.prokind = 'f'
+          AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
           AND NOT has_function_privilege('tracefab_app', p.oid, 'EXECUTE')`,
     );
     if (missingRuntime.rows[0].missing === 0) pass('tracefab_app : EXECUTE effectif sur toutes les fonctions du schéma public');
@@ -171,6 +174,7 @@ try {
          FROM pg_proc p
          JOIN pg_namespace n ON n.oid = p.pronamespace
         WHERE n.nspname = 'public' AND p.prokind = 'f'
+          AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
           AND has_function_privilege($1, p.oid, 'EXECUTE')`,
       [testRole],
     );
