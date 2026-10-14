@@ -22,10 +22,10 @@ files = {
         "Clerk"
     ],
     "supplier-portal/index.html": [
-        "spHeroTag",
-        "spHeroTitle",
-        "Supplier Profile 82% Completion Bar",
-        "Clerk"
+        ".sp-hero-card",
+        ".sp-hero-tag",
+        ".sp-hero-h1",
+        "auth-screen"
     ],
     "dpp/index.html": [
         "data-i18n=\"dpp.metaTitle\"",
