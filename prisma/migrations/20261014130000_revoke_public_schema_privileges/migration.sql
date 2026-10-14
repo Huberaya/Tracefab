@@ -20,15 +20,45 @@
 
 BEGIN;
 
-REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+-- Ne pas modifier les fonctions d'extensions détenues par un rôle fournisseur
+-- (ex. cloud_admin sur Neon/pgcrypto). Le rôle de migration ne possède pas
+-- nécessairement ces fonctions et leur EXECUTE PUBLIC n'est pas un droit
+-- applicatif TraceFab. Ne durcir que les fonctions dont current_user est propriétaire.
+DO $revoke_owned_functions$
+DECLARE
+  f record;
+BEGIN
+  FOR f IN
+    SELECT p.oid::regprocedure AS signature
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.prokind = 'f'
+       AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+  LOOP
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', f.signature);
+  END LOOP;
+END
+$revoke_owned_functions$;
 REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 DO $grant_runtime$
+DECLARE
+  f record;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
-    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO tracefab_app;
+    FOR f IN
+      SELECT p.oid::regprocedure AS signature
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public'
+         AND p.prokind = 'f'
+         AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+    LOOP
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO tracefab_app', f.signature);
+    END LOOP;
   END IF;
 END
 $grant_runtime$;
@@ -49,6 +79,7 @@ BEGIN
     JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public'
      AND p.prokind = 'f'
+     AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
      AND EXISTS (
        SELECT 1
          FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
@@ -109,6 +140,7 @@ BEGIN
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'public'
        AND p.prokind = 'f'
+       AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
        AND NOT has_function_privilege('tracefab_app', p.oid, 'EXECUTE');
 
     IF runtime_missing IS NOT NULL THEN
