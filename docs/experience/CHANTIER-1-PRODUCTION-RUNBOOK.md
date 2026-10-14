@@ -24,7 +24,7 @@ Ne pas fusionner tant que toutes les conditions suivantes ne sont pas documenté
 
 1. Le dernier commit de la PR a une CI entièrement verte, y compris tests, migrations PostgreSQL jetable, isolation RLS et tests navigateur.
 2. Les trois tests statiques corrigés réussissent ; aucune autre suite n'est en échec.
-3. Le fichier `CHANTIER-1-NEON-AUDIT-READONLY.sql` a été exécuté dans Neon en lecture seule. Les sorties Q1 à Q7 sont conservées sans secrets.
+3. Le fichier `CHANTIER-1-NEON-AUDIT-READONLY.sql` a été exécuté dans Neon en lecture seule. Les sorties Q1 à Q9 sont conservées sans secrets ; Q1b confirme le rôle runtime, Q4b les droits effectifs des tables/séquences, Q6b les privilèges par défaut et Q9 les anomalies Prisma sans divulguer les logs.
 4. L'historique `_prisma_migrations` est comparé ligne par ligne aux migrations du dépôt : migrations appliquées, migrations échouées, annulées, doublons et ordre chronologique.
 5. Le rôle réel utilisé par Prisma Migrate est confirmé, et il est propriétaire des objets applicatifs que les migrations veulent modifier. Les objets d'extension appartenant à `cloud_admin` sont hors périmètre.
 6. Les privilèges actuels de `tracefab_app` sur les fonctions, tables et séquences nécessaires sont compris ; aucun accès applicatif requis n'est supposé à partir de la seule absence de PUBLIC.
@@ -47,7 +47,7 @@ Dans l'environnement de déploiement autorisé, avec la connexion de migration d
 1. Fusionner la PR validée selon les règles du dépôt.
 2. Déclencher le processus de déploiement approuvé pendant la fenêtre convenue. Ne pas exécuter de commande manuelle improvisée contre Neon.
 3. Observer chaque étape du déploiement. Une erreur Prisma, une erreur de privilèges ou un statut incertain signifie arrêt : ne pas marquer manuellement une migration comme appliquée et ne pas éditer `_prisma_migrations`.
-4. Après succès confirmé, réexécuter les requêtes en lecture seule Q1 à Q7.
+4. Après succès confirmé, réexécuter les requêtes en lecture seule Q1 à Q9.
 5. Comparer les résultats avant/après et vérifier : zéro EXECUTE PUBLIC sur les fonctions TraceFab possédées par le rôle de migration, zéro privilège PUBLIC non prévu sur les relations applicatives, aucun CREATE PUBLIC sur `public`, et EXECUTE effectif sur les fonctions requises par `tracefab_app`.
 6. Relancer les tests de parcours public, de RLS et d'isolation inter-organisations avec une identité applicative normale.
 7. Archiver le SHA fusionné, l'ID du déploiement, le statut des migrations et les sorties SQL post-déploiement expurgées de toute donnée sensible.
