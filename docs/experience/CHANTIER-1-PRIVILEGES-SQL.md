@@ -39,12 +39,16 @@ Elle révoque `EXECUTE` à `PUBLIC` au niveau global et pour le schéma `public`
 
 La migration crée une fonction témoin dans sa transaction, vérifie qu'elle n'est pas exécutable par `PUBLIC`, vérifie l'accès de `tracefab_app` si le rôle existe, puis supprime la sonde. Une vérification en échec fait échouer et annule la migration.
 
-### 3. Migration 20261014130000 — fermeture exhaustive des fonctions existantes
+### 3. Migration 20261014130000 — fermeture exhaustive des privilèges publics
 
-Elle exécute `REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC`, puis accorde `EXECUTE` à `tracefab_app` si le rôle existe.
+Elle révoque `EXECUTE` sur toutes les fonctions, tous les privilèges sur les tables/vues/séquences du schéma `public`, ainsi que le privilège `CREATE` sur le schéma lui-même. Cela neutralise les droits publics réintroduits par les anciennes migrations (fonctions Clerk, onboarding, mutations produit, DPP, tables de qualité, imports, limites de débit, etc.).
+
+Si `tracefab_app` existe, la migration lui accorde `EXECUTE` sur toutes les fonctions existantes. Elle ne réaccorde pas les privilèges de tables : les droits directs déjà attribués à `tracefab_app` restent inchangés, car `REVOKE FROM PUBLIC` ne les retire pas. Sur une base vierge, le seed attribue les droits applicatifs après les migrations.
 
 Avant de valider la transaction, elle inspecte le catalogue PostgreSQL et échoue si :
 - une fonction de `public` reste exécutable par `PUBLIC` ;
+- une table, vue ou séquence conserve un privilège accordé à `PUBLIC` ;
+- `PUBLIC` conserve le droit `CREATE` sur le schéma `public` ;
 - `tracefab_app` existe mais n'a pas `EXECUTE` sur une fonction du schéma.
 
 Cette migration est volontairement plus large qu'une liste fixe de fonctions : elle couvre aussi les fonctions créées par les anciennes migrations qui réintroduisaient explicitement les droits publics.
@@ -77,4 +81,4 @@ Le chantier ne sera déclaré **exécuté et validé** que lorsque toutes les co
 - Aucun changement n'a été appliqué à Neon production par ce chantier.
 - La PR #41 reste non fusionnée au dernier état connu.
 - Le rôle `tracefab_app` est un rôle runtime de confiance. Son secret doit rester côté serveur ; le fait qu'il dispose d'`EXECUTE` ne doit pas être exposé à un client navigateur.
-- Les anciennes commandes/scripts qui accordent des droits sur des tables à `PUBLIC` doivent être traités comme un sujet distinct : les révoquer sans inventaire des ACL de production pourrait casser des accès légitimes. L'audit de production précédemment rapporté ne détectait pas de privilèges de table accordés à `PUBLIC`, `anon` ou `authenticated`, mais cette observation doit être reconfirmée après réconciliation.
+- Les droits directs de `tracefab_app` sur les tables et séquences ne sont pas réécrits par la migration de révocation. Ils doivent être vérifiés après application ; les tests RLS exécutés après le seed vérifient que les opérations légitimes continuent de fonctionner.
