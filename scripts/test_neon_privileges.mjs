@@ -139,16 +139,9 @@ try {
   else fail('PUBLIC conserve CREATE sur le schéma public');
 
   if (roleExists.rowCount > 0) {
-    const missingRuntime = await client.query(
-      `SELECT count(*)::int AS missing
-         FROM pg_proc p
-         JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'public' AND p.prokind IN ('f', 'p')
-          AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
-          AND NOT has_function_privilege('tracefab_app', p.oid, 'EXECUTE')`,
-    );
-    if (missingRuntime.rows[0].missing === 0) pass('tracefab_app : EXECUTE effectif sur toutes les routines applicatives détenues par le rôle de migration');
-    else fail(`tracefab_app : ${missingRuntime.rows[0].missing} fonction(s) sans EXECUTE effectif`);
+    // Les fonctions requises sont contrôlées explicitement plus bas par
+    // APP_EXECUTE_REQUIRED. Ne pas exiger EXECUTE sur chaque routine :
+    // certaines fonctions sensibles ont volontairement été retirées du runtime.
 
     console.log('\\n1 ter. Le retrait de PUBLIC ne doit pas priver tracefab_app des droits relationnels attendus');
     const requiredTablePrivileges = [
