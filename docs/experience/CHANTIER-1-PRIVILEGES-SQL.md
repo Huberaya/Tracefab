@@ -41,12 +41,12 @@ La migration crée une fonction témoin dans sa transaction, vérifie qu'elle n'
 
 ### 3. Migration 20261014130000 — fermeture exhaustive des privilèges publics
 
-Elle révoque `EXECUTE` sur toutes les fonctions, tous les privilèges sur les tables/vues/séquences du schéma `public`, ainsi que le privilège `CREATE` sur le schéma lui-même. Cela neutralise les droits publics réintroduits par les anciennes migrations (fonctions Clerk, onboarding, mutations produit, DPP, tables de qualité, imports, limites de débit, etc.).
+Elle révoque `EXECUTE` sur les fonctions du schéma `public` dont le rôle de migration est propriétaire, tous les privilèges `PUBLIC` sur les tables/vues/séquences applicatives, ainsi que `CREATE` sur le schéma lui-même. Le retrait de `EXECUTE` est volontairement limité aux fonctions détenues par le rôle de migration : sur Neon, certaines fonctions d'extensions (par ex. pgcrypto) appartiennent à `cloud_admin`, et `neondb_owner` ne doit pas tenter de modifier leurs ACL. Leurs droits standards `PUBLIC EXECUTE` ne sont pas assimilés à une exposition de fonction métier TraceFab.
 
 Si `tracefab_app` existe, la migration lui accorde `EXECUTE` sur toutes les fonctions existantes. Elle ne réaccorde pas les privilèges de tables : les droits directs déjà attribués à `tracefab_app` restent inchangés, car `REVOKE FROM PUBLIC` ne les retire pas. Sur une base vierge, le seed attribue les droits applicatifs après les migrations.
 
 Avant de valider la transaction, elle inspecte le catalogue PostgreSQL et échoue si :
-- une fonction de `public` reste exécutable par `PUBLIC` ;
+- une fonction applicative de `public` détenue par le rôle de migration reste exécutable par `PUBLIC` ;
 - une table, vue ou séquence conserve un privilège accordé à `PUBLIC` ;
 - `PUBLIC` conserve le droit `CREATE` sur le schéma `public` ;
 - `tracefab_app` existe mais n'a pas `EXECUTE` sur une fonction du schéma.
@@ -57,7 +57,7 @@ Cette migration est volontairement plus large qu'une liste fixe de fonctions : e
 
 `scripts/test_neon_privileges.mjs` contrôle maintenant :
 - toutes les fonctions du schéma `public`, pas uniquement une liste connue ;
-- zéro fonction exécutable par `PUBLIC` ;
+- zéro fonction applicative détenue par le rôle de migration exécutable par `PUBLIC` (les fonctions d'extensions fournisseur sont hors périmètre) ;
 - `EXECUTE` effectif pour `tracefab_app` sur toutes les fonctions ;
 - l'absence d'accès pour un rôle de test sans privilèges ;
 - les fonctions sensibles et les gardes de déclencheurs explicitement identifiés.
