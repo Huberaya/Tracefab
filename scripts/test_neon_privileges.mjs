@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Privilèges des fonctions SQL — contrôle intégral des ACL et du rôle runtime.
+ * Privilèges SQL — contrôle des ACL applicatives détenues par le rôle de migration et du rôle runtime.
  *
  * Le contrôle inspecte toutes les fonctions applicatives possédées par le rôle de migration
  * pour éviter qu'une migration future réintroduise EXECUTE PUBLIC. Les fonctions
@@ -104,7 +104,7 @@ try {
   const inventory = allFunctions.rows[0];
   if (inventory.total === 0) fail('catalogue : aucune fonction trouvée dans public');
   else pass(`catalogue : ${inventory.total} fonctions, dont ${inventory.security_definer_count} SECURITY DEFINER`);
-  if (inventory.public_execute_count === 0) pass('0 fonction du schéma public exécutable par PUBLIC');
+  if (inventory.public_execute_count === 0) pass('0 fonction applicative détenue par le rôle de migration exécutable par PUBLIC');
   else fail(`${inventory.public_execute_count} fonction(s) encore exécutable(s) par PUBLIC`);
 
   console.log('\\n1 bis. Tables, vues, séquences et schéma — aucun privilège PUBLIC excessif');
@@ -146,7 +146,7 @@ try {
           AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
           AND NOT has_function_privilege('tracefab_app', p.oid, 'EXECUTE')`,
     );
-    if (missingRuntime.rows[0].missing === 0) pass('tracefab_app : EXECUTE effectif sur toutes les fonctions du schéma public');
+    if (missingRuntime.rows[0].missing === 0) pass('tracefab_app : EXECUTE effectif sur toutes les fonctions applicatives détenues par le rôle de migration');
     else fail(`tracefab_app : ${missingRuntime.rows[0].missing} fonction(s) sans EXECUTE effectif`);
   }
 
@@ -165,7 +165,7 @@ try {
     }
   }
 
-  console.log('\\n3. Rôle sans grant — toutes les fonctions sont inaccessibles');
+  console.log('\\n3. Rôle sans grant — les fonctions applicatives du rôle de migration sont inaccessibles');
   const testRole = `tf_priv_test_${process.pid}`;
   await client.query(`create role ${testRole} nologin nosuperuser nobypassrls`);
   try {
