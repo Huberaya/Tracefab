@@ -53,7 +53,7 @@ test('tentative non résolue même avec une ligne de succès : échec conservate
 test('entrée invalide : échec', () => {
   const r = compareMigrationHistory(names, [success(names[0]), { finished_at: new Date() }]);
   assert.equal(r.ok, false);
-  assert.ok(r.errors.some((e) => e.includes('entrée _prisma_migrations invalide')));
+  assert.ok(r.errors.some((e) => e.toLocaleLowerCase('fr').includes('entrée _prisma_migrations invalide')));
 });
 
 console.log(`\n${checks}/${checks} tests passés. Aucun accès à une base de données.`);
