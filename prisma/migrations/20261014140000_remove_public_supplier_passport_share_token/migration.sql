@@ -182,13 +182,19 @@ BEGIN
 END;
 $$;
 
--- La route publique appelle cette fonction via le serveur tracefab_app.
--- Le client navigateur ne doit pas disposer d'un accès SQL direct.
+-- Les cinq RPC passeport sont invoquées par l'API serveur sous tracefab_app.
+-- Le client navigateur ne doit jamais disposer d'un accès SQL direct. Les
+-- fonctions déjà révoquées de PUBLIC par la migration 20261014130000 restent
+-- accessibles au runtime uniquement via ces GRANTs ciblés.
 REVOKE EXECUTE ON FUNCTION tracefab_get_public_supplier_passport(text) FROM PUBLIC;
 DO $runtime_grant$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
+    GRANT EXECUTE ON FUNCTION tracefab_get_or_create_supplier_passport(uuid) TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_update_supplier_passport(uuid, text, text, jsonb, boolean) TO tracefab_app;
     GRANT EXECUTE ON FUNCTION tracefab_get_public_supplier_passport(text) TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_request_passport_access(text, text, text, text, text, boolean) TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_review_passport_access(uuid, text) TO tracefab_app;
   END IF;
 END
 $runtime_grant$;
