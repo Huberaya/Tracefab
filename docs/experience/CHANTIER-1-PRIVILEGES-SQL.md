@@ -43,13 +43,15 @@ La migration crée une fonction témoin dans sa transaction, vérifie qu'elle n'
 
 Elle révoque `EXECUTE` sur les fonctions du schéma `public` dont le rôle de migration est propriétaire, tous les privilèges `PUBLIC` sur les tables/vues/séquences détenues par le rôle de migration, ainsi que `CREATE` sur le schéma lui-même. Le retrait de `EXECUTE` est volontairement limité aux fonctions détenues par le rôle de migration : sur Neon, certaines fonctions d'extensions (par ex. pgcrypto) appartiennent à `cloud_admin`, et `neondb_owner` ne doit pas tenter de modifier leurs ACL. Leurs droits standards `PUBLIC EXECUTE` ne sont pas assimilés à une exposition de fonction métier TraceFab.
 
-Si `tracefab_app` existe, la migration lui accorde `EXECUTE` sur toutes les fonctions existantes. Elle ne réaccorde pas les privilèges de tables : les droits directs déjà attribués à `tracefab_app` restent inchangés, car `REVOKE FROM PUBLIC` ne les retire pas. Sur une base vierge, le seed attribue les droits applicatifs après les migrations.
+Si `tracefab_app` existe, la migration photographie d'abord les droits `EXECUTE` qui lui sont effectivement accordés avant le changement, puis transfère uniquement les `EXECUTE` déjà accordés à `PUBLIC` sur les routines possédées par le rôle de migration. Les `GRANT` directs existants restent intacts ; les routines qui n'étaient pas accessibles au runtime ne lui sont pas ouvertes par défaut. Pour les tables, vues et séquences, elle transfère individuellement à `tracefab_app` les privilèges `PUBLIC` existants qui lui donnaient déjà un accès effectif, avant de les révoquer. La transaction échoue si l'un des droits d'exécution ou droits relationnels auparavant effectifs est perdu. Sur une base vierge où `tracefab_app` n'existe pas encore, le seed de test attribue ensuite les droits de fixture.
 
 Avant de valider la transaction, elle inspecte le catalogue PostgreSQL et échoue si :
 - une fonction applicative de `public` détenue par le rôle de migration reste exécutable par `PUBLIC` ;
 - une table, vue ou séquence applicative détenue par le rôle de migration conserve un privilège accordé à `PUBLIC` ;
 - `PUBLIC` conserve le droit `CREATE` sur le schéma `public` ;
-- `tracefab_app` existe mais n'a pas `EXECUTE` sur une fonction du schéma.
+- `tracefab_app` perd un droit `EXECUTE` qui lui était effectivement accordé avant la migration ;
+- `tracefab_app` perd un privilège relationnel auparavant accordé à `PUBLIC` ;
+- une fonction sensible requise n'est pas exécutable par `tracefab_app`.
 
 Cette migration est volontairement plus large qu'une liste fixe de fonctions : elle couvre aussi les fonctions créées par les anciennes migrations qui réintroduisaient explicitement les droits publics.
 
@@ -58,7 +60,8 @@ Cette migration est volontairement plus large qu'une liste fixe de fonctions : e
 `scripts/test_neon_privileges.mjs` contrôle maintenant :
 - toutes les fonctions du schéma `public`, pas uniquement une liste connue ;
 - zéro fonction applicative détenue par le rôle de migration exécutable par `PUBLIC` (les fonctions d'extensions fournisseur sont hors périmètre) ;
-- `EXECUTE` effectif pour `tracefab_app` sur toutes les fonctions ;
+- `EXECUTE` effectif pour `tracefab_app` sur la liste explicite des fonctions nécessaires aux politiques RLS et aux routes ;
+- conservation des privilèges `SELECT`/`INSERT`/`UPDATE` de `tracefab_app` sur les principales tables métier qui étaient accessibles via `PUBLIC` ;
 - l'absence d'accès pour un rôle de test sans privilèges ;
 - les fonctions sensibles et les gardes de déclencheurs explicitement identifiés.
 
@@ -73,7 +76,7 @@ Le chantier ne sera déclaré **exécuté et validé** que lorsque toutes les co
 3. Le test prouve que `tracefab_app` peut exécuter les fonctions nécessaires sans s'appuyer sur `PUBLIC`.
 4. La migration history complète de Neon a été comparée aux migrations du dépôt, dans l'ordre, y compris les statuts et les échecs éventuels.
 5. Le rôle qui appliquera les migrations en production est confirmé ; les privilèges par défaut sont configurés pour le rôle réel qui créera les fonctions.
-6. Après une application contrôlée, une requête SQL en lecture seule confirme sur Neon zéro fonction de `public` exécutable par `PUBLIC`, puis confirme les droits attendus de `tracefab_app`.
+6. Après une application contrôlée, les requêtes SQL en lecture seule confirment sur Neon zéro privilège `PUBLIC` non prévu, et confirment que les droits effectifs nécessaires de `tracefab_app` sont conservés.
 7. Les tests de lecture publique, de RLS et d'isolation inter-organisations restent verts.
 
 ## Limites et précautions
@@ -81,4 +84,4 @@ Le chantier ne sera déclaré **exécuté et validé** que lorsque toutes les co
 - Aucun changement n'a été appliqué à Neon production par ce chantier.
 - La PR #41 reste non fusionnée au dernier état connu.
 - Le rôle `tracefab_app` est un rôle runtime de confiance. Son secret doit rester côté serveur ; le fait qu'il dispose d'`EXECUTE` ne doit pas être exposé à un client navigateur.
-- Les droits directs de `tracefab_app` sur les tables et séquences ne sont pas réécrits par la migration de révocation. Ils doivent être vérifiés après application ; les tests RLS exécutés après le seed vérifient que les opérations légitimes continuent de fonctionner.
+- La migration transfère les seuls droits relationnels `PUBLIC` déjà effectifs vers `tracefab_app` avant de les révoquer. Le test d'intégration vérifie les droits des tables métier avant le seed ; les tests RLS après le seed restent une preuve complémentaire, pas un substitut à ce contrôle.
