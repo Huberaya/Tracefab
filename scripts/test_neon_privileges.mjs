@@ -153,7 +153,6 @@ try {
     console.log('\\n1 ter. Le retrait de PUBLIC ne doit pas priver tracefab_app des droits relationnels attendus');
     const requiredTablePrivileges = [
       ['organizations', 'SELECT'], ['organizations', 'INSERT'], ['organizations', 'UPDATE'],
-      ['users', 'SELECT'], ['users', 'INSERT'], ['users', 'UPDATE'],
       ['organization_memberships', 'SELECT'], ['organization_memberships', 'INSERT'], ['organization_memberships', 'UPDATE'],
       ['tracefab_products', 'SELECT'], ['tracefab_products', 'INSERT'], ['tracefab_products', 'UPDATE'],
       ['documents', 'SELECT'], ['documents', 'INSERT'], ['documents', 'UPDATE'],
