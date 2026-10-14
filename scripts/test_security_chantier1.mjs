@@ -52,7 +52,7 @@ assert(
   'Function tracefab_can_access_document must be declared',
 );
 const privilegeHardeningSql = await readFile(
-  new URL('../prisma/migrations/20261014130000_revoke_all_public_function_execute/migration.sql', import.meta.url),
+  new URL('../prisma/migrations/20261014130000_revoke_public_schema_privileges/migration.sql', import.meta.url),
   'utf8',
 );
 assert(
