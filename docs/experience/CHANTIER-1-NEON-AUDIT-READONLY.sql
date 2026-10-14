@@ -54,7 +54,7 @@ SELECT c.oid::regclass::text AS object_name,
   FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
   CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault(
-    CASE WHEN c.relkind = 'S' THEN 'S' ELSE 'r' END, c.relowner
+    CASE WHEN c.relkind = 'S' THEN 'S'::"char" ELSE 'r'::"char" END, c.relowner
   ))) acl
  WHERE n.nspname = 'public'
    AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
