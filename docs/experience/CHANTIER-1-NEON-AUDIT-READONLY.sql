@@ -53,9 +53,9 @@ SELECT c.oid::regclass::text AS object_name,
        acl.is_grantable
   FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
-  CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault(
-    CASE WHEN c.relkind = 'S' THEN 'S'::"char" ELSE 'r'::"char" END, c.relowner
-  ))) acl
+  -- NULL relacl signifie ACL par défaut ; les ACL par défaut des
+  -- relations/séquences n'accordent pas de privilèges à PUBLIC.
+  CROSS JOIN LATERAL aclexplode(c.relacl) acl
  WHERE n.nspname = 'public'
    AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
    AND acl.grantee = 0
