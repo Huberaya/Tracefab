@@ -105,6 +105,37 @@ try {
   if (inventory.public_execute_count === 0) pass('0 fonction du schéma public exécutable par PUBLIC');
   else fail(`${inventory.public_execute_count} fonction(s) encore exécutable(s) par PUBLIC`);
 
+  console.log('\\n1 bis. Tables, vues, séquences et schéma — aucun privilège PUBLIC excessif');
+  const publicRelations = await client.query(
+    `SELECT count(*)::int AS exposed
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+        AND EXISTS (
+          SELECT 1
+            FROM aclexplode(
+              COALESCE(c.relacl, acldefault(CASE WHEN c.relkind = 'S' THEN 'S' ELSE 'r' END, c.relowner))
+            ) acl
+           WHERE acl.grantee = 0
+        )`,
+  );
+  if (publicRelations.rows[0].exposed === 0) pass('0 privilège PUBLIC sur les tables, vues et séquences');
+  else fail(`${publicRelations.rows[0].exposed} relation(s)/séquence(s) ont encore des privilèges PUBLIC`);
+
+  const publicCreate = await client.query(
+    `SELECT EXISTS (
+       SELECT 1
+         FROM pg_namespace n
+         CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl, acldefault('n', n.nspowner))) acl
+        WHERE n.nspname = 'public'
+          AND acl.grantee = 0
+          AND acl.privilege_type = 'CREATE'
+     ) AS allowed`,
+  );
+  if (!publicCreate.rows[0].allowed) pass('PUBLIC ne peut pas créer d’objet dans le schéma public');
+  else fail('PUBLIC conserve CREATE sur le schéma public');
+
   if (roleExists.rowCount > 0) {
     const missingRuntime = await client.query(
       `SELECT count(*)::int AS missing
@@ -146,6 +177,38 @@ try {
     );
     if (leaked.rows[0].allowed === 0) pass('rôle sans grant : 0 fonction exécutable');
     else fail(`rôle sans grant : ${leaked.rows[0].allowed} fonction(s) restent exécutables`);
+
+    const relationLeak = await client.query(
+      `SELECT count(*)::int AS allowed
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND (
+            has_table_privilege($1, c.oid, 'SELECT')
+            OR has_table_privilege($1, c.oid, 'INSERT')
+            OR has_table_privilege($1, c.oid, 'UPDATE')
+            OR has_table_privilege($1, c.oid, 'DELETE')
+          )`,
+      [testRole],
+    );
+    if (relationLeak.rows[0].allowed === 0) pass('rôle sans grant : aucune table/vue accessible');
+    else fail(`rôle sans grant : ${relationLeak.rows[0].allowed} table(s)/vue(s) accessibles`);
+
+    const sequenceLeak = await client.query(
+      `SELECT count(*)::int AS allowed
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'S'
+          AND (
+            has_sequence_privilege($1, c.oid, 'USAGE')
+            OR has_sequence_privilege($1, c.oid, 'SELECT')
+            OR has_sequence_privilege($1, c.oid, 'UPDATE')
+          )`,
+      [testRole],
+    );
+    if (sequenceLeak.rows[0].allowed === 0) pass('rôle sans grant : aucune séquence accessible');
+    else fail(`rôle sans grant : ${sequenceLeak.rows[0].allowed} séquence(s) accessibles`);
+
     for (const name of NO_PUBLIC) {
       const result = await client.query(
         `select coalesce(bool_or(has_function_privilege($2, p.oid, 'EXECUTE')), false) as allowed
