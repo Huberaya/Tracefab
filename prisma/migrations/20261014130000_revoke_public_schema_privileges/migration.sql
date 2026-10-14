@@ -9,14 +9,15 @@
 -- conserver ses GRANTs directs existants ; les routes publiques passent par
 -- l'API et non par un rôle SQL PUBLIC. RLS reste la barrière ligne par ligne.
 --
--- On ne réaccorde PAS les droits de table à tracefab_app ici : la migration ne
--- doit pas élargir ses privilèges directs, notamment sur _prisma_migrations.
--- Les droits runtime déjà existants sont préservés car REVOKE FROM PUBLIC ne
--- retire pas les GRANTs directs accordés au rôle applicatif.
+-- Avant le REVOKE, les seuls privilèges relationnels PUBLIC déjà effectifs
+-- pour tracefab_app sont transférés individuellement au rôle runtime. Aucun
+-- privilège supplémentaire n'est accordé aux tables/séquences qui n'étaient
+-- pas accessibles auparavant ; les GRANTs directs existants restent intacts.
+-- La migration vérifie que les accès effectifs antérieurs sont conservés.
 --
--- Base vierge : le seed attribue ensuite les droits applicatifs requis. Les
--- vérifications de cette migration portent sur l'absence de privilèges PUBLIC
--- et sur la conservation d'EXECUTE pour tracefab_app.
+-- Base vierge : le seed peut compléter ensuite les droits de fixture, mais la
+-- migration doit préserver à elle seule les accès que les ACL PUBLIC donnaient
+-- déjà au runtime avant leur retrait.
 
 BEGIN;
 
