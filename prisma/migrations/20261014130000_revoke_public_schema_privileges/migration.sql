@@ -29,14 +29,14 @@ DECLARE
   f record;
 BEGIN
   FOR f IN
-    SELECT p.oid::regprocedure AS signature
+    SELECT p.oid::regprocedure AS signature, p.prokind
       FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'public'
-       AND p.prokind = 'f'
+       AND p.prokind IN ('f', 'p')
        AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
   LOOP
-    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', f.signature);
+    EXECUTE format('REVOKE EXECUTE ON %s %s FROM PUBLIC', CASE WHEN f.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END, f.signature);
   END LOOP;
 END
 $revoke_owned_functions$;
@@ -78,7 +78,7 @@ BEGIN
          AND p.prokind = 'f'
          AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
     LOOP
-      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO tracefab_app', f.signature);
+      EXECUTE format('GRANT EXECUTE ON %s %s TO tracefab_app', CASE WHEN f.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END, f.signature);
     END LOOP;
   END IF;
 END
@@ -99,7 +99,7 @@ BEGIN
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public'
-     AND p.prokind = 'f'
+     AND p.prokind IN ('f', 'p')
      AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
      AND EXISTS (
        SELECT 1
@@ -161,7 +161,7 @@ BEGIN
       FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'public'
-       AND p.prokind = 'f'
+       AND p.prokind IN ('f', 'p')
        AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
        AND NOT has_function_privilege('tracefab_app', p.oid, 'EXECUTE');
 
