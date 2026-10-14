@@ -51,9 +51,17 @@ assert(
   migrationSql.includes('CREATE OR REPLACE FUNCTION tracefab_can_access_document(p_document_id UUID)'),
   'Function tracefab_can_access_document must be declared',
 );
+const privilegeHardeningSql = await readFile(
+  new URL('../prisma/migrations/20261014130000_revoke_all_public_function_execute/migration.sql', import.meta.url),
+  'utf8',
+);
 assert(
-  migrationSql.includes('GRANT EXECUTE ON FUNCTION tracefab_can_access_document(UUID) TO PUBLIC;'),
-  'Function tracefab_can_access_document must be granted to PUBLIC',
+  privilegeHardeningSql.includes('REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;'),
+  'Final SQL privilege hardening must revoke PUBLIC EXECUTE from every function',
+);
+assert(
+  privilegeHardeningSql.includes('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO tracefab_app;'),
+  'Final SQL privilege hardening must preserve runtime EXECUTE for tracefab_app',
 );
 assert(
   migrationSql.includes('CREATE POLICY documents_select_authorized ON documents'),
