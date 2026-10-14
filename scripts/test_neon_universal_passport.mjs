@@ -119,6 +119,7 @@ async function run() {
       ? JSON.parse(publicViewRows[0].public_data)
       : publicViewRows[0].public_data;
 
+    assert.equal(Object.hasOwn(publicData.passport, 'shareToken'), false, 'Public passport must never expose the private share token');
     assert.equal(publicData.supplier.displayName, 'Guimarães Weaving');
     assert.equal(publicData.passport.viewsCount, 1, 'View count must be automatically incremented to 1');
     assert.equal(publicData.sites.length, 1, 'Site must be returned');
