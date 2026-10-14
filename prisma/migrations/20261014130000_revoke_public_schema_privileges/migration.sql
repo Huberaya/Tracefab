@@ -40,8 +40,29 @@ BEGIN
   END LOOP;
 END
 $revoke_owned_functions$;
-REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM PUBLIC;
-REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
+-- Même règle pour les relations : ne pas tenter de modifier les objets détenus
+-- par un rôle fournisseur. L'inventaire Neon fourni montre que les relations
+-- applicatives exposées sont détenues par neondb_owner.
+DO $revoke_owned_relations$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT c.oid::regclass AS relation_name, c.relkind
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public'
+       AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+       AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+  LOOP
+    IF r.relkind = 'S' THEN
+      EXECUTE format('REVOKE ALL PRIVILEGES ON SEQUENCE %s FROM PUBLIC', r.relation_name);
+    ELSE
+      EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE %s FROM PUBLIC', r.relation_name);
+    END IF;
+  END LOOP;
+END
+$revoke_owned_relations$;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 DO $grant_runtime$
@@ -102,6 +123,7 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE n.nspname = 'public'
      AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+     AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
      AND c.relacl IS NOT NULL
      AND EXISTS (
        SELECT 1
