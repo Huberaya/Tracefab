@@ -78,6 +78,18 @@ SELECT p.oid::regprocedure::text AS procedure_signature,
    AND p.prokind = 'p'
  ORDER BY owner, procedure_signature;
 
+-- Q3b — Fonctions SECURITY DEFINER et search_path effectif déclaré.
+-- Une fonction SECURITY DEFINER avec search_path non maîtrisé est un risque
+-- distinct des ACL EXECUTE : examiner toute configuration absente ou suspecte.
+SELECT p.oid::regprocedure::text AS function_signature,
+       pg_get_userbyid(p.proowner) AS owner,
+       p.proconfig AS function_settings
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public'
+   AND p.prosecdef
+ ORDER BY owner, function_signature;
+
 -- Q4 — Privilèges PUBLIC sur les tables, vues et séquences du schéma public.
 SELECT c.oid::regclass::text AS object_name,
        c.relkind,
@@ -129,6 +141,18 @@ SELECT n.nspname,
  WHERE n.nspname = 'public'
    AND acl.grantee = 0
  ORDER BY acl.privilege_type;
+
+-- Q5b — Tous les rôles disposant de CREATE sur public (pas seulement PUBLIC).
+SELECT CASE WHEN acl.grantee = 0 THEN 'PUBLIC'
+            ELSE pg_get_userbyid(acl.grantee)
+       END AS grantee_name,
+       acl.privilege_type,
+       acl.is_grantable
+  FROM pg_namespace n
+  CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl, acldefault('n', n.nspowner))) acl
+ WHERE n.nspname = 'public'
+   AND acl.privilege_type = 'CREATE'
+ ORDER BY grantee_name;
 
 -- Q6 — Privilèges par défaut des rôles de migration (global + schéma public).
 -- Sert à identifier le rôle qui doit être durci pour les futures fonctions.
