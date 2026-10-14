@@ -42,7 +42,7 @@ async function main() {
   } catch (error: any) {
     console.error('ÉCHEC — impossible de lire public."_prisma_migrations".');
     console.error('Le contrôle ne peut pas conclure et ne doit pas afficher un succès.');
-    console.error(`Détail : ${String(error?.message ?? 'erreur inconnue').split('\\n')[0]}`);
+    console.error(`Détail : ${String(error?.message ?? 'erreur inconnue').split(String.fromCharCode(10))[0]}`);
     process.exitCode = 1;
     return;
   }
@@ -70,7 +70,7 @@ async function main() {
 
 main()
   .catch((error: any) => {
-    console.error(`ÉCHEC — contrôle interrompu : ${String(error?.message ?? 'erreur inconnue').split('\\n')[0]}`);
+    console.error(`ÉCHEC — contrôle interrompu : ${String(error?.message ?? 'erreur inconnue').split(String.fromCharCode(10))[0]}`);
     process.exitCode = 1;
   })
   .finally(async () => {
