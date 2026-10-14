@@ -45,6 +45,29 @@ SELECT p.oid::regprocedure::text AS function_signature,
    AND p.prokind = 'f'
  ORDER BY owner, function_signature;
 
+
+
+-- Q3b — Procédures SQL du schéma public : PUBLIC peut-il les exécuter ?
+-- Complément à Q3, qui inventorie les fonctions (prokind = 'f').
+SELECT p.oid::regprocedure::text AS procedure_signature,
+       pg_get_userbyid(p.proowner) AS owner,
+       p.prosecdef AS security_definer,
+       EXISTS (
+         SELECT 1
+           FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+          WHERE acl.grantee = 0
+            AND acl.privilege_type = 'EXECUTE'
+       ) AS public_can_execute,
+       CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app')
+            THEN has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
+            ELSE NULL
+       END AS tracefab_app_can_execute
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public'
+   AND p.prokind = 'p'
+ ORDER BY owner, procedure_signature;
+
 -- Q4 — Privilèges PUBLIC sur les tables, vues et séquences du schéma public.
 SELECT c.oid::regclass::text AS object_name,
        c.relkind,
