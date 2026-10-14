@@ -19,11 +19,13 @@ SELECT current_database() AS database_name,
 
 -- Q1b — Attributs du rôle applicatif et du propriétaire : ne pas déduire
 -- l'isolation RLS à partir du rôle propriétaire utilisé pour l'audit.
-SELECT rolname, rolcanlogin, rolsuper, rolcreaterole, rolcreatedb,
-       rolinherit, rolbypassrls
-  FROM pg_roles
- WHERE rolname IN (current_user, 'tracefab_app', 'pg_database_owner')
- ORDER BY rolname;
+SELECT r.rolname, r.rolcanlogin, r.rolsuper, r.rolcreaterole, r.rolcreatedb,
+       r.rolinherit, r.rolbypassrls,
+       has_schema_privilege(r.oid, 'public', 'USAGE') AS public_schema_usage,
+       has_schema_privilege(r.oid, 'public', 'CREATE') AS public_schema_create
+  FROM pg_roles r
+ WHERE r.rolname IN (current_user, 'tracefab_app', 'pg_database_owner')
+ ORDER BY r.rolname;
 
 -- Q2 — Historique Prisma complet, y compris migrations échouées ou annulées.
 SELECT migration_name, started_at, finished_at, rolled_back_at,
