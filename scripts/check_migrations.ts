@@ -36,11 +36,9 @@ async function main() {
 
   let records: any[];
   try {
-    records = await prisma.$queryRaw<any[]>\`
-      SELECT migration_name, started_at, finished_at, rolled_back_at
-      FROM public."_prisma_migrations"
-      ORDER BY started_at ASC NULLS FIRST, migration_name ASC
-    \`;
+    records = await prisma.$queryRawUnsafe<any[]>(
+      'SELECT migration_name, started_at, finished_at, rolled_back_at FROM public."_prisma_migrations" ORDER BY started_at ASC NULLS FIRST, migration_name ASC'
+    );
   } catch (error: any) {
     console.error('ÉCHEC — impossible de lire public."_prisma_migrations".');
     console.error('Le contrôle ne peut pas conclure et ne doit pas afficher un succès.');
