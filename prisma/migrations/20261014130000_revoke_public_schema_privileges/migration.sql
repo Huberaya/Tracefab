@@ -71,11 +71,10 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE n.nspname = 'public'
      AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+     AND c.relacl IS NOT NULL
      AND EXISTS (
        SELECT 1
-         FROM aclexplode(
-           COALESCE(c.relacl, acldefault(CASE WHEN c.relkind = 'S' THEN 'S' ELSE 'r' END, c.relowner))
-         ) acl
+         FROM aclexplode(c.relacl) acl
         WHERE acl.grantee = 0
      );
 
