@@ -106,7 +106,12 @@ export async function getPublicSupplierPassport(
   }
 
   const payload = rows[0].tracefab_get_public_supplier_passport;
-  return typeof payload === 'string' ? JSON.parse(payload) : payload;
+  const parsed = typeof payload === 'string' ? JSON.parse(payload) : payload;
+  if (parsed?.passport && Object.prototype.hasOwnProperty.call(parsed.passport, 'shareToken')) {
+    const { shareToken: _privateToken, ...passport } = parsed.passport;
+    return { ...parsed, passport };
+  }
+  return parsed;
 }
 
 /**

@@ -18,6 +18,40 @@ assert(migrationSql.includes('tracefab_update_supplier_passport'), 'Migration mu
 assert(migrationSql.includes('tracefab_get_public_supplier_passport'), 'Migration must create tracefab_get_public_supplier_passport');
 assert(migrationSql.includes('tracefab_request_passport_access'), 'Migration must create tracefab_request_passport_access');
 assert(migrationSql.includes('tracefab_review_passport_access'), 'Migration must create tracefab_review_passport_access');
+const publicPassportHardeningPath = path.resolve('prisma/migrations/20261014140000_remove_public_supplier_passport_share_token/migration.sql');
+assert(fs.existsSync(publicPassportHardeningPath), 'Public passport share-token hardening migration must exist');
+const publicPassportHardeningSql = fs.readFileSync(publicPassportHardeningPath, 'utf8');
+assert(
+  publicPassportHardeningSql.includes('REVOKE EXECUTE ON FUNCTION tracefab_get_public_supplier_passport(text) FROM PUBLIC'),
+  'Public passport resolver must not be directly executable by PUBLIC'
+);
+const publicPayloadStart = publicPassportHardeningSql.indexOf('v_result := jsonb_build_object');
+const publicPayloadEnd = publicPassportHardeningSql.indexOf('RETURN v_result', publicPayloadStart);
+assert(publicPayloadStart >= 0 && publicPayloadEnd > publicPayloadStart, 'Hardened public payload construction must exist');
+const publicPayloadSql = publicPassportHardeningSql.slice(publicPayloadStart, publicPayloadEnd);
+assert(
+  !publicPayloadSql.includes("'shareToken', v_passport.share_token"),
+  'Public passport JSON must never return the private share token'
+);
+
+assert(
+  publicPassportHardeningSql.includes('disclosure_confirmed_at IS NOT NULL')
+    && publicPassportHardeningSql.includes('WHEN p_disclosed_sections IS NOT NULL THEN now()'),
+  'Public supplier passport must require explicit, authenticated disclosure confirmation',
+);
+assert(
+  publicPassportHardeningSql.includes('SET is_public = false')
+    && publicPassportHardeningSql.includes('"contact": false')
+    && publicPassportHardeningSql.includes('"exact_addresses": false'),
+  'Existing passports must be private until confirmation and new disclosure defaults must be closed',
+);
+for (const section of ['sites', 'certifications', 'materials', 'quality_score', 'contact']) {
+  assert(
+    publicPassportHardeningSql.includes(`v_show_${section === 'certifications' ? 'certs' : section === 'quality_score' ? 'score' : section} := COALESCE((v_passport.disclosed_sections->>'${section}')::boolean, false);`),
+    `Missing fail-closed default for disclosure section: ${section}`,
+  );
+}
+
 console.log('✓ Migration SQL schema, RLS & procedures verified');
 
 // 2. Verify TypeScript library
@@ -35,6 +69,19 @@ const managerContent = fs.readFileSync(managerPath, 'utf8');
 assert(managerContent.includes('getOrCreateSupplierPassport'), 'getOrCreateSupplierPassport must be exported');
 assert(managerContent.includes('updateSupplierPassport'), 'updateSupplierPassport must be exported');
 assert(managerContent.includes('getPublicSupplierPassport'), 'getPublicSupplierPassport must be exported');
+assert(
+  managerContent.includes("hasOwnProperty.call(parsed.passport, 'shareToken')")
+    || managerContent.includes('shareToken: _privateToken'),
+  'getPublicSupplierPassport must strip shareToken from the public payload'
+);
+const publicTypeBlock = typesContent.slice(
+  typesContent.indexOf('export interface PublicSupplierPassport'),
+  typesContent.indexOf('export interface PassportAccessRequestRecord'),
+);
+assert(
+  !publicTypeBlock.includes('shareToken'),
+  'PublicSupplierPassport must not expose shareToken'
+);
 assert(managerContent.includes('requestPassportAccess'), 'requestPassportAccess must be exported');
 assert(managerContent.includes('reviewPassportAccess'), 'reviewPassportAccess must be exported');
 console.log('✓ TypeScript library and manager contracts verified');
@@ -96,6 +143,15 @@ assert(
   'fr.json portal.spPassportTitle must keep the original French wording'
 );
 assert(supplierPortal.includes('passport-settings-form'), 'Supplier portal must have settings form');
+const supplierPortalBundle = fs.readFileSync(path.resolve('assets/js/supplier-portal.1.js'), 'utf8');
+for (const field of ['discloseSites', 'discloseCertifications', 'discloseMaterials', 'discloseQualityScore', 'discloseContact', 'discloseExactAddresses']) {
+  assert(supplierPortalBundle.includes(`name="${field}"`), `Supplier portal must expose explicit disclosure control: ${field}`);
+}
+assert(
+  supplierPortalBundle.includes("api(`/api/supplier/passport${organizationQuery}`, { method: 'PATCH'")
+    && supplierPortalBundle.includes('disclosedSections'),
+  'Supplier portal must persist explicit disclosure settings through the authenticated API',
+);
 assert(supplierPortal.includes('review-passport-request'), 'Supplier portal must have review request action');
 console.log('✓ Supplier Portal UI/UX integration verified');
 

@@ -1,0 +1,43 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index fb609cb..d6a1b90 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -194,7 +194,7 @@ jobs:
+ 
+   # ----------------------------------------------- 4. base de donnees reelle
+   base-de-donnees:
+-    name: Base — isolation RLS executee
++    name: Base — scenarios croises executes
+     runs-on: ubuntu-latest
+     timeout-minutes: 20
+     needs: socle
+@@ -212,23 +212,24 @@ jobs:
+       - name: Verifier la presence du secret
+         id: secret
+         run: |
++          # Un job de base ne doit pas pouvoir etre VERT sans avoir rien execute.
++          # Avant, l'absence de secret faisait sauter toutes les etapes suivantes :
++          # le job affichait un succes sous un nom qui annonce une execution.
++          # Sans cible fournie, ce job n'a rien a prouver : il echoue.
+           if [ -n "${{ secrets.DATABASE_URL }}" ]; then
+             echo "present=true" >> "$GITHUB_OUTPUT"
+           else
+-            echo "present=false" >> "$GITHUB_OUTPUT"
+-            echo "::notice::DATABASE_URL absent : les scenarios croises executes sont sautes."
++            echo "::error::Aucune cible de test fournie : ce job ne peut pas prouver l'isolation attendue."
++            exit 1
+           fi
+ 
+       - name: Installer les dependances
+-        if: steps.secret.outputs.present == 'true'
+         run: npm ci
+ 
+       - name: Generer le client Prisma
+-        if: steps.secret.outputs.present == 'true'
+         run: npm run db:generate
+ 
+       - name: Scenarios croises executes contre Postgres
+-        if: steps.secret.outputs.present == 'true'
+         env:
+           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+         run: |
