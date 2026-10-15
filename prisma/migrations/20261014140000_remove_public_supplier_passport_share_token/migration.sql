@@ -29,7 +29,7 @@ RETURNS supplier_universal_passports
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $tracefab$
 DECLARE
   v_passport supplier_universal_passports;
   v_supplier_id UUID;
@@ -70,7 +70,7 @@ BEGIN
   RETURNING * INTO v_passport;
   RETURN v_passport;
 END;
-$;
+$tracefab$;
 
 -- Only an authenticated settings update with explicit disclosure choices
 -- establishes consent. Changing headline/public status alone does not.
@@ -85,7 +85,7 @@ RETURNS supplier_universal_passports
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $tracefab$
 DECLARE
   v_passport supplier_universal_passports;
 BEGIN
@@ -109,7 +109,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'passport_not_found'; END IF;
   RETURN v_passport;
 END;
-$;
+$tracefab$;
 
 CREATE OR REPLACE FUNCTION tracefab_get_public_supplier_passport(
   p_token_or_slug TEXT
