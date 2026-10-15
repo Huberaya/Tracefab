@@ -274,11 +274,11 @@ negative_controls() {
   local label="$1"
   echo
   echo "----- CONTROLES NEGATIFS $label -----"
-  # Une seule session psql : BEGIN/ROLLBACK ne survivent pas d'un processus à l'autre.
+  # Une seule session psql via stdin : `psql -c` n'exécute qu'une instruction.
   local vue
-  vue="$(pg -tAc "
+  vue="$("${PSQL[@]}" -tA <<'SQL'
 BEGIN;
-CREATE FUNCTION public.tracefab_audit_negatif() RETURNS int LANGUAGE sql SECURITY DEFINER AS \$\$ SELECT 1 \$\$;
+CREATE FUNCTION public.tracefab_audit_negatif() RETURNS int LANGUAGE sql SECURITY DEFINER AS $f$ SELECT 1 $f$;
 GRANT EXECUTE ON FUNCTION public.tracefab_audit_negatif() TO PUBLIC;
 SELECT EXISTS (
   SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -289,7 +289,9 @@ SELECT EXISTS (
      )
 );
 ROLLBACK;
-")"
+SQL
+)"
+  vue="$(printf '%s\n' "$vue" | awk 'NF{v=$0} END{print v}' | tr -d '[:space:]')"
   [[ "$vue" == "t" ]] || fail "$label: controle negatif GRANT PUBLIC non detecte (vue='$vue')"
   echo "ok    $label: GRANT PUBLIC exprès est vu par aclexplode+acldefault"
   local reste
