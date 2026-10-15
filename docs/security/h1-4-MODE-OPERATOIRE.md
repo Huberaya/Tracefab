@@ -34,7 +34,9 @@ bash scripts/run_h1_4_diagnostic_readonly.sh
 
 Sans `psql` : sortie 2, **non exécuté**, pas un succès.
 
-Workflow dédié `.github/workflows/h1-4-postgres.yml` (pas le `ci.yml` préexistant) : service `postgres:17`, base `tracefab_test`, **aucun** secret, **pas** de migrate / `prepare_ci_db_role`. Il n’est **pas** dispatché tant que les artefacts H1.4 ne sont pas suivis et qu’une autorisation de push n’est pas donnée. `HEAD` de `ci.yml` injecte encore un secret de connexion : **ne pas** lancer le CI de `HEAD`/`main`.
+Workflow dédié `.github/workflows/h1-4-postgres.yml` : service `postgres:17`, base `tracefab_test`, **aucun** secret externe, **aucune** migration ni seed applicatif dans ce workflow. Il est déclenché par une pull request qui modifie l’un des six fichiers H1.4. Le run de référence sur cette branche est [#38662581546](https://github.com/Huberaya/Tracefab/actions/runs/38662581546) : moteur PostgreSQL 17 et contrôles statiques réussis.
+
+Le workflow principal `ci.yml` de `main` a été vérifié le 15 octobre 2026 au commit `76298b2` : son job de base utilise explicitement `postgres:17` et `postgresql://postgres:postgres@localhost:5432/tracefab_test`; aucune référence à `secrets.DATABASE_URL` n’a été trouvée dans ce fichier. Ce job CI plus large exécute séparément les migrations et les fixtures **sur cette base jetable**. Ne jamais y injecter une URL de production.
 
 ```bash
 bash scripts/run_h1_4_diagnostic_readonly.sh --self-check

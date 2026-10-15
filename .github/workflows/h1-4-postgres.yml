@@ -18,15 +18,6 @@ on:
       - 'scripts/test_h1_4_engine.sh'
       - 'scripts/test_h1_4_diagnostic.mjs'
       - '.github/workflows/h1-4-postgres.yml'
-  push:
-    paths:
-      - 'docs/security/h1-4-diagnostic-lecture-seule.sql'
-      - 'docs/security/h1-4-MODE-OPERATOIRE.md'
-      - 'scripts/run_h1_4_diagnostic_readonly.sh'
-      - 'scripts/test_h1_4_engine.sh'
-      - 'scripts/test_h1_4_diagnostic.mjs'
-      - '.github/workflows/h1-4-postgres.yml'
-  workflow_dispatch:
 
 concurrency:
   group: h14-${{ github.ref }}
