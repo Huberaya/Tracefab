@@ -5,7 +5,7 @@
 # probable soit aussi le plus vite signale :
 #
 #   1. socle        types, compilation, isolation multi-locataires  (~1 min)
-#   2. verification 64 scripts test:* + audit statique end-to-end
+#   2. verification scripts test:* eligibles + audit statique end-to-end
 #   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
 #
 # L'etage base de donnees ne se declenche que si le secret DATABASE_URL existe,
@@ -112,7 +112,7 @@ jobs:
           cat /tmp/serve.log || true
           exit 1
 
-      - name: Suite complete des scripts test:*
+      - name: Suite des scripts test:* eligibles
         # Les suites neon et staging exigent une base ou un environnement
         # deploye : elles ont leur propre etage.
         #
