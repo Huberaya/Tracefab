@@ -228,10 +228,25 @@ if (duo.length < 2) {
 
 console.log('\n  E. lecture publique (contexte tracefab.public_context)');
 
-const nPublies = Number((await proprio.query(
-  'SELECT count(*) n FROM tracefab_products WHERE public_slug IS NOT NULL')).rows[0].n);
+// Depuis 20261010120000, « publie » = public_slug ET dpp_records publie + relu
+// (c'est le predicat de tracefab_product_is_public). L'oracle reste independant
+// de la politique : il est ecrit ici en SQL direct, contre la table dpp_records.
+const idsPublies = (await proprio.query(
+  `SELECT p.id FROM tracefab_products p
+   WHERE p.public_slug IS NOT NULL
+     AND EXISTS (SELECT 1 FROM dpp_records d
+                 WHERE d.product_id = p.id
+                   AND d.readiness_status = 'published'
+                   AND d.reviewed_at IS NOT NULL)
+   ORDER BY p.id`)).rows.map((r) => r.id);
+const nPublies = idsPublies.length;
 const nBrouillons = Number((await proprio.query(
-  "SELECT count(*) n FROM tracefab_products WHERE public_slug IS NULL")).rows[0].n);
+  `SELECT count(*) n FROM tracefab_products p
+   WHERE NOT (p.public_slug IS NOT NULL
+     AND EXISTS (SELECT 1 FROM dpp_records d
+                 WHERE d.product_id = p.id
+                   AND d.readiness_status = 'published'
+                   AND d.reviewed_at IS NOT NULL))`)).rows[0].n);
 
 if (nPublies === 0) {
   ko('aucun produit publie : la lecture publique ne peut pas etre prouvee');
@@ -245,12 +260,14 @@ if (nPublies === 0) {
   await app.query('BEGIN');
   await app.query("SELECT set_config('tracefab.public_context','true',true)");
   const vus = await app.query('SELECT id, public_slug FROM tracefab_products');
-  const fuite = vus.rows.filter((r) => !r.public_slug).length;
-  if (vus.rows.length === nPublies && fuite === 0) {
-    ok(`en contexte public, exactement les ${nPublies} produit(s) publie(s) sont lisibles`);
+  const vusIds = vus.rows.map((r) => r.id).sort();
+  const fuite = vus.rows.filter((r) => !idsPublies.includes(r.id)).length;
+  const manquants = idsPublies.filter((id) => !vusIds.includes(id)).length;
+  if (vus.rows.length === nPublies && fuite === 0 && manquants === 0) {
+    ok(`en contexte public, exactement les ${nPublies} produit(s) publie(s) (slug + dpp_records publie/relu) sont lisibles`);
   } else {
     ko(`en contexte public : ${vus.rows.length} produit(s) lisibles pour ${nPublies} publie(s), `
-      + `dont ${fuite} sans public_slug`);
+      + `dont ${fuite} non publies et ${manquants} publies manquants`);
   }
 
   // E2b. oracle INDEPENDANT du predicat de la politique.
@@ -273,6 +290,26 @@ if (nPublies === 0) {
     ko(`${nonActifs.reduce((n, r) => n + r.n, 0)} produit(s) lisibles publiquement ne sont pas actifs : `
       + nonActifs.map((r) => `${r.status}:${r.n}`).join(' · '));
   }
+
+  // E2c. oracle independant sur l'ETAT DE PUBLICATION EXPLICITE (20261010120000).
+  //
+  // La publication ne depend pas du seul statut actif, ni du seul slug : un
+  // produit n'est public que s'il porte un dpp_records publie et relu. On
+  // fabrique ici la contre-preuve : un produit ACTIF, avec public_slug, mais
+  // SANS etat publie explicite — exactement ce que le backfill de 20261009
+  // produisait — ne doit rien exposer.
+  const temoinId = '0e3a5f1c-9b2d-4c6e-8f10-2a4b6c8d0e12';
+  await proprio.query(
+    `insert into tracefab_products (id, brand_organization_id, reference, name, status, public_slug)
+     values ($1, (select id from organizations limit 1), 'TEMOIN-001', 'Temoin sans etat publie', 'active', 'temoin-001')
+     on conflict (id) do nothing`, [temoinId]);
+  const temoinVu = await app.query('SELECT count(*)::int n FROM tracefab_products WHERE id = $1', [temoinId]);
+  if (Number(temoinVu.rows[0].n) === 0) {
+    ok('actif + slug sans dpp_records publie/relu : invisible en contexte public');
+  } else {
+    ko('un produit actif portant un slug mais sans etat publie explicite est lisible publiquement');
+  }
+  await proprio.query('DELETE FROM tracefab_products WHERE id = $1', [temoinId]);
 
   // E3. un brouillon reste invisible meme nomme explicitement
   if (nBrouillons > 0) {

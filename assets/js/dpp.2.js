@@ -35,12 +35,17 @@
      *
      * La page reste entierement servie en statique : c'est elle que lisent
      * les moteurs de recherche, et elle fonctionne sans backend. Quand un
-     * identifiant est present dans l'URL, on remplace les valeurs de
-     * demonstration par les donnees reelles de /api/dpp/:gtin.
+     * identifiant est present dans l'URL, on remplace le contenu de
+     * demonstration par les donnees de /api/dpp/:gtin.
      *
-     * Regle : on n'ecrit que ce que l'API renvoie. Une valeur absente laisse
-     * la valeur affichee intacte plutot que de vider le champ — un passeport
-     * public troue inquiete plus qu'il n'informe.
+     * REGLE DE PROVENANCE (chantier 1A-C) :
+     *   - une valeur 'sourced' remplace la valeur de demonstration ;
+     *   - une valeur absente ou indisponible remplace AUSSI la demonstration,
+     *     par un etat explicite (« Non renseigne », « Non verifie »,
+     *     « Indisponible ») — laisser une valeur de demo en place derriere
+     *     une banniere masquee presenterait du fictif comme du reel ;
+     *   - l'attribut data-dpp-source (live / partial / empty / demo) ne vaut
+     *     'live' que si l'API declare des donnees reellement sourcees.
      * =================================================================== */
     (function hydratePassport() {
       const params = new URLSearchParams(location.search);
@@ -54,25 +59,73 @@
 
       const dig = (obj, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), obj);
 
+      const tr = (k, fallback) => {
+        const T = window.TF_I18N;
+        return T ? T.t('dpp.' + k, fallback) : fallback;
+      };
+
+      // Etats explicites, traduisibles, jamais des valeurs inventees.
+      const marker = (status) => {
+        if (status === 'unverified') return tr('statusUnverified', 'Non vérifié');
+        if (status === 'not_filled') return tr('statusNotFilled', 'Non renseigné');
+        return tr('statusUnavailable', 'Indisponible');
+      };
+
+      // Un champ du payload est un objet { value, status, source }. Toute
+      // forme ancienne (chaine, nombre) est traitee comme sourcee.
+      const renderable = (field) => {
+        if (field === undefined || field === null) return { text: null, status: 'not_filled' };
+        if (typeof field === 'object' && 'status' in field) {
+          const hasValue = field.value !== null && field.value !== undefined && field.value !== '';
+          if (hasValue && (field.status === 'sourced' || field.status === 'unverified')) {
+            return { text: String(field.value), status: field.status };
+          }
+          return { text: null, status: field.status || 'unavailable' };
+        }
+        return { text: String(field), status: 'sourced' };
+      };
+
       const apply = (payload) => {
         const dpp = payload && payload.dpp;
         if (!dpp) return false;
+        let sourcedCount = 0;
+        let missingCount = 0;
         document.querySelectorAll('[data-dpp-field]').forEach((el) => {
-          const v = dig(dpp, el.dataset.dppField);
-          if (v === undefined || v === null || v === '') return;
-          el.textContent = String(v) + (el.dataset.dppSuffix || '');
+          const r = renderable(dig(dpp, el.dataset.dppField));
+          const suffix = el.dataset.dppSuffix || '';
+          if (r.text !== null) {
+            el.textContent = r.text + (r.status === 'unverified' ? ' (' + marker('unverified') + ')' : '') + suffix;
+            if (r.status === 'sourced') sourcedCount += 1;
+            el.setAttribute('data-dpp-provenance', r.status);
+          } else {
+            // Etat explicite, et la valeur de demonstration disparait avec lui.
+            el.textContent = marker(r.status) + suffix;
+            el.setAttribute('data-dpp-provenance', r.status);
+            missingCount += 1;
+          }
           // La valeur n'est plus de la demonstration ni une chaine traduisible :
           // sans cela le prochain changement de langue la rendrait a nouveau.
           el.removeAttribute('data-tf-demo');
           el.removeAttribute('data-i18n');
+          el.classList.add('dpp-hydrated');
         });
         document.querySelectorAll('[data-dpp-href]').forEach((el) => {
           const v = dig(payload, el.dataset.dppHref);
-          if (v) el.setAttribute('href', String(v));
+          if (v && typeof v === 'string') el.setAttribute('href', v);
         });
-        if (dpp.productName) document.title = dpp.productName + ' — Digital Product Passport | TRACEFAB';
+        if (dpp.productName) {
+          const name = renderable(dpp.productName);
+          document.title = (name.text || name.status) + ' — Digital Product Passport | TRACEFAB';
+        }
         if (banner) banner.hidden = true;
-        document.documentElement.setAttribute('data-dpp-source', 'live');
+
+        // Statut de page : 'live' seulement si l'API declare des donnees
+        // sourcees. Le detail reste dans data-dpp-provenance, champ par champ.
+        const declared = dpp.presentation && dpp.presentation.source;
+        const statut = declared === 'live' && sourcedCount > 0
+          ? 'live'
+          : (sourcedCount > 0 ? 'partial' : (declared ? declared : 'empty'));
+        document.documentElement.setAttribute('data-dpp-source', statut);
         return true;
       };
 
@@ -85,7 +138,6 @@
           document.documentElement.setAttribute('data-dpp-source', 'demo');
           if (banner) banner.hidden = false;
         });
-    
 
       /* Gestionnaires de la page, enregistres dans la portee du module.
        * Les attributs inline etaient evalues en portee globale, ce qui

@@ -98,12 +98,18 @@
     "test:cross-tenant": "node scripts/test_cross_tenant.mjs",
     "audit:personas": "node scripts/persona_audit.mjs --base http://127.0.0.1:3000",
     "audit:e2e": "python3 scripts/e2e_audit.py",
+    "test:e2e-audit": "python3 scripts/test_e2e_audit.py",
     "test:production-readiness": "npx tsx scripts/test_production_readiness.ts",
     "test:pilot": "npx tsx scripts/seed_pilot.ts --dry-run",
     "pilot:seed": "npx tsx scripts/seed_pilot.ts",
     "test:systeme-design": "node scripts/test_systeme_design.mjs",
     "test:regression": "node scripts/test_regression_visuelle.mjs",
-    "test:migration-history": "node scripts/test_migration_history.mjs"
+    "test:migration-history": "node scripts/test_migration_history.mjs",
+    "test:wallet:signature-production": "npx tsx scripts/test_wallet_signature_production.ts",
+    "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs",
+    "test:neon:dpp-provenance": "npx tsx scripts/test_neon_dpp_provenance.mjs",
+    "test:neon:auth-provisioning": "npx tsx scripts/test_neon_auth_provisioning.mjs",
+    "test:neon:deploiement-publication": "npx tsx scripts/test_neon_publication_deploiement.mjs"
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",
@@ -111,9 +117,13 @@
     "@types/node": "^20.19.43",
     "axe-core": "^4.14.0",
     "pg": "^8.23.1",
-    "playwright": "^1.63.0",
+    "playwright": "1.63.0",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "^6.19.3",
+    "@sparticuz/chromium": "153.0.0",
+    "prisma": "^6.19.3"
   },
   "dependencies": {
     "@clerk/backend": "^3.23.0",

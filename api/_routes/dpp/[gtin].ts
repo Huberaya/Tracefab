@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       links: {
         appleWalletUrl: `/api/dpp/${encodeURIComponent(gtinOrRef)}/apple-wallet`,
         googleWalletUrl: `/api/dpp/${encodeURIComponent(gtinOrRef)}/google-wallet`,
-        digitalLinkUri: dppData.digitalLinkUri,
+        digitalLinkUri: dppData.digitalLinkUri.value ?? dppData.dppUrl,
       },
     });
   } catch (err: unknown) {

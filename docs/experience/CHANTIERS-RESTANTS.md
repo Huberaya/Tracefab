@@ -3,8 +3,7 @@
 Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
 la base Neon de production. Pas en relisant les en-têtes.
 
-**Neon : 37/37 migrations présentes dans le dépôt ; application en production à revérifier. Migration 35 :
-`public_read_context`.**
+**Intégration des chantiers #34 et #41 : 41/41 migrations présentes dans le dépôt combiné. Dernière migration Neon de production confirmée dans les éléments disponibles : `20261009180000_public_read_context` (migration 35). L’historique complet et les statuts doivent être réconciliés en lecture seule avant toute application ; `publication_explicite` et les migrations de privilèges ne doivent pas être appliquées à l’aveugle.**
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
 > que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les

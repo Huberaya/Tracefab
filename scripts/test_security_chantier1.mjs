@@ -51,10 +51,24 @@ assert(
   migrationSql.includes('CREATE OR REPLACE FUNCTION tracefab_can_access_document(p_document_id UUID)'),
   'Function tracefab_can_access_document must be declared',
 );
-assert(
-  migrationSql.includes('GRANT EXECUTE ON FUNCTION tracefab_can_access_document(UUID) TO PUBLIC;'),
-  'Function tracefab_can_access_document must be granted to PUBLIC',
+const privilegeHardeningSql = await readFile(
+  new URL('../prisma/migrations/20261014130000_revoke_public_schema_privileges/migration.sql', import.meta.url),
+  'utf8',
 );
+assert(
+  privilegeHardeningSql.includes('REVOKE EXECUTE ON %s %s FROM PUBLIC')
+    && privilegeHardeningSql.includes("CASE WHEN f.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END")
+    && privilegeHardeningSql.includes("p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)"),
+  'Final SQL privilege hardening must revoke PUBLIC EXECUTE from all functions and procedures owned by the migration role without attempting to alter provider-owned extension functions',
+);
+
+assert(
+  privilegeHardeningSql.includes('DO $owner_guard$')
+    && privilegeHardeningSql.includes('Migration refusée : des routines non-extension avec EXECUTE PUBLIC')
+    && privilegeHardeningSql.includes('Migration refusée : des relations non-extension avec privilèges PUBLIC'),
+  'Final hardening must fail closed when PUBLIC-exposed application objects are owned by a role other than the migration role',
+);
+
 assert(
   migrationSql.includes('CREATE POLICY documents_select_authorized ON documents'),
   'Policy documents_select_authorized must be updated with unified access guard',

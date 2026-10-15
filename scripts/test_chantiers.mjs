@@ -33,8 +33,8 @@ function controle(libelle, condition, detail) {
 
 /* --- 1. Le compte de migrations annonce doit etre celui du depot. ------- */
 {
-  const annonce = texte.match(/Neon\s*:\s*(\d+)\/(\d+)\s*migrations/);
-  assert.ok(annonce, `${REGISTRE} doit annoncer un compte de migrations Neon`);
+  const annonce = texte.match(/Dépôt\s*:\s*(\d+)\/(\d+)\s*migrations/);
+  assert.ok(annonce, `${REGISTRE} doit annoncer le compte de migrations du dépôt`);
   const reel = readdirSync('prisma/migrations').filter((d) => /^\d/.test(d)).length;
   controle(
     `compte de migrations annonce (${annonce[1]}) = depot (${reel})`,

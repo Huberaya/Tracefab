@@ -28,6 +28,7 @@
  */
 import pg from 'pg';
 import crypto from 'node:crypto';
+import { ensureAppRole } from './lib/tracefab_app_role.mjs';
 
 const URL_PROPRIO = process.env.DATABASE_URL;
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD;
@@ -49,30 +50,10 @@ const db = new pg.Client({
 await db.connect();
 
 /* --- 1. le role applicatif ------------------------------------------------ */
-const existe = await db.query('select 1 from pg_roles where rolname = $1', ['tracefab_app']);
-if (existe.rowCount === 0) {
-  await db.query(`CREATE ROLE tracefab_app LOGIN PASSWORD ${quote(MOT_DE_PASSE)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
-  console.log('  role tracefab_app cree');
-} else {
-  await db.query(`ALTER ROLE tracefab_app WITH LOGIN PASSWORD ${quote(MOT_DE_PASSE)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
-  console.log('  role tracefab_app deja present, attributs reappliques');
-}
-
-const base = (await db.query('select current_database() d')).rows[0].d;
-const proprio = (await db.query('select current_user u')).rows[0].u;
-for (const sql of [
-  `GRANT CONNECT ON DATABASE "${base}" TO tracefab_app`,
-  'GRANT USAGE ON SCHEMA public TO tracefab_app',
-  'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO tracefab_app',
-  'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO tracefab_app',
-  'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO tracefab_app',
-  `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO tracefab_app`,
-  `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO tracefab_app`,
-  `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO tracefab_app`,
-]) {
-  await db.query(sql);
-}
-console.log('  droits applicatifs accordes');
+// Logique partagee avec scripts/bootstrap_app_role.mjs, qui doit etre passe
+// AVANT les migrations sur base vierge. Ici c'est le filet de securite :
+// rejouer le seed sur une base ou le role manquerait encore le pose.
+await ensureAppRole(db, MOT_DE_PASSE);
 
 /* --- 2. deux locataires porteurs de donnees -------------------------------- */
 // Identifiants deterministes : rejouer le script retombe sur les memes lignes.
@@ -109,10 +90,13 @@ for (const l of locataires) {
     `insert into suppliers (id, organization_id) values ($1, $2)
      on conflict (id) do nothing`, [fournisseurId, orgId]);
 
-  // Le produit 1 est PUBLIE (public_slug + statut actif), le produit 2 reste
-  // brouillon. Sans ce contraste la section E de test:neon:rls n'a rien a
-  // prouver : elle verifie justement qu'un produit publie est lisible
-  // anonymement et qu'un brouillon ne l'est pas.
+  // Le produit 1 est PUBLIE : public_slug + statut actif + un dpp_records en
+  // readiness_status 'published', relu (reviewed_at). La publication publique
+  // exige cet etat explicite depuis la migration 20261010120000 : un simple
+  // statut actif, ou un slug pose en l'absence d'etat publie, ne suffit plus.
+  // Le produit 2 reste brouillon. Sans ce contraste la section E de
+  // test:neon:rls n'a rien a prouver : elle verifie justement qu'un produit
+  // publie est lisible anonymement et qu'un brouillon ne l'est pas.
   for (const n of [1, 2]) {
     const publie = n === 1;
     await db.query(
@@ -122,6 +106,17 @@ for (const l of locataires) {
         `Article ${n} ${l.nom}`,
         publie ? 'active' : 'draft',
         publie ? `${l.cle}-00${n}` : null]);
+    if (publie) {
+      // L'acte de publication, avec son auteur : reviewed_by = l'utilisateur
+      // du locataire, reviewed_at = maintenant. C'est « l'autorisation
+      // demonstrable » exigee par la barriere de lecture publique.
+      await db.query(
+        `insert into dpp_records (id, product_id, product_version, requirement_profile_key,
+           requirement_profile_version, readiness_status, reviewed_at, reviewed_by)
+         values ($1, $2, 1, 'espr-textile', '1', 'published', now(), $3)
+         on conflict (id) do nothing`,
+        [uuid(`dpp-${l.cle}-1`), uuid(`prod-${l.cle}-1`), userId]);
+    }
   }
 
   // Le declencheur tracefab_validate_document_location impose le bucket prive,
@@ -143,7 +138,3 @@ console.log(`  total : ${await compte('organizations')} organisations · ${await
 
 await db.end();
 console.log('  base prete pour npm run test:neon:rls');
-
-function quote(s) {
-  return `'${String(s).replace(/'/g, "''")}'`;
-}
