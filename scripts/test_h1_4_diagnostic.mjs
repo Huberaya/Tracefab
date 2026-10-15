@@ -502,6 +502,9 @@ function runWrapper(args, envExtra = {}) {
     'VERCEL_ENV',
     'DATABASE_URL',
     'DIRECT_URL',
+    'PGPASSWORD',
+    'PGUSER',
+    'PGPORT',
   ]) {
     delete clean[k];
   }
@@ -605,17 +608,23 @@ function leaked(out) {
 }
 
 {
-  const r = runWrapper([], {
-    TRACEFAB_H1_4_MODE: 'jetable',
-    TRACEFAB_H1_4_CONFIRM_READONLY: 'oui',
-    TRACEFAB_H1_4_CIBLE: 'locale',
-    PGHOST: '127.0.0.1',
-    PGDATABASE: 'tracefab_test',
-  });
-  const out = `${r.stdout || ''}${r.stderr || ''}`;
-  r.status === 2 && /psql absent/.test(out)
-    ? ok('COMPORTEMENT', 'jetable local sans psql : NON EXECUTE exit 2')
-    : ko('COMPORTEMENT', `jetable local exit ${r.status} ${out.slice(0, 180)}`);
+  const hasPsql =
+    spawnSync('bash', ['-c', 'command -v psql'], { encoding: 'utf8' }).status === 0;
+  if (hasPsql) {
+    skip('COMPORTEMENT', 'jetable local sans psql : NOT RUN (psql présent)');
+  } else {
+    const r = runWrapper([], {
+      TRACEFAB_H1_4_MODE: 'jetable',
+      TRACEFAB_H1_4_CONFIRM_READONLY: 'oui',
+      TRACEFAB_H1_4_CIBLE: 'locale',
+      PGHOST: '127.0.0.1',
+      PGDATABASE: 'tracefab_test',
+    });
+    const out = `${r.stdout || ''}${r.stderr || ''}`;
+    r.status === 2 && /psql absent/.test(out)
+      ? ok('COMPORTEMENT', 'jetable local sans psql : NON EXECUTE exit 2')
+      : ko('COMPORTEMENT', `jetable local exit ${r.status} ${out.slice(0, 180)}`);
+  }
 }
 
 {
