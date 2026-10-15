@@ -1607,6 +1607,7 @@ window.TF_I18N_BUNDLES.en = {
     spNAnswerSavedDemo: "Answer saved in demonstration mode.",
     spNScoreRecomputed: "Quality score recalculated.",
     spNScoreRecomputedDemo: "Quality score recalculated in demonstration mode.",
+    spNPassportSaved: "Passport settings saved.",
     spNPassportSavedDemo: "Passport settings saved in demonstration mode.",
     spNPassportReviewedDemo: "Passport request reviewed in demonstration mode.",
     spNTcDeclaredDemo: "Transaction certificate declared in demonstration mode.",
