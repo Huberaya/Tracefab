@@ -2016,7 +2016,7 @@
     "spDiscloseQualityScore": "Kwaliteitsscore",
     "spDiscloseContact": "Contactgegevens",
     "spDiscloseExactAddresses": "Exacte adressen (gevoelig)",
-    "spDisclosurePrivacyNotice": "Het paspoort blijft privé totdat u de instellingen voor openbaarmaking expliciet opslaat en openbare toegang inschakelt. Exacte adressen zijn gevoelig en blijven verborgen tenzij ze afzonderlijk worden geselecteerd.",
+    "spDisclosurePrivacyNotice": "Het paspoort blijft privé totdat u de instellingen voor openbaarmaking expliciet opslaat en openbare toegang inschakelt. Exacte adressen zijn gevoelig en blijven verborgen tenzij ze afzonderlijk worden geselecteerd."
   },
   "quality": {
     "loading": "Quality Center wordt geladen…",

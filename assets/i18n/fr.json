@@ -2016,7 +2016,7 @@
     "spDiscloseQualityScore": "Score qualité",
     "spDiscloseContact": "Coordonnées",
     "spDiscloseExactAddresses": "Adresses exactes (sensibles)",
-    "spDisclosurePrivacyNotice": "Le passeport reste privé tant que vous n’avez pas enregistré les paramètres de divulgation et activé l’accès public. Les adresses exactes sont sensibles et restent masquées sauf sélection distincte.",
+    "spDisclosurePrivacyNotice": "Le passeport reste privé tant que vous n’avez pas enregistré les paramètres de divulgation et activé l’accès public. Les adresses exactes sont sensibles et restent masquées sauf sélection distincte."
   },
   "quality": {
     "loading": "Chargement du Quality Center…",

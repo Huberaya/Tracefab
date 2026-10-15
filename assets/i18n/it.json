@@ -2016,7 +2016,7 @@
     "spDiscloseQualityScore": "Punteggio qualità",
     "spDiscloseContact": "Recapiti",
     "spDiscloseExactAddresses": "Indirizzi esatti (sensibili)",
-    "spDisclosurePrivacyNotice": "Il passaporto resta privato finché non salvi esplicitamente le impostazioni di divulgazione e attivi l’accesso pubblico. Gli indirizzi esatti sono sensibili e restano nascosti salvo selezione separata.",
+    "spDisclosurePrivacyNotice": "Il passaporto resta privato finché non salvi esplicitamente le impostazioni di divulgazione e attivi l’accesso pubblico. Gli indirizzi esatti sono sensibili e restano nascosti salvo selezione separata."
   },
   "quality": {
     "loading": "Caricamento del Quality Center…",

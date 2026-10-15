@@ -2016,7 +2016,7 @@
     "spDiscloseQualityScore": "Puntuación de calidad",
     "spDiscloseContact": "Datos de contacto",
     "spDiscloseExactAddresses": "Direcciones exactas (sensibles)",
-    "spDisclosurePrivacyNotice": "El pasaporte permanece privado hasta que guardes explícitamente la configuración de divulgación y actives el acceso público. Las direcciones exactas son sensibles y permanecen ocultas salvo que se seleccionen por separado.",
+    "spDisclosurePrivacyNotice": "El pasaporte permanece privado hasta que guardes explícitamente la configuración de divulgación y actives el acceso público. Las direcciones exactas son sensibles y permanecen ocultas salvo que se seleccionen por separado."
   },
   "quality": {
     "loading": "Cargando el Quality Center…",
