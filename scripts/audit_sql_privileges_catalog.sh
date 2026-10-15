@@ -11,8 +11,8 @@ SHA34="${SHA34:-19a867a19d6e569f3b68a0969eab8b45ff341a73}"
 SHA36="${SHA36:-6d785dcb5611b38313f61864fe7ff2e25d6842bb}"
 SHA41="${SHA41:-c75ee3eb25042c1e8848fe56df14094303e1e155}"
 
-refuse() { echo "REFUS: $1" >&2; exit 2; }
-fail() { echo "ECHEC: $1" >&2; exit 1; }
+refuse() { echo "REFUS: $1" >&2; echo "::error title=REFUS::$1"; exit 2; }
+fail() { echo "ECHEC: $1" >&2; echo "::error title=ECHEC::$1"; exit 1; }
 
 hote_local() {
   case "$1" in
@@ -205,18 +205,18 @@ SELECT p.proname || '|' || pg_get_function_identity_arguments(p.oid)
 }
 
 emit_priority() {
-  local label="$1" fn row
+  local label="$1" fn row blob=""
   echo
   echo "----- PRIORITE $label -----"
   for fn in "${PRIORITY[@]}"; do
     row="$(row_of "$fn")"
     if [[ -z "$row" ]]; then
-      echo "::error title=$label::$fn ABSENTE"
       fail "$label: $fn absente"
     fi
     echo "$row"
-    echo "::notice title=$label $fn::${row//$'\n'/ ; }"
+    blob+="${row} ;; "
   done
+  echo "::notice title=$label priorite::${blob}"
 }
 
 dump_catalog() {
@@ -243,8 +243,18 @@ SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespac
      SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
       WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
    );")"
-  echo "compte $label: secdef=$n_secdef secdef_public=$n_public invoker_tracefab_public=$n_invoker_public"
-  echo "::notice title=$label comptes::secdef=$n_secdef secdef_public=$n_public invoker_tracefab_public=$n_invoker_public"
+  local invoker_list
+  invoker_list="$(pg -tAc "
+SELECT coalesce(string_agg(p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')', ', ' ORDER BY 1), '')
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public' AND p.prokind = 'f' AND NOT p.prosecdef
+   AND p.proname LIKE 'tracefab_%'
+   AND EXISTS (
+     SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
+      WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
+   );")"
+  echo "compte $label: secdef=$n_secdef secdef_public=$n_public invoker_tracefab_public=$n_invoker_public [$invoker_list]"
+  echo "::notice title=$label comptes::secdef=$n_secdef secdef_public=$n_public invoker_tracefab_public=$n_invoker_public list=$invoker_list"
   if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     {
       echo "## Catalogue $label"
@@ -264,11 +274,12 @@ negative_controls() {
   local label="$1"
   echo
   echo "----- CONTROLES NEGATIFS $label -----"
-  pg -c "BEGIN;"
-  pg -c "CREATE FUNCTION public.tracefab_audit_negatif() RETURNS int LANGUAGE sql SECURITY DEFINER AS \$\$ SELECT 1 \$\$;"
-  pg -c "GRANT EXECUTE ON FUNCTION public.tracefab_audit_negatif() TO PUBLIC;"
+  # Une seule session psql : BEGIN/ROLLBACK ne survivent pas d'un processus à l'autre.
   local vue
   vue="$(pg -tAc "
+BEGIN;
+CREATE FUNCTION public.tracefab_audit_negatif() RETURNS int LANGUAGE sql SECURITY DEFINER AS \$\$ SELECT 1 \$\$;
+GRANT EXECUTE ON FUNCTION public.tracefab_audit_negatif() TO PUBLIC;
 SELECT EXISTS (
   SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND p.proname = 'tracefab_audit_negatif' AND p.prosecdef
@@ -276,9 +287,10 @@ SELECT EXISTS (
        SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
         WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
      )
-);")"
-  pg -c "ROLLBACK;"
-  [[ "$vue" == "t" ]] || fail "$label: controle negatif GRANT PUBLIC non detecte"
+);
+ROLLBACK;
+")"
+  [[ "$vue" == "t" ]] || fail "$label: controle negatif GRANT PUBLIC non detecte (vue='$vue')"
   echo "ok    $label: GRANT PUBLIC exprès est vu par aclexplode+acldefault"
   local reste
   reste="$(pg -tAc "
@@ -320,7 +332,6 @@ scenario_main() {
       echo "ok    MAIN: $fn deja executable par tracefab_app"
     else
       echo "mesure MAIN: $fn app_exec=f (attendu tant que 1414 n est pas sur main)"
-      echo "::notice title=MAIN $fn sans app::${row//$'\n'/ ; }"
     fi
   done
   echo "SCENARIO MAIN: PASS"
@@ -349,7 +360,6 @@ scenario_pr36() {
       echo "ok    PR36: $fn executable par tracefab_app"
     else
       echo "mesure PR36: $fn app_exec=f (1414 absente du produit #36)"
-      echo "::notice title=PR36 $fn sans app::${row//$'\n'/ ; }"
     fi
   done
   echo "SCENARIO PR36: PASS"
