@@ -113,6 +113,27 @@ class EndToEndAuditFailClosedTests(unittest.TestCase):
         self.assertIn("declared JavaScript bundle missing", result.stdout)
         self.assertIn("Audit Status: FAIL", result.stdout)
 
+    def test_missing_functional_marker_in_bundle_exits_nonzero(self):
+        path = self.root / "assets/js/brand-console.1.js"
+        path.write_text(path.read_text(encoding="utf-8").replace(
+            'id="product-detail-form"',
+            'id="obsolete-form"',
+        ), encoding="utf-8")
+        result = self.run_audit()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Missing required markers", result.stdout)
+        self.assertIn("Audit Status: FAIL", result.stdout)
+
+    def test_unreferenced_manifest_bundle_exits_nonzero(self):
+        manifest = self.root / "assets/js/.page-bundles.json"
+        bundles = json.loads(manifest.read_text(encoding="utf-8"))
+        bundles["brand-console/index.html"].append("/assets/js/orphaned.js")
+        manifest.write_text(json.dumps(bundles), encoding="utf-8")
+        result = self.run_audit()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("manifest bundle is not referenced", result.stdout)
+        self.assertIn("Audit Status: FAIL", result.stdout)
+
     def test_missing_manifest_exits_nonzero(self):
         (self.root / "assets/js/.page-bundles.json").unlink()
         result = self.run_audit()
