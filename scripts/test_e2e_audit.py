@@ -25,7 +25,7 @@ PAGE_FIXTURES = {
     "supplier-portal/index.html": [
         "<title>Tracefab — Supplier Portal</title>",
         '<div id="app"></div>',
-        '<script src="/assets/js/supplier-portal.0.js?v=test"></script>',
+        '<script src="/assets/js/supplier-portal.1.js?v=test"></script>',
     ],
     "dpp/index.html": [
         'data-i18n="dpp.metaTitle"',
@@ -37,7 +37,7 @@ PAGE_FIXTURES = {
 
 BUNDLE_FIXTURES = {
     "brand-console/index.html": ["/assets/js/brand-console.1.js"],
-    "supplier-portal/index.html": ["/assets/js/supplier-portal.0.js"],
+    "supplier-portal/index.html": ["/assets/js/supplier-portal.1.js"],
     "index.html": [],
     "dpp/index.html": [],
 }
@@ -48,7 +48,7 @@ ASSET_FIXTURES = {
         'data-action="new-request"',
         "Authorization = `Bearer ${token}`",
     ],
-    "assets/js/supplier-portal.0.js": [
+    "assets/js/supplier-portal.1.js": [
         'id="profile-form"',
         'data-action="submit-request"',
         "Authorization = `Bearer ${token}`",
