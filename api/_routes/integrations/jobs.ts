@@ -29,8 +29,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return json(res, 200, { jobs });
     });
-  } catch (error: any) {
-    const err = sqlBusinessError(error);
-    return json(res, err.status, { error: err.error });
+  } catch (error: unknown) {
+    const businessError = sqlBusinessError(error);
+    if (businessError) {
+      return json(res, businessError.status, { error: businessError.error });
+    }
+    console.error('GET /api/integrations/jobs failed', error);
+    return json(res, 500, { error: 'internal_server_error' });
   }
 }

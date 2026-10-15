@@ -103,8 +103,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     });
 
-    if (result.notFound) return json(res, 404, { error: 'document_not_found' });
-    if (result.notAvailable) return json(res, 409, { error: 'document_not_available' });
+    if ('notFound' in result && result.notFound) return json(res, 404, { error: 'document_not_found' });
+    if ('notAvailable' in result && result.notAvailable) return json(res, 409, { error: 'document_not_available' });
+    if (!('decision' in result) || !result.decision) {
+      console.error('POST /api/documents/:documentId/verify-ai returned an incomplete decision');
+      return json(res, 500, { error: 'verification_decision_unavailable' });
+    }
 
     return json(res, 200, {
       documentId: result.documentId,

@@ -5,14 +5,18 @@
 # probable soit aussi le plus vite signale :
 #
 #   1. socle        types, compilation, isolation multi-locataires  (~1 min)
-#   2. verification 63 scripts test:* + audit statique end-to-end
+#   2. verification suites test:* sans base + audit statique end-to-end
 #   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
 #
-# L'etage base de donnees ne se declenche que si le secret DATABASE_URL existe,
-# pour qu'un fork ou une contribution externe ne voie pas un echec qui ne lui
-# appartient pas.
+# L'etage base de donnees monte un Postgres jetable : il ne lit aucun secret.
+# Les suites qui ecrivent passent par scripts/run-db-suite.mjs, donc par la
+# garde de cible — une cible non jetable est refusee meme fournie a la main.
 #
 name: CI
+
+# Permissions minimales : les jobs de test ne publient ni ne modifient le dépôt.
+permissions:
+  contents: read
 
 on:
   push:
@@ -37,9 +41,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -66,6 +72,45 @@ jobs:
         # execute, et contrat de variables d'environnement a jour.
         run: npm run test:production-readiness
 
+      - name: Historique des migrations — fail-closed
+        run: npm run test:migration-history
+
+      - name: CI sans acces production
+        run: npm run test:ci-no-production-access
+
+      - name: Garde de cible des suites destructives
+        # Aucune suite qui ecrit en base ne s'execute sans avoir prouve que sa
+        # cible est jetable. La garde est eprouvee dans les deux sens.
+        run: npm run test:db-guard
+
+      - name: Garde de prisma migrate deploy (base jetable)
+        # db:deploy:throwaway refuse avant le binaire prisma. Aucune connexion.
+        run: npm run test:db-throwaway
+
+      - name: Routage des suites destructives
+        # Toute suite ecrivant en base doit passer par le lanceur garde. Une
+        # suite destructive non declaree fait echouer la CI.
+        run: npm run test:db-routing
+
+      - name: Politique des workflows
+        # Aucun secret lu, aucune action non epinglee, aucun privilege
+        # d'ecriture non declare.
+        run: npm run test:workflow-policy
+
+      - name: Controle du client Prisma — eprouve dans les deux sens
+        run: npm run test:prisma-client
+
+      - name: Client Prisma du paquet
+        # Mode de defaillance exact de l'incident du 2026-10-12 : echoue si le
+        # client n'est pas genere ou si le schema a evolue sans regeneration.
+        run: npm run verify:prisma-client
+
+      - name: Chargement des modules de route
+        # Les 125 routes doivent se charger. Un client Prisma non initialise
+        # fait echouer ce chargement, et la production repond alors
+        # internal_error avec un identifiant de correlation.
+        run: npm run test:router-load
+
   # -------------------------------------------------- 2. suite de verification
   verification:
     name: Verification — suite de tests
@@ -73,9 +118,11 @@ jobs:
     timeout-minutes: 25
     needs: socle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -113,8 +160,9 @@ jobs:
           exit 1
 
       - name: Suite complete des scripts test:*
-        # Les suites neon et staging exigent une base ou un environnement
-        # deploye : elles ont leur propre etage.
+        # Les suites neon, staging et test:audit-script exigent une base ou un
+        # environnement deploye : elles ont leur propre etage. test:audit-script
+        # s'execute dans le job base de donnees contre PostgreSQL jetable.
         #
         # test:regression est exclu pour une raison differente et assumee : sa
         # reference est une image, donc liee a son environnement de rendu. Les
@@ -124,7 +172,7 @@ jobs:
         # l'automatiser suppose de figer le rendu dans un conteneur.
         run: |
           set -u
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression').join(' '))")
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script').join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -153,9 +201,11 @@ jobs:
     timeout-minutes: 25
     needs: socle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -195,7 +245,7 @@ jobs:
 
       - name: Captures en cas d'echec
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: captures-parcours
           path: |
@@ -241,10 +291,15 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
       TF_APP_PASSWORD: isolation_ci_jetable
       TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
+      # Aucun secret n'est injecte dans ce job, et le contexte `secrets` n'y
+      # est plus lu du tout : `npm run test:workflow-policy` le verifie a
+      # chaque execution.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -256,14 +311,15 @@ jobs:
         run: npm run db:generate
 
       - name: Préparer le rôle applicatif avant migrations
-        # Vérifie explicitement localhost/tracefab_test ; aucune base externe
-        # ne peut être ciblée par ce script.
-        run: node scripts/prepare_ci_db_role.mjs
+        # Via le lanceur garde : refuse toute cible non jetable avant CREATE ROLE.
+        run: npm run db:prepare-ci-role
 
       - name: Appliquer les migrations sur la base jetable
-        # npm run db:deploy, pas npx prisma : npx va chercher au registre
-        # quand le binaire local n'est pas trouve, et installe un homonyme.
-        run: npm run db:deploy
+        # db:deploy:throwaway, PAS db:deploy. db:deploy est la commande
+        # operationnelle sans garde. Ici : Postgres 17 du service CI,
+        # DATABASE_URL = localhost/tracefab_test, aucun secret. La cible
+        # est classee avant le binaire prisma local. Jamais npx.
+        run: npm run db:deploy:throwaway
 
       - name: Privilèges SQL après migrations, avant le seed
         # Vérifie les GRANT conditionnels dans le scénario où tracefab_app
@@ -277,12 +333,31 @@ jobs:
         run: node scripts/test_migration_owner_guard.mjs
 
       - name: Creer le role tracefab_app et deux locataires
-        run: node scripts/seed_rls_fixture.mjs
+        # Via npm run db:seed-rls, donc via la garde de cible : ce script cree
+        # un role, accorde des privileges et ecrit des lignes. Meme sur la
+        # base jetable de ce job, il ne s execute qu apres avoir prouve sa
+        # cible — c est la garde, pas la bonne volonte, qui protege.
+        run: npm run db:seed-rls
 
       - name: Isolation RLS prouvee par execution
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
+
+      - name: Audit en lecture seule — la session ne peut pas ecrire
+        # La lecture seule est appliquee par le serveur, et le test le prouve
+        # en TENTANT une ecriture : elle doit etre refusee avec « read-only
+        # transaction ». Le rapport est relu avant affichage pour verifier
+        # qu il ne divulgue ni chaine de connexion ni identifiant.
+        run: npm run test:audit-script
+
+      - name: Privileges d execution des fonctions SECURITY DEFINER
+        # Aucune fonction SECURITY DEFINER ne doit etre executable par PUBLIC,
+        # et le role applicatif doit pouvoir executer ce dont les politiques
+        # ont besoin. C'est la regression constatee : la migration
+        # 20261009120000 a rendu tracefab_material_visible_via_product
+        # executable par PUBLIC.
+        run: npm run test:neon:privileges
 
       - name: Isolation inter-organisations
         # Prouve que deux organisations distinctes ne peuvent pas accéder aux

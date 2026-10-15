@@ -1,0 +1,85 @@
+# TRACEFAB — catalogue des privilèges SQL sur Postgres 17 jetable.
+# Aucun secret. Aucune URL distante. Ne fusionne rien.
+name: Audit SQL privileges catalogue
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/audit_sql_privileges_catalog.sh'
+      - '.github/workflows/audit-sql-privileges.yml'
+  push:
+    paths:
+      - 'scripts/audit_sql_privileges_catalog.sh'
+      - '.github/workflows/audit-sql-privileges.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: sql-acl-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  catalogue-jetable:
+    name: Catalogue fonctions PG17 jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tracefab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TRACEFAB_H1_4_MODE: jetable
+      TF_INTEGRATION_THROWAWAY: oui
+      TRACEFAB_H1_4_CIBLE: locale
+      TRACEFAB_H1_4_CONFIRM_READONLY: oui
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: tracefab_test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
+      TF_APP_PASSWORD: isolation_ci_jetable
+      TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Récupérer main, #34 et #41 sans fusion
+        run: |
+          git fetch origin main
+          git fetch origin pull/34/head:refs/tmp/pr34
+          git fetch origin pull/41/head:refs/tmp/pr41
+          git rev-parse origin/main
+          git rev-parse refs/tmp/pr34
+          git rev-parse refs/tmp/pr41
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Generer le client Prisma
+        run: npm run db:generate
+
+      - name: Installer le client psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Catalogue MAIN, PR36 et COMBINE
+        run: bash scripts/audit_sql_privileges_catalog.sh

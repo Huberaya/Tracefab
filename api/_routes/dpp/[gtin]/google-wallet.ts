@@ -1,20 +1,27 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { generateGoogleWalletPass } from '../../../_lib/wallet/google-wallet-generator.js';
-import { getFallbackDppData } from '../../../_lib/wallet/fallback-data.js';
+import { resolveDppPassData } from '../../../_lib/wallet/dpp-data-resolver.js';
+import { withTracefabPublicContext } from '../../../_lib/context.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return methodNotAllowed(res, ['GET']);
   }
 
-  const gtinOrRef = (req.query.gtin as string) || '3760123456789';
+  const gtinOrRef = req.query.gtin as string;
+  if (!gtinOrRef) {
+    return json(res, 400, { error: 'missing_identifier' });
+  }
 
   try {
-    const dppData = getFallbackDppData(gtinOrRef);
+    const dppData = await withTracefabPublicContext((tx) => resolveDppPassData(tx, gtinOrRef));
+    if (!dppData) {
+      return json(res, 404, { error: 'product_passport_not_found' });
+    }
+
     const walletResult = generateGoogleWalletPass(dppData);
-    
-    // If the browser visits via a link, redirect directly to Google Pay save URL!
+
     if (req.headers.accept?.includes('text/html')) {
       res.setHeader('Location', walletResult.saveUrl);
       return res.status(302).end();
@@ -28,8 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       passObject: walletResult.passObject,
     });
   } catch (err: unknown) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    console.error('Consumer Google Wallet error:', errMsg);
-    return json(res, 500, { error: 'wallet_generation_failed', detail: errMsg });
+    console.error('Consumer Google Wallet error:', err);
+    return json(res, 500, { error: 'internal_error' });
   }
 }
