@@ -5,7 +5,7 @@
 # probable soit aussi le plus vite signale :
 #
 #   1. socle        types, compilation, isolation multi-locataires  (~1 min)
-#   2. verification 63 scripts test:* + audit statique end-to-end
+#   2. verification 64 scripts test:* + audit statique end-to-end
 #   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
 #
 # L'etage base de donnees ne se declenche que si le secret DATABASE_URL existe,
