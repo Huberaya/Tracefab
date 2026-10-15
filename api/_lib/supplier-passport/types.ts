@@ -35,7 +35,6 @@ export interface PublicSupplierPassport {
   passport: {
     id: string;
     slug: string;
-    shareToken: string;
     headline: string;
     tradeSecretMode: TradeSecretMode;
     ndaTerms: string;

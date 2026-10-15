@@ -35,6 +35,19 @@ const managerContent = fs.readFileSync(managerPath, 'utf8');
 assert(managerContent.includes('getOrCreateSupplierPassport'), 'getOrCreateSupplierPassport must be exported');
 assert(managerContent.includes('updateSupplierPassport'), 'updateSupplierPassport must be exported');
 assert(managerContent.includes('getPublicSupplierPassport'), 'getPublicSupplierPassport must be exported');
+assert(
+  managerContent.includes("hasOwnProperty.call(parsed.passport, 'shareToken')")
+    || managerContent.includes('shareToken: _privateToken'),
+  'getPublicSupplierPassport must strip shareToken from the public payload'
+);
+const publicTypeBlock = typesContent.slice(
+  typesContent.indexOf('export interface PublicSupplierPassport'),
+  typesContent.indexOf('export interface PassportAccessRequestRecord'),
+);
+assert(
+  !publicTypeBlock.includes('shareToken'),
+  'PublicSupplierPassport must not expose shareToken'
+);
 assert(managerContent.includes('requestPassportAccess'), 'requestPassportAccess must be exported');
 assert(managerContent.includes('reviewPassportAccess'), 'reviewPassportAccess must be exported');
 console.log('✓ TypeScript library and manager contracts verified');
