@@ -326,6 +326,12 @@ jobs:
         # existe déjà, comme en production, avant que le seed n'accorde des droits.
         run: npm run test:neon:privileges
 
+      - name: Garde propriétaire SQL — scénario de refus
+        # Crée un objet PUBLIC EXECUTE possédé par un autre rôle et prouve que
+        # la migration échouerait de façon explicite. Le script refuse tout hôte
+        # autre que localhost/tracefab_test.
+        run: node scripts/test_migration_owner_guard.mjs
+
       - name: Creer le role tracefab_app et deux locataires
         # Via npm run db:seed-rls, donc via la garde de cible : ce script cree
         # un role, accorde des privileges et ecrit des lignes. Meme sur la

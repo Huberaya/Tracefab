@@ -111,6 +111,7 @@
     "test:workflow-policy": "node scripts/test_workflow_policy.mjs",
     "test:audit-script": "node scripts/test_audit_neon_readonly.mjs",
     "test:neon:privileges": "node scripts/run-db-suite.mjs scripts/test_neon_privileges.mjs",
+    "db:migration-owner-guard": "node scripts/run-db-suite.mjs scripts/test_migration_owner_guard.mjs",
     "verify:prisma-client": "node scripts/verify_prisma_client.mjs",
     "test:prisma-client": "node scripts/test_prisma_client_check.mjs",
     "test:diagnose-incident": "node scripts/test_diagnose_incident_offline.mjs",

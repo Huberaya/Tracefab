@@ -3,7 +3,7 @@
 Document de suivi historique : les informations datées plus bas ne doivent pas
 être considérées comme un état actuel sans vérification indépendante.
 
-**État de cette branche au 15 octobre 2026 : PR ouvertes #34, #35, #36, #41, #42 et #43 · Dépôt : 38 migrations · Neon de production : non vérifié.**
+**État de cette branche au 15 octobre 2026 : rebase #41 sur main (post-#36) · Dépôt : 41 migrations · Neon de production : non vérifié.**
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
 > que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les

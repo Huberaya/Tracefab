@@ -54,6 +54,7 @@ const WRITE_PATTERNS = [
  */
 const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_neon_security.mjs',
+  'scripts/test_migration_owner_guard.mjs',
   'scripts/test_neon_supplier_flow.mjs',
   'scripts/test_neon_supplier_advanced.mjs',
   'scripts/test_neon_product_flow.mjs',

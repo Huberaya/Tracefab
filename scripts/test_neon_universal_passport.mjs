@@ -89,7 +89,7 @@ async function run() {
     const passport = passportRows[0];
     assert(passport.slug, 'Passport must have a generated slug');
     assert(passport.share_token, 'Passport must have a generated private share_token');
-    assert.equal(passport.is_public, true, 'Passport should be public by default');
+    assert.equal(passport.is_public, false, 'Passport must remain private until supplier explicitly opts in');
     assert.equal(passport.trade_secret_mode, 'redacted', 'Default mode must be redacted');
     console.log(`✓ Stored procedure tracefab_get_or_create_supplier_passport returned slug: ${passport.slug}`);
 
@@ -99,7 +99,8 @@ async function run() {
         p_supplier_organization_id := '${supplierOrg.id}'::uuid,
         p_headline := 'Manufacture portugaise certifiée GOTS pour marques éco-responsables',
         p_trade_secret_mode := 'redacted',
-        p_disclosed_sections := '{"sites": true, "certifications": true, "materials": true, "quality_score": true, "exact_addresses": false}'::jsonb
+        p_disclosed_sections := '{"sites": true, "certifications": true, "materials": true, "quality_score": true, "contact": true, "exact_addresses": false}'::jsonb,
+        p_is_public := true
       );
     `);
     assert.equal(updatedRows.length, 1, 'Updated row must be returned');
@@ -119,6 +120,7 @@ async function run() {
       ? JSON.parse(publicViewRows[0].public_data)
       : publicViewRows[0].public_data;
 
+    assert.equal(Object.hasOwn(publicData.passport, 'shareToken'), false, 'Public passport must never expose the private share token');
     assert.equal(publicData.supplier.displayName, 'Guimarães Weaving');
     assert.equal(publicData.passport.viewsCount, 1, 'View count must be automatically incremented to 1');
     assert.equal(publicData.sites.length, 1, 'Site must be returned');

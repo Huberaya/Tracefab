@@ -30,9 +30,19 @@ assert(
   migrationSql.includes('INSERT INTO suppliers'),
   'tracefab_register_supplier_organization must create initial supplier profile',
 );
+const privilegeHardeningSql = await readFile(
+  new URL('../prisma/migrations/20261014130000_revoke_public_schema_privileges/migration.sql', import.meta.url),
+  'utf8',
+);
 assert(
   migrationSql.includes('GRANT EXECUTE ON FUNCTION tracefab_register_supplier_organization'),
-  'Migration must grant execute permission to PUBLIC',
+  'Historical migration must define an explicit function grant',
+);
+assert(
+  privilegeHardeningSql.includes('REVOKE EXECUTE ON %s %s FROM PUBLIC')
+    && privilegeHardeningSql.includes("p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)")
+    && privilegeHardeningSql.includes('GRANT EXECUTE ON %s %s TO tracefab_app'),
+  'Final hardening must revoke PUBLIC EXECUTE on migration-role-owned functions while preserving runtime execution and excluding provider-owned extension functions',
 );
 
 // 2. Verify API routes and router registration
