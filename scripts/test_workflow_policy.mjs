@@ -390,6 +390,24 @@ for (const file of files) {
     ko(`F. job rattache a ${[...new Set(envBound)].join(', ')} sans declaration au registre`);
   }
 
+  // ------------------------------ F2. confinement du workflow a secret Vercel
+  // Le workflow_dispatch peut être lancé depuis une branche choisie par le
+  // contributeur. L'environnement avec approbation reste obligatoire, mais le
+  // job doit aussi refuser les branches non protégées AVANT d'accéder au secret.
+  if (file === 'vercel-log-search.yml') {
+    const recherche = doc.jobs?.recherche;
+    if (recherche?.if === "${{ github.ref == 'refs/heads/main' }}") {
+      ok('F2. le job Vercel est limité à refs/heads/main avant accès au secret');
+    } else {
+      ko('F2. le job Vercel doit refuser toute référence autre que refs/heads/main');
+    }
+    if (triggerNames.length === 1 && triggerNames[0] === 'workflow_dispatch') {
+      ok('F2. le workflow Vercel reste manuel uniquement');
+    } else {
+      ko('F2. le workflow Vercel doit rester workflow_dispatch uniquement');
+    }
+  }
+
   // ------------------------------------------- H. ecriture et execution de code
   // Un jeton qui peut ecrire dans le depot ne doit jamais etre detenu par un
   // job qui execute du code du depot. C'est la regle qui empeche un
