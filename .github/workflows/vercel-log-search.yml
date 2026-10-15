@@ -44,6 +44,8 @@ concurrency:
 
 jobs:
   recherche:
+    # Refuser les lancements depuis toute branche autre que main AVANT l'accès à l'environnement et à son secret.
+    if: ${{ github.ref == 'refs/heads/main' }}
     name: Lire les journaux et filtrer sur l identifiant de correlation
     runs-on: ubuntu-latest
     timeout-minutes: 10
