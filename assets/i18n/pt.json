@@ -2017,7 +2017,6 @@
     "spDiscloseContact": "Dados de contacto",
     "spDiscloseExactAddresses": "Endereços exatos (sensíveis)",
     "spDisclosurePrivacyNotice": "O passaporte permanece privado até guardar explicitamente as definições de divulgação e ativar o acesso público. Os endereços exatos são sensíveis e permanecem ocultos, salvo se forem selecionados separadamente.",
-    "spNPassportSaved": "Definições do passaporte guardadas."
   },
   "quality": {
     "loading": "A carregar o Quality Center…",
