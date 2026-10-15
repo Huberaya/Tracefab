@@ -28,6 +28,13 @@ export type ErrorContext = {
   userId?: string;
   organizationId?: string;
   status?: number;
+  /**
+   * Etape qui a echoue. La distinction n'est pas cosmetique : un module de
+   * route qui ne se charge pas (dependance absente du paquet deploye) et une
+   * exception d'un gestionnaire produisent le meme 500 cote client, alors que
+   * les causes, les correctifs et les responsables n'ont rien a voir.
+   */
+  phase?: 'module_load' | 'handler';
 };
 
 export type ErrorReportStatus = 'logged' | 'forwarded' | 'forward_failed';
@@ -79,17 +86,25 @@ export function correlationId() {
   return randomUUID();
 }
 
-function describe(error: unknown) {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: redact(error.message).slice(0, 500),
-      // La pile est tronquee : au-dela, c'est du bruit qui coute en stockage.
-      stack: error.stack ? redact(error.stack).split('\n').slice(0, 12).join('\n') : null,
-    };
+  function describe(error: unknown) {
+    if (error instanceof Error) {
+      const code = (error as NodeJS.ErrnoException).code ?? null;
+      // Le nom du module absent est la seule information qui distingue
+      // « paquet incomplet » de « erreur metier » : sans lui, le journal dit
+      // qu'une erreur est survenue, jamais laquelle. Le message est deja
+      // caviarde juste apres, et seuls le nom et le code sont extraits.
+      const missing = error.message.match(/Cannot find module ['"]([^'"]+)['"]/);
+      return {
+        name: error.name,
+        code,
+        moduleSpecifier: missing ? missing[1] : null,
+        message: redact(error.message).slice(0, 500),
+        // La pile est tronquee : au-dela, c'est du bruit qui coute en stockage.
+        stack: error.stack ? redact(error.stack).split('\n').slice(0, 12).join('\n') : null,
+      };
+    }
+    return { name: 'NonError', code: null, moduleSpecifier: null, message: redact(String(error)).slice(0, 500), stack: null };
   }
-  return { name: 'NonError', message: redact(String(error)).slice(0, 500), stack: null };
-}
 
 export async function reportError(
   error: unknown,
@@ -105,11 +120,15 @@ export async function reportError(
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
     release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || null,
     error: described,
-    context: {
-      route: context.route ?? null,
-      method: context.method ?? null,
-      path: context.path ? redact(context.path) : null,
-      status: context.status ?? 500,
+      context: {
+        route: context.route ?? null,
+        method: context.method ?? null,
+        path: context.path ? redact(context.path) : null,
+        status: context.status ?? 500,
+        // Etape de la panne : `module_load` designe un paquet deploye
+        // incomplet, `handler` une erreur d execution. C est le champ a
+        // interroger en premier dans un journal.
+        phase: context.phase ?? 'handler',
       // Identifiants opaques : suffisants pour correler, inutilisables pour
       // identifier une personne depuis le collecteur.
       userId: context.userId ?? null,

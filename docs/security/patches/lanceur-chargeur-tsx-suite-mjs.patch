@@ -1,0 +1,117 @@
+diff --git a/scripts/lib/choose-suite-loader.mjs b/scripts/lib/choose-suite-loader.mjs
+new file mode 100644
+index 0000000..dcc943a
+--- /dev/null
++++ b/scripts/lib/choose-suite-loader.mjs
+@@ -0,0 +1,31 @@
++/**
++ * Quel chargeur pour quel fichier de suite ?
++ *
++ * POURQUOI CETTE FONCTION EXISTE
++ *
++ * Le lanceur commun des suites destructives (`scripts/run-db-suite.mjs`) doit
++ * choisir entre node nu et tsx. Une suite peut etre un fichier .ts, mais elle
++ * peut aussi etre un .mjs qui IMPORTE des modules TypeScript du depot
++ * (routeurs, adaptateurs, moteurs metier). node nu ne resout alors pas les
++ * specifiers en `.js` qui pointent vers un `.ts` : la suite meurt sur un
++ * ERR_MODULE_NOT_FOUND qui ne parle ni de la base, ni de la garde de cible.
++ *
++ * La decision suit donc le CONTENU de la suite, pas seulement son extension.
++ * C'est la meme regle que celle appliquee aux fichiers .ts : confier le
++ * fichier a un chargeur capable de le lire.
++ *
++ * LIMITE ASSUMEE : la detection est statique, donc un fichier qui ne fait que
++ * CITER un chemin TypeScript dans un commentaire sera confie a tsx. Le faux
++ * positif est benin — tsx execute aussi du JavaScript — alors qu'un faux
++ * negatif rendrait la suite inexecutable. Le sens de l'erreur est choisi en
++ * consequence. Les formes couvertes sont `import ... from '.../x.ts'`,
++ * `import('.../x.ts')` et `from '.../x.ts'`.
++ */
++const IMPORTE_TYPESCRIPT = /(?:^|[^\w$])(?:import|from)\s*\(?\s*['"][^'"]+\.tsx?['"]/;
++
++export function chooseSuiteLoader(chemin, source = '') {
++  const fichier = String(chemin || '');
++  if (fichier.endsWith('.ts')) return 'tsx';
++  if (IMPORTE_TYPESCRIPT.test(String(source || ''))) return 'tsx';
++  return 'node';
++}
+diff --git a/scripts/run-db-suite.mjs b/scripts/run-db-suite.mjs
+index 4084a8a..5ac9468 100644
+--- a/scripts/run-db-suite.mjs
++++ b/scripts/run-db-suite.mjs
+@@ -16,10 +16,11 @@
+  * Variables lues par la garde : voir scripts/lib/require-throwaway-db.mjs
+  */
+ import { spawn } from 'node:child_process';
+-import { existsSync } from 'node:fs';
++import { existsSync, readFileSync } from 'node:fs';
+ import { dirname, join, resolve } from 'node:path';
+ import { fileURLToPath } from 'node:url';
+ import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
++import { chooseSuiteLoader } from './lib/choose-suite-loader.mjs';
+ 
+ const HERE = dirname(fileURLToPath(import.meta.url));
+ const ROOT = resolve(HERE, '..');
+@@ -51,17 +52,22 @@ const result = requireThrowawayDb({
+ for (const line of result.summary) console.log(`  garde cible : ${line}`);
+ console.log('');
+ 
+-const isTypeScript = absolute.endsWith('.ts');
++// Le chargeur suit le CONTENU de la suite, pas seulement son extension : un
++// .mjs qui importe des modules TypeScript du depot a besoin de tsx, sinon il
++// meurt sur un ERR_MODULE_NOT_FOUND etrangera a la base et a la garde.
++const chargeur = chooseSuiteLoader(absolute, readFileSync(absolute, 'utf8'));
+ const tsxBin = join(ROOT, 'node_modules', '.bin', 'tsx');
+ 
+-if (isTypeScript && !existsSync(tsxBin)) {
+-  console.error('  NON EXECUTE — tsx absent : npm ci avant de lancer une suite TypeScript.');
++if (chargeur === 'tsx' && !existsSync(tsxBin)) {
++  console.error('  NON EXECUTE — tsx absent : npm ci avant de lancer une suite qui importe du TypeScript.');
+   process.exit(2);
+ }
+ 
++console.log(`  chargeur : ${chargeur}${chargeur === 'tsx' ? ' (la suite importe du TypeScript)' : ''}`);
++
+ const child = spawn(
+-  isTypeScript ? tsxBin : process.execPath,
+-  isTypeScript ? [absolute, ...rest] : [absolute, ...rest],
++  chargeur === 'tsx' ? tsxBin : process.execPath,
++  [absolute, ...rest],
+   { stdio: 'inherit', cwd: ROOT, env: process.env },
+ );
+ 
+diff --git a/scripts/test_destructive_suite_routing.mjs b/scripts/test_destructive_suite_routing.mjs
+index a1db0e8..3ae7508 100644
+--- a/scripts/test_destructive_suite_routing.mjs
++++ b/scripts/test_destructive_suite_routing.mjs
+@@ -179,6 +179,30 @@ console.log('\n  B. le lanceur applique bien la garde avant d executer');
+   const wrapper = existsSync(join(ROOT, WRAPPER)) ? readFileSync(join(ROOT, WRAPPER), 'utf8') : '';
+   wrapper.includes('requireThrowawayDb') ? ok('le lanceur appelle la garde de cible') : ko('le lanceur n appelle pas la garde');
+   wrapper.includes("'inherit'") ? ok('le lanceur transmet la sortie et le code de retour') : ko('le lanceur ne relaie pas la sortie');
++
++  // Le lanceur doit confier la suite au chargeur capable de la LIRE : une suite
++  // .mjs qui importe des modules TypeScript du depot ne s execute pas sous node
++  // nu. La decision est eprouvee dans les deux sens, et le fait que le lanceur
++  // la consulte est verifie separement : sans cela, ce controle protegerait une
++  // fonction que personne n appelle.
++  const { chooseSuiteLoader } = await import('./lib/choose-suite-loader.mjs');
++  const casChargeur = [
++    ['scripts/suite.ts', '', 'tsx', 'un fichier .ts est confie a tsx'],
++    ['scripts/suite.mjs', "import { x } from '../api/index.ts'", 'tsx', 'un .mjs qui importe du TypeScript est confie a tsx'],
++    ['scripts/suite.mjs', "const m = await import('../api/_lib/prisma.ts')", 'tsx', 'un import dynamique de TypeScript est confie a tsx'],
++    ['scripts/suite.mjs', "export { x } from './lib/aide.ts'", 'tsx', 'un re-export de TypeScript est confie a tsx'],
++    ['scripts/suite.mjs', "import { x } from './lib/aide.mjs'", 'node', 'un .mjs qui n importe que du JavaScript reste sur node'],
++    ['scripts/suite.mjs', '', 'node', 'un .mjs sans import reste sur node'],
++  ];
++  for (const [fichier, source, attendu, libelle] of casChargeur) {
++    const obtenu = chooseSuiteLoader(fichier, source);
++    obtenu === attendu
++      ? ok(`chargeur : ${libelle}`)
++      : ko(`chargeur : ${libelle} — attendu ${attendu}, obtenu ${obtenu}`);
++  }
++  wrapper.includes('chooseSuiteLoader')
++    ? ok('le lanceur consulte cette decision avant d executer la suite')
++    : ko('le lanceur choisit son chargeur sans lire le contenu de la suite');
+ }
+ 
+ console.log('\n  C. aucune suite destructive non declaree');

@@ -1,0 +1,45 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index e1801b9..0e283dc 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -5,7 +5,7 @@
+ # probable soit aussi le plus vite signale :
+ #
+ #   1. socle        types, compilation, isolation multi-locataires  (~1 min)
+-#   2. verification 63 scripts test:* + audit statique end-to-end
++#   2. verification les suites test:* qui n'exigent pas de base + audit statique
+ #   3. parcours     navigateur reel : 20 parcours, personas, phases 9-12
+ #
+ # L'etage base de donnees monte un Postgres jetable : il ne lit aucun secret.
+@@ -20,6 +20,13 @@ on:
+   pull_request:
+   workflow_dispatch:
+ 
++permissions:
++  # Le jeton du workflow n'a besoin que de LIRE le depot. Sans ce bloc, il
++  # herite du reglage du depot, qui peut inclure l'ecriture : un jeton
++  # d'ecriture dans un job qui execute le code du depot transforme ce code en
++  # capacite de commit. C'est la classe de defaut de l'incident 2C.
++  contents: read
++
+ concurrency:
+   # Une nouvelle poussee annule la precedente sur la meme reference : inutile de
+   # payer deux fois pour un etat depasse.
+@@ -151,9 +158,16 @@ jobs:
+         # systeme, qui different entre le poste de developpement et le runner.
+         # Le laisser ici le ferait rougir pour une raison etrangere au code ;
+         # l'automatiser suppose de figer le rendu dans un conteneur.
++        #
++        # test:audit-script est exclu pour la meme raison que les suites neon :
++        # il ouvre une connexion et sort en 2 quand aucune cible n'est fournie
++        # (« un test qui ne tourne pas ne vaut pas un test qui passe »). Cet
++        # etage n'a pas de base de donnees ; le lancer ici ferait echouer la
++        # boucle a coup sur. Il tourne dans l'etage base de donnees, ou la base
++        # jetable existe — c'est la ou sa preuve a un sens.
+         run: |
+           set -u
+-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression').join(' '))")
++          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script').join(' '))")
+           echoues=''
+           for s in $scripts; do
+             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
