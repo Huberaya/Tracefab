@@ -18,7 +18,8 @@ ALTER TABLE supplier_universal_passports
 ALTER TABLE supplier_universal_passports
   ALTER COLUMN disclosed_sections SET DEFAULT '{"sites": false, "certifications": false, "materials": false, "quality_score": false, "contact": false, "exact_addresses": false}'::jsonb;
 UPDATE supplier_universal_passports
-   SET is_public = false
+   SET is_public = false,
+       disclosed_sections = '{"sites": false, "certifications": false, "materials": false, "quality_score": false, "contact": false, "exact_addresses": false}'::jsonb
  WHERE disclosure_confirmed_at IS NULL;
 
 -- New passports start private with no sections disclosed.
