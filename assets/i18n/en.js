@@ -1610,6 +1610,7 @@ window.TF_I18N_BUNDLES.en = {
     spNLegalNameRequired: "The legal name is required.",
     spNRequestSubmittedDemo: "Request submitted in demonstration mode.",
     spNRequestSubmitted: "Request submitted to the brand.",
+    spNPassportSaved: "Passport settings saved.",
     spNAnswerSaved: "Answer saved.",
     spNAnswerSavedDemo: "Answer saved in demonstration mode.",
     spNScoreRecomputed: "Quality score recalculated.",
