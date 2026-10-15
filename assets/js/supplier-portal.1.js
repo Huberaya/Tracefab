@@ -481,7 +481,8 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
       function passportView() {
         const passport = state.passport || {};
         const requests = state.passportRequests || [];
-        return `<div class="page-head"><div><div class="eyebrow">${t('spPassportEyebrow')}</div><h1>${t('spPassportTitle')}</h1><p>${t('spPassportIntro')}</p></div><div class="actions"><button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/passport/">${t('spViewPublicPassport')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${t('spVisibilitySettings')}</h2></div><form id="passport-settings-form"><label class="field-full">${t('spTitle')}<input class="input" name="headline" value="${esc(passport.headline || '')}" placeholder="Responsible textile manufacturing"></label><label><input type="checkbox" name="isPublic" ${passport.isPublic ? 'checked' : ''}> ${t('spPassportPublic')}</label><div class="form-actions"><button class="btn btn-primary">${t('spSaveSettings')}</button></div></form></div><div class="card panel"><div class="panel-head"><h2>${t('spAccessRequests')}</h2><span class="meta">${requests.length}</span></div>${requests.length ? requests.map((request) => `<div class="item"><div class="item-head"><strong>${esc(request.message || t('spFullAccessRequest'))}</strong>${status(request.status)}</div><button class="btn btn-secondary btn-small" data-action="review-passport-request" data-request-id="${esc(request.id)}">${t('spReviewRequest')}</button></div>`).join('') : '<div class="empty"><strong>' + t('spNoAccessRequest') + '</strong></div>'}</div></div>`;
+        const disclosure = passport.disclosedSections || {};
+        return `<div class="page-head"><div><div class="eyebrow">${t('spPassportEyebrow')}</div><h1>${t('spPassportTitle')}</h1><p>${t('spPassportIntro')}</p></div><div class="actions"><button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/passport/">${t('spViewPublicPassport')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${t('spVisibilitySettings')}</h2></div><form id="passport-settings-form"><label class="field-full">${t('spTitle')}<input class="input" name="headline" value="${esc(passport.headline || '')}" placeholder="Responsible textile manufacturing"></label><label><input type="checkbox" name="isPublic" ${passport.isPublic ? 'checked' : ''}> ${t('spPassportPublic')}</label><div class="form-grid" style="margin-top:14px"><label><input type="checkbox" name="discloseSites" ${disclosure.sites ? 'checked' : ''}> Sites</label><label><input type="checkbox" name="discloseCertifications" ${disclosure.certifications ? 'checked' : ''}> Certifications</label><label><input type="checkbox" name="discloseMaterials" ${disclosure.materials ? 'checked' : ''}> Materials</label><label><input type="checkbox" name="discloseQualityScore" ${disclosure.quality_score ? 'checked' : ''}> Quality score</label><label><input type="checkbox" name="discloseContact" ${disclosure.contact ? 'checked' : ''}> Contact details</label><label><input type="checkbox" name="discloseExactAddresses" ${disclosure.exact_addresses ? 'checked' : ''}> Exact addresses (sensitive)</label></div><p class="notice" style="margin-top:10px">A passport remains private until you explicitly save disclosure settings and enable public access. Exact addresses are sensitive and hidden unless separately selected.</p><div class="form-actions"><button class="btn btn-primary">${t('spSaveSettings')}</button></div></form></div><div class="card panel"><div class="panel-head"><h2>${t('spAccessRequests')}</h2><span class="meta">${requests.length}</span></div>${requests.length ? requests.map((request) => `<div class="item"><div class="item-head"><strong>${esc(request.message || t('spFullAccessRequest'))}</strong>${status(request.status)}</div><button class="btn btn-secondary btn-small" data-action="review-passport-request" data-request-id="${esc(request.id)}">${t('spReviewRequest')}</button></div>`).join('') : '<div class="empty"><strong>' + t('spNoAccessRequest') + '</strong></div>'}</div></div>`;
       }
 
       function massBalanceSupplierView() {
@@ -841,7 +842,36 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
         document.getElementById('self-onboarding-form')?.addEventListener('submit', (event) => { event.preventDefault(); submitSelfOnboarding(event.currentTarget).catch((error) => notify(error.message, true)); });
         document.getElementById('document-form')?.addEventListener('submit', (event) => { event.preventDefault(); uploadDocument(event.currentTarget).catch((error) => notify(error.message, true)); });
         document.querySelectorAll('.cap-submit-form').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); submitCapRemediation(event.currentTarget).catch((error) => notify(error.message, true)); }));
-        document.getElementById('passport-settings-form')?.addEventListener('submit', (event) => { event.preventDefault(); notify(t('spNPassportSavedDemo')); });
+        document.getElementById('passport-settings-form')?.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const data = new FormData(form);
+          const disclosedSections = {
+            sites: data.get('discloseSites') === 'on',
+            certifications: data.get('discloseCertifications') === 'on',
+            materials: data.get('discloseMaterials') === 'on',
+            quality_score: data.get('discloseQualityScore') === 'on',
+            contact: data.get('discloseContact') === 'on',
+            exact_addresses: data.get('discloseExactAddresses') === 'on',
+          };
+          const payload = {
+            headline: String(data.get('headline') || ''),
+            isPublic: data.get('isPublic') === 'on',
+            disclosedSections,
+          };
+          try {
+            if (!state.demo) {
+              const result = await api('/api/supplier/passport', { method: 'PATCH', body: JSON.stringify(payload) });
+              state.passport = result.passport;
+            } else {
+              state.passport = { ...(state.passport || {}), ...payload };
+            }
+            notify(state.demo ? t('spNPassportSavedDemo') : (t('spNPassportSaved') || 'Passport settings saved'));
+            render();
+          } catch (error) {
+            notify(error.message, true);
+          }
+        });
         document.getElementById('supplier-tc-form')?.addEventListener('submit', (event) => { event.preventDefault(); notify(t('spNTcDeclaredDemo')); });
         document.querySelectorAll('[data-document-id]').forEach((element) => element.addEventListener('click', () => downloadDocument(element.dataset.documentId).catch((error) => notify(error.message, true))));
       }
