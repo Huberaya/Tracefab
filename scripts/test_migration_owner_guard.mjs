@@ -41,10 +41,12 @@ try {
   await client.query('DROP FUNCTION IF EXISTS public.tracefab_owner_guard_probe()');
   await client.query(`DROP ROLE IF EXISTS ${role}`);
   await client.query(`CREATE ROLE ${role} NOLOGIN`);
+  await client.query(`GRANT CREATE ON SCHEMA public TO ${role}`);
   await client.query(
-    'CREATE FUNCTION public.tracefab_owner_guard_probe() RETURNS boolean LANGUAGE sql AS $$ SELECT true $$',
+    'CREATE FUNCTION public.tracefab_owner_guard_probe() RETURNS boolean LANGUAGE sql AS $ SELECT true $',
   );
   await client.query(`ALTER FUNCTION ${routine} OWNER TO ${role}`);
+  await client.query(`REVOKE CREATE ON SCHEMA public FROM ${role}`);
 
   // Isolate the expected error so the transaction can be cleaned up afterwards.
   await client.query('SAVEPOINT before_owner_guard');
