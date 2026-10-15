@@ -274,12 +274,11 @@ negative_controls() {
   local label="$1"
   echo
   echo "----- CONTROLES NEGATIFS $label -----"
-  # Une seule session psql via stdin : `psql -c` n'exécute qu'une instruction.
+  pg -c "DROP FUNCTION IF EXISTS public.tracefab_audit_negatif()"
+  pg -c "CREATE FUNCTION public.tracefab_audit_negatif() RETURNS int LANGUAGE sql SECURITY DEFINER AS \$f\$ SELECT 1 \$f\$;"
+  pg -c "GRANT EXECUTE ON FUNCTION public.tracefab_audit_negatif() TO PUBLIC;"
   local vue
-  vue="$("${PSQL[@]}" -tA <<'SQL'
-BEGIN;
-CREATE FUNCTION public.tracefab_audit_negatif() RETURNS int LANGUAGE sql SECURITY DEFINER AS $f$ SELECT 1 $f$;
-GRANT EXECUTE ON FUNCTION public.tracefab_audit_negatif() TO PUBLIC;
+  vue="$(pg -tAc "
 SELECT EXISTS (
   SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND p.proname = 'tracefab_audit_negatif' AND p.prosecdef
@@ -287,19 +286,16 @@ SELECT EXISTS (
        SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
         WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
      )
-);
-ROLLBACK;
-SQL
-)"
-  vue="$(printf '%s\n' "$vue" | awk 'NF{v=$0} END{print v}' | tr -d '[:space:]')"
+);")"
+  pg -c "DROP FUNCTION public.tracefab_audit_negatif()"
   [[ "$vue" == "t" ]] || fail "$label: controle negatif GRANT PUBLIC non detecte (vue='$vue')"
   echo "ok    $label: GRANT PUBLIC exprès est vu par aclexplode+acldefault"
   local reste
   reste="$(pg -tAc "
 SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
  WHERE n.nspname = 'public' AND p.proname = 'tracefab_audit_negatif';")"
-  [[ "$reste" == "0" ]] || fail "$label: fonction negatif subsiste apres ROLLBACK"
-  echo "ok    $label: ROLLBACK a efface la sonde"
+  [[ "$reste" == "0" ]] || fail "$label: fonction negatif subsiste apres DROP"
+  echo "ok    $label: DROP a efface la sonde"
 
   # Absence : une liste théorique ne doit pas passer.
   local ghost
