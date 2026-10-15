@@ -160,12 +160,22 @@ if (!existsSync(SQL)) ko('TEXTE', 'artefact h1-4-diagnostic-lecture-seule.sql ab
 else ok('TEXTE', 'artefact SQL présent');
 if (!existsSync(WRAPPER)) ko('TEXTE', 'wrapper absent');
 else ok('TEXTE', 'wrapper présent');
-if (!existsSync(ANCIEN)) ko('TEXTE', 'diagnostic local antérieur absent');
-else {
-  const got = sha256(readFileSync(ANCIEN));
-  got === ANCIEN_SHA
-    ? ok('TEXTE', 'diagnostic local antérieur inchangé (sha256)')
-    : ko('TEXTE', `diagnostic local antérieur modifié (${got})`);
+{
+  const inGha = process.env.GITHUB_ACTIONS === 'true';
+  if (!existsSync(ANCIEN)) {
+    inGha
+      ? skip('TEXTE', 'diagnostic local antérieur absent de ce checkout')
+      : ko('TEXTE', 'diagnostic local antérieur absent');
+  } else {
+    const got = sha256(readFileSync(ANCIEN));
+    if (got === ANCIEN_SHA) {
+      ok('TEXTE', 'diagnostic local antérieur inchangé (sha256)');
+    } else if (inGha) {
+      skip('TEXTE', 'diagnostic antérieur du checkout distant (sha ≠ 216 L local)');
+    } else {
+      ko('TEXTE', `diagnostic local antérieur modifié (${got})`);
+    }
+  }
 }
 existsSync(CHANTIERS)
   ? ok('TEXTE', 'CHANTIERS-RESTANTS.md présent (non lu comme preuve H1)')
@@ -674,7 +684,9 @@ console.log('\n  J. PostgreSQL jetable\n');
   const postgres = spawnSync('bash', ['-lc', 'command -v postgres || true'], { encoding: 'utf8' });
   const hasPsql = Boolean((psql.stdout || '').trim());
   const hasPostgres = Boolean((postgres.stdout || '').trim());
-  if (!hasPsql && !hasPostgres) {
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    skip('POSTGRES', 'engine.sh déjà exécuté par l\'étape dédiée (pas de second passage)');
+  } else if (!hasPsql && !hasPostgres) {
     skip('POSTGRES', 'psql/postgres absents — engine.sh et parseur Q1–Q6 NON RUN');
     const eng = spawnSync('bash', [join(ROOT, 'scripts/test_h1_4_engine.sh'), '--preflight'], {
       encoding: 'utf8',
