@@ -42,7 +42,7 @@ assert(
 assert(
   publicPassportHardeningSql.includes('SET is_public = false')
     && publicPassportHardeningSql.includes('"contact": false')
-    && publicPassportHardeningSql.includes("'exact_addresses': false"),
+    && publicPassportHardeningSql.includes('"exact_addresses": false'),
   'Existing passports must be private until confirmation and new disclosure defaults must be closed',
 );
 for (const section of ['sites', 'certifications', 'materials', 'quality_score', 'contact']) {
