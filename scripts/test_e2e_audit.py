@@ -134,6 +134,22 @@ class EndToEndAuditFailClosedTests(unittest.TestCase):
         self.assertIn("manifest bundle is not referenced", result.stdout)
         self.assertIn("Audit Status: FAIL", result.stdout)
 
+    def test_malformed_manifest_exits_nonzero(self):
+        manifest = self.root / "assets/js/.page-bundles.json"
+        manifest.write_text("{ invalid JSON", encoding="utf-8")
+        result = self.run_audit()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("manifest invalid or missing", result.stdout)
+        self.assertIn("Audit Status: FAIL", result.stdout)
+
+    def test_non_object_manifest_exits_nonzero(self):
+        manifest = self.root / "assets/js/.page-bundles.json"
+        manifest.write_text("[]", encoding="utf-8")
+        result = self.run_audit()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("must contain a JSON object", result.stdout)
+        self.assertIn("Audit Status: FAIL", result.stdout)
+
     def test_missing_manifest_exits_nonzero(self):
         (self.root / "assets/js/.page-bundles.json").unlink()
         result = self.run_audit()
