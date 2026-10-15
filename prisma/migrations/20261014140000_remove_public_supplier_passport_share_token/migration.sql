@@ -7,6 +7,110 @@
 -- Migration additive : ne pas modifier la migration historique 20261006250000.
 BEGIN;
 
+-- Privacy fail-closed: a public passport is not authorized merely because the
+-- legacy creator populated default disclosure flags. Existing passports are
+-- made private until an authenticated supplier explicitly saves disclosure
+-- settings; that action stamps disclosure_confirmed_at.
+ALTER TABLE supplier_universal_passports
+  ADD COLUMN IF NOT EXISTS disclosure_confirmed_at TIMESTAMPTZ;
+ALTER TABLE supplier_universal_passports
+  ALTER COLUMN is_public SET DEFAULT false;
+ALTER TABLE supplier_universal_passports
+  ALTER COLUMN disclosed_sections SET DEFAULT '{"sites": false, "certifications": false, "materials": false, "quality_score": false, "contact": false, "exact_addresses": false}'::jsonb;
+UPDATE supplier_universal_passports
+   SET is_public = false
+ WHERE disclosure_confirmed_at IS NULL;
+
+-- New passports start private with no sections disclosed.
+CREATE OR REPLACE FUNCTION tracefab_get_or_create_supplier_passport(
+  p_supplier_organization_id UUID
+)
+RETURNS supplier_universal_passports
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+DECLARE
+  v_passport supplier_universal_passports;
+  v_supplier_id UUID;
+  v_org_name TEXT;
+  v_clean_slug TEXT;
+  v_share_token TEXT;
+BEGIN
+  IF NOT tracefab_has_org_role(p_supplier_organization_id, ARRAY['owner', 'admin', 'manager', 'contributor', 'viewer']::membership_role[]) THEN
+    RAISE EXCEPTION 'access_denied_supplier_role_required';
+  END IF;
+
+  SELECT * INTO v_passport
+    FROM supplier_universal_passports
+   WHERE supplier_organization_id = p_supplier_organization_id;
+  IF FOUND THEN
+    RETURN v_passport;
+  END IF;
+
+  SELECT id INTO v_supplier_id FROM suppliers WHERE organization_id = p_supplier_organization_id;
+  SELECT COALESCE(display_name, legal_name) INTO v_org_name FROM organizations WHERE id = p_supplier_organization_id;
+
+  v_clean_slug := lower(regexp_replace(COALESCE(v_org_name, 'atelier'), '[^a-zA-Z0-9]+', '-', 'g'));
+  v_clean_slug := trim(both '-' from v_clean_slug);
+  IF length(v_clean_slug) < 3 THEN v_clean_slug := 'supplier'; END IF;
+  v_clean_slug := v_clean_slug || '-' || lower(substr(md5(random()::text), 1, 6));
+  v_share_token := 'pass_' || lower(substr(md5(random()::text || clock_timestamp()::text), 1, 20));
+
+  INSERT INTO supplier_universal_passports (
+    supplier_organization_id, supplier_id, slug, share_token, is_public,
+    headline, trade_secret_mode, disclosed_sections, nda_terms
+  ) VALUES (
+    p_supplier_organization_id, v_supplier_id, v_clean_slug, v_share_token, false,
+    'Partenaire textile engagé · Profil de conformité et traçabilité vérifié sur Tracefab',
+    'redacted',
+    '{"sites": false, "certifications": false, "materials": false, "quality_score": false, "contact": false, "exact_addresses": false}'::jsonb,
+    'Ce profil et ses données vérifiées sont partagés sous réserve du respect du secret d''affaires (Directive UE 2016/943). Toute réutilisation commerciale non autorisée des données industrielles est interdite.'
+  )
+  RETURNING * INTO v_passport;
+  RETURN v_passport;
+END;
+$;
+
+-- Only an authenticated settings update with explicit disclosure choices
+-- establishes consent. Changing headline/public status alone does not.
+CREATE OR REPLACE FUNCTION tracefab_update_supplier_passport(
+  p_supplier_organization_id UUID,
+  p_headline TEXT DEFAULT NULL,
+  p_trade_secret_mode TEXT DEFAULT NULL,
+  p_disclosed_sections JSONB DEFAULT NULL,
+  p_is_public BOOLEAN DEFAULT NULL
+)
+RETURNS supplier_universal_passports
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+DECLARE
+  v_passport supplier_universal_passports;
+BEGIN
+  IF NOT tracefab_has_org_role(p_supplier_organization_id, ARRAY['owner', 'admin', 'manager']::membership_role[]) THEN
+    RAISE EXCEPTION 'access_denied_supplier_admin_required';
+  END IF;
+
+  UPDATE supplier_universal_passports
+     SET headline = COALESCE(p_headline, headline),
+         trade_secret_mode = COALESCE(p_trade_secret_mode, trade_secret_mode),
+         disclosed_sections = COALESCE(p_disclosed_sections, disclosed_sections),
+         disclosure_confirmed_at = CASE
+           WHEN p_disclosed_sections IS NOT NULL THEN now()
+           ELSE disclosure_confirmed_at
+         END,
+         is_public = COALESCE(p_is_public, is_public),
+         updated_at = now()
+   WHERE supplier_organization_id = p_supplier_organization_id
+   RETURNING * INTO v_passport;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'passport_not_found'; END IF;
+  RETURN v_passport;
+END;
+$;
+
 CREATE OR REPLACE FUNCTION tracefab_get_public_supplier_passport(
   p_token_or_slug TEXT
 )
@@ -35,7 +139,8 @@ BEGIN
   SELECT * INTO v_passport
   FROM supplier_universal_passports
   WHERE (share_token = p_token_or_slug OR slug = p_token_or_slug)
-    AND is_public = true;
+    AND is_public = true
+    AND disclosure_confirmed_at IS NOT NULL;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'passport_not_found_or_private';
@@ -63,11 +168,11 @@ BEGIN
 
   -- Récupération des préférences de divulgation
   v_exact_addresses := COALESCE((v_passport.disclosed_sections->>'exact_addresses')::boolean, false);
-  v_show_sites := COALESCE((v_passport.disclosed_sections->>'sites')::boolean, true);
-  v_show_certs := COALESCE((v_passport.disclosed_sections->>'certifications')::boolean, true);
-  v_show_materials := COALESCE((v_passport.disclosed_sections->>'materials')::boolean, true);
-  v_show_score := COALESCE((v_passport.disclosed_sections->>'quality_score')::boolean, true);
-  v_show_contact := COALESCE((v_passport.disclosed_sections->>'contact')::boolean, true);
+  v_show_sites := COALESCE((v_passport.disclosed_sections->>'sites')::boolean, false);
+  v_show_certs := COALESCE((v_passport.disclosed_sections->>'certifications')::boolean, false);
+  v_show_materials := COALESCE((v_passport.disclosed_sections->>'materials')::boolean, false);
+  v_show_score := COALESCE((v_passport.disclosed_sections->>'quality_score')::boolean, false);
+  v_show_contact := COALESCE((v_passport.disclosed_sections->>'contact')::boolean, false);
 
   -- Récupération des sites (avec masquage d'adresse si protection activée)
   IF v_show_sites AND v_supplier.id IS NOT NULL THEN
