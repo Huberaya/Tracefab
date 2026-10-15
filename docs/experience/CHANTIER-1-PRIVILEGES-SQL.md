@@ -45,6 +45,8 @@ Elle révoque `EXECUTE` sur les fonctions du schéma `public` dont le rôle de m
 
 Si `tracefab_app` existe, la migration photographie d'abord les droits `EXECUTE` qui lui sont effectivement accordés avant le changement, puis transfère uniquement les `EXECUTE` déjà accordés à `PUBLIC` sur les routines possédées par le rôle de migration. Les `GRANT` directs existants restent intacts ; les routines qui n'étaient pas accessibles au runtime ne lui sont pas ouvertes par défaut. Pour les tables, vues et séquences, elle transfère individuellement à `tracefab_app` les privilèges `PUBLIC` existants qui lui donnaient déjà un accès effectif, avant de les révoquer. La transaction échoue si l'un des droits d'exécution ou droits relationnels auparavant effectifs est perdu. Sur une base vierge où `tracefab_app` n'existe pas encore, le seed de test attribue ensuite les droits de fixture.
 
+Avant de modifier les ACL, une garde fail-closed refuse également la migration si des fonctions/procédures non-extension ou des relations applicatives exposées à `PUBLIC` appartiennent à un autre rôle que `current_user`. Cette vérification est testée par `scripts/test_migration_owner_guard.mjs`, qui provoque volontairement le cas d'échec sur PostgreSQL jetable et vérifie le message d'erreur. Elle ne prétend pas corriger les objets d'un propriétaire tiers.
+
 Avant de valider la transaction, elle inspecte le catalogue PostgreSQL et échoue si :
 - une fonction applicative de `public` détenue par le rôle de migration reste exécutable par `PUBLIC` ;
 - une table, vue ou séquence applicative détenue par le rôle de migration conserve un privilège accordé à `PUBLIC` ;
@@ -66,6 +68,20 @@ Cette migration est volontairement plus large qu'une liste fixe de fonctions : e
 - les fonctions sensibles et les gardes de déclencheurs explicitement identifiés.
 
 La CI exécute ce test sur un PostgreSQL jetable, après les migrations et avant le seed. Le test n'utilise pas Neon production.
+
+### 5. Migration 20261014140000 — jeton privé et consentement explicite du passeport fournisseur
+
+En plus de retirer `share_token` du JSON public, cette migration ferme une divulgation par défaut découverte dans le code : les passeports hérités étaient publics dès leur création et leurs sections de contact, sites, certifications, matières et score étaient activées par défaut.
+
+- Les passeports existants sans confirmation sont rendus privés et leurs anciens drapeaux automatiques de divulgation sont réinitialisés à `false`.
+- Les nouveaux passeports sont privés et toutes les sections sont désactivées par défaut.
+- La fonction publique refuse tout passeport dont `disclosure_confirmed_at` est nul.
+- Seule une sauvegarde authentifiée de `disclosed_sections` horodate la confirmation ; l'utilisateur doit aussi activer explicitement l'accès public.
+- Le portail fournisseur expose les cases de divulgation et enregistre les choix via le PATCH authentifié.
+
+Conséquence assumée : les fournisseurs doivent réexaminer et réactiver les passeports qui étaient publics avant ce durcissement. Cela évite de traiter les valeurs par défaut historiques comme un consentement démontré.
+
+Le prédiagnostic de rôle/propriétaires en lecture seule est disponible dans [docs/security/tracefab-production-owner-preflight.sql](../security/tracefab-production-owner-preflight.sql). Il doit être exécuté et analysé avant toute opération sur Neon.
 
 ## Conditions de clôture
 
