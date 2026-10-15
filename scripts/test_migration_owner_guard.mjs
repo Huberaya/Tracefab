@@ -47,6 +47,8 @@ try {
   );
   await client.query(`ALTER FUNCTION ${routine} OWNER TO ${role}`);
   await client.query(`REVOKE CREATE ON SCHEMA public FROM ${role}`);
+  // Explicitly recreate the historical vulnerability even though the CI role's default ACL is hardened.
+  await client.query(`GRANT EXECUTE ON FUNCTION ${routine} TO PUBLIC`);
 
   // Isolate the expected error so the transaction can be cleaned up afterwards.
   await client.query('SAVEPOINT before_owner_guard');
