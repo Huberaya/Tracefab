@@ -34,6 +34,24 @@ assert(
   'Public passport JSON must never return the private share token'
 );
 
+assert(
+  publicPassportHardeningSql.includes('disclosure_confirmed_at IS NOT NULL')
+    && publicPassportHardeningSql.includes('WHEN p_disclosed_sections IS NOT NULL THEN now()'),
+  'Public supplier passport must require explicit, authenticated disclosure confirmation',
+);
+assert(
+  publicPassportHardeningSql.includes('SET is_public = false')
+    && publicPassportHardeningSql.includes("'contact': false")
+    && publicPassportHardeningSql.includes("'exact_addresses': false"),
+  'Existing passports must be private until confirmation and new disclosure defaults must be closed',
+);
+for (const section of ['sites', 'certifications', 'materials', 'quality_score', 'contact']) {
+  assert(
+    publicPassportHardeningSql.includes(`v_show_${section === 'certifications' ? 'certs' : section === 'quality_score' ? 'score' : section} := COALESCE((v_passport.disclosed_sections->>'${section}')::boolean, false);`),
+    `Missing fail-closed default for disclosure section: ${section}`,
+  );
+}
+
 console.log('✓ Migration SQL schema, RLS & procedures verified');
 
 // 2. Verify TypeScript library
