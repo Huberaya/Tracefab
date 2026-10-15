@@ -43,7 +43,7 @@ try {
   await client.query(`CREATE ROLE ${role} NOLOGIN`);
   await client.query(`GRANT CREATE ON SCHEMA public TO ${role}`);
   await client.query(
-    'CREATE FUNCTION public.tracefab_owner_guard_probe() RETURNS boolean LANGUAGE sql AS $ SELECT true $',
+    'CREATE FUNCTION public.tracefab_owner_guard_probe() RETURNS boolean LANGUAGE sql AS $probe$ SELECT true $probe$',
   );
   await client.query(`ALTER FUNCTION ${routine} OWNER TO ${role}`);
   await client.query(`REVOKE CREATE ON SCHEMA public FROM ${role}`);
