@@ -46,10 +46,8 @@ env:
   TF_BASE_URL: http://127.0.0.1:3000
 
 jobs:
-  figer:
+  generer:
     name: Regenerer les references dans l'environnement de comparaison
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -85,7 +83,32 @@ jobs:
       - name: Regenerer les references (--maj)
         run: npm run test:regression -- --maj
 
-      - name: Pousser les references sur la branche
+      - name: Archiver les references
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: references-regression-visuelle
+          path: tests/regression/reference
+          retention-days: 30
+
+  pousser:
+    name: Pousser les references
+    needs: generer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/download-artifact@fae9efe9ad56af0ba3a2d23836e0f1b4d2429b96 # v4.1.8
+        with:
+          name: references-regression-visuelle
+          path: tests/regression/reference
+      - name: Commit et push
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -94,12 +117,6 @@ jobs:
             echo "Aucune reference modifiee : rien a pousser."
           else
             git commit -m "reference visuelle : regeneree dans l'environnement CI"
-            git push
+            git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
           fi
 
-      - name: Archiver les references
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: references-regression-visuelle
-          path: tests/regression/reference
-          retention-days: 30
