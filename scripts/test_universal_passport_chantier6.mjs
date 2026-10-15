@@ -130,6 +130,15 @@ assert(
   'fr.json portal.spPassportTitle must keep the original French wording'
 );
 assert(supplierPortal.includes('passport-settings-form'), 'Supplier portal must have settings form');
+const supplierPortalBundle = fs.readFileSync(path.resolve('assets/js/supplier-portal.1.js'), 'utf8');
+for (const field of ['discloseSites', 'discloseCertifications', 'discloseMaterials', 'discloseQualityScore', 'discloseContact', 'discloseExactAddresses']) {
+  assert(supplierPortalBundle.includes(`name="${field}"`), `Supplier portal must expose explicit disclosure control: ${field}`);
+}
+assert(
+  supplierPortalBundle.includes("api('/api/supplier/passport', { method: 'PATCH'")
+    && supplierPortalBundle.includes('disclosedSections'),
+  'Supplier portal must persist explicit disclosure settings through the authenticated API',
+);
 assert(supplierPortal.includes('review-passport-request'), 'Supplier portal must have review request action');
 console.log('✓ Supplier Portal UI/UX integration verified');
 
