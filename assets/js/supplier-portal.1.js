@@ -861,7 +861,8 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
           };
           try {
             if (!state.demo) {
-              const result = await api('/api/supplier/passport', { method: 'PATCH', body: JSON.stringify(payload) });
+              const organizationQuery = state.selectedOrganizationId ? `?organizationId=${encodeURIComponent(state.selectedOrganizationId)}` : '';
+              const result = await api(`/api/supplier/passport${organizationQuery}`, { method: 'PATCH', body: JSON.stringify(payload) });
               state.passport = result.passport;
             } else {
               state.passport = { ...(state.passport || {}), ...payload };
