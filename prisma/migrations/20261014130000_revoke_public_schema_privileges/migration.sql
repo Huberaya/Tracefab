@@ -21,6 +21,81 @@
 
 BEGIN;
 
+-- Fail closed si le rôle de migration ne possède pas tous les objets applicatifs
+-- qui portent encore des privilèges PUBLIC. Sans cette garde, les REVOKE ciblés
+-- par current_user pourraient réussir tout en laissant intacts des objets
+-- TraceFab possédés par un autre rôle (ex. neondb_owner ou postgres).
+-- Les routines appartenant réellement à une extension PostgreSQL sont exclues.
+DO $owner_guard$
+DECLARE
+  foreign_routines text;
+  foreign_relations text;
+BEGIN
+  SELECT string_agg(
+           format('%s (propriétaire %I)', p.oid::regprocedure, pg_get_userbyid(p.proowner)),
+           ', ' ORDER BY p.oid::regprocedure::text
+         )
+    INTO foreign_routines
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public'
+     AND p.prokind IN ('f', 'p')
+     AND p.proowner <> (SELECT oid FROM pg_roles WHERE rolname = current_user)
+     AND EXISTS (
+       SELECT 1
+         FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+     )
+     AND NOT EXISTS (
+       SELECT 1
+         FROM pg_depend d
+         JOIN pg_extension e ON e.oid = d.refobjid
+        WHERE d.classid = 'pg_proc'::regclass
+          AND d.objid = p.oid
+          AND d.refclassid = 'pg_extension'::regclass
+          AND d.deptype = 'e'
+     );
+
+  IF foreign_routines IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Migration refusée : des routines non-extension avec EXECUTE PUBLIC ne sont pas détenues par le rôle de migration % : %. Exécuter sous le propriétaire approprié ou résoudre explicitement les propriétaires avant de poursuivre.',
+      current_user, foreign_routines;
+  END IF;
+
+  SELECT string_agg(
+           format('%I (propriétaire %I)', c.oid::regclass, pg_get_userbyid(c.relowner)),
+           ', ' ORDER BY c.oid::regclass::text
+         )
+    INTO foreign_relations
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+     AND c.relowner <> (SELECT oid FROM pg_roles WHERE rolname = current_user)
+     AND c.relacl IS NOT NULL
+     AND EXISTS (
+       SELECT 1
+         FROM aclexplode(c.relacl) acl
+        WHERE acl.grantee = 0
+     )
+     AND NOT EXISTS (
+       SELECT 1
+         FROM pg_depend d
+         JOIN pg_extension e ON e.oid = d.refobjid
+        WHERE d.classid = 'pg_class'::regclass
+          AND d.objid = c.oid
+          AND d.refclassid = 'pg_extension'::regclass
+          AND d.deptype = 'e'
+     );
+
+  IF foreign_relations IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Migration refusée : des relations non-extension avec privilèges PUBLIC ne sont pas détenues par le rôle de migration % : %. Résoudre les propriétaires avant de poursuivre.',
+      current_user, foreign_relations;
+  END IF;
+END
+$owner_guard$;
+
 -- Photographier les droits effectifs du runtime AVANT de retirer PUBLIC.
 -- Si l'application ne dispose que des droits hérités de PUBLIC, ces droits
 -- sont transférés explicitement à tracefab_app avant la révocation. Cela évite
