@@ -1,0 +1,93 @@
+# TRACEFAB — H1.4 diagnostic lecture seule sur PostgreSQL 17 jetable.
+#
+# Workflow DEDIE : n'embarque pas le diff preexistant de ci.yml.
+# Aucun secret. Aucune URL de connexion. Aucune migration ni seed applicatif.
+# Si un artefact H1.4 manque au checkout, le job ECHOUE (pas un succes silencieux).
+#
+name: H1.4 — Postgres 17 jetable
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - 'docs/security/h1-4-diagnostic-lecture-seule.sql'
+      - 'docs/security/h1-4-MODE-OPERATOIRE.md'
+      - 'scripts/run_h1_4_diagnostic_readonly.sh'
+      - 'scripts/test_h1_4_engine.sh'
+      - 'scripts/test_h1_4_diagnostic.mjs'
+      - '.github/workflows/h1-4-postgres.yml'
+  push:
+    paths:
+      - 'docs/security/h1-4-diagnostic-lecture-seule.sql'
+      - 'docs/security/h1-4-MODE-OPERATOIRE.md'
+      - 'scripts/run_h1_4_diagnostic_readonly.sh'
+      - 'scripts/test_h1_4_engine.sh'
+      - 'scripts/test_h1_4_diagnostic.mjs'
+      - '.github/workflows/h1-4-postgres.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: h14-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  h14-lecture-seule:
+    name: H1.4 — lecture seule Postgres 17 jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tracefab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TRACEFAB_H1_4_MODE: jetable
+      TRACEFAB_H1_4_CIBLE: locale
+      TRACEFAB_H1_4_CONFIRM_READONLY: oui
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: tracefab_test
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: Artefacts H1.4 presents dans le checkout
+        run: |
+          test -f docs/security/h1-4-diagnostic-lecture-seule.sql
+          test -f docs/security/h1-4-MODE-OPERATOIRE.md
+          test -f scripts/run_h1_4_diagnostic_readonly.sh
+          test -f scripts/test_h1_4_engine.sh
+          test -f scripts/test_h1_4_diagnostic.mjs
+
+      - name: Installer le client psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Verifier psql
+        run: command -v psql && psql --version
+
+      - name: Preflight cible jetable (aucune connexion)
+        run: bash scripts/test_h1_4_engine.sh --preflight
+
+      - name: Epreuves moteur H1.4 (psql, Postgres 17)
+        run: bash scripts/test_h1_4_engine.sh
+
+      - name: Controles statiques H1.4
+        run: node scripts/test_h1_4_diagnostic.mjs
