@@ -1993,6 +1993,7 @@
     "spNAnswerSavedDemo": "Antwort im Demonstrationsmodus gespeichert.",
     "spNScoreRecomputed": "Qualitätsscore neu berechnet.",
     "spNScoreRecomputedDemo": "Qualitätsscore im Demonstrationsmodus neu berechnet.",
+    "spNPassportSaved": "Passeinstellungen gespeichert.",
     "spNPassportSavedDemo": "Passeinstellungen im Demonstrationsmodus gespeichert.",
     "spNPassportReviewedDemo": "Passanfrage im Demonstrationsmodus geprüft.",
     "spNTcDeclaredDemo": "Transaktionszertifikat im Demonstrationsmodus deklariert.",
