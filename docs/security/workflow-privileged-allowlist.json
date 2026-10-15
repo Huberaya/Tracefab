@@ -15,7 +15,7 @@
   "secretUsingWorkflows": {
     "vercel-log-search.yml": {
       "secret": "VERCEL_READONLY_TOKEN",
-      "portee": "job `recherche` uniquement ; secret d'environnement `vercel-log-search` avec relecteurs obligatoires ; déclenchement manuel uniquement, aucun déclencheur push",
+      "portee": "job `recherche` uniquement ; exécution limitée à `refs/heads/main` par condition de job ; secret d'environnement `vercel-log-search` avec relecteurs obligatoires ; déclenchement manuel uniquement, aucun déclencheur push",
       "justification": "Retrouver la ligne de journal qui manque au diagnostic du chantier 5 : l'environnement d'analyse n'a aucun acces reseau a api.vercel.com (HTTP 000 mesure le 2026-10-12), donc la lecture doit partir d'un environnement qui l'a. Aucun autre moyen ne permet d'atteindre Vercel depuis la session d'analyse.",
       "lecture_seule": "Le script appele n'emet que des GET. Une interception de test hors ligne (npm run test:diagnose-incident) prouve qu'aucune autre methode n'est construite et qu'aucun hote autre que api.vercel.com n'est joint.",
       "rotation": "Jeton dedie, distinct de tout jeton d'administration, revoque des la ligne recuperee ; l'environnement ne doit pas conserver le secret apres le diagnostic.",
@@ -36,7 +36,7 @@
       "environnement": "vercel-log-search",
       "job": "recherche",
       "pourquoi": "Le workflow ne doit pas lire ce secret sur un push de branche. Le déclenchement est manuel uniquement ; l'environnement avec relecteurs obligatoires doit être vérifié avant toute exécution, faute de quoi le secret pourrait être exposé.",
-      "reglage_attendu": "Settings > Environments > vercel-log-search > Required reviewers : le proprietaire. Sans ce reglage, l'environnement n'ajoute aucune barriere et le secret equivaut a un secret de depot."
+      "reglage_attendu": "Settings > Environments > vercel-log-search > Required reviewers : le proprietaire. Le workflow refuse aussi toute référence autre que refs/heads/main. Sans le réglage de relecteurs, la condition de branche ne remplace pas l'approbation de l'environnement."
     }
   },
   "//horsPerimetre": "Le workflow `figer-reference-visuelle.yml` porte `contents: write` mais n'existe pas sur la branche de reference : il vit sur `arena/91844ee9-tracefab` (branche de la PR #34). Ce registre ne couvre que les fichiers presents dans l'arbre analyse. Sa neutralisation est preparee dans docs/security/PHASE-1-PIPELINE-GITHUB.md."
