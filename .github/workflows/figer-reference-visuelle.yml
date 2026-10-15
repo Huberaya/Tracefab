@@ -63,9 +63,6 @@ jobs:
       - name: Installer les dependances
         run: npm ci
 
-      - name: Generer le client Prisma
-        run: npm run db:generate
-
       - name: Installer Chromium pour Playwright (repli du navigateur epingle)
         run: npx playwright install --with-deps chromium
 
