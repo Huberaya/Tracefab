@@ -135,7 +135,7 @@ for (const field of ['discloseSites', 'discloseCertifications', 'discloseMateria
   assert(supplierPortalBundle.includes(`name="${field}"`), `Supplier portal must expose explicit disclosure control: ${field}`);
 }
 assert(
-  supplierPortalBundle.includes("api('/api/supplier/passport', { method: 'PATCH'")
+  supplierPortalBundle.includes("api(`/api/supplier/passport${organizationQuery}`, { method: 'PATCH'")
     && supplierPortalBundle.includes('disclosedSections'),
   'Supplier portal must persist explicit disclosure settings through the authenticated API',
 );
