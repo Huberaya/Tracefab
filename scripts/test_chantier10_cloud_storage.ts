@@ -80,6 +80,15 @@ console.log('\n[TEST 3] Testing Safe Filename & Storage Key Sanitization...');
 // 4. API Endpoints Contract Verification
 console.log('\n[TEST 4] Testing API Route Exports & Contracts...');
 {
+  // Point d'injection documente de api/_lib/prisma.js : un import de route
+  // cree le singleton Prisma. Sans base de donnees ici, un stub suffit — le
+  // test ne fait qu'importer les handlers et verifier leur signature.
+  if (!globalThis.tracefabPrisma) {
+    globalThis.tracefabPrisma = new Proxy({}, {
+      get: () => { throw new Error('test_chantier10: acces base interdit dans ce test statique'); },
+    });
+  }
+
   const supplierUsage = await import('../api/_routes/supplier/storage/usage.ts');
   const brandUsage = await import('../api/_routes/organization/storage/usage.ts');
   const brandUpload = await import('../api/_routes/documents/upload-intent.ts');

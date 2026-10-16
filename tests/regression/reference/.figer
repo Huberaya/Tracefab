@@ -1,0 +1,8 @@
+# Marqueur de figage de la reference visuelle.
+#
+# Ajouter une ligne dattee a ce fichier et pousser declenche le workflow
+# `figer-reference-visuelle` : les references de tests/regression/reference/
+# sont regenerees DANS l'environnement de comparaison (CI) et poussees sur la
+# branche. Voir .github/workflows/figer-reference-visuelle.yml.
+#
+# 2026-10-09 — figage initial (fontes statiques + navigateur epingle).

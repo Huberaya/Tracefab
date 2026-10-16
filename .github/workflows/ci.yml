@@ -344,6 +344,15 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
+      - name: Provenance DPP / Wallet
+        run: npm run test:neon:dpp-provenance
+
+      - name: Provisionnement auth runtime
+        run: npm run test:neon:auth-provisioning
+
+      - name: Deploiement publication explicite (jetable)
+        run: npm run test:neon:deploiement-publication
+
       - name: Audit en lecture seule — la session ne peut pas ecrire
         # La lecture seule est appliquee par le serveur, et le test le prouve
         # en TENTANT une ecriture : elle doit etre refusee avec « read-only

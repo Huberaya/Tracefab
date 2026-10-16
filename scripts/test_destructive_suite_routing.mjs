@@ -54,7 +54,11 @@ const WRITE_PATTERNS = [
  */
 const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_neon_security.mjs',
+  'scripts/test_rls_isolation.mjs',
   'scripts/test_migration_owner_guard.mjs',
+  'scripts/test_neon_dpp_provenance.mjs',
+  'scripts/test_neon_auth_provisioning.mjs',
+  'scripts/test_neon_publication_deploiement.mjs',
   'scripts/test_neon_supplier_flow.mjs',
   'scripts/test_neon_supplier_advanced.mjs',
   'scripts/test_neon_product_flow.mjs',
@@ -103,7 +107,6 @@ const UNWIRED_DESTRUCTIVE_REGISTER = [
 
 /** Suites de base en lecture seule : pas de garde necessaire, mais declarees. */
 const READ_ONLY_DB_SUITES = [
-  'scripts/test_rls_isolation.mjs',        // epreuve d'isolation, uniquement des SELECT
   'scripts/audit_neon_readonly.mjs',       // audit de privileges, uniquement des SELECT de catalogue
 ];
 

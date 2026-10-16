@@ -147,20 +147,41 @@ garde-fou.
 
 **Corrigé depuis la version précédente de ce dossier.** La limitation de débit
 y était déclarée absente, et présentée comme notre exposition principale. Elle
-est en place et appliquée dans le routeur d'API (réponse `429` et en-têtes
-`RateLimit-*`) :
+est en place et appliquée dans le routeur d'API (réponses `429`/`503` et
+en-têtes `RateLimit-*`) :
 
-| Classe d'appel | Budget | Fenêtre |
-|---|---:|---|
-| Lecture publique (dont passeport et DPP) | 120 | par minute |
-| Cartes wallet | 20 | par minute |
-| Écriture publique | 10 | par 5 minutes |
-| Appel authentifié | 600 | par minute |
+| Classe d'appel | Budget | Fenêtre | Compteur indisponible |
+|---|---:|---|---|
+| Lecture publique (dont passeport et DPP) | 120 | par minute | servi (fail-open, étage mémoire) |
+| Cartes wallet | 20 | par minute | **refusé** (503, fail-closed) |
+| Écriture publique (demande d'accès…) | 10 | par 5 minutes | **refusé** (503, fail-closed) |
+| Appel authentifié **vérifié** | 600 | par minute | servi (fail-open, étage mémoire) |
 
-Exemptés : `health`, `internal/*`, `webhooks/*`. Le limiteur est *fail-open* :
-s'il ne peut pas statuer, il laisse passer plutôt que de bloquer le service, et
-se met en quarantaine 30 secondes. C'est un choix de disponibilité, assumé et
-écrit ici.
+Exemptés : `health`, `internal/*`, `webhooks/*`.
+
+Deux règles structurent ce tableau, et elles ont changé depuis la version
+précédente :
+
+1. **Un en-tête n'achète aucun budget.** La classe d'une requête suit le coût
+   et la sensibilité de la route, jamais la simple présence d'un
+   `Authorization`. Le budget « authentifié » n'est accordé qu'après
+   vérification cryptographique du jeton (signature Clerk, résultat mémoïsé
+   60 s) ; un jeton faux ou invérifiable reste dans le budget public de la
+   route. Auparavant, n'importe quel en-tête non vide passait la requete en
+   budget 600/min — y compris sur les routes Wallet et la demande d'accès
+   anonyme.
+2. **La panne du compteur partage a un comportement par criticité.** Un
+   compteur PostgreSQL injoignable ne doit pas devenir un accélérateur
+   d'abus : les écritures anonymes et les générations de cartes (CPU coûteux)
+   sont refusées en `503` pendant la panne ; les lectures publiques et les
+   utilisateurs déjà vérifiés continuent d'être servis par l'étage mémoire,
+   qui reste borné par instance. Ce n'est plus un « fail-open » général : c'est
+   un arbitrage écrit, testé (`npm run test:rate-limit`), et aligné sur le fait
+   que ces routes écrivent ou signent — deux actions qui ont de toute façon
+   besoin de la base pour aboutir.
+
+Le limiteur se met en quarantaine 30 secondes après un échec du compteur, pour
+ne pas pénaliser la latence de chaque requête suivante.
 
 ---
 

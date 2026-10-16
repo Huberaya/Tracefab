@@ -1,36 +1,45 @@
-import type { DppPassData } from './types.js';
+import type { DppPassData, SourcedField } from './types.js';
+
+function demo<T>(value: T): SourcedField<T> {
+  return { value, status: 'unverified', source: 'demo-fallback' };
+}
 
 export function getFallbackDppData(identifierOrId: string): DppPassData {
   const cleanId = String(identifierOrId || '3760123456789').trim();
-
+  const gtin = cleanId.length === 13 ? cleanId : '3760123456789';
   return {
     productId: 'demo-prod-essentiel-001',
-    brandName: 'Atelier Demo',
-    brandLegalName: 'Atelier Demo SAS',
-    productName: 'Essentiel Coton Biologique',
-    productReference: 'AT-ESS-001',
-    sku: 'AT-ESS-001-NVY-M',
-    gtin: cleanId.length === 13 ? cleanId : '3760123456789',
-    serialNumber: `DPP-${cleanId}-2026-FW`,
-    category: 'T-Shirt & Maille',
-    countryOfManufacture: 'PT',
-    countryOfDesign: 'FR',
-    weightGrams: 185,
-    certifiedComposition: '100% Coton Biologique Régénératif',
+    productName: demo('Essentiel Coton Biologique'),
+    productReference: demo('AT-ESS-001'),
+    sku: demo('AT-ESS-001-NVY-M'),
+    gtin: demo(gtin),
+    serialNumber: demo(`DPP-${cleanId}-2026-FW`),
+    category: demo('T-Shirt & Maille'),
+    brandName: demo('Atelier Demo'),
+    countryOfManufacture: demo('PT'),
+    countryOfDesign: demo('FR'),
+    weightGrams: demo(185),
+    composition: demo('100% Coton Biologique'),
     materials: [
-      { name: 'Coton Biologique GOTS', percentage: 100, role: 'Tissu principal', originCountry: 'TR' }
+      {
+        name: demo('Coton Biologique GOTS'),
+        percentage: demo(100),
+        role: demo('Tissu principal'),
+        originCountry: demo('TR'),
+      },
     ],
-    pefScore: 84,
-    pefGrade: 'A',
-    carbonFootprintKgCo2e: 2.15,
-    waterScarcityM3: 1.48,
-    circularityScore: 92,
-    dppUrl: `https://tracefab.vercel.app/dpp/`,
-    digitalLinkUri: `https://id.tracefab.com/01/${cleanId.length === 13 ? cleanId : '03760123456789'}/21/2026-FW-001`,
-    verificationDate: '2026-10-01',
-    transactionCertificateNumber: 'TC-CU-881294-GOTS-2026',
-    supplyChainSummary: 'Ferme Izmir (TR) ➔ Filature Haute-Vienne (FR) ➔ Tricotage Barcelos (PT) ➔ Confection Braga (PT) ➔ Hub Lyon (FR)',
-    careInstructions: 'Lavage délicat à 30°C sur envers. Séchage à plat. Réparable via notre réseau partenaire (Bonus Refashion éligible).',
-    recyclingInstructions: 'Produit monomatériau 100% recyclable. Déposer en borne textile Refashion ou renvoyer en boutique.'
+    supplyChainSummary: demo('Ferme Izmir (TR) -> Filature (FR) -> Confection (PT)'),
+    pefScore: demo(84),
+    pefGrade: demo('A'),
+    carbonFootprintKgCo2e: demo(2.15),
+    waterScarcityM3: demo(1.48),
+    circularityScore: demo(92),
+    verificationDate: demo('2026-10-01'),
+    transactionCertificateNumber: demo('TC-CU-881294-GOTS-2026'),
+    careInstructions: demo('Lavage delicat 30C. Sechage a plat.'),
+    recyclingInstructions: demo('Produit monomateriau recyclable. Borne textile Refashion.'),
+    dppUrl: 'https://tracefab.vercel.app/dpp/',
+    digitalLinkUri: demo('https://id.tracefab.com/01/' + gtin + '/21/2026-FW-001'),
+    presentation: { source: 'empty', sourcedFieldCount: 0, missingFieldCount: 1 },
   };
 }
