@@ -69,6 +69,14 @@ Colonne **Criticité** :
 | `TRACEFAB_ERROR_WEBHOOK_TIMEOUT_MS` | réglage | Délai d'attente, 500 à 10 000 ms | 3 000 ms |
 | `TRACEFAB_READINESS_PROBE_TIMEOUT_MS` | réglage | Délai des sondes de disponibilité, 1 000 à 15 000 ms | 4 000 ms |
 
+## Résolution publique DPP
+
+| Variable | Criticité | Rôle | Conséquence si absente |
+|---|---|---|---|
+| `TRACEFAB_PUBLIC_BASE_URL` | fonctionnelle | Origine HTTPS canonique encodée dans les QR DPP, sans barre finale | `https://tracefab.com` est utilisé ; à définir explicitement pour tout autre domaine public |
+
+La valeur est validée comme URL HTTPS. Le header HTTP `Host` n’est jamais utilisé pour construire un QR, afin d’éviter qu’une requête forgée injecte un domaine tiers sur une étiquette.
+
 ## Cartes de portefeuille numérique
 
 | Variable | Criticité | Rôle | Conséquence si absente |
