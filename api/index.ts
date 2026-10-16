@@ -76,6 +76,7 @@ const routes: Route[] = [
   { pattern: /^green\-claims\/rules$/, params: [], load: () => import('./_routes/green-claims/rules.js') },
   { pattern: /^products\/([^\/]+)\/dpp\/publish\-review$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/publish-review.js') },
   { pattern: /^products\/([^\/]+)\/dpp\/publication$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/publication.js') },
+  { pattern: /^products\/([^\/]+)\/dpp\/quality\-check$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/quality-check.js') },
   { pattern: /^products\/([^\/]+)\/dpp\/claims\/([^\/]+)\/evidence$/, params: ['productId','claimId'], load: () => import('./_routes/products/[productId]/dpp/claims/[claimId]/evidence.js') },
   { pattern: /^products\/([^\/]+)\/dpp\/claims$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/claims.js') },
   { pattern: /^products\/([^\/]+)\/dpp\/events$/, params: ['productId'], load: () => import('./_routes/products/[productId]/dpp/events.js') },
