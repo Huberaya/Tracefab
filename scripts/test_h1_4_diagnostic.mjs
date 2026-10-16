@@ -691,8 +691,8 @@ function leaked(out) {
     && /postgresql-client/.test(wf)
     && /node-version: '20'/.test(wf)
     && /Artefacts H1.4 presents/.test(wf)
-    && /actions\/checkout@[0-9a-f]{39,40}/.test(wf)
-    && /actions\/setup-node@[0-9a-f]{39,40}/.test(wf)
+    && /actions\/checkout@[0-9a-f]{40}/.test(wf)
+    && /actions\/setup-node@[0-9a-f]{40}/.test(wf)
     ? ok('TEXTE', 'workflow dédié h1-4-postgres.yml : PG17+PG18 (matrix), Node 20, artefacts, pas de secret/migrate')
     : ko('TEXTE', 'workflow dédié h1-4-postgres.yml absent ou non isolé');
   existsSync(join(ROOT, 'scripts/test_h1_4_engine.sh'))
