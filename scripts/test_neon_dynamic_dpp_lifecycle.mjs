@@ -58,6 +58,17 @@ try {
     `SELECT * FROM tracefab_set_dpp_publication($1,'publish','dpp-live-001')`,[U.product]));
   check(published.rows[0].readiness_status==='published','revue vers publication executee en transaction');
   check((await admin.query('SELECT public_slug FROM tracefab_products WHERE id=$1',[U.product])).rows[0].public_slug==='dpp-live-001','identifiant public stable pose');
+  const identity=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_create_dpp_identity($1,'dpp-model-stable-001','model',NULL)`,[U.product]));
+  check(identity.rows[0].granularity==='model','identité résolvable créée à granularité modèle');
+  const replaced=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_replace_dpp_identity($1,'dpp-model-stable-002','Erreur association initiale')`,[identity.rows[0].id]));
+  check(replaced.rows[0].status==='replaced'&&replaced.rows[0].replaced_by_id,'ancien identifiant conservé comme remplacé');
+  const replacement=(await admin.query('SELECT * FROM dpp_resolvable_identifiers WHERE id=$1',[replaced.rows[0].replaced_by_id])).rows[0];
+  check(replacement.public_id==='dpp-model-stable-002'&&replacement.status==='active','remplaçant créé atomiquement avec portée identique');
+  let foreignIdentity=false;try{await context(U.userB,'cycle-b@test.invalid',()=>app.query(
+    `SELECT tracefab_create_dpp_identity($1,'dpp-foreign-attempt','model',NULL)`,[U.product]));}catch(e){foreignIdentity=String(e.message).includes('dpp_identity_role_required');}
+  check(foreignIdentity,'autre organisation ne peut créer une identité sur le produit');
 
   const visible=await publicContext(()=>app.query('SELECT id FROM tracefab_products WHERE id=$1',[U.product]));
   check(visible.rowCount===1,'produit publie resolvable en contexte anonyme');
