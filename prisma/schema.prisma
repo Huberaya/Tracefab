@@ -504,7 +504,6 @@ model dpp_resolvable_identifiers {
   created_at            DateTime @default(now()) @db.Timestamptz(6)
   retired_at            DateTime? @db.Timestamptz(6)
   reason                String?
-  @@unique([product_id, granularity, qualifier])
   @@index([product_id, status], map: "idx_dpp_resolvable_product")
 }
 

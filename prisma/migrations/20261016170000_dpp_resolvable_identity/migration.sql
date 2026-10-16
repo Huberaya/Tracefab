@@ -9,11 +9,10 @@ CREATE TABLE dpp_resolvable_identifiers (
  created_by UUID REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
  retired_at TIMESTAMPTZ, reason TEXT,
  CHECK((status='replaced' AND replaced_by_id IS NOT NULL) OR (status<>'replaced' AND replaced_by_id IS NULL)),
- CHECK(status='active' OR length(trim(COALESCE(reason,'')))>0),
- UNIQUE(product_id,granularity,qualifier)
+ CHECK(status='active' OR length(trim(COALESCE(reason,'')))>0)
 );
 CREATE INDEX idx_dpp_resolvable_product ON dpp_resolvable_identifiers(product_id,status);
-CREATE UNIQUE INDEX idx_dpp_resolvable_scope_unique ON dpp_resolvable_identifiers(product_id,granularity,COALESCE(qualifier,''));
+CREATE UNIQUE INDEX idx_dpp_resolvable_scope_unique ON dpp_resolvable_identifiers(product_id,granularity,COALESCE(qualifier,'')) WHERE status='active';
 ALTER TABLE dpp_resolvable_identifiers ENABLE ROW LEVEL SECURITY;ALTER TABLE dpp_resolvable_identifiers FORCE ROW LEVEL SECURITY;
 CREATE POLICY dpp_identity_private_select ON dpp_resolvable_identifiers FOR SELECT USING(tracefab_can_access_org(owner_organization_id));
 CREATE POLICY dpp_identity_public_select ON dpp_resolvable_identifiers FOR SELECT USING(tracefab_public_context() AND tracefab_product_is_public(product_id));
