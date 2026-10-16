@@ -58,9 +58,14 @@ const controle = (titre, vrai, detail = '') => {
   const sansFonte = SURFACES.filter((f) => {
     const html = readFileSync(f, 'utf8');
     const chargeFontsCss = /href="\/assets\/css\/fonts\.css(\?v=[0-9a-f]+)?"/.test(html);
-    return !(declareInterTight && chargeFontsCss) && !/Inter\+Tight/.test(html);
+    const dependanceDistante = /https:\/\/fonts\.(?:googleapis|gstatic)\.com\//.test(html);
+    return !(declareInterTight && chargeFontsCss) || dependanceDistante;
   });
-  controle('les surfaces chargent toutes la fonte Inter Tight', sansFonte.length === 0, sansFonte.join(', '));
+  controle(
+    'les surfaces chargent les fontes locales versionnées sans CDN distant',
+    sansFonte.length === 0,
+    sansFonte.join(', '),
+  );
 
   const brutes = SURFACES.filter((f) => /font-family:\s*Inter\s*,/i.test(readFileSync(f, 'utf8')));
   controle('aucune surface ne redeclare « Inter » en dur', brutes.length === 0, brutes.join(', '));
