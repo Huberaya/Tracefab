@@ -157,6 +157,15 @@ jobs:
         if: failure()
         run: tail -n 60 /tmp/*.log || true
 
+      - name: Captures de regression visuelle pour revue
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: regression-visuelle-captures
+          path: tests/regression/current/
+          if-no-files-found: warn
+          retention-days: 7
+
   # ------------------------------------------------------------ 3. parcours
   parcours:
     name: Parcours — navigateur reel
