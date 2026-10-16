@@ -2,7 +2,7 @@
 
 ## A. Verdict général
 
-**PARTIELLEMENT VALIDÉ** — Les fondations d'un passeport vivant ont été livrées : événements append-only, corrections explicites, niveaux de confiance, publication/retrait transactionnels, historique public en liste blanche et contrôles tenant/rôle. Les assertions statiques et tests existants ciblés passent. La migration n'a pas été appliquée sur une base jetable ni en production ; le parcours PostgreSQL réel et l'interface chronologique restent donc à valider.
+**PARTIELLEMENT VALIDÉ** — Les fondations d'un passeport vivant ont été livrées : événements append-only, corrections explicites, niveaux de confiance, publication/retrait transactionnels, historique public en liste blanche et contrôles tenant/rôle. La migration et un parcours de 20 preuves ont été exécutés avec succès en CI sur PostgreSQL 17 jetable, sous le rôle runtime sans `BYPASSRLS`. L'interface chronologique, l'invalidation CDN et la validation dans un environnement de préproduction restent ouvertes ; aucune opération de production n'a été effectuée.
 
 ## B. État initial
 
@@ -52,7 +52,7 @@
 - Les preuves sont des documents appartenant au tenant, associés explicitement à l'événement.
 - Les niveaux de confiance ne sont pas calculés comme un score arbitraire.
 - La vue publique ne sélectionne que type, dates, niveau de validation et résumé explicitement public.
-- Exécuté : tests statiques et tests de registre de routes/readiness. Non exécuté : migration sur PostgreSQL et scénario E2E DB.
+- Exécuté : tests statiques, registre de routes/readiness et scénario PostgreSQL réel `test:neon:dpp-lifecycle` : revue, publication, résolution anonyme, preuve, rejeu idempotent, correction, refus cross-tenant, append-only, suspension et conservation de l'historique.
 
 ## E. Sécurité
 
@@ -68,15 +68,16 @@ Contrôles livrés :
 - audit des transitions ;
 - limites d'entrée, maximum 50 preuves et 200 événements retournés.
 
-Risques ouverts : politiques et fonctions non exécutées sur PostgreSQL jetable ; délai cache public maximal de 60 secondes après retrait ; pas d'antivirus ajouté ; intervention d'un propriétaire DB non cryptographiquement empêchée.
+Risques ouverts : délai cache public maximal de 60 secondes après retrait ; pas d'antivirus ajouté ; intervention d'un propriétaire DB non cryptographiquement empêchée. Les politiques et fonctions ont été exécutées sur PostgreSQL 17 jetable, mais pas encore dans un environnement de préproduction persistant.
 
 ## F. Tests et CI
 
-Commit testé : état de travail précédant le commit final, puis vérifications finales à reporter dans l'historique Git.
+Commit testé par la CI : `b3075f7`.
 
 | Commande | Résultat | Limite |
 |---|---|---|
-| `node scripts/test_dynamic_dpp_lifecycle.mjs` | PASS, 20 assertions | statique, pas PostgreSQL |
+| `npm run test:dpp:lifecycle` | PASS, 22 assertions | contrats statiques de sécurité |
+| `npm run test:neon:dpp-lifecycle` | PASS CI, 20 preuves | PostgreSQL 17 jetable, rôle `tracefab_app`, zéro mock |
 | `npm run test:routes` | PASS, 127 routes/fichiers | registre statique |
 | `npm run test:dpp:chantier4` | PASS | une partie simule l'algorithme |
 | `npm run schema:static` | PASS | validation structurelle historique |
@@ -84,7 +85,7 @@ Commit testé : état de travail précédant le commit final, puis vérification
 | `npm run api:typecheck` | NON VALIDÉ | client Prisma non généré ; nombreuses erreurs globales dérivées |
 | `prisma validate` | NON VALIDÉ | binaire Prisma indisponible |
 
-Aucune CI n'est déclarée verte pour le SHA final tant qu'elle n'est pas observable.
+Sur `b3075f7`, les jobs **Socle**, **Base PostgreSQL**, **chaîne migrations 34/36/41** et **Vercel** sont observés verts. Le job Vérification était encore en cours au moment de cette mise à jour documentaire.
 
 ## G. Intégration Git
 
