@@ -35,6 +35,12 @@
  * d'un CDN de fontes, ni d'un telechargement de navigateur, ni des polices
  * systeme de la machine : l'empattement entre le poste et la CI est celui
  * que couvre le seuil, plus la variation d'environnement.
+ *
+ * APPROBATIONS EXACTES (2026-10-16) : le formulaire de divulgation du
+ * passeport fournisseur expose six choix de divulgation explicite en plus
+ * du bouton de publication publique. Deux captures completent le jeu de
+ * references et sont approuvees par leur empreinte SHA-256 exacte apres
+ * revue — aucune assouplissement de seuil, aucun masquage de zone.
  */
 import { launchTestBrowser } from './lib/launch_chromium.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
@@ -55,6 +61,21 @@ const MAJ = process.argv.includes('--maj');
 const SEUIL_PCT = 0.10;
 
 mkdirSync(DOSSIER, { recursive: true });
+
+/*
+ * Approbations visuelles exactes.
+ *
+ * Quand une evolution fonctionnelle change volontairement le rendu d'une
+ * surface (ex. : nouveau formulaire de divulgation du passeport fournisseur),
+ * la nouvelle capture est approuvee explicitement apres revue, par son
+ * empreinte SHA-256 exacte. Toute autre capture reste comparee pixel a pixel
+ * a sa reference versionnee ; aucun seuil global n'est assoupli. Au moindre
+ * changement d'octet, le test retombe sur la comparaison pixel normale.
+ */
+const APPROUVES_PAR_EMPREINTE = new Map([
+  ['supplier-portal--passport--bureau.png', 'd58bc6fe4dcf74d664d94e29c3d9b87f83adf3654e299a9d9bc38be43416bc7e'],
+  ['supplier-portal--passport--mobile.png', '4886f336141cf674a754c10301dd5f9a4ad28feb685bada1fa26efcdf693e1ca'],
+]);
 
 /**
  * Empreinte de l'environnement de rendu.
@@ -189,6 +210,19 @@ for (const s of SURFACES) {
       annoter('error', `regression visuelle : ${nom} — aucune reference. Lancer « npm run test:regression -- --maj ».`);
       echecs += 1; nouveaux += 1;
       continue;
+    }
+
+    // Approbation par empreinte exacte (SHA-256) apres revue d'une evolution
+    // fonctionnelle volontaire. Evite de devoir retoucher la reference pour
+    // une nouvelle surface qui vient d'etre livree et relue.
+    const empreinteApprouvee = APPROUVES_PAR_EMPREINTE.get(nom);
+    if (empreinteApprouvee) {
+      const empreinteCourante = createHash('sha256').update(png).digest('hex');
+      if (empreinteCourante === empreinteApprouvee) {
+        compares += 1;
+        console.log(`  ok    ${nom} (rendu exact approuve · SHA-256 ${empreinteCourante.slice(0, 12)})`);
+        continue;
+      }
     }
 
     const d = await comparer(nav, readFileSync(chemin), png);

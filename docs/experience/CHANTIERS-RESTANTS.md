@@ -3,7 +3,7 @@
 Document de suivi historique : les informations datées plus bas ne doivent pas
 être considérées comme un état actuel sans vérification indépendante.
 
-**État de cette branche au 15 octobre 2026 : rebase #34 sur main (post-#36/#41) · Dépôt : 42 migrations · Neon de production : non vérifié.**
+**État de main au 16 octobre 2026 (post-#45, fix P3018 p_org via DO $pubbrand$ sur migration 1212) : Dépôt : 42 migrations · Neon de production : migrations #34/#41/#45 appliquées avec resolve --rolled-back (incident P3018 : PG18 refuse de renommer p_org → p_organization_id, corrigé par CREATE OR REPLACE dynamique sur le nom de paramètre existant).** Le nombre est calculé sur `prisma/migrations` ; il ne prouve pas combien de migrations sont appliquées sur la base distante. L'historique et les statuts de production doivent être réconciliés en lecture seule avant toute nouvelle migration ; `publication_explicite` et les migrations de privilèges ne doivent pas être appliquées à l'aveugle.
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
 > que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les

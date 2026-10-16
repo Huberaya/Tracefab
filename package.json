@@ -129,15 +129,18 @@
     "verify:routes:isolation": "node scripts/run-db-suite.mjs scripts/test_routes_tenant_isolation.mjs",
     "test:migration-history": "node scripts/test_migration_history.mjs",
     "test:ci-no-production-access": "node scripts/test_ci_no_production_access.mjs",
-    "db:prepare-ci-role": "node scripts/run-db-suite.mjs scripts/prepare_ci_db_role.mjs"
+    "db:prepare-ci-role": "node scripts/run-db-suite.mjs scripts/prepare_ci_db_role.mjs",
+    "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs"
   },
   "devDependencies": {
+    "@prisma/adapter-pg": "^6.19.3",
+    "@sparticuz/chromium": "153.0.0",
     "@types/archiver": "^8.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.43",
     "axe-core": "^4.14.0",
     "pg": "^8.23.1",
-    "playwright": "^1.63.0",
+    "playwright": "1.63.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.2",
     "yaml": "^2.9.1"
