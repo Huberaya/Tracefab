@@ -122,7 +122,7 @@ AS $$
 $$;
 
 -- L'identite de marque exposable : la condition EXISTS inlinait public_slug.
-CREATE OR REPLACE FUNCTION tracefab_public_brand(p_organization_id uuid)
+CREATE OR REPLACE FUNCTION tracefab_public_brand(p_org uuid)
 RETURNS TABLE (display_name text, country_code text)
 LANGUAGE sql
 STABLE
@@ -131,7 +131,7 @@ SET search_path = public
 AS $$
   SELECT o.display_name, o.country_code
   FROM organizations o
-  WHERE o.id = p_organization_id
+  WHERE o.id = p_org
     AND EXISTS (
       SELECT 1 FROM tracefab_products p
       WHERE p.brand_organization_id = o.id
