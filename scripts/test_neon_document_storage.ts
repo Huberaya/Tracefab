@@ -208,10 +208,11 @@ async function main() {
   });
   ok('storage aggregate refuses a different tenant even though it returns only totals');
 
-  phase = 'soft_delete_and_quota_aggregate';
+  phase = 'soft_delete_document';
   await withAppUser(userA, emailA, async () => {
     await app.query('SELECT tracefab_soft_delete_document($1::uuid)', [documentA]);
   });
+  phase = 'verify_deleted_row_rls';
   const deletedRowsVisible = await withAppUser(userA, emailA, async () => {
     const result = await app.query('SELECT id FROM documents WHERE id = $1::uuid', [documentA]);
     return result.rowCount;
@@ -220,12 +221,15 @@ async function main() {
   const priorQuota = process.env.ORGANIZATION_STORAGE_QUOTA_BYTES;
   process.env.ORGANIZATION_STORAGE_QUOTA_BYTES = '30';
   try {
+    phase = 'quota_aggregate_read';
     const usage = await withPrismaAppUser(userA, emailA, (tx) => getOrganizationStorageUsage(tx, organizationA));
     assert.equal(usage.usedBytes, 21, 'quota must include the available and rejected/soft-deleted objects still in storage even though deleted rows are hidden by SELECT RLS');
     assert.equal(usage.documentCount, 2);
+    phase = 'quota_exact_limit_lock';
     await withPrismaAppUser(userA, emailA, (tx) => assertStorageQuotaAvailable(tx, organizationA, 9));
     let quotaError: unknown;
     try {
+      phase = 'quota_over_limit_lock';
       await withPrismaAppUser(userA, emailA, (tx) => assertStorageQuotaAvailable(tx, organizationA, 10));
     } catch (error) {
       quotaError = error;
@@ -254,7 +258,14 @@ try {
     ? String((error as { code?: unknown }).code)
     : 'details_suppressed';
   const message = error instanceof Error ? error.message : '';
-  const safeReason = /^[A-Za-z0-9_]{1,96}$/.test(message) ? message : `sqlstate_${code}`;
+  const metadata: Record<string, unknown> = error && typeof error === 'object' && 'meta' in error && (error as { meta?: unknown }).meta && typeof (error as { meta?: unknown }).meta === 'object'
+    ? (error as { meta: Record<string, unknown> }).meta
+    : {};
+  const databaseCode = typeof metadata.code === 'string' && /^[A-Za-z0-9_]{1,16}$/.test(metadata.code) ? metadata.code : code;
+  const databaseMessage = typeof metadata.message === 'string' && /^[A-Za-z0-9_]{1,96}$/.test(metadata.message)
+    ? metadata.message
+    : message;
+  const safeReason = /^[A-Za-z0-9_]{1,96}$/.test(databaseMessage) ? databaseMessage : `sqlstate_${databaseCode}`;
   console.error(`::error title=Document-storage PostgreSQL contract::${phase}:${safeReason}`);
   console.error(`FAIL — document-storage database behavior (${code}); phase=${phase}; message and connection details suppressed.`);
   failures += 1;

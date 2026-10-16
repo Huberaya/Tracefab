@@ -64,6 +64,7 @@ assert(files.runtimeTest.includes('boundedReadiness'), 'Behavioral tests must ex
 const antivirusProbeSource = files.readiness.slice(files.readiness.indexOf('export function probeAntivirus'), files.readiness.indexOf('export function probeEmail'));
 assert(!antivirusProbeSource.includes('reachableByHttp'), 'Readiness must not treat scanner HEAD as scan validation');
 assert(files.quota.includes('pg_advisory_xact_lock'), 'Quota checks must serialize concurrent upload intents');
+assert(files.quota.includes('IS NULL AS acquired'), 'The advisory lock query must return a Prisma-readable scalar rather than PostgreSQL void');
 assert(files.quota.includes('tracefab_get_document_storage_usage'), 'Quota reads must use the tenant-checked aggregate function');
 assert(files.finalizerMigration.includes('SET row_security = off'), 'Aggregate function must fail closed rather than silently undercount rows hidden by RLS');
 assert(files.finalizerMigration.includes('REVOKE ALL ON FUNCTION tracefab_get_document_storage_usage(UUID) FROM PUBLIC'), 'Quota aggregate must not be executable by PUBLIC');

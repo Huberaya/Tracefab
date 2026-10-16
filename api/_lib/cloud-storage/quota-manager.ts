@@ -46,7 +46,9 @@ export async function assertStorageQuotaAvailable(
   // Serialize quota checks for one tenant until the surrounding upload-intent
   // transaction commits the document row. Without this transaction-scoped
   // lock, concurrent intents can each pass against the same pre-insert total.
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId}, 0))`;
+  await tx.$queryRaw<Array<{ acquired: boolean }>>`
+    SELECT pg_advisory_xact_lock(hashtextextended(${organizationId}, 0)) IS NULL AS acquired
+  `;
   const usage = await getOrganizationStorageUsage(tx, organizationId);
   if (usage.usedBytes + newDocumentBytes > usage.quotaBytes) {
     throw new Error('organization_storage_quota_exceeded');
