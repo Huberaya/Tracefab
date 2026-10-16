@@ -132,7 +132,8 @@
     "db:prepare-ci-role": "node scripts/run-db-suite.mjs scripts/prepare_ci_db_role.mjs",
     "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs",
     "prisma:check-network": "node scripts/check_prisma_network.mjs",
-    "db:generate:verified": "npm run prisma:check-network && npm run db:generate"
+    "test:prisma-network": "node scripts/test_prisma_network.mjs",
+    "db:generate:verified": "npm run prisma:check-network && npm run db:generate && npm run verify:prisma-client"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^6.19.3",

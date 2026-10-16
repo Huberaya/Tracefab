@@ -45,6 +45,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PRISMA_BINARIES_HOST, probePrismaBinaries } from './prisma-network.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -88,55 +89,32 @@ if (!cli) {
 }
 
 // ---------------------------------------------------------------------------
-// 0. Preflight reseau — dependance externe identifiee par le chantier 2C.34
+// 0. Preflight reseau — informatif, jamais une preuve de generation.
 // ---------------------------------------------------------------------------
-// `prisma generate` (CLI 6.19.3) verifie la version du moteur au demarrage et
-// telecharge, si necessaire, le binaire schema-engine depuis
-// https://binaries.prisma.sh/.../schema-engine.gz.sha256. Sans acces a cet
-// hote, la generation est impossible : ce n'est pas un bug du depot, c'est une
-// dependance externe. On le dit explicitement plutot que de laisser le CLI
-// echouer avec un message opaque.
-//
-// Hote requis : binaries.prisma.sh (HTTPS/443)
-// Fichiers requis : schema-engine.gz.sha256 puis schema-engine.gz
-//                  (pour la plateforme courante : debian-openssl-3.0.x)
-// Cache local possible : definir PRISMA_ENGINES_CACHE_DIR vers un dossier
-// deja rempli (voir https://www.prisma.io/docs/orm/prisma-client/...).
-const PRISMA_BINARIES_HOST = 'binaries.prisma.sh';
-const PRISMA_BINARIES_PATH =
-  '/all_commits/c2990dca591cba766e3b7ef5d9e8a84796e47ab7/debian-openssl-3.0.x/schema-engine.gz.sha256';
-
-async function checkNetwork() {
-  const https = await import('node:https');
-  return new Promise((resolve) => {
-    const req = https.request(
-      { host: PRISMA_BINARIES_HOST, port: 443, path: PRISMA_BINARIES_PATH, method: 'HEAD', timeout: 8000 },
-      (res) => {
-        resolve(Boolean(res.statusCode && res.statusCode < 500));
-        res.resume();
-      },
-    );
-    req.on('error', () => resolve(false));
-    req.on('timeout', () => { req.destroy(); resolve(false); });
-    req.end();
-  });
-}
-
-const networkAvailable = await checkNetwork();
-if (!networkAvailable) {
+// Une reponse HTTP 2xx (apres redirections HTTPS) confirme seulement que le
+// checksum Prisma est joignable. Les erreurs HTTP, refus reseau et timeouts
+// bloquent rapidement ; la generation puis verify_prisma_client.mjs restent
+// les seules preuves d un vrai client complet.
+const network = await probePrismaBinaries();
+if (!network.reachable) {
+  const detail = network.statusCode
+    ? `HTTP ${network.statusCode}`
+    : network.reason === 'network'
+      ? `erreur reseau ${network.errorCode}`
+      : network.reason || 'indisponible';
   console.error(
     '\n  BLOCAGE RESEAU — la generation du client Prisma est impossible ici.\n' +
     `  Hote requis : https://${PRISMA_BINARIES_HOST} (HTTPS/443)\n` +
-    '  Fichier requis : schema-engine.gz.sha256 (puis schema-engine.gz)\n' +
-    '  Le CLI Prisma 6.19.3 verifie la version du moteur au demarrage et\n' +
-    '  telecharge ce binaire s\'il n\'est pas deja en cache local.\n' +
-    '  Contournements possibles :\n' +
-    '    - executer ce script dans un environnement avec acces reseau vers\n' +
-    '      binaries.prisma.sh (CI GitHub Actions, Vercel, poste developpeur) ;\n' +
-    '    - definir PRISMA_ENGINES_CACHE_DIR vers un cache deja rempli ;\n' +
-    '    - definir PRISMA_SKIP_POSTINSTALL_GENERATE=true hors deploiement\n' +
-    '      (le client restera le stub factice ; verify:prisma-client echouera).\n' +
-    '  Ce script ne simule pas un succes : le client n\'est pas genere.\n',
+    `  Diagnostic du precontrole : ${detail}\n` +
+    '  La sonde exige une reponse HTTP 2xx (apres redirections HTTPS).\n' +
+    '  Elle ne verifie pas un eventuel cache local : ce precontrole bloquera\n' +
+    '  donc aussi sans reseau meme si PRISMA_ENGINES_CACHE_DIR est renseigne.\n' +
+    '  Pour continuer, executer dans un environnement autorise vers\n' +
+    '  binaries.prisma.sh. Le contournement de postinstall reste interdit\n' +
+    '  en deploiement ; hors deploiement, PRISMA_SKIP_POSTINSTALL_GENERATE=true\n' +
+    '  (le client restera le stub factice ; verify:prisma-client echouera).\n' +
+    '  Le precontrole ne prouve pas la generation : celle-ci est suivie\n' +
+    '  d une verification du client, sans simuler de succes.\n',
   );
   process.exit(2);
 }
