@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# TRACEFAB H1.4 — épreuves moteur PostgreSQL 17 jetable.
+# TRACEFAB H1.4 — épreuves moteur PostgreSQL jetable (PG17 et PG18).
+#
+# Neon de production exécute PostgreSQL 18.6. Le diagnostic Q1–Q6 doit
+# être validé sur les DEUX versions majeures :
+#   - PG17 : version précédente (baseline de compatibilité)
+#   - PG18 : version cible de production (p. ex. incident P3018
+#            p_org → p_organization_id était spécifique à PG18).
 #
 # Ne lit pas DATABASE_URL (il doit être absent). N'imprime aucun secret.
 # N'appelle ni prepare_ci_db_role.mjs ni db:deploy:throwaway.
@@ -70,10 +76,22 @@ command -v psql >/dev/null 2>&1 || {
 PSQL=(psql -X --no-password -v ON_ERROR_STOP=1)
 
 ver="$("${PSQL[@]}" -tAc "SHOW server_version")"
-[[ "$ver" == 17* ]] || fail "PostgreSQL 17 requis (version masquee, pas 17.*)"
+pg_maj="${ver%%.*}"
+# Version attendue : TRACEFAB_H14_PGVER peut forcer 17 ou 18 (utilisé par la CI
+# pour lancer les mêmes épreuves contre chaque version majeure). Sans cette
+# variable, PG17 et PG18 sont tous deux acceptés (validation locale).
+attendu="${TRACEFAB_H14_PGVER:-}"
+if [[ -n "$attendu" ]]; then
+  [[ "$pg_maj" == "$attendu" ]] || fail "PostgreSQL $attendu attendu par TRACEFAB_H14_PGVER, obtenu $ver"
+else
+  case "$pg_maj" in
+    17|18) ;;
+    *) fail "PostgreSQL 17 ou 18 requis (obtenu $ver)";;
+  esac
+fi
 db="$("${PSQL[@]}" -tAc "SELECT current_database()")"
 [[ "$db" == "tracefab_test" ]] || fail "current_database n'est pas tracefab_test"
-echo "ok    serveur 17, base tracefab_test"
+echo "ok    serveur $pg_maj ($ver), base tracefab_test"
 
 set +e
 write_out="$("${PSQL[@]}" \
@@ -229,5 +247,5 @@ awk -F $'\t' '$1=="20261010120000_publication_explicite" && $NF=="incomplete"{fo
   || fail "Q5.A doublon : incomplete attendu"
 echo "ok    Q5.A : doublon classe incomplete"
 
-echo "PASS moteur H1.4 (Postgres 17, tracefab_test, lecture seule)."
+echo "PASS moteur H1.4 (Postgres $pg_maj, tracefab_test, lecture seule)."
 exit 0
