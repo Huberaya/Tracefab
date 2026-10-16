@@ -31,18 +31,22 @@ function controle(libelle, condition, detail) {
   console.log(`✓ ${libelle}`);
 }
 
-/* --- 1. Le compte de migrations annonce doit etre celui du depot. ------- */
+/* --- 1. Le compte du depot et l'etat Neon sont distingues. ------------- */
 {
-  const annonce = texte.match(/Dépôt\s*:\s*(\d+)\/(\d+)\s*migrations/);
-  assert.ok(annonce, `${REGISTRE} doit annoncer le compte de migrations du dépôt`);
+  const annonce = texte.match(/Dépôt\s*:\s*(\d+)\s*migrations/);
+  assert.ok(annonce, `${REGISTRE} doit annoncer le nombre de migrations du dépôt`);
   const reel = readdirSync('prisma/migrations').filter((d) => /^\d/.test(d)).length;
   controle(
-    `compte de migrations annonce (${annonce[1]}) = depot (${reel})`,
-    Number(annonce[1]) === reel && Number(annonce[2]) === reel,
-    `le document annonce ${annonce[1]}/${annonce[2]}`,
+    `compte de migrations du dépôt (${annonce[1]}) = dépôt (${reel})`,
+    Number(annonce[1]) === reel,
+    `le document annonce ${annonce[1]} migration(s)`,
+  );
+  controle(
+    "l'etat des migrations Neon de production est explicitement non verifie",
+    /Neon de production\s*:\s*non vérifié/i.test(texte.slice(0, 1000)),
+    "ne pas assimiler le contenu de la branche a l'etat de production",
   );
 }
-
 /* --- 2. Aucun SHA presente comme fait courant dans l'en-tete. ----------
  * Le document a le droit de RACONTER qu'il portait `5b78ac6` et que c'etait
  * une erreur. Il n'a pas le droit d'annoncer « main = <sha> » comme un etat,

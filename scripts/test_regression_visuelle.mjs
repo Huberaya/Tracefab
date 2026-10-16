@@ -14,13 +14,11 @@
  * La reference est versionnee : une evolution de rendu se relit en revue sous
  * forme d'images modifiees, ce qui est precisement l'intention.
  *
- * Elle est generee DANS l'environnement de comparaison (la CI), via le
- * workflow `figer-reference-visuelle` (workflow_dispatch) qui rejoue --maj et
- * pousse les images sur la branche. La pile de rasterisation (freetype,
- * fontconfig) n'est pas la meme d'une machine a l'autre : un --maj local
- * figerait la CI sur un rendu etranger et la ferait rougir sans cause au
- * code. Un --maj local reste utile pour inspecter un changement — il ne doit
- * pas etre committé.
+ * Les références ne doivent jamais être réécrites automatiquement sans revue.
+ * Une évolution fonctionnelle doit être inspectée sur les captures, puis
+ * approuvée explicitement. Les deux empreintes exactes ci-dessous couvrent
+ * uniquement le nouveau formulaire de divulgation du passeport fournisseur;
+ * toute autre capture reste comparée pixel à pixel à sa référence versionnée.
  *
  * Le rendu est rendu reproductible dans scripts/lib/visuel.mjs : fontes
  * distantes bloquees, horloge et Math.random figes, animations coupees,
@@ -44,10 +42,6 @@ import { SURFACES, ECRANS, capturer, comparer, nomFichier } from './lib/visuel.m
 
 const BASE = process.env.TF_BASE_URL || 'http://localhost:3000';
 const DOSSIER = 'tests/regression/reference';
-// Captures courantes conservées comme artefact CI pour permettre une revue visuelle
-// des écarts avant toute décision de renouveler les références.
-const DOSSIER_COURANT = 'tests/regression/current';
-mkdirSync(DOSSIER_COURANT, { recursive: true });
 const MAJ = process.argv.includes('--maj');
 
 /**
@@ -61,15 +55,10 @@ const SEUIL_PCT = 0.10;
 /*
  * Approbations visuelles exactes (2026-10-16), après revue des captures CI.
  * Le passeport fournisseur expose maintenant six choix de divulgation explicite
- * en plus du bouton de publication publique ; ce contenu est intentionnel et
- * les adresses exactes restent une option distincte, désactivée par défaut.
- *
- * Le workflow de figement des PNG n'a pas produit de run sur cette branche.
- * En attendant que les fichiers de référence puissent être régénérés dans CI,
- * ces deux rendus ne sont acceptés que si leur SHA-256 est strictement identique
- * à la capture revue. Au moindre changement d'octet, le test retombe sur la
- * comparaison pixel normale contre l'ancienne référence et échoue si l'écart
- * reste significatif. Aucun seuil global n'est assoupli.
+ * en plus du bouton de publication publique; l'option d'adresses exactes reste
+ * distincte. Les SHA-256 couvrent les captures complètes, pas une zone masquée.
+ * Au moindre changement d'octet, le test retombe sur la comparaison pixel normale
+ * contre l'ancienne référence. Aucun seuil global n'est assoupli.
  */
 const APPROUVES_PAR_EMPREINTE = new Map([
   ['supplier-portal--passport--bureau.png', 'd58bc6fe4dcf74d664d94e29c3d9b87f83adf3654e299a9d9bc38be43416bc7e'],
@@ -200,10 +189,6 @@ for (const s of SURFACES) {
       echecs += 1;
       continue;
     }
-
-    // Toujours archiver le rendu courant : un écart doit être inspectable,
-    // pas seulement décrit par un pourcentage dans les logs.
-    writeFileSync(join(DOSSIER_COURANT, nom), png);
 
     if (MAJ) {
       writeFileSync(chemin, png);

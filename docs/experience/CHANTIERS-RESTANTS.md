@@ -1,9 +1,9 @@
 # Chantiers restants — état vérifié
 
-Relevé du 9 octobre 2026, établi en interrogeant le dépôt, l'API GitHub et
-la base Neon de production. Pas en relisant les en-têtes.
+Document de suivi historique : les informations datées plus bas ne doivent pas
+être considérées comme un état actuel sans vérification indépendante.
 
-**Dépôt : 41/41 migrations.** Intégration des chantiers #34 et #41 : les 41 migrations sont présentes dans le dépôt combiné. Dernière migration Neon de production confirmée dans les éléments disponibles : `20261009180000_public_read_context` (migration 35). L’historique complet et les statuts doivent être réconciliés en lecture seule avant toute application ; `publication_explicite` et les migrations de privilèges ne doivent pas être appliquées à l’aveugle.
+**État de la PR #44 au 16 octobre 2026 : dépôt : 41/41 migrations présentes. Dernière migration Neon de production confirmée dans les éléments disponibles : `20261009180000_public_read_context`. L’historique complet et les statuts doivent être réconciliés en lecture seule avant toute application ; `publication_explicite` et les migrations de privilèges ne doivent pas être appliquées à l’aveugle.**
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
 > que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les

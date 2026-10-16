@@ -89,6 +89,13 @@
     "spFieldCountryMfg": "Üretim ülkesi",
     "spPassportTitle": "Evrensel tek tıkla tedarikçi pasaportu",
     "spPassportIntro": "Ticari sırlarınızı açığa çıkarmadan doğrulanabilir bir profil yayınlayın.",
+    "spDiscloseSites": "Tesisler",
+    "spDiscloseCertifications": "Sertifikalar",
+    "spDiscloseMaterials": "Malzemeler",
+    "spDiscloseQualityScore": "Kalite puanı",
+    "spDiscloseContact": "İletişim bilgileri",
+    "spDiscloseExactAddresses": "Tam adresler (hassas)",
+    "spDisclosurePrivacyNotice": "Açıklama ayarlarını açıkça kaydedip herkese açık erişimi etkinleştirene kadar pasaport gizli kalır. Tam adresler hassastır ve ayrıca seçilmedikçe gizli tutulur.",
     "spVisibilitySettings": "Görünürlük ayarları",
     "spSaveSettings": "Ayarları kaydet",
     "spAccessRequests": "Alınan erişim talepleri",
@@ -180,6 +187,7 @@
     "spNAnswerSavedDemo": "Yanıt gösterim modunda kaydedildi.",
     "spNScoreRecomputed": "Kalite puanı yeniden hesaplandı.",
     "spNScoreRecomputedDemo": "Kalite puanı gösterim modunda yeniden hesaplandı.",
+    "spNPassportSaved": "Pasaport ayarları kaydedildi.",
     "spNPassportSavedDemo": "Pasaport ayarları gösterim modunda kaydedildi.",
     "spNPassportReviewedDemo": "Pasaport talebi gösterim modunda incelendi.",
     "spNTcDeclaredDemo": "İşlem sertifikası gösterim modunda beyan edildi.",
@@ -455,14 +463,6 @@
     "spEmail": "E-posta",
     "spVersion": "Sürüm",
     "spExpiry": "Son kullanma",
-    "spViewPublicPassport": "Genel pasaportumu görüntüle",
-    "spDiscloseSites": "Tesisler",
-    "spDiscloseCertifications": "Sertifikalar",
-    "spDiscloseMaterials": "Malzemeler",
-    "spDiscloseQualityScore": "Kalite puanı",
-    "spDiscloseContact": "İletişim bilgileri",
-    "spDiscloseExactAddresses": "Tam adresler (hassas)",
-    "spDisclosurePrivacyNotice": "Açıklama ayarlarını açıkça kaydedip herkese açık erişimi etkinleştirene kadar pasaport gizli kalır. Tam adresler hassastır ve ayrıca seçilmedikçe gizli tutulur.",
-    "spNPassportSaved": "Pasaport ayarları kaydedildi."
+    "spViewPublicPassport": "Genel pasaportumu görüntüle"
   }
 }

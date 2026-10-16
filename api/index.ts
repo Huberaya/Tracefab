@@ -188,17 +188,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // nulle part, et personne n'est prevenu. 13 des 125 routes n'ont aucun
   // try/catch, et des helpers comme storage.ts jettent sur mauvaise
   // configuration. Le chargement dynamique du module peut echouer lui aussi.
-  const correlation = correlationId();
-  try {
-    const module = await route.load();
-    return await module.default(req, res);
-  } catch (error) {
-    await reportError(error, {
-      route: route.pattern.source,
-      method: req.method,
-      path,
-      status: 500,
-    }, correlation);
+    const correlation = correlationId();
+    try {
+      // Les deux etapes sont distinguees a dessein : un module de route qui ne
+      // se charge pas trahit un paquet deploye incomplet (dependance absente ou
+      // client non genere), alors qu'une exception du gestionnaire trahit un
+      // defaut d execution. Le client recoit le meme 500 : seul le journal peut
+      // dire lequel des deux, et c'est exactement ce qui a manque le
+      // 2026-10-09 — l'identifiant etait rendu, la cause n'etait pas
+      // interrogeable.
+      let module: Awaited<ReturnType<typeof route.load>>;
+      try {
+        module = await route.load();
+      } catch (error) {
+        await reportError(error, {
+          route: route.pattern.source,
+          method: req.method,
+          path,
+          status: 500,
+          phase: 'module_load',
+        }, correlation);
+        if (res.headersSent || res.writableEnded) return undefined;
+        return json(res, 500, { error: 'internal_error', correlationId: correlation });
+      }
+
+      return await module.default(req, res);
+    } catch (error) {
+      await reportError(error, {
+        route: route.pattern.source,
+        method: req.method,
+        path,
+        status: 500,
+        phase: 'handler',
+      }, correlation);
 
     // Un gestionnaire peut avoir deja commence a repondre avant de jeter.
     // Ecrire une seconde fois provoquerait une erreur par-dessus l'erreur.

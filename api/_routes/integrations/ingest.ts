@@ -56,7 +56,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: unknown) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
-    if (businessError) return json(res, businessError.status, { error: businessError.error });
+    if (businessError) {
+      return json(res, businessError.status, { error: businessError.error });
+    }
     console.error('POST /api/integrations/ingest failed', error);
     return json(res, 500, { error: 'internal_server_error' });
   }
