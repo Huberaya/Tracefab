@@ -109,6 +109,12 @@ try {
   check(privateHistory.rows.some(e=>e.event_type==='publication_suspended')&&privateHistory.rowCount>=4,'historique prive conserve apres retrait public');
 
   console.log(`\nPasseport dynamique PostgreSQL : ${assertions} preuves executees, 0 simulation.`);
+} catch (error) {
+  // GitHub masque parfois le flux de logs du service PostgreSQL. Une annotation
+  // concise garde la cause observable sans publier de chaîne de connexion.
+  const message=error instanceof Error ? error.message.split('\n')[0] : String(error);
+  console.error(`::error title=DPP lifecycle PostgreSQL::${message.slice(0,500)}`);
+  process.exitCode=1;
 } finally {
   // Le registre est append-only jusque pour le propriétaire : aucun nettoyage
   // destructif. La base entière est détruite avec le runner CI.
