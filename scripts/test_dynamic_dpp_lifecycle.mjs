@@ -15,6 +15,8 @@ assert.match(sql,/owner_organization_id = v_product.brand_organization_id[\s\S]*
 assert.match(sql,/readiness_status <> 'ready_to_publish'[\s\S]*reviewed_at IS NULL/,'publication must require review');
 assert.match(sql,/UPDATE tracefab_products SET public_slug=NULL/,'suspension must immediately revoke public resolution');
 assert.match(sql,/INSERT INTO audit_logs/);
+assert.ok(!/GRANT EXECUTE[^;]+ TO PUBLIC/.test(sql),'SECURITY DEFINER functions must never be executable by PUBLIC');
+assert.match(sql,/TO tracefab_app/,'runtime execution must be granted explicitly');
 assert.match(router,/dpp\\\/events/); assert.match(router,/dpp\\\/publication/);
 assert.match(eventRoute,/accessibleProduct/); assert.match(eventRoute,/LIMIT 200/); assert.match(eventRoute,/evidence\.length > 50/);
 assert.match(publicationRoute,/\['publish','suspend','withdraw'\]/); assert.match(publicationRoute,/Cache-Control','no-store/);
@@ -25,4 +27,4 @@ for (const forbidden of ['actor_user_id','details','evidence_document_ids','meta
 }
 assert.match(schema,/model dpp_lifecycle_events/); assert.match(schema,/enum dpp_event_validation_status/);
 assert.match(dpp,/published: 'Publié'/); assert.match(dpp,/rawStatus === 'published'/);
-console.log('Dynamic DPP lifecycle: 20 security, publication and history assertions passed.');
+console.log('Dynamic DPP lifecycle: 22 security, publication and history assertions passed.');

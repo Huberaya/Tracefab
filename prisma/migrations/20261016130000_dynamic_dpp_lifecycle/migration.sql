@@ -130,10 +130,19 @@ CREATE POLICY dpp_events_public_select ON dpp_lifecycle_events FOR SELECT USING 
 REVOKE ALL ON dpp_lifecycle_events FROM PUBLIC;
 GRANT SELECT ON dpp_lifecycle_events TO PUBLIC;
 REVOKE ALL ON FUNCTION tracefab_add_dpp_event(UUID,TEXT,TEXT,TIMESTAMPTZ,TEXT,dpp_event_validation_status,TEXT,JSONB,UUID[],UUID,TEXT,TEXT,TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION tracefab_add_dpp_event(UUID,TEXT,TEXT,TIMESTAMPTZ,TEXT,dpp_event_validation_status,TEXT,JSONB,UUID[],UUID,TEXT,TEXT,TEXT) TO PUBLIC;
 REVOKE ALL ON FUNCTION tracefab_set_dpp_publication(UUID,TEXT,TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION tracefab_set_dpp_publication(UUID,TEXT,TEXT) TO PUBLIC;
 REVOKE ALL ON FUNCTION tracefab_reject_dpp_event_mutation() FROM PUBLIC;
+
+-- Le rôle runtime n'existe pas nécessairement au moment d'une installation
+-- initiale. Lorsqu'il existe, lui seul reçoit l'exécution; jamais PUBLIC.
+DO $runtime_grants$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
+    GRANT EXECUTE ON FUNCTION tracefab_add_dpp_event(UUID,TEXT,TEXT,TIMESTAMPTZ,TEXT,dpp_event_validation_status,TEXT,JSONB,UUID[],UUID,TEXT,TEXT,TEXT) TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_set_dpp_publication(UUID,TEXT,TEXT) TO tracefab_app;
+  END IF;
+END
+$runtime_grants$;
 
 COMMENT ON TABLE dpp_lifecycle_events IS 'Registre applicatif append-only des evenements DPP. Il preserve les corrections mais ne constitue pas une immutabilite cryptographique.';
 COMMENT ON COLUMN dpp_lifecycle_events.public_summary IS 'Projection publique volontaire et minimale; NULL signifie prive.';
