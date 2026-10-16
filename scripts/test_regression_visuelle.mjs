@@ -44,6 +44,10 @@ import { SURFACES, ECRANS, capturer, comparer, nomFichier } from './lib/visuel.m
 
 const BASE = process.env.TF_BASE_URL || 'http://localhost:3000';
 const DOSSIER = 'tests/regression/reference';
+// Captures courantes conservées comme artefact CI pour permettre une revue visuelle
+// des écarts avant toute décision de renouveler les références.
+const DOSSIER_COURANT = 'tests/regression/current';
+mkdirSync(DOSSIER_COURANT, { recursive: true });
 const MAJ = process.argv.includes('--maj');
 
 /**
@@ -178,6 +182,10 @@ for (const s of SURFACES) {
       echecs += 1;
       continue;
     }
+
+    // Toujours archiver le rendu courant : un écart doit être inspectable,
+    // pas seulement décrit par un pourcentage dans les logs.
+    writeFileSync(join(DOSSIER_COURANT, nom), png);
 
     if (MAJ) {
       writeFileSync(chemin, png);
