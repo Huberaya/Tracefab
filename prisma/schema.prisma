@@ -456,6 +456,41 @@ model dpp_lifecycle_events {
   @@index([owner_organization_id, recorded_at(sort: Desc)], map: "idx_dpp_events_owner_recorded")
 }
 
+model dpp_claims {
+  id                    String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id            String                      @db.Uuid
+  owner_organization_id String                      @db.Uuid
+  lifecycle_event_id    String?                     @db.Uuid
+  claim_key             String
+  statement             String
+  public_statement      String?
+  subject_scope         String                      @default("model")
+  subject_reference     String?
+  validation_status     dpp_event_validation_status @default(declared)
+  valid_from            DateTime?                   @db.Date
+  valid_until           DateTime?                   @db.Date
+  supersedes_claim_id   String?                     @db.Uuid
+  rejection_reason      String?
+  created_by            String?                     @db.Uuid
+  created_at            DateTime                    @default(now()) @db.Timestamptz(6)
+  @@index([product_id, created_at(sort: Desc)], map: "idx_dpp_claims_product")
+}
+
+model dpp_claim_evidence {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claim_id            String   @db.Uuid
+  document_id         String   @db.Uuid
+  relationship        String   @default("supports")
+  coverage_note       String?
+  verification_result String   @default("pending")
+  verification_reason String?
+  public_label        String?
+  linked_by           String?  @db.Uuid
+  linked_at           DateTime @default(now()) @db.Timestamptz(6)
+  @@unique([claim_id, document_id, relationship])
+  @@index([claim_id, linked_at(sort: Desc)], map: "idx_dpp_claim_evidence_claim")
+}
+
 model dpp_requirement_profiles {
   id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   profile_key     String

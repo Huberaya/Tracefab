@@ -89,6 +89,29 @@ try {
   } catch(e){ rejected=String(e.message).includes('invalid_evidence_document'); }
   check(rejected,'preuve appartenant a un autre tenant refusee');
 
+  const claimResult=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_add_dpp_claim($1,'composition.cotton','La composition déclarée contient du coton',
+      'Composition coton documentée','documented',$2,'model',NULL,current_date-30,current_date-1,NULL,NULL)`,[U.product,evidenceEvent.id]));
+  const claim=claimResult.rows[0];
+  check(claim.validation_status==='documented','affirmation documentée distincte de sa preuve');
+  const linkResult=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_link_dpp_claim_evidence($1,$2,'supports','Couvre la composition du modèle','accepted',
+      'Document examiné dans son périmètre','Certificat de composition')`,[claim.id,U.docA]));
+  check(linkResult.rows[0].verification_result==='accepted','lien de preuve accepté avec motif et périmètre');
+  check(claim.validation_status!=='third_party_verified','preuve acceptée ne transforme pas automatiquement affirmation en vérification tierce');
+  const publicClaims=await publicContext(()=>app.query('SELECT * FROM tracefab_public_dpp_claims($1)',[U.product]));
+  check(publicClaims.rowCount===1&&publicClaims.rows[0].accepted_evidence_count===1,'projection publique compte uniquement les preuves acceptées');
+  check(publicClaims.rows[0].expired===true,'expiration de affirmation signalée explicitement');
+  const projectionKeys=Object.keys(publicClaims.rows[0]);
+  check(!projectionKeys.some(k=>['document_id','storage_path','original_filename','coverage_note'].includes(k)),'projection publique sans identifiant ni métadonnée documentaire privée');
+  let foreignClaimEvidence=false;
+  try{await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT tracefab_link_dpp_claim_evidence($1,$2)`,[claim.id,U.docB]));}catch(e){foreignClaimEvidence=String(e.message).includes('invalid_evidence_document');}
+  check(foreignClaimEvidence,'document autre tenant refusé sur affirmation');
+  let claimMutationBlocked=false;
+  try{await admin.query('UPDATE dpp_claims SET statement=$1 WHERE id=$2',['altération',claim.id]);}catch(e){claimMutationBlocked=String(e.message).includes('dpp_claims_are_append_only');}
+  check(claimMutationBlocked,'affirmation et chaîne de preuve append-only');
+
   let foreignWrite=false;
   try { await context(U.userB,'cycle-b@test.invalid',()=>app.query(
     `SELECT tracefab_add_dpp_event($1,'repair','Tentative externe')`,[U.product]));

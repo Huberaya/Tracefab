@@ -31,17 +31,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM dpp_lifecycle_events
         WHERE product_id=${dpp.productId}::uuid AND public_summary IS NOT NULL
         ORDER BY recorded_at DESC,id DESC LIMIT 100`;
-      return { dpp, history };
+      const claims = await tx.$queryRaw<Array<{
+        id:string; claim_key:string; statement:string; validation_status:string;
+        valid_from:Date|null; valid_until:Date|null; expired:boolean;
+        accepted_evidence_count:number; evidence_labels:string[];
+      }>>`SELECT * FROM tracefab_public_dpp_claims(${dpp.productId}::uuid)`;
+      return { dpp, history, claims };
     });
     if (!resolved) {
       return json(res, 404, { error: 'product_passport_not_found' });
     }
-    const { dpp: dppData, history } = resolved;
+    const { dpp: dppData, history, claims } = resolved;
 
     res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     return json(res, 200, {
       dpp: dppData,
       history,
+      claims,
       links: {
         appleWalletUrl: `/api/dpp/${encodeURIComponent(gtinOrRef)}/apple-wallet`,
         googleWalletUrl: `/api/dpp/${encodeURIComponent(gtinOrRef)}/google-wallet`,
