@@ -6,7 +6,7 @@ import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile.js';
 import { documentMetadata, serializeDocument, DOCUMENT_SELECT } from '../../../_lib/documents.js';
-import { presignedUpload, storageObjectKey } from '../../../_lib/storage.js';
+import { logStorageFailure, presignedUpload, storageObjectKey } from '../../../_lib/storage.js';
 import { assertStorageQuotaAvailable } from '../../../_lib/cloud-storage/quota-manager.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 201, {
       document: serializeDocument(result.document),
-      upload: { method: 'PUT', url: result.upload.url, headers: result.upload.headers, expiresInSeconds: Number(process.env.PRIVATE_STORAGE_PRESIGN_SECONDS || 600) },
+      upload: { method: 'PUT', url: result.upload.url, headers: result.upload.headers, expiresInSeconds: result.upload.expiresInSeconds },
       next: { scan: `/api/supplier/documents/${result.document.id}/scan` },
     });
   } catch (error) {
@@ -53,10 +53,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error instanceof Error && error.message === 'organization_storage_quota_exceeded') {
       return json(res, 413, { error: 'organization_storage_quota_exceeded' });
     }
-    if (error instanceof Error && /^private_storage_/.test(error.message)) return json(res, 503, { error: error.message });
+    if (error instanceof Error && /^private_storage_/.test(error.message)) {
+      logStorageFailure('upload_intent', error);
+      return json(res, 503, { error: error.message });
+    }
     if (error instanceof Error && (/^invalid_|^document_/.test(error.message))) return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
-    console.error('POST /api/supplier/documents/upload-intent failed', error);
+    logStorageFailure('upload_intent', error);
     return json(res, 500, { error: 'internal_server_error' });
   }
 }

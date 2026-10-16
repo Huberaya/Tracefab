@@ -57,6 +57,8 @@ for (const contract of [
   assert(html.includes(contract), `Supplier Portal contract missing: ${contract}`);
 }
 assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token must be sent through Authorization');
+assert(html.includes('headers:intent.upload.headers'), 'Supplier Portal must send the exact signed PUT headers');
+assert(html.includes('upload.status !== 412'), 'Supplier Portal may only continue after a completed or already-consumed conditional PUT');
 assert(!html.includes('localhost'), 'Supplier Portal must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Supplier Portal must not contain private credentials');
 assert(html.toLowerCase().includes('tracefab'), 'Supplier Portal branding is missing');

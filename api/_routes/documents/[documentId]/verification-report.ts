@@ -4,6 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { logStorageFailure } from '../../../_lib/storage.js';
 
 function routeDocumentId(req: VercelRequest) {
   const value = req.query.documentId;
@@ -105,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
-    console.error('GET /api/documents/:documentId/verification-report failed', error);
+    logStorageFailure('verification_report', error);
     return json(res, 500, { error: 'internal_server_error' });
   }
 }

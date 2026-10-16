@@ -5,6 +5,7 @@ import { json, methodNotAllowed } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile.js';
 import { DOCUMENT_SELECT, serializeDocument } from '../../_lib/documents.js';
+import { logStorageFailure } from '../../_lib/storage.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
@@ -22,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
-    console.error('GET /api/supplier/documents failed', error);
+    logStorageFailure('supplier_documents', error);
     return json(res, 500, { error: 'internal_server_error' });
   }
 }

@@ -31,14 +31,16 @@ Colonne **Criticité** :
 | Variable | Criticité | Rôle | Conséquence si absente |
 |---|---|---|---|
 | `PRIVATE_STORAGE_ENDPOINT` | fonctionnelle | Hôte S3 compatible | Aucun dépôt ni téléchargement de document |
-| `PRIVATE_STORAGE_BUCKET` | fonctionnelle | Nom du bucket | Idem |
-| `PRIVATE_STORAGE_REGION` | fonctionnelle | Région, entre dans la signature SigV4 | Signature refusée |
+| `PRIVATE_STORAGE_BUCKET` | fonctionnelle | La readiness exige la valeur explicite `tracefab-private` ; le runtime a ce fallback, mais refuse tout autre bucket | Readiness 503 si absente |
+| `PRIVATE_STORAGE_REGION` | fonctionnelle | Région SigV4 ; le runtime retombe sur `auto`, mais la readiness exige une valeur explicitement vérifiée pour le fournisseur | Readiness 503 si absente |
 | `PRIVATE_STORAGE_ACCESS_KEY_ID` | fonctionnelle | Identifiant d'accès | Signature refusée |
 | `PRIVATE_STORAGE_SECRET_ACCESS_KEY` | fonctionnelle | Clé secrète | Signature refusée |
-| `PRIVATE_STORAGE_ANTIVIRUS_URL` | fonctionnelle | Analyseur antivirus des pièces jointes | **Les dépôts sont refusés** : aucun fichier n'entre sans analyse |
-| `PRIVATE_STORAGE_ANTIVIRUS_TOKEN` | fonctionnelle | Jeton de l'analyseur | Idem |
-| `PRIVATE_STORAGE_PRESIGN_SECONDS` | réglage | Durée de vie des URL signées, 60 à 3 600 s | Défaut appliqué |
-| `ORGANIZATION_STORAGE_QUOTA_BYTES` | réglage | Quota de stockage par organisation | Défaut appliqué |
+| `PRIVATE_STORAGE_ANTIVIRUS_URL` | fonctionnelle | Analyseur antivirus des pièces jointes | Le PUT direct peut terminer, mais le document reste `scanning` et aucun téléchargement n'est autorisé |
+| `PRIVATE_STORAGE_ANTIVIRUS_TOKEN` | fonctionnelle | Jeton de l'analyseur | Idem ; aucun verdict propre ne peut être obtenu |
+| `PRIVATE_STORAGE_PRESIGN_SECONDS` | réglage | Durée de vie des URL signées, 60 à 3 600 s ; le PUT est conditionnel `If-None-Match: *` | Défaut appliqué |
+| `PRIVATE_STORAGE_REQUEST_TIMEOUT_MS` | réglage | Timeout HEAD/GET S3, 100 à 60 000 ms (défaut 8 000) | Défaut appliqué |
+| `PRIVATE_STORAGE_ANTIVIRUS_TIMEOUT_MS` | réglage | Timeout POST scanner, 100 à 60 000 ms (défaut 15 000) | Défaut appliqué |
+| `ORGANIZATION_STORAGE_QUOTA_BYTES` | réglage | Quota par organisation, incluant les lignes rejetées/supprimées logiquement tant que l'objet n'est pas purgé | Défaut appliqué |
 
 ## Courrier électronique
 

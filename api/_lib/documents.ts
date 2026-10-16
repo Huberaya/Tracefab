@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { downloadObject, headObject, MAX_DOCUMENT_BYTES, scanWithAntivirus } from './storage.js';
+import { downloadObject, headObject, MAX_DOCUMENT_BYTES, presignedDownload, scanWithAntivirus } from './storage.js';
 
 export const DOCUMENT_SELECT = {
   id: true,
@@ -24,6 +24,19 @@ export const DOCUMENT_SELECT = {
 
 export type DocumentRecord = Prisma.documentsGetPayload<{ select: typeof DOCUMENT_SELECT }>;
 
+const SERVER_OWNED_METADATA_KEYS = new Set([
+  'security_scan',
+  'scan_passed',
+  'sha256',
+  'antivirus',
+  'isencryptedatrest',
+]);
+
+function clientVisibleMetadata(value: Prisma.JsonValue) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter(([key]) => !SERVER_OWNED_METADATA_KEYS.has(key.toLowerCase())));
+}
+
 export function serializeDocument(document: DocumentRecord) {
   return {
     id: document.id,
@@ -39,7 +52,7 @@ export function serializeDocument(document: DocumentRecord) {
     expiresAt: document.expires_at,
     uploadedBy: document.uploaded_by,
     createdAt: document.created_at,
-    metadata: document.metadata,
+    metadata: clientVisibleMetadata(document.metadata),
     availableAt: document.available_at,
     deletedAt: document.deleted_at,
     updatedAt: document.updated_at,
@@ -48,6 +61,25 @@ export function serializeDocument(document: DocumentRecord) {
 
 export const ALLOWED_DOCUMENT_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'text/plain']);
 export const DOCUMENT_KINDS = new Set(['certificate', 'technical_spec', 'origin_proof', 'audit_report', 'invoice', 'other']);
+
+export function documentAntivirusSummary(document: Pick<DocumentRecord, 'status' | 'available_at'>) {
+  return {
+    clean: document.status === 'available',
+    status: document.status === 'available' ? 'clean' : document.status === 'rejected' ? 'quarantined' : 'pending',
+    protocol: 'tracefab-v1',
+    engine: null,
+    verifiedAt: document.status === 'available' ? document.available_at : null,
+  };
+}
+
+export async function presignedDownloadForDocument(document: DocumentRecord) {
+  if (document.status !== 'available') throw new Error('document_not_available');
+  const object = await headObject(document.storage_path);
+  if (object.byteSize !== Number(document.byte_size) || object.contentType !== document.content_type) {
+    throw new Error('document_storage_integrity_mismatch');
+  }
+  return presignedDownload(document.storage_path);
+}
 
 export function documentMetadata(body: Record<string, unknown>) {
   const allowedKeys = new Set(['originalFilename', 'contentType', 'byteSize', 'kind', 'expiresAt', 'metadata']);
@@ -65,33 +97,83 @@ export function documentMetadata(body: Record<string, unknown>) {
   }
   const metadata = body.metadata === undefined || body.metadata === null ? {} : body.metadata;
   if (typeof metadata !== 'object' || Array.isArray(metadata) || JSON.stringify(metadata).length > 10000) throw new Error('invalid_document_metadata');
+  if (Object.keys(metadata).some((key) => SERVER_OWNED_METADATA_KEYS.has(key.toLowerCase()))) {
+    throw new Error('invalid_document_metadata_reserved_key');
+  }
   return { originalFilename: body.originalFilename.trim(), contentType: body.contentType.trim().toLowerCase(), byteSize, kind, expiresAt, metadata };
 }
 
-export async function scanAndFinalizeDocument(
-  tx: Prisma.TransactionClient,
-  document: DocumentRecord,
-) {
-  if (document.status === 'deleted') throw new Error('document_deleted');
+export type DocumentScanOutcome = {
+  sha256: string | null;
+  scanPassed: boolean;
+  actualByteSize: number;
+};
+
+/**
+ * Commit the scanning state before making network calls. The caller must first
+ * check the tenant and scan role in this same short transaction. The storage
+ * provider and antivirus service are never contacted while a DB transaction
+ * (or row lock) is held.
+ */
+export async function markDocumentScanning(tx: Prisma.TransactionClient, documentId: string) {
   await tx.$executeRaw`SELECT set_config('tracefab.internal_document_update', 'true', true)`;
-  await tx.$executeRaw`UPDATE documents SET status = 'scanning'::document_status WHERE id = ${document.id}::uuid`;
-  await tx.$executeRaw`SELECT set_config('tracefab.internal_document_update', 'false', true)`;
+  try {
+    const updated = await tx.$executeRaw`
+      UPDATE documents
+      SET status = 'scanning'::document_status
+      WHERE id = ${documentId}::uuid
+        AND status IN ('uploaded'::document_status, 'scanning'::document_status)
+    `;
+    return updated === 1;
+  } finally {
+    try {
+      await tx.$executeRaw`SELECT set_config('tracefab.internal_document_update', 'false', true)`;
+    } catch {
+      // An aborted transaction is rolled back by the caller; preserve its error.
+    }
+  }
+}
+
+/** Perform only storage/scanner I/O; this function deliberately accepts no DB transaction. */
+export async function scanDocumentStorage(
+  document: Pick<DocumentRecord, 'status' | 'storage_path' | 'byte_size' | 'content_type' | 'original_filename'>,
+): Promise<DocumentScanOutcome> {
+  if (document.status === 'deleted') throw new Error('document_deleted');
+
   const object = await headObject(document.storage_path);
-  if (!object.byteSize || object.byteSize > MAX_DOCUMENT_BYTES) throw new Error('document_size_limit_exceeded');
-  if (object.byteSize !== Number(document.byte_size)) throw new Error('document_size_mismatch');
-  if (object.contentType && object.contentType !== document.content_type) throw new Error('document_content_type_mismatch');
+  if (object.byteSize > MAX_DOCUMENT_BYTES || object.byteSize !== Number(document.byte_size)) {
+    // Record the actual S3 size and reject the object. This both prevents
+    // approval and makes quota accounting reflect bytes already stored.
+    return { sha256: null, scanPassed: false, actualByteSize: object.byteSize };
+  }
+  if (object.contentType !== document.content_type) {
+    return { sha256: null, scanPassed: false, actualByteSize: object.byteSize };
+  }
   const bytes = await downloadObject(document.storage_path);
-  if (bytes.byteLength !== object.byteSize) throw new Error('document_size_mismatch');
+  if (bytes.byteLength !== object.byteSize) {
+    return { sha256: null, scanPassed: false, actualByteSize: bytes.byteLength };
+  }
   const { createHash } = await import('node:crypto');
   const sha256 = createHash('sha256').update(Buffer.from(bytes) as unknown as Uint8Array<ArrayBuffer>).digest('hex');
   const scan = await scanWithAntivirus(bytes, document.original_filename, document.content_type);
-  if (scan.mimeType && scan.mimeType !== document.content_type) throw new Error('document_content_type_mismatch');
+  if (scan.clean && scan.mimeType !== document.content_type) {
+    return { sha256, scanPassed: false, actualByteSize: object.byteSize };
+  }
+  return { sha256, scanPassed: scan.clean, actualByteSize: object.byteSize };
+}
+
+/** Finalize in a short tenant-scoped transaction only after a definitive scanner result. */
+export async function finalizeDocumentUpload(
+  tx: Prisma.TransactionClient,
+  documentId: string,
+  outcome: DocumentScanOutcome,
+) {
   const rows = await tx.$queryRaw<DocumentRecord[]>`
     SELECT * FROM tracefab_finalize_document_upload(
-      ${document.id}::uuid,
-      ${sha256},
-      ${scan.clean},
-      ${object.byteSize}
+      ${documentId}::uuid,
+      ${outcome.sha256},
+      ${outcome.scanPassed},
+      ${outcome.actualByteSize}
     )
   `;
   if (!rows[0]) throw new Error('document_finalization_failed');

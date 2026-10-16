@@ -3,7 +3,8 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
-import { DOCUMENT_SELECT, serializeDocument } from '../../../_lib/documents.js';
+import { DOCUMENT_SELECT, documentAntivirusSummary, serializeDocument } from '../../../_lib/documents.js';
+import { logStorageFailure } from '../../../_lib/storage.js';
 
 function routeDocumentId(req: VercelRequest) {
   const value = req.query.documentId;
@@ -36,13 +37,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       if (!doc) return null;
 
-      const meta = (doc.metadata as Record<string, any>) || {};
-      const securityScan = meta.security_scan || {
-        clean: doc.status === 'available',
-        status: doc.status === 'available' ? 'clean' : (doc.status === 'rejected' ? 'quarantined' : 'pending'),
-        engine: 'Tracefab Forensics & ClamAV Engine v2',
-        verifiedAt: doc.available_at || doc.created_at,
-      };
+      // Scanner status is derived only from the server-controlled lifecycle;
+      // uploader-controlled metadata is not a source of security claims.
+      const securityScan = documentAntivirusSummary(doc);
 
       return {
         document: serializeDocument(doc),
@@ -50,7 +47,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         integrity: {
           sha256: doc.sha256,
           byteSize: Number(doc.byte_size),
-          isEncryptedAtRest: true,
+          isEncryptedAtRest: null,
+          encryptionStatus: 'not_verified',
           storageBucket: doc.storage_bucket,
         },
         antivirus: securityScan,
@@ -69,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
-    console.error('GET /api/documents/:documentId/security-report failed', error);
+    logStorageFailure('security_report', error);
     return json(res, 500, { error: 'internal_server_error' });
   }
 }

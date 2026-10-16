@@ -372,3 +372,8 @@ jobs:
         # Prouve que deux organisations distinctes ne peuvent pas accéder aux
         # données de l'autre via INSERT, UPDATE, SELECT, DELETE ni fonctions SD.
         run: npm run test:neon:cross-tenant
+
+      - name: Cycle de vie, accès et quota des documents
+        # Exécute les politiques et fonctions documentaires dans le rôle soumis
+        # à la RLS sur le Postgres jetable de ce job; aucun S3/scanner réel.
+        run: npm run test:neon:document-storage

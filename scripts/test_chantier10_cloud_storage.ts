@@ -3,10 +3,10 @@ import { analyzeDocumentBytes } from '../api/_lib/cloud-storage/antivirus-scanne
 import { configuredStorageQuota, DEFAULT_STORAGE_QUOTA_BYTES } from '../api/_lib/cloud-storage/quota-manager.ts';
 import { safeObjectFilename, storageObjectKey } from '../api/_lib/storage.ts';
 
-console.log('=== TEST SUITE CHANTIER 10: CLOUD STORAGE & FORENSIC ANTIVIRUS ===\n');
+console.log('=== TEST SUITE CHANTIER 10: CLOUD STORAGE & HEURISTIC FILE CHECKS ===\n');
 
-// 1. Antivirus & Heuristic Forensics Tests
-console.log('[TEST 1] Testing Forensic Antivirus Scanner with Clean & Threat Files...');
+// 1. Diagnostic-only heuristics; these do not replace the configured external scanner.
+console.log('[TEST 1] Testing diagnostic heuristics with clean-shaped and threat-signature fixtures...');
 {
   // 1.1 Clean PDF Document
   const cleanPdf = Buffer.from('%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF');
@@ -16,7 +16,7 @@ console.log('[TEST 1] Testing Forensic Antivirus Scanner with Clean & Threat Fil
   assert.equal(cleanResult.details.fileHeaderValid, true);
   assert.equal(cleanResult.details.eicarDetected, false);
   assert.equal(cleanResult.details.embeddedScriptsFound, false);
-  console.log('✓ Clean PDF document verified and passed');
+  console.log('✓ No configured heuristic indicators in the PDF fixture (not external antivirus validation)');
 
   // 1.2 EICAR AntiVirus Test Signature
   const eicarFile = Buffer.from('X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*');
@@ -25,7 +25,7 @@ console.log('[TEST 1] Testing Forensic Antivirus Scanner with Clean & Threat Fil
   assert.equal(eicarResult.status, 'infected');
   assert.equal(eicarResult.threatName, 'EICAR_Standard_AntiVirus_Test_Signature');
   assert.equal(eicarResult.details.eicarDetected, true);
-  console.log('✓ EICAR antivirus test signature successfully detected and quarantined');
+  console.log('✓ EICAR test signature detected by the diagnostic heuristic (no quarantine performed)');
 
   // 1.3 Spoofed Executable (MZ Windows PE disguised as PDF)
   const fakePdf = Buffer.concat([Buffer.from('MZ\x90\x00\x03\x00\x00\x00'), Buffer.alloc(100)]);
@@ -34,7 +34,7 @@ console.log('[TEST 1] Testing Forensic Antivirus Scanner with Clean & Threat Fil
   assert.equal(spoofedResult.status, 'infected');
   assert.equal(spoofedResult.threatName, 'Executable_Payload_Spoofed_MimeType');
   assert.equal(spoofedResult.details.fileHeaderValid, false);
-  console.log('✓ Executable disguised as PDF detected and quarantined');
+  console.log('✓ Executable header disguised as PDF detected by the diagnostic heuristic');
 
   // 1.4 PDF with Active Script Injection (/JavaScript & /Launch)
   const exploitPdf = Buffer.from('%PDF-1.7\n1 0 obj\n<< /Type /Action /S /JavaScript /JS (app.alert(1)) >>\nendobj\n%%EOF');

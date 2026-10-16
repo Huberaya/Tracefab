@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { emailDeliveryConfigured } from '../../_lib/email.js';
 import { notificationAlertConfigured } from '../../_lib/notification-observability.js';
-import { storageConfig } from '../../_lib/storage.js';
+import { antivirusConfig, storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
 import { runLiveProbes } from '../../_lib/readiness-probes.js';
@@ -17,6 +17,7 @@ function privateStorageReadiness() {
   if (missing.length === 0) {
     try {
       storageConfig();
+      antivirusConfig();
       configValid = true;
     } catch {
       configValid = false;

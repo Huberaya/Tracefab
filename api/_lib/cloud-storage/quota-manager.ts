@@ -17,12 +17,8 @@ export async function getOrganizationStorageUsage(
   organizationId: string
 ): Promise<StorageQuotaInfo> {
   const rows = await tx.$queryRaw<Array<{ used_bytes: bigint | number; doc_count: bigint | number }>>`
-    SELECT
-      COALESCE(SUM(byte_size), 0)::bigint AS used_bytes,
-      COUNT(*)::bigint AS doc_count
-    FROM documents
-    WHERE owner_organization_id = ${organizationId}::uuid
-      AND status NOT IN ('deleted', 'rejected')
+    SELECT used_bytes, doc_count
+    FROM tracefab_get_document_storage_usage(${organizationId}::uuid)
   `;
 
   const usedBytes = Number(rows[0]?.used_bytes || 0);
@@ -47,6 +43,10 @@ export async function assertStorageQuotaAvailable(
   organizationId: string,
   newDocumentBytes: number
 ): Promise<void> {
+  // Serialize quota checks for one tenant until the surrounding upload-intent
+  // transaction commits the document row. Without this transaction-scoped
+  // lock, concurrent intents can each pass against the same pre-insert total.
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId}, 0))`;
   const usage = await getOrganizationStorageUsage(tx, organizationId);
   if (usage.usedBytes + newDocumentBytes > usage.quotaBytes) {
     throw new Error('organization_storage_quota_exceeded');

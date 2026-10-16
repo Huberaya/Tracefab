@@ -657,7 +657,10 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
         }
         const intent = await api('/api/supplier/documents/upload-intent', { method:'POST', body:JSON.stringify(body) });
         const upload = await fetch(intent.upload.url, { method:'PUT', headers:intent.upload.headers || {}, body:file });
-        if (!upload.ok) throw new Error('private_storage_upload_failed');
+        // A 412 means a retry reused the one-write capability after the first
+        // PUT already created the object. The server-side scan still verifies
+        // the stored bytes and remains the only path to `available`.
+        if (!upload.ok && upload.status !== 412) throw new Error('private_storage_upload_failed');
         await api(intent.next.scan, { method:'POST', body:'{}' });
         await refreshDocuments();
         notify(t('spNEvidenceUploaded'));

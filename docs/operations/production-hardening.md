@@ -44,8 +44,8 @@ Configurer les variables suivantes dans l’environnement **Production** du proj
 | Email | `RESEND_API_KEY`, `EMAIL_FROM`, `TRACEFAB_APP_URL` | clé de production, domaine expéditeur vérifié, URL HTTPS |
 | Workers | `TRACEFAB_NOTIFICATION_WORKER_SECRET`, `CRON_SECRET` | deux secrets aléatoires distincts, au moins 32 caractères |
 | Invitations | `TRACEFAB_ALLOW_MANUAL_INVITATION_FALLBACK` | `false` en production |
-| Stockage | `PRIVATE_STORAGE_ENDPOINT`, `PRIVATE_STORAGE_BUCKET`, `PRIVATE_STORAGE_REGION`, `PRIVATE_STORAGE_ACCESS_KEY_ID`, `PRIVATE_STORAGE_SECRET_ACCESS_KEY` | endpoint HTTPS, bucket privé, credentials dédiés |
-| Antivirus | `PRIVATE_STORAGE_ANTIVIRUS_URL`, `PRIVATE_STORAGE_ANTIVIRUS_TOKEN` | scanner HTTPS et bearer token dédié |
+| Stockage | `PRIVATE_STORAGE_ENDPOINT`, `PRIVATE_STORAGE_BUCKET`, `PRIVATE_STORAGE_REGION`, `PRIVATE_STORAGE_ACCESS_KEY_ID`, `PRIVATE_STORAGE_SECRET_ACCESS_KEY` | endpoint HTTPS, bucket privé, credentials dédiés, PUT conditionnel `If-None-Match: *`, CORS limité, sentinelle HEAD privée provisionnée et durée serverless supérieure au cumul des timeouts S3/scanner configurés |
+| Antivirus | `PRIVATE_STORAGE_ANTIVIRUS_URL`, `PRIVATE_STORAGE_ANTIVIRUS_TOKEN` | scanner HTTPS, bearer dédié, POST `tracefab-v1` et verdict MIME fiable |
 | Alerting optionnel | `TRACEFAB_NOTIFICATION_ALERT_URL`, `TRACEFAB_NOTIFICATION_ALERT_TOKEN`, `TRACEFAB_NOTIFICATION_ALERT_TIMEOUT_MS` | endpoint HTTPS et token séparé |
 
 Audit local des noms, formats et valeurs placeholder — les valeurs ne sont jamais affichées :
@@ -79,7 +79,7 @@ Ordre recommandé :
 2. `TRACEFAB_AUTHORIZED_PARTIES`, puis `CLERK_SECRET_KEY` ; vérifier la connexion sur Brand Console, Supplier Portal et Operations.
 3. `CLERK_WEBHOOK_SIGNING_SECRET` ; envoyer un événement Clerk de staging avant bascule production.
 4. `DATABASE_URL` ; créer d’abord un rôle runtime Neon à privilèges minimaux, migrer, tester puis révoquer l’ancien mot de passe.
-5. `PRIVATE_STORAGE_*` et le token antivirus ; tester upload-intent, scan et téléchargement signé.
+5. `PRIVATE_STORAGE_*` et le token antivirus ; sur staging, vérifier la signature conditionnelle du PUT, le refus d'une seconde écriture, le POST antivirus `tracefab-v1`, la sentinelle readiness et le téléchargement autorisé. Une sonde locale simulée ne valide pas le fournisseur réel.
 6. `RESEND_API_KEY` ; vérifier le domaine et la cible de test avant tout envoi réel. Aucun email réel ne doit être envoyé sans validation explicite des credentials, du domaine et de la cible.
 7. Révoquer et remplacer le token GitHub utilisé historiquement pour les pushes avant production.
 
@@ -94,6 +94,8 @@ Les tables métier doivent être `ENABLE ROW LEVEL SECURITY` et `FORCE ROW LEVEL
 - les tables cœur utilisateur, organisation, produit, fournisseur, data points, documents, qualité, DPP et audit.
 
 Le contexte utilisateur est installé dans une transaction par `withTracefabUserContext`. Les lectures internes de l’outbox passent par `withTracefabWorkerContext`, uniquement après validation du secret HTTP worker. La chaîne d’audit est vérifiée avec le même client transactionnel que celui qui porte le contexte RLS ; elle ne tombe plus sur une connexion Prisma globale dépourvue de contexte.
+
+Le quota documentaire interroge `tracefab_get_document_storage_usage`, une fonction d’agrégat qui renvoie uniquement des totaux et inclut les objets rejetés/supprimés sans rendre leurs lignes visibles sous RLS. La migration échoue explicitement si son propriétaire n’a ni `BYPASSRLS` ni le statut superutilisateur ; le rôle runtime `tracefab_app` ne doit jamais avoir ce privilège et reçoit seulement l’EXECUTE direct sur la fonction.
 
 Contrôle direct à exécuter avec une connexion d’audit Neon, sans afficher les données métier :
 
