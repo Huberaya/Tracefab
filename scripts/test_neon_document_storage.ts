@@ -31,6 +31,7 @@ const emailA = `document-a-${suffix}@example.test`;
 const emailB = `document-b-${suffix}@example.test`;
 const sha = 'a'.repeat(64);
 let failures = 0;
+let phase = 'connect';
 const ok = (message: string) => console.log(`  ok    ${message}`);
 
 async function withAppUser<T>(userId: string, email: string, callback: () => Promise<T>): Promise<T> {
@@ -96,12 +97,15 @@ async function finalize(userId: string, email: string, documentId: string, scanP
 }
 
 async function main() {
+  phase = 'connect';
   await owner.connect();
   await app.connect();
+  phase = 'verify_runtime_role';
   const role = await app.query('SELECT current_user AS role, (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypass');
   assert.equal(role.rows[0]?.bypass, false, 'application role must not bypass RLS');
   ok(`test role ${role.rows[0]?.role} is subject to RLS`);
 
+  phase = 'create_test_identities';
   await owner.query(
     'INSERT INTO users (id, clerk_user_id, email, full_name) VALUES ($1, $3, $4, $5), ($2, $6, $7, $8)',
     [userA, userB, `document-a-${suffix}`, emailA, 'Document tenant A', `document-b-${suffix}`, emailB, 'Document tenant B'],
@@ -117,6 +121,7 @@ async function main() {
     [organizationA, organizationB, userA, userB],
   );
 
+  phase = 'register_tenant_documents';
   const registeredA = await registerDocument(userA, emailA, organizationA, 'clean.pdf', 8, {
     security_scan: { clean: true, engine: 'forged-client-value' },
     scan_passed: true,
@@ -128,6 +133,7 @@ async function main() {
   documentB = registeredB.id;
   assert.match(registeredA.path, new RegExp(`^${organizationA}/`));
   assert.match(registeredARejected.path, new RegExp(`^${organizationA}/`));
+  phase = 'pending_document_rls';
   const ownPendingRows = await withAppUser(userA, emailA, async () => {
     const result = await app.query('SELECT id FROM documents WHERE id = ANY($1::uuid[])', [[documentA, documentARejected, documentB]]);
     return result.rows.map((row) => row.id).sort();
@@ -135,6 +141,7 @@ async function main() {
   assert.deepEqual(ownPendingRows, [documentA, documentARejected].sort(), 'RLS must expose owner pending docs but hide another tenant pending doc');
   ok('RLS exposes owner pending rows for retry/listing but hides another tenant pending document');
 
+  phase = 'commit_scanning_state';
   const scanClaimRows = await withAppUser(userA, emailA, async () => {
     await app.query("SELECT set_config('tracefab.internal_document_update', 'true', true)");
     const result = await app.query(
@@ -147,6 +154,7 @@ async function main() {
   assert.equal(scanClaimRows, 1, 'authorized owner must be able to commit a retryable scanning state');
   ok('authorized tenant can commit scanning before external I/O; failures remain pending and non-downloadable');
 
+  phase = 'reject_cross_tenant_finalization';
   await expectAppFailure(userA, emailA, 'document_finalize_role_required', async () => {
     await app.query('SELECT tracefab_finalize_document_upload($1::uuid, $2, true, 9::bigint)', [documentB, sha]);
   });
@@ -157,6 +165,7 @@ async function main() {
   });
   ok('SQL finalizer independently rejects declared/actual byte-size mismatch');
 
+  phase = 'finalize_clean_document';
   const available = await finalize(userA, emailA, documentA, true, 8);
   assert.equal(available, 'available');
   const metadata = await owner.query('SELECT metadata FROM documents WHERE id = $1', [documentA]);
@@ -164,6 +173,7 @@ async function main() {
   assert.equal(metadata.rows[0]?.metadata?.scan_passed, true, 'server finalizer must set its own scan_passed field');
   ok('authorized SQL finalization marks clean lifecycle state and removes forged scan metadata');
 
+  phase = 'reject_size_mismatch';
   await expectAppFailure(userA, emailA, 'document_size_mismatch', async () => {
     await app.query('SELECT tracefab_finalize_document_upload($1::uuid, $2, true, 13::bigint)', [documentARejected, sha]);
   });
@@ -175,6 +185,7 @@ async function main() {
   assert.equal(rejectedB, 'rejected');
   ok('rejected verdict persists actual bytes for quota accounting and never becomes available');
 
+  phase = 'document_access_matrix';
   const accessA = await withAppUser(userA, emailA, async () => {
     const result = await app.query('SELECT tracefab_can_access_document($1::uuid) AS can_access', [documentA]);
     return result.rows[0]?.can_access;
@@ -197,6 +208,7 @@ async function main() {
   });
   ok('storage aggregate refuses a different tenant even though it returns only totals');
 
+  phase = 'soft_delete_and_quota_aggregate';
   await withAppUser(userA, emailA, async () => {
     await app.query('SELECT tracefab_soft_delete_document($1::uuid)', [documentA]);
   });
@@ -225,6 +237,7 @@ async function main() {
   }
   ok('quota reports physical bytes for rejected/soft-deleted rows and enforces the configured threshold');
 
+  phase = 'soft_deleted_access_revocation';
   const afterSoftDelete = await withAppUser(userA, emailA, async () => {
     const result = await app.query('SELECT tracefab_can_access_document($1::uuid) AS can_access', [documentA]);
     return result.rows[0]?.can_access;
@@ -240,7 +253,10 @@ try {
   const code = error && typeof error === 'object' && 'code' in error && /^[A-Za-z0-9_]{1,32}$/.test(String((error as { code?: unknown }).code))
     ? String((error as { code?: unknown }).code)
     : 'details_suppressed';
-  console.error(`FAIL — document-storage database behavior (${code}); message and connection details suppressed.`);
+  const message = error instanceof Error ? error.message : '';
+  const safeReason = /^[A-Za-z0-9_]{1,96}$/.test(message) ? message : `sqlstate_${code}`;
+  console.error(`::error title=Document-storage PostgreSQL contract::${phase}:${safeReason}`);
+  console.error(`FAIL — document-storage database behavior (${code}); phase=${phase}; message and connection details suppressed.`);
   failures += 1;
 } finally {
   await prisma.$disconnect();
