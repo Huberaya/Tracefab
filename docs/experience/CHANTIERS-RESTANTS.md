@@ -3,7 +3,7 @@
 Document de suivi historique : les informations datées plus bas ne doivent pas
 être considérées comme un état actuel sans vérification indépendante.
 
-**État de la PR #44 au 16 octobre 2026 : dépôt : 41/41 migrations présentes. Dernière migration Neon de production confirmée dans les éléments disponibles : `20261009180000_public_read_context`. L’historique complet et les statuts doivent être réconciliés en lecture seule avant toute application ; `publication_explicite` et les migrations de privilèges ne doivent pas être appliquées à l’aveugle.**
+**État de la PR #44 au 16 octobre 2026 : Dépôt : 42 migrations. Neon de production : non vérifié.** Le nombre est calculé sur `prisma/migrations` dans cette branche ; il ne prouve pas combien de migrations sont appliquées sur la base distante. L’historique et les statuts de production doivent être réconciliés en lecture seule avant toute application ; `publication_explicite` et les migrations de privilèges ne doivent pas être appliquées à l’aveugle.
 
 > **La CI a été rouge sur trois livraisons de suite** (#38, #39, #40) pendant
 > que j'annonçais « vert ». Je validais en local et ne regardais pas la CI. Les
