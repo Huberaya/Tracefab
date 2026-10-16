@@ -34,7 +34,7 @@ try {
   await admin.query(`INSERT INTO tracefab_products(id,brand_organization_id,reference,name,status,description,category,country_of_manufacture,data_readiness)
     VALUES($1,$2,'DPP-LIVE-001','Chemise vivante','active','Chemise textile de test avec provenance explicite.','shirt','FR','data_ready')`,[U.product,U.orgA]);
   await admin.query(`INSERT INTO dpp_records(id,product_id,product_version,requirement_profile_key,requirement_profile_version,
-    readiness_status,reviewed_at,reviewed_by) VALUES($1,$2,1,'textile_readiness_mvp','1.0','ready_to_publish',now(),$3)`,[U.dpp,U.product,U.userA]);
+    readiness_status) VALUES($1,$2,1,'textile_readiness_mvp','1.0','data_ready')`,[U.dpp,U.product]);
   for (const [id,org,name] of [[U.docA,U.orgA,'preuve-a.pdf'],[U.docB,U.orgB,'preuve-b.pdf']]) {
     await admin.query(`INSERT INTO documents(id,owner_organization_id,storage_bucket,storage_path,original_filename,content_type,byte_size,status,visibility)
       VALUES($1,$2,'tracefab-private',$3,$4,'application/pdf',128,'uploaded','private')`,[id,org,`${org}/dpp/${name}`,name]);
@@ -51,6 +51,9 @@ try {
   const role=(await app.query("SELECT rolbypassrls,rolsuper FROM pg_roles WHERE rolname=current_user")).rows[0];
   check(!role.rolbypassrls&&!role.rolsuper,'role runtime soumis a RLS');
 
+  const reviewed=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT (tracefab_mark_dpp_ready_to_publish($1)).*`,[U.dpp]));
+  check(reviewed.rows[0].readiness_status==='ready_to_publish'&&reviewed.rows[0].reviewed_at,'revue autorisee horodatee avant publication');
   const published=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
     `SELECT (tracefab_set_dpp_publication($1,'publish','dpp-live-001')).*`,[U.product]));
   check(published.rows[0].readiness_status==='published','revue vers publication executee en transaction');
