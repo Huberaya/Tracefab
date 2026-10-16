@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';import{readFile}from'node:fs/promises';
+const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
+const [sql,router,pub,claims,evidence]=await Promise.all([read('prisma/migrations/20261016150000_dpp_claim_evidence_chain/migration.sql'),read('api/index.ts'),read('api/_routes/dpp/[gtin].ts'),read('api/_routes/products/[productId]/dpp/claims.ts'),read('api/_routes/products/[productId]/dpp/claims/[claimId]/evidence.ts')]);
+assert.match(sql,/CREATE TABLE dpp_claims/);assert.match(sql,/CREATE TABLE dpp_claim_evidence/);
+assert.match(sql,/dpp_claims_no_update_delete/);assert.match(sql,/dpp_claim_evidence_no_update_delete/);
+assert.match(sql,/owner_organization_id=v_claim.owner_organization_id[\s\S]*invalid_evidence_document/);
+assert.match(sql,/verification_result='accepted'/);assert.match(sql,/public_label IS NOT NULL/);
+assert.match(sql,/tracefab_public_dpp_claims/);assert.ok(!/GRANT EXECUTE[^;]+ TO PUBLIC/.test(sql));
+const projection=sql.slice(sql.indexOf('RETURNS TABLE(id UUID'),sql.indexOf('ALTER TABLE dpp_claims'));
+for(const secret of ['document_id','original_filename','storage_path','coverage_note','created_by'])assert.ok(!projection.includes(secret),`projection publique divulgue ${secret}`);
+assert.match(router,/dpp\\\/claims/);assert.match(pub,/tracefab_public_dpp_claims/);assert.match(claims,/accessibleProduct/);assert.match(evidence,/accessibleProduct/);
+assert.match(evidence,/\['pending','accepted','rejected'\]/);assert.match(sql,/un lien ou un hash ne prouve pas la véracité/i);
+console.log('Chaîne de preuves DPP : 18 assertions de structure et confidentialité réussies.');

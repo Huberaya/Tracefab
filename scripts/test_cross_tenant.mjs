@@ -50,6 +50,8 @@ const CLASSIFIED = {
   'dpp/[gtin]': ['PUBLIC', 'Passeport numerique public : c est sa raison d etre.'],
   'dpp/[gtin]/google-wallet': ['PUBLIC', 'Carte wallet derivee du passeport public.'],
   'dpp/[gtin]/apple-wallet': ['PUBLIC', 'Carte wallet derivee du passeport public.'],
+  'resolve/[publicId]': ['PUBLIC', 'Resolveur DPP public; RLS exige un produit explicitement publie.'],
+  'resolve/[publicId]/qr': ['PUBLIC', 'QR public uniquement pour une identite rattachee a un produit publie.'],
   'products/[productId]/wallet/apple': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
   'products/[productId]/wallet/google': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
   'health': ['PUBLIC', 'Sonde de disponibilite, aucune donnee metier.'],

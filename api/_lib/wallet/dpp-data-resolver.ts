@@ -113,7 +113,12 @@ export async function resolveDppPassData(
   // Le filtre OR est construit conditionnellement : une entree `{ id: undefined }`
   // laissee dans un `OR` Prisma est un objet vide, donc un sous-filtre neutre —
   // un piege silencieux. Ici, chaque entree reelle a une condition vraie.
+  const resolvedIdentity = await (tx as any).$queryRaw<Array<{ product_id: string }>>`
+    SELECT product_id FROM dpp_resolvable_identifiers
+    WHERE public_id=${cleanId.toLowerCase()} AND status='active' LIMIT 1
+  `;
   const orClauses: Prisma.tracefab_productsWhereInput[] = [
+    ...(resolvedIdentity[0] ? [{ id: resolvedIdentity[0].product_id }] : []),
     { public_slug: cleanId.toLowerCase() },
     { reference: cleanId },
     { product_identifiers: { some: { identifier_value: cleanId } } },

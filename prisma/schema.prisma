@@ -429,6 +429,84 @@ model dpp_records {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// Append-only application lifecycle history. Database triggers reject UPDATE/DELETE.
+/// Public access is restricted by RLS to explicitly published summaries.
+model dpp_lifecycle_events {
+  id                    String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id            String                      @db.Uuid
+  owner_organization_id String                      @db.Uuid
+  event_type            String
+  subject_scope         String                      @default("model")
+  subject_reference     String?
+  business_occurred_at  DateTime?                   @db.Timestamptz(6)
+  recorded_at           DateTime                    @default(now()) @db.Timestamptz(6)
+  actor_user_id         String?                     @db.Uuid
+  source_kind           String                      @default("actor_declaration")
+  validation_status     dpp_event_validation_status @default(declared)
+  summary               String
+  details               Json                        @default("{}")
+  public_summary        String?
+  evidence_document_ids String[]                    @default([]) @db.Uuid
+  corrects_event_id     String?                     @db.Uuid
+  idempotency_key       String?
+  metadata              Json                        @default("{}")
+
+  @@unique([owner_organization_id, idempotency_key])
+  @@index([product_id, recorded_at(sort: Desc), id(sort: Desc)], map: "idx_dpp_events_product_recorded")
+  @@index([owner_organization_id, recorded_at(sort: Desc)], map: "idx_dpp_events_owner_recorded")
+}
+
+model dpp_claims {
+  id                    String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id            String                      @db.Uuid
+  owner_organization_id String                      @db.Uuid
+  lifecycle_event_id    String?                     @db.Uuid
+  claim_key             String
+  statement             String
+  public_statement      String?
+  subject_scope         String                      @default("model")
+  subject_reference     String?
+  validation_status     dpp_event_validation_status @default(declared)
+  valid_from            DateTime?                   @db.Date
+  valid_until           DateTime?                   @db.Date
+  supersedes_claim_id   String?                     @db.Uuid
+  rejection_reason      String?
+  created_by            String?                     @db.Uuid
+  created_at            DateTime                    @default(now()) @db.Timestamptz(6)
+  @@index([product_id, created_at(sort: Desc)], map: "idx_dpp_claims_product")
+}
+
+model dpp_claim_evidence {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claim_id            String   @db.Uuid
+  document_id         String   @db.Uuid
+  relationship        String   @default("supports")
+  coverage_note       String?
+  verification_result String   @default("pending")
+  verification_reason String?
+  public_label        String?
+  linked_by           String?  @db.Uuid
+  linked_at           DateTime @default(now()) @db.Timestamptz(6)
+  @@unique([claim_id, document_id, relationship])
+  @@index([claim_id, linked_at(sort: Desc)], map: "idx_dpp_claim_evidence_claim")
+}
+
+model dpp_resolvable_identifiers {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id            String   @db.Uuid
+  owner_organization_id String   @db.Uuid
+  public_id             String   @unique
+  granularity           String
+  qualifier             String?
+  status                String   @default("active")
+  replaced_by_id        String?  @db.Uuid
+  created_by            String?  @db.Uuid
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  retired_at            DateTime? @db.Timestamptz(6)
+  reason                String?
+  @@index([product_id, status], map: "idx_dpp_resolvable_product")
+}
+
 model dpp_requirement_profiles {
   id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   profile_key     String
@@ -1309,6 +1387,15 @@ enum dpp_profile_status {
   draft
   active
   retired
+}
+
+enum dpp_event_validation_status {
+  declared
+  documented
+  controlled
+  corroborated
+  third_party_verified
+  rejected
 }
 
 enum dpp_readiness_status {

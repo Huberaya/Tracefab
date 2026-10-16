@@ -17,14 +17,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Route anonyme : sans contexte public, chaque table tenant rend 0 ligne
     // une fois l'application connectee en tracefab_app.
-    const dppData = await withTracefabPublicContext((tx) => resolveDppPassData(tx, gtinOrRef));
-    if (!dppData) {
+    const resolved = await withTracefabPublicContext(async (tx) => {
+      const dpp = await resolveDppPassData(tx, gtinOrRef);
+      if (!dpp) return null;
+      // Liste blanche SQL + RLS : aucun detail, acteur, document ou metadata
+      // prive ne traverse cette projection anonyme.
+      const history = await tx.$queryRaw<Array<{
+        id: string; event_type: string; business_occurred_at: Date | null;
+        recorded_at: Date; validation_status: string; public_summary: string;
+      }>>`
+        SELECT id,event_type,business_occurred_at,recorded_at,
+               validation_status::text,public_summary
+        FROM dpp_lifecycle_events
+        WHERE product_id=${dpp.productId}::uuid AND public_summary IS NOT NULL
+        ORDER BY recorded_at DESC,id DESC LIMIT 100`;
+      const claims = await tx.$queryRaw<Array<{
+        id:string; claim_key:string; statement:string; validation_status:string;
+        valid_from:Date|null; valid_until:Date|null; expired:boolean;
+        accepted_evidence_count:number; evidence_labels:string[];
+      }>>`SELECT * FROM tracefab_public_dpp_claims(${dpp.productId}::uuid)`;
+      return { dpp, history, claims };
+    });
+    if (!resolved) {
       return json(res, 404, { error: 'product_passport_not_found' });
     }
+    const { dpp: dppData, history, claims } = resolved;
 
-    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     return json(res, 200, {
       dpp: dppData,
+      history,
+      claims,
       links: {
         appleWalletUrl: `/api/dpp/${encodeURIComponent(gtinOrRef)}/apple-wallet`,
         googleWalletUrl: `/api/dpp/${encodeURIComponent(gtinOrRef)}/google-wallet`,
