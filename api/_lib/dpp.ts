@@ -6,7 +6,8 @@ export type DppReadinessStatus =
   | 'in_progress'
   | 'review_required'
   | 'data_ready'
-  | 'ready_to_publish';
+  | 'ready_to_publish'
+  | 'published';
 
 export type DppPillar = 'identification' | 'composition' | 'traceability' | 'quality';
 
@@ -56,6 +57,7 @@ export const DPP_STATUS_LABELS: Record<DppReadinessStatus, string> = {
   review_required: 'Revue requise',
   data_ready: 'Prêt pour validation',
   ready_to_publish: 'Validé & Prêt à publier',
+  published: 'Publié',
 };
 
 export const DPP_REQUIREMENT_LABELS: Record<string, string> = {
@@ -223,7 +225,7 @@ export function buildDppSummary(
   const completionScore = totalReqCount > 0 ? Math.round((totalMetCount / totalReqCount) * 100) : 0;
   const rawStatus = (record?.readiness_status || 'not_started') as DppReadinessStatus;
   const readinessStatus: DppReadinessStatus =
-    rawStatus === 'data_ready' || rawStatus === 'ready_to_publish' || rawStatus === 'review_required' || rawStatus === 'in_progress'
+    rawStatus === 'data_ready' || rawStatus === 'ready_to_publish' || rawStatus === 'published' || rawStatus === 'review_required' || rawStatus === 'in_progress'
       ? rawStatus
       : 'not_started';
 
