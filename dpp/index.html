@@ -384,7 +384,8 @@
     }
 
     /* Historique public de cycle de vie — alimenté exclusivement par l'API. */
-    .lifecycle-section { padding: 26px 20px; border-top: 1px solid var(--border-light); background: #fbfdfb; }
+    .lifecycle-section { display:none; padding:26px 20px; border-top:1px solid var(--border-light); background:#fbfdfb; }
+    html[data-dpp-requested="true"] .lifecycle-section { display:block; }
     .lifecycle-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:8px; }
     .lifecycle-heading h2 { font-size:19px; line-height:1.25; letter-spacing:-.02em; }
     .lifecycle-count { flex:0 0 auto; padding:3px 9px; border-radius:999px; background:var(--primary-soft); color:var(--primary); font-size:11px; font-weight:700; }
