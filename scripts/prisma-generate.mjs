@@ -87,6 +87,60 @@ if (!cli) {
   process.exit(1);
 }
 
+// ---------------------------------------------------------------------------
+// 0. Preflight reseau — dependance externe identifiee par le chantier 2C.34
+// ---------------------------------------------------------------------------
+// `prisma generate` (CLI 6.19.3) verifie la version du moteur au demarrage et
+// telecharge, si necessaire, le binaire schema-engine depuis
+// https://binaries.prisma.sh/.../schema-engine.gz.sha256. Sans acces a cet
+// hote, la generation est impossible : ce n'est pas un bug du depot, c'est une
+// dependance externe. On le dit explicitement plutot que de laisser le CLI
+// echouer avec un message opaque.
+//
+// Hote requis : binaries.prisma.sh (HTTPS/443)
+// Fichiers requis : schema-engine.gz.sha256 puis schema-engine.gz
+//                  (pour la plateforme courante : debian-openssl-3.0.x)
+// Cache local possible : definir PRISMA_ENGINES_CACHE_DIR vers un dossier
+// deja rempli (voir https://www.prisma.io/docs/orm/prisma-client/...).
+const PRISMA_BINARIES_HOST = 'binaries.prisma.sh';
+const PRISMA_BINARIES_PATH =
+  '/all_commits/c2990dca591cba766e3b7ef5d9e8a84796e47ab7/debian-openssl-3.0.x/schema-engine.gz.sha256';
+
+async function checkNetwork() {
+  const https = await import('node:https');
+  return new Promise((resolve) => {
+    const req = https.request(
+      { host: PRISMA_BINARIES_HOST, port: 443, path: PRISMA_BINARIES_PATH, method: 'HEAD', timeout: 8000 },
+      (res) => {
+        resolve(Boolean(res.statusCode && res.statusCode < 500));
+        res.resume();
+      },
+    );
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+    req.end();
+  });
+}
+
+const networkAvailable = await checkNetwork();
+if (!networkAvailable) {
+  console.error(
+    '\n  BLOCAGE RESEAU — la generation du client Prisma est impossible ici.\n' +
+    `  Hote requis : https://${PRISMA_BINARIES_HOST} (HTTPS/443)\n` +
+    '  Fichier requis : schema-engine.gz.sha256 (puis schema-engine.gz)\n' +
+    '  Le CLI Prisma 6.19.3 verifie la version du moteur au demarrage et\n' +
+    '  telecharge ce binaire s\'il n\'est pas deja en cache local.\n' +
+    '  Contournements possibles :\n' +
+    '    - executer ce script dans un environnement avec acces reseau vers\n' +
+    '      binaries.prisma.sh (CI GitHub Actions, Vercel, poste developpeur) ;\n' +
+    '    - definir PRISMA_ENGINES_CACHE_DIR vers un cache deja rempli ;\n' +
+    '    - definir PRISMA_SKIP_POSTINSTALL_GENERATE=true hors deploiement\n' +
+    '      (le client restera le stub factice ; verify:prisma-client echouera).\n' +
+    '  Ce script ne simule pas un succes : le client n\'est pas genere.\n',
+  );
+  process.exit(2);
+}
+
 console.log(`  generation Prisma — ${process.env.VERCEL_ENV || process.env.NODE_ENV || 'local'}`);
 const result = spawnSync(process.execPath, [cli, 'generate'], { stdio: 'inherit', cwd: ROOT });
 

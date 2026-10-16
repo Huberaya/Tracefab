@@ -130,7 +130,9 @@
     "test:migration-history": "node scripts/test_migration_history.mjs",
     "test:ci-no-production-access": "node scripts/test_ci_no_production_access.mjs",
     "db:prepare-ci-role": "node scripts/run-db-suite.mjs scripts/prepare_ci_db_role.mjs",
-    "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs"
+    "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs",
+    "prisma:check-network": "node scripts/check_prisma_network.mjs",
+    "db:generate:verified": "npm run prisma:check-network && npm run db:generate"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^6.19.3",
