@@ -52,10 +52,10 @@ try {
   check(!role.rolbypassrls&&!role.rolsuper,'role runtime soumis a RLS');
 
   const reviewed=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT (tracefab_mark_dpp_ready_to_publish($1)).*`,[U.dpp]));
+    `SELECT * FROM tracefab_mark_dpp_ready_to_publish($1)`,[U.dpp]));
   check(reviewed.rows[0].readiness_status==='ready_to_publish'&&reviewed.rows[0].reviewed_at,'revue autorisee horodatee avant publication');
   const published=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT (tracefab_set_dpp_publication($1,'publish','dpp-live-001')).*`,[U.product]));
+    `SELECT * FROM tracefab_set_dpp_publication($1,'publish','dpp-live-001')`,[U.product]));
   check(published.rows[0].readiness_status==='published','revue vers publication executee en transaction');
   check((await admin.query('SELECT public_slug FROM tracefab_products WHERE id=$1',[U.product])).rows[0].public_slug==='dpp-live-001','identifiant public stable pose');
 
@@ -66,20 +66,20 @@ try {
   check(publicPublication.rows.some(e=>e.event_type==='published'&&e.public_summary),'evenement de publication visible sans detail prive');
 
   const added=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT (tracefab_add_dpp_event($1,'evidence_added','Certificat fournisseur ajoute',now(),'document','documented',
-      'Une preuve documentaire a ete ajoutee','{"claim":"composition"}'::jsonb,ARRAY[$2]::uuid[],NULL,'erp-evt-001','model',NULL)).*`,[U.product,U.docA]));
+    `SELECT * FROM tracefab_add_dpp_event($1,'evidence_added','Certificat fournisseur ajoute',now(),'document','documented',
+      'Une preuve documentaire a ete ajoutee','{"claim":"composition"}'::jsonb,ARRAY[$2]::uuid[],NULL,'erp-evt-001','model',NULL)`,[U.product,U.docA]));
   const evidenceEvent=added.rows[0];
   check(evidenceEvent.validation_status==='documented','preuve enregistree comme documentee, jamais certifiee automatiquement');
   check(evidenceEvent.evidence_document_ids[0]===U.docA,'preuve du bon tenant reliee a evenement');
 
   const duplicate=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT (tracefab_add_dpp_event($1,'evidence_added','Rejeu identique',now(),'document','documented',NULL,
-      '{}'::jsonb,ARRAY[$2]::uuid[],NULL,'erp-evt-001','model',NULL)).id`,[U.product,U.docA]));
+    `SELECT id FROM tracefab_add_dpp_event($1,'evidence_added','Rejeu identique',now(),'document','documented',NULL,
+      '{}'::jsonb,ARRAY[$2]::uuid[],NULL,'erp-evt-001','model',NULL)`,[U.product,U.docA]));
   check(duplicate.rows[0].id===evidenceEvent.id,'rejeu idempotent retourne evenement initial sans doublon');
 
   const corrected=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT (tracefab_add_dpp_event($1,'data_corrected','Perimetre de preuve corrige',now(),'document','documented',
-      'Le perimetre de la preuve a ete corrige','{}'::jsonb,ARRAY[$2]::uuid[],$3,NULL,'model',NULL)).*`,[U.product,U.docA,evidenceEvent.id]));
+    `SELECT * FROM tracefab_add_dpp_event($1,'data_corrected','Perimetre de preuve corrige',now(),'document','documented',
+      'Le perimetre de la preuve a ete corrige','{}'::jsonb,ARRAY[$2]::uuid[],$3,NULL,'model',NULL)`,[U.product,U.docA,evidenceEvent.id]));
   check(corrected.rows[0].corrects_event_id===evidenceEvent.id,'correction reference explicitement evenement anterieur');
   check(Number((await admin.query('SELECT count(*) FROM dpp_lifecycle_events WHERE id=ANY($1::uuid[])',[[evidenceEvent.id,corrected.rows[0].id]])).rows[0].count)===2,'fait initial conserve apres correction');
 
@@ -103,7 +103,7 @@ try {
   check(mutationBlocked,'UPDATE evenement refuse meme au proprietaire de migration');
 
   const suspended=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT (tracefab_set_dpp_publication($1,'suspend',NULL)).*`,[U.product]));
+    `SELECT * FROM tracefab_set_dpp_publication($1,'suspend',NULL)`,[U.product]));
   check(suspended.rows[0].readiness_status==='ready_to_publish','publication suspendue sans detruire readiness revue');
   check((await admin.query('SELECT public_slug FROM tracefab_products WHERE id=$1',[U.product])).rows[0].public_slug===null,'slug retire atomiquement lors suspension');
   const invisible=await publicContext(()=>app.query('SELECT id FROM tracefab_products WHERE id=$1',[U.product]));
