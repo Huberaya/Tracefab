@@ -122,19 +122,37 @@ AS $$
 $$;
 
 -- L'identite de marque exposable : la condition EXISTS inlinait public_slug.
-CREATE OR REPLACE FUNCTION tracefab_public_brand(p_organization_id uuid)
+DO $pubbrand$
+DECLARE
+  argname text;
+BEGIN
+  SELECT COALESCE(p.proargnames[1], 'p_organization_id')
+    INTO argname
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.proname = 'tracefab_public_brand'
+   LIMIT 1;
+  IF argname IS NULL THEN
+    argname := 'p_organization_id';
+  END IF;
+  EXECUTE format(
+    $fn$
+CREATE OR REPLACE FUNCTION public.tracefab_public_brand(%I uuid)
 RETURNS TABLE (display_name text, country_code text)
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $body$
   SELECT o.display_name, o.country_code
   FROM organizations o
-  WHERE o.id = p_organization_id
+  WHERE o.id = %I
     AND EXISTS (
       SELECT 1 FROM tracefab_products p
       WHERE p.brand_organization_id = o.id
         AND tracefab_product_is_public(p.id)
     );
-$$;
+$body$;
+$fn$, argname, argname);
+END
+$pubbrand$;
