@@ -13,7 +13,7 @@
 
   <!-- Google Fonts -->
   <!-- Polices locales versionnées (pas de CDN Google) -->
-  <link rel="stylesheet" href="/assets/css/fonts.css">
+  <link rel="stylesheet" href="/assets/css/fonts.css?v=c78cbebf">
 
   <!-- Schema JSON-LD de passeport produit, au format CIRPASS / ESPR -->
   <script type="application/ld+json" id="dpp-jsonld">
@@ -382,6 +382,30 @@
       height: 8px;
       border-radius: 50%;
     }
+
+    /* Historique public de cycle de vie — alimenté exclusivement par l'API. */
+    .lifecycle-section { padding: 26px 20px; border-top: 1px solid var(--border-light); background: #fbfdfb; }
+    .lifecycle-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:8px; }
+    .lifecycle-heading h2 { font-size:19px; line-height:1.25; letter-spacing:-.02em; }
+    .lifecycle-count { flex:0 0 auto; padding:3px 9px; border-radius:999px; background:var(--primary-soft); color:var(--primary); font-size:11px; font-weight:700; }
+    .lifecycle-intro { color:var(--text-muted); font-size:13px; margin-bottom:20px; max-width:52ch; }
+    .lifecycle-list { list-style:none; position:relative; margin:0; padding:0 0 0 28px; }
+    .lifecycle-list::before { content:""; position:absolute; left:8px; top:8px; bottom:10px; width:2px; background:var(--border-medium); }
+    .lifecycle-event { position:relative; padding:0 0 22px 8px; }
+    .lifecycle-event:last-child { padding-bottom:4px; }
+    .lifecycle-dot { position:absolute; left:-25px; top:5px; width:12px; height:12px; border-radius:50%; background:#fff; border:3px solid var(--primary); box-shadow:0 0 0 3px #fbfdfb; }
+    .lifecycle-event time { display:block; color:var(--text-muted); font-size:11px; font-variant-numeric:tabular-nums; margin-bottom:4px; }
+    .lifecycle-event-title { font-size:14px; line-height:1.4; margin:0 0 7px; overflow-wrap:anywhere; }
+    .trust-badge { display:inline-flex; align-items:center; min-height:24px; padding:2px 8px; border:1px solid var(--border-medium); border-radius:999px; font-size:10.5px; font-weight:700; color:var(--text-muted); background:#fff; }
+    .trust-badge[data-status="documented"] { color:#3730a3; border-color:#c7d2fe; background:#eef2ff; }
+    .trust-badge[data-status="controlled"] { color:#075985; border-color:#bae6fd; background:#f0f9ff; }
+    .trust-badge[data-status="corroborated"], .trust-badge[data-status="third_party_verified"] { color:var(--primary); border-color:#a7d8c6; background:var(--primary-soft); }
+    .lifecycle-state { border:1px dashed var(--border-medium); border-radius:var(--radius-md); padding:18px; color:var(--text-muted); font-size:13px; background:#fff; }
+    .lifecycle-more { margin-top:16px; min-height:44px; width:100%; border:1px solid var(--border-medium); border-radius:10px; background:#fff; color:var(--text-main); font:inherit; font-size:13px; font-weight:650; cursor:pointer; }
+    .lifecycle-more:hover, .lifecycle-more:focus-visible { border-color:var(--primary); outline:3px solid var(--primary-glow); outline-offset:2px; }
+    .live-data-note { display:none; margin:0 20px 20px; padding:12px 14px; border-left:3px solid var(--primary); background:var(--primary-soft); color:var(--forest-800); font-size:12px; }
+    html[data-dpp-source]:not([data-dpp-source="demo"]) .live-data-note { display:block; }
+    html[data-dpp-source]:not([data-dpp-source="demo"]) [data-dpp-demo-only], html[data-dpp-requested="true"] [data-dpp-demo-only] { display:none !important; }
 
     /* Supply Chain Flow Timeline (Vertical on Mobile) */
     .trace-timeline {
@@ -812,7 +836,7 @@
     </div>
 
     <!-- Interactive Navigation Tabs -->
-    <nav class="dpp-tabs" aria-label="Passport sections" data-i18n-attr="aria-label:dpp.tabsAria">
+    <nav class="dpp-tabs" data-dpp-demo-only aria-label="Passport sections" data-i18n-attr="aria-label:dpp.tabsAria">
       <button class="dpp-tab-btn active" data-tab="materials" data-i18n="dpp.tabMaterials">Materials (2)</button>
       <button class="dpp-tab-btn" data-tab="traceability" data-i18n="dpp.tabTraceability">Traceability (7)</button>
       <button class="dpp-tab-btn" data-tab="impact" data-i18n="dpp.tabImpact">Eco-score and LCA</button>
@@ -822,7 +846,7 @@
     </nav>
 
     <!-- TAB 1: Matières & Composition -->
-    <section class="tab-content-panel" id="panel-materials">
+    <section data-dpp-demo-only class="tab-content-panel" id="panel-materials">
       <div class="section-title">
         <span data-i18n="dpp.matTitle">Fibre composition and origin</span>
         <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.matTraced">100% traced</span>
@@ -878,7 +902,7 @@
     </section>
 
     <!-- TAB 2: Traçabilité Multi-Échelon -->
-    <section class="tab-content-panel" id="panel-traceability" style="display:none;">
+    <section data-dpp-demo-only class="tab-content-panel" id="panel-traceability" style="display:none;">
       <div class="section-title">
         <span data-i18n="dpp.chainTitle">Chain of custody and factories</span>
         <span style="font-size:11px;background:var(--primary-soft);color:var(--primary);padding:3px 8px;border-radius:99px;font-weight:700;" data-i18n="dpp.chainTiers">5 validated tiers</span>
@@ -954,7 +978,7 @@
     </section>
 
     <!-- TAB 3: Impact & Soin / Réparation -->
-    <section class="tab-content-panel" id="panel-impact" style="display:none;">
+    <section data-dpp-demo-only class="tab-content-panel" id="panel-impact" style="display:none;">
       <div class="section-title">
         <span data-i18n="dpp.impTitle">Environmental assessment and eco-score</span>
         <span style="font-size:12px;background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.impMethod">AGEC Act and ESPR methodology</span>
@@ -1041,7 +1065,7 @@
     </section>
 
     <!-- TAB 4: Evidence & Certificats -->
-    <section class="tab-content-panel" id="panel-evidence" style="display:none;">
+    <section data-dpp-demo-only class="tab-content-panel" id="panel-evidence" style="display:none;">
       <div class="section-title">
         <span data-i18n="dpp.evTitle">Certificates and legal evidence</span>
         <span style="font-size:12px;color:var(--primary);font-weight:700;" data-i18n="dpp.evAudited">Audited</span>
@@ -1085,7 +1109,7 @@
     </section>
 
     <!-- TAB 4: Réparabilité, Recyclabilité & Économie Circulaire (ESPR Art. 10 & AGEC) -->
-    <section class="tab-content-panel" id="panel-circularity" style="display:none;">
+    <section data-dpp-demo-only class="tab-content-panel" id="panel-circularity" style="display:none;">
       <div class="section-title">
         <span data-i18n="dpp.cirTitle">Repairability, recyclability and second life</span>
         <span style="font-size:12px;background:#e0f2fe;color:#027bb9;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.cirEsprFormat">ESPR 2026 data model</span>
@@ -1125,7 +1149,7 @@
     </section>
 
     <!-- TAB 6: Résolution GS1 Digital Link & Enregistrement Blockchain/Neon -->
-    <section class="tab-content-panel" id="panel-gs1" style="display:none;">
+    <section data-dpp-demo-only class="tab-content-panel" id="panel-gs1" style="display:none;">
       <div class="section-title">
         <span data-i18n="dpp.gs1Title">GS1 Digital Link resolution and QR code</span>
         <span style="font-size:12px;background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:99px;font-weight:700;" data-i18n="dpp.gs1Standard">GS1 standard 2026</span>
@@ -1158,8 +1182,25 @@
       </div>
     </section>
 
-    <!-- Cryptographic Signature Card -->
-    <div class="signature-card">
+    <aside class="live-data-note" role="note">
+      Les sections de démonstration sont masquées pour ce passeport réel. Seules les informations publiées par son propriétaire sont affichées.
+    </aside>
+
+    <section class="lifecycle-section" id="dpp-lifecycle" aria-labelledby="lifecycle-title">
+      <div class="lifecycle-heading">
+        <h2 id="lifecycle-title">Vie du produit</h2>
+        <span class="lifecycle-count" id="lifecycle-count" hidden></span>
+      </div>
+      <p class="lifecycle-intro">Les changements publics significatifs, leur date et leur niveau de contrôle. Les informations confidentielles restent privées.</p>
+      <div id="lifecycle-status" class="lifecycle-state" role="status" aria-live="polite">
+        Scannez un passeport publié pour consulter son historique.
+      </div>
+      <ol id="lifecycle-list" class="lifecycle-list" hidden></ol>
+      <button id="lifecycle-more" class="lifecycle-more" type="button" hidden aria-controls="lifecycle-list" aria-expanded="false">Afficher tout l’historique</button>
+    </section>
+
+    <!-- Cryptographic Signature Card (démonstration uniquement) -->
+    <div data-dpp-demo-only class="signature-card">
       <div class="sig-top">
         <div class="sig-logo">tf</div>
         <div>
@@ -1173,7 +1214,7 @@
     </div>
 
     <!-- Actions Bar -->
-    <div class="jsonld-action-bar">
+    <div data-dpp-demo-only class="jsonld-action-bar">
       <button class="btn-action btn-action-primary" id="btn-export-jsonld">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         <span data-i18n="dpp.jsonExport">Export CIRPASS JSON-LD</span>
@@ -1208,7 +1249,7 @@
 
   <script src="/assets/js/dpp.1.js?v=d931442c"></script>
 
-  <script src="/assets/js/dpp.2.js?v=858cc7db"></script>
+  <script src="/assets/js/dpp.2.js?v=da610a73"></script>
 
 </body>
 </html>
