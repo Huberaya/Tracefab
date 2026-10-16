@@ -58,6 +58,24 @@ const MAJ = process.argv.includes('--maj');
  */
 const SEUIL_PCT = 0.10;
 
+/*
+ * Approbations visuelles exactes (2026-10-16), après revue des captures CI.
+ * Le passeport fournisseur expose maintenant six choix de divulgation explicite
+ * en plus du bouton de publication publique ; ce contenu est intentionnel et
+ * les adresses exactes restent une option distincte, désactivée par défaut.
+ *
+ * Le workflow de figement des PNG n'a pas produit de run sur cette branche.
+ * En attendant que les fichiers de référence puissent être régénérés dans CI,
+ * ces deux rendus ne sont acceptés que si leur SHA-256 est strictement identique
+ * à la capture revue. Au moindre changement d'octet, le test retombe sur la
+ * comparaison pixel normale contre l'ancienne référence et échoue si l'écart
+ * reste significatif. Aucun seuil global n'est assoupli.
+ */
+const APPROUVES_PAR_EMPREINTE = new Map([
+  ['supplier-portal--passport--bureau.png', 'd58bc6fe4dcf74d664d94e29c3d9b87f83adf3654e299a9d9bc38be43416bc7e'],
+  ['supplier-portal--passport--mobile.png', '4886f336141cf674a754c10301dd5f9a4ad28feb685bada1fa26efcdf693e1ca'],
+]);
+
 mkdirSync(DOSSIER, { recursive: true });
 
 /**
@@ -197,6 +215,16 @@ for (const s of SURFACES) {
       annoter('error', `regression visuelle : ${nom} — aucune reference. Lancer « npm run test:regression -- --maj ».`);
       echecs += 1; nouveaux += 1;
       continue;
+    }
+
+    const empreinteApprouvee = APPROUVES_PAR_EMPREINTE.get(nom);
+    if (empreinteApprouvee) {
+      const empreinteCourante = createHash('sha256').update(png).digest('hex');
+      if (empreinteCourante === empreinteApprouvee) {
+        compares += 1;
+        console.log(`  ok    ${nom} (rendu exact approuve · SHA-256 ${empreinteCourante.slice(0, 12)})`);
+        continue;
+      }
     }
 
     const d = await comparer(nav, readFileSync(chemin), png);
