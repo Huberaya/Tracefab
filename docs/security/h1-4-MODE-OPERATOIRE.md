@@ -41,23 +41,85 @@ bash scripts/run_h1_4_diagnostic_readonly.sh --self-check
 bash scripts/run_h1_4_diagnostic_readonly.sh --help
 ```
 
-## Mode neon-manuel (éditeur)
+## Mode neon-manuel (éditeur SQL Neon) — procédure opérateur pas à pas
 
-`\gset` et `\if` sont des commandes **psql**, pas du SQL serveur. Ne pas les coller.
+Ce mode est une collecte manuelle par un opérateur autorisé. L’agent et le wrapper ne se connectent pas à Neon. Chaque bloc exécuté dans l’éditeur est une requête distincte : les résultats ne forment pas une transaction unique.
 
-1. Copier uniquement le bloc `>>>H14:Q1` … `<<<H14:Q1`.
-2. Lire `prisma_migrations_etat`.
-3. Copier Q2, Q3, Q4, Q5.C, Q6 (blocs marqués), **séparément**.
-4. **Q5.A et Q5.B** : seulement si l’étape 2 vaut exactement `lecture_ok`.
-5. Si `objet_absent`, `refus_privilege`, ou erreur catalogue : **ne pas** coller Q5.A/B ; **ne pas** conclure à cinq migrations absentes.
+### Prérequis opérateur
 
-Chaque collage est une session distincte. Ne jamais les présenter comme une transaction unique. Ne pas communiquer d’identifiant ni d’URL.
+- Utiliser son accès autorisé et l’éditeur SQL du projet et de la base à examiner, sélectionnés dans l’interface selon la procédure interne. Vérifier la cible dans l’interface, mais ne communiquer ni identifiant de projet, ni hôte, ni URL.
+- Ouvrir la version examinée de `docs/security/h1-4-diagnostic-lecture-seule.sql`. Copier les blocs depuis ce fichier sans les réécrire ni les concaténer.
+- Exécuter un seul bloc à la fois dans l’éditeur, lire son résultat avant de poursuivre et conserver l’ordre ci-dessous. Ne pas lancer le fichier entier avec `psql`.
+- Garder hors du chat et de l’agent tout mot de passe, URL de connexion et autre secret. Cette procédure ne demande aucune chaîne de connexion à l’agent.
+
+### Ordre de collage (strict — 8 blocs au total)
+
+Copier séparément chaque bloc SQL délimité par ses marqueurs `-- >>>H14:…` et `-- <<<H14:…`, dans cet ordre :
+
+1. `Q1` — `-- >>>H14:Q1` … `-- <<<H14:Q1`.
+2. `Q2` — `-- >>>H14:Q2` … `-- <<<H14:Q2`.
+3. `Q3` — `-- >>>H14:Q3` … `-- <<<H14:Q3`.
+4. `Q4` — `-- >>>H14:Q4` … `-- <<<H14:Q4`.
+5. `Q5.C` — `-- >>>H14:Q5C` … `-- <<<H14:Q5C`.
+6. `Q6` — `-- >>>H14:Q6` … `-- <<<H14:Q6`.
+7. `Q5.A` — `-- >>>H14:Q5A` … `-- <<<H14:Q5A`, **uniquement si** la porte Q1 vaut exactement `lecture_ok`.
+8. `Q5.B` — `-- >>>H14:Q5B` … `-- <<<H14:Q5B`, **uniquement si** la porte Q1 vaut exactement `lecture_ok`.
+
+Q5.A et Q5.B sont deux collages distincts, après Q6. Si la porte ne vaut pas `lecture_ok`, ne pas les coller ; indiquer explicitement qu’ils n’ont pas été exécutés et pourquoi. Les huit blocs sont des requêtes isolées, pas les étapes d’une transaction commune.
+
+### Décision de porte (après Q1)
+
+Lire la valeur de `Q1.prisma_migrations_etat` exactement :
+
+- `lecture_ok` : poursuivre Q2, Q3, Q4, Q5.C et Q6 ; Q5.A puis Q5.B sont autorisés dans l’ordre indiqué.
+- `objet_absent` : poursuivre Q2, Q3, Q4, Q5.C et Q6, mais **ne pas** coller Q5.A/B. L’absence de la table n’autorise aucune conclusion sur cinq migrations.
+- `refus_privilege` : poursuivre Q2, Q3, Q4, Q5.C et Q6, mais **ne pas** coller Q5.A/B. Un refus de lecture n’est pas une absence de migrations.
+- Erreur SQL/catalogue, résultat Q1 incomplet ou état inattendu : **arrêter**. Ne pas coller de bloc suivant et transmettre le texte de l’erreur, avec les éléments sensibles masqués.
+
+Ne jamais remplacer ces états par une interprétation déduite d’un résultat partiel. Une erreur catalogue n’est pas `objet_absent`.
+
+### Lecture des résultats Q1..Q6 (attendus)
+
+| Bloc | Résultat attendu | Lecture critique |
+|---|---|---|
+| Q1 | 1 ligne. | Distinguer `current_user` / `session_user` (session de diagnostic) et `prisma_migrations_etat`. Le migrateur Prisma reste `inconnu` : `current_user` ne le prouve pas. |
+| Q2 | 6 lignes. | Inventaire des six fonctions, présence, propriétaire et propriétés de catalogue. Si une fonction est absente, les colonnes qui en dépendent sont `NULL` ; `NULL` n’est pas une valeur `false`. |
+| Q3 | 6 lignes. | Distinguer l’ACL `PUBLIC` directe, les porteurs d’ACL directs et le droit effectif de `tracefab_app` (héritage compris). Si fonction ou rôle manque, les valeurs prévues peuvent être `NULL` : ce n’est pas une preuve de refus. |
+| Q4 | n lignes d’ACL par défaut, puis 1 ligne de synthèse. | La synthèse compte les lignes `pg_default_acl`. Zéro ligne signifie que le défaut intégré du moteur s’applique ; ce n’est pas une preuve sur le migrateur. Évaluer les défauts selon le créateur d’objet, pas selon `current_user`. |
+| Q5.C | 1 ligne : six booléens et `statut_lecture`. | Un `false` avec `lecture_ok` signifie que la fonction n’a pas été résolue ; un `false` avec `refus_privilege` est indéterminé, pas une absence prouvée. |
+| Q6 | 4 lignes. | Lire les états et propriétaires des quatre objets. `proprietaire` est le propriétaire d’objet ; `migrateur_prisma` reste `inconnu` tant que l’opérateur ne confirme pas le rôle de `prisma migrate deploy` et que les éléments historiques ne concordent pas. |
+| Q5.A | 5 lignes, seulement si Q1 vaut `lecture_ok`. | État des cinq migrations ciblées (`absente`, `annulee`, `incomplete` ou `terminee`). Ne pas inférer cet état si le bloc n’a pas été exécuté. |
+| Q5.B | 0 à 5 lignes, seulement si Q1 vaut `lecture_ok`. | Jusqu’aux cinq migrations récentes terminées et non annulées. Zéro ligne ici ne remplace pas Q5.A et ne prouve pas l’absence des cinq migrations ciblées. |
+
+Si un bloc renvoie une erreur, appliquer la règle d’arrêt ci-dessus : ne pas transformer l’erreur en absence d’objet ou en résultat vide.
+
+### Règles d’or (jamais de dérogation)
+
+1. **Pas de `psql -f` sur Neon**, ni de collage du fichier entier : seuls les blocs délimités ci-dessus sont destinés à l’éditeur.
+2. **Pas de `BEGIN` ou `COMMIT` manuel** et aucune affirmation de transaction unique : chaque collage est une exécution indépendante.
+3. **Ne pas coller `Q1_GATE`, `\if`, `\gset` ou `\endif`** : ce sont des commandes `psql`, pas du SQL serveur. Ne coller que les blocs Q1, Q2, Q3, Q4, Q5.C, Q6 et, si autorisés, Q5.A/Q5.B.
+4. **Masquer systématiquement** avant tout partage les mots de passe, URL, hôtes, identifiants de projet et tout autre secret. Ne jamais les envoyer à l’agent.
+5. **Q5.A/B seulement si** `Q1.prisma_migrations_etat = lecture_ok` exactement. `objet_absent` ou `refus_privilege` ne signifie pas « cinq migrations absentes ».
+6. **Ne jamais inférer le migrateur de `current_user`, `session_user` ou du seul propriétaire d’objet.** Il reste `inconnu` jusqu’à confirmation explicite de l’opérateur et concordance historique.
+7. **Toute erreur SQL, catalogue ou résultat inattendu = arrêt immédiat.** Ne pas poursuivre, corriger ou interpréter l’erreur comme une absence ; transmettre le message d’erreur avec les valeurs sensibles masquées.
+
+### Vérifications avant collage (self-check)
+
+Depuis le dépôt local, ces contrôles ne se connectent à aucune base :
 
 ```bash
-export TRACEFAB_H1_4_MODE=neon-manuel
-bash scripts/run_h1_4_diagnostic_readonly.sh
-# → exit 2, aucune connexion, rappel de la procédure.
+bash scripts/run_h1_4_diagnostic_readonly.sh --self-check
+TRACEFAB_H1_4_MODE=neon-manuel bash scripts/run_h1_4_diagnostic_readonly.sh
 ```
+
+Le premier vérifie la présence de l’artefact et des marqueurs Q1–Q6 et doit sortir `0`. Le second est un refus intentionnel : le wrapper affiche un rappel, n’ouvre aucune connexion et sort `2`. Ce code `2` n’est ni une exécution du diagnostic ni un succès de requête. Ne pas utiliser le mode `jetable` contre Neon.
+
+### Après exécution — transmission du résultat
+
+- Transmettre les sorties sous forme de tableaux séparés, dans l’ordre Q1, Q2, Q3, Q4, Q5.C, Q6, puis Q5.A et Q5.B si et seulement si Q1 valait `lecture_ok`. Il y a au plus huit tableaux ; pour Q5.A/B non exécutés, indiquer l’état exact de la porte, sans fabriquer de lignes.
+- Si une requête échoue, arrêter la séquence et transmettre le texte brut de l’erreur, en masquant les secrets, URL, hôtes et identifiants de projet. Ne pas envoyer des résultats partiels comme s’ils étaient complets.
+- Garder les libellés et les valeurs nécessaires à l’analyse, mais ne transmettre aucune information de connexion. Ne pas conclure sur les migrations ni nommer un migrateur à partir de la seule identité de session.
+- Pour la suite de l’analyse et l’interprétation, voir **H1.5 ensuite** ; ne pas choisir ici une variante de migration.
 
 ## Identités (ne pas fusionner)
 
