@@ -1,10 +1,16 @@
-# TRACEFAB — H1.4 diagnostic lecture seule sur PostgreSQL 17 jetable.
+# TRACEFAB — H1.4 diagnostic lecture seule sur PostgreSQL jetable.
 #
 # Workflow DEDIE : n'embarque pas le diff preexistant de ci.yml.
 # Aucun secret. Aucune URL de connexion. Aucune migration ni seed applicatif.
 # Si un artefact H1.4 manque au checkout, le job ECHOUE (pas un succes silencieux).
 #
-name: H1.4 — Postgres 17 jetable
+# Les épreuves moteur sont lancées à la fois contre PostgreSQL 17 (baseline
+# de compatibilité) et PostgreSQL 18 (version cible de Neon de production,
+# p. ex. incident P3018 sur le renommage de paramètre p_org). La même
+# base tracefab_test, le même wrapper, les mêmes requêtes Q1–Q6 — seule
+# l'image du service change.
+#
+name: H1.4 — Postgres jetable (17 + 18)
 
 permissions:
   contents: read
@@ -34,12 +40,16 @@ concurrency:
 
 jobs:
   h14-lecture-seule:
-    name: H1.4 — lecture seule Postgres 17 jetable
+    name: H1.4 — lecture seule Postgres ${{ matrix.pg-version }} jetable
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        pg-version: ['17', '18']
     services:
       postgres:
-        image: postgres:17
+        image: postgres:${{ matrix.pg-version }}
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -55,6 +65,7 @@ jobs:
       TRACEFAB_H1_4_MODE: jetable
       TRACEFAB_H1_4_CIBLE: locale
       TRACEFAB_H1_4_CONFIRM_READONLY: oui
+      TRACEFAB_H14_PGVER: ${{ matrix.pg-version }}
       PGHOST: 127.0.0.1
       PGPORT: '5432'
       PGUSER: postgres
@@ -65,7 +76,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d682002 # v4.4.0
         with:
           node-version: '20'
 
@@ -86,7 +97,7 @@ jobs:
       - name: Preflight cible jetable (aucune connexion)
         run: bash scripts/test_h1_4_engine.sh --preflight
 
-      - name: Epreuves moteur H1.4 (psql, Postgres 17)
+      - name: Epreuves moteur H1.4 (psql, Postgres ${{ matrix.pg-version }})
         run: bash scripts/test_h1_4_engine.sh
 
       - name: Controles statiques H1.4

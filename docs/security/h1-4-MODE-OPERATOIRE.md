@@ -34,7 +34,7 @@ bash scripts/run_h1_4_diagnostic_readonly.sh
 
 Sans `psql` : sortie 2, **non exécuté**, pas un succès.
 
-Workflow dédié `.github/workflows/h1-4-postgres.yml` (pas le `ci.yml` préexistant) : service `postgres:17`, base `tracefab_test`, **aucun** secret, **pas** de migrate / `prepare_ci_db_role`. Il n’est **pas** dispatché tant que les artefacts H1.4 ne sont pas suivis et qu’une autorisation de push n’est pas donnée. `HEAD` de `ci.yml` injecte encore un secret de connexion : **ne pas** lancer le CI de `HEAD`/`main`.
+Workflow dédié `.github/workflows/h1-4-postgres.yml` (pas le `ci.yml` préexistant) : matrice **postgres:17 ET postgres:18**, base `tracefab_test`, **aucun** secret, **pas** de migrate / `prepare_ci_db_role`. Les deux versions majeures sont validées parce que Neon de production exécute PostgreSQL 18 (incident P3018 du 15 oct. 2026 — renommage `p_org → p_organization_id` rejeté par PG18 — était spécifique à cette version). Le workflow n’est **pas** dispatché tant que les artefacts H1.4 ne sont pas suivis et qu’une autorisation de push n’est pas donnée. `HEAD` de `ci.yml` injecte encore un secret de connexion : **ne pas** lancer le CI de `HEAD`/`main`.
 
 ```bash
 bash scripts/run_h1_4_diagnostic_readonly.sh --self-check
