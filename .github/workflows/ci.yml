@@ -347,6 +347,11 @@ jobs:
       - name: Provenance DPP / Wallet
         run: npm run test:neon:dpp-provenance
 
+      - name: Cycle de vie DPP dynamique — deux tenants
+        # Epreuve non mockee : publication, preuve, correction, idempotence,
+        # refus cross-tenant, historique, suspension et retrait public.
+        run: npm run test:neon:dpp-lifecycle
+
       - name: Provisionnement auth runtime
         run: npm run test:neon:auth-provisioning
 
