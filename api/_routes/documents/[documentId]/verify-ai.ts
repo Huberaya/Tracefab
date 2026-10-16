@@ -105,6 +105,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (result.notFound) return json(res, 404, { error: 'document_not_found' });
     if (result.notAvailable) return json(res, 409, { error: 'document_not_available' });
+    if (!('decision' in result)) {
+      console.error('POST /api/documents/:documentId/verify-ai returned an incomplete result');
+      return json(res, 500, { error: 'verification_result_invalid' });
+    }
 
     return json(res, 200, {
       documentId: result.documentId,

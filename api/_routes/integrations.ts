@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
-import { requireClerkUser } from '../_lib/auth.js';
+import { requireClerkUser, isUnauthorized } from '../_lib/auth.js';
 import { withTracefabUserContext } from '../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 import { sqlBusinessError } from '../_lib/sql-errors.js';
@@ -83,8 +83,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return methodNotAllowed(res, ['GET', 'POST']);
     });
-  } catch (error: any) {
-    const err = sqlBusinessError(error);
-    return json(res, err.status, { error: err.error });
+  } catch (error: unknown) {
+    if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    const businessError = sqlBusinessError(error);
+    if (businessError) return json(res, businessError.status, { error: businessError.error });
+    console.error('GET/POST /api/integrations failed', error);
+    return json(res, 500, { error: 'internal_server_error' });
   }
 }
