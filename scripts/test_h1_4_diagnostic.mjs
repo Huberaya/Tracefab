@@ -20,8 +20,13 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SQL = join(ROOT, 'docs/security/h1-4-diagnostic-lecture-seule.sql');
 const WRAPPER = join(ROOT, 'scripts/run_h1_4_diagnostic_readonly.sh');
 const ANCIEN = join(ROOT, 'docs/security/diagnostic-pre-migration-close-public-execute-gap.sql');
+// SHA-256 de docs/security/diagnostic-pre-migration-close-public-execute-gap.sql
+// dans main au 2026-10-16 (post-#45). Ce fichier est un artefact historique
+// conservé pour référence ; la garde permet de détecter toute MODIFICATION
+// FUTURE non intentionnelle. Le SHA d'avant #45 était
+// a1e518967ff0fb62693b479acbaa34a85b8bbfb1eb3d2688a15ec5bc1c50c83e.
 const ANCIEN_SHA =
-  'a1e518967ff0fb62693b479acbaa34a85b8bbfb1eb3d2688a15ec5bc1c50c83e';
+  'a8b79f92339f8898be2de743dd4c930cfc53eae79e53551ce6d337062d76c2e4';
 const CHANTIERS = join(ROOT, 'docs/experience/CHANTIERS-RESTANTS.md');
 const MIG_1212 = join(
   ROOT,
@@ -666,20 +671,29 @@ function leaked(out) {
     : ok('TEXTE', 'ci.yml sans job H1.4 (isolation du diff préexistant)');
   const wfPath = join(ROOT, '.github/workflows/h1-4-postgres.yml');
   const wf = existsSync(wfPath) ? readFileSync(wfPath, 'utf8') : '';
+  // La matrice pg-version doit contenir '17' et '18' en littéral.
+  const matrixOk = wf.includes("pg-version: ['17', '18']");
+  // L'image du service doit être paramétrée par la matrice (pas de version
+  // en dur dans image : sinon une des deux versions ne serait pas testée).
+  // Comparaison littérale, pas de regex compliqué avec ${{ }}.
+  const imageParametree = wf.includes('image: postgres:${{ matrix.pg-version }}');
   wf.includes('h14-lecture-seule')
     && !/secrets\./.test(wf)
     && !/prepare_ci_db_role/.test(wf)
     && !/db:deploy/.test(wf)
     && !/db:seed/.test(wf)
-    && /postgres:17/.test(wf)
+    && matrixOk
+    && imageParametree
+    && /TRACEFAB_H14_PGVER/.test(wf)
+    && /fail-fast:\s*false/.test(wf)
     && /tracefab_test/.test(wf)
     && /test_h1_4_engine\.sh/.test(wf)
     && /postgresql-client/.test(wf)
     && /node-version: '20'/.test(wf)
     && /Artefacts H1.4 presents/.test(wf)
-    && /actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/.test(wf)
-    && /actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/.test(wf)
-    ? ok('TEXTE', 'workflow dédié h1-4-postgres.yml : PG17, Node 20, artefacts, pas de secret/migrate')
+    && /actions\/checkout@[0-9a-f]{40}/.test(wf)
+    && /actions\/setup-node@[0-9a-f]{40}/.test(wf)
+    ? ok('TEXTE', 'workflow dédié h1-4-postgres.yml : PG17+PG18 (matrix), Node 20, artefacts, pas de secret/migrate')
     : ko('TEXTE', 'workflow dédié h1-4-postgres.yml absent ou non isolé');
   existsSync(join(ROOT, 'scripts/test_h1_4_engine.sh'))
     ? ok('TEXTE', 'scripts/test_h1_4_engine.sh présent')
