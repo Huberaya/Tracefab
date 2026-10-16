@@ -38,5 +38,8 @@ export function getFallbackDppData(identifierOrId: string): DppPassData {
     transactionCertificateNumber: demo('TC-CU-881294-GOTS-2026'),
     careInstructions: demo('Lavage delicat 30C. Sechage a plat.'),
     recyclingInstructions: demo('Produit monomateriau recyclable. Borne textile Refashion.'),
+    dppUrl: 'https://tracefab.vercel.app/dpp/',
+    digitalLinkUri: demo('https://id.tracefab.com/01/' + gtin + '/21/2026-FW-001'),
+    presentation: { source: 'empty', sourcedFieldCount: 0, missingFieldCount: 1 },
   };
 }
