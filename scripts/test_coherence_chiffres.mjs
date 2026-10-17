@@ -112,11 +112,15 @@ const KPI_CONSOLE = {
   'Tier 1–4 suppliers': 'fournisseurs',
   'Audited sites & facilities': 'sites',
   'Production countries': 'pays',
-  'Overall data quality': 'qualite',
+  // Libelles de la console. Ils ont ete renommes pour dire ce qu'ils
+  // mesurent : la completude produit, pas une « qualite globale » ; la
+  // preparation au DPP, pas des « passeports prets ». La correspondance
+  // libelle -> metrique, elle, est inchangee.
+  'Average product completeness': 'qualite',
   'Evidence coverage': 'preuves',
   'Third-party verified data': 'verifies',
   'Fully traceable products': 'tracables',
-  'Passports ready': 'dpp',
+  'DPP readiness': 'dpp',
 };
 
 const lire = (objet, chemin) => chemin.split('.').reduce((o, k) => (o && k in o ? o[k] : undefined), objet);
