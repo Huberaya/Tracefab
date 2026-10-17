@@ -2,11 +2,12 @@ import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { pageSource } from './lib/page_source.mjs';
 
-const [html, reminderRoute, reminderMigration, email] = await Promise.all([
+const [html, reminderRoute, reminderMigration, email, schemaBindingsRoute] = await Promise.all([
   pageSource('brand-console/index.html'),
   readFile(new URL('../api/_routes/data-requests/[requestId]/remind.ts', import.meta.url), 'utf8'),
   readFile(new URL('../prisma/migrations/20261006130000_tracefab_manual_data_request_reminders/migration.sql', import.meta.url), 'utf8'),
   readFile(new URL('../api/_lib/email.ts', import.meta.url), 'utf8'),
+  readFile(new URL('../api/_routes/schema-bindings.ts', import.meta.url), 'utf8'),
 ]);
 const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert(script, 'Brand Console inline application script is missing');
@@ -54,6 +55,20 @@ assert(!html.includes('localhost'), 'Brand Console must not call localhost from 
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');
 assert(html.toLowerCase().includes('tracefab'), 'Brand Console branding is missing');
 assert(reminderRoute.includes("req.method !== 'POST'") && reminderRoute.includes('activeOrganizationIds') && reminderRoute.includes('withTracefabUserContext'), 'Manual reminder route must be authenticated and brand-tenant scoped');
+
+// --- Contrat schema-bindings (blocage Production du 2026-10-17) -----------
+// La cause racine du 504 : la branche GET renvoyait un tableau nu que le
+// routeur central ignore — aucune reponse n'etait ecrite, la passerelle
+// timeout-ait sur chaque appel et openProduct() rejetait toute la fiche.
+assert(schemaBindingsRoute.includes("return json(res, 200, { bindings: bindings.map(serializeBinding) })"), 'GET /api/schema-bindings doit ecrire la reponse via json(res, 200, { bindings }) — un return nu vaut 504 passerelle');
+assert(schemaBindingsRoute.includes('withTracefabUserContext'), 'GET /api/schema-bindings doit rester sous contexte utilisateur RLS — aucune desactivation de RLS');
+assert(!/DISABLE ROW LEVEL SECURITY|NO FORCE ROW LEVEL SECURITY/i.test(schemaBindingsRoute), 'La route ne doit pas toucher a la RLS');
+// La fiche produit doit rester consultable si ce chargement auxiliaire echoue :
+// etat degrade explicite + reessai, et jamais un await en serie qui masque la fiche.
+assert(html.includes('retry-schema-bindings'), 'Brand Console doit proposer un reessai du chargement schema-bindings degrade');
+assert(html.includes('data-schema-panel="degraded"') && html.includes('data-schema-panel="loaded"'), 'Brand Console doit distinguer explicitement panneau degrade et panneau charge');
+assert(html.includes('await loadSchemaBindings(id);'), 'openProduct doit deleguer le chargement auxiliaire a une fonction qui ne jette jamais');
+assert(html.includes("if (view === 'products' && cible) { await openProduct(cible); return; }"), 'Corriger dans Produits doit ouvrir la fiche visee, pas revenir au catalogue');
 assert(reminderMigration.includes("request_manual_reminder") && reminderMigration.includes('ON CONFLICT (event_key) DO NOTHING') && reminderMigration.includes('REVOKE EXECUTE'), 'Manual reminder migration must be typed, idempotent and non-public');
 assert(email.includes('request_manual_reminder'), 'Manual reminder email copy is missing');
 console.log('Brand Console contract passed: static shell, Clerk bootstrap, API actions, reminder workflow and browser-safe URLs');

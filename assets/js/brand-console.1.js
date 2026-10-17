@@ -18,6 +18,15 @@
         questionnaires: [],
         schemaCatalog: [],
         schemaBindings: [],
+        // Les liaisons de schemas externes sont un chargement AUXILIAIRE de la
+        // fiche produit. null = echoue ou jamais charge (on ne peut pas
+        // afficher « aucune liaison » sur un echec) ; [] = charge et reellement
+        // vide. L'erreur est portee separement pour l'etat degrade explicite.
+        schemaBindingsError: null,
+        // Erreur du chargement ESSENTIEL de la fiche (GET /api/products/:id) :
+        // sans elle, un echec laissait la vue precedente affichee et la fiche
+        // « restait invisible » sans explication.
+        productDetailError: null,
         view: 'overview',
         activeOrganizationId: null,
         selectedRequest: null,
@@ -2168,7 +2177,15 @@
       function materialType(material) { return material?.materialType || material?.material_type || ''; }
             function productDetailView() {
         const detail = state.selectedProductDetail;
-        if (!detail?.product) return `<div class="empty"><div class="empty-icon">◇</div><strong>${bt('pxNotFound')}</strong><button class="btn btn-secondary" data-view="products">${bt('pxBack')}</button></div>`;
+        if (!detail?.product) {
+          // Echec du chargement ESSENTIEL : erreur explicite et reessai, pas un
+          // « produit introuvable » mensonger ni un ecran fige sur la vue
+          // precedente.
+          if (state.productDetailError) {
+            return `<div class="empty"><div class="empty-icon">⚠</div><strong>${esc(bt('pxDetailLoadFailed'))}</strong><p class="meta"><code>${esc(state.productDetailError)}</code></p><div class="actions" style="justify-content:center;margin-top:16px"><button class="btn btn-secondary" data-action="retry-product-detail">${bt('cnRetry')}</button><button class="btn btn-secondary" data-view="products">${bt('pxBack')}</button></div></div>`;
+          }
+          return `<div class="empty"><div class="empty-icon">◇</div><strong>${bt('pxNotFound')}</strong><button class="btn btn-secondary" data-view="products">${bt('pxBack')}</button></div>`;
+        }
         const p = detail.product;
         const materialOptions = state.materials.map((material) => `<option value="${esc(material.id)}">${esc(material.name)}${material.materialType ? ` · ${esc(material.materialType)}` : ''}</option>`).join('');
 
@@ -2312,7 +2329,82 @@
             </div>
             ${detail.identifiers?.length ? `<div class="item-list">${detail.identifiers.map((identifier) => `<form class="item identifier-edit-form" data-identifier-id="${esc(identifier.id)}"><div><strong>${esc(identifier.type.toUpperCase())}</strong><div class="meta">${esc(bt('cnCreatedOn'))} ${date(identifier.createdAt)}</div></div><div class="actions"><input class="input" name="identifierValue" value="${esc(identifier.value)}" maxlength="240" required aria-label="Valeur ${esc(identifier.type)}"><label class="meta"><input type="checkbox" name="isPrimary" ${identifier.isPrimary ? 'checked' : ''}> Principal</label><button class="btn btn-secondary btn-small" type="submit">${bt('pxSave')}</button></div></form>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('pxNoId')}</p></div>`}
             <form id="identifier-form" class="form-grid" style="margin-top:18px"><label>${bt('mtType')}<select class="select" name="identifierType" required><option value="internal">Interne</option><option value="gtin">GTIN</option><option value="ean">EAN</option><option value="upc">UPC</option></select></label><label>${bt('pdIdValue')}<input class="input" name="identifierValue" maxlength="240" required placeholder="3760123456789"></label><label style="display:flex;align-items:center;gap:8px;margin-top:25px"><input type="checkbox" name="isPrimary"> ${bt('pxSetPrimary')}</label><div class="form-actions" style="margin-top:25px"><button class="btn btn-primary btn-small" type="submit">${bt('pxAddId')}</button></div></form>
+          </div>
+
+          ${schemaBindingsPanel(p)}`;
+      }
+
+      /**
+       * Panneau « schemas externes lies » de la fiche produit.
+       *
+       * Trois etats reels, visuellement distincts :
+       *   - charge    : la liste des liaisons (+ le formulaire de rattachement) ;
+       *   - degrade   : la route auxiliaire a echoue — message explicite, code
+       *                 d'erreur apparent, bouton « Reessayer » ;
+       *   - en cours  : ni charge ni echoue.
+       *
+       * L'etat degrade est la correction du blocage Production du 2026-10-17 :
+       * un 504 de /api/schema-bindings masquait toute la fiche ; desormais il
+       * ne masque que son propre panneau, et il ne ment pas — le code
+       * `request_failed_504` reste affiche, aucune erreur n'est avalée.
+       */
+      function schemaBindingsPanel(p) {
+        if (!p) return '';
+        const schemaOptions = (state.schemaCatalog || [])
+          .filter((schema) => (schema.subjectTypes || []).includes('product'))
+          .map((schema) => `<option value="${esc(schema.key)}|${esc(schema.version)}">${esc(schema.title || schema.key)} · v${esc(schema.version)}</option>`)
+          .join('');
+        if (state.schemaBindingsError) {
+          return `<div class="card panel" style="margin-top:20px" data-schema-panel="degraded">
+            <div class="panel-head">
+              <div>
+                <h2>${bt('cnSchemaTitle')}</h2>
+                <p class="meta" style="margin:4px 0 0">${bt('cnSchemaIntro')}</p>
+              </div>
+              <span class="status status-changes_requested">${bt('cnSchemaDegraded')}</span>
+            </div>
+            <div class="notice">${bt('cnSchemaLoadFailed')}</div>
+            <p class="meta" style="margin:10px 0 0"><code>${esc(state.schemaBindingsError)}</code></p>
+            <div class="actions" style="margin-top:14px">
+              <button class="btn btn-secondary btn-small" data-action="retry-schema-bindings">${bt('cnRetry')}</button>
+            </div>
           </div>`;
+        }
+        if (!Array.isArray(state.schemaBindings)) {
+          return `<div class="card panel" style="margin-top:20px" data-schema-panel="loading">
+            <div class="panel-head">
+              <div>
+                <h2>${bt('cnSchemaTitle')}</h2>
+                <p class="meta" style="margin:4px 0 0">${bt('cnSchemaIntro')}</p>
+              </div>
+              <span class="meta">${bt('cnSchemaLoading')}</span>
+            </div>
+          </div>`;
+        }
+        return `<div class="card panel" style="margin-top:20px" data-schema-panel="loaded">
+          <div class="panel-head">
+            <div>
+              <h2>${bt('cnSchemaTitle')}</h2>
+              <p class="meta" style="margin:4px 0 0">${bt('cnSchemaIntro')}</p>
+            </div>
+            <span class="meta">${state.schemaBindings.length} ${bt('cnSchemaCount')}</span>
+          </div>
+          ${state.schemaBindings.length ? `<div class="item-list">${state.schemaBindings.map((binding) => `<div class="item" data-schema-binding="${esc(binding.id)}">
+            <div>
+              <strong>${esc(binding.schemaKey)}</strong>
+              <div class="meta">v${esc(binding.schemaVersion)} · ${bt('cnCreatedOn')} ${date(binding.createdAt)}</div>
+            </div>
+            <span class="status status-approved">${bt('cnSchemaBound')}</span>
+          </div>`).join('')}</div>` : `<div class="empty" style="padding:12px 0 18px"><p>${bt('cnSchemaNone')}</p></div>`}
+          <form id="schema-binding-form" class="form-grid" style="margin-top:18px">
+            <label class="field-full">${bt('cnSchemaPick')}
+              <select class="select" name="schemaIdentity" ${schemaOptions ? '' : 'disabled'}>${schemaOptions || `<option value="">${bt('cnSchemaNoCatalog')}</option>`}</select>
+            </label>
+            <div class="form-actions field-full">
+              <button class="btn btn-primary btn-small" type="submit" ${schemaOptions ? '' : 'disabled'}>${bt('cnSchemaAttach')}</button>
+            </div>
+          </form>
+        </div>`;
       }
 
       function supplierDetailView() {
@@ -3014,6 +3106,9 @@
 
         const gapRows = gaps.length ? gaps.map((g) => {
           const target = dppFixTarget(g.key);
+          // Le premier produit concerne par l'ecart : « Corriger dans Produits »
+          // ouvre SA fiche, pas la liste complete.
+          const cible = g.products?.[0]?.id || '';
           const names = (g.products || []).slice(0, 3)
             .map((x) => esc(x.reference || x.name || '')).filter(Boolean).join(' · ');
           const more = (g.productCount || 0) > 3 ? ` <span class="meta">+ ${esc(moneyless((g.productCount || 0) - 3))} ${esc(bt('dpAndMore'))}</span>` : '';
@@ -3028,7 +3123,7 @@
             </div>
             <div class="dp-gap-side">
               <div class="dp-gap-count"><strong>${esc(moneyless(g.productCount || 0))}</strong><span>${esc(bt('dpAffectedProducts'))}</span></div>
-              ${target ? `<button class="btn btn-secondary" data-action="dp-resolve" data-dp-target="${esc(target.view)}">${esc(bt('dpResolveIn'))} ${esc(bt(target.labelKey))}</button>` : ''}
+              ${target ? `<button class="btn btn-secondary" data-action="dp-resolve" data-dp-target="${esc(target.view)}" data-dp-product="${esc(cible)}">${esc(bt('dpResolveIn'))} ${esc(bt(target.labelKey))}</button>` : ''}
             </div>
           </div>`;
         }).join('') : `<p class="meta">${bt('dpNoPortfolioGaps')}</p>`;
@@ -3172,7 +3267,7 @@
                     </div>
                     <div class="actions" style="justify-content:flex-end;align-items:center;gap:8px">
                       <span class="severity ${m.blocking ? 'severity-blocking' : 'severity-info'}">${m.blocking ? bt('dpBlocking') : bt('dpRecommended')}</span>
-                      ${target ? `<button class="btn btn-secondary btn-small" data-action="dp-resolve" data-dp-target="${esc(target.view)}">${esc(bt('dpResolveIn'))} ${esc(bt(target.labelKey))}</button>` : ''}
+                      ${target ? `<button class="btn btn-secondary btn-small" data-action="dp-resolve" data-dp-target="${esc(target.view)}" data-dp-product="${esc(p.id || '')}">${esc(bt('dpResolveIn'))} ${esc(bt(target.labelKey))}</button>` : ''}
                     </div>
                   </div>
                 `; }).join('')}
@@ -3550,15 +3645,54 @@
       async function openProduct(id) {
         state.view = 'productDetail';
         state.selectedProduct = state.products.find((p) => p.id === id) || null;
+        state.productDetailError = null;
+        state.schemaBindings = [];
+        state.schemaBindingsError = null;
         if (state.demo) {
           state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] };
           state.schemaBindings = [];
           render();
           return;
         }
-        state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(id)}`);
-        state.schemaBindings = (await api(`/api/schema-bindings?subjectType=product&subjectId=${encodeURIComponent(id)}`)).bindings || [];
+        // Chargement ESSENTIEL : la fiche sans lui n'existe pas. Un echec est
+        // affiche comme tel (etat d'erreur explicite), jamais comme une fiche
+        // vide ni comme un ecran fige sur la vue precedente.
+        try {
+          state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(id)}`);
+        } catch (error) {
+          state.selectedProductDetail = null;
+          state.productDetailError = error.message || 'product_detail_unavailable';
+        }
+        // La fiche est rendue AVANT le chargement auxiliaire : un 504 lent sur
+        // /api/schema-bindings ne peut plus tenir la fiche otage pendant toute
+        // la duree du timeout de la passerelle.
         render();
+        await loadSchemaBindings(id);
+      }
+      async function loadSchemaBindings(id) {
+        // Chargement AUXILIAIRE : cette fonction ne jette jamais. Elle met a
+        // jour l'etat (succes ou degrade) puis re-rend. C'est la correction du
+        // blocage Production du 2026-10-17 : avant, l'echec de cette seule
+        // route rejetait openProduct() entier et la fiche restait invisible.
+        if (!id) return;
+        state.schemaBindings = null;
+        state.schemaBindingsError = null;
+        render();
+        try {
+          const payload = await api(`/api/schema-bindings?subjectType=product&subjectId=${encodeURIComponent(id)}`);
+          state.schemaBindings = payload.bindings || [];
+        } catch (error) {
+          // L'erreur n'est ni masquee ni transformee en « aucune liaison » :
+          // elle est exposee dans l'etat degrade, avec un bouton de reessai.
+          state.schemaBindings = null;
+          state.schemaBindingsError = error.message || 'schema_bindings_unavailable';
+        }
+        render();
+      }
+      async function retrySchemaBindings() {
+        const productId = state.selectedProductDetail?.product?.id || state.selectedProduct?.id;
+        if (!productId) return;
+        await loadSchemaBindings(productId);
       }
       async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: bt('sxPartnerActive') }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
       async function saveProduct(form) { const data = Object.fromEntries(new FormData(form)); const body = { ...data, sizeRange: String(data.sizeRange || '').split(',').map((x) => x.trim()).filter(Boolean), weightGrams: data.weightGrams ? Number(data.weightGrams) : null }; if (state.demo) { Object.assign(state.selectedProductDetail.product, body); state.selectedProduct = state.selectedProductDetail.product; notify('Produit mis à jour en mode démonstration.'); render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`, { method: 'PATCH', body: JSON.stringify(body) }); await sync(); notify('Données produit enregistrées.'); render(); }
@@ -3844,10 +3978,17 @@
       function dppFixTarget(key) {
         return DP_FIX_TARGETS[String(key || '').split('.')[0]] || null;
       }
-      async function resolveDppRequirement(view) {
-        const productId = state.selectedDppProduct?.id || state.selectedProduct?.id;
-        if (view === 'supplyChain' && productId) { await loadSupplyChain(productId); return; }
-        if (view === 'quality' && productId) { await loadQuality(productId); return; }
+      async function resolveDppRequirement(view, productId) {
+        // Cible du correctif : le produit vise, pas seulement l'ecran liste.
+        // « Corriger dans Produits » ouvrait le catalogue (state.view =
+        // 'products') et laissait l'utilisateur re-chercher la fiche qu'on
+        // venait de lui designer : le bouton ne tenait pas sa promesse.
+        // Desormais la fiche elle-meme s'ouvre — l'exigence DPP porte sur CE
+        // produit, c'est donc sa fiche qu'il faut corriger.
+        const cible = productId || state.selectedDppProduct?.id || state.selectedProduct?.id;
+        if (view === 'products' && cible) { await openProduct(cible); return; }
+        if (view === 'supplyChain' && cible) { await loadSupplyChain(cible); return; }
+        if (view === 'quality' && cible) { await loadQuality(cible); return; }
         state.view = view;
         render();
       }
@@ -4269,7 +4410,9 @@
             if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
             if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
             if (action === 'dpp-back-portfolio') { state.dppScope = 'portfolio'; render(); if (!state.dppPortfolio) await loadDppPortfolio(); }
-            if (action === 'dp-resolve') await resolveDppRequirement(el.dataset.dpTarget);
+            if (action === 'dp-resolve') await resolveDppRequirement(el.dataset.dpTarget, el.dataset.dpProduct);
+            if (action === 'retry-schema-bindings') await retrySchemaBindings();
+            if (action === 'retry-product-detail') { const id = state.selectedProduct?.id; if (id) await openProduct(id); }
             if (action === 'dpp-recalc-portfolio') { state.dppPortfolio = null; render(); await loadDppPortfolio(); notify(bt('dpToastRecalc')); }
             if (action === 'catalog-export') await exportCatalog();
             if (action === 'audit-export') await exportAudit();

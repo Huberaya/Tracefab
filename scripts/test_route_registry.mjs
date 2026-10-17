@@ -92,6 +92,92 @@ for (const r of routes) {
 }
 if (!shadowed) console.log('  aucun motif n\'en masque un autre');
 
+/* --- 4. chaque gestionnaire ecrit sa reponse ---------------------------- */
+/* Contexte : le blocage Production du 2026-10-17. La branche GET de
+   /api/schema-bindings terminait par `return bindings.map(...)` — un tableau
+   nu. Le routeur central (api/index.ts) IGNORE la valeur de retour des
+   gestionnaires : rien n'etait jamais ecrit sur res, la fonction serverless
+   se terminait sans repondre, et la passerelle renvoyait 504 Gateway Timeout
+   sur CHAQUE appel. La fiche produit etait donc invisible pour tout locataire
+   reel, alors que la requete SQL et les politiques RLS, elles, fonctionnaient.
+
+   Ce garde empeche la recurrence de toute la CLASSE du defaut. Un `return`
+   situe dans le corps du gestionnaire HORS delegation de contexte
+   (withTracefab*Context) doit soit ecrire la reponse — json(...),
+   res.*, methodNotAllowed(...) — soit rendre explicitement la main apres
+   avoir deja repondu (return undefined), soit deleguer en passant `res`.
+
+   Les `return` INTERNES aux callbacks de withTracefab*Context restent
+   autorises : ces callbacks construisent des valeurs, et c'est le json(res…)
+   qu'ils contiennent qui ecrit la reponse. On verifie d'ailleurs que ce
+   json(res existe bien dans le gestionnaire pour chaque delegation. */
+{
+  const RESPONDS = /^(?:return\s)?(?:await\s)?(?:json|methodNotAllowed)\(\s*res\b|^return\s+res\.|^return\s+undefined\b/;
+  const DELEGATION = /^return\s+(?:await\s)?withTracefab\w*Context\(/;
+  const PASSES_RES = /\(\s*[^()]*\bres\b[^()]*\)\s*;?\s*$/;
+  let bare = 0;
+  for (const mod of files) {
+    const source = readFileSync(join(ROUTES_DIR, mod + '.ts'), 'utf8');
+
+    // Corps du gestionnaire exporte uniquement (les helpers du fichier ne
+    // sont pas concernes).
+    const handlerStart = source.search(/export default (?:async )?function handler/);
+    if (handlerStart < 0) { fail(`${mod}.ts — pas de gestionnaire exporte`); bare++; continue; }
+    const openBrace = source.indexOf('{', handlerStart);
+    let depth = 0;
+    let handlerEnd = source.length;
+    for (let i = openBrace; i < source.length; i++) {
+      if (source[i] === '{') depth++;
+      else if (source[i] === '}') { depth--; if (depth === 0) { handlerEnd = i; break; } }
+    }
+    const handler = source.slice(openBrace, handlerEnd);
+
+    // Regions de delegation : tout ce qui vit entre withTracefab*Context(
+    // et sa parenthese fermante est un callback — ses return construisent
+    // des valeurs, ils n'ecrivent pas la reponse.
+    const delegationSpans = [];
+    const contextCall = /withTracefab\w*Context\(/g;
+    let call;
+    while ((call = contextCall.exec(handler))) {
+      let parens = 0;
+      for (let i = call.index; i < handler.length; i++) {
+        if (handler[i] === '(') parens++;
+        else if (handler[i] === ')') {
+          parens--;
+          if (parens === 0) { delegationSpans.push([call.index, i]); break; }
+        }
+      }
+    }
+    const inDelegation = (index) => delegationSpans.some(([a, b]) => index >= a && index <= b);
+
+    const hasResponseWrite = /\b(?:json|methodNotAllowed)\(\s*res\b|res\.status\(/.test(handler);
+
+    const lines = handler.split('\n');
+    let offset = 0;
+    for (const line of lines) {
+      const lineStart = offset;
+      offset += line.length + 1;
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('return ')) continue;
+      if (inDelegation(lineStart)) continue;
+      if (RESPONDS.test(trimmed)) continue;
+      if (DELEGATION.test(trimmed)) {
+        // Delegation legitime seulement si le gestionnaire ecrit bien une
+        // reponse quelque part (le callback doit contenir son json(res…).
+        if (!hasResponseWrite) {
+          fail(`${mod}.ts — delegation withTracefab*Context sans aucune ecriture json(res…) dans le gestionnaire`);
+          bare++;
+        }
+        continue;
+      }
+      if (PASSES_RES.test(trimmed)) continue; // ex. return proxyClerkFrontendApi(req, res);
+      fail(`${mod}.ts — « ${trimmed.slice(0, 70)} » au niveau du gestionnaire sans ecriture de reponse (classe du defaut 504 schema-bindings)`);
+      bare++;
+    }
+  }
+  if (!bare) console.log('  chaque gestionnaire ecrit sa reponse (aucun return nu au niveau handler)');
+}
+
 /* --- resultat ----------------------------------------------------------- */
 if (failures) {
   console.error(`\nIntegrite du routeur : ${failures} probleme(s).`);

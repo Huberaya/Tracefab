@@ -46,6 +46,7 @@
     "test:neon:collection": "node scripts/run-db-suite.mjs scripts/test_neon_data_collection_flow.mjs",
     "test:neon:cross-tenant": "node scripts/run-db-suite.mjs scripts/test_neon_cross_tenant.mjs",
     "test:brand-console": "node scripts/test_brand_console.mjs",
+    "test:brand-console:schema-bindings": "node scripts/test_brand_console_schema_bindings_browser.mjs",
     "test:clerk-proxy": "npx tsx scripts/test_clerk_proxy.ts",
     "smoke:clerk-production": "node scripts/smoke_clerk_production.mjs",
     "test:brand-console:browser": "node scripts/test_brand_console_browser.mjs",
