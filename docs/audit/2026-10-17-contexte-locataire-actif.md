@@ -249,3 +249,39 @@ Ce qui n'a **pas** été fait, volontairement : aucune modification de Productio
 8. **Retrait** — retirer un produit publié : `/api/resolve/:publicId` rend `410` en JSON **et** en HTML, avec `Cache-Control: no-store`. L'historique privé reste consultable dans la console.
 9. **Export** — télécharger l'export catalogue et l'export d'audit depuis chaque tenant : aucune ligne de l'autre tenant.
 10. **Persistance** — recharger la page : le locataire actif est conservé.
+
+---
+
+## 10. État de Production vérifié après fusion (2026-10-17)
+
+PR #56 fusionnée à `2026-10-17T22:26:01Z`, commit de fusion `b7789e6f7bbab202832a8a6b771f89644fa8925e`.
+
+**Vérifié, en lecture seule, sans toucher aucune donnée :**
+
+| Fait | Preuve |
+|---|---|
+| CI de `main` verte sur le commit de fusion | runs `39075052094` et `39075052123`, les deux `completed/success` sur `b7789e6` |
+| Déploiement Vercel en succès | statut de commit `Vercel = success` sur `b7789e6` |
+| API Production vivante | `GET https://tracefab.vercel.app/api/health` → `{"ok":true,"service":"tracefab-api"}` |
+| **Le code final est bien en ligne** | `GET https://tracefab.vercel.app/assets/js/brand-console.1.js` contient `loadedOrganizationId`, introduit par le dernier commit correctif `bb571af` — pas une version antérieure |
+
+### ⚠️ Action bloquante : la 46<sup>e</sup> migration n'est pas appliquée sur Neon
+
+**Le build Vercel n'applique aucune migration.** `package.json` : `build` = `db:generate` + typechecks + tests, sans `prisma migrate deploy`. Aucun workflow ne déploie les migrations en Production — `.github/workflows/ci.yml:100` n'est qu'une **garde** sur base jetable. `db:deploy` (`prisma migrate deploy`) est un script manuel.
+
+Or ce PR crée une **dépendance dure** du code envers la migration :
+
+- `api/_lib/quality.ts` : `accessibleProduct` exige `AND tracefab_in_active_tenant(brand_organization_id)` ;
+- `api/_routes/quality/overview.ts` : 3 occurrences ;
+- **13 routes** de `api/_routes/` passent par `accessibleProduct`.
+
+Si `20261017120000_active_tenant_context` n'est pas appliquée, la fonction n'existe pas et ces requêtes échouent côté SQL. **Le code est déjà déployé ; la migration ne l'est pas.** Il faut appliquer la migration sans délai :
+
+```
+npm run db:deploy      # prisma migrate deploy, contre Neon Production
+npx prisma migrate status
+```
+
+*Non vérifié ici, et déclaré comme tel* : le mode de défaillance réel en Production (statut HTTP renvoyé par les 13 surfaces DPP). Le prouver exige une session Clerk authentifiée ou un accès à Neon — ni l'un ni l'autre n'est disponible dans ce bac à sable, et la consigne interdisait de toucher Neon. La dépendance, elle, est vérifiée dans le code.
+
+*Non vérifié également* : la valeur de `TRACEFAB_PUBLIC_BASE_URL` en Production. La route QR contrôle d'abord l'existence de l'identifiant (`404 passport_identifier_not_found`) puis la variable (`503 public_base_url_not_configured`) : une sonde sur un identifiant inexistant ne renseigne donc pas sur la variable, et aucun identifiant public réel n'a été utilisé. À contrôler par le point 2 de la checklist.
