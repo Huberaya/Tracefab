@@ -315,7 +315,7 @@
         }
         const response = await fetch(path, { ...options, headers });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`);
+        if (!response.ok) throw new Error(payload.message || payload.error || `request_failed_${response.status}`);
         return payload;
       }
 
@@ -2265,10 +2265,11 @@
               <label>${bt('pxSku')}<input class="input" name="reference" value="${esc(p.reference)}"></label>
               <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
               <label>${bt('pxColor')}<input class="input" name="colorName" value="${esc(p.colorName || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
-              <label>${bt('pxCountrySpin')}<input class="input" name="countryOfSpinning" value="${esc(p.countryOfSpinning || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
-              <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
-              <label>${bt('pxWeightG')}<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+              <label class="field-full">${bt('pxDescription')}<textarea class="input" name="description" maxlength="10000">${esc(p.description || '')}</textarea></label>
+              <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" maxlength="2" pattern="[A-Za-z]{2}" title="Code pays ISO-2 (ex. FR)" value="${esc(p.countryOfManufacture || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+              <label>${bt('pxWeightG')}<input class="input" name="weightGrams" type="number" min="0" max="1000000" step="any" value="${esc(p.weightGrams ?? '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
               <label>${bt('pxSizes')}<input class="input" name="sizeRange" value="${esc(p.sizeRange || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+              <p class="field-full" id="product-field-error" role="alert"></p>
               <div class="form-actions field-full">
                 <button class="btn btn-primary" type="submit">${bt('pxUpdate')}</button>
               </div>
@@ -3570,7 +3571,7 @@
         if (state.demo) { downloadTextFile('tracefab-product-catalog-demo.csv', demoCatalogCsv()); notify(bt('cnNCatalogExportedDemo')); return; }
         const token = await state.clerk?.session?.getToken();
         const response = await fetch(`/api/catalog/products/export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || `request_failed_${response.status}`); }
+        if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.message || payload.error || `request_failed_${response.status}`); }
         downloadTextFile('tracefab-product-catalog.csv', await response.text());
         notify(bt('cnNCatalogExported'));
       }
@@ -3579,7 +3580,7 @@
         if (state.demo) { downloadTextFile('tracefab-audit-export-demo.csv', 'recordType,productReference,productName,dataStatus,action,recordedAt\\r\\nPRODUCT,TF-DEMO-001,Produit démonstration,declared,catalog_demo_export,2026-10-06T00:00:00.000Z\\r\\n'); notify('Export audit simulé en mode démonstration.'); return; }
         const token = await state.clerk?.session?.getToken();
         const response = await fetch(`/api/catalog/audit-export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || `request_failed_${response.status}`); }
+        if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.message || payload.error || `request_failed_${response.status}`); }
         downloadTextFile('tracefab-audit-export.csv', await response.text());
         notify(bt('cnNAuditExported'));
       }
@@ -3695,7 +3696,36 @@
         await loadSchemaBindings(productId);
       }
       async function openSupplier(id) { const supplierRecord = suppliers().find((s) => s.id === id || s.organization_id === id); const supplierId = supplierRecord?.id || id; state.selectedSupplier = { id: supplierRecord?.organization_id || id, supplierId, organizationId: supplierRecord?.organization_id, name: supplierRecord?.organizations?.display_name || supplierRecord?.organizations?.legal_name || id, country: supplierRecord?.organizations?.country_code, role: bt('sxPartnerActive') }; state.view = 'supplierDetail'; if (!state.demo) { try { const supplier = await api(`/api/suppliers/${encodeURIComponent(supplierId)}/profile`); state.selectedSupplier.profile = supplier.profile; } catch (error) { state.selectedSupplier.profileError = error.message; } } render(); }
-      async function saveProduct(form) { const data = Object.fromEntries(new FormData(form)); const body = { ...data, sizeRange: String(data.sizeRange || '').split(',').map((x) => x.trim()).filter(Boolean), weightGrams: data.weightGrams ? Number(data.weightGrams) : null }; if (state.demo) { Object.assign(state.selectedProductDetail.product, body); state.selectedProduct = state.selectedProductDetail.product; notify('Produit mis à jour en mode démonstration.'); render(); return; } state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}`, { method: 'PATCH', body: JSON.stringify(body) }); await sync(); notify('Données produit enregistrées.'); render(); }
+      async function saveProduct(form) {
+        const current = state.selectedProductDetail.product;
+        const data = Object.fromEntries(new FormData(form));
+        const body = {};
+        const errorBox = form.querySelector('#product-field-error');
+        errorBox.textContent = '';
+        // Explicit allowlist: never spread arbitrary form keys into the API.
+        for (const key of ['name', 'reference', 'category', 'colorName', 'description', 'countryOfManufacture', 'weightGrams', 'sizeRange']) {
+          const raw = String(data[key] ?? '').trim();
+          let value = /^(inconnu|unknown)$/i.test(raw) ? null : raw || null;
+          if (key === 'countryOfManufacture' && value) value = value.toUpperCase();
+          if (key === 'weightGrams') value = value === null ? null : Number(raw);
+          if (key === 'sizeRange') value = value === null ? [] : raw.split(',').map((x) => x.trim());
+          const previous = key === 'weightGrams' ? (current[key] == null ? null : Number(current[key])) : key === 'sizeRange' ? current[key] || [] : current[key] ?? null;
+          if (JSON.stringify(value) !== JSON.stringify(previous)) body[key] = value;
+        }
+        if (!Object.keys(body).length) return;
+        try {
+          if (state.demo) {
+            Object.assign(current, body);
+            state.selectedProduct = current;
+          } else {
+            state.selectedProductDetail = await api(`/api/products/${encodeURIComponent(current.id)}`, { method: 'PATCH', body: JSON.stringify(body) });
+            await sync();
+          }
+          notify('Données produit enregistrées.'); render();
+        } catch (err) {
+          errorBox.textContent = err.message;
+        }
+      }
       async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify(bt('cnNRevisionDemo')); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify(bt('cnNRevisionCreated')); render(); }
       async function saveSchemaBinding(form) {
         if (!state.selectedProductDetail?.product) return;

@@ -429,6 +429,49 @@ try {
     console.log('  ok    Corriger dans Produits : la fiche visee s ouvre (portefeuille et fiche DPP)');
   }
 
+  // Product edit contract: real application, network fixtures only (no production writes).
+  {
+    const page = await browser.newPage();
+    await installNetwork(page, { mode: 'ok', requests: [] });
+    const patches = [];
+    let reject = false;
+    await page.route(`**/api/products/${PROD_A}`, async (route) => {
+      if (route.request().method() !== 'PATCH') return route.fallback();
+      const body = route.request().postDataJSON();
+      patches.push(body);
+      if (reject) return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'invalid_product_field', field: 'countryOfManufacture', message: 'countryOfManufacture : Code pays ISO-2 valide attendu (ex. FR).' }) });
+      Object.assign(PRODUCTS[0], body);
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(productDetail(PRODUCTS[0])) });
+    });
+    await page.goto(`http://127.0.0.1:${port}/brand-console/`);
+    await page.waitForFunction(() => window.tracefabBrandConsole?.state.loading === false);
+    await openProductFromCatalogue(page, PROD_A);
+    const form = page.locator('#product-detail-form');
+    await form.waitFor();
+    assert.equal(await form.locator('[name="countryOfSpinning"]').count(), 0);
+    for (const key of ['description', 'countryOfManufacture', 'colorName', 'weightGrams']) assert.equal(await form.locator(`[name="${key}"]`).inputValue(), '');
+    assert.equal(await page.locator('[data-tf-demo]').count(), 0);
+    const description = 'Une description détaillée du produit réel, sans données de démonstration.';
+    await form.locator('[name="description"]').fill(description);
+    await form.locator('[type="submit"]').click();
+    await page.waitForFunction((text) => window.tracefabBrandConsole.state.selectedProductDetail.product.description === text, description);
+    assert.deepEqual(patches[0], { description });
+    await form.locator('[name="countryOfManufacture"]').fill('fr');
+    await form.locator('[type="submit"]').click();
+    await page.waitForFunction(() => window.tracefabBrandConsole.state.selectedProductDetail.product.countryOfManufacture === 'FR');
+    assert.deepEqual(patches[1], { countryOfManufacture: 'FR' });
+    assert.equal(PRODUCTS[0].colorName, null);
+    assert.equal(PRODUCTS[0].weightGrams, null);
+    assert.equal(PRODUCTS[0].countryOfDesign, null);
+    reject = true;
+    await form.locator('[name="countryOfManufacture"]').fill('ZZ');
+    await form.locator('[type="submit"]').click();
+    await page.locator('#product-field-error').filter({ hasText: 'ISO-2 valide' }).waitFor();
+    assert.equal(await form.locator('[name="description"]').inputValue(), description, 'failed save preserves edits');
+    await page.close();
+    console.log('  ok    product edit: description-only, country-only, no demo defaults, nulls preserved, explicit field error');
+  }
+
   await browser.close();
   console.log('Brand Console schema-bindings browser suite passed: 504 degrade + retry, succes reel, controle multi-tenant, Corriger-dans-Produits');
 } finally {

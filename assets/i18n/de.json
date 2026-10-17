@@ -928,6 +928,7 @@
     "pxSetPrimary": "Als primär festlegen",
     "pxSave": "Speichern",
     "pxEspr": "ESPR-Anforderung: strikte Aufschlüsselung mit Summe 100%",
+    "pxDescription": "Detaillierte Beschreibung",
     "pxTechSheet": "Technisches Datenblatt & regulatorische Attribute",
     "pxTraceGraph": "Rückverfolgbarkeitsgraph",
     "pxIdentifiers": "Digitale Kennungen & Barcodes (GS1 Digital Link)",
