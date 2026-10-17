@@ -70,7 +70,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         WHERE ${subjectClause}
         ORDER BY created_at DESC
       `);
-      return bindings.map(serializeBinding);
+      // La reponse DOIT passer par json(). Renvoyer le tableau nu (le code
+      // historique) ne produit AUCUNE ecriture sur res : le routeur central
+      // ignore la valeur de retour des gestionnaires, la fonction serverless
+      // se termine sans avoir repondu, et la passerelle finit par renvoyer
+      // 504 Gateway Timeout sur CHAQUE appel — le blocage Production du
+      // 2026-10-17. La forme { bindings: [...] } est celle que la Brand
+      // Console attend deja cote client.
+      return json(res, 200, { bindings: bindings.map(serializeBinding) });
     }
 
     const body = await readJsonBody<BindingBody>(req);

@@ -15,7 +15,7 @@
  * `tracefab_app` — SANS BYPASSRLS — armé du contexte du locataire A, et
  * tente de franchir la frontière dans tous les sens.
  *
- * CE QU'IL VÉRIFIE — 12 assertions
+ * CE QU'IL VÉRIFIE — 15 assertions
  *
  *    1. Le rôle de test ne porte pas BYPASSRLS (sinon rien n'est mesuré).
  *    2-4.   SELECT : A ne voit que ses organisations, fournisseurs, produits.
@@ -24,6 +24,15 @@
  *    9-10.  DELETE cross-org : 0 ligne touchée chez B.
  *    11-12. Fonctions SECURITY DEFINER : tracefab_can_access_org vaut true
  *           pour sa propre organisation, false pour celle du voisin.
+ *    13-15. tracefab_schema_bindings : la requête EXACTE de la route
+ *           /api/schema-bindings (WHERE product_id = …) sous le rôle
+ *           applicatif rend la liaison du locataire A et jamais celle du
+ *           locataire B ; et la fonction SECURITY DEFINER tracefab_bind_schema
+ *           refuse à A de lier un schéma au produit de B. Ajouté après le
+ *           blocage Production du 2026-10-17 : le 504 venait de la route
+ *           (réponse jamais écrite), pas de la RLS — ces assertions prouvent
+ *           que la politique reste exécutable et étanche pendant qu'on
+ *           répare la couche HTTP.
  *
  * Les produits sont des brouillons sans public_slug : la lecture publique
  * (tracefab.public_context) ne peut donc pas expliquer une visibilité.
@@ -170,6 +179,40 @@ try {
   if (accesA === true) ok('SECURITY DEFINER tracefab_can_access_org(A) = true pour A');
   else ko('SECURITY DEFINER tracefab_can_access_org(A) = false pour A — fonction cassée, pas seulement fermée');
 
+  /* --- 13-15. tracefab_schema_bindings -------------------------------------- */
+  // Deux liaisons réelles, une par locataire, sur le schéma du catalogue
+  // semé par la migration 20261006120000.
+  await proprio.query(
+    `insert into tracefab_schema_bindings (schema_key, schema_version, product_id, bound_by)
+     values ('product-data-core', '1.0', $1, $3), ('product-data-core', '1.0', $2, $4)`,
+    [prodA, prodB, userA, userB]);
+
+  // 13. La requête EXACTE de la route GET /api/schema-bindings (branche
+  // produit) sous le rôle applicatif : elle doit être exécutable — pas de
+  // recursion de politique, pas d'erreur — et ne rendre QUE la liaison du
+  // locataire dont le contexte est armé.
+  const bindingsA = (await app.query(
+    `select id, schema_key, schema_version from tracefab_schema_bindings
+     where product_id = $1::uuid order by created_at desc`, [prodA])).rows;
+  if (bindingsA.length === 1 && bindingsA[0].schema_key === 'product-data-core' && String(bindingsA[0].id).length === 36) {
+    ok('SELECT tracefab_schema_bindings WHERE product_id=A : exécutable, rend la liaison de A seulement');
+  } else {
+    ko(`SELECT tracefab_schema_bindings WHERE product_id=A : ${bindingsA.length} ligne(s) — attendu exactement 1`);
+  }
+
+  // 14. La même requête pour le produit de B, TOUJOURS sous le contexte de A :
+  // la politique doit rendre zéro ligne, pas une erreur — c'est la
+  // différence entre une frontière et un crash.
+  const bindingsB = (await app.query(
+    `select id from tracefab_schema_bindings where product_id = $1::uuid`, [prodB])).rows;
+  if (bindingsB.length === 0) ok('SELECT tracefab_schema_bindings WHERE product_id=B sous contexte A : 0 ligne, sans erreur');
+  else ko(`SELECT tracefab_schema_bindings WHERE product_id=B sous contexte A : ${bindingsB.length} ligne(s) — frontière franchie en lecture`);
+
+  // 15. La fonction SECURITY DEFINER de liaison refuse le produit du voisin.
+  const bindChezB = await tenter('select tracefab_bind_schema($1, $2, $3, $4)', ['product-data-core', '1.0', 'product', prodB]);
+  if (bindChezB.refuse) ok('SECURITY DEFINER tracefab_bind_schema(produit de B) : refusé pour A');
+  else ko('SECURITY DEFINER tracefab_bind_schema(produit de B) : accepté pour A — contournement possible');
+
   await app.query('rollback');
 } finally {
   await proprio.query('delete from tracefab_products where id = any($1)', [[prodA, prodB]]).catch(() => {});
@@ -180,5 +223,5 @@ try {
   await proprio.end();
 }
 
-console.log(echecs ? `\n  ${echecs} echec(s) — isolation inter-organisations non prouvée.` : '\n  12/12 assertions — isolation inter-organisations prouvée en lecture, écriture et fonctions.');
+console.log(echecs ? `\n  ${echecs} echec(s) — isolation inter-organisations non prouvée.` : '\n  15/15 assertions — isolation inter-organisations prouvée en lecture, écriture, fonctions et liaisons de schémas.');
 process.exit(echecs ? 1 : 0);

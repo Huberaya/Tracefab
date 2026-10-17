@@ -779,6 +779,20 @@ window.TF_I18N_BUNDLES.en = {
     cnNRevisionDemo: "New revision simulated.",
     cnNSchemaLinked: "Schema linked to the product.",
     cnNSchemaLinkedDemo: "Schema linked in demonstration mode.",
+    // --- Panneau « schemas externes lies » de la fiche produit ---
+    // Etat degrade explicite : un echec du chargement auxiliaire ne doit plus
+    // masquer la fiche (blocage Production du 2026-10-17).
+    cnSchemaTitle: "Linked external schemas",
+    cnSchemaIntro: "Versioned schemas bound to this product for interoperability with PLM, ERP and GS1 flows.",
+    cnSchemaDegraded: "Degraded",
+    cnSchemaLoadFailed: "The linked schemas could not be loaded. The product record itself remains available.",
+    cnSchemaLoading: "Loading…",
+    cnSchemaCount: "linked schema(s)",
+    cnSchemaBound: "Bound",
+    cnSchemaNone: "No external schema linked to this product yet.",
+    cnSchemaPick: "Versioned schema",
+    cnSchemaAttach: "Attach the schema",
+    cnSchemaNoCatalog: "No schema available",
     cnNCompositionUpdated: "Composition updated.",
     cnNCompositionUpdatedDemo: "Composition updated in demonstration mode.",
     cnNMaterialAdded: "Material added to the composition.",
@@ -1390,6 +1404,7 @@ window.TF_I18N_BUNDLES.en = {
     pxCountrySpin: "Country of spinning",
     pxResolveHint: "Lets consumers and customs resolve the DPP passport",
     pxNotFound: "Product not found",
+    pxDetailLoadFailed: "The product record could not be loaded.",
     pxPrepareDpp: "Prepare the DPP",
     pxBack: "Back to products",
     pxSku: "SKU reference",
