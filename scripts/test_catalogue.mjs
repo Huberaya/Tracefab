@@ -44,7 +44,7 @@ const vider = async () => {
 };
 
 try {
-  await page.goto(`${BASE}/brand-console/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE}/brand-console/?demo=1`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('button[data-view]', { timeout: 20000 });
   await page.click('button[data-view="products"]');
   await page.waitForTimeout(260);

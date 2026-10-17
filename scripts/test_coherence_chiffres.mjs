@@ -210,7 +210,7 @@ console.log('\n3. Console rendue — elle calcule ses chiffres a l\'execution');
 {
   const page = await navigateur.newPage();
   try {
-    await page.goto(`${BASE}/brand-console/`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${BASE}/brand-console/?demo=1`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1900);
     const vus = await page.$$eval('.mc-stat-subitem', (es) => es.map((e) => ({
       libelle: e.querySelector('span')?.textContent.trim() || '',

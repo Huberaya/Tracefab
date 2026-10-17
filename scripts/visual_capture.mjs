@@ -23,9 +23,9 @@ const ONLY = arg('only', null);
 
 const ROUTES = [
   { id: 'landing', url: '/', full: true },
-  { id: 'brand-console', url: '/brand-console/', full: false },
+  { id: 'brand-console', url: '/brand-console/?demo=1', full: false },
   { id: 'product-intelligence', url: '/product-intelligence/', full: true },
-  { id: 'supplier-portal', url: '/supplier-portal/', full: false },
+  { id: 'supplier-portal', url: '/supplier-portal/?demo=1', full: false },
   { id: 'dpp', url: '/dpp/', full: false },
   { id: 'quality-center', url: '/quality-center/', full: false },
   { id: 'operations', url: '/operations/', full: false },

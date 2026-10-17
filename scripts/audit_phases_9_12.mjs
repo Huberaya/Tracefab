@@ -69,7 +69,7 @@ const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e).slice(0, 90)));
-  await page.goto(BASE + '/brand-console/', { waitUntil: 'load' });
+  await page.goto(BASE + '/brand-console/?demo=1', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
 
   const ok = await gotoView(page, 'supplyChain');
@@ -121,7 +121,7 @@ const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e).slice(0, 90)));
-  await page.goto(BASE + '/brand-console/', { waitUntil: 'load' });
+  await page.goto(BASE + '/brand-console/?demo=1', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
 
   const ok = await gotoView(page, 'dpp');
@@ -274,7 +274,7 @@ const browser = await chromium.launch();
     'presentes', 'presentes');
 
   // Volet dynamique : toutes les pages portent la pile et un selecteur.
-  const pages = ['/', '/brand-console/', '/supplier-portal/', '/dpp/', '/quality-center/',
+  const pages = ['/', '/brand-console/?demo=1', '/supplier-portal/?demo=1', '/dpp/', '/quality-center/',
     '/operations/', '/passport/', '/product-intelligence/', '/invitations/accept/'];
   let withStack = 0, withSelector = 0, langEn = 0;
   const noSel = [];

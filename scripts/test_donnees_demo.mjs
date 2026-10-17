@@ -51,7 +51,7 @@ const vue = async (v) => {
 
 try {
   console.log(`\n  enum product_data_readiness : ${ENUM_READINESS.join(', ')}\n`);
-  await page.goto(`${BASE}/brand-console/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE}/brand-console/?demo=1`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('button[data-view]', { timeout: 20000 });
 
   // --- A. le catalogue porte de vraies completudes ---
@@ -147,7 +147,7 @@ try {
     await route.fulfill({ status: 200, contentType: 'application/javascript',
       body: `window.TF_DEMO_FIGURES = ${JSON.stringify(modifie)};` });
   });
-  await page2.goto(`${BASE}/brand-console/`, { waitUntil: 'domcontentloaded' });
+  await page2.goto(`${BASE}/brand-console/?demo=1`, { waitUntil: 'domcontentloaded' });
   await page2.waitForSelector('button[data-view]', { timeout: 20000 });
   await page2.click('button[data-view="overview"]');
   await page2.waitForTimeout(340);

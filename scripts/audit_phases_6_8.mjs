@@ -98,7 +98,7 @@ const browser = await chromium.launch();
 {
   const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
   const t0 = Date.now();
-  const resp = await page.goto(BASE + '/supplier-portal/', { waitUntil: 'load' });
+  const resp = await page.goto(BASE + '/supplier-portal/?demo=1', { waitUntil: 'load' });
   const charge = Date.now() - t0;
   await page.waitForTimeout(1800);
 
@@ -150,7 +150,7 @@ const browser = await chromium.launch();
 {
   const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
   const t0 = Date.now();
-  const resp = await page.goto(BASE + '/brand-console/', { waitUntil: 'load' });
+  const resp = await page.goto(BASE + '/brand-console/?demo=1', { waitUntil: 'load' });
   const charge = Date.now() - t0;
   await page.waitForTimeout(1900);
 
@@ -206,7 +206,7 @@ const browser = await chromium.launch();
 /* ================== PHASE 8 — Evidence + Quality ==================== */
 {
   const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
-  await page.goto(BASE + '/brand-console/', { waitUntil: 'load' });
+  await page.goto(BASE + '/brand-console/?demo=1', { waitUntil: 'load' });
   await page.waitForTimeout(1900);
 
   const vues = await page.evaluate(() =>

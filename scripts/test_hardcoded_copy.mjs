@@ -27,6 +27,7 @@ const LIST = argv.includes('--list');
 
 const PAGES = ['/', '/brand-console/', '/supplier-portal/', '/quality-center/', '/operations/',
   '/passport/', '/dpp/', '/product-intelligence/', '/invitations/accept'];
+const EXPLICIT_DEMO = new Set(['/brand-console/', '/supplier-portal/']);
 
 /** Invariants legitimes. Chaque motif porte sa justification. */
 const ALLOW = [
@@ -237,7 +238,8 @@ for (const url of PAGES) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const perView = {};
   try {
-    await page.goto(BASE + url, { waitUntil: 'load' });
+    const targetUrl = BASE + url + (EXPLICIT_DEMO.has(url) ? '?demo=1' : '');
+    await page.goto(targetUrl, { waitUntil: 'load' });
     await page.waitForTimeout(1700);
     // Une SPA ne montre qu'une vue a la fois : ne mesurer que l'accueil
     // laisse passer tout le reste. On parcourt donc chaque vue atteignable,
