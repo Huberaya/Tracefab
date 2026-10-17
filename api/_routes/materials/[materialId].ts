@@ -4,7 +4,8 @@ import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { activeOrganizationIds, isUuid } from '../../_lib/products.js';
+import { isUuid } from '../../_lib/products.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
 
 type MaterialBody = {
   materialType?: string;
@@ -72,14 +73,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     const material = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const organizationIds = await activeOrganizationIds(tx, user.id);
-      if (organizationIds.length === 0) return null;
+      // Locataire actif obligatoire. `ANY(organizationIds)` couvrait toutes les
+      // organisations du compte : la fiche d'une matiere appartenant a l'autre
+      // tenant etait lisible et modifiable d'ici. Le partage explicite entre
+      // organisations reste un mecanisme distinct et audite.
+      const tenant = await requireActiveTenant(tx, req, user.id);
       const current = await tx.$queryRaw<MaterialRow[]>`
         SELECT m.*
         FROM materials m
         WHERE m.id = ${materialId}::uuid
           AND (
-            m.owner_organization_id = ANY(${organizationIds}::uuid[])
+            m.owner_organization_id = ${tenant.organizationId}::uuid
             OR tracefab_can_access_shared_subject(m.owner_organization_id, 'material', m.id)
           )
       `;
@@ -113,12 +117,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return rows[0] ?? null;
-    });
+    }, requestedTenantId(req));
 
     if (!material) return json(res, 404, { error: 'material_not_found' });
     return json(res, 200, { material: serializedMaterial(material) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

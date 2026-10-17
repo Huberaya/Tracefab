@@ -1,14 +1,9 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
-import { activeBrandOrganizationIds, isUuid } from '../../../_lib/products.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { csvCell, CATALOG_EXPORT_HEADERS } from '../../../_lib/catalog-importer.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
-
-function queryOrganizationId(req: VercelRequest) {
-  const value = req.query.organizationId;
-  return Array.isArray(value) ? value[0] : value;
-}
 
 type ExportRow = {
   reference: string;
@@ -55,14 +50,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const requestedOrganizationId = queryOrganizationId(req);
-    if (requestedOrganizationId && !isUuid(requestedOrganizationId)) return json(res, 400, { error: 'invalid_organization_id' });
 
     const rows = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const organizationIds = await activeBrandOrganizationIds(tx, user.id);
-      if (requestedOrganizationId && !organizationIds.includes(requestedOrganizationId)) return null;
-      const scopedOrganizations = requestedOrganizationId ? [requestedOrganizationId] : organizationIds;
-      if (scopedOrganizations.length === 0) return [] as ExportRow[];
+      // Locataire actif obligatoire. Un export est une sortie de donnees : le
+      // repli sur `{ in: organizationIds }` produisait un CSV melangeant les
+      // produits de toutes les organisations du compte, hors du tenant affiche.
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
+      const scopedOrganizations = [tenant.organizationId];
       return tx.$queryRaw<ExportRow[]>`
         SELECT
           p.reference,
@@ -100,9 +94,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         GROUP BY p.id
         ORDER BY p.created_at DESC
       `;
-    });
+    }, requestedTenantId(req));
 
-    if (rows === null) return json(res, 403, { error: 'brand_organization_access_denied' });
     const content = [CATALOG_EXPORT_HEADERS.join(','), ...rows.map(csvRow)].join('\r\n');
     const filename = `tracefab-product-catalog-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -111,6 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).send(`\uFEFF${content}\r\n`);
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error('GET /api/catalog/products/export failed', error);
     return json(res, 500, { error: 'internal_server_error' });

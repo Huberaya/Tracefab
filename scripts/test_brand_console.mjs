@@ -54,7 +54,19 @@ assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token 
 assert(!html.includes('localhost'), 'Brand Console must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');
 assert(html.toLowerCase().includes('tracefab'), 'Brand Console branding is missing');
-assert(reminderRoute.includes("req.method !== 'POST'") && reminderRoute.includes('activeOrganizationIds') && reminderRoute.includes('withTracefabUserContext'), 'Manual reminder route must be authenticated and brand-tenant scoped');
+// La relance manuelle doit etre authentifiee ET bornee a UN locataire actif.
+//
+// L'assertion precedente exigeait la presence de `activeOrganizationIds`. Ce
+// helper rend l'UNION de toutes les organisations du compte : il borne
+// l'utilisateur, pas le locataire affiche. L'assertion verifiait donc la
+// presence du defaut Production du 2026-10-17, et le protegeait.
+//
+// Elle exige desormais la resolution explicite du locataire actif, et refuse
+// explicitement le repli multi-organisations.
+assert(reminderRoute.includes("req.method !== 'POST'"), 'Manual reminder route must reject other HTTP methods');
+assert(reminderRoute.includes('withTracefabUserContext'), 'Manual reminder route must run inside the RLS context');
+assert(reminderRoute.includes('requireActiveTenant'), 'Manual reminder route must resolve the active tenant');
+assert(!reminderRoute.includes('activeOrganizationIds'), 'Manual reminder route must not fall back to every organization of the account');
 
 // --- Contrat schema-bindings (blocage Production du 2026-10-17) -----------
 // La cause racine du 504 : la branche GET renvoyait un tableau nu que le

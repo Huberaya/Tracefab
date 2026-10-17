@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabRequestContext } from '../../_lib/context.js';
+import { isTenantError, requireActiveTenant } from '../../_lib/tenant.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -8,13 +9,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const memberships = await tx.organization_memberships.findMany({
-        where: { user_id: user.id, status: 'active', role: { in: ['owner', 'admin'] } },
-        select: { organization_id: true, role: true },
-      });
-      if (memberships.length === 0) return null;
-      const organizationIds = memberships.map((membership) => membership.organization_id);
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
+      // Locataire actif obligatoire, et role owner/admin DANS ce locataire.
+      // Le tableau de bord d'exploitation melangeait auparavant la file de
+      // notifications de toutes les organisations du compte.
+      const tenant = await requireActiveTenant(tx, req, user.id, { roles: ['owner', 'admin'] });
+      const memberships = [{ organization_id: tenant.organizationId, role: tenant.role }];
+      const organizationIds = [tenant.organizationId];
 
       const rows = await tx.$queryRaw<Array<{ status: string; count: bigint; oldest: Date | null }>>`
         SELECT status, count(*)::bigint AS count, min(created_at) AS oldest
@@ -50,6 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, result);
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error('GET /api/operations/overview failed', error);
     return json(res, 500, { error: 'internal_server_error' });

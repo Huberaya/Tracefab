@@ -4,7 +4,8 @@ import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
 import { withTracefabUserContext } from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
-import { activeBrandOrganizationIds, isUuid, PRODUCT_SELECT, serializeProduct } from '.././_lib/products.js';
+import { isUuid, PRODUCT_SELECT, serializeProduct } from '.././_lib/products.js';
+import { isTenantError, requireActiveTenant, tenantFilter, requestedTenantId } from '.././_lib/tenant.js';
 import { pageArgs, readPageRequest, slicePage } from '.././_lib/pagination.js';
 
 type CreateProductBody = {
@@ -14,11 +15,6 @@ type CreateProductBody = {
   category?: string | null;
   sku?: string | null;
 };
-
-function queryOrganizationId(req: VercelRequest) {
-  const value = req.query.organizationId;
-  return Array.isArray(value) ? value[0] : value;
-}
 
 function requiredString(value: unknown, field: string, maxLength: number) {
   if (typeof value !== 'string' || value.trim().length === 0 || value.trim().length > maxLength) {
@@ -40,11 +36,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     if (req.method === 'GET') {
-      const requestedOrganizationId = queryOrganizationId(req);
-      if (requestedOrganizationId && !isUuid(requestedOrganizationId)) {
-        return json(res, 400, { error: 'invalid_organization_id' });
-      }
-
       // Pagination par curseur. `OFFSET` reparcourt et jette toutes les
       // lignes sautees a chaque page : son cout croit avec le numero de
       // page. Un curseur sur un identifiant indexe reste constant, et ne
@@ -53,16 +44,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!page) return json(res, 400, { error: 'invalid_pagination' });
 
       const rows = await withTracefabUserContext(user.id, user.email, async (tx) => {
-        const organizationIds = await activeBrandOrganizationIds(tx, user.id);
-        if (requestedOrganizationId && !organizationIds.includes(requestedOrganizationId)) {
-          return [];
-        }
+        // Locataire actif obligatoire. L'ancien code retombait sur
+        // `{ in: organizationIds }` — l'union de toutes les organisations du
+        // compte — quand `organizationId` etait absent : c'est le defaut
+        // observe en Production le 2026-10-17 (produit de recette visible
+        // depuis Ginger). Il n'y a plus de repli.
+        const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
         return tx.tracefab_products.findMany({
-          where: {
-            brand_organization_id: requestedOrganizationId
-              ? requestedOrganizationId
-              : { in: organizationIds },
-          },
+          where: { brand_organization_id: tenantFilter(tenant) },
           select: PRODUCT_SELECT,
           // `id` departage les ex aequo : sans lui, deux produits crees dans
           // la meme milliseconde rendraient l'ordre non deterministe et le
@@ -70,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
           ...pageArgs(page),
         });
-      });
+      }, requestedTenantId(req));
 
       const { items, nextCursor } = slicePage(rows, page);
       // `nextCursor` est ajoute, rien n'est retire : les clients actuels,
@@ -86,10 +75,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sku = optionalString(body.sku, 'product_sku', 120);
 
     const product = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      // Le produit est cree DANS le locataire actif, et nulle part ailleurs.
+      // Sans cette garde, un corps de requete portant un autre
+      // `brandOrganizationId` deplacement la creation hors du tenant affiche.
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
+      if (body.brandOrganizationId !== tenant.organizationId) {
+        throw new Error('brand_organization_mismatch');
+      }
       const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id
         FROM tracefab_create_product(
-          ${body.brandOrganizationId}::uuid,
+          ${tenant.organizationId}::uuid,
           ${reference},
           ${name},
           ${category},
@@ -101,15 +97,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const created = await tx.tracefab_products.findUnique({ where: { id }, select: PRODUCT_SELECT });
       if (!created) throw new Error('product_creation_failed');
       return created;
-    });
+    }, requestedTenantId(req));
 
     return json(res, 201, { product: serializeProduct(product) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return json(res, 409, { error: 'product_reference_already_exists' });
+    }
+    if (error instanceof Error && error.message === 'brand_organization_mismatch') {
+      return json(res, 400, { error: 'brand_organization_mismatch' });
     }
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') {

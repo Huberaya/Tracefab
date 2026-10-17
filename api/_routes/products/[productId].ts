@@ -5,7 +5,8 @@ import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { activeBrandOrganizationIds, isUuid, PRODUCT_SELECT, serializeProduct } from '../../_lib/products.js';
+import { isUuid, PRODUCT_SELECT, serializeProduct } from '../../_lib/products.js';
+import { isTenantError, requireActiveTenant, requestedTenantId, tenantFilter } from '../../_lib/tenant.js';
 
 
 const DETAIL_SELECT = {
@@ -69,9 +70,13 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await deps.requireClerkUser(req);
 
     const result = await deps.withTracefabUserContext(user.id, user.email, async (tx) => {
-      const organizationIds = await activeBrandOrganizationIds(tx, user.id);
+      // Locataire actif obligatoire. `{ in: organizationIds }` bornait
+      // l'utilisateur, pas le locataire : un administrateur de Ginger et de la
+      // recette lisait et modifiait la fiche produit de l'autre tenant.
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
+      const scoped = { id: productId, brand_organization_id: tenantFilter(tenant) };
       const current = await tx.tracefab_products.findFirst({
-        where: { id: productId, brand_organization_id: { in: organizationIds } },
+        where: scoped,
         select: DETAIL_SELECT,
       });
       if (!current) return null;
@@ -99,16 +104,17 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       if (!rows[0]?.id) throw new Error('product_update_failed');
-      const updated = await tx.tracefab_products.findFirst({ where: { id: productId, brand_organization_id: { in: organizationIds } }, select: DETAIL_SELECT });
+      const updated = await tx.tracefab_products.findFirst({ where: scoped, select: DETAIL_SELECT });
       if (!updated) throw new Error('product_update_failed');
       return updated;
-    });
+    }, requestedTenantId(req));
 
     if (!result) return json(res, 404, { error: 'product_not_found' });
     return json(res, 200, productDetailPayload(result));
   } catch (error) {
     if (error instanceof ProductFieldError) return json(res, 400, { error: 'invalid_product_field', field: error.field, message: `${error.field} : ${error.message}` });
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

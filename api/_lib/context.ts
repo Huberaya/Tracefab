@@ -1,5 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
+import type { VercelRequest } from './vercel-types.js';
+import { requestedTenantId } from './tenant.js';
 
 /**
  * Execute tenant-scoped queries in one transaction with the Clerk-resolved
@@ -54,10 +56,30 @@ export async function withTracefabPublicContext<T>(
   });
 }
 
+/**
+ * Variante orientee requete : le locataire actif est lu dans la requete elle
+ * meme (en-tete `X-Tracefab-Organization-Id`, puis query string, puis corps).
+ *
+ * Elle existe pour que l'armement du locataire ne depende pas de la discipline
+ * de chaque point d'appel. `withTracefabUserContext` prend le locataire en
+ * quatrieme argument facultatif : un appel qui l'oublie arme une valeur vide,
+ * et `tracefab_in_active_tenant()` est alors fausse partout — la requete ne
+ * retourne rien. C'est fail-closed, mais silencieux. Cette variante rend
+ * l'oubli impossible a ecrire.
+ */
+export async function withTracefabRequestContext<T>(
+  req: VercelRequest,
+  user: { id: string; email: string },
+  callback: (tx: Prisma.TransactionClient) => Promise<T>,
+) {
+  return withTracefabUserContext(user.id, user.email, callback, requestedTenantId(req));
+}
+
 export async function withTracefabUserContext<T>(
   userId: string,
   userEmail: string,
   callback: (tx: Prisma.TransactionClient) => Promise<T>,
+  activeOrganizationId?: string | null,
 ) {
   return prisma.$transaction(async (tx) => {
     // Workflow trigger guards use this connection-local flag. Reset it before
@@ -66,6 +88,12 @@ export async function withTracefabUserContext<T>(
     await tx.$executeRaw`SELECT set_config('tracefab.internal_data_collection_update', 'false', false)`;
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
     await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${userEmail.toLowerCase()}, true)`;
+    // Locataire actif. Toujours ecrit, y compris vide : une connexion rendue au
+    // pool ne doit jamais conserver le locataire de la requete precedente. La
+    // valeur vide signifie « aucun locataire actif », et
+    // `tracefab_active_organization_id()` la rend en NULL — jamais en repli sur
+    // les autres organisations du compte.
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${activeOrganizationId ?? ''}, true)`;
     try {
       return await callback(tx);
     } finally {

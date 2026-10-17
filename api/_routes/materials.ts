@@ -4,7 +4,8 @@ import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
 import { withTracefabUserContext } from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
-import { activeOrganizationIds, isUuid } from '.././_lib/products.js';
+import { isUuid } from '.././_lib/products.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '.././_lib/tenant.js';
 
 type MaterialBody = {
   ownerOrganizationId?: string;
@@ -59,39 +60,34 @@ function serializedMaterial(material: MaterialRow) {
   };
 }
 
-function queryOrganizationId(req: VercelRequest) {
-  const value = req.query.organizationId;
-  return Array.isArray(value) ? value[0] : value;
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);
 
   try {
     const { user } = await requireClerkUser(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const organizationIds = await activeOrganizationIds(tx, user.id);
-      const requestedOrganizationId = queryOrganizationId(req);
-      if (requestedOrganizationId && !isUuid(requestedOrganizationId)) throw new Error('invalid_organization_id');
-      if (requestedOrganizationId && !organizationIds.includes(requestedOrganizationId)) return null;
+      // Locataire actif obligatoire. Le repli precedent listait les matieres de
+      // toutes les organisations du compte. Le partage explicite entre
+      // organisations est conserve : il passe par
+      // `tracefab_can_access_shared_subject`, un mecanisme audite distinct du
+      // simple fait d'etre membre de plusieurs tenants.
+      const tenant = await requireActiveTenant(tx, req, user.id);
 
       if (req.method === 'GET') {
-        if (organizationIds.length === 0) return { materials: [] as MaterialRow[] };
         const materials = await tx.$queryRaw<MaterialRow[]>`
           SELECT m.*
           FROM materials m
           WHERE (
-            m.owner_organization_id = ANY(${organizationIds}::uuid[])
+            m.owner_organization_id = ${tenant.organizationId}::uuid
             OR tracefab_can_access_shared_subject(m.owner_organization_id, 'material', m.id)
           )
-          ${requestedOrganizationId ? Prisma.sql`AND (m.owner_organization_id = ${requestedOrganizationId}::uuid OR tracefab_can_access_shared_subject(m.owner_organization_id, 'material', m.id))` : Prisma.empty}
           ORDER BY m.updated_at DESC
         `;
         return { materials };
       }
 
       const body = await readJsonBody<MaterialBody>(req);
-      if (!isUuid(body.ownerOrganizationId) || !organizationIds.includes(body.ownerOrganizationId)) {
+      if (body.ownerOrganizationId !== tenant.organizationId) {
         throw new Error('invalid_owner_organization_id');
       }
       const materialType = requiredString(body.materialType, 'material_type', 120);
@@ -109,14 +105,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { material: rows[0] };
-    });
+    }, requestedTenantId(req));
 
-    if (!result) return json(res, 403, { error: 'organization_access_denied' });
     if ('materials' in result) return json(res, 200, { materials: result.materials!.map(serializedMaterial) });
     if (!result.material) throw new Error('material_creation_failed');
     return json(res, 201, { material: serializedMaterial(result.material) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

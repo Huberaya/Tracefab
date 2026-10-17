@@ -64,8 +64,22 @@ jobs:
 
       - name: Isolation multi-locataires
         # Toute route nouvelle doit declarer son modele d'acces. Une route non
-        # classee et non authentifiee fait echouer cette etape.
+        # classee et non authentifiee fait echouer cette etape. Le controle
+        # refuse aussi le repli sur toutes les organisations de l'utilisateur :
+        # c'est le defaut Production du 2026-10-17 (produit de recette visible
+        # depuis un autre tenant du meme compte).
         run: npm run test:cross-tenant
+
+      - name: Contexte de locataire actif
+        # Contrat du module api/_lib/tenant.ts : locataire obligatoire, valide,
+        # fail-closed. Un locataire absent, mal forme ou non adherent ne doit
+        # provoquer aucune requete metier.
+        run: npm run test:active-tenant
+
+      - name: Commentaires de fin de ligne dans les routes compactees
+        # Un commentaire `//` dans une route ecrite sur une ligne met en
+        # commentaire tout le handler, sans erreur de compilation.
+        run: npm run test:minified-comments
 
       - name: Garde-fous de mise en production
         # Barriere d'erreur centrale, caviardage des secrets reellement
@@ -186,6 +200,13 @@ jobs:
             echo "::group::Journaux des suites en echec"
             for s in $echoues; do echo "----- $s -----"; tail -40 "/tmp/$s.log"; done
             echo "::endgroup::"
+            # Le journal d'un job est heberge hors de l'API GitHub. Sans
+            # annotation, une suite en echec n'est qu'un nom : on sait QUOI,
+            # jamais POURQUOI. Chaque suite publie donc la fin de son journal.
+            for s in $echoues; do
+              detail=$(tail -25 "/tmp/$s.log" | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | tr '\n' '\036' | sed -e 's/\x1e/%0A/g' -e 's/`//g')
+              echo "::error title=$s::$detail"
+            done
             echo "::error::suites en echec :$echoues"
             exit 1
           fi
@@ -234,6 +255,16 @@ jobs:
 
       - name: 20 parcours end-to-end non mockes
         run: npm run test:journeys -- --base "$TF_BASE"
+
+      - name: Un utilisateur, deux organisations — aucune fuite, aucun flash
+        # Reproduction navigateur du defaut Production du 2026-10-17 : un
+        # administrateur de Ginger et de Tracefab Recette Production voyait
+        # depuis Ginger le produit RECETTE-DPP-20261017 du tenant de recette.
+        # Verifie l'en-tete de locataire sur chaque appel prive, l'absence de
+        # donnee du tenant precedent pendant le basculement (controle a
+        # mi-requete), la persistance du locataire et l'absence de debordement
+        # a 390 px. Le test monte son propre serveur sur le port 4181.
+        run: npm run test:multi-tenant:browser
 
       - name: Trois personas — dirigeant, conformite, fournisseur
         # Critere d'acceptation du cahier des charges : si un persona se perd,
@@ -377,3 +408,14 @@ jobs:
         # Prouve que deux organisations distinctes ne peuvent pas accéder aux
         # données de l'autre via INSERT, UPDATE, SELECT, DELETE ni fonctions SD.
         run: npm run test:neon:cross-tenant
+
+      - name: Contexte de locataire actif en base
+        # La RLS seule ne suffisait pas : le defaut Production du 2026-10-17
+        # venait d'un filtre portant sur l'UNION des organisations d'un compte
+        # membre de plusieurs tenants. Ce test se connecte avec UN utilisateur
+        # reellement admin de deux organisations, et verifie que
+        # `accessibleProduct` rend le produit sous son propre tenant et rien
+        # sous l'autre — alors que la RLS seule laisse passer dans les deux cas.
+        # Verifie aussi que le GUC ne survit pas a la transaction (pool de
+        # connexions) et que les trois fonctions sont fermees a PUBLIC.
+        run: npm run test:neon:active-tenant

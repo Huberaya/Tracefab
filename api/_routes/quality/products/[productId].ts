@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabRequestContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, optionalString } from '../../../_lib/data-requests.js';
@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = req.method === 'POST' ? await readJsonBody<QualityBody>(req) : {};
     const calculationVersion = optionalString(body.calculationVersion, 'calculation_version', 120) || 'product_quality_v1';
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const product = await accessibleProduct(tx, productId);
       if (!product) return null;
       if (req.method === 'POST') {

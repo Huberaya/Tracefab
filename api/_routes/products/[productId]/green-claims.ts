@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabRequestContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid } from '../../../_lib/data-requests.js';
@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return json(res, 400, { error: 'claim_text_required' });
       }
 
-      const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const result = await withTracefabRequestContext(req, user, async (tx) => {
         const product = await accessibleProduct(tx, productId);
         if (!product) return null;
 
@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // GET: List claims & latest audit
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const product = await accessibleProduct(tx, productId);
       if (!product) return null;
 

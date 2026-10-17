@@ -73,7 +73,12 @@ Colonne **Criticité** :
 
 | Variable | Criticité | Rôle | Conséquence si absente |
 |---|---|---|---|
-| `TRACEFAB_PUBLIC_BASE_URL` | fonctionnelle | Origine HTTPS canonique encodée dans les QR DPP, sans barre finale | `https://tracefab.com` est utilisé ; à définir explicitement pour tout autre domaine public |
+| `TRACEFAB_PUBLIC_BASE_URL` | **bloquante** | Origine HTTPS canonique encodée dans les QR DPP, sans barre finale | `GET /api/resolve/:publicId/qr` répond `503 public_base_url_not_configured`. Aucun repli : un QR encodant un domaine codé en dur qui n’est pas celui du déploiement enverrait le consommateur vers un tiers |
+
+> Changement du 2026-10-17 : la valeur de repli `https://tracefab.com` a été supprimée.
+> La variable est passée de « fonctionnelle » à « bloquante » et figure désormais dans la
+> liste `required` de `scripts/audit_production_env.mjs`. Un déploiement qui ne la définit
+> pas produit des QR en erreur explicite plutôt que des QR plausibles mais faux.
 
 La valeur est validée comme URL HTTPS. Le header HTTP `Host` n’est jamais utilisé pour construire un QR, afin d’éviter qu’une requête forgée injecte un domaine tiers sur une étiquette.
 

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabRequestContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { user } = await requireClerkUser(req);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const product = await accessibleProduct(tx, productId);
       if (!product) return null;
 

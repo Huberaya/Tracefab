@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
@@ -16,12 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-        const memberships = await tx.organization_memberships.findMany({
-          where: { user_id: user.id, status: 'active' },
-          select: { organization_id: true },
-        });
-        const orgIds = memberships.map((m) => m.organization_id);
-        if (orgIds.length === 0) return [];
+        // Locataire actif obligatoire : un certificat de transaction a un
+        // vendeur ET un acheteur, et l'union de toutes les organisations du
+        // compte affichait les certificats de l'autre tenant.
+        const tenant = await requireActiveTenant(tx, req, user.id);
+        const orgIds = [tenant.organizationId];
 
         const tcs = await tx.transaction_certificates.findMany({
           where: {
@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           issueDate: t.issue_date.toISOString().slice(0, 10),
           expiryDate: t.expiry_date?.toISOString?.().slice(0, 10),
         }));
-      });
+      }, requestedTenantId(req));
 
       return json(res, 200, { certificates: result, count: result.length });
     }
@@ -87,6 +87,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const created = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      // Le locataire actif doit etre partie au certificat qu'il enregistre.
+      // Sans ce controle, un membre de A et B pouvait enregistrer un certificat
+      // entre deux organisations tierces depuis n'importe lequel de ses tenants.
+      const tenant = await requireActiveTenant(tx, req, user.id);
+      if (sellerOrganizationId !== tenant.organizationId && buyerOrganizationId !== tenant.organizationId) {
+        throw new Error('active_tenant_not_a_party');
+      }
       return await registerTransactionCertificate(tx, {
         tcNumber,
         standard,
@@ -100,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         expiryDate,
         documentId,
       });
-    });
+    }, requestedTenantId(req));
 
     return json(res, 201, {
       message: 'transaction_certificate_registered',
@@ -109,6 +116,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: unknown) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
+    }
+    if (isTenantError(err)) {
+      return json(res, err.status, { error: err.message });
+    }
+    if (err instanceof Error && err.message === 'active_tenant_not_a_party') {
+      return json(res, 400, { error: 'active_tenant_not_a_party' });
     }
     const sqlError = sqlBusinessError(err);
     if (sqlError) {

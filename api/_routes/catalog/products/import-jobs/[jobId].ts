@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../../_lib/context.js';
-import { activeBrandOrganizationIds, isUuid } from '../../../../_lib/products.js';
+import { isUuid } from '../../../../_lib/products.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
 
 type ImportJob = {
@@ -32,7 +33,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(jobId)) return json(res, 400, { error: 'invalid_import_job_id' });
     const { user } = await requireClerkUser(req);
     const job = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const organizationIds = await activeBrandOrganizationIds(tx, user.id);
+      // Locataire actif obligatoire. `ANY(organizationIds)` couvrait toutes les
+      // organisations du compte : le statut d'un job d'import lance depuis un
+      // autre tenant etait lisible ici.
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
+      const organizationIds = [tenant.organizationId];
       const rows = await tx.$queryRaw<ImportJob[]>`
         SELECT id, organization_id, import_kind, source_filename, source_sha256, idempotency_key,
                status, total_rows, accepted_rows, rejected_rows, error_rows, created_at, completed_at
@@ -42,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         LIMIT 1
       `;
       return rows[0] ?? null;
-    });
+    }, requestedTenantId(req));
     if (!job) return json(res, 404, { error: 'catalog_import_job_not_found' });
     return json(res, 200, {
       job: {
@@ -63,6 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error('GET /api/catalog/products/import-jobs/:jobId failed', error);
     return json(res, 500, { error: 'internal_server_error' });
