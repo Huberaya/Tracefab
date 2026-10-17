@@ -61,10 +61,19 @@ export type ActiveTenant = {
 };
 
 export type TenantScope = {
-  /** Restreindre aux organisations de marque (catalogue, DPP, agregats marque). */
-  types?: Array<'brand' | 'supplier' | 'certifier' | 'logistics'>;
-  /** Roles admis dans le locataire actif. Absent : tout role actif. */
-  roles?: Array<'owner' | 'admin' | 'manager' | 'contributor' | 'auditor'>;
+  /**
+   * Restreindre a certains types d'organisation (catalogue, DPP, agregats
+   * marque). Les valeurs sont celles de l'enum `organization_type` de
+   * prisma/schema.prisma : brand, supplier, verifier, platform. Toute autre
+   * valeur est une erreur de compilation, ce qui est voulu — un type
+   * d'organisation invente ne doit pas pouvoir passer inapercu.
+   */
+  types?: Array<'brand' | 'supplier' | 'verifier' | 'platform'>;
+  /**
+   * Roles admis dans le locataire actif. Absent : tout role actif.
+   * Valeurs de l'enum `membership_role`.
+   */
+  roles?: Array<'owner' | 'admin' | 'manager' | 'contributor' | 'viewer' | 'auditor'>;
 };
 
 function firstValue(value: string | string[] | undefined): string | null {
@@ -182,7 +191,13 @@ export async function requireActiveTenant(
  * `{ in: [tenant.organizationId] }` et non `tenant.organizationId` : la forme
  * tableau rend le remplacement d'un bornage multi-organisations mecanique et
  * lisible en revue, sans changer la forme du `where`.
+ *
+ * Le type de retour est explicite et le tableau mutable : les filtres Prisma
+ * attendent `string[]`, et un `as const` produirait un tuple `readonly`
+ * non assignable. Le compilateur ne le verrait que sur un client Prisma
+ * reellement genere — c'est-a-dire en CI, pas sur un poste ou la generation
+ * a echoue.
  */
-export function tenantFilter(tenant: ActiveTenant) {
-  return { in: [tenant.organizationId] } as const;
+export function tenantFilter(tenant: ActiveTenant): { in: string[] } {
+  return { in: [tenant.organizationId] };
 }
