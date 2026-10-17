@@ -31,7 +31,6 @@
 -- d'etancheite, pour ne pas melanger un changement de surface d'acces avec un
 -- changement de contexte.
 
-BEGIN;
 
 -- Locataire actif de la transaction, ou NULL.
 --
@@ -58,13 +57,23 @@ RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT p_organization_id IS NOT NULL
-     AND p_organization_id = tracefab_active_organization_id();
+  -- COALESCE est ici une exigence de contrat, pas une precaution esthetique.
+  -- Sans locataire arme, `p_organization_id = NULL` vaut NULL ; `vrai AND NULL`
+  -- vaut NULL. Un predicat d'autorisation qui rend NULL au lieu de faux est un
+  -- predicat a trois valeurs : il reste sur dans un WHERE (NULL n'est pas
+  -- vrai), mais il trompe tout appelant qui ecrit `= false`, `IS FALSE`, un
+  -- CASE WHEN, un RAISE IF ou une assertion de test. Le booleen rendu est donc
+  -- TOTAL : vrai, ou faux, jamais NULL.
+  SELECT COALESCE(
+    p_organization_id IS NOT NULL
+    AND p_organization_id = tracefab_active_organization_id(),
+    false);
 $$;
 
 COMMENT ON FUNCTION tracefab_in_active_tenant(UUID) IS
-  'Comparaison stricte au locataire actif. Echoue fermee : sans locataire arme, '
-  'elle est fausse pour toute organisation, y compris celles de l''utilisateur.';
+  'Comparaison stricte au locataire actif. Booleen TOTAL : ne rend jamais NULL. '
+  'Echoue fermee : sans locataire arme, ou sur un UUID NULL, elle rend faux '
+  'pour toute organisation, y compris celles de l''utilisateur.';
 
 -- Garde explicite pour les fonctions applicatives qui exigent un locataire.
 -- Le message d'exception est celui de l'API (`organization_id_required`), pour
@@ -108,5 +117,3 @@ BEGIN
   END IF;
 END
 $grant_app$;
-
-COMMIT;

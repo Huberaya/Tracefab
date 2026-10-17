@@ -128,11 +128,147 @@ try {
     else ko(`arme, attendu ${orgRecette}, obtenu ${r.active}`);
   }
 
-  /* -- 3. rien d'arme -> tracefab_in_active_tenant est fausse ------------- */
+  /* -- 3. le predicat d'autorisation est un BOOLEEN TOTAL ----------------- */
+  /*
+   * C'est le defaut precise par la revue : un predicat d'autorisation qui rend
+   * NULL au lieu de faux est un predicat a trois valeurs. Il reste sur dans un
+   * WHERE, mais il trompe `= false`, `IS FALSE`, `NOT x`, un CASE WHEN, un
+   * `IF` plpgsql et toute assertion de test. Chaque etat est donc evalue sous
+   * ses trois formes : la valeur, son caractere NULL, et sa composition avec
+   * `vrai AND x` / `faux OR x` / `NOT x`.
+   */
+  const VERDICTS = `
+    select
+      tracefab_in_active_tenant($1::uuid)              as meme,
+      tracefab_in_active_tenant($2::uuid)              as autre,
+      tracefab_in_active_tenant(null::uuid)            as uuid_absent,
+      tracefab_in_active_tenant($1::uuid) is null      as meme_est_null,
+      tracefab_in_active_tenant($2::uuid) is null      as autre_est_null,
+      tracefab_in_active_tenant(null::uuid) is null    as uuid_absent_est_null,
+      (true  and tracefab_in_active_tenant($1::uuid))           as vrai_et_meme,
+      (false or  tracefab_in_active_tenant($1::uuid))           as faux_ou_meme,
+      (true  and tracefab_in_active_tenant($2::uuid))           as vrai_et_autre,
+      (false or  tracefab_in_active_tenant($2::uuid))           as faux_ou_autre,
+      (true  and tracefab_in_active_tenant(null::uuid))         as vrai_et_uuid_absent,
+      (false or  tracefab_in_active_tenant(null::uuid))         as faux_ou_uuid_absent,
+      (not tracefab_in_active_tenant($1::uuid))                 as non_meme,
+      (not tracefab_in_active_tenant($2::uuid))                 as non_autre,
+      (not tracefab_in_active_tenant(null::uuid))               as non_uuid_absent`;
+
+  const BOOLEENNES = ['meme', 'autre', 'uuid_absent', 'vrai_et_meme', 'faux_ou_meme',
+    'vrai_et_autre', 'faux_ou_autre', 'vrai_et_uuid_absent', 'faux_ou_uuid_absent',
+    'non_meme', 'non_autre', 'non_uuid_absent'];
+
+  // locataireArme = null signifie « contexte absent » : transaction ouverte,
+  // aucun set_config. C'est l'etat d'une surface qui a oublie de nommer.
+  const verdicts = async (locataireArme) => {
+    await app.query('begin');
+    if (locataireArme) {
+      await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [locataireArme]);
+    }
+    const { rows: [r] } = await app.query(VERDICTS, [orgRecette, orgGinger]);
+    await app.query('commit');
+    return r;
+  };
+
+  const attendre = (contexte, r, attendus) => {
+    for (const [cle, voulu] of Object.entries(attendus)) {
+      if (r[cle] === voulu) ok(`${contexte} — ${cle} === ${voulu}`);
+      else ko(`${contexte} — ${cle} : attendu ${voulu}, obtenu ${r[cle]}${r[cle] === null ? ' (NULL : predicat a trois valeurs)' : ''}`);
+    }
+  };
+
   {
-    const { rows: [r] } = await app.query('select tracefab_in_active_tenant($1::uuid) as inside', [orgRecette]);
-    if (r.inside === false) ok('sans locataire arme, tracefab_in_active_tenant() est fausse — un oubli n elargit rien');
-    else ko('sans locataire arme, tracefab_in_active_tenant() a rendu vrai : un oubli d armement elargirait le filtre');
+    // 3a. CONTEXTE ABSENT : rien d'arme. Tout est faux, rien n'est NULL, et
+    // `vrai AND x` ne doit pas heriter d'un NULL.
+    const r = await verdicts(null);
+    attendre('contexte absent', r, {
+      meme: false, autre: false, uuid_absent: false,
+      meme_est_null: false, autre_est_null: false, uuid_absent_est_null: false,
+      vrai_et_meme: false, faux_ou_meme: false,
+      vrai_et_autre: false, faux_ou_autre: false,
+      vrai_et_uuid_absent: false, faux_ou_uuid_absent: false,
+      non_meme: true, non_autre: true, non_uuid_absent: true,
+    });
+  }
+
+  {
+    // 3b. LOCATAIRE ARME sur B : la ressource de B est vraie, celle de A fausse,
+    // un UUID absent reste faux (et non NULL).
+    const r = await verdicts(orgRecette);
+    attendre('locataire arme sur B', r, {
+      meme: true, autre: false, uuid_absent: false,
+      vrai_et_meme: true, faux_ou_meme: true,
+      vrai_et_autre: false, faux_ou_autre: false,
+      vrai_et_uuid_absent: false, faux_ou_uuid_absent: false,
+      non_meme: false, non_autre: true, non_uuid_absent: true,
+    });
+  }
+
+  {
+    // 3c. LOCATAIRE ARME sur A, ressource chez B : c'est le cas inter-tenant.
+    // `vrai AND x` doit etre faux, `faux OR x` doit etre faux, `NOT x` vrai.
+    const r = await verdicts(orgGinger);
+    attendre('locataire arme sur A, ressource chez B', r, {
+      meme: false, autre: true, uuid_absent: false,
+      vrai_et_meme: false, faux_ou_meme: false,
+      vrai_et_autre: true, faux_ou_autre: true,
+      vrai_et_uuid_absent: false, faux_ou_uuid_absent: false,
+      non_meme: true, non_autre: false, non_uuid_absent: true,
+    });
+  }
+
+  {
+    // 3d. Aucun etat ne doit produire un booleen NULL, quel que soit le contexte.
+    const tous = [await verdicts(null), await verdicts(orgRecette), await verdicts(orgGinger)];
+    const nuls = [];
+    tous.forEach((r, i) => {
+      for (const cle of BOOLEENNES) if (r[cle] === null) nuls.push(`contexte ${i} : ${cle}`);
+    });
+    if (nuls.length === 0) ok('aucun des 3 contextes ne rend un booleen NULL sur les 12 compositions');
+    else ko(`booleens a trois valeurs : ${nuls.join(', ')}`);
+  }
+
+  /* -- 3e. MUTATION NEGATIVE : l'ancienne definition rendait NULL ---------- */
+  /*
+   * Preuve que le test ci-dessus echoue reellement si COALESCE disparait. On
+   * reinstalle le corps d'origine (sans COALESCE) sur la connexion proprietaire,
+   * dans une transaction qu'on annule aussitot : le catalogue revient a la
+   * definition corrigee. PostgreSQL rend le DDL transactionnel, donc cette
+   * mutation ne laisse aucune trace sur la base jetable.
+   */
+  {
+    await proprio.query('begin');
+    await proprio.query(`
+      create or replace function tracefab_in_active_tenant(p_organization_id UUID)
+      returns boolean language sql stable as $mut$
+        select p_organization_id is not null
+           and p_organization_id = tracefab_active_organization_id();
+      $mut$`);
+    // L'entree doit etre un UUID NON NUL. Avec un UUID NULL, `NULL IS NOT NULL`
+    // vaut faux, et `faux AND NULL` vaut faux : le defaut ne se manifesterait
+    // pas. Le NULL n'apparait que quand l'organisation est fournie et qu'aucun
+    // locataire n'est arme — exactement l'etat d'une surface qui a oublie.
+    const { rows: [mute] } = await proprio.query(
+      `select tracefab_in_active_tenant($1::uuid) as v,
+              tracefab_in_active_tenant($1::uuid) is null as est_null`, [orgRecette]);
+    await proprio.query('rollback');
+
+    if (mute.v === null && mute.est_null === true) {
+      ok('mutation negative : sans COALESCE, organisation fournie + contexte absent rend NULL — 3a/3d echoueraient donc bien');
+    } else {
+      ko(`mutation negative inefficace : attendu NULL, obtenu ${mute.v} — la preuve ne porte sur rien`);
+    }
+
+    // La restauration doit etre effective, sinon tout ce qui suit est faux.
+    const { rows: [apres] } = await app.query(
+      `select tracefab_in_active_tenant($1::uuid) as v,
+              tracefab_in_active_tenant($1::uuid) is null as est_null`, [orgRecette]);
+    if (apres.v === false && apres.est_null === false) {
+      ok('apres rollback de la mutation, la definition corrigee est revenue : faux, et non NULL');
+    } else {
+      ko(`rollback insuffisant : obtenu ${apres.v} (NULL=${apres.est_null})`);
+    }
   }
 
   /* -- 4. la garde leve le message de l'API ------------------------------- */
