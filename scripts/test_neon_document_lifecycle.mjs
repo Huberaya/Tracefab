@@ -184,6 +184,95 @@ try {
     'document_not_in_scannable_state',
     'un document rejected n est pas re-finalisable');
 
+  /* --- 8. sha256 : format hexadecimal strict (non-regression 2C.38) --- */
+  await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userA]);
+  await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-a-${suffixe}@example.test`]);
+  const docHash = randomUUID();
+  await proprio.query(
+    `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
+       original_filename, content_type, byte_size, kind, status, visibility, uploaded_by)
+     VALUES ($1, $2, 'tracefab-private', $3, 'hash.pdf', 'application/pdf',
+       1024, 'other', 'uploaded', 'private', $4)`,
+    [docHash, orgA, `${orgA}/uploads/hash-${suffixe}.pdf`, userA]);
+  await expectError(
+    () => app.query(
+      `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('z', 64), true, 1024::bigint)`,
+      [docHash]),
+    'sha256_required_for_available_document',
+    'une empreinte 64 caracteres non hexadecimale ne donne jamais available');
+  const docHex = randomUUID();
+  await proprio.query(
+    `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
+       original_filename, content_type, byte_size, kind, status, visibility, uploaded_by)
+     VALUES ($1, $2, 'tracefab-private', $3, 'hex.pdf', 'application/pdf',
+       1024, 'other', 'uploaded', 'private', $4)`,
+    [docHex, orgA, `${orgA}/uploads/hex-${suffixe}.pdf`, userA]);
+  const maj = await app.query(
+    `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('A', 64), true, 1024::bigint)`,
+    [docHex]);
+  if (maj.rows[0].status === 'available' && maj.rows[0].sha256 === 'a'.repeat(64)) {
+    ok('une empreinte hexadecimale valide passe, stockee en minuscules canoniques');
+  } else {
+    ko(`empreinte hex valide : statut=${maj.rows[0].status} sha256=${maj.rows[0].sha256}`);
+  }
+
+  /* --- 9. controle acteur : privilege reel, pas session_user <> current_user --- */
+  // Reproduction du defaut (2C.38) : rendre le role applicatif proprietaire
+  // de la fonction ne doit JAMAIS lui ouvrir le chemin d'exploitation.
+  // Avant le correctif, l'appel sans contexte franchissait le controle acteur
+  // (il n'etait arrete que par la RLS, document_not_found).
+  const proprietaire = (await proprio.query(
+    `SELECT pg_get_userbyid(proowner) AS o FROM pg_proc
+     WHERE proname = 'tracefab_finalize_document_upload'`)).rows[0].o;
+  await proprio.query(
+    `ALTER FUNCTION tracefab_finalize_document_upload(UUID, TEXT, BOOLEAN, BIGINT) OWNER TO tracefab_app`);
+  await app.query(`SELECT set_config('tracefab.user_id', '', false)`);
+  await app.query(`SELECT set_config('tracefab.user_email', '', false)`);
+  await expectError(
+    () => app.query(
+      `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('d', 64), true, 1024::bigint)`,
+      [docHash]),
+    'document_scan_actor_required',
+    'proprietaire de fonction = role applicatif : le chemin exploitation reste ferme');
+  // Restauration complete : proprietaire ET privilege EXECUTE du role applicatif
+  // (ALTER OWNER reecrit l'ACL et perd les grants).
+  const cible = proprietaire === 'postgres' ? 'postgres' : `"${proprietaire}"`;
+  await proprio.query(
+    `ALTER FUNCTION tracefab_finalize_document_upload(UUID, TEXT, BOOLEAN, BIGINT) OWNER TO ${cible}`);
+  await proprio.query(
+    `GRANT EXECUTE ON FUNCTION tracefab_finalize_document_upload(UUID, TEXT, BOOLEAN, BIGINT) TO tracefab_app`);
+
+  // Le chemin exploitation lui-meme reste utilisable par le proprietaire
+  // (classe DBA), sans contexte utilisateur.
+  const docOps = randomUUID();
+  await proprio.query(
+    `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
+       original_filename, content_type, byte_size, kind, status, visibility, uploaded_by)
+     VALUES ($1, $2, 'tracefab-private', $3, 'ops.pdf', 'application/pdf',
+       1024, 'other', 'uploaded', 'private', $4)`,
+    [docOps, orgA, `${orgA}/uploads/ops-${suffixe}.pdf`, userA]);
+  await proprio.query(`SELECT set_config('tracefab.user_id', '', false)`);
+  const ops = await proprio.query(
+    `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('e', 64), true, 1024::bigint)`,
+    [docOps]);
+  if (ops.rows[0].status === 'available') ok('le proprietaire finalise sans contexte (chemin exploitation preserve)');
+  else ko(`chemin exploitation : statut inattendu ${ops.rows[0].status}`);
+
+  /* --- 10. ACL de la finalisation (non-regression 2C.38) --- */
+  const acl = (await proprio.query(
+    `SELECT has_function_privilege('public', 'tracefab_finalize_document_upload(uuid,text,boolean,bigint)', 'EXECUTE') AS pub,
+            has_function_privilege('tracefab_app', 'tracefab_finalize_document_upload(uuid,text,boolean,bigint)', 'EXECUTE') AS app,
+            has_table_privilege('tracefab_app', 'documents', 'TRUNCATE') AS app_truncate,
+            has_table_privilege(current_user, 'documents', 'TRUNCATE') AS proprio_truncate`)).rows[0];
+  if (acl.pub === false) ok('EXECUTE de la finalisation non accorde a PUBLIC');
+  else ko('PUBLIC peut executer la finalisation');
+  if (acl.app === true) ok('EXECUTE accorde au role applicatif (parcours de scan)');
+  else ko('le role applicatif ne peut plus executer la finalisation — parcours de scan casse');
+  if (acl.app_truncate === false) ok('le role applicatif ne detient pas TRUNCATE sur documents (voie exploitation fermee)');
+  else ko('le role applicatif detient TRUNCATE sur documents — preuve de privilege trafiquee');
+  if (acl.proprio_truncate === true) ok('le proprietaire detient TRUNCATE (chemin exploitation utilisable en exploitation)');
+  else ko('le proprietaire ne detient pas TRUNCATE — le chemin exploitation serait inutilisable');
+
   /* --- les documents de A restent invisibles pour B après finalisation --- */
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userB]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-b-${suffixe}@example.test`]);
