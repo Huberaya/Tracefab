@@ -217,12 +217,12 @@ try {
   const beforeEdit = (await app.query('select * from tracefab_products where id=$1', [prodA])).rows[0];
   if (beforeEdit.description === null && beforeEdit.country_of_manufacture === null && beforeEdit.weight_grams === null) ok('produit réel vide : inconnus NULL, aucune valeur démo');
   else ko('produit réel vide : des valeurs ont été inventées');
-  const compute = async () => (await app.query('select (tracefab_compute_dpp_readiness($1)).*', [prodA])).rows[0];
+  const compute = async () => (await app.query('select * from tracefab_compute_dpp_readiness($1)', [prodA])).rows[0];
   const missing = (record, key) => record.missing_fields.some((entry) => entry.key === key);
   const emptyDpp = await compute();
   if (missing(emptyDpp, 'product.description') && missing(emptyDpp, 'product.country_of_manufacture')) ok('DPP initial : description et pays manquants');
   else ko('DPP initial : description/pays devraient manquer');
-  const updateProduct = `select (tracefab_update_product_data($1, $2, null, 'Produit A', null, $3, null, null, '{}'::text[], null, $4, null, '{}'::jsonb)).*`;
+  const updateProduct = `select * from tracefab_update_product_data($1, $2, null, 'Produit A', null, $3, null, null, '{}'::text[], null, $4, null, '{}'::jsonb)`;
   const description = 'Une description détaillée réelle, suffisante pour la règle DPP.';
   const descriptionOnly = (await app.query(updateProduct, [prodA, beforeEdit.reference, description, null])).rows[0];
   if (descriptionOnly.description === description && descriptionOnly.country_of_manufacture === null && descriptionOnly.color_name === null && descriptionOnly.weight_grams === null) ok('édition description seule : autres inconnus conservés NULL');

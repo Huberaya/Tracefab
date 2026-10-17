@@ -454,11 +454,11 @@ try {
     const description = 'Une description détaillée du produit réel, sans données de démonstration.';
     await form.locator('[name="description"]').fill(description);
     await form.locator('[type="submit"]').click();
-    await page.waitForFunction((text) => window.tracefabBrandConsole.state.selectedProductDetail.product.description === text, description);
+    await page.waitForFunction((text) => window.tracefabBrandConsole.state.selectedProductDetail.product.description === text && !window.tracefabBrandConsole.state.loading, description);
     assert.deepEqual(patches[0], { description });
     await form.locator('[name="countryOfManufacture"]').fill('fr');
     await form.locator('[type="submit"]').click();
-    await page.waitForFunction(() => window.tracefabBrandConsole.state.selectedProductDetail.product.countryOfManufacture === 'FR');
+    await page.waitForFunction(() => window.tracefabBrandConsole.state.selectedProductDetail.product.countryOfManufacture === 'FR' && !window.tracefabBrandConsole.state.loading);
     assert.deepEqual(patches[1], { countryOfManufacture: 'FR' });
     assert.equal(PRODUCTS[0].colorName, null);
     assert.equal(PRODUCTS[0].weightGrams, null);
