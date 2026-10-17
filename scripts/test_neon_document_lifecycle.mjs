@@ -216,6 +216,103 @@ try {
     ko(`empreinte hex valide : statut=${maj.rows[0].status} sha256=${maj.rows[0].sha256}`);
   }
 
+  /* --- 8b. taille reelle du document : borne de 50 Mio (52428800 octets) ---
+   *
+   * La limite etait posee dans la fonction (p_actual_byte_size > 52428800) mais
+   * aucune assertion ne la tenait : un glissement d'un octet, un passage de
+   * 50 Mio a 50 Mo decimaux, ou la suppression pure et simple du controle
+   * seraient passes inapercus. Trois points sont epingles : juste au-dessus de
+   * la borne (refus), taille negative (refus — un BIGINT signe accepte -1), et
+   * la borne elle-meme (acceptee : la limite est INCLUSIVE, ce que le texte de
+   * l'exception ne dit pas et qu'un futur refactor pourrait inverser).
+   */
+  const LIMITE = 52428800; // 50 * 1024 * 1024
+  const docTaille = randomUUID();
+  await proprio.query(
+    `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
+       original_filename, content_type, byte_size, kind, status, visibility, uploaded_by)
+     VALUES ($1, $2, 'tracefab-private', $3, 'taille.pdf', 'application/pdf',
+       1024, 'other', 'uploaded', 'private', $4)`,
+    [docTaille, orgA, `${orgA}/uploads/taille-${suffixe}.pdf`, userA]);
+  await expectError(
+    () => app.query(
+      `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('e', 64), true, $2::bigint)`,
+      [docTaille, LIMITE + 1]),
+    'document_size_limit_exceeded',
+    `une taille au-dessus de 50 Mio (${LIMITE + 1} o) est refusee`);
+  await expectError(
+    () => app.query(
+      `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('e', 64), true, (-1)::bigint)`,
+      [docTaille]),
+    'document_size_limit_exceeded',
+    'une taille negative est refusee (BIGINT signe, pas de controle implicite)');
+  // Le refus precedent a interrompu sa transaction : le document doit etre
+  // intact, sinon la borne serait testee sur un etat deja corrompu.
+  const intact = await app.query(`SELECT status FROM documents WHERE id = $1`, [docTaille]);
+  if (intact.rows[0]?.status === 'uploaded') ok('apres un refus de taille, le document reste uploaded');
+  else ko(`apres un refus de taille : statut=${intact.rows[0]?.status}, attendu uploaded`);
+  const aBorne = await app.query(
+    `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('e', 64), true, $2::bigint)`,
+    [docTaille, LIMITE]);
+  if (aBorne.rows[0].status === 'available' && String(aBorne.rows[0].byte_size) === String(LIMITE)) {
+    ok(`la borne de 50 Mio est INCLUSIVE : ${LIMITE} o passent et sont stockes`);
+  } else {
+    ko(`borne 50 Mio : statut=${aBorne.rows[0].status} byte_size=${aBorne.rows[0].byte_size}`);
+  }
+
+  /* --- 8c. transaction interrompue : aucun effet partiel, aucun GUC residuel ---
+   *
+   * La fonction pose set_config('tracefab.internal_document_update', 'true',
+   * true) pour franchir la barriere d'ecriture interne, puis le remet a
+   * 'false'. Si l'appelant annule sa transaction, ni le changement de statut ni
+   * le drapeau interne ne doivent survivre : un pool de connexions reutilise
+   * heriterait sinon d'un canal d'ecriture interne ouvert.
+   */
+  const docAnnule = randomUUID();
+  await proprio.query(
+    `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
+       original_filename, content_type, byte_size, kind, status, visibility, uploaded_by)
+     VALUES ($1, $2, 'tracefab-private', $3, 'annule.pdf', 'application/pdf',
+       1024, 'other', 'uploaded', 'private', $4)`,
+    [docAnnule, orgA, `${orgA}/uploads/annule-${suffixe}.pdf`, userA]);
+  await app.query('BEGIN');
+  const avantAnnulation = await app.query(
+    `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('f', 64), true, 1024::bigint)`,
+    [docAnnule]);
+  if (avantAnnulation.rows[0].status !== 'available') {
+    ko(`avant ROLLBACK : statut=${avantAnnulation.rows[0].status}, attendu available`);
+  }
+  await app.query('ROLLBACK');
+  const apresAnnulation = await app.query(`SELECT status, sha256 FROM documents WHERE id = $1`, [docAnnule]);
+  if (apresAnnulation.rows[0]?.status === 'uploaded' && apresAnnulation.rows[0]?.sha256 === null) {
+    ok('une transaction annulee ne laisse ni statut ni empreinte : le document reste uploaded');
+  } else {
+    ko(`apres ROLLBACK : statut=${apresAnnulation.rows[0]?.status} sha256=${apresAnnulation.rows[0]?.sha256}`);
+  }
+  const gucResiduel = (await app.query(
+    `SELECT current_setting('tracefab.internal_document_update', true) AS v`)).rows[0].v;
+  if (gucResiduel !== 'true') ok("le drapeau d'ecriture interne ne survit pas a la transaction annulee");
+  else ko("le drapeau d'ecriture interne a survecu au ROLLBACK — canal d'ecriture interne ouvert");
+
+  /* --- 8d. fonction appelee deux fois sur un document deja disponible --- */
+  // Le cas `rejected` etait couvert (7). Le cas `available` ne l'etait pas :
+  // une seconde finalisation pourrait reposer available_at et ecraser une
+  // empreinte deja publiee, ce qui falsifierait le releve d'integrite.
+  const premiere = await app.query(`SELECT sha256, available_at FROM documents WHERE id = $1`, [docTaille]);
+  await expectError(
+    () => app.query(
+      `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('0', 64), true, 1024::bigint)`,
+      [docTaille]),
+    'document_not_in_scannable_state',
+    'un document deja available n est pas re-finalisable');
+  const inchange = await app.query(`SELECT sha256, available_at FROM documents WHERE id = $1`, [docTaille]);
+  if (inchange.rows[0].sha256 === premiere.rows[0].sha256
+      && String(inchange.rows[0].available_at) === String(premiere.rows[0].available_at)) {
+    ok('un appel refuse ne modifie ni empreinte ni available_at');
+  } else {
+    ko(`empreinte/date modifiees par un appel refuse : ${inchange.rows[0].sha256} vs ${premiere.rows[0].sha256}`);
+  }
+
   /* --- 9. controle acteur : privilege reel, pas session_user <> current_user --- */
   // Reproduction du defaut (2C.38) : rendre le role applicatif proprietaire
   // de la fonction ne doit JAMAIS lui ouvrir le chemin d'exploitation.
