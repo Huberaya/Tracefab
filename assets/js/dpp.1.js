@@ -22,7 +22,14 @@
       });
 
       // JSON-LD Export and Modal
-      const jsonContent = document.getElementById('dpp-jsonld').textContent.trim();
+      // Lu AU MOMENT DU CLIC : dpp.2.js reecrit #dpp-jsonld avec les donnees
+      // reelles (ou neutres) apres hydratation. Capturer le contenu au
+      // chargement exporterait le JSON-LD de demonstration meme sur un
+      // passeport reel.
+      const readJsonLd = () => {
+        const el = document.getElementById('dpp-jsonld');
+        return el ? el.textContent.trim() : '{"@context":"https://schema.org","@type":"Product"}';
+      };
       const modal = document.getElementById('modal-jsonld');
       const codeContainer = document.getElementById('json-code-container');
       const btnViewRaw = document.getElementById('btn-view-raw');
@@ -30,6 +37,7 @@
       const btnExport = document.getElementById('btn-export-jsonld');
 
       btnViewRaw.addEventListener('click', () => {
+        const jsonContent = readJsonLd();
         try {
           const formatted = JSON.stringify(JSON.parse(jsonContent), null, 2);
           codeContainer.textContent = formatted;
@@ -45,11 +53,17 @@
       });
 
       btnExport.addEventListener('click', () => {
+        const jsonContent = readJsonLd();
+        let slug = 'passeport';
+        try {
+          const parsed = JSON.parse(jsonContent);
+          slug = String(parsed.gtin || parsed.name || slug).replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 60) || slug;
+        } catch (e) { /* contenu non parsable : nom neutre */ }
         const blob = new Blob([jsonContent], { type: 'application/ld+json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'dpp-at-ess-001-cirpass.jsonld';
+        a.download = 'dpp-' + slug + '-cirpass.jsonld';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

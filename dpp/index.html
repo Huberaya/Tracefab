@@ -3,19 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title data-i18n="dpp.metaTitle">Digital Product Passport — Organic Cotton Essential | TRACEFAB</title>
-  <meta name="description" content="Digital Product Passport (DPP) in ESPR / CIRPASS format for the Organic Cotton Essential style by Atelier Demo. Traceability, composition and repairability data." data-i18n-attr="content:dpp.metaDesc">
+  <title data-i18n="dpp.metaTitle">Digital Product Passport | TRACEFAB</title>
+  <meta name="description" content="Digital Product Passport (DPP) in ESPR / CIRPASS format. Traceability, composition and repairability data published with the passport record." data-i18n-attr="content:dpp.metaDesc">
 
   <!-- Open Graph / Meta -->
-  <meta property="og:title" content="DPP — Organic Cotton Essential">
-  <meta property="og:description" content="Documented traceability from fibre to finished garment, in the format of the European ESPR regulation. A readiness indicator, not a certification." data-i18n-attr="content:dpp.ogDesc">
+  <meta property="og:title" content="Digital Product Passport — TRACEFAB">
+  <meta property="og:description" content="Digital Product Passport (DPP) in ESPR / CIRPASS format. A readiness indicator, not a certification." data-i18n-attr="content:dpp.ogDesc">
   <meta property="og:type" content="product">
 
   <!-- Google Fonts -->
   <!-- Polices locales versionnées (pas de CDN Google) -->
   <link rel="stylesheet" href="/assets/css/fonts.css?v=c78cbebf">
 
-  <!-- Schema JSON-LD de passeport produit, au format CIRPASS / ESPR -->
+  <!--
+    JSON-LD statique NEUTRE : aucune valeur de démonstration, certification
+    inventée ou affirmation de provenance n'est exposée dans la réponse
+    initiale (avant hydratation). Les données réelles du passeport publié
+    sont écrites ici par dpp.2.js (jsonLdFor) au chargement ; sans passeport
+    publié, le bloc reste neutre (neutralizeForMissingPassport).
+  -->
   <script type="application/ld+json" id="dpp-jsonld">
   {
     "@context": [
@@ -23,67 +29,7 @@
       { "espr": "https://ec.europa.eu/commission/presscorner/detail/en/ip_24_1749#" }
     ],
     "@type": "Product",
-    "identifier": "urn:epc:id:sgtin:3760123456.001.2026",
-    "name": "Organic Cotton Essential",
-    "model": "AT-ESS-001",
-    "sku": "AT-ESS-001-NVY-M",
-    "gtin": "3760123456789",
-    "brand": {
-      "@type": "Brand",
-      "name": "Atelier Demo",
-      "legalName": "Atelier Demo SAS"
-    },
-    "description": "Combed organic cotton jersey T-shirt, 185 gsm, made in Portugal in compliance with SMETA social standards and GOTS environmental standards.",
-    "countryOfOrigin": "PT",
-    "countryOfDesign": "FR",
-    "material": [
-      {
-        "@type": "DefinedTerm",
-        "name": "Combed organic cotton (GOTS certified)",
-        "percentage": 85,
-        "termCode": "COTTON_BIO",
-        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
-      },
-      {
-        "@type": "DefinedTerm",
-        "name": "Pre-consumer recycled cotton (GRS certified)",
-        "percentage": 15,
-        "termCode": "COTTON_REC",
-        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
-      }
-    ],
-    "certifications": [
-      {
-        "standard": "Global Organic Textile Standard (GOTS)",
-        "certificateNumber": "CU-881294-GOTS-2026",
-        "issuer": "Control Union",
-        "status": "active"
-      },
-      {
-        "standard": "OEKO-TEX Standard 100",
-        "certificateNumber": "21.HPT.94112",
-        "issuer": "Hohenstein Institute",
-        "status": "active"
-      }
-    ],
-    "traceability": {
-      "tier4_raw_fiber": { "country": "PT", "facility": "Quinta de São Martinho", "provenance": "100% regenerative cotton" },
-      "tier3_spinning": { "country": "PT", "facility": "Fiação Norte Lda", "process": "Combed yarn spinning Ne 30/1" },
-      "tier3_weaving": { "country": "PT", "facility": "Malhas do Ave", "process": "Circular jersey knitting" },
-      "tier2_dyeing": { "country": "PT", "facility": "Tinturaria Braga Lda", "process": "Low-environmental-impact dyeing" },
-      "tier1_assembly": { "country": "PT", "facility": "Nhãn Textile Confeção", "process": "Cutting, sewing and pressing" }
-    },
-    "repairAndCare": {
-      "washingInstructions": "Wash at 30°C on a delicate cycle. Open-air drying recommended. Iron gently on the reverse.",
-      "recyclabilityRate": "98%",
-      "repairServicesUrl": "https://atelier-demo.fr/repair-program",
-      "takeBackUrl": "https://atelier-demo.fr/second-life"
-    },
-    "verificationSignature": {
-      "signedBy": "TRACEFAB Cryptographic Ledger",
-      "timestamp": "2026-10-06T06:50:00Z",
-      "evidenceHash": "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    }
+    "name": "Digital Product Passport"
   }
   </script>
 
@@ -288,6 +234,26 @@
       background: var(--status-verified-bg);
       color: var(--status-verified);
       border-color: #bbf7d0;
+    }
+    /* Affirmations reelles : le style porte le niveau de controle exact,
+       jamais une teinte « certifie » pour une simple declaration. */
+    .claim-pill[data-claim-status="declared"] {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+    }
+    .claim-pill[data-claim-status="documented"] {
+      background: var(--status-documented-bg);
+      color: var(--status-documented);
+    }
+    .claim-pill[data-claim-status="controlled"],
+    .claim-pill[data-claim-status="corroborated"] {
+      background: var(--status-verified-bg);
+      color: var(--status-verified);
+    }
+    .claim-pill[data-claim-status="third_party_verified"] {
+      background: var(--status-certified-bg);
+      color: var(--status-certified);
+      border-color: #6ee7b7;
     }
 
     /* Tabbed Navigation inside DPP */
@@ -765,10 +731,10 @@
     <!-- Header with Brand & EU Standard Badge -->
     <header class="dpp-header">
       <div class="brand-id">
-        <div class="brand-mark">AD</div>
+        <div class="brand-mark" data-dpp-demo-only>AD</div>
         <div class="brand-text">
-          <strong data-tf-demo>Atelier Demo</strong>
-          <span>Paris, France</span>
+          <strong data-tf-demo data-dpp-field="brandName">Atelier Demo</strong>
+          <span data-dpp-demo-only>Paris, France</span>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
@@ -804,18 +770,24 @@
         <span>SKU: <span data-tf-demo data-dpp-field="sku">AT-ESS-001</span></span>
         <span>•</span>
         <span>GTIN: <span data-tf-demo data-dpp-field="gtin">3760123456789</span></span>
-        <span>•</span>
-        <span>Batch: 2026-FW</span>
+        <span data-dpp-demo-only>•</span>
+        <span data-dpp-demo-only>Batch: 2026-FW</span>
       </div>
-      <p class="product-summary" data-i18n="dpp.heroDesc">Iconic T-shirt in 185 gsm regenerative organic cotton jersey. Traced from seed to finished garment with 100% documented evidence.
+      <p class="product-summary" data-dpp-demo-only data-i18n="dpp.heroDesc">Iconic T-shirt in 185 gsm regenerative organic cotton jersey. Traced from seed to finished garment with 100% documented evidence.
       </p>
 
-      <div class="trust-pill-bar" tabindex="0" role="region" aria-label="Certifications">
+      <!-- Badges de demonstration : certifications fictives, jamais visibles
+           derriere un identifiant reel (data-dpp-demo-only). -->
+      <div class="trust-pill-bar" data-dpp-demo-only tabindex="0" role="region" aria-label="Certifications">
         <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ 100% certified materials</span>
         <span class="trust-badge-item">GOTS Certified</span>
         <span class="trust-badge-item">OEKO-TEX Class 1</span>
         <span class="trust-badge-item" data-i18n="dpp.heroMadeIn">Made in Portugal</span>
       </div>
+      <!-- Affirmations REELLES publiees pour le produit, rendues par dpp.2.js
+           depuis l'API avec leur niveau de controle exact. Aucune certification
+           n'est affichee ici sans preuve acceptee de niveau tierc-verifie. -->
+      <div class="trust-pill-bar" id="dpp-claims-bar" tabindex="0" role="region" aria-label="Affirmations publiées" hidden></div>
     </div>
 
     <!-- Apple & Google Wallet Mobile Passes -->
@@ -1248,9 +1220,9 @@
     </div>
   </div>
 
-  <script src="/assets/js/dpp.1.js?v=d931442c"></script>
+  <script src="/assets/js/dpp.1.js?v=d4fa6346"></script>
 
-  <script src="/assets/js/dpp.2.js?v=da610a73"></script>
+  <script src="/assets/js/dpp.2.js?v=9f1a79cf"></script>
 
 </body>
 </html>

@@ -419,3 +419,9 @@ jobs:
         # Verifie aussi que le GUC ne survit pas a la transaction (pool de
         # connexions) et que les trois fonctions sont fermees a PUBLIC.
         run: npm run test:neon:active-tenant
+
+      - name: Cycle de vie documentaire — visibilite, roles de scan, fail-closed
+        # TF-2 : le proprietaire lit ses documents dans tous les etats non
+        # supprimes, la finalisation exige un role ecrivain, aucun verdict
+        # d'analyse absent ne devient « sain ».
+        run: npm run test:neon:document-lifecycle

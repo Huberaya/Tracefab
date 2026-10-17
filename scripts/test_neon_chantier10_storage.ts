@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
-import { PrismaClient } from '@prisma/client';
 import { getOrganizationStorageUsage, assertStorageQuotaAvailable } from '../api/_lib/cloud-storage/quota-manager.ts';
+import { createTestPrisma } from './lib/test_prisma_client.mjs';
 
-const prisma = new PrismaClient();
+// Client partage : engine standard en CI, moteur client WASM + adaptateur pg
+// sur poste sans accès aux binaires Prisma. Un client nu refusait ce second
+// cas au démarrage — la suite ne mesurait alors rien du tout.
+const prisma = await createTestPrisma(process.env.DATABASE_URL || '');
 
 async function run() {
   console.log('=== TEST INTEGRATION NEON CHANTIER 10: STORAGE QUOTAS & DOCUMENT SECURITY ===\n');
