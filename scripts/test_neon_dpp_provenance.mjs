@@ -365,11 +365,20 @@ else ko(`route Google par brouillon : ${res._get().statusCode}`);
 res = mockRes();
 await dppRoute(mockReq({ url: `/api/dpp/${GTIN}`, query: { gtin: GTIN } }), res);
 const corps = res._get().body;
-if (res._get().statusCode === 200 && corps && corps.dpp && corps.dpp.productId === U.p1) {
+// L'ancienne assertion comparait `corps.dpp.productId` a l'UUID interne.
+// C'etait precisement la fuite corrigee : la projection publique n'expose
+// plus aucun identifiant interne. On verifie donc l'identite par le GTIN
+// publie, et l'ABSENCE de productId devient une assertion de securite.
+if (res._get().statusCode === 200 && corps && corps.dpp
+    && corps.dpp.gtin && corps.dpp.gtin.value === GTIN) {
   ok('API /api/dpp/:gtin : 200, donnees du produit reel');
+  if (corps.dpp.productId === undefined) ok('API /api/dpp/:gtin : aucun identifiant interne expose');
+  else ko('API /api/dpp/:gtin expose productId');
   if (corps.dpp.presentation && corps.dpp.presentation.source !== 'live') {
     ok(`presentation = '${corps.dpp.presentation.source}' (pas 'live' tant que des champs manquent)`);
   }
+  if (!JSON.stringify(corps).includes(U.p1)) ok('API /api/dpp/:gtin : UUID produit absent de la reponse');
+  else ko('API /api/dpp/:gtin contient l UUID du produit');
 } else ko('API /api/dpp/:gtin inattendue');
 
 /* ------------------------------------------------- resultat */
