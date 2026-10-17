@@ -1392,6 +1392,7 @@ window.TF_I18N_BUNDLES.en = {
     pxSizes: "Sizes",
     pxBomTitle: "Bill of materials & mass balance (BOM)",
     pxActiveIdentifiers: "active identifier(s)",
+    pxDescription: "Detailed description",
     pxTechSheet: "Technical sheet & regulatory attributes",
     pxTraceGraph: "Traceability graph",
     pxIdentifiers: "Digital identifiers & barcodes (GS1 Digital Link)",

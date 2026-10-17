@@ -1,3 +1,4 @@
+import { validateProductPatch, ProductFieldError, type UpdateProductBody } from '../../_lib/product-edit.js';
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
@@ -6,20 +7,6 @@ import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { activeBrandOrganizationIds, isUuid, PRODUCT_SELECT, serializeProduct } from '../../_lib/products.js';
 
-type UpdateProductBody = {
-  reference?: string;
-  sku?: string | null;
-  name?: string;
-  category?: string | null;
-  description?: string | null;
-  productFamily?: string | null;
-  colorName?: string | null;
-  sizeRange?: string[];
-  countryOfDesign?: string | null;
-  countryOfManufacture?: string | null;
-  weightGrams?: number | null;
-  careInstructions?: Record<string, unknown> | null;
-};
 
 const DETAIL_SELECT = {
   ...PRODUCT_SELECT,
@@ -48,24 +35,6 @@ function routeProductId(req: VercelRequest) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function requiredString(value: unknown, field: string, maxLength: number) {
-  if (typeof value !== 'string' || value.trim().length === 0 || value.trim().length > maxLength) {
-    throw new Error(`invalid_${field}`);
-  }
-  return value.trim();
-}
-
-function optionalString(value: unknown, field: string, maxLength: number) {
-  if (value === undefined || value === null) return null;
-  if (typeof value !== 'string' || value.trim().length > maxLength) throw new Error(`invalid_${field}`);
-  return value.trim() || null;
-}
-
-function countryCode(value: unknown, field: string) {
-  if (value === undefined || value === null) return null;
-  if (typeof value !== 'string' || !/^[A-Za-z]{2}$/.test(value.trim())) throw new Error(`invalid_${field}`);
-  return value.trim().toUpperCase();
-}
 
 function productDetailPayload(product: ProductDetail) {
   return {
@@ -90,15 +59,16 @@ function productDetailPayload(product: ProductDetail) {
   };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export function createProductHandler(deps = { requireClerkUser, withTracefabUserContext }) {
+return async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'PATCH') return methodNotAllowed(res, ['GET', 'PATCH']);
 
   try {
     const productId = routeProductId(req);
     if (!isUuid(productId)) return json(res, 400, { error: 'invalid_product_id' });
-    const { user } = await requireClerkUser(req);
+    const { user } = await deps.requireClerkUser(req);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await deps.withTracefabUserContext(user.id, user.email, async (tx) => {
       const organizationIds = await activeBrandOrganizationIds(tx, user.id);
       const current = await tx.tracefab_products.findFirst({
         where: { id: productId, brand_organization_id: { in: organizationIds } },
@@ -108,57 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (req.method === 'GET') return current;
 
       const body = await readJsonBody<UpdateProductBody>(req);
-      const allowedKeys = new Set([
-        'reference', 'sku', 'name', 'category', 'description', 'productFamily',
-        'colorName', 'sizeRange', 'countryOfDesign', 'countryOfManufacture',
-        'weightGrams', 'careInstructions',
-      ]);
-      if (Object.keys(body).some((key) => !allowedKeys.has(key))) throw new Error('invalid_product_fields');
-
-      const reference = Object.prototype.hasOwnProperty.call(body, 'reference')
-        ? requiredString(body.reference, 'product_reference', 180)
-        : current.reference;
-      const name = Object.prototype.hasOwnProperty.call(body, 'name')
-        ? requiredString(body.name, 'product_name', 240)
-        : current.name;
-      const sku = Object.prototype.hasOwnProperty.call(body, 'sku')
-        ? optionalString(body.sku, 'product_sku', 120)
-        : current.sku;
-      const category = Object.prototype.hasOwnProperty.call(body, 'category')
-        ? optionalString(body.category, 'product_category', 180)
-        : current.category;
-      const description = Object.prototype.hasOwnProperty.call(body, 'description')
-        ? optionalString(body.description, 'product_description', 10000)
-        : current.description;
-      const productFamily = Object.prototype.hasOwnProperty.call(body, 'productFamily')
-        ? optionalString(body.productFamily, 'product_family', 180)
-        : current.product_family;
-      const colorName = Object.prototype.hasOwnProperty.call(body, 'colorName')
-        ? optionalString(body.colorName, 'color_name', 120)
-        : current.color_name;
-      const sizeRange = Object.prototype.hasOwnProperty.call(body, 'sizeRange') ? body.sizeRange : current.size_range;
-      const countryOfDesign = Object.prototype.hasOwnProperty.call(body, 'countryOfDesign')
-        ? countryCode(body.countryOfDesign, 'country_of_design')
-        : current.country_of_design;
-      const countryOfManufacture = Object.prototype.hasOwnProperty.call(body, 'countryOfManufacture')
-        ? countryCode(body.countryOfManufacture, 'country_of_manufacture')
-        : current.country_of_manufacture;
-      const weightGrams = Object.prototype.hasOwnProperty.call(body, 'weightGrams')
-        ? body.weightGrams ?? null
-        : current.weight_grams === null ? null : Number(current.weight_grams);
-      const careInstructions = Object.prototype.hasOwnProperty.call(body, 'careInstructions')
-        ? body.careInstructions ?? {}
-        : current.care_instructions;
-
-      if (!Array.isArray(sizeRange) || sizeRange.length > 50 || sizeRange.some((value) => typeof value !== 'string' || value.trim().length === 0 || value.length > 40)) {
-        throw new Error('invalid_size_range');
-      }
-      if (weightGrams !== null && (typeof weightGrams !== 'number' || !Number.isFinite(weightGrams) || weightGrams < 0 || weightGrams > 1000000)) {
-        throw new Error('invalid_weight_grams');
-      }
-      if (typeof careInstructions !== 'object' || careInstructions === null || Array.isArray(careInstructions)) {
-        throw new Error('invalid_care_instructions');
-      }
+      const { reference, sku, name, category, description, productFamily, colorName, sizeRange, countryOfDesign, countryOfManufacture, weightGrams, careInstructions } = validateProductPatch(body, current);
 
       const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id
@@ -187,6 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!result) return json(res, 404, { error: 'product_not_found' });
     return json(res, 200, productDetailPayload(result));
   } catch (error) {
+    if (error instanceof ProductFieldError) return json(res, 400, { error: 'invalid_product_field', field: error.field, message: `${error.field} : ${error.message}` });
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
@@ -200,4 +121,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('GET/PATCH /api/products/:productId failed', error);
     return json(res, 500, { error: 'internal_server_error' });
   }
+}
+
+}
+
+const productHandler = createProductHandler();
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  return productHandler(req, res);
 }

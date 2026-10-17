@@ -928,6 +928,7 @@
     "pxSetPrimary": "Définir comme principal",
     "pxSave": "Enregistrer",
     "pxEspr": "Exigence ESPR : décomposition stricte sommant à 100%",
+    "pxDescription": "Description détaillée",
     "pxTechSheet": "Fiche Technique & Attributs Réglementaires",
     "pxTraceGraph": "Graphe de traçabilité",
     "pxIdentifiers": "Identifiants & Codes Barres Numériques (GS1 Digital Link)",
