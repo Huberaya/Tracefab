@@ -3,7 +3,11 @@
 Date : 2026-10-17
 Branche : `arena/8598837a-tracefab`
 Commit de code testé : `a70a55d410a5cfec38b88ea9308c5c443c03b552`
+Tête de branche au moment du rapport : `35fd6ff` (tests + documentation ; code applicatif inchangé depuis `a70a55d`)
 Document : `docs/dpp/RAPPORT_FINAL_2026-10-17.md`
+
+> CI observée : **success** sur `35fd6ff` (run `39035375761`, 4 jobs verts, dont 20 parcours navigateur)
+> et **success** sur `a70a55d` pour le workflow migrations (run `39034154701`). Détail en F.5.
 
 ---
 
@@ -22,9 +26,9 @@ Ce qui est validé et prouvé :
 
 Ce qui n'est pas validé ici :
 
-- aucun parcours **navigateur réel** n'a été exécuté dans cet environnement (Chromium absent) ; les contrats DOM sont prouvés avec jsdom sur le HTML et le script réels, mais pas le rendu CSS/comportement complet ;
-- les routes protégées par **Clerk** n'ont pas été exécutées avec une vraie session (clé absente) ;
-- **aucune preuve de production** : aucune migration appliquée à Neon, aucun déploiement, aucune donnée réelle touchée ;
+- aucun parcours **navigateur réel** n'a été exécuté **dans cet environnement** (Chromium absent) ; les contrats DOM sont prouvés avec jsdom sur le HTML et le script réels. En revanche, la CI a exécuté avec succès les 20 parcours Playwright, les 3 personas et les phases 9–12 sur ce code (voir F.5) ;
+- les routes protégées par **Clerk** n'ont pas été exécutées avec une vraie session (clé absente) dans cet environnement ; le job navigateur de la CI a validé les parcours d'interface, sans session Clerk réelle non plus ;
+- **aucune preuve de production** : aucune migration appliquée à Neon, aucun déploiement, aucune donnée réelle touchée. La migration a été appliquée avec succès par `prisma migrate deploy` sur PostgreSQL 17 jetable en CI, pas sur Neon ;
 - l'interopérabilité **GS1 n'est pas certifiée** ; la base réglementaire officielle n'a pas pu être vérifiée dans cet environnement.
 
 Le verdict est donc « partiellement validé » au sens strict : le cœur P0/P1 est prouvé par exécution, P2 est implémenté mais non validé en navigateur, P3 est partiel, P4 est absent.
@@ -255,6 +259,7 @@ Le helper local `/tmp/reset_tracefab_db.sh` recrée la base, applique les migrat
 | `npm run test:brand-console` | OK |
 | `npm run test:workflow-policy` | OK |
 | `npm run test:error-reporting` | OK |
+| `npm run test:chantiers` | OK, 6 affirmations du registre vérifiées |
 
 ### F.3 Résultats base de données (PostgreSQL réel)
 
@@ -266,27 +271,45 @@ Le helper local `/tmp/reset_tracefab_db.sh` recrée la base, applique les migrat
 | `node scripts/run-db-suite.mjs scripts/test_neon_privileges.mjs` | **Privilèges des fonctions : OK** |
 | `node scripts/test_migration_owner_guard.mjs` | **PASS** |
 | `node scripts/test_migration_history.mjs` | **7/7** |
+| `node scripts/run-db-suite.mjs scripts/test_neon_dpp_provenance.mjs` | **30 assertions OK**, aucune substitution, aucun UUID interne exposé |
+| `node scripts/run-db-suite.mjs scripts/test_neon_auth_provisioning.mjs` | OK |
 
 ### F.4 Suites non exécutées dans cet environnement
 
 | Suite | Cause | Statut |
 |---|---|---|
-| `test_dpp_timeline_browser.mjs`, `test_journeys`, `audit:personas`, `test:phases` | Chromium absent (`npx playwright install` impossible : hôte hors réseau autorisé) | **BLOQUÉE PAR DÉPENDANCE EXTERNE** |
+| `test_dpp_timeline_browser.mjs`, `test_journeys`, `audit:personas`, `test:phases` | Chromium absent en local (`npx playwright install` impossible : hôte hors réseau autorisé) | **exécutées avec succès en CI** (job « Parcours ») ; **non exécutées localement** |
 | `test_routes_tenant_isolation.mjs` | `CLERK_SECRET_KEY` absente ; la suite refuse de s'exécuter | **BLOQUÉE PAR DÉPENDANCE EXTERNE** |
-| `test_neon_dpp_provenance.mjs`, `test_neon_universal_passport.mjs` | client Prisma généré sans moteur de requêtes (téléchargement `binaries.prisma.sh` bloqué) | **BLOQUÉE PAR DÉPENDANCE EXTERNE** |
+| Suites qui instancient `PrismaClient` directement (`test_neon_universal_passport`, `test_neon_security`, flux produit/fournisseur…) | client local généré en moteur WASM (adaptateur `pg`) ; ces suites exigent le moteur natif | **BLOQUÉE PAR DÉPENDANCE EXTERNE en local** ; **exécutées avec succès en CI** ; `test_neon_dpp_provenance` et `test_neon_auth_provisioning` passent localement via `createTestPrisma` |
 | `prisma migrate deploy` local | moteur `schema-engine` non téléchargeable | **BLOQUÉE PAR DÉPENDANCE EXTERNE** ; les migrations ont été appliquées par `psql` et la CI les applique par `prisma migrate deploy` |
-| `npm run build` complet | `verify:prisma-client` refuse un client sans moteur de requêtes | **BLOQUÉE PAR DÉPENDANCE EXTERNE** ; les étapes statiques ont été exécutées séparément |
+| `npm run build` complet | `verify:prisma-client` refuse un client sans moteur de requêtes | **BLOQUÉE PAR DÉPENDANCE EXTERNE en local** ; la CI exécute « Compilation complète » avec succès ; les étapes statiques ont été exécutées séparément |
 
 Aucune de ces suites n'a été supprimée, désactivée ou transformée en mock. Aucun test existant n'a été affaibli.
 
 ### F.5 CI GitHub
 
-Résultat observé sur le commit de code `a70a55d` :
+Résultats **observés** avec `gh run list` / `gh run view` (pas une déclaration) :
 
-- workflow **CI** : à compléter ci-dessous après observation ;
-- workflow **Intégration migrations 34/36/41** : à compléter ci-dessous après observation.
+| Run | Réf. | Workflow | Conclusion | Jobs |
+|---|---|---|---|---|
+| `39035375761` | `35fd6ff` (tête de branche) | CI | **success** | Socle **success**, Parcours **success**, Base **success**, Vérification **success** |
+| `39034154701` | `a70a55d` (commit de code) | Intégration migrations 34/36/41 | **success** | chaîne 34/36/41 sur PostgreSQL 17 jetable |
+| `39034740925` | `d9d4228` | CI | failure | Base **success** (provenance corrigée), Vérification **failure** (compteur de migrations du registre) |
+| `39034252974` | `323153c` | CI | failure | Parcours **success**, Base **failure** (ancienne assertion `productId`) |
 
-> La CI applique les migrations sur PostgreSQL 17 via `prisma migrate deploy`, exécute les suites `test:*`, puis les parcours Playwright. C'est la preuve qui manque à l'environnement local pour le navigateur et le moteur Prisma.
+Détail des jobs verts sur `39035375761` :
+
+- **Socle** : `tsc`, `api:typecheck`, cross-tenant, production-readiness, historique des migrations, CI sans accès production.
+- **Parcours** : 20 parcours end-to-end non mockés, 3 personas, phases 9 à 12 — Chromium installé par la CI.
+- **Base** : `prisma migrate deploy` sur PostgreSQL 17 jetable, rôle applicatif, privilèges, garde propriétaire, seed, RLS, provenance, cycle de vie DPP (55 preuves), provisionnement auth, publication, audit lecture seule, isolation inter-organisations.
+- **Vérification** : compilation complète, audit statique end-to-end, puis toute la suite `test:*`.
+
+Deux échecs intermédiaires, corrigés sans affaiblir aucun test :
+
+1. `test_neon_dpp_provenance.mjs` comparait `corps.dpp.productId` à l'UUID interne — c'était précisément la fuite corrigée. L'assertion a été remplacée par deux assertions plus strictes : identité par le GTIN public **et** absence de `productId`/UUID dans la réponse.
+2. `test:chantiers` compare le nombre de migrations annoncé dans `docs/experience/CHANTIERS-RESTANTS.md` au contenu réel de `prisma/migrations` ; la nouvelle migration porte le compte de 45 à 46. Le document a été mis à jour, pas le test.
+
+> La CI applique les migrations sur PostgreSQL 17 via `prisma migrate deploy`, exécute les suites `test:*`, puis les parcours Playwright. C'est la preuve qui manque à l'environnement local pour le navigateur et le moteur Prisma. Elle n'est **pas** une preuve de production : aucune base Neon n'a été touchée.
 
 ---
 
@@ -294,9 +317,10 @@ Résultat observé sur le commit de code `a70a55d` :
 
 - Branche de travail : `arena/8598837a-tracefab`.
 - Commit de code : `a70a55d410a5cfec38b88ea9308c5c443c03b552` — 40 fichiers, 4 213 insertions, 183 suppressions.
+- Commits complémentaires : `323153c` (documentation), `d9d4228` (test de provenance, deux assertions plus strictes), `35fd6ff` (registre des chantiers, 46 migrations).
 - Push : `git push origin arena/8598837a-tracefab`.
 - Aucune fusion dans `main`, aucun déploiement, aucune migration appliquée en production, aucun secret modifié.
-- Le rapport est ajouté dans un commit de documentation séparé pour ne pas modifier le commit de code déjà testé.
+- Le rapport et les documents sont ajoutés dans des commits de documentation séparés pour ne pas modifier le commit de code déjà testé.
 
 Contenu du commit :
 
@@ -337,16 +361,16 @@ Aucun service payant n'a été introduit. `jsdom` est une dépendance de test gr
 7. **Pas d'IA DPP.** Aucune extraction documentaire, aucun rapprochement automatique, aucune tâche de remédiation. Le plan P4 est décrit mais non commencé.
 8. **Pas d'export CIRPASS/JSON-LD serveur versionné.** Le JSON-LD est généré côté page à partir des champs sourcés.
 9. **Pas de généalogie lot/unité complète.** L'identité résolvable existe, la volumétrie et l'agrégation restent à faire.
-10. **Console non testée en navigateur.** Les contrats statiques sont verts ; les formulaires, l'accessibilité et les erreurs réseau de la console restent à valider.
-11. **CI non encore observée au moment de la rédaction.** Voir F.5 ; ne pas confondre un test local vert avec une CI verte.
+10. **Nouveaux panneaux de console non couverts par un parcours navigateur dédié.** Les contrats statiques et le contrat de confiance sont verts ; le parcours Playwright existant ne clique pas encore « déclarer une affirmation », « lier une preuve », « révoquer un mandat ». C'est la prochaine suite à écrire.
+11. **CI verte observée, pas encore une preuve de production.** Les 4 jobs sont verts sur `35fd6ff` (voir F.5), mais aucun déploiement ni aucune migration Neon n'a été exécuté.
 12. **`verification_records` / certifications** n'ont pas été recâblés dans la revue d'affirmation ; deux modèles de confiance coexistent (historique et nouveau), ce qui doit être unifié en P2/P3.
 
 ---
 
 ## J. Prochaine étape
 
-1. **Observer la CI** sur `a70a55d` (et sur le commit de ce rapport) : vérifier `CI`, `Intégration migrations 34/36/41`, puis les parcours Playwright. Si une suite échoue, corriger sans désactiver de contrôle.
-2. **Exécuter les parcours navigateur** en local ou en CI : `test:journeys`, `test:phases`, `audit:personas`, puis les tests console (claims, preuves, mandats, révocation).
+1. **Écrire les parcours navigateur des nouveaux panneaux** : déclarer une affirmation, lier une preuve, reviewer, accorder puis révoquer un mandat, ajouter un événement. La CI sait déjà lancer Chromium ; il manque les scénarios.
+2. **Exécuter ces parcours en local** une fois Chromium installable, pour ne pas dépendre uniquement du runner.
 3. **Faire une répétition à blanc de la migration** sur une base Neon de staging, avec `prisma migrate deploy`, vérifier les grants `tracefab_app`, puis seulement envisager la production (action propriétaire, hors de ce mandat).
 4. **Unifier les deux modèles de vérification** : `verification_records`/`certifications` et `dpp_claim_reviews`, pour éviter deux vérités.
 5. **P3** : export CIRPASS/JSON-LD serveur versionné, validation GS1 avec un référentiel officiel, niveaux de compatibilité documentés.
