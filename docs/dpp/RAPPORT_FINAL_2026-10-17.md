@@ -3,11 +3,12 @@
 Date : 2026-10-17
 Branche : `arena/8598837a-tracefab`
 Commit de code testé : `a70a55d410a5cfec38b88ea9308c5c443c03b552`
-Tête de branche au moment du rapport : `35fd6ff` (tests + documentation ; code applicatif inchangé depuis `a70a55d`)
+Tête de branche au moment du rapport : `5aad829` (tests + documentation ; code applicatif inchangé depuis `a70a55d`)
 Document : `docs/dpp/RAPPORT_FINAL_2026-10-17.md`
 
-> CI observée : **success** sur `35fd6ff` (run `39035375761`, 4 jobs verts, dont 20 parcours navigateur)
-> et **success** sur `a70a55d` pour le workflow migrations (run `39034154701`). Détail en F.5.
+> CI observée : **success** sur `35fd6ff` (run `39035375761`) et `5aad829` (run `39035953836`),
+> 4 jobs verts dont 20 parcours navigateur ; **success** sur `a70a55d` pour le workflow migrations
+> (run `39034154701`). Détail en F.5.
 
 ---
 
@@ -292,12 +293,13 @@ Résultats **observés** avec `gh run list` / `gh run view` (pas une déclaratio
 
 | Run | Réf. | Workflow | Conclusion | Jobs |
 |---|---|---|---|---|
-| `39035375761` | `35fd6ff` (tête de branche) | CI | **success** | Socle **success**, Parcours **success**, Base **success**, Vérification **success** |
+| `39035953836` | `5aad829` (tête de branche) | CI | **success** | 4 jobs verts (documentation seule depuis `35fd6ff`) |
+| `39035375761` | `35fd6ff` | CI | **success** | Socle **success**, Parcours **success**, Base **success**, Vérification **success** |
 | `39034154701` | `a70a55d` (commit de code) | Intégration migrations 34/36/41 | **success** | chaîne 34/36/41 sur PostgreSQL 17 jetable |
 | `39034740925` | `d9d4228` | CI | failure | Base **success** (provenance corrigée), Vérification **failure** (compteur de migrations du registre) |
 | `39034252974` | `323153c` | CI | failure | Parcours **success**, Base **failure** (ancienne assertion `productId`) |
 
-Détail des jobs verts sur `39035375761` :
+Détail des jobs verts sur `39035375761` (mêmes jobs sur `39035953836`) :
 
 - **Socle** : `tsc`, `api:typecheck`, cross-tenant, production-readiness, historique des migrations, CI sans accès production.
 - **Parcours** : 20 parcours end-to-end non mockés, 3 personas, phases 9 à 12 — Chromium installé par la CI.
