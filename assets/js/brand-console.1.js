@@ -2724,12 +2724,15 @@
         const isWaived = issue.status === 'waived';
         const isAcknowledged = issue.status === 'acknowledged';
         const waiverReason = issue.details?.waiver_reason || issue.waiverReason;
+        // Le libelle vient du catalogue qualite, deja traduit dans les sept
+        // langues : un bouton ne parle pas francais sur une page anglaise.
+        const acquitter = (window.TF_I18N && window.TF_I18N.t('quality.actionAck', null)) || 'Acknowledge';
         return `
           <div class="issue">
             <span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span>
             <div>
               <strong>${esc(issue.message)}</strong>
-              <p>${esc(issue.ruleKey)} · <span class="status status-${esc(issue.status)}">${esc(statusLabel(issue.status))}</span> · <span class="meta">${esc(bt('cnDetectedOn'))} ${date(issue.detectedAt)}</span></p>
+              <p><code>${esc(issue.ruleKey)}</code> · <span class="status status-${esc(issue.status)}">${esc(statusLabel(issue.status))}</span> · <span class="meta">${esc(bt('cnDetectedOn'))} ${date(issue.detectedAt)}</span></p>
               ${isWaived && waiverReason ? `
                 <div class="item-response" style="margin-top:7px;background:#edf7f0;border:1px solid #cce8d5;border-radius:8px;font-size:11px;color:#285e42">
                   <strong>${esc(bt('cnWaiverGranted'))}</strong> ${esc(waiverReason)}
@@ -2741,7 +2744,7 @@
             </div>
             <div class="actions" style="justify-content:flex-end">
               ${issue.status === 'open' ? `
-                <button class="btn btn-secondary btn-small" data-action="acknowledge-issue" data-issue-id="${esc(issue.id)}">Acquitter</button>
+                <button class="btn btn-secondary btn-small" data-action="acknowledge-issue" data-issue-id="${esc(issue.id)}">${esc(acquitter)}</button>
                 <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">${esc(bt('cnQcWaive'))}</button>
               ` : isAcknowledged ? `
                 <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">${esc(bt('cnQcWaive'))}</button>
