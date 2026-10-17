@@ -65,7 +65,13 @@ const cli = (u) => new pg.Client({
 
 let echecs = 0;
 const ok = (m) => console.log(`  ok    ${m}`);
-const ko = (m) => { console.log(`  ECHEC ${m}`); echecs += 1; };
+const ko = (m) => {
+  console.log(`  ECHEC ${m}`);
+  // Le log du job est heberge hors de l'API : l'annotation est le seul
+  // canal de diagnostic lisible depuis api.github.com.
+  console.log(`::error::active-tenant base — ${m}`);
+  echecs += 1;
+};
 
 const suffixe = randomUUID().slice(0, 8);
 const userMulti = randomUUID();
@@ -216,6 +222,7 @@ try {
   }
 } catch (error) {
   ko(`erreur inattendue : ${error.message}`);
+  console.log(`::error::active-tenant base — pile : ${String(error.stack).split('\n').slice(0, 4).join(' | ')}`);
 } finally {
   await app.end().catch(() => {});
   await proprio.end().catch(() => {});

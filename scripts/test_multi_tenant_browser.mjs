@@ -188,7 +188,13 @@ async function stubClerk(page) {
 
 let failures = 0;
 const ok = (m) => console.log(`  ok    ${m}`);
-const ko = (m) => { failures += 1; console.error(`  ECHEC ${m}`); };
+const ko = (m) => {
+  failures += 1;
+  console.error(`  ECHEC ${m}`);
+  // Le log du job est heberge hors de l'API GitHub : l'annotation est le
+  // seul canal de diagnostic lisible depuis api.github.com.
+  console.log(`::error::multi-tenant navigateur — ${m}`);
+};
 const check = (label, condition, detail = '') => (condition ? ok(label) : ko(`${label}${detail ? ` — ${detail}` : ''}`));
 
 let browser;
@@ -204,7 +210,10 @@ try {
   await page.goto(`${base}/brand-console/`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.tracefabBrandConsole?.state?.products?.length > 0, null, { timeout: 15000 });
 
-  const console1 = window => window.tracefabBrandConsole.state;
+  // page.evaluate n'injecte aucun argument : une fonction qui declarerait
+  // `window` en parametre recevrait `undefined`. Zero parametre, `window`
+  // est le global de la page.
+  const console1 = () => window.tracefabBrandConsole.state;
 
   /* -- 1. locataire actif porte par chaque appel prive -------------------- */
   const privateCalls = state.requests.filter((r) => !TENANT_FREE.has(r.path));
@@ -281,6 +290,7 @@ try {
   await page.close();
 } catch (error) {
   ko(`scenario interrompu : ${error instanceof Error ? error.message : String(error)}`);
+  console.log(`::error::multi-tenant navigateur — pile : ${String(error?.stack ?? error).split('\n').slice(0, 4).join(' | ')}`);
 } finally {
   if (browser) await browser.close().catch(() => {});
   server.kill('SIGKILL');
