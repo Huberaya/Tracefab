@@ -216,6 +216,17 @@
     .severity-info { background: var(--green-soft); color: var(--green); }
     .issue strong { display: block; font-size: 13px; }
     .issue p { margin: 4px 0 0; font-size: 12px; }
+    /* Une anomalie porte un badge, un texte et deux actions. Sur un
+       telephone, la troisieme colonne ne tient pas : les actions passent
+       sous le texte, la colonne centrale peut se reduire, et une cle de
+       regle (product_expired_certification) peut se couper. */
+    .issue > div { min-width: 0; }
+    .issue code { overflow-wrap: anywhere; }
+    .issue .actions { flex-wrap: wrap; }
+    @media (max-width: 760px) {
+      .issue { grid-template-columns: 1fr; }
+      .issue .actions { grid-column: auto; justify-content: flex-start; }
+    }
     .pipeline { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 15px; margin-top: 15px; }
     .dpp-hero { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: center; padding: 24px; background: white; border: 1px solid var(--line); border-radius: 18px; margin-bottom: 22px; }
     .dpp-gauge-box { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-right: 1px solid #edf0eb; padding-right: 20px; }
@@ -1069,13 +1080,13 @@
          cette page : sans lui elle heriterait du titre de la landing. -->
     <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=3c95778d"></script>
+    <script src="/assets/i18n/en.js?v=93d5d2f8"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
 <body>
   <div id="app"></div>
   <script src="/assets/js/tf-demo-figures.js?v=3d451782"></script>
-    <script src="/assets/js/brand-console.1.js?v=ab25f1a8"></script>
+    <script src="/assets/js/brand-console.1.js?v=ed63cebb"></script>
 </body>
 </html>
