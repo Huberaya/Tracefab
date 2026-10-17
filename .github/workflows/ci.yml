@@ -200,6 +200,13 @@ jobs:
             echo "::group::Journaux des suites en echec"
             for s in $echoues; do echo "----- $s -----"; tail -40 "/tmp/$s.log"; done
             echo "::endgroup::"
+            # Le journal d'un job est heberge hors de l'API GitHub. Sans
+            # annotation, une suite en echec n'est qu'un nom : on sait QUOI,
+            # jamais POURQUOI. Chaque suite publie donc la fin de son journal.
+            for s in $echoues; do
+              detail=$(tail -25 "/tmp/$s.log" | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | tr '\n' '\036' | sed -e 's/\x1e/%0A/g' -e 's/`//g')
+              echo "::error title=$s::$detail"
+            done
             echo "::error::suites en echec :$echoues"
             exit 1
           fi
