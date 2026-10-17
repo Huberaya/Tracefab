@@ -5,7 +5,7 @@ import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../../../_lib/supplier-profile.js';
-import { DOCUMENT_SELECT, scanAndFinalizeDocument, serializeDocument } from '../../../../_lib/documents.js';
+import { runDocumentScanFlow } from '../../../../_lib/document-scan-flow.js';
 
 function routeDocumentId(req: VercelRequest) { const value = req.query.documentId; return Array.isArray(value) ? value[0] : value; }
 function isUuid(value: unknown): value is string { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
@@ -16,15 +16,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const documentId = routeDocumentId(req);
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
-    const document = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
-      if (!supplier) return null;
-      const current = await tx.documents.findFirst({ where: { id: documentId, owner_organization_id: supplier.organization_id, status: { in: ['uploaded', 'scanning'] } }, select: DOCUMENT_SELECT });
-      if (!current) return null;
-      return scanAndFinalizeDocument(tx, current);
-    });
-    if (!document) return json(res, 404, { error: 'document_not_found' });
-    return json(res, 200, { document: serializeDocument(document), scan: { status: document.status === 'available' ? 'clean' : 'rejected' } });
+    const supplier = await withTracefabUserContext(user.id, user.email, (tx) =>
+      currentSupplier(tx, user.id, requestedOrganizationId(req)),
+    );
+    if (!supplier) return json(res, 404, { error: 'document_not_found' });
+
+    const result = await runDocumentScanFlow(user, documentId, supplier.organization_id);
+    if (result.kind === 'not_found') return json(res, 404, { error: 'document_not_found' });
+    if (result.kind === 'retryable') {
+      // Fail-closed : le document reste `scanning`, l'appel peut etre rejoue.
+      return json(res, 503, { error: 'document_scan_unavailable', retryable: true });
+    }
+    return json(res, 200, result.body);
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);

@@ -47,6 +47,12 @@ export async function assertStorageQuotaAvailable(
   organizationId: string,
   newDocumentBytes: number
 ): Promise<void> {
+  // Anti-concurrence (TF-02) : deux depots paralleles ne doivent pas passer
+  // le controle de quota en meme temps et depasser la limite ensemble. Le
+  // verrou advisory est transactionnel — il est relache a la fin de la
+  // transaction (commit ou rollback), sans action de nettoyage requise.
+  // Doit etre appele DANS la transaction qui enregistre le document.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'quota:' + organizationId}, 0))`;
   const usage = await getOrganizationStorageUsage(tx, organizationId);
   if (usage.usedBytes + newDocumentBytes > usage.quotaBytes) {
     throw new Error('organization_storage_quota_exceeded');
