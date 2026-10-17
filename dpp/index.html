@@ -289,6 +289,26 @@
       color: var(--status-verified);
       border-color: #bbf7d0;
     }
+    /* Affirmations reelles : le style porte le niveau de controle exact,
+       jamais une teinte « certifie » pour une simple declaration. */
+    .claim-pill[data-claim-status="declared"] {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+    }
+    .claim-pill[data-claim-status="documented"] {
+      background: var(--status-documented-bg);
+      color: var(--status-documented);
+    }
+    .claim-pill[data-claim-status="controlled"],
+    .claim-pill[data-claim-status="corroborated"] {
+      background: var(--status-verified-bg);
+      color: var(--status-verified);
+    }
+    .claim-pill[data-claim-status="third_party_verified"] {
+      background: var(--status-certified-bg);
+      color: var(--status-certified);
+      border-color: #6ee7b7;
+    }
 
     /* Tabbed Navigation inside DPP */
     .dpp-tabs {
@@ -765,10 +785,10 @@
     <!-- Header with Brand & EU Standard Badge -->
     <header class="dpp-header">
       <div class="brand-id">
-        <div class="brand-mark">AD</div>
+        <div class="brand-mark" data-dpp-demo-only>AD</div>
         <div class="brand-text">
-          <strong data-tf-demo>Atelier Demo</strong>
-          <span>Paris, France</span>
+          <strong data-tf-demo data-dpp-field="brandName">Atelier Demo</strong>
+          <span data-dpp-demo-only>Paris, France</span>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
@@ -804,18 +824,24 @@
         <span>SKU: <span data-tf-demo data-dpp-field="sku">AT-ESS-001</span></span>
         <span>•</span>
         <span>GTIN: <span data-tf-demo data-dpp-field="gtin">3760123456789</span></span>
-        <span>•</span>
-        <span>Batch: 2026-FW</span>
+        <span data-dpp-demo-only>•</span>
+        <span data-dpp-demo-only>Batch: 2026-FW</span>
       </div>
-      <p class="product-summary" data-i18n="dpp.heroDesc">Iconic T-shirt in 185 gsm regenerative organic cotton jersey. Traced from seed to finished garment with 100% documented evidence.
+      <p class="product-summary" data-dpp-demo-only data-i18n="dpp.heroDesc">Iconic T-shirt in 185 gsm regenerative organic cotton jersey. Traced from seed to finished garment with 100% documented evidence.
       </p>
 
-      <div class="trust-pill-bar" tabindex="0" role="region" aria-label="Certifications">
+      <!-- Badges de demonstration : certifications fictives, jamais visibles
+           derriere un identifiant reel (data-dpp-demo-only). -->
+      <div class="trust-pill-bar" data-dpp-demo-only tabindex="0" role="region" aria-label="Certifications">
         <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ 100% certified materials</span>
         <span class="trust-badge-item">GOTS Certified</span>
         <span class="trust-badge-item">OEKO-TEX Class 1</span>
         <span class="trust-badge-item" data-i18n="dpp.heroMadeIn">Made in Portugal</span>
       </div>
+      <!-- Affirmations REELLES publiees pour le produit, rendues par dpp.2.js
+           depuis l'API avec leur niveau de controle exact. Aucune certification
+           n'est affichee ici sans preuve acceptee de niveau tierc-verifie. -->
+      <div class="trust-pill-bar" id="dpp-claims-bar" tabindex="0" role="region" aria-label="Affirmations publiées" hidden></div>
     </div>
 
     <!-- Apple & Google Wallet Mobile Passes -->
