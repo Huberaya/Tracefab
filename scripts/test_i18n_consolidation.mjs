@@ -110,7 +110,7 @@ if (!chromium) {
         .then(() => true).catch(() => false);
     };
     const page = await browser.newPage();
-    const reach = await boot(page, `${BASE}/brand-console/`);
+    const reach = await boot(page, `${BASE}/brand-console/?demo=1`);
 
     if (!reach) {
       console.log(`  —     ${BASE} injoignable : controles navigateur ignores`);
@@ -144,7 +144,7 @@ if (!chromium) {
       const p2 = await browser.newPage();
       await boot(p2, `${BASE}/?lang=it`);
       await p2.waitForTimeout(500);
-      await boot(p2, `${BASE}/brand-console/`);
+      await boot(p2, `${BASE}/brand-console/?demo=1`);
       await p2.waitForTimeout(500);
       const carried = await p2.evaluate(() => window.TF_I18N.lang);
       if (carried === 'it') ok('continuite: la langue choisie sur la landing est reprise par la console');
@@ -152,7 +152,7 @@ if (!chromium) {
 
       // le portail accepte le turc
       const p3 = await browser.newPage();
-      const r3 = await boot(p3, `${BASE}/supplier-portal/`);
+      const r3 = await boot(p3, `${BASE}/supplier-portal/?demo=1`);
       if (r3) {
         await p3.evaluate(() => window.TF_I18N.setLanguage('tr'));
         await p3.waitForTimeout(300);

@@ -143,7 +143,7 @@ transitions d'état.
 | Service | Variable(s) | État |
 |---|---|---|
 | PostgreSQL Neon | `DATABASE_URL` | Schéma déployable via Prisma |
-| Clerk (auth) | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, webhook | À configurer en `pk_live_` |
+| Clerk (auth) | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, webhook | Proxy Production `https://tracefab.vercel.app/__clerk` — voir [le runbook](docs/operations/clerk-production-proxy.md) |
 | Email transactionnel | `RESEND_API_KEY`, `EMAIL_FROM`, `TRACEFAB_APP_URL` | Fallback manuel contrôlé si absent |
 | Stockage privé S3 | `PRIVATE_STORAGE_*` | Contrat signé, bucket à provisionner |
 | Scanner antivirus | `PRIVATE_STORAGE_ANTIVIRUS_URL/TOKEN` | Contrat HTTP à raccorder |

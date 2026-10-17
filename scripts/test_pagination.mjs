@@ -40,7 +40,7 @@ const nav = await chromium.launch();
 const page = await nav.newPage({ viewport: { width: 1280, height: 900 } });
 
 try {
-  await page.goto(`${BASE}/brand-console/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE}/brand-console/?demo=1`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('button[data-view]', { timeout: 20000 });
 
   const vues = await page.$$eval('button[data-view]',

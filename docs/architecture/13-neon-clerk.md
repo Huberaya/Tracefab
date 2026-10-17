@@ -103,6 +103,8 @@ DATABASE_URL=postgresql://...
 
 La clé secrète n'est jamais utilisée dans le navigateur.
 
+En Production, les requêtes Clerk Frontend API passent par le proxy same-origin `https://tracefab.vercel.app/__clerk`. Le routage Vercel réutilise la fonction `api/index.ts`; celle-ci injecte `CLERK_SECRET_KEY` uniquement dans l'appel serveur vers `https://frontend-api.clerk.dev`, avec les en-têtes de proxy requis par Clerk. `/api/config` ne renvoie que la publishable key et l'URL publique du proxy. Le mode démo ne s'active jamais automatiquement après une erreur Clerk. Voir le [runbook du proxy Clerk Production](../operations/clerk-production-proxy.md) pour l'activation du proxy dans le Dashboard Clerk et les contrôles de déploiement.
+
 ## État de cette étape
 
 - URL Neon Tracefab vérifiée ;

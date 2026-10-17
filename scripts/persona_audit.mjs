@@ -135,7 +135,7 @@ console.log('\n=== PERSONA 2 — Responsable Conformite (brand console, 1440x900
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
-  await page.goto(BASE + '/brand-console/', { waitUntil: 'load' });
+  await page.goto(BASE + '/brand-console/?demo=1', { waitUntil: 'load' });
   await page.waitForTimeout(2000);
 
   // Les 7 couches du cahier des charges doivent etre atteignables en 1 clic
@@ -214,7 +214,7 @@ console.log('\n=== PERSONA 3 — Fournisseur (supplier portal, 1440x900 + 390x84
 for (const [w, h, tag] of [[1440, 900, 'desktop'], [390, 844, 'mobile']]) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });
   const page = await ctx.newPage();
-  await page.goto(BASE + '/supplier-portal/', { waitUntil: 'load' });
+  await page.goto(BASE + '/supplier-portal/?demo=1', { waitUntil: 'load' });
   await page.waitForTimeout(2000);
 
   const af = await aboveFold(page);

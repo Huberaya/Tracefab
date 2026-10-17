@@ -22,6 +22,7 @@ const BASE = (process.argv.find((a) => a.startsWith('--base=')) || '').split('='
 const MIN = 40;
 const PAGES = ['/', '/brand-console/', '/supplier-portal/', '/dpp/', '/quality-center/',
   '/operations/', '/passport/', '/product-intelligence/', '/invitations/accept/'];
+const EXPLICIT_DEMO = new Set(['/brand-console/', '/supplier-portal/']);
 const WIDTHS = [390, 760, 1280];
 
 const browser = await chromium.launch();
@@ -31,7 +32,8 @@ for (const path of PAGES) {
   const offenders = new Map();
   for (const width of WIDTHS) {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
-    await page.goto(BASE + path, { waitUntil: 'load' });
+    const targetUrl = BASE + path + (EXPLICIT_DEMO.has(path) ? '?demo=1' : '');
+    await page.goto(targetUrl, { waitUntil: 'load' });
     await page.waitForTimeout(1300);
     const bad = await page.evaluate((min) => {
       const out = [];

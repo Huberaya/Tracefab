@@ -45,7 +45,7 @@
           const config = await fetch('/api/config').then((response) => response.json());
           if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
           await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js'; script.onload = resolve; script.onerror = () => reject(new Error('clerk_sdk_unavailable')); document.head.appendChild(script); });
-          clerk = new window.Clerk(config.publishableKey); await clerk.load();
+          clerk = new window.Clerk(config.publishableKey, config.proxyUrl ? { proxyUrl: config.proxyUrl } : undefined); await clerk.load();
           clerk.addListener(() => { if (clerk.user) { signIn.hidden = true; actions.hidden = false; showFn(() => `${iv('signedInAs')} ${clerk.user.primaryEmailAddress?.emailAddress || iv('fallbackUser')}. ${iv('clickToAccept')}`); } });
           if (clerk.user) { signIn.hidden = true; actions.hidden = false; showFn(() => `${iv('signedInAs')} ${clerk.user.primaryEmailAddress?.emailAddress || iv('fallbackUser')}. ${iv('clickToAccept')}`); }
           else { clerk.mountSignIn(signIn, { routing:'hash', appearance:{ elements:{ card:'shadow-none', rootBox:'w-full' } } }); showFn(() => iv('signInPrompt')); }

@@ -32,6 +32,7 @@ const BASE = process.env.TF_BASE || 'http://127.0.0.1:3000';
 
 const PAGES = ['/', '/dpp/', '/passport/', '/product-intelligence/',
   '/brand-console/', '/supplier-portal/', '/quality-center/', '/operations/'];
+const EXPLICIT_DEMO = new Set(['/brand-console/', '/supplier-portal/']);
 
 /* Mentions de demonstration, dans les sept locales servies. */
 const MENTION = /d[ée]monstration|demonstration|demo mode|sample data|sample supplier|donn[ée]es de d[ée]mo|beispiel|dimostrativ|demostraci|demonstratie|fict[ií]|not a real/i;
@@ -44,7 +45,8 @@ const navigateur = await chromium.launch();
 const page = await navigateur.newPage({ viewport: { width: 1360, height: 900 } });
 
 for (const route of PAGES) {
-  await page.goto(BASE + route, { waitUntil: 'load' });
+  const targetUrl = BASE + route + (EXPLICIT_DEMO.has(route) ? '?demo=1' : '');
+  await page.goto(targetUrl, { waitUntil: 'load' });
   await page.waitForTimeout(1900);
 
   const vu = await page.evaluate(() => {

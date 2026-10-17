@@ -9,18 +9,18 @@
 /** Surfaces mesurees : route + vue profonde a ouvrir, comme pour l'accessibilite. */
 export const SURFACES = [
   { route: '/' },
-  { route: '/brand-console/' },
-  { route: '/brand-console/', vue: 'requests' },
-  { route: '/brand-console/', vue: 'documents' },
-  { route: '/brand-console/', vue: 'certifications' },
-  { route: '/brand-console/', vue: 'quality' },
-  { route: '/brand-console/', vue: 'dpp' },
-  { route: '/brand-console/', vue: 'suppliers' },
-  { route: '/brand-console/', vue: 'products' },
-  { route: '/supplier-portal/' },
-  { route: '/supplier-portal/', vue: 'requests' },
-  { route: '/supplier-portal/', vue: 'passport' },
-  { route: '/supplier-portal/', vue: 'quality' },
+  { route: '/brand-console/', demo: true },
+  { route: '/brand-console/', demo: true, vue: 'requests' },
+  { route: '/brand-console/', demo: true, vue: 'documents' },
+  { route: '/brand-console/', demo: true, vue: 'certifications' },
+  { route: '/brand-console/', demo: true, vue: 'quality' },
+  { route: '/brand-console/', demo: true, vue: 'dpp' },
+  { route: '/brand-console/', demo: true, vue: 'suppliers' },
+  { route: '/brand-console/', demo: true, vue: 'products' },
+  { route: '/supplier-portal/', demo: true },
+  { route: '/supplier-portal/', demo: true, vue: 'requests' },
+  { route: '/supplier-portal/', demo: true, vue: 'passport' },
+  { route: '/supplier-portal/', demo: true, vue: 'quality' },
   { route: '/product-intelligence/' },
   { route: '/quality-center/' },
   { route: '/dpp/' },
@@ -82,7 +82,7 @@ export async function capturer(nav, base, s, ecran) {
     Math.random = () => 0.42;
   });
 
-  await pg.goto(base + s.route, { waitUntil: 'load' });
+  await pg.goto(base + s.route + (s.demo ? '?demo=1' : ''), { waitUntil: 'load' });
   await pg.waitForTimeout(900);
   if (s.vue) {
     try { await pg.click(`button[data-view="${s.vue}"]`, { timeout: 4000 }); await pg.waitForTimeout(900); }

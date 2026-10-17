@@ -4236,13 +4236,13 @@
           if (!res.ok) throw new Error('config_fetch_failed');
           const config = await res.json();
           if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
-          const clerkDomain = atob(config.publishableKey.split('_')[2]).slice(0, -1);
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = `https://${clerkDomain}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+            s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
             s.async = true;
             s.crossOrigin = 'anonymous';
             s.setAttribute('data-clerk-publishable-key', config.publishableKey);
+            if (config.proxyUrl) s.setAttribute('data-clerk-proxy-url', config.proxyUrl);
             s.onload = resolve;
             s.onerror = () => reject(new Error('clerk_sdk_unavailable'));
             document.head.appendChild(s);
@@ -4253,11 +4253,12 @@
           state.clerk.addListener(() => { if (state.clerk.user && !state.user) sync(); });
           if (state.clerk.user) await sync(); else { state.loading = false; render(); }
         } catch (error) {
-          // Graceful fallback to interactive simulation mode so the console is ALWAYS operational and never broken
-          console.warn('Backend Clerk unavailable, launching interactive demo workspace:', error.message);
-          state.demo = true;
-          state.configError = null;
-          await sync();
+          // Never replace a failed production authentication boot with demo data.
+          // Demo access remains an explicit user choice through ?demo=1.
+          state.loading = false;
+          state.clerk = null;
+          state.configError = error instanceof Error ? error.message : 'clerk_unavailable';
+          render();
         }
       }
       window.tracefabBrandConsole = { state, sync };

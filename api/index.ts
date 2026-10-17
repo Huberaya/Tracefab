@@ -21,6 +21,8 @@ const routes: Route[] = [
   { pattern: /^catalog\/questionnaires$/, params: [], load: () => import('./_routes/catalog/questionnaires.js') },
   { pattern: /^catalog\/schemas$/, params: [], load: () => import('./_routes/catalog/schemas.js') },
   { pattern: /^catalog\/certification\-standards$/, params: [], load: () => import('./_routes/catalog/certification-standards.js') },
+  { pattern: /^__clerk$/, params: [], load: () => import('./_routes/clerk-proxy.js') },
+  { pattern: /^__clerk\/(.+)$/, params: ['clerkPath'], load: () => import('./_routes/clerk-proxy.js') },
   { pattern: /^config$/, params: [], load: () => import('./_routes/config.js') },
   { pattern: /^data\-request\-items\/([^\/]+)\/response$/, params: ['itemId'], load: () => import('./_routes/data-request-items/[itemId]/response.js') },
   { pattern: /^data\-requests\/([^\/]+)\/items\/from\-template$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId]/items/from-template.js') },
@@ -143,9 +145,19 @@ const routes: Route[] = [
 ];
 
 function requestPath(req: VercelRequest) {
+  // Vercel's legacy `routes` table rewrites /__clerk/:path* into this shared
+  // function and carries the path separately so Clerk's own query parameters
+  // remain untouched. The Clerk marker must take precedence over a legitimate
+  // Clerk query parameter named `path`; the normal API route still supplies its
+  // own `path` value when no Clerk marker is present.
+  const clerkPath = req.query.__tracefab_clerk_path;
+  if (typeof clerkPath === 'string') return clerkPath ? `__clerk/${clerkPath}` : '__clerk';
+  if (Array.isArray(clerkPath)) return '__clerk';
+
   const value = req.query.path;
   if (Array.isArray(value)) return value.join('/');
   if (typeof value === 'string' && value) return value;
+
   const pathname = (req.url || '').split('?')[0].replace(/^\/api\/?/, '');
   return pathname.replace(/^\/+|\/+$/g, '');
 }

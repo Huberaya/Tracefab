@@ -131,9 +131,16 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  *   planificateur : son debit est deja borne par le cron.
  * - `webhooks/clerk` est signe ; rejeter un webhook pour cause de debit le
  *   ferait rejouer en boucle par l'emetteur, ce qui aggrave la charge.
+ * - `__clerk/*` est le proxy Frontend API Clerk lui-meme : Clerk applique ses
+ *   propres limites, et une limite applicative d'ecriture casserait les flux
+ *   anonymes de connexion avant meme l'authentification.
  */
 function isExempt(path: string): boolean {
-  return path === 'health' || path.startsWith('internal/') || path.startsWith('webhooks/');
+  return path === 'health'
+    || path.startsWith('internal/')
+    || path.startsWith('webhooks/')
+    || path === '__clerk'
+    || path.startsWith('__clerk/');
 }
 
 /** Routes de generation de laissez-passer. Couteuses par construction. */
