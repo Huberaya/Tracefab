@@ -145,6 +145,8 @@ Routes concernées par le repli multi-organisations. « Avant » = état de `mai
 | Contexte actif en base | `npm run test:neon:active-tenant` | GUC armé/borné, `tracefab_in_active_tenant` fausse sans armement, `accessibleProduct` rend le produit de recette sous la recette et **rien** sous Ginger, GUC non persistant entre transactions, privilèges | non — PostgreSQL absent du bac à sable |
 | Isolation renforcée | `npm run test:cross-tenant` | Refuse désormais le repli multi-organisations, forme Prisma **et** forme SQL `ANY(...)` | **oui — vert** |
 
+**Branchement CI** — les deux tests non exécutables ici sont réellement appelés par un workflow : `test:neon:active-tenant` dans l'étage `Base — isolation RLS exécutée`, `test:multi-tenant:browser` dans l'étage `Parcours — navigateur réel`. Ils étaient initialement déclarés dans `package.json` sans qu'aucune étape ne les appelle : un test non branché est un test qui n'existe pas. Les deux étages sont **verts** sur le SHA final.
+
 **Vérification par mutation** — `test:active-tenant` a été éprouvé dans les deux sens :
 
 | Mutation injectée dans `api/_lib/tenant.ts` | Résultat |
@@ -163,7 +165,7 @@ Routes concernées par le repli multi-organisations. « Avant » = état de `mai
 | Vérification | Résultat |
 |---|---|
 | 67 scripts `test:*` exécutables sans base ni navigateur | **67 verts** |
-| 15 scripts rouges | **tous préexistants** — vérifié en comparant à `main` via `git stash` (Playwright absent, serveur requis, ou client Prisma non généré) |
+| 27 scripts rouges en local | **cause environnementale, pas le code** : aucun binaire chromium (`browserType.launch: Executable doesn't exist at ~/.cache/ms-playwright/…`) et client Prisma non généré (`@prisma/client does not provide an export named 'PrismaClient'`). **Ces rouges locaux ne prouvent rien** — voir l'avertissement ci-dessous |
 | `tsc` sur `api/` | **0 erreur nouvelle** ; 89 erreurs contre 91 à la baseline, toutes dues au client Prisma non généré |
 | `tsc --noEmit` sur `src/` | **vert** |
 | `test:i18n` | **vert** — 2 178 clés, parité stricte fr/de/it/es/nl/pt |
@@ -180,6 +182,40 @@ Quatre tests ont cassé à cause des modifications. Aucun n'a été désactivé 
 | `test_p1_catalog_import_export.mjs` | exigeait `activeBrandOrganizationIds` dans l'export | idem | exige `requireActiveTenant`, refuse le repli |
 | `test_p1_quality.mjs` | exigeait `tracefab_can_access_org` | idem | exige `tracefab_in_active_tenant` + partage explicite conservé |
 | `test_supplier_advanced.mjs` | exigeait `requestedOrganizationId(req)` (optionnel) | idem | exige `requireActiveTenant` (obligatoire) |
+
+### ⚠️ Avertissement méthodologique : la comparaison `git stash` est aveugle aux suites navigateur
+
+Une première version de ce rapport affirmait que les scripts rouges en local étaient « tous préexistants, vérifié en comparant à `main` via `git stash` ». **Cette affirmation était fausse pour les suites navigateur, et elle a failli laisser passer deux régressions réelles.**
+
+La méthode compare deux exécutions **dans le même environnement privé de chromium**. Une suite navigateur y échoue pour la même raison des deux côtés : la comparaison rend « rouge à la baseline » et conclut à tort à un défaut préexistant. Or `main` est `success` en CI (run `39062695293`, `d0ba6b2`) : ces suites y passent. **Une suite rouge en local faute de navigateur ne peut être classée préexistante que par la CI, jamais par `git stash`.**
+
+C'est l'étage `Verification` de la CI qui a révélé les deux régressions suivantes, toutes deux introduites par le découpage de `sync()` en deux phases :
+
+| Suite (CI) | Assertion | Cause | Correction |
+|---|---|---|---|
+| `test:brand-console:empty:304` | « une panne API ne rend pas la console », `1 !== 0` | Sur `main` les neuf appels étaient dans **un seul** `Promise.all` : `state.user` n'était affecté qu'après résolution, donc un 500 laissait la garde `configError && !state.user` déclencher l'écran bloquant. En deux phases l'identité est connue avant les données : la console rendait une vue **partiellement vide**, lisible comme une vérité à moitié fausse | la garde ne dépend plus de `!state.user` ; le message distingue authentification en cause (aucune identité) et données du locataire indisponibles (identité connue), via deux clés i18n ajoutées aux sept locales |
+| `test:brand-console:schema-bindings:457` | `Cannot read properties of null (reading 'product')` | `saveProduct()` enchaîne `selectedProductDetail = await api(PATCH)` puis `await sync()` ; `resetTenantState()` y était appelé **inconditionnellement** et remettait `selectedProductDetail` à `null` — la fiche que l'utilisateur venait de modifier disparaissait | purge bornée au **changement** de locataire via `state.loadedOrganizationId` : un rechargement du même locataire ne détruit rien, un basculement vide tout avant le rechargement (garantie inchangée, vérifiée par `test:multi-tenant:browser`) |
+
+Deux leçons en découlent, appliquées dans ce dépôt :
+
+- **un test qui échoue doit pouvoir dire pourquoi** — le journal d'un job GitHub est hébergé hors de l'API, donc les suites en échec publient désormais la fin de leur journal en annotation de check-run, et les deux nouveaux tests émettent des `::error::` ;
+- **la CI est la seule autorité** pour toute suite nécessitant un navigateur, une base ou un client Prisma généré.
+
+### Défaut découvert par la base : prédicat d'autorisation à trois valeurs
+
+L'étape « Contexte de locataire actif en base » a échoué avec « sans locataire armé, `tracefab_in_active_tenant()` a rendu vrai ». Le message du test était trompeur : la valeur réellement rendue était **`NULL`**, pas `vrai`.
+
+`p_organization_id IS NOT NULL AND p_organization_id = tracefab_active_organization_id()` est une expression à trois valeurs : organisation fournie et aucun locataire armé donne `uuid = NULL` soit `NULL`, donc `vrai AND NULL` = `NULL`. `RETURNS BOOLEAN` ne contraint pas à non-NULL.
+
+Un prédicat d'autorisation à trois valeurs reste sûr dans un `WHERE` (`NULL` n'est pas vrai), mais il trompe `= false`, `IS FALSE`, `NOT x`, un `CASE WHEN`, un `RAISE IF` plpgsql et toute assertion. Le commentaire de la migration promettait déjà « elle est fausse » : l'implémentation ne le tenait pas. Corrigé à la source par `COALESCE(…, false)`.
+
+**Périmètre de la réécriture, vérifié et non supposé** : `git ls-tree -r origin/main -- prisma/migrations/20261017120000_active_tenant_context` ne rend rien et `origin/main` compte 45 dossiers de migrations. La 46<sup>e</sup> n'existe que sur cette branche, n'a jamais été fusionnée ni appliquée : elle a été corrigée **en place**, aucune migration déjà appliquée n'a été réécrite. Ses `BEGIN;`/`COMMIT;` explicites ont été retirés au passage — c'était la seule migration du dépôt à les porter (45/45 ne les ont pas) et un `COMMIT` prématuré sort du cadre de la transaction de Prisma, empêchant son rollback en cas d'échec partiel.
+
+Preuves associées, exécutées contre PostgreSQL 17 jetable :
+
+- 3 contextes × 12 compositions (contexte absent, locataire armé sur B, locataire armé sur A avec ressource chez B) : chaque valeur, son `IS NULL`, et sa composition `vrai AND x`, `faux OR x`, `NOT x` ; UUID absent évalué séparément ;
+- assertion explicite qu'**aucun des 36 booléens** n'est `NULL` ;
+- **mutation négative** : le corps d'origine (sans `COALESCE`) est réinstallé dans une transaction annulée aussitôt, et le test vérifie qu'il rend bien `NULL`, puis que le rollback restaure la version corrigée. L'entrée de la mutation est un UUID **non nul** : avec un UUID `NULL`, `NULL IS NOT NULL` vaut faux et `faux AND NULL` vaut faux, le défaut ne se manifesterait pas.
 
 ---
 
