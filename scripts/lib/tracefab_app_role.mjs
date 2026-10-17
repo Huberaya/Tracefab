@@ -66,7 +66,26 @@ export async function ensureAppRole(db, password) {
   ]) {
     await db.query(sql);
   }
-  console.log(`  droits applicatifs accordes a ${APP_ROLE}`);
+  // TF-3 — tables DPP append-only : les mutations passent UNIQUEMENT par les
+  // fonctions SECURITY DEFINER (tracefab_add_dpp_event, tracefab_add_dpp_claim,
+  // tracefab_link_dpp_claim_evidence, tracefab_create/replace_dpp_identity).
+  // Le grant global ci-dessus est volontairement large ; ces quatre tables
+  // sont les seules exceptions, alignees sur la migration
+  // 20261017120000_harden_dpp_table_privileges. Conditionnel : au bootstrap
+  // d'une base vierge les tables n'existent pas encore — la migration pose
+  // alors elle-meme les privileges.
+  await db.query(`
+    DO $$
+    BEGIN
+      IF to_regclass('public.dpp_lifecycle_events') IS NOT NULL THEN
+        EXECUTE 'REVOKE ALL ON dpp_lifecycle_events, dpp_claims, dpp_claim_evidence, dpp_resolvable_identifiers FROM PUBLIC';
+        EXECUTE 'REVOKE INSERT, UPDATE, DELETE ON dpp_lifecycle_events, dpp_claims, dpp_claim_evidence, dpp_resolvable_identifiers FROM ${APP_ROLE}';
+        EXECUTE 'GRANT SELECT ON dpp_lifecycle_events, dpp_claims, dpp_claim_evidence, dpp_resolvable_identifiers TO ${APP_ROLE}';
+      END IF;
+    END
+    $$;
+  `);
+  console.log(`  droits applicatifs accordes a ${APP_ROLE} (tables DPP en lecture seule, mutations par fonctions)`);
 }
 
 /**

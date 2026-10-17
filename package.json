@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
-    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:error-reporting && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:dpp:lifecycle && npm run test:dpp:evidence && npm run test:dpp:quality && npm run test:dpp:identity && npm run test:dpp:demo-separation && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:clerk-proxy && npm run test:supplier-portal && npm run test:questionnaires",
+    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:security:chantier1 && npm run test:error-reporting && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:dpp:chantier4 && npm run test:dpp:lifecycle && npm run test:dpp:evidence && npm run test:dpp:quality && npm run test:dpp:identity && npm run test:dpp:demo-separation && npm run test:context-integrity && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:clerk-proxy && npm run test:supplier-portal && npm run test:questionnaires",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "node scripts/run-db-suite.mjs scripts/test_neon_bulk_operations_chantier8.mjs",
     "test:wallet:chantier9": "npx tsx scripts/test_wallet_chantier9.ts",
@@ -37,6 +37,7 @@
     "test:neon:security": "node scripts/run-db-suite.mjs scripts/test_neon_security.mjs",
     "test:neon:rls": "node scripts/run-db-suite.mjs scripts/test_rls_isolation.mjs",
     "test:neon:document-lifecycle": "node scripts/run-db-suite.mjs scripts/test_neon_document_lifecycle.mjs",
+    "test:context-integrity": "node scripts/test_context_integrity.mjs",
     "test:neon:dpp-provenance": "node scripts/run-db-suite.mjs scripts/test_neon_dpp_provenance.mjs",
     "test:neon:dpp-lifecycle": "node scripts/run-db-suite.mjs scripts/test_neon_dynamic_dpp_lifecycle.mjs",
     "test:neon:auth-provisioning": "node scripts/run-db-suite.mjs scripts/test_neon_auth_provisioning.mjs",

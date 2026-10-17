@@ -17,6 +17,7 @@ export type ScanFlowResult =
   | { kind: 'rejected'; body: { document: ReturnType<typeof serializeDocument>; scan: { status: 'rejected' }; reason: string } }
   | { kind: 'retryable'; error: string };
 
+/** Principal authentifie (Clerk) — jamais une entree de requete. */
 export type ScanActor = { id: string; email: string };
 
 /**
@@ -32,11 +33,11 @@ export type ScanActor = { id: string; email: string };
  * le verdict : le document reste `scanning` et l'appel peut etre rejoue.
  */
 export async function runDocumentScanFlow(
-  actor: ScanActor,
+  user: ScanActor,
   documentId: string,
   ownerOrganizationId: string,
 ): Promise<ScanFlowResult> {
-  const started: DocumentRecord | null = await withTracefabUserContext(actor.id, actor.email, async (tx) => {
+  const started: DocumentRecord | null = await withTracefabUserContext(user.id, user.email, async (tx) => {
     const current = await tx.documents.findFirst({
       where: {
         id: documentId,
@@ -55,7 +56,7 @@ export async function runDocumentScanFlow(
     checks = await performDocumentScanChecks(started);
   } catch (error) {
     if (isDefinitiveScanError(error)) {
-      const rejected = await withTracefabUserContext(actor.id, actor.email, (tx) =>
+      const rejected = await withTracefabUserContext(user.id, user.email, (tx) =>
         rejectDocumentScan(tx, started.id, Number(started.byte_size)),
       );
       return {
@@ -74,7 +75,7 @@ export async function runDocumentScanFlow(
     };
   }
 
-  const document = await withTracefabUserContext(actor.id, actor.email, (tx: Prisma.TransactionClient) =>
+  const document = await withTracefabUserContext(user.id, user.email, (tx: Prisma.TransactionClient) =>
     completeDocumentScan(tx, started.id, checks),
   );
   return {
