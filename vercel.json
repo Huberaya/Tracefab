@@ -107,6 +107,10 @@
   ],
   "routes": [
     {
+      "src": "/__clerk(?:/(.*))?",
+      "dest": "/api/index.ts?__tracefab_clerk_path=$1"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts?path=$1"
     },

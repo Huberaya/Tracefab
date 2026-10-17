@@ -56,6 +56,8 @@ const CLASSIFIED = {
   'products/[productId]/wallet/google': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
   'health': ['PUBLIC', 'Sonde de disponibilite, aucune donnee metier.'],
   'config': ['PUBLIC', 'Configuration client publique (cles publiables).'],
+  '__clerk': ['PUBLIC', 'Proxy Frontend API Clerk ; le secret est injecte uniquement cote serveur.'],
+  '__clerk/[clerkPath]': ['PUBLIC', 'Proxy Frontend API Clerk ; Clerk verifie ses propres flux et le secret reste serveur.'],
   'catalog/schemas': ['REFERENCE', 'Schemas de donnees du produit, communs a tous les locataires.'],
   'catalog/questionnaires': ['REFERENCE', 'Modeles de questionnaires standards.'],
   'catalog/certification-standards': ['REFERENCE', 'Referentiel de certifications (GOTS, OEKO-TEX...).'],

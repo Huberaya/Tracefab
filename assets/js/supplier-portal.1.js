@@ -883,13 +883,13 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
           if (!res.ok) throw new Error('config_fetch_failed');
           const config = await res.json();
           if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
-          const clerkDomain = atob(config.publishableKey.split('_')[2]).slice(0, -1);
           await new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = `https://${clerkDomain}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+            script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
             script.async = true;
             script.crossOrigin = 'anonymous';
             script.setAttribute('data-clerk-publishable-key', config.publishableKey);
+            if (config.proxyUrl) script.setAttribute('data-clerk-proxy-url', config.proxyUrl);
             script.onload = resolve;
             script.onerror = () => reject(new Error('clerk_sdk_unavailable'));
             document.head.appendChild(script);
@@ -900,10 +900,12 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
           state.clerk.addListener(() => { if (state.clerk.user && !state.user) sync(); });
           if (state.clerk.user) await sync(); else { state.loading = false; render(); }
         } catch (error) {
-          console.warn('Backend Clerk unavailable, launching interactive demo workspace:', error.message);
-          state.demo = true;
-          state.configError = null;
-          await sync();
+          // Authentication failures must remain visible; demo data is only
+          // available when the visitor explicitly adds ?demo=1.
+          state.loading = false;
+          state.clerk = null;
+          state.configError = error instanceof Error ? error.message : 'clerk_unavailable';
+          render();
         }
       }
 

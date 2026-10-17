@@ -90,7 +90,8 @@ ok('seule une authentification verifiee reclasse en credentialed');
 
 assert.equal(classify('health', req()), 'exempt');
 assert.equal(classify('internal/notification-outbox/run', req({ method: 'POST' })), 'exempt');
-ok('les dispenses existantes sont preservees');
+assert.equal(classify('__clerk/v1/client/sign_ins', req({ method: 'POST' })), 'exempt');
+ok('les dispenses existantes et le proxy Clerk gere par Clerk sont preserves');
 
 /* ------------------------------------------------- 2. budgets par classe */
 

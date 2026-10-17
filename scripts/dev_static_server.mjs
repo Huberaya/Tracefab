@@ -79,6 +79,12 @@ function resolveFile(urlPath) {
 const server = http.createServer((req, res) => {
   const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
 
+  if (urlPath === '/__clerk' || urlPath.startsWith('/__clerk/')) {
+    res.writeHead(501, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ error: 'clerk_proxy_not_available_in_static_preview' }));
+    return;
+  }
+
   if (urlPath.startsWith('/api/')) {
     const fixture = path.join(__dirname, 'fixtures', 'api', `${urlPath.slice(5).replace(/\//g, '__')}.json`);
     if (fs.existsSync(fixture)) {
