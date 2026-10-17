@@ -25,18 +25,29 @@
         selectedProductDetail: null,
         selectedSupplier: null,
         quality: null,
+        qualityFilter: 'all',
+        // null = aucune source chargee (on ne peut pas compter) ; [] = source
+        // chargee et vide. La distinction porte tout l'ecran.
+        documents: null,
+        certifications: null,
+        pefAssessment: null,
+        greenClaimsAudit: null,
         supplyChain: null,
+        massBalance: null,
         selectedSupplyChainProduct: null,
         dpp: null,
         selectedDppProduct: null,
         dppPortfolio: null,
+        dppPortfolioLoading: false,
         dppScope: 'portfolio',
         modal: null,
         modalIssueId: null,
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
         supplierImport: { filename: '', content: '', preview: null, job: null, delivery: null, loading: false },
         toast: null,
-        demo: new URLSearchParams(location.search).has('demo'),
+        // Demonstration sur opt-in explicite : ?demo=0 ne doit pas basculer
+        // la console dans le jeu de demonstration.
+        demo: new URLSearchParams(location.search).get('demo') === '1',
       };
 
       const PROCESS_LABELS = {
@@ -98,6 +109,45 @@
       const locale = () => BCP47[state.lang] || 'en-GB';
       const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle: 'medium' }).format(new Date(value)) : '—';
       const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits: 0 });
+
+      /* Verite des chiffres ------------------------------------------------
+       *
+       * Hors ?demo=1, aucun agregat ne peut venir du jeu de demonstration.
+       * Une mesure indisponible s'affiche « non calculé » ou « inconnu » ;
+       * elle ne devient jamais zero par accident, et un agregat sans
+       * denominateur n'est pas un zero.
+       *
+       * `mesure` sert aux valeurs calculees a partir des reponses API.
+       * `mesureInconnue` sert aux grandeurs qu'aucune route n'expose : la
+       * console ne peut pas les calculer, elle le dit.
+       */
+      const estDemo = () => state.demo === true;
+      const nombreLisible = (value) => {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return null;
+        return Number.isInteger(n) ? moneyless(n) : n.toLocaleString(locale(), { maximumFractionDigits: 1 });
+      };
+      function mesure(value, suffix = '') {
+        if (value === null || value === undefined || value === '') {
+          return `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`;
+        }
+        const texte = nombreLisible(value);
+        return texte === null ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>` : `${texte}${suffix}`;
+      }
+      function mesureInconnue(value, suffix = '') {
+        if (value === null || value === undefined || value === '') {
+          return `<span class="uncomputed">${esc(bt('cnUnknown'))}</span>`;
+        }
+        const texte = nombreLisible(value);
+        return texte === null ? `<span class="uncomputed">${esc(bt('cnUnknown'))}</span>` : `${texte}${suffix}`;
+      }
+      function grandNombre(value, color) {
+        if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+          return `<div class="mc-stat-huge" style="font-size:17px;color:var(--muted);letter-spacing:0;">${esc(bt('cnNotComputed'))}</div>`;
+        }
+        const texte = nombreLisible(value);
+        return `<div class="mc-stat-huge"${color ? ` style="color:${color};"` : ''}>${texte}</div>`;
+      }
 
       /* Pagination partagee -------------------------------------------------
        *
@@ -602,6 +652,100 @@
 
       }
 
+      /* Agregats de production : uniquement ce que les routes renvoient.
+       *
+       * Aucun champ de demonstration (evidenceCovered, dppScore, dataQuality,
+       * certificateCount, facilityCount) n'entre ici : ces champs n'existent
+       * pas dans les reponses de /api/suppliers et /api/products. Les
+       * grandeurs qu'aucune route n'expose valent null, et l'ecran affiche
+       * « non calculé » ou « inconnu » plutot qu'un zero trompeur.
+       */
+      // Agregats de la vue d'ensemble. En demonstration, le generateur ;
+      // sinon, uniquement les reponses API.
+      function agregatsVue(demo) {
+        if (demo) {
+          const ag = demoAgregats();
+          return ag;
+        }
+        return productionAgregats();
+      }
+
+      function productionAgregats() {
+        const pr = state.products || [], su = state.suppliers || [];
+        const pays = new Set(su.map((s) => s.countryCode || (s.organizations && s.organizations.country_code)).filter(Boolean));
+        const completions = pr
+          .map((p) => (p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === '' ? NaN : Number(p.dataCompletion)))
+          .filter((n) => Number.isFinite(n));
+        const portfolio = state.dppPortfolio;
+        const portfolioTotal = portfolio ? Number(portfolio.totalProducts || 0) : 0;
+        const dpp = portfolio && portfolioTotal > 0 && Number.isFinite(Number(portfolio.readinessScore))
+          ? Number(portfolio.readinessScore)
+          : null;
+        return {
+          produits: pr.length,
+          fournisseurs: su.length,
+          // Aucune route ne renvoie le nombre de sites : inconnu des qu'il y a
+          // un fournisseur, trivialement nul quand il n'y en a aucun.
+          sites: su.length === 0 ? 0 : null,
+          pays: pays.size,
+          // La completude produit est un champ reel (data_completion). Les
+          // autres dimensions de qualite ne sont pas exposees en liste.
+          qualite: completions.length
+            ? Math.round((completions.reduce((a, b) => a + b, 0) / completions.length) * 10) / 10
+            : null,
+          preuves: null,
+          verifies: null,
+          tracables: null,
+          dpp,
+          // Certificats : chargement absent de cette console. Zero seulement
+          // s'il n'existe aucun fournisseur dont on pourrait en attendre.
+          certificats: Array.isArray(state.certifications)
+            ? state.certifications.length
+            : (su.length === 0 ? 0 : null),
+          lineage: null,
+          gpsPolygons: null,
+          massBalanced: null,
+          gs1Styles: null,
+          agec: null,
+          pef: null,
+        };
+      }
+
+      function productionAttention() {
+        const reqs = state.requests || [];
+        const sup = state.suppliers || [];
+        const clos = (r) => ['approved', 'cancelled', 'completed', 'accepted'].includes(r.status);
+        const enAttente = new Set(reqs
+          .filter((r) => !clos(r) && Number(r.completionPercentage) < 100)
+          .map((r) => r.supplierOrganizationId)
+          .filter(Boolean));
+        const sansPays = sup.filter((s) => !(s.organizations && s.organizations.country_code));
+        const certificats = Array.isArray(state.certifications)
+          ? state.certifications.filter((c) => {
+            const echeance = Date.parse(c.expires);
+            return Number.isFinite(echeance) && echeance - Date.now() <= 90 * 86400000;
+          }).length
+          : (sup.length === 0 ? 0 : null);
+        const produits = state.products || [];
+        const completionConnue = (p) => p.dataCompletion !== null
+          && p.dataCompletion !== undefined && p.dataCompletion !== ''
+          && Number.isFinite(Number(p.dataCompletion));
+        return {
+          donneesManquantes: enAttente.size,
+          certificatsExpirant: certificats,
+          // Aucun score de completude fournisseur n'est expose : on compte
+          // seulement le signal de revue reellement observable (pays absent).
+          fournisseursARevoir: sup.length === 0 ? 0 : sansPays.length,
+          // « Incomplet » exige une completude connue. Si aucune ne l'est,
+          // le compte n'est pas zero : il est inconnu.
+          produitsIncomplets: produits.length === 0
+            ? 0
+            : (produits.every(completionConnue)
+              ? produits.filter((p) => Number(p.dataCompletion) < SEUIL_COMPLETUDE).length
+              : null),
+        };
+      }
+
       function demoData() {
         state.user = { fullName: 'Camille Martin', email: 'camille@atelier-demo.fr' };
         state.organizations = [
@@ -881,6 +1025,16 @@
           { standard: 'SMETA 4-Pillar', number: 'SMETA-BRAGA-2026-118', issuer: 'SGS', expires: dans(176) },
         ];
 
+        // Documents du jeu de demonstration. La vue Documents les compte et
+        // les rend comme n'importe quelle liste : hors demonstration, la meme
+        // vue part de state.documents, vide tant qu'aucune route ne l'alimente.
+        state.documents = [
+          { id: 'demo-doc-1', category: 'transfer', title: 'GOTS 2026 Transaction Certificate', type: 'TC GOTS', issuer: 'Control Union Certifications', supplier: 'Filature de Haute-Vienne', issuedAt: '2026-01-14', expiresAt: '2027-01-14', status: 'sealed' },
+          { id: 'demo-doc-2', category: 'lab', title: 'ZDHC MRSL Level 3 Laboratory Report', type: 'ZDHC Test', issuer: 'SGS Textile Testing Services', supplier: 'EcoDye Aquitaine', issuedAt: '2026-03-02', expiresAt: '2027-03-02', status: 'sealed' },
+          { id: 'demo-doc-3', category: 'social', title: 'SMETA 4-Pillar Social Audit (Grade A)', type: 'SMETA Audit', issuer: 'Intertek Ethical Services', supplier: 'Assembly & Tailoring Workshop', issuedAt: '2025-11-10', expiresAt: '2026-11-10', status: 'sealed' },
+          { id: 'demo-doc-4', category: 'product', title: 'OEKO-TEX Standard 100 Certificate', type: 'OEKO-TEX', issuer: 'CITEVE Portugal', supplier: 'Portugal Textile Mill', issuedAt: '2026-02-18', expiresAt: '2027-02-18', status: 'sealed' },
+        ];
+
         // Preparation DPP : 88%, coherent avec le KPI de la vue d'ensemble.
         // 7 exigences sur 9, dont une bloquante restante — un score volontiers
         // imparfait, pour que la vue montre aussi ce qui manque.
@@ -939,8 +1093,12 @@
         state.loading = true; render();
         try {
           if (state.demo) { demoData(); state.loading = false; render(); return; }
-          const [me, orgs, supplierPayload, materials, products, requests, questionnaires, schemas] = await Promise.all([
-            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product')
+          const [me, orgs, supplierPayload, materials, products, requests, questionnaires, schemas, certificates] = await Promise.all([
+            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product'),
+            // Les certificats de transaction sont la seule source de
+            // certificats exposee a une marque. Un echec laisse la valeur a
+            // null (« non calculé ») au lieu de la confondre avec zero.
+            api('/api/mass-balance/certificates').catch(() => null),
           ]);
           state.user = me.user;
           state.memberships = me.memberships || [];
@@ -951,10 +1109,25 @@
           state.requests = requests.requests || [];
           state.questionnaires = questionnaires.questionnaires || [];
           state.schemaCatalog = schemas.schemas || [];
+          state.certifications = certificates
+            ? (certificates.certificates || []).map((c) => ({
+              id: c.id,
+              standard: c.standard,
+              number: c.tcNumber,
+              issuer: c.issuerName,
+              expires: c.expiryDate || '',
+              status: c.status,
+              source: 'transaction_certificate',
+            }))
+            : null;
           const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
           state.activeOrganizationId = state.activeOrganizationId || brands[0]?.organization_id || null;
           state.loading = false;
           render();
+          // La preparation DPP de la vue d'ensemble vient de l'agregat reel.
+          // Chargement silencieux : une route indisponible laisse l'indicateur
+          // a « non calculé », elle ne casse pas le tableau de bord.
+          loadDppPortfolio({ silent: true }).catch(() => {});
         } catch (error) {
           state.loading = false; state.configError = error.message; render();
         }
@@ -1108,9 +1281,7 @@
       window.state = state;
 
 
-      function intelligenceView() {
-        const query = state.activeIntelQuery || "Which products contain non-GOTS-certified cotton in the AW26 collection?";
-        const currentAnswer = state.activeIntelAnswer || {
+      const DEMO_INTEL_ANSWER = {
           summary: "Exhaustive analysis of 1,248 catalogue references: 98.4% of the AW26 collection is covered by a valid GOTS certificate. Only 2 references lack a sealed transaction certificate.",
           details: [
             {
@@ -1133,7 +1304,16 @@
             { id: "SGS-LAB-098", label: "SGS ZDHC MRSL Level 3 laboratory report", hash: "sha256-3b17...9c82" },
             { id: "SMETA-BRAGA-26", label: "Audit Social SMETA 4-Pillar Atelier Braga", hash: "sha256-7e44...5a19" }
           ]
-        };
+      };
+
+
+      function intelligenceView() {
+        const demoMode = estDemo();
+        const query = state.activeIntelQuery
+          || (demoMode ? "Which products contain non-GOTS-certified cotton in the AW26 collection?" : "");
+        // Aucune route d'intelligence n'existe : hors demonstration, il n'y
+        // a pas de synthese a afficher. On ne fabrique ni reponse ni duree.
+        const currentAnswer = demoMode ? (state.activeIntelAnswer || DEMO_INTEL_ANSWER) : null;
 
         return `<div>
           <!-- Hero Banner -->
@@ -1152,20 +1332,20 @@
           <!-- Query Panel with Suggested Prompts -->
           <div class="intel-query-panel">
             <div style="font-size:12px;font-weight:750;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${bt('iaSuggestions')}</div>
-            <div class="intel-chips-row">
+            ${demoMode ? `<div class="intel-chips-row" data-tf-demo>
               <span class="intel-chip" data-tf-act="p02">
                 🌾 Cotton without GOTS TC (AW26)
               </span>
-              <span class="intel-chip" data-tf-act="p03" data-tf-demo>
+              <span class="intel-chip" data-tf-act="p03">
                 ⏳ Certificates expiring within 45 days
               </span>
               <span class="intel-chip" data-tf-act="p04">
                 ⚖️ SMETA living-wage compliance
               </span>
-              <span class="intel-chip" data-tf-act="p05" data-tf-demo>
+              <span class="intel-chip" data-tf-act="p05">
                 📋 CIRPASS DPP eligibility rate
               </span>
-            </div>
+            </div>` : ''}
 
             <div class="intel-input-wrap">
               <input class="intel-input" id="intel-query-input" value="${esc(query)}" placeholder="${bt('iaPlaceholder')}">
@@ -1173,6 +1353,7 @@
             </div>
           </div>
 
+          ${demoMode ? `
           <!-- Answer Box with Verified Evidence Links -->
           <div class="intel-answer-box">
             <div class="intel-answer-header">
@@ -1180,7 +1361,7 @@
                 <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:11.5px;font-weight:750;">${bt('iaVerifiedSynthesis')}</span>
                 <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:4px 0 0;">« ${esc(query)} »</h3>
               </div>
-              <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;">${bt('iaResponseTime')}</span>
+              <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;" data-tf-demo>${bt('iaResponseTime')}</span>
             </div>
 
             <p style="font-size:14px;color:#17231f;line-height:1.6;margin-bottom:18px;">
@@ -1231,6 +1412,11 @@
               </div>
             </div>
           </div>
+          ` : `
+          <div class="card panel" style="margin-top:18px">
+            <div class="panel-head"><h2>${esc(bt('iaVerifiedSynthesis'))}</h2></div>
+            <div class="empty"><strong>${esc(bt('cnNotComputed'))}</strong><p class="meta">${esc(bt('iaUnavailable'))}</p></div>
+          </div>`}
         </div>`;
       }
 
@@ -1309,8 +1495,8 @@
         const qList = state.questionnaires || [];
         return `<div class="page-head">
           <div>
-            <div class="eyebrow" data-tf-demo>Form Studio & Custom Compliance Protocols</div>
-            <h1 data-tf-demo>Questionnaire Builder</h1>
+            <div class="eyebrow">${esc(bt('qbStudioEyebrow'))}</div>
+            <h1>${esc(bt('qbTitle'))}</h1>
             <p>${esc(bt('cnQnIntro'))}</p>
           </div>
           <div class="actions">
@@ -1335,7 +1521,7 @@
                         <span class="cert-pill" style="margin-bottom:6px;">${esc(q.category || bt('cnGrpCompliance'))} · v${esc(q.version)}</span>
                         <h3 style="font-size:15px;margin-top:2px;">${esc(q.title)}</h3>
                       </div>
-                      <span class="status status-approved">${q.itemCount || q.fields?.length || 4} ${bt('qbFieldCount')} (${q.requiredItemCount || 3} ${bt('qbRequired')})</span>
+                      <span class="status status-approved">${moneyless(q.itemCount ?? q.fields?.length ?? 0)} ${bt('qbFieldCount')} (${moneyless(q.requiredItemCount ?? 0)} ${bt('qbRequired')})</span>
                     </div>
                     <p style="margin:6px 0 12px;font-size:12.5px;color:var(--muted);">${esc(q.description)}</p>
 
@@ -1417,15 +1603,17 @@
                 <tr><th>${bt('mtName')}</th><th>${bt('mtType')}</th><th>${bt('mtOrigin')}</th><th>${bt('mtRecycled')}</th><th>Certifications</th><th>${bt('mtTier')}</th><th style="text-align:right">${bt('mtActions')}</th></tr>
               </thead>
               <tbody>
-                ${mats.map((m) => `<tr>
+                ${mats.length ? mats.map((m) => `<tr>
                   <td><strong>${esc(m.name)}</strong></td>
-                  <td><span class="status status-draft">${esc(m.materialType || 'fiber')}</span></td>
-                  <td>${esc(m.originCountryCode || 'PT')}</td>
-                  <td><strong>${esc(m.recycledContent || '0%')}</strong></td>
-                  <td>${(m.certifications || ['GOTS']).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')}</td>
-                  <td><span class="badge-tier">${esc(m.tier || 'Tier 4')}</span></td>
+                  <td><span class="status status-draft">${esc(m.materialType || '—')}</span></td>
+                  <td>${esc(m.originCountryCode || bt('cnCountryUnknown'))}</td>
+                  <td><strong>${m.recycledContent === null || m.recycledContent === undefined || m.recycledContent === '' ? '—' : esc(m.recycledContent)}</strong></td>
+                  <td>${(m.certifications || []).length
+                    ? (m.certifications || []).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')
+                    : '—'}</td>
+                  <td><span class="badge-tier">${esc(m.tier || '—')}</span></td>
                   <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('scInspect')}</button></td>
-                </tr>`).join('')}
+                </tr>`).join('') : `<tr><td colspan="7" class="empty">${esc(bt('cnNone'))}</td></tr>`}
               </tbody>
             </table>
           </div>
@@ -1433,242 +1621,33 @@
       }
 
       
-      function supplyChainConsoleView() {
-        const selectedId = state.selectedChainNode || 'node-fiber';
-        const nodes = state.chainNodes || {};
-        const node = nodes[selectedId] || nodes['node-fiber'] || {
-          tier: 'Tier 4',
-          title: 'Fibre cultivation',
-          entity: 'Quinta de São Martinho',
-          location: 'Alentejo, Portugal',
-          auditScore: '100% Conforme',
-          coordinates: '38.0151° N, 7.8632° W',
-          batchLot: 'LOT-PT-2026-CTN-089',
-          auditor: 'Control Union',
-          certifications: ['GOTS v6.0'],
-          metrics: { Rendement: '100%', Eau: '-72%' },
-          evidenceFiles: []
-        };
-
-        return `<div class="page-head">
-          <div>
-            <div class="eyebrow">${bt('scMapTitle')}</div>
-            <h1>${bt('scVisuTitle')}</h1>
-            <p>${esc(bt('cnScIntro'))}</p>
-          </div>
-          <div class="actions">
-            <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/dpp/">${bt('scOpenDpp')}</button>
-            <button class="btn btn-primary" data-demo-action="1">${bt('scExportAudit')}</button>
-          </div>
-        </div>
-
-        <!-- Cockpit & Interactive SVG Visualizer -->
-        <div class="graph-cockpit">
-          <div class="graph-toolbar">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span class="status status-approved">${bt('scTrustChain')}</span>
-              <span style="font-size:12px;color:var(--muted);">${bt('scMaterial')} <strong>GOTS Organic Cotton</strong> ${bt('scSku')} <strong>AT-ESS-001</strong></span>
-            </div>
-            <div style="display:flex;gap:8px;">
-              <button class="btn btn-secondary btn-small" data-tf-act="p11">${bt('scStart')}</button>
-              <button class="btn btn-secondary btn-small" data-tf-act="p12">${bt('scEnd')}</button>
-            </div>
-          </div>
-
-          <div class="graph-canvas-wrap">
-            <svg class="svg-flow-diagram" viewBox="0 0 1000 220" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#0b7656" stop-opacity="0.6"/>
-                  <stop offset="50%" stop-color="#10b981" stop-opacity="0.9"/>
-                  <stop offset="100%" stop-color="#0284c7" stop-opacity="0.8"/>
-                </linearGradient>
-                <filter id="nodeShadow" x="-10%" y="-10%" width="130%" height="130%">
-                  <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0d251d" flood-opacity="0.08"/>
-                </filter>
-              </defs>
-
-              <path d="M 85 110 L 255 110 L 425 110 L 595 110 L 765 110 L 915 110" stroke="url(#lineGrad)" stroke-width="4" stroke-dasharray="6,4" fill="none"/>
-
-              <!-- Node 1: Fiber -->
-              <g class="graph-node ${selectedId === 'node-fiber' ? 'active' : ''}" data-tf-act="p11" transform="translate(20, 45)">
-                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-fiber' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-fiber' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
-                <circle cx="24" cy="24" r="6" fill="#0b7656" class="graph-pulse-circle"/>
-                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656" font-family="var(--font-sans)">TIER 4</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Cotton Fibre</text>
-                <text x="16" y="78" font-size="10.5" fill="#56675e">São Martinho</text>
-                <text x="16" y="98" font-size="9.5" fill="#88988f">Portugal (PT)</text>
-                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
-                <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">GOTS v6.0 audited</text>
-              </g>
-
-              <!-- Node 2: Spinning -->
-              <g class="graph-node ${selectedId === 'node-spinning' ? 'active' : ''}" data-tf-act="p13" transform="translate(190, 45)">
-                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-spinning' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-spinning' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
-                <circle cx="24" cy="24" r="6" fill="#0b7656"/>
-                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 3</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Spinning</text>
-                <text x="16" y="78" font-size="10.5" fill="#56675e">Fiação Norte</text>
-                <text x="16" y="98" font-size="9.5" fill="#88988f">Combed yarn 30/1</text>
-                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
-                <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">OEKO-TEX 100</text>
-              </g>
-
-              <!-- Node 3: Mill -->
-              <g class="graph-node ${selectedId === 'node-mill' ? 'active' : ''}" data-tf-act="p14" transform="translate(360, 45)">
-                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-mill' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-mill' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
-                <circle cx="24" cy="24" r="6" fill="#0b7656"/>
-                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 3</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Knitting</text>
-                <text x="16" y="78" font-size="10.5" fill="#56675e">Malhas do Ave</text>
-                <text x="16" y="98" font-size="9.5" fill="#88988f">Jersey 185g/m²</text>
-                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
-                <text x="26" y="116" font-size="8.5" font-weight="700" fill="#0b7656">BCI & GOTS Mill</text>
-              </g>
-
-              <!-- Node 4: Dyeing -->
-              <g class="graph-node ${selectedId === 'node-dyeing' ? 'active' : ''}" data-tf-act="p15" transform="translate(530, 45)">
-                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-dyeing' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-dyeing' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
-                <circle cx="24" cy="24" r="6" fill="#0b7656"/>
-                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 2</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Dyeing</text>
-                <text x="16" y="78" font-size="10.5" fill="#56675e">Tinturaria Braga</text>
-                <text x="16" y="98" font-size="9.5" fill="#88988f">${bt('scStep')}</text>
-                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
-                <text x="24" y="116" font-size="8.5" font-weight="700" fill="#0b7656" data-tf-demo>ZDHC Level 3</text>
-              </g>
-
-              <!-- Node 5: Assembly -->
-              <g class="graph-node ${selectedId === 'node-assembly' ? 'active' : ''}" data-tf-act="p16" transform="translate(700, 45)">
-                <rect width="130" height="130" rx="14" fill="#ffffff" stroke="${selectedId === 'node-assembly' ? '#0b7656' : '#d2ded6'}" stroke-width="${selectedId === 'node-assembly' ? '2.5' : '1.5'}" filter="url(#nodeShadow)"/>
-                <circle cx="24" cy="24" r="6" fill="#0b7656"/>
-                <text x="38" y="28" font-size="10" font-weight="800" fill="#0b7656">TIER 1</text>
-                <text x="16" y="58" font-size="12.5" font-weight="800" fill="#13221b">Assembly</text>
-                <text x="16" y="78" font-size="10.5" fill="#56675e">Nhãn Textile</text>
-                <text x="16" y="98" font-size="9.5" fill="#88988f">Porto (PT)</text>
-                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e5f4ec"/>
-                <text x="22" y="116" font-size="8.5" font-weight="700" fill="#0b7656">SMETA 4-Pillar</text>
-              </g>
-
-              <!-- Node 6: Product / DPP -->
-              <g class="graph-node ${selectedId === 'node-product' ? 'active' : ''}" data-tf-act="p12" transform="translate(850, 45)">
-                <rect width="130" height="130" rx="14" fill="${selectedId === 'node-product' ? '#f0fdf4' : '#ffffff'}" stroke="#0284c7" stroke-width="2" filter="url(#nodeShadow)"/>
-                <circle cx="24" cy="24" r="6" fill="#0284c7"/>
-                <text x="38" y="28" font-size="10" font-weight="800" fill="#0284c7">${bt('scProductDpp')}</text>
-                <text x="16" y="58" font-size="12" font-weight="800" fill="#13221b">Essentiel Coton</text>
-                <text x="16" y="78" font-size="10.5" fill="#56675e" data-tf-demo>Atelier Demo</text>
-                <text x="16" y="98" font-size="9.5" fill="#0284c7">${bt('scDigitalPassport')}</text>
-                <rect x="14" y="106" width="102" height="14" rx="4" fill="#e0f2fe"/>
-                <text x="20" y="116" font-size="8.5" font-weight="700" fill="#0284c7">${bt('scEsprOk')}</text>
-              </g>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Node Inspector Split View -->
-        <div class="grid split">
-          <div class="inspector-card">
-            <div class="inspector-header">
-              <div>
-                <span class="badge-tier" style="margin-bottom:6px;">${esc(node.tier)} · ${esc(bt('cnNodeSelected'))}</span>
-                <h2 style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">${esc(node.title)}</h2>
-                <div style="font-size:13px;color:var(--muted);margin-top:2px;">${bt('scEntity')} <strong>${esc(node.entity)}</strong> · ${esc(node.location)}</div>
-              </div>
-              <span class="status status-approved">${esc(node.auditScore)}</span>
-            </div>
-
-            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin-bottom:20px;">
-              <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
-                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">${bt('scGps')}</span>
-                <strong style="display:block;font-size:12px;font-family:var(--font-mono);margin-top:3px;">${esc(node.coordinates)}</strong>
-              </div>
-              <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
-                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">Lot / Batch ID</span>
-                <strong style="display:block;font-size:12px;font-family:var(--font-mono);margin-top:3px;">${esc(node.batchLot)}</strong>
-              </div>
-              <div style="background:#f8faf8;padding:12px;border-radius:10px;border:1px solid #edf0eb;">
-                <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;">${bt('scAuditor')}</span>
-                <strong style="display:block;font-size:12px;margin-top:3px;">${esc(node.auditor)}</strong>
-              </div>
-            </div>
-
-            <div style="margin-bottom:20px;">
-              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">${bt('scCerts')}</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                ${(node.certifications || []).map(cert => `<span class="cert-pill">✓ ${esc(cert)}</span>`).join('')}
-              </div>
-            </div>
-
-            <div style="margin-bottom:20px;">
-              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">${bt('scKpis')}</div>
-              <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;font-size:12px;">
-                ${Object.entries(node.metrics || {}).map(([k, v]) => `
-                  <div style="padding:10px;background:#fcfdfa;border:1px solid var(--line);border-radius:8px;">
-                    <div style="font-size:10.5px;color:var(--muted);">${esc(k)}</div>
-                    <strong style="font-size:13px;color:var(--ink);">${esc(v)}</strong>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-
-            <div>
-              <div style="font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">${esc(bt('cnSealedEvidenceCount'))}${(node.evidenceFiles || []).length})</div>
-              <div style="display:grid;gap:8px;">
-                ${(node.evidenceFiles || []).map(f => `
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#ffffff;">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                      <span style="font-size:16px;">📄</span>
-                      <div>
-                        <strong style="font-size:12.5px;">${esc(f.name)}</strong>
-                        <div style="font-size:10.5px;color:var(--muted);">${esc(f.size)} · ${esc(bt('cnUploadedOn'))} ${esc(f.date)}</div>
-                      </div>
-                    </div>
-                    <button class="btn btn-secondary btn-small" data-demo-action="1">${bt('scInspect')}</button>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-
-          <!-- Side Context & Mass Balance -->
-          <div style="display:grid;gap:18px;">
-            <div class="card panel">
-              <div class="panel-head"><h2>${bt('scMassRecon')}</h2><span class="status status-approved">${bt('scBalanced')}</span></div>
-              <p style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:14px;">${bt('scContinuous')}</p>
-              <div style="display:grid;gap:10px;font-size:12px;">
-                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
-                  <span>Raw Fibre Harvested (São Martinho)</span>
-                  <strong>10,500 kg</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
-                  <span>Spinning Yield (Fiação Norte)</span>
-                  <strong>9,870 kg (94.0%)</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
-                  <span>Knitted Length (Malhas do Ave)</span>
-                  <strong>51,400 m</strong>
-                </div>
-                <div style="display:flex;justify-content:space-between;padding:8px 0;">
-                  <span>Assembled Pieces (Nhãn Textile)</span>
-                  <strong style="color:var(--green)">25,000 units</strong>
-                </div>
-              </div>
-            </div>
-
-            <div class="card panel">
-              <div class="panel-head"><h2>${bt('scRules')}</h2></div>
-              <ul style="padding-left:18px;font-size:12px;color:var(--muted);line-height:1.7;">
-                <li><strong>${bt('scGeoTrace')}</strong> ${bt('scCountries')}</li>
-                <li><strong>${bt('scNoDeforest')}</strong> ${bt('scPlot')}</li>
-                <li><strong>${bt('scAntiGreen')}</strong> ${bt('scClaims')}</li>
-              </ul>
-            </div>
-          </div>
-        </div>`;
-      }
+      // supplyChainConsoleView a ete supprimee : aucune branche du routeur
+      // ne l'appelait (state.view === 'supplyChain' rend supplyChainView()) et
+      // elle portait une chaine illustrative entiere — fournisseurs, volumes,
+      // coordonnees — affichee sans passer par le jeu de demonstration.
+      // Historique disponible dans git.
 
             function documentsConsoleView() {
-        const docs = state.documents || [];
+        // La vue ne raconte plus une bibliotheque qui n'existe pas : elle
+        // compte et rend state.documents. Aucune route ne liste les documents
+        // d'une organisation : hors demonstration, docs vaut null et l'ecran
+        // affiche « non calculé » au lieu d'un zero qui affirmerait l'absence.
+        const docs = Array.isArray(state.documents) ? state.documents : null;
+        const compte = (categorie) => docs ? docs.filter((d) => d.category === categorie).length : null;
+        const lignes = docs === null ? `
+          <tr><td colspan="8" class="empty">${esc(bt('cnNotComputed'))}</td></tr>` : (docs.length ? docs.map((d) => `
+          <tr>
+            <td><strong>${esc(d.title)}</strong></td>
+            <td><span class="badge badge-verified">${esc(d.type || '—')}</span></td>
+            <td>${esc(d.issuer || '—')}</td>
+            <td>${esc(d.supplier || '—')}</td>
+            <td>${d.issuedAt ? date(d.issuedAt) : '—'}</td>
+            <td>${d.expiresAt ? date(d.expiresAt) : '—'}</td>
+            <td><span class="status status-approved">${d.status === 'sealed' ? esc(bt('evSealed')) : esc(statusLabel(d.status))}</span></td>
+            <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
+          </tr>`).join('') : `
+          <tr><td colspan="8" class="empty">${esc(bt('cnNone'))}</td></tr>`);
+
         return `<div class="page-head">
           <div>
             <div class="eyebrow">${bt('evVault')}</div>
@@ -1682,34 +1661,34 @@
         </div>
 
         <!-- Evidence Trust Matrix Strip -->
-        <div class="eq-overview-panel">
+        <div class="eq-overview-panel"${estDemo() ? ' data-tf-demo' : ''}>
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
               <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('evSovereign')}</div>
               <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('evSha')}</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;" data-tf-demo>142 EVIDENCE ITEMS VALIDATED ON NEON DB</span>
+            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">${docs === null ? esc(bt('cnNotComputed')) : `${moneyless(docs.length)} ${esc(bt('documents'))}`}</span>
           </div>
 
           <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-top:16px;">
             <div class="eq-score-card">
               <div class="eq-score-label">${bt('evTransCerts')}</div>
-              <div class="eq-score-num">48</div>
+              <div class="eq-score-num">${mesure(compte('transfer'))}</div>
               <div class="eq-score-desc">${bt('evMassBalance')}</div>
             </div>
             <div class="eq-score-card">
               <div class="eq-score-label">${bt('evLabReports')}</div>
-              <div class="eq-score-num">36</div>
+              <div class="eq-score-num">${mesure(compte('lab'))}</div>
               <div class="eq-score-desc">${bt('evRsl')}</div>
             </div>
             <div class="eq-score-card">
               <div class="eq-score-label">${bt('evSocialAudits')}</div>
-              <div class="eq-score-num">24</div>
+              <div class="eq-score-num">${mesure(compte('social'))}</div>
               <div class="eq-score-desc">${bt('evHumanRights')}</div>
             </div>
             <div class="eq-score-card">
               <div class="eq-score-label">${bt('evProdRecords')}</div>
-              <div class="eq-score-num">34</div>
+              <div class="eq-score-num">${mesure(compte('product'))}</div>
               <div class="eq-score-desc">${bt('evDelivery')}</div>
             </div>
           </div>
@@ -1717,8 +1696,8 @@
 
         <div class="card panel">
           <div class="panel-head">
-            <h2>${bt('evActiveDocs')} (${docs.length})</h2>
-            <span class="meta" style="color:#0b7656;font-weight:750;">${bt('evIntegrityOk')}</span>
+            <h2>${bt('evActiveDocs')} (${docs === null ? esc(bt('cnNotComputed')) : moneyless(docs.length)})</h2>
+            ${estDemo() ? `<span class="meta" style="color:#0b7656;font-weight:750;" data-tf-demo>${bt('evIntegrityOk')}</span>` : ''}
           </div>
 
           <div class="table-wrap">
@@ -1735,48 +1714,7 @@
                   <th style="text-align:right">${bt('evAction')}</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
-                  <td><strong>GOTS 2026 Transaction Certificate</strong><div class="meta" data-tf-demo>Organic Cotton Lot #089-A</div></td>
-                  <td><span class="badge badge-verified">TC GOTS</span></td>
-                  <td>Control Union Certifications</td>
-                  <td data-tf-demo>Filature de Haute-Vienne</td>
-                  <td>14/01/2026</td>
-                  <td>14/01/2027</td>
-                  <td><span class="status status-approved">${bt('evSealed')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
-                </tr>
-                <tr>
-                  <td><strong data-tf-demo>ZDHC MRSL Level 3 Laboratory Report</strong><div class="meta">${bt('evWastewater')}</div></td>
-                  <td><span class="badge badge-verified" data-tf-demo>ZDHC Test</span></td>
-                  <td data-tf-demo>SGS Textile Testing Services</td>
-                  <td data-tf-demo>EcoDye Aquitaine</td>
-                  <td>02/03/2026</td>
-                  <td>02/03/2027</td>
-                  <td><span class="status status-approved">${bt('evIso')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
-                </tr>
-                <tr>
-                  <td><strong>SMETA 4-Pillar Social Audit (Grade A)</strong><div class="meta">${bt('evHealthSafety')}</div></td>
-                  <td><span class="badge badge-verified">SMETA Audit</span></td>
-                  <td data-tf-demo>Intertek Ethical Services</td>
-                  <td data-tf-demo>Assembly & Tailoring Workshop</td>
-                  <td>10/11/2025</td>
-                  <td>10/11/2026</td>
-                  <td><span class="status status-approved">${bt('evIlo')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
-                </tr>
-                <tr>
-                  <td><strong>OEKO-TEX Standard 100 Certificate</strong><div class="meta">${bt('evClass1')}</div></td>
-                  <td><span class="badge badge-verified">OEKO-TEX</span></td>
-                  <td data-tf-demo>CITEVE Portugal</td>
-                  <td data-tf-demo>Portugal Textile Mill</td>
-                  <td>18/02/2026</td>
-                  <td>18/02/2027</td>
-                  <td><span class="status status-approved">${bt('evValid')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
-                </tr>
-              </tbody>
+              <tbody>${lignes}</tbody>
             </table>
           </div>
         </div>`;
@@ -1786,16 +1724,23 @@
       // des expirations derive desormais de ces donnees : la version
       // precedente affirmait en dur qu'aucun certificat n'expirait, ce qui
       // devenait faux des que la vue etait alimentee.
-      const certJours = (c) => Math.ceil((Date.parse(c.expires) - Date.now()) / 86400000);
+      const certJours = (c) => {
+        const echeance = Date.parse(c.expires);
+        return Number.isFinite(echeance) ? Math.ceil((echeance - Date.now()) / 86400000) : null;
+      };
       function certStatut(c) {
+        // Un certificat sans date d'echeance n'est ni valide ni expire : on ne
+        // sait pas. Afficher « valid » serait une affirmation gratuite.
         const j = certJours(c);
+        if (j === null) return `<span class="status status-draft">${esc(bt('cnUnknown'))}</span>`;
         if (j < 0) return `<span class="status status-changes_requested">${esc(bt('certExpired'))}</span>`;
         if (j <= 90) return `<span class="status status-needs_review">${esc(bt('certExpiringSoon'))}</span>`;
         return `<span class="status status-approved">${esc(bt('certValid'))}</span>`;
       }
 
       function certificationsConsoleView() {
-        const certs = state.certifications || [];
+        // null = aucune source chargee ; [] = source chargee, aucun certificat.
+        const certs = Array.isArray(state.certifications) ? state.certifications : null;
         return `<div class="page-head">
           <div>
             <div class="eyebrow">${esc(bt('certEyebrow'))}</div>
@@ -1815,11 +1760,13 @@
                   <tr><th>${esc(bt('certColStandard'))}</th><th>${esc(bt('certColNumber'))}</th><th>${esc(bt('certColIssuer'))}</th><th>${esc(bt('certColExpiry'))}</th><th>${esc(bt('certColStatus'))}</th></tr>
                 </thead>
                 <tbody>
-                  ${certs.length ? certs.map((c) => `<tr>
+                  ${certs === null
+                    ? `<tr><td colspan="5" class="empty">${esc(bt('cnNotComputed'))}</td></tr>`
+                    : certs.length ? certs.map((c) => `<tr>
                     <td><strong>${esc(c.standard)}</strong></td>
                     <td><code>${esc(c.number)}</code></td>
                     <td>${esc(c.issuer)}</td>
-                    <td>${esc(c.expires)}</td>
+                    <td>${c.expires ? date(c.expires) : '—'}</td>
                     <td>${certStatut(c)}</td>
                   </tr>`).join('') : `<tr><td colspan="5" class="empty">${esc(bt('certNone'))}</td></tr>`}
                 </tbody>
@@ -1830,11 +1777,17 @@
             <div class="panel-head"><h2>${esc(bt('certWatchTitle'))}</h2></div>
             <div style="font-size:12.5px;color:var(--muted);display:grid;gap:12px;">
               ${(() => {
-                const bientot = certs.filter((c) => certJours(c) <= 90).sort((a, b) => certJours(a) - certJours(b));
+                if (certs === null) return `<p>${esc(bt('cnNotComputed'))}</p>`;
+                // Une echeance illisible n'entre pas dans la veille : elle
+                // n'est pas « bientot expiree », elle est inconnue.
+                const bientot = certs
+                  .filter((c) => certJours(c) !== null && certJours(c) <= 90)
+                  .map((c) => ({ c, j: certJours(c) }))
+                  .sort((a, b) => a.j - b.j);
                 if (!bientot.length) return `<p>${esc(bt('certWatchNone'))}</p>`;
                 const t = bientot[0];
                 return `<p><strong>${bientot.length}</strong> ${esc(bt('certWatchCount'))}<br>
-                  ${esc(bt('certNextRenewal'))} : <strong>${esc(t.standard)}</strong> — ${certJours(t)} ${esc(bt('certDaysLeft'))}.</p>`;
+                  ${esc(bt('certNextRenewal'))} : <strong>${esc(t.c.standard)}</strong> — ${t.j} ${esc(bt('certDaysLeft'))}.</p>`;
               })()}
               <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);">
                 <strong style="color:var(--green-dark);">${esc(bt('certRuleTitle'))}</strong>
@@ -1902,36 +1855,48 @@
         <div class="card panel">
           <div class="panel-head"><h2>${bt('stOrgBrand')}</h2></div>
           <form class="form-grid">
-            <label>${bt('stBrandName')}<input class="input" value="${esc(currentBrand()?.display_name || 'Atelier Demo')}"></label>
-            <label>${bt('stNeonOrgId')}<input class="input" value="${esc(state.activeOrganizationId || 'demo-brand')}" readonly></label>
-            <label>${bt('stDppIdFormat')}<input class="input" value="urn:epc:id:sgtin:3760123"></label>
-            <label>${bt('stQualityThreshold')}<input class="input" type="number" value="85"></label>
+            <label>${bt('stBrandName')}<input class="input" value="${esc(currentBrand()?.display_name || currentBrand()?.legal_name || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+            <label>${bt('stNeonOrgId')}<input class="input" value="${esc(state.activeOrganizationId || '')}" readonly placeholder="${esc(bt('cnUnknown'))}"></label>
+            <label>${bt('stDppIdFormat')}<input class="input" value="${estDemo() ? 'urn:epc:id:sgtin:3760123' : ''}" placeholder="${esc(bt('cnNotComputed'))}"></label>
+            <label>${bt('stQualityThreshold')}<input class="input" type="number" value="${estDemo() ? '85' : ''}" placeholder="${esc(bt('cnNotComputed'))}"></label>
           </form>
         </div>`;
       }
 
             function overview() {
-        const counts = requestCounts();
-        const brand = currentBrand();
-        // Tous les chiffres de cet ecran derivent de l etat, aucun n est ecrit en dur.
+        // Deux regimes, jamais melanges.
         //
-        // Ce n'etait pas vrai des quatre pastilles ATTENTION : elles portaient
-        // 17, 8, 5 et 12 en clair dans le balisage, pendant que le catalogue
-        // comptait 1 246 produits a 0 % de completude. Le tableau de bord
-        // annoncait donc douze produits incomplets au-dessus d'une table qui
-        // en montrait mille deux cent quarante-six.
-        //
-        // Le nombre de produits incomplets est desormais COMPTE sur l'etat :
-        // il ne peut plus diverger de ce que la vue catalogue montrera. Les
-        // trois autres viennent de la source unique partagee avec l'accueil,
-        // faute d'etre derivables de ce jeu de demonstration.
-        const ag = demoAgregats();
-        const AT = Object.assign({}, chiffresDemo().attention, {
-          produitsIncomplets: (state.products || [])
-            .filter((p) => Number(p.dataCompletion) < SEUIL_COMPLETUDE).length,
-        });
-        const prodCount = ag.produits;
-        const supCount = ag.fournisseurs || suppliers().length;
+        // En demonstration (?demo=1), les agregats sont construits a partir
+        // du jeu de demonstration et les valeurs non derivables viennent de
+        // la source unique partagee avec l'accueil. Hors demonstration,
+        // seules les reponses API alimentent les compteurs ; une grandeur
+        // qu'aucune route n'expose s'affiche « inconnu » ou « non calculé ».
+        // C'est la difference entre un zero mesure et un zero suppose.
+        const demoMode = estDemo();
+        // Dispatch nomme : les deux regimes restent lisibles a l'endroit ou
+        // ils divergent, et la vue d'ensemble ne peut pas emprunter le
+        // generateur par accident hors demonstration.
+        const ag = agregatsVue(demoMode);
+        const AT = demoMode
+          ? Object.assign({}, chiffresDemo().attention, {
+            produitsIncomplets: (state.products || [])
+              .filter((p) => Number(p.dataCompletion) < SEUIL_COMPLETUDE).length,
+          })
+          : productionAttention();
+
+        const lineage = demoMode ? 100 : ag.lineage;
+        const massBalanced = demoMode ? 97.6 : ag.massBalanced;
+        const gpsPolygons = demoMode ? ag.sites : ag.gpsPolygons;
+        const gs1Styles = demoMode ? 1098 : ag.gs1Styles;
+        const agec = demoMode ? 100 : ag.agec;
+        const pef = demoMode ? 'Tier 3' : ag.pef;
+
+        const badge = (classe, label) => demoMode
+          ? `<span class="mc-domain-badge ${classe}" data-tf-demo>${esc(label)}</span>`
+          : '';
+        const pastille = (value) => (value === null || value === undefined)
+          ? `<div class="mc-attention-num" style="font-size:13px;">${esc(bt('cnNotComputed'))}</div>`
+          : `<div class="mc-attention-num">${moneyless(value)}</div>`;
 
         return `<div class="mc-container">
           <!-- Mission Control Strip -->
@@ -1953,14 +1918,14 @@
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">${esc(bt('cnDom1'))}</span>
-                <span class="mc-domain-badge mc-badge-green">${esc(bt('cnStatusActive'))}</span>
+                ${badge('mc-badge-green', bt('cnStatusActive'))}
               </div>
-              <div class="mc-stat-huge">${prodCount}</div>
+              ${grandNombre(ag.produits)}
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovProducts')}</span><strong>${moneyless(ag.produits)}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovSuppliers')}</span><strong>${ag.fournisseurs}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovFacilities')}</span><strong>${ag.sites}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovProdCountries')}</span><strong>${ag.pays} ${bt('ovCountriesUnit')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovProducts')}</span><strong>${mesure(ag.produits)}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovSuppliers')}</span><strong>${mesure(ag.fournisseurs)}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovFacilities')}</span><strong>${mesureInconnue(ag.sites, ' ' + bt('ovSitesUnit'))}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovProdCountries')}</span><strong>${mesure(ag.pays, ' ' + bt('ovCountriesUnit'))}</strong></div>
               </div>
             </div>
 
@@ -1968,14 +1933,14 @@
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">${esc(bt('cnDom2'))}</span>
-                <span class="mc-domain-badge mc-badge-green" data-tf-demo>GRADE A</span>
+                ${badge('mc-badge-green', 'GRADE A')}
               </div>
-              <div class="mc-stat-huge" style="color:#0b7656;">${ag.qualite}%</div>
+              ${grandNombre(ag.qualite, '#0b7656')}
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${ag.qualite}%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('scEvidenceCov')}</span><strong>${ag.preuves}%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovVerified')}</span><strong>${ag.verifies}%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovCertificates')}</span><strong>${ag.certificats}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${mesure(ag.qualite, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('scEvidenceCov')}</span><strong>${mesure(ag.preuves, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovVerified')}</span><strong>${mesure(ag.verifies, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovCertificates')}</span><strong>${mesure(ag.certificats)}</strong></div>
               </div>
             </div>
 
@@ -1983,14 +1948,14 @@
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">${esc(bt('cnDom3'))}</span>
-                <span class="mc-domain-badge mc-badge-blue">${esc(bt('cnStatusComplete'))}</span>
+                ${badge('mc-badge-blue', bt('cnStatusComplete'))}
               </div>
-              <div class="mc-stat-huge" style="color:#1d4ed8;">${ag.tracables}%</div>
+              ${grandNombre(ag.tracables, '#1d4ed8')}
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovTraceable')}</span><strong>${ag.tracables}%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovLineage')}</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovGpsPolygons')}</span><strong>${moneyless(214)} ${bt('ovSitesUnit')}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovMassBalanced')}</span><strong>97.6%</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovTraceable')}</span><strong>${mesure(ag.tracables, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovLineage')}</span><strong>${mesure(lineage, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovGpsPolygons')}</span><strong>${mesureInconnue(gpsPolygons, ' ' + bt('ovSitesUnit'))}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovMassBalanced')}</span><strong>${mesure(massBalanced, '%')}</strong></div>
               </div>
             </div>
 
@@ -1998,14 +1963,14 @@
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">${esc(bt('cnDom4'))}</span>
-                <span class="mc-domain-badge mc-badge-amber" data-tf-demo>CIRPASS 1.2</span>
+                ${badge('mc-badge-amber', 'CIRPASS 1.2')}
               </div>
-              <div class="mc-stat-huge" style="color:#b45309;">${ag.dpp}%</div>
+              ${grandNombre(ag.dpp, '#b45309')}
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovDpp')}</span><strong>88.0%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>${moneyless(1098)} ${bt('ovStylesUnit')}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovAgec')}</span><strong>100%</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovPefValidated')}</span><strong>Tier 3</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovDpp')}</span><strong>${mesure(ag.dpp, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>${mesureInconnue(gs1Styles, ' ' + bt('ovStylesUnit'))}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovAgec')}</span><strong>${mesure(agec, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovPefValidated')}</span><strong>${pef === null || pef === undefined ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>` : esc(pef)}</strong></div>
               </div>
             </div>
           </div>
@@ -2021,19 +1986,19 @@
             </div>
             <div class="mc-attention-grid">
               <div class="mc-attention-pill clickable" data-tf-act="p07">
-                <div class="mc-attention-num">${AT.donneesManquantes}</div>
+                ${pastille(AT.donneesManquantes)}
                 <div><strong>${bt('ovMissingData')}</strong><br><small>${bt('ovSuppliersPending')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p17">
-                <div class="mc-attention-num">${AT.certificatsExpirant}</div>
+                ${pastille(AT.certificatsExpirant)}
                 <div><strong>${bt('ovCertsExpiring')}</strong><br><small>${bt('ovRenewal90')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p18">
-                <div class="mc-attention-num">${AT.fournisseursARevoir}</div>
+                ${pastille(AT.fournisseursARevoir)}
                 <div><strong>${bt('ovSuppliersReview')}</strong><br><small>${bt('ovCompleteness')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p19">
-                <div class="mc-attention-num">${AT.produitsIncomplets}</div>
+                ${pastille(AT.produitsIncomplets)}
                 <div><strong>${bt('ovProductsIncomplete')}</strong><br><small>${bt('ovBomUnbalanced')}</small></div>
               </div>
             </div>
@@ -2100,7 +2065,7 @@
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0b7656;"></span>
               <span>${bt('rqCycle')}</span>
             </div>
-            <span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:700;" data-tf-demo>Zero Data Silos · Full Audit Trail</span>
+            ${estDemo() ? `<span class="meta" style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:700;" data-tf-demo>Zero Data Silos · Full Audit Trail</span>` : ''}
           </div>
 
           <div class="dc-lifecycle-strip">
@@ -2189,7 +2154,9 @@
       function productsView() {
         const resultats = produitsFiltres();
         const tranche = trancher('products', resultats);
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div></td><td>${status(p.dataReadiness || 'in_progress')}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === ''
+  ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`
+  : `<div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div>`}</td><td>${p.dataReadiness ? status(p.dataReadiness) : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
@@ -2208,9 +2175,15 @@
         return `<div class="page-head">
           <div>
             <button class="link-button" data-view="products">${bt('pxBackCatalogue')}</button>
-            <div class="eyebrow" style="margin-top:16px;">${bt('pxProductIntel')} · ${bt('cRef')} ${esc(p.reference || 'AW26-0248')} · ${bt('pxVersion')} ${esc(p.version || '1.0')}</div>
-            <h1>${esc(p.name || 'Organic Cotton T-Shirt')}</h1>
-            <p>${esc(p.category || 'T-Shirt & Knitwear')} · ${esc(bt('cnSxQualityIndex'))} <strong>98.4 / 100</strong></p>
+            <div class="eyebrow" style="margin-top:16px;">${bt('pxProductIntel')} · ${bt('cRef')} ${esc(p.reference || '—')} · ${bt('pxVersion')} ${esc(p.version || '—')}</div>
+            <h1>${esc(p.name || '—')}</h1>
+            <p>${esc(p.category || '—')} · ${esc(bt('cnSxQualityIndex'))} <strong>${(() => {
+              const score = state.quality?.score;
+              const valeurs = score ? [score.completeness, score.freshness, score.documentationCoverage, score.consistency]
+                .map(qualiteNum).filter((v) => v !== null) : [];
+              if (!valeurs.length) return esc(bt('cnNotComputed'));
+              return `${mesure(Math.round((valeurs.reduce((a, b) => a + b, 0) / valeurs.length) * 10) / 10, ' / 100')}`;
+            })()}</strong></p>
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bt('pxTraceGraph')}</button>
@@ -2228,41 +2201,41 @@
               <div style="font-family:var(--font-mono,monospace);font-size:11px;color:#0b7656;font-weight:750;letter-spacing:0.1em;text-transform:uppercase;">${esc(bt('cnLineageTitle'))}</div>
               <h3 style="font-size:18px;font-weight:800;color:#17231f;margin:4px 0 0;">${bt('pxLineage')}</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">${bt('pxVerifiedSealed')}</span>
+            ${estDemo() ? `<span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;" data-tf-demo>${bt('pxVerifiedSealed')}</span>` : ''}
           </div>
 
           <div class="lineage-pipeline-flow">
-            <div class="lineage-step-card active" data-demo-action="1">
+            <div class="lineage-step-card active"${estDemo() ? " data-demo-action=\"1\"" : ""}>
               <div class="lineage-step-label">${esc(bt('cnLinFibre'))}</div>
-              <div class="lineage-step-sub" data-tf-demo>GOTS Farm</div>
+              <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "GOTS Farm" : "—"}</div>
             </div>
-            <div class="lineage-step-card" data-demo-action="1">
+            <div class="lineage-step-card"${estDemo() ? " data-demo-action=\"1\"" : ""}>
               <div class="lineage-step-label">${esc(bt('cnLinSpinning'))}</div>
-              <div class="lineage-step-sub" data-tf-demo>Mass Balance</div>
+              <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "Mass Balance" : "—"}</div>
             </div>
-            <div class="lineage-step-card" data-demo-action="1">
+            <div class="lineage-step-card"${estDemo() ? " data-demo-action=\"1\"" : ""}>
               <div class="lineage-step-label">${esc(bt('cnLinKnitting'))}</div>
-              <div class="lineage-step-sub" data-tf-demo>Guimarães PT</div>
+              <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "Guimarães PT" : "—"}</div>
             </div>
-            <div class="lineage-step-card" data-demo-action="1">
+            <div class="lineage-step-card"${estDemo() ? " data-demo-action=\"1\"" : ""}>
               <div class="lineage-step-label">${esc(bt('cnLinDyeing'))}</div>
-              <div class="lineage-step-sub" data-tf-demo>ZDHC Level 3</div>
+              <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "ZDHC Level 3" : "—"}</div>
             </div>
-            <div class="lineage-step-card" data-demo-action="1">
+            <div class="lineage-step-card"${estDemo() ? " data-demo-action=\"1\"" : ""}>
               <div class="lineage-step-label">${esc(bt('cnLinAssembly'))}</div>
-              <div class="lineage-step-sub" data-tf-demo>Certified Workshop</div>
+              <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "Certified Workshop" : "—"}</div>
             </div>
-            <div class="lineage-step-card" data-demo-action="1">
+            <div class="lineage-step-card"${estDemo() ? " data-demo-action=\"1\"" : ""}>
               <div class="lineage-step-label">${esc(bt('cnLinProduct'))}</div>
-              <div class="lineage-step-sub" data-tf-demo>BOM 100%</div>
+              <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "BOM 100%" : "—"}</div>
             </div>
-            <div class="lineage-step-card" data-demo-action="1">
+            <div class="lineage-step-card"${estDemo() ? " data-demo-action=\"1\"" : ""}>
               <div class="lineage-step-label">${esc(bt('cnGrpPef'))}</div>
-              <div class="lineage-step-sub" data-tf-demo>Score A (PEF)</div>
+              <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "Score A (PEF)" : "—"}</div>
             </div>
             <div class="lineage-step-card" data-tf-act="open" data-tf-arg="/dpp/">
               <div class="lineage-step-label" style="color:#0b7656;">${esc(bt('cnLinDppQr'))}</div>
-              <div class="lineage-step-sub" data-tf-demo>GS1 Link</div>
+              <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "GS1 Link" : "—"}</div>
             </div>
           </div>
         </div>
@@ -2273,12 +2246,12 @@
             <form id="product-detail-form" class="form-grid">
               <label>${bt('pxStyleName')}<input class="input" name="name" value="${esc(p.name)}"></label>
               <label>${bt('pxSku')}<input class="input" name="reference" value="${esc(p.reference)}"></label>
-              <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || 'Ready-to-wear')}"></label>
-              <label>${bt('pxColor')}<input class="input" name="colorName" value="${esc(p.colorName || 'Navy Deep')}"></label>
-              <label>${bt('pxCountrySpin')}<input class="input" name="countryOfSpinning" value="${esc(p.countryOfSpinning || 'PT')}"></label>
-              <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || 'PT')}"></label>
-              <label>${bt('pxWeightG')}<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams || '185')}"></label>
-              <label>${bt('pxSizes')}<input class="input" name="sizeRange" value="${esc((p.sizeRange || ['XS','S','M','L','XL']).join(', '))}"></label>
+              <label>${bt('pxTextileCategory')}<input class="input" name="category" value="${esc(p.category || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+              <label>${bt('pxColor')}<input class="input" name="colorName" value="${esc(p.colorName || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+              <label>${bt('pxCountrySpin')}<input class="input" name="countryOfSpinning" value="${esc(p.countryOfSpinning || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+              <label>${bt('pxCountryMfg')}<input class="input" name="countryOfManufacture" value="${esc(p.countryOfManufacture || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+              <label>${bt('pxWeightG')}<input class="input" name="weightGrams" type="number" value="${esc(p.weightGrams || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
+              <label>${bt('pxSizes')}<input class="input" name="sizeRange" value="${esc(p.sizeRange || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
               <div class="form-actions field-full">
                 <button class="btn btn-primary" type="submit">${bt('pxUpdate')}</button>
               </div>
@@ -2291,34 +2264,34 @@
                 <h2>${bt('pxBomTitle')}</h2>
                 <p class="meta" style="margin:4px 0 0;">${bt('pxEspr')}</p>
               </div>
-              <span class="status status-approved">${bt('pxReconciled')}</span>
+              <span class="status ${detail.materials?.length ? 'status-approved' : 'status-draft'}">${detail.materials?.length ? esc(bt('pxReconciled')) : esc(bt('cnNotComputed'))}</span>
             </div>
 
             ${detail.materials?.length ? `<div class="item-list">${detail.materials.map((m) => `<form class="item material-edit-form" data-material-product-id="${esc(p.id)}">
               <input type="hidden" name="materialId" value="${esc(m.materialId)}">
               <div>
                 <strong>${esc(materialName(m.material))}</strong>
-                <div class="meta">${esc(m.role || 'Principal')} · ${esc(materialType(m.material) || bt('cnCertifiedFibre'))}</div>
+                <div class="meta">${esc(m.role || '—')} · ${esc(materialType(m.material) || '—')}</div>
               </div>
               <div class="actions">
-                <label class="meta">${bt('pxSharePct')}<input class="input" name="percentage" type="number" value="${esc(m.percentage || 100)}" style="width:75px"></label>
+                <label class="meta">${bt('pxSharePct')}<input class="input" name="percentage" type="number" value="${esc(m.percentage ?? '')}" style="width:75px"></label>
                 <button class="btn btn-secondary btn-small" type="submit">${bt('pxApply')}</button>
               </div>
             </form>`).join('')}</div>` : `
-            <div class="item-list">
-              <div class="item" data-tf-demo>
+            ${estDemo() ? `<div class="item-list" data-tf-demo>
+              <div class="item">
                 <div><strong>Combed Organic Cotton (GOTS)</strong><div class="meta">Primary fibre · Türkiye / Greece</div></div>
                 <div class="actions"><span class="badge badge-verified">85%</span></div>
               </div>
-              <div class="item" data-tf-demo>
+              <div class="item">
                 <div><strong>Pre-consumer Recycled Cotton (GRS)</strong><div class="meta">Reincorporated spinning waste</div></div>
                 <div class="actions"><span class="badge badge-verified">15%</span></div>
               </div>
-            </div>`}
+            </div>` : `<div class="empty"><strong>${esc(bt('cnNone'))}</strong></div>`}`}
 
             <form id="material-form" class="form-grid" style="margin-top:18px">
               <label class="field-full">${bt('pxAddComponent')}
-                <select class="select" name="materialId">${materialOptions || '<option value="">French organic linen</option>'}</select>
+                <select class="select" name="materialId">${materialOptions || `<option value="">${esc(bt('cnNone'))}</option>`}</select>
               </label>
               <label>${bt('pxSharePctP')}<input class="input" name="percentage" type="number" min="0" max="100" placeholder="15"></label>
               <label>${bt('spRole')}<input class="input" name="materialRole" value="secondary"></label>
@@ -2345,7 +2318,7 @@
       function supplierDetailView() {
         const supplier = state.selectedSupplier;
         if (!supplier) return `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('sxNotFound')}</strong><button class="btn btn-secondary" data-view="suppliers">${bt('sxBack')}</button></div>`;
-        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">${bt('sxBackArrow')}</button><div class="eyebrow" style="margin-top:20px">${bt('sxSupplier')}</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || bt('cnCountryUnknown'))} · ${esc(supplier.role || bt('sxRoleActive'))}</p></div><div class="actions"><button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/passport/">${bt('sxPublicPassport')}</button><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">${bt('sxNewRequest')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${bt('sxProfileTitle')}</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${esc(statusLabel(supplier.profile?.onboardingStatus) || bt('cnNotLoaded'))}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">${bt('sxContact')}</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">${bt('sxActivities')}</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">${bt('sxSummary')}</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : `<div class="empty"><p>${esc(bt('cnNoProfile'))}</p></div>`}</div><div class="card panel"><div class="panel-head"><h2>${bt('sxRequestsTitle')}</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
+        return `<div class="page-head"><div><button class="link-button" data-view="suppliers">${bt('sxBackArrow')}</button><div class="eyebrow" style="margin-top:20px">${bt('sxSupplier')}</div><h1>${esc(supplier.name)}</h1><p>${esc(supplier.country || bt('cnCountryUnknown'))} · ${esc(supplier.role || bt('sxRoleActive'))}</p></div><div class="actions"><button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/passport/">${bt('sxPublicPassport')}</button><button class="btn btn-primary" data-action="new-request" data-supplier-org-id="${esc(supplier.organizationId)}">${bt('sxNewRequest')}</button></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${bt('sxProfileTitle')}</h2><span class="status status-${esc(supplier.profile?.onboardingStatus || 'draft')}">${supplier.profile?.onboardingStatus ? esc(statusLabel(supplier.profile.onboardingStatus)) : esc(bt('cnNotLoaded'))}</span></div>${supplier.profile ? `<dl style="display:grid;gap:15px;margin:0"><div><dt class="meta">${bt('pdCompleteness')}</dt><dd style="margin:4px 0;font-weight:800">${esc(supplier.profile.profileCompletion)}%</dd></div><div><dt class="meta">${bt('sxContact')}</dt><dd style="margin:4px 0;font-weight:750">${esc(supplier.profile.contactName || '—')} · ${esc(supplier.profile.contactEmail || '—')}</dd></div><div><dt class="meta">${bt('sxActivities')}</dt><dd style="margin:4px 0;font-weight:750">${esc((supplier.profile.activityTypes || []).join(', ') || '—')}</dd></div><div><dt class="meta">${bt('sxSummary')}</dt><dd style="margin:4px 0;line-height:1.5">${esc(supplier.profile.profileSummary || '—')}</dd></div></dl>` : `<div class="empty"><p>${esc(bt('cnNoProfile'))}</p></div>`}</div><div class="card panel"><div class="panel-head"><h2>${bt('sxRequestsTitle')}</h2></div>${requestTable(state.requests.filter((r) => r.supplierOrganizationId === supplier.id))}</div></div>`;
       }
 
       function capContractPanel() {
@@ -2361,7 +2334,15 @@
       }
 
       function complianceContractPanel() {
-        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcPefTitle')}</h2><p class="meta">${bt('qcEcoScore')} : ${esc(state.pefAssessment?.pefGrade || '—')} · Audit greenClaimsAudit : ${esc(state.greenClaimsAudit?.status || '' + bt('qcToLaunch'))}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">${bt('qcComputePef')}</button></div><div class="panel-head" style="margin-top:14px"><div><h2>${bt('qcGreenShield')}</h2><p class="meta">${bt('qcClaimsNote')}</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">${bt('qcAuditClaims')}</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">${bt('qcClaim')}<textarea class="textarea" name="claimText" rows="2" placeholder="Organic cotton certifié…"></textarea></label></form></div>`;
+        const pef = state.pefAssessment;
+        const claims = state.greenClaimsAudit;
+        const pefValeur = pef
+          ? `${esc(pef.pefGrade || '—')} · ${mesure(pef.pefEcoScore, ' / 100')}`
+          : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`;
+        const claimsValeur = claims
+          ? `<code>${esc(claims.audit_verdict || claims.auditVerdict || '—')}</code> · ${mesure(claims.green_claims_score ?? claims.greenClaimsScore, ' / 100')}`
+          : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`;
+        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcPefTitle')}</h2><p class="meta">${bt('qcEcoScore')} : ${pefValeur}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">${bt('qcComputePef')}</button></div><div class="panel-head" style="margin-top:14px"><div><h2>${bt('qcGreenShield')}</h2><p class="meta">${bt('qcClaimsNote')} ${claimsValeur}</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">${bt('qcAuditClaims')}</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">${bt('qcClaim')}<textarea class="textarea" name="claimText" rows="2" placeholder="${esc(bt('qcClaim'))}"></textarea></label></form></div>`;
       }
 
 
@@ -2597,9 +2578,83 @@
           </div>`;
       }
 
+            // Trois constats illustratifs, uniquement en demonstration et
+            // seulement tant qu'aucun calcul reel n'est charge. Ils portent
+            // le marqueur [data-tf-demo] qui les declare comme tels.
+      const DEMO_QUALITY_ISSUES = [
+        { id: 'demo-issue-warning', severity: 'warning', status: 'open', ruleKey: 'ZDHC_EFFLUENT_TEST_REPORT', message: 'RSL test report missing for dye lot #089', detectedAt: new Date().toISOString() },
+        { id: 'demo-issue-review-1', severity: 'info', status: 'acknowledged', ruleKey: 'CERTIFICATE_EXPIRATION_GATE', message: 'GOTS certificate CU-881294 expiring in 42 days', detectedAt: new Date().toISOString() },
+        { id: 'demo-issue-review-2', severity: 'info', status: 'acknowledged', ruleKey: 'POLYGON_FACILITY_REGISTRY', message: 'GPS coordinates of the cutting workshop not locked', detectedAt: new Date().toISOString() },
+      ];
+
+      function qualiteNum(value) {
+        if (value === null || value === undefined || value === '') return null;
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+
             function qualityView() {
-        const prod = state.selectedProduct || state.products[0] || { name: 'Organic Cotton T-Shirt', reference: 'AW26-0248' };
-        const q = state.quality;
+        const demoMode = estDemo();
+        const prod = state.selectedProduct || state.products[0] || null;
+        const q = state.quality || null;
+        const score = q?.score || null;
+        // Un calcul reel remplace toujours l'illustration. Hors
+        // demonstration, l'absence de calcul se dit au lieu de s'inventer.
+        const issues = q
+          ? (q.issues || [])
+          : (demoMode ? DEMO_QUALITY_ISSUES : []);
+        const filtre = state.qualityFilter || 'all';
+        const ouvert = (i) => ['open', 'acknowledged'].includes(i.status);
+        const correspond = (i) => filtre === 'all' ? true
+          : filtre === 'critical' ? (i.severity === 'blocking' && ouvert(i))
+            : filtre === 'warning' ? (i.severity === 'warning' && ouvert(i))
+              : filtre === 'review' ? i.status === 'acknowledged'
+                : ['waived', 'resolved'].includes(i.status);
+        const compter = (f) => issues.filter(f).length;
+        const compteurs = {
+          all: issues.length,
+          critical: compter((i) => i.severity === 'blocking' && ouvert(i)),
+          warning: compter((i) => i.severity === 'warning' && ouvert(i)),
+          review: compter((i) => i.status === 'acknowledged'),
+          resolved: compter((i) => ['waived', 'resolved'].includes(i.status)),
+        };
+        const affichees = issues.filter(correspond);
+
+        const demoValeurs = { completeness: 96.8, evidence: 92.0, verification: 88.5, supplier: 94.2, product: 88.0 };
+        const valeurs = score ? {
+          completeness: qualiteNum(score.completeness),
+          evidence: qualiteNum(score.documentationCoverage),
+          // Ces deux dimensions ne sont pas renvoyees par la route qualite.
+          verification: null,
+          supplier: null,
+          product: null,
+        } : (demoMode ? demoValeurs : { completeness: null, evidence: null, verification: null, supplier: null, product: null });
+
+        const disponibles = Object.values(valeurs).filter((v) => v !== null);
+        const indice = disponibles.length
+          ? Math.round((disponibles.reduce((a, b) => a + b, 0) / disponibles.length) * 10) / 10
+          : null;
+
+        const badge = (demoMode && !score)
+          ? '<span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;" data-tf-demo>OVERALL GRADE: A (98.4%)</span>'
+          : `<span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">${indice === null ? esc(bt('cnNotComputed')) : `${esc(bt('cnQualityIndex'))}: ${mesure(indice, '%')}`}</span>`;
+
+        const carte = (label, desc, value, color, exemple) => `
+            <div class="eq-score-card">
+              <div class="eq-score-label">${bt(label)}</div>
+              <div class="eq-score-num" style="color:${color};${value === null ? 'font-size:13px;letter-spacing:0;' : ''}">${value === null ? esc(bt('cnNotComputed')) : mesure(value, '%')}</div>
+              <div class="eq-score-desc"${exemple ? ' data-tf-demo' : ''}>${bt(desc)}</div>
+            </div>`;
+
+        const onglet = (cle, label, couleur) => `
+          <div class="eq-sev-tab ${filtre === cle ? 'active' : ''}" data-tf-act="p${29 + ['all', 'critical', 'warning', 'review', 'resolved'].indexOf(cle)}">
+            <span${couleur ? ` style="color:${couleur};"` : ''}>${label}</span>
+            <span class="sev-pill-count"${couleur ? ` style="color:${couleur};"` : ''}>${compteurs[cle]}</span>
+          </div>`;
+
+        const liste = affichees.length
+          ? affichees.map((issue) => issueCard(issue)).join('')
+          : `<div class="empty"><strong>${esc(bt('cnNotComputed'))}</strong><p class="meta">${esc(bt('cnQcIntro'))}</p><button class="btn btn-secondary btn-small" data-view="products">${esc(bt('products'))}</button></div>`;
 
         return `${complianceContractPanel()}${capContractPanel()}
         <div class="page-head">
@@ -2621,113 +2676,47 @@
               <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('qcMatrix')}</div>
               <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('qcPreAudit')}</h3>
             </div>
-            <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;" data-tf-demo>OVERALL GRADE: A (98.4%)</span>
+            ${badge}
           </div>
 
-          <div class="eq-score-strip">
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcCompleteness')}</div>
-              <div class="eq-score-num" style="color:#0b7656;">96.8%</div>
-              <div class="eq-score-desc" data-tf-demo>BOM 100% mass-balance</div>
-            </div>
-
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcEvidenceCov')}</div>
-              <div class="eq-score-num" style="color:#0b7656;">92.0%</div>
-              <div class="eq-score-desc">${bt('qcTestReports')}</div>
-            </div>
-
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcVerifRate')}</div>
-              <div class="eq-score-num" style="color:#1d4ed8;">88.5%</div>
-              <div class="eq-score-desc">${bt('qcThirdParty')}</div>
-            </div>
-
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcSupplierQuality')}</div>
-              <div class="eq-score-num" style="color:#0b7656;">94.2%</div>
-              <div class="eq-score-desc">${bt('qcTiersOk')}</div>
-            </div>
-
-            <div class="eq-score-card">
-              <div class="eq-score-label">${bt('qcProductQuality')}</div>
-              <div class="eq-score-num" style="color:#b45309;">88.0%</div>
-              <div class="eq-score-desc">${bt('qcDppEligible')}</div>
-            </div>
+          <div class="eq-score-strip"${demoMode && !score ? ' data-tf-demo' : ''}>
+            ${carte('qcCompleteness', 'qcTestReports', valeurs.completeness, '#0b7656', false)}
+            ${carte('qcEvidenceCov', 'qcTestReports', valeurs.evidence, '#0b7656', false)}
+            ${carte('qcVerifRate', 'qcThirdParty', valeurs.verification, '#1d4ed8', false)}
+            ${carte('qcSupplierQuality', 'qcTiersOk', valeurs.supplier, '#0b7656', false)}
+            ${carte('qcProductQuality', 'qcDppEligible', valeurs.product, '#b45309', false)}
           </div>
         </div>
 
         <!-- Severity Action Filter Tabs : CRITICAL | WARNING | REVIEW | RESOLVED -->
         <div class="eq-severity-tabs">
-          <div class="eq-sev-tab active" data-tf-act="p29">
-            <span>${bt('qcAllIssues')}</span>
-            <span class="sev-pill-count">3</span>
-          </div>
-          <div class="eq-sev-tab" data-tf-act="p30">
-            <span style="color:#b91c1c;">${bt('qcCritical')}</span>
-            <span class="sev-pill-count" style="color:#b91c1c;">0</span>
-          </div>
-          <div class="eq-sev-tab" data-tf-act="p31">
-            <span style="color:#b45309;">${bt('qcWarning')}</span>
-            <span class="sev-pill-count" style="color:#b45309;">1</span>
-          </div>
-          <div class="eq-sev-tab" data-tf-act="p32">
-            <span style="color:#1d4ed8;">${bt('qcReview')}</span>
-            <span class="sev-pill-count" style="color:#1d4ed8;">2</span>
-          </div>
-          <div class="eq-sev-tab" data-tf-act="p33">
-            <span style="color:#0b7656;">${bt('qcResolved')}</span>
-            <span class="sev-pill-count" style="color:#0b7656;">14</span>
-          </div>
+          ${onglet('all', bt('qcAllIssues'), null)}
+          ${onglet('critical', bt('qcCritical'), '#b91c1c')}
+          ${onglet('warning', bt('qcWarning'), '#b45309')}
+          ${onglet('review', bt('qcReview'), '#1d4ed8')}
+          ${onglet('resolved', bt('qcResolved'), '#0b7656')}
         </div>
 
         <!-- Issues Card with Immediate Action Links -->
         <div class="card panel">
           <div class="panel-head">
-            <h2>${bt('qcActiveIssuesFor')} : ${esc(prod.name)}</h2>
-            <span class="meta">${q ? q.issues.length : 3} ${bt('qcAnomaliesFound')}</span>
+            <h2>${bt('qcActiveIssuesFor')} : ${esc(prod?.name || '—')}</h2>
+            <span class="meta">${q ? `${moneyless(issues.length)} ${esc(bt('qcAnomaliesFound'))}`
+              : (demoMode ? `${moneyless(issues.length)} ${esc(bt('qcAnomaliesFound'))}` : esc(bt('cnNotComputed')))}</span>
           </div>
 
-          <div class="issue-list" id="quality-issue-container">
-            <!-- Simulated High-Impact Actionable Issues -->
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
-              <div>
-                <span class="status status-changes_requested" style="margin-right:8px;">${esc(bt('cnSevWarning'))}</span>
-                <strong>RSL test report missing for dye lot #089</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>ZDHC_EFFLUENT_TEST_REPORT</code> <span data-tf-demo>· Detected by Document AI · Tolerance: 12 months</span></p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Upload the SGS report or follow up with the EcoDye Aquitaine dye house</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" data-tf-act="p07">${bt('qcFollowFacility')}</button>
-                <button class="btn btn-primary btn-small" data-tf-act="p08">${bt('qcUploadEv')}</button>
-              </div>
-            </div>
-
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;border-bottom:1px solid #edf2ee;">
-              <div>
-                <span class="status status-draft" style="margin-right:8px;">${esc(bt('cnSevReview'))}</span>
-                <strong>GOTS certificate CU-881294 expiring in 42 days</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>CERTIFICATE_EXPIRATION_GATE</code> <span data-tf-demo>· Scope: Combed organic cotton</span></p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Receive the GOTS 2027 Scope certificate before customs shipment</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" data-tf-act="p17">${bt('qcManageCert')}</button>
-              </div>
-            </div>
-
-            <div class="issue" style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;">
-              <div>
-                <span class="status status-draft" style="margin-right:8px;">${esc(bt('cnSevReview'))}</span>
-                <strong data-tf-demo>GPS coordinates of the cutting workshop not locked</strong>
-                <p style="font-size:12px;color:var(--muted);margin:4px 0;">${bt('qcRule')} <code>POLYGON_FACILITY_REGISTRY</code> <span data-tf-demo>· Barcelos workshop</span></p>
-                <div style="font-size:11.5px;color:#0b7656;margin-top:6px;" data-tf-demo>→ Suggested action: Validate the facility's GPS polygon in the site registry</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary btn-small" data-tf-act="p34">${bt('qcInspectMap')}</button>
-              </div>
-            </div>
+          <div class="issue-list" id="quality-issue-container"${demoMode && !q ? ' data-tf-demo' : ''}>
+            ${liste}
           </div>
         </div>`;
+      }
+
+      /* Filtre des onglets qualite. La fonction etait appelee par p29-p33
+       * sans exister : cliquer un onglet levait « filterIssues is not
+       * defined ». Le filtre vit dans l'etat et la vue le lit. */
+      function filterIssues(kind) {
+        state.qualityFilter = kind;
+        render();
       }
 
       function scoreCard(label, value) { return `<div class="card score"><div class="score-name">${label}</div><div class="score-value">${moneyless(value)}%</div><div class="progress"><span style="width:${pct(value)}%"></span></div></div>`; }
@@ -2765,100 +2754,95 @@
       }
 
             function supplyChainView() {
-        const p = state.selectedSupplyChainProduct || state.products[0] || { name: 'Organic Cotton T-Shirt', reference: 'AW26-0248' };
-        const sc = state.supplyChain || { graph: { nodes: [], links: [] }, summary: { nodeCount: 14, linkCount: 13, documentationRate: 98, stagesCoveredCount: 7 }, stages: { tier4_raw_materials: [], tier3_spinning: [], tier2_fabric: [], tier1_assembly: [], tier0_product: [], other_nodes: [] } };
-        const summary = sc.summary || { nodeCount: 14, linkCount: 13, documentationRate: 98, stagesCoveredCount: 7 };
+        // Hors demonstration, la chaine affichee est celle que la route
+        // /api/products/:id/supply-chain a renvoyee. Pas de resume par
+        // defaut, pas de fournisseur illustratif : un produit sans chaine
+        // calculee montre « non calculé », pas une chaine de reve.
+        const demoMode = estDemo();
+        const p = state.selectedSupplyChainProduct || state.products[0] || null;
+        const sc = state.supplyChain || null;
+        const summary = sc?.summary || null;
+        const nodes = sc?.graph?.nodes || [];
+        const links = sc?.graph?.links || [];
+        const mb = state.massBalance || null;
+        const recon = mb?.latestReconciliation || null;
 
-        return `
-          <div class="page-head">
-            <div>
-              <div class="eyebrow">${bt('scEyebrow')}</div>
-              <h1>${bt('scMultiTier')}</h1>
-              <p>${bt('scIntro')}</p>
-            </div>
-            <div class="actions">
-              <button class="btn btn-secondary" data-demo-action="1">${bt('scExportForensic')}</button>
-              <button class="btn btn-secondary" data-action="select-supply-chain-product">${bt('scChangeProduct')}</button>
-              <button class="btn btn-secondary" data-action="generate-baseline-chain">${bt('scGenChain')}</button>
-              <button class="btn btn-secondary" data-action="new-chain-link">${bt('scLinkSteps')}</button>
-              <button class="btn btn-primary" data-action="new-chain-node">${bt('scAddMilestone')}</button>
-            </div>
-          </div>
+        const scelles = nodes.filter((n) => ['documented', 'verified_by_reviewer'].includes(n.status) || n.source_document_id).length;
+        const tierDe = (node) => {
+          const code = node.process_code || '';
+          if (node.node_type === 'material') return 'scTier01';
+          if (['ginning', 'spinning'].includes(code)) return 'scTier02';
+          if (['weaving', 'knitting', 'dyeing', 'printing', 'finishing'].includes(code)) return 'scTier03';
+          if (['cutting', 'sewing', 'assembly', 'laundering', 'packaging'].includes(code)) return 'scTier04';
+          return 'scTier05';
+        };
 
-          <!-- Forensic Hero Banner -->
-          <div class="tc-forensic-strip">
-            <div class="tc-forensic-badge">ISO 22095 CERTIFIED CHAIN OF CUSTODY · 98.4% MASS RECONCILIATION</div>
-            <h2 class="tc-forensic-title">${esc(p.name)} · ${bt('cRef')} ${esc(p.reference)}</h2>
-            <p class="tc-forensic-desc">
-              ${esc(bt('cnScChainIntro'))}
-            </p>
-          </div>
-
-          <!-- 7-ECHELON CHAIN OF CUSTODY TIMELINE -->
-          <div class="tc-echelons-grid">
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier01')}</div>
-              <div class="tc-ech-title">${bt('scFieldFarm')}</div>
-              <div class="tc-ech-model" data-tf-demo>Identity Preserved</div>
-              <div class="tc-ech-status" data-tf-demo>✓ İzmir, Türkiye</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier02')}</div>
-              <div class="tc-ech-title">${bt('scGinningCaps')}</div>
-              <div class="tc-ech-model" data-tf-demo>Segregated</div>
-              <div class="tc-ech-status" data-tf-demo>✓ Ege Birlik Mill</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier03')}</div>
-              <div class="tc-ech-title">${bt('scSpinningCaps')}</div>
-              <div class="tc-ech-model" data-tf-demo>Mass Balance 100%</div>
-              <div class="tc-ech-status" data-tf-demo>✓ Haute-Vienne, FR</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier04')}</div>
-              <div class="tc-ech-title">${bt('scKnittingCaps')}</div>
-              <div class="tc-ech-model" data-tf-demo>Identity Preserved</div>
-              <div class="tc-ech-status" data-tf-demo>✓ Barcelos, PT</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier05')}</div>
-              <div class="tc-ech-title">${bt('scFinishingCaps')}</div>
-              <div class="tc-ech-model" data-tf-demo>ZDHC Level 3</div>
-              <div class="tc-ech-status" data-tf-demo>✓ EcoDye Aquitaine</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier06')}</div>
-              <div class="tc-ech-title">${bt('scAssemblyCaps')}</div>
-              <div class="tc-ech-model">SMETA 4-Pillar</div>
-              <div class="tc-ech-status">✓ Atelier Braga, PT</div>
-            </div>
-            <div class="tc-echelon-card">
-              <div class="tc-ech-num">${bt('scTier07')}</div>
-              <div class="tc-ech-title">${esc(bt('cnMbDistribution'))}</div>
-              <div class="tc-ech-model">DPP CIRPASS</div>
-              <div class="tc-ech-status" data-tf-demo>✓ Hub Lyon, FR</div>
-            </div>
-          </div>
-
-          <!-- Core Score KPIs -->
-          <div class="grid score-grid">
-            <div class="card score"><div class="score-name">${bt('scSealedSteps')}</div><div class="score-value">7 / 7</div><div class="node-meta">${bt('scPhysical100')}</div></div>
-            <div class="card score"><div class="score-name">${bt('scGpsPolygons')}</div><div class="score-value">100%</div><div class="node-meta">${bt('scSatellite')}</div></div>
-            <div class="card score"><div class="score-name">${bt('scEvidenceCov')}</div><div class="score-value">98.4%</div><div class="progress"><span style="width:98.4%"></span></div></div>
-            <div class="card score"><div class="score-name">${bt('scCustodyModel')}</div><div class="score-value" style="font-size:18px;color:#0b7656;">ISO 22095</div><div class="node-meta">${bt('scMassChecked')}</div></div>
-          </div>
-
-          <!-- Mass Balance Reconciliation Breakdown -->
-          <div class="tc-reconcil-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-              <div>
-                <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:0 0 2px;">${bt('scMassReconMile')}</h3>
-                <p class="meta" style="margin:0;">${bt('scMassNote')}</p>
+        const demoEchelons = `
+            <div class="tc-echelons-grid" data-tf-demo>
+              <div class="tc-echelon-card">
+                <div class="tc-ech-num">${bt('scTier01')}</div>
+                <div class="tc-ech-title">${bt('scFieldFarm')}</div>
+                <div class="tc-ech-model">Identity Preserved</div>
+                <div class="tc-ech-status">✓ İzmir, Türkiye</div>
               </div>
-              <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;" data-tf-demo>PROCESS LOSS DELTA: 2.4% (COMPLIANT)</span>
-            </div>
+              <div class="tc-echelon-card">
+                <div class="tc-ech-num">${bt('scTier02')}</div>
+                <div class="tc-ech-title">${bt('scGinningCaps')}</div>
+                <div class="tc-ech-model">Segregated</div>
+                <div class="tc-ech-status">✓ Ege Birlik Mill</div>
+              </div>
+              <div class="tc-echelon-card">
+                <div class="tc-ech-num">${bt('scTier03')}</div>
+                <div class="tc-ech-title">${bt('scSpinningCaps')}</div>
+                <div class="tc-ech-model">Mass Balance 100%</div>
+                <div class="tc-ech-status">✓ Haute-Vienne, FR</div>
+              </div>
+              <div class="tc-echelon-card">
+                <div class="tc-ech-num">${bt('scTier04')}</div>
+                <div class="tc-ech-title">${bt('scKnittingCaps')}</div>
+                <div class="tc-ech-model">Identity Preserved</div>
+                <div class="tc-ech-status">✓ Barcelos, PT</div>
+              </div>
+              <div class="tc-echelon-card">
+                <div class="tc-ech-num">${bt('scTier05')}</div>
+                <div class="tc-ech-title">${bt('scFinishingCaps')}</div>
+                <div class="tc-ech-model">ZDHC Level 3</div>
+                <div class="tc-ech-status">✓ EcoDye Aquitaine</div>
+              </div>
+              <div class="tc-echelon-card">
+                <div class="tc-ech-num">${bt('scTier06')}</div>
+                <div class="tc-ech-title">${bt('scAssemblyCaps')}</div>
+                <div class="tc-ech-model">SMETA 4-Pillar</div>
+                <div class="tc-ech-status">✓ Atelier Braga, PT</div>
+              </div>
+              <div class="tc-echelon-card">
+                <div class="tc-ech-num">${bt('scTier07')}</div>
+                <div class="tc-ech-title">${esc(bt('cnMbDistribution'))}</div>
+                <div class="tc-ech-model">DPP CIRPASS</div>
+                <div class="tc-ech-status">✓ Hub Lyon, FR</div>
+              </div>
+            </div>`;
 
-            <div class="table-wrap">
+        const realEchelons = nodes.length ? `
+            <div class="tc-echelons-grid">
+              ${nodes.slice(0, 12).map((n) => `
+                <div class="tc-echelon-card">
+                  <div class="tc-ech-num">${bt(tierDe(n))}</div>
+                  <div class="tc-ech-title">${esc(n.label)}</div>
+                  <div class="tc-ech-model">${esc(n.process_code || n.node_type)}</div>
+                  <div class="tc-ech-status">${n.site_country ? `✓ ${esc(n.site_country)}` : esc(statusLabel(n.status))}</div>
+                </div>`).join('')}
+            </div>` : `
+            <div class="card panel">
+              <div class="empty">
+                <div class="empty-icon">⇄</div>
+                <strong>${esc(bt('cnNotComputed'))}</strong>
+                <p class="meta">${esc(bt('scIntro'))}</p>
+              </div>
+            </div>`;
+
+        const demoTable = `
+            <div class="table-wrap" data-tf-demo>
               <table>
                 <thead>
                   <tr>
@@ -2873,54 +2857,127 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td><strong data-tf-demo>01. Organic Cotton Ginning</strong></td>
-                    <td data-tf-demo>Ege Birlik Ginning Co.</td>
-                    <td data-tf-demo>10,500 kg (Seed)</td>
-                    <td data-tf-demo>3,570 kg (Raw fibre)</td>
-                    <td data-tf-demo>34.0% (Normal)</td>
+                    <td><strong>01. Organic Cotton Ginning</strong></td>
+                    <td>Ege Birlik Ginning Co.</td>
+                    <td>10,500 kg (Seed)</td>
+                    <td>3,570 kg (Raw fibre)</td>
+                    <td>34.0% (Normal)</td>
                     <td><code>TC-CU-881294-01</code></td>
-                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ Segregated</span></td>
+                    <td style="text-align:right"><span class="status status-approved">✓ Segregated</span></td>
                   </tr>
                   <tr>
-                    <td><strong data-tf-demo>02. Combed Spinning Ne 30/1</strong></td>
-                    <td data-tf-demo>Filature de Haute-Vienne</td>
-                    <td data-tf-demo>3,570 kg (Raw fibre)</td>
-                    <td data-tf-demo>3,285 kg (Bobbins)</td>
-                    <td data-tf-demo>92.0% (Yarn yield)</td>
+                    <td><strong>02. Combed Spinning Ne 30/1</strong></td>
+                    <td>Filature de Haute-Vienne</td>
+                    <td>3,570 kg (Raw fibre)</td>
+                    <td>3,285 kg (Bobbins)</td>
+                    <td>92.0% (Yarn yield)</td>
                     <td><code>TC-CU-881294-02</code></td>
-                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ Identity Preserved</span></td>
+                    <td style="text-align:right"><span class="status status-approved">✓ Identity Preserved</span></td>
                   </tr>
                   <tr>
-                    <td><strong data-tf-demo>03. Jersey Knitting 180g</strong></td>
-                    <td data-tf-demo>Barcelos Knitting Mill</td>
-                    <td data-tf-demo>3,285 kg (Bobbins)</td>
-                    <td data-tf-demo>3,150 kg (Rolls)</td>
-                    <td data-tf-demo>95.9% (Normal knit)</td>
+                    <td><strong>03. Jersey Knitting 180g</strong></td>
+                    <td>Barcelos Knitting Mill</td>
+                    <td>3,285 kg (Bobbins)</td>
+                    <td>3,150 kg (Rolls)</td>
+                    <td>95.9% (Normal knit)</td>
                     <td><code>BL-PT-2026-904</code></td>
-                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ Sealed</span></td>
+                    <td style="text-align:right"><span class="status status-approved">✓ Sealed</span></td>
                   </tr>
                   <tr>
-                    <td><strong data-tf-demo>04. Organic Dyeing & Washing</strong></td>
-                    <td data-tf-demo>EcoDye Aquitaine</td>
-                    <td data-tf-demo>3,150 kg (Rolls)</td>
-                    <td data-tf-demo>3,085 kg (Dyed)</td>
-                    <td data-tf-demo>97.9% (ZDHC fixation)</td>
+                    <td><strong>04. Organic Dyeing & Washing</strong></td>
+                    <td>EcoDye Aquitaine</td>
+                    <td>3,150 kg (Rolls)</td>
+                    <td>3,085 kg (Dyed)</td>
+                    <td>97.9% (ZDHC fixation)</td>
                     <td><code>ZDHC-LOT-089</code></td>
-                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ Validated</span></td>
+                    <td style="text-align:right"><span class="status status-approved">✓ Validated</span></td>
                   </tr>
                   <tr>
-                    <td><strong data-tf-demo>05. Cutting & Assembly</strong></td>
+                    <td><strong>05. Cutting & Assembly</strong></td>
                     <td>Atelier Braga & Co</td>
-                    <td data-tf-demo>3,085 kg (Finished fabric)</td>
-                    <td data-tf-demo>16,200 finished pieces</td>
-                    <td data-tf-demo>185g / average piece</td>
+                    <td>3,085 kg (Finished fabric)</td>
+                    <td>16,200 finished pieces</td>
+                    <td>185g / average piece</td>
                     <td><code>TC-CU-881294-05</code></td>
-                    <td style="text-align:right"><span class="status status-approved" data-tf-demo>✓ 100% reconciled</span></td>
+                    <td style="text-align:right"><span class="status status-approved">✓ 100% reconciled</span></td>
                   </tr>
                 </tbody>
               </table>
+            </div>`;
+
+        const realMassBalance = recon ? `
+            <div style="display:grid;gap:10px;font-size:12px;">
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
+                <span>${bt('scMassRecon')}</span><strong>${mesure(recon.coverageRatioPct, '%')}</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
+                <span>${bt('scAllocatedKg')}</span><strong>${mesure(mb.totalAllocatedKg === null || mb.totalAllocatedKg === undefined ? null : Number(mb.totalAllocatedKg))} kg</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0eb;">
+                <span>${bt('scCustodyModel')}</span><strong><code>${esc(recon.verdict)}</code></strong>
+              </div>
+              ${recon.summary ? `<p class="meta" style="margin:4px 0 0;">${esc(recon.summary)}</p>` : ''}
+            </div>` : `
+            <div class="empty">
+              <strong>${esc(bt('cnNotComputed'))}</strong>
+              <p class="meta">${esc(bt('mbIntro'))}</p>
+            </div>`;
+
+        return `
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">${bt('scEyebrow')}</div>
+              <h1>${bt('scMultiTier')}</h1>
+              <p>${bt('scIntro')}</p>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" data-demo-action="1">${bt('scExportForensic')}</button>
+              ${p ? `<button class="btn btn-secondary" data-action="select-supply-chain-product">${bt('scChangeProduct')}</button>
+              <button class="btn btn-secondary" data-action="generate-baseline-chain">${bt('scGenChain')}</button>
+              <button class="btn btn-secondary" data-action="new-chain-link">${bt('scLinkSteps')}</button>
+              <button class="btn btn-primary" data-action="new-chain-node">${bt('scAddMilestone')}</button>` : ''}
             </div>
           </div>
+
+          ${!p ? `<div class="card panel"><div class="empty">
+              <div class="empty-icon">⇄</div>
+              <strong>${esc(bt('cnNotComputed'))}</strong>
+              <p class="meta">${esc(bt('scIntro'))}</p>
+              <button class="btn btn-primary btn-small" data-view="products">${esc(bt('products'))}</button>
+            </div></div>` : `
+          <!-- Forensic Hero Banner -->
+          <div class="tc-forensic-strip">
+            ${demoMode
+              ? '<div class="tc-forensic-badge" data-tf-demo>ISO 22095 CERTIFIED CHAIN OF CUSTODY · 98.4% MASS RECONCILIATION</div>'
+              : `<div class="tc-forensic-badge">${esc(bt('scMultiTier'))}</div>`}
+            <h2 class="tc-forensic-title">${esc(p.name)} · ${bt('cRef')} ${esc(p.reference)}</h2>
+            <p class="tc-forensic-desc">
+              ${esc(bt('cnScChainIntro'))}
+            </p>
+          </div>
+
+          <!-- CHAIN OF CUSTODY TIMELINE -->
+          ${demoMode ? demoEchelons : realEchelons}
+
+          <!-- Core Score KPIs -->
+          <div class="grid score-grid">
+            <div class="card score"><div class="score-name">${bt('scSealedSteps')}</div><div class="score-value">${summary ? `${moneyless(scelles)} / ${moneyless(nodes.length)}` : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`}</div><div class="node-meta">${esc(bt('scPhysical100'))}</div></div>
+            <div class="card score"><div class="score-name">${bt('scGpsPolygons')}</div><div class="score-value">${mesureInconnue(null)}</div><div class="node-meta">${bt('scSatellite')}</div></div>
+            <div class="card score"><div class="score-name">${bt('scEvidenceCov')}</div><div class="score-value" style="font-size:${summary ? '32px' : '13px'};">${summary ? mesure(summary.documentationRate, '%') : esc(bt('cnNotCalculated'))}</div><div class="progress"><span style="width:${summary ? pct(summary.documentationRate) : 0}%"></span></div></div>
+            <div class="card score"><div class="score-name">${bt('scCustodyModel')}</div><div class="score-value" style="font-size:18px;color:#0b7656;">${demoMode ? '<span data-tf-demo>ISO 22095</span>' : `<span class="uncomputed" style="font-size:13px;">${esc(bt('cnNotComputed'))}</span>`}</div><div class="node-meta">${bt('scMassChecked')}</div></div>
+          </div>
+
+          <!-- Mass Balance Reconciliation Breakdown -->
+          <div class="tc-reconcil-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <div>
+                <h3 style="font-size:16px;font-weight:800;color:#17231f;margin:0 0 2px;">${bt('scMassReconMile')}</h3>
+                <p class="meta" style="margin:0;">${bt('scMassNote')}</p>
+              </div>
+              ${demoMode ? '<span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;" data-tf-demo>PROCESS LOSS DELTA: 2.4% (COMPLIANT)</span>' : ''}
+            </div>
+            ${demoMode ? demoTable : realMassBalance}
+          </div>`}
         `;
       }
 
@@ -2964,7 +3021,7 @@
                 ${g.blocking ? `<span class="status status-review_required">${esc(bt('dpBlocking'))}</span>` : ''}
               </div>
               <p class="meta">${esc(bt('dpReqCode'))} <code>${esc(g.key)}</code></p>
-              <p class="meta" data-tf-demo>${names}${more}</p>
+              <p class="meta">${names}${more}</p>
             </div>
             <div class="dp-gap-side">
               <div class="dp-gap-count"><strong>${esc(moneyless(g.productCount || 0))}</strong><span>${esc(bt('dpAffectedProducts'))}</span></div>
@@ -2978,7 +3035,9 @@
 
           <div class="card panel dp-portfolio-hero">
             <div class="dp-hero-score">
-              <strong>${esc(Number(f.readinessScore ?? 0).toFixed(1))}%</strong>
+              <strong>${total > 0 && Number.isFinite(Number(f.readinessScore))
+                ? esc(Number(f.readinessScore).toFixed(1)) + '%'
+                : `<span class="uncomputed" style="font-size:16px;">${esc(bt('cnNotComputed'))}</span>`}</strong>
               <span>${esc(bt('dpPortfolioScore'))}</span>
               <p class="meta dp-disclaimer">${esc(bt('dpNotCertification'))}</p>
             </div>
@@ -3017,19 +3076,26 @@
         }
 
         const p = state.selectedDppProduct;
-        const dpp = state.dpp || {
-          readinessStatus: 'not_started',
-          statusLabel: 'Not started',
-          completionScore: 0,
-          totalRequirements: 9,
-          metRequirements: 0,
-          blockingCount: 0,
-          pillars: {},
-          missingFields: [],
-          blockingIssues: [],
-          canMarkReadyToPublish: false,
-          isReadyToPublish: false,
-        };
+        const dpp = state.dpp;
+        // Aucun profil charge n'est pas « 0 % sur 9 exigences » : c'est un
+        // resultat absent. On le dit, et on offre le recalcul.
+        if (!dpp) {
+          return `<div class="page-head">
+              <div>
+                <div class="eyebrow">${bt('dpEyebrow')}</div>
+                <h1>${esc(p.name)}</h1>
+                <p>${bt('dpRef')} <strong>${esc(p.reference)}</strong> · ${esc(bt('cnCategory'))} ${esc(p.category || bt('dpNotSpecified'))}</p>
+              </div>
+              <div class="actions">
+                <button class="btn btn-secondary" data-action="dpp-back-portfolio">${bt('dpBackToPortfolio')}</button>
+                <button class="btn btn-primary" data-action="compute-dpp">${bt('dpRecalculate')}</button>
+              </div>
+            </div>
+            <div class="card panel"><div class="empty">
+              <strong>${esc(bt('cnNotComputed'))}</strong>
+              <p class="meta">${esc(bt('dpEmptyHint'))}</p>
+            </div></div>`;
+        }
 
         const pillars = dpp.pillars || {};
         const scoreColor = dpp.completionScore >= 80 ? 'var(--green)' : dpp.completionScore >= 50 ? '#c68b1a' : 'var(--red)';
@@ -3573,10 +3639,22 @@
         state.selectedProduct = state.products.find((p) => p.id === id);
         state.view = 'quality';
         state.quality = null;
+        state.pefAssessment = null;
+        state.greenClaimsAudit = null;
+        state.qualityFilter = 'all';
         render();
         if (!state.demo) {
           try {
-            state.quality = await api(`/api/quality/products/${encodeURIComponent(id)}`);
+            // PEF et green claims sont deux lectures independantes du meme
+            // produit : un echec de l'une ne doit pas masquer l'autre.
+            const [qualite, pef, claims] = await Promise.all([
+              api(`/api/quality/products/${encodeURIComponent(id)}`),
+              api(`/api/products/${encodeURIComponent(id)}/pef`).catch(() => null),
+              api(`/api/products/${encodeURIComponent(id)}/green-claims`).catch(() => null),
+            ]);
+            state.quality = qualite;
+            state.pefAssessment = pef?.assessment || null;
+            state.greenClaimsAudit = claims?.audit || null;
             render();
           } catch (e) {
             notify(e.message, true);
@@ -3591,6 +3669,33 @@
           };
           render();
         }
+      }
+
+      async function calculatePef() {
+        if (!state.selectedProduct) return;
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const res = await api(`/api/products/${encodeURIComponent(state.selectedProduct.id)}/pef/calculate`, {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        state.pefAssessment = res.assessment || null;
+        notify(bt('qcComputePef'));
+        render();
+      }
+
+      async function auditGreenClaims(form) {
+        if (!state.selectedProduct) return;
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const data = new FormData(form);
+        const claimText = String(data.get('claimText') || '').trim();
+        if (!claimText) { notify(bt('qcClaim'), true); return; }
+        const res = await api(`/api/products/${encodeURIComponent(state.selectedProduct.id)}/green-claims`, {
+          method: 'POST',
+          body: JSON.stringify({ claimText }),
+        });
+        state.greenClaimsAudit = res.audit || null;
+        notify(bt('qcAuditClaims'));
+        render();
       }
 
       async function computeQuality() {
@@ -3748,6 +3853,7 @@
         state.selectedSupplyChainProduct = state.products.find((p) => p.id === productId) || null;
         state.view = 'supplyChain';
         state.supplyChain = null;
+        state.massBalance = null;
         render();
         if (state.demo) {
           state.supplyChain = demoSupplyChain();
@@ -3755,7 +3861,14 @@
           return;
         }
         try {
-          state.supplyChain = await api(`/api/products/${encodeURIComponent(productId)}/supply-chain`);
+          // Le bilan matiere est une seconde lecture, non bloquante : une
+          // absence de reconciliation ne doit pas masquer la chaine.
+          const [chaine, bilan] = await Promise.all([
+            api(`/api/products/${encodeURIComponent(productId)}/supply-chain`),
+            api(`/api/products/${encodeURIComponent(productId)}/mass-balance`).catch(() => null),
+          ]);
+          state.supplyChain = chaine;
+          state.massBalance = bilan;
           render();
         } catch (e) {
           notify(e.message, true);
@@ -4026,14 +4139,21 @@
         };
       }
 
-      async function loadDppPortfolio() {
+      async function loadDppPortfolio(options = {}) {
         if (state.demo) { state.dppPortfolio = demoDppPortfolio(); render(); return; }
+        if (state.dppPortfolioLoading) return;
+        state.dppPortfolioLoading = true;
         try {
-          const org = state.selectedOrganizationId ? `?organizationId=${encodeURIComponent(state.selectedOrganizationId)}` : '';
+          const organisation = state.activeOrganizationId || state.selectedOrganizationId;
+          const org = organisation ? `?organizationId=${encodeURIComponent(organisation)}` : '';
           state.dppPortfolio = await api(`/api/dpp/portfolio${org}`);
           render();
         } catch (e) {
-          notify(e.message, true);
+          // Le chargement d'arriere-plan ne doit pas remplacer le tableau de
+          // bord par une erreur : l'indicateur reste « non calculé ».
+          if (!options.silent) notify(e.message, true);
+        } finally {
+          state.dppPortfolioLoading = false;
         }
       }
 
@@ -4127,6 +4247,17 @@
           // Le garde suit dppScope, pas selectedDppProduct : un produit reste
           // pre-selectionne en memoire alors que l'ecran montre l'ensemble.
           if (state.view === 'dpp' && state.dppScope !== 'product' && !state.dppPortfolio) loadDppPortfolio();
+          // Les ecrans qualite et tracabilite ont besoin d'un produit : on
+          // charge celui qui est affiche au lieu de laisser « non calculé »
+          // alors qu'une route peut repondre.
+          if (state.view === 'quality' && !state.quality) {
+            const candidat = state.selectedProduct || state.products[0];
+            if (candidat) loadQuality(candidat.id);
+          }
+          if (state.view === 'supplyChain' && !state.supplyChain) {
+            const candidat = state.selectedSupplyChainProduct || state.products[0];
+            if (candidat) loadSupplyChain(candidat.id);
+          }
         }));
         document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async (event) => {
           const action = el.dataset.action;
@@ -4158,6 +4289,11 @@
             if (action === 'select-supply-chain-product') { state.selectedSupplyChainProduct = null; state.supplyChain = null; render(); }
             if (action === 'select-dpp-product') { state.selectedDppProduct = null; state.dpp = null; render(); }
             if (action === 'compute-quality') await computeQuality();
+            if (action === 'calculate-pef') await calculatePef();
+            if (action === 'audit-green-claims') {
+              const greenForm = document.getElementById('green-claim-form');
+              if (greenForm) await auditGreenClaims(greenForm);
+            }
             if (action === 'compute-dpp') await computeDpp();
             if (action === 'publish-dpp') await publishDpp();
             if (action === 'generate-baseline-chain') await generateBaselineChain();
@@ -4227,6 +4363,7 @@
         document.getElementById('chain-node-form')?.addEventListener('submit', (e) => { e.preventDefault(); addChainNode(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('chain-link-form')?.addEventListener('submit', (e) => { e.preventDefault(); addChainLink(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('waive-issue-form')?.addEventListener('submit', (e) => { e.preventDefault(); waiveIssue(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('green-claim-form')?.addEventListener('submit', (e) => { e.preventDefault(); auditGreenClaims(e.currentTarget).catch((err) => notify(err.message, true)); });
       }
 
       async function boot() {

@@ -49,6 +49,7 @@
     "test:clerk-proxy": "npx tsx scripts/test_clerk_proxy.ts",
     "smoke:clerk-production": "node scripts/smoke_clerk_production.mjs",
     "test:brand-console:browser": "node scripts/test_brand_console_browser.mjs",
+    "test:brand-console:empty": "node scripts/test_brand_console_empty_tenant.mjs",
     "test:quality-center:browser": "node scripts/test_quality_center_browser.mjs",
     "test:supplier-portal": "node scripts/test_supplier_portal.mjs",
     "test:private-storage": "node scripts/test_private_storage.mjs",
