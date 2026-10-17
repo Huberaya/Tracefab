@@ -122,10 +122,43 @@ for (const mention of mentions) {
   );
   const jsonldHits = hits.filter((s) => s.inJsonLd);
   for (const hit of jsonldHits) {
-    // Le JSON-LD statique de la page démo existe, mais doit être réécrit ou
-    // neutralisé par dpp.2.js — vérifié plus bas.
-    ok(hit.inJsonLd, `« ${mention} » dans le JSON-LD statique couvert par la réécriture JS`);
+    // REVUE 2C.38 : la réécriture JS ne suffit pas — la réponse initiale
+    // (avant hydratation) est lue par les moteurs de recherche, curl et les
+    // clients sans JavaScript. Aucune mention fictive n'est tolérée dans le
+    // JSON-LD statique, même promise à une réécriture.
+    ok(false, `« ${mention} » présente dans le JSON-LD statique — exposée dans la réponse initiale`);
+    void hit;
   }
+  if (jsonldHits.length === 0) {
+    ok(true, `« ${mention} » absente du JSON-LD statique (réponse initiale neutre)`);
+  }
+}
+
+/* --- réponse initiale : JSON-LD statique et métadonnées sans affirmation --- */
+{
+  const blocs = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
+  ok(blocs.length >= 1, 'bloc JSON-LD statique présent');
+  for (const bloc of blocs) {
+    const contenu = bloc[1];
+    let parseOk = true; let doc = null;
+    try { doc = JSON.parse(contenu); } catch { parseOk = false; }
+    ok(parseOk, 'JSON-LD statique analysable (JSON valide)');
+    if (!parseOk) continue;
+    ok(!('certifications' in doc) || (Array.isArray(doc.certifications) && doc.certifications.length === 0),
+      'JSON-LD statique sans certification déclarée');
+    ok(!('verificationSignature' in doc), 'JSON-LD statique sans signature de vérification inventée');
+    ok(!('traceability' in doc), 'JSON-LD statique sans provenance déclarée');
+    ok(!/atelier-demo|Atelier Demo/i.test(contenu), 'JSON-LD statique sans marque de démonstration');
+    ok(!/CU-881294|21\.HPT\.94112|GOTS|OEKO-TEX|SMETA|Made in Portugal|Portugal/i.test(contenu),
+      'JSON-LD statique sans certification ni conformité inventée');
+    const marque = doc.brand;
+    ok(marque === undefined || marque === null,
+      'JSON-LD statique sans marque présentée comme réelle');
+  }
+  const head = html.slice(0, html.indexOf('</head>'));
+  ok(!/Atelier Demo/i.test(head), 'métadonnées <head> sans marque de démonstration');
+  ok(!/Organic Cotton Essential/i.test(head), 'métadonnées <head> sans produit de démonstration');
+  ok(!/GOTS|OEKO-TEX|2026-FW|certified materials/i.test(head), 'métadonnées <head> sans certification fictive');
 }
 
 // Le bandeau de démonstration doit rester visible sans identifiant.

@@ -3,19 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title data-i18n="dpp.metaTitle">Digital Product Passport — Organic Cotton Essential | TRACEFAB</title>
-  <meta name="description" content="Digital Product Passport (DPP) in ESPR / CIRPASS format for the Organic Cotton Essential style by Atelier Demo. Traceability, composition and repairability data." data-i18n-attr="content:dpp.metaDesc">
+  <title data-i18n="dpp.metaTitle">Digital Product Passport | TRACEFAB</title>
+  <meta name="description" content="Digital Product Passport (DPP) in ESPR / CIRPASS format. Traceability, composition and repairability data published with the passport record." data-i18n-attr="content:dpp.metaDesc">
 
   <!-- Open Graph / Meta -->
-  <meta property="og:title" content="DPP — Organic Cotton Essential">
-  <meta property="og:description" content="Documented traceability from fibre to finished garment, in the format of the European ESPR regulation. A readiness indicator, not a certification." data-i18n-attr="content:dpp.ogDesc">
+  <meta property="og:title" content="Digital Product Passport — TRACEFAB">
+  <meta property="og:description" content="Digital Product Passport (DPP) in ESPR / CIRPASS format. A readiness indicator, not a certification." data-i18n-attr="content:dpp.ogDesc">
   <meta property="og:type" content="product">
 
   <!-- Google Fonts -->
   <!-- Polices locales versionnées (pas de CDN Google) -->
   <link rel="stylesheet" href="/assets/css/fonts.css?v=c78cbebf">
 
-  <!-- Schema JSON-LD de passeport produit, au format CIRPASS / ESPR -->
+  <!--
+    JSON-LD statique NEUTRE : aucune valeur de démonstration, certification
+    inventée ou affirmation de provenance n'est exposée dans la réponse
+    initiale (avant hydratation). Les données réelles du passeport publié
+    sont écrites ici par dpp.2.js (jsonLdFor) au chargement ; sans passeport
+    publié, le bloc reste neutre (neutralizeForMissingPassport).
+  -->
   <script type="application/ld+json" id="dpp-jsonld">
   {
     "@context": [
@@ -23,67 +29,7 @@
       { "espr": "https://ec.europa.eu/commission/presscorner/detail/en/ip_24_1749#" }
     ],
     "@type": "Product",
-    "identifier": "urn:epc:id:sgtin:3760123456.001.2026",
-    "name": "Organic Cotton Essential",
-    "model": "AT-ESS-001",
-    "sku": "AT-ESS-001-NVY-M",
-    "gtin": "3760123456789",
-    "brand": {
-      "@type": "Brand",
-      "name": "Atelier Demo",
-      "legalName": "Atelier Demo SAS"
-    },
-    "description": "Combed organic cotton jersey T-shirt, 185 gsm, made in Portugal in compliance with SMETA social standards and GOTS environmental standards.",
-    "countryOfOrigin": "PT",
-    "countryOfDesign": "FR",
-    "material": [
-      {
-        "@type": "DefinedTerm",
-        "name": "Combed organic cotton (GOTS certified)",
-        "percentage": 85,
-        "termCode": "COTTON_BIO",
-        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
-      },
-      {
-        "@type": "DefinedTerm",
-        "name": "Pre-consumer recycled cotton (GRS certified)",
-        "percentage": 15,
-        "termCode": "COTTON_REC",
-        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
-      }
-    ],
-    "certifications": [
-      {
-        "standard": "Global Organic Textile Standard (GOTS)",
-        "certificateNumber": "CU-881294-GOTS-2026",
-        "issuer": "Control Union",
-        "status": "active"
-      },
-      {
-        "standard": "OEKO-TEX Standard 100",
-        "certificateNumber": "21.HPT.94112",
-        "issuer": "Hohenstein Institute",
-        "status": "active"
-      }
-    ],
-    "traceability": {
-      "tier4_raw_fiber": { "country": "PT", "facility": "Quinta de São Martinho", "provenance": "100% regenerative cotton" },
-      "tier3_spinning": { "country": "PT", "facility": "Fiação Norte Lda", "process": "Combed yarn spinning Ne 30/1" },
-      "tier3_weaving": { "country": "PT", "facility": "Malhas do Ave", "process": "Circular jersey knitting" },
-      "tier2_dyeing": { "country": "PT", "facility": "Tinturaria Braga Lda", "process": "Low-environmental-impact dyeing" },
-      "tier1_assembly": { "country": "PT", "facility": "Nhãn Textile Confeção", "process": "Cutting, sewing and pressing" }
-    },
-    "repairAndCare": {
-      "washingInstructions": "Wash at 30°C on a delicate cycle. Open-air drying recommended. Iron gently on the reverse.",
-      "recyclabilityRate": "98%",
-      "repairServicesUrl": "https://atelier-demo.fr/repair-program",
-      "takeBackUrl": "https://atelier-demo.fr/second-life"
-    },
-    "verificationSignature": {
-      "signedBy": "TRACEFAB Cryptographic Ledger",
-      "timestamp": "2026-10-06T06:50:00Z",
-      "evidenceHash": "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    }
+    "name": "Digital Product Passport"
   }
   </script>
 
