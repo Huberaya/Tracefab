@@ -1,7 +1,8 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabRequestContext } from '../../_lib/context.js';
+import { isTenantError } from '../../_lib/tenant.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 
 const ISSUE_SEVERITIES = new Set(['info', 'warning', 'blocking']);
@@ -61,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const severityClause = severity ? Prisma.sql`AND i.severity = ${severity}::quality_issue_severity` : Prisma.empty;
     const statusClause = status ? Prisma.sql`AND i.status = ${status}::quality_issue_status` : Prisma.empty;
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const issueRows = await tx.$queryRaw<OverviewIssue[]>`
         SELECT
           i.id,
@@ -83,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         LEFT JOIN suppliers supplier ON supplier.id = i.supplier_id
         LEFT JOIN organizations supplier_org ON supplier_org.id = supplier.organization_id
         WHERE (
-          tracefab_can_access_org(i.owner_organization_id)
+          tracefab_in_active_tenant(i.owner_organization_id)
           OR (
             i.supplier_id IS NOT NULL
             AND tracefab_can_access_shared_subject(i.owner_organization_id, 'supplier', i.supplier_id)
@@ -110,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             s.consistency,
             s.computed_at AS "computedAt"
           FROM data_quality_scores s
-          WHERE tracefab_can_access_org(s.owner_organization_id)
+          WHERE tracefab_in_active_tenant(s.owner_organization_id)
           ORDER BY COALESCE(s.product_id, s.supplier_id), s.computed_at DESC
         )
         SELECT
@@ -128,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         SELECT severity, status, count(*)::bigint AS count
         FROM data_quality_issues i
         WHERE (
-          tracefab_can_access_org(i.owner_organization_id)
+          tracefab_in_active_tenant(i.owner_organization_id)
           OR (
             i.supplier_id IS NOT NULL
             AND tracefab_can_access_shared_subject(i.owner_organization_id, 'supplier', i.supplier_id)
@@ -159,6 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, result);
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error('GET /api/quality/overview failed', error);
     return json(res, 500, { error: 'internal_server_error' });

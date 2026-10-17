@@ -999,6 +999,8 @@ window.TF_I18N_BUNDLES.en = {
     mbReconcile: "Product reconciliation",
     iaDirectAction: "Direct action",
     cnAuthUnavailable: "Sign-in unavailable",
+    cnNoActiveTenantTitle: "No active organisation",
+    cnNoActiveTenantBody: "Your account has no brand organisation. Ask an administrator to invite you, then reload this page.",
     dpPortfolioEyebrow: "Portfolio readiness",
     dpPortfolioTitle: "What is missing across your catalogue",
     dpPortfolioIntro: "Aggregated readiness across every product. Each gap below lists the products it blocks and opens the screen that fixes it.",

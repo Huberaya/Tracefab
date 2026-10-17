@@ -26,8 +26,19 @@ const catalog = JSON.parse(await readFile(new URL('../catalog/questionnaires/pro
 assert(index.includes("/^quality\\/overview$/"), 'quality overview route is not registered');
 assert(index.includes("/^operations\\/overview$/"), 'operations overview route is not registered');
 assert(index.includes("/^webhooks\\/clerk$/"), 'Clerk webhook route is not registered');
-assert(overview.includes('withTracefabUserContext'), 'quality overview does not establish RLS context');
-assert(overview.includes('tracefab_can_access_org') && overview.includes('tracefab_can_access_shared_subject'), 'quality overview access guards are incomplete');
+// `withTracefabRequestContext` arme le meme contexte RLS que
+// `withTracefabUserContext`, et lit en plus le locataire actif dans la
+// requete : un oubli d'armement devient impossible a ecrire. L'agregat
+// de qualite doit aussi borner au locataire actif, pas a l'union des
+// organisations du compte (defaut Production du 2026-10-17).
+assert(overview.includes('withTracefabRequestContext'), 'quality overview does not establish RLS context');
+assert(overview.includes('tracefab_in_active_tenant'), 'quality overview must scope to the active tenant');
+// Le garde d'acces etait `tracefab_can_access_org` : vrai pour TOUTES les
+// organisations du compte. Il est remplace par `tracefab_in_active_tenant`,
+// strictement plus etroit (le locataire actif, pas l'union des
+// adherences). Le chemin de partage explicite est conserve intact.
+assert(overview.includes('tracefab_in_active_tenant') && overview.includes('tracefab_can_access_shared_subject'), 'quality overview access guards are incomplete');
+assert(!overview.includes('tracefab_can_access_org('), 'quality overview must not accept every organization of the account');
 assert(overview.includes('invalid_quality_severity') && overview.includes('invalid_quality_status') && overview.includes('invalid_quality_limit'), 'quality filters are not strictly validated');
 assert(
   qualityCenter.includes("q('actionAck')") && qualityCenter.includes("q('actionWaive')")

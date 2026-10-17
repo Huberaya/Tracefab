@@ -6,6 +6,10 @@
         clerk: null,
         loading: true,
         configError: null,
+        // Aucun locataire actif exploitable : compte sans organisation de
+        // marque, ou adherences pas encore chargees. Affiche explicitement,
+        // jamais remplace par le jeu de demonstration.
+        tenantError: null,
         user: null,
         memberships: [],
         organizations: [],
@@ -307,11 +311,24 @@
         setTimeout(() => { state.toast = null; render(); }, 3500);
       }
 
+      const TENANT_HEADER = 'X-Tracefab-Organization-Id';
+      // Routes qui determinent le locataire actif : elles ne peuvent pas le
+      // porter, puisqu'il n'est pas encore connu.
+      const TENANT_FREE_PATHS = /^\/api\/(me|organizations|config)(\?|$)/;
+
       async function api(path, options = {}) {
         const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
         if (!state.demo && state.clerk?.session) {
           const token = await state.clerk.session.getToken();
           if (token) headers.Authorization = `Bearer ${token}`;
+        }
+        // Locataire actif sur CHAQUE appel prive. Le serveur l'exige : une
+        // requete qui ne nomme pas son locataire recoit 400
+        // `organization_id_required` et n'est jamais elargie au compte entier.
+        // `/api/me` et `/api/organizations` determinent le locataire : ils sont
+        // les seuls a pouvoir s'en passer.
+        if (!state.demo && state.activeOrganizationId && !TENANT_FREE_PATHS.test(path)) {
+          headers[TENANT_HEADER] = state.activeOrganizationId;
         }
         const response = await fetch(path, { ...options, headers });
         const payload = await response.json().catch(() => ({}));
@@ -1098,20 +1115,129 @@
         };
       }
 
+      // ---------------------------------------------------------------------
+      // Contexte de locataire actif
+      // ---------------------------------------------------------------------
+      // Incident Production du 2026-10-17 : un administrateur membre de Ginger
+      // et de Tracefab Recette Production voyait, depuis Ginger, le produit
+      // brouillon RECETTE-DPP-20261017 qui n'appartient qu'au tenant de recette.
+      //
+      // Deux defauts cote client y contribuaient :
+      //   1. les listes etaient chargees SANS nommer le locataire, et le serveur
+      //      retombait alors sur toutes les organisations du compte ;
+      //   2. `activeOrganizationId` etait resolu APRES le chargement, donc le
+      //      selecteur d'organisation ne pouvait pas cadrer la premiere lecture.
+      //
+      // Le locataire est desormais resolu avant toute lecture metier, porte par
+      // un en-tete sur chaque appel prive, et persiste pour qu'un rechargement
+      // ne bascule pas silencieusement sur la premiere organisation.
+      const TENANT_STORAGE_KEY = 'tracefab_active_organization_id';
+
+      // Vide tout ce qui appartient au locataire precedent. Appelé AVANT le
+      // rechargement : pendant l'attente, l'ecran ne doit afficher aucune donnee
+      // de l'autre tenant, pas meme une fraction de seconde.
+      function resetTenantState() {
+        state.suppliers = [];
+        state.materials = [];
+        state.products = [];
+        state.requests = [];
+        state.questionnaires = [];
+        state.schemaCatalog = [];
+        state.schemaBindings = [];
+        state.schemaBindingsError = null;
+        state.productDetailError = null;
+        state.selectedRequest = null;
+        state.selectedProduct = null;
+        state.selectedProductDetail = null;
+        state.selectedSupplier = null;
+        state.selectedSupplyChainProduct = null;
+        state.selectedDppProduct = null;
+        state.quality = null;
+        state.qualityFilter = 'all';
+        // null = aucune source chargee ; [] = source chargee et vide. Remettre
+        // null, jamais [] : un echec de chargement ne doit pas se lire « vide ».
+        state.documents = null;
+        state.certifications = null;
+        state.pefAssessment = null;
+        state.greenClaimsAudit = null;
+        state.supplyChain = null;
+        state.massBalance = null;
+        state.dpp = null;
+        state.dppPortfolio = null;
+        state.dppPortfolioLoading = false;
+        state.dppScope = 'portfolio';
+        state.modal = null;
+        state.modalIssueId = null;
+        state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false };
+        state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false };
+        state.tenantError = null;
+      }
+
+      // Resout le locataire actif a partir des adherions reelles. Ne devine
+      // jamais : si le compte n'a aucune organisation de marque, il rend null et
+      // l'appelant affiche un etat explicite, pas un jeu de demonstration.
+      function resolveActiveOrganization(brands) {
+        const valid = new Set(brands.map((m) => m.organization_id));
+        if (state.activeOrganizationId && valid.has(state.activeOrganizationId)) {
+          return state.activeOrganizationId;
+        }
+        let stored = null;
+        try { stored = localStorage.getItem(TENANT_STORAGE_KEY); } catch { stored = null; }
+        if (stored && valid.has(stored)) return stored;
+        return brands[0]?.organization_id || null;
+      }
+
+      function setActiveOrganization(organizationId) {
+        if (!organizationId || organizationId === state.activeOrganizationId) return;
+        state.activeOrganizationId = organizationId;
+        try { localStorage.setItem(TENANT_STORAGE_KEY, organizationId); } catch { /* stockage indisponible : la session reste coherente */ }
+        // Vidage AVANT le rechargement : aucun flash de donnees du tenant
+        // precedent, y compris sur un reseau lent.
+        resetTenantState();
+        state.view = 'overview';
+        state.loading = true;
+        render();
+        sync().catch((error) => { state.loading = false; state.configError = error.message; render(); });
+      }
+
       async function sync() {
         state.loading = true; render();
         try {
           if (state.demo) { demoData(); state.loading = false; render(); return; }
-          const [me, orgs, supplierPayload, materials, products, requests, questionnaires, schemas, certificates] = await Promise.all([
-            api('/api/me'), api('/api/organizations'), api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product'),
+
+          // Phase 1 — identite et adherions. Ces deux routes ne portent aucune
+          // donnee de locataire : elles servent justement a determiner lequel
+          // est actif.
+          const [me, orgs] = await Promise.all([api('/api/me'), api('/api/organizations')]);
+          state.user = me.user;
+          state.memberships = me.memberships || [];
+          state.organizations = orgs.organizations || [];
+
+          const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
+          state.activeOrganizationId = resolveActiveOrganization(brands);
+          if (!state.activeOrganizationId) {
+            // Aucune organisation de marque : etat explicite, jamais un repli
+            // sur un jeu de demonstration.
+            state.tenantError = 'no_brand_organization';
+            state.loading = false;
+            render();
+            return;
+          }
+          try { localStorage.setItem(TENANT_STORAGE_KEY, state.activeOrganizationId); } catch { /* ignore */ }
+
+          // Rien du locataire precedent ne survit au chargement du suivant.
+          resetTenantState();
+
+          // Phase 2 — donnees du locataire actif. Chaque appel porte l'en-tete
+          // de locataire (voir `api`) ; le serveur refuse une requete privee qui
+          // ne nomme pas son locataire.
+          const [supplierPayload, materials, products, requests, questionnaires, schemas, certificates] = await Promise.all([
+            api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product'),
             // Les certificats de transaction sont la seule source de
             // certificats exposee a une marque. Un echec laisse la valeur a
             // null (« non calculé ») au lieu de la confondre avec zero.
             api('/api/mass-balance/certificates').catch(() => null),
           ]);
-          state.user = me.user;
-          state.memberships = me.memberships || [];
-          state.organizations = orgs.organizations || [];
           state.suppliers = supplierPayload.suppliers || [];
           state.materials = materials.materials || [];
           state.products = products.products || [];
@@ -1129,8 +1255,6 @@
               source: 'transaction_certificate',
             }))
             : null;
-          const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
-          state.activeOrganizationId = state.activeOrganizationId || brands[0]?.organization_id || null;
           state.loading = false;
           render();
           // La preparation DPP de la vue d'ensemble vient de l'agregat reel.
@@ -1459,6 +1583,9 @@
       }
 
       function render() {
+        if (state.tenantError && !state.demo) {
+          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>${esc(bt('cnNoActiveTenantTitle'))}</h1><p>${esc(bt('cnNoActiveTenantBody'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
+        }
         if (state.configError && !state.demo && !state.user) {
           app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>${esc(bt('cnAuthUnavailable'))}</h1><p>${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
         }
@@ -3570,7 +3697,7 @@
       async function exportCatalog() {
         if (state.demo) { downloadTextFile('tracefab-product-catalog-demo.csv', demoCatalogCsv()); notify(bt('cnNCatalogExportedDemo')); return; }
         const token = await state.clerk?.session?.getToken();
-        const response = await fetch(`/api/catalog/products/export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const response = await fetch(`/api/catalog/products/export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: Object.assign(token ? { Authorization: `Bearer ${token}` } : {}, state.activeOrganizationId ? { [TENANT_HEADER]: state.activeOrganizationId } : {}) });
         if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.message || payload.error || `request_failed_${response.status}`); }
         downloadTextFile('tracefab-product-catalog.csv', await response.text());
         notify(bt('cnNCatalogExported'));
@@ -3579,7 +3706,7 @@
       async function exportAudit() {
         if (state.demo) { downloadTextFile('tracefab-audit-export-demo.csv', 'recordType,productReference,productName,dataStatus,action,recordedAt\\r\\nPRODUCT,TF-DEMO-001,Produit démonstration,declared,catalog_demo_export,2026-10-06T00:00:00.000Z\\r\\n'); notify('Export audit simulé en mode démonstration.'); return; }
         const token = await state.clerk?.session?.getToken();
-        const response = await fetch(`/api/catalog/audit-export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const response = await fetch(`/api/catalog/audit-export?organizationId=${encodeURIComponent(state.activeOrganizationId)}`, { headers: Object.assign(token ? { Authorization: `Bearer ${token}` } : {}, state.activeOrganizationId ? { [TENANT_HEADER]: state.activeOrganizationId } : {}) });
         if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.message || payload.error || `request_failed_${response.status}`); }
         downloadTextFile('tracefab-audit-export.csv', await response.text());
         notify(bt('cnNAuditExported'));
@@ -4457,7 +4584,7 @@
             if (action === 'open-review-cap-modal') { state.modal = 'review-cap'; render(); }
             if (action === 'open-cap-message-modal') { state.modal = 'cap-message'; render(); }
             if (action === 'close-modal') { state.modal = null; state.modalProductId = null; render(); }
-            if (action === 'retry') { state.configError = null; boot(); }
+            if (action === 'retry') { state.configError = null; state.tenantError = null; boot(); }
             if (action === 'refresh-detail') await refreshDetail();
             if (action === 'send-request') await sendRequest();
             if (action === 'remind-request') { event.stopPropagation(); await remindRequest(el.dataset.reminderRequestId); }
@@ -4491,7 +4618,7 @@
         document.querySelectorAll('[data-delete-chain-link]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); deleteChainLink(el.dataset.deleteChainLink); }));
         document.querySelectorAll('[data-action="acknowledge-issue"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); acknowledgeIssue(el.dataset.issueId).catch((err) => notify(err.message, true)); }));
         document.querySelectorAll('[data-action="open-waive-modal"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); state.modal = 'waive-issue'; state.modalIssueId = el.dataset.issueId; render(); }));
-        const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => { state.activeOrganizationId = org.value; sync(); });
+        const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => setActiveOrganization(org.value));
         const search = document.getElementById('request-search'); const filter = document.getElementById('request-filter');
         const filterRequests = () => { if (!search || !filter) return; const query = search.value.toLowerCase(); const items = state.requests.filter((r) => (filter.value === 'all' || r.status === filter.value) && `${r.title} ${orgName(r.supplierOrganizationId)}`.toLowerCase().includes(query)); const list = document.getElementById('request-list'); if (list) list.innerHTML = requestTable(items); list?.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', () => openRequest(el.dataset.requestId))); list?.querySelectorAll('[data-action="remind-request"]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); remindRequest(el.dataset.reminderRequestId).catch((error) => notify(error.message, true)); })); };
         search?.addEventListener('input', filterRequests); filter?.addEventListener('change', filterRequests);

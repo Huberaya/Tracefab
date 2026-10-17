@@ -64,8 +64,22 @@ jobs:
 
       - name: Isolation multi-locataires
         # Toute route nouvelle doit declarer son modele d'acces. Une route non
-        # classee et non authentifiee fait echouer cette etape.
+        # classee et non authentifiee fait echouer cette etape. Le controle
+        # refuse aussi le repli sur toutes les organisations de l'utilisateur :
+        # c'est le defaut Production du 2026-10-17 (produit de recette visible
+        # depuis un autre tenant du meme compte).
         run: npm run test:cross-tenant
+
+      - name: Contexte de locataire actif
+        # Contrat du module api/_lib/tenant.ts : locataire obligatoire, valide,
+        # fail-closed. Un locataire absent, mal forme ou non adherent ne doit
+        # provoquer aucune requete metier.
+        run: npm run test:active-tenant
+
+      - name: Commentaires de fin de ligne dans les routes compactees
+        # Un commentaire `//` dans une route ecrite sur une ligne met en
+        # commentaire tout le handler, sans erreur de compilation.
+        run: npm run test:minified-comments
 
       - name: Garde-fous de mise en production
         # Barriere d'erreur centrale, caviardage des secrets reellement

@@ -28,7 +28,13 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
  */
 const ACCESS_MODELS = {
   // Donnees d'un locataire : la chaine complete est obligatoire.
-  TENANT: { needs: ['requireClerkUser', 'withTracefabUserContext'] },
+  //
+  // Le deuxieme maillon admet deux formes. `withTracefabUserContext` prend le
+  // locataire actif en quatrieme argument facultatif ; `withTracefabRequestContext`
+  // le lit dans la requete elle-meme, ce qui rend l'oubli d'armement impossible
+  // a ecrire. Les deux arment `tracefab.user_id` et
+  // `tracefab.active_organization_id` dans la transaction.
+  TENANT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext'] },
   // Surface publique assumee : passeport consommateur, wallets, sante, config.
   PUBLIC: { needs: [] },
   // Taches de fond declenchees par un worker : secret partage obligatoire.
@@ -72,6 +78,20 @@ const CLASSIFIED = {
   'internal/p2/readiness': ['WORKER', 'Diagnostic d infrastructure reserve a l exploitation.'],
 };
 
+/* Exemptions au repli multi-organisations.
+ *
+ * Une entree ici dit : cette route couvre volontairement plusieurs locataires.
+ * Chaque exemption porte sa justification, comme dans CLASSIFIED — une
+ * exemption sans raison ecrite est une faille qui attend son heure.
+ *
+ * Aucune exemption n'est declaree a ce jour. Le tableau existe pour que la
+ * prochaine route multi-locataires soit un choix explicite et non un repli
+ * silencieux.
+ */
+const MULTI_ORG_EXEMPT = new Map([
+  // 'chemin/de/route': ['Raison precise, verifiable, datee.'],
+]);
+
 /* --------------------------------------------------------- lecture du routeur */
 
 const indexSrc = read('api/index.ts');
@@ -113,6 +133,7 @@ for (const r of routes) {
   stats[model] += 1;
 
   const needs = ACCESS_MODELS[model].needs;
+  const anyOf = ACCESS_MODELS[model].anyOf;
   if (needs.length) {
     const satisfied = needs.some((n) => src.includes(n));
     const all = model === 'TENANT' ? needs.every((n) => src.includes(n)) : satisfied;
@@ -120,6 +141,10 @@ for (const r of routes) {
       const missing = needs.filter((n) => !src.includes(n));
       failures.push(`${r.key} [${model}] : maillon d isolation absent -> ${missing.join(', ')}`);
     }
+  }
+  // Maillon accepte sous plusieurs formes : au moins une doit etre presente.
+  if (anyOf && anyOf.length && !anyOf.some((n) => src.includes(n))) {
+    failures.push(`${r.key} [${model}] : maillon d isolation absent -> ${anyOf.join(' ou ')}`);
   }
 
   // L'isolation reelle est portee par RLS : withTracefabUserContext ouvre une
@@ -132,8 +157,40 @@ for (const r of routes) {
       failures.push(`${r.key} [TENANT] : utilise le client prisma brut, hors contexte RLS`);
     }
     const queries = /\.(findMany|findFirst|findUnique|count|aggregate|groupBy)\(/.test(src);
-    if (queries && !src.includes('withTracefabUserContext')) {
-      failures.push(`${r.key} [TENANT] : interroge la base sans withTracefabUserContext, RLS non armee`);
+    const armsContext = (anyOf || []).some((n) => src.includes(n));
+    if (queries && !armsContext) {
+      failures.push(`${r.key} [TENANT] : interroge la base sans contexte RLS (${(anyOf || []).join(' ou ')})`);
+    }
+
+    // ---------------------------------------------------------------------
+    // Le repli multi-organisations. Ajoute apres l'incident Production du
+    // 2026-10-17 : un administrateur membre de Ginger et de Tracefab Recette
+    // Production voyait, depuis Ginger, le produit brouillon
+    // RECETTE-DPP-20261017 qui n'appartient qu'au tenant de recette.
+    //
+    // La route fautive portait les DEUX maillons verifies ci-dessus. Son filtre
+    // etait `{ in: organizationIds }` — l'union de toutes les organisations du
+    // compte — quand aucun locataire n'etait nomme. Un controle de presence des
+    // maillons ne pouvait pas le voir : ce filtre borne l'UTILISATEUR, pas le
+    // LOCATAIRE ACTIF, et avec un compte mono-organisation les deux sont
+    // indiscernables.
+    //
+    // Une route locataire doit donc borner a UN locataire resolu et valide, ou
+    // declarer explicitement pourquoi elle en couvre plusieurs.
+    // ---------------------------------------------------------------------
+    // Deux formes : le filtre Prisma `{ in: organizationIds }` et le predicat
+    // SQL `= ANY(${organizationIds}::uuid[])`. La seconde etait invisible a la
+    // premiere version du controle, et c'est par elle que
+    // catalog/products/import-jobs passait entre les mailles.
+    const MULTI_ORG_FALLBACK = /(\{\s*in:\s*|=\s*ANY\(\s*\$\{\s*)(organizationIds|brandOrganizationIds|orgIds|activeOrganizationIds|scopedOrganizations|organizationIdList)\b/;
+    const declaresActiveTenant = /requireActiveTenant|resolveActiveTenant/.test(src);
+    if (MULTI_ORG_FALLBACK.test(src) && !declaresActiveTenant && !MULTI_ORG_EXEMPT.has(r.key)) {
+      failures.push(
+        `${r.key} [TENANT] : filtre sur toutes les organisations de l'utilisateur `
+        + '(`{ in: organizationIds }`). Ce n\'est pas un bornage tenant : '
+        + 'resoudre le locataire actif avec requireActiveTenant(), ou declarer '
+        + "l'exemption motivee dans MULTI_ORG_EXEMPT.",
+      );
     }
   }
 
@@ -212,7 +269,7 @@ if (failures.length) {
   console.log(line);
   process.exit(1);
 }
-console.log('Isolation multi-locataires : aucune route hors modele declare.');
+console.log('Isolation multi-locataires : aucune route hors modele declare, aucun repli multi-organisations.');
 // Ce script lit du code source : il verifie que chaque route DECLARE ses
 // maillons d'isolation. C'est un audit statique, utile, et ce n'est pas une
 // preuve d'etancheite. Les deux lignes qui suivent le disent sans detour,

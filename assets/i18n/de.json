@@ -1285,6 +1285,8 @@
     "mbReconcile": "Produktabgleich",
     "iaDirectAction": "Direkte Aktion",
     "cnAuthUnavailable": "Anmeldung nicht verfügbar",
+    "cnNoActiveTenantTitle": "Keine aktive Organisation",
+    "cnNoActiveTenantBody": "Ihr Konto hat keine Markenorganisation. Bitten Sie eine Administratorin oder einen Administrator um eine Einladung und laden Sie diese Seite neu.",
     "dpPortfolioEyebrow": "Portfolio-Reifegrad",
     "dpPortfolioTitle": "Was in Ihrem Katalog fehlt",
     "dpPortfolioIntro": "Aggregierter Reifegrad über alle Produkte. Jede Lücke nennt die blockierten Produkte und öffnet den Bildschirm zur Behebung.",

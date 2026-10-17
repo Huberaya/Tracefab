@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabRequestContext } from '../../../../_lib/context.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { accessibleProduct } from '../../../../_lib/quality.js';
@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const slug=typeof body.publicSlug==='string' ? body.publicSlug.trim() : null;
     if (!['publish','suspend','withdraw'].includes(action)) return json(res,400,{error:'invalid_publication_action'});
     const {user}=await requireClerkUser(req);
-    const result=await withTracefabUserContext(user.id,user.email,async tx=>{
+    const result=await withTracefabRequestContext(req,user,async tx=>{
       if (!await accessibleProduct(tx,productId)) return null;
       const rows=await tx.$queryRaw<Array<any>>`
         SELECT id,product_id,product_version,requirement_profile_key,requirement_profile_version,

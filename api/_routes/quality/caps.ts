@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { withTracefabUserContext } from '../../_lib/context.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 
@@ -15,14 +16,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const roleFilter = typeof req.query.role === 'string' ? req.query.role : undefined; // 'brand' | 'supplier'
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      // Find organizations the user belongs to
-      const memberships = await tx.organization_memberships.findMany({
-        where: { user_id: user.id, status: 'active' },
-        select: { organization_id: true, role: true },
-      });
-
-      const orgIds = memberships.map((m) => m.organization_id);
-      if (orgIds.length === 0) return [];
+      // Locataire actif obligatoire. Les plans d'action corrective ont une
+      // marque ET un fournisseur : l'union de toutes les organisations du
+      // compte affichait les plans de l'autre tenant.
+      const tenant = await requireActiveTenant(tx, req, user.id);
+      const orgIds = [tenant.organizationId];
 
       const whereClause: any = {
         OR: [
@@ -63,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       return caps;
-    });
+    }, requestedTenantId(req));
 
     return json(res, 200, {
       caps: result,
@@ -72,6 +70,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: unknown) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
+    }
+    if (isTenantError(err)) {
+      return json(res, err.status, { error: err.message });
     }
     const sqlError = sqlBusinessError(err);
     if (sqlError) {

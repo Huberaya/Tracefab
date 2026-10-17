@@ -1285,6 +1285,8 @@
     "mbReconcile": "Conciliación de producto",
     "iaDirectAction": "Acción directa",
     "cnAuthUnavailable": "Inicio de sesión no disponible",
+    "cnNoActiveTenantTitle": "Sin organización activa",
+    "cnNoActiveTenantBody": "Su cuenta no tiene ninguna organización de marca. Pida a una persona administradora que le invite y vuelva a cargar esta página.",
     "dpPortfolioEyebrow": "Preparación de la cartera",
     "dpPortfolioTitle": "Qué falta en su catálogo",
     "dpPortfolioIntro": "Preparación agregada de todos los productos. Cada brecha indica los productos que bloquea y abre la pantalla que la corrige.",

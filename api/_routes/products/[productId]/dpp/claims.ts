@@ -1,6 +1,6 @@
 import type { VercelRequest,VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser,isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabRequestContext } from '../../../../_lib/context.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 import { json,methodNotAllowed,readJsonBody } from '../../../../_lib/http.js';
 import { accessibleProduct } from '../../../../_lib/quality.js';
@@ -13,7 +13,7 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
  if(!['GET','POST'].includes(req.method||''))return methodNotAllowed(res,['GET','POST']);
  try{const productId=id(req);if(!isUuid(productId))return json(res,400,{error:'invalid_product_id'});const {user}=await requireClerkUser(req);
  const body=req.method==='POST'?await readJsonBody<Record<string,unknown>>(req):{};
- const result=await withTracefabUserContext(user.id,user.email,async tx=>{if(!await accessibleProduct(tx,productId))return null;
+ const result=await withTracefabRequestContext(req,user,async tx=>{if(!await accessibleProduct(tx,productId))return null;
   if(req.method==='GET'){const claims=await tx.$queryRaw<Array<Record<string,unknown>>>`
    SELECT c.*,COALESCE(jsonb_agg(jsonb_build_object('id',e.id,'documentId',e.document_id,'relationship',e.relationship,
     'coverageNote',e.coverage_note,'verificationResult',e.verification_result,'verificationReason',e.verification_reason,

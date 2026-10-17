@@ -48,9 +48,15 @@ for (const contract of ['CATALOG_IMPORT_MAX_BYTES', 'CATALOG_IMPORT_MAX_ROWS', '
 assert(files.importRoute.includes('dryRun') && files.importRoute.includes('tracefab_catalog_import_jobs') && files.importRoute.includes('tracefab_create_product') && files.importRoute.includes('audit_logs'), 'Catalogue import route must validate, persist jobs, create products and audit');
 assert(files.supplierHelper.includes('SUPPLIER_IMPORT_MAX_ROWS') && files.supplierHelper.includes('duplicate_email_in_file') && files.supplierHelper.includes('invalid_supplier_email'), 'Supplier importer validation contract is missing');
 assert(files.supplierImportRoute.includes('tracefab_invite_supplier') && files.supplierImportRoute.includes('sendSupplierInvitationEmail') && files.supplierImportRoute.includes('import_kind'), 'Supplier bulk import must create hashed invitations, deliver through the email adapter and persist a typed job');
-assert(files.exportRoute.includes('text/csv') && files.exportRoute.includes('product_materials') && files.exportRoute.includes('activeBrandOrganizationIds'), 'Catalogue export route must be CSV, composition-aware and tenant-scoped');
+// `activeBrandOrganizationIds` rend l'UNION de toutes les organisations du
+// compte : l'assertion precedente exigeait donc la presence du repli
+// multi-organisations corrige le 2026-10-17. Elle exige desormais la
+// resolution d'un locataire actif, et refuse le repli.
+assert(files.exportRoute.includes('text/csv') && files.exportRoute.includes('product_materials') && files.exportRoute.includes('requireActiveTenant'), 'Catalogue export route must be CSV, composition-aware and scoped to the active tenant');
+assert(!files.exportRoute.includes('activeBrandOrganizationIds'), 'Catalogue export route must not fall back to every organization of the account');
 assert(files.auditExport.includes('audit_logs') && files.auditExport.includes('data_points') && files.auditExport.includes('no-store'), 'Audit export must include data points, audit events and no-store headers');
-assert(files.jobRoute.includes('tracefab_catalog_import_jobs') && files.jobRoute.includes('activeBrandOrganizationIds'), 'Import job status route must be tenant-scoped');
+assert(files.jobRoute.includes('tracefab_catalog_import_jobs') && files.jobRoute.includes('requireActiveTenant'), 'Import job status route must be scoped to the active tenant');
+assert(!files.jobRoute.includes('activeBrandOrganizationIds'), 'Import job status route must not fall back to every organization of the account');
 assert(files.router.includes('catalog/products/import') && files.router.includes('catalog/products/export') && files.router.includes('catalog/suppliers/import') && files.router.includes('import-jobs'), 'Catalogue routes missing from API router');
 assert(files.migration.includes('FORCE ROW LEVEL SECURITY') && files.migration.includes('idx_catalog_import_jobs_idempotency') && files.migration.includes('source_sha256') && files.migration.includes('audit_logs'), 'Catalogue import migration is missing RLS, idempotency, hash or audit protections');
 assert(files.docs.includes('Chantier P1') && files.docs.includes('idempotency') && files.docs.includes('DATA READY'), 'Catalogue import/export documentation is incomplete');

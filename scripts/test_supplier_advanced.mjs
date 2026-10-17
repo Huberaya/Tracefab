@@ -35,7 +35,13 @@ assert(files.members.includes('createHash') && files.members.includes('last_owne
 assert(files.invitationManagement.includes("methodNotAllowed(res, ['POST', 'DELETE'])") && files.invitationManagement.includes('sendOrganizationMemberInvitationEmail'), 'Invitation resend/revoke lifecycle is missing');
 assert(files.members.includes('member_management_role_required'), 'Member management must be role-protected');
 assert(files.organizations.includes('organizations: { type: \'supplier\''), 'Organization switcher must be supplier-scoped');
-assert(files.requests.includes('requestedOrganizationId(req)') && files.requestDetail.includes('requestedOrganizationId(req)'), 'Data request list and detail must honor the selected organization');
+// `requestedOrganizationId(req)` etait OPTIONNEL : absent, la liste retombait
+// sur toutes les organisations du compte. `requireActiveTenant` rend le
+// locataire obligatoire — c'est strictement plus fort, et c'est le
+// correctif du defaut Production du 2026-10-17.
+assert(files.requests.includes('requireActiveTenant'), 'Data request list must require the active tenant');
+assert(!files.requests.includes('activeOrganizationIds'), 'Data request list must not fall back to every organization of the account');
+assert(files.requestDetail.includes('requestedOrganizationId(req)') || files.requestDetail.includes('requireActiveTenant'), 'Data request detail must honor the selected organization');
 assert(files.portal.includes("navButton('dataPoints'") && files.portal.includes("navButton('members'") && files.portal.includes('X-Tracefab-Organization-Id'), 'Supplier Portal advanced navigation and tenant context are missing');
 assert(files.portal.includes('sourceDocumentId'), 'Structured data point evidence selection is missing');
 assert(files.docs.includes('Chantier 23'), 'Advanced Supplier Portal documentation is missing');

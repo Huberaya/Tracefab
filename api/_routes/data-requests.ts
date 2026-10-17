@@ -5,8 +5,7 @@ import { withTracefabUserContext } from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
 import { getSchema } from '.././_lib/schema-catalog.js';
-import { activeOrganizationIds } from '.././_lib/products.js';
-import { activeSupplierOrganizationIds, requestedOrganizationId } from '.././_lib/supplier-profile.js';
+import { isTenantError, requireActiveTenant, requestedTenantId as activeTenantId } from '.././_lib/tenant.js';
 import {
   isUuid,
   parseDate,
@@ -35,32 +34,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       const scope = Array.isArray(req.query.scope) ? req.query.scope[0] : req.query.scope;
-      const queryOrganizationId = Array.isArray(req.query.organizationId) ? req.query.organizationId[0] : req.query.organizationId;
-      if (queryOrganizationId && !isUuid(queryOrganizationId)) return json(res, 400, { error: 'invalid_organization_id' });
-      const organizationId = requestedOrganizationId(req) || queryOrganizationId;
       const requests = await withTracefabUserContext(user.id, user.email, async (tx) => {
+        // Locataire actif obligatoire. Le repli precedent listait les demandes
+        // de toutes les organisations du compte : un administrateur de deux
+        // tenants voyait les demandes de collecte de l'autre.
+        const tenant = await requireActiveTenant(tx, req, user.id);
+        const scoped = { in: [tenant.organizationId] };
+
         if (scope === 'supplier') {
-          const supplierOrganizationIds = await activeSupplierOrganizationIds(tx, user.id, organizationId);
-          if (supplierOrganizationIds.length === 0) return [];
+          // Le portail fournisseur nomme deja son organisation ; la requete est
+          // bornee a ce seul locataire, jamais a l'union des adhesions.
           return tx.data_requests.findMany({
-            where: { supplier_organization_id: { in: supplierOrganizationIds }, status: { not: 'draft' } },
+            where: { supplier_organization_id: scoped, status: { not: 'draft' } },
             select: REQUEST_SELECT,
             orderBy: { last_activity_at: 'desc' },
           });
         }
-        const organizationIds = await activeOrganizationIds(tx, user.id);
-        if (organizationIds.length === 0) return [];
         return tx.data_requests.findMany({
           where: {
             OR: [
-              { brand_organization_id: { in: organizationIds } },
-              { supplier_organization_id: { in: organizationIds }, status: { not: 'draft' } },
+              { brand_organization_id: scoped },
+              { supplier_organization_id: scoped, status: { not: 'draft' } },
             ],
           },
           select: REQUEST_SELECT,
           orderBy: { last_activity_at: 'desc' },
         });
-      });
+      }, activeTenantId(req));
       return json(res, 200, { requests: requests.map(serializeRequest) });
     }
 
@@ -80,10 +80,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const idempotencyKey = optionalString(body.idempotencyKey, 'idempotency_key', 200);
 
     const request = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      // La demande est creee POUR le locataire actif. Sans cette garde, un corps
+      // portant le brandOrganizationId de l'autre tenant du compte deplacement
+      // la creation hors du tenant affiche.
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
+      if (body.brandOrganizationId !== tenant.organizationId) {
+        throw new Error('brand_organization_mismatch');
+      }
       const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id
         FROM tracefab_create_data_request(
-          ${body.brandOrganizationId}::uuid,
+          ${tenant.organizationId}::uuid,
           ${body.supplierOrganizationId}::uuid,
           ${productId}::uuid,
           ${title},
@@ -99,11 +106,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!created) throw new Error('data_request_creation_failed');
       await tx.$queryRaw`SELECT id FROM tracefab_bind_schema(${questionnaireKey}, ${questionnaireVersion}, 'data_request', ${id}::uuid)`;
       return created;
-    });
+    }, activeTenantId(req));
 
     return json(res, 201, { request: serializeRequest(request) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
+    if (error instanceof Error && error.message === 'brand_organization_mismatch') {
+      return json(res, 400, { error: 'brand_organization_mismatch' });
+    }
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

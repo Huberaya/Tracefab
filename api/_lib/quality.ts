@@ -118,6 +118,7 @@ export async function accessibleProduct(
     FROM tracefab_products
     WHERE id = ${productId}::uuid
       AND tracefab_can_access_org(brand_organization_id)
+      AND tracefab_in_active_tenant(brand_organization_id)
     LIMIT 1
   `;
   const row = rows[0];

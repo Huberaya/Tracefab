@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
-import { activeOrganizationIds } from '../../../_lib/products.js';
+import { isTenantError, requireActiveTenant, requestedTenantId, tenantFilter } from '../../../_lib/tenant.js';
 import { isUuid } from '../../../_lib/data-requests.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
@@ -19,11 +19,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandOrganizationIds = await activeOrganizationIds(tx, user.id);
+      // Locataire actif obligatoire, resolu AVANT l'enqueue : une relance est
+      // une notification sortante vers un fournisseur, pas une lecture.
+      const tenant = await requireActiveTenant(tx, req, user.id);
       const request = await tx.data_requests.findFirst({
         where: {
           id: requestId,
-          brand_organization_id: { in: brandOrganizationIds },
+          brand_organization_id: tenantFilter(tenant),
           status: { in: ['sent', 'in_progress', 'changes_requested'] },
         },
         select: { id: true },
@@ -41,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM tracefab_enqueue_manual_data_request_reminder(${requestId}::uuid)
       `;
       return rows[0] ?? null;
-    });
+    }, requestedTenantId(req));
     if (!result) return json(res, 404, { error: 'data_request_not_found' });
     return json(res, 202, {
       queued: true,
@@ -56,6 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });

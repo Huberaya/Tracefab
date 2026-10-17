@@ -4,7 +4,8 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
-import { activeBrandOrganizationIds, isUuid } from '../../../_lib/products.js';
+import { isUuid } from '../../../_lib/products.js';
+import { isTenantError, requireActiveTenant, requestedTenantId, tenantFilter } from '../../../_lib/tenant.js';
 
 type MaterialBody = {
   materialId?: string;
@@ -106,9 +107,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const organizationIds = await activeBrandOrganizationIds(tx, user.id);
+      // Locataire actif obligatoire : `{ in: organizationIds }` bornait
+      // l'utilisateur, pas le locataire affiche.
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
       const product = await tx.tracefab_products.findFirst({
-        where: { id: productId, brand_organization_id: { in: organizationIds } },
+        where: { id: productId, brand_organization_id: tenantFilter(tenant) },
         select: { id: true, version: true },
       });
       if (!product) return null;
@@ -169,7 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       const material = rows[0] ? await hydrateMaterial(tx, rows[0]) : null;
       return { material };
-    });
+    }, requestedTenantId(req));
 
     if (!result) return json(res, 404, { error: 'product_not_found' });
     if ('materials' in result) return json(res, 200, { materials: result.materials!.map(serializedMaterial) });
@@ -177,6 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, req.method === 'POST' ? 201 : 200, { material: serializedMaterial(result.material) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

@@ -13,6 +13,10 @@ const required = [
   'RESEND_API_KEY',
   'EMAIL_FROM',
   'TRACEFAB_APP_URL',
+  // Origine encodee dans les QR DPP. Obligatoire : la route QR echoue desormais
+  // fermement quand elle est absente, au lieu de retomber sur un domaine codé
+  // en dur qui n'est pas celui du deploiement.
+  'TRACEFAB_PUBLIC_BASE_URL',
   'TRACEFAB_NOTIFICATION_WORKER_SECRET',
   'CRON_SECRET',
   'PRIVATE_STORAGE_ENDPOINT',
@@ -96,6 +100,7 @@ if (productionMode) {
   }
 
   requireHttpsUrl('TRACEFAB_APP_URL');
+  requireHttpsUrl('TRACEFAB_PUBLIC_BASE_URL');
   requireHttpsUrl('PRIVATE_STORAGE_ENDPOINT');
   requireHttpsUrl('PRIVATE_STORAGE_ANTIVIRUS_URL');
   requireHttpsUrl('TRACEFAB_AUTHORIZED_PARTIES', true);
