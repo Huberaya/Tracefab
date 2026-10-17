@@ -39,7 +39,10 @@
     "pagerShowing": "显示",
     "pagerOf": "共",
     "pagerPrev": "上一页",
-    "pagerNext": "下一页"
+    "pagerNext": "下一页",
+    "stControlled": "已管控",
+    "stCorroborated": "已佐证",
+    "stThirdPartyVerified": "第三方验证"
   },
   "console": {
     "pdSearchLabel": "搜索目录",

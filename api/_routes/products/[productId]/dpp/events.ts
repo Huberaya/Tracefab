@@ -4,6 +4,7 @@ import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { accessibleProduct } from '../../../../_lib/quality.js';
+import { accessibleProductForDppRead } from '../../../../_lib/dpp-access.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 
 const EVENT_TYPES = new Set(['passport_created','data_submitted','evidence_added','manufacturing_step','data_corrected','repair','reuse','recycling']);
@@ -21,12 +22,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const body = req.method === 'POST' ? await readJsonBody<Record<string, unknown>>(req) : {};
     const result = await withTracefabUserContext(user.id, user.email, async tx => {
-      if (!await accessibleProduct(tx, productId)) return null;
+      const access = await accessibleProductForDppRead(tx, productId, accessibleProduct);
+      if (!access) return null;
       if (req.method === 'GET') {
         const rows = await tx.$queryRaw<Array<Record<string, unknown>>>`
           SELECT id,event_type,subject_scope,subject_reference,business_occurred_at,recorded_at,
                  actor_user_id,source_kind,validation_status,summary,details,public_summary,
-                 evidence_document_ids,corrects_event_id
+                 evidence_document_ids,corrects_event_id,verified_by_organization_id
           FROM dpp_lifecycle_events WHERE product_id=${productId}::uuid
           ORDER BY recorded_at DESC,id DESC LIMIT 200`;
         return { events: rows };
@@ -41,7 +43,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const evidence = Array.isArray(body.evidenceDocumentIds) ? body.evidenceDocumentIds : [];
       if (evidence.length > 50 || evidence.some(id => !isUuid(id))) throw new Error('invalid_evidence_document_ids');
       const corrected = body.correctsEventId == null ? null : text(body.correctsEventId, 36);
+      const verifier = body.verifiedByOrganizationId == null ? null : text(body.verifiedByOrganizationId, 36);
       if (corrected && !isUuid(corrected)) throw new Error('invalid_corrects_event_id');
+      if (verifier && !isUuid(verifier)) throw new Error('invalid_verified_by_organization_id');
       const occurred = body.businessOccurredAt == null ? null : new Date(String(body.businessOccurredAt));
       if (occurred && Number.isNaN(occurred.getTime())) throw new Error('invalid_business_occurred_at');
       const details = body.details && typeof body.details === 'object' && !Array.isArray(body.details) ? body.details : {};
@@ -49,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         SELECT * FROM tracefab_add_dpp_event(${productId}::uuid,${eventType},${summary},
           ${occurred}::timestamptz,${source},${status}::dpp_event_validation_status,
           ${text(body.publicSummary,500)},${details}::jsonb,${evidence}::uuid[],${corrected}::uuid,
-          ${text(body.idempotencyKey,120)},${scope},${text(body.subjectReference,120)})`;
+          ${text(body.idempotencyKey,120)},${scope},${text(body.subjectReference,120)},${verifier}::uuid)`;
       return { event: rows[0] };
     });
     if (!result) return json(res, 404, { error: 'product_not_found' });

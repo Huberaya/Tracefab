@@ -39,7 +39,10 @@
     "pagerShowing": "Gösterilen",
     "pagerOf": "toplam",
     "pagerPrev": "Önceki",
-    "pagerNext": "Sonraki"
+    "pagerNext": "Sonraki",
+    "stControlled": "Kontrol edildi",
+    "stCorroborated": "Doğrulandı",
+    "stThirdPartyVerified": "Üçüncü tarafça doğrulandı"
   },
   "console": {
     "pdSearchLabel": "Katalogda ara",

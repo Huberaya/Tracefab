@@ -16,74 +16,15 @@
   <link rel="stylesheet" href="/assets/css/fonts.css?v=c78cbebf">
 
   <!-- Schema JSON-LD de passeport produit, au format CIRPASS / ESPR -->
+  <!-- JSON-LD neutre par defaut. Le passeport reel construit son propre
+       JSON-LD a partir des seules valeurs sourcees de l'API ; aucune
+       certification, provenance ou signature de demonstration n'est publiee
+       dans le document machine. -->
   <script type="application/ld+json" id="dpp-jsonld">
   {
-    "@context": [
-      "https://schema.org",
-      { "espr": "https://ec.europa.eu/commission/presscorner/detail/en/ip_24_1749#" }
-    ],
-    "@type": "Product",
-    "identifier": "urn:epc:id:sgtin:3760123456.001.2026",
-    "name": "Organic Cotton Essential",
-    "model": "AT-ESS-001",
-    "sku": "AT-ESS-001-NVY-M",
-    "gtin": "3760123456789",
-    "brand": {
-      "@type": "Brand",
-      "name": "Atelier Demo",
-      "legalName": "Atelier Demo SAS"
-    },
-    "description": "Combed organic cotton jersey T-shirt, 185 gsm, made in Portugal in compliance with SMETA social standards and GOTS environmental standards.",
-    "countryOfOrigin": "PT",
-    "countryOfDesign": "FR",
-    "material": [
-      {
-        "@type": "DefinedTerm",
-        "name": "Combed organic cotton (GOTS certified)",
-        "percentage": 85,
-        "termCode": "COTTON_BIO",
-        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
-      },
-      {
-        "@type": "DefinedTerm",
-        "name": "Pre-consumer recycled cotton (GRS certified)",
-        "percentage": 15,
-        "termCode": "COTTON_REC",
-        "inDefinedTermSet": "https://ec.europa.eu/textiles-fibres"
-      }
-    ],
-    "certifications": [
-      {
-        "standard": "Global Organic Textile Standard (GOTS)",
-        "certificateNumber": "CU-881294-GOTS-2026",
-        "issuer": "Control Union",
-        "status": "active"
-      },
-      {
-        "standard": "OEKO-TEX Standard 100",
-        "certificateNumber": "21.HPT.94112",
-        "issuer": "Hohenstein Institute",
-        "status": "active"
-      }
-    ],
-    "traceability": {
-      "tier4_raw_fiber": { "country": "PT", "facility": "Quinta de São Martinho", "provenance": "100% regenerative cotton" },
-      "tier3_spinning": { "country": "PT", "facility": "Fiação Norte Lda", "process": "Combed yarn spinning Ne 30/1" },
-      "tier3_weaving": { "country": "PT", "facility": "Malhas do Ave", "process": "Circular jersey knitting" },
-      "tier2_dyeing": { "country": "PT", "facility": "Tinturaria Braga Lda", "process": "Low-environmental-impact dyeing" },
-      "tier1_assembly": { "country": "PT", "facility": "Nhãn Textile Confeção", "process": "Cutting, sewing and pressing" }
-    },
-    "repairAndCare": {
-      "washingInstructions": "Wash at 30°C on a delicate cycle. Open-air drying recommended. Iron gently on the reverse.",
-      "recyclabilityRate": "98%",
-      "repairServicesUrl": "https://atelier-demo.fr/repair-program",
-      "takeBackUrl": "https://atelier-demo.fr/second-life"
-    },
-    "verificationSignature": {
-      "signedBy": "TRACEFAB Cryptographic Ledger",
-      "timestamp": "2026-10-06T06:50:00Z",
-      "evidenceHash": "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    }
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Digital Product Passport — TRACEFAB"
   }
   </script>
 
@@ -404,6 +345,37 @@
     .lifecycle-state { border:1px dashed var(--border-medium); border-radius:var(--radius-md); padding:18px; color:var(--text-muted); font-size:13px; background:#fff; }
     .lifecycle-more { margin-top:16px; min-height:44px; width:100%; border:1px solid var(--border-medium); border-radius:10px; background:#fff; color:var(--text-main); font:inherit; font-size:13px; font-weight:650; cursor:pointer; }
     .lifecycle-more:hover, .lifecycle-more:focus-visible { border-color:var(--primary); outline:3px solid var(--primary-glow); outline-offset:2px; }
+    /* --- Passeport reel : sections hydratees depuis l'API publique --- */
+    .live-passport { padding: 4px 20px 24px; }
+    .live-passport[hidden] { display:none; }
+    .live-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 12px; margin:18px 0 10px; }
+    .live-head h2 { font-size:20px; letter-spacing:-.02em; }
+    .live-updated { color:var(--text-muted); font-size:12px; }
+    .live-limits { border:1px solid var(--border-medium); background:#fbfaf5; border-radius:12px; padding:12px 14px; font-size:12.5px; color:var(--text-muted); margin-bottom:18px; overflow-wrap:anywhere; }
+    .live-limits strong { color:var(--text-main); }
+    .live-limits ul { margin:8px 0 0 18px; }
+    .live-section { border-top:1px solid var(--border-light); padding-top:16px; margin-top:16px; }
+    .live-section h3 { font-size:15px; margin-bottom:10px; letter-spacing:-.01em; }
+    .live-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin:0; }
+    .live-field { background:var(--bg-subtle); border:1px solid var(--border-light); border-radius:10px; padding:10px 12px; min-width:0; }
+    .live-field dt { font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); font-weight:700; margin-bottom:3px; }
+    .live-field dd { margin:0; font-size:13px; overflow-wrap:anywhere; }
+    .live-source { display:block; margin-top:4px; font-size:10.5px; color:var(--text-muted); }
+    .live-badge { display:inline-block; margin-top:5px; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:700; border:1px solid var(--border-medium); color:var(--text-muted); background:#fff; }
+    .live-badge[data-status="unverified"] { color:#92400e; border-color:#fcd34d; background:#fffbeb; }
+    .live-badge[data-status="not_filled"], .live-badge[data-status="unavailable"] { color:#7a5c13; border-color:#efe2bd; background:#fdf6e3; }
+    .live-materials { list-style:none; margin:10px 0 0; padding:0; display:grid; gap:8px; }
+    .live-material { border:1px solid var(--border-light); border-radius:10px; padding:10px 12px; font-size:13px; }
+    .live-material strong { font-weight:650; }
+    .live-material-meta { color:var(--text-muted); font-size:11.5px; margin-top:3px; }
+    .live-empty { color:var(--text-muted); font-size:12.5px; font-style:italic; }
+    .live-claims { display:grid; gap:10px; }
+    .live-claim { border:1px solid var(--border-light); border-radius:12px; padding:12px 14px; background:var(--bg-surface); }
+    .live-claim p { margin:0 0 6px; font-size:13.5px; overflow-wrap:anywhere; }
+    .live-claim-meta { display:flex; flex-wrap:wrap; gap:6px 10px; font-size:11px; color:var(--text-muted); }
+    .live-claim-meta .expired { color:#b45309; font-weight:700; }
+    .live-evidence { margin:6px 0 0; padding-left:16px; font-size:11.5px; color:var(--text-muted); }
+    @media (max-width:520px) { .live-grid { grid-template-columns:1fr; } }
     .live-data-note { display:none; margin:0 20px 20px; padding:12px 14px; border-left:3px solid var(--primary); background:var(--primary-soft); color:var(--forest-800); font-size:12px; }
     html[data-dpp-source]:not([data-dpp-source="demo"]) .live-data-note { display:block; }
     html[data-dpp-source]:not([data-dpp-source="demo"]) [data-dpp-demo-only], html[data-dpp-requested="true"] [data-dpp-demo-only] { display:none !important; }
@@ -527,6 +499,10 @@
       color: #7a5c13; font-size: 12.5px; line-height: 1.4;
     }
     .dpp-demo-banner[hidden] { display: none; }
+    /* Des qu'un identifiant reel est demande, tout le bloc de demonstration
+       disparait : aucune certification d'exemple ne peut survivre a cote de
+       donnees reelles. */
+    html[data-dpp-requested="true"] .demo-only { display: none !important; }
     .dpp-demo-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
 
     .care-row {
@@ -754,7 +730,7 @@
          description lui sont propres, d'ou TF_I18N_SKIP_META. -->
     <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=3c95778d"></script>
+    <script src="/assets/i18n/en.js?v=8eea8d50"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
     <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
@@ -764,7 +740,7 @@
 
     <!-- Header with Brand & EU Standard Badge -->
     <header class="dpp-header">
-      <div class="brand-id">
+      <div class="brand-id demo-only">
         <div class="brand-mark">AD</div>
         <div class="brand-text">
           <strong data-tf-demo>Atelier Demo</strong>
@@ -781,9 +757,9 @@
           <option value="nl">🇳🇱 Nederlands</option>
           <option value="pt">🇵🇹 Português</option>
         </select>
-        <div class="badge-eu" title="This passport follows the ESPR / CIRPASS data model. It is a readiness indicator, not a regulatory certification." data-i18n-attr="title:dpp.ftReadiness">
+        <div class="badge-eu" title="This passport follows an ESPR-oriented information structure. It is not a regulatory certification and no delegated act is claimed as implemented." data-i18n-attr="title:dpp.ftReadiness">
           <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-          ESPR-aligned DPP format
+          ESPR-oriented — not certified
         </div>
       </div>
     </header>
@@ -797,8 +773,8 @@
     </div>
 
     <!-- Product Summary Hero -->
-    <div class="product-hero">
-      <span class="product-tag" data-i18n="dpp.hdrOfficial">Official Digital Product Passport</span>
+    <div class="product-hero demo-only">
+      <span class="product-tag" data-i18n="dpp.demoTitle">Digital Product Passport — demonstration</span>
       <h1 class="product-title" data-tf-demo data-dpp-field="productName">Organic Cotton Essential</h1>
       <div class="product-meta-row">
         <span>SKU: <span data-tf-demo data-dpp-field="sku">AT-ESS-001</span></span>
@@ -811,15 +787,12 @@
       </p>
 
       <div class="trust-pill-bar" tabindex="0" role="region" aria-label="Certifications">
-        <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ 100% certified materials</span>
-        <span class="trust-badge-item">GOTS Certified</span>
-        <span class="trust-badge-item">OEKO-TEX Class 1</span>
-        <span class="trust-badge-item" data-i18n="dpp.heroMadeIn">Made in Portugal</span>
+        <span class="trust-badge-item" data-i18n="dpp.demoTrust">Demonstration data — no certification verified</span>
       </div>
     </div>
 
     <!-- Apple & Google Wallet Mobile Passes -->
-    <div style="padding: 14px 20px 16px; background: #f0f7f3; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);">
+    <div class="demo-only" style="padding: 14px 20px 16px; background: #f0f7f3; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);">
       <div style="font-size: 11px; font-weight:600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--forest-600); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
         <span data-i18n="dpp.offlineWallet">Offline digital passport and mobile wallet</span>
@@ -835,6 +808,54 @@
         </a>
       </div>
     </div>
+
+    <!-- ================================================================
+         PASSERELLE PUBLIQUE REELLE
+         Ces sections ne sont remplies qu'avec la reponse de
+         /api/dpp/:identifiant. Elles restent masquees en mode demonstration
+         et en cas d'erreur : aucune valeur de demo ne peut y apparaitre.
+         ================================================================ -->
+    <section id="dpp-live" class="live-passport" aria-labelledby="live-title" hidden>
+      <div class="live-head">
+        <h2 id="live-title">Informations publiées</h2>
+        <p id="live-updated" class="live-updated"></p>
+      </div>
+      <div id="live-limits" class="live-limits" role="note"></div>
+
+      <section class="live-section" aria-labelledby="live-identity-title">
+        <h3 id="live-identity-title">Identité du produit</h3>
+        <dl id="live-identity" class="live-grid"></dl>
+      </section>
+
+      <section class="live-section" aria-labelledby="live-composition-title">
+        <h3 id="live-composition-title">Composition</h3>
+        <p id="live-composition" class="live-empty"></p>
+        <ul id="live-materials" class="live-materials"></ul>
+        <p id="live-materials-empty" class="live-empty" hidden>Aucune composition matière n’est publiée pour ce produit.</p>
+      </section>
+
+      <section class="live-section" aria-labelledby="live-traceability-title">
+        <h3 id="live-traceability-title">Traçabilité documentée</h3>
+        <p id="live-traceability" class="live-empty"></p>
+      </section>
+
+      <section class="live-section" aria-labelledby="live-care-title">
+        <h3 id="live-care-title">Entretien et fin de vie</h3>
+        <dl id="live-care" class="live-grid"></dl>
+      </section>
+
+      <section class="live-section" aria-labelledby="live-claims-title">
+        <h3 id="live-claims-title">Affirmations publiées et preuves</h3>
+        <p class="live-empty" style="margin:-4px 0 10px;">Une affirmation documentée n’est pas une certification. Le niveau indiqué décrit le contrôle réellement effectué.</p>
+        <div id="live-claims" class="live-claims"></div>
+        <p id="live-claims-empty" class="live-empty" hidden>Aucune affirmation publique n’est publiée pour ce produit.</p>
+      </section>
+
+      <section class="live-section" aria-labelledby="live-missing-title">
+        <h3 id="live-missing-title">Limites de ce passeport</h3>
+        <ul id="live-missing" class="live-limits" style="margin:0;"></ul>
+      </section>
+    </section>
 
     <!-- Interactive Navigation Tabs -->
     <nav class="dpp-tabs" data-dpp-demo-only aria-label="Passport sections" data-i18n-attr="aria-label:dpp.tabsAria">
@@ -1250,7 +1271,7 @@
 
   <script src="/assets/js/dpp.1.js?v=d931442c"></script>
 
-  <script src="/assets/js/dpp.2.js?v=da610a73"></script>
+  <script src="/assets/js/dpp.2.js?v=1a51734d"></script>
 
 </body>
 </html>

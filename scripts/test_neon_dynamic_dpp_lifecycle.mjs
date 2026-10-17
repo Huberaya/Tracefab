@@ -39,7 +39,17 @@ try {
     await admin.query(`INSERT INTO documents(id,owner_organization_id,storage_bucket,storage_path,original_filename,content_type,byte_size,status,visibility)
       VALUES($1,$2,'tracefab-private',$3,$4,'application/pdf',128,'uploaded','private')`,[id,org,`${org}/dpp/${name}`,name]);
   }
-  check(true,'fixtures de deux tenants creees');
+  const V=Object.fromEntries(['org','user','mem','orgNoMandate','userNoMandate','memNoMandate']
+    .map(key=>[key,randomUUID()]));
+  await admin.query(`INSERT INTO organizations(id,type,legal_name,display_name,country_code) VALUES
+    ($1,'verifier','Bureau de controle Test SAS','Bureau de controle Test','FR'),
+    ($2,'verifier','Verificateur sans mandat SAS','Verificateur sans mandat','FR')`,[V.org,V.orgNoMandate]);
+  await admin.query(`INSERT INTO users(id,clerk_user_id,email,full_name) VALUES
+    ($1,'clerk_verifier_a','verifier-a@test.invalid','Auditeur Verificateur'),
+    ($2,'clerk_verifier_b','verifier-b@test.invalid','Verificateur sans mandat')`,[V.user,V.userNoMandate]);
+  await admin.query(`INSERT INTO organization_memberships(id,organization_id,user_id,role,status) VALUES
+    ($1,$2,$3,'owner','active'),($4,$5,$6,'owner','active')`,[V.mem,V.org,V.user,V.memNoMandate,V.orgNoMandate,V.userNoMandate]);
+  check(true,'fixtures de deux tenants et de deux verificateurs creees');
 
   const context=async(user,email,fn)=>{await app.query('BEGIN');try{
     await app.query("SELECT set_config('tracefab.user_id',$1,true)",[user]);
@@ -47,6 +57,15 @@ try {
     const value=await fn(); await app.query('COMMIT'); return value;
   }catch(e){await app.query('ROLLBACK');throw e;}};
   const publicContext=fn=>context('', '', async()=>{await app.query("SELECT set_config('tracefab.public_context','true',true)");return fn();});
+
+  const mandate=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_grant_dpp_verification_mandate($1,$2,'Audit independant du passeport')`,[U.orgA,V.org]));
+  check(mandate.rows[0].status==='active'&&mandate.rows[0].verifier_organization_id===V.org,'mandat verificateur explicite accorde par la marque');
+  let foreignMandate=false;
+  try{await context(U.userB,'cycle-b@test.invalid',()=>app.query(
+    `SELECT tracefab_grant_dpp_verification_mandate($1,$2,'Tentative externe')`,[U.orgA,V.orgNoMandate]));
+  }catch(e){foreignMandate=String(e.message).includes('dpp_mandate_role_required');}
+  check(foreignMandate,'une autre organisation ne peut pas accorder de mandat sur la marque A');
 
   const role=(await app.query("SELECT rolbypassrls,rolsuper FROM pg_roles WHERE rolname=current_user")).rows[0];
   check(!role.rolbypassrls&&!role.rolsuper,'role runtime soumis a RLS');
@@ -102,19 +121,126 @@ try {
 
   const claimResult=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
     `SELECT * FROM tracefab_add_dpp_claim($1,'composition.cotton','La composition déclarée contient du coton',
-      'Composition coton documentée','documented',$2,'model',NULL,current_date-30,current_date-1,NULL,NULL)`,[U.product,evidenceEvent.id]));
+      'Composition coton documentée','declared',$2,'model',NULL,current_date-30,current_date-1,NULL,NULL)`,[U.product,evidenceEvent.id]));
   const claim=claimResult.rows[0];
-  check(claim.validation_status==='documented','affirmation documentée distincte de sa preuve');
+  check(claim.validation_status==='declared','une affirmation nait declaree, jamais pre-verifiee');
+
+  let forgedInitialStatus=false;
+  try{await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT tracefab_add_dpp_claim($1,'composition.forged','Statut fabrique','Statut fabrique','third_party_verified')`,[U.product]));
+  }catch(e){forgedInitialStatus=String(e.message).includes('dpp_claim_initial_status_must_be_declared');}
+  check(forgedInitialStatus,'creation directe en third_party_verified refusee');
+
   const linkResult=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
     `SELECT * FROM tracefab_link_dpp_claim_evidence($1,$2,'supports','Couvre la composition du modèle','accepted',
       'Document examiné dans son périmètre','Certificat de composition')`,[claim.id,U.docA]));
   check(linkResult.rows[0].verification_result==='accepted','lien de preuve accepté avec motif et périmètre');
   check(claim.validation_status!=='third_party_verified','preuve acceptée ne transforme pas automatiquement affirmation en vérification tierce');
+
+  const publicBeforeReview=await publicContext(()=>app.query('SELECT * FROM tracefab_public_dpp_claims($1)',[U.product]));
+  check(publicBeforeReview.rows[0].validation_status==='declared','la preuve seule ne change pas le statut public');
+
+  let foreignReview=false;
+  try{await context(U.userB,'cycle-b@test.invalid',()=>app.query(
+    `SELECT tracefab_review_dpp_claim($1,'documented','Examen externe',NULL,NULL)`,[claim.id]));
+  }catch(e){foreignReview=String(e.message).includes('dpp_claim_review_role_required');}
+  check(foreignReview,'une autre organisation ne peut pas revoir affirmation de A');
+
+  let brandCannotSelfVerify=false;
+  try{await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT tracefab_review_dpp_claim($1,'third_party_verified','Auto-attestation',NULL,NULL)`,[claim.id]));
+  }catch(e){brandCannotSelfVerify=String(e.message).includes('third_party_verifier_role_required');}
+  check(brandCannotSelfVerify,'la marque ne peut pas s auto-attribuer third_party_verified');
+
+  const reviewedClaim=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_review_dpp_claim($1,'documented','Examen du certificat de composition',
+      'Document examiné et accepté',NULL)`,[claim.id]));
+  check(reviewedClaim.rows[0].resulting_status==='documented'&&reviewedClaim.rows[0].reviewer_organization_id===null,'revue interne documentee enregistree sans organisme tiers');
+
   const publicClaims=await publicContext(()=>app.query('SELECT * FROM tracefab_public_dpp_claims($1)',[U.product]));
-  check(publicClaims.rowCount===1&&publicClaims.rows[0].accepted_evidence_count===1,'projection publique compte uniquement les preuves acceptées');
+  check(publicClaims.rowCount>=1&&publicClaims.rows.find(r=>r.claim_key==='composition.cotton')?.accepted_evidence_count===1,'projection publique compte uniquement les preuves acceptées');
+  check(publicClaims.rows.find(r=>r.claim_key==='composition.cotton')?.validation_status==='documented'&&publicClaims.rows.find(r=>r.claim_key==='composition.cotton')?.reviewed_at,'statut public effectif issu de la derniere revue');
   check(publicClaims.rows[0].expired===true,'expiration de affirmation signalée explicitement');
   const projectionKeys=Object.keys(publicClaims.rows[0]);
-  check(!projectionKeys.some(k=>['document_id','storage_path','original_filename','coverage_note'].includes(k)),'projection publique sans identifiant ni métadonnée documentaire privée');
+  check(!projectionKeys.some(k=>['document_id','storage_path','original_filename','coverage_note','created_by'].includes(k)),'projection publique sans identifiant ni métadonnée documentaire privée');
+
+  const claimWithoutEvidence=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_add_dpp_claim($1,'water.footprint','Consommation d eau evaluee','Eau verifiee','declared')`,[U.product]));
+  const claimWater=claimWithoutEvidence.rows[0];
+  let reviewWithoutEvidence=false;
+  try{await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT tracefab_review_dpp_claim($1,'documented','Examen sans preuve',NULL,NULL)`,[claimWater.id]));
+  }catch(e){reviewWithoutEvidence=String(e.message).includes('dpp_claim_evidence_required');}
+  check(reviewWithoutEvidence,'revue documented refusee sans preuve acceptee');
+
+  let noMandate=false;
+  try{await context(V.userNoMandate,'verifier-b@test.invalid',()=>app.query(
+    `SELECT tracefab_review_dpp_claim($1,'third_party_verified','Controle non mandate',NULL,$2)`,[claimWater.id,V.orgNoMandate]));
+  }catch(e){noMandate=String(e.message).includes('dpp_verification_mandate_required');}
+  check(noMandate,'verificateur sans relation active refuse');
+
+  let verifierInternalStatus=false;
+  try{await context(V.user,'verifier-a@test.invalid',()=>app.query(
+    `SELECT tracefab_review_dpp_claim($1,'documented','Statut interne',NULL,$2)`,[claimWater.id,V.org]));
+  }catch(e){verifierInternalStatus=String(e.message).includes('third_party_review_status_invalid');}
+  check(verifierInternalStatus,'verificateur limite aux statuts tiers et rejet');
+
+  await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT tracefab_link_dpp_claim_evidence($1,$2,'supports','Couvre l evaluation eau','accepted',
+      'Document examine','Evaluation eau acceptee')`,[claimWater.id,U.docA]));
+
+  const thirdParty=await context(V.user,'verifier-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_review_dpp_claim($1,'third_party_verified','Controle independant du 17 octobre',
+      'Preuve acceptee dans le perimetre du modele',$2)`,[claimWater.id,V.org]));
+  check(thirdParty.rows[0].resulting_status==='third_party_verified'&&thirdParty.rows[0].reviewer_organization_id===V.org,'revue tierce acceptee avec organisme identifie');
+
+  const publicThirdParty=await publicContext(()=>app.query('SELECT * FROM tracefab_public_dpp_claims($1)',[U.product]));
+  const waterPublic=publicThirdParty.rows.find(row=>row.claim_key==='water.footprint');
+  check(waterPublic.validation_status==='third_party_verified'&&waterPublic.verifier_display_name==='Bureau de controle Test','projection publique identifie le verificateur sans donnee de contact');
+
+  let eventWithoutEvidence=false;
+  try{await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT tracefab_add_dpp_event($1,'repair','Reparation sans preuve',now(),'actor_declaration','documented',NULL,'{}'::jsonb,'{}'::uuid[])`,[U.product]));
+  }catch(e){eventWithoutEvidence=String(e.message).includes('dpp_event_evidence_required');}
+  check(eventWithoutEvidence,'evenement documented refuse sans justificatif');
+
+  let eventWithoutVerifier=false;
+  try{await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT tracefab_add_dpp_event($1,'repair','Controle sans organisme',now(),'third_party','third_party_verified',NULL,'{}'::jsonb,ARRAY[$2]::uuid[])`,[U.product,U.docA]));
+  }catch(e){eventWithoutVerifier=String(e.message).includes('third_party_verifier_organization_required');}
+  check(eventWithoutVerifier,'evenement third_party_verified refuse sans organisme');
+
+  const verifiedEvent=await context(V.user,'verifier-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_add_dpp_event($1,'repair','Reparation controlee par un tiers',now(),'third_party','third_party_verified',
+      'Reparation controlee par un tiers','{}'::jsonb,ARRAY[$2]::uuid[],NULL,NULL,'model',NULL,$3)`,[U.product,U.docA,V.org]));
+  check(verifiedEvent.rows[0].verified_by_organization_id===V.org,'evenement tiers enregistre avec organisme identifie');
+  const publicHistoryCheck=await publicContext(()=>app.query(
+    `SELECT event_type,tracefab_public_verifier_name(verified_by_organization_id) AS verifier FROM dpp_lifecycle_events WHERE id=$1`,[verifiedEvent.rows[0].id]));
+  check(publicHistoryCheck.rows[0]?.verifier==='Bureau de controle Test','historique public expose le nom du verificateur, jamais son contact');
+
+  const verifierRead=await context(V.user,'verifier-a@test.invalid',()=>app.query(
+    `SELECT id FROM dpp_claims WHERE product_id=$1`,[U.product]));
+  check(verifierRead.rowCount>=2,'verificateur mandate lit les affirmations de la marque');
+  const verifierDocuments=await context(V.user,'verifier-a@test.invalid',()=>app.query('SELECT id FROM documents WHERE owner_organization_id=$1',[U.orgA]));
+  check(verifierDocuments.rowCount===0,'verificateur ne lit pas les fichiers documentaires prives');
+
+  const revokedMandate=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+    `SELECT * FROM tracefab_revoke_dpp_verification_mandate($1,'Fin de la mission de controle')`,[mandate.rows[0].id]));
+  check(revokedMandate.rows[0].status==='revoked'&&revokedMandate.rows[0].revoked_at,'mandat revoque avec date conservee');
+  let reviewAfterRevoke=false;
+  try{await context(V.user,'verifier-a@test.invalid',()=>app.query(
+    `SELECT tracefab_review_dpp_claim($1,'third_party_verified','Apres revocation',NULL,$2)`,[claimWater.id,V.org]));
+  }catch(e){reviewAfterRevoke=String(e.message).includes('dpp_verification_mandate_required');}
+  check(reviewAfterRevoke,'revocation du mandat bloque toute nouvelle revue tierce');
+  const publicAfterRevoke=await publicContext(()=>app.query('SELECT * FROM tracefab_public_dpp_claims($1)',[U.product]));
+  check(publicAfterRevoke.rows.find(row=>row.claim_key==='water.footprint')?.validation_status==='third_party_verified','une attestation passee reste publique apres revocation du mandat');
+
+
+  let reviewMutationBlocked=false;
+  try{await admin.query('UPDATE dpp_claim_reviews SET method=$1 WHERE id=$2',['alteration',reviewedClaim.rows[0].id]);}
+  catch(e){reviewMutationBlocked=String(e.message).includes('dpp_claim_reviews_are_append_only');}
+  check(reviewMutationBlocked,'revue append-only, meme pour le proprietaire de migration');
+
   let foreignClaimEvidence=false;
   try{await context(U.userA,'cycle-a@test.invalid',()=>app.query(
     `SELECT tracefab_link_dpp_claim_evidence($1,$2)`,[claim.id,U.docB]));}catch(e){foreignClaimEvidence=String(e.message).includes('invalid_evidence_document');}

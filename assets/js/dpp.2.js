@@ -86,6 +86,296 @@
         return { text: String(field), status: 'sourced' };
       };
 
+
+      /* ---------------------------------------------------------------
+       * Sections PUBLIQUES REELLES.
+       *
+       * Toutes les valeurs de l'API sont inserees avec textContent, jamais
+       * innerHTML : un resume d'evenement ou une affirmation peut contenir
+       * du HTML hostile sans l'executer. Les champs absents affichent un
+       * etat explicite, jamais une valeur de demonstration.
+       * --------------------------------------------------------------- */
+      const live = {
+        root: document.getElementById('dpp-live'),
+        updated: document.getElementById('live-updated'),
+        limits: document.getElementById('live-limits'),
+        identity: document.getElementById('live-identity'),
+        composition: document.getElementById('live-composition'),
+        materials: document.getElementById('live-materials'),
+        materialsEmpty: document.getElementById('live-materials-empty'),
+        traceability: document.getElementById('live-traceability'),
+        care: document.getElementById('live-care'),
+        claims: document.getElementById('live-claims'),
+        claimsEmpty: document.getElementById('live-claims-empty'),
+        missing: document.getElementById('live-missing'),
+      };
+      const sourceLabels = {
+        product_record: 'Fiche produit',
+        materials_record: 'Données matières',
+        supply_chain_record: 'Chaîne d’approvisionnement',
+        brand_record: 'Identité de marque',
+        pef_assessment: 'Évaluation environnementale',
+        transaction_record: 'Certificat de transaction',
+        published_record: 'Publication relue',
+        computed: 'Calcul déterministe',
+      };
+      const claimStatusLabels = {
+        declared: 'Déclaré', documented: 'Documenté', controlled: 'Contrôlé',
+        corroborated: 'Corroboré', third_party_verified: 'Vérifié par un tiers',
+      };
+      const claimStatusExplanations = {
+        declared: 'Information fournie par un acteur, sans validation indépendante.',
+        documented: 'Information accompagnée d’un justificatif accepté. Cela ne vaut pas certification.',
+        controlled: 'Information ayant passé les contrôles définis par TRACEFAB.',
+        corroborated: 'Information soutenue par au moins deux documents concordants acceptés.',
+        third_party_verified: 'Contrôle réalisé par un organisme vérificateur mandaté, identifié ci-dessous.',
+      };
+      const fmtDate = (value, withTime) => {
+        if (!value) return null;
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return null;
+        const lang = document.documentElement.lang || 'fr';
+        try {
+          return new Intl.DateTimeFormat(lang, withTime ? { dateStyle: 'long', timeStyle: 'short' } : { dateStyle: 'long' }).format(d);
+        } catch { return d.toISOString().slice(0, 10); }
+      };
+      const addDefinition = (dl, label, rawField, suffix) => {
+        if (!dl) return;
+        const row = document.createElement('div'); row.className = 'live-field';
+        const dt = document.createElement('dt'); dt.textContent = label;
+        const dd = document.createElement('dd');
+        const r = renderable(rawField);
+        let valueText;
+        if (r.text !== null) {
+          valueText = r.text + (suffix || '') + (r.status === 'unverified' ? ' (' + marker('unverified') + ')' : '');
+        } else {
+          valueText = marker(r.status) + (suffix || '');
+        }
+        dd.textContent = valueText;
+        const source = document.createElement('span'); source.className = 'live-source';
+        if (rawField && rawField.source && sourceLabels[rawField.source]) {
+          source.textContent = 'Origine : ' + sourceLabels[rawField.source];
+        } else if (rawField && rawField.status === 'not_filled') {
+          source.textContent = 'Non renseigné par la marque';
+        } else if (rawField && rawField.status === 'unavailable') {
+          source.textContent = 'Donnée non disponible dans le passeport';
+        } else if (rawField && rawField.status === 'unverified') {
+          source.textContent = 'Valeur présente, non vérifiée';
+        }
+        if (source.textContent) dd.appendChild(source);
+        row.append(dt, dd); dl.appendChild(row);
+      };
+      const statusBadge = (status, labels, explanations) => {
+        const badge = document.createElement('span'); badge.className = 'live-badge';
+        badge.dataset.status = status || 'unknown';
+        badge.textContent = (labels && labels[status]) || 'Statut non précisé';
+        if (explanations && explanations[status]) badge.title = explanations[status];
+        return badge;
+      };
+      const renderLiveMaterials = (dpp) => {
+        if (live.materials) live.materials.replaceChildren();
+        const composition = renderable(dpp.composition);
+        if (live.composition) {
+          live.composition.textContent = composition.text !== null
+            ? composition.text
+            : marker(composition.status);
+          live.composition.hidden = false;
+        }
+        const materials = Array.isArray(dpp.materials) ? dpp.materials : [];
+        let shown = 0;
+        for (const material of materials) {
+          if (!live.materials) break;
+          const name = renderable(material.name);
+          const percentage = renderable(material.percentage);
+          const role = renderable(material.role);
+          const origin = renderable(material.originCountry);
+          if (name.text === null && percentage.text === null && role.text === null && origin.text === null) continue;
+          const li = document.createElement('li'); li.className = 'live-material';
+          const strong = document.createElement('strong');
+          strong.textContent = name.text !== null ? name.text : marker(name.status);
+          li.appendChild(strong);
+          const meta = document.createElement('div'); meta.className = 'live-material-meta';
+          const parts = [];
+          if (percentage.text !== null) parts.push(percentage.text + ' %' + (percentage.status === 'unverified' ? ' (' + marker('unverified') + ')' : ''));
+          else parts.push('Pourcentage : ' + marker(percentage.status));
+          if (role.text !== null) parts.push('Rôle : ' + role.text);
+          if (origin.text !== null) parts.push('Origine déclarée : ' + origin.text);
+          meta.textContent = parts.join(' · ');
+          li.appendChild(meta);
+          if (percentage.status !== 'sourced') li.appendChild(statusBadge(percentage.status, {}, {}));
+          live.materials.appendChild(li);
+          shown += 1;
+        }
+        if (live.materialsEmpty) live.materialsEmpty.hidden = shown > 0;
+        if (live.composition && shown === 0 && composition.text === null) {
+          live.composition.textContent = 'Aucune composition publiable n’est renseignée.';
+        }
+      };
+      const renderLiveClaims = (payload) => {
+        if (!live.claims) return;
+        live.claims.replaceChildren();
+        const claims = Array.isArray(payload.claims) ? payload.claims : [];
+        for (const claim of claims) {
+          const card = document.createElement('article'); card.className = 'live-claim';
+          const statement = document.createElement('p');
+          statement.textContent = String(claim.statement || '');
+          card.appendChild(statement);
+          card.appendChild(statusBadge(claim.validationStatus, claimStatusLabels, claimStatusExplanations));
+
+          const meta = document.createElement('div'); meta.className = 'live-claim-meta';
+          const validity = [];
+          const from = fmtDate(claim.validFrom, false);
+          const until = fmtDate(claim.validUntil, false);
+          if (from || until) validity.push('Validité : ' + (from || '—') + ' → ' + (until || '—'));
+          if (claim.expired) {
+            const expired = document.createElement('span'); expired.className = 'expired';
+            expired.textContent = 'Période de validité dépassée';
+            meta.appendChild(expired);
+          }
+          if (validity.length) {
+            const span = document.createElement('span'); span.textContent = validity.join(' · '); meta.appendChild(span);
+          }
+          const evidence = document.createElement('span');
+          evidence.textContent = claim.acceptedEvidenceCount > 0
+            ? `${claim.acceptedEvidenceCount} preuve${claim.acceptedEvidenceCount > 1 ? 's' : ''} acceptée${claim.acceptedEvidenceCount > 1 ? 's' : ''}`
+            : 'Aucune preuve acceptée';
+          meta.appendChild(evidence);
+          if (claim.verifierDisplayName) {
+            const verifier = document.createElement('span');
+            verifier.textContent = 'Vérificateur : ' + claim.verifierDisplayName;
+            meta.appendChild(verifier);
+          }
+          const reviewed = fmtDate(claim.reviewedAt, true);
+          if (reviewed) {
+            const span = document.createElement('span'); span.textContent = 'Revue le ' + reviewed; meta.appendChild(span);
+          }
+          card.appendChild(meta);
+
+          if (claim.contradictingEvidenceCount > 0) {
+            const contradiction = document.createElement('p'); contradiction.className = 'expired';
+            contradiction.style.margin = '8px 0 0';
+            contradiction.textContent = `${claim.contradictingEvidenceCount} preuve${claim.contradictingEvidenceCount > 1 ? 's' : ''} contradictoire${claim.contradictingEvidenceCount > 1 ? 's' : ''} acceptée${claim.contradictingEvidenceCount > 1 ? 's' : ''} — à examiner`;
+            card.appendChild(contradiction);
+          }
+          if (Array.isArray(claim.evidenceLabels) && claim.evidenceLabels.length) {
+            const list = document.createElement('ul'); list.className = 'live-evidence';
+            for (const label of claim.evidenceLabels) {
+              const li = document.createElement('li'); li.textContent = String(label); list.appendChild(li);
+            }
+            card.appendChild(list);
+          }
+          live.claims.appendChild(card);
+        }
+        if (live.claimsEmpty) live.claimsEmpty.hidden = claims.length > 0;
+      };
+      const renderLiveLimits = (dpp, payload) => {
+        const presentation = dpp.presentation || {};
+        const limits = dpp.limits || {};
+        if (live.updated) {
+          const updated = fmtDate(presentation.lastUpdatedAt, true);
+          live.updated.textContent = updated
+            ? 'Dernière mise à jour publique : ' + updated
+            : 'Aucune date de mise à jour publique n’est disponible.';
+        }
+        if (live.limits) {
+          live.limits.replaceChildren();
+          const title = document.createElement('strong');
+          title.textContent = `Complétude déclarée : ${Number(limits.missingFields) || 0} champ(s) manquant(s), ${Number(limits.unverifiedFields) || 0} non vérifié(s).`;
+          live.limits.appendChild(title);
+          const notice = document.createElement('p'); notice.style.margin = '6px 0 0';
+          notice.textContent = limits.notice || 'Les données absentes ne sont pas remplacées par des valeurs supposées.';
+          live.limits.appendChild(notice);
+          const confidentiality = document.createElement('p'); confidentiality.style.margin = '6px 0 0';
+          confidentiality.textContent = 'Les informations non publiées peuvent être absentes ou réservées aux acteurs autorisés ; elles ne sont jamais présentées ici comme établies.';
+          live.limits.appendChild(confidentiality);
+        }
+        if (live.missing) {
+          live.missing.replaceChildren();
+          const capabilities = dpp.capabilities || {};
+          const gaps = [
+            !capabilities.hasComposition && 'Composition matière non publiée.',
+            !capabilities.hasTraceability && 'Chaîne de traçabilité non publiée.',
+            !capabilities.hasCareInstructions && 'Instructions d’entretien non publiées.',
+            !capabilities.hasClaims && 'Aucune affirmation publique étayée.',
+          ].filter(Boolean);
+          if (Number(limits.claimsWithoutAcceptedEvidence) > 0) {
+            gaps.push(`${limits.claimsWithoutAcceptedEvidence} affirmation(s) annoncent un niveau de confiance sans preuve acceptée.`);
+          }
+          if (!gaps.length) gaps.push('Les sections publiées ci-dessus sont renseignées ; leur niveau de contrôle reste celui indiqué, sans certification implicite.');
+          for (const gap of gaps) {
+            const li = document.createElement('li'); li.textContent = gap; live.missing.appendChild(li);
+          }
+        }
+      };
+      const renderStructuredData = (payload) => {
+        const dpp = (payload && payload.dpp) || {};
+        const sourced = (key) => dpp[key] && dpp[key].status === 'sourced' && dpp[key].value !== null && dpp[key].value !== undefined;
+        const json = { '@context': 'https://schema.org', '@type': 'Product' };
+        if (sourced('productName')) json.name = String(dpp.productName.value);
+        if (sourced('sku')) json.sku = String(dpp.sku.value);
+        if (sourced('gtin')) json.gtin = String(dpp.gtin.value);
+        if (sourced('productReference')) json.model = String(dpp.productReference.value);
+        if (sourced('brandName')) json.brand = { '@type': 'Brand', name: String(dpp.brandName.value) };
+        if (sourced('countryOfManufacture')) json.countryOfOrigin = String(dpp.countryOfManufacture.value);
+        const materials = (Array.isArray(dpp.materials) ? dpp.materials : [])
+          .filter((m) => m && m.name && m.name.status === 'sourced' && m.percentage && m.percentage.status === 'sourced')
+          .map((m) => ({ '@type': 'DefinedTerm', name: String(m.name.value), percentage: Number(m.percentage.value) }));
+        if (materials.length) json.material = materials;
+        if (dpp.presentation && dpp.presentation.lastUpdatedAt) json.dateModified = dpp.presentation.lastUpdatedAt;
+        if (dpp.links && dpp.links.dppUrl) json.url = dpp.links.dppUrl;
+        if (!json.name) {
+          json['@type'] = 'WebPage';
+          json.name = 'Digital Product Passport — TRACEFAB';
+        }
+        const previous = document.getElementById('dpp-jsonld');
+        const script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.id = 'dpp-jsonld';
+        script.textContent = JSON.stringify(json);
+        if (previous) previous.replaceWith(script);
+        else document.head.appendChild(script);
+
+        if (json['@type'] === 'Product') {
+          const title = json.name + ' — Digital Product Passport | TRACEFAB';
+          document.title = title;
+          const description = `${json.name} — Digital Product Passport TRACEFAB. Informations publiées par la marque ; les données absentes ou non vérifiées sont signalées comme telles.`;
+          document.querySelector('meta[name="description"]')?.setAttribute('content', description.slice(0, 300));
+          document.querySelector('meta[property="og:title"]')?.setAttribute('content', json.name + ' — DPP TRACEFAB');
+          document.querySelector('meta[property="og:description"]')?.setAttribute('content', description.slice(0, 240));
+        }
+      };
+      const renderLive = (payload) => {
+        const dpp = (payload && payload.dpp) || {};
+        if (!live.root) return;
+        if (live.identity) {
+          live.identity.replaceChildren();
+          addDefinition(live.identity, 'Marque responsable', dpp.brandName);
+          addDefinition(live.identity, 'Référence', dpp.productReference);
+          addDefinition(live.identity, 'Catégorie', dpp.category);
+          addDefinition(live.identity, 'Pays de fabrication', dpp.countryOfManufacture);
+          addDefinition(live.identity, 'Pays de conception', dpp.countryOfDesign);
+          addDefinition(live.identity, 'Poids', dpp.weightGrams, ' g');
+          addDefinition(live.identity, 'Date de publication relue', dpp.verificationDate);
+          addDefinition(live.identity, 'Certificat de transaction', dpp.transactionCertificateNumber);
+        }
+        renderLiveMaterials(dpp);
+        if (live.traceability) {
+          const trace = renderable(dpp.supplyChainSummary);
+          live.traceability.textContent = trace.text !== null
+            ? trace.text
+            : 'Aucune chaîne de traçabilité publiable n’est renseignée.';
+          if (trace.status === 'unverified') live.traceability.textContent += ' (' + marker('unverified') + ')';
+        }
+        if (live.care) {
+          live.care.replaceChildren();
+          addDefinition(live.care, 'Entretien', dpp.careInstructions);
+          addDefinition(live.care, 'Fin de vie / recyclage', dpp.recyclingInstructions);
+        }
+        renderLiveClaims(payload);
+        renderLiveLimits(dpp, payload);
+        renderStructuredData(payload);
+        live.root.hidden = false;
+      };
       const lifecycle = {
         list: document.getElementById('lifecycle-list'), status: document.getElementById('lifecycle-status'),
         count: document.getElementById('lifecycle-count'), more: document.getElementById('lifecycle-more'),
@@ -108,10 +398,14 @@
         third_party_verified: 'Contrôle réalisé par un tiers identifié selon un périmètre documenté.',
       };
       let lifecycleEvents = [];
+      const eventSummary = (item) => item.publicSummary ?? item.public_summary;
+      const eventStatus = (item) => item.validationStatus ?? item.validation_status;
+      const eventRecordedAt = (item) => item.recordedAt ?? item.recorded_at;
+      const eventBusinessAt = (item) => item.businessOccurredAt ?? item.business_occurred_at;
       const renderHistory = (history, expanded) => {
         if (!lifecycle.list || !lifecycle.status) return;
-        lifecycleEvents = Array.isArray(history) ? history.filter((item) => item && item.public_summary && item.validation_status !== 'rejected') : [];
-        lifecycleEvents.sort((a, b) => String(b.recorded_at || '').localeCompare(String(a.recorded_at || '')));
+        lifecycleEvents = Array.isArray(history) ? history.filter((item) => item && eventSummary(item) && eventStatus(item) !== 'rejected') : [];
+        lifecycleEvents.sort((a, b) => String(eventRecordedAt(b) || '').localeCompare(String(eventRecordedAt(a) || '')));
         lifecycle.list.replaceChildren();
         if (!lifecycleEvents.length) {
           lifecycle.status.hidden = false;
@@ -124,14 +418,16 @@
         shown.forEach((item) => {
           const li = document.createElement('li'); li.className = 'lifecycle-event';
           const dot = document.createElement('span'); dot.className = 'lifecycle-dot'; dot.setAttribute('aria-hidden', 'true');
-          const time = document.createElement('time'); const rawDate = item.business_occurred_at || item.recorded_at; const date = new Date(rawDate);
+          const time = document.createElement('time'); const rawDate = eventBusinessAt(item) || eventRecordedAt(item); const date = new Date(rawDate);
           time.dateTime = Number.isNaN(date.getTime()) ? '' : date.toISOString();
           time.textContent = Number.isNaN(date.getTime()) ? 'Date non disponible' : new Intl.DateTimeFormat(lang, { dateStyle: 'long' }).format(date);
           const title = document.createElement('h3'); title.className = 'lifecycle-event-title';
-          title.textContent = item.public_summary || eventLabels[item.event_type] || 'Événement du produit';
-          const badge = document.createElement('span'); badge.className = 'trust-badge'; badge.dataset.status = item.validation_status || 'declared';
-          badge.textContent = trustLabels[item.validation_status] || 'Statut non précisé';
-          badge.title = trustExplanations[item.validation_status] || 'Niveau de contrôle non précisé.';
+          title.textContent = eventSummary(item) || eventLabels[item.eventType || item.event_type] || 'Événement du produit';
+          const st = eventStatus(item) || 'declared';
+          const badge = document.createElement('span'); badge.className = 'trust-badge'; badge.dataset.status = st;
+          badge.textContent = trustLabels[st] || 'Statut non précisé';
+          badge.title = (trustExplanations[st] || 'Niveau de contrôle non précisé.')
+            + (item.verifiedByName ? ' Organisme vérificateur : ' + item.verifiedByName + '.' : '');
           li.append(dot, time, title, badge); lifecycle.list.append(li);
         });
         lifecycle.status.hidden = true; lifecycle.list.hidden = false;
@@ -186,6 +482,7 @@
           : (sourcedCount > 0 ? 'partial' : (declared ? declared : 'empty'));
         document.documentElement.setAttribute('data-dpp-source', statut);
         renderHistory(payload.history, false);
+        renderLive(payload);
         return true;
       };
 
@@ -196,6 +493,7 @@
           // Un identifiant réel ne retombe jamais sur les affirmations de la
           // démonstration : elles sont masquées, même en cas d'erreur réseau.
           document.documentElement.setAttribute('data-dpp-source', 'unavailable');
+          if (live.root) live.root.hidden = true;
           if (banner) { banner.hidden = false; banner.textContent = 'Passeport indisponible ou inconnu. Aucune donnée de démonstration n’est affichée comme réelle.'; }
           if (lifecycle.status) lifecycle.status.textContent = 'L’historique public n’a pas pu être chargé. Réessayez ultérieurement.';
         });

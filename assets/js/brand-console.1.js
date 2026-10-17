@@ -31,6 +31,12 @@
         selectedDppProduct: null,
         dppPortfolio: null,
         dppScope: 'portfolio',
+        dppClaims: null,
+        dppEvents: null,
+        dppAsVerifier: false,
+        dppTrustError: null,
+        dppMandates: null,
+        dppMandatesError: null,
         modal: null,
         modalIssueId: null,
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
@@ -80,6 +86,9 @@
         "invited": "stInvited",
         "declared": "stDeclared",
         "documented": "stDocumented",
+        "controlled": "stControlled",
+        "corroborated": "stCorroborated",
+        "third_party_verified": "stThirdPartyVerified",
         "uploaded": "stUploaded",
         "scanning": "stScanning",
         "available": "stAvailable",
@@ -3083,6 +3092,8 @@
             ${renderPillarCard(pillars.quality, '🛡️', bt('cnStep4'))}
           </div>
 
+          ${dppTrustView()}
+
           ${dpp.missingFields && dpp.missingFields.length ? `
             <div class="card panel">
               <div class="panel-head">
@@ -3118,6 +3129,345 @@
             </div>
           `}
         `;
+      }
+
+      // --- Confiance et cycle de vie ---------------------------------------
+      // Ces panneaux ne sont pas decoratifs : chaque statut affiche provient
+      // d'une revue datee et auditee cote serveur. L'interface ne propose
+      // jamais d'ecrire un statut sans methode ni preuve acceptee.
+
+      function verifierOrganizations() {
+        return state.memberships.filter((m) => m.organizations?.type === 'verifier');
+      }
+
+      async function loadDppTrust(productId) {
+        state.dppClaims = null;
+        state.dppEvents = null;
+        state.dppTrustError = null;
+        state.dppAsVerifier = false;
+        state.dppMandates = null;
+        state.dppMandatesError = null;
+        render();
+        try {
+          const [claimsRes, eventsRes] = await Promise.all([
+            api(`/api/products/${encodeURIComponent(productId)}/dpp/claims`),
+            api(`/api/products/${encodeURIComponent(productId)}/dpp/events`),
+          ]);
+          // Une reponse tardive ne doit pas ecraser un autre produit.
+          if (state.selectedDppProduct?.id !== productId) return;
+          state.dppClaims = claimsRes.claims || [];
+          state.dppAsVerifier = Boolean(claimsRes.asVerifier);
+          state.dppEvents = eventsRes.events || [];
+        } catch (error) {
+          if (state.selectedDppProduct?.id === productId) state.dppTrustError = error.message;
+          render();
+          return;
+        }
+        render();
+        if (!state.dppAsVerifier) loadDppMandates(productId);
+      }
+
+      async function loadDppMandates(productId) {
+        const product = state.selectedDppProduct;
+        if (state.demo || !product?.brandOrganizationId) return;
+        try {
+          const res = await api(`/api/dpp/mandates?organizationId=${encodeURIComponent(product.brandOrganizationId)}`);
+          if (state.selectedDppProduct?.id !== productId) return;
+          state.dppMandates = res.mandates || [];
+        } catch (error) {
+          if (state.selectedDppProduct?.id === productId) state.dppMandatesError = error.message;
+        }
+        render();
+      }
+
+      function dppReviewForm(claim) {
+        const options = state.dppAsVerifier
+          ? ['third_party_verified', 'rejected']
+          : ['documented', 'controlled', 'corroborated', 'rejected'];
+        const verifierOrgs = verifierOrganizations();
+        return `<details style="margin-top:10px">
+          <summary class="link-button">${bt('dppClaimReview')}</summary>
+          <form data-claim-review="${esc(claim.id)}" style="margin-top:12px">
+            <div class="form-grid">
+              <label>${bt('dppClaimReviewStatus')}
+                <select class="select" name="resultingStatus" required>
+                  ${options.map((o) => `<option value="${esc(o)}">${esc(statusLabel(o))}</option>`).join('')}
+                </select>
+              </label>
+              <label>${bt('dppClaimReviewMethod')}
+                <input class="input" name="method" required maxlength="200" placeholder="${esc(bt('dppClaimReviewMethodPlaceholder'))}">
+              </label>
+              ${state.dppAsVerifier && verifierOrgs.length > 1 ? `<label>${bt('dppEventVerifier')}
+                <select class="select" name="reviewerOrganizationId" required>
+                  ${verifierOrgs.map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name || m.organization_id)}</option>`).join('')}
+                </select></label>` : ''}
+              <label class="field-full">${bt('dppClaimReviewNotes')}
+                <textarea class="input" name="notes" maxlength="2000" rows="2"></textarea>
+              </label>
+            </div>
+            <p class="meta">${bt('dppClaimReviewHint')}</p>
+            <button class="btn btn-primary btn-small">${bt('dppClaimReviewSubmit')}</button>
+          </form>
+          <form data-claim-evidence="${esc(claim.id)}" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+            <div class="form-grid">
+              <label>${bt('dppEvidenceDocument')}<input class="input" name="documentId" required placeholder="UUID"></label>
+              <label>${bt('dppEvidenceRelation')}
+                <select class="select" name="relationship">
+                  <option value="supports">${esc(bt('dppEvidenceSupports'))}</option>
+                  <option value="contradicts">${esc(bt('dppEvidenceContradicts'))}</option>
+                  <option value="context">${esc(bt('dppEvidenceContext'))}</option>
+                </select>
+              </label>
+              <label class="field-full">${bt('dppEvidenceAccept')}
+                <select class="select" name="verificationResult">
+                  <option value="accepted">${esc(bt('dppEvidenceAccepted'))}</option>
+                  <option value="pending">${esc(bt('dppEvidencePending'))}</option>
+                </select>
+              </label>
+            </div>
+            <button class="btn btn-secondary btn-small" style="margin-top:8px">${bt('dppEvidenceAdd')}</button>
+          </form>
+        </details>`;
+      }
+
+      function dppTrustView() {
+        const product = state.selectedDppProduct;
+        const claims = state.dppClaims;
+        const events = state.dppEvents;
+        const loading = claims === null && !state.dppTrustError;
+        const verifierOrgs = verifierOrganizations();
+        return `
+          <div class="card panel" id="dpp-claims-panel">
+            <div class="panel-head">
+              <div>
+                <h2>${bt('dppClaimsTitle')}</h2>
+                <p class="meta" style="margin:4px 0 0">${bt('dppTrustIntro')}</p>
+              </div>
+              <span class="meta">${claims ? claims.length : '—'}</span>
+            </div>
+            ${state.dppTrustError ? `<p class="meta" style="color:var(--red)">${bt('dppTrustLoadError')} <code>${esc(state.dppTrustError)}</code></p>` : ''}
+            ${loading ? `<p class="meta">…</p>` : ''}
+            ${claims && !claims.length ? `<p class="meta">${bt('dppClaimsEmpty')}</p>` : ''}
+            ${claims && claims.length ? `<div class="item-list">${claims.map((c) => {
+              const evidence = Array.isArray(c.evidence) ? c.evidence : [];
+              const acceptedEvidence = evidence.filter((e) => e.verificationResult === 'accepted');
+              const effective = c.effective_validation_status || c.validation_status;
+              return `<div class="item">
+                <div style="flex:1">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                    <h3>${esc(c.statement)}</h3>
+                    ${status(effective)}
+                  </div>
+                  <p class="meta"><code>${esc(c.claim_key)}</code> · ${esc(c.subject_scope || 'model')}${c.subject_reference ? ' · ' + esc(c.subject_reference) : ''}</p>
+                  ${c.public_statement ? `<p style="margin:6px 0;font-size:13px">“${esc(c.public_statement)}”</p>` : ''}
+                  <p class="meta">${bt('dppClaimEvidence')} : ${acceptedEvidence.length ? esc(String(acceptedEvidence.length)) : bt('dppClaimNoEvidence')}
+                    · ${bt('dppClaimVerifiedBy')} : ${esc(c.verifier_display_name || '—')}
+                    · ${bt('dppClaimReviewedOn')} : ${date(c.reviewed_at)}</p>
+                  ${dppReviewForm(c)}
+                </div>
+              </div>`;
+            }).join('')}</div>` : ''}
+            ${!state.dppAsVerifier ? `<details style="margin-top:14px">
+              <summary class="link-button">${bt('dppClaimNew')}</summary>
+              <form id="dpp-claim-form" style="margin-top:12px">
+                <div class="form-grid">
+                  <label>${bt('dppClaimKey')}<input class="input" name="claimKey" required maxlength="120" pattern="[a-z][a-z0-9_.-]{2,119}" placeholder="origin.country"></label>
+                  <label class="field-full">${bt('dppClaimStatement')}<input class="input" name="statement" required maxlength="1000"></label>
+                  <label class="field-full">${bt('dppClaimPublicStatement')}<textarea class="input" name="publicStatement" maxlength="500" rows="2"></textarea></label>
+                </div>
+                <p class="meta">${bt('dppClaimDeclaredHint')}</p>
+                <button class="btn btn-primary btn-small">${bt('dppClaimCreate')}</button>
+              </form>
+            </details>` : ''}
+          </div>
+
+          <div class="card panel" id="dpp-events-panel">
+            <div class="panel-head">
+              <div>
+                <h2>${bt('dppEventsTitle')}</h2>
+                <p class="meta" style="margin:4px 0 0">${bt('dppEventsIntro')}</p>
+              </div>
+              <span class="meta">${events ? events.length : '—'}</span>
+            </div>
+            ${events && !events.length ? `<p class="meta">${bt('dppEventsEmpty')}</p>` : ''}
+            ${events && events.length ? `<div class="item-list">${events.map((e) => `
+              <div class="item">
+                <div style="flex:1">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                    <h3>${esc(e.summary)}</h3>
+                    ${status(e.validation_status)}
+                  </div>
+                  <p class="meta"><code>${esc(e.event_type)}</code> · ${esc(e.subject_scope || 'model')} · ${bt('dppEventRecordedAt')} ${date(e.recorded_at)} · ${bt('dppEventOccurredAt')} ${date(e.business_occurred_at)}</p>
+                  ${e.public_summary ? `<p style="margin:6px 0;font-size:13px">“${esc(e.public_summary)}”</p>` : ''}
+                  <p class="meta">${bt('dppEventSource')} : <code>${esc(e.source_kind)}</code>${e.verified_by_organization_id ? ' · ' + bt('dppEventThirdParty') : ''}</p>
+                </div>
+              </div>`).join('')}</div>` : ''}
+            <details style="margin-top:14px">
+              <summary class="link-button">${bt('dppEventAdd')}</summary>
+              <form id="dpp-event-form" style="margin-top:12px">
+                <div class="form-grid">
+                  <label>${bt('dppEventType')}
+                    <select class="select" name="eventType" required>
+                      ${['passport_created','data_submitted','evidence_added','manufacturing_step','data_corrected','repair','reuse','recycling'].map((t) => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                  </label>
+                  <label>${bt('dppEventOccurredAt')}<input class="input" name="businessOccurredAt" type="date"></label>
+                  <label class="field-full">${bt('dppEventSummary')}<input class="input" name="summary" required maxlength="500"></label>
+                  <label class="field-full">${bt('dppEventPublicSummary')}<textarea class="input" name="publicSummary" maxlength="500" rows="2"></textarea></label>
+                  ${state.dppAsVerifier ? `<label>${bt('dppEventVerifier')}
+                    <select class="select" name="reviewerOrganizationId" required>
+                      ${verifierOrgs.map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name || m.organization_id)}</option>`).join('')}
+                    </select></label>` : ''}
+                </div>
+                <p class="meta">${bt('dppEventAppendOnlyHint')}</p>
+                <button class="btn btn-primary btn-small">${bt('dppEventAdd')}</button>
+              </form>
+            </details>
+          </div>
+
+          ${!state.dppAsVerifier ? `<div class="card panel" id="dpp-mandates-panel">
+            <div class="panel-head">
+              <div>
+                <h2>${bt('dppMandatesTitle')}</h2>
+                <p class="meta" style="margin:4px 0 0">${bt('dppMandatesIntro')}</p>
+              </div>
+            </div>
+            ${state.dppMandatesError ? `<p class="meta" style="color:var(--red)">${bt('dppTrustLoadError')} <code>${esc(state.dppMandatesError)}</code></p>` : ''}
+            ${state.dppMandates && !state.dppMandates.length ? `<p class="meta">${bt('dppMandatesEmpty')}</p>` : ''}
+            ${state.dppMandates && state.dppMandates.length ? `<div class="item-list">${state.dppMandates.map((m) => `
+              <div class="item">
+                <div style="flex:1">
+                  <h3>${esc(m.verifier_display_name || m.verifier_organization_id)}</h3>
+                  <p class="meta"><code>${esc(m.verifier_organization_id)}</code> · ${m.status === 'active' ? bt('dppMandateActive') : bt('dppMandateRevokedStatus')} · ${date(m.granted_at)}${m.revoked_at ? ' → ' + date(m.revoked_at) : ''}</p>
+                  ${m.notes ? `<p class="meta">${esc(m.notes)}</p>` : ''}
+                </div>
+                ${m.status === 'active' ? `<button class="btn btn-secondary btn-small" data-revoke-mandate="${esc(m.id)}">${bt('dppMandateRevoke')}</button>` : ''}
+              </div>`).join('')}</div>` : ''}
+            <details style="margin-top:14px">
+              <summary class="link-button">${bt('dppMandateGrant')}</summary>
+              <form id="dpp-mandate-form" style="margin-top:12px">
+                <div class="form-grid">
+                  <label class="field-full">${bt('dppMandateVerifier')}<input class="input" name="verifierOrganizationId" required></label>
+                  <label class="field-full">${bt('dppMandateNotes')}<input class="input" name="notes" maxlength="500"></label>
+                </div>
+                <p class="meta">${bt('dppMandateVerifierHint')}</p>
+                <button class="btn btn-primary btn-small">${bt('dppMandateGrant')}</button>
+              </form>
+            </details>
+          </div>` : ''}
+        `;
+      }
+
+      async function submitDppClaim(form) {
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const product = state.selectedDppProduct;
+        const data = Object.fromEntries(new FormData(form));
+        await api(`/api/products/${encodeURIComponent(product.id)}/dpp/claims`, {
+          method: 'POST',
+          body: JSON.stringify({
+            claimKey: String(data.claimKey || '').trim(),
+            statement: String(data.statement || '').trim(),
+            publicStatement: String(data.publicStatement || '').trim() || null,
+          }),
+        });
+        notify(bt('dppClaimCreated'));
+        await loadDppTrust(product.id);
+      }
+
+      async function submitDppClaimEvidence(form) {
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const product = state.selectedDppProduct;
+        const data = Object.fromEntries(new FormData(form));
+        await api(`/api/products/${encodeURIComponent(product.id)}/dpp/claims/${encodeURIComponent(form.dataset.claimEvidence)}/evidence`, {
+          method: 'POST',
+          body: JSON.stringify({
+            documentId: String(data.documentId || '').trim(),
+            relationship: data.relationship,
+            verificationResult: data.verificationResult,
+          }),
+        });
+        notify(bt('dppEvidenceAdded'));
+        await loadDppTrust(product.id);
+      }
+
+      async function submitDppClaimReview(form) {
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const product = state.selectedDppProduct;
+        const data = Object.fromEntries(new FormData(form));
+        const body = {
+          resultingStatus: data.resultingStatus,
+          method: String(data.method || '').trim(),
+          notes: String(data.notes || '').trim() || null,
+        };
+        if (state.dppAsVerifier) {
+          body.reviewerOrganizationId = data.reviewerOrganizationId
+            || verifierOrganizations()[0]?.organization_id
+            || null;
+        }
+        await api(`/api/products/${encodeURIComponent(product.id)}/dpp/claims/${encodeURIComponent(form.dataset.claimReview)}/review`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        notify(bt('dppReviewRecorded'));
+        await loadDppTrust(product.id);
+      }
+
+      async function submitDppEvent(form) {
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const product = state.selectedDppProduct;
+        const data = Object.fromEntries(new FormData(form));
+        const body = {
+          eventType: data.eventType,
+          summary: String(data.summary || '').trim(),
+          publicSummary: String(data.publicSummary || '').trim() || null,
+          businessOccurredAt: data.businessOccurredAt || null,
+          sourceKind: state.dppAsVerifier ? 'third_party' : 'actor_declaration',
+          validationStatus: state.dppAsVerifier ? 'third_party_verified' : 'declared',
+        };
+        if (state.dppAsVerifier) {
+          body.verifiedByOrganizationId = data.reviewerOrganizationId
+            || verifierOrganizations()[0]?.organization_id
+            || null;
+        }
+        await api(`/api/products/${encodeURIComponent(product.id)}/dpp/events`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        notify(bt('dppEventAdded'));
+        await loadDppTrust(product.id);
+      }
+
+      async function grantDppMandate(form) {
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const product = state.selectedDppProduct;
+        const data = Object.fromEntries(new FormData(form));
+        await api('/api/dpp/mandates', {
+          method: 'POST',
+          body: JSON.stringify({
+            organizationId: product.brandOrganizationId,
+            verifierOrganizationId: String(data.verifierOrganizationId || '').trim(),
+            notes: String(data.notes || '').trim() || null,
+          }),
+        });
+        notify(bt('dppMandateGranted'));
+        await loadDppMandates(product.id);
+      }
+
+      async function revokeDppMandate(mandateId) {
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        const reason = prompt(bt('dppMandateRevokePrompt'));
+        if (reason === null) return;
+        if (reason.trim().length < 3 || reason.trim().length > 500) {
+          notify(bt('dppMandateRevokeReasonInvalid'), true);
+          return;
+        }
+        const product = state.selectedDppProduct;
+        await api(`/api/dpp/mandates/${encodeURIComponent(mandateId)}/revoke`, {
+          method: 'POST',
+          body: JSON.stringify({ reason: reason.trim() }),
+        });
+        notify(bt('dppMandateRevoked'));
+        await loadDppMandates(product.id);
       }
 
       function renderPillarCard(pillar, defaultIcon, defaultTitle) {
@@ -4041,6 +4391,11 @@
         state.selectedDppProduct = state.products.find((p) => p.id === productId) || null;
         state.view = 'dpp';
         state.dpp = null;
+        state.dppClaims = null;
+        state.dppEvents = null;
+        state.dppTrustError = null;
+        state.dppMandates = null;
+        state.dppMandatesError = null;
         render();
         if (state.demo) {
           state.dpp = demoDpp();
@@ -4054,6 +4409,7 @@
         } catch (e) {
           notify(e.message, true);
         }
+        await loadDppTrust(productId);
       }
 
       async function computeDpp() {
@@ -4156,7 +4512,7 @@
             if (action === 'remind-request') { event.stopPropagation(); await remindRequest(el.dataset.reminderRequestId); }
             if (action === 'select-quality-product') { state.selectedProduct = null; state.quality = null; render(); }
             if (action === 'select-supply-chain-product') { state.selectedSupplyChainProduct = null; state.supplyChain = null; render(); }
-            if (action === 'select-dpp-product') { state.selectedDppProduct = null; state.dpp = null; render(); }
+            if (action === 'select-dpp-product') { state.selectedDppProduct = null; state.dpp = null; state.dppClaims = null; state.dppEvents = null; state.dppMandates = null; render(); }
             if (action === 'compute-quality') await computeQuality();
             if (action === 'compute-dpp') await computeDpp();
             if (action === 'publish-dpp') await publishDpp();
@@ -4186,6 +4542,12 @@
         document.getElementById('quality-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadQuality(e.target.value); });
         document.getElementById('supply-chain-product-select')?.addEventListener('change', (e) => { if (e.target.value) loadSupplyChain(e.target.value); });
         document.getElementById('dpp-product-select')?.addEventListener('change', (e) => { if (e.target.value) { state.dppScope = 'product'; loadDpp(e.target.value); } });
+        document.getElementById('dpp-claim-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitDppClaim(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.querySelectorAll('[data-claim-review]').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); submitDppClaimReview(e.currentTarget).catch((err) => notify(err.message, true)); }));
+        document.querySelectorAll('[data-claim-evidence]').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); submitDppClaimEvidence(e.currentTarget).catch((err) => notify(err.message, true)); }));
+        document.getElementById('dpp-event-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitDppEvent(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('dpp-mandate-form')?.addEventListener('submit', (e) => { e.preventDefault(); grantDppMandate(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.querySelectorAll('[data-revoke-mandate]').forEach((el) => el.addEventListener('click', () => revokeDppMandate(el.dataset.revokeMandate).catch((err) => notify(err.message, true))));
         document.getElementById('catalog-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.catalogImport.filename = file.name; state.catalogImport.content = await file.text(); state.catalogImport.preview = null; render(); });
         document.getElementById('catalog-import-content')?.addEventListener('input', (event) => { state.catalogImport.content = event.currentTarget.value; state.catalogImport.preview = null; });
         document.getElementById('supplier-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.supplierImport.filename = file.name; state.supplierImport.content = await file.text(); state.supplierImport.preview = null; render(); });
