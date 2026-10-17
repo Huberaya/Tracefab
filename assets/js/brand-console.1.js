@@ -10,6 +10,10 @@
         // marque, ou adherences pas encore chargees. Affiche explicitement,
         // jamais remplace par le jeu de demonstration.
         tenantError: null,
+        // Locataire auquel les donnees actuellement chargees appartiennent.
+        // Sert a distinguer un changement de locataire (vidage obligatoire) d'un
+        // rechargement du meme locataire (l'etat ouvert doit survivre).
+        loadedOrganizationId: null,
         user: null,
         memberships: [],
         organizations: [],
@@ -1171,6 +1175,7 @@
         state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false };
         state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false };
         state.tenantError = null;
+        state.loadedOrganizationId = null;
       }
 
       // Resout le locataire actif a partir des adherions reelles. Ne devine
@@ -1226,7 +1231,12 @@
           try { localStorage.setItem(TENANT_STORAGE_KEY, state.activeOrganizationId); } catch { /* ignore */ }
 
           // Rien du locataire precedent ne survit au chargement du suivant.
-          resetTenantState();
+          // Mais un rechargement du MEME locataire ne doit rien detruire :
+          // `sync()` est appele apres un enregistrement, et vider alors
+          // `selectedProductDetail` detruirait la fiche que l'utilisateur vient
+          // de modifier. La purge est donc bornee au changement de locataire.
+          if (state.loadedOrganizationId !== state.activeOrganizationId) resetTenantState();
+          state.loadedOrganizationId = state.activeOrganizationId;
 
           // Phase 2 — donnees du locataire actif. Chaque appel porte l'en-tete
           // de locataire (voir `api`) ; le serveur refuse une requete privee qui
@@ -1586,8 +1596,18 @@
         if (state.tenantError && !state.demo) {
           app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>${esc(bt('cnNoActiveTenantTitle'))}</h1><p>${esc(bt('cnNoActiveTenantBody'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
         }
-        if (state.configError && !state.demo && !state.user) {
-          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>${esc(bt('cnAuthUnavailable'))}</h1><p>${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
+        if (state.configError && !state.demo) {
+          // `!state.user` ne suffit plus : le chargement est en deux phases, et
+          // l'identite est connue avant les donnees du locataire. Une panne de
+          // la seconde phase ne doit pas rendre une console partiellement
+          // vide : un ecran a moitie rempli se lit comme une verite a moitie
+          // fausse. Sans identite, c'est l'authentification qui est en cause ;
+          // avec, ce sont les donnees du locataire actif.
+          const titre = state.user ? bt('cnTenantLoadFailedTitle') : bt('cnAuthUnavailable');
+          const corps = state.user
+            ? `${esc(state.configError)} ${esc(bt('cnTenantLoadFailedBody'))}`
+            : `${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}`;
+          app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>${esc(titre)}</h1><p>${corps}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
         }
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>${esc(bt('cnLoadingTitle'))}</h1><p>${esc(bt('cnLoadingSub'))}</p></div></div>`; return; }
         if (!state.user && !state.demo) { renderAuth(); return; }

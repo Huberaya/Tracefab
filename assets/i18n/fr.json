@@ -1312,6 +1312,8 @@
     "cnAuthUnavailable": "Connexion indisponible",
     "cnNoActiveTenantTitle": "Aucune organisation active",
     "cnNoActiveTenantBody": "Votre compte n'a aucune organisation de marque. Demandez à un administrateur de vous inviter, puis rechargez cette page.",
+    "cnTenantLoadFailedTitle": "Données du locataire indisponibles",
+    "cnTenantLoadFailedBody": "Les données de l'organisation active n'ont pas pu être chargées. Rien n'est affiché plutôt qu'une vue incomplète. Réessayez.",
     "dpPortfolioEyebrow": "Préparation du portefeuille",
     "dpPortfolioTitle": "Ce qui manque dans votre catalogue",
     "dpPortfolioIntro": "Préparation agrégée sur l'ensemble des produits. Chaque écart ci-dessous indique les produits qu'il bloque et ouvre l'écran qui le corrige.",

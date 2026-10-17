@@ -1287,6 +1287,8 @@
     "cnAuthUnavailable": "Aanmelden niet beschikbaar",
     "cnNoActiveTenantTitle": "Geen actieve organisatie",
     "cnNoActiveTenantBody": "Uw account heeft geen merkorganisatie. Vraag een beheerder om u uit te nodigen en laad deze pagina opnieuw.",
+    "cnTenantLoadFailedTitle": "Organisatiegegevens niet beschikbaar",
+    "cnTenantLoadFailedBody": "De gegevens van de actieve organisatie konden niet worden geladen. Er wordt niets getoond in plaats van een onvolledig overzicht. Probeer het opnieuw.",
     "dpPortfolioEyebrow": "Gereedheid portfolio",
     "dpPortfolioTitle": "Wat ontbreekt in uw catalogus",
     "dpPortfolioIntro": "Geaggregeerde gereedheid over alle producten. Elke leemte toont de geblokkeerde producten en opent het scherm dat ze verhelpt.",

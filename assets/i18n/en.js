@@ -1001,6 +1001,8 @@ window.TF_I18N_BUNDLES.en = {
     cnAuthUnavailable: "Sign-in unavailable",
     cnNoActiveTenantTitle: "No active organisation",
     cnNoActiveTenantBody: "Your account has no brand organisation. Ask an administrator to invite you, then reload this page.",
+    cnTenantLoadFailedTitle: "Tenant data unavailable",
+    cnTenantLoadFailedBody: "The data for the active organisation could not be loaded. Nothing is shown rather than an incomplete view. Try again.",
     dpPortfolioEyebrow: "Portfolio readiness",
     dpPortfolioTitle: "What is missing across your catalogue",
     dpPortfolioIntro: "Aggregated readiness across every product. Each gap below lists the products it blocks and opens the screen that fixes it.",

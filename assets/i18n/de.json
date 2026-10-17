@@ -1287,6 +1287,8 @@
     "cnAuthUnavailable": "Anmeldung nicht verfügbar",
     "cnNoActiveTenantTitle": "Keine aktive Organisation",
     "cnNoActiveTenantBody": "Ihr Konto hat keine Markenorganisation. Bitten Sie eine Administratorin oder einen Administrator um eine Einladung und laden Sie diese Seite neu.",
+    "cnTenantLoadFailedTitle": "Daten der Organisation nicht verfügbar",
+    "cnTenantLoadFailedBody": "Die Daten der aktiven Organisation konnten nicht geladen werden. Es wird nichts angezeigt statt einer unvollständigen Ansicht. Bitte erneut versuchen.",
     "dpPortfolioEyebrow": "Portfolio-Reifegrad",
     "dpPortfolioTitle": "Was in Ihrem Katalog fehlt",
     "dpPortfolioIntro": "Aggregierter Reifegrad über alle Produkte. Jede Lücke nennt die blockierten Produkte und öffnet den Bildschirm zur Behebung.",

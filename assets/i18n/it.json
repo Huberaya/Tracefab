@@ -1287,6 +1287,8 @@
     "cnAuthUnavailable": "Accesso non disponibile",
     "cnNoActiveTenantTitle": "Nessuna organizzazione attiva",
     "cnNoActiveTenantBody": "Il tuo account non ha alcuna organizzazione di marca. Chiedi a un amministratore di invitarti, poi ricarica questa pagina.",
+    "cnTenantLoadFailedTitle": "Dati dell'organizzazione non disponibili",
+    "cnTenantLoadFailedBody": "Impossibile caricare i dati dell'organizzazione attiva. Non viene mostrato nulla anziché una vista incompleta. Riprova.",
     "dpPortfolioEyebrow": "Preparazione del portafoglio",
     "dpPortfolioTitle": "Cosa manca nel vostro catalogo",
     "dpPortfolioIntro": "Preparazione aggregata su tutti i prodotti. Ogni lacuna elenca i prodotti bloccati e apre la schermata che la risolve.",
