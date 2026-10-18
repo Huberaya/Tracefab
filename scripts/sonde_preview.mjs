@@ -24,7 +24,36 @@
  *   vert.
  */
 
+import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
 const args = process.argv.slice(2);
+
+// Magasin de certificats autorise.
+//
+// Derriere un proxy a interception TLS, l'autorite du proxy est presente dans le
+// faisceau systeme (/etc/ssl/certs/ca-certificates.crt) mais pas dans le magasin
+// embarque de Node : les requetes echouent alors en UNABLE_TO_VERIFY_LEAF_SIGNATURE
+// alors que le reseau fonctionne et que curl, lui, valide. Mesure ici : le
+// faisceau systeme contient 143 certificats dont « E2B Proxy CA ».
+//
+// La validation TLS n'est JAMAIS desactivee. On relance le script avec
+// NODE_EXTRA_CA_CERTS pointe sur le magasin systeme — la variable n'etant lue
+// qu'au demarrage, un simple assignement ici n'aurait aucun effet. Un jeton de
+// reexecution empeche toute boucle.
+const FAISCEAU_SYSTEME = '/etc/ssl/certs/ca-certificates.crt';
+if (!process.env.NODE_EXTRA_CA_CERTS && !process.env.TF_SONDE_REEXEC && fs.existsSync(FAISCEAU_SYSTEME)) {
+  const relance = spawnSync(
+    process.execPath,
+    [fileURLToPath(import.meta.url), ...args],
+    {
+      stdio: 'inherit',
+      env: { ...process.env, NODE_EXTRA_CA_CERTS: FAISCEAU_SYSTEME, TF_SONDE_REEXEC: '1' },
+    },
+  );
+  process.exit(relance.status ?? 1);
+}
 const valeur = (nom) => {
   const i = args.indexOf(`--${nom}`);
   return i >= 0 && args[i + 1] ? args[i + 1] : null;
@@ -186,6 +215,9 @@ console.log(`commit        : ${commit}`);
 console.log(`base          : ${base}`);
 console.log(`contournement : ${masque}`);
 console.log(`hote temoin   : api.github.com -> ${temoin}`);
+console.log(
+  `magasin CA    : ${process.env.NODE_EXTRA_CA_CERTS || 'magasin embarque de Node'} — validation TLS active`,
+);
 console.log('');
 console.log('route                            attendu  obtenu   verdict       detail');
 console.log('-'.repeat(104));

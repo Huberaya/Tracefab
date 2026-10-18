@@ -160,6 +160,18 @@ verifier(
   'le temoin n est jamais rendu par le mot « injoignable » seul, qui masquerait un reseau fonctionnel',
 );
 
+// La validation TLS ne doit jamais etre desactivee : la sortie nomme le magasin
+// employe et le dit explicitement. Un sondeur qui accepterait tout certificat
+// rendrait ses propres verdicts sans valeur.
+verifier(
+  /magasin CA\s+:/.test(r3.sortie),
+  'la sortie nomme le magasin de certificats employe',
+);
+verifier(
+  /validation TLS active/.test(r3.sortie),
+  'la sortie affirme que la validation TLS reste active',
+);
+
 const r4 = await lancer(protege.url, { TF_VERCEL_BYPASS: 'valeur-tres-secrete-12345' });
 verifier(
   !r4.sortie.includes('valeur-tres-secrete-12345'),
