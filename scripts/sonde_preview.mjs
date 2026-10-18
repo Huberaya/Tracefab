@@ -124,7 +124,18 @@ const sonder = async (s) => {
       signal: AbortSignal.timeout(25_000),
     });
   } catch (e) {
-    return { ...s, obtenu: '000', corps: `requete impossible : ${e.name}`, verdict: 'INDETERMINE' };
+    // `fetch failed` seul ne dit rien : la cause reelle est dans e.cause. Sans
+    // elle, un filtrage reseau (ECONNRESET) et une absence de reseau (ENOTFOUND)
+    // produisent la meme ligne, et l'operateur ne peut pas savoir s'il doit
+    // changer de poste ou corriger un DNS.
+    const cause = e.cause?.code || e.cause?.message || e.message;
+    return {
+      ...s,
+      obtenu: '000',
+      corps: `requete impossible : ${e.name} (${cause})`,
+      verdict: 'INDETERMINE',
+      raison: `hote non joint (${cause})`,
+    };
   }
 
   const brut = await reponse.text();
@@ -146,9 +157,35 @@ const sonder = async (s) => {
 const resultats = [];
 for (const s of sondes) resultats.push(await sonder(s));
 
+// Hote temoin : si les six routes sont INDETERMINE, il faut pouvoir distinguer
+// « ce poste n'a aucun reseau » de « cet hote precis est filtre ». Le temoin ne
+// fait partie d'aucun contrat et n'entre dans aucun verdict.
+//
+// La classification compte plus que le code : une erreur de verification de
+// certificat prouve qu'un certificat a ete recu, donc que le reseau fonctionne.
+// La lire comme « injoignable » ferait chercher une panne de reseau inexistante.
+// C'est exactement ce qui se passe derriere un proxy a interception TLS dont
+// l'autorite n'est pas dans le magasin de Node (NODE_EXTRA_CA_CERTS non defini),
+// alors que curl, lui, l'accepte depuis le magasin systeme.
+const classerTemoin = async () => {
+  try {
+    const r = await fetch('https://api.github.com', { signal: AbortSignal.timeout(10_000) });
+    return `http=${r.status} — reseau fonctionnel`;
+  } catch (e) {
+    const code = e.cause?.code || e.message;
+    if (/CERT|SIGNATURE|UNABLE_TO_VERIFY/i.test(String(code))) {
+      return `${code} — reseau fonctionnel, certificat recu mais autorite non reconnue par Node`;
+    }
+    if (code === 'ENOTFOUND') return `${code} — resolution DNS en echec`;
+    return `${code} — connexion en echec`;
+  }
+};
+const temoin = await classerTemoin();
+
 console.log(`commit        : ${commit}`);
 console.log(`base          : ${base}`);
 console.log(`contournement : ${masque}`);
+console.log(`hote temoin   : api.github.com -> ${temoin}`);
 console.log('');
 console.log('route                            attendu  obtenu   verdict       detail');
 console.log('-'.repeat(104));

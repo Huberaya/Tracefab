@@ -148,6 +148,18 @@ verifier(
   'aucune valeur de contournement ne fuit dans la sortie',
 );
 
+// La ligne temoin doit etre classee, pas brute : derriere un proxy a
+// interception TLS, une erreur de certificat prouve que le reseau fonctionne.
+// La lire comme « injoignable » ferait diagnostiquer une panne inexistante.
+verifier(
+  /hote temoin\s+:/.test(r3.sortie),
+  'la sortie comporte une ligne d hote temoin',
+);
+verifier(
+  !/hote temoin\s+:.*\binjoignable\b/.test(r3.sortie),
+  'le temoin n est jamais rendu par le mot « injoignable » seul, qui masquerait un reseau fonctionnel',
+);
+
 const r4 = await lancer(protege.url, { TF_VERCEL_BYPASS: 'valeur-tres-secrete-12345' });
 verifier(
   !r4.sortie.includes('valeur-tres-secrete-12345'),
