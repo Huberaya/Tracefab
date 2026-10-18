@@ -22,13 +22,24 @@
 
 name: Sondage HTTP de la Preview (aucun secret)
 
+# L'URL sondee est celle de la Preview du commit b387ea0, relevee dans le statut
+# du deploiement Vercel 7156939590. Elle est epinglee, et non pas celle du commit
+# courant : Vercel deploie en parallele de la CI, donc la Preview du commit en
+# cours de verification n'existe pas encore quand ce job tourne.
 on:
+  # `workflow_dispatch` ne suffit pas : GitHub n'enregistre un declenchement
+  # manuel que pour un workflow present sur la branche par defaut. Ce fichier
+  # n'est que sur la branche de travail, donc le declencheur `push` limite a
+  # cette branche est ce qui permet reellement de l'executer avant fusion.
   workflow_dispatch:
     inputs:
       url:
         description: 'URL de base de la Preview a sonder (doit finir par .vercel.app)'
         required: true
         default: 'https://tracefab-mhjghahrq-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+  push:
+    branches:
+      - 'arena/ba652133-tracefab'
 
 permissions: {}
 
@@ -44,7 +55,7 @@ jobs:
     steps:
       - name: Refuser une URL qui ne vient pas de Vercel
         env:
-          TF_BASE: ${{ github.event.inputs.url }}
+          TF_BASE: ${{ github.event.inputs.url || 'https://tracefab-mhjghahrq-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
         run: |
           set -eu
           case "$TF_BASE" in
@@ -54,7 +65,7 @@ jobs:
 
       - name: Sonder les routes et comparer au contrat
         env:
-          TF_BASE: ${{ github.event.inputs.url }}
+          TF_BASE: ${{ github.event.inputs.url || 'https://tracefab-mhjghahrq-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
         run: |
           set -uo pipefail
           base="${TF_BASE%/}"
