@@ -396,6 +396,16 @@ jobs:
         # tracefab_products le fait passer au rouge (3 echecs, sortie 1).
         run: npm run test:neon:app-readiness
 
+      - name: Controle negatif — l isolement vient bien de la RLS
+        # Une suite qui verifie « A ne voit rien de B » ne prouve rien si la
+        # requete renverrait 0 dans tous les cas. Ce controle rejoue le MEME
+        # contexte acteur et les MEMES requetes sous un role identique en tout
+        # point mais dote de BYPASSRLS, et exige qu'il aboutisse : si le role
+        # privilegie reussit la ou le role applicatif echoue, l'echec vient de
+        # la RLS et non d'un artefact du test. Le role de sonde est detruit dans
+        # un finally, et le script refuse toute URL Neon.
+        run: npm run test:neon:bypass-control
+
       - name: Provenance DPP / Wallet
         run: npm run test:neon:dpp-provenance
 
