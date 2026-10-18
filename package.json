@@ -10,6 +10,7 @@
     "test:wallet:chantier9": "npx tsx scripts/test_wallet_chantier9.ts",
     "test:wallet:signature-production": "npx tsx scripts/test_wallet_signature_production.ts",
     "test:wallet-public": "node scripts/test_wallet_public_surface.mjs",
+    "test:neon:write-policies": "node scripts/run-db-suite.mjs scripts/test_rls_write_policies.mjs",
     "test:neon:wallet:chantier9": "node scripts/run-db-suite.mjs scripts/test_neon_wallet_chantier9.ts",
     "test:storage:chantier10": "npx tsx scripts/test_chantier10_cloud_storage.ts",
     "test:neon:storage:chantier10": "node scripts/run-db-suite.mjs scripts/test_neon_chantier10_storage.ts",

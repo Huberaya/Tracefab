@@ -375,6 +375,16 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
+      - name: Politiques d'ecriture — WITH CHECK reel, pas suppose
+        # Cinq politiques d'ecriture sont declarees sans WITH CHECK. Ce n'est
+        # pas une faille, mais la protection qui empeche un transfert de
+        # propriete inter-organisations repose sur la coherence entre politiques
+        # de lecture et d'ecriture. Le test le prouve par execution, avec un
+        # role de sonde sans BYPASSRLS cree puis detruit, et il passe au rouge
+        # si une politique permissive FOR ALL est ajoutee (controle negatif
+        # verifie sur PostgreSQL 18.4).
+        run: npm run test:neon:write-policies
+
       - name: Provenance DPP / Wallet
         run: npm run test:neon:dpp-provenance
 
