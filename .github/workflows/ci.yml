@@ -385,6 +385,17 @@ jobs:
         # verifie sur PostgreSQL 18.4).
         run: npm run test:neon:write-policies
 
+      - name: Disponibilite a la bascule du runtime vers tracefab_app
+        # Le runtime se connecte aujourd'hui avec neondb_owner, qui porte
+        # BYPASSRLS : les politiques ne sont jamais evaluees en production.
+        # Basculer vers tracefab_app les rend opposables, mais change ce que
+        # chaque requete voit. Ce test rejoue sous tracefab_app reel les quatre
+        # contextes que le code sait armer — public, authentifie, worker, et
+        # l'ecriture anonyme — et exige le resultat attendu dans les deux sens.
+        # Controle negatif verifie : une politique permissive ajoutee sur
+        # tracefab_products le fait passer au rouge (3 echecs, sortie 1).
+        run: npm run test:neon:app-readiness
+
       - name: Provenance DPP / Wallet
         run: npm run test:neon:dpp-provenance
 
