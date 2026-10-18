@@ -11,7 +11,7 @@
     "test:wallet:signature-production": "npx tsx scripts/test_wallet_signature_production.ts",
     "test:wallet-public": "node scripts/test_wallet_public_surface.mjs",
     "test:neon:app-readiness": "node scripts/run-db-suite.mjs scripts/test_tracefab_app_readiness.mjs",
-    "test:neon:bypass-control": "node scripts/test_rls_bypass_controle_negatif.mjs",
+    "test:neon:bypass-control": "node scripts/run-db-suite.mjs scripts/test_rls_bypass_controle_negatif.mjs",
     "test:neon:write-policies": "node scripts/run-db-suite.mjs scripts/test_rls_write_policies.mjs",
     "test:neon:wallet:chantier9": "node scripts/run-db-suite.mjs scripts/test_neon_wallet_chantier9.ts",
     "test:storage:chantier10": "npx tsx scripts/test_chantier10_cloud_storage.ts",
