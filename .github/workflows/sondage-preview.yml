@@ -1,0 +1,120 @@
+# Sondage HTTP de la Preview — aucun secret, aucun privilege, aucune action tierce.
+#
+# POURQUOI CETTE VOIE EXISTE : le bac a sable d'analyse n'a aucun acces reseau a
+# *.vercel.app (HTTP 000 mesure, variantes -4, -6, --http1.1 et --resolve vers
+# l'IP resolue epuisees, aucun proxy configure, alors qu'api.github.com repond
+# 200). Les runners GitHub, eux, ont un acces Internet complet. Le sondage doit
+# donc partir d'ici pour etre reel : un test non execute n'est pas un test passe.
+#
+# CE QUE CE WORKFLOW NE FAIT PAS
+#   - il ne lit AUCUN secret (le contexte `secrets` n'apparait nulle part) ;
+#   - il n'appelle PAS api.vercel.com, donc aucun jeton n'est necessaire ;
+#   - il ne deploie rien, n'ecrit rien dans le depot, ne touche aucune base ;
+#   - il n'utilise aucune action tierce, donc aucune reference a epingle ;
+#   - il n'imprime aucune valeur de variable d'environnement : seuls les codes
+#     HTTP et les corps tronques remontent, et `set-cookie` est retire.
+#
+# CE QU'IL PROUVE
+#   Que les routes reelles repondent conformement a leur contrat sur une Preview
+#   donnee. C'est le controle manquant avant la bascule du runtime vers
+#   `tracefab_app` : les suites SQL prouvent ce que la base autorise, pas ce que
+#   l'application sert effectivement.
+
+name: Sondage HTTP de la Preview (aucun secret)
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL de base de la Preview a sonder (doit finir par .vercel.app)'
+        required: true
+        default: 'https://tracefab-mhjghahrq-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+
+permissions: {}
+
+concurrency:
+  group: sondage-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sondage:
+    name: Sonder les routes reelles depuis un runner GitHub
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Refuser une URL qui ne vient pas de Vercel
+        env:
+          TF_BASE: ${{ github.event.inputs.url }}
+        run: |
+          set -eu
+          case "$TF_BASE" in
+            https://*.vercel.app) echo "hote accepte : $(printf '%s' "$TF_BASE" | sed -E 's#^https://([^/]+).*#\1#')" ;;
+            *) echo "::error::URL refusee. Seule une Preview Vercel en https peut etre sondee." ; exit 2 ;;
+          esac
+
+      - name: Sonder les routes et comparer au contrat
+        env:
+          TF_BASE: ${{ github.event.inputs.url }}
+        run: |
+          set -uo pipefail
+          base="${TF_BASE%/}"
+          rouge=0
+
+          # sonde <nom> <methode> <chemin> <attendu> [<chaine attendue dans le corps>]
+          sonde() {
+            nom="$1"; methode="$2"; chemin="$3"; attendu="$4"; corps_attendu="${5:-}"
+            corps="$(mktemp)"
+            code="$(curl -sS -o "$corps" -w '%{http_code}' -X "$methode" \
+                      -H 'accept: application/json' --max-time 25 \
+                      "$base$chemin" 2>/dev/null || echo '000')"
+            extrait="$(tr -d '\n' < "$corps" | cut -c1-220)"
+            rm -f "$corps"
+
+            etat='ok    '
+            if [ "$code" != "$attendu" ]; then etat='ECHEC'; rouge=$((rouge+1)); fi
+            if [ -n "$corps_attendu" ] && ! printf '%s' "$extrait" | grep -qF "$corps_attendu"; then
+              if [ "$etat" = 'ok    ' ]; then etat='ECHEC'; rouge=$((rouge+1)); fi
+            fi
+
+            printf '  %s %-46s %s %s -> %s (attendu %s)\n' \
+              "$etat" "$nom" "$methode" "$chemin" "$code" "$attendu"
+            printf '        corps : %s\n' "${extrait:-<vide>}"
+          }
+
+          echo "Base sondee : $base"
+          echo "Aucun secret lu. Aucune base de donnees contactee par ce job."
+          echo
+
+          # Contrat attendu, lu dans le code :
+          #  /api/health                     -> 200 {ok:true}
+          #  /api/dpp/<gtin inconnu>         -> 404 {error:product_passport_not_found}
+          #                                     (un 500 internal_error signerait une panne de la route)
+          #  POST /api/documents/<uuid>/scan -> 401, requireClerkUser precede tout acces
+          #  /api/green-claims/rules         -> 200, table de reference anonyme
+          #  /api/pef/factors                -> 200, table de reference anonyme
+          sonde 'page d accueil'                 GET  '/'                                                       200
+          sonde 'sante — acces base'             GET  '/api/health'                                             200 '"ok":true'
+          sonde 'DPP — GTIN inconnu'             GET  '/api/dpp/0000000000000'                                  404 'product_passport_not_found'
+          sonde 'scan — sans authentification'   POST '/api/documents/00000000-0000-0000-0000-000000000000/scan' 401
+          sonde 'reference — green claims'       GET  '/api/green-claims/rules'                                 200
+          sonde 'reference — facteurs PEF'       GET  '/api/pef/factors'                                        200
+
+          echo
+          if [ "$rouge" -gt 0 ]; then
+            echo "::error::$rouge sonde(s) hors contrat."
+            echo "Un 000 partout signifierait une protection de deploiement Vercel"
+            echo "(Deployment Protection / SSO) et non une panne applicative : dans ce"
+            echo "cas le sondage doit etre repris depuis un poste authentifie."
+            exit 1
+          fi
+          echo "Toutes les sondes sont conformes au contrat lu dans le code."
+
+      - name: Rappeler ce que ce resultat ne prouve pas
+        if: always()
+        run: |
+          echo "Ce job prouve que les routes repondent conformement a leur contrat."
+          echo "Il ne prouve PAS quel role Postgres sert le runtime : la valeur de"
+          echo "DATABASE_URL est un secret Vercel et n'est ni lue ni affichee ici."
+          echo "Le role se verifie dans la console Vercel (Settings > Environment"
+          echo "Variables > DATABASE_URL > onglet Preview), ou dans Neon avec"
+          echo "SELECT usename, count(*) FROM pg_stat_activity GROUP BY usename."
