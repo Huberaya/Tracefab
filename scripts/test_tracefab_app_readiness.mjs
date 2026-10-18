@@ -136,6 +136,33 @@ try {
     'contexte AUTHENTIFIE : rien du locataire voisin n\'est visible',
     `produits voisins=${vus.produitsB} organisations voisines=${vus.organisationsB}`);
 
+  // ------------------------------------------------------------- D2
+  // L'isolation en lecture ne suffit pas : elle doit tenir en ecriture, et
+  // avec le ROLE APPLICATIF REEL — pas avec un role de sonde cree pour
+  // l'occasion, ce qui ne prouverait rien du runtime. `tracefab_app` a
+  // UPDATE sur tracefab_products, donc la politique products_update_brand
+  // (USING tracefab_has_org_role(brand_organization_id, ...)) est reellement
+  // evaluee : un USING faux ne leve pas d'erreur, il ne modifie rien.
+  let refusEcriture;
+  try {
+    const n = await dansContexte({
+      'tracefab.user_id': locA.user_id,
+      'tracefab.user_email': email.email.toLowerCase(),
+      'tracefab.active_organization_id': locA.id,
+    }, (c) => c.query(
+      `UPDATE tracefab_products SET updated_at = now()
+       WHERE brand_organization_id = $1 RETURNING id`, [locB.id])
+      .then((r) => r.rowCount));
+    refusEcriture = `aucune erreur levee, ${n} ligne(s) modifiee(s)`;
+    verifier(n === 0,
+      'ECRITURE avec le role applicatif : le locataire actif ne modifie rien chez le voisin',
+      refusEcriture);
+  } catch (e) {
+    verifier(e.code === '42501',
+      'ECRITURE avec le role applicatif : le locataire actif ne modifie rien chez le voisin',
+      `${e.code} ${e.message.slice(0, 60)}`);
+  }
+
   // ---------------------------------------------------------------- E
   // Le webhook Clerk n'insere PAS directement : `organizations_insert_creator`
   // exige `created_by = tracefab_current_user_id()`, qu'un contexte worker ne
