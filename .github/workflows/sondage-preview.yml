@@ -90,6 +90,18 @@ jobs:
             printf '  %s %-46s %s %s -> %s (attendu %s)\n' \
               "$etat" "$nom" "$methode" "$chemin" "$code" "$attendu"
             printf '        corps : %s\n' "${extrait:-<vide>}"
+
+            # Chaque resultat part aussi en annotation. L'hote qui sert les
+            # journaux de run (results-receiver.actions.githubusercontent.com)
+            # n'est pas joignable depuis le bac a sable d'analyse, alors que
+            # api.github.com l'est : les annotations sont le seul canal par
+            # lequel ce resultat reste lisible sans telecharger les journaux.
+            msg="$methode $chemin -> $code (attendu $attendu) | corps ${extrait:-vide}"
+            if [ "$etat" = 'ok    ' ]; then
+              echo "::notice title=$nom::$msg"
+            else
+              echo "::error title=$nom::$msg"
+            fi
           }
 
           echo "Base sondee : $base"
