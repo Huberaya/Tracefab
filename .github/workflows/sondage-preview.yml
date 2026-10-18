@@ -70,6 +70,7 @@ jobs:
           set -uo pipefail
           base="${TF_BASE%/}"
           rouge=0
+          protegee=0
 
           # sonde <nom> <methode> <chemin> <attendu> [<chaine attendue dans le corps>]
           sonde() {
@@ -81,6 +82,20 @@ jobs:
             extrait="$(tr -d '\n' < "$corps" | cut -c1-220)"
             rm -f "$corps"
 
+            # Une reponse de Vercel Authentication n'est PAS une reponse de
+            # l'application : elle porte la marque `vercel_auth_enabled`. La
+            # confondre avec un contrat respecte ferait passer pour verifie un
+            # test qui n'a jamais atteint le code — le scan repond 401 par la
+            # protection comme il repondrait 401 par requireClerkUser, et seul
+            # le corps permet de les distinguer.
+            if printf '%s' "$extrait" | grep -qF 'vercel_auth_enabled'; then
+              protegee=1
+              printf '  INDETERMINE %-40s %s %s -> %s (protection Vercel, application non atteinte)\n' \
+                "$nom" "$methode" "$chemin" "$code"
+              echo "::warning title=$nom::$methode $chemin -> $code : reponse de Vercel Authentication, l'application n'a pas ete atteinte, aucun contrat n'est verifie"
+              return
+            fi
+
             etat='ok    '
             if [ "$code" != "$attendu" ]; then etat='ECHEC'; rouge=$((rouge+1)); fi
             if [ -n "$corps_attendu" ] && ! printf '%s' "$extrait" | grep -qF "$corps_attendu"; then
@@ -91,11 +106,10 @@ jobs:
               "$etat" "$nom" "$methode" "$chemin" "$code" "$attendu"
             printf '        corps : %s\n' "${extrait:-<vide>}"
 
-            # Chaque resultat part aussi en annotation. L'hote qui sert les
+            # Chaque resultat part aussi en annotation : l'hote qui sert les
             # journaux de run (results-receiver.actions.githubusercontent.com)
             # n'est pas joignable depuis le bac a sable d'analyse, alors que
-            # api.github.com l'est : les annotations sont le seul canal par
-            # lequel ce resultat reste lisible sans telecharger les journaux.
+            # api.github.com l'est.
             msg="$methode $chemin -> $code (attendu $attendu) | corps ${extrait:-vide}"
             if [ "$etat" = 'ok    ' ]; then
               echo "::notice title=$nom::$msg"
@@ -123,11 +137,13 @@ jobs:
           sonde 'reference — facteurs PEF'       GET  '/api/pef/factors'                                        200
 
           echo
+          if [ "$protegee" -gt 0 ]; then
+            echo "::error title=Sondage non concluant::La Preview repond par Vercel Authentication. Aucune des six routes n'a atteint l'application, donc aucun contrat applicatif n'est verifie. Ce n'est ni une reussite ni un echec du code : c'est un test non execute."
+            echo "Protection Vercel detectee : le sondage n'a atteint aucune route applicative."
+            exit 3
+          fi
           if [ "$rouge" -gt 0 ]; then
             echo "::error::$rouge sonde(s) hors contrat."
-            echo "Un 000 partout signifierait une protection de deploiement Vercel"
-            echo "(Deployment Protection / SSO) et non une panne applicative : dans ce"
-            echo "cas le sondage doit etre repris depuis un poste authentifie."
             exit 1
           fi
           echo "Toutes les sondes sont conformes au contrat lu dans le code."
