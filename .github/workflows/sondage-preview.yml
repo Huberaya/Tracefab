@@ -79,7 +79,13 @@ jobs:
             code="$(curl -sS -o "$corps" -w '%{http_code}' -X "$methode" \
                       -H 'accept: application/json' --max-time 25 \
                       "$base$chemin" 2>/dev/null || echo '000')"
-            extrait="$(tr -d '\n' < "$corps" | cut -c1-220)"
+            # La detection porte sur le corps COMPLET, pas sur l'extrait
+            # affiche : l'ordre des cles JSON varie d'une route a l'autre et
+            # `vercel_auth_enabled` tombait au-dela des 220 caracteres sur
+            # `/` et `/api/dpp/...`. Ces deux sondes etaient alors classees
+            # ECHEC au lieu d'INDETERMINE dans le run 39144362751.
+            plein="$(tr -d '\n' < "$corps" | cut -c1-6000)"
+            extrait="$(printf '%s' "$plein" | cut -c1-220)"
             rm -f "$corps"
 
             # Une reponse de Vercel Authentication n'est PAS une reponse de
@@ -88,7 +94,7 @@ jobs:
             # test qui n'a jamais atteint le code — le scan repond 401 par la
             # protection comme il repondrait 401 par requireClerkUser, et seul
             # le corps permet de les distinguer.
-            if printf '%s' "$extrait" | grep -qF 'vercel_auth_enabled'; then
+            if printf '%s' "$plein" | grep -qF 'vercel_auth_enabled'; then
               protegee=1
               printf '  INDETERMINE %-40s %s %s -> %s (protection Vercel, application non atteinte)\n' \
                 "$nom" "$methode" "$chemin" "$code"
