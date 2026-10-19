@@ -119,6 +119,33 @@ try {
     const r = lance(['--reference', reference, '--cible', vide]);
     verifier('sortie sans ligne exploitable : sortie 2', r.code === 2, `sortie ${r.code}`);
   }
+  {
+    // NON-RÉGRESSION du 19 octobre. Le comparateur filtrait les lignes non
+    // conformes SANS LE DIRE : un inventaire de 245 objets réels plus 4 lignes
+    // parasites rendait « inventaires identiques » avec un code de sortie 0.
+    // Démontré avant correction sur un inventaire de 245 objets. Sur une cible
+    // réelle, un objet rendu dans un format inattendu disparaissait donc de la
+    // comparaison sans aucun signal — le faux vert exact que cet outil doit
+    // rendre impossible, puisqu'il doit trancher sur les objets divergents.
+    const melange = ecrire('cible-bruit.txt', [
+      ...fs.readFileSync(reference, 'utf8').trim().split('\n'),
+      'politique rendue sur une colonne inattendue',
+      '(5 lignes)',
+      'POLICY',
+    ]);
+    const r = lance(['--reference', reference, '--cible', melange]);
+    verifier('lignes non conformes : sortie 2, pas un faux vert', r.code === 2, `sortie ${r.code}`);
+    verifier(
+      'le comparateur ne conclut PAS à des inventaires identiques',
+      !/inventaires identiques/i.test(r.sortie),
+      'il annonce des inventaires identiques malgré des lignes écartées',
+    );
+    verifier(
+      'les lignes en cause sont montrées',
+      /ligne\(s\) non conforme/.test(r.sortie) && r.sortie.includes('(5 lignes)'),
+      'diagnostic absent',
+    );
+  }
 
   /* --- 5. La requête d'inventaire est bien en lecture seule ---------------- */
   console.log('\n  5. la requête d inventaire ne peut pas écrire');

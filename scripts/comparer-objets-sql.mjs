@@ -32,16 +32,38 @@ function lire(fichier, etiquette) {
     console.log(`\n  NON EXECUTE — ${etiquette} introuvable : ${fichier}`);
     process.exit(2);
   }
-  const lignes = fs
+  const brutes = fs
     .readFileSync(fichier, 'utf8')
     .split('\n')
     .map((l) => l.trim())
-    .filter((l) => l.startsWith('POLICY ') || l.startsWith('SECDEF '));
+    .filter((l) => l.length > 0);
+  const lignes = brutes.filter((l) => l.startsWith('POLICY ') || l.startsWith('SECDEF '));
   if (lignes.length === 0) {
     console.log(`\n  NON EXECUTE — ${etiquette} ne contient aucune ligne POLICY ou SECDEF.`);
     console.log(`  Fichier : ${path.resolve(fichier)}`);
     console.log('  Vérifier que la sortie de lire-objets-sql.sql a bien été enregistrée,');
     console.log('  sans en-tête de colonne ni pied de page du client SQL.');
+    process.exit(2);
+  }
+
+  // CORRECTION DU 19 OCTOBRE — le filtre ci-dessus écartait SILENCIEUSEMENT toute
+  // ligne non conforme. Conséquence démontrée : un inventaire de 245 objets plus
+  // 4 lignes parasites rendait « inventaires identiques » avec un code de sortie
+  // 0. Sur une cible réelle, un objet rendu dans un format inattendu (colonne
+  // ajoutée, en-tête de client SQL, encodage) disparaissait donc de la
+  // comparaison sans aucun signal — exactement le faux vert que cet outil est
+  // censé rendre impossible, alors qu'il doit trancher sur les politiques et
+  // fonctions divergentes. Toute ligne non vide non conforme arrête maintenant
+  // la comparaison.
+  const nonConformes = brutes.filter((l) => !l.startsWith('POLICY ') && !l.startsWith('SECDEF '));
+  if (nonConformes.length > 0) {
+    console.log(`\n  NON EXECUTE — ${etiquette} contient ${nonConformes.length} ligne(s) non conforme(s).`);
+    console.log(`  Fichier : ${path.resolve(fichier)}`);
+    console.log('  Chaque ligne doit commencer par « POLICY » ou « SECDEF ». Exemples :');
+    for (const l of nonConformes.slice(0, 5)) console.log(`    ${l.slice(0, 110)}`);
+    console.log('  Comparer en ignorant ces lignes pourrait faire passer une cible');
+    console.log('  différente pour identique. Régénérer l\'inventaire avec :');
+    console.log('    psql "$CIBLE" -At -f scripts/lire-objets-sql.sql -o inventaire.txt');
     process.exit(2);
   }
   return new Set(lignes);
