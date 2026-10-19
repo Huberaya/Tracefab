@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SORTIE_DEFAUT = 1;
@@ -380,11 +381,21 @@ const dml = await app.query(`
     AND a.grantee = 'tracefab_app'::regrole
     AND a.privilege_type IN ('INSERT','UPDATE','DELETE')
   GROUP BY 1 ORDER BY 1`);
-const attendues = ['audit_logs', 'documents', 'rate_limit_counters', 'tracefab_catalog_import_jobs'];
+// Importée, PAS recopiée. Cette liste était dupliquée ici en dur, ce qui la
+// rendait aveugle à sa propre fausseté : elle répétait les 4 tables du
+// provisioning au lieu de les contester. Source unique désormais, et sa
+// justesse est vérifiée par scripts/test_tables_ecriture_directe.mjs, qui
+// re-dérive la liste depuis api/.
+const attendues = [...TABLES_ECRITURE_DIRECTE].sort();
 verifier(
-  "l'écriture directe est limitée aux 4 tables approuvées",
+  `l'écriture directe est limitée aux ${attendues.length} tables approuvées`,
   JSON.stringify(dml.rows.map((r) => r.relname)) === JSON.stringify(attendues),
   dml.rows.map((r) => r.relname).join(', '),
+);
+verifier(
+  'la surface d écriture directe reste minoritaire',
+  attendues.length < 30,
+  `${attendues.length} tables en écriture directe`,
 );
 
 const pubDml = await app.query(`

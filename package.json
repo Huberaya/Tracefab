@@ -162,7 +162,8 @@
     "db:prepare-ci-role": "node scripts/run-db-suite.mjs scripts/prepare_ci_db_role.mjs",
     "db:role-runtime": "node scripts/lire-role-runtime.mjs",
     "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs",
-    "test:product-edit:api": "npx tsx scripts/test_product_edit_api.ts"
+    "test:product-edit:api": "npx tsx scripts/test_product_edit_api.ts",
+    "test:tables-ecriture-directe": "node scripts/test_tables_ecriture_directe.mjs"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^6.19.3",

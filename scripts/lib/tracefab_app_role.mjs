@@ -26,6 +26,75 @@ import { sslDepuisUrl } from './pg-ssl.mjs';
 /** Constante partagee : le nom du role applicatif. */
 export const APP_ROLE = 'tracefab_app';
 
+// Tables que le runtime ecrit DIRECTEMENT, hors fonctions SECURITY DEFINER.
+//
+// CORRECTION DU 19 OCTOBRE — cette liste valait 4 tables et elle etait FAUSSE.
+// L'extraction precedente ne relevait que les ordres SQL ecrits en clair
+// ($executeRaw / $queryRaw) et passait a cote de TOUTES les ecritures faites
+// par methodes de modele Prisma (`tx.user.upsert(...)`, `documents.create(...)`).
+// Resultat mesure : 21 tables sont ecrites directement, pas 4. En restreignant
+// le role a 4 tables, on cassait 17 chemins applicatifs des que le runtime
+// tourne sous tracefab_app — dont le provisionnement Clerk (users, 5 sites) et
+// les webhooks. `withTracefabWorkerContext` ne pose qu'un GUC transactionnel
+// (set_config('tracefab.worker_context', ...)), il ne fait PAS de SET ROLE :
+// l'ecriture s'execute donc sous le role de connexion et recoit 42501.
+//
+// Methode de la liste ci-dessous : extraction des methodes d'ecriture Prisma
+// ET des ordres SQL d'ecriture de api/, filtree sur les tables reellement
+// presentes en base (certaines n'ont aucun modele Prisma, comme
+// tracefab_catalog_import_jobs). Reproductible par
+// `npm run test:tables-ecriture-directe`, qui rederive la liste et echoue si
+// elle diverge de celle-ci ou des privileges reels. Ne pas l'editer a la main.
+//
+//   audit_logs                    api/_lib/audit-vault.ts:65                           (audit_logs.create, insert)
+//   data_points                   api/_routes/products/[productId]/data-points.ts:77   (data_points.create)
+//   data_shares                   api/_routes/supplier/shares.ts:67                    (data_shares.create)
+//   documents                     api/_lib/documents.ts:107                            (update)
+//   materials                     api/_lib/bulk-operations/bulk-importer.ts:178        (materials.create)
+//   organization_invitations      api/_routes/supplier/member-invitations/[invitationId].ts:47 (organization_invitations.create, organization_invitations.update)
+//   organization_memberships      api/_routes/supplier/members.ts:148                  (organization_memberships.update, organization_memberships.updatemany)
+//   organizations                 api/_routes/organizations.ts:66                      (organizations.update)
+//   plm_erp_integrations          api/_routes/integrations.ts:55                       (plm_erp_integrations.upsert)
+//   plm_erp_sync_jobs             api/_lib/bulk-operations/bulk-importer.ts:223        (plm_erp_sync_jobs.create)
+//   product_green_claims          api/_routes/products/[productId]/green-claims.ts:47  (product_green_claims.create)
+//   product_identifiers           api/_lib/bulk-operations/bulk-importer.ts:143        (product_identifiers.upsert)
+//   product_materials             api/_lib/bulk-operations/bulk-importer.ts:191        (product_materials.upsert)
+//   quality_cap_messages          api/_routes/quality/caps/[capId]/messages.ts:64      (quality_cap_messages.create)
+//   rate_limit_counters           api/_lib/rate-limit.ts:403                           (delete, insert)
+//   supplier_sites                api/_routes/supplier/sites/[siteId].ts:32            (supplier_sites.create, supplier_sites.update)
+//   supply_chain_links            api/_routes/products/[productId]/supply-chain/links/[linkId].ts:45 (supply_chain_links.deletemany)
+//   supply_chain_nodes            api/_routes/products/[productId]/supply-chain/nodes/[nodeId].ts:52 (supply_chain_nodes.deletemany)
+//   tracefab_catalog_import_jobs  api/_routes/catalog/products/import.ts:138           (insert, update)
+//   tracefab_products             api/_lib/bulk-operations/bulk-importer.ts:97         (tracefab_products.create, tracefab_products.update)
+//   users                         api/_lib/auth.ts:37                                  (user.updatemany, user.upsert)
+//
+// Retirer une table d'ici exige d'avoir d'abord deplace son chemin applicatif
+// vers une fonction SECURITY DEFINER. Le controle
+// scripts/test_privileges_role_app.mjs echoue si un octroi global reapparait.
+export const TABLES_ECRITURE_DIRECTE = [
+  'audit_logs',
+  'data_points',
+  'data_shares',
+  'documents',
+  'materials',
+  'organization_invitations',
+  'organization_memberships',
+  'organizations',
+  'plm_erp_integrations',
+  'plm_erp_sync_jobs',
+  'product_green_claims',
+  'product_identifiers',
+  'product_materials',
+  'quality_cap_messages',
+  'rate_limit_counters',
+  'supplier_sites',
+  'supply_chain_links',
+  'supply_chain_nodes',
+  'tracefab_catalog_import_jobs',
+  'tracefab_products',
+  'users',
+];
+
 function quote(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
 }
@@ -53,26 +122,8 @@ export async function ensureAppRole(db, password) {
   const base = (await db.query('select current_database() d')).rows[0].d;
   const proprio = (await db.query('select current_user u')).rows[0].u;
 
-  // Tables que le runtime ecrit DIRECTEMENT, hors fonctions SECURITY DEFINER.
-  // Liste etablie par extraction des ordres INSERT / UPDATE / DELETE de api/,
-  // croisee avec les tables reellement creees par les migrations — et non
-  // reprise d'une intention. Toute autre mutation applicative passe par une
-  // fonction, dont le proprietaire porte les privileges.
-  //
-  //   documents                     api/_lib/documents.ts:107            (UPDATE)
-  //   rate_limit_counters           api/_lib/rate-limit.ts:403,415       (INSERT, DELETE)
-  //   tracefab_catalog_import_jobs  api/_routes/catalog/*/import.ts      (INSERT)
-  //   audit_logs                    api/_routes/catalog/*/import.ts      (INSERT)
-  //
-  // Ajouter une table ici doit etre justifie par un chemin applicatif precis.
-  // Le controle scripts/test_privileges_role_app.mjs echoue si un octroi global
-  // reapparait a la place de cette liste.
-  const TABLES_ECRITURE_DIRECTE = [
-    'audit_logs',
-    'documents',
-    'rate_limit_counters',
-    'tracefab_catalog_import_jobs',
-  ];
+  // Liste des tables en ecriture directe : voir TABLES_ECRITURE_DIRECTE,
+  // exportee au niveau module (source unique, importee par les controles).
   const listeEcriture = TABLES_ECRITURE_DIRECTE.join(', ');
 
   for (const sql of [

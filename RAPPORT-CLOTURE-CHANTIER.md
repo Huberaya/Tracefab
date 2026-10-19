@@ -12,32 +12,34 @@ démontré de ce qui reste bloqué, et nomme l'action minimale manquante.
 
 | Domaine | Contrôle | Résultat | Preuve | Risque restant |
 |---|---|---|---|---|
-| Git | HEAD et branche | `20087f0b2f82a8288eebf78692a298147a408ba1` sur `arena/ba652133-tracefab` | `git rev-parse HEAD` | — |
+| Git | HEAD et branche | `92401cf…` au début de la passe du 19 octobre (suite), sur `arena/ba652133-tracefab` ; cette passe est commitée par-dessus, voir §8 | `git rev-parse HEAD` | — |
 | Git | correctif `f078550` inclus dans HEAD | **OUI** | `git merge-base --is-ancestor f078550 HEAD` → 0 | — |
-| Git | graphe, fusions | linéaire, 7 commits à 1 parent, aucune fusion | `git cat-file -p` sur chaque commit | — |
+| Git | graphe, fusions | linéaire, 8 commits à 1 parent avant cette passe, aucune fusion | `git rev-list --parents` sur chaque commit | — |
 | Git | worktree (fichiers suivis) | propre | `git status --porcelain -uno` → vide | 21 fichiers non suivis, restes de phases antérieures, non commités |
 | Git | positions distantes | branche `bb1213c`, `main` `31ce446` — **inchangées** | `git ls-remote origin` | — |
 | Git | secrets / temporaires commités | **aucun** | balayage du diff `main..HEAD` | — |
-| Migrations | application séquentielle sur base vierge | **51/51 appliquées, 0 échec** | `seq.tmp.mjs`, sortie 0 | — |
+| Migrations | application séquentielle sur base vierge | **52/52 appliquées, 0 échec** | §8.6, rôle provisionné avant les migrations | — |
 | Migrations | idempotence des 5 du chantier | **5/5 rejouées sans erreur**, 0 duplication | politiques 131→131, fonctions 165→165, déclencheurs 47→47 | — |
-| Migrations | cohérence SQL ↔ provisioning ↔ état réel | **4 = 4 = 4** tables en écriture | `TABLES_ECRITURE_DIRECTE`, migration `20261019120000`, mesure `aclexplode` | — |
+| Migrations | cohérence SQL ↔ provisioning ↔ état réel | **21 = 21 = 21** tables en écriture, 29 en lecture seule | extraction depuis `api/` = liste exportée = mesure `aclexplode` | la valeur précédente, **4**, était fausse — voir §8.1 |
 | Migrations | collisions d'horodatage | 4, toutes sur liste d'exceptions nominative | 3 anciennes (identiques sur `main`), 1 introduite par `b9e2525` déjà sur `bb1213c` | dette : 4 horodatages ambigus |
 | Migrations | **rollback** | **aucun mécanisme** | 0 down migration, 0 procédure documentée | **réel** : un retour arrière exige une nouvelle migration avant |
 | Migrations | `schema.prisma` | inchangé par la branche | `git diff --stat 31ce446 HEAD -- prisma/schema.prisma` → vide | — |
-| Tests | 100 entrées auto-collectées | **74 vertes, 26 échecs, 0 inexpliqué** | balayage complet, sortie 0 | 26 dépendent de Chromium ou du client Prisma |
+| Tests | 101 entrées auto-collectées | **75 vertes, 26 rouges, 0 défaut de code** | §8.6 — filtre extrait du workflow puis exécuté | 20 navigateur absent, 6 client Prisma absent |
 | Tests | `test:chantiers` | **6/6, sortie 0** | sur HEAD exact | — |
-| Tests | suites de sécurité | 39/39 · 30/30 · 18/18 · 16/16 · 14/14 · 8/8 | sortie 0 chacune | — |
+| Tests | suites de sécurité | 39/39 · 30/30 · **19/19** · **33/33** · 14/14 · 8/8 + garde propriétaire PASS | sortie 0 chacune, §8.6 | — |
 | Tests | contrôles négatifs | RLS retirée → 1 ; migration retirée → 1 | empreinte restaurée `1120041bd9f6aa69`, git propre | — |
+| **Privilèges** | **défaut introduit par le chantier** | **trouvé et corrigé** | §8.1–8.4 : 21 tables écrites, pas 4 ; `users` inclus | corrigé par `20261019160000` + garde `test:tables-ecriture-directe` |
 | Prisma | `prisma generate` | **échec, sortie 1** | `binaries.prisma.sh` injoignable | **bloquant pour le build local** |
 | Prisma | `prisma validate` | **échec, sortie 1** | même cause | idem |
 | Typage | `api:typecheck` | sortie 2, **89 erreurs**, 0 dans les fichiers du chantier | `/tmp/tsc.log` | non représentatif de la CI |
-| Routes | `test:router-load` | sortie 1, **130/135** | tous `@prisma/client … no exported member` | idem |
+| Routes | `test:router-load` | sortie 1 — `@prisma/client` n'exporte pas `PrismaClient` | client non généré | idem ; **réussi en CI** sur `bb1213c` |
 | Build | `npm run build` | **non validé** | s'arrête sur `db:generate` | **condition 2 non remplie** |
 | Chromium | `npx playwright install chromium` | **échec** | `cdn.playwright.dev` → `ECONNRESET` | 20 tests non exécutables ici |
-| Objets SQL | référence régénérée | **245 objets** = 131 politiques + 114 `SECDEF` | `lire-objets-sql.sql` sur base vierge | — |
+| Objets SQL | référence régénérée | **245 objets** = 131 politiques + 114 `SECDEF`, inchangés à 52 migrations | `lire-objets-sql.sql` sur base vierge | — |
 | Objets SQL | outil de comparaison | **épreuve réussie** | 245 vs 248 synthétique → nomme les 3, sortie 1 ; entrée manquante → sortie 2 | — |
 | Objets SQL | **identité des objets divergents** | **NON IDENTIFIÉS** | aucune connexion autorisée | **bloquant** |
-| CI distante | les 4 jobs requis | **non exécutés** | aucun push | **condition 1 non remplie** |
+| CI distante | les 4 jobs requis sur **ce** HEAD | **non exécutés** | aucun push | **condition 1 non remplie** |
+| CI distante | les 4 jobs requis sur `bb1213c` | **success** — preuve que l'environnement distant génère Prisma, installe Chromium, compile et teste | run `39209559163`, étapes 5/6/7/10 | `ci.yml` a +71 lignes depuis : les 4 nouvelles étapes n'ont jamais tourné |
 | Production | identité effective du runtime | **non mesurée** | sonde prête, jamais exécutée sur un runtime | **bloquant pour la sécurité** |
 
 ---
@@ -380,3 +382,172 @@ détruites par les suites.
 **Le chantier n'est pas terminé.** Les deux conditions de fusion ne sont
 appuyées par aucun résultat vérifiable, et deux points de sécurité Production
 restent ouverts.
+
+---
+
+## 8. Passe du 19 octobre (suite) — défaut majeur trouvé et corrigé
+
+Cette passe avait trois objectifs : débloquer Prisma, valider le build, établir la
+sécurité distante. Elle a surtout produit autre chose : **la découverte d'un
+défaut que le chantier avait introduit et qu'aucun contrôle ne voyait.**
+
+### 8.1 Le défaut
+
+`scripts/lib/tracefab_app_role.mjs` restreignait le rôle applicatif à **4 tables**
+d'écriture directe. Sa justification était écrite noir sur blanc dans la
+migration `20261019120000`, ligne 33 : « intersection des `INSERT INTO |
+UPDATE | DELETE FROM` présents dans `api/` avec les 50 noms de tables ».
+
+Ce filtre ne retient que le **SQL écrit en clair**. Il laisse dehors toutes les
+écritures faites par méthode de modèle Prisma, qui sont la forme dominante du
+dépôt (`tx.user.upsert(...)`, `.data_points.create(...)`,
+`.supply_chain_links.deleteMany(...)`).
+
+**Mesure corrigée : 21 tables sont écrites directement par `api/`, pas 4.**
+17 manquaient, dont `users` (5 sites : `api/_lib/auth.ts:37` et
+`api/_routes/webhooks/clerk.ts:47,62,75,155`).
+
+`withTracefabWorkerContext` ne change pas le rôle : il pose un GUC
+transactionnel (`set_config('tracefab.worker_context', 'true', true)`). Un GUC
+n'accorde aucun privilège relationnel. Dès que le runtime se connecte sous
+`tracefab_app`, ces 17 chemins reçoivent `42501` — **à commencer par le
+provisionnement Clerk, donc plus aucune session ne peut être créée.**
+
+### 8.2 Pourquoi aucun contrôle ne l'a vu
+
+Le contrôle de privilèges (`scripts/test_privileges_role_app.mjs`) **recopiait**
+la liste au lieu de la contester. `test_isolation_lignes_reelles.mjs` la
+recopiait aussi. Les deux disaient « 4 tables », donc ils validaient la liste au
+lieu de la vérifier. C'est la cause racine, et elle est structurelle.
+
+### 8.3 Preuve que le défaut était réel
+
+Mesurée sur base jetable, à 51 migrations :
+
+| contrôle | à 49 migrations | à 51 (défaut) | à 52 (corrigé) |
+|---|---|---|---|
+| `test:neon:bypass-control` | sortie 0 | **sortie 1** — `42501 permission denied for table tracefab_products` | sortie 0 |
+| `test:neon:app-readiness` | sortie 1 | **sortie 1** — `42501 permission denied for table users` | **sortie 0** |
+| `test:neon:cross-tenant` | sortie 1 | sortie 1 | sortie 0 |
+
+`test:neon:bypass-control` fait partie du job CI requis
+« Base — isolation RLS executee ». Le défaut l'aurait fait passer au rouge.
+
+### 8.4 Correction appliquée
+
+1. **`20261019160000_retablir_dml_tables_ecrites_directement`** — ré-accorde
+   `INSERT, UPDATE, DELETE` sur les 17 tables manquantes. Nouvelle migration, pas
+   une réécriture : valable que la 51<sup>e</sup> ait été appliquée quelque part
+   ou non. Aucune table `dpp_*` n'est concernée. Idempotente. Le durcissement
+   reste réel : 36 tables avaient du DML avant le chantier, **21** en ont après,
+   29 restent en lecture seule.
+2. **Source unique.** `TABLES_ECRITURE_DIRECTE` est désormais exportée par la
+   lib ; les deux contrôles l'**importent** au lieu de la recopier.
+3. **Garde manquante.** `scripts/test_tables_ecriture_directe.mjs` re-dérive la
+   liste depuis `api/` (méthodes Prisma **et** SQL) et échoue si le code écrit
+   une table non accordée, ou si un privilège est accordé sans chemin
+   applicatif. Statique, donc exécutable dans le job `verification` qui n'a pas
+   de service PostgreSQL. `npm run test:tables-ecriture-directe` → 5/5, sortie 0.
+   Contrôle négatif `TABLES_ECRITURE_CONTROLE_NEGATIF=table_fantome` → 2 échecs,
+   sortie 1 : la garde peut rougir.
+
+### 8.5 Un test dont l'attente reposait sur l'octroi global supprimé
+
+`test_neon_cross_tenant.mjs` attendait « `DELETE suppliers` chez B : 0 ligne
+touchée ». Cela ne tenait que parce que la lib accordait autrefois
+`GRANT … ON ALL TABLES` : la tentative était autorisée au niveau privilège et
+seul le filtrage RLS l'arrêtait. Ce n'est plus vrai table par table.
+
+Le test dérive désormais son attente de l'ACL réelle, **et distingue le
+mécanisme par le message, pas par le SQLSTATE** : `42501` recouvre à la fois
+« permission denied for table » (frontière de privilège) et « new row violates
+row-level security policy » (RLS `WITH CHECK`). Les confondre ferait passer une
+absence de privilège pour du filtrage RLS. Résultat : sortie 0 sur la base
+corrigée **et** sur la base à 49 migrations, chaque mécanisme nommé
+correctement.
+
+### 8.6 État après correction
+
+**52 migrations appliquées séquentiellement sur base vierge, 0 échec.** État
+final : 50 tables · 165 fonctions · 114 `SECURITY DEFINER` dont 0 sans
+`search_path` fixé · 131 politiques · RLS active **et** forcée 50/50 ·
+47 déclencheurs · **21 tables en écriture directe, 29 en lecture seule**.
+Rejeu : aucune duplication (131→131, 165→165, 47→47).
+
+Suites base, toutes sortie 0 : `privileges` · `rls` · `write-policies` ·
+`app-readiness` · `bypass-control` · `cross-tenant` · `active-tenant` ·
+`document-lifecycle` · `privileges-role-app` **33/33** · `isolation-lignes`
+**19/19** · `compteurs-debit` **39/39** · `sonde-identite` **30/30** ·
+`dpp-lifecycle` · `deploiement-publication` · garde propriétaire SQL **PASS**.
+
+Balayage des entrées auto-collectées par le job `verification` (filtre extrait
+du workflow par appariement de parenthèses, puis exécuté) : **101 entrées,
+75 vertes, 26 rouges, 0 défaut de code** — 20 navigateur absent, 6 client
+Prisma absent.
+
+### 8.7 Ce que la CI distante a déjà prouvé
+
+Lecture seule sur l'historique GitHub : la CI **a tourné sur `bb1213c`**, le
+HEAD distant, et les 4 contrôles requis y sont `success`. Détail des étapes du
+run `39209559163` : `Generer le client Prisma` ✓, `Installer Chromium pour
+Playwright` ✓, `Compilation complete` ✓, `Suite complete des scripts test:*` ✓,
+`Chargement des modules de route` ✓.
+
+**L'environnement de build autorisé sait donc télécharger les moteurs Prisma,
+installer Chromium, compiler et tester.** Ce n'est plus une hypothèse. Le
+blocage est strictement la sortie réseau de cet espace de travail.
+
+Le seul échec sur `bb1213c` est `Sonder les routes reelles depuis un runner
+GitHub` (workflow « Sondage HTTP de la Preview »), qui **ne fait pas partie des
+contrôles requis** — vérifié dans le ruleset `25012843` : les 4 contextes requis
+sont exactement les 4 jobs de `ci.yml`.
+
+Mais `ci.yml` a **+71 lignes** entre `bb1213c` et ce HEAD : les 4 nouvelles
+étapes de `base-de-donnees` (`privileges-role-app`, `isolation-lignes`,
+`compteurs-debit`, `sonde-identite`) **n'ont jamais tourné en CI**. La CI verte
+de `bb1213c` valide l'état précédent, pas celui-ci.
+
+### 8.8 Recherche d'un canal officiel pour les moteurs Prisma
+
+Épuisement des canaux joignables depuis cet espace de travail :
+
+| canal | résultat |
+|---|---|
+| `binaries.prisma.sh` | TLS coupé avant tout certificat — `SSL_ERROR_SYSCALL` |
+| `cdn.playwright.dev` | idem |
+| `@prisma/engines` 6.19.3 | 95 324 octets, **10 fichiers**, `optionalDependencies: {}`, `postinstall` qui télécharge |
+| `prisma` 6.19.3 | 52 Mo, **WASM uniquement** (`schema_engine_bg.wasm`, `query_engine_bg.*.wasm`) — aucun binaire natif |
+| `@prisma/client` 6.19.3 | 76,9 Mo, **WASM uniquement** (`query_engine_bg.postgresql.wasm-base64.js`) |
+| releases GitHub `prisma/prisma-engines` | **aucune release** |
+| recherche npm | seulement des forks tiers (`@vertexa/*`, `@ohos-ports/*`, `@3xpo/*`) — sources non vérifiées, **exclues** |
+
+**Aucun canal officiel joignable ne porte les binaires natifs.** Variables
+officielles relevées dans `@prisma/fetch-engine` : `PRISMA_ENGINES_MIRROR`,
+`PRISMA_BINARIES_MIRROR`, `PRISMA_QUERY_ENGINE_LIBRARY`,
+`PRISMA_QUERY_ENGINE_BINARY`, `PRISMA_SCHEMA_ENGINE_BINARY`,
+`PRISMA_MIGRATION_ENGINE_BINARY` — toutes exigent un binaire ou un miroir que
+cet espace de travail ne peut pas fournir légitimement.
+
+Erreur exacte : `request to
+https://binaries.prisma.sh/all_commits/c2990dca591cba766e3b7ef5d9e8a84796e47ab7/debian-openssl-3.0.x/schema-engine.gz.sha256
+failed, reason: Client network socket disconnected before secure TLS connection
+was established`. `prisma validate` et `prisma generate` sortent tous deux 1 ;
+`node_modules/.prisma/client` reste absent.
+
+### 8.9 Les 89 erreurs de typecheck, qualifiées
+
+`npm run api:typecheck` → sortie 2, **89 erreurs** : 85 × `TS2305` et 4 ×
+`TS2339`. **Toutes** citent `@prisma/client`. Mécanisme vérifié à la source :
+`node_modules/@prisma/client/default.d.ts` tient sur une ligne,
+`export * from '.prisma/client/default'`, et `node_modules/.prisma/client`
+n'existe pas. Les 4 `TS2339` sont en aval (`audit-export.ts:52`, types
+effondrés en `unknown`). **0 erreur dans les fichiers du chantier.** Ce ne sont
+pas des défauts de code : c'est l'absence du client généré.
+
+### 8.10 Accès distant
+
+Aucune `DATABASE_URL`, aucune `TF_RLS_APP_URL`, aucun `.env` dans
+l'environnement (seul `.env.example`, et `.gitignore` couvre `.env`).
+**Aucun accès distant n'existe ici.** Les phases d'identité du runtime et
+d'objets SQL divergents restent bloquées sur cet accès, et aucune chaîne de
+connexion n'a été demandée.

@@ -119,9 +119,57 @@ try {
       const r = await app.query(sql, params);
       await app.query('release savepoint tentative');
       return { rowCount: r.rowCount };
-    } catch {
+    } catch (e) {
       await app.query('rollback to savepoint tentative');
-      return { refuse: true };
+      return { refuse: true, code: e.code, message: String(e.message || '') };
+    }
+  };
+
+  // Le rôle applicatif a-t-il vraiment ce privilège sur cette table ?
+  //
+  // INDISPENSABLE depuis le chantier de durcissement. Avant lui, la lib de
+  // provisioning accordait « GRANT SELECT, INSERT, UPDATE, DELETE ON ALL
+  // TABLES » : toute écriture cross-org était donc AUTORISÉE au niveau
+  // privilège et seul le filtrage RLS l'empêchait, d'où l'attente « 0 ligne
+  // touchée » partout. Ce n'est plus vrai table par table : certaines n'ont
+  // plus aucun DML pour le rôle, et la tentative y meurt en 42501 AVANT même
+  // que la RLS soit évaluée.
+  //
+  // Les deux issues sont des isolations réelles, mais ce ne sont pas les mêmes
+  // preuves. Un 42501 prouve la frontière de privilège ; il ne prouve PAS que
+  // la RLS filtre. Le filtrage RLS reste donc prouvé là où le rôle a le DML
+  // (tracefab_products), par les SELECT ci-dessus, et par le contrôle négatif
+  // dédié. L'attente est DÉRIVÉE de l'ACL pour ne pas pourrir silencieusement.
+  const aDroit = async (table, privilege) =>
+    (await app.query(
+      `SELECT has_table_privilege(current_user, $1::regclass, $2) AS oui`,
+      [`public.${table}`, privilege],
+    )).rows[0].oui;
+
+  // ATTENTION : 42501 recouvre DEUX refus différents, et les confondre ferait
+  // passer une absence de privilège pour du filtrage RLS :
+  //
+  //   42501 « permission denied for table X »                -> frontière de PRIVILÈGE
+  //   42501 « new row violates row-level security policy »   -> WITH CHECK, donc RLS
+  //
+  // Le SQLSTATE seul ne suffit donc pas : c'est le message qui identifie le
+  // mécanisme. Une ligne touchée est un échec dans tous les cas.
+  const ecrireChezB = async (libelle, table, privilege, sql, params) => {
+    const autorise = await aDroit(table, privilege);
+    const r = await tenter(sql, params);
+    const msg = r.message || '';
+
+    if (!r.refuse && r.rowCount > 0) {
+      ko(`${libelle} : ${r.rowCount} ligne(s) touchée(s) — frontière franchie`);
+    } else if (r.refuse && /row-level security/i.test(msg)) {
+      ok(`${libelle} : refusé par la RLS (WITH CHECK)`);
+    } else if (r.refuse && /permission denied/i.test(msg)) {
+      if (autorise) ko(`${libelle} : has_table_privilege dit ${privilege} accordé mais refus « permission denied » — incohérent`);
+      else ok(`${libelle} : refusé par privilège (aucun ${privilege} sur ${table})`);
+    } else if (!r.refuse && r.rowCount === 0) {
+      ok(`${libelle} : 0 ligne touchée (filtrage RLS)`);
+    } else {
+      ko(`${libelle} : issue inclassée — ${r.refuse ? `${r.code} ${msg.split('\n')[0]}` : `${r.rowCount} ligne(s)`}`);
     }
   };
 
@@ -138,37 +186,25 @@ try {
   if (prods.includes(prodA) && !prods.includes(prodB)) ok('SELECT tracefab_products : A voit le sien, pas celui de B');
   else ko(`SELECT tracefab_products : A voit [${prods.join(', ')}]`);
 
-  /* --- 5-6. INSERT cross-org ---------------------------------------------- */
-  const insSup = await tenter(
+  /* --- 5-10. Écritures cross-org ------------------------------------------ */
+  await ecrireChezB('INSERT suppliers chez B', 'suppliers', 'INSERT',
     'insert into suppliers (id, organization_id) values ($1, $2)', [randomUUID(), orgB]);
-  if (insSup.refuse) ok('INSERT suppliers chez B : refusé');
-  else ko('INSERT suppliers chez B : accepté — frontière franchie en création');
 
-  const insProd = await tenter(
+  await ecrireChezB('INSERT tracefab_products chez B', 'tracefab_products', 'INSERT',
     'insert into tracefab_products (id, brand_organization_id, reference, name, status) values ($1, $2, $3, $4, $5)',
     [randomUUID(), orgB, `CTX-${suffixe}`, 'Intrusion', 'draft']);
-  if (insProd.refuse) ok('INSERT tracefab_products chez B : refusé');
-  else ko('INSERT tracefab_products chez B : accepté — frontière franchie en création');
 
-  /* --- 7-8. UPDATE cross-org ---------------------------------------------- */
-  const updSup = await tenter(
+  await ecrireChezB('UPDATE suppliers chez B', 'suppliers', 'UPDATE',
     "update suppliers set onboarding_status = 'approved' where id = $1", [supB]);
-  if (!updSup.refuse && updSup.rowCount === 0) ok('UPDATE suppliers chez B : 0 ligne touchée');
-  else ko(`UPDATE suppliers chez B : ${updSup.refuse ? 'erreur inattendue' : `${updSup.rowCount} ligne(s) touchée(s)`}`);
 
-  const updProd = await tenter(
+  await ecrireChezB('UPDATE tracefab_products chez B', 'tracefab_products', 'UPDATE',
     "update tracefab_products set name = 'Détourné' where id = $1", [prodB]);
-  if (!updProd.refuse && updProd.rowCount === 0) ok('UPDATE tracefab_products chez B : 0 ligne touchée');
-  else ko(`UPDATE tracefab_products chez B : ${updProd.refuse ? 'erreur inattendue' : `${updProd.rowCount} ligne(s) touchée(s)`}`);
 
-  /* --- 9-10. DELETE cross-org ----------------------------------------------- */
-  const delSup = await tenter('delete from suppliers where id = $1', [supB]);
-  if (!delSup.refuse && delSup.rowCount === 0) ok('DELETE suppliers chez B : 0 ligne touchée');
-  else ko(`DELETE suppliers chez B : ${delSup.refuse ? 'erreur inattendue' : `${delSup.rowCount} ligne(s) touchée(s)`}`);
+  await ecrireChezB('DELETE suppliers chez B', 'suppliers', 'DELETE',
+    'delete from suppliers where id = $1', [supB]);
 
-  const delProd = await tenter('delete from tracefab_products where id = $1', [prodB]);
-  if (!delProd.refuse && delProd.rowCount === 0) ok('DELETE tracefab_products chez B : 0 ligne touchée');
-  else ko(`DELETE tracefab_products chez B : ${delProd.refuse ? 'erreur inattendue' : `${delProd.rowCount} ligne(s) touchée(s)`}`);
+  await ecrireChezB('DELETE tracefab_products chez B', 'tracefab_products', 'DELETE',
+    'delete from tracefab_products where id = $1', [prodB]);
 
   /* --- 11-12. Fonctions SECURITY DEFINER ------------------------------------ */
   const accesB = (await app.query('select tracefab_can_access_org($1) as acces', [orgB])).rows[0].acces;

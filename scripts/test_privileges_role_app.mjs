@@ -36,7 +36,7 @@ import { execFileSync } from 'node:child_process';
 import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
-import { APP_ROLE } from './lib/tracefab_app_role.mjs';
+import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 
 const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
@@ -45,13 +45,16 @@ const RACINE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const BASE_EPHEMERE = 'tracefab_privileges_ephemere';
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
 
-/** Tables dont l'écriture directe est légitime — voir tracefab_app_role.mjs. */
-const TABLES_ECRITURE_DIRECTE = [
-  'audit_logs',
-  'documents',
-  'rate_limit_counters',
-  'tracefab_catalog_import_jobs',
-];
+/**
+ * Tables dont l'écriture directe est légitime.
+ *
+ * Importée, PAS recopiée. Cette constante était dupliquée ici, et c'est ce qui
+ * a laissé passer l'erreur du 19 octobre : la liste du provisioning et celle du
+ * contrôle disaient toutes deux « 4 tables », donc le contrôle validait la liste
+ * au lieu de la contester. Une seule source désormais —
+ * scripts/lib/tracefab_app_role.mjs — et sa justesse est vérifiée à part par
+ * scripts/test_tables_ecriture_directe.mjs, qui la re-dérive depuis api/.
+ */
 
 let assertions = 0;
 let echecs = 0;
