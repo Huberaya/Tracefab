@@ -409,6 +409,123 @@ verifier(
   `${declencheursApres.rows[0].n} déclencheurs, attendu 1`,
 );
 
+console.log('\n  H. vecteurs de contournement hors RLS');
+
+// Les sections précédentes testent ce que la RLS et le déclencheur refusent.
+// Elles ne couvrent pas les chemins qui n'y passent pas. Trois existent, et
+// chacun serait un contournement complet s'il était ouvert.
+
+// TRUNCATE : la RLS est une politique par LIGNE, elle ne s'applique pas à
+// TRUNCATE. Si le rôle applicatif détenait ce privilège, toute la protection
+// ci-dessus serait contournée en une commande.
+const avantTruncate = await app.query('SELECT count(*)::int n FROM rate_limit_counters');
+const truncate = await tente('TRUNCATE rate_limit_counters');
+verifier(
+  'TRUNCATE est refusé au rôle applicatif',
+  !truncate.ok && truncate.code === '42501',
+  truncate.ok ? 'accepté — la RLS ne protège pas de TRUNCATE' : `${truncate.code} ${truncate.message}`,
+);
+const apresTruncate = await app.query('SELECT count(*)::int n FROM rate_limit_counters');
+verifier(
+  'aucun compteur ne disparaît par TRUNCATE',
+  apresTruncate.rows[0].n === avantTruncate.rows[0].n,
+  `${avantTruncate.rows[0].n} avant, ${apresTruncate.rows[0].n} après`,
+);
+
+// expires_at à NULL : la garde compare NEW.expires_at < OLD.expires_at, et une
+// comparaison avec NULL rend NULL — pas TRUE. La garde NE REFUSERAIT DONC PAS
+// la mise à NULL. Ce qui la bloque est la contrainte NOT NULL de la colonne.
+// L'assertion porte sur la contrainte, pas sur la garde : si un jour la colonne
+// devient nullable, ce test doit rougir, car le contournement redeviendrait
+// possible — une ligne à expires_at NULL n'est plus jamais supprimable, mais
+// surtout la garde perd son seul point d'appui.
+const colonne = await app.query(
+  `SELECT is_nullable FROM information_schema.columns
+   WHERE table_name = 'rate_limit_counters' AND column_name = 'expires_at'`,
+);
+verifier(
+  'expires_at reste NOT NULL — la garde ne suffit pas seule contre NULL',
+  colonne.rows.length === 1 && colonne.rows[0].is_nullable === 'NO',
+  colonne.rows[0]?.is_nullable ?? 'colonne introuvable',
+);
+// La ligne visée doit exister AU MOMENT de l'assertion. Une première version
+// réutilisait la ligne de la section B — précisément celle que le
+// contournement supprime. Sans la garde, l'UPDATE ne matchait plus aucune
+// ligne et rendait « 0 ligne, aucune erreur », lu à tort comme une
+// autorisation. Mesuré sur base jetable : un UPDATE portant sur une ligne
+// absente ne lève aucune erreur, alors que le même UPDATE sur une ligne
+// présente lève bien 23502. L'assertion portait donc sur l'ordre des sections,
+// pas sur la contrainte.
+const cleNulle = 'controle-not-null';
+await app.query(
+  `INSERT INTO rate_limit_counters (bucket_key, window_start, hits, expires_at)
+   VALUES ($1, date_trunc('minute', now()), 4, now() + interval '10 minutes')
+   ON CONFLICT (bucket_key, window_start) DO NOTHING`,
+  [cleNulle],
+);
+const presenteAvant = await app.query(
+  'SELECT count(*)::int n FROM rate_limit_counters WHERE bucket_key = $1',
+  [cleNulle],
+);
+verifier(
+  'la ligne du contrôle NOT NULL existe avant l essai',
+  presenteAvant.rows[0].n === 1,
+  `${presenteAvant.rows[0].n} ligne — l assertion suivante ne prouverait rien`,
+);
+const miseANul = await tente(
+  `UPDATE rate_limit_counters SET expires_at = NULL WHERE bucket_key = $1`,
+  [cleNulle],
+);
+verifier(
+  'la mise à NULL de expires_at est refusée sur une ligne présente',
+  !miseANul.ok,
+  'acceptée — la contrainte NOT NULL a disparu',
+);
+const intacte = await app.query(
+  'SELECT expires_at IS NOT NULL AS non_nul FROM rate_limit_counters WHERE bucket_key = $1',
+  [cleNulle],
+);
+verifier(
+  'la ligne visée conserve un expires_at non nul',
+  intacte.rows.length === 1 && intacte.rows[0].non_nul === true,
+  intacte.rows.length === 1 ? 'expires_at à NULL' : 'ligne disparue',
+);
+
+// Une fonction SECURITY DEFINER s'exécute avec les droits de son propriétaire,
+// pas de l'appelant : elle ignorerait la RLS. Aucune ne doit toucher la table.
+const fonctions = await app.query(
+  `SELECT p.proname FROM pg_proc p
+   WHERE p.prosecdef AND (p.prosrc ILIKE '%rate_limit_counters%' OR p.proname ILIKE '%rate_limit%')`,
+);
+verifier(
+  'aucune fonction SECURITY DEFINER ne touche la table',
+  fonctions.rows.length === 0,
+  fonctions.rows.map((r) => r.proname).join(', ') || 'aucune',
+);
+
+// Une clé étrangère avec ON DELETE CASCADE supprimerait des compteurs en
+// cascade, sans passer par la politique DELETE.
+const clesEtrangeres = await app.query(
+  `SELECT count(*)::int n FROM pg_constraint WHERE confrelid = 'rate_limit_counters'::regclass`,
+);
+verifier(
+  'aucune clé étrangère ne pointe vers la table — pas de cascade possible',
+  clesEtrangeres.rows[0].n === 0,
+  `${clesEtrangeres.rows[0].n} contrainte(s)`,
+);
+
+// Le périmètre exact : au-delà des quatre droits nécessaires, tout est refusé.
+const privileges = await app.query(
+  `SELECT p, has_table_privilege('tracefab_app', 'rate_limit_counters', p) AS ok
+   FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p`,
+);
+const indus = privileges.rows.filter((r) => r.ok && !['SELECT', 'INSERT', 'UPDATE', 'DELETE'].includes(r.p));
+verifier(
+  'le rôle applicatif ne détient aucun privilège au-delà de SELECT/INSERT/UPDATE/DELETE',
+  indus.length === 0,
+  indus.map((r) => r.p).join(', ') || 'aucun',
+);
+
 await app.end();
 
 const nettoyeur = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });

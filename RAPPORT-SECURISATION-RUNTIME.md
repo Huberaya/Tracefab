@@ -880,7 +880,7 @@ La migration a été corrigée **sur place** plutôt que par une migration
 supplémentaire : elle n'est ni poussée ni appliquée à aucune base, aucun
 historique n'est donc réécrit.
 
-**Résultat** — `scripts/test_compteurs_debit.mjs`, **30/30 assertions vertes,
+**Résultat** — `scripts/test_compteurs_debit.mjs`, **39/39 assertions vertes,
 sortie 0**. Au-delà du chemin réel et des abus, le contrôle couvre désormais :
 25 upserts concurrents sur 8 connexions (`hits = 25`, zéro erreur), l'atomicité
 d'une transaction échouée, le périmètre des rôles et l'ACL de `PUBLIC`, et la
@@ -892,7 +892,7 @@ ni politique ni déclencheur.
 | neutralisation | résultat |
 |---|---|
 | migration `20261019140000` retirée | **sortie 1**, « 3 actifs avant, 0 après (supprimées : 4) » |
-| seule la garde `expires_at` retirée | **27/30, sortie 1**, contournement en deux étapes reproduit |
+| seule la garde `expires_at` retirée | **36/39, sortie 1**, contournement en deux étapes reproduit |
 
 Le second est celui qui compte : il prouve que la troisième garde est bien ce
 qui ferme le contournement, et non un ornement.
@@ -941,10 +941,34 @@ reason: Client network socket disconnected before secure TLS connection
 was established
 ```
 
-`curl` sur `binaries.prisma.sh` renvoie `SSL_ERROR_SYSCALL` : la connexion est
-coupée à la couche TLS. **C'est une indisponibilité réseau, pas un défaut de
-code.** `npm view @prisma/engines` répond `7.10.1` depuis le registre autorisé,
-donc l'accès npm fonctionne ; seul l'hôte des binaires est hors d'atteinte.
+`curl` sur `binaries.prisma.sh` renvoie `SSL_ERROR_SYSCALL` (`HTTP 000`) : la
+connexion est coupée à la couche TLS. **C'est une indisponibilité réseau, pas un
+défaut de code, ni de schéma, ni de dépendance.** Trois vérifications le
+distinguent :
+
+| vérification | résultat |
+|---|---|
+| `prisma` installé vs `@prisma/client` installé | **6.19.3 = 6.19.3**, cohérents |
+| versions installées vs `package-lock.json` (v3) | **6.19.3 = 6.19.3**, aucune divergence |
+| `npm view prisma version` | répond — le registre npm est joignable |
+
+Seul l'hôte des binaires est hors d'atteinte.
+
+**Le moteur manquant est le moteur de schéma natif, et il n'existe aucun repli
+local.** `node_modules/prisma/build/schema_engine_bg.wasm` (4,1 Mo) est bien
+présent, mais la lecture du code de la CLI montre que la bascule WASM ne concerne
+que le moteur *client* (`config.engineWasm`, pilotée par
+`PRISMA_CLIENT_FORCE_WASM`) — pas le moteur de schéma que la CLI télécharge.
+Tenté, sans modifier aucune version, aucun lockfile et sans toucher à la
+validation TLS :
+
+| tentative | résultat |
+|---|---|
+| `prisma generate --no-engine` | même erreur réseau |
+| `PRISMA_CLIENT_FORCE_WASM=1 prisma generate` | même erreur réseau |
+
+Ignorer le fichier `.sha256` n'y changerait rien : l'hôte étant injoignable, le
+téléchargement du binaire lui-même échouerait aussi.
 
 Conséquence en cascade, mesurée :
 
@@ -993,6 +1017,30 @@ Un import direct de la route modifiée sous `tsx` échoue sur la même
 établi, c'est que le blocage est réseau et que les modifications du chantier
 n'ajoutent aucune erreur.
 
+#### Procédure reproductible dans un environnement où les binaires sont accessibles
+
+À exécuter sur un poste ou un runner joignant `binaries.prisma.sh`, sans aucune
+modification du dépôt — ni version, ni lockfile, ni TLS :
+
+```
+npm ci                          # installe exactement le lockfile (v3)
+npm run db:generate             # prisma generate — telecharge le moteur de schema
+npm run verify:prisma-client    # controle le client genere
+npm run api:typecheck           # attendu : 0 erreur
+npm run test:router-load        # attendu : 135/135
+npm run build                   # attendu : sortie 0 sur toute la chaine
+```
+
+Critère de succès : **`npm run build` terminé avec un code de sortie nul.** Rien
+de moins ne vaut validation — une étape intermédiaire verte ne prouve pas la
+chaîne. Les trois nombres à comparer à ceux mesurés ici : `api:typecheck` doit
+passer de 89 erreurs à 0, `test:router-load` de 130/135 en échec à 135/135, et
+`node_modules/.prisma/client` doit exister.
+
+Si `npm ci` échoue déjà, le blocage est en amont du chantier et doit être
+traité comme tel : il ne s'agit alors ni du schéma Prisma ni du code de
+l'application.
+
 ### 7.14 Rétablissement après reclonage du dépôt
 
 Entre deux tours, le clone local a été **recréé depuis zéro** : le reflog ne
@@ -1029,8 +1077,8 @@ dans une seule commande.
 | `test:objets-sql:comparaison` | auto-collectée par `Verification` | 14/14 · 0 |
 | `test:neon:privileges-role-app` | étape du job `base-de-donnees` | 16/16 · 0 |
 | `test:neon:isolation-lignes` | étape du job `base-de-donnees` | 18/18 · 0 |
-| `test:neon:compteurs-debit` | étape du job `base-de-donnees` | 30/30 · 0 |
-| `test:neon:sonde-identite` | étape du job `base-de-donnees` | 21/21 · 0 |
+| `test:neon:compteurs-debit` | étape du job `base-de-donnees` | 39/39 · 0 |
+| `test:neon:sonde-identite` | étape du job `base-de-donnees` | 30/30 · 0 |
 
 Le job `base-de-donnees` compte désormais **27 étapes**. Les quatre entrées sans
 base sont découvertes automatiquement par l'étape « Suite complete des scripts
@@ -1053,9 +1101,10 @@ Contrôles négatifs, tous rejoués après les dernières modifications :
 |---|---|---|
 | isolation, RLS retirée de `documents` | 1 | 11/18 assertions vertes |
 | compteurs, migration corrective retirée | 1 | « 3 actifs avant, 0 après (supprimées : 4) » |
-| compteurs, seule la garde `expires_at` retirée | 1 | 27/30, contournement en deux étapes reproduit |
-| sonde d'identité, `rolbypassrls` figé à `false` | 1 | 18/21, l'instrument est aveugle |
-| sonde d'identité, appelée avant l'authentification | 1 | 20/21, localise l'ordre des gardes |
+| compteurs, seule la garde `expires_at` retirée | 1 | 36/39, contournement en deux étapes reproduit |
+| sonde d'identité, `rolbypassrls` figé à `false` | 1 | 27/30, l'instrument est aveugle |
+| sonde d'identité, appelée avant l'authentification | 1 | 29/30, localise l'ordre des gardes |
+| sonde d'identité, propagation retirée d'une branche | 1 | 28/30, nomme la branche muette |
 | TLS, défaut réintroduit | 1 | localise `seed_rls_fixture.mjs:48` |
 | migrations, collision injectée | 1 | nomme `20261101090000` |
 
@@ -1090,7 +1139,7 @@ connexion, ni hôte, ni mot de passe. Les messages d'erreur passent par
 configuration.
 
 **Épreuve de l'instrument** — `scripts/test_sonde_identite_runtime.mjs`,
-**21/21, sortie 0**. La requête est extraite du fichier source par expression
+**30/30, sortie 0**. La requête est extraite du fichier source par expression
 régulière, pas recopiée : si la sonde est réécrite, le test suit la nouvelle
 version ; s'il ne la retrouve plus, il échoue plutôt que de valider une copie
 périmée. Sur une base jetable, avec un rôle créé `NOSUPERUSER NOBYPASSRLS` :
@@ -1156,8 +1205,8 @@ workflow :
 | « Suite complete des scripts test:* » | `verification` | 100 entrées, dont les 4 sans base |
 | `test:neon:privileges-role-app` | `base-de-donnees` | 16/16 |
 | `test:neon:isolation-lignes` | `base-de-donnees` | 18/18 |
-| `test:neon:compteurs-debit` | `base-de-donnees` | **30/30** |
-| `test:neon:sonde-identite` | `base-de-donnees` | **21/21** |
+| `test:neon:compteurs-debit` | `base-de-donnees` | **39/39** |
+| `test:neon:sonde-identite` | `base-de-donnees` | **30/30** |
 
 Le job `base-de-donnees` compte **27 étapes** ; la dernière est la sonde
 d'identité. Le YAML est parsé, `test:workflow-policy` passe.
@@ -1175,6 +1224,57 @@ Les deux points restent bloqués sur un accès autorisé, décrits en §7.10 et
 `bootstrap_app_role.mjs` n'est exécuté par aucun job CI : les mesures locales de
 privilèges décrivent une configuration que la CI n'exerce pas. Constaté, non
 corrigé ici — le corriger reviendrait à modifier le provisioning.
+
+### 7.18 Vecteurs de contournement hors RLS
+
+La RLS est une politique **par ligne**. Trois chemins ne la traversent pas, et
+chacun serait un contournement complet s'il était ouvert. Ils ont été cherchés
+explicitement sur base jetable, puis ajoutés au test — la section H de
+`scripts/test_compteurs_debit.mjs` — parce qu'un contrôle qui ne les couvre pas
+laisse ouverte la question qu'il prétend fermer.
+
+| vecteur | pourquoi la RLS ne protège pas | mesuré |
+|---|---|---|
+| `TRUNCATE` | aucune ligne n'est examinée, la politique ne s'applique pas | **refusé**, `42501 permission denied`, compteurs intacts |
+| fonction `SECURITY DEFINER` | s'exécute avec les droits du propriétaire, ignore la RLS | **aucune** ne touche la table (la seule fonction concernée est le déclencheur, `prosecdef = false`) |
+| `ON DELETE CASCADE` | la suppression part d'une autre table | **aucune** contrainte ne référence la table |
+
+Le privilège `TRUNCATE` est le plus important : s'il était accordé, tout le reste
+de la protection serait contourné en une commande. Mesuré sur le rôle
+applicatif, le périmètre est exactement `SELECT`, `INSERT`, `UPDATE`, `DELETE` —
+`TRUNCATE`, `REFERENCES` et `TRIGGER` sont refusés.
+
+#### Une assertion qui passait pour la mauvaise raison
+
+Le contrôle négatif a révélé un défaut **du test**, pas de la migration.
+L'assertion « la mise à NULL de `expires_at` est refusée » portait sur la ligne
+de la section B — précisément celle que le contournement supprime. Sans la
+garde, l'`UPDATE` ne matchait plus aucune ligne et rendait « 0 ligne, aucune
+erreur », lu à tort comme une autorisation : le test rougissait en annonçant une
+faille de contrainte alors qu'il détectait une suppression antérieure.
+
+Mesuré sur base jetable pour trancher :
+
+```
+UPDATE t SET expires_at = NULL WHERE k = 'inexistante'  -> rowCount 0, aucune erreur
+UPDATE t SET expires_at = NULL WHERE k = 'absente'      -> 23502 not-null violation
+```
+
+Un `UPDATE` sur une ligne absente ne lève rien. L'assertion est corrigée : elle
+crée sa propre ligne, vérifie qu'elle existe **avant** l'essai, puis vérifie
+qu'elle conserve un `expires_at` non nul.
+
+Un point de fond au passage : **la garde ne protège pas contre la mise à NULL.**
+`NEW.expires_at < OLD.expires_at` avec `NEW.expires_at` à NULL rend NULL, pas
+TRUE — la garde laisserait passer. Ce qui bloque est la contrainte `NOT NULL` de
+la colonne. Le test porte donc sur la contrainte, via `information_schema`, afin
+qu'un passage de la colonne en nullable fasse rougir le contrôle.
+
+**Résultat** : `test:neon:compteurs-debit` **39/39, sortie 0** ; garde
+`expires_at` retirée **36/39, sortie 1** avec exactement les trois échecs
+imputables à la garde, les assertions `NOT NULL` restant vertes dans les deux
+cas — ce qui est le comportement correct, puisqu'elles testent la contrainte et
+non la garde.
 
 ---
 

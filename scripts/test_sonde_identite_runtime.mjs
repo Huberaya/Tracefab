@@ -245,6 +245,82 @@ verifier(
   'une réponse directe contournerait la garde',
 );
 
+/* --- 4. Désactivée par défaut, et sur les deux branches ------------------- */
+
+console.log('\n  D. désactivée par défaut');
+
+// « Opt-in » ne vaut que si la clé est réellement absente de la réponse par
+// défaut, pas seulement si la sonde n'est pas appelée. Les deux branches de la
+// route (configurationOnly et live) doivent appliquer la même condition, sinon
+// l'une des deux publierait l'identité sans qu'on la demande.
+verifier(
+  'la condition d activation ne dépend que de identity === 1',
+  /const wantIdentity = req\.query\?\.identity === '1';/.test(route),
+  'une autre valeur pourrait activer la sonde',
+);
+verifier(
+  'la sonde n est pas appelée quand la condition est fausse',
+  /const databaseIdentity = wantIdentity \? await probeDatabaseIdentity\(\) : undefined;/.test(route),
+  'appel inconditionnel',
+);
+
+const spreads = [...route.matchAll(/\.\.\.\(databaseIdentity \? \{ databaseIdentity \} : \{\}\)/g)];
+verifier(
+  'les deux branches de réponse propagent l identité sous condition',
+  spreads.length === 2,
+  `${spreads.length} occurrence(s), attendu 2`,
+);
+
+// La route compte quatre retours : deux réponses de garde (503 non configuré,
+// 401 non autorisé) qui ne doivent rien publier d'autre qu'un code d'erreur, et
+// deux réponses de données (configurationOnly et live) qui doivent toutes deux
+// appliquer la condition.
+//
+// Une première version cherchait le corps par une expression régulière bornée à
+// la première accolade fermante. Les réponses de données contiennent un objet
+// imbriqué — `{ databaseIdentity }` — la capture s'y arrêtait, et l'assertion
+// échouait en annonçant « 2/2 », ce qui était contradictoire. Le découpage par
+// `return json(res,` évite de deviner où finit un objet imbriqué.
+const morceaux = route.split('return json(res,').slice(1);
+const gardes = morceaux.filter((corps) => /error:/.test(corps));
+const donnees = morceaux.filter((corps) => !/error:/.test(corps));
+verifier(
+  'la route compte deux réponses de garde et deux réponses de données',
+  gardes.length === 2 && donnees.length === 2,
+  `${gardes.length} garde(s), ${donnees.length} donnée(s)`,
+);
+verifier(
+  'les réponses de garde ne publient qu un code d erreur',
+  gardes.every((corps) => /^\s*\d+,\s*\{\s*error:/.test(corps)),
+  gardes.map((c) => c.trim().split('\n')[0]).join(' | '),
+);
+verifier(
+  'les deux réponses de données propagent l identité sous condition',
+  donnees.every((corps) => /\.\.\.\(databaseIdentity \? \{ databaseIdentity \} : \{\}\)/.test(corps)),
+  `${donnees.filter((c) => /databaseIdentity \? \{ databaseIdentity \} : \{\}/.test(c)).length}/2`,
+);
+
+// La réponse par défaut ne doit contenir aucune clé d'identité.
+verifier(
+  'aucune clé d identité n est écrite en dur dans la réponse',
+  !/currentUser|sessionUser|bypassesRls|isSuperuser/.test(route),
+  'une clé publiée hors de la propagation conditionnelle',
+);
+
+// L'état « non mesuré » doit être explicite et nul, pas absent : un consommateur
+// qui lirait `measured` comme vrai par défaut conclurait à une mesure.
+verifier(
+  'l état indisponible déclare measured false',
+  /IDENTITY_UNAVAILABLE[\s\S]{0,120}measured: false/.test(source),
+  'un défaut ambigu pourrait passer pour une mesure',
+);
+const champsNuls = ['currentUser', 'sessionUser', 'database', 'bypassesRls', 'isSuperuser'];
+verifier(
+  'l état indisponible ne renseigne aucun champ d identité',
+  champsNuls.every((c) => new RegExp(`${c}: null`).test(source)),
+  champsNuls.filter((c) => !new RegExp(`${c}: null`).test(source)).join(', ') || 'aucun',
+);
+
 /* --- nettoyage ------------------------------------------------------------ */
 
 const nettoyeur = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
