@@ -511,3 +511,21 @@ jobs:
         # ISOLATION_CONTROLE_NEGATIF=desactive_rls_documents, huit assertions
         # passent au rouge. C'est ce qui prouve qu'elles mesurent la RLS.
         run: npm run test:neon:isolation-lignes
+
+      - name: Limitation de débit — opérations légitimes et abus refusés
+        # La politique rate_limit_counters_global était FOR ALL USING (true)
+        # WITH CHECK (true). Le USING (true) est justifié et conservé pour la
+        # lecture, l'insertion et la mise à jour : la table n'a pas de locataire
+        # et le limiteur compte des requêtes anonymes. Il ne l'était pas pour la
+        # suppression.
+        #
+        # Risque reproduit sur base jetable sous le rôle applicatif : un DELETE
+        # sans filtre supprimait les 3 compteurs d'un jeu de test, dont les 2
+        # fenêtres actives. Le besoin légitime, vérifié sur tout le dépôt, se
+        # limite à `DELETE ... WHERE expires_at < NOW()`.
+        #
+        # Ce contrôle vérifie d'abord le chemin réel — insertion, upsert qui
+        # incrémente, nettoyage des fenêtres expirées — puis les abus : vidage
+        # sans filtre, remise de hits à zéro, déplacement de fenêtre. Sans la
+        # migration 20261019140000 il tombe à 8/18.
+        run: npm run test:neon:compteurs-debit

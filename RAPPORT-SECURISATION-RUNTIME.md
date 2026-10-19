@@ -735,15 +735,207 @@ l'écart réel injecté (2 politiques + 1 fonction) → **sortie 1**, en nommant
 trois objets. Un écart de compte ne permet aucune décision ; une liste nominative
 permet de classer chaque objet en légitime, obsolète ou dangereux.
 
-### 7.11 Récapitulatif des entrées de test
+### 7.11 Limitation de débit — risque reproduit puis corrigé
+
+**Risque reproduit, pas déduit.** La politique posée par la migration
+`20261008100000` est unique :
+
+```sql
+CREATE POLICY rate_limit_counters_global ON rate_limit_counters
+  FOR ALL TO PUBLIC USING (true) WITH CHECK (true);
+```
+
+Le commentaire de cette migration justifie le `USING (true)` : la table n'a pas
+de locataire, elle est indexée par empreinte client et écrite sur des routes
+publiques sans contexte utilisateur armé. **Cette justification est valable et
+elle est conservée** pour la lecture, l'insertion et la mise à jour.
+
+Elle ne couvre pas la suppression. Rôles effectivement concernés, mesurés :
+
+| rôle | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `postgres` (propriétaire) | oui | oui | oui | oui |
+| `tracefab_app` | oui | oui | oui | oui |
+| `PUBLIC` | non | non | non | non |
+
+Reproduction sur base jetable, sous le rôle applicatif, avec 2 compteurs actifs
+(47 et 3 coups) et 1 expiré :
+
+```
+compteurs avant                          : 3
+DELETE FROM rate_limit_counters          : 3 lignes supprimees
+compteurs apres                          : 0
+```
+
+Un rôle applicatif compromis peut donc remettre à zéro l'état de limitation de
+débit de tous les clients.
+
+**Besoin légitime, vérifié sur tout le dépôt.** Le runtime n'écrit cette table
+qu'à deux endroits, dans `api/_lib/rate-limit.ts` :
+
+```
+:403  INSERT ... ON CONFLICT (bucket_key, window_start)
+      DO UPDATE SET hits = rate_limit_counters.hits + 1 RETURNING hits
+:415  DELETE FROM rate_limit_counters WHERE expires_at < NOW()
+```
+
+La suppression légitime ne porte que sur des fenêtres déjà expirées. Aucune
+suppression de compteur actif n'est utile à l'application.
+
+**Correction** — `20261019140000_restreindre_suppression_compteurs_debit` :
+
+| commande | avant | après |
+|---|---|---|
+| SELECT | `USING (true)` | `USING (true)` — inchangé |
+| INSERT | `WITH CHECK (true)` | `WITH CHECK (true)` — inchangé |
+| UPDATE | `USING (true) WITH CHECK (true)` | inchangé, plus déclencheur |
+| DELETE | `USING (true)` | **`USING (expires_at < now())`** |
+
+Le `FOR ALL` est remplacé par quatre politiques par commande. Une clause
+`WITH CHECK` ne voit que `NEW` et ne peut donc pas exprimer « `hits` ne diminue
+pas » ; un déclencheur `BEFORE UPDATE` le peut, et refuse aussi le déplacement
+d'un compteur sur une autre fenêtre. Les deux attaques sont refusées en
+`42501`, ce que les journaux PostgreSQL confirment :
+
+```
+ERROR:  rate_limit_counter_hits_cannot_decrease (avant=3, apres=0)
+ERROR:  rate_limit_counter_identity_is_immutable
+```
+
+**Résultat** — `scripts/test_compteurs_debit.mjs`, **18/18 assertions vertes,
+sortie 0**. Le contrôle vérifie d'abord le chemin réel (insertion, upsert qui
+incrémente à 2 puis 3, lecture, nettoyage des fenêtres expirées), puis les abus.
+
+**Contrôle négatif** : migration retirée → **8/18, sortie 1**, avec
+« 3 actifs avant, 0 après (supprimées : 4) ». C'est la preuve que la migration
+est bien ce qui corrige, et que le test mesure quelque chose.
+
+### 7.12 Outil de comparaison éprouvé sur fixtures synthétiques
+
+`scripts/test_comparaison_objets_sql.mjs` · entrée `test:objets-sql:comparaison`
+· **14/14 assertions vertes, sortie 0.**
+
+Aucune connexion autorisée à l'environnement audité n'est disponible. Les
+identifiants des deux politiques et de la fonction en écart **ne sont donc pas
+produits ici et ne sont pas inventés** : l'outil est éprouvé sur des fixtures,
+pour que la comparaison soit fiable du premier coup sur cible autorisée.
+
+| cas | sortie |
+|---|---|
+| inventaires identiques | 0 |
+| écart de la forme observée (2 politiques + 1 fonction) | 1, noms rendus |
+| objet absent de la cible | 1, nom rendu |
+| cible absente / référence introuvable / sortie inexploitable | 2 |
+
+Le contrôle vérifie aussi que `lire-objets-sql.sql` ne contient **aucun verbe
+d'écriture hors commentaire** (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`,
+`CREATE`, `TRUNCATE`, `GRANT`, `REVOKE`, `COPY`) — un outil destiné à une cible
+sensible ne doit pas pouvoir écrire.
+
+**Commande à exécuter plus tard, sur cible explicitement autorisée :**
+
+```
+psql "$CIBLE_AUTORISEE" -f scripts/lire-objets-sql.sql -At -o cible.txt
+node scripts/comparer-objets-sql.mjs --reference reference.txt --cible cible.txt
+```
+
+`reference.txt` est la même requête exécutée sur une base reconstruite depuis
+les migrations. Sortie 0 = identiques, 1 = divergence nominative, 2 = entrée
+manquante.
+
+### 7.13 Build et typecheck — indisponibilité réseau, pas défaut de code
+
+**`prisma generate` et `prisma validate` échouent tous deux au même endroit :**
+
+```
+Error: request to https://binaries.prisma.sh/all_commits/c2990dca.../
+debian-openssl-3.0.x/schema-engine.gz.sha256 failed,
+reason: Client network socket disconnected before secure TLS connection
+was established
+```
+
+`curl` sur `binaries.prisma.sh` renvoie `SSL_ERROR_SYSCALL` : la connexion est
+coupée à la couche TLS. **C'est une indisponibilité réseau, pas un défaut de
+code.** `npm view @prisma/engines` répond `7.10.1` depuis le registre autorisé,
+donc l'accès npm fonctionne ; seul l'hôte des binaires est hors d'atteinte.
+
+Conséquence en cascade, mesurée :
+
+| commande | résultat | cause |
+|---|---|---|
+| `npm run build` | non exécutable | commence par `db:generate` |
+| `npm run typecheck` | non exécutable | types Prisma absents |
+| `npm run api:typecheck` | sortie 2, **89 erreurs** | voir ci-dessous |
+| `npm run schema:static` | **sortie 0** | indépendant des moteurs |
+| `npm run test:workflow-policy` | **sortie 0** | valide le `ci.yml` modifié |
+| `npm run test:workflow-policy-temoins` | **sortie 0** | — |
+| `npm run test:db-guard` | **sortie 0** | — |
+| `npm run test:db-routing` | **sortie 0** | — |
+
+Les 89 erreurs de `api:typecheck` se décomposent en **85 `TS2305` — toutes
+`Module '"@prisma/client"' has no exported member`**, et 4 `TS2339` sur des
+propriétés de type `unknown` issues de `$queryRaw`. `node_modules/.prisma/client`
+est absent : le client n'a jamais été généré. **Les 89 erreurs remontent donc à
+la même cause réseau.**
+
+Preuve qu'aucune régression n'est introduite : `git diff --name-only bb1213c
+HEAD | grep '\.ts$'` est **vide** — aucun commit du chantier ne touche de
+TypeScript.
+
+**Le build n'est pas déclaré validé.** Il ne peut pas l'être ici.
+
+### 7.14 Rétablissement après reclonage du dépôt
+
+Entre deux tours, le clone local a été **recréé depuis zéro** : le reflog ne
+montre qu'un `clone:` suivi d'un checkout, HEAD avait dérivé sur le SHA de
+`main`, et les commits `82734f3` et `910688a` avaient disparu de l'objet-store
+local.
+
+L'arbre de travail était intact. Méthode employée, dans cet ordre :
+
+1. sauvegarde des 13 fichiers du chantier avec empreintes `sha256`, **avant**
+   toute opération Git ;
+2. `git fetch origin arena/ba652133-tracefab` — ne touche pas l'arbre ;
+3. `git reset --mixed origin/arena/ba652133-tracefab` — **`--mixed`, jamais
+   `--hard`**, qui aurait détruit les fichiers ;
+4. comparaison octet à octet des 13 fichiers contre la sauvegarde : **13/13
+   identiques** ;
+5. re-commit en `852076c`.
+
+`node_modules` avait disparu avec le reclonage. Piège rencontré ensuite, à
+retenir : **`npm install --no-save` élague les paquets installés en `--no-save`
+au tour précédent.** Installer `prisma` a supprimé `embedded-postgres`, ce qui a
+retiré les bibliothèques d'un serveur PostgreSQL **en cours d'exécution** et
+produit l'erreur trompeuse `could not access file "plpgsql"` (`58P01`) sur des
+requêtes qui fonctionnaient jusque-là. Tous les paquets doivent être installés
+dans une seule commande.
+
+### 7.15 Récapitulatif des entrées de test et des contrôles négatifs
 
 | entrée npm | exécution | résultat local |
 |---|---|---|
 | `test:tls:validation` | auto-collectée par `Verification` | 0 |
 | `test:migrations:horodatages` | auto-collectée par `Verification` | 0 |
 | `test:migrations:controle` | auto-collectée par `Verification` | 8/8 · 0 |
+| `test:objets-sql:comparaison` | auto-collectée par `Verification` | 14/14 · 0 |
 | `test:neon:privileges-role-app` | étape du job `base-de-donnees` | 16/16 · 0 |
 | `test:neon:isolation-lignes` | étape du job `base-de-donnees` | 18/18 · 0 |
+| `test:neon:compteurs-debit` | étape du job `base-de-donnees` | 18/18 · 0 |
+
+Le job `base-de-donnees` compte désormais **26 étapes**. Les quatre entrées sans
+base sont découvertes automatiquement par l'étape « Suite complete des scripts
+test:* » du job `Verification`, qui retient tout `test:*` hors `*neon*`,
+`*staging*`, `test:p2`, `test:regression` et `test:audit-script` — vérifié par
+lecture du filtre réel du workflow, pas supposé.
+
+Contrôles négatifs, tous rejoués après les dernières modifications :
+
+| contrôle négatif | sortie | effet |
+|---|---|---|
+| isolation, RLS retirée de `documents` | 1 | 7 assertions rouges |
+| compteurs, migration corrective retirée | 1 | 8/18, « 3 actifs avant, 0 après » |
+| TLS, défaut réintroduit | 1 | localise `seed_rls_fixture.mjs:48` |
+| migrations, collision injectée | 1 | nomme `20261101090000` |
 
 ---
 

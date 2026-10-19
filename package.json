@@ -135,6 +135,8 @@
     "test:db-routing": "node scripts/test_destructive_suite_routing.mjs",
     "test:workflow-policy": "node scripts/test_workflow_policy.mjs",
     "test:audit-script": "node scripts/test_audit_neon_readonly.mjs",
+    "test:neon:compteurs-debit": "node scripts/run-db-suite.mjs scripts/test_compteurs_debit.mjs",
+    "test:objets-sql:comparaison": "node scripts/test_comparaison_objets_sql.mjs",
     "test:migrations:controle": "node scripts/test_controle_migrations.mjs",
     "test:neon:isolation-lignes": "node scripts/run-db-suite.mjs scripts/test_isolation_lignes_reelles.mjs",
     "test:tls:validation": "node scripts/test_tls_validation_active.mjs",
