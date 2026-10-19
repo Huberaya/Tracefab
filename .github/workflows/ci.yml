@@ -420,6 +420,25 @@ jobs:
       - name: Deploiement publication explicite (jetable)
         run: npm run test:neon:deploiement-publication
 
+      # Les trois routes POST de la PR sont Clerk-gatees : un POST non
+      # authentifie doit rendre 401 sans creer ni modifier aucun document.
+      # Aucun parcours de navigateur ne peut les valider, et un POST
+      # authentifie sur upload-intent cree un document reel — seul le refus
+      # est exercable. L'etape importe le repartiteur reel et lui passe trois
+      # requetes depourvues d'en-tete authorization.
+      #
+      # Le gabarit de CLERK_SECRET_KEY est pose par le script lui-meme :
+      # requireClerkUser teste la presence de la cle avant le jeton, donc sans
+      # variable les routes repondent 503 clerk_not_configured sans atteindre
+      # le controle. Sans en-tete authorization l'execution s'arrete sur
+      # UnauthorizedError avant verifyToken et createClerkClient : la valeur
+      # n'est jamais utilisee et aucun appel reseau vers Clerk n'est emis.
+      #
+      # Le script est execute par run-db-suite.mjs, qui lui applique la garde
+      # de cible et choisit tsx — node nu ne saurait pas charger api/index.ts.
+      - name: Ecriture refusee sans authentification sur les routes POST
+        run: npm run test:neon:ecriture-non-authentifiee
+
       - name: Audit en lecture seule — la session ne peut pas ecrire
         # La lecture seule est appliquee par le serveur, et le test le prouve
         # en TENTANT une ecriture : elle doit etre refusee avec « read-only
