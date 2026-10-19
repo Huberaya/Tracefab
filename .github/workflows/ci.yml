@@ -125,6 +125,40 @@ jobs:
         # internal_error avec un identifiant de correlation.
         run: npm run test:router-load
 
+      - name: Garde statique des tables en ecriture directe
+        # La liste des tables ou le role applicatif ecrit directement est une
+        # decision de securite. Sans cette etape, rien n'empeche une route
+        # d'ajouter un INSERT sur une table absente de la liste, ou la liste de
+        # diverger du provisioning : les deux passeraient au vert en CI.
+        run: npm run test:tables-ecriture-directe
+
+      - name: Rapport d'ecarts de privileges — non-regression
+        # Le lecteur en lecture seule compare l'etat mesure a la liste declaree.
+        # Sans cette etape, il pourrait revenir a un jeu de tables fige et
+        # presenter des tables volontairement en lecture seule comme inexpliquees.
+        run: npm run test:disponibilite-role-app
+
+      - name: Comparateur d'objets SQL — non-regression
+        # C'est l'outil qui tranche sur les politiques et fonctions divergentes
+        # d'une cible reelle. Un faux vert ici rendrait tout audit distant muet.
+        run: npm run test:objets-sql:comparaison
+
+      - name: Controle des migrations — coherence et horodatages
+        # Deux controles statiques : coherence migrations/schema et unicite des
+        # horodatages. Aucun des deux n'a besoin de base ni de client Prisma.
+        run: npm run test:migrations:controle && npm run test:migrations:horodatages
+
+      - name: Validation TLS jamais desactivee
+        # Verifie qu'aucun chemin de connexion ne pose rejectUnauthorized: false
+        # ni NODE_TLS_REJECT_UNAUTHORIZED=0. Une regression ici annulerait
+        # tout le chantier C sans qu'aucun autre test ne rougisse.
+        run: npm run test:tls:validation
+
+      - name: Registre des chantiers — coherence avec le depot
+        # Verifie que le registre ne presente pas un SHA obsolete comme etat
+        # courant et que le compte de migrations cite correspond au depot.
+        run: npm run test:chantiers
+
   # -------------------------------------------------- 2. suite de verification
   verification:
     name: Verification — suite de tests
@@ -492,6 +526,13 @@ jobs:
         # qui confine mais la RLS — d'où l'exigence que toute table applicative
         # porte une RLS active et forcée.
         run: npm run test:neon:privileges-role-app
+
+      - name: Ecarts de privileges — les deux sens eprouves sur base reelle
+        # Le controle statique dit que le lecteur compare a la liste declaree ;
+        # il ne dit pas qu'il detecte quoi que ce soit. Cette etape provoque un
+        # sur-privilege puis un sous-privilege sur la base jetable, verifie que
+        # chacun est nomme, puis restaure l'etat mesure au depart.
+        run: npm run test:neon:ecarts-privileges
 
       - name: Isolation RLS sur lignes existantes — deux organisations
         # Les contrôles existants s'appuient sur has_table_privilege, sur la

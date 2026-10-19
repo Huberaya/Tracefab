@@ -163,7 +163,11 @@
     "db:role-runtime": "node scripts/lire-role-runtime.mjs",
     "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs",
     "test:product-edit:api": "npx tsx scripts/test_product_edit_api.ts",
-    "test:tables-ecriture-directe": "node scripts/test_tables_ecriture_directe.mjs"
+    "test:tables-ecriture-directe": "node scripts/test_tables_ecriture_directe.mjs",
+    "test:disponibilite-role-app": "node scripts/test_lire_disponibilite_role_app.mjs",
+    "test:neon:ecarts-privileges": "node scripts/run-db-suite.mjs scripts/test_ecarts_privileges_role_app.mjs",
+    "db:disponibilite-role-app": "node scripts/lire-disponibilite-role-app.mjs",
+    "db:historique-migrations": "node scripts/lire-historique-migrations.mjs"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^6.19.3",

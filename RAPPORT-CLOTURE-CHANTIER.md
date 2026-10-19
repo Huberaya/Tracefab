@@ -551,3 +551,87 @@ l'environnement (seul `.env.example`, et `.gitignore` couvre `.env`).
 **Aucun accès distant n'existe ici.** Les phases d'identité du runtime et
 d'objets SQL divergents restent bloquées sur cet accès, et aucune chaîne de
 connexion n'a été demandée.
+
+## 9. Passe du 19 octobre (étapes 2 et 3) — trois défauts trouvés
+
+Passe exécutée sans push, sans merge, sans déploiement, sans accès distant.
+Base de travail : PostgreSQL 18.4 jetable sur `127.0.0.1:55451`, bases créées
+puis détruites. Aucun secret affiché, demandé ni enregistré.
+
+### 9.1 Le lecteur de disponibilité classait 25 tables voulues comme inexpliquées
+
+`scripts/lire-disponibilite-role-app.mjs` — l'outil en lecture seule qu'une
+personne autorisée exécute sur la cible distante — classait l'absence
+d'écriture à partir de quatre noms de tables écrits en dur. Depuis que la
+politique est passée de 4 à 21 tables (migration `20261019160000`), il
+présentait **25 tables volontairement en lecture seule comme « autre(s) »**,
+c'est-à-dire inexpliquées. Un audit distant aurait démarré sur 25 signaux à
+classer alors qu'il n'y en avait aucun.
+
+Le script compare désormais l'état **mesuré** à `TABLES_ECRITURE_DIRECTE`, la
+liste unique déjà utilisée par le provisioning et par
+`test:tables-ecriture-directe`, et nomme les deux sens d'écart : DML accordé
+hors liste (sur-privilège) et table déclarée sans DML (sous-privilège, ou
+cible en retard de migrations). Un écart est signalé sans bloquer : sur une
+cible qui n'a pas reçu les migrations, il est légitime.
+
+Mesuré sur base jetable : `29 attendue(s) en lecture seule, 0 inattendue(s)`,
+`ecriture directe mesuree sur 21 table(s) — la liste declaree en compte 21`.
+Avant le correctif : `4 attendue(s) append-only, 25 autre(s)`.
+
+Deux contrôles négatifs exécutés puis restaurés : accorder du DML sur
+`certifications` (hors liste) fait nommer l'écart ; en retirer sur `documents`
+(dans la liste) le fait nommer aussi. L'état initial est restauré et le retour
+au nominal est mesuré, pas supposé.
+
+Non-régression : `test:disponibilite-role-app` (statique, 20 assertions) et
+`test:neon:ecarts-privileges` (comportemental sur base jetable, 13 assertions,
+les deux sens provoqués puis restaurés). Le test statique est éprouvé dans les
+deux sens : un `GRANT` ou un `INSERT INTO` injecté dans le lecteur le fait
+passer à 19/20.
+
+### 9.2 Six contrôles de sécurité n'étaient exécutés par aucun job CI
+
+Vérifié en extrayant les lignes `run:` actives de `ci.yml` et en les comparant
+aux entrées de `package.json` : `test:chantiers`, `test:tables-ecriture-directe`,
+`test:migrations:controle`, `test:migrations:horodatages`, `test:tls:validation`
+et `test:objets-sql:comparaison` existaient, passaient au vert, et **n'étaient
+appelés par aucun workflow**.
+
+La conséquence est directe : le correctif central de la passe précédente — la
+liste des tables en écriture directe passée de 4 à 21 — n'était protégé par
+aucune étape de CI. Une route ajoutant un `INSERT` sur une table hors liste, ou
+une divergence entre la liste et le provisioning, serait passée au vert.
+
+Les six sont statiques (ni base, ni navigateur, ni client Prisma) et sont
+ajoutés au job `socle`. `test:neon:ecarts-privileges` est ajouté au job
+`base-de-donnees`, après `test:neon:privileges-role-app`.
+
+### 9.3 Le 503 du limiteur était bien le client Prisma absent, pas un défaut
+
+`test:neon:ecriture-non-authentifiee` répondait `503 rate_limiter_unavailable`
+au lieu du `401` attendu. Cause établie par mesure et non par lecture :
+`touchDatabase` renvoie `null` parce que `import('./api/_lib/prisma.js')` échoue
+sur `The requested module '@prisma/client' does not provide an export named
+'PrismaClient'`. Vérification croisée en base : `tracefab_app` **peut** écrire
+dans `rate_limit_counters` (`INSERT` et `UPDATE` acceptés), et la suppression
+d'une ligne non expirée reste bloquée (`0 ligne`). La politique
+`rate_limit_counters_purge_expiree` fonctionne ; le blocage est Prisma.
+
+### 9.4 Ce que cette passe ne démontre pas
+
+`prisma validate`, `prisma generate`, `api:typecheck`, `test:router-load`, le
+build et les tests Chromium restent bloqués par l'environnement, mesuré à
+nouveau sur ce commit : `binaries.prisma.sh` ferme le socket avant toute
+présentation de certificat (`CONNECTED` puis `no peer certificate available`,
+`SSL_ERROR_SYSCALL` côté curl, `ECONNRESET` côté Node), pendant que
+`registry.npmjs.org` répond `200` avec un certificat valide. Aucune validation
+de certificat n'a été désactivée. Le tarball npm officiel `@prisma/engines`
+6.19.3 fait 22 666 octets et ne contient **aucun binaire** : npm n'est pas une
+source de moteurs.
+
+Aucune exécution de CI n'existe sur ce commit : le push n'est pas autorisé.
+L'identité du runtime distant, l'état RLS distant et les objets SQL divergents
+restent **non vérifiés** — aucun accès distant n'existe dans cet environnement.
+Les mesures de cette passe portent sur PostgreSQL local et ne prouvent rien
+d'une base distante.
