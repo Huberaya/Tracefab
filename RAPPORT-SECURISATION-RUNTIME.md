@@ -714,10 +714,35 @@ contrôlée reste à dérouler sur cible autorisée.
 
 ### 7.10 Objets divergents — l'écart ne peut pas être tranché d'ici
 
-Le schéma reconstruit depuis les 50 migrations contient **128 politiques** et
-**114 fonctions `SECURITY DEFINER`**, soit 242 objets. L'environnement
-précédemment audité en signalait 130 et 115 : **deux politiques et une fonction
-en plus.**
+**Référence régénérée le 19 octobre 2026 — les chiffres antérieurs sont
+périmés.** Le schéma reconstruit contient désormais **131 politiques** et
+**114 fonctions `SECURITY DEFINER`**, soit **245 objets**, mesurés en appliquant
+les **51** migrations sur une base vierge puis en exécutant
+`scripts/lire-objets-sql.sql`.
+
+Les 128 politiques et 242 objets cités plus haut dans ce rapport provenaient de
+l'application des **49** migrations. Les deux migrations de sécurisation
+ajoutées depuis ont fait évoluer la référence :
+
+| | politiques | `SECURITY DEFINER` | total |
+|---|---|---|---|
+| référence à 49 migrations | 128 | 114 | 242 |
+| référence à 51 migrations | **131** | **114** | **245** |
+| delta | **+3** | 0 | +3 |
+
+Le delta de +3 s'explique entièrement par `20261019140000` : suppression de
+`rate_limit_counters_global` (−1) et création de quatre politiques par commande
+(+4). Le compte `SECURITY DEFINER` ne bouge pas parce que
+`tracefab_guard_rate_limit_counter` n'est **pas** `SECURITY DEFINER` — vérifié,
+et c'est le comportement attendu pour une fonction de déclencheur.
+
+**Conséquence pour l'écart signalé.** Le « 130 politiques / 115 fonctions »
+observé sur l'environnement audité est antérieur à ce chantier et son **état de
+migration n'est pas connu**. L'arithmétique « +2 politiques / +1 fonction »
+comparait une référence à 49 migrations à une observation d'état inconnu : elle
+**n'est plus utilisable**. Si la cible est à 49 migrations, l'écart est +2 ; si
+elle est à 51, il est −1. **Les deux inventaires doivent être régénérés à un
+état de migration connu et concordant avant toute comparaison.**
 
 **Aucun accès à cet environnement depuis ce chantier.** L'écart ne peut donc pas
 être tranché ici, et conformément à la consigne **aucun objet n'est supprimé**.
