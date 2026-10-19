@@ -16,7 +16,7 @@ if (!ADMIN_URL || !APP_URL) {
   console.error('NON EXECUTE — DATABASE_URL et TF_RLS_APP_URL sont obligatoires.');
   process.exit(2);
 }
-const client = url => new pg.Client({ connectionString: url, ssl: /sslmode=(require|verify-full|verify-ca)/.test(url) ? { rejectUnauthorized: false } : false });
+const client = url => new pg.Client({ connectionString: url, ssl: /sslmode=(require|verify-full|verify-ca)/.test(url) ? { rejectUnauthorized: true } : false });
 const admin=client(ADMIN_URL), app=client(APP_URL);
 await admin.connect(); await app.connect();
 let assertions=0;
@@ -26,9 +26,17 @@ const U=Object.fromEntries(['orgA','orgB','userA','userB','memA','memB','product
 try {
   await admin.query(`INSERT INTO organizations(id,type,legal_name,display_name,country_code) VALUES
     ($1,'brand','Cycle A SAS','Cycle A','FR'),($2,'brand','Cycle B SAS','Cycle B','PT')`,[U.orgA,U.orgB]);
+  // Identifiants Clerk uniques par exécution : le registre est append-only et
+  // la fixture n'est pas nettoyée (voir finally) — des identifiants figés
+  // rendraient la suite non rejouable sur une base conservée.
+  const suffixe=U.userA.slice(0,8);
+  const emailA=`cycle-a-${suffixe}@test.invalid`, emailB=`cycle-b-${suffixe}@test.invalid`;
+  const slug=`dpp-live-${suffixe}`, idPublic1=`dpp-model-${suffixe}-01`, idPublic2=`dpp-model-${suffixe}-02`;
   await admin.query(`INSERT INTO users(id,clerk_user_id,email,full_name) VALUES
-    ($1,'clerk_dpp_cycle_a','cycle-a@test.invalid','Responsable A'),
-    ($2,'clerk_dpp_cycle_b','cycle-b@test.invalid','Responsable B')`,[U.userA,U.userB]);
+    ($1,$2,$3,'Responsable A'),
+    ($4,$5,$6,'Responsable B')`,
+    [U.userA,`clerk_dpp_cycle_a_${suffixe}`,emailA,
+     U.userB,`clerk_dpp_cycle_b_${suffixe}`,emailB]);
   await admin.query(`INSERT INTO organization_memberships(id,organization_id,user_id,role,status) VALUES
     ($1,$2,$3,'owner','active'),($4,$5,$6,'owner','active')`,[U.memA,U.orgA,U.userA,U.memB,U.orgB,U.userB]);
   await admin.query(`INSERT INTO tracefab_products(id,brand_organization_id,reference,name,status,description,category,country_of_manufacture,data_readiness)
@@ -51,22 +59,22 @@ try {
   const role=(await app.query("SELECT rolbypassrls,rolsuper FROM pg_roles WHERE rolname=current_user")).rows[0];
   check(!role.rolbypassrls&&!role.rolsuper,'role runtime soumis a RLS');
 
-  const reviewed=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  const reviewed=await context(U.userA,emailA,()=>app.query(
     `SELECT * FROM tracefab_mark_dpp_ready_to_publish($1)`,[U.dpp]));
   check(reviewed.rows[0].readiness_status==='ready_to_publish'&&reviewed.rows[0].reviewed_at,'revue autorisee horodatee avant publication');
-  const published=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT * FROM tracefab_set_dpp_publication($1,'publish','dpp-live-001')`,[U.product]));
+  const published=await context(U.userA,emailA,()=>app.query(
+    `SELECT * FROM tracefab_set_dpp_publication($1,'publish','${slug}')`,[U.product]));
   check(published.rows[0].readiness_status==='published','revue vers publication executee en transaction');
-  check((await admin.query('SELECT public_slug FROM tracefab_products WHERE id=$1',[U.product])).rows[0].public_slug==='dpp-live-001','identifiant public stable pose');
-  const identity=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT * FROM tracefab_create_dpp_identity($1,'dpp-model-stable-001','model',NULL)`,[U.product]));
+  check((await admin.query('SELECT public_slug FROM tracefab_products WHERE id=$1',[U.product])).rows[0].public_slug===slug,'identifiant public stable pose');
+  const identity=await context(U.userA,emailA,()=>app.query(
+    `SELECT * FROM tracefab_create_dpp_identity($1,'${idPublic1}','model',NULL)`,[U.product]));
   check(identity.rows[0].granularity==='model','identité résolvable créée à granularité modèle');
-  const replaced=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
-    `SELECT * FROM tracefab_replace_dpp_identity($1,'dpp-model-stable-002','Erreur association initiale')`,[identity.rows[0].id]));
+  const replaced=await context(U.userA,emailA,()=>app.query(
+    `SELECT * FROM tracefab_replace_dpp_identity($1,'${idPublic2}','Erreur association initiale')`,[identity.rows[0].id]));
   check(replaced.rows[0].status==='replaced'&&replaced.rows[0].replaced_by_id,'ancien identifiant conservé comme remplacé');
   const replacement=(await admin.query('SELECT * FROM dpp_resolvable_identifiers WHERE id=$1',[replaced.rows[0].replaced_by_id])).rows[0];
-  check(replacement.public_id==='dpp-model-stable-002'&&replacement.status==='active','remplaçant créé atomiquement avec portée identique');
-  let foreignIdentity=false;try{await context(U.userB,'cycle-b@test.invalid',()=>app.query(
+  check(replacement.public_id===idPublic2&&replacement.status==='active','remplaçant créé atomiquement avec portée identique');
+  let foreignIdentity=false;try{await context(U.userB,emailB,()=>app.query(
     `SELECT tracefab_create_dpp_identity($1,'dpp-foreign-attempt','model',NULL)`,[U.product]));}catch(e){foreignIdentity=String(e.message).includes('dpp_identity_role_required');}
   check(foreignIdentity,'autre organisation ne peut créer une identité sur le produit');
 
@@ -76,36 +84,36 @@ try {
     `SELECT event_type,public_summary,validation_status::text FROM dpp_lifecycle_events WHERE product_id=$1`,[U.product]));
   check(publicPublication.rows.some(e=>e.event_type==='published'&&e.public_summary),'evenement de publication visible sans detail prive');
 
-  const added=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  const added=await context(U.userA,emailA,()=>app.query(
     `SELECT * FROM tracefab_add_dpp_event($1,'evidence_added','Certificat fournisseur ajoute',now(),'document','documented',
       'Une preuve documentaire a ete ajoutee','{"claim":"composition"}'::jsonb,ARRAY[$2]::uuid[],NULL,'erp-evt-001','model',NULL)`,[U.product,U.docA]));
   const evidenceEvent=added.rows[0];
   check(evidenceEvent.validation_status==='documented','preuve enregistree comme documentee, jamais certifiee automatiquement');
   check(evidenceEvent.evidence_document_ids[0]===U.docA,'preuve du bon tenant reliee a evenement');
 
-  const duplicate=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  const duplicate=await context(U.userA,emailA,()=>app.query(
     `SELECT id FROM tracefab_add_dpp_event($1,'evidence_added','Rejeu identique',now(),'document','documented',NULL,
       '{}'::jsonb,ARRAY[$2]::uuid[],NULL,'erp-evt-001','model',NULL)`,[U.product,U.docA]));
   check(duplicate.rows[0].id===evidenceEvent.id,'rejeu idempotent retourne evenement initial sans doublon');
 
-  const corrected=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  const corrected=await context(U.userA,emailA,()=>app.query(
     `SELECT * FROM tracefab_add_dpp_event($1,'data_corrected','Perimetre de preuve corrige',now(),'document','documented',
       'Le perimetre de la preuve a ete corrige','{}'::jsonb,ARRAY[$2]::uuid[],$3,NULL,'model',NULL)`,[U.product,U.docA,evidenceEvent.id]));
   check(corrected.rows[0].corrects_event_id===evidenceEvent.id,'correction reference explicitement evenement anterieur');
   check(Number((await admin.query('SELECT count(*) FROM dpp_lifecycle_events WHERE id=ANY($1::uuid[])',[[evidenceEvent.id,corrected.rows[0].id]])).rows[0].count)===2,'fait initial conserve apres correction');
 
   let rejected=false;
-  try { await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  try { await context(U.userA,emailA,()=>app.query(
     `SELECT tracefab_add_dpp_event($1,'evidence_added','Preuve etrangere',now(),'document','documented',NULL,'{}',ARRAY[$2]::uuid[])`,[U.product,U.docB]));
   } catch(e){ rejected=String(e.message).includes('invalid_evidence_document'); }
   check(rejected,'preuve appartenant a un autre tenant refusee');
 
-  const claimResult=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  const claimResult=await context(U.userA,emailA,()=>app.query(
     `SELECT * FROM tracefab_add_dpp_claim($1,'composition.cotton','La composition déclarée contient du coton',
       'Composition coton documentée','documented',$2,'model',NULL,current_date-30,current_date-1,NULL,NULL)`,[U.product,evidenceEvent.id]));
   const claim=claimResult.rows[0];
   check(claim.validation_status==='documented','affirmation documentée distincte de sa preuve');
-  const linkResult=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  const linkResult=await context(U.userA,emailA,()=>app.query(
     `SELECT * FROM tracefab_link_dpp_claim_evidence($1,$2,'supports','Couvre la composition du modèle','accepted',
       'Document examiné dans son périmètre','Certificat de composition')`,[claim.id,U.docA]));
   check(linkResult.rows[0].verification_result==='accepted','lien de preuve accepté avec motif et périmètre');
@@ -116,7 +124,7 @@ try {
   const projectionKeys=Object.keys(publicClaims.rows[0]);
   check(!projectionKeys.some(k=>['document_id','storage_path','original_filename','coverage_note'].includes(k)),'projection publique sans identifiant ni métadonnée documentaire privée');
   let foreignClaimEvidence=false;
-  try{await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  try{await context(U.userA,emailA,()=>app.query(
     `SELECT tracefab_link_dpp_claim_evidence($1,$2)`,[claim.id,U.docB]));}catch(e){foreignClaimEvidence=String(e.message).includes('invalid_evidence_document');}
   check(foreignClaimEvidence,'document autre tenant refusé sur affirmation');
   let claimMutationBlocked=false;
@@ -124,11 +132,11 @@ try {
   check(claimMutationBlocked,'affirmation et chaîne de preuve append-only');
 
   let foreignWrite=false;
-  try { await context(U.userB,'cycle-b@test.invalid',()=>app.query(
+  try { await context(U.userB,emailB,()=>app.query(
     `SELECT tracefab_add_dpp_event($1,'repair','Tentative externe')`,[U.product]));
   } catch(e){foreignWrite=String(e.message).includes('dpp_event_role_required');}
   check(foreignWrite,'organisation B ne peut pas ajouter evenement au produit A');
-  const foreignRead=await context(U.userB,'cycle-b@test.invalid',()=>app.query('SELECT id FROM dpp_lifecycle_events WHERE product_id=$1',[U.product]));
+  const foreignRead=await context(U.userB,emailB,()=>app.query('SELECT id FROM dpp_lifecycle_events WHERE product_id=$1',[U.product]));
   check(foreignRead.rowCount===0,'organisation B ne lit aucun evenement prive de A');
 
   let mutationBlocked=false;
@@ -136,13 +144,13 @@ try {
   catch(e){mutationBlocked=String(e.message).includes('dpp_events_are_append_only');}
   check(mutationBlocked,'UPDATE evenement refuse meme au proprietaire de migration');
 
-  const suspended=await context(U.userA,'cycle-a@test.invalid',()=>app.query(
+  const suspended=await context(U.userA,emailA,()=>app.query(
     `SELECT * FROM tracefab_set_dpp_publication($1,'suspend',NULL)`,[U.product]));
   check(suspended.rows[0].readiness_status==='ready_to_publish','publication suspendue sans detruire readiness revue');
   check((await admin.query('SELECT public_slug FROM tracefab_products WHERE id=$1',[U.product])).rows[0].public_slug===null,'slug retire atomiquement lors suspension');
   const invisible=await publicContext(()=>app.query('SELECT id FROM tracefab_products WHERE id=$1',[U.product]));
   check(invisible.rowCount===0,'passeport suspendu immediatement invisible via RLS publique');
-  const privateHistory=await context(U.userA,'cycle-a@test.invalid',()=>app.query('SELECT event_type FROM dpp_lifecycle_events WHERE product_id=$1',[U.product]));
+  const privateHistory=await context(U.userA,emailA,()=>app.query('SELECT event_type FROM dpp_lifecycle_events WHERE product_id=$1',[U.product]));
   check(privateHistory.rows.some(e=>e.event_type==='publication_suspended')&&privateHistory.rowCount>=4,'historique prive conserve apres retrait public');
 
   console.log(`\nPasseport dynamique PostgreSQL : ${assertions} preuves executees, 0 simulation.`);

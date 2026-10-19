@@ -122,7 +122,7 @@ if (!URL || !URL.trim()) {
 assertThrowawayDb({ purpose: 'scripts/test_audit_neon_readonly.mjs' });
 
 const TLS = /sslmode=(require|verify|prefer)/.test(URL);
-const db = new pg.Client({ connectionString: URL, ssl: TLS ? { rejectUnauthorized: false } : undefined });
+const db = new pg.Client({ connectionString: URL, ssl: TLS ? { rejectUnauthorized: true } : undefined });
 await db.connect();
 await db.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY');
 
@@ -241,6 +241,95 @@ console.log('\n  D. la cible declaree est respectee\n');
       ? ok('l audit nomme la base examinee sans imprimer la chaine de connexion')
       : ko('l audit n identifie pas la base examinee');
   }
+}
+
+// ---------------------------------------------------------------------------
+// D. Les requetes nommees exactes (Q1..Q6) repondent, avec assertions dures
+// ---------------------------------------------------------------------------
+// Un rapport « genere » n est pas une preuve. On execute la meme liste
+// blanche de requetes que l audit (REQUETES), et on exige de leurs resultats
+// ce que le mode operateur attend pour conclure — pas seulement leur presence.
+console.log('\n  D. les requetes nommees repondent avec des invariants durs\n');
+
+{
+  const debutBloc = source.indexOf('const REQUETES');
+  const finBloc = source.indexOf('const PREFIXES_AUTORISEES');
+  const blocRequetesAudit = (debutBloc >= 0 && finBloc > debutBloc) ? source.slice(debutBloc, finBloc) : '';
+  const nomsAttendus = ['identite', 'lecture_seule', 'roles', 'tables_rls', 'resume_rls',
+    'fonctions_publiques', 'resume_fonctions', 'migrations', 'defaut_fonctions', 'proprietaire_tables'];
+  const requetes = new Map();
+  for (const nom of nomsAttendus) {
+    const motif = new RegExp(`${nom}:\\s*\`([\\s\\S]*?)\``);
+    const m = blocRequetesAudit.match(motif);
+    if (!m) ko(`requete nommee « ${nom} » introuvable dans la liste blanche : Q1..Q6 sans objet`);
+    else requetes.set(nom, m[1]);
+  }
+
+  const dbD = new pg.Client({ connectionString: URL, ssl: TLS ? { rejectUnauthorized: true } : undefined });
+  await dbD.connect();
+  await dbD.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY');
+  const res = {};
+  for (const [nom, sql] of requetes) {
+    try {
+      res[nom] = await dbD.query(sql);
+    } catch (error) {
+      ko(`la requete nommee « ${nom} » a echoue : ${String(error.message).split('\n')[0]}`);
+    }
+  }
+
+  // Invariants durs — ce que le mode operateur utilise pour trancher.
+  if (res.migrations) {
+    const ratees = res.migrations.rows.filter((r) => r.appliquee !== true);
+    ratees.length === 0
+      ? ok(`Q1 : ${res.migrations.rows.length} migration(s), toutes rapportees appliquees`)
+      : ko(`Q1 : ${ratees.length} migration(s) non appliquees : ${ratees.map((r) => r.migration_name).join(', ')}`);
+  }
+  if (res.roles) {
+    const noms = res.roles.rows.map((r) => r.rolname);
+    (noms.includes('tracefab_app') && noms.includes('postgres'))
+      ? ok(`Q2 : ${noms.length} role(s) hors pg_*, avec tracefab_app et postgres`)
+      : ko(`Q2 : roles attendus absents (rolnames : ${noms.slice(0, 6).join(', ')}...)`);
+    const contournants = res.roles.rows.filter((r) => r.rolbypassrls === true && !['postgres'].includes(r.rolname));
+    contournants.length === 0
+      ? ok('Q2 : aucun role hors postgres ne possede BYPASSRLS')
+      : ko(`Q2 : BYPASSRLS chez ${contournants.map((r) => r.rolname).join(', ')}`);
+  }
+  if (res.resume_rls) {
+    // Exception unique et documentee : _prisma_migrations est la table de
+    // metadonnees de Prisma (pas de donnees applicatives, jamais exposee par
+    // l API). Toute AUTRE table sans RLS est un echec.
+    const r = res.resume_rls.rows[0];
+    r.tables > 0 && r.sans_rls <= 1
+      ? ok(`Q3 : ${r.tables} table(s) publique(s), ${r.sans_rls} sans RLS (attendu : _prisma_migrations au plus)`)
+      : ko(`Q3 : tables=${r.tables}, sans_rls=${r.sans_rls} (attendu : >0 tables et au plus _prisma_migrations sans RLS)`);
+    if (res.tables_rls) {
+      const hors = res.tables_rls.rows.filter((t) => t.rls_activee !== true && t.table_name !== '_prisma_migrations');
+      hors.length === 0
+        ? ok('Q3 : aucune table hors _prisma_migrations n est sans RLS')
+        : ko(`Q3 : table(s) applicative(s) sans RLS : ${hors.map((t) => t.table_name).join(', ')}`);
+    }
+    r.rls_forcee >= r.tables - 1
+      ? ok('Q3 : RLS forcee sur toutes les tables applicatives')
+      : ko(`Q3 : RLS forcee sur ${r.rls_forcee}/${r.tables} tables`);
+  }
+  if (res.resume_fonctions) {
+    const r = res.resume_fonctions.rows[0];
+    r.secdef_publiques === 0
+      ? ok(`Q4 : ${r.total} fonction(s), ${r.security_definer} SECURITY DEFINER, 0 executable(s) par PUBLIC`)
+      : ko(`Q4 : ${r.secdef_publiques} fonction(s) SECURITY DEFINER executable(s) par PUBLIC`);
+  }
+  if (res.tables_rls) {
+    const sansPolitique = res.tables_rls.rows.filter((r) => r.table_name !== '_prisma_migrations'
+      && (r.rls_activee !== true || Number(r.politiques) === 0));
+    sansPolitique.length === 0
+      ? ok(`Q5 : chaque table applicative du schema public porte au moins une politique`)
+      : ko(`Q5 : table(s) sans politique : ${sansPolitique.slice(0, 5).map((r) => r.table_name).join(', ')}`);
+  }
+  if (res.migrations && res.identite) {
+    ok(`Q6 : cible examinee ${res.identite.rows[0].base} sous ${String(res.identite.rows[0].version).split(' ').slice(0, 2).join(' ')}`);
+  }
+
+  await dbD.end();
 }
 
 console.log('\n  --------------------------------------------');

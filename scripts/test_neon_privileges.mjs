@@ -50,7 +50,7 @@ if (!ADMIN_URL) {
 }
 
 const TLS = /sslmode=(require|verify|prefer)/.test(ADMIN_URL);
-const ssl = TLS ? { rejectUnauthorized: false } : undefined;
+const ssl = TLS ? { rejectUnauthorized: true } : undefined;
 
 let echecs = 0;
 const ok = (m) => console.log(`  ok    ${m}`);
@@ -308,10 +308,91 @@ if (!existe) {
     : ko('G. la fonction de controle negatif subsiste : le ROLLBACK n a pas fonctionne');
 }
 
+// ---------------------------------------------------------------------------
+// H. Privileges de TABLES, SEQUENCES et SCHEMA — au-dela des fonctions
+// ---------------------------------------------------------------------------
+// L'audit TF-3 a montre des GRANT SELECT TO PUBLIC re-introduits sur les
+// tables DPP par les migrations 20261016* alors que les controles CI ne
+// couvraient que les FONCTIONS. Ce controle mesure le catalogue reel des
+// objets : tables, sequences, schema. Un privilege interdit detecte echoue.
+const REQUETE_OBJETS_PUBLICS = `
+  SELECT 'table'::text AS kind, c.relname AS name,
+         array_agg(DISTINCT acl.privilege_type ORDER BY acl.privilege_type) AS privileges
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault(CASE c.relkind WHEN 'r' THEN 'r'::"char" ELSE 'S'::"char" END, c.relowner))) acl
+  WHERE n.nspname = 'public' AND c.relkind IN ('r', 'S') AND acl.grantee = 0
+  GROUP BY c.relname, c.relkind
+  UNION ALL
+  SELECT 'schema', n.nspname,
+         array_agg(DISTINCT acl.privilege_type ORDER BY acl.privilege_type)
+  FROM pg_namespace n
+  CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl, acldefault('n', n.nspowner))) acl
+  WHERE n.nspname = 'public' AND acl.grantee = 0 AND acl.privilege_type <> 'USAGE'
+  GROUP BY n.nspname
+  ORDER BY 1, 2`;
+
+const objetsPublics = (await db.query(REQUETE_OBJETS_PUBLICS)).rows;
+if (objetsPublics.length === 0) {
+  ok('H. aucun objet du schema public n accorde de privilege a PUBLIC (tables, sequences, schema hors USAGE)');
+} else {
+  for (const objet of objetsPublics) {
+    ko(`H. ${objet.kind} ${objet.name} accorde ${objet.privileges.join(',')} a PUBLIC`);
+  }
+}
+
+// Tables DPP append-only : SELECT pour le role applicatif, pas d'ecriture.
+const TABLES_DPP = ['dpp_lifecycle_events', 'dpp_claims', 'dpp_claim_evidence', 'dpp_resolvable_identifiers'];
+for (const table of TABLES_DPP) {
+  const droits = (await db.query(`
+    SELECT has_table_privilege('tracefab_app', $1, 'SELECT') AS s,
+           has_table_privilege('tracefab_app', $1, 'INSERT') AS i,
+           has_table_privilege('tracefab_app', $1, 'UPDATE') AS u,
+           has_table_privilege('tracefab_app', $1, 'DELETE') AS d`,
+    [table])).rows[0];
+  if (!droits) { ko(`H. table ${table} introuvable`); continue; }
+  const rls = (await db.query(
+    `SELECT relrowsecurity AS r, relforcerowsecurity AS f FROM pg_class WHERE relname = $1`, [table])).rows[0];
+  if (droits.s && !droits.i && !droits.u && !droits.d) {
+    ok(`H. ${table} : tracefab_app en lecture seule (mutations par fonctions SECURITY DEFINER)`);
+  } else {
+    ko(`H. ${table} : privileges tracefab_app inattendus (S=${droits.s} I=${droits.i} U=${droits.u} D=${droits.d})`);
+  }
+  if (rls && rls.r && rls.f) {
+    ok(`H. ${table} : RLS activee ET forcee`);
+  } else {
+    ko(`H. ${table} : RLS non forcee (relrowsecurity=${rls?.r}, force=${rls?.f})`);
+  }
+}
+
+// Controle negatif : un privilege PUBLIC introduit sur une table temoin doit
+// etre vu par le detecteur. Transaction annulee : la base reste inchangee.
+{
+  await db.query('BEGIN');
+  try {
+    await db.query(`CREATE TABLE tracefab_controle_negatif_table (id int)`);
+    await db.query(`GRANT SELECT ON tracefab_controle_negatif_table TO PUBLIC`);
+    const detecte = (await db.query(REQUETE_OBJETS_PUBLICS)).rows;
+    const temoin = detecte.find((o) => o.name === 'tracefab_controle_negatif_table');
+    if (temoin) {
+      ok('H. controle negatif : le detecteur de privileges PUBLIC attrape une table reintroduite');
+    } else {
+      ko('H. controle negatif : le detecteur voile un GRANT SELECT TO PUBLIC reintroduit');
+    }
+  } finally {
+    await db.query('ROLLBACK');
+  }
+  const reste = (await db.query(
+    `SELECT count(*)::int AS n FROM pg_class WHERE relname = 'tracefab_controle_negatif_table'`)).rows[0].n;
+  reste === 0
+    ? ok('H. la table temoin a ete annulee par ROLLBACK')
+    : ko('H. la table temoin subsiste apres ROLLBACK');
+}
+
 await db.end();
 
 if (APP_URL) {
-  const app = new pg.Client({ connectionString: APP_URL, ssl: TLS ? { rejectUnauthorized: false } : undefined });
+  const app = new pg.Client({ connectionString: APP_URL, ssl: TLS ? { rejectUnauthorized: true } : undefined });
   try {
     await app.connect();
     const identite = (await app.query('SELECT current_user AS r, current_setting($1, true) AS bypass', ['session_authorization'])).rows[0];
@@ -326,6 +407,6 @@ if (APP_URL) {
 }
 
 console.log('\n  --------------------------------------------');
-console.log(`  ${echecs === 0 ? 'Privileges des fonctions : OK.' : `Privileges des fonctions : ${echecs} echec(s).`}`);
+console.log(`  ${echecs === 0 ? 'Privileges fonctions + objets : OK.' : `Privileges fonctions + objets : ${echecs} echec(s).`}`);
 console.log('  --------------------------------------------\n');
 if (echecs > 0) process.exit(1);

@@ -180,7 +180,7 @@ for (const [nom, sql] of Object.entries(REQUETES)) {
 // Connexion, en lecture seule, etablie par le serveur
 // ---------------------------------------------------------------------------
 const TLS = /sslmode=(require|verify|prefer)/.test(RAW_URL);
-const db = new pg.Client({ connectionString: RAW_URL, ssl: TLS ? { rejectUnauthorized: false } : undefined });
+const db = new pg.Client({ connectionString: RAW_URL, ssl: TLS ? { rejectUnauthorized: true } : undefined });
 
 try {
   await db.connect();

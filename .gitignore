@@ -26,3 +26,15 @@ uploads/
 # Caches Python des scripts utilitaires
 __pycache__/
 *.pyc
+
+# Bases PostgreSQL jetables des epreuves locales
+.epreuve-pg/
+# Clusters PostgreSQL montés par embedded-postgres pour les contrôles locaux.
+# Ce sont des données binaires volumineuses, jamais du code : les committer
+# gonflerait le dépôt sans rien apporter à la revue.
+.cluster-*/
+# Scripts d'investigation à usage unique. Un contrôle destiné à être rejoué doit
+# être commité sous scripts/ avec une entrée npm ; un *.tmp.mjs ne l'est pas.
+*.tmp.mjs
+*.tmp.sql
+.role-app-pg/

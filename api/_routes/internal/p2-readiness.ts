@@ -4,7 +4,7 @@ import { notificationAlertConfigured } from '../../_lib/notification-observabili
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
-import { runLiveProbes } from '../../_lib/readiness-probes.js';
+import { probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -49,12 +49,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const services = { privateStorage, email, alerting };
   const configured_ = Object.values(services).every((service) => service.configured);
 
+  // Identite reelle de la connexion applicative — opt-in.
+  //
+  // Deja derriere workerSecretConfigured() puis workerAuthorized(), donc jamais
+  // expose sans authentification. Opt-in pour deux raisons : la sonde interroge
+  // la base, et un nom de role n'a pas a figurer dans chaque passage de sonde de
+  // supervision.
+  //
+  // C'est le seul moyen de mesurer l'identite reellement utilisee par le
+  // runtime : la requete passe par le meme client Prisma que les routes. Un
+  // psql branche sur la meme URL mesurerait une autre connexion et ne
+  // prouverait rien. Tant que cette sonde n'a pas ete executee sur le runtime
+  // reel, l'identite de Production reste non mesuree.
+  const wantIdentity = req.query?.identity === '1';
+  const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
+
   if (!live) {
     return json(res, configured_ ? 200 : 503, {
       schema: 'tracefab-p2-readiness-v1',
       ready: configured_,
       configurationOnly: true,
       services,
+      ...(databaseIdentity ? { databaseIdentity } : {}),
     });
   }
 
@@ -69,5 +85,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     configurationOnly: false,
     services,
     probes,
+    ...(databaseIdentity ? { databaseIdentity } : {}),
   });
 }

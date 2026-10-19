@@ -144,6 +144,115 @@
         if (!expanded) document.getElementById('dpp-lifecycle')?.scrollIntoView({ block: 'start' });
       });
 
+      /* ---- Projections publiques exactes : JSON-LD, meta, affirmations ----
+       * Une certification n'est jamais produite sans affirmation de niveau
+       * third_party_verified ET au moins une preuve acceptee. Le reste est
+       * absent du JSON-LD, ou affiche avec son niveau de controle exact. */
+      const renderableField = (field) => renderable(field);
+
+      const jsonLdFor = (payload) => {
+        const dpp = (payload && payload.dpp) || {};
+        const out = { '@context': 'https://schema.org', '@type': 'Product' };
+        const put = (key, field) => {
+          const r = renderableField(field);
+          if (r.text !== null && r.status === 'sourced') out[key] = r.text;
+        };
+        put('name', dpp.productName);
+        put('sku', dpp.sku);
+        put('gtin', dpp.gtin);
+        const brand = renderableField(dpp.brandName);
+        if (brand.text !== null && brand.status === 'sourced') {
+          out.brand = { '@type': 'Brand', name: brand.text };
+        }
+        put('countryOfOrigin', dpp.countryOfManufacture);
+        const materials = Array.isArray(dpp.materials) ? dpp.materials : [];
+        const materialNodes = materials.map((m) => {
+          const name = renderableField(m && m.name);
+          const pct = renderableField(m && m.percentage);
+          if (name.text === null) return null;
+          const node = { '@type': 'DefinedTerm', name: name.text };
+          if (pct.text !== null && pct.status === 'sourced') node.percentage = Number(pct.text);
+          return node;
+        }).filter(Boolean);
+        if (materialNodes.length) out.material = materialNodes;
+        const certifications = (Array.isArray(payload.claims) ? payload.claims : [])
+          .filter((c) => c && c.validation_status === 'third_party_verified' && Number(c.accepted_evidence_count) > 0)
+          .map((c) => ({
+            '@type': 'Certification',
+            name: String(c.statement || c.claim_key || ''),
+            certificationStatus: 'third_party_verified',
+          }));
+        if (certifications.length) out.certifications = certifications;
+        return out;
+      };
+
+      const setJsonLd = (object) => {
+        const el = document.getElementById('dpp-jsonld');
+        if (el) el.textContent = JSON.stringify(object, null, 2);
+      };
+
+      const setMetaDescription = (text) => {
+        const meta = document.querySelector('meta[name="description"]');
+        if (meta) {
+          meta.setAttribute('content', text);
+          meta.removeAttribute('data-i18n-attr');
+        }
+      };
+
+      const renderClaimsBar = (claims) => {
+        const bar = document.getElementById('dpp-claims-bar');
+        if (!bar) return;
+        const list = (Array.isArray(claims) ? claims : [])
+          .filter((c) => c && c.validation_status !== 'rejected');
+        bar.replaceChildren();
+        if (!list.length) {
+          const span = document.createElement('span');
+          span.className = 'trust-badge-item';
+          span.textContent = tr('claimsNone', 'Aucune affirmation publiée');
+          bar.append(span);
+          bar.hidden = false;
+          return;
+        }
+        list.forEach((c) => {
+          const verified = c.validation_status === 'third_party_verified' && Number(c.accepted_evidence_count) > 0;
+          const span = document.createElement('span');
+          span.className = 'trust-badge-item claim-pill';
+          span.setAttribute('data-claim-status', c.validation_status || 'declared');
+          span.textContent = (verified ? '✓ ' : '')
+            + String(c.statement || c.claim_key || '')
+            + ' — '
+            + (trustLabels[c.validation_status] || 'Statut non précisé');
+          span.title = trustExplanations[c.validation_status] || 'Niveau de contrôle non précisé.';
+          bar.append(span);
+        });
+        bar.hidden = false;
+      };
+
+      /* Un identifiant reel sans donnees : aucune valeur de demonstration ne
+       * survit, ni dans le DOM, ni dans le JSON-LD, ni dans les meta. */
+      const neutralizeForMissingPassport = () => {
+        document.querySelectorAll('[data-dpp-field]').forEach((el) => {
+          el.textContent = marker('unavailable');
+          el.setAttribute('data-dpp-provenance', 'unavailable');
+          el.removeAttribute('data-tf-demo');
+          el.removeAttribute('data-i18n');
+          el.classList.add('dpp-hydrated');
+        });
+        setJsonLd({
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          identifier: id,
+          name: 'Digital Product Passport — indisponible',
+          description: 'Aucune donnée de démonstration n’est affichée comme réelle.',
+        });
+        setMetaDescription('Digital Product Passport — indisponible. Aucune donnée de démonstration n’est affichée comme réelle.');
+        renderClaimsBar([]);
+        document.querySelectorAll('[data-dpp-href]').forEach((el) => {
+          const kind = /apple/i.test(el.dataset.dppHref || '') ? 'apple-wallet' : 'google-wallet';
+          el.setAttribute('href', '/api/dpp/' + encodeURIComponent(id) + '/' + kind);
+        });
+      };
+
       const apply = (payload) => {
         const dpp = payload && payload.dpp;
         if (!dpp) return false;
@@ -186,6 +295,14 @@
           : (sourcedCount > 0 ? 'partial' : (declared ? declared : 'empty'));
         document.documentElement.setAttribute('data-dpp-source', statut);
         renderHistory(payload.history, false);
+        // Projections exactes : le JSON-LD, la meta description et la barre
+        // d'affirmations ne portent que des donnees reellement servies.
+        setJsonLd(jsonLdFor(payload));
+        const metaName = renderable(dpp.productName);
+        setMetaDescription('Digital Product Passport'
+          + (metaName.text ? ' — ' + metaName.text : '')
+          + '. Données de traçabilité publiées par la marque, statut de vérification affiché.');
+        renderClaimsBar(payload.claims);
         return true;
       };
 
@@ -194,8 +311,10 @@
         .then((payload) => { if (!apply(payload)) throw new Error('empty'); })
         .catch(() => {
           // Un identifiant réel ne retombe jamais sur les affirmations de la
-          // démonstration : elles sont masquées, même en cas d'erreur réseau.
+          // démonstration : elles sont effacees du DOM, du JSON-LD et des
+          // meta, même en cas d'erreur réseau.
           document.documentElement.setAttribute('data-dpp-source', 'unavailable');
+          neutralizeForMissingPassport();
           if (banner) { banner.hidden = false; banner.textContent = 'Passeport indisponible ou inconnu. Aucune donnée de démonstration n’est affichée comme réelle.'; }
           if (lifecycle.status) lifecycle.status.textContent = 'L’historique public n’a pas pu être chargé. Réessayez ultérieurement.';
         });

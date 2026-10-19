@@ -68,6 +68,93 @@ export function probeDatabase(): Promise<ProbeResult> {
   });
 }
 
+/**
+ * Identite reelle de la connexion applicative.
+ *
+ * Pourquoi cette sonde existe. Toute la securite du runtime repose sur la RLS,
+ * et la RLS ne s'applique pas a un role qui porte BYPASSRLS. Or l'identite
+ * effectivement utilisee ne se deduit ni du code ni de la configuration
+ * attendue : `DATABASE_URL` peut pointer n'importe quel role, et un role
+ * proprietaire ou superutilisateur contourne silencieusement toutes les
+ * politiques. Seul un `current_user` lu sur la connexion reelle le dit.
+ *
+ * Cette sonde passe par le MEME client Prisma que les routes
+ * (api/_lib/prisma.ts, unique `new PrismaClient()` de api/). C'est la condition
+ * pour qu'elle mesure l'identite du runtime et pas celle d'une connexion
+ * ouverte a cote : un `psql` branche sur la meme URL ne prouverait rien.
+ *
+ * Regles respectees :
+ *   - lecture seule. Trois fonctions du catalogue, aucune ecriture, aucune
+ *     modification de role, aucun `SET ROLE` ;
+ *   - aucun secret. Ni URL de connexion, ni hote, ni mot de passe : le resultat
+ *     ne contient que des noms de role et deux booleens. Les messages d'erreur
+ *     passent par `redact()`, comme toutes les autres sondes ;
+ *   - la sonde ne jette pas : un echec est un resultat.
+ *
+ * Le resultat ne doit etre expose que derriere l'authentification deja en place
+ * sur la route interne. Un nom de role n'est pas un secret en soi, mais le
+ * publier sans authentification revelerait a quel point l'application est
+ * proche — ou non — d'un contournement de RLS.
+ */
+export type DatabaseIdentity = {
+  measured: boolean;
+  currentUser: string | null;
+  sessionUser: string | null;
+  database: string | null;
+  bypassesRls: boolean | null;
+  isSuperuser: boolean | null;
+  detail: string;
+};
+
+type IdentityRow = {
+  current_user: string;
+  session_user: string;
+  database: string;
+  bypasses_rls: boolean | null;
+  is_superuser: boolean | null;
+};
+
+const IDENTITY_UNAVAILABLE: DatabaseIdentity = {
+  measured: false,
+  currentUser: null,
+  sessionUser: null,
+  database: null,
+  bypassesRls: null,
+  isSuperuser: null,
+  detail: 'indisponible',
+};
+
+export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
+  try {
+    if (!process.env.DATABASE_URL?.trim()) {
+      return { ...IDENTITY_UNAVAILABLE, detail: 'DATABASE_URL absent' };
+    }
+    const rows = await prisma.$queryRaw<IdentityRow[]>`
+      SELECT current_user                                       AS current_user,
+             session_user                                       AS session_user,
+             current_database()                                 AS database,
+             (SELECT rolbypassrls FROM pg_roles
+               WHERE rolname = current_user)                    AS bypasses_rls,
+             (SELECT rolsuper     FROM pg_roles
+               WHERE rolname = current_user)                    AS is_superuser
+    `;
+    const row = rows?.[0];
+    if (!row) return { ...IDENTITY_UNAVAILABLE, detail: 'requete honoree, aucune ligne' };
+    return {
+      measured: true,
+      currentUser: row.current_user,
+      sessionUser: row.session_user,
+      database: row.database,
+      bypassesRls: row.bypasses_rls,
+      isSuperuser: row.is_superuser,
+      detail: 'identite lue sur la connexion applicative',
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ...IDENTITY_UNAVAILABLE, detail: redact(message).slice(0, 160) };
+  }
+}
+
 /** Stockage prive : on interroge une cle qui n'existe pas. Un 404 est un
  *  succes — il prouve que le bucket repond et que la signature est acceptee.
  *  Un 403 signifierait des identifiants refuses. */

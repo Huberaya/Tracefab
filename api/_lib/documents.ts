@@ -68,14 +68,53 @@ export function documentMetadata(body: Record<string, unknown>) {
   return { originalFilename: body.originalFilename.trim(), contentType: body.contentType.trim().toLowerCase(), byteSize, kind, expiresAt, metadata };
 }
 
-export async function scanAndFinalizeDocument(
+/* ---------------------------------------------------------------------------
+ * Cycle de scan — trois phases, JAMAIS d'appel reseau dans une transaction SQL.
+ *
+ *   beginDocumentScan     (transaction courte)  : bascule en `scanning` ;
+ *   performDocumentScanChecks (SANS transaction): S3 + antivirus ;
+ *   completeDocumentScan  (transaction courte)  : tracefab_finalize_document_upload.
+ *
+ * FAIT FERME (fail-closed) :
+ *   - un verdict antivirus absent, invalide, en erreur ou en timeout n'est
+ *     JAMAIS « sain » : le document reste `scanning`, reprenable par un
+ *     nouvel appel au scan ;
+ *   - une alteration d'integrite certaine (objet absent, taille ou type
+ *     incoherents) bascule le document en `rejected` via la finalisation ;
+ *   - un fichier infecte bascule en `rejected`.
+ * ------------------------------------------------------------------------- */
+
+export type ScanChecksResult = { sha256: string; clean: boolean; byteSize: number };
+
+/** Erreurs definitives : le document ne doit pas rester en attente. */
+const DEFINITIVE_SCAN_ERRORS = new Set([
+  'document_object_not_found',
+  'document_size_limit_exceeded',
+  'document_size_mismatch',
+  'document_content_type_mismatch',
+]);
+
+export function isDefinitiveScanError(error: unknown): boolean {
+  return error instanceof Error && DEFINITIVE_SCAN_ERRORS.has(error.message);
+}
+
+export async function beginDocumentScan(
   tx: Prisma.TransactionClient,
   document: DocumentRecord,
-) {
+): Promise<DocumentRecord> {
   if (document.status === 'deleted') throw new Error('document_deleted');
   await tx.$executeRaw`SELECT set_config('tracefab.internal_document_update', 'true', true)`;
   await tx.$executeRaw`UPDATE documents SET status = 'scanning'::document_status WHERE id = ${document.id}::uuid`;
   await tx.$executeRaw`SELECT set_config('tracefab.internal_document_update', 'false', true)`;
+  return document;
+}
+
+/**
+ * Controles d'integrite et antivirus — SANS transaction SQL : ces appels
+ * peuvent durer des secondes et ne doivent pas verrouiller la base.
+ * Toute anomalie levee ; l'absence de verdict fiable n'est jamais « sain ».
+ */
+export async function performDocumentScanChecks(document: DocumentRecord): Promise<ScanChecksResult> {
   const object = await headObject(document.storage_path);
   if (!object.byteSize || object.byteSize > MAX_DOCUMENT_BYTES) throw new Error('document_size_limit_exceeded');
   if (object.byteSize !== Number(document.byte_size)) throw new Error('document_size_mismatch');
@@ -86,12 +125,38 @@ export async function scanAndFinalizeDocument(
   const sha256 = createHash('sha256').update(Buffer.from(bytes) as unknown as Uint8Array<ArrayBuffer>).digest('hex');
   const scan = await scanWithAntivirus(bytes, document.original_filename, document.content_type);
   if (scan.mimeType && scan.mimeType !== document.content_type) throw new Error('document_content_type_mismatch');
+  return { sha256, clean: scan.clean, byteSize: object.byteSize };
+}
+
+export async function completeDocumentScan(
+  tx: Prisma.TransactionClient,
+  documentId: string,
+  checks: ScanChecksResult,
+): Promise<DocumentRecord> {
   const rows = await tx.$queryRaw<DocumentRecord[]>`
     SELECT * FROM tracefab_finalize_document_upload(
-      ${document.id}::uuid,
-      ${sha256},
-      ${scan.clean},
-      ${object.byteSize}
+      ${documentId}::uuid,
+      ${checks.sha256},
+      ${checks.clean},
+      ${checks.byteSize}
+    )
+  `;
+  if (!rows[0]) throw new Error('document_finalization_failed');
+  return rows[0];
+}
+
+/** Rejet definitif (integrite ou antivirus) : meme chemin de finalisation. */
+export async function rejectDocumentScan(
+  tx: Prisma.TransactionClient,
+  documentId: string,
+  byteSize: number,
+): Promise<DocumentRecord> {
+  const rows = await tx.$queryRaw<DocumentRecord[]>`
+    SELECT * FROM tracefab_finalize_document_upload(
+      ${documentId}::uuid,
+      ${''},
+      ${false},
+      ${byteSize}
     )
   `;
   if (!rows[0]) throw new Error('document_finalization_failed');

@@ -125,6 +125,40 @@ jobs:
         # internal_error avec un identifiant de correlation.
         run: npm run test:router-load
 
+      - name: Garde statique des tables en ecriture directe
+        # La liste des tables ou le role applicatif ecrit directement est une
+        # decision de securite. Sans cette etape, rien n'empeche une route
+        # d'ajouter un INSERT sur une table absente de la liste, ou la liste de
+        # diverger du provisioning : les deux passeraient au vert en CI.
+        run: npm run test:tables-ecriture-directe
+
+      - name: Rapport d'ecarts de privileges — non-regression
+        # Le lecteur en lecture seule compare l'etat mesure a la liste declaree.
+        # Sans cette etape, il pourrait revenir a un jeu de tables fige et
+        # presenter des tables volontairement en lecture seule comme inexpliquees.
+        run: npm run test:disponibilite-role-app
+
+      - name: Comparateur d'objets SQL — non-regression
+        # C'est l'outil qui tranche sur les politiques et fonctions divergentes
+        # d'une cible reelle. Un faux vert ici rendrait tout audit distant muet.
+        run: npm run test:objets-sql:comparaison
+
+      - name: Controle des migrations — coherence et horodatages
+        # Deux controles statiques : coherence migrations/schema et unicite des
+        # horodatages. Aucun des deux n'a besoin de base ni de client Prisma.
+        run: npm run test:migrations:controle && npm run test:migrations:horodatages
+
+      - name: Validation TLS jamais desactivee
+        # Verifie qu'aucun chemin de connexion ne pose rejectUnauthorized: false
+        # ni NODE_TLS_REJECT_UNAUTHORIZED=0. Une regression ici annulerait
+        # tout le chantier C sans qu'aucun autre test ne rougisse.
+        run: npm run test:tls:validation
+
+      - name: Registre des chantiers — coherence avec le depot
+        # Verifie que le registre ne presente pas un SHA obsolete comme etat
+        # courant et que le compte de migrations cite correspond au depot.
+        run: npm run test:chantiers
+
   # -------------------------------------------------- 2. suite de verification
   verification:
     name: Verification — suite de tests
@@ -375,6 +409,37 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
+      - name: Politiques d'ecriture — WITH CHECK reel, pas suppose
+        # Cinq politiques d'ecriture sont declarees sans WITH CHECK. Ce n'est
+        # pas une faille, mais la protection qui empeche un transfert de
+        # propriete inter-organisations repose sur la coherence entre politiques
+        # de lecture et d'ecriture. Le test le prouve par execution, avec un
+        # role de sonde sans BYPASSRLS cree puis detruit, et il passe au rouge
+        # si une politique permissive FOR ALL est ajoutee (controle negatif
+        # verifie sur PostgreSQL 18.4).
+        run: npm run test:neon:write-policies
+
+      - name: Disponibilite a la bascule du runtime vers tracefab_app
+        # Le runtime se connecte aujourd'hui avec neondb_owner, qui porte
+        # BYPASSRLS : les politiques ne sont jamais evaluees en production.
+        # Basculer vers tracefab_app les rend opposables, mais change ce que
+        # chaque requete voit. Ce test rejoue sous tracefab_app reel les quatre
+        # contextes que le code sait armer — public, authentifie, worker, et
+        # l'ecriture anonyme — et exige le resultat attendu dans les deux sens.
+        # Controle negatif verifie : une politique permissive ajoutee sur
+        # tracefab_products le fait passer au rouge (3 echecs, sortie 1).
+        run: npm run test:neon:app-readiness
+
+      - name: Controle negatif — l isolement vient bien de la RLS
+        # Une suite qui verifie « A ne voit rien de B » ne prouve rien si la
+        # requete renverrait 0 dans tous les cas. Ce controle rejoue le MEME
+        # contexte acteur et les MEMES requetes sous un role identique en tout
+        # point mais dote de BYPASSRLS, et exige qu'il aboutisse : si le role
+        # privilegie reussit la ou le role applicatif echoue, l'echec vient de
+        # la RLS et non d'un artefact du test. Le role de sonde est detruit dans
+        # un finally, et le script refuse toute URL Neon.
+        run: npm run test:neon:bypass-control
+
       - name: Provenance DPP / Wallet
         run: npm run test:neon:dpp-provenance
 
@@ -388,6 +453,25 @@ jobs:
 
       - name: Deploiement publication explicite (jetable)
         run: npm run test:neon:deploiement-publication
+
+      # Les trois routes POST de la PR sont Clerk-gatees : un POST non
+      # authentifie doit rendre 401 sans creer ni modifier aucun document.
+      # Aucun parcours de navigateur ne peut les valider, et un POST
+      # authentifie sur upload-intent cree un document reel — seul le refus
+      # est exercable. L'etape importe le repartiteur reel et lui passe trois
+      # requetes depourvues d'en-tete authorization.
+      #
+      # Le gabarit de CLERK_SECRET_KEY est pose par le script lui-meme :
+      # requireClerkUser teste la presence de la cle avant le jeton, donc sans
+      # variable les routes repondent 503 clerk_not_configured sans atteindre
+      # le controle. Sans en-tete authorization l'execution s'arrete sur
+      # UnauthorizedError avant verifyToken et createClerkClient : la valeur
+      # n'est jamais utilisee et aucun appel reseau vers Clerk n'est emis.
+      #
+      # Le script est execute par run-db-suite.mjs, qui lui applique la garde
+      # de cible et choisit tsx — node nu ne saurait pas charger api/index.ts.
+      - name: Ecriture refusee sans authentification sur les routes POST
+        run: npm run test:neon:ecriture-non-authentifiee
 
       - name: Audit en lecture seule — la session ne peut pas ecrire
         # La lecture seule est appliquee par le serveur, et le test le prouve
@@ -419,3 +503,87 @@ jobs:
         # Verifie aussi que le GUC ne survit pas a la transaction (pool de
         # connexions) et que les trois fonctions sont fermees a PUBLIC.
         run: npm run test:neon:active-tenant
+
+      - name: Cycle de vie documentaire — visibilite, roles de scan, fail-closed
+        # TF-2 : le proprietaire lit ses documents dans tous les etats non
+        # supprimes, la finalisation exige un role ecrivain, aucun verdict
+        # d'analyse absent ne devient « sain ».
+        run: npm run test:neon:document-lifecycle
+
+      - name: Privilèges minimaux du rôle applicatif — provisioning réel
+        # Ce contrôle couvre un trou : `bootstrap_app_role.mjs` n'était exécuté
+        # par aucune étape, donc les privilèges que reçoit vraiment tracefab_app
+        # n'étaient mesurés nulle part. Les étapes précédentes emploient
+        # `db:prepare-ci-role`, qui ne fait que CREATE ROLE sans aucun GRANT.
+        #
+        # Le contrôle crée sa PROPRE base éphémère dans le cluster, y applique
+        # les migrations, exécute le provisioning réel, puis se reconnecte en
+        # tracefab_app pour mesurer. Il ne touche pas tracefab_test, donc ne
+        # modifie aucun privilège vu par les autres suites du même job.
+        #
+        # Il vérifie aussi le mécanisme de confinement réel : les migrations
+        # accordent elles-mêmes DML ... TO PUBLIC, donc ce n'est pas le GRANT
+        # qui confine mais la RLS — d'où l'exigence que toute table applicative
+        # porte une RLS active et forcée.
+        run: npm run test:neon:privileges-role-app
+
+      - name: Ecarts de privileges — les deux sens eprouves sur base reelle
+        # Le controle statique dit que le lecteur compare a la liste declaree ;
+        # il ne dit pas qu'il detecte quoi que ce soit. Cette etape provoque un
+        # sur-privilege puis un sous-privilege sur la base jetable, verifie que
+        # chacun est nomme, puis restaure l'etat mesure au depart.
+        run: npm run test:neon:ecarts-privileges
+
+      - name: Isolation RLS sur lignes existantes — deux organisations
+        # Les contrôles existants s'appuient sur has_table_privilege, sur la
+        # présence de FORCE ROW LEVEL SECURITY, ou sur un DELETE ... WHERE false.
+        # Aucun des trois ne prouve l'isolation : le premier ne dit que le droit
+        # d'essayer, le deuxième ne dit pas qu'une politique filtre, et le
+        # troisième n'examine aucune ligne — avec WHERE false la clause USING
+        # n'est jamais évaluée.
+        #
+        # Ce contrôle crée deux organisations réelles, y insère des documents et
+        # des produits réels, puis tente depuis l'une de lire, modifier et
+        # supprimer les lignes de l'autre. Chaque refus est doublé d'un contrôle
+        # positif sur les données propres, pour qu'une base vide ne puisse pas
+        # passer pour de l'isolation.
+        #
+        # Il embarque son propre contrôle négatif : avec
+        # ISOLATION_CONTROLE_NEGATIF=desactive_rls_documents, huit assertions
+        # passent au rouge. C'est ce qui prouve qu'elles mesurent la RLS.
+        run: npm run test:neon:isolation-lignes
+
+      - name: Limitation de débit — opérations légitimes et abus refusés
+        # La politique rate_limit_counters_global était FOR ALL USING (true)
+        # WITH CHECK (true). Le USING (true) est justifié et conservé pour la
+        # lecture, l'insertion et la mise à jour : la table n'a pas de locataire
+        # et le limiteur compte des requêtes anonymes. Il ne l'était pas pour la
+        # suppression.
+        #
+        # Risque reproduit sur base jetable sous le rôle applicatif : un DELETE
+        # sans filtre supprimait les 3 compteurs d'un jeu de test, dont les 2
+        # fenêtres actives. Le besoin légitime, vérifié sur tout le dépôt, se
+        # limite à `DELETE ... WHERE expires_at < NOW()`.
+        #
+        # Ce contrôle vérifie d'abord le chemin réel — insertion, upsert qui
+        # incrémente, nettoyage des fenêtres expirées — puis les abus : vidage
+        # sans filtre, remise de hits à zéro, déplacement de fenêtre. Sans la
+        # migration 20261019140000 il tombe à 8/18. Sans la seule garde sur
+        # expires_at il tombe à 27/30 : raccourcir la fenêtre puis supprimer
+        # suffit alors à éliminer un compteur actif en deux étapes autorisées.
+        run: npm run test:neon:compteurs-debit
+
+      - name: Sonde d'identité du runtime — justesse de l'instrument
+        # Toute la sécurité du runtime repose sur la RLS, et la RLS ne
+        # s'applique pas à un rôle qui porte BYPASSRLS. L'identité réellement
+        # utilisée ne se déduit ni du code ni de la configuration attendue :
+        # seul un current_user lu sur la connexion réelle le dit.
+        #
+        # Ce contrôle ne mesure PAS le runtime — il n'y a pas de runtime en CI.
+        # Il vérifie que l'instrument est juste, pour que la mesure prise plus
+        # tard sur l'environnement autorisé veuille dire quelque chose. La
+        # requête est extraite du fichier source, pas recopiée, et doit
+        # discriminer un rôle soumis (bypasses_rls false) du rôle propriétaire
+        # (true). Il borne aussi ce que la sonde expose et vérifie que la route
+        # interne authentifie avant de l'appeler.
+        run: npm run test:neon:sonde-identite
