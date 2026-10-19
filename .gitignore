@@ -26,3 +26,6 @@ uploads/
 # Caches Python des scripts utilitaires
 __pycache__/
 *.pyc
+
+# Bases PostgreSQL jetables des epreuves locales
+.epreuve-pg/
