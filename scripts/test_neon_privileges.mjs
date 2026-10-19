@@ -50,7 +50,7 @@ if (!ADMIN_URL) {
 }
 
 const TLS = /sslmode=(require|verify|prefer)/.test(ADMIN_URL);
-const ssl = TLS ? { rejectUnauthorized: false } : undefined;
+const ssl = TLS ? { rejectUnauthorized: true } : undefined;
 
 let echecs = 0;
 const ok = (m) => console.log(`  ok    ${m}`);
@@ -392,7 +392,7 @@ for (const table of TABLES_DPP) {
 await db.end();
 
 if (APP_URL) {
-  const app = new pg.Client({ connectionString: APP_URL, ssl: TLS ? { rejectUnauthorized: false } : undefined });
+  const app = new pg.Client({ connectionString: APP_URL, ssl: TLS ? { rejectUnauthorized: true } : undefined });
   try {
     await app.connect();
     const identite = (await app.query('SELECT current_user AS r, current_setting($1, true) AS bypass', ['session_authorization'])).rows[0];

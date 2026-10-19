@@ -16,7 +16,7 @@ if (!ADMIN_URL || !APP_URL) {
   console.error('NON EXECUTE — DATABASE_URL et TF_RLS_APP_URL sont obligatoires.');
   process.exit(2);
 }
-const client = url => new pg.Client({ connectionString: url, ssl: /sslmode=(require|verify-full|verify-ca)/.test(url) ? { rejectUnauthorized: false } : false });
+const client = url => new pg.Client({ connectionString: url, ssl: /sslmode=(require|verify-full|verify-ca)/.test(url) ? { rejectUnauthorized: true } : false });
 const admin=client(ADMIN_URL), app=client(APP_URL);
 await admin.connect(); await app.connect();
 let assertions=0;

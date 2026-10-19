@@ -44,7 +44,7 @@ if (!URL_PROPRIO || !URL_APP) {
 
 const cli = (u) => new pg.Client({
   connectionString: u,
-  ssl: /sslmode=(require|verify-full|verify-ca)/.test(u) ? { rejectUnauthorized: false } : false,
+  ssl: /sslmode=(require|verify-full|verify-ca)/.test(u) ? { rejectUnauthorized: true } : false,
 });
 
 let echecs = 0;

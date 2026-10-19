@@ -122,7 +122,7 @@ if (!URL || !URL.trim()) {
 assertThrowawayDb({ purpose: 'scripts/test_audit_neon_readonly.mjs' });
 
 const TLS = /sslmode=(require|verify|prefer)/.test(URL);
-const db = new pg.Client({ connectionString: URL, ssl: TLS ? { rejectUnauthorized: false } : undefined });
+const db = new pg.Client({ connectionString: URL, ssl: TLS ? { rejectUnauthorized: true } : undefined });
 await db.connect();
 await db.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY');
 
@@ -265,7 +265,7 @@ console.log('\n  D. les requetes nommees repondent avec des invariants durs\n');
     else requetes.set(nom, m[1]);
   }
 
-  const dbD = new pg.Client({ connectionString: URL, ssl: TLS ? { rejectUnauthorized: false } : undefined });
+  const dbD = new pg.Client({ connectionString: URL, ssl: TLS ? { rejectUnauthorized: true } : undefined });
   await dbD.connect();
   await dbD.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY');
   const res = {};

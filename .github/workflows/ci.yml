@@ -475,3 +475,39 @@ jobs:
         # supprimes, la finalisation exige un role ecrivain, aucun verdict
         # d'analyse absent ne devient « sain ».
         run: npm run test:neon:document-lifecycle
+
+      - name: Privilèges minimaux du rôle applicatif — provisioning réel
+        # Ce contrôle couvre un trou : `bootstrap_app_role.mjs` n'était exécuté
+        # par aucune étape, donc les privilèges que reçoit vraiment tracefab_app
+        # n'étaient mesurés nulle part. Les étapes précédentes emploient
+        # `db:prepare-ci-role`, qui ne fait que CREATE ROLE sans aucun GRANT.
+        #
+        # Le contrôle crée sa PROPRE base éphémère dans le cluster, y applique
+        # les migrations, exécute le provisioning réel, puis se reconnecte en
+        # tracefab_app pour mesurer. Il ne touche pas tracefab_test, donc ne
+        # modifie aucun privilège vu par les autres suites du même job.
+        #
+        # Il vérifie aussi le mécanisme de confinement réel : les migrations
+        # accordent elles-mêmes DML ... TO PUBLIC, donc ce n'est pas le GRANT
+        # qui confine mais la RLS — d'où l'exigence que toute table applicative
+        # porte une RLS active et forcée.
+        run: npm run test:neon:privileges-role-app
+
+      - name: Isolation RLS sur lignes existantes — deux organisations
+        # Les contrôles existants s'appuient sur has_table_privilege, sur la
+        # présence de FORCE ROW LEVEL SECURITY, ou sur un DELETE ... WHERE false.
+        # Aucun des trois ne prouve l'isolation : le premier ne dit que le droit
+        # d'essayer, le deuxième ne dit pas qu'une politique filtre, et le
+        # troisième n'examine aucune ligne — avec WHERE false la clause USING
+        # n'est jamais évaluée.
+        #
+        # Ce contrôle crée deux organisations réelles, y insère des documents et
+        # des produits réels, puis tente depuis l'une de lire, modifier et
+        # supprimer les lignes de l'autre. Chaque refus est doublé d'un contrôle
+        # positif sur les données propres, pour qu'une base vide ne puisse pas
+        # passer pour de l'isolation.
+        #
+        # Il embarque son propre contrôle négatif : avec
+        # ISOLATION_CONTROLE_NEGATIF=desactive_rls_documents, huit assertions
+        # passent au rouge. C'est ce qui prouve qu'elles mesurent la RLS.
+        run: npm run test:neon:isolation-lignes

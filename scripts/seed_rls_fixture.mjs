@@ -45,7 +45,7 @@ if (!MOT_DE_PASSE) {
 const avecSsl = /sslmode=(require|verify-full|verify-ca)/.test(URL_PROPRIO);
 const db = new pg.Client({
   connectionString: URL_PROPRIO,
-  ssl: avecSsl ? { rejectUnauthorized: false } : false,
+  ssl: avecSsl ? { rejectUnauthorized: true } : false,
 });
 await db.connect();
 

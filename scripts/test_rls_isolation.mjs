@@ -60,7 +60,7 @@ const ok = (m) => console.log(`  ok    ${m}`);
 // un serveur qui n'en fait pas echoue a la connexion, donc on suit l'URL.
 const cli = (u) => new pg.Client({
   connectionString: u,
-  ssl: /sslmode=(require|verify-full|verify-ca)/.test(u) ? { rejectUnauthorized: false } : false,
+  ssl: /sslmode=(require|verify-full|verify-ca)/.test(u) ? { rejectUnauthorized: true } : false,
 });
 
 const proprio = cli(URL_PROPRIO);

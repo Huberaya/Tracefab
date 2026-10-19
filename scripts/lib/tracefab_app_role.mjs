@@ -21,6 +21,7 @@
  * doivent donc etre reellement evaluees pour lui.
  */
 import pg from 'pg';
+import { sslDepuisUrl } from './pg-ssl.mjs';
 
 /** Constante partagee : le nom du role applicatif. */
 export const APP_ROLE = 'tracefab_app';
@@ -51,16 +52,57 @@ export async function ensureAppRole(db, password) {
 
   const base = (await db.query('select current_database() d')).rows[0].d;
   const proprio = (await db.query('select current_user u')).rows[0].u;
+
+  // Tables que le runtime ecrit DIRECTEMENT, hors fonctions SECURITY DEFINER.
+  // Liste etablie par extraction des ordres INSERT / UPDATE / DELETE de api/,
+  // croisee avec les tables reellement creees par les migrations — et non
+  // reprise d'une intention. Toute autre mutation applicative passe par une
+  // fonction, dont le proprietaire porte les privileges.
+  //
+  //   documents                     api/_lib/documents.ts:107            (UPDATE)
+  //   rate_limit_counters           api/_lib/rate-limit.ts:403,415       (INSERT, DELETE)
+  //   tracefab_catalog_import_jobs  api/_routes/catalog/*/import.ts      (INSERT)
+  //   audit_logs                    api/_routes/catalog/*/import.ts      (INSERT)
+  //
+  // Ajouter une table ici doit etre justifie par un chemin applicatif precis.
+  // Le controle scripts/test_privileges_role_app.mjs echoue si un octroi global
+  // reapparait a la place de cette liste.
+  const TABLES_ECRITURE_DIRECTE = [
+    'audit_logs',
+    'documents',
+    'rate_limit_counters',
+    'tracefab_catalog_import_jobs',
+  ];
+  const listeEcriture = TABLES_ECRITURE_DIRECTE.join(', ');
+
   for (const sql of [
     `GRANT CONNECT ON DATABASE "${base}" TO ${APP_ROLE}`,
     `GRANT USAGE ON SCHEMA public TO ${APP_ROLE}`,
-    // Droits sur l'existant, puis droits par defaut pour tout objet futur :
-    // sans la deuxieme moitie, chaque migration creant une table laisserait
-    // le role applicatif sans droit dessus — silencieusement.
-    `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${APP_ROLE}`,
+    // LECTURE sur toutes les tables : le client Prisma lit directement, et la
+    // RLS — activee et forcee sur les 50 tables — filtre ce qui est visible.
+    // La lecture large est donc contenue ; l'ecriture large ne l'etait pas.
+    `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${APP_ROLE}`,
+    // ECRITURE sur les seules tables que le runtime touche hors fonction.
+    // Auparavant : GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES, ce qui
+    // rendait toute table modifiable directement et vidait de son sens le
+    // principe « mutations par fonctions ». Conditionnel : au bootstrap d'une
+    // base vierge ces tables n'existent pas encore.
+    `DO $$ BEGIN
+       IF to_regclass('public.rate_limit_counters') IS NOT NULL THEN
+         EXECUTE 'GRANT INSERT, UPDATE, DELETE ON ${listeEcriture} TO ${APP_ROLE}';
+       END IF;
+     END $$;`,
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`,
+    // EXECUTE sur toutes les fonctions : 74 fonctions appelees par le runtime
+    // ont ete verifiees une a une, toutes necessaires. Restreindre ici sans
+    // inventaire casserait des chemins applicatifs — et les fonctions portent
+    // deja leurs propres REVOKE quand elles ne sont pas publiques.
     `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${APP_ROLE}`,
-    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}`,
+    // Droits par defaut pour tout objet FUTUR. Volontairement limites a la
+    // lecture : une migration qui cree une table ne doit pas donner
+    // silencieusement au runtime le droit d'y ecrire. L'ecriture directe sur
+    // une table nouvelle exige une decision explicite.
+    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT SELECT ON TABLES TO ${APP_ROLE}`,
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ${APP_ROLE}`,
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO ${APP_ROLE}`,
   ]) {
@@ -69,11 +111,12 @@ export async function ensureAppRole(db, password) {
   // TF-3 — tables DPP append-only : les mutations passent UNIQUEMENT par les
   // fonctions SECURITY DEFINER (tracefab_add_dpp_event, tracefab_add_dpp_claim,
   // tracefab_link_dpp_claim_evidence, tracefab_create/replace_dpp_identity).
-  // Le grant global ci-dessus est volontairement large ; ces quatre tables
-  // sont les seules exceptions, alignees sur la migration
-  // 20261017120000_harden_dpp_table_privileges. Conditionnel : au bootstrap
-  // d'une base vierge les tables n'existent pas encore — la migration pose
-  // alors elle-meme les privileges.
+  //
+  // Ce bloc reste utile alors meme que l'octroi global a ete supprime : sur une
+  // base provisionnee sous l'ancienne regle, le role applicatif porte encore
+  // INSERT, UPDATE et DELETE sur ces quatre tables. Le bloc les retire, donc il
+  // corrige aussi l'existant et pas seulement une base neuve. Aligne sur la
+  // migration 20261017120000_harden_dpp_table_privileges.
   await db.query(`
     DO $$
     BEGIN
@@ -85,7 +128,11 @@ export async function ensureAppRole(db, password) {
     END
     $$;
   `);
-  console.log(`  droits applicatifs accordes a ${APP_ROLE} (tables DPP en lecture seule, mutations par fonctions)`);
+  console.log(
+    `  droits applicatifs accordes a ${APP_ROLE} ` +
+    `(lecture generale filtree par RLS ; ecriture directe limitee a ${TABLES_ECRITURE_DIRECTE.length} tables ; ` +
+    `le reste des mutations par fonctions SECURITY DEFINER)`,
+  );
 }
 
 /**
@@ -94,10 +141,12 @@ export async function ensureAppRole(db, password) {
  * @param {string} password mot de passe du role applicatif
  */
 export async function ensureAppRoleFromUrl(urlProprio, password) {
-  const avecSsl = /sslmode=(require|verify-full|verify-ca)/.test(urlProprio);
   const db = new pg.Client({
     connectionString: urlProprio,
-    ssl: avecSsl ? { rejectUnauthorized: false } : false,
+    // Validation du certificat toujours active. Un magasin d'autorités
+    // supplémentaire se fournit par NODE_EXTRA_CA_CERTS, jamais en désactivant
+    // la vérification : voir scripts/lib/pg-ssl.mjs.
+    ssl: sslDepuisUrl(urlProprio),
   });
   await db.connect();
   try {
