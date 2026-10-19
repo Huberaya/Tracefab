@@ -527,5 +527,22 @@ jobs:
         # Ce contrôle vérifie d'abord le chemin réel — insertion, upsert qui
         # incrémente, nettoyage des fenêtres expirées — puis les abus : vidage
         # sans filtre, remise de hits à zéro, déplacement de fenêtre. Sans la
-        # migration 20261019140000 il tombe à 8/18.
+        # migration 20261019140000 il tombe à 8/18. Sans la seule garde sur
+        # expires_at il tombe à 27/30 : raccourcir la fenêtre puis supprimer
+        # suffit alors à éliminer un compteur actif en deux étapes autorisées.
         run: npm run test:neon:compteurs-debit
+
+      - name: Sonde d'identité du runtime — justesse de l'instrument
+        # Toute la sécurité du runtime repose sur la RLS, et la RLS ne
+        # s'applique pas à un rôle qui porte BYPASSRLS. L'identité réellement
+        # utilisée ne se déduit ni du code ni de la configuration attendue :
+        # seul un current_user lu sur la connexion réelle le dit.
+        #
+        # Ce contrôle ne mesure PAS le runtime — il n'y a pas de runtime en CI.
+        # Il vérifie que l'instrument est juste, pour que la mesure prise plus
+        # tard sur l'environnement autorisé veuille dire quelque chose. La
+        # requête est extraite du fichier source, pas recopiée, et doit
+        # discriminer un rôle soumis (bypasses_rls false) du rôle propriétaire
+        # (true). Il borne aussi ce que la sonde expose et vérifie que la route
+        # interne authentifie avant de l'appeler.
+        run: npm run test:neon:sonde-identite

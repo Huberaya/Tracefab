@@ -216,9 +216,127 @@ verifier(
   deplacement.ok ? `${deplacement.count} ligne modifiée` : `${deplacement.code} ${deplacement.message}`,
 );
 
+// Contournement en deux étapes, reproduit avant d'être corrigé : remettre la
+// fenêtre dans le passé, puis supprimer la ligne. Chaque étape était
+// individuellement autorisée — la politique DELETE laisse passer toute ligne
+// dont expires_at est déjà dépassé.
+const raccourci = await tente(
+  `UPDATE rate_limit_counters SET expires_at = now() - interval '1 hour' WHERE bucket_key = $1`,
+  [cle],
+);
+verifier(
+  'raccourcir la fenêtre d un compteur actif est refusé',
+  !raccourci.ok && raccourci.code === '42501',
+  raccourci.ok ? `${raccourci.count} ligne modifiée` : `${raccourci.code} ${raccourci.message}`,
+);
+
+const apresRaccourci = await tente(`DELETE FROM rate_limit_counters WHERE bucket_key = $1`, [cle]);
+verifier(
+  'le compteur actif ne peut pas être supprimé après la tentative',
+  !apresRaccourci.ok || apresRaccourci.count === 0,
+  apresRaccourci.ok ? `${apresRaccourci.count} ligne supprimée` : `${apresRaccourci.code} ${apresRaccourci.message}`,
+);
+
+/* --- C. Concurrence, atomicité, périmètre des rôles ------------------------ */
+
+console.log('\n  C. upsert concurrent — le chemin réel sous charge');
+
+const NB_UPSERTS = 25;
+const NB_CONNEXIONS = 8;
+const conns = await Promise.all(
+  Array.from({ length: NB_CONNEXIONS }, async () => {
+    const c = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp) });
+    await c.connect();
+    return c;
+  }),
+);
+const upsert = `INSERT INTO rate_limit_counters (bucket_key, window_start, hits, expires_at)
+  VALUES ($1, date_trunc('minute', now()), 1, now() + interval '10 minutes')
+  ON CONFLICT (bucket_key, window_start) DO UPDATE SET hits = rate_limit_counters.hits + 1
+  RETURNING hits`;
+let erreursConcurrence = 0;
+await Promise.all(
+  Array.from({ length: NB_UPSERTS }, async (_, i) => {
+    try {
+      await conns[i % NB_CONNEXIONS].query(upsert, ['cle-concurrente']);
+    } catch {
+      erreursConcurrence += 1;
+    }
+  }),
+);
+for (const c of conns) await c.end();
+const final = await app.query(`SELECT hits FROM rate_limit_counters WHERE bucket_key = 'cle-concurrente'`);
+verifier(
+  `${NB_UPSERTS} upserts concurrents sur ${NB_CONNEXIONS} connexions donnent hits = ${NB_UPSERTS}`,
+  final.rows[0]?.hits === NB_UPSERTS,
+  `hits=${final.rows[0]?.hits}`,
+);
+verifier('aucun upsert concurrent n échoue', erreursConcurrence === 0, `${erreursConcurrence} erreurs`);
+
+console.log('\n  D. atomicité — une transaction échouée ne laisse rien');
+
+// Les deux lignes sont créées AVANT la transaction, donc déjà validées. Une
+// première version les insérait à l'intérieur, et l'assertion attendait alors
+// des lignes que le ROLLBACK avait nécessairement fait disparaître : le test
+// échouait pour une raison qui n'avait rien à voir avec l'atomicité.
+await app.query(
+  `INSERT INTO rate_limit_counters (bucket_key, window_start, hits, expires_at)
+   VALUES ('atomique-1', date_trunc('minute', now()), 5, now() + interval '10 minutes'),
+          ('atomique-2', date_trunc('minute', now()), 7, now() + interval '10 minutes')
+   ON CONFLICT DO NOTHING`,
+);
+await app.query('BEGIN');
+// Une modification LÉGITIME d'abord : elle doit elle aussi être annulée, sinon
+// la transaction laisserait une trace partielle.
+await app.query(`UPDATE rate_limit_counters SET hits = hits + 1 WHERE bucket_key = 'atomique-1'`);
+const declenche = await tente(`UPDATE rate_limit_counters SET hits = 0 WHERE bucket_key = 'atomique-2'`);
+await app.query('ROLLBACK');
+const etat = await app.query(
+  `SELECT bucket_key, hits FROM rate_limit_counters WHERE bucket_key LIKE 'atomique-%' ORDER BY 1`,
+);
+verifier(
+  'la modification interdite fait échouer la transaction',
+  !declenche.ok && declenche.code === '42501',
+  declenche.ok ? 'acceptée' : `${declenche.code} ${declenche.message}`,
+);
+verifier(
+  'après ROLLBACK, les deux lignes validées retrouvent leurs valeurs d origine',
+  etat.rows.length === 2 && etat.rows[0].hits === 5 && etat.rows[1].hits === 7,
+  etat.rows.map((r) => `${r.bucket_key}=${r.hits}`).join(', ') || 'aucune ligne',
+);
+
+console.log('\n  E. périmètre des rôles — rien n a été élargi');
+
+const roles = await app.query(`SELECT rolname FROM pg_roles WHERE rolname NOT LIKE 'pg\\_%' ORDER BY 1`);
+const inattendus = [];
+for (const { rolname } of roles.rows) {
+  const p = await app.query(
+    `SELECT has_table_privilege($1,'rate_limit_counters','SELECT') s,
+            has_table_privilege($1,'rate_limit_counters','INSERT') i,
+            has_table_privilege($1,'rate_limit_counters','UPDATE') u,
+            has_table_privilege($1,'rate_limit_counters','DELETE') d`,
+    [rolname],
+  );
+  const r = p.rows[0];
+  // Seuls le propriétaire et le rôle applicatif doivent avoir quoi que ce soit.
+  const autorise = rolname === APP_ROLE || rolname === 'postgres';
+  if (!autorise && (r.s || r.i || r.u || r.d)) inattendus.push(rolname);
+}
+verifier(
+  'aucun rôle supplémentaire n a obtenu de droit sur la table',
+  inattendus.length === 0,
+  inattendus.join(', '),
+);
+const pubRole = await app.query(
+  `SELECT count(*)::int n FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace,
+     aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
+   WHERE c.relname='rate_limit_counters' AND a.grantee=0`,
+);
+verifier('PUBLIC n a aucune entrée d ACL sur la table', pubRole.rows[0].n === 0, `${pubRole.rows[0].n} entrées`);
+
 /* --- C. La correction est bien en place ----------------------------------- */
 
-console.log('\n  C. état des politiques');
+console.log('\n  F. état des politiques');
 
 const pol = await app.query(
   `SELECT policyname, cmd, qual FROM pg_policies WHERE tablename = 'rate_limit_counters' ORDER BY 1`,
@@ -239,6 +357,57 @@ const decl = await app.query(
    WHERE c.relname = 'rate_limit_counters' AND NOT t.tgisinternal`,
 );
 verifier('un déclencheur garde les mises à jour', decl.rows[0].n === 1, `${decl.rows[0].n} déclencheur`);
+
+console.log('\n  G. contrat de migration — base fraîche puis seconde application');
+
+// Le contrat d'une migration Prisma est d'être appliquée une fois. Mais une
+// migration de sécurité peut être rejouée sur une base déjà provisionnée sous
+// une règle antérieure, et elle ne doit alors ni échouer ni affaiblir l'état
+// atteint. On la rejoue donc, puis on revérifie l'invariant central.
+const reapplication = new pg.Client({ connectionString: url, ssl: sslDepuisUrl(url) });
+await reapplication.connect();
+const sqlMigration = fs.readFileSync(
+  path.join(RACINE, 'prisma', 'migrations', '20261019140000_restreindre_suppression_compteurs_debit', 'migration.sql'),
+  'utf8',
+);
+let secondeApplication = { ok: true };
+try {
+  await reapplication.query(sqlMigration);
+} catch (e) {
+  secondeApplication = { ok: false, code: e.code, message: String(e.message).split('\n')[0] };
+}
+verifier(
+  'la migration se rejoue sans erreur',
+  secondeApplication.ok,
+  `${secondeApplication.code} ${secondeApplication.message}`,
+);
+await reapplication.end();
+
+const apresSeconde = await tente(`UPDATE rate_limit_counters SET hits = 0 WHERE bucket_key = $1`, [cle]);
+verifier(
+  'la protection survit à la seconde application',
+  !apresSeconde.ok && apresSeconde.code === '42501',
+  apresSeconde.ok ? 'acceptée' : `${apresSeconde.code} ${apresSeconde.message}`,
+);
+
+const politiquesApres = await app.query(
+  `SELECT count(*)::int n FROM pg_policies WHERE tablename = 'rate_limit_counters'`,
+);
+verifier(
+  'la seconde application ne duplique aucune politique',
+  politiquesApres.rows[0].n === 4,
+  `${politiquesApres.rows[0].n} politiques, attendu 4`,
+);
+
+const declencheursApres = await app.query(
+  `SELECT count(*)::int n FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+   WHERE c.relname='rate_limit_counters' AND NOT t.tgisinternal`,
+);
+verifier(
+  'la seconde application ne duplique aucun déclencheur',
+  declencheursApres.rows[0].n === 1,
+  `${declencheursApres.rows[0].n} déclencheurs, attendu 1`,
+);
 
 await app.end();
 

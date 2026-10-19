@@ -85,10 +85,10 @@ CREATE POLICY rate_limit_counters_purge_expiree ON rate_limit_counters
 -- la fenêtre, qui sont les deux seules façons de neutraliser un compteur sans
 -- le supprimer.
 --
--- Le chemin légitime — hits = hits + 1 — ne diminue jamais hits et ne change
--- ni bucket_key ni window_start, donc il n'est pas affecté. C'est vérifié par
--- scripts/test_compteurs_debit.mjs, qui échoue si l'incrémentation cesse de
--- fonctionner.
+-- Le chemin légitime — hits = hits + 1 — ne diminue jamais hits, ne change ni
+-- bucket_key ni window_start, et ne touche pas expires_at. Il n'est donc pas
+-- affecté. C'est vérifié par scripts/test_compteurs_debit.mjs, qui échoue si
+-- l'incrémentation cesse de fonctionner.
 CREATE OR REPLACE FUNCTION tracefab_guard_rate_limit_counter()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -106,6 +106,28 @@ BEGIN
      OR NEW.window_start <> OLD.window_start THEN
     RAISE EXCEPTION
       'rate_limit_counter_identity_is_immutable'
+      USING ERRCODE = '42501';
+  END IF;
+
+  -- Garde ajoutée après reproduction d'un contournement de cette même
+  -- migration. Borner le DELETE à `expires_at < now()` ne suffit pas : tant que
+  -- expires_at restait modifiable, un rôle applicatif compromis pouvait
+  -- remettre la fenêtre dans le passé puis supprimer la ligne, en deux étapes
+  -- dont chacune était individuellement autorisée. Reproduit :
+  --
+  --     UPDATE ... SET expires_at = now() - interval '1 hour'  -> 1 ligne
+  --     DELETE ... WHERE bucket_key = 'cible'                  -> 1 ligne
+  --     compteur actif restant                                 -> 0
+  --
+  -- Seule la DIMINUTION est interdite. Allonger une fenêtre ne permet aucun
+  -- contournement — elle rend le compteur plus persistant, donc la limitation
+  -- plus stricte — et l'interdire n'apporterait rien. Le chemin légitime ne
+  -- met jamais expires_at à jour : une nouvelle fenêtre crée une nouvelle
+  -- ligne, puisque window_start fait partie de la clé primaire.
+  IF NEW.expires_at < OLD.expires_at THEN
+    RAISE EXCEPTION
+      'rate_limit_counter_expiry_cannot_be_shortened (avant=%, apres=%)',
+      OLD.expires_at, NEW.expires_at
       USING ERRCODE = '42501';
   END IF;
 

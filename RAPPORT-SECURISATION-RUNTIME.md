@@ -735,6 +735,56 @@ l'écart réel injecté (2 politiques + 1 fonction) → **sortie 1**, en nommant
 trois objets. Un écart de compte ne permet aucune décision ; une liste nominative
 permet de classer chaque objet en légitime, obsolète ou dangereux.
 
+**Rien n'est inventé.** Tant qu'aucune connexion autorisée n'existe, les deux
+politiques et la fonction supplémentaires restent **sans nom, sans propriétaire,
+sans définition et sans explication**. Aucune identité d'objet n'a été déduite,
+reconstituée ou supposée dans ce rapport. Les fixtures utilisées pour éprouver
+l'outil sont explicitement synthétiques et nommées comme telles.
+
+#### Procédure en lecture seule à exécuter sur cible autorisée
+
+Trois étapes. Les deux premières ne touchent qu'une base jetable locale ; la
+troisième lit la cible et n'écrit rien.
+
+**Étape 1 — inventaire de référence, depuis le schéma reconstruit.** Appliquer
+les 51 migrations à une base éphémère locale, dans l'ordre réel (rôle
+applicatif créé *avant* les migrations), puis produire l'inventaire :
+
+```
+psql "$BASE_JETABLE_LOCALE" -f scripts/lire-objets-sql.sql -At -o reference.txt
+```
+
+**Étape 2 — inventaire de la cible.** La cible doit être nommée et vérifiée
+avant toute connexion. La commande ne contient qu'un `SELECT` ;
+`scripts/lire-objets-sql.sql` est contrôlé par
+`scripts/test_comparaison_objets_sql.mjs`, qui vérifie qu'aucun verbe d'écriture
+n'y figure hors commentaire :
+
+```
+psql "$CIBLE_AUTORISEE" -f scripts/lire-objets-sql.sql -At -o cible.txt
+```
+
+**Étape 3 — comparaison nominative.**
+
+```
+node scripts/comparer-objets-sql.mjs --reference reference.txt --cible cible.txt
+```
+
+Sortie 0 identiques · 1 divergence, les objets nommés dans les deux sens ·
+2 entrée manquante ou illisible.
+
+**Ce qui est interdit à cette étape.** Ne modifier et ne supprimer aucun objet
+distant. La comparaison nomme ; elle ne tranche pas. Chaque objet supplémentaire
+doit ensuite être classé à la main — légitime (posé par un provisioning manuel
+documenté), obsolète (reste d'un essai) ou dangereux — et **seul un objet dont
+la dangerosité est démontrée peut être envisagé pour suppression**, sur
+autorisation explicite et après revue de ses dépendances.
+
+**Garantie de lecture seule.** `lire-objets-sql.sql` ne contient que des
+`SELECT` sur `pg_policies` et `pg_proc`. Aucun `DROP`, `ALTER`, `GRANT`,
+`REVOKE`, aucune fonction appelée, aucun `SECURITY LABEL`. Aucune transaction
+ouverte. L'exécution sur la cible ne peut pas modifier le schéma.
+
 ### 7.11 Limitation de débit — risque reproduit puis corrigé
 
 **Risque reproduit, pas déduit.** La politique posée par la migration
@@ -794,21 +844,58 @@ suppression de compteur actif n'est utile à l'application.
 Le `FOR ALL` est remplacé par quatre politiques par commande. Une clause
 `WITH CHECK` ne voit que `NEW` et ne peut donc pas exprimer « `hits` ne diminue
 pas » ; un déclencheur `BEFORE UPDATE` le peut, et refuse aussi le déplacement
-d'un compteur sur une autre fenêtre. Les deux attaques sont refusées en
-`42501`, ce que les journaux PostgreSQL confirment :
+d'un compteur sur une autre fenêtre. Les attaques sont refusées en `42501`, ce
+que les journaux PostgreSQL confirment :
 
 ```
 ERROR:  rate_limit_counter_hits_cannot_decrease (avant=3, apres=0)
 ERROR:  rate_limit_counter_identity_is_immutable
+ERROR:  rate_limit_counter_expiry_cannot_be_shortened
 ```
 
-**Résultat** — `scripts/test_compteurs_debit.mjs`, **18/18 assertions vertes,
-sortie 0**. Le contrôle vérifie d'abord le chemin réel (insertion, upsert qui
-incrémente à 2 puis 3, lecture, nettoyage des fenêtres expirées), puis les abus.
+#### Contournement trouvé dans ma propre migration, puis fermé
 
-**Contrôle négatif** : migration retirée → **8/18, sortie 1**, avec
-« 3 actifs avant, 0 après (supprimées : 4) ». C'est la preuve que la migration
-est bien ce qui corrige, et que le test mesure quelque chose.
+La première version du déclencheur gardait `hits` et l'identité du compteur,
+mais **pas `expires_at`**. C'était insuffisant, et le contournement a été
+reproduit avant d'être corrigé. Deux étapes, chacune individuellement autorisée :
+
+```
+UPDATE rate_limit_counters SET expires_at = now() - interval '1 hour'  -> 1 ligne modifiee
+DELETE FROM rate_limit_counters WHERE bucket_key = 'cible'             -> 1 ligne supprimee
+compteur actif restant                                                 -> 0
+```
+
+La suppression passe parce que la politique `DELETE` est
+`USING (expires_at < now())` : en raccourcissant la fenêtre, l'attaquant rend la
+ligne éligible à la seule suppression autorisée. **Leçon : restreindre une
+commande par un prédicat sur une colonne impose de rendre cette colonne
+immuable, sinon la restriction est décorative.**
+
+Une troisième garde a donc été ajoutée : `expires_at` ne peut pas **diminuer**.
+Seule la diminution est interdite — l'allonger rend la limitation plus stricte,
+ce n'est pas une attaque. Le chemin légitime ne touche jamais `expires_at`,
+puisqu'une nouvelle fenêtre insère une nouvelle ligne.
+
+La migration a été corrigée **sur place** plutôt que par une migration
+supplémentaire : elle n'est ni poussée ni appliquée à aucune base, aucun
+historique n'est donc réécrit.
+
+**Résultat** — `scripts/test_compteurs_debit.mjs`, **30/30 assertions vertes,
+sortie 0**. Au-delà du chemin réel et des abus, le contrôle couvre désormais :
+25 upserts concurrents sur 8 connexions (`hits = 25`, zéro erreur), l'atomicité
+d'une transaction échouée, le périmètre des rôles et l'ACL de `PUBLIC`, et la
+seconde application de la migration — elle se rejoue sans erreur, sans dupliquer
+ni politique ni déclencheur.
+
+**Contrôles négatifs, les deux rejoués :**
+
+| neutralisation | résultat |
+|---|---|
+| migration `20261019140000` retirée | **sortie 1**, « 3 actifs avant, 0 après (supprimées : 4) » |
+| seule la garde `expires_at` retirée | **27/30, sortie 1**, contournement en deux étapes reproduit |
+
+Le second est celui qui compte : il prouve que la troisième garde est bien ce
+qui ferme le contournement, et non un ornement.
 
 ### 7.12 Outil de comparaison éprouvé sur fixtures synthétiques
 
@@ -866,23 +953,45 @@ Conséquence en cascade, mesurée :
 | `npm run build` | non exécutable | commence par `db:generate` |
 | `npm run typecheck` | non exécutable | types Prisma absents |
 | `npm run api:typecheck` | sortie 2, **89 erreurs** | voir ci-dessous |
+| `npm run test:router-load` | sortie 1, **130/135** | voir ci-dessous |
+| `npm run verify:prisma-client` | non exécutable | client absent |
+| 19 autres entrées de la chaîne `build` | **sortie 0** | indépendantes des moteurs |
 | `npm run schema:static` | **sortie 0** | indépendant des moteurs |
 | `npm run test:workflow-policy` | **sortie 0** | valide le `ci.yml` modifié |
 | `npm run test:workflow-policy-temoins` | **sortie 0** | — |
-| `npm run test:db-guard` | **sortie 0** | — |
+| `npm run test:db-guard` · `test:db-guard-driver` | **sortie 0** | — |
 | `npm run test:db-routing` | **sortie 0** | — |
 
 Les 89 erreurs de `api:typecheck` se décomposent en **85 `TS2305` — toutes
 `Module '"@prisma/client"' has no exported member`**, et 4 `TS2339` sur des
-propriétés de type `unknown` issues de `$queryRaw`. `node_modules/.prisma/client`
-est absent : le client n'a jamais été généré. **Les 89 erreurs remontent donc à
-la même cause réseau.**
+propriétés de type `unknown` issues de `$queryRaw`, les quatre dans
+`api/_routes/catalog/audit-export.ts`. `node_modules/.prisma/client` est absent :
+le client n'a jamais été généré. **Les 89 erreurs remontent donc à la même cause
+réseau.**
 
-Preuve qu'aucune régression n'est introduite : `git diff --name-only bb1213c
-HEAD | grep '\.ts$'` est **vide** — aucun commit du chantier ne touche de
-TypeScript.
+`test:router-load` échoue pour la même raison : les 130 modules en défaut
+tombent tous sur `The requested module '@prisma/client' does not provide an
+export named 'PrismaClient'`. Une route sans base de données
+(`catalog/schemas`) se charge, ce qui montre que le chargeur fonctionne.
 
-**Le build n'est pas déclaré validé.** Il ne peut pas l'être ici.
+**Aucune régression introduite — mesuré, pas déduit.** Ce chantier modifie
+désormais du TypeScript (`api/_lib/readiness-probes.ts`,
+`api/_routes/internal/p2-readiness.ts`), donc l'argument « aucun `.ts` touché »
+ne tient plus et a été retiré. La comparaison a été faite à la place en
+exécutant les deux commandes sur la version committée puis sur la version
+modifiée, avec sauvegarde et restauration des fichiers :
+
+| commande | sur `b908de8` | avec les modifications |
+|---|---|---|
+| `api:typecheck` | 89 erreurs | 89 erreurs, **0 dans les fichiers modifiés** |
+| `test:router-load` | 130/135 | 130/135 |
+
+Un import direct de la route modifiée sous `tsx` échoue sur la même
+`SyntaxError` Prisma que les 129 autres — pas sur une cause propre.
+
+**Le build n'est pas déclaré validé.** Il ne peut pas l'être ici. Ce qui est
+établi, c'est que le blocage est réseau et que les modifications du chantier
+n'ajoutent aucune erreur.
 
 ### 7.14 Rétablissement après reclonage du dépôt
 
@@ -920,22 +1029,152 @@ dans une seule commande.
 | `test:objets-sql:comparaison` | auto-collectée par `Verification` | 14/14 · 0 |
 | `test:neon:privileges-role-app` | étape du job `base-de-donnees` | 16/16 · 0 |
 | `test:neon:isolation-lignes` | étape du job `base-de-donnees` | 18/18 · 0 |
-| `test:neon:compteurs-debit` | étape du job `base-de-donnees` | 18/18 · 0 |
+| `test:neon:compteurs-debit` | étape du job `base-de-donnees` | 30/30 · 0 |
+| `test:neon:sonde-identite` | étape du job `base-de-donnees` | 21/21 · 0 |
 
-Le job `base-de-donnees` compte désormais **26 étapes**. Les quatre entrées sans
+Le job `base-de-donnees` compte désormais **27 étapes**. Les quatre entrées sans
 base sont découvertes automatiquement par l'étape « Suite complete des scripts
-test:* » du job `Verification`, qui retient tout `test:*` hors `*neon*`,
-`*staging*`, `test:p2`, `test:regression` et `test:audit-script` — vérifié par
-lecture du filtre réel du workflow, pas supposé.
+test:* » du job `Verification`. Le filtre a été recopié tel quel depuis le
+workflow et exécuté, pas interprété :
+
+```js
+k.startsWith('test:') && !k.includes('neon') && !k.includes('staging')
+  && k !== 'test:p2' && !k.includes('regression') && k !== 'test:audit-script'
+```
+
+Il retient **100 entrées**, dont les quatre sans base. Les trois `test:neon:*`
+sont exclues par `!k.includes('neon')` et exigent donc chacune une étape
+explicite — c'est le cas. Le script `test:p2` existe bien, la clause
+`k !== 'test:p2'` n'est pas morte.
 
 Contrôles négatifs, tous rejoués après les dernières modifications :
 
 | contrôle négatif | sortie | effet |
 |---|---|---|
-| isolation, RLS retirée de `documents` | 1 | 7 assertions rouges |
-| compteurs, migration corrective retirée | 1 | 8/18, « 3 actifs avant, 0 après » |
+| isolation, RLS retirée de `documents` | 1 | 11/18 assertions vertes |
+| compteurs, migration corrective retirée | 1 | « 3 actifs avant, 0 après (supprimées : 4) » |
+| compteurs, seule la garde `expires_at` retirée | 1 | 27/30, contournement en deux étapes reproduit |
+| sonde d'identité, `rolbypassrls` figé à `false` | 1 | 18/21, l'instrument est aveugle |
+| sonde d'identité, appelée avant l'authentification | 1 | 20/21, localise l'ordre des gardes |
 | TLS, défaut réintroduit | 1 | localise `seed_rls_fixture.mjs:48` |
 | migrations, collision injectée | 1 | nomme `20261101090000` |
+
+### 7.16 Sonde d'identité du runtime — instrument préparé, mesure non prise
+
+L'identité de la connexion applicative reste **non mesurée**. Rien dans ce
+chantier ne l'établit, et rien ne doit être lu comme l'établissant.
+
+Ce qui a changé : l'instrument existe, et il est éprouvé.
+
+**Pourquoi une sonde applicative et pas un `psql`.** La question est « quel
+rôle le *runtime* utilise-t-il », pas « quel rôle cette URL permet-elle d'ouvrir
+». Un `psql` branché sur la même `DATABASE_URL` mesurerait une autre connexion
+et ne prouverait rien. La sonde passe donc par le même client Prisma que les
+routes — `api/_lib/prisma.ts`, unique `new PrismaClient()` de `api/`.
+
+**Forme retenue : extension d'une route existante, pas nouvelle surface.**
+`probeDatabaseIdentity()` est ajoutée à `api/_lib/readiness-probes.ts` et
+appelée depuis `api/_routes/internal/p2-readiness.ts`, déjà gardée par
+`workerSecretConfigured()` puis `workerAuthorized()`. Aucune route
+administrative nouvelle. L'ordre des gardes est vérifié par le test, ligne par
+ligne : méthode, secret, autorisation, **puis** sonde.
+
+**Opt-in** via `?identity=1`. Hors ce paramètre, la réponse de la route est
+inchangée — le passage courant de supervision ne déclenche ni requête
+supplémentaire ni exposition d'un nom de rôle.
+
+**Ce que la sonde renvoie, et rien d'autre** : `measured`, `currentUser`,
+`sessionUser`, `database`, `bypassesRls`, `isSuperuser`, `detail`. Ni URL de
+connexion, ni hôte, ni mot de passe. Les messages d'erreur passent par
+`redact()`. Aucune écriture, aucun `SET ROLE`, aucune modification de
+configuration.
+
+**Épreuve de l'instrument** — `scripts/test_sonde_identite_runtime.mjs`,
+**21/21, sortie 0**. La requête est extraite du fichier source par expression
+régulière, pas recopiée : si la sonde est réécrite, le test suit la nouvelle
+version ; s'il ne la retrouve plus, il échoue plutôt que de valider une copie
+périmée. Sur une base jetable, avec un rôle créé `NOSUPERUSER NOBYPASSRLS` :
+
+| rôle | `bypasses_rls` | `is_superuser` |
+|---|---|---|
+| `tracefab_sonde_soumis` | `false` | `false` |
+| propriétaire | `true` | `true` |
+
+La sonde rend deux verdicts différents : elle discrimine. Une requête qui
+renverrait `false` dans les deux cas serait verte et vide de sens — c'est
+précisément ce que le contrôle négatif « `rolbypassrls` figé » fait échouer.
+
+**Limite explicite.** `api/_lib/prisma.ts(1,10)` échoue en `TS2305` faute de
+client généré, donc `PrismaClient` est un type d'erreur et `prisma` vaut `any` :
+l'appel `prisma.$queryRaw<IdentityRow[]>` **n'est pas vérifié par le
+compilateur**. La requête SQL elle-même est vérifiée — exécutée telle quelle sur
+PostgreSQL — mais le câblage Prisma ne le sera qu'une fois le client généré.
+
+**Commande de mesure, à exécuter sur l'environnement autorisé :**
+
+```
+GET /api/_routes/internal/p2-readiness?identity=1
+Authorization: Bearer <jeton ouvrier déjà configuré>
+```
+
+Aucun jeton n'est demandé ici. Cette mesure n'a pas été exécutée : **tant
+qu'elle ne l'est pas, l'identité du runtime de Production reste non vérifiée**,
+et la bascule ne peut pas être autorisée.
+
+### 7.17 Récapitulatif CI — contrôles à exécuter sur le commit final
+
+**Aucun push n'a été effectué.** Cette section décrit ce qui devra être vérifié,
+elle ne le présume pas vert.
+
+#### Dépendances CI : aucune manquante
+
+Les trois jobs (`socle`, `verification`, `base-de-donnees`) exécutent `npm ci`
+puis `npm run db:generate`. Ces deux étapes échouent ici parce que
+`binaries.prisma.sh` est hors d'atteinte depuis ce bac à sable ; sur un runner
+GitHub cet hôte est joignable, et c'est précisément ce qui distingue
+l'indisponibilité réseau locale d'une dépendance CI manquante. **Aucune
+dépendance nouvelle n'est requise** : les deux suites ajoutées n'utilisent que
+`node`, `pg` et le service `postgres:17` déjà déclaré.
+
+La garde `requireThrowawayDb` a été vérifiée sur les valeurs exactes du
+workflow :
+
+| `DATABASE_URL` | verdict |
+|---|---|
+| `…@localhost:5432/tracefab_test` (CI) | **ACCEPTEE** — `throwaway_local` |
+| un hôte `*.neon.tech` quelconque | **REFUSEE** — `managed_host`, sans condition |
+
+#### Contrôles à confirmer sur le commit final
+
+| contrôle | job | attendu |
+|---|---|---|
+| `npm ci` + `db:generate` | les trois | client Prisma généré |
+| `verify:prisma-client`, `test:prisma-client` | `socle` | vert |
+| `api:typecheck` | `socle` | **0 erreur** — les 89 locales sont dues au client absent |
+| `test:router-load` | `socle` | **135/135** — les 130 échecs locaux ont la même cause |
+| `npm run build` | `socle` | vert |
+| « Suite complete des scripts test:* » | `verification` | 100 entrées, dont les 4 sans base |
+| `test:neon:privileges-role-app` | `base-de-donnees` | 16/16 |
+| `test:neon:isolation-lignes` | `base-de-donnees` | 18/18 |
+| `test:neon:compteurs-debit` | `base-de-donnees` | **30/30** |
+| `test:neon:sonde-identite` | `base-de-donnees` | **21/21** |
+
+Le job `base-de-donnees` compte **27 étapes** ; la dernière est la sonde
+d'identité. Le YAML est parsé, `test:workflow-policy` passe.
+
+#### Ce qu'un vert en CI ne prouverait pas
+
+Un `base-de-donnees` vert prouve que les suites passent contre un PostgreSQL
+jetable avec un rôle créé par la CI. Cela ne prouve **ni** l'identité du runtime
+de Production — il n'y a pas de runtime en CI — **ni** l'état du schéma distant.
+Les deux points restent bloqués sur un accès autorisé, décrits en §7.10 et
+§7.16.
+
+#### Point connu, antérieur à ce chantier
+
+`bootstrap_app_role.mjs` n'est exécuté par aucun job CI : les mesures locales de
+privilèges décrivent une configuration que la CI n'exerce pas. Constaté, non
+corrigé ici — le corriger reviendrait à modifier le provisioning.
 
 ---
 
