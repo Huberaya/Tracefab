@@ -269,9 +269,142 @@ protection pour faire passer un check.
 
 ---
 
+## 6bis. Régression trouvée et corrigée après la première recommandation
+
+La recommandation initiale de ce rapport a été formulée **avant** l'exécution
+exhaustive des 100 entrées auto-collectées. Cette exécution a révélé un défaut
+réel, introduit par cette branche, qui aurait fait échouer le check requis
+`Verification — suite de tests`.
+
+`test:chantiers` compare le compte de migrations annoncé par
+`docs/experience/CHANTIERS-RESTANTS.md` au contenu réel de `prisma/migrations`.
+Les deux migrations de sécurisation ajoutées ici font passer le dépôt de 49 à
+51, sans que le document soit mis à jour :
+
+```
+AssertionError: compte de migrations du dépôt (49) = dépôt (51)
+sortie 1
+```
+
+Vérifié sur les trois points de l'historique pour établir que la branche est
+bien en cause, et non un état préexistant :
+
+| révision | annoncées | réelles | test |
+|---|---|---|---|
+| `main` (`31ce446`) | 46 | 46 | vert |
+| `bb1213c` | 49 | 49 | vert |
+| `233d845` | 49 | **51** | **rouge** |
+
+Corrigé dans `f078550` : compte porté à 51, date mise à jour, description des
+50<sup>e</sup> et 51<sup>e</sup> ajoutée dans le style du document.
+L'affirmation « Neon de production : non vérifié » est conservée — le test
+l'exige, et elle reste vraie. **`test:chantiers` : 6/6, sortie 0.**
+
+### Balayage exhaustif des 100 entrées auto-collectées
+
+Exécutées avec une base jetable disponible, c'est-à-dire dans des conditions
+plus favorables que le job `verification` :
+
+| résultat | nombre |
+|---|---|
+| vertes | **74** |
+| Chromium absent | 20 — installé à l'étape [4] du job `verification` |
+| client Prisma non généré | 6 — généré à l'étape [3] |
+| **échec inexpliqué** | **0** |
+
+Avant le correctif : 73 vertes et 1 échec inexpliqué (`test:chantiers`).
+
+Les six entrées bloquées par le client Prisma sont `test:wallet:chantier9`,
+`test:storage:chantier10`, `test:p2:readiness`, `test:pilot`,
+`test:router-load`, `test:product-edit:api`. Aucune n'est écartée au motif
+qu'elle préexisterait : chacune a été vérifiée comme tombant sur
+`@prisma/client`, et l'ordre des étapes CI (`npm ci` → `db:generate` → `build` →
+auto-collecte) lève la cause.
+
+Les étapes `test:cross-tenant` et `test:active-tenant` du job `socle`, qui n'a
+aucun service PostgreSQL, ont été exécutées **sans `DATABASE_URL`** : ce sont
+des contrôles statiques, 0 référence à `DATABASE_URL`, sortie 0.
+
+## 6ter. Blocage Prisma — cause établie au niveau du code
+
+`prisma generate` échoue ici. La cause n'est plus une hypothèse : elle est lue
+dans le code de la CLI et confirmée par `DEBUG=prisma:*`.
+
+### Ce que la CLI exige
+
+```
+prisma:engines binaries to download schema-engine, libquery-engine
+prisma:fetch-engine:download file .../@prisma/engines/schema-engine-debian-openssl-3.0.x
+                     does not exist and must be downloaded
+prisma:fetch-engine:download file .../@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node
+                     does not exist and must be downloaded
+```
+
+**Deux** binaires natifs, pas un. La logique, dans
+`node_modules/@prisma/engines/dist/index.js` :
+
+```js
+if (!hasMigrateAdapterInConfig) {
+  binaries[BinaryType.SchemaEngineBinary] = binaryDir;
+}
+const usesQueryCompiler = clientEngineType === "client";
+if (!usesQueryCompiler) {
+  binaries[getCliQueryEngineBinaryType(clientEngineType)] = binaryDir;
+}
+```
+
+Et dans la CLI (`node_modules/prisma/build/index.js`), l'appel n'a lieu que pour
+certaines commandes :
+
+```js
+["version","init","migrate","db","introspect","studio","generate","validate","format","telemetry"]
+```
+
+`generate` et `validate` en font donc partie. `hasMigrateAdapterInConfig` vaut
+`config.engine === "js"`, et `clientEngineType` vient du bloc `generator` de
+`schema.prisma`.
+
+### Pourquoi aucun repli local n'est légitime
+
+| piste | résultat |
+|---|---|
+| `--no-engine` | même erreur réseau |
+| `PRISMA_CLIENT_FORCE_WASM=1` | même erreur réseau — ce drapeau ne pilote que le moteur **client**, pas le moteur de schéma de la CLI |
+| `node_modules/prisma/build/schema_engine_bg.wasm` (4,1 Mo) | présent et **déjà utilisé** — `prisma:getConfig Using getConfig Wasm` réussit — mais il ne satisfait pas `ensureNeededBinariesExist` |
+| paquet npm `@prisma/engines` 6.19.3 | contient `LICENSE`, `README.md`, `dist`, `scripts` — **aucun binaire natif**, seulement le postinstall qui les télécharge |
+| `prisma/prisma-engines` sur GitHub | aucune release avec assets |
+| `@prisma/prisma-schema-wasm@7.1.1-3.c2990dca…` | **existe sur npm**, au hash exact attendu — mais c'est le moteur WASM, pas le binaire natif requis |
+
+Les deux conditions de saut du téléchargement exigeraient de modifier
+`schema.prisma` (`engineType = "client"`, le compilateur de requêtes) **et**
+d'ajouter un `prisma.config.ts` avec un adaptateur de migration. Ce ne sont pas
+des correctifs de build : ce sont deux changements d'architecture du client,
+chacun exigeant sa propre validation. Les appliquer pour obtenir un build vert
+localement produirait une validation fausse. **Aucune des deux pistes n'a été
+employée.**
+
+### Conclusion
+
+Le blocage est **uniquement** la distribution : `binaries.prisma.sh` est le seul
+canal des deux binaires requis, et il est injoignable d'ici (`HTTP 000`,
+`SSL_ERROR_SYSCALL`) alors que le registre npm répond. Ce n'est ni le schéma, ni
+une version, ni le lockfile, ni la validation TLS.
+
+En CI cet hôte est joignable : `npm ci` déclenche le postinstall de
+`@prisma/engines`, puis `npm run db:generate` — étape [3] de `socle`,
+`verification` **et** `base-de-donnees`. Le build complet est exécuté deux fois :
+étape [5] de `verification` et chaîne `build` de `socle`.
+
+**Attendu en CI, non vérifié d'ici** : `api:typecheck` 89 erreurs → **0** ;
+`test:router-load` 130/135 en échec → **135/135** ;
+`node_modules/.prisma/client` présent ; `npm run build` sortie **0**.
+
 ## 7. Recommandation
 
 ### PRÊT pour une exécution CI distante, sous réserve d'autorisation de push.
+
+Recommandation maintenue **après** correctif. Elle ne l'aurait pas été avant :
+la branche cassait un check requis.
 
 Ce qui le justifie, mesuré :
 
@@ -280,6 +413,8 @@ Ce qui le justifie, mesuré :
 - worktree propre, aucun fichier temporaire ni secret dans les commits ;
 - les 8 entrées de test sont réellement exécutées par la CI, aucune en double,
   aucune oubliée ;
+- les 100 entrées auto-collectées ont toutes été exécutées : 74 vertes, 26 en
+  échec pour cause environnementale identifiée, **0 échec inexpliqué** ;
 - les 4 checks requis correspondent à des jobs existants ;
 - les suites ajoutées passent localement, et leurs contrôles négatifs rougissent
   pour la raison attendue ;
