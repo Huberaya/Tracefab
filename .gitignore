@@ -29,3 +29,4 @@ __pycache__/
 
 # Bases PostgreSQL jetables des epreuves locales
 .epreuve-pg/
+.role-app-pg/
