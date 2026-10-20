@@ -62,8 +62,6 @@ export const APP_ROLE = 'tracefab_app';
 //   quality_cap_messages          api/_routes/quality/caps/[capId]/messages.ts:64      (quality_cap_messages.create)
 //   rate_limit_counters           api/_lib/rate-limit.ts:403                           (delete, insert)
 //   supplier_sites                api/_routes/supplier/sites/[siteId].ts:32            (supplier_sites.create, supplier_sites.update)
-//   supply_chain_links            api/_routes/products/[productId]/supply-chain/links/[linkId].ts:45 (supply_chain_links.deletemany)
-//   supply_chain_nodes            api/_routes/products/[productId]/supply-chain/nodes/[nodeId].ts:52 (supply_chain_nodes.deletemany)
 //   tracefab_catalog_import_jobs  api/_routes/catalog/products/import.ts:138           (insert, update)
 //   tracefab_products             api/_lib/bulk-operations/bulk-importer.ts:97         (tracefab_products.create, tracefab_products.update)
 //   users                         api/_lib/auth.ts:37                                  (user.updatemany, user.upsert)
@@ -88,8 +86,6 @@ export const TABLES_ECRITURE_DIRECTE = [
   'quality_cap_messages',
   'rate_limit_counters',
   'supplier_sites',
-  'supply_chain_links',
-  'supply_chain_nodes',
   'tracefab_catalog_import_jobs',
   'tracefab_products',
   'users',

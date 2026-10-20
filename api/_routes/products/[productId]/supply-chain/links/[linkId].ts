@@ -43,9 +43,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!membership) throw new Error('traceability_brand_role_required');
 
       if (req.method === 'DELETE') {
-        await tx.supply_chain_links.deleteMany({
-          where: { id: linkId, product_id: productId },
-        });
+        await tx.$queryRaw`
+          SELECT tracefab_delete_supply_chain_link(${productId}::uuid, ${linkId}::uuid)
+        `;
         return { deleted: true };
       }
 
