@@ -62,6 +62,10 @@ assert(html.includes("['chain-node-form', 'chain-link-form'].includes(form.id)")
 assert(html.includes("form.dataset.submitting === 'true'"), 'Les mutations du graphe doivent empêcher les doubles soumissions');
 assert(!html.includes("document.getElementById('chain-node-form')?.addEventListener"), 'Le binding éphémère du formulaire de nœud ne doit pas revenir');
 assert(html.includes('Enrichissements non bloquants'), 'Les données secondaires ne doivent pas bloquer le premier rendu');
+assert(html.includes("url.searchParams.set('view', view)"), 'La vue active doit survivre à un rechargement via l’URL');
+assert(html.includes("url.searchParams.set('productId', productId)"), 'Le produit actif doit survivre à un rechargement via l’URL');
+assert(html.includes("const fastDeepLink = state.view !== 'overview'"), 'Une vue profonde ne doit pas attendre toutes les données du tableau de bord');
+assert(html.includes('state.activeOrganizationId !== backgroundOrganizationId'), 'Les chargements différés doivent rester bornés au tenant demandeur');
 assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token must be sent through Authorization');
 assert(!html.includes('localhost'), 'Brand Console must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');
