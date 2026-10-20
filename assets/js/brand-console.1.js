@@ -341,10 +341,32 @@
       // porter, puisqu'il n'est pas encore connu.
       const TENANT_FREE_PATHS = /^\/api\/(me|organizations|config)(\?|$)/;
 
+      let cachedSessionToken = null;
+      let cachedSessionTokenAt = 0;
+      let sessionTokenPromise = null;
+      async function sessionToken() {
+        if (!state.clerk?.session) return null;
+        // Toutes les lectures initiales partent ensemble. Sans déduplication,
+        // chacune attendait séparément Clerk.getToken(), ajoutant plusieurs
+        // allers-retours au chemin critique. Cache très court : l'API/RLS reste
+        // l'autorité et le jeton Clerk conserve sa propre expiration.
+        if (cachedSessionToken && Date.now() - cachedSessionTokenAt < 30000) return cachedSessionToken;
+        if (!sessionTokenPromise) {
+          sessionTokenPromise = state.clerk.session.getToken()
+            .then((token) => {
+              cachedSessionToken = token || null;
+              cachedSessionTokenAt = Date.now();
+              return cachedSessionToken;
+            })
+            .finally(() => { sessionTokenPromise = null; });
+        }
+        return sessionTokenPromise;
+      }
+
       async function api(path, options = {}) {
         const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
         if (!state.demo && state.clerk?.session) {
-          const token = await state.clerk.session.getToken();
+          const token = await sessionToken();
           if (token) headers.Authorization = `Bearer ${token}`;
         }
         // Locataire actif sur CHAQUE appel prive. Le serveur l'exige : une
@@ -1233,6 +1255,23 @@
         try {
           if (state.demo) { demoData(); state.loading = false; render(); return; }
 
+          // Sur les visites suivantes, le tenant mémorisé permet de lancer les
+          // lectures tenant-scopées en parallèle de `/api/me`. Le serveur
+          // revalide toujours l'adhésion et la RLS : une valeur locale périmée
+          // ne peut ni élargir ni autoriser l'accès. Le résultat spéculatif
+          // n'est utilisé qu'après confirmation par `/api/me`.
+          let storedTenant = null;
+          try { storedTenant = localStorage.getItem(TENANT_STORAGE_KEY); } catch { storedTenant = null; }
+          const validStoredTenant = typeof storedTenant === 'string'
+            && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(storedTenant);
+          if (validStoredTenant) state.activeOrganizationId = storedTenant;
+          const initialFastDeepLink = state.view !== 'overview';
+          const prefetchedTenantData = validStoredTenant
+            ? (initialFastDeepLink
+              ? Promise.all([api('/api/products')]).catch(() => null)
+              : Promise.all([api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests')]).catch(() => null))
+            : null;
+
           // Phase 1 — identité et adhésions. `/api/me` contient déjà les
           // organisations de chaque adhésion ; l'ancien second appel à
           // `/api/organizations` dupliquait cette lecture à chaque page.
@@ -1269,14 +1308,16 @@
           // certificats sont des jeux secondaires parfois coûteux : les faire
           // bloquer ici rendait chaque page lente, même sans ouvrir ces vues.
           const fastDeepLink = state.view !== 'overview';
+          const canUsePrefetch = validStoredTenant && storedTenant === state.activeOrganizationId;
+          const prefetched = canUsePrefetch ? await prefetchedTenantData : null;
           if (fastDeepLink) {
             // Une vue profonde (Traçabilité, Qualité, DPP, fiche produit) n'a
             // besoin que du catalogue pour résoudre son produit. Les autres
             // listes arrivent ensuite sans retarder cette navigation directe.
-            const products = await api('/api/products');
+            const products = prefetched?.[0] || await api('/api/products');
             state.products = products.products || [];
           } else {
-            const [supplierPayload, materials, products, requests] = await Promise.all([
+            const [supplierPayload, materials, products, requests] = prefetched || await Promise.all([
               api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'),
             ]);
             state.suppliers = supplierPayload.suppliers || [];
@@ -4757,7 +4798,11 @@
             if (action === 'product-quality-from-detail') { state.selectedProduct = state.selectedProductDetail?.product; await loadQuality(state.selectedProduct?.id); }
             if (action === 'product-supply-chain-from-detail') { await loadSupplyChain(state.selectedProductDetail?.product?.id); }
             if (action === 'product-dpp-from-detail') { await loadDpp(state.selectedProductDetail?.product?.id); }
-            if (action === 'signout' && state.clerk) await state.clerk.signOut();
+            if (action === 'signout' && state.clerk) {
+              cachedSessionToken = null;
+              cachedSessionTokenAt = 0;
+              await state.clerk.signOut();
+            }
           } catch (error) { notify(error.message, true); }
         }));
         document.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openRequest(el.dataset.requestId); }));
