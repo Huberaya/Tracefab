@@ -71,11 +71,17 @@ assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token 
 assert(html.includes('for (let attempt = 0; attempt < 3; attempt += 1)'), 'Le bootstrap public doit réessayer une panne transitoire de /api/config');
 assert(html.includes("new AbortController()") && html.includes("config_fetch_timeout"), 'Le bootstrap config doit être borné par un timeout explicite');
 assert(html.includes("cache: attempt === 0 ? 'default' : 'no-cache'"), 'Les nouvelles tentatives config doivent contourner une réponse d’erreur mise en cache');
+assert(html.includes('sessionTokenPromise = state.clerk.session.getToken()'), 'Les appels initiaux doivent partager une seule résolution du jeton Clerk');
+assert(html.includes('Date.now() - cachedSessionTokenAt < 30000'), 'Le jeton Clerk ne doit être réutilisé que sur une fenêtre courte');
+assert(html.includes('const prefetchedTenantData = validStoredTenant'), 'Les données du tenant mémorisé doivent démarrer en parallèle de /api/me');
+assert(html.includes('storedTenant === state.activeOrganizationId'), 'Une prélecture ne doit être utilisée qu’après confirmation du tenant actif');
 assert(!html.includes("<code>?demo=1</code>"), 'Une panne de connexion réelle ne doit pas orienter vers des données de démonstration');
 assert(configRoute.includes('stale-while-revalidate=86400'), 'La configuration publique doit rester servable pendant un redéploiement transitoire');
 assert(!html.includes('localhost'), 'Brand Console must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');
 assert(html.toLowerCase().includes('tracefab'), 'Brand Console branding is missing');
+assert(html.includes('rel="preconnect" href="https://cdn.jsdelivr.net"'), 'La négociation réseau Clerk doit démarrer pendant le parsing HTML');
+assert(html.includes('rel="preload" href="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"'), 'Le SDK Clerk doit être préchargé avant la réponse /api/config');
 // La relance manuelle doit etre authentifiee ET bornee a UN locataire actif.
 //
 // L'assertion precedente exigeait la presence de `activeOrganizationIds`. Ce

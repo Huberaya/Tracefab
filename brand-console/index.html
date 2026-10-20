@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tracefab — Brand Console</title>
   <meta name="description" content="Tracefab Brand Console — collect, review and improve supplier data." data-i18n-attr="content:console.cnMetaDesc">
+  <!-- Clerk est indispensable hors démo. Démarrer DNS/TLS et le téléchargement
+       pendant le parsing HTML évite de les sérialiser après /api/config. -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js" as="script" crossorigin>
   <!-- Systeme de jetons partage. Place avant le <style> en ligne pour que
        les declarations propres a la console conservent la priorite. -->
   <!-- Polices locales versionnées (pas de CDN Google) -->
@@ -1087,6 +1091,6 @@
 <body>
   <div id="app"></div>
   <script src="/assets/js/tf-demo-figures.js?v=3d451782"></script>
-    <script src="/assets/js/brand-console.1.js?v=b5670079"></script>
+    <script src="/assets/js/brand-console.1.js?v=6a78cdef"></script>
 </body>
 </html>

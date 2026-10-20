@@ -86,7 +86,7 @@ const DEMO_MARKERS = ['1,248', '98.4', '97.6', '1,098', 'Tier 3', 'GRADE A', 'IS
 const CLERK_STUB = `window.Clerk = {
   status: 'ready',
   user: { id: 'user_test', fullName: 'Test Owner', primaryEmailAddress: { emailAddress: 'owner@example.com' } },
-  session: { getToken: async () => 'test-token' },
+  session: { tokenCalls: 0, async getToken() { this.tokenCalls += 1; return 'test-token'; } },
   async load() { this.status = 'ready'; },
   addListener() {},
   mountSignIn(element) { element.dataset.clerkMounted = 'true'; },
@@ -186,6 +186,7 @@ try {
   assert.deepEqual(unexpected, [], `routes non prevues par le test : ${unexpected.join(', ')}`);
 
   assert.equal(await page.evaluate(() => window.tracefabBrandConsole.state.demo), false);
+  assert.equal(await page.evaluate(() => window.Clerk.session.tokenCalls), 1, 'les appels initiaux doivent partager une seule résolution du jeton Clerk');
   assert.equal(await page.locator('.demo-banner').count(), 0, 'aucun bandeau demo hors ?demo=1');
   assert.equal(await page.locator('[data-tf-demo]').count(), 0, 'aucun marqueur demo hors ?demo=1');
 
