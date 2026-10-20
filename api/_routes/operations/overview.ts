@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
+import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { withTracefabRequestContext } from '../../_lib/context.js';
 import { isTenantError, requireActiveTenant } from '../../_lib/tenant.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
@@ -51,6 +52,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, result);
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    const businessError = sqlBusinessError(error);
+    if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (isTenantError(error)) return json(res, error.status, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error('GET /api/operations/overview failed', error);

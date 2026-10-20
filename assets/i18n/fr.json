@@ -1643,7 +1643,8 @@
     "pdOnlyIncomplete": "Incomplets seulement",
     "cnNMaterialCreated": "Matière créée dans le locataire actif.",
     "cnMaterialNoClaim": "Aucune certification, origine ou allégation n’est ajoutée automatiquement.",
-    "cnConfigUnavailableBody": "La configuration publique de connexion n’a pas pu être chargée après plusieurs tentatives. Réessayez sans passer en mode démonstration."
+    "cnConfigUnavailableBody": "La configuration publique de connexion n’a pas pu être chargée après plusieurs tentatives. Réessayez sans passer en mode démonstration.",
+    "mdOtherDeclared": "Autre procédé déclaré (non précisé)"
   },
   "portal": {
     "sites": "Sites de production",

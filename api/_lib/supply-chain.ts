@@ -116,6 +116,17 @@ export function validateNodeInput(body: Record<string, unknown>) {
     ? body.metadata as Record<string, unknown>
     : {};
 
+  // Mirror the database invariant at the API boundary so invalid form input
+  // is a stable 400 response, never an opaque PostgreSQL 500. Every node type
+  // carries exactly one semantic reference.
+  const references = [organizationId, supplierSiteId, materialId, productId, processCode].filter(Boolean);
+  if (references.length !== 1) throw new Error('invalid_node_reference');
+  if (nodeType === 'organization' && !organizationId) throw new Error('invalid_organization_node_reference');
+  if (nodeType === 'site' && !supplierSiteId) throw new Error('invalid_site_node_reference');
+  if (nodeType === 'material' && !materialId) throw new Error('invalid_material_node_reference');
+  if (nodeType === 'product' && !productId) throw new Error('invalid_product_node_reference');
+  if (nodeType === 'process' && !processCode) throw new Error('invalid_process_node_reference');
+
   return {
     nodeType,
     label,

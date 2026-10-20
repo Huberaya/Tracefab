@@ -906,6 +906,7 @@ window.TF_I18N_BUNDLES.en = {
     mdPartnerOrg: "Partner organisation",
     mdTextileProcess: "Textile process",
     mdNoneOther: "None / other",
+    mdOtherDeclared: "Other declared process (not specified)",
     mdGinning: "Ginning",
     mdSpinning: "Spinning",
     mdWeaving: "Weaving",

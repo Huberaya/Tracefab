@@ -1643,7 +1643,8 @@
     "pdOnlyIncomplete": "Nur unvollständige",
     "cnNMaterialCreated": "Material im aktiven Mandanten erstellt.",
     "cnMaterialNoClaim": "Es werden nicht automatisch Zertifizierungen, Herkunftsangaben oder Aussagen hinzugefügt.",
-    "cnConfigUnavailableBody": "Die öffentliche Verbindungskonfiguration konnte nach mehreren Versuchen nicht geladen werden. Versuchen Sie es erneut, ohne in den Demomodus zu wechseln."
+    "cnConfigUnavailableBody": "Die öffentliche Verbindungskonfiguration konnte nach mehreren Versuchen nicht geladen werden. Versuchen Sie es erneut, ohne in den Demomodus zu wechseln.",
+    "mdOtherDeclared": "Anderer deklarierter Prozess (nicht angegeben)"
   },
   "portal": {
     "sites": "Produktionsstätten",

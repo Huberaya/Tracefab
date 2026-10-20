@@ -1643,7 +1643,8 @@
     "pdOnlyIncomplete": "Solo incompletos",
     "cnNMaterialCreated": "Material creado en el tenant activo.",
     "cnMaterialNoClaim": "No se añade automáticamente ninguna certificación, origen ni alegación.",
-    "cnConfigUnavailableBody": "La configuración pública de conexión no pudo cargarse tras varios intentos. Vuelva a intentarlo sin cambiar al modo de demostración."
+    "cnConfigUnavailableBody": "La configuración pública de conexión no pudo cargarse tras varios intentos. Vuelva a intentarlo sin cambiar al modo de demostración.",
+    "mdOtherDeclared": "Otro proceso declarado (sin especificar)"
   },
   "portal": {
     "sites": "Centros de producción",

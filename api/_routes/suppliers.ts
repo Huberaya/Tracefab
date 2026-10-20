@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
+import { sqlBusinessError } from '.././_lib/sql-errors.js';
 import { withTracefabUserContext } from '.././_lib/context.js';
 import { json, methodNotAllowed } from '.././_lib/http.js';
 import { activeBrandOrganizationIds } from '.././_lib/products.js';
@@ -56,6 +57,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, { suppliers });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    const businessError = sqlBusinessError(error);
+    if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error('GET /api/suppliers failed', error);
     return json(res, 500, { error: 'internal_server_error' });

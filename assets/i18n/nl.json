@@ -1643,7 +1643,8 @@
     "pdOnlyIncomplete": "Alleen onvolledige",
     "cnNMaterialCreated": "Materiaal aangemaakt in de actieve tenant.",
     "cnMaterialNoClaim": "Er worden niet automatisch certificeringen, herkomstgegevens of claims toegevoegd.",
-    "cnConfigUnavailableBody": "De openbare verbindingsconfiguratie kon na meerdere pogingen niet worden geladen. Probeer opnieuw zonder naar de demomodus te schakelen."
+    "cnConfigUnavailableBody": "De openbare verbindingsconfiguratie kon na meerdere pogingen niet worden geladen. Probeer opnieuw zonder naar de demomodus te schakelen.",
+    "mdOtherDeclared": "Ander gedeclareerd proces (niet gespecificeerd)"
   },
   "portal": {
     "sites": "Productielocaties",
