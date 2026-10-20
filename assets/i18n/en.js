@@ -633,6 +633,7 @@ window.TF_I18N_BUNDLES.en = {
     cnLoadingSub: "Loading organisations, products and requests.",
     cnRetry: "Try again",
     cnErrCheckClerk: ". Check Clerk and the API configuration, or open",
+    cnConfigUnavailableBody: "The public connection configuration could not be loaded after several attempts. Retry without switching to demo mode.",
     cnErrBrowse: "to browse the interface.",
     cnNoProfile: "Profile not available for this organisation.",
     cnMetaDesc: "Tracefab Brand Console — collect, review and improve supplier data.",

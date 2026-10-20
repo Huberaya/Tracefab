@@ -1683,7 +1683,7 @@
           const titre = state.user ? bt('cnTenantLoadFailedTitle') : bt('cnAuthUnavailable');
           const corps = state.user
             ? `${esc(state.configError)} ${esc(bt('cnTenantLoadFailedBody'))}`
-            : `${esc(state.configError)}${esc(bt('cnErrCheckClerk'))} <code>?demo=1</code> ${esc(bt('cnErrBrowse'))}`;
+            : `${esc(state.configError)} ${esc(bt('cnConfigUnavailableBody'))}`;
           app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab Brand Console</div><h1>${esc(titre)}</h1><p>${corps}</p><button class="btn btn-secondary" data-action="retry">${esc(bt('cnRetry'))}</button></div></div>`; bind(); return;
         }
         if (state.loading) { app.innerHTML = `<div class="auth-screen"><div class="config-error"><div class="eyebrow">Tracefab</div><h1>${esc(bt('cnLoadingTitle'))}</h1><p>${esc(bt('cnLoadingSub'))}</p></div></div>`; return; }
@@ -4819,24 +4819,60 @@
         document.getElementById('green-claim-form')?.addEventListener('submit', (e) => { e.preventDefault(); auditGreenClaims(e.currentTarget).catch((err) => notify(err.message, true)); });
       }
 
+      async function fetchPublicConfig() {
+        let lastError = new Error('config_fetch_failed');
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 8000);
+          try {
+            const res = await fetch('/api/config', {
+              signal: controller.signal,
+              headers: { Accept: 'application/json' },
+              cache: attempt === 0 ? 'default' : 'no-cache',
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || `config_http_${res.status}`);
+            if (!payload.publishableKey) throw new Error(payload.error || 'clerk_not_configured');
+            return payload;
+          } catch (error) {
+            lastError = error instanceof Error && error.name !== 'AbortError'
+              ? error
+              : new Error('config_fetch_timeout');
+            if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * (2 ** attempt)));
+          } finally {
+            clearTimeout(timeout);
+          }
+        }
+        throw lastError;
+      }
+
+      let clerkScriptPromise = null;
+      function loadClerkScript(config) {
+        if (window.Clerk) return Promise.resolve();
+        if (clerkScriptPromise) return clerkScriptPromise;
+        clerkScriptPromise = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+          s.async = true;
+          s.crossOrigin = 'anonymous';
+          s.setAttribute('data-clerk-publishable-key', config.publishableKey);
+          if (config.proxyUrl) s.setAttribute('data-clerk-proxy-url', config.proxyUrl);
+          s.onload = resolve;
+          s.onerror = () => {
+            clerkScriptPromise = null;
+            reject(new Error('clerk_sdk_unavailable'));
+          };
+          document.head.appendChild(s);
+        });
+        return clerkScriptPromise;
+      }
+
       async function boot() {
         if (state.demo) { await sync(); return; }
         try {
-          const res = await fetch('/api/config');
-          if (!res.ok) throw new Error('config_fetch_failed');
-          const config = await res.json();
-          if (!config.publishableKey) throw new Error(config.error || 'clerk_not_configured');
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
-            s.async = true;
-            s.crossOrigin = 'anonymous';
-            s.setAttribute('data-clerk-publishable-key', config.publishableKey);
-            if (config.proxyUrl) s.setAttribute('data-clerk-proxy-url', config.proxyUrl);
-            s.onload = resolve;
-            s.onerror = () => reject(new Error('clerk_sdk_unavailable'));
-            document.head.appendChild(s);
-          });
+          state.configError = null;
+          const config = await fetchPublicConfig();
+          await loadClerkScript(config);
           state.clerk = window.Clerk;
           if (!state.clerk) throw new Error('clerk_sdk_unavailable');
           await state.clerk.load();

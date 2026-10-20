@@ -1642,7 +1642,8 @@
     "pdNoMatchHint": "Élargissez la recherche ou effacez les filtres pour revoir tout le catalogue.",
     "pdOnlyIncomplete": "Incomplets seulement",
     "cnNMaterialCreated": "Matière créée dans le locataire actif.",
-    "cnMaterialNoClaim": "Aucune certification, origine ou allégation n’est ajoutée automatiquement."
+    "cnMaterialNoClaim": "Aucune certification, origine ou allégation n’est ajoutée automatiquement.",
+    "cnConfigUnavailableBody": "La configuration publique de connexion n’a pas pu être chargée après plusieurs tentatives. Réessayez sans passer en mode démonstration."
   },
   "portal": {
     "sites": "Sites de production",
