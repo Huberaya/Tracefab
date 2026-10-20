@@ -1,6 +1,17 @@
     (() => {
       'use strict';
       const app = document.getElementById('app');
+      const initialParams = new URLSearchParams(location.search);
+      const ROUTABLE_VIEWS = new Set([
+        'overview', 'requests', 'questionnaires', 'products', 'quality', 'risk',
+        'intelligence', 'massBalance', 'integrations', 'suppliers', 'materials',
+        'supplyChain', 'documents', 'certifications', 'dpp', 'productDetail', 'reports', 'settings',
+      ]);
+      const requestedInitialView = initialParams.get('view');
+      const initialView = requestedInitialView && ROUTABLE_VIEWS.has(requestedInitialView)
+        ? requestedInitialView
+        : 'overview';
+      const initialProductId = initialParams.get('productId');
       const state = {
         lang: (typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'en',
         clerk: null,
@@ -14,6 +25,7 @@
         // Sert a distinguer un changement de locataire (vidage obligatoire) d'un
         // rechargement du meme locataire (l'etat ouvert doit survivre).
         loadedOrganizationId: null,
+        routeHydrated: false,
         user: null,
         memberships: [],
         organizations: [],
@@ -35,7 +47,7 @@
         // sans elle, un echec laissait la vue precedente affichee et la fiche
         // « restait invisible » sans explication.
         productDetailError: null,
-        view: 'overview',
+        view: initialView,
         activeOrganizationId: null,
         selectedRequest: null,
         selectedProduct: null,
@@ -66,6 +78,15 @@
         // la console dans le jeu de demonstration.
         demo: new URLSearchParams(location.search).get('demo') === '1',
       };
+
+      function persistRoute(view = state.view, productId = null) {
+        if (!ROUTABLE_VIEWS.has(view)) return;
+        const url = new URL(location.href);
+        url.searchParams.set('view', view);
+        if (productId) url.searchParams.set('productId', productId);
+        else url.searchParams.delete('productId');
+        history.replaceState({ view, productId }, '', `${url.pathname}${url.search}${url.hash}`);
+      }
 
       const PROCESS_LABELS = {
         ginning: 'Ginning',
@@ -1176,6 +1197,7 @@
         state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false };
         state.tenantError = null;
         state.loadedOrganizationId = null;
+        state.routeHydrated = false;
       }
 
       // Resout le locataire actif a partir des adherions reelles. Ne devine
@@ -1200,6 +1222,7 @@
         // precedent, y compris sur un reseau lent.
         resetTenantState();
         state.view = 'overview';
+        persistRoute('overview');
         state.loading = true;
         render();
         sync().catch((error) => { state.loading = false; state.configError = error.message; render(); });
@@ -1210,13 +1233,13 @@
         try {
           if (state.demo) { demoData(); state.loading = false; render(); return; }
 
-          // Phase 1 — identite et adherions. Ces deux routes ne portent aucune
-          // donnee de locataire : elles servent justement a determiner lequel
-          // est actif.
-          const [me, orgs] = await Promise.all([api('/api/me'), api('/api/organizations')]);
+          // Phase 1 — identité et adhésions. `/api/me` contient déjà les
+          // organisations de chaque adhésion ; l'ancien second appel à
+          // `/api/organizations` dupliquait cette lecture à chaque page.
+          const me = await api('/api/me');
           state.user = me.user;
           state.memberships = me.memberships || [];
-          state.organizations = orgs.organizations || [];
+          state.organizations = state.memberships.map((membership) => membership.organizations).filter(Boolean);
 
           const brands = state.memberships.filter((m) => m.organizations?.type === 'brand');
           state.activeOrganizationId = resolveActiveOrganization(brands);
@@ -1245,15 +1268,51 @@
           // la navigation et à la vue d'ensemble. Questionnaires, schémas et
           // certificats sont des jeux secondaires parfois coûteux : les faire
           // bloquer ici rendait chaque page lente, même sans ouvrir ces vues.
-          const [supplierPayload, materials, products, requests] = await Promise.all([
-            api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'),
-          ]);
-          state.suppliers = supplierPayload.suppliers || [];
-          state.materials = materials.materials || [];
-          state.products = products.products || [];
-          state.requests = requests.requests || [];
+          const fastDeepLink = state.view !== 'overview';
+          if (fastDeepLink) {
+            // Une vue profonde (Traçabilité, Qualité, DPP, fiche produit) n'a
+            // besoin que du catalogue pour résoudre son produit. Les autres
+            // listes arrivent ensuite sans retarder cette navigation directe.
+            const products = await api('/api/products');
+            state.products = products.products || [];
+          } else {
+            const [supplierPayload, materials, products, requests] = await Promise.all([
+              api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'),
+            ]);
+            state.suppliers = supplierPayload.suppliers || [];
+            state.materials = materials.materials || [];
+            state.products = products.products || [];
+            state.requests = requests.requests || [];
+          }
           state.loading = false;
           render();
+
+          if (!state.routeHydrated) {
+            state.routeHydrated = true;
+            const routeProduct = state.products.find((product) => product.id === initialProductId) || state.products[0] || null;
+            if (state.view === 'supplyChain' && routeProduct) loadSupplyChain(routeProduct.id);
+            else if (state.view === 'quality' && routeProduct) loadQuality(routeProduct.id);
+            else if (state.view === 'dpp' && routeProduct) loadDpp(routeProduct.id);
+            else if (state.view === 'productDetail' && routeProduct) openProduct(routeProduct.id);
+          }
+
+          if (fastDeepLink) {
+            const backgroundOrganizationId = state.activeOrganizationId;
+            api('/api/suppliers').then((payload) => {
+              if (state.activeOrganizationId !== backgroundOrganizationId) return;
+              state.suppliers = payload.suppliers || [];
+              if (state.view === 'suppliers' || state.view === 'supplyChain') render();
+            }).catch(() => {});
+            api('/api/materials').then((payload) => {
+              if (state.activeOrganizationId !== backgroundOrganizationId) return;
+              state.materials = payload.materials || [];
+              if (state.view === 'materials' || state.view === 'supplyChain') render();
+            }).catch(() => {});
+            api('/api/data-requests').then((payload) => {
+              if (state.activeOrganizationId !== backgroundOrganizationId) return;
+              state.requests = payload.requests || [];
+            }).catch(() => {});
+          }
 
           // Enrichissements non bloquants. Chaque résultat est publié
           // indépendamment : une route lente ou indisponible ne retarde plus
@@ -3811,6 +3870,7 @@
       async function openProduct(id) {
         state.view = 'productDetail';
         state.selectedProduct = state.products.find((p) => p.id === id) || null;
+        persistRoute('productDetail', state.selectedProduct?.id || null);
         state.productDetailError = null;
         state.schemaBindings = [];
         state.schemaBindingsError = null;
@@ -3989,6 +4049,7 @@
       async function loadQuality(id) {
         state.selectedProduct = state.products.find((p) => p.id === id);
         state.view = 'quality';
+        persistRoute('quality', state.selectedProduct?.id || null);
         state.quality = null;
         state.pefAssessment = null;
         state.greenClaimsAudit = null;
@@ -4210,6 +4271,7 @@
       async function loadSupplyChain(productId) {
         state.selectedSupplyChainProduct = state.products.find((p) => p.id === productId) || null;
         state.view = 'supplyChain';
+        persistRoute('supplyChain', state.selectedSupplyChainProduct?.id || null);
         state.supplyChain = null;
         state.massBalance = null;
         render();
@@ -4518,6 +4580,7 @@
       async function loadDpp(productId) {
         state.selectedDppProduct = state.products.find((p) => p.id === productId) || null;
         state.view = 'dpp';
+        persistRoute('dpp', state.selectedDppProduct?.id || null);
         state.dpp = null;
         render();
         if (state.demo) {
@@ -4628,6 +4691,7 @@
         document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => {
           state.view = el.dataset.view;
           state.selectedRequest = null;
+          persistRoute(state.view);
           render();
           // Le portefeuille se charge a l'arrivee, pas au demarrage : inutile
           // d'agreger tout le catalogue pour qui n'ouvre jamais cet ecran.

@@ -321,6 +321,14 @@ try {
   assert.equal(graphScenario.nodeWrites[0].tenant, ORG_ID, 'le POST nodes doit porter le tenant actif');
   assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.view), 'supplyChain', 'la soumission ne doit pas revenir à la vue d’ensemble');
   assert.equal(new URL(graphPage.url()).pathname, '/brand-console/', 'aucune navigation HTML native ne doit avoir lieu');
+  assert.equal(new URL(graphPage.url()).searchParams.get('view'), 'supplyChain', 'la vue active doit être inscrite dans l’URL');
+  assert.equal(new URL(graphPage.url()).searchParams.get('productId'), PRODUCT_ID, 'le produit actif doit être inscrit dans l’URL');
+
+  await graphPage.reload({ waitUntil: 'domcontentloaded' });
+  await graphPage.waitForFunction(() => window.tracefabBrandConsole?.state?.loading === false);
+  await graphPage.waitForFunction((id) => window.tracefabBrandConsole?.state?.view === 'supplyChain'
+    && window.tracefabBrandConsole?.state?.selectedSupplyChainProduct?.id === id, PRODUCT_ID);
+  assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.view), 'supplyChain', 'un rechargement doit restaurer Traçabilité, pas Vue d’ensemble');
   await graphPage.close();
 
   /* ---------------------------------------------------------------
