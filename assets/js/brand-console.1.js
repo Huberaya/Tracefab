@@ -4353,6 +4353,22 @@
         }
       }
 
+      function refreshLocalSupplyChainSummary() {
+        if (!state.supplyChain?.graph) return;
+        const nodes = state.supplyChain.graph.nodes || [];
+        const links = state.supplyChain.graph.links || [];
+        const documentedNodes = nodes.filter((node) => ['documented', 'verified_by_reviewer'].includes(node.status) || node.source_document_id);
+        const documentedLinks = links.filter((link) => ['documented', 'verified_by_reviewer'].includes(link.status) || link.evidence_document_id);
+        const total = nodes.length + links.length;
+        state.supplyChain.summary = {
+          nodeCount: nodes.length,
+          linkCount: links.length,
+          documentedNodeCount: documentedNodes.length,
+          documentedLinkCount: documentedLinks.length,
+          documentationRate: total ? Math.round(((documentedNodes.length + documentedLinks.length) / total) * 100) : 0,
+        };
+      }
+
       async function addChainNode(form) {
         if (!state.selectedSupplyChainProduct) return;
         const data = Object.fromEntries(new FormData(form));
@@ -4371,13 +4387,22 @@
           render();
           return;
         }
-        await api(`/api/products/${encodeURIComponent(state.selectedSupplyChainProduct.id)}/supply-chain/nodes`, {
+        const result = await api(`/api/products/${encodeURIComponent(state.selectedSupplyChainProduct.id)}/supply-chain/nodes`, {
           method: 'POST',
           body: JSON.stringify(body),
         });
+        // Un nœud déclaré n'appartient au graphe lisible qu'après sa première
+        // liaison. Recharger ici le faisait disparaître et empêchait donc de
+        // sélectionner deux nœuds pour créer ce lien. La réponse authentifiée
+        // du POST reste affichée localement jusqu'à la liaison, après laquelle
+        // addChainLink recharge le graphe persistant complet.
+        if (!state.supplyChain?.graph) state.supplyChain = { graph: { nodes: [], links: [] }, summary: null };
+        const nodes = state.supplyChain.graph.nodes || (state.supplyChain.graph.nodes = []);
+        if (result.node && !nodes.some((node) => node.id === result.node.id)) nodes.push(result.node);
+        refreshLocalSupplyChainSummary();
         state.modal = null;
-        await loadSupplyChain(state.selectedSupplyChainProduct.id);
         notify(bt('cnNNodeAdded'));
+        render();
       }
 
       async function addChainLink(form) {

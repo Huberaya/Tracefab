@@ -61,6 +61,8 @@ assert(html.includes('composition: {}'), 'La création de matière ne doit inven
 assert(html.includes("document.addEventListener('submit', async (event) =>"), 'Les formulaires dynamiques du graphe doivent intercepter durablement la soumission native');
 assert(html.includes("['chain-node-form', 'chain-link-form'].includes(form.id)"), 'La garde de soumission doit couvrir nœuds et liens');
 assert(html.includes("form.dataset.submitting === 'true'"), 'Les mutations du graphe doivent empêcher les doubles soumissions');
+assert(html.includes('if (result.node && !nodes.some((node) => node.id === result.node.id)) nodes.push(result.node)'), 'Un nœud isolé créé doit rester visible jusqu’à sa première liaison');
+assert(!html.includes('await loadSupplyChain(state.selectedSupplyChainProduct.id);\n        notify(bt(\'cnNNodeAdded\'))'), 'La création d’un nœud isolé ne doit pas recharger un graphe qui ne peut pas encore le relire');
 assert(!html.includes("document.getElementById('chain-node-form')?.addEventListener"), 'Le binding éphémère du formulaire de nœud ne doit pas revenir');
 assert(html.includes('Enrichissements non bloquants'), 'Les données secondaires ne doivent pas bloquer le premier rendu');
 assert(html.includes("url.searchParams.set('view', view)"), 'La vue active doit survivre à un rechargement via l’URL');

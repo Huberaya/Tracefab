@@ -70,6 +70,9 @@ const addNodeRoute = await readFile(
   'utf8',
 );
 assert(addNodeRoute.includes('tracefab_create_supply_chain_node'), 'Nodes POST route must call tracefab_create_supply_chain_node');
+assert(addNodeRoute.includes('graphProductId: productId'), 'Standalone nodes must retain their graph product until the first link');
+assert(getRoute.includes("metadata ->> 'graphProductId'"), 'GET graph must expose declared standalone nodes before their first link');
+assert(getRoute.includes('knownNodeIds'), 'GET graph must deduplicate nodes once they become linked');
 
 const nodeDetailRoute = await readFile(
   new URL('../api/_routes/products/[productId]/supply-chain/nodes/[nodeId].ts', import.meta.url),
