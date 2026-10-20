@@ -37,6 +37,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       const graph = rows[0]?.graph ?? { product_id: productId, nodes: [], links: [] };
 
+      // A declared node exists before its first edge. The historical graph
+      // function discovers nodes through edges, so freshly-created standalone
+      // nodes vanished on reload and could never be selected for that first
+      // edge. New mutations carry their graph product in reserved metadata;
+      // expose those nodes until a link makes them part of the canonical graph.
+      const standaloneNodes = await tx.$queryRaw<SupplyChainGraphPayload['nodes']>`
+        SELECT n.*
+        FROM supply_chain_nodes n
+        WHERE n.metadata ->> 'graphProductId' = ${productId}
+          AND NOT EXISTS (
+            SELECT 1 FROM supply_chain_links l
+            WHERE l.product_id = ${productId}::uuid
+              AND (l.source_node_id = n.id OR l.target_node_id = n.id)
+          )
+        ORDER BY n.created_at ASC
+      `;
+      const knownNodeIds = new Set(graph.nodes.map((node) => node.id));
+      graph.nodes.push(...standaloneNodes.filter((node) => !knownNodeIds.has(node.id)));
+
       const stages = groupGraphByStages(graph.nodes);
       const summary = computeTraceabilitySummary(graph.nodes, graph.links);
 

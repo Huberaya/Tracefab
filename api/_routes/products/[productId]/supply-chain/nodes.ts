@@ -61,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${input.productId || (input.nodeType === 'product' ? productId : null)}::uuid,
           ${input.materialId}::uuid,
           ${input.processCode},
-          ${JSON.stringify(input.metadata)}::jsonb,
+          ${JSON.stringify({ ...input.metadata, graphProductId: productId })}::jsonb,
           ${input.sourceDocumentId}::uuid,
           ${input.observedAt ? new Date(input.observedAt) : null}::date
         )

@@ -320,6 +320,8 @@ try {
   await graphPage.waitForFunction(() => window.tracefabBrandConsole?.state?.modal === null);
   assert.equal(graphScenario.nodeWrites.length, 1, 'le formulaire doit appeler POST nodes exactement une fois');
   assert.equal(graphScenario.nodeWrites[0].tenant, ORG_ID, 'le POST nodes doit porter le tenant actif');
+  assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.supplyChain.graph.nodes.length), 1, 'le nœud isolé créé doit rester visible avant sa première liaison');
+  assert.equal(await graphPage.locator('.tc-echelon-card', { hasText: 'Declared synthetic step — not verified' }).count(), 1, 'la réponse POST doit être rendue sans rechargement destructif du graphe');
   assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.view), 'supplyChain', 'la soumission ne doit pas revenir à la vue d’ensemble');
   assert.equal(new URL(graphPage.url()).pathname, '/brand-console/', 'aucune navigation HTML native ne doit avoir lieu');
   assert.equal(new URL(graphPage.url()).searchParams.get('view'), 'supplyChain', 'la vue active doit être inscrite dans l’URL');
