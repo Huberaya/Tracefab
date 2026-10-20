@@ -2,12 +2,13 @@ import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { pageSource } from './lib/page_source.mjs';
 
-const [html, reminderRoute, reminderMigration, email, schemaBindingsRoute] = await Promise.all([
+const [html, reminderRoute, reminderMigration, email, schemaBindingsRoute, configRoute] = await Promise.all([
   pageSource('brand-console/index.html'),
   readFile(new URL('../api/_routes/data-requests/[requestId]/remind.ts', import.meta.url), 'utf8'),
   readFile(new URL('../prisma/migrations/20261006130000_tracefab_manual_data_request_reminders/migration.sql', import.meta.url), 'utf8'),
   readFile(new URL('../api/_lib/email.ts', import.meta.url), 'utf8'),
   readFile(new URL('../api/_routes/schema-bindings.ts', import.meta.url), 'utf8'),
+  readFile(new URL('../api/_routes/config.ts', import.meta.url), 'utf8'),
 ]);
 const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert(script, 'Brand Console inline application script is missing');
@@ -67,6 +68,11 @@ assert(html.includes("url.searchParams.set('productId', productId)"), 'Le produi
 assert(html.includes("const fastDeepLink = state.view !== 'overview'"), 'Une vue profonde ne doit pas attendre toutes les données du tableau de bord');
 assert(html.includes('state.activeOrganizationId !== backgroundOrganizationId'), 'Les chargements différés doivent rester bornés au tenant demandeur');
 assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token must be sent through Authorization');
+assert(html.includes('for (let attempt = 0; attempt < 3; attempt += 1)'), 'Le bootstrap public doit réessayer une panne transitoire de /api/config');
+assert(html.includes("new AbortController()") && html.includes("config_fetch_timeout"), 'Le bootstrap config doit être borné par un timeout explicite');
+assert(html.includes("cache: attempt === 0 ? 'default' : 'no-cache'"), 'Les nouvelles tentatives config doivent contourner une réponse d’erreur mise en cache');
+assert(!html.includes("<code>?demo=1</code>"), 'Une panne de connexion réelle ne doit pas orienter vers des données de démonstration');
+assert(configRoute.includes('stale-while-revalidate=86400'), 'La configuration publique doit rester servable pendant un redéploiement transitoire');
 assert(!html.includes('localhost'), 'Brand Console must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');
 assert(html.toLowerCase().includes('tracefab'), 'Brand Console branding is missing');

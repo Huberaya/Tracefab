@@ -1642,7 +1642,8 @@
     "pdNoMatchHint": "Verruim de zoekopdracht of wis de filters om de volledige catalogus te zien.",
     "pdOnlyIncomplete": "Alleen onvolledige",
     "cnNMaterialCreated": "Materiaal aangemaakt in de actieve tenant.",
-    "cnMaterialNoClaim": "Er worden niet automatisch certificeringen, herkomstgegevens of claims toegevoegd."
+    "cnMaterialNoClaim": "Er worden niet automatisch certificeringen, herkomstgegevens of claims toegevoegd.",
+    "cnConfigUnavailableBody": "De openbare verbindingsconfiguratie kon na meerdere pogingen niet worden geladen. Probeer opnieuw zonder naar de demomodus te schakelen."
   },
   "portal": {
     "sites": "Productielocaties",

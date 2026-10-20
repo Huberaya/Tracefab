@@ -1642,7 +1642,8 @@
     "pdNoMatchHint": "Amplia la ricerca o azzera i filtri per rivedere tutto il catalogo.",
     "pdOnlyIncomplete": "Solo incompleti",
     "cnNMaterialCreated": "Materiale creato nel tenant attivo.",
-    "cnMaterialNoClaim": "Nessuna certificazione, origine o dichiarazione viene aggiunta automaticamente."
+    "cnMaterialNoClaim": "Nessuna certificazione, origine o dichiarazione viene aggiunta automaticamente.",
+    "cnConfigUnavailableBody": "Non è stato possibile caricare la configurazione pubblica di connessione dopo vari tentativi. Riprova senza passare alla modalità demo."
   },
   "portal": {
     "sites": "Stabilimenti Produttivi",

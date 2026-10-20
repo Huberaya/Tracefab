@@ -1642,7 +1642,8 @@
     "pdNoMatchHint": "Erweitern Sie die Suche oder setzen Sie die Filter zurück, um den gesamten Katalog zu sehen.",
     "pdOnlyIncomplete": "Nur unvollständige",
     "cnNMaterialCreated": "Material im aktiven Mandanten erstellt.",
-    "cnMaterialNoClaim": "Es werden nicht automatisch Zertifizierungen, Herkunftsangaben oder Aussagen hinzugefügt."
+    "cnMaterialNoClaim": "Es werden nicht automatisch Zertifizierungen, Herkunftsangaben oder Aussagen hinzugefügt.",
+    "cnConfigUnavailableBody": "Die öffentliche Verbindungskonfiguration konnte nach mehreren Versuchen nicht geladen werden. Versuchen Sie es erneut, ohne in den Demomodus zu wechseln."
   },
   "portal": {
     "sites": "Produktionsstätten",

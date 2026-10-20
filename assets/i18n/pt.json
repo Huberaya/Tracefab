@@ -1642,7 +1642,8 @@
     "pdNoMatchHint": "Alargue a pesquisa ou limpe os filtros para ver todo o catálogo.",
     "pdOnlyIncomplete": "Apenas incompletos",
     "cnNMaterialCreated": "Material criado no tenant ativo.",
-    "cnMaterialNoClaim": "Nenhuma certificação, origem ou alegação é adicionada automaticamente."
+    "cnMaterialNoClaim": "Nenhuma certificação, origem ou alegação é adicionada automaticamente.",
+    "cnConfigUnavailableBody": "Não foi possível carregar a configuração pública de ligação após várias tentativas. Tente novamente sem mudar para o modo de demonstração."
   },
   "portal": {
     "sites": "Instalações de Produção",

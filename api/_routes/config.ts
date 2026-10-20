@@ -16,7 +16,10 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 503, { error: 'clerk_not_configured' });
   }
 
-  res.setHeader('Cache-Control', 'public, max-age=300');
+  // Public bootstrap configuration is safe to cache. Serving stale while the
+  // serverless function redeploys prevents a transient cold start from
+  // blocking the entire authenticated console.
+  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400');
   return json(res, 200, {
     publishableKey,
     ...(productionKey ? { proxyUrl: CLERK_PROXY_URL } : {}),
