@@ -1,7 +1,7 @@
 import { data_type, data_value_status, Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabRequestContext } from '../../../_lib/context.js';
 import {
   DATA_POINT_DEFINITIONS,
   DATA_POINT_SELECT,
@@ -9,8 +9,9 @@ import {
   serializeDataPoint,
 } from '../../../_lib/data-points.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
-import { activeBrandOrganizationIds, isUuid } from '../../../_lib/products.js';
+import { isUuid } from '../../../_lib/products.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, tenantFilter } from '../../../_lib/tenant.js';
 
 function routeProductId(req: VercelRequest) {
   const value = req.query.productId;
@@ -25,10 +26,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(productId)) return json(res, 400, { error: 'invalid_product_id' });
     const { user } = await requireClerkUser(req);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandOrgIds = await activeBrandOrganizationIds(tx, user.id);
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
       const product = await tx.tracefab_products.findFirst({
-        where: { id: productId, brand_organization_id: { in: brandOrgIds } },
+        where: { id: productId, brand_organization_id: tenantFilter(tenant) },
         select: { id: true, brand_organization_id: true, version: true },
       });
       if (!product) return null;
@@ -105,6 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 201, { dataPoint: serializeDataPoint(result.point) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

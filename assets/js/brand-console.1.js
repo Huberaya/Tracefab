@@ -52,6 +52,9 @@
         selectedRequest: null,
         selectedProduct: null,
         selectedProductDetail: null,
+        productDataPoints: null,
+        productDataPointDefinitions: {},
+        productDataPointsError: null,
         selectedSupplier: null,
         quality: null,
         qualityFilter: 'all',
@@ -2588,6 +2591,23 @@
           <div class="card panel" style="margin-top:20px;">
             <div class="panel-head">
               <div>
+                <h2>${bt('pxDataPoints')}</h2>
+                <p class="meta">${bt('pxDataPointsNotice')}</p>
+              </div>
+              <span class="status status-draft">${bt('pxDeclaredOnly')}</span>
+            </div>
+            ${state.productDataPointsError ? `<div class="notice notice-error"><code>${esc(state.productDataPointsError)}</code> <button class="btn btn-secondary btn-small" data-action="retry-product-data-points">${bt('cnRetry')}</button></div>` : state.productDataPoints === null ? `<div class="empty"><strong>${bt('pxDataPointsLoading')}</strong></div>` : state.productDataPoints.length ? `<div class="item-list">${state.productDataPoints.map((point) => `<div class="item"><div><strong>${esc(point.dataKey)}</strong><div class="meta">${esc(JSON.stringify(point.value))} · v${esc(point.version)} · ${esc(statusLabel(point.status))}</div></div><span class="badge">${esc(point.dataType)}</span></div>`).join('')}</div>` : `<div class="empty" style="padding:12px 0"><p>${bt('pxNoDataPoints')}</p></div>`}
+            <form id="product-data-point-form" class="form-grid" style="margin-top:18px">
+              <label>${bt('pxDataPointKey')}<select class="select" name="dataKey" required>${Object.entries(state.productDataPointDefinitions || {}).map(([key, definition]) => `<option value="${esc(key)}" data-type="${esc(definition.dataType)}">${esc(key)} · ${esc(definition.dataType)}</option>`).join('')}</select></label>
+              <label>${bt('pxDeclaredValue')}<input class="input" name="value" required maxlength="10000" placeholder="${esc(bt('pxDeclaredValuePlaceholder'))}"></label>
+              <p class="field-full meta">${bt('pxNoEvidenceWarning')}</p>
+              <div class="form-actions field-full"><button class="btn btn-primary btn-small" type="submit" ${Object.keys(state.productDataPointDefinitions || {}).length ? '' : 'disabled'}>${bt('pxAddDeclaredDataPoint')}</button></div>
+            </form>
+          </div>
+
+          <div class="card panel" style="margin-top:20px;">
+            <div class="panel-head">
+              <div>
                 <h2>${bt('pxIdentifiers')}</h2>
                 <p class="meta">${bt('pxResolveHint')}</p>
               </div>
@@ -3915,6 +3935,9 @@
         state.productDetailError = null;
         state.schemaBindings = [];
         state.schemaBindingsError = null;
+        state.productDataPoints = null;
+        state.productDataPointDefinitions = {};
+        state.productDataPointsError = null;
         if (state.demo) {
           state.selectedProductDetail = { product: state.selectedProduct, identifiers: [], materials: [] };
           state.schemaBindings = [];
@@ -3934,7 +3957,49 @@
         // /api/schema-bindings ne peut plus tenir la fiche otage pendant toute
         // la duree du timeout de la passerelle.
         render();
-        await loadSchemaBindings(id);
+        await Promise.all([loadSchemaBindings(id), loadProductDataPoints(id)]);
+      }
+      async function loadProductDataPoints(id) {
+        if (!id) return;
+        state.productDataPoints = null;
+        state.productDataPointsError = null;
+        render();
+        try {
+          const payload = await api(`/api/products/${encodeURIComponent(id)}/data-points`);
+          state.productDataPoints = payload.dataPoints || [];
+          state.productDataPointDefinitions = payload.definitions || {};
+        } catch (error) {
+          state.productDataPoints = null;
+          state.productDataPointsError = error.message || 'product_data_points_unavailable';
+        }
+        render();
+      }
+      async function createProductDataPoint(form) {
+        const productId = state.selectedProductDetail?.product?.id;
+        if (!productId) return;
+        const data = Object.fromEntries(new FormData(form));
+        const option = form.querySelector('select[name="dataKey"] option:checked');
+        const dataType = option?.dataset.type;
+        let value = String(data.value || '').trim();
+        if (dataType === 'number' || dataType === 'percentage') value = Number(value);
+        else if (dataType === 'boolean') {
+          if (!['true', 'false'].includes(value.toLowerCase())) throw new Error('invalid_data_point_value');
+          value = value.toLowerCase() === 'true';
+        } else if (dataType === 'json') {
+          try { value = JSON.parse(value); } catch { throw new Error('invalid_data_point_value'); }
+        }
+        await api(`/api/products/${encodeURIComponent(productId)}/data-points`, {
+          method: 'POST',
+          body: JSON.stringify({ dataKey: data.dataKey, dataType, value }),
+        });
+        const [detail] = await Promise.all([
+          api(`/api/products/${encodeURIComponent(productId)}`),
+          loadProductDataPoints(productId),
+        ]);
+        state.selectedProductDetail = detail;
+        state.selectedProduct = detail.product;
+        notify(bt('pxDataPointCreated'));
+        render();
       }
       async function loadSchemaBindings(id) {
         // Chargement AUXILIAIRE : cette fonction ne jette jamais. Elle met a
@@ -4795,6 +4860,7 @@
             if (action === 'dp-resolve') await resolveDppRequirement(el.dataset.dpTarget, el.dataset.dpProduct);
             if (action === 'retry-schema-bindings') await retrySchemaBindings();
             if (action === 'retry-product-detail') { const id = state.selectedProduct?.id; if (id) await openProduct(id); }
+            if (action === 'retry-product-data-points') { const id = state.selectedProductDetail?.product?.id; if (id) await loadProductDataPoints(id); }
             if (action === 'dpp-recalc-portfolio') { state.dppPortfolio = null; render(); await loadDppPortfolio(); notify(bt('dpToastRecalc')); }
             if (action === 'catalog-export') await exportCatalog();
             if (action === 'audit-export') await exportAudit();
@@ -4893,6 +4959,7 @@
         document.getElementById('review-cap-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitCapConsoleForm(e.currentTarget, 'review').catch((err) => notify(err.message, true)); });
         document.getElementById('cap-message-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitCapConsoleForm(e.currentTarget, 'message').catch((err) => notify(err.message, true)); });
         document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('product-data-point-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProductDataPoint(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('schema-binding-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveSchemaBinding(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('material-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); }));
