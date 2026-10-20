@@ -88,12 +88,14 @@ const addLinkRoute = await readFile(
   'utf8',
 );
 assert(addLinkRoute.includes('tracefab_add_supply_chain_link'), 'Links POST route must call tracefab_add_supply_chain_link');
+assert(addLinkRoute.includes('${input.sequenceNumber}::integer'), 'Links POST must cast JavaScript numbers to the SQL INTEGER function signature');
 
 const linkDetailRoute = await readFile(
   new URL('../api/_routes/products/[productId]/supply-chain/links/[linkId].ts', import.meta.url),
   'utf8',
 );
 assert(linkDetailRoute.includes('tracefab_update_supply_chain_link'), 'Link detail route must support updates');
+assert(linkDetailRoute.includes('${sequenceNumber}::integer'), 'Link update must cast JavaScript numbers to the SQL INTEGER function signature');
 assert(linkDetailRoute.includes('deleteMany'), 'Link detail route must support deletion');
 
 for (const [name, route] of [

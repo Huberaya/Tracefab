@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${input.sourceNodeId}::uuid,
           ${input.targetNodeId}::uuid,
           ${input.linkType}::supply_chain_link_type,
-          ${input.sequenceNumber},
+          ${input.sequenceNumber}::integer,
           ${input.validFrom ? new Date(input.validFrom) : null}::date,
           ${input.validUntil ? new Date(input.validUntil) : null}::date,
           ${input.evidenceDocumentId}::uuid,

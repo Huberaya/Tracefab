@@ -86,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         SELECT *
         FROM tracefab_update_supply_chain_link(
           ${linkId}::uuid,
-          ${sequenceNumber},
+          ${sequenceNumber}::integer,
           ${validFrom ? new Date(validFrom) : null}::date,
           ${validUntil ? new Date(validUntil) : null}::date,
           ${evidenceDocumentId}::uuid,
