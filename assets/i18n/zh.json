@@ -51,7 +51,9 @@
     "pdMatching": "匹配",
     "pdNoMatch": "没有产品符合这些筛选条件",
     "pdNoMatchHint": "请放宽搜索条件，或清除筛选以查看完整目录。",
-    "pdOnlyIncomplete": "仅不完整"
+    "pdOnlyIncomplete": "仅不完整",
+    "cnNMaterialCreated": "材料已在当前租户中创建。",
+    "cnMaterialNoClaim": "不会自动添加任何认证、来源或声明。"
   },
   "portal": {
     "spDemoBanner": "演示模式 — 以下数据仅为演示数据。打开 ?demo=0 以连接 Clerk 和 Tracefab API。",
