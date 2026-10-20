@@ -786,6 +786,7 @@ model supply_chain_links {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model supply_chain_nodes {
   id                                                                       String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  graph_product_id                                                         String?              @db.Uuid
   node_type                                                                node_type
   organization_id                                                          String?              @db.Uuid
   supplier_site_id                                                         String?              @db.Uuid
@@ -805,7 +806,8 @@ model supply_chain_nodes {
   users                                                                    User?                @relation(fields: [declared_by], references: [id], onUpdate: NoAction)
   materials                                                                materials?           @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   organizations                                                            organizations?       @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tracefab_products                                                        tracefab_products?   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  graph_product                                                            tracefab_products?   @relation("supply_chain_nodes_graph_product", fields: [graph_product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracefab_products                                                        tracefab_products?   @relation("supply_chain_nodes_semantic_product", fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   documents                                                                documents?           @relation(fields: [source_document_id], references: [id], onUpdate: NoAction)
   supplier_sites                                                           supplier_sites?      @relation(fields: [supplier_site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -856,7 +858,8 @@ model tracefab_products {
   product_pef_assessments                             product_pef_assessments[]
   quality_corrective_action_plans                     quality_corrective_action_plans[]
   supply_chain_links                                  supply_chain_links[]
-  supply_chain_nodes                                  supply_chain_nodes[]
+  graph_supply_chain_nodes                            supply_chain_nodes[] @relation("supply_chain_nodes_graph_product")
+  supply_chain_nodes                                  supply_chain_nodes[] @relation("supply_chain_nodes_semantic_product")
   organizations                                       organizations                     @relation(fields: [brand_organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users_tracefab_products_created_byTousers           User?                             @relation("tracefab_products_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
   users_tracefab_products_last_data_updated_byTousers User?                             @relation("tracefab_products_last_data_updated_byTousers", fields: [last_data_updated_by], references: [id], onUpdate: NoAction)

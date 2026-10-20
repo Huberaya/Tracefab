@@ -81,7 +81,7 @@ const nodeDetailRoute = await readFile(
   'utf8',
 );
 assert(nodeDetailRoute.includes('tracefab_update_supply_chain_node'), 'Node detail route must support updates');
-assert(nodeDetailRoute.includes('deleteMany'), 'Node detail route must support deletion');
+assert(nodeDetailRoute.includes('tracefab_delete_supply_chain_node'), 'Node deletion must use the tenant-authorized graph function');
 
 const addLinkRoute = await readFile(
   new URL('../api/_routes/products/[productId]/supply-chain/links.ts', import.meta.url),
@@ -96,7 +96,7 @@ const linkDetailRoute = await readFile(
 );
 assert(linkDetailRoute.includes('tracefab_update_supply_chain_link'), 'Link detail route must support updates');
 assert(linkDetailRoute.includes('${sequenceNumber}::integer'), 'Link update must cast JavaScript numbers to the SQL INTEGER function signature');
-assert(linkDetailRoute.includes('deleteMany'), 'Link detail route must support deletion');
+assert(linkDetailRoute.includes('tracefab_delete_supply_chain_link'), 'Link deletion must use the tenant-authorized graph function');
 
 for (const [name, route] of [
   ['graph GET', getRoute],
@@ -146,7 +146,7 @@ for (const etape of ['Filature', 'Tissage', 'Confection', 'Produit Fini']) {
 }
 assert(!brandConsoleHtml.includes('data-action="generate-baseline-chain">'), 'Real console must not offer invented baseline generation');
 assert(brandConsoleHtml.includes('data-action="new-chain-node"'), 'Brand console must offer add node action');
-assert(brandConsoleHtml.includes('<option value="other">'), 'Process form must offer a neutral declared-other code instead of forcing an invented textile process');
+assert(brandConsoleHtml.includes('<option value="other" selected>'), 'Process form must default to a neutral declared-other code instead of forcing an invented textile process');
 assert(brandConsoleHtml.includes('data-action="new-chain-link"'), 'Brand console must offer add link action');
 assert(brandConsoleHtml.includes('data-delete-chain-link'), 'Brand console must allow link deletion');
 assert(brandConsoleHtml.includes('product-supply-chain-from-detail'), 'Brand console product detail must have direct link to supply chain');
