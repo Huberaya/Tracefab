@@ -1404,6 +1404,7 @@ window.TF_I18N_BUNDLES.en = {
     pxTechSheet: "Technical sheet & regulatory attributes",
     pxTraceGraph: "Traceability graph",
     pxDataPoints: "Structured product data",
+    pxDataPointsLoading: "Loading structured product data…",
     pxDataPointsNotice: "Versioned declarations owned by the brand. A declaration is not documentary or third-party verification.",
     pxDeclaredOnly: "Declared only",
     pxNoDataPoints: "No structured product data has been declared.",

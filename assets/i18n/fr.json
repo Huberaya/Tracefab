@@ -1654,7 +1654,8 @@
     "pxDeclaredValuePlaceholder": "Valeur connue et explicitement déclarée",
     "pxNoEvidenceWarning": "Aucune preuve n’est jointe : la valeur restera déclarée, non documentée et non vérifiée.",
     "pxAddDeclaredDataPoint": "Ajouter la donnée déclarée",
-    "pxDataPointCreated": "Donnée structurée produit déclarée avec succès."
+    "pxDataPointCreated": "Donnée structurée produit déclarée avec succès.",
+    "pxDataPointsLoading": "Chargement des données structurées du produit…"
   },
   "portal": {
     "sites": "Sites de production",

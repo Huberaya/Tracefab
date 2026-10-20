@@ -1654,7 +1654,8 @@
     "pxDeclaredValuePlaceholder": "Value known and explicitly declared",
     "pxNoEvidenceWarning": "No evidence is attached: the value will remain declared, not documented or verified.",
     "pxAddDeclaredDataPoint": "Add declared data",
-    "pxDataPointCreated": "Structured product data declared successfully."
+    "pxDataPointCreated": "Structured product data declared successfully.",
+    "pxDataPointsLoading": "Loading structured product data…"
   },
   "portal": {
     "sites": "Centros de producción",
