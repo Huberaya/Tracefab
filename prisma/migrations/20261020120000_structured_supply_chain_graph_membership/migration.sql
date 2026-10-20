@@ -261,8 +261,14 @@ $$;
 
 REVOKE ALL ON FUNCTION tracefab_delete_supply_chain_node(UUID, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION tracefab_delete_supply_chain_link(UUID, UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION tracefab_delete_supply_chain_node(UUID, UUID) TO PUBLIC;
-GRANT EXECUTE ON FUNCTION tracefab_delete_supply_chain_link(UUID, UUID) TO PUBLIC;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
+    GRANT EXECUTE ON FUNCTION tracefab_delete_supply_chain_node(UUID, UUID) TO tracefab_app;
+    GRANT EXECUTE ON FUNCTION tracefab_delete_supply_chain_link(UUID, UUID) TO tracefab_app;
+  END IF;
+END;
+$$;
 
 DROP POLICY IF EXISTS nodes_select_traceability_graph ON supply_chain_nodes;
 CREATE POLICY nodes_select_traceability_graph ON supply_chain_nodes FOR SELECT TO PUBLIC USING (

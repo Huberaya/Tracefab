@@ -15,6 +15,7 @@ assert(migration.includes('traceability_link_node_product_mismatch'), 'Cross-pro
 assert(migration.includes('WHERE n.graph_product_id = p_product_id'), 'Graph reads must include standalone structured nodes');
 assert(migration.includes('tracefab_delete_supply_chain_node'), 'Node deletion must be controlled');
 assert(migration.includes('tracefab_delete_supply_chain_link'), 'Link deletion must be controlled');
+assert(!/GRANT EXECUTE ON FUNCTION tracefab_delete_supply_chain_(?:node|link)[^;]+TO PUBLIC/.test(migration), 'SECURITY DEFINER deletion must never be executable by PUBLIC');
 assert(migration.includes("tracefab_can_access_shared_subject(d.owner_organization_id, 'document', d.id)"), 'Evidence identifiers must stay access-redacted');
 assert(createLink.includes('${input.sequenceNumber}::integer'), 'Create sequence SQL type must be exact');
 assert(updateLink.includes('${sequenceNumber}::integer'), 'Update sequence SQL type must be exact');
