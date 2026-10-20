@@ -112,10 +112,20 @@ async function stubClerk(page) {
 async function stubEmptyTenant(page, overrides = {}) {
   const seen = new Set();
   const unexpected = [];
+  const materialWrites = [];
   await page.route('**/api/**', (route) => {
     const key = routeKey(route.request().url());
     if (key === '/api/config') return route.fallback();
     seen.add(key);
+    if (key === '/api/materials' && route.request().method() === 'POST') {
+      const body = route.request().postDataJSON();
+      materialWrites.push({ body, tenant: route.request().headers()['x-tracefab-organization-id'] });
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ material: { id: 'material-created', ...body, createdAt: new Date().toISOString() } }),
+      });
+    }
     const override = overrides[key];
     if (override) return route.fulfill({
       status: override.status || 200,
@@ -135,7 +145,7 @@ async function stubEmptyTenant(page, overrides = {}) {
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
-  return { seen, unexpected };
+  return { seen, unexpected, materialWrites };
 }
 
 async function openConsole(browser, path) {
@@ -157,7 +167,7 @@ try {
   /* ---------------------------------------------------------------
      1. Tenant reel vide : aucun chiffre de demonstration.
      --------------------------------------------------------------- */
-  const { page, unexpected } = await openConsole(browser, '/brand-console/?lang=en');
+  const { page, unexpected, materialWrites } = await openConsole(browser, '/brand-console/?lang=en');
   await page.waitForFunction(() => window.tracefabBrandConsole?.state?.loading === false);
   await page.locator('h1.mc-headline').waitFor();
 
@@ -198,6 +208,24 @@ try {
   const pastilles = await page.locator('.mc-attention-num').allInnerTexts();
   assert.equal(pastilles.length, 4);
   assert.ok(pastilles.every((t) => t.trim() === '0'), `pastilles attendues a 0 : ${pastilles.join('|')}`);
+
+  // Le CTA matière doit exécuter la vraie API dans un tenant réel. Il ne doit
+  // jamais tomber dans le placeholder « indisponible en mode démonstration ».
+  await page.locator('button[data-view="materials"]').first().click();
+  await page.locator('button[data-action="new-material"]').click();
+  await page.locator('#create-material-form input[name="name"]').fill('Synthetic test material — not real');
+  await page.locator('#create-material-form input[name="materialType"]').fill('other');
+  await page.locator('#create-material-form button[type="submit"]').click();
+  await page.locator('td', { hasText: 'Synthetic test material — not real' }).waitFor();
+  assert.equal(materialWrites.length, 1, 'la création matière doit appeler POST /api/materials une fois');
+  assert.equal(materialWrites[0].tenant, ORG_ID, 'la création matière doit porter le locataire actif');
+  assert.deepEqual(materialWrites[0].body, {
+    ownerOrganizationId: ORG_ID,
+    materialType: 'other',
+    name: 'Synthetic test material — not real',
+    composition: {},
+    originCountryCode: null,
+  }, 'aucune origine, certification ou composition ne doit être inventée');
 
   // Toutes les vues du routeur sont parcourues : une vue ajoutee plus tard est
   // couverte automatiquement, sans qu'on pense a l'inscrire ici.

@@ -51,7 +51,9 @@
     "pdMatching": "Eşleşme",
     "pdNoMatch": "Bu filtrelere uyan ürün yok",
     "pdNoMatchHint": "Aramayı genişletin veya tüm katalogu görmek için filtreleri temizleyin.",
-    "pdOnlyIncomplete": "Yalnızca eksik olanlar"
+    "pdOnlyIncomplete": "Yalnızca eksik olanlar",
+    "cnNMaterialCreated": "Malzeme etkin kiracıda oluşturuldu.",
+    "cnMaterialNoClaim": "Hiçbir sertifika, menşe veya iddia otomatik olarak eklenmez."
   },
   "portal": {
     "spDemoBanner": "Demo modu — aşağıdaki veriler gösterim amaçlıdır. Clerk ve Tracefab API'lerini bağlamak için ?demo=0 adresini açın.",

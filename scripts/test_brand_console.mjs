@@ -34,6 +34,10 @@ for (const contract of [
   '/api/data-responses/',
   'data-action="new-request"',
   'data-action="new-product"',
+  'data-action="new-material"',
+  'id="create-material-form"',
+  "await api('/api/materials', { method: 'POST'",
+  'ownerOrganizationId: state.activeOrganizationId',
   'data-action="invite-supplier"',
   'data-action="remind-request"',
 ]) {
@@ -50,6 +54,9 @@ for (const formContract of [
 ]) {
   assert(html.includes(formContract), `Brand Console form contract missing: ${formContract}`);
 }
+assert(!html.includes(`<button class="btn btn-primary" data-demo-action="1">${'${bt(\'mtAdd\')}'}</button>`), 'Ajouter un matériau ne doit jamais être un placeholder de démonstration sur un tenant réel');
+assert(html.includes('originCountryCode: String(data.originCountryCode || \'\').trim() || null'), 'Une origine inconnue doit rester null, jamais devenir une affirmation métier');
+assert(html.includes('composition: {}'), 'La création de matière ne doit inventer aucune composition');
 assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token must be sent through Authorization');
 assert(!html.includes('localhost'), 'Brand Console must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');

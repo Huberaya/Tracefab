@@ -1640,7 +1640,9 @@
     "pdMatching": "Correspondências",
     "pdNoMatch": "Nenhum produto corresponde a estes filtros",
     "pdNoMatchHint": "Alargue a pesquisa ou limpe os filtros para ver todo o catálogo.",
-    "pdOnlyIncomplete": "Apenas incompletos"
+    "pdOnlyIncomplete": "Apenas incompletos",
+    "cnNMaterialCreated": "Material criado no tenant ativo.",
+    "cnMaterialNoClaim": "Nenhuma certificação, origem ou alegação é adicionada automaticamente."
   },
   "portal": {
     "sites": "Instalações de Produção",

@@ -1640,7 +1640,9 @@
     "pdMatching": "Corrispondenze",
     "pdNoMatch": "Nessun prodotto corrisponde a questi filtri",
     "pdNoMatchHint": "Amplia la ricerca o azzera i filtri per rivedere tutto il catalogo.",
-    "pdOnlyIncomplete": "Solo incompleti"
+    "pdOnlyIncomplete": "Solo incompleti",
+    "cnNMaterialCreated": "Materiale creato nel tenant attivo.",
+    "cnMaterialNoClaim": "Nessuna certificazione, origine o dichiarazione viene aggiunta automaticamente."
   },
   "portal": {
     "sites": "Stabilimenti Produttivi",

@@ -737,6 +737,8 @@ window.TF_I18N_BUNDLES.en = {
     cnNCompositionUpdatedDemo: "Composition updated in demonstration mode.",
     cnNMaterialAdded: "Material added to the composition.",
     cnNMaterialAddedDemo: "Material added in demonstration mode.",
+    cnNMaterialCreated: "Material created in the active tenant.",
+    cnMaterialNoClaim: "No certification, origin, or claim is added automatically.",
     cnNIdUpdated: "Identifier updated.",
     cnNIdAdded: "Identifier added.",
     cnNIdUpdatedDemo: "Identifier updated in demonstration mode.",

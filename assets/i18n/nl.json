@@ -1640,7 +1640,9 @@
     "pdMatching": "Overeenkomsten",
     "pdNoMatch": "Geen product voldoet aan deze filters",
     "pdNoMatchHint": "Verruim de zoekopdracht of wis de filters om de volledige catalogus te zien.",
-    "pdOnlyIncomplete": "Alleen onvolledige"
+    "pdOnlyIncomplete": "Alleen onvolledige",
+    "cnNMaterialCreated": "Materiaal aangemaakt in de actieve tenant.",
+    "cnMaterialNoClaim": "Er worden niet automatisch certificeringen, herkomstgegevens of claims toegevoegd."
   },
   "portal": {
     "sites": "Productielocaties",

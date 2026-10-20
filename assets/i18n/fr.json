@@ -1640,7 +1640,9 @@
     "pdMatching": "Correspondances",
     "pdNoMatch": "Aucun produit ne correspond à ces filtres",
     "pdNoMatchHint": "Élargissez la recherche ou effacez les filtres pour revoir tout le catalogue.",
-    "pdOnlyIncomplete": "Incomplets seulement"
+    "pdOnlyIncomplete": "Incomplets seulement",
+    "cnNMaterialCreated": "Matière créée dans le locataire actif.",
+    "cnMaterialNoClaim": "Aucune certification, origine ou allégation n’est ajoutée automatiquement."
   },
   "portal": {
     "sites": "Sites de production",

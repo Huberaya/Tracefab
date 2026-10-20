@@ -1640,7 +1640,9 @@
     "pdMatching": "Coincidencias",
     "pdNoMatch": "Ningún producto coincide con estos filtros",
     "pdNoMatchHint": "Amplíe la búsqueda o borre los filtros para ver todo el catálogo.",
-    "pdOnlyIncomplete": "Solo incompletos"
+    "pdOnlyIncomplete": "Solo incompletos",
+    "cnNMaterialCreated": "Material creado en el tenant activo.",
+    "cnMaterialNoClaim": "No se añade automáticamente ninguna certificación, origen ni alegación."
   },
   "portal": {
     "sites": "Centros de producción",
