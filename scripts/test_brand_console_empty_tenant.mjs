@@ -113,6 +113,7 @@ async function stubEmptyTenant(page, overrides = {}) {
   const seen = new Set();
   const unexpected = [];
   const materialWrites = [];
+  const nodeWrites = [];
   await page.route('**/api/**', (route) => {
     const key = routeKey(route.request().url());
     if (key === '/api/config') return route.fallback();
@@ -124,6 +125,15 @@ async function stubEmptyTenant(page, overrides = {}) {
         status: 201,
         contentType: 'application/json',
         body: JSON.stringify({ material: { id: 'material-created', ...body, createdAt: new Date().toISOString() } }),
+      });
+    }
+    if (/^\/api\/products\/[^/]+\/supply-chain\/nodes$/.test(key) && route.request().method() === 'POST') {
+      const body = route.request().postDataJSON();
+      nodeWrites.push({ body, tenant: route.request().headers()['x-tracefab-organization-id'] });
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ node: { id: '22222222-2222-4222-8222-222222222222', node_type: body.nodeType, label: body.label, status: 'declared' } }),
       });
     }
     const override = overrides[key];
@@ -145,13 +155,13 @@ async function stubEmptyTenant(page, overrides = {}) {
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
-  return { seen, unexpected, materialWrites };
+  return { seen, unexpected, materialWrites, nodeWrites };
 }
 
-async function openConsole(browser, path) {
+async function openConsole(browser, path, overrides = {}) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await stubClerk(page);
-  const state = await stubEmptyTenant(page);
+  const state = await stubEmptyTenant(page, overrides);
   await page.goto(`${base}${path}`, { waitUntil: 'domcontentloaded' });
   return { page, ...state };
 }
@@ -286,6 +296,32 @@ try {
   assert.ok(!/\b88(?:\.0)?\s*%/.test(dppText), 'aucun score DPP de demonstration');
   assert.ok(!dppText.includes('Tier 4'), 'aucun gap de demonstration');
   await page.close();
+
+  /* ---------------------------------------------------------------
+     1b. Une modale de graphe rendue dynamiquement ne doit jamais faire une
+         soumission HTML native ni renvoyer vers la vue d'ensemble.
+     --------------------------------------------------------------- */
+  const PRODUCT_ID = '33333333-3333-4333-8333-333333333333';
+  const graphPath = `/api/products/${PRODUCT_ID}/supply-chain`;
+  const graphScenario = await openConsole(browser, '/brand-console/?lang=en', {
+    '/api/products': { body: { products: [{ id: PRODUCT_ID, name: 'Synthetic recipe product', reference: 'RECIPE-TEST', version: 1 }], nextCursor: null } },
+    [graphPath]: { body: { product: { id: PRODUCT_ID, name: 'Synthetic recipe product', reference: 'RECIPE-TEST', version: 1 }, graph: { nodes: [], links: [] }, stages: {}, summary: null } },
+    [`/api/products/${PRODUCT_ID}/mass-balance`]: { body: { latestReconciliation: null, totalAllocatedKg: null } },
+  });
+  const graphPage = graphScenario.page;
+  await graphPage.waitForFunction(() => window.tracefabBrandConsole?.state?.loading === false);
+  await graphPage.locator('button[data-view="supplyChain"]').first().click();
+  await graphPage.waitForFunction(() => window.tracefabBrandConsole?.state?.view === 'supplyChain');
+  await graphPage.locator('button[data-action="new-chain-node"]').click();
+  await graphPage.locator('#chain-node-form input[name="label"]').fill('Declared synthetic step — not verified');
+  await graphPage.locator('#chain-node-form select[name="nodeType"]').selectOption('process');
+  await graphPage.locator('#chain-node-form button[type="submit"]').click();
+  await graphPage.waitForFunction(() => window.tracefabBrandConsole?.state?.modal === null);
+  assert.equal(graphScenario.nodeWrites.length, 1, 'le formulaire doit appeler POST nodes exactement une fois');
+  assert.equal(graphScenario.nodeWrites[0].tenant, ORG_ID, 'le POST nodes doit porter le tenant actif');
+  assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.view), 'supplyChain', 'la soumission ne doit pas revenir à la vue d’ensemble');
+  assert.equal(new URL(graphPage.url()).pathname, '/brand-console/', 'aucune navigation HTML native ne doit avoir lieu');
+  await graphPage.close();
 
   /* ---------------------------------------------------------------
      2. Mode demonstration explicite : les chiffres existent et sont

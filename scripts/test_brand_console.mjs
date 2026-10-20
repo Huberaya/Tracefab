@@ -57,6 +57,11 @@ for (const formContract of [
 assert(!html.includes(`<button class="btn btn-primary" data-demo-action="1">${'${bt(\'mtAdd\')}'}</button>`), 'Ajouter un matériau ne doit jamais être un placeholder de démonstration sur un tenant réel');
 assert(html.includes('originCountryCode: String(data.originCountryCode || \'\').trim() || null'), 'Une origine inconnue doit rester null, jamais devenir une affirmation métier');
 assert(html.includes('composition: {}'), 'La création de matière ne doit inventer aucune composition');
+assert(html.includes("document.addEventListener('submit', async (event) =>"), 'Les formulaires dynamiques du graphe doivent intercepter durablement la soumission native');
+assert(html.includes("['chain-node-form', 'chain-link-form'].includes(form.id)"), 'La garde de soumission doit couvrir nœuds et liens');
+assert(html.includes("form.dataset.submitting === 'true'"), 'Les mutations du graphe doivent empêcher les doubles soumissions');
+assert(!html.includes("document.getElementById('chain-node-form')?.addEventListener"), 'Le binding éphémère du formulaire de nœud ne doit pas revenir');
+assert(html.includes('Enrichissements non bloquants'), 'Les données secondaires ne doivent pas bloquer le premier rendu');
 assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token must be sent through Authorization');
 assert(!html.includes('localhost'), 'Brand Console must not call localhost from browser code');
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');

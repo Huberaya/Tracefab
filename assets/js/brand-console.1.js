@@ -1241,21 +1241,37 @@
           // Phase 2 — donnees du locataire actif. Chaque appel porte l'en-tete
           // de locataire (voir `api`) ; le serveur refuse une requete privee qui
           // ne nomme pas son locataire.
-          const [supplierPayload, materials, products, requests, questionnaires, schemas, certificates] = await Promise.all([
-            api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'), api('/api/questionnaires'), api('/api/catalog/schemas?subjectType=product'),
-            // Les certificats de transaction sont la seule source de
-            // certificats exposee a une marque. Un echec laisse la valeur a
-            // null (« non calculé ») au lieu de la confondre avec zero.
-            api('/api/mass-balance/certificates').catch(() => null),
+          // Le premier rendu ne doit attendre que les données nécessaires à
+          // la navigation et à la vue d'ensemble. Questionnaires, schémas et
+          // certificats sont des jeux secondaires parfois coûteux : les faire
+          // bloquer ici rendait chaque page lente, même sans ouvrir ces vues.
+          const [supplierPayload, materials, products, requests] = await Promise.all([
+            api('/api/suppliers'), api('/api/materials'), api('/api/products'), api('/api/data-requests'),
           ]);
           state.suppliers = supplierPayload.suppliers || [];
           state.materials = materials.materials || [];
           state.products = products.products || [];
           state.requests = requests.requests || [];
-          state.questionnaires = questionnaires.questionnaires || [];
-          state.schemaCatalog = schemas.schemas || [];
-          state.certifications = certificates
-            ? (certificates.certificates || []).map((c) => ({
+          state.loading = false;
+          render();
+
+          // Enrichissements non bloquants. Chaque résultat est publié
+          // indépendamment : une route lente ou indisponible ne retarde plus
+          // les autres et ne masque jamais l'application entière. Le tenant
+          // capturé empêche une réponse tardive de repeupler le tenant suivant.
+          const enrichmentOrganizationId = state.activeOrganizationId;
+          api('/api/questionnaires').then((payload) => {
+            if (state.activeOrganizationId !== enrichmentOrganizationId) return;
+            state.questionnaires = payload.questionnaires || [];
+            if (state.view === 'questionnaires') render();
+          }).catch(() => {});
+          api('/api/catalog/schemas?subjectType=product').then((payload) => {
+            if (state.activeOrganizationId !== enrichmentOrganizationId) return;
+            state.schemaCatalog = payload.schemas || [];
+          }).catch(() => {});
+          api('/api/mass-balance/certificates').then((payload) => {
+            if (state.activeOrganizationId !== enrichmentOrganizationId) return;
+            state.certifications = (payload.certificates || []).map((c) => ({
               id: c.id,
               standard: c.standard,
               number: c.tcNumber,
@@ -1263,10 +1279,12 @@
               expires: c.expiryDate || '',
               status: c.status,
               source: 'transaction_certificate',
-            }))
-            : null;
-          state.loading = false;
-          render();
+            }));
+            if (state.view === 'certifications') render();
+          }).catch(() => {
+            if (state.activeOrganizationId === enrichmentOrganizationId) state.certifications = null;
+          });
+
           // La preparation DPP de la vue d'ensemble vient de l'agregat reel.
           // Chargement silencieux : une route indisponible laisse l'indicateur
           // a « non calculé », elle ne casse pas le tableau de bord.
@@ -4572,7 +4590,36 @@
         render();
       }
 
+      let delegatedFormsBound = false;
+      function bindPersistentForms() {
+        if (delegatedFormsBound) return;
+        delegatedFormsBound = true;
+        // Les modales sont recréées à chaque render(). Une délégation durable
+        // empêche le navigateur d'effectuer une soumission HTML native si un
+        // rendu intermédiaire intervient avant les bindings locaux. C'était la
+        // cause du retour automatique vers la vue d'ensemble.
+        document.addEventListener('submit', async (event) => {
+          const form = event.target;
+          if (!(form instanceof HTMLFormElement) || !['chain-node-form', 'chain-link-form'].includes(form.id)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (form.dataset.submitting === 'true') return;
+          form.dataset.submitting = 'true';
+          const submit = form.querySelector('button[type="submit"]');
+          if (submit) submit.disabled = true;
+          try {
+            if (form.id === 'chain-node-form') await addChainNode(form);
+            else await addChainLink(form);
+          } catch (error) {
+            notify(error instanceof Error ? error.message : 'request_failed', true);
+            form.dataset.submitting = 'false';
+            if (submit) submit.disabled = false;
+          }
+        }, true);
+      }
+
       function bind() {
+        bindPersistentForms();
 
         // Buttons that used to alert() a fake success now say what is actually true.
         document.querySelectorAll('[data-demo-action]').forEach((el) => el.addEventListener('click', (event) => {
@@ -4704,8 +4751,6 @@
           render();
         });
         document.getElementById('request-form')?.addEventListener('submit', (e) => { e.preventDefault(); createRequest(e.currentTarget).catch((err) => notify(err.message, true)); });
-        document.getElementById('chain-node-form')?.addEventListener('submit', (e) => { e.preventDefault(); addChainNode(e.currentTarget).catch((err) => notify(err.message, true)); });
-        document.getElementById('chain-link-form')?.addEventListener('submit', (e) => { e.preventDefault(); addChainLink(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('waive-issue-form')?.addEventListener('submit', (e) => { e.preventDefault(); waiveIssue(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('green-claim-form')?.addEventListener('submit', (e) => { e.preventDefault(); auditGreenClaims(e.currentTarget).catch((err) => notify(err.message, true)); });
       }
