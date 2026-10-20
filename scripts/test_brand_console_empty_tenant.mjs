@@ -348,6 +348,7 @@ try {
   await graphPage.waitForFunction(() => window.tracefabBrandConsole?.state?.modal === null);
   assert.equal(graphScenario.linkWrites.length, 1, 'le premier lien doit appeler POST links exactement une fois');
   assert.equal(graphScenario.linkWrites[0].tenant, ORG_ID, 'le POST links doit porter le tenant actif');
+  assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.supplyChain.graph.links.length), 1, 'le lien créé doit rester visible sans GET auxiliaire destructif');
   assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.view), 'supplyChain', 'la soumission ne doit pas revenir à la vue d’ensemble');
   assert.equal(new URL(graphPage.url()).pathname, '/brand-console/', 'aucune navigation HTML native ne doit avoir lieu');
   assert.equal(new URL(graphPage.url()).searchParams.get('view'), 'supplyChain', 'la vue active doit être inscrite dans l’URL');
