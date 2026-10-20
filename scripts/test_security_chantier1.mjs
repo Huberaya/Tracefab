@@ -125,7 +125,7 @@ const productPointsTs = await readFile(
   'utf8',
 );
 assert(productPointsTs.includes("req.method !== 'GET' && req.method !== 'POST'"), 'Route must support GET and POST');
-assert(productPointsTs.includes('activeBrandOrganizationIds'), 'Route must check brand organization access');
+assert(productPointsTs.includes('requireActiveTenant') && productPointsTs.includes('tenantFilter(tenant)'), 'Route must enforce the one active brand tenant');
 assert(productPointsTs.includes('brand_product_role_required'), 'Route must require brand mutation role');
 assert(productPointsTs.includes('productDataPointMutation'), 'Route must use productDataPointMutation');
 assert(productPointsTs.includes('tracefab_can_access_document'), 'Route must verify source document access');

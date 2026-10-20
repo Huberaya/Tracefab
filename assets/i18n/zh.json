@@ -53,7 +53,17 @@
     "pdNoMatchHint": "请放宽搜索条件，或清除筛选以查看完整目录。",
     "pdOnlyIncomplete": "仅不完整",
     "cnNMaterialCreated": "材料已在当前租户中创建。",
-    "cnMaterialNoClaim": "不会自动添加任何认证、来源或声明。"
+    "cnMaterialNoClaim": "不会自动添加任何认证、来源或声明。",
+    "pxDataPoints": "Structured product data",
+    "pxDataPointsNotice": "Versioned declarations owned by the brand. A declaration is not documentary or third-party verification.",
+    "pxDeclaredOnly": "Declared only",
+    "pxNoDataPoints": "No structured product data has been declared.",
+    "pxDataPointKey": "Controlled data key",
+    "pxDeclaredValue": "Declared value",
+    "pxDeclaredValuePlaceholder": "Value known and explicitly declared",
+    "pxNoEvidenceWarning": "No evidence is attached: the value will remain declared, not documented or verified.",
+    "pxAddDeclaredDataPoint": "Add declared data",
+    "pxDataPointCreated": "Structured product data declared successfully."
   },
   "portal": {
     "spDemoBanner": "演示模式 — 以下数据仅为演示数据。打开 ?demo=0 以连接 Clerk 和 Tracefab API。",

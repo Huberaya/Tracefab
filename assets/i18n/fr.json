@@ -1644,7 +1644,17 @@
     "cnNMaterialCreated": "Matière créée dans le locataire actif.",
     "cnMaterialNoClaim": "Aucune certification, origine ou allégation n’est ajoutée automatiquement.",
     "cnConfigUnavailableBody": "La configuration publique de connexion n’a pas pu être chargée après plusieurs tentatives. Réessayez sans passer en mode démonstration.",
-    "mdOtherDeclared": "Autre procédé déclaré (non précisé)"
+    "mdOtherDeclared": "Autre procédé déclaré (non précisé)",
+    "pxDataPoints": "Données structurées du produit",
+    "pxDataPointsNotice": "Déclarations versionnées sous la responsabilité de la marque. Une déclaration n’est ni une preuve documentaire ni une vérification tierce.",
+    "pxDeclaredOnly": "Déclaré uniquement",
+    "pxNoDataPoints": "Aucune donnée structurée produit n’est déclarée.",
+    "pxDataPointKey": "Clé de donnée contrôlée",
+    "pxDeclaredValue": "Valeur déclarée",
+    "pxDeclaredValuePlaceholder": "Valeur connue et explicitement déclarée",
+    "pxNoEvidenceWarning": "Aucune preuve n’est jointe : la valeur restera déclarée, non documentée et non vérifiée.",
+    "pxAddDeclaredDataPoint": "Ajouter la donnée déclarée",
+    "pxDataPointCreated": "Donnée structurée produit déclarée avec succès."
   },
   "portal": {
     "sites": "Sites de production",

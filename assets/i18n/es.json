@@ -1644,7 +1644,17 @@
     "cnNMaterialCreated": "Material creado en el tenant activo.",
     "cnMaterialNoClaim": "No se añade automáticamente ninguna certificación, origen ni alegación.",
     "cnConfigUnavailableBody": "La configuración pública de conexión no pudo cargarse tras varios intentos. Vuelva a intentarlo sin cambiar al modo de demostración.",
-    "mdOtherDeclared": "Otro proceso declarado (sin especificar)"
+    "mdOtherDeclared": "Otro proceso declarado (sin especificar)",
+    "pxDataPoints": "Structured product data",
+    "pxDataPointsNotice": "Versioned declarations owned by the brand. A declaration is not documentary or third-party verification.",
+    "pxDeclaredOnly": "Declared only",
+    "pxNoDataPoints": "No structured product data has been declared.",
+    "pxDataPointKey": "Controlled data key",
+    "pxDeclaredValue": "Declared value",
+    "pxDeclaredValuePlaceholder": "Value known and explicitly declared",
+    "pxNoEvidenceWarning": "No evidence is attached: the value will remain declared, not documented or verified.",
+    "pxAddDeclaredDataPoint": "Add declared data",
+    "pxDataPointCreated": "Structured product data declared successfully."
   },
   "portal": {
     "sites": "Centros de producción",

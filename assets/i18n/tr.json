@@ -53,7 +53,17 @@
     "pdNoMatchHint": "Aramayı genişletin veya tüm katalogu görmek için filtreleri temizleyin.",
     "pdOnlyIncomplete": "Yalnızca eksik olanlar",
     "cnNMaterialCreated": "Malzeme etkin kiracıda oluşturuldu.",
-    "cnMaterialNoClaim": "Hiçbir sertifika, menşe veya iddia otomatik olarak eklenmez."
+    "cnMaterialNoClaim": "Hiçbir sertifika, menşe veya iddia otomatik olarak eklenmez.",
+    "pxDataPoints": "Structured product data",
+    "pxDataPointsNotice": "Versioned declarations owned by the brand. A declaration is not documentary or third-party verification.",
+    "pxDeclaredOnly": "Declared only",
+    "pxNoDataPoints": "No structured product data has been declared.",
+    "pxDataPointKey": "Controlled data key",
+    "pxDeclaredValue": "Declared value",
+    "pxDeclaredValuePlaceholder": "Value known and explicitly declared",
+    "pxNoEvidenceWarning": "No evidence is attached: the value will remain declared, not documented or verified.",
+    "pxAddDeclaredDataPoint": "Add declared data",
+    "pxDataPointCreated": "Structured product data declared successfully."
   },
   "portal": {
     "spDemoBanner": "Demo modu — aşağıdaki veriler gösterim amaçlıdır. Clerk ve Tracefab API'lerini bağlamak için ?demo=0 adresini açın.",

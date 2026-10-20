@@ -1644,7 +1644,17 @@
     "cnNMaterialCreated": "Materiaal aangemaakt in de actieve tenant.",
     "cnMaterialNoClaim": "Er worden niet automatisch certificeringen, herkomstgegevens of claims toegevoegd.",
     "cnConfigUnavailableBody": "De openbare verbindingsconfiguratie kon na meerdere pogingen niet worden geladen. Probeer opnieuw zonder naar de demomodus te schakelen.",
-    "mdOtherDeclared": "Ander gedeclareerd proces (niet gespecificeerd)"
+    "mdOtherDeclared": "Ander gedeclareerd proces (niet gespecificeerd)",
+    "pxDataPoints": "Structured product data",
+    "pxDataPointsNotice": "Versioned declarations owned by the brand. A declaration is not documentary or third-party verification.",
+    "pxDeclaredOnly": "Declared only",
+    "pxNoDataPoints": "No structured product data has been declared.",
+    "pxDataPointKey": "Controlled data key",
+    "pxDeclaredValue": "Declared value",
+    "pxDeclaredValuePlaceholder": "Value known and explicitly declared",
+    "pxNoEvidenceWarning": "No evidence is attached: the value will remain declared, not documented or verified.",
+    "pxAddDeclaredDataPoint": "Add declared data",
+    "pxDataPointCreated": "Structured product data declared successfully."
   },
   "portal": {
     "sites": "Productielocaties",

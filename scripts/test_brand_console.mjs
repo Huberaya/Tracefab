@@ -62,6 +62,9 @@ assert(html.includes("document.addEventListener('submit', async (event) =>"), 'L
 assert(html.includes("['chain-node-form', 'chain-link-form'].includes(form.id)"), 'La garde de soumission doit couvrir nœuds et liens');
 assert(html.includes("form.dataset.submitting === 'true'"), 'Les mutations du graphe doivent empêcher les doubles soumissions');
 assert(html.includes('if (result.node && !nodes.some((node) => node.id === result.node.id)) nodes.push(result.node)'), 'Un nœud isolé créé doit rester visible jusqu’à sa première liaison');
+assert(html.includes('id="product-data-point-form"'), 'La fiche produit doit exposer le flux API de donnée structurée');
+assert(html.includes('/data-points`'), 'La fiche produit doit charger et créer les points de données par la route tenant-scopée');
+assert(html.includes("pxNoEvidenceWarning"), 'Le formulaire doit distinguer déclaré, documenté et vérifié');
 assert(html.includes('if (result.link && !links.some((link) => link.id === result.link.id)) links.push(result.link)'), 'Un lien créé doit être publié avant tout rechargement auxiliaire');
 assert(html.includes("index === 1 ? 'selected' : ''"), 'La cible du formulaire doit sélectionner par défaut un nœud distinct');
 assert(!html.includes('await loadSupplyChain(state.selectedSupplyChainProduct.id);\n        notify(bt(\'cnNNodeAdded\'))'), 'La création d’un nœud isolé ne doit pas recharger un graphe qui ne peut pas encore le relire');
@@ -111,7 +114,7 @@ assert(!/DISABLE ROW LEVEL SECURITY|NO FORCE ROW LEVEL SECURITY/i.test(schemaBin
 // etat degrade explicite + reessai, et jamais un await en serie qui masque la fiche.
 assert(html.includes('retry-schema-bindings'), 'Brand Console doit proposer un reessai du chargement schema-bindings degrade');
 assert(html.includes('data-schema-panel="degraded"') && html.includes('data-schema-panel="loaded"'), 'Brand Console doit distinguer explicitement panneau degrade et panneau charge');
-assert(html.includes('await loadSchemaBindings(id);'), 'openProduct doit deleguer le chargement auxiliaire a une fonction qui ne jette jamais');
+assert(html.includes('await Promise.all([loadSchemaBindings(id), loadProductDataPoints(id)]);'), 'openProduct doit déléguer ses chargements auxiliaires à des fonctions qui ne jettent jamais');
 assert(html.includes("if (view === 'products' && cible) { await openProduct(cible); return; }"), 'Corriger dans Produits doit ouvrir la fiche visee, pas revenir au catalogue');
 assert(reminderMigration.includes("request_manual_reminder") && reminderMigration.includes('ON CONFLICT (event_key) DO NOTHING') && reminderMigration.includes('REVOKE EXECUTE'), 'Manual reminder migration must be typed, idempotent and non-public');
 assert(email.includes('request_manual_reminder'), 'Manual reminder email copy is missing');
