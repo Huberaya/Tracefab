@@ -53,6 +53,8 @@ assert(supplyChainLib.includes('groupGraphByStages'), 'Helper must define groupG
 assert(supplyChainLib.includes('computeTraceabilitySummary'), 'Helper must define computeTraceabilitySummary');
 assert(supplyChainLib.includes('TEXTILE_PROCESS_CODES'), 'Helper must define TEXTILE_PROCESS_CODES');
 assert(supplyChainLib.includes('PROCESS_LABELS'), 'Helper must define PROCESS_LABELS');
+assert(supplyChainLib.includes("throw new Error('invalid_process_node_reference')"), 'API must reject a process node without process code before PostgreSQL');
+assert(supplyChainLib.includes('references.length !== 1'), 'API must mirror the exactly-one-reference database invariant');
 
 const getRoute = await readFile(new URL('../api/_routes/products/[productId]/supply-chain.ts', import.meta.url), 'utf8');
 assert(getRoute.includes('tracefab_get_product_traceability'), 'GET route must call tracefab_get_product_traceability');
@@ -142,6 +144,7 @@ for (const etape of ['Filature', 'Tissage', 'Confection', 'Produit Fini']) {
 }
 assert(!brandConsoleHtml.includes('data-action="generate-baseline-chain">'), 'Real console must not offer invented baseline generation');
 assert(brandConsoleHtml.includes('data-action="new-chain-node"'), 'Brand console must offer add node action');
+assert(brandConsoleHtml.includes('<option value="other">'), 'Process form must offer a neutral declared-other code instead of forcing an invented textile process');
 assert(brandConsoleHtml.includes('data-action="new-chain-link"'), 'Brand console must offer add link action');
 assert(brandConsoleHtml.includes('data-delete-chain-link'), 'Brand console must allow link deletion');
 assert(brandConsoleHtml.includes('product-supply-chain-from-detail'), 'Brand console product detail must have direct link to supply chain');

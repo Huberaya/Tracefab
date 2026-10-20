@@ -114,6 +114,7 @@ async function stubEmptyTenant(page, overrides = {}) {
   const unexpected = [];
   const materialWrites = [];
   const nodeWrites = [];
+  const linkWrites = [];
   await page.route('**/api/**', (route) => {
     const key = routeKey(route.request().url());
     if (key === '/api/config') return route.fallback();
@@ -133,7 +134,16 @@ async function stubEmptyTenant(page, overrides = {}) {
       return route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify({ node: { id: '22222222-2222-4222-8222-222222222222', node_type: body.nodeType, label: body.label, status: 'declared' } }),
+        body: JSON.stringify({ node: { id: nodeWrites.length === 1 ? '22222222-2222-4222-8222-222222222222' : '44444444-4444-4444-8444-444444444444', node_type: body.nodeType, label: body.label, process_code: body.processCode, status: 'declared' } }),
+      });
+    }
+    if (/^\/api\/products\/[^/]+\/supply-chain\/links$/.test(key) && route.request().method() === 'POST') {
+      const body = route.request().postDataJSON();
+      linkWrites.push({ body, tenant: route.request().headers()['x-tracefab-organization-id'] });
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ link: { id: '55555555-5555-4555-8555-555555555555', source_node_id: body.sourceNodeId, target_node_id: body.targetNodeId, link_type: body.linkType, status: 'declared' } }),
       });
     }
     const override = overrides[key];
@@ -155,7 +165,7 @@ async function stubEmptyTenant(page, overrides = {}) {
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
-  return { seen, unexpected, materialWrites, nodeWrites };
+  return { seen, unexpected, materialWrites, nodeWrites, linkWrites };
 }
 
 async function openConsole(browser, path, overrides = {}) {
@@ -322,6 +332,22 @@ try {
   assert.equal(graphScenario.nodeWrites[0].tenant, ORG_ID, 'le POST nodes doit porter le tenant actif');
   assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.supplyChain.graph.nodes.length), 1, 'le nœud isolé créé doit rester visible avant sa première liaison');
   assert.equal(await graphPage.locator('.tc-echelon-card', { hasText: 'Declared synthetic step — not verified' }).count(), 1, 'la réponse POST doit être rendue sans rechargement destructif du graphe');
+
+  await graphPage.locator('button[data-action="new-chain-node"]').click();
+  await graphPage.locator('#chain-node-form input[name="label"]').fill('Second declared synthetic step — not verified');
+  await graphPage.locator('#chain-node-form select[name="nodeType"]').selectOption('process');
+  await graphPage.locator('#chain-node-form select[name="processCode"]').selectOption('other');
+  await graphPage.locator('#chain-node-form button[type="submit"]').click();
+  await graphPage.waitForFunction(() => window.tracefabBrandConsole?.state?.supplyChain?.graph?.nodes?.length === 2);
+  assert.equal(graphScenario.nodeWrites[1].body.processCode, 'other', 'le processus synthétique doit employer le code neutre other, pas un procédé inventé');
+  assert.equal(await graphPage.locator('button[data-action="new-chain-link"]').count(), 1, 'deux nœuds doivent rendre la création du premier lien accessible');
+  await graphPage.locator('button[data-action="new-chain-link"]').click();
+  await graphPage.locator('#chain-link-form select[name="sourceNodeId"]').selectOption('22222222-2222-4222-8222-222222222222');
+  await graphPage.locator('#chain-link-form select[name="targetNodeId"]').selectOption('44444444-4444-4444-8444-444444444444');
+  await graphPage.locator('#chain-link-form button').last().click();
+  await graphPage.waitForFunction(() => window.tracefabBrandConsole?.state?.modal === null);
+  assert.equal(graphScenario.linkWrites.length, 1, 'le premier lien doit appeler POST links exactement une fois');
+  assert.equal(graphScenario.linkWrites[0].tenant, ORG_ID, 'le POST links doit porter le tenant actif');
   assert.equal(await graphPage.evaluate(() => window.tracefabBrandConsole.state.view), 'supplyChain', 'la soumission ne doit pas revenir à la vue d’ensemble');
   assert.equal(new URL(graphPage.url()).pathname, '/brand-console/', 'aucune navigation HTML native ne doit avoir lieu');
   assert.equal(new URL(graphPage.url()).searchParams.get('view'), 'supplyChain', 'la vue active doit être inscrite dans l’URL');

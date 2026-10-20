@@ -1,6 +1,7 @@
 import { organization_type, Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
+import { sqlBusinessError } from '.././_lib/sql-errors.js';
 import { withTracefabUserContext } from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 
@@ -75,6 +76,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 201, { organization });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    const businessError = sqlBusinessError(error);
+    if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return json(res, 409, { error: 'organization_already_exists' });
     }
