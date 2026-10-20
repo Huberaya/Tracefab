@@ -1,8 +1,9 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabRequestContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
-import { activeBrandOrganizationIds, isUuid } from '../../../../_lib/products.js';
+import { isUuid } from '../../../../_lib/products.js';
+import { isTenantError, requireActiveTenant, tenantFilter } from '../../../../_lib/tenant.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { validateNodeInput, type SupplyChainNodeRecord } from '../../../../_lib/supply-chain.js';
 
@@ -21,10 +22,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = await readJsonBody<Record<string, unknown>>(req);
     const input = validateNodeInput(body);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandOrgIds = await activeBrandOrganizationIds(tx, user.id);
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
       const product = await tx.tracefab_products.findFirst({
-        where: { id: productId, brand_organization_id: { in: brandOrgIds } },
+        where: { id: productId, brand_organization_id: tenantFilter(tenant) },
         select: { id: true, brand_organization_id: true },
       });
       if (!product) return null;
@@ -72,6 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 201, { node: result });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && (/^invalid_|^traceability_/.test(error.message))) {

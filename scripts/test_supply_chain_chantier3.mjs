@@ -61,9 +61,9 @@ const baselineRoute = await readFile(
   new URL('../api/_routes/products/[productId]/supply-chain/generate-baseline.ts', import.meta.url),
   'utf8',
 );
-assert(baselineRoute.includes('tracefab_create_supply_chain_node'), 'Baseline route must create supply chain nodes');
-assert(baselineRoute.includes('tracefab_add_supply_chain_link'), 'Baseline route must create supply chain links');
-assert(baselineRoute.includes('product_materials'), 'Baseline route must inspect product materials to build tiers');
+assert(baselineRoute.includes('synthetic_baseline_generation_disabled'), 'Baseline route must reject invented provenance generation');
+assert(!baselineRoute.includes('tracefab_create_supply_chain_node'), 'Disabled baseline must not manufacture supply chain nodes');
+assert(!baselineRoute.includes('tracefab_add_supply_chain_link'), 'Disabled baseline must not manufacture supply chain links');
 
 const addNodeRoute = await readFile(
   new URL('../api/_routes/products/[productId]/supply-chain/nodes.ts', import.meta.url),
@@ -90,6 +90,19 @@ const linkDetailRoute = await readFile(
 );
 assert(linkDetailRoute.includes('tracefab_update_supply_chain_link'), 'Link detail route must support updates');
 assert(linkDetailRoute.includes('deleteMany'), 'Link detail route must support deletion');
+
+for (const [name, route] of [
+  ['graph GET', getRoute],
+  ['node POST', addNodeRoute],
+  ['node detail', nodeDetailRoute],
+  ['link POST', addLinkRoute],
+  ['link detail', linkDetailRoute],
+]) {
+  assert(route.includes('withTracefabRequestContext(req, user'), `${name} must arm the request tenant in PostgreSQL`);
+  assert(route.includes('requireActiveTenant'), `${name} must require one active brand tenant`);
+  assert(route.includes('tenantFilter(tenant)'), `${name} must scope the product to that tenant`);
+  assert(!route.includes('activeBrandOrganizationIds'), `${name} must not fall back to every brand membership`);
+}
 
 // 3. Verify Brand Console UI
 console.log('3. Checking Brand Console UI implementation...');
@@ -124,7 +137,7 @@ assert(frConsole.materials === 'Matières', 'la copie FR de l etape Matieres doi
 for (const etape of ['Filature', 'Tissage', 'Confection', 'Produit Fini']) {
   assert(brandConsoleHtml.includes(etape), `Brand console must name the ${etape} stage`);
 }
-assert(brandConsoleHtml.includes('data-action="generate-baseline-chain"'), 'Brand console must offer baseline generation action');
+assert(!brandConsoleHtml.includes('data-action="generate-baseline-chain">'), 'Real console must not offer invented baseline generation');
 assert(brandConsoleHtml.includes('data-action="new-chain-node"'), 'Brand console must offer add node action');
 assert(brandConsoleHtml.includes('data-action="new-chain-link"'), 'Brand console must offer add link action');
 assert(brandConsoleHtml.includes('data-delete-chain-link'), 'Brand console must allow link deletion');
