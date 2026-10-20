@@ -195,6 +195,7 @@ BEGIN
   END IF;
 
   INSERT INTO supply_chain_nodes (
+    graph_product_id,
     node_type,
     organization_id,
     supplier_site_id,
@@ -209,6 +210,7 @@ BEGIN
     observed_at
   )
   VALUES (
+    p_graph_product_id,
     p_node_type,
     p_organization_id,
     p_supplier_site_id,

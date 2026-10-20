@@ -152,15 +152,15 @@ await preprod.connect();
      SELECT 'e0000000-0000-4000-8000-0000000000e2', s.id, 'Site Confection', 'TN'
      FROM suppliers s WHERE s.organization_id = $1 LIMIT 1`, [U.org]);
   await preprod.query(
-    `INSERT INTO supply_chain_nodes (id, node_type, product_id, label, status)
-     VALUES ('e0000000-0000-4000-8000-0000000000e3', 'product', $1, 'Confection', 'declared')`, [U.pa]);
+    `INSERT INTO supply_chain_nodes (id, graph_product_id, node_type, product_id, label, status)
+     VALUES ('e0000000-0000-4000-8000-0000000000e3', $1, 'product', $1, 'Confection', 'declared')`, [U.pa]);
   // Site rattaché au produit publié. tracefab_supplier_site_is_public exige un
   // nœud dont supplier_site_id = le site ET dont product_id est public : deux
   // nœuds distincts, chacun avec UNE seule référence (trigger
   // tracefab_validate_supply_chain_node).
   await preprod.query(
-    `INSERT INTO supply_chain_nodes (id, node_type, supplier_site_id, label, status)
-     VALUES ('e0000000-0000-4000-8000-0000000000e4', 'site', 'e0000000-0000-4000-8000-0000000000e2', 'Site confection', 'declared')`);
+    `INSERT INTO supply_chain_nodes (id, graph_product_id, node_type, supplier_site_id, label, status)
+     VALUES ('e0000000-0000-4000-8000-0000000000e4', $1, 'site', 'e0000000-0000-4000-8000-0000000000e2', 'Site confection', 'declared')`, [U.pa]);
   await preprod.query(
     `INSERT INTO dpp_records (id, product_id, product_version, requirement_profile_key,
        requirement_profile_version, readiness_status, reviewed_at, reviewed_by) VALUES

@@ -122,8 +122,8 @@ await proprio.query(
 // reference parmi (organization_id, supplier_site_id, product_id, material_id,
 // process_code) : ce noeud porte donc le seul product_id.
 await proprio.query(
-  `INSERT INTO supply_chain_nodes (id, node_type, product_id, label, status)
-   VALUES ($1, 'product', $2, 'Confection Preuve', 'declared')`,
+  `INSERT INTO supply_chain_nodes (id, graph_product_id, node_type, product_id, label, status)
+   VALUES ($1, $2, 'product', $2, 'Confection Preuve', 'declared')`,
   [U.node, U.p1]);
 // Publication explicite : dpp_records publie et RELU, puis slug.
 await proprio.query(
