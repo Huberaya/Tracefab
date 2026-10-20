@@ -284,5 +284,16 @@ CREATE POLICY nodes_select_traceability_graph ON supply_chain_nodes FOR SELECT T
 REVOKE EXECUTE ON FUNCTION tracefab_validate_supply_chain_node() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION tracefab_validate_supply_chain_link() FROM PUBLIC;
 
+-- All graph writes now go through tenant-authorized SECURITY DEFINER functions.
+-- Remove the obsolete direct DML capability from the restricted runtime role.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
+    REVOKE INSERT, UPDATE, DELETE ON supply_chain_nodes FROM tracefab_app;
+    REVOKE INSERT, UPDATE, DELETE ON supply_chain_links FROM tracefab_app;
+  END IF;
+END;
+$$;
+
 COMMENT ON COLUMN supply_chain_nodes.graph_product_id IS
   'Canonical owning traceability graph. Immutable after creation; not evidence of provenance or verification.';
