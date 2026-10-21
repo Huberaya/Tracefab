@@ -1,10 +1,11 @@
 -- Least-privilege EXECUTE grants for the TraceFab application runtime.
 --
--- The bootstrap previously granted EXECUTE on every function in public and
--- added the same grant to default privileges. This left all 117 current
+-- The bootstrap previously granted EXECUTE on every function in public
+-- and added the same grant to default privileges. This left all 117 current
 -- SECURITY DEFINER functions callable by tracefab_app, including trigger-only
--- and nested helpers. PUBLIC was already denied EXECUTE on SECURITY DEFINER
--- functions; this migration narrows the named runtime role as well.
+-- and nested helpers. On a fresh database, five SECURITY DEFINER functions
+-- were also executable by PUBLIC, so this migration explicitly revokes PUBLIC
+-- EXECUTE before granting only the reviewed runtime/RLS allowlist.
 --
 -- Allowlist source: direct SQL calls in api/, functions referenced by RLS policy
 -- expressions, and transitive dependencies of SECURITY INVOKER helpers. Keep synchronized with
