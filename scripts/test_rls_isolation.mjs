@@ -89,7 +89,8 @@ const inventaire = (await proprio.query(`
   where n.nspname = 'public' and c.relkind = 'r'
   order by c.relname`)).rows;
 
-const tables = inventaire.map((r) => r.relname);
+// Le registre Prisma est owner-only : ce n'est pas une table applicative à sonder sous RLS.
+const tables = inventaire.map((r) => r.relname).filter((t) => t !== '_prisma_migrations');
 const sansRls = inventaire.filter((r) => !r.relrowsecurity && !REFERENCE.has(r.relname)).map((r) => r.relname);
 if (sansRls.length) ko(`${sansRls.length} table(s) de locataire sans ROW LEVEL SECURITY : ${sansRls.join(' · ')}`);
 else ok(`${tables.length} tables inventoriees, toutes les tables de locataire portent la RLS`);
@@ -213,9 +214,10 @@ if (duo.length < 2) {
     console.log(`        lignes visibles des deux cotes : ${communes.reduce((n, [, c]) => n + c, 0)}`
       + (communes.length ? ` (${communes.map(([t, n]) => `${t}:${n}`).join(' · ')})` : ''));
 
-    const toutVu = tenant.filter((t) => total[t] > 0 && a.vues[t]?.size === total[t]);
-    if (toutVu.length) ko(`${toutVu.length} table(s) entierement visibles par un seul locataire : ${toutVu.join(' · ')}`);
-    else ok('aucune table de locataire n est integralement visible par un seul utilisateur');
+    const toutVu = tenant.filter((t) => total[t] > 0
+      && a.vues[t]?.size === total[t] && b.vues[t]?.size === total[t]);
+    if (toutVu.length) ko(`${toutVu.length} table(s) entierement visibles par les deux locataires : ${toutVu.join(' · ')}`);
+    else ok('aucune table de locataire ne révèle toutes ses lignes aux deux locataires');
   }
 }
 
