@@ -212,12 +212,22 @@ async function enTantQue(userId, fn) {
   }
 }
 
-/** Renvoie { ok, code, rows } sans lever. */
+/** Renvoie { ok, code, rows } sans lever.
+ *
+ * Une erreur SQL annule la transaction courante jusqu'au ROLLBACK.
+ * Chaque tentative est donc isolée par un savepoint : en particulier,
+ * un DELETE refusé par les privilèges minimaux ne doit pas faire échouer
+ * artificiellement le contrôle positif UPDATE qui suit dans la même
+ * transaction. */
 async function tente(sql, params = []) {
+  await app.query('SAVEPOINT tentative_operation');
   try {
     const r = await app.query(sql, params);
+    await app.query('RELEASE SAVEPOINT tentative_operation');
     return { ok: true, rows: r.rows, count: r.rowCount };
   } catch (e) {
+    await app.query('ROLLBACK TO SAVEPOINT tentative_operation');
+    await app.query('RELEASE SAVEPOINT tentative_operation');
     return { ok: false, code: e.code, message: String(e.message).split('\n')[0] };
   }
 }
