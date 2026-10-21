@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-dpp-requested="true" data-dpp-source="unavailable">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -372,7 +372,7 @@
     .lifecycle-more:hover, .lifecycle-more:focus-visible { border-color:var(--primary); outline:3px solid var(--primary-glow); outline-offset:2px; }
     .live-data-note { display:none; margin:0 20px 20px; padding:12px 14px; border-left:3px solid var(--primary); background:var(--primary-soft); color:var(--forest-800); font-size:12px; }
     html[data-dpp-source]:not([data-dpp-source="demo"]) .live-data-note { display:block; }
-    html[data-dpp-source]:not([data-dpp-source="demo"]) [data-dpp-demo-only], html[data-dpp-requested="true"] [data-dpp-demo-only] { display:none !important; }
+    html[data-dpp-source]:not([data-dpp-source="demo"]) [data-dpp-demo-only], html[data-dpp-requested="true"] [data-dpp-demo-only], html[data-dpp-source="unavailable"] [data-tf-demo] { display:none !important; }
 
     /* Supply Chain Flow Timeline (Vertical on Mobile) */
     .trace-timeline {
@@ -720,7 +720,7 @@
          description lui sont propres, d'ou TF_I18N_SKIP_META. -->
     <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=8b6766ac"></script>
+    <script src="/assets/i18n/en.js?v=f09f61cb"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
     <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
@@ -757,7 +757,7 @@
     <!-- Statut de la source : visible par defaut, masque des qu'une donnee
          reelle est hydratee. Afficher de la demonstration sans le dire
          serait le pire cas pour un passeport destine au consommateur. -->
-    <div id="dpp-demo-banner" class="dpp-demo-banner">
+    <div id="dpp-demo-banner" class="dpp-demo-banner" hidden>
       <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.1c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
       <span data-i18n="dpp.demoBanner">Demonstration passport — sample data, not a real product.</span>
     </div>
@@ -779,10 +779,10 @@
       <!-- Badges de demonstration : certifications fictives, jamais visibles
            derriere un identifiant reel (data-dpp-demo-only). -->
       <div class="trust-pill-bar" data-dpp-demo-only tabindex="0" role="region" aria-label="Certifications">
-        <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ 100% certified materials</span>
-        <span class="trust-badge-item">GOTS Certified</span>
-        <span class="trust-badge-item">OEKO-TEX Class 1</span>
-        <span class="trust-badge-item" data-i18n="dpp.heroMadeIn">Made in Portugal</span>
+        <span class="trust-badge-item verified" data-i18n="dpp.heroCertified">✓ Example data · not independently verified</span>
+        <span class="trust-badge-item">Certification not provided</span>
+        <span class="trust-badge-item">Certification not provided</span>
+        <span class="trust-badge-item" data-i18n="dpp.heroMadeIn">Manufacturing origin not provided</span>
       </div>
       <!-- Affirmations REELLES publiees pour le produit, rendues par dpp.2.js
            depuis l'API avec leur niveau de controle exact. Aucune certification
@@ -845,7 +845,7 @@
               <div style="font-size:11px;color:var(--text-muted);" data-i18n="dpp.matOrigin">Origin: Portugal (São Martinho farm)</div>
             </div>
           </div>
-          <span style="font-weight:600;color:var(--primary);">GOTS v6.0</span>
+          <span style="font-weight:600;color:var(--primary);">No standard claimed</span>
         </div>
 
         <div class="comp-item">
@@ -864,7 +864,7 @@
         <div class="info-card">
           <span data-i18n="dpp.matChemicals">Chemical substances</span>
           <strong data-i18n="dpp.matNonToxic">0% toxic</strong>
-          <p data-i18n="dpp.matReach">Complies with REACH and OEKO-TEX Standard 100.</p>
+          <p data-i18n="dpp.matReach">No chemical-compliance evidence provided in this example.</p>
         </div>
         <div class="info-card">
           <span data-i18n="dpp.matMicrofibres">Plastic microfibres</span>
@@ -892,7 +892,7 @@
               <span class="node-tier-tag">Tier 4</span>
             </div>
             <div class="node-sub">Quinta de São Martinho · Alentejo, Portugal</div>
-            <div class="node-proof" data-i18n="dpp.chainGotsCert">✓ GOTS certificate #CU-881294</div>
+            <div class="node-proof" data-i18n="dpp.chainGotsCert">No certificate evidence provided</div>
           </div>
         </div>
 
@@ -944,7 +944,7 @@
               <span class="node-tier-tag">Tier 1</span>
             </div>
             <div class="node-sub">Nhãn Textile Manufacturing · Porto, Portugal</div>
-            <div class="node-proof" data-i18n="dpp.chainSmeta">✓ SMETA 4-Pillar social audit (score A)</div>
+            <div class="node-proof" data-i18n="dpp.chainSmeta">✓ No audit provided 4-Pillar social audit (score A)</div>
           </div>
         </div>
       </div>
@@ -985,7 +985,7 @@
         <div class="info-card">
           <span data-i18n="dpp.impWater">Water consumption</span>
           <strong data-i18n="dpp.impWaterValue">1,480 litres</strong>
-          <p data-i18n="dpp.impThanksTo">-64% thanks to GOTS-certified rain-fed organic cotton.</p>
+          <p data-i18n="dpp.impThanksTo">No verified impact claim is provided in this example.</p>
         </div>
         <div class="info-card">
           <span data-i18n="dpp.impMicroplastics">Microplastic release</span>
@@ -1049,8 +1049,8 @@
         <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
-              <strong>Global Organic Textile Standard (GOTS)</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evGotsRef">Certificate: CU-881294-GOTS-2026</div>
+              <strong>Certification not provided</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evGotsRef">No certificate reference</div>
             </div>
             <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evValid2027">Valid 2027</span>
           </div>
@@ -1060,8 +1060,8 @@
         <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
-              <strong data-i18n="dpp.evOekotex">OEKO-TEX Standard 100 — Class 1</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evOekotexRef">Report: 21.HPT.94112</div>
+              <strong data-i18n="dpp.evOekotex">Certification not provided</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evOekotexRef">Report: No certificate identifier</div>
             </div>
             <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evValid2026">Valid 2026</span>
           </div>
@@ -1071,8 +1071,8 @@
         <div style="border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px;background:#ffffff;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
-              <strong data-i18n="dpp.evSmeta">SMETA 4-Pillar social audit (ethics and safety)</strong>
-              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evSmetaRef">Ref.: SEDEX-SMETA-2026-PT</div>
+              <strong data-i18n="dpp.evSmeta">No audit provided 4-Pillar social audit (ethics and safety)</strong>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" data-i18n="dpp.evSmetaRef">Ref.: SEDEX-No audit provided-2026-PT</div>
             </div>
             <span class="trust-badge-item verified" style="font-size:10px;padding:2px 8px;" data-i18n="dpp.evCompliant">Compliant</span>
           </div>
@@ -1222,7 +1222,7 @@
 
   <script src="/assets/js/dpp.1.js?v=d4fa6346"></script>
 
-  <script src="/assets/js/dpp.2.js?v=9f1a79cf"></script>
+  <script src="/assets/js/dpp.2.js?v=224f5a6e"></script>
 
 </body>
 </html>

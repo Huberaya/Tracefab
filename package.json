@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
-    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:active-tenant && npm run test:security:chantier1 && npm run test:error-reporting && npm run test:sql-errors && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:supplychain:contract && npm run test:dpp:chantier4 && npm run test:dpp:lifecycle && npm run test:dpp:evidence && npm run test:dpp:quality && npm run test:dpp:identity && npm run test:dpp:demo-separation && npm run test:context-integrity && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:brand-journey && npm run test:brand-journey-58 && npm run test:clerk-proxy && npm run test:supplier-portal && npm run test:questionnaires",
+    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:active-tenant && npm run test:security:chantier1 && npm run test:error-reporting && npm run test:sql-errors && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:supplychain:contract && npm run test:dpp:chantier4 && npm run test:dpp:lifecycle && npm run test:dpp:evidence && npm run test:dpp:quality && npm run test:dpp:identity && npm run test:dpp:demo-separation && npm run test:context-integrity && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:brand-journey && npm run test:brand-journey-58 && npm run test:customer-journey:blockers && npm run test:clerk-proxy && npm run test:supplier-portal && npm run test:questionnaires",
     "test:sql-errors": "node scripts/test_sql_business_errors.mjs",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "node scripts/run-db-suite.mjs scripts/test_neon_bulk_operations_chantier8.mjs",
@@ -172,7 +172,8 @@
     "db:historique-migrations": "node scripts/lire-historique-migrations.mjs",
     "test:supplychain:contract": "node scripts/test_supply_chain_contract.mjs",
     "test:brand-journey": "node scripts/test_brand_journey_truthfulness.mjs",
-    "test:brand-journey-58": "node scripts/test_brand_journey_58_defects.mjs"
+    "test:brand-journey-58": "node scripts/test_brand_journey_58_defects.mjs",
+    "test:customer-journey:blockers": "node scripts/test_customer_journey_release_blockers.mjs"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^6.19.3",

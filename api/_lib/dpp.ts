@@ -55,7 +55,7 @@ export const DPP_STATUS_LABELS: Record<DppReadinessStatus, string> = {
   not_started: 'Non démarré',
   in_progress: 'Données incomplètes',
   review_required: 'Revue requise',
-  data_ready: 'Prêt pour validation',
+  data_ready: 'Structure technique complète · revue requise',
   ready_to_publish: 'Validé & Prêt à publier',
   published: 'Publié',
 };
@@ -66,11 +66,16 @@ export const DPP_REQUIREMENT_LABELS: Record<string, string> = {
   'product.description': 'Description détaillée (min. 30 caractères)',
   'product.category': 'Catégorie textile définie',
   'product.country_of_manufacture': 'Pays de confection (code ISO-2)',
+  'product.required_attributes': 'Couleur, poids et tailles renseignés',
   'product.data_ready': 'Préparation générale des données produit',
-  'composition.complete': 'Composition matière exhaustive (total 100%)',
-  'traceability.graph': 'Graphe de traçabilité multi-rangs actif',
+  'product.not_draft': 'Produit sorti du statut brouillon',
+  'composition.complete': 'Pourcentages matière totalisés à 100 %',
+  'materials.origin_documented': 'Origine pays renseignée pour chaque matière',
+  'traceability.graph': 'Structure du graphe de traçabilité présente',
+  'traceability.documented': 'Toutes les étapes de traçabilité sont documentées',
   'quality.no_blocking_issues': 'Absence d’anomalie bloquante sur le score qualité',
-  'evidence.product_data': 'Preuves documentaires associées aux données',
+  'quality.no_open_issues': 'Absence d’anomalie qualité ouverte',
+  'evidence.product_data': 'Documents sources disponibles pour les données produit',
 };
 
 export function classifyRequirementPillar(key: string): DppPillar {
@@ -88,17 +93,17 @@ export const PILLAR_METADATA: Record<DppPillar, { name: string; description: str
   },
   composition: {
     name: 'Composition Matières',
-    description: 'Répartition exhaustive et validée à 100% des fibres et matériaux.',
+    description: 'Pourcentages de composition totalisés ; cela ne constitue pas une certification.',
     icon: '🧵',
   },
   traceability: {
-    name: 'Traçabilité Supply Chain',
-    description: 'Graphe multi-rangs reliant les matières, filatures, ateliers et sites.',
+    name: 'Traçabilité de la chaîne',
+    description: 'Structure du graphe et couverture documentaire des étapes déclarées.',
     icon: '☍',
   },
   quality: {
     name: 'Qualité & Preuves',
-    description: 'Absence d’anomalies critiques et validation documentaire.',
+    description: 'Anomalies ouvertes et présence de documents sources ; ce score ne vaut pas validation tierce.',
     icon: '🛡️',
   },
 };
@@ -143,10 +148,14 @@ export function buildDppSummary(
     'product.description',
     'product.category',
     'product.country_of_manufacture',
-    'product.data_ready',
+    'product.required_attributes',
     'composition.complete',
+    'materials.origin_documented',
     'traceability.graph',
-    'quality.no_blocking_issues',
+    'traceability.documented',
+    'quality.no_open_issues',
+    'evidence.product_data',
+    'product.not_draft',
   ];
 
   const pillars: Record<DppPillar, DppPillarInfo> = {
@@ -195,11 +204,14 @@ export function buildDppSummary(
     const pillarKey = classifyRequirementPillar(key);
     const label = DPP_REQUIREMENT_LABELS[key] || key;
     const isMissing = missingList.some((m) => m.key === key);
-    const isBlocking = blockingList.some((b) => b.key === key) || true;
+    const isBlocking = blockingList.some((b) => b.key === key)
+      || missingList.some((m) => m.key === key && m.blocking);
 
-    // Check if recorded in snapshot results
+    // Fail closed: a requirement absent from the persisted evaluation is not
+    // silently considered met. This also prevents records calculated with an
+    // older, narrower profile from becoming publication-ready.
     const snapshotMet = snapshotResults.find((r) => r.key === key)?.met;
-    const met = snapshotMet !== undefined ? snapshotMet : !isMissing && record !== null;
+    const met = snapshotMet === true && !isMissing;
 
     pillars[pillarKey].total += 1;
     totalReqCount += 1;
@@ -244,7 +256,11 @@ export function buildDppSummary(
     missingFields: missingList,
     blockingIssues: blockingList,
     pillars,
-    canMarkReadyToPublish: readinessStatus === 'data_ready',
+    canMarkReadyToPublish: readinessStatus === 'data_ready'
+      && totalReqCount > 0
+      && totalMetCount === totalReqCount
+      && blockingList.length === 0
+      && missingList.length === 0,
     isReadyToPublish: readinessStatus === 'ready_to_publish',
     computedAt: record?.computed_at ? new Date(record.computed_at).toISOString() : null,
     reviewedAt: record?.reviewed_at ? new Date(record.reviewed_at).toISOString() : null,

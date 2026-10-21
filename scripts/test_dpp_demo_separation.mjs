@@ -102,8 +102,6 @@ function analyseTextScope(source) {
 }
 
 const mentions = [
-  'Atelier Demo',
-  '2026-FW',
   '100% certified materials',
   'GOTS Certified',
   'OEKO-TEX Class 1',
@@ -112,26 +110,7 @@ const mentions = [
 const scopes = analyseTextScope(html);
 for (const mention of mentions) {
   const hits = scopes.filter((s) => s.text.includes(mention));
-  ok(hits.length > 0, `mention auditéee présente dans le HTML : « ${mention} »`);
-  const exposed = hits.filter((s) => !s.demoScope && !s.fieldBound && !s.inJsonLd);
-  ok(
-    exposed.length === 0,
-    exposed.length === 0
-      ? `« ${mention} » n'apparaît que sous data-dpp-demo-only ou binding data-dpp-field`
-      : `« ${mention} » visible hors démonstration (${exposed.length} occurrence(s))`,
-  );
-  const jsonldHits = hits.filter((s) => s.inJsonLd);
-  for (const hit of jsonldHits) {
-    // REVUE 2C.38 : la réécriture JS ne suffit pas — la réponse initiale
-    // (avant hydratation) est lue par les moteurs de recherche, curl et les
-    // clients sans JavaScript. Aucune mention fictive n'est tolérée dans le
-    // JSON-LD statique, même promise à une réécriture.
-    ok(false, `« ${mention} » présente dans le JSON-LD statique — exposée dans la réponse initiale`);
-    void hit;
-  }
-  if (jsonldHits.length === 0) {
-    ok(true, `« ${mention} » absente du JSON-LD statique (réponse initiale neutre)`);
-  }
+  ok(hits.length === 0, `allégation fictive supprimée du HTML : « ${mention} »`);
 }
 
 /* --- réponse initiale : JSON-LD statique et métadonnées sans affirmation --- */
@@ -165,8 +144,8 @@ for (const mention of mentions) {
 ok(/id="dpp-demo-banner"/.test(html), 'bandeau de démonstration présent');
 // La barre d'affirmations réelles existe.
 ok(/id="dpp-claims-bar"/.test(html), 'barre d affirmations réelles présente');
-ok(/data-dpp-demo-only[^>]*class="trust-pill-bar"|class="trust-pill-bar"[^>]*data-dpp-demo-only/.test(html),
-  'badges de certification fictifs portés par data-dpp-demo-only');
+ok(!/GOTS Certified|OEKO-TEX Class 1|100% certified materials/.test(html),
+  'aucun badge de certification fictif conservé dans le HTML');
 
 /* ---------------------------------------------------------------------------
  * 2. Réécriture / neutralisation du JSON-LD par dpp.2.js

@@ -55,7 +55,14 @@
         || (fromPath && fromPath !== 'dpp' && !/\.html?$/.test(fromPath) ? fromPath : null);
 
       const banner = document.getElementById('dpp-demo-banner');
-      if (!id) return;                       // pas d'identifiant : demo assumee
+      if (!id) {
+        // Fail closed: the bare /dpp/ URL must not silently substitute a
+        // polished sample passport for the product selected in Brand Console.
+        document.documentElement.setAttribute('data-dpp-requested', 'true');
+        document.documentElement.setAttribute('data-dpp-source', 'unavailable');
+        if (banner) { banner.hidden = false; banner.textContent = 'Aucun passeport demandé — un identifiant produit résolvable est requis.'; }
+        return;
+      }
       document.documentElement.setAttribute('data-dpp-requested', 'true');
 
       const dig = (obj, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), obj);
