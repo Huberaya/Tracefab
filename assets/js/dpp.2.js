@@ -60,7 +60,7 @@
         // polished sample passport for the product selected in Brand Console.
         document.documentElement.setAttribute('data-dpp-requested', 'true');
         document.documentElement.setAttribute('data-dpp-source', 'unavailable');
-        if (banner) { banner.hidden = false; banner.textContent = 'No passport requested — a resolvable product identifier is required.'; }
+        if (banner) { banner.hidden = false; banner.setAttribute('data-i18n', 'dpp.dppMissingId'); banner.textContent = 'No passport requested — a resolvable product identifier is required.'; }
         return;
       }
       document.documentElement.setAttribute('data-dpp-requested', 'true');
