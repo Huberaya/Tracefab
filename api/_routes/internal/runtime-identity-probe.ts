@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
-import { prisma } from '../_lib/prisma.js';
-import { json, methodNotAllowed } from '../_lib/http.js';
+import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
+import { prisma } from '../../_lib/prisma.js';
+import { json, methodNotAllowed } from '../../_lib/http.js';
 
 /**
  * Temporary, read-only runtime identity probe.
