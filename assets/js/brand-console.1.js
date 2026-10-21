@@ -2226,6 +2226,7 @@
                 <div class="mc-stat-subitem"><span>${bt('ovProducts')}</span><strong>${mesure(ag.produits)}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovSuppliers')}</span><strong>${mesure(ag.fournisseurs)}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('journeyDeclaredSteps')}</span><strong>${mesure(ag.declaredSteps)}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovCertificates')}</span><strong>${mesure(ag.certificats)}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovFacilities')}</span><strong>${mesureInconnue(ag.sites, ' ' + bt('ovSitesUnit'))}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovProdCountries')}</span><strong>${mesure(ag.pays, ' ' + bt('ovCountriesUnit'))}</strong></div>
               </div>
