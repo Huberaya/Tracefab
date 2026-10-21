@@ -435,7 +435,7 @@ try {
   await probe.connect();
   try {
     await probe.query('BEGIN');
-    await probe.query(`CREATE FUNCTION public.tracefab_runtime_execute_probe() RETURNS boolean LANGUAGE sql STABLE AS $ SELECT true $`);
+    await probe.query(`CREATE FUNCTION public.tracefab_runtime_execute_probe() RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT true $$`);
     const futureGrant = await probe.query(
       `SELECT has_function_privilege($1, 'public.tracefab_runtime_execute_probe()', 'EXECUTE') AS allowed`,
       [APP_ROLE],
