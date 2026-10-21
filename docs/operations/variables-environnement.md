@@ -130,6 +130,7 @@ de servir.
 > seulement que les variables existent. Seul `?probe=live` prouve que les
 > services répondent. C'est celui qu'il faut passer avant d'ouvrir le trafic.
 
+
 ## Limitation de debit et plafond de lignes
 
 | Variable | Criticite | Defaut | Role |

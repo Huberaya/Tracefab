@@ -129,6 +129,12 @@ export async function ensureAppRole(db, password) {
     // RLS — activee et forcee sur les 50 tables — filtre ce qui est visible.
     // La lecture large est donc contenue ; l'ecriture large ne l'etait pas.
     `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${APP_ROLE}`,
+    // Re-bootstrap must not restore runtime access to Prisma's control-plane ledger.
+    `DO $bootstrap$ BEGIN
+       IF to_regclass('public._prisma_migrations') IS NOT NULL THEN
+         EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public._prisma_migrations FROM ${APP_ROLE}';
+       END IF;
+     END $bootstrap$;`,
     // ECRITURE sur les seules tables que le runtime touche hors fonction.
     // Auparavant : GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES, ce qui
     // rendait toute table modifiable directement et vidait de son sens le

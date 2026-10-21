@@ -74,3 +74,4 @@ export const prisma: PrismaClient =
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.tracefabPrisma = prisma;
 }
+
