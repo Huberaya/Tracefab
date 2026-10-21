@@ -243,15 +243,6 @@ for (const locataire of LOCATAIRES) {
   );
 }
 
-// Adhesion a role faible : alpha devient « viewer » de Beta. C est ce qui
-// distingue « membre sans droit d ecriture » de « non-membre ».
-await base.query(
-  `insert into organization_memberships (id, organization_id, user_id, role)
-   values ($1, $2, $3, 'viewer')
-   on conflict (id) do update set role = 'viewer'`,
-  [uuidFixture('mem-alpha-beta-viewer'), ORG.beta, USER_FIXTURE.alpha],
-);
-
 const jetons = {};
 for (const cle of ['alpha', 'beta']) jetons[cle] = await jetonDeSession(identites[cle].clerkUserId);
 
@@ -361,6 +352,15 @@ const verifier = (nom, attendu, condition, observe) => {
     );
   }
 }
+
+// Adhesion a role faible : alpha devient « viewer » de Beta. C est ce qui
+// distingue « membre sans droit d ecriture » de « non-membre ».
+await base.query(
+  `insert into organization_memberships (id, organization_id, user_id, role)
+   values ($1, $2, $3, 'viewer')
+   on conflict (id) do update set role = 'viewer'`,
+  [uuidFixture('mem-alpha-beta-viewer'), ORG.beta, USER_FIXTURE.alpha],
+);
 
 // A3 — permissions insuffisantes : viewer de Beta ne cree pas de produit.
 {
