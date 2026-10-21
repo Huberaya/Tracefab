@@ -1556,7 +1556,7 @@ window.TF_I18N_BUNDLES.en = {
     ovPefValidated: "PEF calculations validated",
     ovAgec: "AGEC Art. 13 compliance — assessment only",
     ovGpsPolygons: "Documented GPS polygons",
-    ovGs1: "Resolved GS1 identifiers",
+    ovGs1: "GS1 resolution active? (assessment)",
     navMain: "Main Console",
     products: "Products",
     suppliers: "Suppliers",
