@@ -13,6 +13,8 @@ for (const token of [
   "bt('journeyNoConnection')",
   "bt('journeyTechnicalOrgId')",
   'data-chain-links',
+  'id="plm-import-form"',
+  'id="allocate-tc-form"',
   "bt('journeyCompletenessNotQuality')",
   "bt('journeyReadinessNotValidation')",
 ]) assert.ok(source.includes(token), `garde-fou absent: ${token}`);
