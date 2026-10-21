@@ -249,6 +249,11 @@ try {
     }
   }
   await mig.end();
+
+  // Regression: re-running the documented idempotent bootstrap after migrations
+  // must not undo the migration's least-privilege grants on the Prisma ledger.
+  execFileSync('node', [path.join(RACINE, 'scripts', 'bootstrap_app_role.mjs')], { env, stdio: 'ignore' });
+  console.log('     re-bootstrap après migrations exécuté pour vérifier l’absence de régression');
   console.log(`     ${dossiers.length} migrations appliquées`);
 
   /* --- 2. Privilèges réels, mesurés en se connectant avec le rôle ---------- */
@@ -333,15 +338,16 @@ try {
   // Le runtime ne doit donc pas pouvoir modifier son historique, même si une
   // future migration ajoute un GRANT par héritage ou par défaut.
   const historiqueMigrations = await app.query(`
-    SELECT has_table_privilege(current_user, 'public._prisma_migrations', 'INSERT') AS i,
+    SELECT has_table_privilege(current_user, 'public._prisma_migrations', 'SELECT') AS s,
+           has_table_privilege(current_user, 'public._prisma_migrations', 'INSERT') AS i,
            has_table_privilege(current_user, 'public._prisma_migrations', 'UPDATE') AS u,
            has_table_privilege(current_user, 'public._prisma_migrations', 'DELETE') AS d,
            has_table_privilege(current_user, 'public._prisma_migrations', 'TRUNCATE') AS t
   `);
   const hm = historiqueMigrations.rows[0];
   verifier(
-    'le rôle applicatif ne peut pas modifier le registre des migrations',
-    hm && !hm.i && !hm.u && !hm.d && !hm.t,
+    'le rôle applicatif ne peut ni lire ni modifier le registre des migrations',
+    hm && !hm.s && !hm.i && !hm.u && !hm.d && !hm.t,
     JSON.stringify(hm),
   );
 
