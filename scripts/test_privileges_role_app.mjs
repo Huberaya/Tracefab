@@ -16,7 +16,7 @@
  *   1. l'état réel des privilèges, mesuré en se connectant avec le rôle — pas
  *      lu dans le code de provisioning ;
  *   2. le comportement : une écriture directe sur une table non autorisée doit
- *      échouer, celle sur une table autorisée doit réussir ;
+ *      échouer, et le limiteur de débit doit pouvoir effectuer son upsert ;
  *   3. l'absence de régression dans le code : si l'octroi global réapparaît, le
  *      contrôle échoue même avant d'avoir mesuré quoi que ce soit.
  *
