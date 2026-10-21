@@ -44,14 +44,14 @@ La migration `20261021120000_limit_app_function_execute` :
 - vérifie qu'aucune fonction `SECURITY DEFINER` appartenant au migrateur ne reste exécutable par `PUBLIC`, et qu'aucun droit direct EXECUTE non autorisé ne subsiste.
 
 L'équivalent de cette migration a été exécuté uniquement sur la branche Neon de test. Vérifications mesurées après application :
-- **81** fonctions TraceFab ont un droit EXECUTE direct explicite, et la liste observée correspond exactement à l'allowlist ;
+- **82** fonctions TraceFab ont un droit EXECUTE direct explicite, et la liste observée correspond exactement à l'allowlist ;
 - **0** droit direct EXECUTE ne subsiste sur une fonction TraceFab hors allowlist ;
 - parmi les **117** fonctions `SECURITY DEFINER`, **77** restent exécutables par le rôle applicatif, car elles sont dans la liste API/RLS ; les autres ne le sont plus ;
 - l'ACL par défaut du schéma `public` ne donne plus EXECUTE à `tracefab_app` pour les futures fonctions ;
 - un contrôle négatif sur une fonction temporaire nouvellement créée donne `has_function_privilege = false` et aucun droit direct app ;
 - aucune fonction `SECURITY DEFINER` non allowlistée n'est accessible par héritage de `PUBLIC`.
 
-Le module `scripts/lib/tracefab_runtime_functions.mjs` sert de référence de test et est comparé à la liste SQL de la migration. Le bootstrap ne réintroduit plus d'octroi global. La validation CI sur une base PostgreSQL jetable reste obligatoire.
+Le module `scripts/lib/tracefab_runtime_functions.mjs` distingue les appels API, les fonctions de politique RLS et les dépendances transitoires SECURITY INVOKER ; il sert de référence de test et est comparé à la liste SQL de la migration. Le bootstrap ne réintroduit plus d'octroi global. La validation CI sur une base PostgreSQL jetable reste obligatoire.
 
 ## Suite obligatoire
 
