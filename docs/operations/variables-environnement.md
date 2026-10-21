@@ -130,11 +130,6 @@ de servir.
 > seulement que les variables existent. Seul `?probe=live` prouve que les
 > services répondent. C'est celui qu'il faut passer avant d'ouvrir le trafic.
 
-## Sonde temporaire de sécurité
-
-| Variable | Criticité | Rôle |
-|---|---|---|
-| `TRACEFAB_RUNTIME_IDENTITY_PROBE` | temporaire — à supprimer après mesure | Quand elle vaut `enabled`, journalise uniquement l’identité PostgreSQL effective et les indicateurs `BYPASSRLS`/`SUPERUSER` au démarrage du client Prisma. Ne jamais laisser activée après la vérification. |
 
 ## Limitation de debit et plafond de lignes
 
