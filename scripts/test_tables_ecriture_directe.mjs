@@ -39,7 +39,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { TABLES_ECRITURE_DIRECTE, TABLE_WRITE_PRIVILEGES } from './lib/tracefab_app_role.mjs';
 
 const RACINE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const VERBES = ['create', 'createMany', 'update', 'updateMany', 'delete', 'deleteMany', 'upsert'];
@@ -94,12 +94,13 @@ for (const b of schema.split(/\n(?=model )/)) {
 
 /* --- 3. Écritures directes relevées dans api/ ----------------------------- */
 
-const ecrites = new Map(); // table -> [sites]
-const noter = (t, site) => {
+const ecrites = new Map(); // table -> { sites, verbs }
+const noter = (t, site, verbs) => {
   if (!tablesBase.has(t)) return; // pas une table du schéma -> faux positif
-  if (!ecrites.has(t)) ecrites.set(t, []);
-  const l = ecrites.get(t);
-  if (!l.includes(site)) l.push(site);
+  if (!ecrites.has(t)) ecrites.set(t, { sites: [], verbs: new Set() });
+  const entry = ecrites.get(t);
+  if (!entry.sites.includes(site)) entry.sites.push(site);
+  for (const verb of verbs) entry.verbs.add(verb);
 };
 
 const fichiersApi = fichiers(path.join(RACINE, 'api'));
@@ -113,14 +114,28 @@ for (const f of fichiersApi) {
   let m;
   while ((m = rePrisma.exec(src))) {
     if (!(m[1] in modeleVersTable)) continue;
-    noter(modeleVersTable[m[1]], `${rel}:${ligne(m.index)} (${m[1]}.${m[2]})`);
+    const prismaVerb = m[2];
+    const sqlVerbs = prismaVerb === 'upsert'
+      ? ['INSERT', 'UPDATE']
+      : prismaVerb.startsWith('create')
+        ? ['INSERT']
+        : prismaVerb.startsWith('update')
+          ? ['UPDATE']
+          : ['DELETE'];
+    noter(modeleVersTable[m[1]], `${rel}:${ligne(m.index)} (${m[1]}.${prismaVerb})`, sqlVerbs);
   }
 
   // 3b. ordres SQL d'écriture, quel que soit l'emballage
   const reSql = /\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+"?([A-Za-z0-9_]+)"?/gi;
   let v;
   while ((v = reSql.exec(src))) {
-    noter(v[2], `${rel}:${ligne(v.index)} (SQL ${v[1].replace(/\s+/g, ' ')})`);
+    const sqlVerb = /^INSERT/i.test(v[1]) ? 'INSERT' : /^UPDATE/i.test(v[1]) ? 'UPDATE' : 'DELETE';
+    const verbs = [sqlVerb];
+    // INSERT ... ON CONFLICT ... DO UPDATE needs both INSERT and UPDATE.
+    if (sqlVerb === 'INSERT' && /ON\s+CONFLICT[\s\S]{0,500}?DO\s+UPDATE/i.test(src.slice(v.index, v.index + 600))) {
+      verbs.push('UPDATE');
+    }
+    noter(v[2], `${rel}:${ligne(v.index)} (SQL ${v[1].replace(/\s+/g, ' ')})`, verbs);
   }
 }
 
@@ -129,7 +144,7 @@ for (const f of fichiersApi) {
 const controleNegatif = process.env.TABLES_ECRITURE_CONTROLE_NEGATIF;
 if (controleNegatif) {
   tablesBase.add(controleNegatif);
-  noter(controleNegatif, `injection de controle negatif (${controleNegatif})`);
+  noter(controleNegatif, `injection de controle negatif (${controleNegatif})`, ['INSERT']);
   console.log(`\n  controle negatif actif : table fictive « ${controleNegatif} » ajoutée aux tables écrites`);
 }
 
@@ -150,7 +165,7 @@ verifier(
   `${ecritesNonAccordees.length} table(s) écrite(s) non accordée(s) : ${ecritesNonAccordees.join(', ') || 'aucune'}`,
 );
 for (const t of ecritesNonAccordees) {
-  console.log(`        -> ${t} : ${(ecrites.get(t) || []).slice(0, 3).join(' ; ')}`);
+  console.log(`        -> ${t} : ${(ecrites.get(t)?.sites || []).slice(0, 3).join(' ; ')}`);
 }
 
 const accordeesSansEcriture = declarees.filter((t) => !tablesEcrites.includes(t));
@@ -164,6 +179,21 @@ verifier(
   'les deux listes sont exactement identiques',
   JSON.stringify(tablesEcrites) === JSON.stringify(declarees),
   `écrites=${tablesEcrites.length} accordées=${declarees.length}`,
+);
+
+// Vérifier aussi les verbes requis, pas seulement le nom des tables.
+const differencesVerbes = [];
+for (const table of [...new Set([...tablesEcrites, ...declarees])].sort()) {
+  const observes = [...(ecrites.get(table)?.verbs || [])].sort();
+  const attendus = [...(TABLE_WRITE_PRIVILEGES[table] || [])].sort();
+  if (JSON.stringify(observes) !== JSON.stringify(attendus)) {
+    differencesVerbes.push(`${table}: observés=[${observes.join(',')}], accordés=[${attendus.join(',')}]`);
+  }
+}
+verifier(
+  'les verbes SQL requis correspondent à la matrice minimale',
+  differencesVerbes.length === 0,
+  differencesVerbes.join(' ; ') || 'aucun écart',
 );
 
 verifier(
