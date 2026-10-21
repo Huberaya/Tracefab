@@ -44,7 +44,6 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_get_product_traceability',
   'tracefab_get_public_supplier_passport',
   'tracefab_has_org_role',
-  'tracefab_in_active_tenant',
   'tracefab_ingest_plm_erp_payload',
   'tracefab_invite_supplier',
   'tracefab_link_dpp_claim_evidence',
@@ -100,8 +99,8 @@ export const RLS_POLICY_FUNCTION_NAMES = Object.freeze([
 ]);
 
 export const RUNTIME_FUNCTION_DEPENDENCY_NAMES = Object.freeze([
-  // tracefab_in_active_tenant is SECURITY INVOKER and calls this helper, so
-  // the caller must retain EXECUTE on the transitive dependency.
+  // tracefab_require_active_tenant is SECURITY INVOKER and calls this
+  // context reader; the caller must retain EXECUTE on the transitive helper.
   'tracefab_active_organization_id',
   // Contract guard used by the active-tenant runtime probe; it returns only
   // the armed tenant UUID or fails closed with organization_id_required.
