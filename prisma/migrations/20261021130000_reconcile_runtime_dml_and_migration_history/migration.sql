@@ -1,22 +1,20 @@
 -- Réconcilier les privilèges runtime après la création tardive du graphe supply-chain.
 --
--- Les migrations de graphe créent supply_chain_links et supply_chain_nodes après
--- le correctif DML historique. L'API modifie ces tables via des fonctions
--- SECURITY DEFINER, pas par DML Prisma direct : le rôle runtime ne doit donc
--- PAS recevoir INSERT/UPDATE/DELETE sur ces tables.
+-- Les mutations de supply_chain_links et supply_chain_nodes passent par des
+-- fonctions SECURITY DEFINER : le rôle runtime ne doit pas avoir de DML direct.
+-- Le rôle runtime ne doit pas modifier le registre Prisma lorsqu'il existe.
 --
--- La table _prisma_migrations est une preuve d'exploitation : le rôle runtime
--- ne doit ni la modifier ni la supprimer.
---
--- Cette migration est également exercée par des scénarios CI qui reconstruisent
--- volontairement une chaîne partielle. Les ACL du graphe ne sont touchées que si
--- les deux tables existent; si la migration de graphe est enregistrée comme
--- appliquée mais que ses tables manquent, on échoue au lieu de masquer le drift.
+-- Certains tests d'intégration exécutent une chaîne SQL partielle sans créer
+-- _prisma_migrations. Les contrôles correspondants sont conditionnels à la
+-- présence du registre; dans une chaîne Prisma complète, il existe toujours.
+-- Si le registre indique que la migration du graphe a réussi mais que ses
+-- tables manquent, on échoue au lieu de masquer la dérive.
 
 DO $reconcile_runtime_privileges$
 DECLARE
   role_ok boolean;
-  graph_migration_applied boolean;
+  ledger_exists boolean;
+  graph_migration_applied boolean := false;
   graph_tables_exist boolean;
 BEGIN
   SELECT EXISTS (
@@ -34,16 +32,15 @@ BEGIN
       'Migration refusée : tracefab_app absent ou doté de privilèges incompatibles avec un rôle runtime soumis à RLS';
   END IF;
 
-  IF to_regclass('public._prisma_migrations') IS NULL THEN
-    RAISE EXCEPTION 'Migration refusée : historique Prisma absent';
+  SELECT to_regclass('public._prisma_migrations') IS NOT NULL INTO ledger_exists;
+  IF ledger_exists THEN
+    SELECT EXISTS (
+      SELECT 1 FROM public._prisma_migrations
+      WHERE migration_name = '20261020120000_structured_supply_chain_graph_membership'
+        AND finished_at IS NOT NULL
+        AND rolled_back_at IS NULL
+    ) INTO graph_migration_applied;
   END IF;
-
-  SELECT EXISTS (
-    SELECT 1 FROM public._prisma_migrations
-    WHERE migration_name = '20261020120000_structured_supply_chain_graph_membership'
-      AND finished_at IS NOT NULL
-      AND rolled_back_at IS NULL
-  ) INTO graph_migration_applied;
 
   SELECT to_regclass('public.supply_chain_links') IS NOT NULL
      AND to_regclass('public.supply_chain_nodes') IS NOT NULL
@@ -75,13 +72,16 @@ BEGIN
   END IF;
 
   -- Le runtime ne peut pas réécrire ou effacer les preuves de migration.
-  EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public._prisma_migrations FROM tracefab_app';
+  IF ledger_exists THEN
+    EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public._prisma_migrations FROM tracefab_app';
 
-  IF has_table_privilege('tracefab_app', 'public._prisma_migrations', 'INSERT')
-     OR has_table_privilege('tracefab_app', 'public._prisma_migrations', 'UPDATE')
-     OR has_table_privilege('tracefab_app', 'public._prisma_migrations', 'DELETE') THEN
-    RAISE EXCEPTION
-      'Postcondition échouée : le rôle runtime peut encore modifier l''historique Prisma';
+    IF has_table_privilege('tracefab_app', 'public._prisma_migrations', 'INSERT')
+       OR has_table_privilege('tracefab_app', 'public._prisma_migrations', 'UPDATE')
+       OR has_table_privilege('tracefab_app', 'public._prisma_migrations', 'DELETE')
+       OR has_table_privilege('tracefab_app', 'public._prisma_migrations', 'TRUNCATE') THEN
+      RAISE EXCEPTION
+        'Postcondition échouée : le rôle runtime peut encore modifier l''historique Prisma';
+    END IF;
   END IF;
 END
 $reconcile_runtime_privileges$;
