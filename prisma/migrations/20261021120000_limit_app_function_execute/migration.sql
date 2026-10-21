@@ -67,6 +67,7 @@ DECLARE
     'tracefab_public_context',
     'tracefab_public_dpp_claims',
     'tracefab_reconcile_mass_balance',
+    'tracefab_require_active_tenant',
     'tracefab_register_certification',
     'tracefab_register_document',
     'tracefab_register_supplier_organization',
