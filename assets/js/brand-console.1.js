@@ -58,6 +58,10 @@
         selectedSupplier: null,
         quality: null,
         qualityFilter: 'all',
+        overviewInsights: null,
+        transactionCertificates: null,
+        organizationSettings: null,
+        organizationSettingsHistory: [],
         // null = aucune source chargee (on ne peut pas compter) ; [] = source
         // chargee et vide. La distinction porte tout l'ecran.
         documents: null,
@@ -752,6 +756,7 @@
         const completions = pr
           .map((p) => (p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === '' ? NaN : Number(p.dataCompletion)))
           .filter((n) => Number.isFinite(n));
+        const insights = state.overviewInsights || {};
         const portfolio = state.dppPortfolio;
         const portfolioTotal = portfolio ? Number(portfolio.totalProducts || 0) : 0;
         const dpp = portfolio && portfolioTotal > 0 && Number.isFinite(Number(portfolio.readinessScore))
@@ -764,13 +769,12 @@
           // un fournisseur, trivialement nul quand il n'y en a aucun.
           sites: su.length === 0 ? 0 : null,
           pays: pays.size,
-          // La completude produit est un champ reel (data_completion). Les
-          // autres dimensions de qualite ne sont pas exposees en liste.
-          qualite: completions.length
+          completude: completions.length
             ? Math.round((completions.reduce((a, b) => a + b, 0) / completions.length) * 10) / 10
             : null,
-          preuves: null,
-          verifies: null,
+          qualite: insights.qualityIndex ?? null,
+          preuves: insights.evidenceCoverage ?? null,
+          verifies: insights.verificationRate ?? null,
           tracables: null,
           dpp,
           // Certificats : chargement absent de cette console. Zero seulement
@@ -783,7 +787,10 @@
           massBalanced: null,
           gs1Styles: null,
           agec: null,
-          pef: null,
+          pef: insights.pefScore ?? null,
+          pefGrade: insights.pefGrade ?? null,
+          declaredSteps: insights.declaredSteps ?? null,
+          missingEvidenceCount: insights.missingEvidenceCount ?? null,
         };
       }
 
@@ -820,6 +827,46 @@
               ? produits.filter((p) => Number(p.dataCompletion) < SEUIL_COMPLETUDE).length
               : null),
         };
+      }
+
+      async function loadOverviewInsights() {
+        if (state.demo || !(state.products || []).length) return;
+        const tenant = state.activeOrganizationId;
+        const rows = await Promise.all(state.products.map(async (product) => {
+          const [quality, pef, chain] = await Promise.all([
+            api(`/api/quality/products/${encodeURIComponent(product.id)}`).catch(() => null),
+            api(`/api/products/${encodeURIComponent(product.id)}/pef`).catch(() => null),
+            api(`/api/products/${encodeURIComponent(product.id)}/supply-chain`).catch(() => null),
+          ]);
+          const score = quality?.score || null;
+          const dimensions = score ? [score.completeness, score.documentationCoverage]
+            .map(qualiteNum).filter((value) => value !== null) : [];
+          const issues = quality?.issues || [];
+          return {
+            qualityIndex: dimensions.length ? dimensions.reduce((a, b) => a + b, 0) / dimensions.length : null,
+            evidenceCoverage: score ? qualiteNum(score.documentationCoverage) : null,
+            verificationRate: score ? qualiteNum(score.verificationRate) : null,
+            missingEvidence: issues.filter((issue) => issue.ruleKey === 'product_missing_evidence' && issue.status === 'open').length,
+            pef: pef?.assessment || null,
+            declaredSteps: chain?.graph?.nodes?.length ?? null,
+          };
+        }));
+        if (state.activeOrganizationId !== tenant) return;
+        const average = (key) => {
+          const values = rows.map((row) => row[key]).filter((value) => Number.isFinite(Number(value))).map(Number);
+          return values.length ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10 : null;
+        };
+        const pefs = rows.map((row) => row.pef).filter(Boolean);
+        state.overviewInsights = {
+          qualityIndex: average('qualityIndex'),
+          evidenceCoverage: average('evidenceCoverage'),
+          verificationRate: average('verificationRate'),
+          missingEvidenceCount: rows.reduce((sum, row) => sum + row.missingEvidence, 0),
+          declaredSteps: rows.some((row) => row.declaredSteps !== null) ? rows.reduce((sum, row) => sum + (row.declaredSteps || 0), 0) : null,
+          pefScore: pefs.length ? Math.round((pefs.reduce((sum, item) => sum + Number(item.pefEcoScore || 0), 0) / pefs.length) * 10) / 10 : null,
+          pefGrade: pefs.length === 1 ? pefs[0].pefGrade : null,
+        };
+        if (state.view === 'overview') render();
       }
 
       function demoData() {
@@ -1204,6 +1251,10 @@
         state.selectedDppProduct = null;
         state.quality = null;
         state.qualityFilter = 'all';
+        state.overviewInsights = null;
+        state.transactionCertificates = null;
+        state.organizationSettings = null;
+        state.organizationSettingsHistory = [];
         // null = aucune source chargee ; [] = source chargee et vide. Remettre
         // null, jamais [] : un echec de chargement ne doit pas se lire « vide ».
         state.documents = null;
@@ -1345,7 +1396,7 @@
             api('/api/suppliers').then((payload) => {
               if (state.activeOrganizationId !== backgroundOrganizationId) return;
               state.suppliers = payload.suppliers || [];
-              if (state.view === 'suppliers' || state.view === 'supplyChain') render();
+              if (['suppliers', 'supplyChain', 'questionnaires', 'requests', 'overview', 'massBalance'].includes(state.view)) render();
             }).catch(() => {});
             api('/api/materials').then((payload) => {
               if (state.activeOrganizationId !== backgroundOrganizationId) return;
@@ -1374,7 +1425,8 @@
           }).catch(() => {});
           api('/api/mass-balance/certificates').then((payload) => {
             if (state.activeOrganizationId !== enrichmentOrganizationId) return;
-            state.certifications = (payload.certificates || []).map((c) => ({
+            state.transactionCertificates = payload.certificates || [];
+            state.certifications = state.transactionCertificates.map((c) => ({
               id: c.id,
               standard: c.standard,
               number: c.tcNumber,
@@ -1383,15 +1435,23 @@
               status: c.status,
               source: 'transaction_certificate',
             }));
-            if (state.view === 'certifications') render();
+            if (state.view === 'certifications' || state.view === 'massBalance') render();
           }).catch(() => {
             if (state.activeOrganizationId === enrichmentOrganizationId) state.certifications = null;
           });
+
+          api('/api/organization-settings').then((payload) => {
+            if (state.activeOrganizationId !== enrichmentOrganizationId) return;
+            state.organizationSettings = payload.settings || null;
+            state.organizationSettingsHistory = payload.history || [];
+            if (state.view === 'settings') render();
+          }).catch(() => {});
 
           // La preparation DPP de la vue d'ensemble vient de l'agregat reel.
           // Chargement silencieux : une route indisponible laisse l'indicateur
           // a « non calculé », elle ne casse pas le tableau de bord.
           loadDppPortfolio({ silent: true }).catch(() => {});
+          loadOverviewInsights().catch(() => {});
         } catch (error) {
           state.loading = false; state.configError = error.message; render();
         }
@@ -1786,7 +1846,7 @@
           <!-- Questionnaires Catalog List -->
           <div class="card panel">
             <div class="panel-head">
-              <h2>${bt('qbActiveProtocols')} (${qList.length})</h2>
+              <h2>${bt('journeyQuestionnaireModels')} (${qList.length})</h2>
               <span class="status status-${qList.length ? 'needs_review' : 'draft'}">${qList.length ? bt('journeySchemaReview') : bt('journeyNoProtocol')}</span>
             </div>
             <div class="item-list">
@@ -1795,12 +1855,12 @@
                   <div style="flex:1">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                       <div>
-                        <span class="cert-pill" style="margin-bottom:6px;">${esc(q.category || bt('cnGrpCompliance'))} · v${esc(q.version)}</span>
+                        <span class="cert-pill" style="margin-bottom:6px;">${esc((q.category === 'Conformité' || q.category === 'Compliance') ? bt('journeyDataCollectionCategory') : (q.category || bt('journeyDataCollectionCategory')))} · v${esc(q.version)}</span>
                         <h3 style="font-size:15px;margin-top:2px;">${esc(q.title)}</h3>
                       </div>
                       <span class="status status-approved">${moneyless(q.itemCount ?? q.fields?.length ?? 0)} ${bt('qbFieldCount')} (${moneyless(q.requiredItemCount ?? 0)} ${bt('qbRequired')})</span>
                     </div>
-                    <p style="margin:6px 0 12px;font-size:12.5px;color:var(--muted);">${esc(q.description)}</p>
+                    <p style="margin:6px 0 12px;font-size:12.5px;color:var(--muted);">${esc(q.key === 'product_data_core' || q.key === 'product-data-core' ? bt('journeyCoreQuestionnaireDescription') : q.description)}</p>
 
                     <!-- Preview of Fields in Builder -->
                     <div style="background:#f8faf8;border:1px solid #edf0eb;border-radius:10px;padding:12px;">
@@ -1817,7 +1877,7 @@
                     </div>
 
                     <div class="actions" style="justify-content:flex-start;margin-top:14px;gap:8px;">
-                      <button class="btn btn-primary btn-small" data-action="new-request" data-tf-act="p10" data-tf-arg="${esc(q.key)}">
+                      <button class="btn btn-primary btn-small" data-action="new-request" data-tf-act="p10" data-tf-arg="${esc(q.key)}" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>
                         ${bt('qbLaunch')}
                       </button>
                       <button class="btn btn-secondary btn-small" data-demo-action="1">
@@ -1853,7 +1913,7 @@
             <div class="card panel">
               <div class="panel-head"><h2>${bt('journeyRegMapping')}</h2></div>
               <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-                ${esc(bt('cnQnMapping'))} <strong>CIRPASS JSON-LD</strong> ${esc(bt('cnQnCheckpoints'))} <strong>${bt('qbAgec')}</strong>.
+                ${esc(bt('cnQnMapping'))} <strong>CIRPASS JSON-LD</strong> ${esc(bt('cnQnCheckpoints'))} <strong>${bt('qbAgec')}</strong>. ${esc(bt('journeyMappingGovernance'))}
               </p>
             </div>
           </div>
@@ -1909,7 +1969,9 @@
         // compte et rend state.documents. Aucune route ne liste les documents
         // d'une organisation : hors demonstration, docs vaut null et l'ecran
         // affiche « non calculé » au lieu d'un zero qui affirmerait l'absence.
-        const docs = Array.isArray(state.documents) ? state.documents : null;
+        const evidenceKnownEmpty = state.overviewInsights?.evidenceCoverage === 0
+          && Number(state.overviewInsights?.missingEvidenceCount || 0) > 0;
+        const docs = Array.isArray(state.documents) ? state.documents : (evidenceKnownEmpty ? [] : null);
         const compte = (categorie) => docs ? docs.filter((d) => d.category === categorie).length : null;
         const lignes = docs === null ? `
           <tr><td colspan="8" class="empty">${esc(bt('cnNotComputed'))}</td></tr>` : (docs.length ? docs.map((d) => `
@@ -1923,7 +1985,7 @@
             <td><span class="status status-approved">${d.status === 'sealed' ? esc(bt('evSealed')) : esc(statusLabel(d.status))}</span></td>
             <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('evVerify')}</button></td>
           </tr>`).join('') : `
-          <tr><td colspan="8" class="empty">${esc(bt('cnNone'))}</td></tr>`);
+          <tr><td colspan="8" class="empty">${esc(bt('journeyNoDocumentSource'))}</td></tr>`);
 
         return `<div class="page-head">
           <div>
@@ -1941,7 +2003,7 @@
         <div class="eq-overview-panel"${estDemo() ? ' data-tf-demo' : ''}>
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('evSovereign')}</div>
+              <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('journeyDocumentRegistry')}</div>
               <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('journeyIntegrityTitle')}</h3><p class="meta" style="margin:5px 0 0">${bt('journeyIntegrityNote')}</p>
             </div>
             <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">${docs === null ? esc(bt('cnNotComputed')) : `${moneyless(docs.length)} ${esc(bt('documents'))}`}</span>
@@ -1973,7 +2035,7 @@
 
         <div class="card panel">
           <div class="panel-head">
-            <h2>${bt('evActiveDocs')} (${docs === null ? esc(bt('cnNotComputed')) : moneyless(docs.length)})</h2>
+            <h2>${bt('journeyLoadedDocuments')} (${docs === null ? esc(bt('cnNotComputed')) : moneyless(docs.length)})</h2>
             ${estDemo() ? `<span class="meta" style="color:#0b7656;font-weight:750;" data-tf-demo>${bt('evIntegrityOk')}</span>` : ''}
           </div>
 
@@ -2009,10 +2071,10 @@
         // Un certificat sans date d'echeance n'est ni valide ni expire : on ne
         // sait pas. Afficher « valid » serait une affirmation gratuite.
         const j = certJours(c);
-        if (j === null) return `<span class="status status-draft">${esc(bt('cnUnknown'))}</span>`;
-        if (j < 0) return `<span class="status status-changes_requested">${esc(bt('certExpired'))}</span>`;
-        if (j <= 90) return `<span class="status status-needs_review">${esc(bt('certExpiringSoon'))}</span>`;
-        return `<span class="status status-approved">${esc(bt('certValid'))}</span>`;
+        if (j === null) return `<span class="status status-draft">${esc(bt('journeyDeclaredStatus'))} · ${esc(bt('cnUnknown'))}</span>`;
+        if (j < 0) return `<span class="status status-changes_requested">${esc(bt('journeyDeclaredStatus'))} · ${esc(bt('certExpired'))}</span>`;
+        if (j <= 90) return `<span class="status status-needs_review">${esc(bt('journeyDeclaredStatus'))} · ${esc(bt('certExpiringSoon'))}</span>`;
+        return `<span class="status status-draft">${esc(bt('journeyDeclaredStatus'))} · ${esc(bt('certValid'))}</span>`;
       }
 
       function certificationsConsoleView() {
@@ -2030,7 +2092,7 @@
         </div>
         <div class="grid split">
           <div class="card panel">
-            <div class="panel-head"><h2>${esc(bt('journeyDeclaredCerts'))}</h2></div>
+            <div class="panel-head"><div><h2>${esc(bt('journeyDeclaredCerts'))}</h2><p class="meta">${esc(bt('journeyCertLifecycle'))}</p></div></div>
             <div class="table-wrap cert-table">
               <table>
                 <thead>
@@ -2061,7 +2123,7 @@
                   .filter((c) => certJours(c) !== null && certJours(c) <= 90)
                   .map((c) => ({ c, j: certJours(c) }))
                   .sort((a, b) => a.j - b.j);
-                if (!bientot.length) return `<p>${esc(bt('certWatchNone'))}</p>`;
+                if (!bientot.length) return `<p>${esc(certs.length === 0 ? bt('journeyNoCertMonitoring') : bt('certWatchNone'))}</p>`;
                 const t = bientot[0];
                 return `<p><strong>${bientot.length}</strong> ${esc(bt('certWatchCount'))}<br>
                   ${esc(bt('certNextRenewal'))} : <strong>${esc(t.c.standard)}</strong> — ${t.j} ${esc(bt('certDaysLeft'))}.</p>`;
@@ -2084,20 +2146,22 @@
         const products = state.products || [];
         const docs = Array.isArray(state.documents) ? state.documents : null;
         return `<div class="page-head"><div><div class="eyebrow">${bt('journeyReportingEyebrow')}</div><h1>${bt('journeyReportsTitle')}</h1><p>${bt('journeyReportsIntro')}</p></div></div>
-        <div class="notice" data-report-safeguard><strong>${bt('journeyDraftOnly')}</strong> ${bt('journeyReportWarning')}</div>
-        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('journeyAvailableDrafts')}</h2></div>
-        <div class="item-list"><div class="item"><div><strong>${bt('journeyCsrdDataExport')}</strong><div class="meta">${bt('journeyCoverage')}: ${products.length} ${bt('products')} · ${docs === null ? bt('cnNotComputed') : docs.length + ' ' + bt('documents')}</div></div><button class="btn btn-secondary btn-small" disabled aria-disabled="true">${bt('journeyPreviewRequired')}</button></div>
+        <div class="notice" data-report-safeguard><strong>${bt('journeyDraftOnly')}</strong> ${bt('journeyReportWarning')} ${bt('journeyExportContents')}</div><div class="card panel" style="margin:18px 0"><div class="panel-head"><h2>${bt('journeyPreviewApproval')}</h2><span class="status status-needs_review">${bt('journeyAwaitingAuthorizedReviewer')}</span></div><p class="meta">${bt('journeyPreviewApprovalFlow')}</p></div>
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('journeyAvailableDrafts')}</h2><span class="status status-needs_review">${bt('journeyGeneratorsUnavailable')}</span></div>
+        <div class="item-list"><div class="item"><div><strong>${bt('journeyCsrdDataExport')}</strong><div class="meta">${bt('journeyCoverage')}: ${products.length} ${bt('products')} · ${state.overviewInsights?.evidenceCoverage === 0 ? bt('journeyNoEvidenceZero') : (docs === null ? bt('cnNotComputed') : docs.length + ' ' + bt('documents'))}</div></div><button class="btn btn-secondary btn-small" disabled aria-disabled="true">${bt('journeyPreviewRequired')}</button></div>
         <div class="item"><div><strong>${bt('journeyAgecAssessment')}</strong><div class="meta">${bt('journeyNoComplianceAttestation')}</div></div><button class="btn btn-secondary btn-small" disabled aria-disabled="true">${bt('journeyPreviewRequired')}</button></div></div></div>
-        <div class="card panel"><div class="panel-head"><h2>${bt('journeyAuditTrail')}</h2></div><p class="meta">${bt('journeyAuditLimit')}</p><dl style="display:grid;gap:10px;margin-top:14px"><div><dt class="meta">${bt('journeyIntegrity')}</dt><dd>${bt('journeyHashDetection')}</dd></div><div><dt class="meta">${bt('journeyTruth')}</dt><dd>${bt('journeyNotEstablished')}</dd></div></dl></div></div>`;
+        <div class="card panel"><div class="panel-head"><h2>${bt('journeyAuditTrail')}</h2></div><p class="meta">${bt('journeyAuditLimit')} ${bt('journeyAuditSupportOnly')}</p><dl style="display:grid;gap:10px;margin-top:14px"><div><dt class="meta">${bt('journeyIntegrity')}</dt><dd>${bt('journeyHashDetection')}</dd></div><div><dt class="meta">${bt('journeyTruth')}</dt><dd>${bt('journeyNotEstablished')}</dd></div></dl></div></div>`;
       }
 
       function settingsConsoleView() {
         const org = state.activeOrganizationId || '';
         const masked = org ? `${org.slice(0, 8)}…${org.slice(-4)}` : bt('cnUnknown');
+        const settings = state.organizationSettings || {};
         return `<div class="page-head"><div><div class="eyebrow">${bt('cnSettingsEyebrow')}</div><h1>${bt('stTitle')}</h1><p>${bt('journeySettingsIntro')}</p></div></div>
-        <div class="card panel"><div class="panel-head"><h2>${bt('stOrgBrand')}</h2><span class="status status-draft">${bt('journeyReadOnly')}</span></div>
-        <dl class="form-grid"><div><dt class="meta">${bt('stBrandName')}</dt><dd><strong>${esc(currentBrand()?.display_name || currentBrand()?.legal_name || bt('cnUnknown'))}</strong></dd></div><div><dt class="meta">${bt('journeyTechnicalOrgId')}</dt><dd><code>${esc(masked)}</code></dd></div><div><dt class="meta">${bt('stDppIdFormat')}</dt><dd>${bt('journeyNotConfigured')}</dd></div><div><dt class="meta">${bt('stQualityThreshold')}</dt><dd>${bt('journeyNotConfigured')}</dd></div></dl></div>
-        <div class="grid split" style="margin-top:18px"><div class="card panel"><h2>${bt('journeyAccessGovernance')}</h2><p class="meta">${bt('journeyAccessUnavailable')}</p></div><div class="card panel"><h2>${bt('journeyPublicationGovernance')}</h2><p class="meta">${bt('journeyPublicationUnavailable')}</p></div></div>`;
+        <div class="card panel"><div class="panel-head"><h2>${bt('stOrgBrand')}</h2><span class="status status-needs_review">${bt('journeyOwnerAdminRequired')}</span></div>
+        <form id="organization-settings-form" class="form-grid"><div><div class="meta">${bt('stBrandName')}</div><strong>${esc(currentBrand()?.display_name || currentBrand()?.legal_name || bt('cnUnknown'))}</strong></div><div><div class="meta">${bt('journeyTechnicalOrgId')}</div><code>${esc(masked)}</code></div><label>${bt('stDppIdFormat')}<input class="input" name="dppIdentifierFormat" value="${esc(settings.dppIdentifierFormat || '')}" placeholder="urn:epc:id:sgtin:…" required></label><label>${bt('stQualityThreshold')}<input class="input" name="qualityThreshold" type="number" min="0" max="100" value="${esc(settings.qualityThreshold ?? '')}" required></label><div class="form-actions field-full"><button class="btn btn-primary">${bt('pxSave')}</button></div></form></div>
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><h2>${bt('journeyAccessGovernance')}</h2><p class="meta">${bt('journeyAccessUnavailable')}</p><div class="actions"><button class="btn btn-secondary" data-view="suppliers">${bt('journeyMembers')}</button><button class="btn btn-secondary" disabled>${bt('journeyRoles')}</button><button class="btn btn-secondary" disabled>${bt('journeySessions')}</button></div></div><div class="card panel"><h2>${bt('journeyPublicationGovernance')}</h2><p class="meta">${bt('journeyPublicationUnavailable')}</p></div></div>
+        <div class="card panel" style="margin-top:18px"><h2>${bt('journeySettingsHistory')}</h2>${state.organizationSettingsHistory.length ? `<div class="item-list">${state.organizationSettingsHistory.map((entry) => `<div class="item"><span>${date(entry.at)}</span><code>${esc(JSON.stringify(entry.after))}</code></div>`).join('')}</div>` : `<div class="empty">${bt('journeyNoSettingsHistory')}</div>`}</div>`;
       }
 
             function overview() {
@@ -2161,6 +2225,7 @@
               <div class="mc-stat-sublist">
                 <div class="mc-stat-subitem"><span>${bt('ovProducts')}</span><strong>${mesure(ag.produits)}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovSuppliers')}</span><strong>${mesure(ag.fournisseurs)}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('journeyDeclaredSteps')}</span><strong>${mesure(ag.declaredSteps)}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovFacilities')}</span><strong>${mesureInconnue(ag.sites, ' ' + bt('ovSitesUnit'))}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovProdCountries')}</span><strong>${mesure(ag.pays, ' ' + bt('ovCountriesUnit'))}</strong></div>
               </div>
@@ -2172,12 +2237,13 @@
                 <span class="mc-domain-tag">${esc(bt('cnDom2'))}</span>
                 ${badge('mc-badge-green', 'GRADE A')}
               </div>
-              ${grandNombre(ag.qualite, '#0b7656')}<div class="meta">${bt('journeyCompletenessNotQuality')}</div>
+              ${grandNombre(ag.completude ?? ag.qualite, '#0b7656')}<div class="meta">${bt('journeyCompletenessNotQuality')}</div>
               <div class="mc-stat-sublist">
-                <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${mesure(ag.qualite, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${mesure(ag.completude ?? ag.qualite, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('cnQualityIndex')}</span><strong>${mesure(ag.qualite, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('scEvidenceCov')}</span><strong>${mesure(ag.preuves, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovVerified')}</span><strong>${mesure(ag.verifies, '%')}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovCertificates')}</span><strong>${mesure(ag.certificats)}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('journeyEvidenceWarnings')}</span><strong>${mesure(ag.missingEvidenceCount)}</strong></div>
               </div>
             </div>
 
@@ -2207,7 +2273,7 @@
                 <div class="mc-stat-subitem"><span>${bt('ovDpp')}</span><strong>${mesure(ag.dpp, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>${mesureInconnue(gs1Styles, ' ' + bt('ovStylesUnit'))}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovAgec')}</span><strong>${mesure(agec, '%')}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('ovPefValidated')}</span><strong>${pef === null || pef === undefined ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>` : esc(pef)}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('journeyPefCalculated')}</span><strong>${ag.pef === null || ag.pef === undefined ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>` : `${esc(ag.pefGrade || '')} ${mesure(ag.pef, '/100')}`}</strong></div>
               </div>
             </div>
           </div>
@@ -2224,7 +2290,7 @@
             <div class="mc-attention-grid">
               <div class="mc-attention-pill clickable" data-tf-act="p07">
                 ${pastille(AT.donneesManquantes)}
-                <div><strong>${bt('ovMissingData')}</strong><br><small>${bt('ovSuppliersPending')}</small></div>
+                <div><strong>${bt('ovMissingData')}</strong><br><small>${AT.donneesManquantes === 0 ? bt('journeyNoSupplierPendingMissingSources') : bt('ovSuppliersPending')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p17">
                 ${pastille(AT.certificatsExpirant)}
@@ -2254,7 +2320,7 @@
             <div class="card panel">
               <div class="panel-head"><h2>${bt('ovQuickInfra')}</h2></div>
               <div class="quick-grid">
-                <button class="quick" data-action="new-request">
+                <button class="quick" data-action="new-request" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>
                   <span class="quick-icon">↗</span>
                   <span><strong>${bt('ovLaunchCollection')}</strong><span>${bt('ovDeployQuestionnaire')}</span></span>
                 </button>
@@ -2277,7 +2343,7 @@
       }
 
       function requestTable(items) {
-        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>${bt('cnRqEmptyTitle')}</strong><p>${esc(bt('cnRqEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="new-request">${esc(bt('cnRqCreate'))}</button></div>`;
+        if (!items.length) return `<div class="empty"><div class="empty-icon">↗</div><strong>${bt('cnRqEmptyTitle')}</strong><p>${esc(bt('cnRqEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="new-request" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${esc(bt('cnRqCreate'))}</button></div>`;
         return `<div class="table-wrap"><table><thead><tr><th>${bt('rqRequest')}</th><th>${bt('sxSupplier')}</th><th>${bt('pdStatus')}</th><th>${bt('rqProgress')}</th><th>${bt('dueDate')}</th><th></th></tr></thead><tbody>${items.map((r) => `<tr class="clickable" data-request-id="${esc(r.id)}"><td><strong>${esc(r.title)}</strong><div class="meta">${esc(r.questionnaireKey || 'Questionnaire')}</div></td><td>${esc(orgName(r.supplierOrganizationId))}</td><td>${status(r.status)}</td><td><div class="progress-line"><div class="progress"><span style="width:${pct(r.completionPercentage)}%"></span></div><small>${moneyless(r.completionPercentage)}%</small></div></td><td>${date(r.dueAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-request-id="${esc(r.id)}">${bt('rqOpen')}</button>${['sent','in_progress','changes_requested'].includes(r.status) ? `<button class="btn btn-secondary btn-small" data-action="remind-request" data-reminder-request-id="${esc(r.id)}" title="${esc(bt('cnRdQueueReminder'))}">${bt('evFollowUp')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
       }
 
@@ -2291,12 +2357,12 @@
           </div>
           <div class="actions">
             <button class="btn btn-secondary" data-tf-act="p20">${bt('rqQbuilder')}</button>
-            <button class="btn btn-primary" data-action="new-request">${bt('rqNew')}</button>
+            <button class="btn btn-primary" data-action="new-request" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${bt('rqNew')}</button>
           </div>
         </div>
 
         <!-- 7-Stage Structured Data Collection Lifecycle -->
-        <div class="dc-pipeline-container">
+        <div class="dc-pipeline-container ${state.requests.length ? '' : 'is-explanatory'}"><div class="meta" style="margin-bottom:10px">${state.requests.length ? '' : bt('journeyNoRequestSchema')}</div>
           <div class="dc-pipeline-head">
             <div class="dc-pipeline-title">
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0b7656;"></span>
@@ -2339,7 +2405,7 @@
             <div class="dc-step-card active" style="background:#0b7656;color:#ffffff;border-color:#07523e;">
               <div class="dc-step-num" style="color:#ffffff;">${bt('rqStep07')}</div>
               <div class="dc-step-label" style="color:#ffffff;">${bt('rqVerifiedData')}</div>
-              <div class="dc-step-sub" style="color:rgba(255,255,255,0.94);">${bt('rqEsprOk')}</div>
+              <div class="dc-step-sub" style="color:rgba(255,255,255,0.94);">${bt('rqEsprOk')} · ${bt('journeyTrustDeclaredDocumented')}</div>
             </div>
           </div>
         </div>
@@ -2660,23 +2726,35 @@
       }
 
       function capContractPanel() {
-        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcCapTitle')}</h2><p class="meta">${bt('qcCapIntro')}</p></div><div class="actions"><button class="btn btn-secondary btn-small" type="button" data-action="open-cap-modal">${bt('qcCreateCap')}</button><button class="btn btn-secondary btn-small" type="button" data-action="open-review-cap-modal">${bt('mdReviewCap')}</button><button class="btn btn-secondary btn-small" type="button" data-action="open-cap-message-modal">${bt('qcMessageThread')}</button></div></div><div class="notice">${bt('qcCapNote')}</div></div>`;
+        const enabled = Boolean((state.selectedProduct || state.products[0]) && suppliers().length);
+        const disabled = enabled ? '' : `disabled title="${esc(bt('journeyCapPrerequisite'))}"`;
+        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcCapTitle')}</h2><p class="meta">${bt('qcCapIntro')}</p></div></div><div class="notice">${bt('qcCapNote')} ${bt('journeyCapGovernance')}</div><div class="actions" style="margin-top:12px"><button class="btn btn-secondary btn-small" type="button" data-action="open-cap-modal" ${disabled}>${bt('qcCreateCap')}</button><button class="btn btn-secondary btn-small" type="button" data-action="open-review-cap-modal" ${disabled}>${bt('mdReviewCap')}</button><button class="btn btn-secondary btn-small" type="button" data-action="open-cap-message-modal" ${disabled}>${bt('qcMessageThread')}</button></div></div>`;
       }
 
       function integrationsView() {
+        const connectors = [
+          ['Centric Software', 'journeyConnectorOperational'], ['Lectra (Kubix Link)', 'journeyConnectorOperational'],
+          ['SAP S/4HANA Fashion', 'journeyConnectorOperational'], ['GS1 EPCIS 2.0', 'journeyConnectorPlanned'],
+        ];
         return `<div class="page-head"><div><div class="eyebrow">${bt('igInterop')}</div><h1>${bt('igTitle')}</h1><p>${bt('journeyIntegrationIntro')}</p></div></div>
         <div class="notice"><strong>${bt('journeyNoConnection')}</strong> ${bt('journeyNoSecrets')}</div>
-        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('journeyAvailableConnectors')}</h2><span class="status status-draft">${bt('journeyNotConfigured')}</span></div><form id="plm-import-form"><label>${bt('journeySourceSystem')}<select class="select" id="plm-system-select" name="system" disabled><option selected>${bt('journeyChooseConnector')}</option><option>Centric Software</option><option>Lectra (Kubix Link)</option><option>SAP S/4HANA Fashion</option><option>GS1 EPCIS 2.0</option></select></label><p class="meta">${bt('journeyConnectorLifecycle')}</p></form></div><div class="card panel"><h2>${bt('igGs1Title')}</h2><p>${bt('journeyGs1Inactive')}</p><span class="status status-draft">${bt('journeyNotConfigured')}</span></div></div>`;
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('journeyAvailableConnectors')}</h2><span class="status status-changes_requested journey-not-configured">⚠ ${bt('journeyNotConfigured')}</span></div>
+        <div class="item-list">${connectors.map(([name, status]) => `<div class="item"><strong>${name}</strong><span class="status status-draft">${bt(status)}</span></div>`).join('')}</div>
+        <form id="plm-import-form" style="margin-top:14px"><label>${bt('journeySourceSystem')}<select class="select" id="plm-system-select" name="system" disabled><option selected>${bt('journeyChooseConnector')}</option></select></label></form>
+        <div class="notice" style="margin-top:12px">${bt('journeyConnectorLifecycle')}</div></div>
+        <div style="display:grid;gap:18px"><div class="card panel"><h2>${bt('igGs1Title')}</h2><p class="meta">${bt('journeyGs1Inactive')}</p></div><div class="card panel"><h2>${bt('journeyIntegrationLifecycle')}</h2><div class="item-list">${['journeyConfig','journeyTest','journeyAuthorization','journeyActivation','journeyLastSync','journeyError','journeyRevocation'].map((key) => `<div class="item"><span>${bt(key)}</span><span class="status status-draft">${bt('journeyNotConfigured')}</span></div>`).join('')}</div></div>
+        <div class="card panel"><h2>${bt('journeySecurityPolicy')}</h2><p class="meta">${bt('journeySecretsPolicy')}</p><h3>${bt('journeyImportValidation')}</h3><p class="meta">${bt('journeyMappingPreviewRequired')}</p></div></div></div>`;
       }
 
       function massBalanceConsoleView() {
         const products = state.products || [];
-        const mb = state.massBalance || null;
-        const certs = mb?.certificates || [];
-        return `<div class="page-head"><div><div class="eyebrow">${bt('journeyVolumeControls')}</div><h1>${bt('journeyMassBalanceTitle')}</h1><span class="meta" hidden>${bt('mbTitle')}</span><p>${bt('journeyMassBalanceIntro')}</p></div></div>
+        const certs = state.transactionCertificates || [];
+        const genericDocuments = Array.isArray(state.documents) ? state.documents.length : 0;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('journeyVolumeControls')}</div><h1>${bt('journeyMassBalanceTitle')}</h1><span class="meta" hidden>${bt('mbTitle')}</span><p>${bt('journeyMassBalanceIntro')}</p></div><button class="btn btn-secondary" data-action="open-tc-register">${bt('journeyRegisterTc')}</button></div>
         <div class="notice"><strong>${bt('journeySignalNotFraud')}</strong> ${bt('journeyMassBalanceWarning')}</div>
-        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2><span class="status status-draft">${certs.length} ${bt('documents')}</span></div>${certs.length ? `<p>${certs.length}</p>` : `<div class="empty"><strong>${bt('journeyNoTransaction')}</strong><p>${bt('journeyTransactionPrereq')}</p></div>`}</div>
-        <div class="card panel"><h2>${bt('journeyAllocation')}</h2><form id="allocate-tc-form"><label>${bt('pdProduct')}<select class="select" disabled><option>${products.length ? bt('journeySelectAfterCertificate') : bt('journeyNoProductAvailable')}</option></select></label><label>${bt('journeyQuantityKg')}<input class="input" type="number" disabled placeholder="0.000"></label><button class="btn btn-primary" disabled>${bt('mbAllocate')}</button></form></div></div>
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2><div class="actions"><span class="status status-draft">${certs.length} ${bt('journeyTransactionCertificates')}</span><span class="status status-draft">${genericDocuments} ${bt('journeyGenericDocuments')}</span></div></div>
+        ${certs.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('certColNumber')}</th><th>${bt('journeyCertified')}</th><th>${bt('journeyAllocated')}</th><th>${bt('journeyAvailable')}</th><th>${bt('journeyPeriodScope')}</th></tr></thead><tbody>${certs.map((tc) => `<tr><td>${esc(tc.tcNumber)}</td><td>${mesure(tc.totalCertifiedWeightKg)} kg</td><td>${mesure(tc.allocatedWeightKg)} kg</td><td>${mesure(tc.remainingWeightKg)} kg</td><td>${esc(tc.issueDate || '—')} → ${esc(tc.expiryDate || '—')} · ${esc(tc.certifiedMaterialName || '—')}</td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><strong>${bt('journeyNoTransaction')}</strong><p>${bt('journeyTransactionPrereq')}</p></div>`}</div>
+        <div class="card panel"><h2>${bt('journeyAllocation')}</h2><form id="allocate-tc-form"><label>${bt('journeySourceCertificate')}<select class="select" name="certificateId" ${certs.length ? '' : 'disabled'}><option value="">${bt('journeySelectCertificate')}</option>${certs.map((tc) => `<option value="${esc(tc.id)}">${esc(tc.tcNumber)} · ${mesure(tc.remainingWeightKg)} kg</option>`).join('')}</select></label><label>${bt('journeyDestinationProduct')}<select class="select" name="productId" ${certs.length ? '' : 'disabled'}><option value="">${bt('journeySelectProduct')}</option>${products.map((product) => `<option value="${esc(product.id)}">${esc(product.reference)} · ${esc(product.name)}</option>`).join('')}</select></label><label>${bt('journeyQuantityKg')}<input class="input" type="number" name="allocatedQuantityKg" min="0.001" step="0.001" ${certs.length ? '' : 'disabled'} placeholder="0.000"></label><button class="btn btn-primary disabled-obvious" disabled title="${esc(bt('journeyAllocationPrerequisite'))}">${bt('mbAllocate')}</button></form></div></div>
         <div class="card panel" style="margin-top:18px"><h2>${bt('mbReconcile')}</h2><form id="reconcile-mass-balance-form"><div class="empty"><strong>${bt('cnNotComputed')}</strong><p>${bt('journeyReconcilePrereq')}</p></div></form><form id="tc-form" hidden aria-hidden="true"></form></div>`;
       }
 
@@ -2689,7 +2767,7 @@
         const claimsValeur = claims
           ? `<code>${esc(claims.audit_verdict || claims.auditVerdict || '—')}</code> · ${mesure(claims.green_claims_score ?? claims.greenClaimsScore, ' / 100')}`
           : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`;
-        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcPefTitle')}</h2><p class="meta">${bt('qcEcoScore')} : ${pefValeur}</p></div><button class="btn btn-secondary btn-small" data-action="calculate-pef">${bt('qcComputePef')}</button></div><div class="panel-head" style="margin-top:14px"><div><h2>${bt('qcGreenShield')}</h2><p class="meta">${bt('qcClaimsNote')} ${claimsValeur}</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">${bt('qcAuditClaims')}</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">${bt('qcClaim')}<textarea class="textarea" name="claimText" rows="2" placeholder="${esc(bt('qcClaim'))}"></textarea></label></form></div>`;
+        return `<div class="card panel" style="margin-top:18px"><div class="panel-head"><div><h2>${bt('qcPefTitle')}</h2><p class="meta">${bt('qcEcoScore')} : ${pefValeur}</p>${pef ? `<p class="meta">${bt('journeyCalculatedOn')} ${date(pef.calculatedAt)} · ${bt('journeyMethod')} ${esc(pef.methodologyVersion || '—')} · ${bt('journeyAuthor')} ${esc(pef.calculatedBy || bt('journeyAutomatedEngine'))} · ${bt('journeyDataSources')} ${esc(pef.dataQualityRating || bt('journeyStructuredProductInputs'))} · ${bt('journeyStatusProvisional')}</p>` : ''}</div><button class="btn btn-secondary btn-small" data-action="calculate-pef">${bt(pef ? 'journeyRecalculatePef' : 'qcComputePef')}</button></div><div class="notice">${bt('journeyPefWarning')}</div><div class="panel-head" style="margin-top:14px"><div><h2>${bt('qcGreenShield')}</h2><p class="meta">${bt('qcClaimsNote')} ${claimsValeur}</p></div><button class="btn btn-secondary btn-small" data-action="audit-green-claims">${bt('qcAuditClaims')}</button></div><form id="green-claim-form" class="form-grid"><label class="field-full">${bt('qcClaim')}<textarea class="textarea" name="claimText" rows="2" placeholder="${esc(bt('qcClaim'))}"></textarea></label></form></div>`;
       }
 
 
@@ -3078,7 +3156,7 @@
           <div class="issue">
             <span class="severity severity-${esc(issue.severity)}">${esc(issue.severity)}</span>
             <div>
-              <strong>${esc(issue.message)}</strong>
+              <strong>${esc(issue.ruleKey === 'product_missing_evidence' ? bt('journeyMissingEvidenceMessage') : issue.message)}</strong>
               <p><code>${esc(issue.ruleKey)}</code> · <span class="status status-${esc(issue.status)}">${esc(statusLabel(issue.status))}</span> · <span class="meta">${esc(bt('cnDetectedOn'))} ${date(issue.detectedAt)}</span></p>
               ${isWaived && waiverReason ? `
                 <div class="item-response" style="margin-top:7px;background:#edf7f0;border:1px solid #cce8d5;border-radius:8px;font-size:11px;color:#285e42">
@@ -3091,7 +3169,7 @@
             </div>
             <div class="actions" style="justify-content:flex-end">
               ${issue.status === 'open' ? `
-                <button class="btn btn-secondary btn-small" data-action="acknowledge-issue" data-issue-id="${esc(issue.id)}">${esc(acquitter)}</button>
+                <button class="btn btn-secondary btn-small" data-action="open-acknowledge-modal" data-issue-id="${esc(issue.id)}">${esc(acquitter)}</button>
                 <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">${esc(bt('cnQcWaive'))}</button>
               ` : isAcknowledged ? `
                 <button class="btn btn-secondary btn-small" data-action="open-waive-modal" data-issue-id="${esc(issue.id)}">${esc(bt('cnQcWaive'))}</button>
@@ -3177,7 +3255,7 @@
             <div class="tc-echelons-grid">
               ${nodes.slice(0, 12).map((n) => `
                 <div class="tc-echelon-card">
-                  <div class="tc-ech-num">${bt(tierDe(n))}</div>
+                  <div class="tc-ech-num">${bt('journeyBusinessTier')} ${bt(tierDe(n))}</div><div class="meta">${bt('journeyPathOrder')} ${moneyless(nodes.indexOf(n) + 1)}</div>
                   <div class="tc-ech-title">${esc(n.label)}</div>
                   <div class="tc-ech-model">${esc(n.process_code || n.node_type)}</div>
                   <div class="tc-ech-status">${n.site_country ? `✓ ${esc(n.site_country)}` : esc(statusLabel(n.status))}</div>
@@ -3284,7 +3362,7 @@
             <div class="actions">
               ${demoMode ? `<button class="btn btn-secondary" data-demo-action="1">${bt('scExportForensic')}</button>` : ''}
               ${p ? `<button class="btn btn-secondary" data-action="select-supply-chain-product">${bt('scChangeProduct')}</button>
-              ${nodes.length >= 2 ? `<button class="btn btn-secondary" data-action="new-chain-link">${bt('scLinkSteps')}</button>` : ''}
+              ${nodes.length >= 2 && links.length < nodes.length - 1 ? `<button class="btn btn-secondary" data-action="new-chain-link">${bt('scLinkSteps')}</button>` : nodes.length >= 2 ? `<button class="btn btn-secondary" disabled title="${esc(bt('journeyAllStepsLinked'))}">${bt('scLinkSteps')}</button>` : ''}
               <button class="btn btn-primary" data-action="new-chain-node">${bt('scAddMilestone')}</button>` : ''}
             </div>
           </div>
@@ -3714,6 +3792,7 @@
         if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdSupplierOnboarding')}</div><h2>${bt('mdBulkInvite')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdRequiredColumns')} <code>email</code>, <code>legalName</code>${bt('mdInviteNote')}</p><label class="field-full">${bt('mdCsvFile')}<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdCreateValidInvites')}</button></div>${supplierImportPreview()}</div></div>`;
         if (type === 'catalog-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h2>${bt('mdImportCatalogue')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdImportNote')}</p><div class="notice" style="margin:14px 0">${bt('mdRequiredColumns')} <code>reference</code>, <code>name</code>${bt('mdExtraColumnsNote')}</div><label class="field-full">${bt('mdCsvFile')}<input class="input" id="catalog-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="catalog-import-content" rows="8" placeholder="reference,name,category,sku\nAT-NEW-001,Sample product,T-shirt,SKU-001">${esc(state.catalogImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-catalog-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-catalog-import" ${state.catalogImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdImportValidRows')}</button></div>${catalogImportPreview()}</div></div>`;
         if (type === 'invite-supplier') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdEcosystem')}</div><h2>${bt('mdInviteSupplier')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdActivationNote')}</p><form id="supplier-form"><div class="form-grid"><label class="field-full">${bt('mdBusinessEmail')}<input class="input" name="email" type="email" required placeholder="contact@supplier.com"></label><label>${bt('mdLegalName')}<input class="input" name="legalName" required placeholder="Nhãn Textile Ltd"></label><label>${bt('mdDisplayName')}<input class="input" name="displayName" placeholder="Nhãn Textile"></label><label>${bt('mdCountry')}<input class="input" name="countryCode" maxlength="2" placeholder="PT"></label><label>${bt('mdBrandOrg')}<select class="select" name="organizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdSendInvite')}</button></div></form></div></div>`;
+        if (type === 'register-tc') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('journeyTransactionCertificates')}</div><h2>${bt('journeyRegisterTc')}</h2></div><button class="close" data-action="close-modal">×</button></div><div class="notice">${bt('journeyTcControlWarning')}</div><form id="register-tc-form"><div class="form-grid"><label>${bt('certColNumber')}<input class="input" name="tcNumber" required></label><label>${bt('certColStandard')}<input class="input" name="standard" required></label><label>${bt('certColIssuer')}<input class="input" name="issuerName" required></label><label>${bt('mtName')}<input class="input" name="certifiedMaterialName" required></label><label>${bt('journeyCertified')} (kg)<input class="input" name="totalCertifiedWeightKg" type="number" step="0.001" min="0.001" required></label><label>${bt('dueDate')}<input class="input" name="expiryDate" type="date"></label><label>${bt('journeySeller')}<select class="select" name="sellerOrganizationId" required><option value="${esc(state.activeOrganizationId)}">${esc(currentBrand()?.display_name || currentBrand()?.legal_name || '—')}</option>${suppliers().map((supplier) => `<option value="${esc(supplier.organization_id)}">${esc(supplier.organizations?.display_name || supplier.organizations?.legal_name || supplier.organization_id)}</option>`).join('')}</select></label><label>${bt('journeyBuyer')}<select class="select" name="buyerOrganizationId" required>${suppliers().map((supplier) => `<option value="${esc(supplier.organization_id)}">${esc(supplier.organizations?.display_name || supplier.organizations?.legal_name || supplier.organization_id)}</option>`).join('')}<option value="${esc(state.activeOrganizationId)}">${esc(currentBrand()?.display_name || currentBrand()?.legal_name || '—')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary" ${suppliers().length ? '' : 'disabled'}>${bt('journeyRegisterDeclaredTc')}</button></div></form></div></div>`;
         if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>${bt('mdCreateAuditProtocol')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">${bt('mdQuestionnaireTitle')}<input class="input" name="title" required placeholder="${bt('mdPhAuditTitle')}"></label><label>${bt('mdUniqueSlug')}<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>${bt('mdEsgCategory')}<select class="select" name="category"><option value="Chemistry &amp; Effluents">${bt('mdCatChemistry')}</option><option value="${esc(bt('cnGrpMaterials'))}">${bt('mdCatMaterials')}</option><option value="${esc(bt('cnGrpSocial'))}">${bt('mdCatSocial')}</option><option value="Empreinte Carbone">${bt('mdCatCarbon')}</option></select></label><label class="field-full">${bt('mdAuditDescription')}<textarea class="textarea" name="description" rows="3" required placeholder="${bt('mdPhAuditDesc')}"></textarea></label><label>${bt('mdFirstFieldType')}<select class="select" name="firstFieldType"><option value="document_proof">${bt('mdFieldDocProof')}</option><option value="composition_table">${bt('mdFieldComposition')}</option><option value="facility_select">${bt('mdFieldSitePicker')}</option></select></label><label>${bt('mdRequiredField')}<select class="select" name="required"><option value="true">${bt('mdYesBlocking')}</option><option value="false">${bt('mdOptional')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdPublishQuestionnaire')}</button></div></form></div></div>`;
         if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdCollection')}</div><h2>${bt('mdNewDataRequest')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">${bt('mdTitle')}<input class="input" name="title" required placeholder="${bt('mdPhRequestTitle')}"></label><label>${bt('sxSupplier')}<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label class="field-full">${bt('mdLinkedProduct')}<select class="select" name="productId"><option value="">${bt('mdNoLinkedProduct')}</option>${state.products.map((p) => `<option value="${esc(p.id)}" ${state.modalProductId === p.id ? 'selected' : ''}>${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label><label>${bt('mdDueDate')}<input class="input" name="dueAt" type="date"></label><label>${bt('mdBrandOrg')}<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateAndPrepare')}</button></div></form></div></div>`;
         if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdAddNode')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">${bt('mdNodeLabel')}<input class="input" name="label" required placeholder="${bt('mdPhNodeLabel')}"></label><label>${bt('mdNodeType')}<select class="select" name="nodeType" required><option value="process">${bt('mdProcessTransform')}</option><option value="material">${bt('mdRawMaterial')}</option><option value="organization">${bt('mdPartnerOrg')}</option></select></label><label>${bt('mdTextileProcess')}<select class="select" name="processCode" required><option value="other" selected>${bt('mdOtherDeclared')}</option><option value="ginning">${bt('mdGinning')}</option><option value="spinning">${bt('mdSpinning')}</option><option value="weaving">${bt('mdWeaving')}</option><option value="knitting">${bt('mdKnitting')}</option><option value="dyeing">${bt('mdDyeing')}</option><option value="finishing">${bt('mdFinishing')}</option><option value="cutting">${bt('mdCutting')}</option><option value="sewing">${bt('mdSewing')}</option><option value="assembly">${bt('mdAssembly')}</option><option value="packaging">${bt('mdPackaging')}</option></select></label><label class="field-full">${bt('mdLinkedMaterial')}<select class="select" name="materialId"><option value="">${bt('mdNone')}</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">${bt('mdSupplierOrg')}<select class="select" name="organizationId"><option value="">${bt('mdNone')}</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdAddNodeCta')}</button></div></form></div></div>`;
@@ -3721,9 +3800,13 @@
         if (type === 'create-cap') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdCreateCap')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="create-cap-form"><div class="form-grid"><label>${bt('mdQualityIssue')}<input class="input" name="issueId" required placeholder="${bt('mdPhIssueUuid')}"></label><label>${bt('mdSupplierOrganisation')}<input class="input" name="supplierOrganizationId" required placeholder="${bt('mdPhSupplierUuid')}"></label><label class="field-full">${bt('mdTitle')}<input class="input" name="title" required></label><label class="field-full">Instructions<textarea class="textarea" name="instructions" rows="4" required></textarea></label></div><div class="form-actions"><button class="btn btn-primary">${bt('mdCreateCapCta')}</button></div></form></div></div>`;
         if (type === 'review-cap') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdReviewCap')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="review-cap-form"><label>CAP<input class="input" name="capId" required placeholder="${bt('mdPhCapUuid')}"></label><label>Verdict<select class="select" name="verdict"><option value="approved">${bt('mdApprove')}</option><option value="rejected">${bt('mdRequestRework')}</option></select></label><label>Notes<textarea class="textarea" name="reviewNotes" rows="4" required></textarea></label><div class="form-actions"><button class="btn btn-primary">${bt('mdSaveReview')}</button></div></form></div></div>`;
         if (type === 'cap-message') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdCapThread')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="cap-message-form"><label>CAP<input class="input" name="capId" required placeholder="${bt('mdPhCapUuid')}"></label><label>Message<textarea class="textarea" name="message" rows="4" required></textarea></label><div class="form-actions"><button class="btn btn-primary">${bt('mdSend')}</button></div></form></div></div>`;
+        if (type === 'acknowledge-issue') {
+          const issue = state.quality?.issues?.find((i) => i.id === state.modalIssueId);
+          return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('journeyQualityAction')}</div><h2>${bt('journeyAcknowledgeTitle')}</h2></div><button class="close" data-action="close-modal">×</button></div><div class="notice"><strong>${bt('journeyActionEffect')}</strong> ${bt('journeyAcknowledgeEffect')}</div>${issue ? `<p><strong>${esc(issue.ruleKey === 'product_missing_evidence' ? bt('journeyMissingEvidenceMessage') : issue.message)}</strong></p>` : ''}<p class="meta">${bt('journeyActionTrace')}</p><div class="form-actions"><button class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary" data-action="acknowledge-issue" data-issue-id="${esc(state.modalIssueId)}">${bt('journeyConfirmAcknowledge')}</button></div></div></div>`;
+        }
         if (type === 'waive-issue') {
           const issue = state.quality?.issues?.find((i) => i.id === state.modalIssueId);
-          return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityWaiver')}</div><h2>${bt('mdGrantWaiver')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdWaiverNote')}</p>${issue ? `<div class="notice" style="margin-bottom:15px;background:#fdfcf9;border:1px solid #f1ece1;padding:10px 14px;border-radius:8px"><strong>${esc(issue.message)}</strong><div class="meta">${esc(issue.ruleKey)} · ${esc(bt('cnSeverity'))} ${esc(issue.severity)}</div></div>` : ''}<form id="waive-issue-form"><input type="hidden" name="issueId" value="${esc(state.modalIssueId)}"><div class="form-grid"><label class="field-full">${bt('mdWaiverReason')}<textarea class="textarea" name="reason" rows="3" required minlength="10" placeholder="${bt('mdPhWaiverReason')}"></textarea></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdValidateWaiver')}</button></div></form></div></div>`;
+          return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityWaiver')}</div><h2>${bt('mdGrantWaiver')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdWaiverNote')}</p>${issue ? `<div class="notice" style="margin-bottom:15px;background:#fdfcf9;border:1px solid #f1ece1;padding:10px 14px;border-radius:8px"><strong>${esc(issue.ruleKey === 'product_missing_evidence' ? bt('journeyMissingEvidenceMessage') : issue.message)}</strong><div class="meta">${esc(issue.ruleKey)} · ${esc(bt('cnSeverity'))} ${esc(issue.severity)}</div></div>` : ''}<form id="waive-issue-form"><input type="hidden" name="issueId" value="${esc(state.modalIssueId)}"><div class="form-grid"><label class="field-full">${bt('mdWaiverReason')}<textarea class="textarea" name="reason" rows="3" required minlength="10" placeholder="${bt('mdPhWaiverReason')}"></textarea></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdValidateWaiver')}</button></div></form></div></div>`;
         }
         return '';
       }
@@ -4850,6 +4933,7 @@
             if (action === 'send-request') await sendRequest();
             if (action === 'remind-request') { event.stopPropagation(); await remindRequest(el.dataset.reminderRequestId); }
             if (action === 'select-quality-product') { state.selectedProduct = null; state.quality = null; render(); }
+            if (action === 'open-tc-register') { state.modal = 'register-tc'; render(); return; }
             if (action === 'select-supply-chain-product') { state.selectedSupplyChainProduct = null; state.supplyChain = null; render(); }
             if (action === 'select-dpp-product') { state.selectedDppProduct = null; state.dpp = null; render(); }
             if (action === 'compute-quality') await computeQuality();
@@ -4881,7 +4965,8 @@
         document.querySelectorAll('[data-supplier-id-view]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openSupplier(el.dataset.supplierIdView); }));
         document.querySelectorAll('[data-review-response]').forEach((el) => el.addEventListener('click', () => reviewResponse(el.dataset.reviewResponse, el.dataset.reviewStatus).catch((error) => notify(error.message, true))));
         document.querySelectorAll('[data-delete-chain-link]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); deleteChainLink(el.dataset.deleteChainLink); }));
-        document.querySelectorAll('[data-action="acknowledge-issue"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); acknowledgeIssue(el.dataset.issueId).catch((err) => notify(err.message, true)); }));
+        document.querySelectorAll('[data-action="open-acknowledge-modal"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); state.modal = 'acknowledge-issue'; state.modalIssueId = el.dataset.issueId; render(); }));
+        document.querySelectorAll('[data-action="acknowledge-issue"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); acknowledgeIssue(el.dataset.issueId).then(() => { state.modal = null; state.modalIssueId = null; render(); }).catch((err) => notify(err.message, true)); }));
         document.querySelectorAll('[data-action="open-waive-modal"]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); state.modal = 'waive-issue'; state.modalIssueId = el.dataset.issueId; render(); }));
         const org = document.getElementById('active-org'); if (org) org.addEventListener('change', () => setActiveOrganization(org.value));
         const search = document.getElementById('request-search'); const filter = document.getElementById('request-filter');
@@ -4959,6 +5044,30 @@
           render();
         });
         document.getElementById('request-form')?.addEventListener('submit', (e) => { e.preventDefault(); createRequest(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('organization-settings-form')?.addEventListener('submit', async (e) => { e.preventDefault(); const data = Object.fromEntries(new FormData(e.currentTarget).entries()); data.qualityThreshold = Number(data.qualityThreshold); try { const payload = await api('/api/organization-settings', { method: 'PUT', body: JSON.stringify(data) }); state.organizationSettings = payload.settings; const refreshed = await api('/api/organization-settings'); state.organizationSettingsHistory = refreshed.history || []; render(); notify(bt('journeySettingsSaved')); } catch (err) { notify(err.message, true); } });
+        document.getElementById('register-tc-form')?.addEventListener('submit', async (e) => { e.preventDefault(); const data = Object.fromEntries(new FormData(e.currentTarget).entries()); data.totalCertifiedWeightKg = Number(data.totalCertifiedWeightKg); try { await api('/api/mass-balance/certificates', { method: 'POST', body: JSON.stringify(data) }); state.modal = null; const payload = await api('/api/mass-balance/certificates'); state.transactionCertificates = payload.certificates || []; render(); notify(bt('journeyTcRegistered')); } catch (err) { notify(err.message, true); } });
+        const allocationForm = document.getElementById('allocate-tc-form');
+        if (allocationForm) {
+          const refreshAllocation = () => {
+            const certificateId = allocationForm.elements.certificateId?.value || '';
+            const productId = allocationForm.elements.productId?.value || '';
+            const quantity = Number(allocationForm.elements.allocatedQuantityKg?.value);
+            allocationForm.querySelector('button[type="submit"], button:not([type])').disabled = !(certificateId && productId && Number.isFinite(quantity) && quantity > 0);
+          };
+          allocationForm.addEventListener('input', refreshAllocation);
+          allocationForm.addEventListener('change', refreshAllocation);
+          allocationForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const data = new FormData(allocationForm);
+            const productId = String(data.get('productId') || '');
+            try {
+              await api(`/api/products/${encodeURIComponent(productId)}/mass-balance/allocate`, { method: 'POST', body: JSON.stringify({ tcId: String(data.get('certificateId') || ''), allocatedWeightKg: Number(data.get('allocatedQuantityKg')) }) });
+              const payload = await api('/api/mass-balance/certificates');
+              state.transactionCertificates = payload.certificates || [];
+              render(); notify(bt('journeyTcAllocated'));
+            } catch (err) { notify(err.message, true); }
+          });
+        }
         document.getElementById('waive-issue-form')?.addEventListener('submit', (e) => { e.preventDefault(); waiveIssue(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('green-claim-form')?.addEventListener('submit', (e) => { e.preventDefault(); auditGreenClaims(e.currentTarget).catch((err) => notify(err.message, true)); });
       }

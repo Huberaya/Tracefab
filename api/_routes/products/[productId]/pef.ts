@@ -5,7 +5,6 @@ import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid } from '../../../_lib/data-requests.js';
 import { accessibleProduct } from '../../../_lib/quality.js';
-import { calculateAndStoreProductPef } from '../../../_lib/pef/pef-calculator.js';
 
 function routeProductId(req: VercelRequest) {
   const value = req.query.productId;
@@ -64,12 +63,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
       }
 
-      // If not yet computed, compute automatically
-      return await calculateAndStoreProductPef(tx, {
-        productId,
-        customCategory: productRecord?.category || undefined,
-        userId: user.id,
-      });
+      // GET est une lecture pure : l'ouverture d'un écran ne doit jamais créer
+      // une évaluation environnementale. Le calcul reste une action explicite
+      // sur POST /pef/calculate, avec sa propre piste d'audit.
+      return { notCalculated: true as const };
     });
 
     if (!result) {
@@ -77,12 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return json(res, 200, {
-      assessment: result,
+      assessment: 'notCalculated' in result ? null : result,
       methodology: 'PEFCR Apparel & Footwear 2024 / Loi AGEC',
-      regulatoryCompliance: {
-        euEsprDppReady: true,
-        frenchAgecCompliant: true,
-      },
+      status: 'notCalculated' in result ? 'not_calculated' : 'provisional_calculation',
+      disclaimer: 'A calculated PEF score is not a regulatory validation or a third-party verification.',
     });
   } catch (err: unknown) {
     if (isUnauthorized(err)) {
