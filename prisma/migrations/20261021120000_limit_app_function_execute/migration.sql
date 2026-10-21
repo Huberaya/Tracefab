@@ -115,16 +115,19 @@ BEGIN
 
   -- Every allowlisted name must resolve to exactly one function owned by the
   -- migration owner. Ambiguity or drift stops the migration before revocation.
-  SELECT string_agg(w.name, ', ' ORDER BY w.name)
+  SELECT string_agg(invalid.name, ', ' ORDER BY invalid.name)
     INTO invalid_names
-    FROM unnest(runtime_names) AS w(name)
-    LEFT JOIN pg_catalog.pg_proc p
-      ON p.proname = w.name AND p.prokind = 'f'
-    LEFT JOIN pg_catalog.pg_namespace n
-      ON n.oid = p.pronamespace AND n.nspname = 'public'
-   GROUP BY w.name
-  HAVING count(p.oid) FILTER (WHERE n.oid IS NOT NULL) <> 1
-      OR bool_or(p.proowner <> owner_oid) FILTER (WHERE n.oid IS NOT NULL);
+    FROM (
+      SELECT w.name
+        FROM unnest(runtime_names) AS w(name)
+        LEFT JOIN pg_catalog.pg_proc p
+          ON p.proname = w.name AND p.prokind = 'f'
+        LEFT JOIN pg_catalog.pg_namespace n
+          ON n.oid = p.pronamespace AND n.nspname = 'public'
+       GROUP BY w.name
+      HAVING count(p.oid) FILTER (WHERE n.oid IS NOT NULL) <> 1
+          OR COALESCE(bool_or(p.proowner <> owner_oid) FILTER (WHERE n.oid IS NOT NULL), false)
+    ) AS invalid;
 
   IF invalid_names IS NOT NULL THEN
     RAISE EXCEPTION 'Runtime EXECUTE allowlist has missing, overloaded or foreign-owned functions: %', invalid_names
@@ -134,8 +137,8 @@ BEGIN
   -- The RLS catalogue is an independent source of truth. Every TraceFab
   -- function called by USING/WITH CHECK must be explicitly allowlisted.
   WITH policy_bodies AS (
-    SELECT pg_catalog.coalesce(pg_catalog.pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' ||
-           pg_catalog.coalesce(pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid), '') AS body
+    SELECT COALESCE(pg_catalog.pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' ||
+           COALESCE(pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid), '') AS body
       FROM pg_catalog.pg_policy pol
       JOIN pg_catalog.pg_class c ON c.oid = pol.polrelid
       JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
