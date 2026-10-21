@@ -830,7 +830,7 @@
       }
 
       async function loadOverviewInsights() {
-        if (state.demo || !(state.products || []).length) return;
+        if (demoMode || !(state.products || []).length) return;
         const tenant = state.activeOrganizationId;
         const rows = await Promise.all(state.products.map(async (product) => {
           const [quality, pef, chain] = await Promise.all([
