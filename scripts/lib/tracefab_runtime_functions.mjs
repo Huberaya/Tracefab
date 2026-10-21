@@ -101,6 +101,9 @@ export const RUNTIME_FUNCTION_DEPENDENCY_NAMES = Object.freeze([
   // tracefab_require_active_tenant is SECURITY INVOKER and calls this
   // context reader; the caller must retain EXECUTE on the transitive helper.
   'tracefab_active_organization_id',
+  // Tenant predicate exercised by the active-tenant contract probe; it must
+  // remain callable by the runtime but is not referenced by pg_policies.
+  'tracefab_in_active_tenant',
   // Contract guard used by the active-tenant runtime probe; it returns only
   // the armed tenant UUID or fails closed with organization_id_required.
   'tracefab_require_active_tenant',
