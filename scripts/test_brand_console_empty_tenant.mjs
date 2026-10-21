@@ -215,7 +215,7 @@ try {
     'Fibre-to-garment lineage',
     'Mass balance reconciled',
     'AGEC Art. 13 compliance',
-    'Calculated PEF score',
+    'Calculated proxy PEF score · distinct from AGEC Art. L13 assessment',
     'DPP readiness',
   ]) {
     assert.match(await indicateur(label), /Not computed/, `${label} doit valoir « non calcule »`);
