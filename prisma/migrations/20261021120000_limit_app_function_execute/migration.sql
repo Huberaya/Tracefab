@@ -145,7 +145,7 @@ BEGIN
   ), policy_functions AS (
     SELECT DISTINCT (m.matches)[1] AS name
       FROM policy_bodies b
-      CROSS JOIN LATERAL pg_catalog.regexp_matches(b.body, '(tracefab_[a-z0-9_]+)[[:space:]]*\\(', 'g') AS m(matches)
+      CROSS JOIN LATERAL pg_catalog.regexp_matches(b.body, '(tracefab_[a-z0-9_]+)[[:space:]]*\(', 'g') AS m(matches)
   )
   SELECT string_agg(name, ', ' ORDER BY name)
     INTO missing_policy_names
