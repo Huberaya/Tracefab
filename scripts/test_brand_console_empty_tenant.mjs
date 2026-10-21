@@ -63,6 +63,7 @@ const EMPTY_TENANT = {
   '/api/questionnaires': { questionnaires: [] },
   '/api/catalog/schemas': { schemas: [] },
   '/api/mass-balance/certificates': { certificates: [], count: 0 },
+  '/api/organization-settings': { settings: null, history: [] },
   '/api/dpp/portfolio': {
     profileKey: 'textile_readiness_mvp',
     profileVersion: '1.0',
@@ -214,7 +215,7 @@ try {
     'Fibre-to-garment lineage',
     'Mass balance reconciled',
     'AGEC Art. 13 compliance',
-    'PEF calculations validated',
+    'Calculated PEF score',
     'DPP readiness',
   ]) {
     assert.match(await indicateur(label), /Not computed/, `${label} doit valoir « non calcule »`);

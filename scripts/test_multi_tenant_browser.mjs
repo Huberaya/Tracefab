@@ -162,6 +162,10 @@ function installApi(page, state) {
     if (path === '/api/questionnaires') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ questionnaires: [] }) });
     if (path.startsWith('/api/catalog/schemas')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ schemas: [] }) });
     if (path === '/api/mass-balance/certificates') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ certificates: [], count: 0 }) });
+    if (path === '/api/organization-settings') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ settings: null, history: [] }) });
+    if (/^\/api\/quality\/products\/[^/]+$/.test(path)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ summary: { completenessScore: null, qualityIndex: null, evidenceCoverage: null, verifiedRate: null, missingEvidenceCount: 0 }, issues: [] }) });
+    if (/^\/api\/products\/[^/]+\/pef$/.test(path)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'not_calculated', assessment: null }) });
+    if (/^\/api\/products\/[^/]+\/supply-chain$/.test(path)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ nodes: [], links: [] }) });
     if (path === '/api/dpp/portfolio') {
       const total = ALL_PRODUCTS.filter((p) => p.brandOrganizationId === header).length;
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok', scoreIsReadinessIndicatorOnly: true, profileKey: 'textile_readiness_mvp', profileVersion: '1.0', totalProducts: total, computedProducts: 0, uncomputedProducts: total, blockedProducts: 0, readinessScore: 0, statusCounts: {}, gaps: [], lastComputedAt: null }) });

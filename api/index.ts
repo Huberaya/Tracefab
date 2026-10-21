@@ -60,6 +60,7 @@ const routes: Route[] = [
   { pattern: /^me$/, params: [], load: () => import('./_routes/me.js') },
   { pattern: /^organizations\/([^\/]+)\/invitations$/, params: ['organizationId'], load: () => import('./_routes/organizations/[organizationId]/invitations.js') },
   { pattern: /^organizations$/, params: [], load: () => import('./_routes/organizations.js') },
+  { pattern: /^organization\-settings$/, params: [], load: () => import('./_routes/organization-settings.js') },
   { pattern: /^products\/([^\/]+)\/data\-points$/, params: ['productId'], load: () => import('./_routes/products/[productId]/data-points.js') },
   { pattern: /^products\/([^\/]+)\/identifiers$/, params: ['productId'], load: () => import('./_routes/products/[productId]/identifiers.js') },
   { pattern: /^products\/([^\/]+)\/materials$/, params: ['productId'], load: () => import('./_routes/products/[productId]/materials.js') },
