@@ -37,6 +37,7 @@ import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
@@ -92,6 +93,30 @@ verifier(
   'la liste des tables en écriture directe est explicite',
   sourceRole.includes('TABLES_ECRITURE_DIRECTE'),
   'la constante TABLES_ECRITURE_DIRECTE a disparu',
+);
+verifier(
+  'le bootstrap n accorde pas EXECUTE globalement',
+  !/GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO/i.test(sourceRole),
+  'un GRANT EXECUTE ON ALL FUNCTIONS est présent',
+);
+verifier(
+  'le bootstrap ferme le défaut EXECUTE applicatif futur',
+  sourceRole.includes('REVOKE EXECUTE ON FUNCTIONS FROM ${APP_ROLE}')
+    && !/ALTER DEFAULT PRIVILEGES[^;]*GRANT EXECUTE ON FUNCTIONS TO ${APP_ROLE}/i.test(sourceRole),
+  'le défaut EXECUTE applicatif reste accordé',
+);
+const migrationFunctionAcl = fs.readFileSync(
+  path.join(RACINE, 'prisma', 'migrations', '20261021120000_limit_app_function_execute', 'migration.sql'),
+  'utf8',
+);
+const allowlistSqlBlock = migrationFunctionAcl.match(/runtime_names text\\[\\] := ARRAY\\[([\\s\\S]*?)\\]::text\\[\\];/);
+const allowlistSqlNames = allowlistSqlBlock
+  ? [...allowlistSqlBlock[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]).sort()
+  : [];
+verifier(
+  'la liste SQL de migration est synchronisée avec le module runtime',
+  JSON.stringify(allowlistSqlNames) === JSON.stringify([...RUNTIME_FUNCTION_NAMES].sort()),
+  `module=${RUNTIME_FUNCTION_NAMES.length}, migration=${allowlistSqlNames.length}`,
 );
 
 /* --- 1. Prérequis ---------------------------------------------------------- */
@@ -308,11 +333,47 @@ try {
     verifier('le limiteur peut écrire', false, `${e.code} ${String(e.message).split('\n')[0]}`);
   }
 
-  // Les fonctions appelées par le runtime doivent rester exécutables.
-  const fonc = await app.query(`
-    SELECT count(*)::int AS n FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname='public' AND has_function_privilege('${APP_ROLE}', p.oid, 'EXECUTE')`);
-  verifier('des fonctions restent exécutables', fonc.rows[0].n > 0, `${fonc.rows[0].n} fonction(s)`);
+  // Le rôle applicatif ne doit recevoir EXECUTE que sur les fonctions SQL
+  // réellement appelées par api/ ou les politiques RLS. Les fonctions
+  // SECURITY DEFINER internes et les triggers restent hors de l'allowlist.
+  const grantsFonctions = await app.query(`
+    SELECT p.proname
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+     WHERE n.nspname = 'public'
+       AND p.proname LIKE 'tracefab_%'
+       AND acl.grantee = '${APP_ROLE}'::regrole
+       AND acl.privilege_type = 'EXECUTE'
+     ORDER BY p.proname`);
+  const fonctionsObservees = grantsFonctions.rows.map((r) => r.proname);
+  const fonctionsAttendues = [...RUNTIME_FUNCTION_NAMES].sort();
+  verifier(
+    'EXECUTE explicite correspond exactement à l allowlist runtime/RLS',
+    JSON.stringify(fonctionsObservees) === JSON.stringify(fonctionsAttendues),
+    `attendues=${fonctionsAttendues.length} ; observees=${fonctionsObservees.length} ; extras/manquants=${[...new Set([...fonctionsObservees, ...fonctionsAttendues])].filter((n) => fonctionsObservees.includes(n) !== fonctionsAttendues.includes(n)).join(', ')}`,
+  );
+
+  // Contrôle négatif du défaut futur : une fonction créée par le propriétaire
+  // après la migration ne doit pas devenir exécutable par tracefab_app.
+  const probe = new pg.Client({ connectionString: urlEphemere, ssl: sslDepuisUrl(urlEphemere) });
+  await probe.connect();
+  try {
+    await probe.query('BEGIN');
+    await probe.query(`CREATE FUNCTION public.tracefab_runtime_execute_probe() RETURNS boolean LANGUAGE sql STABLE AS $ SELECT true $`);
+    const futureGrant = await probe.query(
+      `SELECT has_function_privilege($1, 'public.tracefab_runtime_execute_probe()', 'EXECUTE') AS allowed`,
+      [APP_ROLE],
+    );
+    verifier(
+      'une fonction future n hérite pas EXECUTE pour le runtime',
+      futureGrant.rows[0]?.allowed === false,
+      `allowed=${futureGrant.rows[0]?.allowed}`,
+    );
+  } finally {
+    await probe.query('ROLLBACK');
+    await probe.end();
+  }
 
   await app.end();
 } catch (e) {
