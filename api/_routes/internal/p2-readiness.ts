@@ -27,6 +27,23 @@ function privateStorageReadiness() {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
+
+  // Sonde temporaire, limitée à un déploiement Preview protégé par Vercel.
+  // Elle ne renvoie que l'identité PostgreSQL et deux booléens de sécurité,
+  // jamais d'URL ni de secret. Elle est activée par un flag de Preview propre
+  // à la branche de diagnostic; elle est impossible en Production.
+  const previewIdentityProbe =
+    process.env.VERCEL_ENV === 'preview'
+    && process.env.TRACEFAB_RUNTIME_IDENTITY_PROBE === 'enabled'
+    && req.query?.identity === '1';
+  if (previewIdentityProbe) {
+    const databaseIdentity = await probeDatabaseIdentity();
+    return json(res, databaseIdentity.measured ? 200 : 503, {
+      schema: 'tracefab-runtime-identity-probe-v1',
+      databaseIdentity,
+    });
+  }
+
   if (!workerSecretConfigured()) return json(res, 503, { error: 'worker_not_configured' });
   if (!workerAuthorized(req)) return json(res, 401, { error: 'worker_unauthorized' });
 
