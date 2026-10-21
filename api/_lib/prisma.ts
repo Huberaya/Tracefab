@@ -74,3 +74,32 @@ export const prisma: PrismaClient =
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.tracefabPrisma = prisma;
 }
+
+/**
+ * TEMPORARY production identity probe. Enabled only by a dedicated Vercel
+ * environment flag; logs role metadata, never credentials or tenant data.
+ * Remove immediately after one successful production measurement.
+ */
+if (process.env.TRACEFAB_RUNTIME_IDENTITY_PROBE === 'enabled') {
+  void prisma.$queryRaw<Array<{
+    connected_role: string;
+    session_role: string;
+    bypass_rls: boolean;
+    superuser: boolean;
+  }>>`
+    SELECT current_user AS connected_role,
+           session_user AS session_role,
+           COALESCE((SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user), false) AS bypass_rls,
+           COALESCE((SELECT rolsuper FROM pg_roles WHERE rolname = current_user), false) AS superuser
+  `.then((rows) => {
+    console.info(JSON.stringify({
+      event: 'tracefab_runtime_identity_probe',
+      ...rows[0],
+    }));
+  }).catch((error: unknown) => {
+    console.error(JSON.stringify({
+      event: 'tracefab_runtime_identity_probe_failed',
+      message: error instanceof Error ? error.message : 'unknown error',
+    }));
+  });
+}
