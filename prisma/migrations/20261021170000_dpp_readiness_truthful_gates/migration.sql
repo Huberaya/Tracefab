@@ -97,4 +97,50 @@ END;
 $$;
 
 REVOKE EXECUTE ON FUNCTION tracefab_dpp_requirement_met(TEXT, UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION tracefab_dpp_requirement_met(TEXT, UUID) TO tracefab_app;
+REVOKE EXECUTE ON FUNCTION tracefab_dpp_requirement_met(TEXT, UUID) FROM tracefab_app;
+
+-- Keep the current-data gate inside the already allow-listed, tenant-authorized
+-- transition. The helper above deliberately remains non-executable by the
+-- runtime role: exposing it would create a cross-tenant product-existence
+-- oracle through arbitrary UUID probes.
+CREATE OR REPLACE FUNCTION tracefab_mark_dpp_ready_to_publish(p_dpp_record_id UUID)
+RETURNS dpp_records
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_record dpp_records;
+  v_brand_organization_id UUID;
+  v_all_met BOOLEAN;
+BEGIN
+  SELECT r.* INTO v_record FROM dpp_records r
+  WHERE r.id = p_dpp_record_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'dpp_record_not_found'; END IF;
+
+  SELECT p.brand_organization_id INTO v_brand_organization_id
+  FROM tracefab_products p WHERE p.id = v_record.product_id;
+  IF NOT tracefab_has_org_role(v_brand_organization_id, ARRAY['owner','admin','manager']::membership_role[]) THEN
+    RAISE EXCEPTION 'dpp_publish_review_role_required';
+  END IF;
+  IF v_record.readiness_status <> 'data_ready' THEN
+    RAISE EXCEPTION 'dpp_record_not_data_ready';
+  END IF;
+
+  SELECT bool_and(tracefab_dpp_requirement_met(requirement_key, v_record.product_id))
+  INTO v_all_met
+  FROM unnest(ARRAY[
+    'product.reference','product.name','product.description','product.category',
+    'product.country_of_manufacture','product.required_attributes',
+    'composition.complete','materials.origin_documented','traceability.graph',
+    'traceability.documented','quality.no_open_issues','evidence.product_data',
+    'product.not_draft'
+  ]::text[]) AS requirement_key;
+  IF v_all_met IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'dpp_publication_requirements_not_met';
+  END IF;
+
+  UPDATE dpp_records SET readiness_status='ready_to_publish', reviewed_at=now(),
+    reviewed_by=tracefab_current_user_id()
+  WHERE id=p_dpp_record_id RETURNING * INTO v_record;
+  RETURN v_record;
+END;
+$$;

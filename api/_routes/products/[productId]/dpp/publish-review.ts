@@ -39,24 +39,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         throw new Error('dpp_record_not_data_ready');
       }
 
-      // Re-evaluate the strict publication gates against current source data.
-      // A previously persisted 100% from an older/narrower profile must never
-      // authorize publication after requirements have been tightened.
-      const gateRows = await tx.$queryRaw<Array<{ all_met: boolean }>>`
-        SELECT bool_and(tracefab_dpp_requirement_met(requirement_key, ${productId}::uuid)) AS all_met
-        FROM unnest(ARRAY[
-          'product.reference','product.name','product.description','product.category',
-          'product.country_of_manufacture','product.required_attributes',
-          'composition.complete','materials.origin_documented','traceability.graph',
-          'traceability.documented','quality.no_open_issues','evidence.product_data',
-          'product.not_draft'
-        ]::text[]) AS requirement_key
-      `;
-      if (gateRows[0]?.all_met !== true) {
-        throw new Error('dpp_publication_requirements_not_met');
-      }
-
-      // 2. Mark ready to publish using the stored procedure
+      // 2. Mark ready to publish. The SECURITY DEFINER transition re-evaluates
+      // all strict gates against current source data while holding the record
+      // lock; the lower-level requirement helper is not exposed to runtime.
+      // This prevents both stale-snapshot publication and cross-tenant probes.
       const updatedRows = await tx.$queryRaw<Array<{
         id: string;
         product_id: string;

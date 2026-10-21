@@ -18,8 +18,11 @@ for (const token of [
 ]) {
   assert.ok(migration.includes(token), `strict DPP profile must include ${token}`);
   assert.ok(dppLib.includes(token), `DPP summary must expose ${token}`);
-  assert.ok(publish.includes(token), `publication route must re-evaluate ${token}`);
 }
+assert.ok(migration.includes('CREATE OR REPLACE FUNCTION tracefab_mark_dpp_ready_to_publish'));
+assert.ok(migration.includes("RAISE EXCEPTION 'dpp_publication_requirements_not_met'"));
+assert.ok(migration.includes('REVOKE EXECUTE ON FUNCTION tracefab_dpp_requirement_met(TEXT, UUID) FROM tracefab_app'));
+assert.ok(publish.includes('tracefab_mark_dpp_ready_to_publish'));
 assert.ok(publish.includes('dpp_publication_requirements_not_met'));
 assert.ok(dppLib.includes('snapshotMet === true'), 'requirements absent from an old snapshot must fail closed');
 assert.ok(!dppLib.includes("'product.data_ready',\n    'composition.complete'"), 'self-referential readiness must not be scored');
