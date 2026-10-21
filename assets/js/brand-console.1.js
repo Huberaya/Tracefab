@@ -830,7 +830,7 @@
       }
 
       async function loadOverviewInsights() {
-        if (demoMode || !(state.products || []).length) return;
+        if (estDemo() || !(state.products || []).length) return;
         const tenant = state.activeOrganizationId;
         const rows = await Promise.all(state.products.map(async (product) => {
           const [quality, pef, chain] = await Promise.all([
@@ -2274,7 +2274,7 @@
                 <div class="mc-stat-subitem"><span>${bt('ovDpp')}</span><strong>${mesure(ag.dpp, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>${mesureInconnue(gs1Styles, ' ' + bt('ovStylesUnit'))}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovAgec')}</span><strong>${mesure(agec, '%')}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('journeyPefCalculated')}</span><strong>${ag.pef === null || ag.pef === undefined ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>` : `${esc(ag.pefGrade || '')} ${mesure(ag.pef, '/100')}`}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('journeyPefCalculated')}</span><strong>${demoMode ? `${esc(pef)} · ${esc(ag.pefGrade || '')} ${mesure(ag.pef, '/100')}` : (ag.pef === null || ag.pef === undefined ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>` : `${esc(ag.pefGrade || '')} ${mesure(ag.pef, '/100')}`)}</strong></div>
               </div>
             </div>
           </div>
