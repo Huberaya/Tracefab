@@ -37,7 +37,7 @@ import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
-import { RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
+import { API_RUNTIME_FUNCTION_NAMES, RLS_POLICY_FUNCTION_NAMES, RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
@@ -117,6 +117,43 @@ verifier(
   'la liste SQL de migration est synchronisée avec le module runtime',
   JSON.stringify(allowlistSqlNames) === JSON.stringify([...RUNTIME_FUNCTION_NAMES].sort()),
   `module=${RUNTIME_FUNCTION_NAMES.length}, migration=${allowlistSqlNames.length}`,
+);
+
+// Ré-extraction indépendante des appels SQL directs de api/. Les commentaires
+// sont retirés pour qu'une mention documentaire ne devienne pas un droit DB.
+// Les noms de tables sont exclus : INSERT INTO tracefab_x (...) ressemble à un
+// appel de fonction pour une expression régulière naïve.
+function fichiersTypeScript(dir, acc = []) {
+  for (const entry of fs.readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    if (fs.statSync(full).isDirectory()) fichiersTypeScript(full, acc);
+    else if (/\.ts$/.test(entry)) acc.push(full);
+  }
+  return acc;
+}
+const tablesConnues = new Set();
+for (const dossier of fs.readdirSync(path.join(RACINE, 'prisma', 'migrations')).sort()) {
+  const fichierMigration = path.join(RACINE, 'prisma', 'migrations', dossier, 'migration.sql');
+  if (!fs.existsSync(fichierMigration)) continue;
+  const sql = fs.readFileSync(fichierMigration, 'utf8');
+  for (const m of sql.matchAll(/\bCREATE TABLE\s+(?:IF NOT EXISTS\s+)?(?:"?public"?\.)?"?([a-z0-9_]+)"?/gi)) tablesConnues.add(m[1]);
+  for (const m of sql.matchAll(/\bDROP TABLE\s+(?:IF EXISTS\s+)?(?:"?public"?\.)?"?([a-z0-9_]+)"?/gi)) tablesConnues.delete(m[1]);
+}
+const fonctionsApiObservees = new Set();
+for (const fichierApi of fichiersTypeScript(path.join(RACINE, 'api'))) {
+  const src = fs.readFileSync(fichierApi, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|\s)\/\/.*$/gm, '$1');
+  for (const m of src.matchAll(/\b(tracefab_[a-z0-9_]+)\s*\(/gi)) {
+    const nom = m[1].toLowerCase();
+    if (!tablesConnues.has(nom)) fonctionsApiObservees.add(nom);
+  }
+}
+const fonctionsApiTriees = [...fonctionsApiObservees].sort();
+verifier(
+  'l allowlist API est exactement dérivée des appels SQL dans api/',
+  JSON.stringify(fonctionsApiTriees) === JSON.stringify([...API_RUNTIME_FUNCTION_NAMES].sort()),
+  `attendues=${API_RUNTIME_FUNCTION_NAMES.length} ; observées=${fonctionsApiTriees.length} ; différences=${[...new Set([...fonctionsApiTriees, ...API_RUNTIME_FUNCTION_NAMES])].filter((n) => fonctionsApiTriees.includes(n) !== API_RUNTIME_FUNCTION_NAMES.includes(n)).join(', ')}`,
 );
 
 /* --- 1. Prérequis ---------------------------------------------------------- */
@@ -332,6 +369,27 @@ try {
   } catch (e) {
     verifier('le limiteur peut écrire', false, `${e.code} ${String(e.message).split('\n')[0]}`);
   }
+
+  const politiquesFonctions = await app.query(`
+    WITH bodies AS (
+      SELECT COALESCE(pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' ||
+             COALESCE(pg_get_expr(pol.polwithcheck, pol.polrelid), '') AS body
+        FROM pg_policy pol
+        JOIN pg_class c ON c.oid = pol.polrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public'
+    )
+    SELECT DISTINCT (m.matches)[1] AS name
+      FROM bodies b
+      CROSS JOIN LATERAL regexp_matches(b.body, '(tracefab_[a-z0-9_]+)[[:space:]]*\\\\(', 'g') AS m(matches)
+     ORDER BY name
+  `);
+  const fonctionsRlsObservees = politiquesFonctions.rows.map((r) => r.name);
+  verifier(
+    'allowlist RLS correspond exactement aux fonctions des politiques',
+    JSON.stringify(fonctionsRlsObservees) === JSON.stringify([...RLS_POLICY_FUNCTION_NAMES].sort()),
+    `attendues=${RLS_POLICY_FUNCTION_NAMES.length} ; observées=${fonctionsRlsObservees.length} ; différences=${[...new Set([...fonctionsRlsObservees, ...RLS_POLICY_FUNCTION_NAMES])].filter((n) => fonctionsRlsObservees.includes(n) !== RLS_POLICY_FUNCTION_NAMES.includes(n)).join(', ')}`,
+  );
 
   // Le rôle applicatif ne doit recevoir EXECUTE que sur les fonctions SQL
   // réellement appelées par api/ ou les politiques RLS. Les fonctions
