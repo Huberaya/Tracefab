@@ -102,6 +102,9 @@ export const RUNTIME_FUNCTION_DEPENDENCY_NAMES = Object.freeze([
   // tracefab_in_active_tenant is SECURITY INVOKER and calls this helper, so
   // the caller must retain EXECUTE on the transitive dependency.
   'tracefab_active_organization_id',
+  // Contract guard used by the active-tenant runtime probe; it returns only
+  // the armed tenant UUID or fails closed with organization_id_required.
+  'tracefab_require_active_tenant',
 ]);
 
 export const RUNTIME_FUNCTION_NAMES = Object.freeze(
