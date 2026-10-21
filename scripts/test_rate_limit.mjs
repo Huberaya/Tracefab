@@ -62,7 +62,11 @@ setDatabaseCounter(async () => {
 });
 
 // Verificateur de jetons de reference : seul JETON_VALIDE passe.
-setCredentialVerifier(async (token) => token === JETON_VALIDE);
+let verificationCalls = 0;
+setCredentialVerifier(async (token) => {
+  verificationCalls += 1;
+  return token === JETON_VALIDE;
+});
 
 /* ------------------------------------------------- 1. classification pure */
 
@@ -92,6 +96,17 @@ assert.equal(classify('health', req()), 'exempt');
 assert.equal(classify('internal/notification-outbox/run', req({ method: 'POST' })), 'exempt');
 assert.equal(classify('__clerk/v1/client/sign_ins', req({ method: 'POST' })), 'exempt');
 ok('les dispenses existantes et le proxy Clerk gere par Clerk sont preserves');
+
+const appelsAvantDispense = verificationCalls;
+const clerkProxy = await evaluate(
+  '__clerk/v1/client/sessions/sess_test/tokens',
+  req({ method: 'POST', headers: { cookie: `__session=${JETON_VALIDE}` } }),
+);
+assert.equal(clerkProxy.allowed, true);
+assert.equal(clerkProxy.klass, 'exempt');
+assert.equal(verificationCalls, appelsAvantDispense,
+  'une route dispensee ne doit pas verifier le cookie Clerk pour choisir un budget');
+ok('le proxy Clerk dispense ne declenche pas de verification de jeton inutile');
 
 /* ------------------------------------------------- 2. budgets par classe */
 
