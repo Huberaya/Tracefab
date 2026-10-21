@@ -2504,6 +2504,11 @@
     "demoBanner": "Passaporto dimostrativo — dati di esempio, prodotto non reale.",
     "statusUnverified": "Non verificato",
     "statusNotFilled": "Non compilato",
-    "statusUnavailable": "Non disponibile"
+    "statusUnavailable": "Non disponibile",
+    "dppMissingId": "No passport requested — a resolvable product identifier is required.",
+    "dppLiveNote": "Sample sections are hidden for this live passport. Only information published by its owner is displayed.",
+    "dppLifecycleTitle": "Product lifecycle",
+    "dppLifecycleIntro": "Significant public changes, their date, and their control level. Confidential information remains private.",
+    "dppLifecycleEmpty": "Scan a published passport to view its history."
   }
 }

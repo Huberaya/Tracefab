@@ -2504,6 +2504,11 @@
     "demoBanner": "Passeport de démonstration — données d'exemple, produit fictif.",
     "statusUnverified": "Non vérifié",
     "statusNotFilled": "Non renseigné",
-    "statusUnavailable": "Indisponible"
+    "statusUnavailable": "Indisponible",
+    "dppMissingId": "Aucun passeport demandé — un identifiant produit résolvable est requis.",
+    "dppLiveNote": "Les sections d’exemple sont masquées pour ce passeport réel. Seules les informations publiées par son propriétaire sont affichées.",
+    "dppLifecycleTitle": "Vie du produit",
+    "dppLifecycleIntro": "Les changements publics significatifs, leur date et leur niveau de contrôle. Les informations confidentielles restent privées.",
+    "dppLifecycleEmpty": "Scannez un passeport publié pour consulter son historique."
   }
 }

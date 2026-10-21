@@ -47,7 +47,10 @@ try {
     await admin.query(`INSERT INTO documents(id,owner_organization_id,storage_bucket,storage_path,original_filename,content_type,byte_size,status,visibility)
       VALUES($1,$2,'tracefab-private',$3,$4,'application/pdf',128,'uploaded','private')`,[id,org,`${org}/dpp/${name}`,name]);
   }
+  await admin.query('BEGIN');
+  await admin.query("SELECT set_config('tracefab.internal_document_update','true',true)");
   await admin.query("UPDATE documents SET status='available' WHERE id=$1",[U.docA]);
+  await admin.query('COMMIT');
   await admin.query(`INSERT INTO materials(id,owner_organization_id,material_type,name,origin_country_code)
     VALUES($1,$2,'fiber','Coton de test','FR')`,[U.material,U.orgA]);
   await admin.query(`INSERT INTO product_materials(product_id,material_id,percentage,product_version)

@@ -2258,6 +2258,11 @@ window.TF_I18N_BUNDLES.en = {
 
   // --- DPP public --------------------------------------------------------
   dpp: {
+    dppMissingId: "No passport requested \u2014 a resolvable product identifier is required.",
+    dppLiveNote: "Sample sections are hidden for this live passport. Only information published by its owner is displayed.",
+    dppLifecycleTitle: "Product lifecycle",
+    dppLifecycleIntro: "Significant public changes, their date, and their control level. Confidential information remains private.",
+    dppLifecycleEmpty: "Scan a published passport to view its history.",
     badgeEu: "EU ESPR / DPP format",
     verifiedOrigin: "✓ Verified Provenance",
     composition: "Material Composition",

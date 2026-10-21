@@ -2504,6 +2504,11 @@
     "demoBanner": "Demonstratiepaspoort — voorbeelddata, geen echt product.",
     "statusUnverified": "Niet geverifieerd",
     "statusNotFilled": "Niet ingevuld",
-    "statusUnavailable": "Niet beschikbaar"
+    "statusUnavailable": "Niet beschikbaar",
+    "dppMissingId": "No passport requested — a resolvable product identifier is required.",
+    "dppLiveNote": "Sample sections are hidden for this live passport. Only information published by its owner is displayed.",
+    "dppLifecycleTitle": "Product lifecycle",
+    "dppLifecycleIntro": "Significant public changes, their date, and their control level. Confidential information remains private.",
+    "dppLifecycleEmpty": "Scan a published passport to view its history."
   }
 }
