@@ -146,14 +146,14 @@ export async function ensureAppRole(db, password) {
     // ont ete verifiees une a une, toutes necessaires. Restreindre ici sans
     // inventaire casserait des chemins applicatifs — et les fonctions portent
     // deja leurs propres REVOKE quand elles ne sont pas publiques.
-    `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${APP_ROLE}`,
+    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM ${APP_ROLE}`,
     // Droits par defaut pour tout objet FUTUR. Volontairement limites a la
     // lecture : une migration qui cree une table ne doit pas donner
     // silencieusement au runtime le droit d'y ecrire. L'ecriture directe sur
     // une table nouvelle exige une decision explicite.
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT SELECT ON TABLES TO ${APP_ROLE}`,
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ${APP_ROLE}`,
-    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO ${APP_ROLE}`,
+
   ]) {
     await db.query(sql);
   }
