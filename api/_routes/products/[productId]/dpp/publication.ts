@@ -11,12 +11,14 @@ const routeId = (req: VercelRequest) => Array.isArray(req.query.productId) ? req
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res,['POST']);
   try {
+    // Authentifier avant de valider les identifiants ou le corps : les clients
+    // anonymes ne doivent pas pouvoir sonder les règles métier de publication.
+    const {user}=await requireClerkUser(req);
     const productId=routeId(req); if (!isUuid(productId)) return json(res,400,{error:'invalid_product_id'});
     const body=await readJsonBody<Record<string,unknown>>(req);
     const action=typeof body.action==='string' ? body.action : '';
     const slug=typeof body.publicSlug==='string' ? body.publicSlug.trim() : null;
     if (!['publish','suspend','withdraw'].includes(action)) return json(res,400,{error:'invalid_publication_action'});
-    const {user}=await requireClerkUser(req);
     const result=await withTracefabRequestContext(req,user,async tx=>{
       if (!await accessibleProduct(tx,productId)) return null;
       const rows=await tx.$queryRaw<Array<any>>`
