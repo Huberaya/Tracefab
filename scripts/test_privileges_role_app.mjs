@@ -250,6 +250,22 @@ try {
       AND a.grantee = 0 AND a.privilege_type IN ('INSERT','UPDATE','DELETE','TRUNCATE')`);
   verifier('aucun DML n est accordé à PUBLIC', pub.rows[0].n === 0, `${pub.rows[0].n} entrées`);
 
+  // Le registre Prisma n'est pas une table applicative et n'a pas de RLS.
+  // Le runtime ne doit donc pas pouvoir modifier son historique, même si une
+  // future migration ajoute un GRANT par héritage ou par défaut.
+  const historiqueMigrations = await app.query(`
+    SELECT has_table_privilege(current_user, 'public._prisma_migrations', 'INSERT') AS i,
+           has_table_privilege(current_user, 'public._prisma_migrations', 'UPDATE') AS u,
+           has_table_privilege(current_user, 'public._prisma_migrations', 'DELETE') AS d,
+           has_table_privilege(current_user, 'public._prisma_migrations', 'TRUNCATE') AS t
+  `);
+  const hm = historiqueMigrations.rows[0];
+  verifier(
+    'le rôle applicatif ne peut pas modifier le registre des migrations',
+    hm && !hm.i && !hm.u && !hm.d && !hm.t,
+    JSON.stringify(hm),
+  );
+
   const lecture = await app.query(`
     SELECT c.relname AS nom, has_table_privilege('${APP_ROLE}', c.oid, 'SELECT') AS s
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
