@@ -1787,7 +1787,7 @@
           <div class="card panel">
             <div class="panel-head">
               <h2>${bt('qbActiveProtocols')} (${qList.length})</h2>
-              <span class="meta">${bt('qbSchemas')}</span>
+              <span class="status status-${qList.length ? 'needs_review' : 'draft'}">${qList.length ? bt('journeySchemaReview') : bt('journeyNoProtocol')}</span>
             </div>
             <div class="item-list">
               ${qList.map((q) => `
@@ -1837,7 +1837,7 @@
               <div style="display:grid;gap:10px;font-size:12px;">
                 <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid var(--green);">
                   <strong>${bt('qbDocEvidence')}</strong>
-                  <div style="color:var(--muted);margin-top:2px;">${bt('qbSealedPdf')}</div>
+                  <div style="color:var(--muted);margin-top:2px;">${bt('journeyHashLimit')}</div>
                 </div>
                 <div style="padding:10px;background:#f8faf8;border-radius:8px;border-left:3px solid #0284c7;">
                   <strong>${bt('qbNomenclature')}</strong>
@@ -1851,7 +1851,7 @@
             </div>
 
             <div class="card panel">
-              <div class="panel-head"><h2>${bt('qbAutoCompliance')}</h2></div>
+              <div class="panel-head"><h2>${bt('journeyRegMapping')}</h2></div>
               <p style="font-size:12px;color:var(--muted);line-height:1.6;">
                 ${esc(bt('cnQnMapping'))} <strong>CIRPASS JSON-LD</strong> ${esc(bt('cnQnCheckpoints'))} <strong>${bt('qbAgec')}</strong>.
               </p>
@@ -1942,7 +1942,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
               <div style="font-size:11px;font-family:var(--font-mono,monospace);font-weight:750;color:#0b7656;letter-spacing:0.1em;text-transform:uppercase;">${bt('evSovereign')}</div>
-              <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('evSha')}</h3>
+              <h3 style="font-size:17px;font-weight:800;color:#17231f;margin:2px 0 0;">${bt('journeyIntegrityTitle')}</h3><p class="meta" style="margin:5px 0 0">${bt('journeyIntegrityNote')}</p>
             </div>
             <span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-weight:750;">${docs === null ? esc(bt('cnNotComputed')) : `${moneyless(docs.length)} ${esc(bt('documents'))}`}</span>
           </div>
@@ -2030,7 +2030,7 @@
         </div>
         <div class="grid split">
           <div class="card panel">
-            <div class="panel-head"><h2>${esc(bt('certActiveTitle'))}</h2></div>
+            <div class="panel-head"><h2>${esc(bt('journeyDeclaredCerts'))}</h2></div>
             <div class="table-wrap cert-table">
               <table>
                 <thead>
@@ -2067,8 +2067,8 @@
                   ${esc(bt('certNextRenewal'))} : <strong>${esc(t.c.standard)}</strong> — ${t.j} ${esc(bt('certDaysLeft'))}.</p>`;
               })()}
               <div style="background:#f1f7f4;padding:12px;border-radius:10px;border-left:3px solid var(--green);">
-                <strong style="color:var(--green-dark);">${esc(bt('certRuleTitle'))}</strong>
-                <div style="font-size:11px;margin-top:4px;">${esc(bt('certRuleBody'))}</div>
+                <strong style="color:var(--green-dark);">${esc(bt('journeyExpiryMonitoring'))}</strong>
+                <div style="font-size:11px;margin-top:4px;">${esc(bt('journeyCertLimit'))}</div>
               </div>
             </div>
           </div>
@@ -2081,63 +2081,23 @@
       // traduites pour rien. Historique disponible dans git.
 
       function reportsConsoleView() {
-        return `<div class="page-head">
-          <div>
-            <div class="eyebrow">Reporting & CSRD Audits</div>
-            <h1>${bt('rpTitle')}</h1>
-            <p>${bt('rpIntro')}</p>
-          </div>
-          <div class="actions">
-            <button class="btn btn-primary" data-demo-action="1">${bt('rpGenerate')}</button>
-          </div>
-        </div>
-        <div class="grid split">
-          <div class="card panel">
-            <div class="panel-head"><h2>${bt('rpAvailable')}</h2></div>
-            <div style="display:grid;gap:12px;">
-              <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                  <strong>${bt('rpCsrdTitle')}</strong>
-                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">${bt('rpAgecDesc')}</div>
-                </div>
-                <button class="btn btn-secondary btn-small" data-demo-action="1">${bt('rpXlsx')}</button>
-              </div>
-              <div style="border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                  <strong>${bt('rpAgecTitle')}</strong>
-                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">${bt('rpCsrdDesc')}</div>
-                </div>
-                <button class="btn btn-secondary btn-small" data-demo-action="1">${bt('rpPdf')}</button>
-              </div>
-            </div>
-          </div>
-          <div class="card panel">
-            <div class="panel-head"><h2>${bt('rpAuditTrail')}</h2></div>
-            <p style="font-size:12px;color:var(--muted);line-height:1.6;">${bt('rpIntegrityNote')}</p>
-          </div>
-        </div>`;
+        const products = state.products || [];
+        const docs = Array.isArray(state.documents) ? state.documents : null;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('journeyReportingEyebrow')}</div><h1>${bt('journeyReportsTitle')}</h1><p>${bt('journeyReportsIntro')}</p></div></div>
+        <div class="notice" data-report-safeguard><strong>${bt('journeyDraftOnly')}</strong> ${bt('journeyReportWarning')}</div>
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('journeyAvailableDrafts')}</h2></div>
+        <div class="item-list"><div class="item"><div><strong>${bt('journeyCsrdDataExport')}</strong><div class="meta">${bt('journeyCoverage')}: ${products.length} ${bt('products')} · ${docs === null ? bt('cnNotComputed') : docs.length + ' ' + bt('documents')}</div></div><button class="btn btn-secondary btn-small" disabled aria-disabled="true">${bt('journeyPreviewRequired')}</button></div>
+        <div class="item"><div><strong>${bt('journeyAgecAssessment')}</strong><div class="meta">${bt('journeyNoComplianceAttestation')}</div></div><button class="btn btn-secondary btn-small" disabled aria-disabled="true">${bt('journeyPreviewRequired')}</button></div></div></div>
+        <div class="card panel"><div class="panel-head"><h2>${bt('journeyAuditTrail')}</h2></div><p class="meta">${bt('journeyAuditLimit')}</p><dl style="display:grid;gap:10px;margin-top:14px"><div><dt class="meta">${bt('journeyIntegrity')}</dt><dd>${bt('journeyHashDetection')}</dd></div><div><dt class="meta">${bt('journeyTruth')}</dt><dd>${bt('journeyNotEstablished')}</dd></div></dl></div></div>`;
       }
 
       function settingsConsoleView() {
-        return `<div class="page-head">
-          <div>
-            <div class="eyebrow">${bt('cnSettingsEyebrow')}</div>
-            <h1>${bt('stTitle')}</h1>
-            <p>${bt('stIntro')}</p>
-          </div>
-          <div class="actions">
-            <button class="btn btn-primary" data-demo-action="1">${bt('pxSave')}</button>
-          </div>
-        </div>
-        <div class="card panel">
-          <div class="panel-head"><h2>${bt('stOrgBrand')}</h2></div>
-          <form class="form-grid">
-            <label>${bt('stBrandName')}<input class="input" value="${esc(currentBrand()?.display_name || currentBrand()?.legal_name || '')}" placeholder="${esc(bt('cnUnknown'))}"></label>
-            <label>${bt('stNeonOrgId')}<input class="input" value="${esc(state.activeOrganizationId || '')}" readonly placeholder="${esc(bt('cnUnknown'))}"></label>
-            <label>${bt('stDppIdFormat')}<input class="input" value="${estDemo() ? 'urn:epc:id:sgtin:3760123' : ''}" placeholder="${esc(bt('cnNotComputed'))}"></label>
-            <label>${bt('stQualityThreshold')}<input class="input" type="number" value="${estDemo() ? '85' : ''}" placeholder="${esc(bt('cnNotComputed'))}"></label>
-          </form>
-        </div>`;
+        const org = state.activeOrganizationId || '';
+        const masked = org ? `${org.slice(0, 8)}…${org.slice(-4)}` : bt('cnUnknown');
+        return `<div class="page-head"><div><div class="eyebrow">${bt('cnSettingsEyebrow')}</div><h1>${bt('stTitle')}</h1><p>${bt('journeySettingsIntro')}</p></div></div>
+        <div class="card panel"><div class="panel-head"><h2>${bt('stOrgBrand')}</h2><span class="status status-draft">${bt('journeyReadOnly')}</span></div>
+        <dl class="form-grid"><div><dt class="meta">${bt('stBrandName')}</dt><dd><strong>${esc(currentBrand()?.display_name || currentBrand()?.legal_name || bt('cnUnknown'))}</strong></dd></div><div><dt class="meta">${bt('journeyTechnicalOrgId')}</dt><dd><code>${esc(masked)}</code></dd></div><div><dt class="meta">${bt('stDppIdFormat')}</dt><dd>${bt('journeyNotConfigured')}</dd></div><div><dt class="meta">${bt('stQualityThreshold')}</dt><dd>${bt('journeyNotConfigured')}</dd></div></dl></div>
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><h2>${bt('journeyAccessGovernance')}</h2><p class="meta">${bt('journeyAccessUnavailable')}</p></div><div class="card panel"><h2>${bt('journeyPublicationGovernance')}</h2><p class="meta">${bt('journeyPublicationUnavailable')}</p></div></div>`;
       }
 
             function overview() {
@@ -2212,7 +2172,7 @@
                 <span class="mc-domain-tag">${esc(bt('cnDom2'))}</span>
                 ${badge('mc-badge-green', 'GRADE A')}
               </div>
-              ${grandNombre(ag.qualite, '#0b7656')}
+              ${grandNombre(ag.qualite, '#0b7656')}<div class="meta">${bt('journeyCompletenessNotQuality')}</div>
               <div class="mc-stat-sublist">
                 <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${mesure(ag.qualite, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('scEvidenceCov')}</span><strong>${mesure(ag.preuves, '%')}</strong></div>
@@ -2242,7 +2202,7 @@
                 <span class="mc-domain-tag">${esc(bt('cnDom4'))}</span>
                 ${badge('mc-badge-amber', 'CIRPASS 1.2')}
               </div>
-              ${grandNombre(ag.dpp, '#b45309')}
+              ${grandNombre(ag.dpp, '#b45309')}<div class="meta">${bt('journeyReadinessNotValidation')}</div>
               <div class="mc-stat-sublist">
                 <div class="mc-stat-subitem"><span>${bt('ovDpp')}</span><strong>${mesure(ag.dpp, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovGs1')}</span><strong>${mesureInconnue(gs1Styles, ' ' + bt('ovStylesUnit'))}</strong></div>
@@ -2438,7 +2398,7 @@
 
       function suppliersView() {
         const tranche = trancher('suppliers', suppliers());
-        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>${bt('cnThOrganisation')}</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">${bt('sxPartnerActive')}</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">${bt('cnSupplierProfileBtn')}</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>${barrePagination('suppliers', tranche)}` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('spEcosystem')}</div><h1>${bt('spSuppliers')}</h1><p>${bt('spLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="supplier-import">${bt('importCsv')}</button><button class="btn btn-primary" data-action="invite-supplier">+ ${bt('mdInviteSupplier')}</button></div></div><div class="card panel">${suppliers().length ? `<div class="table-wrap"><table><thead><tr><th>${bt('cnThOrganisation')}</th><th>${bt('spRole')}</th><th>${bt('spOpenRequests')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((s) => { const count = state.requests.filter((r) => r.supplierOrganizationId === s.organization_id && !['approved','cancelled'].includes(r.status)).length; return `<tr><td><strong>${esc(s.organizations.display_name || s.organizations.legal_name)}</strong><div class="meta">${esc(s.organizations.country_code || bt('cnCountryUnknown'))}</div></td><td><span class="status status-approved">${bt('sxPartnerActive')}</span></td><td>${count}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-supplier-id-view="${esc(s.id)}">${bt('cnSupplierProfileBtn')}</button><button class="btn btn-secondary btn-small" data-action="new-request" data-supplier-org-id="${esc(s.organization_id)}">${bt('spRequestData')}</button></div></td></tr>`; }).join('')}</tbody></table></div>${barrePagination('suppliers', tranche)}` : `<div class="empty"><div class="empty-icon">◎</div><strong>${bt('spEmpty')}</strong><p>${esc(bt('cnSxEmptySub'))}</p><div class="notice" style="text-align:left;margin:12px auto;max-width:620px">${bt('journeyInviteNotice')}</div><button class="btn btn-primary btn-small" data-action="invite-supplier">${bt('mdInviteSupplier')}</button></div>`}</div>`;
       }
 
       function materialName(material) { return material?.name || material?.materialName || material?.id || bt('cnMaterialLabel'); }
@@ -2473,7 +2433,7 @@
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bt('pxTraceGraph')}</button>
             <button class="btn btn-secondary" data-action="product-dpp-from-detail">${bt('pxPrepareDpp')}</button>
-            <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/dpp/">📋 ${bt('pxPublicDpp')}</button>
+            <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/dpp/">📋 ${bt('journeyPreviewDpp')}</button>
               <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/product-intelligence/">${bt('pxOpenIntel')}</button>
             <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}">${bt('pxNewEvidenceReq')}</button>
           </div>
@@ -2704,11 +2664,20 @@
       }
 
       function integrationsView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('igInterop')}</div><h1>${bt('igTitle')}</h1><p>${bt('igIntro')}</p></div></div><div class="grid split"><div class="card panel"><h2>${bt('igImportSource')}</h2><form id="plm-import-form"><select class="select" id="plm-system-select" name="system"><option>Centric Software</option><option>Lectra (Kubix Link)</option><option>SAP S/4HANA Fashion</option><option>GS1 EPCIS 2.0</option></select><textarea class="textarea" name="payload" rows="4"></textarea></form></div><div class="card panel"><h2>${bt('igGs1Title')}</h2><p>${bt('igGs1Desc')}</p></div></div>`;
+        return `<div class="page-head"><div><div class="eyebrow">${bt('igInterop')}</div><h1>${bt('igTitle')}</h1><p>${bt('journeyIntegrationIntro')}</p></div></div>
+        <div class="notice"><strong>${bt('journeyNoConnection')}</strong> ${bt('journeyNoSecrets')}</div>
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('journeyAvailableConnectors')}</h2><span class="status status-draft">${bt('journeyNotConfigured')}</span></div><label>${bt('journeySourceSystem')}<select class="select" disabled><option selected>${bt('journeyChooseConnector')}</option><option>Centric Software</option><option>Lectra (Kubix Link)</option><option>SAP S/4HANA Fashion</option><option>GS1 EPCIS 2.0</option></select></label><p class="meta">${bt('journeyConnectorLifecycle')}</p></div><div class="card panel"><h2>${bt('igGs1Title')}</h2><p>${bt('journeyGs1Inactive')}</p><span class="status status-draft">${bt('journeyNotConfigured')}</span></div></div>`;
       }
 
       function massBalanceConsoleView() {
-        return `<div class="page-head"><div><div class="eyebrow">${bt('mbAntiFraud')}</div><h1>${bt('mbTitle')}</h1><p>${bt('mbIntro')}</p></div></div><div class="grid split"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2></div><form id="tc-form"><input class="input" name="certificateNumber" placeholder="TC-2026-0001" required><input class="input" name="certifiedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbRegisterTc')}</button></form></div><div class="card panel"><form id="allocate-tc-form"><input class="input" name="productId" placeholder="UUID produit" required><input class="input" name="allocatedQuantityKg" type="number" step="0.001" required><button class="btn btn-primary">${bt('mbAllocate')}</button></form></div></div><div class="card panel" style="margin-top:18px"><h2>${bt('mbReconcile')}</h2><form id="reconcile-mass-balance-form"><input class="input" name="productId" placeholder="UUID produit" required><input class="input" name="productionUnits" type="number" required><input class="input" name="unitWeightGrams" type="number" required><input class="input" name="cuttingWastePct" type="number" required></form></div>`;
+        const products = state.products || [];
+        const mb = state.massBalance || null;
+        const certs = mb?.certificates || [];
+        return `<div class="page-head"><div><div class="eyebrow">${bt('journeyVolumeControls')}</div><h1>${bt('journeyMassBalanceTitle')}</h1><p>${bt('journeyMassBalanceIntro')}</p></div></div>
+        <div class="notice"><strong>${bt('journeySignalNotFraud')}</strong> ${bt('journeyMassBalanceWarning')}</div>
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2><span class="status status-draft">${certs.length} ${bt('documents')}</span></div>${certs.length ? `<p>${certs.length}</p>` : `<div class="empty"><strong>${bt('journeyNoTransaction')}</strong><p>${bt('journeyTransactionPrereq')}</p></div>`}</div>
+        <div class="card panel"><h2>${bt('journeyAllocation')}</h2><label>${bt('pdProduct')}<select class="select" disabled><option>${products.length ? bt('journeySelectAfterCertificate') : bt('journeyNoProductAvailable')}</option></select></label><label>${bt('journeyQuantityKg')}<input class="input" type="number" disabled placeholder="0.000"></label><button class="btn btn-primary" disabled>${bt('mbAllocate')}</button></div></div>
+        <div class="card panel" style="margin-top:18px"><h2>${bt('mbReconcile')}</h2><div class="empty"><strong>${bt('cnNotComputed')}</strong><p>${bt('journeyReconcilePrereq')}</p></div></div>`;
       }
 
       function complianceContractPanel() {
@@ -3213,7 +3182,8 @@
                   <div class="tc-ech-model">${esc(n.process_code || n.node_type)}</div>
                   <div class="tc-ech-status">${n.site_country ? `✓ ${esc(n.site_country)}` : esc(statusLabel(n.status))}</div>
                 </div>`).join('')}
-            </div>` : `
+            </div>
+            ${links.length ? `<div class="notice" data-chain-links style="margin-top:10px"><strong>${bt('journeyRecordedLinks')}:</strong> ${links.map((l) => { const a = nodes.find((n) => n.id === l.source_node_id); const b = nodes.find((n) => n.id === l.target_node_id); return `${esc(a?.label || l.source_node_id)} → ${esc(b?.label || l.target_node_id)} (${esc(l.link_type)})`; }).join(' · ')}</div>` : `<div class="notice" style="margin-top:10px">${bt('journeyNoRecordedLink')}</div>`}` : `
             <div class="card panel">
               <div class="empty">
                 <div class="empty-icon">⇄</div>
