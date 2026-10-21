@@ -405,7 +405,7 @@ try {
 
     // a) Depuis le PORTFEUILLE DPP : l'ecart porte sur le produit A, le
     // bouton doit ouvrir SA fiche — pas le catalogue.
-    await page.locator('button[data-view="dpp"]').click();
+    await page.locator('button[data-view="dpp"]').first().click();
     await page.locator('.dp-gap').waitFor();
     const portfolioButton = page.locator('[data-action="dp-resolve"][data-dp-target="products"]').first();
     await portfolioButton.waitFor();
@@ -416,7 +416,7 @@ try {
     assert.equal(await page.evaluate(() => window.tracefabBrandConsole.state.view), 'productDetail', 'la vue doit etre la fiche produit, pas le catalogue');
 
     // b) Depuis la fiche DPP du produit (missingFields) : meme promesse.
-    await page.locator('button[data-view="dpp"]').click();
+    await page.locator('button[data-view="dpp"]').first().click();
     await page.locator('.dp-gap').waitFor();
     await page.locator('#dpp-product-select').selectOption(PROD_A);
     await page.locator('[data-action="dp-resolve"][data-dp-target="products"]').first().waitFor();

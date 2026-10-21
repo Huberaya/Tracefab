@@ -58,11 +58,12 @@ for (const route of PAGES) {
       // mentions de confiance : ce qui engage la credibilite d'un tiers
       confiance: /verified|audited|certified|v[ée]rifi|audit|certifi/i.test(txt),
       marqueurs: document.querySelectorAll('[data-tf-demo]').length,
+      indisponible: document.documentElement.dataset.dppSource === 'unavailable',
     };
   });
 
   const affirme = vu.chiffres > 0 || vu.confiance;
-  const declare = vu.marqueurs > 0 || MENTION.test(vu.texte);
+  const declare = vu.indisponible || vu.marqueurs > 0 || MENTION.test(vu.texte);
 
   if (!affirme) {
     ok(`${route.padEnd(24)} rien d affirmatif a declarer (etat vide ou erreur)`);

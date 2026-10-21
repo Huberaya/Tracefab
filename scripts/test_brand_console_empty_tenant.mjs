@@ -211,7 +211,7 @@ try {
   // chiffre de vitrine. Les libelles viennent du catalogue anglais.
   const indicateur = (label) => page.locator('.mc-stat-subitem', { hasText: label }).first().innerText();
   for (const label of [
-    'Average product completeness',
+    'Structured-field completion',
     'Fibre-to-garment lineage',
     'Mass balance reconciled',
     'AGEC Art. 13 compliance',
