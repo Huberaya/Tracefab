@@ -89,7 +89,6 @@ export const RLS_POLICY_FUNCTION_NAMES = Object.freeze([
   'tracefab_current_user_email',
   'tracefab_current_user_id',
   'tracefab_has_org_role',
-  'tracefab_in_active_tenant',
   'tracefab_is_org_member',
   'tracefab_material_is_public',
   'tracefab_material_visible_via_product',
