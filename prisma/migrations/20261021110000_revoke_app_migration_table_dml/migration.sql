@@ -15,8 +15,7 @@ DO $revoke_runtime_migration_dml$
 BEGIN
   IF to_regclass('public._prisma_migrations') IS NOT NULL
      AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_app') THEN
-    REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
-      ON TABLE public._prisma_migrations FROM tracefab_app;
+    EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLE public._prisma_migrations FROM tracefab_app';
   END IF;
 END
 $revoke_runtime_migration_dml$;
