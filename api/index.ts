@@ -40,6 +40,7 @@ const routes: Route[] = [
   { pattern: /^documents\/([^\/]+)\/verify\-ai$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/verify-ai.js') },
   { pattern: /^documents\/([^\/]+)\/verification\-report$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/verification-report.js') },
   { pattern: /^health$/, params: [], load: () => import('./_routes/health.js') },
+  { pattern: /^internal\\/runtime\\-identity\\-probe$/, params: [], load: () => import('./_routes/internal/runtime-identity-probe.js') },
   { pattern: /^internal\/notification\-outbox\/health$/, params: [], load: () => import('./_routes/internal/notification-outbox/health.js') },
   { pattern: /^internal\/notification\-outbox\/process$/, params: [], load: () => import('./_routes/internal/notification-outbox/process.js') },
   { pattern: /^internal\/notification\-outbox\/reminders$/, params: [], load: () => import('./_routes/internal/notification-outbox/reminders.js') },
