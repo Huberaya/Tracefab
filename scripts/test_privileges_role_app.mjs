@@ -36,7 +36,7 @@ import { execFileSync } from 'node:child_process';
 import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
-import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { APP_ROLE, TABLES_ECRITURE_DIRECTE, TABLE_WRITE_PRIVILEGES } from './lib/tracefab_app_role.mjs';
 import { API_RUNTIME_FUNCTION_NAMES, RLS_POLICY_FUNCTION_NAMES, RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const SORTIE_DEFAUT = 1;
@@ -289,37 +289,42 @@ try {
     `sans RLS active et forcée : ${sansRls.join(', ') || 'aucune'}`,
   );
 
-  // Chaque table approuvée pour l'écriture directe doit l'accepter.
-  for (const table of TABLES_ECRITURE_DIRECTE) {
-    try {
-      await app.query(`DELETE FROM ${table} WHERE false`);
-      verifier(`écriture directe possible sur ${table}`, true);
-    } catch (e) {
-      verifier(`écriture directe possible sur ${table}`, false, `${e.code} ${String(e.message).split('\n')[0]}`);
+  // Vérifier le minimum de privilèges VERBE PAR VERBE. La liste est partagée
+  // avec le bootstrap et la migration ; aucune table ne reçoit des verbes
+  // supplémentaires simplement parce qu'elle accepte une écriture directe.
+  for (const [table, allowedVerbs] of Object.entries(TABLE_WRITE_PRIVILEGES)) {
+    for (const verb of ['INSERT', 'UPDATE', 'DELETE']) {
+      const r = await app.query(
+        'SELECT has_table_privilege($1, $2, $3) AS allowed',
+        [APP_ROLE, table, verb],
+      );
+      const expected = allowedVerbs.includes(verb);
+      verifier(
+        `${verb} ${expected ? 'autorisé' : 'refusé'} sur ${table}`,
+        r.rows[0]?.allowed === expected,
+        `attendu=${expected}, observé=${r.rows[0]?.allowed}`,
+      );
     }
   }
 
-  // Garde anti-régression centrale de C2. Mesurée par aclexplode et non par
-  // has_table_privilege : cette dernière renvoie vrai dès qu'un rôle hérite du
-  // droit, et ne distingue donc pas un octroi explicite d'un héritage.
-  //
-  // Sans la migration 20261019120000_restreindre_dml_role_applicatif, cette
-  // assertion vaut 36 tables dans l'ordre réel de déploiement, parce que le bloc
-  // $preserve_runtime_acl$ de la migration 20261014130000 recopie sur le rôle
-  // applicatif les privilèges relationnels de PUBLIC avant de les révoquer.
+  // Garde anti-régression : comparer les ACL explicites exactes, y compris les
+  // verbes, plutôt que seulement le nombre de tables inscriptibles.
   const dml = await app.query(`
-    SELECT c.relname
+    SELECT c.relname, a.privilege_type
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace,
          aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
     WHERE n.nspname='public' AND c.relkind IN ('r','p')
       AND a.grantee = '${APP_ROLE}'::regrole
-      AND a.privilege_type IN ('INSERT','UPDATE','DELETE')
-    GROUP BY 1 ORDER BY 1`);
-  const observees = dml.rows.map((r) => r.relname);
+      AND a.privilege_type IN ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER')
+    ORDER BY c.relname, a.privilege_type`);
+  const observees = dml.rows.map((r) => `${r.relname}:${r.privilege_type}`).sort();
+  const attendues = Object.entries(TABLE_WRITE_PRIVILEGES)
+    .flatMap(([table, verbs]) => verbs.map((verb) => `${table}:${verb}`))
+    .sort();
   verifier(
-    `l'écriture directe est limitée aux ${TABLES_ECRITURE_DIRECTE.length} tables approuvées`,
-    JSON.stringify(observees) === JSON.stringify([...TABLES_ECRITURE_DIRECTE].sort()),
-    `${observees.length} tables : ${observees.join(', ')}`,
+    'les ACL DML explicites correspondent exactement à la matrice minimale',
+    JSON.stringify(observees) === JSON.stringify(attendues),
+    `attendues=${attendues.join(', ')} ; observées=${observees.join(', ')}`,
   );
 
   // Aucun DML ne doit subsister pour PUBLIC. Mesuré à zéro sur l'état courant :
