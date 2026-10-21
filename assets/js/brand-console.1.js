@@ -752,7 +752,10 @@
 
       function productionAgregats() {
         const pr = state.products || [], su = state.suppliers || [];
-        const pays = new Set(su.map((s) => s.countryCode || (s.organizations && s.organizations.country_code)).filter(Boolean));
+        const pays = new Set([
+          ...su.map((s) => s.countryCode || (s.organizations && s.organizations.country_code)),
+          ...pr.map((p) => p.countryOfManufacture || p.country_of_manufacture),
+        ].filter(Boolean));
         const completions = pr
           .map((p) => (p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === '' ? NaN : Number(p.dataCompletion)))
           .filter((n) => Number.isFinite(n));
@@ -1517,7 +1520,7 @@
               <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || bt('shDemoAccount'))}</span><button class="link-button" data-action="signout">${bt('signOut')}</button></div></div></div>
             </aside>
             <main class="main">
-              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org" aria-label="${esc(bt('orgSwitcher'))}">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${esc(bt("newRequest"))}</button></div></header>
+              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org" aria-label="${esc(bt('orgSwitcher'))}" title="${esc(currentBrand()?.display_name || currentBrand()?.legal_name || bt('orgSwitcher'))}">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${esc(bt("newRequest"))}</button></div></header>
               <section class="content">${content}</section>
             </main>
           </div>
@@ -1944,7 +1947,7 @@
               <tbody>
                 ${mats.length ? mats.map((m) => `<tr>
                   <td><strong>${esc(m.name)}</strong></td>
-                  <td><span class="status status-draft">${esc(m.materialType || '—')}</span></td>
+                  <td><span class="status status-draft">${esc(({ other: bt('journeyMaterialTypeOther'), fiber: bt('journeyMaterialTypeFiber'), fabric: bt('journeyMaterialTypeFabric'), trim: bt('journeyMaterialTypeTrim') }[m.materialType] || m.materialType || '—'))}</span></td>
                   <td>${esc(m.originCountryCode || bt('cnCountryUnknown'))}</td>
                   <td><strong>${m.recycledContent === null || m.recycledContent === undefined || m.recycledContent === '' ? '—' : esc(m.recycledContent)}</strong></td>
                   <td>${(m.certifications || []).length
@@ -2159,9 +2162,12 @@
         const org = state.activeOrganizationId || '';
         const masked = org ? `${org.slice(0, 8)}…${org.slice(-4)}` : bt('cnUnknown');
         const settings = state.organizationSettings || {};
+        const membership = state.memberships.find((m) => m.organization_id === state.activeOrganizationId);
+        const currentRole = membership?.role || bt('cnUnknown');
+        const canEdit = ['owner', 'admin'].includes(membership?.role);
         return `<div class="page-head"><div><div class="eyebrow">${bt('cnSettingsEyebrow')}</div><h1>${bt('stTitle')}</h1><p>${bt('journeySettingsIntro')}</p></div></div>
-        <div class="card panel"><div class="panel-head"><h2>${bt('stOrgBrand')}</h2><span class="status status-needs_review">${bt('journeyOwnerAdminRequired')}</span></div>
-        <form id="organization-settings-form" class="form-grid"><div><div class="meta">${bt('stBrandName')}</div><strong>${esc(currentBrand()?.display_name || currentBrand()?.legal_name || bt('cnUnknown'))}</strong></div><div><div class="meta">${bt('journeyTechnicalOrgId')}</div><code>${esc(masked)}</code></div><label>${bt('stDppIdFormat')}<input class="input" name="dppIdentifierFormat" value="${esc(settings.dppIdentifierFormat || '')}" placeholder="urn:epc:id:sgtin:…" required></label><label>${bt('stQualityThreshold')}<input class="input" name="qualityThreshold" type="number" min="0" max="100" value="${esc(settings.qualityThreshold ?? '')}" required></label><div class="form-actions field-full"><button class="btn btn-primary">${bt('pxSave')}</button></div></form></div>
+        <div class="card panel"><div class="panel-head"><h2>${bt('stOrgBrand')}</h2><span class="status ${canEdit ? 'status-approved' : 'status-needs_review'}">${canEdit ? `${bt('journeyCurrentRole')}: ${esc(currentRole)}` : bt('journeyOwnerAdminRequired')}</span></div>
+        <form id="organization-settings-form" class="form-grid"><div><div class="meta">${bt('stBrandName')}</div><strong>${esc(currentBrand()?.display_name || currentBrand()?.legal_name || bt('cnUnknown'))}</strong></div><div><div class="meta">${bt('journeyTechnicalOrgId')}</div><code>${esc(masked)}</code></div><label>${bt('stDppIdFormat')}<input class="input" name="dppIdentifierFormat" value="${esc(settings.dppIdentifierFormat || '')}" placeholder="urn:epc:id:sgtin:Company.Item.Serial" pattern="urn:epc:id:sgtin:[A-Za-z0-9.-]+" title="${esc(bt('journeyDppFormatHelp'))}" ${canEdit ? '' : 'disabled'} required><span class="meta">${bt('journeyDppFormatHelp')}</span></label><label>${bt('stQualityThreshold')}<input class="input" name="qualityThreshold" type="number" min="0" max="100" value="${esc(settings.qualityThreshold ?? '')}" placeholder="${esc(bt('journeyNotConfigured'))}" ${canEdit ? '' : 'disabled'} required><span class="meta">${settings.qualityThreshold === null || settings.qualityThreshold === undefined ? bt('journeyNotConfiguredBlocksEligibility') : bt('journeyConfiguredThreshold')}</span></label><div class="form-actions field-full"><button class="btn btn-primary" ${canEdit ? '' : 'disabled'}>${bt('pxSave')}</button></div></form></div>
         <div class="grid split" style="margin-top:18px"><div class="card panel"><h2>${bt('journeyAccessGovernance')}</h2><p class="meta">${bt('journeyAccessUnavailable')}</p><div class="actions"><button class="btn btn-secondary" data-view="suppliers">${bt('journeyMembers')}</button><button class="btn btn-secondary" disabled>${bt('journeyRoles')}</button><button class="btn btn-secondary" disabled>${bt('journeySessions')}</button></div></div><div class="card panel"><h2>${bt('journeyPublicationGovernance')}</h2><p class="meta">${bt('journeyPublicationUnavailable')}</p></div></div>
         <div class="card panel" style="margin-top:18px"><h2>${bt('journeySettingsHistory')}</h2>${state.organizationSettingsHistory.length ? `<div class="item-list">${state.organizationSettingsHistory.map((entry) => `<div class="item"><span>${date(entry.at)}</span><code>${esc(JSON.stringify(entry.after))}</code></div>`).join('')}</div>` : `<div class="empty">${bt('journeyNoSettingsHistory')}</div>`}</div>`;
       }
@@ -2238,7 +2244,7 @@
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">${esc(bt('cnDom2'))}</span>
-                ${badge('mc-badge-green', 'GRADE A')}
+                ${badge('mc-badge-amber', bt('journeyPartialCoverage'))}
               </div>
               ${grandNombre(ag.completude ?? ag.qualite, '#0b7656')}<div class="meta">${bt('journeyCompletenessNotQuality')}</div>
               <div class="mc-stat-sublist">
@@ -2254,7 +2260,7 @@
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">${esc(bt('cnDom3'))}</span>
-                ${badge('mc-badge-blue', bt('cnStatusComplete'))}
+                ${badge('mc-badge-blue', bt('cnNotComputed'))}
               </div>
               ${grandNombre(ag.tracables, '#1d4ed8')}
               <div class="mc-stat-sublist">
@@ -2269,7 +2275,7 @@
             <div class="mc-domain-card">
               <div class="mc-domain-header">
                 <span class="mc-domain-tag">${esc(bt('cnDom4'))}</span>
-                ${badge('mc-badge-amber', 'CIRPASS 1.2')}
+                ${badge('mc-badge-amber', bt('journeyInternalReadiness'))}
               </div>
               ${grandNombre(ag.dpp, '#b45309')}<div class="meta">${bt('journeyReadinessNotValidation')}</div>
               <div class="mc-stat-sublist">
@@ -2301,7 +2307,7 @@
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p18">
                 ${pastille(AT.fournisseursARevoir)}
-                <div><strong>${bt('ovSuppliersReview')}</strong><br><small>${bt('ovCompleteness')}</small></div>
+                <div><strong>${suppliers().length ? bt('ovSuppliersReview') : bt('journeyNoSupplierConnected')}</strong><br><small>${suppliers().length ? bt('ovCompleteness') : bt('journeyConnectSupplierBeforeCollection')}</small></div>
               </div>
               <div class="mc-attention-pill clickable" data-tf-act="p19">
                 ${pastille(AT.produitsIncomplets)}
@@ -2335,9 +2341,9 @@
                   <span class="quick-icon">◎</span>
                   <span><strong>${bt('ovOnboardPartner')}</strong><span>${bt('ovSecureLink')}</span></span>
                 </button>
-                <button class="quick" data-tf-act="open" data-tf-arg="/dpp/">
+                <button class="quick" data-view="dpp">
                   <span class="quick-icon">📋</span>
-                  <span><strong>${bt('ovSimulateDpp')}</strong><span>${bt('ovQrExperience')}</span></span>
+                  <span><strong>${bt('journeyInspectDppReadiness')}</strong><span>${bt('journeyNoPublicPreviewWithoutId')}</span></span>
                 </button>
               </div>
             </div>
@@ -2462,7 +2468,7 @@
         const tranche = trancher('products', resultats);
         return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === ''
   ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`
-  : `<div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div>`}</td><td>${p.dataReadiness ? status(p.dataReadiness) : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">DPP</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+  : `<div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div>`}</td><td>${p.dataReadiness ? status(p.dataReadiness) : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">${bt('journeyDppInternalPreparation')}</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
@@ -2931,7 +2937,7 @@
             <div class="card kpi">
               <div class="kpi-value">${r.index}</div>
               <div class="kpi-label">${esc(bt('riskIndex'))}</div>
-              <div class="kpi-note">${esc(bt(bande))} · ${esc(bt('riskOutOf100'))}</div>
+              <div class="kpi-note">${esc(bt(bande))} · ${esc(bt('riskOutOf100'))} · ${r.dims.filter((d) => d.n > 0).length}/5 ${esc(bt('journeyDimensionsAvailable'))}</div>
             </div>
             <div class="card kpi">
               <div class="kpi-value">${critiques}</div>
@@ -2944,8 +2950,8 @@
             </div>
             <div class="card kpi">
               <div class="kpi-value">${produitsExposes}</div>
-              <div class="kpi-label">${esc(bt('riskProductsExposed'))}</div>
-              <div class="kpi-note">/ ${r.nbProd}</div>
+              <div class="kpi-label">${esc(bt('journeyDirectProductSignals'))}</div>
+              <div class="kpi-note">/ ${r.nbProd} · ${esc(bt('journeyMaterialRisksSeparate'))}</div>
             </div>
           </div>
 
@@ -3109,11 +3115,11 @@
           </div>
 
           <div class="eq-score-strip"${demoMode && !score ? ' data-tf-demo' : ''}>
-            ${carte('qcCompleteness', 'qcTestReports', valeurs.completeness, '#0b7656', false)}
-            ${carte('qcEvidenceCov', 'qcTestReports', valeurs.evidence, '#0b7656', false)}
+            ${carte('qcCompleteness', 'journeyStructuredCompletenessScope', valeurs.completeness, '#0b7656', false)}
+            ${carte('qcEvidenceCov', 'journeySourceDocumentCoverage', valeurs.evidence, '#0b7656', false)}
             ${carte('qcVerifRate', 'qcThirdParty', valeurs.verification, '#1d4ed8', false)}
             ${carte('qcSupplierQuality', 'qcTiersOk', valeurs.supplier, '#0b7656', false)}
-            ${carte('qcProductQuality', 'qcDppEligible', valeurs.product, '#b45309', false)}
+            ${carte('qcProductQuality', 'journeyEligibilityUnavailable', valeurs.product, '#b45309', false)}
           </div>
         </div>
 
@@ -3255,6 +3261,14 @@
               </div>
             </div>`;
 
+        const linkTypeLabel = (value) => ({
+          next_step: bt('journeyLinkNextStep'),
+          contains: bt('journeyLinkContains'),
+          sourced_from: bt('journeyLinkSourcedFrom'),
+          transformed_at: bt('journeyLinkTransformedAt'),
+          manufactured_at: bt('journeyLinkManufacturedAt'),
+          supplied_by: bt('journeyLinkSuppliedBy'),
+        }[value] || value);
         const realEchelons = nodes.length ? `
             <div class="tc-echelons-grid">
               ${nodes.slice(0, 12).map((n) => `
@@ -3265,7 +3279,7 @@
                   <div class="tc-ech-status">${n.site_country ? `✓ ${esc(n.site_country)}` : esc(statusLabel(n.status))}</div>
                 </div>`).join('')}
             </div>
-            ${links.length ? `<div class="notice" data-chain-links style="margin-top:10px"><strong>${bt('journeyRecordedLinks')}:</strong> ${links.map((l) => { const a = nodes.find((n) => n.id === l.source_node_id); const b = nodes.find((n) => n.id === l.target_node_id); return `${esc(a?.label || l.source_node_id)} → ${esc(b?.label || l.target_node_id)} (${esc(l.link_type)})`; }).join(' · ')}</div>` : `<div class="notice" style="margin-top:10px">${bt('journeyNoRecordedLink')}</div>`}` : `
+            ${links.length ? `<div class="notice" data-chain-links style="margin-top:10px"><strong>${bt('journeyRecordedLinks')}:</strong> ${links.map((l) => { const a = nodes.find((n) => n.id === l.source_node_id); const b = nodes.find((n) => n.id === l.target_node_id); return `${esc(a?.label || l.source_node_id)} → ${esc(b?.label || l.target_node_id)} (${esc(linkTypeLabel(l.link_type))} · ${esc(l.link_type)})`; }).join(' · ')}</div>` : `<div class="notice" style="margin-top:10px">${bt('journeyNoRecordedLink')}</div>`}` : `
             <div class="card panel">
               <div class="empty">
                 <div class="empty-icon">⇄</div>

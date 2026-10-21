@@ -134,7 +134,7 @@ async function run() {
       ok(txt.includes(kpi), `compteur absent : ${kpi}`);
     }
     ok(/\b88(\.0)?\s?%/.test(txt), 'maturite DPP 88 % absente');
-    ok(/grade\s*a/i.test(txt), 'bloc de qualite de donnees absent');
+    ok(/partial quality index/i.test(txt), 'perimetre de qualite des donnees absent');
   });
 
   // 07 — Les 17 vues s'affichent sans casse.

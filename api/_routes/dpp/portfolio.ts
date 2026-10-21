@@ -4,7 +4,7 @@ import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
-import { DPP_REQUIREMENT_LABELS, classifyRequirementPillar } from '../../_lib/dpp.js';
+import { DPP_REQUIREMENT_LABELS, DPP_STANDARD_REQUIREMENT_KEYS, classifyRequirementPillar } from '../../_lib/dpp.js';
 
 /**
  * Agregat de preparation DPP a l'echelle du portefeuille.
@@ -58,6 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         readiness_status: string;
         missing_fields: unknown;
         blocking_issues: unknown;
+        source_snapshot: unknown;
         requirement_profile_key: string;
         requirement_profile_version: string;
         computed_at: Date;
@@ -69,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           d.readiness_status::text AS readiness_status,
           d.missing_fields,
           d.blocking_issues,
+          d.source_snapshot,
           d.requirement_profile_key,
           d.requirement_profile_version,
           d.computed_at
@@ -100,22 +102,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let lastComputedAt: Date | null = null;
 
       for (const row of rows) {
-        if (row.readiness_status in statusCounts) statusCounts[row.readiness_status] += 1;
         if (row.requirement_profile_key) profileKey = row.requirement_profile_key;
         if (row.requirement_profile_version) profileVersion = row.requirement_profile_version;
         if (!lastComputedAt || row.computed_at > lastComputedAt) lastComputedAt = row.computed_at;
 
-        const missing: MissingField[] = Array.isArray(row.missing_fields)
-          ? (row.missing_fields as MissingField[])
+        const snapshot = row.source_snapshot && typeof row.source_snapshot === 'object'
+          ? row.source_snapshot as { requirement_results?: unknown }
+          : {};
+        const results = Array.isArray(snapshot.requirement_results)
+          ? snapshot.requirement_results as Array<{ key?: unknown; met?: unknown }>
           : [];
-        const blocking = Array.isArray(row.blocking_issues) ? row.blocking_issues : [];
-        if (blocking.length) blockedProducts += 1;
+        // Fail closed against the active 13-key profile. Historical missing_fields
+        // can be empty even when a newer source_snapshot contains unmet gates.
+        const missing: MissingField[] = DPP_STANDARD_REQUIREMENT_KEYS
+          .filter((key) => results.find((entry) => entry?.key === key)?.met !== true)
+          .map((key) => ({ key, label: DPP_REQUIREMENT_LABELS[key] || key, blocking: true }));
+        if (missing.length) {
+          blockedProducts += 1;
+          statusCounts.in_progress += 1;
+        } else if (row.readiness_status in statusCounts) {
+          statusCounts[row.readiness_status] += 1;
+        }
 
-        // Le profil fixe le nombre d'exigences ; a defaut on le reconstitue a
-        // partir des manquantes pour ne pas inventer un denominateur.
-        const totalRequirements = missing.length + Math.max(0, 9 - missing.length);
+        const totalRequirements = DPP_STANDARD_REQUIREMENT_KEYS.length;
         requirementSum += totalRequirements;
-        metSum += Math.max(0, totalRequirements - missing.length);
+        metSum += totalRequirements - missing.length;
 
         for (const field of missing) {
           const key = typeof field?.key === 'string' ? field.key : null;
@@ -146,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // gonflerait artificiellement le score du portefeuille.
       const uncomputed = Math.max(0, totalProducts - rows.length);
       statusCounts.not_started += uncomputed;
-      requirementSum += uncomputed * 9;
+      requirementSum += uncomputed * DPP_STANDARD_REQUIREMENT_KEYS.length;
 
       return {
         profileKey,
