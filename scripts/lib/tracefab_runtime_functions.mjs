@@ -44,6 +44,7 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_get_product_traceability',
   'tracefab_get_public_supplier_passport',
   'tracefab_has_org_role',
+  'tracefab_in_active_tenant',
   'tracefab_ingest_plm_erp_payload',
   'tracefab_invite_supplier',
   'tracefab_link_dpp_claim_evidence',
@@ -103,7 +104,6 @@ export const RUNTIME_FUNCTION_DEPENDENCY_NAMES = Object.freeze([
   'tracefab_active_organization_id',
   // Tenant predicate exercised by the active-tenant contract probe; it must
   // remain callable by the runtime but is not referenced by pg_policies.
-  'tracefab_in_active_tenant',
   // Contract guard used by the active-tenant runtime probe; it returns only
   // the armed tenant UUID or fails closed with organization_id_required.
   'tracefab_require_active_tenant',
