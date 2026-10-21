@@ -86,8 +86,6 @@ export const TABLES_ECRITURE_DIRECTE = [
   'quality_cap_messages',
   'rate_limit_counters',
   'supplier_sites',
-  'supply_chain_links',
-  'supply_chain_nodes',
   'tracefab_catalog_import_jobs',
   'tracefab_products',
   'users',
