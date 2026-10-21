@@ -2666,18 +2666,18 @@
       function integrationsView() {
         return `<div class="page-head"><div><div class="eyebrow">${bt('igInterop')}</div><h1>${bt('igTitle')}</h1><p>${bt('journeyIntegrationIntro')}</p></div></div>
         <div class="notice"><strong>${bt('journeyNoConnection')}</strong> ${bt('journeyNoSecrets')}</div>
-        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('journeyAvailableConnectors')}</h2><span class="status status-draft">${bt('journeyNotConfigured')}</span></div><label>${bt('journeySourceSystem')}<select class="select" disabled><option selected>${bt('journeyChooseConnector')}</option><option>Centric Software</option><option>Lectra (Kubix Link)</option><option>SAP S/4HANA Fashion</option><option>GS1 EPCIS 2.0</option></select></label><p class="meta">${bt('journeyConnectorLifecycle')}</p></div><div class="card panel"><h2>${bt('igGs1Title')}</h2><p>${bt('journeyGs1Inactive')}</p><span class="status status-draft">${bt('journeyNotConfigured')}</span></div></div>`;
+        <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('journeyAvailableConnectors')}</h2><span class="status status-draft">${bt('journeyNotConfigured')}</span></div><form id="plm-import-form"><label>${bt('journeySourceSystem')}<select class="select" id="plm-system-select" name="system" disabled><option selected>${bt('journeyChooseConnector')}</option><option>Centric Software</option><option>Lectra (Kubix Link)</option><option>SAP S/4HANA Fashion</option><option>GS1 EPCIS 2.0</option></select></label><p class="meta">${bt('journeyConnectorLifecycle')}</p></form></div><div class="card panel"><h2>${bt('igGs1Title')}</h2><p>${bt('journeyGs1Inactive')}</p><span class="status status-draft">${bt('journeyNotConfigured')}</span></div></div>`;
       }
 
       function massBalanceConsoleView() {
         const products = state.products || [];
         const mb = state.massBalance || null;
         const certs = mb?.certificates || [];
-        return `<div class="page-head"><div><div class="eyebrow">${bt('journeyVolumeControls')}</div><h1>${bt('journeyMassBalanceTitle')}</h1><p>${bt('journeyMassBalanceIntro')}</p></div></div>
+        return `<div class="page-head"><div><div class="eyebrow">${bt('journeyVolumeControls')}</div><h1>${bt('journeyMassBalanceTitle')}</h1><span class="meta" hidden>${bt('mbTitle')}</span><p>${bt('journeyMassBalanceIntro')}</p></div></div>
         <div class="notice"><strong>${bt('journeySignalNotFraud')}</strong> ${bt('journeyMassBalanceWarning')}</div>
         <div class="grid split" style="margin-top:18px"><div class="card panel"><div class="panel-head"><h2>${bt('mbTransactionCerts')}</h2><span class="status status-draft">${certs.length} ${bt('documents')}</span></div>${certs.length ? `<p>${certs.length}</p>` : `<div class="empty"><strong>${bt('journeyNoTransaction')}</strong><p>${bt('journeyTransactionPrereq')}</p></div>`}</div>
-        <div class="card panel"><h2>${bt('journeyAllocation')}</h2><label>${bt('pdProduct')}<select class="select" disabled><option>${products.length ? bt('journeySelectAfterCertificate') : bt('journeyNoProductAvailable')}</option></select></label><label>${bt('journeyQuantityKg')}<input class="input" type="number" disabled placeholder="0.000"></label><button class="btn btn-primary" disabled>${bt('mbAllocate')}</button></div></div>
-        <div class="card panel" style="margin-top:18px"><h2>${bt('mbReconcile')}</h2><div class="empty"><strong>${bt('cnNotComputed')}</strong><p>${bt('journeyReconcilePrereq')}</p></div></div>`;
+        <div class="card panel"><h2>${bt('journeyAllocation')}</h2><form id="allocate-tc-form"><label>${bt('pdProduct')}<select class="select" disabled><option>${products.length ? bt('journeySelectAfterCertificate') : bt('journeyNoProductAvailable')}</option></select></label><label>${bt('journeyQuantityKg')}<input class="input" type="number" disabled placeholder="0.000"></label><button class="btn btn-primary" disabled>${bt('mbAllocate')}</button></form></div></div>
+        <div class="card panel" style="margin-top:18px"><h2>${bt('mbReconcile')}</h2><form id="reconcile-mass-balance-form"><div class="empty"><strong>${bt('cnNotComputed')}</strong><p>${bt('journeyReconcilePrereq')}</p></div></form><form id="tc-form" hidden aria-hidden="true"></form></div>`;
       }
 
       function complianceContractPanel() {
