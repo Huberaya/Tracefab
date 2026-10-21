@@ -6,8 +6,8 @@
 -- and nested helpers. PUBLIC was already denied EXECUTE on SECURITY DEFINER
 -- functions; this migration narrows the named runtime role as well.
 --
--- Allowlist source: direct SQL calls in api/ plus all functions referenced by
--- RLS policy expressions. Keep synchronized with
+-- Allowlist source: direct SQL calls in api/, functions referenced by RLS policy
+-- expressions, and transitive dependencies of SECURITY INVOKER helpers. Keep synchronized with
 -- scripts/lib/tracefab_runtime_functions.mjs. New runtime calls must update
 -- both lists and pass CI. Never grant EXECUTE globally.
 
@@ -16,6 +16,7 @@ DECLARE
   runtime_names text[] := ARRAY[
     'tracefab_accept_organization_invitation',
     'tracefab_acknowledge_quality_issue',
+    'tracefab_active_organization_id',
     'tracefab_add_data_request_item',
     'tracefab_add_dpp_claim',
     'tracefab_add_dpp_event',
