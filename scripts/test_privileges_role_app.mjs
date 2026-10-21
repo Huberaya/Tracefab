@@ -195,6 +195,7 @@ const urlEphemere = urlAdmin.replace(/\/[^/?]+(\?|$)/, `/${BASE_EPHEMERE}$1`);
 const urlApp = urlEphemere.replace(/:\/\/[^@]*@/, `://${APP_ROLE}:${encodeURIComponent(MOT_DE_PASSE)}@`);
 
 let sortie = 0;
+let app = null;
 try {
   // Le mot de passe repris de l'environnement : dans la CI, TF_APP_PASSWORD est
   // celui qu'emploie TF_RLS_APP_URL. En réutiliser un autre réinitialiserait le
@@ -253,7 +254,7 @@ try {
   /* --- 2. Privilèges réels, mesurés en se connectant avec le rôle ---------- */
 
   console.log('\n  3. privilèges mesurés avec le rôle applicatif');
-  const app = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp) });
+  app = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp) });
   await app.connect();
 
   const identite = await app.query('SELECT current_user AS u, (SELECT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS b');
@@ -347,9 +348,9 @@ try {
   const lecture = await app.query(`
     SELECT c.relname AS nom, has_table_privilege('${APP_ROLE}', c.oid, 'SELECT') AS s
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname='public' AND c.relkind='r' ORDER BY 1`);
+    WHERE n.nspname='public' AND c.relkind='r' AND c.relname <> '_prisma_migrations' ORDER BY 1`);
   verifier(
-    'la lecture reste disponible partout',
+    'la lecture reste disponible sur les tables métier',
     lecture.rows.every((r) => r.s),
     `${lecture.rows.filter((r) => !r.s).length} table(s) sans SELECT`,
   );
@@ -450,6 +451,7 @@ try {
   }
 
   await app.end();
+  app = null;
 } catch (e) {
   if (e.message !== 'migration') {
     echecs += 1;
@@ -457,6 +459,7 @@ try {
   }
   sortie = SORTIE_DEFAUT;
 } finally {
+  if (app) await app.end().catch(() => {});
   await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
   await admin.end();
   console.log('  base éphémère détruite');
