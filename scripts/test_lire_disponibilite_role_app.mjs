@@ -96,6 +96,20 @@ verifier(
   'l\'absence de DML est distinguee entre attendue et inattendue',
 );
 
+// 3b. La sonde d'identité suit la même allowlist que les migrations.
+verifier(
+  /import\s*\{[^}]*\bRUNTIME_FUNCTION_NAMES\b[^}]*\}\s*from\s*'\.\/lib\/tracefab_runtime_functions\.mjs'/.test(source),
+  'le rapport importe la même allowlist de fonctions runtime que la migration',
+);
+verifier(
+  /p\.proname\s*=\s*ANY\(\$1::text\[\]\)/.test(source),
+  'EXECUTE est vérifié sur les fonctions explicitement autorisées',
+);
+verifier(
+  /p\.prosecdef\s*=\s*true\s+AND\s+p\.proname\s*<>\s*ALL\(\$1::text\[\]\)/.test(source),
+  'les fonctions SECURITY DEFINER hors allowlist sont contrôlées séparément',
+);
+
 // 4. Un ecart ne doit pas se confondre avec un obstacle.
 verifier(
   /let ecarts = 0;/.test(source) && /ecarts\+\+/.test(source),
