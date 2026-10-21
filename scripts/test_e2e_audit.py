@@ -44,8 +44,8 @@ PAGE_FIXTURES = {
         '<script src="/assets/js/dpp.1.js?v=x"></script>',
         '<script src="/assets/js/dpp.2.js?v=x"></script>',
         "</head><body><div data-i18n=\"dpp.metaTitle\">x</div>",
-        "<span>CIRPASS</span><span data-i18n=\"dpp.cirIndex\"></span><span>GS1 Digital Link</span>",
-        "</body></html>",
+        "<span>CIRPASS</span><span data-i18n=\"dpp.jsonTitle\"></span>",
+        "<div id=\"dpp-wallet-actions\" hidden></div></body></html>",
     ],
     "operations/index.html": [
         "<!doctype html><html><head><title>Tracefab — Operations</title>",
