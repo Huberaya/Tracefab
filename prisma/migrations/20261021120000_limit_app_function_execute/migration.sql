@@ -11,9 +11,6 @@
 -- scripts/lib/tracefab_runtime_functions.mjs. New runtime calls must update
 -- both lists and pass CI. Never grant EXECUTE globally.
 
-BEGIN;
-SET LOCAL search_path = pg_catalog;
-
 DO $runtime_function_acl$
 DECLARE
   runtime_names text[] := ARRAY[
@@ -108,6 +105,8 @@ DECLARE
   missing_grants text;
   public_secdef_count integer;
 BEGIN
+  PERFORM pg_catalog.set_config('search_path', 'pg_catalog', true);
+
   IF app_oid IS NULL THEN
     RAISE EXCEPTION 'Runtime EXECUTE hardening refused: role tracefab_app is absent'
       USING ERRCODE = '42704';
@@ -248,4 +247,3 @@ BEGIN
 END
 $runtime_function_acl$;
 
-COMMIT;
