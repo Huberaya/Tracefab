@@ -109,7 +109,7 @@ const migrationFunctionAcl = fs.readFileSync(
   path.join(RACINE, 'prisma', 'migrations', '20261021120000_limit_app_function_execute', 'migration.sql'),
   'utf8',
 );
-const allowlistSqlBlock = migrationFunctionAcl.match(/runtime_names text\\[\\] := ARRAY\\[([\\s\\S]*?)\\]::text\\[\\];/);
+const allowlistSqlBlock = migrationFunctionAcl.match(/runtime_names text\[\] := ARRAY\[([\s\S]*?)\]::text\[\];/);
 const allowlistSqlNames = allowlistSqlBlock
   ? [...allowlistSqlBlock[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]).sort()
   : [];
