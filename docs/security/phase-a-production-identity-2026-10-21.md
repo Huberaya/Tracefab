@@ -32,6 +32,27 @@ Sur la branche Neon de test `tracefab-security-audit-20261021` (`br-frosty-boat-
 
 L'équivalent SQL de la migration a été exécuté uniquement sur cette branche de test. La migration versionnée doit encore passer la CI avant toute application en production.
 
+## Écart EXECUTE des fonctions — correction isolée préparée
+
+La mesure de catalogue en production a montré que `tracefab_app` pouvait exécuter les **131 fonctions appartenant au rôle propriétaire** dans le schéma `public`, dont les 117 fonctions `SECURITY DEFINER`. Le défaut provenait de l'octroi global du bootstrap et du privilège par défaut `ALTER DEFAULT PRIVILEGES ... GRANT EXECUTE ON FUNCTIONS TO tracefab_app`. L'absence d'EXECUTE pour `PUBLIC` ne limitait donc pas le rôle applicatif.
+
+La migration `20261021120000_limit_app_function_execute` :
+- révoque les droits EXECUTE explicites sur les fonctions appartenant au rôle migrateur ;
+- retire l'octroi EXECUTE par défaut pour `tracefab_app` ;
+- accorde seulement les 81 fonctions explicitement référencées par les appels SQL de l'API et les politiques RLS ;
+- échoue avant la révocation si une fonction manque, est surchargée, n'appartient pas au rôle migrateur ou si une fonction de politique RLS manque à l'allowlist ;
+- vérifie qu'aucune fonction `SECURITY DEFINER` appartenant au migrateur ne reste exécutable par `PUBLIC`, et qu'aucun droit direct EXECUTE non autorisé ne subsiste.
+
+L'équivalent de cette migration a été exécuté uniquement sur la branche Neon de test. Vérifications mesurées après application :
+- **81** fonctions TraceFab ont un droit EXECUTE direct explicite, et la liste observée correspond exactement à l'allowlist ;
+- **0** droit direct EXECUTE ne subsiste sur une fonction TraceFab hors allowlist ;
+- parmi les **117** fonctions `SECURITY DEFINER`, **77** restent exécutables par le rôle applicatif, car elles sont dans la liste API/RLS ; les autres ne le sont plus ;
+- l'ACL par défaut du schéma `public` ne donne plus EXECUTE à `tracefab_app` pour les futures fonctions ;
+- un contrôle négatif sur une fonction temporaire nouvellement créée donne `has_function_privilege = false` et aucun droit direct app ;
+- aucune fonction `SECURITY DEFINER` non allowlistée n'est accessible par héritage de `PUBLIC`.
+
+Le module `scripts/lib/tracefab_runtime_functions.mjs` sert de référence de test et est comparé à la liste SQL de la migration. Le bootstrap ne réintroduit plus d'octroi global. La validation CI sur une base PostgreSQL jetable reste obligatoire.
+
 ## Suite obligatoire
 
 1. Valider la CI sur la PR #70 et confirmer que le test de privilèges exact passe sur la chaîne complète des migrations.
