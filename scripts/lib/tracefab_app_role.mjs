@@ -141,9 +141,10 @@ export async function ensureAppRole(db, password) {
      END $$;`,
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`,
     // EXECUTE sur toutes les fonctions : 74 fonctions appelees par le runtime
-    // ont ete verifiees une a une, toutes necessaires. Restreindre ici sans
-    // inventaire casserait des chemins applicatifs — et les fonctions portent
-    // deja leurs propres REVOKE quand elles ne sont pas publiques.
+    // EXECUTE n'est volontairement pas accordé globalement ici. La migration
+    // 20261021120000_limit_app_function_execute accorde uniquement l'allowlist
+    // revue des appels API et des fonctions de politiques RLS. Les privilèges
+    // par défaut restent fermés : toute nouvelle fonction exige un grant explicite.
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM ${APP_ROLE}`,
     // Droits par defaut pour tout objet FUTUR. Volontairement limites a la
