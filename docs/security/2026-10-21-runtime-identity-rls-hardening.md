@@ -24,7 +24,7 @@ Statut : **candidat de correction en validation isolée — aucune bascule Produ
 
 Branche Neon de test : `br-broad-breeze-b1lxgpyd`, créée depuis la branche Production; aucune écriture sur la branche Production.
 
-Résultats après application des migrations candidates sur la branche isolée :
+Résultats après exécution manuelle des blocs SQL candidats sur la branche isolée (sans enregistrer ces migrations dans `_prisma_migrations`; la chaîne Prisma complète est testée séparément par GitHub Actions) :
 
 - `tracefab_app` se connecte comme `tracefab_app`, avec `rolbypassrls = false` et `rolsuper = false`.
 - `tracefab_app` conserve SELECT sur les deux tables du graphe, mais n'a pas INSERT/UPDATE/DELETE direct sur celles-ci.
