@@ -700,7 +700,7 @@
 
         const sites = su.reduce((a, s) => a + (s.facilityCount || 1), 0);
 
-        const pays = new Set(su.map((s) => s.countryCode || (s.organizations && s.organizations.country_code)).filter(Boolean));
+        const pays = new Set([...su.map((s) => s.countryCode || (s.organizations && s.organizations.country_code)), ...pr.map((p) => p.countryOfManufacture || p.country_of_manufacture)].filter(Boolean));
 
         const qualites = su.map((s) => s.dataQuality).filter((n) => typeof n === 'number');
 
@@ -814,7 +814,9 @@
           && p.dataCompletion !== undefined && p.dataCompletion !== ''
           && Number.isFinite(Number(p.dataCompletion));
         return {
-          donneesManquantes: enAttente.size,
+          donneesManquantes: enAttente.size
+            + (state.materials || []).filter((m) => !m.originCountryCode).length
+            + Number(state.overviewInsights?.missingEvidenceCount || 0),
           certificatsExpirant: certificats,
           // Aucun score de completude fournisseur n'est expose : on compte
           // seulement le signal de revue reellement observable (pays absent).
@@ -1515,7 +1517,7 @@
               <div class="sidebar-bottom"><div class="user-mini"><div class="avatar">${esc(first(userName))}</div><div><strong>${esc(userName)}</strong><span>${esc(state.user?.email || bt('shDemoAccount'))}</span><button class="link-button" data-action="signout">${bt('signOut')}</button></div></div></div>
             </aside>
             <main class="main">
-              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org" aria-label="${esc(bt('orgSwitcher'))}">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request">${esc(bt("newRequest"))}</button></div></header>
+              <header class="topbar"><div class="crumb">Brand Console <span> / </span><strong>${esc(viewLabel())}</strong></div><div class="top-actions">${brandLangSwitcher()}${brands().length ? `<select class="org-select" id="active-org" aria-label="${esc(bt('orgSwitcher'))}">${brandOptions}</select>` : ''}<button class="btn btn-primary btn-small" data-action="new-request" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${esc(bt("newRequest"))}</button></div></header>
               <section class="content">${content}</section>
             </main>
           </div>
@@ -1837,7 +1839,7 @@
             <p>${esc(bt('cnQnIntro'))}</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" data-demo-action="1">${bt('qbExport')}</button>
+            <button class="btn btn-secondary" disabled title="${esc(bt('journeyFeatureUnavailable'))}">${bt('qbExport')}</button>
             <button class="btn btn-primary" data-tf-act="p09">${bt('qbCreate')}</button>
           </div>
         </div>
@@ -1929,7 +1931,7 @@
             <p>${bt('mtIntro')}</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" data-demo-action="1">${bt('exportCsv')}</button>
+            <button class="btn btn-secondary" disabled title="${esc(bt('journeyFeatureUnavailable'))}">${bt('exportCsv')}</button>
             <button class="btn btn-primary" data-action="new-material">${bt('mtAdd')}</button>
           </div>
         </div>
@@ -1949,7 +1951,7 @@
                     ? (m.certifications || []).map((cert) => `<span class="badge badge-verified" style="margin-right:4px">${esc(cert)}</span>`).join('')
                     : '—'}</td>
                   <td><span class="badge-tier">${esc(m.tier || '—')}</span></td>
-                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-demo-action="1">${bt('scInspect')}</button></td>
+                  <td style="text-align:right"><button class="btn btn-secondary btn-small" data-action="inspect-material" data-material-id="${esc(m.id)}">${bt('scInspect')}</button></td>
                 </tr>`).join('') : `<tr><td colspan="7" class="empty">${esc(bt('cnNone'))}</td></tr>`}
               </tbody>
             </table>
@@ -1994,8 +1996,8 @@
             <p>${esc(bt('cnEvIntro'))}</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" data-demo-action="1">${bt('evDownload')}</button>
-            <button class="btn btn-primary" data-demo-action="1">${bt('evUpload')}</button>
+            <button class="btn btn-secondary" disabled title="${esc(bt('journeyFeatureUnavailable'))}">${bt('evDownload')}</button>
+            <button class="btn btn-primary" disabled title="${esc(bt('journeyFeatureUnavailable'))}">${bt('evUpload')}</button>
           </div>
         </div>
 
@@ -2087,7 +2089,7 @@
             <p>${esc(bt('certLead'))}</p>
           </div>
           <div class="actions">
-            <button class="btn btn-primary" data-demo-action="1">+ ${esc(bt('certDeclare'))}</button>
+            <button class="btn btn-primary" disabled title="${esc(bt('journeyFeatureUnavailable'))}">+ ${esc(bt('certDeclare'))}</button>
           </div>
         </div>
         <div class="grid split">
@@ -2209,7 +2211,7 @@
             </div>
             <div style="display:flex;gap:12px;">
               <button class="btn btn-secondary" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);" data-action="invite-supplier">${bt('mdInviteSupplier')}</button>
-              <button class="btn btn-primary" style="background:#10b981;color:#05140e;font-weight:800;border:none;" data-action="new-request">${bt('ovNewRequest')}</button>
+              <button class="btn btn-primary" style="background:#10b981;color:#05140e;font-weight:800;border:none;" data-action="new-request" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${bt('ovNewRequest')}</button>
             </div>
           </div>
 
@@ -2241,7 +2243,7 @@
               ${grandNombre(ag.completude ?? ag.qualite, '#0b7656')}<div class="meta">${bt('journeyCompletenessNotQuality')}</div>
               <div class="mc-stat-sublist">
                 <div class="mc-stat-subitem"><span>${bt('ovQuality')}</span><strong>${mesure(ag.completude ?? ag.qualite, '%')}</strong></div>
-                <div class="mc-stat-subitem"><span>${bt('cnQualityIndex')}</span><strong>${mesure(ag.qualite, '%')}</strong></div>
+                <div class="mc-stat-subitem"><span>${bt('journeyPartialQualityIndex')} · 2/5</span><strong>${mesure(ag.qualite, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('scEvidenceCov')}</span><strong>${mesure(ag.preuves, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('ovVerified')}</span><strong>${mesure(ag.verifies, '%')}</strong></div>
                 <div class="mc-stat-subitem"><span>${bt('journeyEvidenceWarnings')}</span><strong>${mesure(ag.missingEvidenceCount)}</strong></div>
@@ -2482,6 +2484,7 @@
           return `<div class="empty"><div class="empty-icon">◇</div><strong>${bt('pxNotFound')}</strong><button class="btn btn-secondary" data-view="products">${bt('pxBack')}</button></div>`;
         }
         const p = detail.product;
+        const dppIdentifier = (detail.identifiers || []).find((identifier) => ['gtin', 'ean', 'upc'].includes(String(identifier.type || '').toLowerCase()))?.value || null;
         const materialOptions = state.materials.map((material) => `<option value="${esc(material.id)}">${esc(material.name)}${material.materialType ? ` · ${esc(material.materialType)}` : ''}</option>`).join('');
 
         return `<div class="page-head">
@@ -2500,9 +2503,9 @@
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bt('pxTraceGraph')}</button>
             <button class="btn btn-secondary" data-action="product-dpp-from-detail">${bt('pxPrepareDpp')}</button>
-            <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/dpp/">📋 ${bt('journeyPreviewDpp')}</button>
+            <button class="btn btn-secondary" ${dppIdentifier ? `data-tf-act="open" data-tf-arg="/dpp/?gtin=${encodeURIComponent(dppIdentifier)}"` : `disabled title="${esc(bt('journeyResolvableIdRequired'))}"`}>📋 ${bt('journeyPreviewDpp')}</button>
               <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/product-intelligence/">${bt('pxOpenIntel')}</button>
-            <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}">${bt('pxNewEvidenceReq')}</button>
+            <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${bt('pxNewEvidenceReq')}</button>
           </div>
         </div>
 
@@ -2545,7 +2548,7 @@
               <div class="lineage-step-label">${esc(bt('cnGrpPef'))}</div>
               <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "Score A (PEF)" : "—"}</div>
             </div>
-            <div class="lineage-step-card" data-tf-act="open" data-tf-arg="/dpp/">
+            <div class="lineage-step-card" ${dppIdentifier ? `data-tf-act="open" data-tf-arg="/dpp/?gtin=${encodeURIComponent(dppIdentifier)}"` : `aria-disabled="true" title="${esc(bt('journeyResolvableIdRequired'))}"`}>
               <div class="lineage-step-label" style="color:#0b7656;">${esc(bt('cnLinDppQr'))}</div>
               <div class="lineage-step-sub"${estDemo() ? " data-tf-demo" : ""}>${estDemo() ? "GS1 Link" : "—"}</div>
             </div>
@@ -3063,7 +3066,7 @@
 
         const badge = (demoMode && !score)
           ? '<span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;" data-tf-demo>OVERALL GRADE: A (98.4%)</span>'
-          : `<span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">${indice === null ? esc(bt('cnNotComputed')) : `${esc(bt('cnQualityIndex'))}: ${mesure(indice, '%')}`}</span>`;
+          : `<span class="badge badge-verified" style="background:#eaf5ef;color:#0b7656;font-size:12px;font-weight:750;">${indice === null ? esc(bt('cnNotComputed')) : `${esc(bt('journeyPartialQualityIndex'))}: ${mesure(indice, '%')} · ${disponibles.length}/5`}</span>`;
 
         const carte = (label, desc, value, color, exemple) => `
             <div class="eq-score-card">
@@ -3788,6 +3791,11 @@
       }
 
       function modal(type) {
+        if (type === 'inspect-material') {
+          const m = state.inspectedMaterial;
+          if (!m) return '';
+          return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mtTitle')}</div><h2>${esc(m.name)}</h2></div><button class="close" data-action="close-modal">×</button></div><div class="item-list"><div class="item"><span>${bt('mtType')}</span><strong>${esc(m.materialType || bt('cnUnknown'))}</strong></div><div class="item"><span>${bt('mtOrigin')}</span><strong>${esc(m.originCountryCode || bt('cnCountryUnknown'))}</strong></div><div class="item"><span>${bt('journeyTrustLevel')}</span><strong>${bt('journeyDeclaredNotVerified')}</strong></div><div class="item"><span>${bt('journeyCreatedAt')}</span><strong>${date(m.createdAt)}</strong></div><div class="item"><span>${bt('journeyUpdatedAt')}</span><strong>${date(m.updatedAt)}</strong></div></div><div class="notice" style="margin-top:16px">${bt('journeyMaterialInspectionNotice')}</div><div class="form-actions"><button class="btn btn-secondary" data-action="close-modal">${bt('mdClose')}</button></div></div></div>`;
+        }
         if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>${bt('mdNewProduct')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>${bt('mdReference')}<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>${bt('mdName')}<input class="input" name="name" required placeholder="Cotton Essential"></label><label>${bt('pdCategory')}<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateProduct')}</button></div></form></div></div>`;
         if (type === 'new-material') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mtTitle')}</div><h2>${bt('mtAdd')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="create-material-form"><div class="form-grid"><label class="field-full">${bt('mtName')}<input class="input" name="name" required maxlength="240"></label><label>${bt('mtType')}<input class="input" name="materialType" required maxlength="120" placeholder="other"></label><label>${bt('mtOrigin')}<input class="input" name="originCountryCode" maxlength="2" pattern="[A-Za-z]{2}" placeholder="${bt('cnUnknown')}"></label><p class="field-full meta">${bt('cnMaterialNoClaim')}</p></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mtAdd')}</button></div></form></div></div>`;
         if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdSupplierOnboarding')}</div><h2>${bt('mdBulkInvite')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdRequiredColumns')} <code>email</code>, <code>legalName</code>${bt('mdInviteNote')}</p><label class="field-full">${bt('mdCsvFile')}<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdCreateValidInvites')}</button></div>${supplierImportPreview()}</div></div>`;
@@ -4922,7 +4930,8 @@
             if (action === 'commit-catalog-import') await commitCatalogImport();
             if (action === 'preview-supplier-import') await previewSupplierImport();
             if (action === 'commit-supplier-import') await commitSupplierImport();
-            if (action === 'new-request') { state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierOrgId || el.dataset.supplierId; state.modalProductId = null; render(); }
+            if (action === 'inspect-material') { try { const payload = await api('/api/materials/' + encodeURIComponent(el.dataset.materialId)); state.inspectedMaterial = payload.material; state.modal = 'inspect-material'; render(); } catch (error) { notify(error.message, true); } }
+            if (action === 'new-request') { if (!suppliers().length) { notify(bt('journeySupplierRequired'), true); return; } state.modal = 'new-request'; state.modalSupplierId = el.dataset.supplierOrgId || el.dataset.supplierId; state.modalProductId = null; render(); }
             if (action === 'product-new-request') { state.modal = 'new-request'; state.modalProductId = el.dataset.productId; render(); }
             if (action === 'invite-supplier') { state.modal = 'invite-supplier'; render(); }
             if (action === 'open-cap-modal') { state.modal = 'create-cap'; render(); }

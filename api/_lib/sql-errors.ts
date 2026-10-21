@@ -73,6 +73,7 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   dpp_record_not_found: { status: 404 },
   dpp_publish_review_role_required: { status: 403 },
   dpp_record_not_data_ready: { status: 409 },
+  dpp_publication_requirements_not_met: { status: 409 },
   dpp_record_already_ready_to_publish: { status: 409 },
   dpp_record_not_ready_to_publish: { status: 409 },
   dpp_record_not_published: { status: 409 },

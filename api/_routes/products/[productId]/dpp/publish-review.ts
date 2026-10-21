@@ -39,7 +39,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         throw new Error('dpp_record_not_data_ready');
       }
 
-      // 2. Mark ready to publish using the stored procedure
+      // 2. Mark ready to publish. The SECURITY DEFINER transition re-evaluates
+      // all strict gates against current source data while holding the record
+      // lock; the lower-level requirement helper is not exposed to runtime.
+      // This prevents both stale-snapshot publication and cross-tenant probes.
       const updatedRows = await tx.$queryRaw<Array<{
         id: string;
         product_id: string;
@@ -91,6 +94,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
+    if (error instanceof Error && error.message === 'dpp_publication_requirements_not_met') {
+      return json(res, 409, { error: error.message });
+    }
     if (error instanceof Error && /^invalid_/.test(error.message)) {
       return json(res, 400, { error: error.message });
     }
