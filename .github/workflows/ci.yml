@@ -131,6 +131,14 @@ jobs:
         # l'accès anonyme fait échouer la CI.
         run: npm run test:route-auth-coverage
 
+      - name: Couverture du contexte RLS des routes
+        # Toute route authentifiee doit armer un contexte transactionnel ;
+        # les lectures publiques de passeports doivent armer le contexte public.
+        run: npm run test:route-context-coverage
+
+      - name: Limitation de débit — dispense avant vérification du jeton
+        run: npm run test:rate-limit
+
       - name: Garde statique des tables en ecriture directe
         # La liste des tables ou le role applicatif ecrit directement est une
         # decision de securite. Sans cette etape, rien n'empeche une route

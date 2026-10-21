@@ -354,6 +354,72 @@ await app.connect();
 }
 
 /* ========================================================================== *
+ *  F. vrai gestionnaire API — publication explicite de bout en bout
+ * ========================================================================== */
+console.log('\n  F. gestionnaire GET /api/dpp/:gtinOrReference — rôle applicatif réel');
+
+{
+  // Importer le gestionnaire APRÈS avoir dirigé Prisma vers la base de
+  // préproduction jetable et le rôle tracefab_app. Aucun appel réseau ni
+  // connexion de production n'est possible depuis ce script (garde plus haut).
+  const databaseUrlOriginal = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = URL_APP;
+  let prismaClient;
+  try {
+    const routeModule = await import('../api/_routes/dpp/[gtin].ts');
+    ({ prisma: prismaClient } = await import('../api/_lib/prisma.ts'));
+    const handler = routeModule.default;
+
+    const callPublicDpp = async (identifier) => {
+      const headers = {};
+      const res = {
+        statusCode: 200,
+        headersSent: false,
+        writableEnded: false,
+        body: undefined,
+        setHeader(name, value) { headers[String(name).toLowerCase()] = value; return res; },
+        getHeader(name) { return headers[String(name).toLowerCase()]; },
+        status(code) { res.statusCode = code; return res; },
+        json(body) { res.body = body; res.headersSent = true; res.writableEnded = true; return res; },
+        send(body) { res.body = body; res.headersSent = true; res.writableEnded = true; return res; },
+        end(body) { if (body !== undefined) res.body = body; res.headersSent = true; res.writableEnded = true; return res; },
+      };
+      const req = {
+        method: 'GET',
+        url: '/api/dpp/' + encodeURIComponent(identifier),
+        query: { gtin: identifier },
+        headers: {},
+        body: undefined,
+        socket: { remoteAddress: '127.0.0.1' },
+        on() {}, once() {}, removeListener() {},
+      };
+      await handler(req, res);
+      return { status: res.statusCode, body: res.body, headers };
+    };
+
+    const publie = await callPublicDpp('PUB-001');
+    verif(
+      publie.status === 200 && publie.body?.dpp?.productReference?.value === 'PUB-001',
+      'route réelle : GET /api/dpp/PUB-001 rend 200 pour un DPP publié et relu',
+      `status=${publie.status}, erreur=${publie.body?.error || 'aucune'}`,
+    );
+
+    for (const reference of ['BROUILLON-001', 'NON-RELU-001', 'SANS-ETAT-001', 'PRIVE-001']) {
+      const refuse = await callPublicDpp(reference);
+      verif(
+        refuse.status === 404 && refuse.body?.error === 'product_passport_not_found',
+        `route réelle : ${reference} reste inaccessible par défaut`,
+        `status=${refuse.status}, erreur=${refuse.body?.error || 'aucune'}`,
+      );
+    }
+  } finally {
+    if (prismaClient) await prismaClient.$disconnect();
+    if (databaseUrlOriginal === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = databaseUrlOriginal;
+  }
+}
+
+/* ========================================================================== *
  *  F. URL publiques et anciens liens
  * ========================================================================== */
 console.log('\n  F. URL publiques (prédictions de résolution)');
