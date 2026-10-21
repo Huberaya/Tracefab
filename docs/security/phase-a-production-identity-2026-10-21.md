@@ -39,7 +39,7 @@ La mesure de catalogue en production a montré que `tracefab_app` pouvait exécu
 La migration `20261021120000_limit_app_function_execute` :
 - révoque les droits EXECUTE explicites sur les fonctions appartenant au rôle migrateur ;
 - retire l'octroi EXECUTE par défaut pour `tracefab_app` ;
-- accorde seulement les 81 fonctions explicitement référencées par les appels SQL de l'API et les politiques RLS ;
+- accorde seulement les 82 fonctions explicitement référencées par les appels SQL de l'API, les politiques RLS et une dépendance transitive SECURITY INVOKER ;
 - échoue avant la révocation si une fonction manque, est surchargée, n'appartient pas au rôle migrateur ou si une fonction de politique RLS manque à l'allowlist ;
 - vérifie qu'aucune fonction `SECURITY DEFINER` appartenant au migrateur ne reste exécutable par `PUBLIC`, et qu'aucun droit direct EXECUTE non autorisé ne subsiste.
 
