@@ -192,10 +192,10 @@ try {
     [RUNTIME_FUNCTION_NAMES]
   );
   const presentes = new Set(fns.rows.map((f) => f.proname));
-  const absentes = RUNTIME_FUNCTION_NAMES.filter((name) => !presentes.has(name));
+  const fonctionsAbsentes = RUNTIME_FUNCTION_NAMES.filter((name) => !presentes.has(name));
   console.log(`  4. EXECUTE sur ${fns.rows.length}/${RUNTIME_FUNCTION_NAMES.length} fonctions de l'allowlist runtime`);
-  if (absentes.length) {
-    console.log(`     OBSTACLE : fonctions allowlist absentes : ${absentes.slice(0, 8).join(', ')}`);
+  if (fonctionsAbsentes.length) {
+    console.log(`     OBSTACLE : fonctions allowlist absentes : ${fonctionsAbsentes.slice(0, 8).join(', ')}`);
     obstacles++;
   }
 
