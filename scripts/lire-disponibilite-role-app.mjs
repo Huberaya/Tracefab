@@ -236,7 +236,7 @@ try {
     obstacles++;
   }
   console.log('');
-  // 4. USAGE sur les sequences : sans lui, les INSERT echouent en 42501.
+  // 5. USAGE sur les sequences : sans lui, les INSERT echouent en 42501.
   const seq = await client.query(
     `SELECT count(*)::int total FROM pg_class c
      JOIN pg_namespace n ON n.oid = c.relnamespace
