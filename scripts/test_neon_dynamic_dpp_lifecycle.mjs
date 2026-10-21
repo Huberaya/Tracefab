@@ -21,7 +21,7 @@ const admin=client(ADMIN_URL), app=client(APP_URL);
 await admin.connect(); await app.connect();
 let assertions=0;
 const check=(condition,message)=>{assert.ok(condition,message); assertions++; console.log(`  ok    ${message}`);};
-const U=Object.fromEntries(['orgA','orgB','userA','userB','memA','memB','product','dpp','docA','docB'].map(key=>[key,randomUUID()]));
+const U=Object.fromEntries(['orgA','orgB','userA','userB','memA','memB','product','dpp','docA','docB','material','nodeA','nodeB','link','point'].map(key=>[key,randomUUID()]));
 
 try {
   await admin.query(`INSERT INTO organizations(id,type,legal_name,display_name,country_code) VALUES
@@ -39,14 +39,28 @@ try {
      U.userB,`clerk_dpp_cycle_b_${suffixe}`,emailB]);
   await admin.query(`INSERT INTO organization_memberships(id,organization_id,user_id,role,status) VALUES
     ($1,$2,$3,'owner','active'),($4,$5,$6,'owner','active')`,[U.memA,U.orgA,U.userA,U.memB,U.orgB,U.userB]);
-  await admin.query(`INSERT INTO tracefab_products(id,brand_organization_id,reference,name,status,description,category,country_of_manufacture,data_readiness)
-    VALUES($1,$2,'DPP-LIVE-001','Chemise vivante','active','Chemise textile de test avec provenance explicite.','shirt','FR','data_ready')`,[U.product,U.orgA]);
+  await admin.query(`INSERT INTO tracefab_products(id,brand_organization_id,reference,name,status,description,category,country_of_manufacture,data_readiness,color_name,size_range,weight_grams)
+    VALUES($1,$2,'DPP-LIVE-001','Chemise vivante','active','Chemise textile de test avec provenance explicite.','shirt','FR','data_ready','Bleu',ARRAY['M'],250)`,[U.product,U.orgA]);
   await admin.query(`INSERT INTO dpp_records(id,product_id,product_version,requirement_profile_key,requirement_profile_version,
     readiness_status) VALUES($1,$2,1,'textile_readiness_mvp','1.0','data_ready')`,[U.dpp,U.product]);
   for (const [id,org,name] of [[U.docA,U.orgA,'preuve-a.pdf'],[U.docB,U.orgB,'preuve-b.pdf']]) {
     await admin.query(`INSERT INTO documents(id,owner_organization_id,storage_bucket,storage_path,original_filename,content_type,byte_size,status,visibility)
       VALUES($1,$2,'tracefab-private',$3,$4,'application/pdf',128,'uploaded','private')`,[id,org,`${org}/dpp/${name}`,name]);
   }
+  await admin.query("UPDATE documents SET status='available' WHERE id=$1",[U.docA]);
+  await admin.query(`INSERT INTO materials(id,owner_organization_id,material_type,name,origin_country_code)
+    VALUES($1,$2,'fiber','Coton de test','FR')`,[U.material,U.orgA]);
+  await admin.query(`INSERT INTO product_materials(product_id,material_id,percentage,product_version)
+    VALUES($1,$2,100,1)`,[U.product,U.material]);
+  await admin.query(`INSERT INTO supply_chain_nodes(id,node_type,product_id,material_id,label,status,source_document_id,graph_product_id)
+    VALUES($1,'product',$3,NULL,'Produit documenté','documented',$4,$3),
+          ($2,'material',NULL,$5,'Matière documentée','documented',$4,$3)`,
+    [U.nodeA,U.nodeB,U.product,U.docA,U.material]);
+  await admin.query(`INSERT INTO supply_chain_links(id,product_id,source_node_id,target_node_id,link_type)
+    VALUES($1,$2,$3,$4,'contains')`,[U.link,U.product,U.nodeA,U.nodeB]);
+  await admin.query(`INSERT INTO data_points(id,owner_organization_id,product_id,data_key,value,data_type,status,source_document_id)
+    VALUES($1,$2,$3,'fixture.source',to_jsonb('documented'::text),'text','documented',$4)`,
+    [U.point,U.orgA,U.product,U.docA]);
   check(true,'fixtures de deux tenants creees');
 
   const context=async(user,email,fn)=>{await app.query('BEGIN');try{
