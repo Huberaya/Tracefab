@@ -37,6 +37,7 @@ import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { API_RUNTIME_FUNCTION_NAMES, RLS_POLICY_FUNCTION_NAMES, RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
@@ -93,6 +94,67 @@ verifier(
   sourceRole.includes('TABLES_ECRITURE_DIRECTE'),
   'la constante TABLES_ECRITURE_DIRECTE a disparu',
 );
+verifier(
+  'le bootstrap n accorde pas EXECUTE globalement',
+  !/GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO/i.test(sourceRole),
+  'un GRANT EXECUTE ON ALL FUNCTIONS est présent',
+);
+verifier(
+  'le bootstrap ferme le défaut EXECUTE applicatif futur',
+  sourceRole.includes('REVOKE EXECUTE ON FUNCTIONS FROM ${APP_ROLE}')
+    && !/ALTER DEFAULT PRIVILEGES[^;]*GRANT EXECUTE ON FUNCTIONS TO ${APP_ROLE}/i.test(sourceRole),
+  'le défaut EXECUTE applicatif reste accordé',
+);
+const migrationFunctionAcl = fs.readFileSync(
+  path.join(RACINE, 'prisma', 'migrations', '20261021120000_limit_app_function_execute', 'migration.sql'),
+  'utf8',
+);
+const allowlistSqlBlock = migrationFunctionAcl.match(/runtime_names text\[\] := ARRAY\[([\s\S]*?)\]::text\[\];/);
+const allowlistSqlNames = allowlistSqlBlock
+  ? [...allowlistSqlBlock[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]).sort()
+  : [];
+verifier(
+  'la liste SQL de migration est synchronisée avec le module runtime',
+  JSON.stringify(allowlistSqlNames) === JSON.stringify([...RUNTIME_FUNCTION_NAMES].sort()),
+  `module=${RUNTIME_FUNCTION_NAMES.length}, migration=${allowlistSqlNames.length}`,
+);
+
+// Ré-extraction indépendante des appels SQL directs de api/. Les commentaires
+// sont retirés pour qu'une mention documentaire ne devienne pas un droit DB.
+// Les noms de tables sont exclus : INSERT INTO tracefab_x (...) ressemble à un
+// appel de fonction pour une expression régulière naïve.
+function fichiersTypeScript(dir, acc = []) {
+  for (const entry of fs.readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    if (fs.statSync(full).isDirectory()) fichiersTypeScript(full, acc);
+    else if (/\.ts$/.test(entry)) acc.push(full);
+  }
+  return acc;
+}
+const tablesConnues = new Set();
+for (const dossier of fs.readdirSync(path.join(RACINE, 'prisma', 'migrations')).sort()) {
+  const fichierMigration = path.join(RACINE, 'prisma', 'migrations', dossier, 'migration.sql');
+  if (!fs.existsSync(fichierMigration)) continue;
+  const sql = fs.readFileSync(fichierMigration, 'utf8');
+  for (const m of sql.matchAll(/\bCREATE TABLE\s+(?:IF NOT EXISTS\s+)?(?:"?public"?\.)?"?([a-z0-9_]+)"?/gi)) tablesConnues.add(m[1]);
+  for (const m of sql.matchAll(/\bDROP TABLE\s+(?:IF EXISTS\s+)?(?:"?public"?\.)?"?([a-z0-9_]+)"?/gi)) tablesConnues.delete(m[1]);
+}
+const fonctionsApiObservees = new Set();
+for (const fichierApi of fichiersTypeScript(path.join(RACINE, 'api'))) {
+  const src = fs.readFileSync(fichierApi, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|\s)\/\/.*$/gm, '$1');
+  for (const m of src.matchAll(/\b(tracefab_[a-z0-9_]+)\s*\(/gi)) {
+    const nom = m[1].toLowerCase();
+    if (!tablesConnues.has(nom)) fonctionsApiObservees.add(nom);
+  }
+}
+const fonctionsApiTriees = [...fonctionsApiObservees].sort();
+verifier(
+  'l allowlist API est exactement dérivée des appels SQL dans api/',
+  JSON.stringify(fonctionsApiTriees) === JSON.stringify([...API_RUNTIME_FUNCTION_NAMES].sort()),
+  `attendues=${API_RUNTIME_FUNCTION_NAMES.length} ; observées=${fonctionsApiTriees.length} ; différences=${[...new Set([...fonctionsApiTriees, ...API_RUNTIME_FUNCTION_NAMES])].filter((n) => fonctionsApiTriees.includes(n) !== API_RUNTIME_FUNCTION_NAMES.includes(n)).join(', ')}`,
+);
 
 /* --- 1. Prérequis ---------------------------------------------------------- */
 
@@ -133,6 +195,7 @@ const urlEphemere = urlAdmin.replace(/\/[^/?]+(\?|$)/, `/${BASE_EPHEMERE}$1`);
 const urlApp = urlEphemere.replace(/:\/\/[^@]*@/, `://${APP_ROLE}:${encodeURIComponent(MOT_DE_PASSE)}@`);
 
 let sortie = 0;
+let app = null;
 try {
   // Le mot de passe repris de l'environnement : dans la CI, TF_APP_PASSWORD est
   // celui qu'emploie TF_RLS_APP_URL. En réutiliser un autre réinitialiserait le
@@ -155,6 +218,22 @@ try {
 
   const mig = new pg.Client({ connectionString: urlEphemere, ssl: sslDepuisUrl(urlEphemere) });
   await mig.connect();
+  // Prisma crée ce registre avant d'exécuter les fichiers SQL. Ce test exécute
+  // les migrations directement pour éprouver leur ordre; il doit donc créer
+  // le même objet technique afin de vérifier que le runtime ne peut pas le
+  // modifier après la migration de durcissement.
+  await mig.query(`
+    CREATE TABLE public._prisma_migrations (
+      id VARCHAR(36) PRIMARY KEY NOT NULL,
+      checksum VARCHAR(64) NOT NULL,
+      finished_at TIMESTAMPTZ,
+      migration_name VARCHAR(255) NOT NULL,
+      logs TEXT,
+      rolled_back_at TIMESTAMPTZ,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      applied_steps_count INTEGER NOT NULL DEFAULT 0
+    )
+  `);
   const dossiers = fs.readdirSync(path.join(RACINE, 'prisma', 'migrations'))
     .filter((d) => /^\d{14}_/.test(d)).sort();
   for (const d of dossiers) {
@@ -175,7 +254,7 @@ try {
   /* --- 2. Privilèges réels, mesurés en se connectant avec le rôle ---------- */
 
   console.log('\n  3. privilèges mesurés avec le rôle applicatif');
-  const app = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp) });
+  app = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp) });
   await app.connect();
 
   const identite = await app.query('SELECT current_user AS u, (SELECT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS b');
@@ -250,12 +329,28 @@ try {
       AND a.grantee = 0 AND a.privilege_type IN ('INSERT','UPDATE','DELETE','TRUNCATE')`);
   verifier('aucun DML n est accordé à PUBLIC', pub.rows[0].n === 0, `${pub.rows[0].n} entrées`);
 
+  // Le registre Prisma n'est pas une table applicative et n'a pas de RLS.
+  // Le runtime ne doit donc pas pouvoir modifier son historique, même si une
+  // future migration ajoute un GRANT par héritage ou par défaut.
+  const historiqueMigrations = await app.query(`
+    SELECT has_table_privilege(current_user, 'public._prisma_migrations', 'INSERT') AS i,
+           has_table_privilege(current_user, 'public._prisma_migrations', 'UPDATE') AS u,
+           has_table_privilege(current_user, 'public._prisma_migrations', 'DELETE') AS d,
+           has_table_privilege(current_user, 'public._prisma_migrations', 'TRUNCATE') AS t
+  `);
+  const hm = historiqueMigrations.rows[0];
+  verifier(
+    'le rôle applicatif ne peut pas modifier le registre des migrations',
+    hm && !hm.i && !hm.u && !hm.d && !hm.t,
+    JSON.stringify(hm),
+  );
+
   const lecture = await app.query(`
     SELECT c.relname AS nom, has_table_privilege('${APP_ROLE}', c.oid, 'SELECT') AS s
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname='public' AND c.relkind='r' ORDER BY 1`);
+    WHERE n.nspname='public' AND c.relkind='r' AND c.relname <> '_prisma_migrations' ORDER BY 1`);
   verifier(
-    'la lecture reste disponible partout',
+    'la lecture reste disponible sur les tables métier',
     lecture.rows.every((r) => r.s),
     `${lecture.rows.filter((r) => !r.s).length} table(s) sans SELECT`,
   );
@@ -292,13 +387,71 @@ try {
     verifier('le limiteur peut écrire', false, `${e.code} ${String(e.message).split('\n')[0]}`);
   }
 
-  // Les fonctions appelées par le runtime doivent rester exécutables.
-  const fonc = await app.query(`
-    SELECT count(*)::int AS n FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname='public' AND has_function_privilege('${APP_ROLE}', p.oid, 'EXECUTE')`);
-  verifier('des fonctions restent exécutables', fonc.rows[0].n > 0, `${fonc.rows[0].n} fonction(s)`);
+  const politiquesFonctions = await app.query(`
+    WITH bodies AS (
+      SELECT COALESCE(pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' ||
+             COALESCE(pg_get_expr(pol.polwithcheck, pol.polrelid), '') AS body
+        FROM pg_policy pol
+        JOIN pg_class c ON c.oid = pol.polrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public'
+    )
+    SELECT DISTINCT (m.matches)[1] AS name
+      FROM bodies b
+      CROSS JOIN LATERAL regexp_matches(b.body, '(tracefab_[a-z0-9_]+)[[:space:]]*\\(', 'g') AS m(matches)
+     ORDER BY name
+  `);
+  const fonctionsRlsObservees = politiquesFonctions.rows.map((r) => r.name);
+  verifier(
+    'allowlist RLS correspond exactement aux fonctions des politiques',
+    JSON.stringify(fonctionsRlsObservees) === JSON.stringify([...RLS_POLICY_FUNCTION_NAMES].sort()),
+    `attendues=${RLS_POLICY_FUNCTION_NAMES.length} ; observées=${fonctionsRlsObservees.length} ; différences=${[...new Set([...fonctionsRlsObservees, ...RLS_POLICY_FUNCTION_NAMES])].filter((n) => fonctionsRlsObservees.includes(n) !== RLS_POLICY_FUNCTION_NAMES.includes(n)).join(', ')}`,
+  );
+
+  // Le rôle applicatif ne doit recevoir EXECUTE que sur les fonctions SQL
+  // réellement appelées par api/ ou les politiques RLS. Les fonctions
+  // SECURITY DEFINER internes et les triggers restent hors de l'allowlist.
+  const grantsFonctions = await app.query(`
+    SELECT p.proname
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+     WHERE n.nspname = 'public'
+       AND p.proname LIKE 'tracefab_%'
+       AND acl.grantee = '${APP_ROLE}'::regrole
+       AND acl.privilege_type = 'EXECUTE'
+     ORDER BY p.proname`);
+  const fonctionsObservees = grantsFonctions.rows.map((r) => r.proname);
+  const fonctionsAttendues = [...RUNTIME_FUNCTION_NAMES].sort();
+  verifier(
+    'EXECUTE explicite correspond exactement à l allowlist runtime/RLS',
+    JSON.stringify(fonctionsObservees) === JSON.stringify(fonctionsAttendues),
+    `attendues=${fonctionsAttendues.length} ; observees=${fonctionsObservees.length} ; extras/manquants=${[...new Set([...fonctionsObservees, ...fonctionsAttendues])].filter((n) => fonctionsObservees.includes(n) !== fonctionsAttendues.includes(n)).join(', ')}`,
+  );
+
+  // Contrôle négatif du défaut futur : une fonction créée par le propriétaire
+  // après la migration ne doit pas devenir exécutable par tracefab_app.
+  const probe = new pg.Client({ connectionString: urlEphemere, ssl: sslDepuisUrl(urlEphemere) });
+  await probe.connect();
+  try {
+    await probe.query('BEGIN');
+    await probe.query(`CREATE FUNCTION public.tracefab_runtime_execute_probe() RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT true $$`);
+    const futureGrant = await probe.query(
+      `SELECT has_function_privilege($1, 'public.tracefab_runtime_execute_probe()', 'EXECUTE') AS allowed`,
+      [APP_ROLE],
+    );
+    verifier(
+      'une fonction future n hérite pas EXECUTE pour le runtime',
+      futureGrant.rows[0]?.allowed === false,
+      `allowed=${futureGrant.rows[0]?.allowed}`,
+    );
+  } finally {
+    await probe.query('ROLLBACK');
+    await probe.end();
+  }
 
   await app.end();
+  app = null;
 } catch (e) {
   if (e.message !== 'migration') {
     echecs += 1;
@@ -306,6 +459,7 @@ try {
   }
   sortie = SORTIE_DEFAUT;
 } finally {
+  if (app) await app.end().catch(() => {});
   await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
   await admin.end();
   console.log('  base éphémère détruite');

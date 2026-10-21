@@ -41,10 +41,29 @@ function controle(libelle, condition, detail) {
     Number(annonce[1]) === reel,
     `le document annonce ${annonce[1]} migration(s)`,
   );
+  const entete = texte.slice(0, 1000);
+  const nonVerifie = /Neon de production\s*:\s*non vérifié/i.test(entete);
+  let preuveNeon = '';
+  try {
+    preuveNeon = readFileSync(
+      'docs/security/2026-10-21-production-migration-reconciliation.md',
+      'utf8',
+    );
+  } catch {
+    // Sans rapport de preuve, l'état doit rester explicitement non vérifié.
+  }
+  const verifieAvecPreuve =
+    /Neon de production\s*:\s*historique des migrations vérifié en lecture seule/i.test(entete)
+    && /db06dca398fe9b39ceecb23b90a0de1cd08910cb/.test(preuveNeon)
+    && /Dossiers de migration dans le dépôt de référence\s*\|\s*53/.test(preuveNeon)
+    && /Noms distincts avec application réussie\s*\|\s*53/.test(preuveNeon)
+    && /Migrations inachevées.*\|\s*0/.test(preuveNeon)
+    && /Migrations du dépôt sans application réussie\s*\|\s*0/.test(preuveNeon)
+    && /Noms du registre Neon absents du dépôt\s*\|\s*0/.test(preuveNeon);
   controle(
-    "l'etat des migrations Neon de production est explicitement non verifie",
-    /Neon de production\s*:\s*non vérifié/i.test(texte.slice(0, 1000)),
-    "ne pas assimiler le contenu de la branche a l'etat de production",
+    "l'état des migrations Neon est soit non vérifié, soit vérifié avec une preuve datée",
+    nonVerifie || verifieAvecPreuve,
+    "ne pas assimiler le contenu de la branche à l'état de production",
   );
 }
 /* --- 2. Aucun SHA presente comme fait courant dans l'en-tete. ----------
