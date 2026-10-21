@@ -158,9 +158,25 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  -- SECURITY DEFINER functions must never be callable by PUBLIC. Trigger
+  -- execution does not require callers to have EXECUTE on the trigger routine.
+  -- Revoke only routines owned by the migration owner; the owner guard in the
+  -- migration chain makes this scope explicit and auditable.
+  FOR f IN
+    SELECT p.oid::pg_catalog.regprocedure AS signature
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.prokind = 'f'
+       AND p.prosecdef
+       AND p.proowner = owner_oid
+  LOOP
+    EXECUTE pg_catalog.format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', f.signature);
+  END LOOP;
+
   -- Remove direct grants from all application-owned functions. Extension-owned
   -- functions are deliberately untouched: this migration cannot alter objects
-  -- owned by cloud_admin and their PUBLIC grants are outside TraceFab RLS.
+  -- owned by cloud_admin.
   FOR f IN
     SELECT p.oid::pg_catalog.regprocedure AS signature
       FROM pg_catalog.pg_proc p
@@ -245,6 +261,13 @@ BEGIN
     RAISE EXCEPTION 'SECURITY DEFINER functions still executable by PUBLIC: %', public_secdef_count
       USING ERRCODE = '42501';
   END IF;
+
+  -- Future functions created by this migration owner must not become PUBLIC-
+  -- executable implicitly. Any new runtime entry point needs an explicit grant.
+  EXECUTE pg_catalog.format(
+    'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC',
+    current_user
+  );
 END
 $runtime_function_acl$;
 
