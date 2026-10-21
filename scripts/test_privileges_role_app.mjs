@@ -381,7 +381,7 @@ try {
     )
     SELECT DISTINCT (m.matches)[1] AS name
       FROM bodies b
-      CROSS JOIN LATERAL regexp_matches(b.body, '(tracefab_[a-z0-9_]+)[[:space:]]*\\\\(', 'g') AS m(matches)
+      CROSS JOIN LATERAL regexp_matches(b.body, '(tracefab_[a-z0-9_]+)[[:space:]]*\\(', 'g') AS m(matches)
      ORDER BY name
   `);
   const fonctionsRlsObservees = politiquesFonctions.rows.map((r) => r.name);
