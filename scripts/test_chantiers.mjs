@@ -57,7 +57,7 @@ function controle(libelle, condition, detail) {
     && /db06dca398fe9b39ceecb23b90a0de1cd08910cb/.test(preuveNeon)
     && /Dossiers de migration dans le dépôt de référence\s*\|\s*53/.test(preuveNeon)
     && /Noms distincts avec application réussie\s*\|\s*53/.test(preuveNeon)
-    && /Migrations inachevées[^\\n]*\|\s*0/.test(preuveNeon)
+    && /Migrations inachevées.*\|\s*0/.test(preuveNeon)
     && /Migrations du dépôt sans application réussie\s*\|\s*0/.test(preuveNeon)
     && /Noms du registre Neon absents du dépôt\s*\|\s*0/.test(preuveNeon);
   controle(
