@@ -84,7 +84,7 @@ function makeRequest(method, path, params, serial) {
       'user-agent': 'tracefab-p0-route-auth-coverage',
       'x-forwarded-for': `198.18.${Math.floor(serial / 250)}.${(serial % 250) + 1}`,
     },
-    socket: { remoteAddress: `198.18.${Math.floor(serial / 250)}.${(serial % 250) + 1} },
+    socket: { remoteAddress: `198.18.${Math.floor(serial / 250)}.${(serial % 250) + 1}` },
     on() {}, once() {}, removeListener() {},
   };
 }
