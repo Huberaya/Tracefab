@@ -217,6 +217,22 @@ try {
 
   const mig = new pg.Client({ connectionString: urlEphemere, ssl: sslDepuisUrl(urlEphemere) });
   await mig.connect();
+  // Prisma crée ce registre avant d'exécuter les fichiers SQL. Ce test exécute
+  // les migrations directement pour éprouver leur ordre; il doit donc créer
+  // le même objet technique afin de vérifier que le runtime ne peut pas le
+  // modifier après la migration de durcissement.
+  await mig.query(`
+    CREATE TABLE public._prisma_migrations (
+      id VARCHAR(36) PRIMARY KEY NOT NULL,
+      checksum VARCHAR(64) NOT NULL,
+      finished_at TIMESTAMPTZ,
+      migration_name VARCHAR(255) NOT NULL,
+      logs TEXT,
+      rolled_back_at TIMESTAMPTZ,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      applied_steps_count INTEGER NOT NULL DEFAULT 0
+    )
+  `);
   const dossiers = fs.readdirSync(path.join(RACINE, 'prisma', 'migrations'))
     .filter((d) => /^\d{14}_/.test(d)).sort();
   for (const d of dossiers) {
