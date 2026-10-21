@@ -18,6 +18,7 @@
 import process from 'node:process';
 import pg from 'pg';
 import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -179,16 +180,25 @@ try {
   console.log(`     politiques : ${politiques.rows[0].n}`);
   console.log('');
 
-  // 3. EXECUTE sur les fonctions SECURITY DEFINER : ce sont elles que les
-  //    webhooks Clerk empruntent, pas des INSERT directs.
+  // 3. EXECUTE : le runtime doit pouvoir appeler l'allowlist explicite, et
+  // ne doit pas pouvoir appeler les fonctions SECURITY DEFINER hors allowlist.
   const fns = await client.query(
-    `SELECT p.oid AS oid, n.nspname || '.' || p.proname AS nom
+    `SELECT p.oid AS oid, n.nspname || '.' || p.proname AS nom, p.proname AS proname
      FROM pg_proc p
      JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public' AND p.prosecdef = true
-     ORDER BY 2`
+     WHERE n.nspname = 'public' AND p.prokind = 'f'
+       AND p.proname = ANY($1::text[])
+     ORDER BY 2`,
+    [RUNTIME_FUNCTION_NAMES]
   );
-  console.log(`  4. EXECUTE sur ${fns.rows.length} fonction(s) SECURITY DEFINER`);
+  const presentes = new Set(fns.rows.map((f) => f.proname));
+  const absentes = RUNTIME_FUNCTION_NAMES.filter((name) => !presentes.has(name));
+  console.log(`  4. EXECUTE sur ${fns.rows.length}/${RUNTIME_FUNCTION_NAMES.length} fonctions de l'allowlist runtime`);
+  if (absentes.length) {
+    console.log(`     OBSTACLE : fonctions allowlist absentes : ${absentes.slice(0, 8).join(', ')}`);
+    obstacles++;
+  }
+
   const sansExecute = [];
   for (const f of fns.rows) {
     const ok = await client.query(
@@ -197,13 +207,35 @@ try {
     );
     if (!ok.rows[0].ok) sansExecute.push(f.nom);
   }
-  console.log(`     sans EXECUTE : ${sansExecute.length}${sansExecute.length ? ' — ' + sansExecute.slice(0, 6).join(', ') : ''}`);
+  console.log(`     sans EXECUTE sur allowlist : ${sansExecute.length}${sansExecute.length ? ' — ' + sansExecute.slice(0, 6).join(', ') : ''}`);
   if (sansExecute.length) {
-    console.log('     OBSTACLE : au moins une fonction SECURITY DEFINER inaccessible.');
+    console.log('     OBSTACLE : une fonction runtime autorisée est inaccessible.');
+    obstacles++;
+  }
+
+  const horsAllowlist = await client.query(
+    `SELECT p.oid AS oid, n.nspname || '.' || p.proname AS nom
+     FROM pg_proc p
+     JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public' AND p.prosecdef = true
+       AND p.proname <> ALL($1::text[])
+     ORDER BY 2`,
+    [RUNTIME_FUNCTION_NAMES]
+  );
+  const ouvertsHorsAllowlist = [];
+  for (const f of horsAllowlist.rows) {
+    const ok = await client.query(
+      `SELECT has_function_privilege($1, $2::oid, 'EXECUTE') AS ok`,
+      [cible, f.oid]
+    );
+    if (ok.rows[0].ok) ouvertsHorsAllowlist.push(f.nom);
+  }
+  console.log(`     SECURITY DEFINER hors allowlist encore executables : ${ouvertsHorsAllowlist.length}${ouvertsHorsAllowlist.length ? ' — ' + ouvertsHorsAllowlist.slice(0, 6).join(', ') : ''}`);
+  if (ouvertsHorsAllowlist.length) {
+    console.log('     OBSTACLE : des fonctions SECURITY DEFINER hors allowlist restent appelables.');
     obstacles++;
   }
   console.log('');
-
   // 4. USAGE sur les sequences : sans lui, les INSERT echouent en 42501.
   const seq = await client.query(
     `SELECT count(*)::int total FROM pg_class c
