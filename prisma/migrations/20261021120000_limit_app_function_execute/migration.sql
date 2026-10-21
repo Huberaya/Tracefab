@@ -36,6 +36,7 @@ DECLARE
     'tracefab_complete_notification_outbox',
     'tracefab_compute_dpp_readiness',
     'tracefab_compute_product_quality',
+    'tracefab_compute_supplier_quality',
     'tracefab_create_data_request',
     'tracefab_create_dpp_identity',
     'tracefab_create_material',
