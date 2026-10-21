@@ -446,15 +446,20 @@ export async function evaluate(
   req: VReq,
   now = Date.now(),
 ): Promise<RateLimitDecision> {
-  // La verification ne peut pas etre poussee au gestionnaire de route :
-  // c'est ici que le budget est choisi, et un budget choisi sur un simple
-  // en-tete serait un budget offert. Le jeton presente est donc verifie —
-  // cryptographiquement, avec memoisation — avant tout reclassement.
+  // Les routes explicitement dispensees (notamment le proxy Frontend API
+  // Clerk) n'ont aucun budget a choisir. Les verifier avant de reconnaitre
+  // cette dispense charge inutilement @clerk/backend sur les requetes proxy
+  // portant un cookie de session, et peut declencher des avertissements
+  // Node dans le chemin d'authentification. La dispense ne donne aucun droit
+  // d'acces : le handler garde ses propres controles.
+  if (isExempt(path)) {
+    return { allowed: true, klass: 'exempt', limit: 0, remaining: 0, resetSeconds: 0, enforcedBy: 'exempt' };
+  }
+
+  // Pour les routes non dispensees, le budget credentialed exige toujours
+  // une verification cryptographique du jeton, jamais un simple en-tete.
   const authVerified = await credentialIsVerified(presentedToken(req), now);
   const klass = classify(path, req, authVerified);
-  if (klass === 'exempt') {
-    return { allowed: true, klass, limit: 0, remaining: 0, resetSeconds: 0, enforcedBy: 'exempt' };
-  }
 
   const budget = budgetFor(klass);
   const windowMs = budget.windowSeconds * 1000;
