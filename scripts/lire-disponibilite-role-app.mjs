@@ -17,7 +17,7 @@
  */
 import process from 'node:process';
 import pg from 'pg';
-import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { APP_ROLE, TABLES_ECRITURE_DIRECTE, TABLE_WRITE_PRIVILEGES } from './lib/tracefab_app_role.mjs';
 import { RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const url = process.env.DATABASE_URL;
@@ -121,8 +121,11 @@ try {
 
   console.log(`     SELECT  absent sur ${manquants.SELECT.length} table(s)`);
   for (const p of ['INSERT', 'UPDATE', 'DELETE']) {
-    const attendus = manquants[p].filter((t) => !declares.has(t));
-    const inattendus = manquants[p].filter((t) => declares.has(t));
+    // L'absence est inattendue seulement si ce verbe précis est requis pour
+    // cette table. La simple présence de la table dans l'allowlist ne signifie
+    // plus qu'elle doit accepter les trois verbes DML.
+    const inattendus = manquants[p].filter((t) => (TABLE_WRITE_PRIVILEGES[t] || []).includes(p));
+    const attendus = manquants[p].filter((t) => !(TABLE_WRITE_PRIVILEGES[t] || []).includes(p));
     console.log(`     ${p.padEnd(7)} absent sur ${String(manquants[p].length).padStart(3)} table(s)`
       + ` — ${attendus.length} attendue(s) en lecture seule, ${inattendus.length} inattendue(s)`
       + (inattendus.length ? ' : ' + inattendus.slice(0, 6).join(', ') + (inattendus.length > 6 ? ', …' : '') : ''));
