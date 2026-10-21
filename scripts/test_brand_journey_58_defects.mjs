@@ -11,7 +11,7 @@ const expectedFr = {
   cnDom2: 'COMPLÉTUDE DES DONNÉES',
   scGpsPolygons: 'Coordonnées GPS documentées',
   journeyDocumentRegistry: 'Registre documentaire avec contrôle d’intégrité',
-  journeyLoadedDocuments: 'Documents chargés — intégrité SHA-256 contrôlée',
+  journeyLoadedDocuments: 'Documents sources disponibles',
   evDownload: 'Télécharger le registre d’intégrité',
   evUpload: 'Déposer un nouveau document',
   journeyQuestionnaireModels: 'Modèles de questionnaires disponibles',

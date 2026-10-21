@@ -15,7 +15,7 @@
     "stResolved": "已解决",
     "stPublished": "已发布",
     "stNotStarted": "未开始",
-    "stDataReady": "Technical structure complete · review required",
+    "stDataReady": "Historical status · current review required",
     "stReadyToPublish": "可发布",
     "stReviewRequired": "需审核",
     "stActive": "启用",

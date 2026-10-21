@@ -254,10 +254,11 @@
         });
         setMetaDescription('Digital Product Passport — indisponible. Aucune donnée de démonstration n’est affichée comme réelle.');
         renderClaimsBar([]);
-        document.querySelectorAll('[data-dpp-href]').forEach((el) => {
-          const kind = /apple/i.test(el.dataset.dppHref || '') ? 'apple-wallet' : 'google-wallet';
-          el.setAttribute('href', '/api/dpp/' + encodeURIComponent(id) + '/' + kind);
-        });
+        document.querySelectorAll('[data-dpp-href]').forEach((el) => el.setAttribute('href', '#'));
+        const walletActions = document.getElementById('dpp-wallet-actions');
+        if (walletActions) walletActions.hidden = true;
+        const statusTag = document.getElementById('dpp-status-tag');
+        if (statusTag) statusTag.textContent = tr('hdrUnavailable', 'Digital product passport unavailable');
       };
 
       const apply = (payload) => {
@@ -284,10 +285,18 @@
           el.removeAttribute('data-i18n');
           el.classList.add('dpp-hydrated');
         });
+        let walletLinkCount = 0;
         document.querySelectorAll('[data-dpp-href]').forEach((el) => {
           const v = dig(payload, el.dataset.dppHref);
-          if (v && typeof v === 'string') el.setAttribute('href', v);
+          if (v && typeof v === 'string') {
+            el.setAttribute('href', v);
+            walletLinkCount += 1;
+          }
         });
+        const walletActions = document.getElementById('dpp-wallet-actions');
+        if (walletActions) walletActions.hidden = walletLinkCount === 0;
+        const statusTag = document.getElementById('dpp-status-tag');
+        if (statusTag) statusTag.textContent = tr('hdrPublished', 'Published digital product passport');
         if (dpp.productName) {
           const name = renderable(dpp.productName);
           document.title = (name.text || name.status) + ' — Digital Product Passport | TRACEFAB';
