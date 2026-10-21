@@ -91,6 +91,7 @@
     "db:pull": "prisma db pull",
     "build": "npm run db:generate && npm run verify:prisma-client && npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:assets && npm run test:routes && npm run test:minified-comments && npm run test:i18n && npm run test:chantier3-risk && npm run test:chantier4-demo && npm run test:chantier5-portail && npm run test:landing-lisibilite && npm run test:landing-spine && npm run test:landing-reperage && npm run test:landing-performance && npm run test:chantier5-console && npm run test:db-guard && npm run test:db-guard-driver && npm run test:db-routing && npm run test:workflow-policy && npm run test:workflow-policy-temoins && npm run test:router-load && npm run test:error-reporting",
     "test:routes": "node scripts/test_route_registry.mjs",
+    "test:route-auth-coverage": "npx tsx scripts/test_route_auth_coverage.mjs",
     "test:minified-comments": "node scripts/test_minified_comment_guard.mjs",
     "test:i18n": "node scripts/test_i18n_consolidation.mjs",
     "test:phases": "node scripts/audit_phases_9_12.mjs --base http://127.0.0.1:3000",

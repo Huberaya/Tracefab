@@ -125,6 +125,12 @@ jobs:
         # internal_error avec un identifiant de correlation.
         run: npm run test:router-load
 
+      - name: Couverture HTTP de l'authentification des routes tenant
+        # Appelle les gestionnaires réels sans bearer Clerk et sans URL DB.
+        # Toute route tenant qui répond 2xx, 5xx ou ne refuse pas explicitement
+        # l'accès anonyme fait échouer la CI.
+        run: npm run test:route-auth-coverage
+
       - name: Garde statique des tables en ecriture directe
         # La liste des tables ou le role applicatif ecrit directement est une
         # decision de securite. Sans cette etape, rien n'empeche une route
