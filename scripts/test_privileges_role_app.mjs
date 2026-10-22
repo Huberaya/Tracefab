@@ -238,6 +238,8 @@ try {
   // par défaut de DML pour tracefab_app et PUBLIC. La migration doit le supprimer.
   const ownerName = (await mig.query('SELECT current_user AS owner')).rows[0].owner;
   const quotedOwner = '"' + String(ownerName).replace(/"/g, '""') + '"';
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} GRANT INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}`);
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} GRANT INSERT, UPDATE, DELETE ON TABLES TO PUBLIC`);
   await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} IN SCHEMA public GRANT INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}`);
   await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} IN SCHEMA public GRANT INSERT, UPDATE, DELETE ON TABLES TO PUBLIC`);
 
