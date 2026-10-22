@@ -155,6 +155,20 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
   }
 }
 
+/**
+ * Contrat de securite de l'identite runtime. La comparaison vit dans ce module
+ * pour que la route ne publie pas de champs d'identite par defaut.
+ */
+export function databaseIdentityIsSafe(identity: DatabaseIdentity | undefined): boolean {
+  return Boolean(
+    identity?.measured &&
+    identity.currentUser === 'tracefab_app' &&
+    identity.sessionUser === 'tracefab_app' &&
+    identity.bypassesRls === false &&
+    identity.isSuperuser === false,
+  );
+}
+
 /** Stockage prive : on interroge une cle qui n'existe pas. Un 404 est un
  *  succes — il prouve que le bucket repond et que la signature est acceptee.
  *  Un 403 signifierait des identifiants refuses. */
