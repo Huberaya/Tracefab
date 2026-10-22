@@ -69,27 +69,30 @@ export const APP_ROLE = 'tracefab_app';
 // Retirer une table d'ici exige d'avoir d'abord deplace son chemin applicatif
 // vers une fonction SECURITY DEFINER. Le controle
 // scripts/test_privileges_role_app.mjs echoue si un octroi global reapparait.
-export const TABLES_ECRITURE_DIRECTE = [
-  'audit_logs',
-  'data_points',
-  'data_shares',
-  'documents',
-  'materials',
-  'organization_invitations',
-  'organization_memberships',
-  'organizations',
-  'plm_erp_integrations',
-  'plm_erp_sync_jobs',
-  'product_green_claims',
-  'product_identifiers',
-  'product_materials',
-  'quality_cap_messages',
-  'rate_limit_counters',
-  'supplier_sites',
-  'tracefab_catalog_import_jobs',
-  'tracefab_products',
-  'users',
-];
+export const TABLE_WRITE_PRIVILEGES = {
+  audit_logs: ['INSERT'],
+  data_points: ['INSERT'],
+  data_shares: ['INSERT'],
+  documents: ['UPDATE'],
+  materials: ['INSERT'],
+  organization_invitations: ['INSERT', 'UPDATE'],
+  organization_memberships: ['UPDATE'],
+  organizations: ['UPDATE'],
+  plm_erp_integrations: ['INSERT', 'UPDATE'],
+  plm_erp_sync_jobs: ['INSERT'],
+  product_green_claims: ['INSERT'],
+  product_identifiers: ['INSERT', 'UPDATE'],
+  product_materials: ['INSERT', 'UPDATE'],
+  quality_cap_messages: ['INSERT'],
+  rate_limit_counters: ['INSERT', 'UPDATE', 'DELETE'],
+  supplier_sites: ['INSERT', 'UPDATE'],
+  tracefab_catalog_import_jobs: ['INSERT', 'UPDATE'],
+  tracefab_products: ['INSERT', 'UPDATE'],
+  users: ['INSERT', 'UPDATE'],
+};
+
+/** Tables réellement modifiées directement par le runtime. */
+export const TABLES_ECRITURE_DIRECTE = Object.keys(TABLE_WRITE_PRIVILEGES);
 
 function quote(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
@@ -118,10 +121,6 @@ export async function ensureAppRole(db, password) {
   const base = (await db.query('select current_database() d')).rows[0].d;
   const proprio = (await db.query('select current_user u')).rows[0].u;
 
-  // Liste des tables en ecriture directe : voir TABLES_ECRITURE_DIRECTE,
-  // exportee au niveau module (source unique, importee par les controles).
-  const listeEcriture = TABLES_ECRITURE_DIRECTE.join(', ');
-
   for (const sql of [
     `GRANT CONNECT ON DATABASE "${base}" TO ${APP_ROLE}`,
     `GRANT USAGE ON SCHEMA public TO ${APP_ROLE}`,
@@ -135,16 +134,10 @@ export async function ensureAppRole(db, password) {
          EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public._prisma_migrations FROM ${APP_ROLE}';
        END IF;
      END $bootstrap$;`,
-    // ECRITURE sur les seules tables que le runtime touche hors fonction.
-    // Auparavant : GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES, ce qui
-    // rendait toute table modifiable directement et vidait de son sens le
-    // principe « mutations par fonctions ». Conditionnel : au bootstrap d'une
-    // base vierge ces tables n'existent pas encore.
-    `DO $$ BEGIN
-       IF to_regclass('public.rate_limit_counters') IS NOT NULL THEN
-         EXECUTE 'GRANT INSERT, UPDATE, DELETE ON ${listeEcriture} TO ${APP_ROLE}';
-       END IF;
-     END $$;`,
+    // Reset all direct DML before applying the reviewed per-table allowlist.
+    // This also repairs databases that still carry grants from older migrations.
+    `REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+       ON ALL TABLES IN SCHEMA public FROM ${APP_ROLE}`,
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`,
     // EXECUTE sur toutes les fonctions : 74 fonctions appelees par le runtime
     // EXECUTE n'est volontairement pas accordé globalement ici. La migration
@@ -162,6 +155,14 @@ export async function ensureAppRole(db, password) {
 
   ]) {
     await db.query(sql);
+  }
+
+  // Apply only the verbs actually used by the runtime on each table.
+  // Existing broad grants were revoked above, so re-bootstrap is corrective.
+  for (const [table, privileges] of Object.entries(TABLE_WRITE_PRIVILEGES)) {
+    const exists = await db.query('SELECT to_regclass($1) IS NOT NULL AS present', [`public.${table}`]);
+    if (!exists.rows[0]?.present) continue;
+    await db.query(`GRANT ${privileges.join(', ')} ON TABLE public."${table}" TO ${APP_ROLE}`);
   }
   // TF-3 — tables DPP append-only : les mutations passent UNIQUEMENT par les
   // fonctions SECURITY DEFINER (tracefab_add_dpp_event, tracefab_add_dpp_claim,

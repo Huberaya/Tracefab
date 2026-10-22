@@ -212,12 +212,22 @@ async function enTantQue(userId, fn) {
   }
 }
 
-/** Renvoie { ok, code, rows } sans lever. */
+/** Renvoie { ok, code, rows } sans lever.
+ *
+ * Une erreur SQL annule la transaction courante jusqu'au ROLLBACK.
+ * Chaque tentative est donc isolée par un savepoint : en particulier,
+ * un DELETE refusé par les privilèges minimaux ne doit pas faire échouer
+ * artificiellement le contrôle positif UPDATE qui suit dans la même
+ * transaction. */
 async function tente(sql, params = []) {
+  await app.query('SAVEPOINT tentative_operation');
   try {
     const r = await app.query(sql, params);
+    await app.query('RELEASE SAVEPOINT tentative_operation');
     return { ok: true, rows: r.rows, count: r.rowCount };
   } catch (e) {
+    await app.query('ROLLBACK TO SAVEPOINT tentative_operation');
+    await app.query('RELEASE SAVEPOINT tentative_operation');
     return { ok: false, code: e.code, message: String(e.message).split('\n')[0] };
   }
 }
@@ -279,10 +289,18 @@ await enTantQue(A.user, async () => {
     !r.ok || r.count === 0,
     r.ok ? `${r.count} ligne supprimée` : `${r.code} ${r.message}`,
   );
-  // Contrôle positif sur la même table : le privilège d'écrire existe bien,
-  // donc le refus ci-dessus vient de la RLS et pas d'une absence de droit.
+});
+
+// Contrôle positif dans une transaction distincte : l'échec attendu d'une
+// opération inter-tenant ne doit jamais contaminer la preuve d'accès légitime.
+// La nouvelle transaction réarme explicitement l'identité de A.
+await enTantQue(A.user, async () => {
   const r2 = await tente(`UPDATE documents SET original_filename = 'renommé-par-a.pdf' WHERE id = $1`, [docA]);
-  verifier("contrôle positif : A peut toucher son propre document", r2.ok && r2.count === 1, r2.ok ? `${r2.count} ligne` : `${r2.code} ${r2.message}`);
+  verifier(
+    "contrôle positif : A peut toucher son propre document",
+    r2.ok && r2.count === 1,
+    r2.ok ? `${r2.count} ligne` : `${r2.code} ${r2.message}`,
+  );
 });
 
 const docBExiste = await (async () => {
