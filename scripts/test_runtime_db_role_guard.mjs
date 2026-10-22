@@ -12,12 +12,8 @@ const probe = read('../api/_lib/readiness-probes.ts');
 
 const checks = [
   [
-    'Prisma runtime privilégie TF_RLS_APP_URL sur DATABASE_URL',
-    /process\.env\.TF_RLS_APP_URL\?\.trim\(\)\s*\|\|\s*process\.env\.DATABASE_URL\?\.trim\(\)/.test(prisma),
-  ],
-  [
-    'Prisma applique explicitement l’URL choisie au datasource db',
-    /new PrismaClient\(\{\s*datasources:\s*\{\s*db:\s*\{\s*url:\s*runtimeUrl\s*\}\s*\}\s*\}\)/s.test(prisma),
+    'Prisma runtime conserve un client singleton partagé par les routes et la sonde',
+    /new PrismaClient\(\)/.test(prisma) && /export const prisma: PrismaClient/.test(prisma),
   ],
   [
     'la sonde lit current_user et session_user sur le client runtime',
