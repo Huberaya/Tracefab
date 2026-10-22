@@ -63,11 +63,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // reel, l'identite de Production reste non mesuree.
   const wantIdentity = req.query?.identity === '1';
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
+  // En mode diagnostic, la readiness est rouge tant que l'identité effective
+  // ne prouve pas le rôle applicatif sans privilèges de contournement RLS.
+  const identitySafe = !wantIdentity || Boolean(
+    databaseIdentity?.measured &&
+    databaseIdentity.currentUser === 'tracefab_app' &&
+    databaseIdentity.sessionUser === 'tracefab_app' &&
+    databaseIdentity.bypassesRls === false &&
+    databaseIdentity.isSuperuser === false,
+  );
 
   if (!live) {
-    return json(res, configured_ ? 200 : 503, {
+    return json(res, configured_ && identitySafe ? 200 : 503, {
       schema: 'tracefab-p2-readiness-v1',
-      ready: configured_,
+      ready: configured_ && identitySafe,
       configurationOnly: true,
       services,
       ...(databaseIdentity ? { databaseIdentity } : {}),
@@ -78,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Le collecteur d'erreurs est souhaitable, pas bloquant : son absence degrade
   // l'exploitation, elle n'empeche pas de servir.
   const blocking = [probes.database, probes.privateStorage, probes.antivirus, probes.email, probes.alerting];
-  const ready = configured_ && blocking.every((probe) => probe.reachable);
+  const ready = configured_ && blocking.every((probe) => probe.reachable) && identitySafe;
   return json(res, ready ? 200 : 503, {
     schema: 'tracefab-p2-readiness-v1',
     ready,
