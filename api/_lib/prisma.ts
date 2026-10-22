@@ -24,18 +24,8 @@ const ROW_CEILING = (() => {
   return Math.min(100000, Math.max(100, raw));
 })();
 
-/**
- * Le runtime doit utiliser le rôle applicatif à privilèges minimaux.
- * DATABASE_URL reste la cible de secours pour les scripts/outils historiques;
- * dès que TF_RLS_APP_URL est configurée, Prisma runtime la privilégie.
- * Le contrôle d'identité effectif reste assuré par la sonde interne de readiness.
- */
 function createClient() {
-  const runtimeUrl = process.env.TF_RLS_APP_URL?.trim() || process.env.DATABASE_URL?.trim();
-  const client = runtimeUrl
-    ? new PrismaClient({ datasources: { db: { url: runtimeUrl } } })
-    : new PrismaClient();
-  return client.$extends({
+  return new PrismaClient().$extends({
     name: 'tracefab-row-ceiling',
     query: {
       $allModels: {
