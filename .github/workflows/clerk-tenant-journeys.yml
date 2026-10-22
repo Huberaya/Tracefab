@@ -1,0 +1,65 @@
+name: TraceFab — parcours Clerk et isolation inter-organisations
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clerk-tenant-journeys:
+    name: Clerk — autorisation, refus et isolation
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: tracefab-clerk-test
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tracefab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_VERSION: '20'
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
+      TF_APP_PASSWORD: isolation_ci_jetable
+      TF_RLS_APP_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
+      TF_ROUTES_TEST_HARNESS: '1'
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Generer le client Prisma
+        run: npm run db:generate
+
+      - name: Preparer le role applicatif sur PostgreSQL jetable
+        run: npm run db:prepare-ci-role
+
+      - name: Appliquer les migrations sur PostgreSQL jetable
+        run: npm run db:deploy:throwaway
+
+      - name: Creer deux locataires de test
+        run: npm run db:seed-rls
+
+      - name: Verifier les parcours avec de vrais jetons Clerk
+        # Refuse sk_live_ et toute base distante ; appelle les vrais handlers
+        # et verifie autorisation, 401, role insuffisant et isolation Alpha/Beta.
+        run: npx tsx scripts/test_routes_tenant_isolation.mjs
