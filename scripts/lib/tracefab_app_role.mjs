@@ -146,17 +146,19 @@ export async function ensureAppRole(db, password) {
        END IF;
      END $$;`,
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`,
-    // EXECUTE sur toutes les fonctions : 74 fonctions appelees par le runtime
-    // EXECUTE n'est volontairement pas accordé globalement ici. La migration
-    // 20261021120000_limit_app_function_execute accorde uniquement l'allowlist
-    // revue des appels API et des fonctions de politiques RLS. Les privilèges
-    // par défaut restent fermés : toute nouvelle fonction exige un grant explicite.
+    // EXECUTE sur les fonctions : les nouveaux objets ne doivent pas en hériter.
+    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
+    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" REVOKE EXECUTE ON FUNCTIONS FROM ${APP_ROLE}`,
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM ${APP_ROLE}`,
-    // Droits par defaut pour tout objet FUTUR. Volontairement limites a la
-    // lecture : une migration qui cree une table ne doit pas donner
-    // silencieusement au runtime le droit d'y ecrire. L'ecriture directe sur
-    // une table nouvelle exige une decision explicite.
+    // Nettoyer les défauts DML globaux ET ceux du schéma public : un REVOKE
+    // par schéma ne neutralise pas un GRANT global (et inversement).
+    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" REVOKE INSERT, UPDATE, DELETE ON TABLES FROM PUBLIC`,
+    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public REVOKE INSERT, UPDATE, DELETE ON TABLES FROM PUBLIC`,
+    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" REVOKE INSERT, UPDATE, DELETE ON TABLES FROM ${APP_ROLE}`,
+    `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public REVOKE INSERT, UPDATE, DELETE ON TABLES FROM ${APP_ROLE}`,
+    // Les tables futures n'accordent au runtime que la lecture. Toute écriture
+    // directe nouvelle exige un GRANT explicite sur la table cible.
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT SELECT ON TABLES TO ${APP_ROLE}`,
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ${APP_ROLE}`,
 
