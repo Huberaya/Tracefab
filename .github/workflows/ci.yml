@@ -136,6 +136,10 @@ jobs:
         # les lectures publiques de passeports doivent armer le contexte public.
         run: npm run test:route-context-coverage
 
+      - name: Identité du rôle DB runtime — garde fail-closed
+        # Vérifie le choix de TF_RLS_APP_URL et le contrat de la sonde réelle.
+        run: npm run test:runtime-db-role-guard
+
       - name: Limitation de débit — dispense avant vérification du jeton
         run: npm run test:rate-limit
 
