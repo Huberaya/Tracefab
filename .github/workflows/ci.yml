@@ -20,7 +20,10 @@ permissions:
 
 on:
   push:
-    branches: ['**']
+    # Les branches de PR sont déjà couvertes par pull_request ci-dessous.
+    # Limiter push à main évite deux runs concurrents sur le même SHA et un
+    # required check bloqué par le doublon push alors que la CI PR est verte.
+    branches: ['main']
   pull_request:
   workflow_dispatch:
 
