@@ -4,7 +4,7 @@ import { notificationAlertConfigured } from '../../_lib/notification-observabili
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
-import { probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
+import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -65,13 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
   // En mode diagnostic, la readiness est rouge tant que l'identité effective
   // ne prouve pas le rôle applicatif sans privilèges de contournement RLS.
-  const identitySafe = !wantIdentity || Boolean(
-    databaseIdentity?.measured &&
-    databaseIdentity.currentUser === 'tracefab_app' &&
-    databaseIdentity.sessionUser === 'tracefab_app' &&
-    databaseIdentity.bypassesRls === false &&
-    databaseIdentity.isSuperuser === false,
-  );
+  const identitySafe = !wantIdentity || databaseIdentityIsSafe(databaseIdentity);
 
   if (!live) {
     return json(res, configured_ && identitySafe ? 200 : 503, {
