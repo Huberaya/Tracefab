@@ -287,6 +287,63 @@ try {
   verifier('la connexion est bien le rôle applicatif', identite.rows[0].u === APP_ROLE, identite.rows[0].u);
   verifier('le rôle ne contourne pas la RLS', identite.rows[0].b === false, `rolbypassrls=${identite.rows[0].b}`);
 
+  // Les privilèges effectifs incluent les appartenances de rôle, pas seulement
+  // les ACL explicites. Une adhésion indirecte à un rôle administratif invalide
+  // le modèle même si tracefab_app paraît lui-même non privilégié.
+  const rolesElevated = await app.query(`
+    SELECT r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb
+    FROM pg_roles r
+    WHERE (r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb)
+      AND pg_has_role(current_user, r.oid, 'MEMBER')
+  `);
+  verifier(
+    'aucun privilège élevé direct ou hérité via les rôles',
+    rolesElevated.rows.length === 0,
+    rolesElevated.rows.map((r) => r.rolname).join(', ') || 'aucun rôle élevé hérité',
+  );
+
+  // Mesurer les droits EFFECTIFS (y compris héritage et PUBLIC) sur chaque
+  // table : une ACL directe absente ne suffit pas à prouver un refus.
+  const effectiveDml = await app.query(`
+    SELECT c.relname AS nom,
+      has_table_privilege(current_user, c.oid, 'INSERT') AS i,
+      has_table_privilege(current_user, c.oid, 'UPDATE') AS u,
+      has_table_privilege(current_user, c.oid, 'DELETE') AS d
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+      AND c.relname <> '_prisma_migrations'
+    ORDER BY c.relname
+  `);
+  const allowWrite = new Set(TABLES_ECRITURE_DIRECTE);
+  const unexpectedEffective = effectiveDml.rows.filter((r) =>
+    (r.i || r.u || r.d) && !allowWrite.has(r.nom));
+  verifier(
+    'aucun DML effectif direct, hérité ou PUBLIC hors des tables autorisées',
+    unexpectedEffective.length === 0,
+    unexpectedEffective.map((r) => r.nom).join(', ') || 'aucun DML effectif hors allowlist',
+  );
+
+  // Le catalogue PEF et les règles de green claims sont volontairement publics,
+  // mais uniquement en lecture et sur les entrées actives. Ces deux exceptions
+  // n'ont pas besoin de contexte tenant ; la politique RLS doit le prouver.
+  const referencePolicies = await app.query(`
+    SELECT tablename,
+      bool_or(cmd = 'SELECT' AND 'public' = ANY(roles)
+        AND COALESCE(qual, '') ILIKE '%is_active%'
+        AND COALESCE(qual, '') ILIKE '%true%') AS public_active_select
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('pef_emission_factors', 'green_claims_rules')
+    GROUP BY tablename
+  `);
+  const referencePolicyMap = new Map(referencePolicies.rows.map((r) => [r.tablename, r.public_active_select]));
+  verifier(
+    'PEF et green claims ont une politique SELECT publique active-only',
+    referencePolicyMap.get('pef_emission_factors') === true
+      && referencePolicyMap.get('green_claims_rules') === true,
+    JSON.stringify(Object.fromEntries(referencePolicyMap)),
+  );
+
   // Le confinement ne vient PAS des privilèges de table.
   //
   // Mesure : les migrations accordent elles-mêmes `SELECT, INSERT, UPDATE,
