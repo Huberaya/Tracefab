@@ -25,10 +25,12 @@ const checks = [
   ],
   [
     'la readiness diagnostique échoue si le rôle effectif n’est pas tracefab_app sans bypass',
-    /databaseIdentity\.currentUser === 'tracefab_app'/.test(readiness) &&
-      /databaseIdentity\.sessionUser === 'tracefab_app'/.test(readiness) &&
-      /databaseIdentity\.bypassesRls === false/.test(readiness) &&
-      /databaseIdentity\.isSuperuser === false/.test(readiness) &&
+    /databaseIdentityIsSafe\(databaseIdentity\)/.test(readiness) &&
+      /function databaseIdentityIsSafe\(identity: DatabaseIdentity \| undefined\)/.test(probe) &&
+      /identity\.currentUser === 'tracefab_app'/.test(probe) &&
+      /identity\.sessionUser === 'tracefab_app'/.test(probe) &&
+      /identity\.bypassesRls === false/.test(probe) &&
+      /identity\.isSuperuser === false/.test(probe) &&
       /configured_ && identitySafe/.test(readiness),
   ],
 ];
