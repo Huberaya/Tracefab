@@ -130,6 +130,23 @@ de servir.
 > seulement que les variables existent. Seul `?probe=live` prouve que les
 > services répondent. C'est celui qu'il faut passer avant d'ouvrir le trafic.
 
+### Identité effective du rôle PostgreSQL
+
+La sonde d'identité utilise le même client Prisma que les routes. Elle est réservée
+à l'opérateur et exige le secret de worker dans l'en-tête — ne jamais le placer
+dans l'URL.
+
+```bash
+curl -sS -H "x-tracefab-worker-secret: $TRACEFAB_NOTIFICATION_WORKER_SECRET" \
+  "$TRACEFAB_APP_URL/api/internal/p2/readiness?identity=1" | jq '{ready, databaseIdentity}'
+```
+
+Résultat attendu : `measured: true`, `currentUser` et `sessionUser` égaux à
+`tracefab_app`, `bypassesRls: false` et `isSuperuser: false`. La route répond
+503 et `ready: false` si la mesure est absente ou si le rôle contourne la RLS.
+Cette sonde est diagnostique : elle ne remplace pas les tests d'isolation
+multi-tenant en CI.
+
 
 ## Limitation de debit et plafond de lignes
 
