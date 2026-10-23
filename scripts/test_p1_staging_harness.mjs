@@ -289,6 +289,47 @@ function executer(args, env = {}) {
   else ko('la suite staging utilise une reference de simulation fixe : un doublon preexistant ferait re-echo la valeur CSV');
 }
 
+/* --- 5 quater bis. l isolation est mesuree sur les trois plans ---------- */
+
+{
+  // Une application borne ses donnees a trois endroits distincts, et un seul
+  // plan ne prouve rien des deux autres :
+  //   1. le resolveur de locataire (api/_lib/tenant.ts) ;
+  //   2. les politiques RLS de la base ;
+  //   3. le controle applicatif des ecritures.
+  // La suite doit mesurer les trois, et le dire.
+  const staging = lire('scripts/test_p1_staging.mjs');
+
+  // Plan 2 : la route qui ne resout AUCUN locataire et s'appuie donc
+  // uniquement sur RLS. Une session d'une organisation qui demande les
+  // produits d'une autre doit obtenir ZERO ligne.
+  if (/api\/catalog\/export\/products/.test(staging)) ok('la suite staging mesure la barriere RLS seule (route sans resolveur de locataire)');
+  else ko('la suite staging ne mesure pas la barriere RLS seule');
+  if (/RLS must return zero row for a foreign organization/.test(staging)) ok('la suite staging exige zero ligne cote RLS pour une organisation etrangere');
+  else ko('la suite staging n exige pas zero ligne cote RLS');
+  if (/the own organization must get its own rows back through the RLS route/.test(staging)) ok('la suite staging exige le controle positif de la route RLS');
+  else ko('la suite staging n exige pas le controle positif de la route RLS');
+
+  // Plan 2 bis : lecture JSON, ligne a ligne — chaque produit renvoye doit
+  // porter l identifiant du locataire appelant.
+  if (/a product was returned from another organization/.test(staging)) ok('la suite staging verifie l organisation de chaque ligne renvoyee');
+  else ko('la suite staging ne verifie pas l organisation de chaque ligne renvoyee');
+
+  // Plan 3 : les ecritures croisees doivent etre refusees ET ne rien
+  // persister.
+  if (/brand_organization_mismatch/.test(staging)) ok('la suite staging mesure le refus d une ecriture dirigee vers une autre organisation');
+  else ko('la suite staging ne mesure pas le refus d une ecriture dirigee vers une autre organisation');
+  if (/brand_organization_access_denied/.test(staging)) ok('la suite staging mesure le refus d un import catalogue vers une autre organisation');
+  else ko('la suite staging ne mesure pas le refus d un import catalogue vers une autre organisation');
+  if (/a refused cross-tenant write must not have persisted anything/.test(staging)) ok('la suite staging prouve qu une ecriture refusee ne persiste rien');
+  else ko('la suite staging ne prouve pas qu une ecriture refusee ne persiste rien');
+
+  // Les mesures doivent etre publiees : statut observe, pas seulement un
+  // verdict binaire.
+  if (/rls_foreign_rows/.test(staging) && /shared_references_between_brands/.test(staging) && /refused_write_persisted/.test(staging)) ok('la suite staging publie les mesures d isolation (RLS, produits, ecritures)');
+  else ko('la suite staging ne publie pas les mesures d isolation');
+}
+
 /* --- 5 quinquies. le percage de la protection Vercel est complet -------- */
 
 {

@@ -124,6 +124,30 @@ async function exportCsv(page, { token, headerOrganizationId, queryOrganizationI
 }
 
 /**
+ * Appel applicatif, avec en-tete de locataire optionnel.
+ *
+ * L'en-tete `X-Tracefab-Organization-Id` est ce que les routes resolvent
+ * (api/_lib/tenant.ts) : c'est donc la seule maniere de demander
+ * explicitement un locataire etranger.
+ */
+async function apiRequest(page, { method, path, token, headerOrganizationId, body }) {
+  return page.evaluate(async ({ method, path, token, headerOrganizationId, body }) => {
+    const headers = { Authorization: `Bearer ${token}` };
+    if (headerOrganizationId) headers['X-Tracefab-Organization-Id'] = headerOrganizationId;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const response = await fetch(path, {
+      method,
+      headers,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    const text = await response.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch { json = null; }
+    return { status: response.status, contentType: response.headers.get('content-type') || '', body: text, json };
+  }, { method, path, token, headerOrganizationId, body });
+}
+
+/**
  * References exportees. La premiere colonne du CSV de catalogue est
  * `reference` (api/_lib/catalog-importer.ts, CATALOG_EXPORT_HEADERS).
  */
@@ -205,32 +229,35 @@ try {
    *     elargissement du perimetre des donnees ; l'export du locataire
    *     autorise continue de fonctionner. »
    *
-   * ROUTE MESUREE : GET /api/catalog/products/export
-   *   api/_routes/catalog/products/export.ts appelle `requireActiveTenant`,
-   *   qui refuse par 404 `organization_not_found` un locataire auquel
-   *   l'appelant n'adhere pas — « un 403 revelerait que l'organisation
-   *   existe » (api/_lib/tenant.ts). L'export porte ensuite sur UN
-   *   locataire : `scopedOrganizations = [tenant.organizationId]`.
+   * La suite mesure l'isolation sur TROIS plans, parce qu'une application
+   * borne ses donnees a trois endroits distincts, et qu'un seul plan ne
+   * prouve rien des deux autres :
+   *
+   *   1. LE RESOLVEUR DE LOCATAIRE (api/_lib/tenant.ts) — route
+   *      `GET /api/catalog/products/export` : `requireActiveTenant` refuse un
+   *      locataire non adherent par 404 `organization_not_found`, puis
+   *      l'export porte sur UN locataire (`[tenant.organizationId]`).
+   *   2. LES POLITIQUES RLS (base) — route `GET /api/catalog/export/products`
+   *      : elle ne resout AUCUN locataire et interroge pourtant une table
+   *      bornée par `tracefab_is_org_member(brand_organization_id)`. La seule
+   *      barriere est donc la base. Une session d'une organisation qui
+   *      demande les produits d'une autre doit obtenir ZERO ligne.
+   *   3. LE CONTROLE APPLICATIF DES ECRITURES — `POST /api/products` et
+   *      `POST /api/catalog/products/import` : une ecriture dirigee vers une
+   *      organisation etrangere doit etre refusee AVANT toute persistance.
    *
    * PRECEDENCE DU LOCATAIRE (api/_lib/tenant.ts) : en-tete
    * `X-Tracefab-Organization-Id`, puis query `organizationId`, puis corps.
-   * Les trois cas n'ont donc pas le meme sens, et le test les mesure tous :
+   * Les trois formes de demande n'ont donc pas le meme sens, et la suite les
+   * mesure toutes.
    *
-   *   (1) en-tete etranger                -> le serveur resout B : refus 404 ;
-   *   (2) query etrangere, sans en-tete   -> le serveur resout B : refus 404 ;
-   *   (3) en-tete propre + query etrangere -> le serveur resout A (l'en-tete
-   *       prime) : la reponse doit etre IDENTIQUE a l'export propre.
-   *
-   * LE STATUT NE SUFFIT PAS. Un 404 est un indice, pas une preuve : la
-   * preuve est dans les DONNEES. Le test verifie qu'une tentative
-   * inter-organisation ne rend ZERO ligne de donnees, et qu'aucune
-   * reference exportee par l'organisation etrangere n'apparait dans une
-   * reponse obtenue par l'appelant.
+   * LE STATUT NE SUFFIT PAS : un 404 est un indice, pas une preuve. La preuve
+   * est dans les DONNEES — zero ligne, et aucune reference de l'organisation
+   * etrangere dans une reponse obtenue par l'appelant.
    *
    * IDENTITES DISTINCTES : deux personnes reellement differentes, chacune
    * authentifiee dans SA organisation. L'ancienne suite interrogeait le
-   * locataire courant avec un parametre etranger : elle ne prouvait rien,
-   * et attendait 403 la ou le depot repond 404.
+   * locataire courant avec un parametre etranger : elle ne prouvait rien.
    */
   assert.ok(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(brandAuth.organizationId),
@@ -241,6 +268,8 @@ try {
     'the second brand organization id must be a UUID',
   );
   assert.notEqual(secondBrandAuth.organizationId, brandAuth.organizationId, 'tenant-isolation test requires two distinct brand organizations');
+
+  /* --- plan 1 : le resolveur de locataire --------------------------------- */
 
   // CONTROLE POSITIF : l'export du locataire autorise doit fonctionner.
   const exportPropre = await exportCsv(secondBrandPage, { token: secondBrandAuth.token, headerOrganizationId: secondBrandAuth.organizationId });
@@ -289,13 +318,171 @@ try {
       assert.ok(!reponse.body.includes(ref), `cross-tenant refusal (${nom}) leaked a data reference`);
     }
   }
-  // Reference detenue par l'organisation etrangere et absente du perimetre
-  // autorise : elle ne doit pas apparaitre dans l'export obtenu avec un
-  // parametre etranger accompagne de l'en-tete autorise.
   const refsUniquementEtranger = refsEtrangers.filter((ref) => ref && !refsPropres.includes(ref));
   for (const ref of refsUniquementEtranger) {
     assert.ok(!crossParametre.body.includes(ref), 'a foreign organizationId widened the exported scope');
   }
+
+  /* --- plan 2 : les politiques RLS, route sans resolveur de locataire ----- */
+
+  // `GET /api/catalog/export/products` ne resout AUCUN locataire : elle
+  // demande une organisation et interroge directement la table, bornee par
+  // `tracefab_is_org_member(brand_organization_id)`. La seule barriere est
+  // donc la base. La session de la marque B qui demande les produits de la
+  // marque A doit obtenir ZERO ligne — pas un refus, pas un 403 : l'absence
+  // de donnees.
+  const rlsEtranger = await apiRequest(secondBrandPage, {
+    method: 'GET',
+    path: `/api/catalog/export/products?organizationId=${encodeURIComponent(brandAuth.organizationId)}`,
+    token: secondBrandAuth.token,
+  });
+  assert.equal(rlsEtranger.status, 200, `RLS-scoped export failed: ${rlsEtranger.status}`);
+  // Le statut 200 ne suffit pas : un corps d'erreur JSON compterait aussi
+  // zero ligne. La reponse doit etre un DOCUMENT CSV, et vide de donnees.
+  assert.ok(String(rlsEtranger.contentType).includes('text/csv'), `RLS-scoped export must be a CSV document, got ${rlsEtranger.contentType}`);
+  const lignesRls = lignesCsv(rlsEtranger.body);
+  assert.equal(lignesRls.length, 0, `RLS must return zero row for a foreign organization, got ${lignesRls.length}`);
+  for (const ref of refsEtrangers) {
+    if (!ref) continue;
+    assert.ok(!rlsEtranger.body.includes(ref), 'RLS-scoped export leaked a reference of the foreign organization');
+  }
+
+  // Controle positif de la meme route : sa propre organisation lui rend ses
+  // lignes. Sans ce controle, « zero ligne » ne prouverait rien.
+  const rlsPropre = await apiRequest(secondBrandPage, {
+    method: 'GET',
+    path: `/api/catalog/export/products?organizationId=${encodeURIComponent(secondBrandAuth.organizationId)}`,
+    token: secondBrandAuth.token,
+  });
+  assert.equal(rlsPropre.status, 200, `RLS-scoped own export failed: ${rlsPropre.status}`);
+  // Controle positif par CONTENU, pas par comptage de lignes : une reference
+  // peut contenir un separateur CSV, et le decoupage ligne a ligne compterait
+  // alors des morceaux. Seules les references simples sont comparees.
+  const refsSimples = refsPropres.filter((ref) => ref && !/[",;\r\n]/.test(ref));
+  for (const ref of refsSimples) {
+    assert.ok(rlsPropre.body.includes(ref), 'the own organization must get its own rows back through the RLS route');
+  }
+
+  /* --- plan 3 : lectures JSON bornees par organization -------------------- */
+
+  // `GET /api/products` resout le locataire puis borne les lignes. Chaque
+  // ligne renvoyee doit porter l'identifiant du locataire appelant : c'est
+  // la preuve, ligne a ligne, que l'appelant ne voit que les siennes.
+  const produitsPropres = await apiRequest(secondBrandPage, {
+    method: 'GET',
+    path: '/api/products',
+    token: secondBrandAuth.token,
+    headerOrganizationId: secondBrandAuth.organizationId,
+  });
+  assert.equal(produitsPropres.status, 200, `own product list failed: ${produitsPropres.status}`);
+  const lignesPropres = Array.isArray(produitsPropres.json?.products) ? produitsPropres.json.products : [];
+  for (const produit of lignesPropres) {
+    assert.equal(
+      produit.brandOrganizationId,
+      secondBrandAuth.organizationId,
+      'a product was returned from another organization',
+    );
+  }
+
+  const produitsEtrangers = await apiRequest(secondBrandPage, {
+    method: 'GET',
+    path: '/api/products',
+    token: secondBrandAuth.token,
+    headerOrganizationId: brandAuth.organizationId,
+  });
+  assert.equal(produitsEtrangers.status, 404, `cross-tenant product list must be refused with 404, got ${produitsEtrangers.status}`);
+  assert.equal(produitsEtrangers.json?.error, 'organization_not_found', 'cross-tenant product list must use the anti-disclosure error');
+  assert.equal((produitsEtrangers.json?.products ?? []).length, 0, 'cross-tenant product list must carry zero row');
+
+  // Les deux organisations expose-elles des produits DIFFERENTS ? Si oui,
+  // l'isolation est demonstrable. Sinon, la suite le consigne (mesure, pas
+  // echec) : l'absence de donnee n'est pas une fuite.
+  const produitsMarqueA = await apiRequest(brandPage, {
+    method: 'GET',
+    path: '/api/products',
+    token: brandAuth.token,
+    headerOrganizationId: brandAuth.organizationId,
+  });
+  assert.equal(produitsMarqueA.status, 200, `first brand product list failed: ${produitsMarqueA.status}`);
+  const lignesMarqueA = Array.isArray(produitsMarqueA.json?.products) ? produitsMarqueA.json.products : [];
+  for (const produit of lignesMarqueA) {
+    assert.equal(produit.brandOrganizationId, brandAuth.organizationId, 'a product was returned from another organization');
+  }
+  const refsMarqueA = lignesMarqueA.map((p) => p.reference).filter(Boolean);
+  const refsMarqueB = lignesPropres.map((p) => p.reference).filter(Boolean);
+  const refsCommunes = refsMarqueA.filter((ref) => refsMarqueB.includes(ref));
+
+  /* --- plan 4 : ecritures et mutations sensibles ------------------------- */
+
+  // W1 : creation d'un produit dans l'organisation etrangere, en gardant le
+  // locator legitime. La garde applicative compare le corps a la
+  // organisation active et refuse (`brand_organization_mismatch`).
+  const referenceEcriture = `P1-ISOLATION-${Date.now()}`;
+  const creationDirigee = await apiRequest(secondBrandPage, {
+    method: 'POST',
+    path: '/api/products',
+    token: secondBrandAuth.token,
+    headerOrganizationId: secondBrandAuth.organizationId,
+    body: { brandOrganizationId: brandAuth.organizationId, reference: referenceEcriture, name: 'P1 isolation probe' },
+  });
+  assert.equal(creationDirigee.status, 400, `cross-tenant creation must be refused, got ${creationDirigee.status}`);
+  assert.equal(creationDirigee.json?.error, 'brand_organization_mismatch', 'cross-tenant creation must be refused by the tenant guard');
+
+  // W2 : meme ecriture, mais en demandant l'ORGANISATION ETRANGERE comme
+  // locataire actif. Le resolveur refuse avant toute ecriture.
+  const creationEnteteEtranger = await apiRequest(secondBrandPage, {
+    method: 'POST',
+    path: '/api/products',
+    token: secondBrandAuth.token,
+    headerOrganizationId: brandAuth.organizationId,
+    body: { brandOrganizationId: brandAuth.organizationId, reference: referenceEcriture, name: 'P1 isolation probe' },
+  });
+  assert.equal(creationEnteteEtranger.status, 404, `cross-tenant creation with a foreign tenant header must be refused with 404, got ${creationEnteteEtranger.status}`);
+  assert.equal(creationEnteteEtranger.json?.error, 'organization_not_found', 'cross-tenant creation must use the anti-disclosure error');
+
+  // W3 : import catalogue vers l'organisation etrangere. La route verifie
+  // l'appartenance de l'appelant a l'organisation cible et refuse ; la
+  // simulation n'ecrit de toute facon rien.
+  const importEtranger = await apiRequest(secondBrandPage, {
+    method: 'POST',
+    path: '/api/catalog/products/import',
+    token: secondBrandAuth.token,
+    headerOrganizationId: brandAuth.organizationId,
+    body: {
+      brandOrganizationId: brandAuth.organizationId,
+      filename: 'p1-isolation-dry-run.csv',
+      dryRun: true,
+      csvContent: `reference,name,category\n${referenceEcriture},P1 isolation probe,T-shirt\n`,
+    },
+  });
+  assert.equal(importEtranger.status, 403, `cross-tenant catalog import must be refused, got ${importEtranger.status}`);
+  assert.equal(importEtranger.json?.error, 'brand_organization_access_denied', 'cross-tenant catalog import must be refused by the membership guard');
+
+  // PREUVE DE NON-PERSISTANCE : la reference d'ecriture ne doit exister
+  // dans AUCUNE des deux organisations. On relit les listes apres les
+  // tentatives.
+  const produitsApresEcritures = await apiRequest(brandPage, {
+    method: 'GET',
+    path: '/api/products',
+    token: brandAuth.token,
+    headerOrganizationId: brandAuth.organizationId,
+  });
+  const lignesApresEcritures = Array.isArray(produitsApresEcritures.json?.products) ? produitsApresEcritures.json.products : [];
+  assert.ok(
+    !lignesApresEcritures.some((produit) => produit.reference === referenceEcriture),
+    'a refused cross-tenant write must not have persisted anything',
+  );
+  const produitsBapresEcritures = await apiRequest(secondBrandPage, {
+    method: 'GET',
+    path: '/api/products',
+    token: secondBrandAuth.token,
+    headerOrganizationId: secondBrandAuth.organizationId,
+  });
+  const lignesBapresEcritures = Array.isArray(produitsBapresEcritures.json?.products) ? produitsBapresEcritures.json.products : [];
+  assert.ok(
+    !lignesBapresEcritures.some((produit) => produit.reference === referenceEcriture),
+    'a refused cross-tenant write must not have persisted anything',
+  );
 
   // MESURES PUBLIEES : le journal de run n'est pas relisible depuis
   // l'exterieur, les annotations, si. Aucun contenu de donnee n'y figure :
@@ -305,14 +492,22 @@ try {
     ['inter_tenant_export_refusal_error', 'organization_not_found'],
     ['inter_tenant_export_query_refusal_status', String(crossQuery.status)],
     ['inter_tenant_export_data_rows', '0'],
-    ['own_brand_a_rows', String(refsPropres.length)],
-    ['own_brand_b_rows', String(refsEtrangers.length)],
-    ['foreign_only_refs', String(refsUniquementEtranger.length)],
+    ['rls_foreign_rows', String(lignesRls.length)],
+    ['rls_own_refs', String(refsSimples.length)],
+    ['products_own_rows', String(lignesPropres.length)],
+    ['products_foreign_rows', '0'],
+    ['products_brand_a_rows', String(lignesMarqueA.length)],
+    ['shared_references_between_brands', String(refsCommunes.length)],
+    ['write_cross_tenant_status', String(creationDirigee.status)],
+    ['write_cross_tenant_error', 'brand_organization_mismatch'],
+    ['write_foreign_tenant_status', String(creationEnteteEtranger.status)],
+    ['write_import_foreign_status', String(importEtranger.status)],
+    ['refused_write_persisted', 'none'],
     ['own_export_with_foreign_parameter', 'identical'],
   ];
   for (const [cle, valeur] of mesures) console.log(`::notice title=P1 staging::${cle}=${valeur}`);
 
-  const verdict = `P1 staging E2E passed: non-demo Clerk auth, catalog dry-run, BOM non-persisting validation, Quality Center disclaimer, cross-tenant export denied (404 organization_not_found, zero data rows, own export unchanged)`;
+  const verdict = `P1 staging E2E passed: non-demo Clerk auth, catalog dry-run, BOM non-persisting validation, Quality Center disclaimer, cross-tenant export denied (404 organization_not_found, zero data rows, own export unchanged), RLS returns zero row for a foreign organization, cross-tenant reads and writes refused and nothing persisted`;
   console.log(verdict);
   // Le verdict sort aussi en annotation : l'hote qui sert les journaux de run
   // n'est pas joignable depuis un bac a sable d'analyse, alors que

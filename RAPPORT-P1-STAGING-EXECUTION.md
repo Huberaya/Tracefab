@@ -332,6 +332,50 @@ aucune valeur de donnée) : `inter_tenant_export_refusal_status`,
 `own_brand_a_rows`, `own_brand_b_rows`, `foreign_only_refs`,
 `own_export_with_foreign_parameter`.
 
+### La matrice d'isolation complète — quatre plans
+
+Une application borne ses données à **trois endroits distincts**, et un test
+qui n'en mesure qu'un ne prouve rien des deux autres. La suite mesure donc
+quatre plans, avec deux sessions réellement distinctes (marque A et marque B,
+organisations différentes, identifiants UUID comparés) :
+
+| # | Plan | Route / action | Requête (session de la marque B) | Attendu |
+|---|---|---|---|---|
+| 1 | **Résolveur de locataire** — `api/_lib/tenant.ts` | `GET /api/catalog/products/export` | en-tête `<A>` | **404 `organization_not_found`**, **zéro ligne** |
+| 1 bis | idem | idem | `?organizationId=<A>` sans en-tête | **404 `organization_not_found`**, **zéro ligne** |
+| 1 ter | idem — l'en-tête prime sur la query | idem | en-tête `<B>` + `?organizationId=<A>` | **200**, corps **identique** à l'export propre |
+| 2 | **RLS seul** — la route ne résout *aucun* locataire et s'appuie uniquement sur la base | `GET /api/catalog/export/products?organizationId=<A>` | en-tête absent | **200**, document CSV, **zéro ligne**, aucune référence de A |
+| 2 bis | idem — contrôle positif | idem | `?organizationId=<B>` | **200**, ses **propres** références présentes |
+| 3 | **Lecture JSON bornée** | `GET /api/products` | en-tête `<A>` | **404 `organization_not_found`**, **zéro produit** |
+| 3 bis | idem — preuve ligne à ligne | idem | en-tête `<B>` | chaque produit renvoyé porte `brandOrganizationId` = B |
+| 3 ter | idem — les deux organisations | idem | A et B | chaque produit porte l'organisation du'appelant ; références communes **consignées** |
+| 4 | **Écritures** — `POST /api/products` | création dirigée vers A, locataire B | en-tête `<B>`, corps `brandOrganizationId=<A>` | **400 `brand_organization_mismatch`**, rien créé |
+| 4 bis | idem — locataire étranger | idem | en-tête `<A>`, corps `brandOrganizationId=<A>` | **404 `organization_not_found`**, rien créé |
+| 4 ter | **Import catalogue** — `POST /api/catalog/products/import` | import vers A | en-tête `<A>`, corps `brandOrganizationId=<A>` | **403 `brand_organization_access_denied`**, rien persisté |
+| 4 quater | **Preuve de non-persistance** | relecture des deux listes | après les trois tentatives | la référence d'écriture est **absente** des deux organisations |
+
+Pourquoi le plan 2 est indispensable : `GET /api/catalog/export/products` et
+`GET /api/catalog/products/export` sont **deux routes d'export différentes**.
+La première ne résout aucun locataire et n'applique qu'une politique RLS
+(`tracefab_is_org_member(brand_organization_id)`) ; la seconde passe par
+`requireActiveTenant`. Une suite qui ne testerait que la seconde ne prouverait
+**rien** de la barrière RLS — c'est pourtant celle qui protège les tables
+quand le code applicatif se trompe.
+
+Les mesures sont publiées en annotations : `inter_tenant_export_refusal_status`,
+`inter_tenant_export_refusal_error`, `inter_tenant_export_data_rows`,
+`rls_foreign_rows`, `rls_own_refs`, `products_own_rows`,
+`products_foreign_rows`, `products_brand_a_rows`,
+`shared_references_between_brands`, `write_cross_tenant_status`,
+`write_cross_tenant_error`, `write_foreign_tenant_status`,
+`write_import_foreign_status`, `refused_write_persisted`,
+`own_export_with_foreign_parameter`.
+
+**Aucune donnée réelle de client n'est touchée** : les écritures testées sont
+des créations dirigées vers une organisation de test, et toutes sont
+**refusées avant toute persistance** — la preuve en est la relecture des
+listes après les tentatives.
+
 ## 6. Corrections et ajouts apportés
 
 | Fichier | Nature |
@@ -356,60 +400,80 @@ jamais affichés.
 
 ---
 
-## 7. Les deux actions manuelles demandées au propriétaire
+## 7. Le blocage restant — une seule action, et sa cause racine exacte
 
-Les jetons de l'agent ne permettent ni l'administration de l'environnement
-GitHub, ni celle du projet Vercel. Les deux tentatives ont été faites et
-leurs erreurs exactes sont reproduites ci-dessous : **elles n'ont pas été
-contournées**.
+### 7.1 Ce qui est déjà fait par le propriétaire
+
+| Élément | État mesuré |
+|---|---|
+| Secret `VERCEL_AUTOMATION_BYPASS_SECRET` | **déposé** dans l'environnement `tracefab-clerk-test` (présence à confirmer par le run `p1-staging-inventaire.yml`) |
+| Branche `arena/88857a44-tracefab` autorisée dans *Deployment branches and tags* | **fait** — politique `id=64094181`, en plus de `main` (`id=63966314`) |
+
+### 7.2 Cause racine du statut `waiting` — un verrou d'approbation, pas une erreur
+
+Le run `39959423684` (`p1-staging-inventaire.yml`, SHA `f6b2d63`) est
+`waiting`, son unique job est `waiting`, et `pending_deployments` renvoie :
 
 ```
-POST /repos/Huberaya/Tracefab/environments/tracefab-clerk-test/deployment-branch-policies
-  -> 403 {"message":"Resource not accessible by integration"}
-
-GET  /repos/Huberaya/Tracefab/environments/tracefab-clerk-test/secrets
-  -> 403 {"message":"Resource not accessible by integration"}
-
-Connecteur Vercel : list_projects -> « Access denied. Your token may not have
-the required permissions. » (et l'API Vercel n'expose pas, ici, le secret de
-contournement de protection).
+env=tracefab-clerk-test id=24943335828 reviewers=User waiting_timer=0
 ```
 
-### Action 1 — créer le secret de contournement et l'enregistrer
+Les trois faits qui expliquent l'immobilisation, tous mesurés :
 
-1. **Vercel** — projet `tracefab` → *Settings* → *Deployment Protection* →
-   **Protection Bypass for Automation** → générer/choisir un secret, puis le
-   copier. (La protection de déploiement reste **active**.)
-2. **GitHub** — dépôt → *Settings* → *Environments* → `tracefab-clerk-test` →
-   *Environment secrets* → *New secret* :
-   * Name : `VERCEL_AUTOMATION_BYPASS_SECRET`
-   * Secret : la valeur copiée depuis Vercel.
+| Fait | Mesure |
+|---|---|
+| L'acteur du run est `Huberaya` | `actor=Huberaya triggering_actor=Huberaya` |
+| Le seul relecteur requis est `Huberaya` | `protection_rules[required_reviewers].reviewers = [Huberaya]`, `prevent_self_review = true` |
+| Mon jeton ne peut ni approuver ni administrer l'environnement | `POST .../pending_deployments` → `403 Resource not accessible by integration` ; `PUT .../environments/tracefab-clerk-test` → `403 Resource not accessible by integration` |
 
-   Le workflow accepte aussi, à défaut, les alias
-   `VERCEL_PROTECTION_BYPASS_SECRET` et `VERCEL_BYPASS_SECRET`. Il lit dans
-   le même emplacement `CLERK_SECRET_KEY` (ou `CLERK_TEST_SECRET_KEY` /
-   `CLERK_INSTANCE_SECRET_KEY`, qui doit être une clé `sk_test_`) et
-   `TRACEFAB_NOTIFICATION_WORKER_SECRET` (ou `TRACEFAB_STAGING_WORKER_SECRET`
-   / `TRACEFAB_WORKER_SECRET`, aligné sur celui de la Preview).
+**GitHub interdit à un relecteur d'approuver un déploiement qu'il a
+lui-même déclenché quand `prevent_self_review` est activé.** L'acteur est le
+propriétaire, le relecteur est le propriétaire : **personne ne peut approuver
+ce déploiement**. Ce n'est pas un oubli d'approbation, c'est une impasse
+construite — l'approbation doit venir d'une *autre* personne, et le chantier
+se fait seul.
 
-### Action 2 — autoriser la branche et approuver le déploiement
+Le contournement n'a **pas** été tenté par un contournement de protection :
+ni désactivation de la protection Vercel, ni déplacement du secret vers le
+niveau du dépôt, ni suppression de la règle de relecture.
 
-1. **GitHub** — dépôt → *Settings* → *Environments* → `tracefab-clerk-test` →
-   *Deployment branches and tags* → ajouter la branche
-   `arena/88857a44-tracefab` (la politique actuelle ne contient que `main`).
-2. À l'exécution, approuver le déploiement d'environnement du run
-   (*Review pending deployments*). L'environnement impose un relecteur
-   obligatoire avec `prevent_self_review` : l'approbation ne peut pas venir
-   du jeton d'application, elle demande la session web du propriétaire.
+### 7.3 L'action unique demandée
 
-Dès que ces deux actions sont faites, **un `git push` sur la branche rejoue la
-chaîne complète**, sans intervention supplémentaire : pré-vol, inspection de
-l'instance Clerk de test, fabrication des trois sessions,
-`npm run test:p1:staging`, puis la sonde d'identité runtime. Un watcher
-(`/tmp/p1_watcher.sh`) pousse un commit vide dès que la politique de branche
-change, et un second (`/tmp/p1_followup.sh`) suit le run et publie ses
-annotations. Chaque mesure sort en annotation, lisible sans accès à l'hôte
-de stockage des journaux.
+> **Désactiver « Prevent self-review » pour l'environnement
+> `tracefab-clerk-test` uniquement, puis approuver les exécutions en attente.**
+
+- *Où* : GitHub → dépôt → *Settings* → *Environments* → `tracefab-clerk-test`
+  → *Required reviewers* → décocher **Prevent self-review**.
+- *Ce qui reste en place* : le relecteur obligatoire `Huberaya` **reste
+  requis**. Chaque déploiement d'environnement continue donc d'exiger une
+  **approbation humaine explicite** ; seule l'auto-approbation devient
+  possible. La barrière n'est pas retirée, elle est rendue actionnable.
+- *Portée* : l'environnement `tracefab-clerk-test` **seulement**. Aucun
+  environnement de Production n'est touché, aucune règle de `main` n'est
+  touchée, la protection de déploiement Vercel reste active, et
+  `main` n'est pas modifié.
+- *Si GitHub accepte l'approbation malgré `prevent_self_review`* (le run a
+  été relancé une fois, `run_attempt=2`) : il suffit d'approuver les deux
+  exécutions en attente, sans toucher à la configuration.
+
+Une fois ce geste fait, les deux exécutions en attente — le contrôle de
+présence du secret et l'exécution authentifiée — démarrent sans autre
+intervention : pré-vol, inspection de l'instance Clerk de test, fabrication
+des trois sessions, `npm run test:p1:staging`, puis la sonde d'identité
+runtime. Chaque mesure sort en **annotation**, lisible sans accès à l'hôte de
+stockage des journaux.
+
+### 7.4 Ce qui a été fait dans le périmètre autorisé
+
+- Le CI de la branche était **rouge** sur `f6b2d63` : le nouveau workflow du
+  propriétaire lit `secrets.VERCEL_AUTOMATION_BYPASS_SECRET` et est rattaché
+  à `tracefab-clerk-test`, sans être déclaré au registre des workflows
+  privilégiés. Déclaration ajoutée (`secretUsingWorkflows` et
+  `environmentBoundJobs`, avec justification) → `npm run test:workflow-policy`
+  **vert**.
+- Le workflow authentifié vérifie désormais **explicitement la présence** des
+  trois secrets dont il a besoin (sans jamais en afficher la valeur), ce qui
+  distingue « secret absent » de « secret présent mais faux ».
 
 ---
 
@@ -430,6 +494,11 @@ La suite `npm run test:p1:staging` exercera, sur la Preview du SHA
    UUID comparés), **export inter-organisation refusé en 404
    `organization_not_found`** avec **zéro ligne de données**, et **export du
    locataire autorisé inchangé** (octet pour octet) ;
+5 bis. **barrière RLS mesurée seule** (route sans résolveur de locataire :
+   zéro ligne pour une organisation étrangère), **lecture JSON bornée ligne à
+   ligne** (`brandOrganizationId` de chaque produit), **écritures croisées
+   refusées** (400 `brand_organization_mismatch`, 404 `organization_not_found`,
+   403 `brand_organization_access_denied`) et **preuve de non-persistance** ;
 6. **identité DB runtime** — `currentUser = sessionUser = tracefab_app`,
    `bypassesRls === false`, `isSuperuser === false`, secret uniquement dans
    l'en-tête `x-tracefab-worker-secret`, réponse complète jamais publiée.

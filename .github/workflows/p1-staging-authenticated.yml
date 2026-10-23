@@ -92,6 +92,31 @@ jobs:
       - name: Installer Chromium pour Playwright
         run: npx playwright install --with-deps chromium
 
+      - name: Presence du secret de contournement — sans afficher sa valeur
+        # Distingue deux echecs qu'il faut distinguer : un secret ABSENT de
+        # l'environnement, et un secret PRESENT mais faux (la Preview reste
+        # alors protegee et le pre-vol le dit). La valeur n'est jamais
+        # affichee, ni comparee, ni journalisee.
+        run: |
+          if [ -n "${TRACEFAB_VERCEL_BYPASS:-}" ]; then
+            echo "::notice title=P1 staging::secret_bypass=present"
+          else
+            echo "::error title=P1 staging::secret_bypass=absent de l'environnement tracefab-clerk-test"
+            exit 1
+          fi
+          if [ -n "${CLERK_SECRET_KEY:-}" ]; then
+            echo "::notice title=P1 staging::secret_clerk=present"
+          else
+            echo "::error title=P1 staging::secret_clerk=absent de l'environnement tracefab-clerk-test"
+            exit 1
+          fi
+          if [ -n "${TF_WORKER_SECRET:-}" ]; then
+            echo "::notice title=P1 staging::secret_sonde=present"
+          else
+            echo "::error title=P1 staging::secret_sonde=absent de l'environnement tracefab-clerk-test"
+            exit 1
+          fi
+
       - name: Pre-vol — la Preview repond-elle comme l application ?
         # Une Preview derriere la protection de deploiement Vercel repond 302
         # vers /sso-api : le runner atteint la protection, pas l'application.
