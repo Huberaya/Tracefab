@@ -1,0 +1,94 @@
+# P1 staging — execution reelle authentifiee sur une Preview Vercel.
+#
+# POURQUOI CE WORKFLOW EST SEPARE DU DIAGNOSTIC
+#   Ce workflow est rattache a l'environnement GitHub `tracefab-clerk-test`,
+#   qui porte les secrets de l'instance Clerk de TEST et le secret de la sonde
+#   interne. Un environnement protege par des relecteurs et par une politique
+#   de branche retient TOUT le run tant que la politique n'est pas levee : un
+#   job de diagnostic partage avec lui ne tournerait donc jamais. D'ou la
+#   separation : `p1-staging.yml` mesure, ce workflow execute.
+#
+# CE QUE CE WORKFLOW FAIT
+#   1. fabrique trois sessions Clerk de test dans l'instance Clerk DE TEST
+#      (aucune donnee de production), une par persona : marque A, fournisseur,
+#      marque B dans une organisation distincte ;
+#   2. ecrit trois etats de session Playwright dans l'espace de travail du
+#      runner — jamais dans le depot, jamais en artefact, jamais dans un
+#      journal ;
+#   3. execute `npm run test:p1:staging` contre la Preview (URL fournie par
+#      l'entree du job, pas une valeur codee en dur) ;
+#   4. interroge la sonde d'identite DB runtime
+#      `/api/internal/p2/readiness?identity=1` avec le secret UNIQUEMENT dans
+#      l'en-tete HTTP, et n'affiche que des booleens et un nom de role.
+#
+# CE QUE CE WORKFLOW NE FAIT PAS
+#   - il ne lit aucun secret de Production : la cle Clerk est une cle
+#     `sk_test_` d'instance de test, refusee si elle commence par `sk_live_` ;
+#   - il ne contacte aucune base Neon : le test P1 cible une Preview dont la
+#     base est elle-meme un environnement de test ;
+#   - il n'ecrit aucun fichier de suivi du depot (les etats de session restent
+#     dans /tmp du runner) ;
+#   - il n'imprime aucune valeur de secret, aucun cookie, aucun jeton.
+
+name: P1 staging — execution authentifiee (environnement protege)
+
+on:
+  push:
+    branches:
+      - 'arena/88857a44-tracefab'
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'URL de base de la Preview Vercel a tester (https://...vercel.app)'
+        required: false
+        default: 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-staging-authenticated-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  p1-staging:
+    name: P1 — staging authentifie sur Preview
+    environment: tracefab-clerk-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NODE_VERSION: '20'
+      TRACEFAB_STAGING_URL: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
+      TF_P1_STATE_DIR: /tmp/p1-storage-states
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Preparer les trois sessions Clerk de test
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+        run: node scripts/prepare_p1_staging_sessions.mjs
+
+      - name: Executer la suite P1 staging
+        env:
+          TRACEFAB_P1_BRAND_STORAGE_STATE: /tmp/p1-storage-states/brand.json
+          TRACEFAB_P1_SUPPLIER_STORAGE_STATE: /tmp/p1-storage-states/supplier.json
+          TRACEFAB_P1_SECOND_BRAND_STORAGE_STATE: /tmp/p1-storage-states/second-brand.json
+        run: npm run test:p1:staging
+
+      - name: Sonde d'identite DB runtime sur la Preview
+        env:
+          TF_WORKER_SECRET: ${{ secrets.TRACEFAB_NOTIFICATION_WORKER_SECRET }}
+        run: node scripts/probe_preview_runtime_identity.mjs

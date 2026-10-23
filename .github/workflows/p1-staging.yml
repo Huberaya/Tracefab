@@ -1,4 +1,4 @@
-# P1 staging — execution reelle authentifiee sur une Preview Vercel.
+# P1 staging — diagnostic de surface (aucun secret, aucun environnement).
 #
 # POURQUOI CE WORKFLOW EXISTE
 #   Le bac a sable d'analyse n'a aucun acces reseau a *.vercel.app (HTTP 000
@@ -7,35 +7,23 @@
 #   Internet complet. L'execution reelle part donc d'ici.
 #
 # CE QUE CE WORKFLOW FAIT
-#   1. sonde la surface de la Preview et l'inventaire des NOMS de secrets
-#      visibles (aucune valeur) — etape sans environnement, donc toujours
-#      executable ;
-#   2. fabrique trois sessions Clerk de test dans l'instance Clerk DE TEST
-#      (aucune donnee de production), une par persona : marque A, fournisseur,
-#      marque B dans une organisation distincte ;
-#   3. ecrit trois etats de session Playwright dans l'espace de travail du
-#      runner — jamais dans le depot, jamais en artefact, jamais dans un
-#      journal ;
-#   4. execute `npm run test:p1:staging` contre la Preview (URL fournie par
-#      l'entree du job, pas une valeur codee en dur) ;
-#   5. interroge la sonde d'identite DB runtime
-#      `/api/internal/p2/readiness?identity=1` avec le secret UNIQUEMENT dans
-#      l'en-tete HTTP, et n'affiche que des booleens et un nom de role.
+#   Il mesure ce qui est mesurable sans privilege : la surface reelle de la
+#   Preview (sante, configuration Clerk, presence de la sonde interne protegee)
+#   et l'inventaire des NOMS de secrets visibles dans le contexte du runner —
+#   jamais une valeur.
 #
-# CE QUE CE WORKFLOW NE FAIT PAS
-#   - il ne lit aucun secret de Production : la cle Clerk est une cle
-#     `sk_test_` d'instance de test, refusee si elle commence par `sk_live_` ;
-#   - il ne contacte aucune base Neon : le test P1 cible une Preview dont la
-#     base est elle-meme un environnement de test ;
-#   - il n'ecrit aucun fichier de suivi du depot (les etats de session restent
-#     dans /tmp du runner) ;
-#   - il n'imprime aucune valeur de secret, aucun cookie, aucun jeton.
+# CE QU'IL NE FAIT PAS
+#   - il ne lit aucun secret de valeur : `toJSON(secrets)` sert uniquement a
+#     lister des NOMS ;
+#   - il n'ecrit rien, ne cree aucun tenant, ne joint aucune base ;
+#   - il n'est rattache a aucun environnement, donc n'est jamais bloque par une
+#     approbation : c'est ce qui le rend toujours jouable.
 #
 # L'URL de la Preview n'est pas codee en dur : elle vient de l'entree
-# `preview_url` du job, ce qui permet de rejouer le meme test sur un autre
+# `preview_url`, ce qui permet de rejouer le meme test sur un autre
 # deploiement sans modifier le code.
 
-name: P1 staging — execution reelle authentifiee
+name: P1 staging — diagnostic de surface
 
 on:
   push:
@@ -52,7 +40,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: p1-staging-${{ github.ref }}
+  group: p1-staging-diagnostic-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -61,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      TRACEFAB_PREVIEW_URLS: 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app,https://tracefab-ek0vg39c3-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+      TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app,https://tracefab-ek0vg39c3-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -78,45 +66,3 @@ jobs:
 
       - name: Preview — sante et configuration Clerk (prefixes seuls)
         run: node scripts/probe_preview_surface.mjs
-
-  p1-staging:
-    name: P1 — staging authentifie sur Preview
-    environment: tracefab-clerk-test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      NODE_VERSION: '20'
-      TRACEFAB_STAGING_URL: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
-      TF_P1_STATE_DIR: /tmp/p1-storage-states
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Installer les dependances
-        run: npm ci
-
-      - name: Installer Chromium pour Playwright
-        run: npx playwright install --with-deps chromium
-
-      - name: Preparer les trois sessions Clerk de test
-        env:
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-        run: node scripts/prepare_p1_staging_sessions.mjs
-
-      - name: Executer la suite P1 staging
-        env:
-          TRACEFAB_P1_BRAND_STORAGE_STATE: /tmp/p1-storage-states/brand.json
-          TRACEFAB_P1_SUPPLIER_STORAGE_STATE: /tmp/p1-storage-states/supplier.json
-          TRACEFAB_P1_SECOND_BRAND_STORAGE_STATE: /tmp/p1-storage-states/second-brand.json
-        run: npm run test:p1:staging
-
-      - name: Sonde d'identite DB runtime sur la Preview
-        env:
-          TF_WORKER_SECRET: ${{ secrets.TRACEFAB_NOTIFICATION_WORKER_SECRET }}
-        run: node scripts/probe_preview_runtime_identity.mjs
