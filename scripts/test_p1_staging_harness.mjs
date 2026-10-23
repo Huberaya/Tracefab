@@ -219,6 +219,30 @@ function executer(args, env = {}) {
   else ko(`signatures d'API Clerk obsoletes utilisees : ${apiObsolete.join(', ')}`);
 }
 
+/* --- 5 ter. la suite staging est alignee sur le contrat de refus du depot -- */
+
+{
+  // Le depot refuse un locataire non adherent par 404 `organization_not_found`
+  // et NON par 403 : « un 403 revelerait que l'organisation existe »
+  // (api/_lib/tenant.ts). Ce contrat est protege par une non-regression
+  // locale. La suite staging ne doit donc pas exiger un 403 litteral — elle
+  // doit exiger un REFUS, et prouver en plus qu'un parametre etranger
+  // n'elargit pas le perimetre exporte.
+  const local = lire('scripts/test_active_tenant_context.mjs');
+  if (/organization_not_found/.test(local) && /404/.test(local)) ok('la non-regression locale continue de pinner le refus 404 du locataire non adherent');
+  else ko('la non-regression locale du refus 404 a disparu');
+
+  const staging = lire('scripts/test_p1_staging.mjs');
+  if (!/assert\.equal\(forbidden\.status, 403/.test(staging)) ok("la suite staging n'exige plus un 403 litteral, que le depot ne produit pas");
+  else ko('la suite staging exige encore un 403 litteral : elle echouerait sur la Preview');
+  if (/crossTenant\.status === 403 \|\| crossTenant\.status === 404/.test(staging)) ok('la suite staging exige un REFUS (403 ou 404) de l export inter-organisation');
+  else ko("la suite staging n'exige pas explicitement un refus de l export inter-organisation");
+  if (/must not widen the exported scope/.test(staging)) ok('la suite staging prouve qu un organisationId etranger n elargit pas le perimetre exporte');
+  else ko("la suite staging ne prouve pas l absence d elargissement du perimetre exporte");
+  if (/typeof corpsRefus\.error === 'string'/.test(staging)) ok('la suite staging exige que le refus soit une erreur, pas un document');
+  else ko("la suite staging n exige pas que le refus soit une erreur");
+}
+
 /* --- 6. l'inventaire des secrets n'affiche que des noms -------------------- */
 
 {

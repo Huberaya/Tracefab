@@ -192,6 +192,51 @@ sessions authentifiées.
 
 ---
 
+## 5 bis. Écart trouvé entre le critère du chantier et le contrat du dépôt
+
+Le chantier demande la preuve que « l'export inter-organisation est rejeté en
+HTTP 403 ». **L'application ne produit pas de 403 sur cette route** — et c'est
+délibéré.
+
+| Fait | Preuve |
+|---|---|
+| Le refus d'un locataire non adhérent est un **404 `organization_not_found`**, pas un 403 | `api/_lib/tenant.ts` : « Le 404 plutot que le 403 sur un locataire non accessible est délibéré : un 403 révélerait que l'organisation existe » |
+| Ce contrat est protégé par une non-régression **locale**, verte en CI | `scripts/test_active_tenant_context.mjs` : « locataire non adhérent -> 404 organization_not_found (pas de 403 : aucune révélation) » |
+| Le SHA de la Preview contient ce contrat | `git merge-base --is-ancestor 96a7f62 7ec24d4` → vrai (commit du 2026-10-17) |
+| La suite staging exigeait un 403 **littéral** | `scripts/test_p1_staging.mjs`, écrit le 2026-10-07, soit **avant** le changement de contrat, et jamais exécuté contre une Preview — la procédure était alors notée « NON VÉRIFIABLE » dans `docs/experience/` |
+| Pire : la requête du test ne demandait même pas le mauvais locataire | elle posait l'en-tête `X-Tracefab-Organization-Id` sur le **propre** locataire de la marque B et l'organisation étrangère dans la query string ; l'en-tête est prioritaire (`api/_lib/tenant.ts`), donc la requête était un export **légitime** du locataire de la marque B, qui aurait répondu **200** |
+
+Une attente de test qui n'a jamais été exécutée n'est pas une preuve : c'est
+une hypothèse. Elle est corrigée sur cette branche, **sans toucher au
+contrat de sécurité de l'application** — passer le refus de 404 à 403
+révélerait l'existence d'une organisation, ce que la non-regression locale
+interdit explicitement.
+
+La suite staging mesure désormais la propriété réelle, en deux temps :
+
+1. **la demande qui revendique le locataire de l'autre marque est refusée** —
+   le statut observé est publié (404 aujourd'hui, par décision de sécurité ;
+   403 resterait un refus correct), et le corps doit être une **erreur**, pas
+   un document ;
+2. **la demande qui garde son propre locataire mais nomme l'autre dans la
+   query string rend exactement les mêmes lignes** que la demande sans ce
+   paramètre — c'est la preuve qu'aucune fuite inter-organisation n'est
+   possible, y compris quand l'appelant est de bonne foi. Cette seconde
+   preuve est plus forte que le 403 initial : elle prouve l'absence
+   d'élargissement du périmètre, pas seulement un refus.
+
+**Écart à trancher :** le critère « 403 » du chantier ne peut pas être
+satisfait tel quel par le code actuel, et le satisfaire demanderait de
+réintroduire une fuite d'information. Deux voies, et une seule recommendée :
+
+- **recommandée** — lire le critère comme « l'export inter-organisation est
+  **rejeté** », le statut réel étant 404 par conception de sécurité ; c'est ce
+  que la suite vérifie désormais, en publiant le statut observé ;
+- **alternative** — changer le refus de 404 en 403 dans
+  `api/_lib/tenant.ts`, ce qui supprime la non-regression
+  `scripts/test_active_tenant_context.mjs` et réintroduit la révélation
+  d'existence. Non recommandée, et non faite ici.
+
 ## 6. Corrections et ajouts apportés
 
 | Fichier | Nature |
@@ -202,7 +247,7 @@ sessions authentifiées.
 | `scripts/list_secret_names.mjs` | **nouveau** — inventaire des **noms** de secrets, aucune valeur |
 | `scripts/lib/annotations.mjs` | **nouveau** — canal de mesure lisible depuis `api.github.com` (l'hôte des journaux de run est hors périmètre réseau) |
 | `scripts/test_p1_staging_harness.mjs` | **nouveau** — non-régression du harnais (23 assertions) |
-| `scripts/test_p1_staging.mjs` | **modifié** — contournement Vercel optionnel ; verdict en annotation ; aucune modification du contrat des quatre variables |
+| `scripts/test_p1_staging.mjs` | **modifié** — contournement Vercel optionnel ; verdict en annotation ; **contrat de l'export inter-organisation aligné sur le refus réel** (refus + absence d'élargissement du périmètre) ; aucune modification du contrat des quatre variables |
 | `package.json` | **modifié** — `test:p1-staging:harness` |
 | `.github/workflows/p1-staging-surface.yml` | **nouveau** — diagnostic sans secret ni environnement (seul workflow jouable sans approbation) |
 | `.github/workflows/p1-staging-inventaire.yml` | **nouveau** — inventaire des noms de secrets |

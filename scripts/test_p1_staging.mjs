@@ -123,15 +123,74 @@ try {
   const secondBrandPage = await openAuthenticated(secondBrandStatePath, '/brand-console/', 'h1.mc-headline', 'tracefabBrandConsole');
   const secondBrandAuth = await authContext(secondBrandPage, 'tracefabBrandConsole', 'activeOrganizationId');
   assert.notEqual(secondBrandAuth.organizationId, brandAuth.organizationId, 'tenant-isolation test requires two distinct brand organizations');
-  const forbidden = await secondBrandPage.evaluate(async ({ token, organizationId, foreignOrganizationId }) => {
+
+  /* --- ISOLEMENT INTER-ORGANISATIONS ------------------------------------
+   *
+   * Le contrat de refus du depot est explicite et non negociable : un
+   * locataire auquel l'appelant n'adhere pas est refuse par 404
+   * `organization_not_found`, et NON par 403 — « un 403 revelerait que
+   * l'organisation existe » (api/_lib/tenant.ts). Ce contrat est protege par
+   * une non-regression locale (scripts/test_active_tenant_context.mjs), et il
+   * est present dans le SHA de la Preview.
+   *
+   * L'attente « 403 » qu'ecritait la premiere version de cette suite datait
+   * du 2026-10-07, avant le changement de contrat du 2026-10-17, et n'avait
+   * jamais ete executee contre une Preview : la procedure etait alors notee
+   * « NON VERIFIABLE » dans docs/experience/. Une attente non executee n'est
+   * pas une preuve ; elle est une hypothese. La suite mesure donc la
+   * propriete reelle, en deux temps.
+   *
+   *   (a) la demande qui REVENDIQUE le locataire de l'autre marque doit etre
+   *       REFUSEE : ni donnees, ni document, seulement une erreur. Le statut
+   *       observe est publie (404 aujourd'hui, par decision de securite ;
+   *       403 resterait un refus correct) ;
+   *   (b) la demande qui garde son propre locataire mais nomme l'autre dans
+   *       la query string doit rendre EXACTEMENT les memes lignes que la
+   *       demande sans ce parametre : un parametre etranger n'elargit pas le
+   *       perimetre. C'est la preuve qu'aucune fuite inter-organisation n'est
+   *       possible, y compris quand l'appelant est de bonne foi.
+   */
+  const crossTenant = await secondBrandPage.evaluate(async ({ token, foreignOrganizationId }) => {
+    const response = await fetch(`/api/catalog/products/export?organizationId=${encodeURIComponent(foreignOrganizationId)}`, {
+      headers: { Authorization: `Bearer ${token}`, 'X-Tracefab-Organization-Id': foreignOrganizationId },
+    });
+    return { status: response.status, body: await response.text() };
+  }, { token: secondBrandAuth.token, foreignOrganizationId: brandAuth.organizationId });
+  assert.ok(
+    crossTenant.status === 403 || crossTenant.status === 404,
+    `cross-tenant export was not rejected: ${crossTenant.status}`,
+  );
+  let corpsRefus = null;
+  try { corpsRefus = JSON.parse(crossTenant.body); } catch { corpsRefus = null; }
+  assert.ok(
+    corpsRefus && typeof corpsRefus.error === 'string',
+    `cross-tenant refusal must be an error, not a document: ${crossTenant.body.slice(0, 120)}`,
+  );
+  console.log(`inter_tenant_export_refusal_status=${crossTenant.status}`);
+  console.log(`inter_tenant_export_refusal_error=${corpsRefus.error}`);
+
+  const exportPropre = await secondBrandPage.evaluate(async ({ token, organizationId }) => {
+    const response = await fetch('/api/catalog/products/export', {
+      headers: { Authorization: `Bearer ${token}`, 'X-Tracefab-Organization-Id': organizationId },
+    });
+    return { status: response.status, body: await response.text() };
+  }, { token: secondBrandAuth.token, organizationId: secondBrandAuth.organizationId });
+  assert.equal(exportPropre.status, 200, `own-tenant export failed: ${exportPropre.status}`);
+
+  const exportUsurpe = await secondBrandPage.evaluate(async ({ token, organizationId, foreignOrganizationId }) => {
     const response = await fetch(`/api/catalog/products/export?organizationId=${encodeURIComponent(foreignOrganizationId)}`, {
       headers: { Authorization: `Bearer ${token}`, 'X-Tracefab-Organization-Id': organizationId },
     });
     return { status: response.status, body: await response.text() };
   }, { token: secondBrandAuth.token, organizationId: secondBrandAuth.organizationId, foreignOrganizationId: brandAuth.organizationId });
-  assert.equal(forbidden.status, 403, `cross-tenant export was not rejected: ${forbidden.status}`);
+  assert.equal(exportUsurpe.status, 200, `own-tenant export with a foreign parameter failed: ${exportUsurpe.status}`);
+  assert.equal(
+    exportUsurpe.body,
+    exportPropre.body,
+    'a foreign organizationId must not widen the exported scope',
+  );
 
-  const verdict = 'P1 staging E2E passed: non-demo Clerk auth, catalog dry-run, BOM non-persisting validation, Quality Center disclaimer and cross-tenant export denial';
+  const verdict = `P1 staging E2E passed: non-demo Clerk auth, catalog dry-run, BOM non-persisting validation, Quality Center disclaimer, cross-tenant export denial (HTTP ${crossTenant.status})`;
   console.log(verdict);
   // Le verdict sort aussi en annotation : l'hote qui sert les journaux de run
   // n'est pas joignable depuis un bac a sable d'analyse, alors que
