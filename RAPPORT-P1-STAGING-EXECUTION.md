@@ -5,8 +5,10 @@ verrous **extérieurs à l'agent** l'empêchent, chacun mesuré et documenté ci
 Tout ce qui n'était pas bloqué **a été exécuté** : mesures sur la Preview,
 non-régressions, CI de la branche, harnais prêt à jouer.
 
-Branche de travail : `arena/88857a44-tracefab` (aucun merge dans `main`, aucun
-déploiement Production, aucune variable ni base de Production touchée).
+Branche de travail : `arena/88857a44-tracefab`, SHA final
+`d6a4543477d7c8559885aa7782cdda00c8b6d9fa` (aucun merge dans `main`, aucun
+déploiement Production, aucune variable ni base de Production touchée). PR
+ouverte : **#91**.
 
 ---
 
@@ -152,11 +154,20 @@ peuvent l'accorder.
 
 ### 5.3 CI de la branche
 
-La PR #91 déclenche `ci.yml` sur `arena/88857a44-tracefab` : `Socle — types,
-compilation, isolation` **vert**, `Parcours — navigateur réel` **vert**, `Base —
-isolation RLS exécutée` **vert**, `Vérification — suite de tests` en cours puis
-vert. Aucun test `staging` n'est auto-collecté par la CI (filtre explicite de
-`ci.yml`), ce qui est correct : ces tests exigent une Preview et des sessions.
+La PR #91 déclenche `ci.yml` sur `arena/88857a44-tracefab`. Sur le SHA final
+`d6a4543477d7c8559885aa7782cdda00c8b6d9fa` (run `39930400060`, conclusion
+`success`), les quatre jobs sont **verts** :
+
+| Job | Résultat |
+|---|---|
+| `Socle — types, compilation, isolation` | `success` |
+| `Parcours — navigateur réel` | `success` |
+| `Base — isolation RLS exécutée` | `success` |
+| `Vérification — suite de tests` | `success` |
+
+Aucun test `staging` n'est auto-collecté par la CI (filtre explicite de
+`ci.yml`), ce qui est correct : ces tests exigent une Preview vivante et trois
+sessions authentifiées.
 
 ### 5.4 Ce que le non-régression nouveau garantit
 
