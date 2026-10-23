@@ -137,8 +137,10 @@ La sonde d'identité utilise le même client Prisma que les routes. Elle est ré
 dans l'URL.
 
 ```bash
-curl -sS -H "x-tracefab-worker-secret: $TRACEFAB_NOTIFICATION_WORKER_SECRET" \
-  "$TRACEFAB_APP_URL/api/internal/p2/readiness?identity=1" | jq '{ready, databaseIdentity}'
+set -o pipefail
+curl --fail-with-body -sS -H "x-tracefab-worker-secret: $TRACEFAB_NOTIFICATION_WORKER_SECRET" \
+  "$TRACEFAB_APP_URL/api/internal/p2/readiness?identity=1" \
+  | jq -e '.ready == true and .databaseIdentity.measured == true and .databaseIdentity.currentUser == "tracefab_app" and .databaseIdentity.sessionUser == "tracefab_app" and .databaseIdentity.bypassesRls == false and .databaseIdentity.isSuperuser == false'
 ```
 
 Résultat attendu : `measured: true`, `currentUser` et `sessionUser` égaux à
