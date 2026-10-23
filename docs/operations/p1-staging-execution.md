@@ -294,6 +294,14 @@ gh api repos/Huberaya/Tracefab/environments/tracefab-clerk-test/deployment-branc
   --jq '.branch_policies[].name'
 ```
 
+État attendu après correction (trois entrées, vérifiable avant de pousser) :
+
+```
+arena/88857a44-tracefab
+arena/f9effa2e-tracefab
+main
+```
+
 Une nouvelle branche de travail doit y être ajoutée **avant** le premier push,
 sinon le run est retenu : `Branch "…" is not allowed to deploy to
 tracefab-clerk-test`.
