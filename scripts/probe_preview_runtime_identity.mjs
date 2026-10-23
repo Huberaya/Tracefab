@@ -25,6 +25,7 @@
  *   - il ne joint aucune base directement : il parle a l'application.
  */
 import assert from 'node:assert/strict';
+import { annoterMesures } from './lib/annotations.mjs';
 
 const baseUrl = (process.env.TRACEFAB_STAGING_URL || '').trim();
 const workerSecret = (process.env.TF_WORKER_SECRET || '').trim();
@@ -59,15 +60,16 @@ const response = await fetch(url, {
 });
 const body = await response.json().catch(() => ({}));
 
-console.log(`readiness_http=${response.status}`);
-console.log(`readiness_ready=${body?.ready === true}`);
-
 const identite = body?.databaseIdentity || {};
-console.log(`identite_mesuree=${identite?.measured === true}`);
-console.log(`identite_role_courant=${identite?.currentUser ?? 'inconnu'}`);
-console.log(`identite_role_session=${identite?.sessionUser ?? 'inconnu'}`);
-console.log(`identite_contournement_rls=${identite?.bypassesRls}`);
-console.log(`identite_superutilisateur=${identite?.isSuperuser}`);
+const mesures = [
+  ['readiness_http', response.status],
+  ['readiness_ready', body?.ready === true],
+  ['identite_mesuree', identite?.measured === true],
+  ['identite_role_courant', identite?.currentUser ?? 'inconnu'],
+  ['identite_role_session', identite?.sessionUser ?? 'inconnu'],
+  ['identite_contournement_rls', identite?.bypassesRls],
+  ['identite_superutilisateur', identite?.isSuperuser],
+];
 
 const sur = identite?.measured === true
   && identite?.currentUser === 'tracefab_app'
@@ -75,7 +77,13 @@ const sur = identite?.measured === true
   && identite?.bypassesRls === false
   && identite?.isSuperuser === false;
 
-console.log(`identite_conforme=${sur}`);
+mesures.push(['identite_conforme', sur]);
+
+// Les mesures sont publiees en ANNOTATION : le journal de run est heberge
+// hors de l'API GitHub, donc illisible depuis l'exterieur. Une mesure qui
+// n'existe que dans le journal n'est pas une preuve.
+annoterMesures('P1 identite DB runtime', mesures);
+for (const [cle, valeur] of mesures) console.log(`${cle}=${valeur}`);
 
 if (!sur) {
   console.error('Le role effectif du runtime ne respecte pas le contrat de securite.');

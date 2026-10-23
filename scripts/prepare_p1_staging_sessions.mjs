@@ -49,6 +49,21 @@ if (!cle.startsWith('sk_test_')) {
   process.exit(3);
 }
 
+/**
+ * Contournement de la protection de deploiement Vercel — OPTIONNEL.
+ *
+ * Les Previews Vercel de ce projet sont derriere la protection de deploiement
+ * (SSO) : une requete non authentifiee y recoit un 302 vers `/sso-api`. Sans
+ * contournement, ce script n'atteindrait JAMAIS le formulaire de connexion de
+ * l'application — il mesurerait la protection, pas l'application.
+ *
+ * La valeur ne doit jamais etre affichee, ni loguee, ni placee dans une URL.
+ */
+const vercelBypass = (process.env.TRACEFAB_VERCEL_BYPASS || '').trim();
+const bypassHeaders = vercelBypass
+  ? { 'x-vercel-protection-bypass': vercelBypass, 'x-vercel-set-bypass-cookie': 'true' }
+  : {};
+
 const baseUrl = (process.env.TRACEFAB_STAGING_URL || '').trim();
 if (!baseUrl) {
   console.error('TRACEFAB_STAGING_URL absent : aucune cible.');
@@ -242,8 +257,23 @@ try {
     const organisation = await assurerOrganisation(persona, u);
     console.log(`provisionne=${persona.cle}:utilisateur:${Boolean(u)}:organisation:${Boolean(organisation)}`);
 
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+      ...(Object.keys(bypassHeaders).length ? { extraHTTPHeaders: bypassHeaders } : {}),
+    });
     const page = await context.newPage();
+    // Les appels same-origin faits par la page elle-meme doivent porter le
+    // meme contournement que la navigation, sinon la protection les
+    // intercepterait aussi (302 vers /sso-api au lieu de la reponse JSON).
+    if (Object.keys(bypassHeaders).length) {
+      await page.addInitScript((headers) => {
+        const original = window.fetch.bind(window);
+        window.fetch = (input, init = {}) => {
+          const merged = { ...(init.headers || {}) };
+          for (const [name, value] of Object.entries(headers)) merged[name] = value;
+          return original(input, { ...init, headers: merged });
+        };
+      }, bypassHeaders);
+    }
     await page.goto(new URL(persona.surface, origin).toString(), { waitUntil: 'networkidle' });
 
     // Connexion reelle par l'IHM Clerk de l'application : ce n'est pas une

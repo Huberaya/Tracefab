@@ -289,6 +289,38 @@ function executer(args, env = {}) {
   else ko('la suite staging utilise une reference de simulation fixe : un doublon preexistant ferait re-echo la valeur CSV');
 }
 
+/* --- 5 quinquies. le percage de la protection Vercel est complet -------- */
+
+{
+  // Les apercus du projet sont derriere la protection de deploiement Vercel.
+  // Trois scripts doivent donc porter le contournement, sinon ils mesurent la
+  // protection au lieu de l'application :
+  //   - la preparation des sessions (la navigation vers le formulaire de
+  //     connexion, et les appels same-origin de la page) ;
+  //   - la suite staging (navigation et appels same-origin) ;
+  //   - la sonde d identite (appel HTTP direct).
+  const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
+  if (/TRACEFAB_VERCEL_BYPASS/.test(sessions) && /extraHTTPHeaders/.test(sessions)) ok('la preparation des sessions porte le contournement Vercel');
+  else ko('la preparation des sessions ne porte pas le contournement Vercel : elle n atteindrait jamais le formulaire de connexion');
+  if (/addInitScript/.test(sessions) && /x-vercel-protection-bypass/.test(sessions)) ok('la preparation des sessions porte le contournement sur les appels same-origin');
+  else ko('la preparation des sessions ne porte pas le contournement sur les appels same-origin');
+
+  const staging = lire('scripts/test_p1_staging.mjs');
+  if (/TRACEFAB_VERCEL_BYPASS/.test(staging) && /extraHTTPHeaders/.test(staging) && /addInitScript/.test(staging)) ok('la suite staging porte le contournement Vercel, navigation et appels same-origin');
+  else ko('la suite staging ne porte pas le contournement Vercel');
+
+  const sonde = lire('scripts/probe_preview_runtime_identity.mjs');
+  if (/TRACEFAB_VERCEL_BYPASS/.test(sonde) && /x-vercel-protection-bypass/.test(sonde)) ok('la sonde d identite porte le contournement Vercel');
+  else ko('la sonde d identite ne porte pas le contournement Vercel');
+
+  // Les mesures doivent exister en ANNOTATION : le journal de run est
+  // heberge hors de l'API GitHub.
+  if (/annoterMesures/.test(sonde)) ok('la sonde d identite publie ses mesures en annotation');
+  else ko('la sonde d identite ne publie ses mesures qu dans le journal de run, illisible depuis l exterieur');
+  if (/::notice/.test(staging)) ok('la suite staging publie ses mesures en annotation');
+  else ko('la suite staging ne publie ses mesures qu dans le journal de run');
+}
+
 /* --- 6. l'inventaire des secrets n'affiche que des noms -------------------- */
 
 {
