@@ -33,12 +33,18 @@
  * api.github.com l'est.
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { annoterMesures } from './lib/annotations.mjs';
 
-const cibles = (process.env.TRACEFAB_PREVIEW_URLS || process.env.TRACEFAB_STAGING_URL || '')
-  .split(',')
+const depuisFichier = (process.env.TRACEFAB_PREVIEW_URLS_FILE || '').trim();
+const cibles = [
+  ...(process.env.TRACEFAB_PREVIEW_URLS || process.env.TRACEFAB_STAGING_URL || '')
+    .split(','),
+  ...(depuisFichier ? readFileSync(depuisFichier, 'utf8').split('\n') : []),
+]
   .map((u) => u.trim())
-  .filter(Boolean);
+  .filter(Boolean)
+  .filter((u, i, tab) => tab.indexOf(u) === i);
 
 if (!cibles.length) {
   console.error('TRACEFAB_PREVIEW_URLS absent : aucune Preview a sonder.');

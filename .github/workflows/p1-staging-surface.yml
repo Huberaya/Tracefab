@@ -38,6 +38,7 @@ on:
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
   group: p1-staging-diagnostic-${{ github.ref }}
@@ -59,5 +60,26 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Lister les deploiements Preview du depot
+        # La protection de deploiement Vercel peut etre propre au projet ou a
+        # un deploiement. Sans cette liste, on ne peut pas distinguer les deux
+        # cas, donc on ne peut pas dire au proprietaire quoi changer.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          : > /tmp/preview-urls.txt
+          gh api "repos/${{ github.repository }}/deployments?per_page=30" \
+            --jq '.[] | select(.environment == "Preview") | .id' > /tmp/deployment-ids.txt
+          while read -r id; do
+            [ -n "$id" ] || continue
+            url="$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" --jq '.[0].environment_url // empty' || true)"
+            [ -n "$url" ] && echo "$url" >> /tmp/preview-urls.txt
+          done < /tmp/deployment-ids.txt
+          sort -u /tmp/preview-urls.txt -o /tmp/preview-urls.txt
+          echo "preview_deployements=$(wc -l < /tmp/preview-urls.txt)"
+
       - name: Preview — sante et configuration Clerk (prefixes seuls)
+        env:
+          TRACEFAB_PREVIEW_URLS_FILE: /tmp/preview-urls.txt
         run: node scripts/probe_preview_surface.mjs
