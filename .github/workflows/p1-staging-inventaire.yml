@@ -1,9 +1,10 @@
 # P1 staging — verifier uniquement la presence du secret de bypass.
 # Ne serialise jamais le contexte global `secrets` et n'affiche aucune valeur.
+# Déclenchement manuel uniquement : les refs refs/pull/*/merge ne sont pas
+# autorisées par les règles de protection de l'environnement GitHub.
 name: P1 staging — présence du secret de bypass
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
