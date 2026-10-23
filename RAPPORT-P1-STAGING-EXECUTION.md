@@ -91,11 +91,14 @@ due to environment protection rules.
 The deployment was rejected or didn't satisfy other protection rules.
 ```
 
-L'environnement porte une seule politique de branche, `main`
+L'environnement porte **deux** politiques de branche, `main` et
+`arena/88857a44-tracefab`
 (`GET /environments/tracefab-clerk-test/deployment-branch-policies` →
-`total_count: 1`, `name: main`), plus un relecteur obligatoire
-(`Huberaya`, `prevent_self_review: true`). Le job authentifié meurt donc avant
-sa première étape.
+`total_count: 2`), plus un relecteur obligatoire (`Huberaya`,
+`prevent_self_review` décoché temporairement le 2026-10-23). Toute **autre**
+branche — dont la branche de session `arena/f54fad73-tracefab` — meurt donc
+avant sa première étape, et un jeton d'intégration ne peut ni ajouter la
+politique, ni approuver la retenue (voir §10.5).
 
 Les trois demandes d'administration que j'ai tentées sont toutes refusées au
 token GitHub disponible (intégration d'application) :
@@ -577,3 +580,117 @@ l'accès à l'application serait écrire un rapport de test qui n'a rien mesuré
 | Secret `TRACEFAB_NOTIFICATION_WORKER_SECRET` dans `tracefab-clerk-test` | **absent** | déposer la valeur de la Preview (§7.3) |
 | Registre des workflows privilégiés | mis à jour pour acter le décochage temporaire | conservé tel quel |
 
+---
+
+## 10. 2026-10-23 — cause racine du `exit code 5`, correction, état vérifiable
+
+### 10.1 La mesure qui manquait
+
+Extrait **expurgé** de l'annotation du run
+[`40035513421`](https://github.com/Huberaya/Tracefab/actions/runs/40035513421)
+(étape 7, `Pre-vol — la Preview repond-elle comme l application ?`,
+`conclusion: failure`) :
+
+```
+preview_hote=tracefab-git-arena-e13749-baya-ibraimmayoanouedu-8164s-projects.vercel.app
+/api/health_http=307
+/api/health_classe=inconnue
+/api/health_content_type=text/plain
+/api/health_redirection_chemin=/api/health
+/api/config_http=307
+/api/config_redirection_chemin=/api/config
+/api/internal/p2/readiness_http=307
+/api/internal/p2/readiness_redirection_chemin=/api/internal/p2/readiness
+```
+
+Le script terminait par `process.exit(5)` — d'où le seul message
+`Process completed with exit code 5`.
+
+**Ce que cette mesure cachait.** Le chemin de destination est **identique** au
+chemin demandé ; la sonde n'affichait que le chemin, jamais l'**hôte**. Or
+`tracefab-git-arena-e13749-…` est un **alias de branche** : il ne désigne pas un
+déploiement immuable. Vercel le re-canonicalise par un `307` vers un **autre
+hôte**, en conservant le chemin. Le run mesurait donc une redirection vers un
+autre déploiement, pas l'application.
+
+**Conséquence vérifiée.** Le déploiement du commit `50e7070` est, lui,
+`tracefab-7xgup5zjo-…` (`deployment 7290360970`, état `success`) : l'URL figée
+dans le workflow ne désignait pas ce déploiement.
+
+### 10.2 Les deux défauts, et leurs corrections
+
+| Défaut | Correction | Où |
+|---|---|---|
+| URL de Preview **figée** dans le workflow, périmée à chaque commit | résolution du déploiement **du SHA testé** par l'API GitHub des Deployments ; refus d'un autre commit, d'un hôte de production et d'une URL à paramètres | `scripts/lib/preview_deployment.mjs`, `scripts/resolve_preview_deployment.mjs` |
+| diagnostic qui ne lit que le **chemin** d'une redirection | mesure de la classe **et de l'hôte** de la destination, puis cause unique nommée avec un code de sortie distinct | `scripts/lib/preview_surface.mjs`, `scripts/probe_preview_surface.mjs` |
+| le secret de contournement pouvait suivre une redirection | une redirection n'est suivie que vers un déploiement de Preview, et **sans** en-tête | `scripts/lib/preview_surface.mjs` |
+| échec non exploitable (`exit 5`) | codes 2/3/5/6/7/8/9 + annotation `cause=…` + action attendue | `scripts/probe_preview_surface.mjs` |
+| `prevent_self_review` non tracé | inchangé ; dossier laissé au §9 | — |
+
+Workflows : `p1-staging-authenticated.yml` (résolution + preuve + pré-vol
+strict, permission minimale `deployments: read`) et `p1-staging-surface.yml`
+(plus aucune URL figée, mesure de l'hôte de destination).
+
+### 10.3 Vérifications réellement exécutées
+
+| # | Vérification | Résultat | Preuve |
+|---|---|---|---|
+| 1 | `npm run test:workflow-policy` | **PASS** | 9 workflows analysés, politique OK |
+| 2 | `npm run test:p1-harness` | **PASS** | 73 assertions, dont 8 nouvelles « cible jamais figée » |
+| 3 | `npm run test:p1:preview-deployment` | **PASS** | 16 contrôles hors ligne, 16 PASS |
+| 4 | `npm run test:ci-no-production-access` | **PASS** | — |
+| 5 | Résolution réelle du déploiement (API GitHub) | **PASS** | `deployment 7290546694`, `sha=b85ba688…`, `etat=success`, `hote=tracefab-ctd5lwspg-…`, `correspondance_sha=exacte` |
+| 6 | CI sur le SHA final `8507f72` | **PASS** | [run 40038317353](https://github.com/Huberaya/Tracefab/actions/runs/40038317353) — 4/4 jobs `success` |
+| 7 | Diagnostic de surface sur le SHA final | **PASS** (mesure) | [run 40038317433](https://github.com/Huberaya/Tracefab/actions/runs/40038317433) — voir §10.4 |
+| 8 | `p1-staging-authenticated.yml` sur le SHA final | **NOT RUN — bloqué** | §10.5 |
+| 9 | Tests Clerk réels, isolation inter-organisations, identité DB runtime | **BLOCKED** | dépendent de 8 |
+| 10 | `main` et production | **intacts** | aucun commit, aucun déploiement, aucun appel d'écriture |
+
+### 10.4 Ce que la mesure de surface dit du déploiement du SHA final
+
+`deployment 7290546694` (SHA `b85ba688…`) et tous les déploiements récents
+répondent, **sans en-tête de contournement** :
+
+```
+/api/health_http=302
+/api/health_redirection_classe=sso_vercel
+/api/health_redirection_hote=vercel.com
+/api/health_redirection_chemin=/sso-api
+/api/health_redirection_parametres=nonce,url
+cause=contournement_absent
+```
+
+Autrement dit : les **URL immuables** des déploiements ne sont pas
+re-canonicalisées (`307`) — elles atteignent bien la protection Vercel, ce qui
+est le comportement attendu sans secret. La re-canonicalisation `307` observée
+le 2026-10-23 était donc bien propre à l'**alias figé**, et elle est désormais
+diagnostiquée séparément (`cause=cible_obsolete`, code 7).
+
+### 10.5 Le seul point encore bloqué, et l'action exacte
+
+Le workflow authentifié ne peut pas être exécuté depuis la branche de session :
+
+| Fait mesuré | Réponse |
+|---|---|
+| politique de branche de `tracefab-clerk-test` | `total_count: 2` — `main`, `arena/88857a44-tracefab` ; la branche de session n'y est pas |
+| ajouter la branche de session | `403 Resource not accessible by integration` |
+| déclencher le workflow (`workflow_dispatch`) | `403 Resource not accessible by integration` |
+| approuver une retenue d'environnement | `403 Resource not accessible by integration` |
+
+Deux actions humaines, au choix, lèvent ce point :
+
+1. **préféré** — porter le commit `8507f72` sur `arena/88857a44-tracefab`
+   (branche autorisée par l'environnement) : le workflow s'y déclenche seul au
+   push, puis l'approbation de l'environnement est accordée depuis la page du
+   run. La cause, si elle survit, sera **nommée** par le pré-vol
+   (`contournement_invalide` / `contournement_absent` / `cible_obsolete`), plus
+   par un code opaque ;
+2. ou ajouter `arena/f54fad73-tracefab` à
+   *Settings → Environments → tracefab-clerk-test → Deployment branches*,
+   puis déclencher le workflow depuis cette branche.
+
+Si le pré-vol répond `cause=contournement_invalide`, l'action est alors
+précise : **régénérer « Protection Bypass for Automation » dans le projet
+Vercel du déploiement** et remplacer `VERCEL_AUTOMATION_BYPASS_SECRET` dans
+l'environnement `tracefab-clerk-test`. Aucune protection Vercel n'a été
+désactivée, et aucune ne doit l'être.
