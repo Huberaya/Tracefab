@@ -269,6 +269,26 @@ function executer(args, env = {}) {
   else ko('la suite staging n exige pas des identifiants d organisation au format UUID');
 }
 
+/* --- 5 quater. la suite staging ne depend d aucun hasard de locale ------ */
+
+{
+  // Le disclaimer du Quality Center est un texte traduit
+  // (`quality.heroLede`, assets/i18n/fr.json). Le runner GitHub est en
+  // `en-US` : sans locale imposee, la page rend la variante anglaise et le
+  // controle echouerait pour une raison etrangere au produit. La suite
+  // impose donc la locale ET accepte les deux langues.
+  const staging = lire('scripts/test_p1_staging.mjs');
+  if (/locale: 'fr-FR'/.test(staging)) ok('la suite staging impose la locale du navigateur (le runner est en en-US)');
+  else ko("la suite staging n impose pas la locale : le controle du disclaimer serait faussement rouge");
+  if (/statuts\\s\+déclaratifs/.test(staging) && /declarative\\s\+statuses/.test(staging)) ok('la suite staging accepte le disclaimer dans les deux langues');
+  else ko('la suite staging n accepte le disclaimer que dans une seule langue');
+
+  // Reference de simulation unique : un doublon preexistant ferait re-echo
+  // la valeur CSV dans le message d erreur du serveur.
+  if (/referenceSimulation/.test(staging) && /P1-STAGING-DRY-RUN-\$\{Date\.now\(\)\}/.test(staging)) ok('la suite staging utilise une reference de simulation unique par execution');
+  else ko('la suite staging utilise une reference de simulation fixe : un doublon preexistant ferait re-echo la valeur CSV');
+}
+
 /* --- 6. l'inventaire des secrets n'affiche que des noms -------------------- */
 
 {

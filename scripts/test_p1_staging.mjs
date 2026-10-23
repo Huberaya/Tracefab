@@ -40,6 +40,12 @@ const contexts = [];
 async function openAuthenticated(storageState, path, readySelector, globalName) {
   const context = await browser.newContext({
     storageState,
+    // La locale est forcee : le runner GitHub est en `en-US`, et le
+    // disclaimer du Quality Center est un texte traduit
+    // (`quality.heroLede`, assets/i18n/fr.json). Sans locale imposee, la
+    // page rendrait la variante anglaise et le controle echouerait pour une
+    // raison etrangere au produit. Le controle accepte les deux langues.
+    locale: 'fr-FR',
     ...(Object.keys(bypassHeaders).length ? { extraHTTPHeaders: bypassHeaders } : {}),
   });
   contexts.push(context);
@@ -132,20 +138,35 @@ async function jsonRequest(page, path, auth, body) {
 }
 
 try {
+  // Reference unique par execution : la simulation ne persiste rien, mais un
+  // doublon preexistant dans l'organisation ferait re-echo la valeur CSV
+  // dans le message d'erreur du serveur, et le controle « la reponse ne
+  // re-echo pas les valeurs CSV » echouerait alors pour une raison
+  // etrangere au controle lui-meme.
+  const referenceSimulation = `P1-STAGING-DRY-RUN-${Date.now()}`;
+
   const brandPage = await openAuthenticated(brandStatePath, '/brand-console/', 'h1.mc-headline', 'tracefabBrandConsole');
   const brandAuth = await authContext(brandPage, 'tracefabBrandConsole', 'activeOrganizationId');
   const catalogPreview = await jsonRequest(brandPage, '/api/catalog/products/import', brandAuth, {
     brandOrganizationId: brandAuth.organizationId,
     filename: 'p1-staging-dry-run.csv',
     dryRun: true,
-    csvContent: 'reference,name,category\nP1-STAGING-DRY-RUN,Staging dry run,T-shirt\n',
+    csvContent: `reference,name,category\n${referenceSimulation},Staging dry run,T-shirt\n`,
   });
   assert.equal(catalogPreview.status, 200, `catalog dry run failed: ${JSON.stringify(catalogPreview.body)}`);
   assert.equal(catalogPreview.body.valid, true);
-  assert.equal(JSON.stringify(catalogPreview.body).includes('P1-STAGING-DRY-RUN'), false, 'preview must not echo raw CSV values');
+  assert.equal(JSON.stringify(catalogPreview.body).includes(referenceSimulation), false, 'preview must not echo raw CSV values');
 
   const qualityPage = await openAuthenticated(brandStatePath, '/quality-center/', 'h1', 'tracefabQualityCenter');
-  assert.match(await qualityPage.locator('body').innerText(), /statuts déclaratifs.*certification/s, 'Quality Center disclaimer missing on staging');
+  // Le disclaimer existe dans les neuf langues de l'application ; la phrase
+  // de reference est la francaise, celle du depot. La variante anglaise est
+  // acceptee pour que le controle ne depende pas d'un choix de locale.
+  const texteQuality = await qualityPage.locator('body').innerText();
+  assert.match(
+    texteQuality,
+    /(statuts\s+déclaratifs[^]*certification|declarative\s+statuses[^]*certification)/i,
+    'Quality Center disclaimer missing on staging',
+  );
 
   const supplierPage = await openAuthenticated(supplierStatePath, '/supplier-portal/', 'h1.sp-hero-h1', 'tracefabSupplierPortal');
   const supplierAuth = await authContext(supplierPage, 'tracefabSupplierPortal', 'selectedOrganizationId');

@@ -201,6 +201,38 @@ serait vert sans avoir jamais joué.
     exige un contrôle positif, et exige deux organisations réellement
     distinctes (identifiants UUID comparés).
 
+### 5.5 Vérification statique du contrat déployé (avant le seul passage exécuté)
+
+Une seule exécution exécutée est admise : le contrat de la suite a donc été
+confronté **au code du SHA déployé** (`git show 7ec24d4:<chemin>`), pas au code
+de la branche. Résultat :
+
+| Contrat mesuré | Code au SHA `7ec24d4` | Attendu par la suite | Verdict |
+|---|---|---|---|
+| `POST /api/catalog/products/import` | `json(res, 200, result.preview)` → corps **plat** `{valid, headers, totalRows, …}` | `body.valid === true` | conforme |
+| En-têtes CSV exigés (import catalogue) | `REQUIRED_HEADERS = ['reference', 'name']` | `reference,name,category` | conforme |
+| `POST /api/supplier/materials/import-bom` | `{status, isValid, …, savedMaterialsCount}` | `isValid === true`, `savedMaterialsCount === 0` | conforme |
+| CSV BOM | séparateurs `;` `,` `	`, en-têtes FR/EN/PT, total 100 % ± 0,5 | `;`, en-têtes FR, 85 + 15 | conforme |
+| `GET /api/catalog/products/export` | `requireActiveTenant(...)` → `TenantError(404, 'organization_not_found')` ; export borné à `[tenant.organizationId]` | refus 404 + périmètre non élargi | conforme |
+| `GET /api/internal/p2/readiness?identity=1` | `databaseIdentity.{measured, currentUser, sessionUser, bypassesRls, isSuperuser}` | rôle + deux booléens | conforme |
+| Secret de la sonde | env `TRACEFAB_NOTIFICATION_WORKER_SECRET`, en-tête `x-tracefab-worker-secret` | secret en en-tête, jamais en URL | conforme |
+| Pages | `brand-console/`, `supplier-portal/`, `quality-center/` | les trois | conforme |
+| Sélecteurs | `h1.mc-headline`, `h1.sp-hero-h1`, `h1` (rendu par le JS) | les trois | conforme |
+| `state.demo` | booléen (`new URLSearchParams(...).get('demo') === '1'`) | `=== false` hors démo | conforme |
+| `state.clerk.session`, `state.activeOrganizationId`, `state.selectedOrganizationId` | présents | présents | conforme |
+| `data-tracefab-demo` sur `<body>` | absent des trois pages | l'attribut doit rester `null` | conforme |
+
+**Un défaut a été trouvé et corrigé au passage :** le disclaimer du Quality
+Center est un **texte traduit** (`quality.heroLede`, `assets/i18n/fr.json`).
+Le runner GitHub est en `en-US` : sans locale imposée, la page aurait rendu la
+variante anglaise (« Declarative statuses are never turned into a
+certification. ») et le contrôle français aurait été **rouge pour une raison
+étrangère au produit**. La suite impose désormais `locale: 'fr-FR'` **et**
+accepte les deux variantes de la phrase. De même, la référence de simulation
+catalogue est désormais unique par exécution : un doublon préexistant ferait
+ré-écho la valeur CSV dans le message d'erreur du serveur, et le contrôle
+« la réponse ne ré-écho pas les valeurs CSV » échouerait à tort.
+
 ---
 
 ## 5 bis. Écart trouvé entre le critère du chantier et le contrat du dépôt — **tranché le 2026-10-23**
