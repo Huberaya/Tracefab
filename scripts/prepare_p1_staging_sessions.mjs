@@ -1,0 +1,255 @@
+#!/usr/bin/env node
+/**
+ * Sessions Clerk de test pour la suite P1 staging.
+ *
+ * POURQUOI CE SCRIPT EXISTE
+ *   `npm run test:p1:staging` exige trois etats de session Playwright
+ *   authentifies et isoles : marque A, fournisseur, marque B dans une
+ *   organisation distincte. Aucun etat de session n'est versionne dans le
+ *   depot : ce sont des artefacts de session, donc des jetons. Ce script les
+ *   fabrique a la volee, dans l'instance Clerk DE TEST, et les ecrit dans
+ *   l'espace de travail du runner.
+ *
+ * CE QU'IL FAIT — deux phases
+ *   phase `inspect`   (defaut) : lecture seule. Il decrit l'instance Clerk de
+ *                      test (strategies de connexion), les comptes de test
+ *                      deja presents et les organisations de test deja
+ *                      presentes. Aucune ecriture, aucun secret affiche.
+ *   phase `provision` : il cree ce qui manque — comptes de test, organisations
+ *                      de test, adhesions — puis ouvre trois sessions
+ *                      reelles et enregistre les trois etats de session.
+ *
+ * CE QU'IL REFUSE
+ *   1. une cle qui ne commence pas par `sk_test_` : une cle d'instance de
+ *      production est refusee sans etre affichee, meme tronquee ;
+ *   2. toute adresse qui n'est pas en domaine `.test` : aucune adresse reelle
+ *      n'est touchee ;
+ *   3. une cible qui n'est pas une Preview Vercel en HTTPS.
+ *
+ * CE QU'IL N'AFFICHE JAMAIS
+ *   aucune valeur de secret, aucun cookie, aucun jeton de session, aucun
+ *   mot de passe. Les etats de session ecrits sur disque ne sont ni commites
+ *   ni publies en artefact : ils restent dans /tmp du runner.
+ */
+import assert from 'node:assert/strict';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { chromium } from 'playwright';
+
+const PHASE = (process.env.TF_P1_PHASE || 'inspect').trim();
+const CLERK_API = 'https://api.clerk.com/v1';
+
+const cle = (process.env.CLERK_SECRET_KEY || '').trim();
+if (!cle) {
+  console.error('CLERK_SECRET_KEY absent : aucun acces a l instance Clerk de test.');
+  process.exit(2);
+}
+if (!cle.startsWith('sk_test_')) {
+  console.error("CLERK_SECRET_KEY n'est pas une cle d'instance de test (`sk_test_`) : refus.");
+  process.exit(3);
+}
+
+const baseUrl = (process.env.TRACEFAB_STAGING_URL || '').trim();
+if (!baseUrl) {
+  console.error('TRACEFAB_STAGING_URL absent : aucune cible.');
+  process.exit(2);
+}
+const origin = new URL(baseUrl);
+assert.equal(origin.protocol, 'https:', 'la cible doit etre en HTTPS');
+assert.ok(origin.hostname.endsWith('.vercel.app'), 'la cible doit etre une Preview Vercel');
+
+const stateDir = (process.env.TF_P1_STATE_DIR || '/tmp/p1-storage-states').trim();
+
+/**
+ * Les trois personas du chantier P1. Tous les domaines sont `.test` : aucune
+ * adresse reelle n'est utilisee, et aucune donnee reelle n'est lue.
+ */
+const PERSONAS = [
+  {
+    cle: 'brand',
+    fichier: 'brand.json',
+    email: 'p1-brand-a@tracefab.test',
+    motDePasse: 'Tf-P1-Brand-A-2026!test',
+    organisation: { nom: 'Tracefab P1 Marque A', type: 'brand' },
+    surface: '/brand-console/',
+  },
+  {
+    cle: 'supplier',
+    fichier: 'supplier.json',
+    email: 'p1-supplier@tracefab.test',
+    motDePasse: 'Tf-P1-Supplier-2026!test',
+    organisation: { nom: 'Tracefab P1 Fournisseur', type: 'supplier' },
+    surface: '/supplier-portal/',
+  },
+  {
+    cle: 'second-brand',
+    fichier: 'second-brand.json',
+    email: 'p1-brand-b@tracefab.test',
+    motDePasse: 'Tf-P1-Brand-B-2026!test',
+    organisation: { nom: 'Tracefab P1 Marque B', type: 'brand' },
+    surface: '/brand-console/',
+  },
+];
+
+for (const persona of PERSONAS) {
+  assert.ok(persona.email.endsWith('.test'), 'adresse de test attendue');
+}
+
+async function clerkApi(path, options = {}) {
+  const response = await fetch(`${CLERK_API}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${cle}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  const text = await response.text();
+  let body = {};
+  try { body = text ? JSON.parse(text) : {}; } catch { body = {}; }
+  if (!response.ok) {
+    const code = body?.errors?.[0]?.code || body?.code || `http_${response.status}`;
+    throw new Error(`clerk_api_${code}`);
+  }
+  return body;
+}
+
+/* --- 1. etat de l'instance Clerk de test ---------------------------------- */
+
+const instance = await clerkApi('/instance').catch(() => null);
+const auth = instance?.auth_settings || {};
+console.log(`instance_instance=${instance?.instance_type || 'inconnue'}`);
+console.log(`instance_email_password=${Boolean(auth?.password?.enabled)}`);
+console.log(`instance_first_factor=${Array.isArray(auth?.first_factor) ? auth.first_factor.join(',') : 'inconnu'}`);
+console.log(`instance_sign_up=${auth?.sign_up?.enabled === false ? 'desactive' : 'actif'}`);
+
+/* --- 2. comptes de test deja presents -------------------------------------- */
+
+async function utilisateur(email) {
+  const page = await clerkApi(`/users?email_address=${encodeURIComponent(email)}&limit=1`);
+  return page?.[0] || null;
+}
+
+const etats = [];
+for (const persona of PERSONAS) {
+  const u = await utilisateur(persona.email);
+  etats.push({ persona, utilisateur: u });
+  console.log(`compte_present=${persona.cle}:${Boolean(u)}`);
+}
+
+const organisations = await clerkApi('/organizations?limit=100').catch(() => []);
+for (const persona of PERSONAS) {
+  const trouvee = (Array.isArray(organisations) ? organisations : [])
+    .find((o) => o?.name === persona.organisation.nom);
+  console.log(`organisation_presente=${persona.cle}:${Boolean(trouvee)}`);
+}
+
+if (PHASE === 'inspect') {
+  console.log('phase=inspect — aucune ecriture effectuee.');
+  process.exit(0);
+}
+
+/* --- 3. provision : comptes, organisations, adhesions ----------------------- */
+
+const { createClerkClient } = await import('@clerk/backend');
+const clerk = createClerkClient({ secretKey: cle });
+
+async function assurerUtilisateur(persona) {
+  const existant = await utilisateur(persona.email);
+  if (existant) {
+    // Le mot de passe n'est pas relisible : on le rejoue par l'API de mot de
+    // passe de l'utilisateur, pour que la session soit ouvrable meme si un
+    // ancien mot de passe a ete pose.
+    await clerk.users.createPassword({ userId: existant.id, password: persona.motDePasse })
+      .catch(() => clerk.users.updatePassword({ userId: existant.id, newPassword: persona.motDePasse }))
+      .catch(() => null);
+    return existant;
+  }
+  return clerk.users.createUser({
+    emailAddress: [{ emailAddress: persona.email, verified: true, primary: true }],
+    firstName: 'P1',
+    lastName: persona.cle,
+    password: persona.motDePasse,
+    skipPasswordInvitation: true,
+    skipEmailInvitation: true,
+  });
+}
+
+async function assurerOrganisation(persona, utilisateurClerk) {
+  const liste = await clerkApi('/organizations?limit=100');
+  const existante = (Array.isArray(liste) ? liste : []).find((o) => o?.name === persona.organisation.nom);
+  const organisation = existante
+    ? await clerk.organizations.updateOrganization({
+        organizationId: existante.id,
+        name: persona.organisation.nom,
+        publicMetadata: {
+          tracefab_organization_type: persona.organisation.type,
+          legal_name: persona.organisation.nom,
+        },
+      })
+    : await clerk.organizations.createOrganization({
+        name: persona.organisation.nom,
+        publicMetadata: {
+          tracefab_organization_type: persona.organisation.type,
+          legal_name: persona.organisation.nom,
+        },
+      });
+
+  const adhesions = await clerk.organizations.getOrganizationMembershipList({
+    organizationId: organisation.id,
+    limit: 100,
+  });
+  const dejaMembre = (adhesions?.data || []).find((m) => m?.publicUserData?.userId === utilisateurClerk.id);
+  if (!dejaMembre) {
+    await clerk.organizations.createOrganizationMembership({
+      organizationId: organisation.id,
+      userId: utilisateurClerk.id,
+      role: 'org:admin',
+    });
+  }
+  return organisation;
+}
+
+/* --- 4. sessions reelles et etats de session -------------------------------- */
+
+const browser = await chromium.launch({ headless: true });
+try {
+  mkdirSync(stateDir, { recursive: true });
+
+  for (const { persona, utilisateur: existant } of etats) {
+    const u = await assurerUtilisateur(persona);
+    const organisation = await assurerOrganisation(persona, u);
+    console.log(`provisionne=${persona.cle}:utilisateur:${Boolean(u)}:organisation:${Boolean(organisation)}`);
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(new URL(persona.surface, origin).toString(), { waitUntil: 'networkidle' });
+
+    // Connexion reelle par l'IHM Clerk de l'application : ce n'est pas une
+    // session injectee, c'est celle que produirait un utilisateur.
+    const champIdentifiant = page.locator('input[name="identifier"], input[id*="identifier"], input[type="email"]').first();
+    await champIdentifiant.waitFor({ state: 'visible', timeout: 45000 });
+    await champIdentifiant.fill(persona.email);
+    const bouton = page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first();
+    await bouton.click();
+
+    const champMotDePasse = page.locator('input[name="password"], input[type="password"]').first();
+    await champMotDePasse.waitFor({ state: 'visible', timeout: 45000 });
+    await champMotDePasse.fill(persona.motDePasse);
+    await page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first().click();
+
+    await page.waitForFunction(() => {
+      const app = window.tracefabBrandConsole || window.tracefabSupplierPortal || window.tracefabQualityCenter;
+      return Boolean(app?.state?.clerk?.session);
+    }, null, { timeout: 60000 });
+
+    const chemin = join(stateDir, persona.fichier);
+    await context.storageState({ path: chemin });
+    console.log(`etat_de_session_ecrit=${persona.cle}:${existsSync(chemin)}`);
+    await context.close();
+  }
+} finally {
+  await browser.close();
+}
+
+console.log('sessions_preparees=3');
