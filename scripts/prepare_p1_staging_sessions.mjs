@@ -163,6 +163,16 @@ if (PHASE === 'inspect') {
   process.exit(0);
 }
 
+// La connexion par mot de passe est la seule strategie que ce script sait
+// jouer sans intervention. Si l'instance de test ne l'a pas, il faut le dire
+// plutot que d'echouer plus tard sur un delai d'attente trompeur.
+if (instance && instance.auth_settings && auth.password && auth.password.enabled === false) {
+  console.error("L'instance Clerk de test n'a pas la strategie mot de passe : "
+    + 'ce harnais ne sait ouvrir une session que par mot de passe. '
+    + "Activez la strategie mot de passe dans l'instance de test, ou fournissez une autre strategie.");
+  process.exit(4);
+}
+
 /* --- 3. provision : comptes, organisations, adhesions ----------------------- */
 
 async function assurerUtilisateur(persona) {
@@ -245,7 +255,15 @@ try {
     await bouton.click();
 
     const champMotDePasse = page.locator('input[name="password"], input[type="password"]').first();
-    await champMotDePasse.waitFor({ state: 'visible', timeout: 45000 });
+    try {
+      await champMotDePasse.waitFor({ state: 'visible', timeout: 45000 });
+    } catch {
+      throw new Error(
+        `le formulaire de connexion n'a pas propose de champ mot de passe pour ${persona.cle} : `
+        + "soit la strategie de l'instance de test n'est pas le mot de passe, "
+        + 'soit le compte a ete refuse a cette etape.',
+      );
+    }
     await champMotDePasse.fill(persona.motDePasse);
     await page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first().click();
 
