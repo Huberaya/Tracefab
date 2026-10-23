@@ -64,7 +64,7 @@ jobs:
     name: P1 — staging authentifie sur Preview
     environment: tracefab-clerk-test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       NODE_VERSION: '20'
       TRACEFAB_STAGING_URL: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
@@ -90,7 +90,10 @@ jobs:
       - name: Pre-vol — la Preview repond-elle comme l application ?
         # Une Preview derriere la protection de deploiement Vercel repond 302
         # vers /sso-api : le runner atteint la protection, pas l'application.
-        # Detecter cela ici evite un echec illisible plus loin.
+        # Detecter cela ici evite un echec illisible plus loin. En mode
+        # strict, l'absence de reponse applicative arrete le job.
+        env:
+          TF_PROBE_STRICT: '1'
         run: node scripts/probe_preview_surface.mjs
 
       - name: Inspection — comptes et organisations de test deja presents

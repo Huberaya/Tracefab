@@ -133,4 +133,18 @@ for (const cible of cibles) {
 
   console.log(`--- ${mesures.map(([cle, valeur]) => `${cle}=${valeur}`).join('\n    ')}`);
   annoterMesures(`Preview ${origin.hostname}`, mesures);
+
+  // En mode strict, une Preview que l'on n'atteint pas est un echec : mieux
+  // vaut un arret net ici qu'un echec illisible trois etapes plus loin.
+  if (process.env.TF_PROBE_STRICT === '1') {
+    const applicative = mesures.some(([cle, valeur]) => cle.endsWith('_classe') && valeur === 'application');
+    if (!applicative) {
+      console.error(
+        `la Preview ${origin.hostname} n'a pas repondu comme l'application : `
+        + 'elle est derriere une protection (protection de deploiement Vercel) '
+        + 'ou hors service. Verifiez TRACEFAB_VERCEL_BYPASS.',
+      );
+      process.exit(5);
+    }
+  }
 }
