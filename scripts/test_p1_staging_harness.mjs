@@ -225,22 +225,48 @@ function executer(args, env = {}) {
   // Le depot refuse un locataire non adherent par 404 `organization_not_found`
   // et NON par 403 : « un 403 revelerait que l'organisation existe »
   // (api/_lib/tenant.ts). Ce contrat est protege par une non-regression
-  // locale. La suite staging ne doit donc pas exiger un 403 litteral — elle
-  // doit exiger un REFUS, et prouver en plus qu'un parametre etranger
-  // n'elargit pas le perimetre exporte.
+  // locale. Le proprietaire l'a confirme le 2026-10-23 : le critere devient
+  // « un export visant une organisation etrangere est refuse selon le
+  // contrat anti-divulgation 404 organization_not_found, sans elargissement
+  // du perimetre des donnees ; l export du locataire autorise continue de
+  // fonctionner ».
   const local = lire('scripts/test_active_tenant_context.mjs');
   if (/organization_not_found/.test(local) && /404/.test(local)) ok('la non-regression locale continue de pinner le refus 404 du locataire non adherent');
   else ko('la non-regression locale du refus 404 a disparu');
 
   const staging = lire('scripts/test_p1_staging.mjs');
+
   if (!/assert\.equal\(forbidden\.status, 403/.test(staging)) ok("la suite staging n'exige plus un 403 litteral, que le depot ne produit pas");
   else ko('la suite staging exige encore un 403 litteral : elle echouerait sur la Preview');
-  if (/crossTenant\.status === 403 \|\| crossTenant\.status === 404/.test(staging)) ok('la suite staging exige un REFUS (403 ou 404) de l export inter-organisation');
-  else ko("la suite staging n'exige pas explicitement un refus de l export inter-organisation");
+
+  // Le refus doit etre EXIGE, pas seulement tolere : c'est le contrat.
+  if (/assert\.equal\(\s*reponse\.status,\s*404/.test(staging)) ok('la suite staging exige le refus 404 du contrat anti-divulgation');
+  else ko("la suite staging n'exige pas le statut 404 du contrat anti-divulgation");
+  if (/assert\.equal\(corps\.error, 'organization_not_found'/.test(staging)) ok("la suite staging exige le code d'erreur `organization_not_found`");
+  else ko("la suite staging n'exige pas le code d'erreur `organization_not_found`");
+
+  // Un statut ne suffit pas : la preuve est dans les donnees.
+  if (/assert\.equal\(lignesCsv\(reponse\.body\)\.length, 0/.test(staging)) ok('la suite staging exige zero ligne de donnees dans une reponse de refus');
+  else ko('la suite staging ne prouve pas, au niveau des donnees, qu un refus ne rend rien');
   if (/must not widen the exported scope/.test(staging)) ok('la suite staging prouve qu un organisationId etranger n elargit pas le perimetre exporte');
   else ko("la suite staging ne prouve pas l absence d elargissement du perimetre exporte");
-  if (/typeof corpsRefus\.error === 'string'/.test(staging)) ok('la suite staging exige que le refus soit une erreur, pas un document');
-  else ko("la suite staging n exige pas que le refus soit une erreur");
+  if (/refsUniquementEtranger/.test(staging) && /leaked a data reference/.test(staging)) ok('la suite staging verifie qu aucune reference de l organisation etrangere ne fuit');
+  else ko('la suite staging ne verifie pas l absence de fuite de references entre organisations');
+
+  // Les trois cas doivent etre mesures : la precedence en-tete > query change
+  // la signification de chaque requete.
+  if (/crossEntete/.test(staging) && /crossQuery/.test(staging) && /crossParametre/.test(staging)) ok('la suite staging mesure l en-tete, la query et les deux ensemble');
+  else ko('la suite staging ne mesure pas les trois formes de demande de locataire');
+
+  // Controle positif : l export du locataire autorise doit fonctionner.
+  if (/own-tenant export failed/.test(staging)) ok('la suite staging exige que l export du locataire autorise fonctionne');
+  else ko('la suite staging ne verifie pas le controle positif');
+
+  // Identites distinctes : deux organisations reellement differentes.
+  if (/tenant-isolation test requires two distinct brand organizations/.test(staging)) ok('la suite staging exige deux organisations reellement distinctes');
+  else ko('la suite staging n exige pas deux organisations distinctes');
+  if (/must be a UUID/.test(staging)) ok('la suite staging exige des identifiants d organisation au format UUID');
+  else ko('la suite staging n exige pas des identifiants d organisation au format UUID');
 }
 
 /* --- 6. l'inventaire des secrets n'affiche que des noms -------------------- */

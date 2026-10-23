@@ -81,9 +81,27 @@ Les cinq contrôles que la suite exerce, et qui doivent être verts :
    `isValid === true` et **`savedMaterialsCount === 0`** ;
 4. **disclaimer Quality Center** — la page contient « statuts déclaratifs »
    et « certification » ;
-5. **organisations marque A/B distinctes et export inter-organisation refusé**
-   — `GET /api/catalog/products/export?organizationId=<A>` avec le jeton de la
-   marque B renvoie **HTTP 403**.
+5. **organisations marque A/B réellement distinctes et export
+   inter-organisation refusé** — quatre requêtes, avec deux personnes
+   réellement différentes, chacune authentifiée dans **sa** organisation :
+
+   | # | Requête (jeton de la marque B) | Locataire résolu | Attendu |
+   |---|---|---|---|
+   | 1 | en-tête `X-Tracefab-Organization-Id: <A>` | A (étranger) | **404 `organization_not_found`**, **zéro ligne** de données |
+   | 2 | `?organizationId=<A>`, sans en-tête | A (étranger) | **404 `organization_not_found`**, **zéro ligne** de données |
+   | 3 | en-tête `<B>` + `?organizationId=<A>` | B (propre) | **200**, corps **identique** à l'export propre |
+   | 4 | en-tête `<B>` seul — contrôle positif | B (propre) | **200**, export des données autorisées |
+
+   Le statut ne suffit pas : une réponse de refus doit être un **document JSON
+   d'erreur** (pas un CSV), sans **aucune** référence — ni de l'organisation
+   étrangère, ni du locataire appelant. La route est
+   `api/_routes/catalog/products/export.ts`, qui appelle `requireActiveTenant`
+   : le refus y est un **404 `organization_not_found`** par conception de
+   sécurité (« un 403 révélerait que l'organisation existe »), et non un 403.
+   Mesures publiées en annotations : `inter_tenant_export_refusal_status`,
+   `inter_tenant_export_refusal_error`, `inter_tenant_export_data_rows`,
+   `own_brand_a_rows`, `own_brand_b_rows`, `foreign_only_refs`,
+   `own_export_with_foreign_parameter`.
 
 Et, en complément, la sonde d'identité du runtime (§6).
 
@@ -229,7 +247,8 @@ complète.
 git checkout arena/88857a44-tracefab
 
 # 2. Contrôles qui ne demandent aucun privilege
-npm run test:p1-harness     # non-regression du harnais
+npm run test:p1-harness     # non-regression du harnais (38 assertions)
+npm run test:active-tenant  # contrat de refus 404 du locataire non adherent
 npm run test:p1                     # catalogue, BOM, i18n, Quality Center
 npm run test:workflow-policy        # declaration des workflows privileged
 npm run test:ci-no-production-access

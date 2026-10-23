@@ -149,7 +149,8 @@ peuvent l'accorder.
 | `npm run test:p1-bom` | vert — import BOM/ lot du Supplier Portal |
 | `npm run test:p1-i18n` | vert — architecture i18n (7 langues) |
 | `npm run test:p1-quality` | vert — contrat Quality Center |
-| `npm run test:p1-harness` (nouveau) | vert — 23 assertions |
+| `npm run test:p1-harness` (nouveau) | vert — **38 assertions** |
+| `npm run test:active-tenant` | vert — **13 contrôles**, dont « locataire non adhérent -> 404 `organization_not_found` (pas de 403 : aucune révélation) » — la non-régression locale du contrat, exécutée le 2026-10-23 |
 | `npm run test:workflow-policy` | vert — déclaration des workflows privilégiés |
 
 ### 5.3 CI de la branche
@@ -167,7 +168,9 @@ La PR #91 déclenche `ci.yml` sur `arena/88857a44-tracefab`. Sur le SHA final
 
 Aucun test `staging` n'est auto-collecté par la CI (filtre explicite de
 `ci.yml`), ce qui est correct : ces tests exigent une Preview vivante et trois
-sessions authentifiées.
+sessions authentifiées. Le **contrôle** de la suite staging, lui, est collecté :
+c'est pourquoi il porte un nom sans `staging` — un contrôle jamais exécuté
+serait vert sans avoir jamais joué.
 
 ### 5.4 Ce que le non-régression nouveau garantit
 
@@ -187,55 +190,90 @@ sessions authentifiées.
 7. **aucun état de session n'est suivi par git**, et le répertoire des états
    est paramétrable et hors du dépôt par défaut ;
 8. l'inventaire n'affiche que des **noms** de secrets ;
-9. le contrôle est branché dans `package.json` et la suite P1 staging reste
-   branchée sur `scripts/test_p1_staging.mjs`.
+9. le contrôle est branché dans `package.json` **sous un nom que la CI
+   collecte** (`test:p1-harness` : la CI exclut les scripts dont le nom porte
+   `neon` ou `staging`) — le contrôle vérifie lui-même cette propriété ;
+10. la suite staging **exige** le refus 404 `organization_not_found` (elle ne
+    se contente plus de tolérer 403 ou 404), exige **zéro ligne de données**
+    dans une réponse de refus, exige que l'export obtenu avec un
+    `organizationId` étranger soit identique à l'export propre, mesure les
+    trois formes de demande de locataire (en-tête, query, les deux ensemble),
+    exige un contrôle positif, et exige deux organisations réellement
+    distinctes (identifiants UUID comparés).
 
 ---
 
-## 5 bis. Écart trouvé entre le critère du chantier et le contrat du dépôt
+## 5 bis. Écart trouvé entre le critère du chantier et le contrat du dépôt — **tranché le 2026-10-23**
 
-Le chantier demande la preuve que « l'export inter-organisation est rejeté en
-HTTP 403 ». **L'application ne produit pas de 403 sur cette route** — et c'est
+Le chantier demandait la preuve que « l'export inter-organisation est rejeté
+en HTTP 403 ». **L'application ne produit pas de 403 sur cette route** — et c'est
 délibéré.
 
 | Fait | Preuve |
 |---|---|
-| Le refus d'un locataire non adhérent est un **404 `organization_not_found`**, pas un 403 | `api/_lib/tenant.ts` : « Le 404 plutot que le 403 sur un locataire non accessible est délibéré : un 403 révélerait que l'organisation existe » |
-| Ce contrat est protégé par une non-régression **locale**, verte en CI | `scripts/test_active_tenant_context.mjs` : « locataire non adhérent -> 404 organization_not_found (pas de 403 : aucune révélation) » |
+| Le refus d'un locataire non adhérent est un **404 `organization_not_found`**, pas un 403 | `api/_lib/tenant.ts` : « Le 404 plutôt que le 403 sur un locataire non accessible est délibéré : un 403 révélerait que l'organisation existe » |
+| Ce contrat est protégé par une non-régression **locale**, verte en CI | `scripts/test_active_tenant_context.mjs` : « locataire non adhérent -> 404 organization_not_found (pas de 403 : aucune révélation) » — **13 contrôles, tous verts**, exécutés le 2026-10-23 |
 | Le SHA de la Preview contient ce contrat | `git merge-base --is-ancestor 96a7f62 7ec24d4` → vrai (commit du 2026-10-17) |
 | La suite staging exigeait un 403 **littéral** | `scripts/test_p1_staging.mjs`, écrit le 2026-10-07, soit **avant** le changement de contrat, et jamais exécuté contre une Preview — la procédure était alors notée « NON VÉRIFIABLE » dans `docs/experience/` |
 | Pire : la requête du test ne demandait même pas le mauvais locataire | elle posait l'en-tête `X-Tracefab-Organization-Id` sur le **propre** locataire de la marque B et l'organisation étrangère dans la query string ; l'en-tête est prioritaire (`api/_lib/tenant.ts`), donc la requête était un export **légitime** du locataire de la marque B, qui aurait répondu **200** |
 
-Une attente de test qui n'a jamais été exécutée n'est pas une preuve : c'est
-une hypothèse. Elle est corrigée sur cette branche, **sans toucher au
-contrat de sécurité de l'application** — passer le refus de 404 à 403
-révélerait l'existence d'une organisation, ce que la non-regression locale
-interdit explicitement.
+**Décision du propriétaire (2026-10-23) :** conserver le contrat
+`404 organization_not_found` et sa non-régression, et renforcer la preuve
+d'isolation. `api/_lib/tenant.ts` n'est **pas** modifié.
 
-La suite staging mesure désormais la propriété réelle, en deux temps :
+### Le critère P1, réécrit
 
-1. **la demande qui revendique le locataire de l'autre marque est refusée** —
-   le statut observé est publié (404 aujourd'hui, par décision de sécurité ;
-   403 resterait un refus correct), et le corps doit être une **erreur**, pas
-   un document ;
-2. **la demande qui garde son propre locataire mais nomme l'autre dans la
-   query string rend exactement les mêmes lignes** que la demande sans ce
-   paramètre — c'est la preuve qu'aucune fuite inter-organisation n'est
-   possible, y compris quand l'appelant est de bonne foi. Cette seconde
-   preuve est plus forte que le 403 initial : elle prouve l'absence
-   d'élargissement du périmètre, pas seulement un refus.
+> « Un export visant une organisation étrangère est refusé selon le contrat
+> anti-divulgation `404 organization_not_found`, sans élargissement du
+> périmètre des données ; l'export du locataire autorisé continue de
+> fonctionner. »
 
-**Écart à trancher :** le critère « 403 » du chantier ne peut pas être
-satisfait tel quel par le code actuel, et le satisfaire demanderait de
-réintroduire une fuite d'information. Deux voies, et une seule recommendée :
+### La route réellement mesurée
 
-- **recommandée** — lire le critère comme « l'export inter-organisation est
-  **rejeté** », le statut réel étant 404 par conception de sécurité ; c'est ce
-  que la suite vérifie désormais, en publiant le statut observé ;
-- **alternative** — changer le refus de 404 en 403 dans
-  `api/_lib/tenant.ts`, ce qui supprime la non-regression
-  `scripts/test_active_tenant_context.mjs` et réintroduit la révélation
-  d'existence. Non recommandée, et non faite ici.
+La route testée est `GET /api/catalog/products/export`
+(`api/_routes/catalog/products/export.ts`) : elle appelle **bien**
+`requireActiveTenant(tx, req, user.id, { types: ['brand'] })`, puis n'exporte
+que le locataire résolu (`scopedOrganizations = [tenant.organizationId]`).
+C'est donc bien elle qui produit le 404 `organization_not_found`.
+
+> Attention, un piège de lecture : il existe **deux** routes d'export.
+> `api/_routes/catalog/export/products.ts` (export CSV de conformité) ne
+> résout **pas** le locataire et s'appuie uniquement sur RLS ; elle ne peut
+> donc pas produire de 404. La route du critère P1 est bien
+> `api/_routes/catalog/products/export.ts`.
+
+### Ce que la suite mesure désormais — statut **et** données
+
+La precedence du locataire est *en-tête → query → corps*
+(`api/_lib/tenant.ts`) : les trois formes de demande n'ont pas le même sens,
+et la suite les mesure toutes les trois, avec deux personnes réellement
+différentes, chacune authentifiée dans **sa** organisation.
+
+| # | Requête (session de la marque B) | Locataire résolu | Attendu |
+|---|---|---|---|
+| 1 | en-tête `X-Tracefab-Organization-Id: <A>` | A (étranger) | **404 `organization_not_found`**, **zéro ligne** de données |
+| 2 | `?organizationId=<A>`, sans en-tête | A (étranger) | **404 `organization_not_found`**, **zéro ligne** de données |
+| 3 | en-tête `<B>` + `?organizationId=<A>` | B (propre) | **200**, corps **strictement identique** à l'export propre |
+| 4 | en-tête `<B>` seul — *contrôle positif* | B (propre) | **200**, export des données autorisées |
+
+Le **statut seul** ne prouve rien : un 404 peut accompagner un corps qui fuit.
+La preuve est donc au niveau des données :
+
+- une réponse de refus doit être un **document JSON d'erreur** (et non un
+  CSV), et son corps ne doit contenir **aucune** référence — ni de
+  l'organisation étrangère, ni du locataire appelant ;
+- l'export obtenu avec un `organizationId` étranger et l'en-tête autorisé
+  doit être **octet pour octet identique** à l'export propre : la preuve de
+  l'absence d'élargissement du périmètre ;
+- l'export propre de la marque B est récupéré **avec la session de la marque
+  B** et sert de témoin : aucune de ses références ne doit apparaître dans
+  une réponse obtenue par la marque A.
+
+Les mesures sont publiées en annotations (compteurs et statuts seulement,
+aucune valeur de donnée) : `inter_tenant_export_refusal_status`,
+`inter_tenant_export_refusal_error`, `inter_tenant_export_data_rows`,
+`own_brand_a_rows`, `own_brand_b_rows`, `foreign_only_refs`,
+`own_export_with_foreign_parameter`.
 
 ## 6. Corrections et ajouts apportés
 
@@ -246,9 +284,9 @@ réintroduire une fuite d'information. Deux voies, et une seule recommendée :
 | `scripts/probe_preview_surface.mjs` | **nouveau** — surface de la Preview + classification réponse applicative / protection Vercel, annotations comprises |
 | `scripts/list_secret_names.mjs` | **nouveau** — inventaire des **noms** de secrets, aucune valeur |
 | `scripts/lib/annotations.mjs` | **nouveau** — canal de mesure lisible depuis `api.github.com` (l'hôte des journaux de run est hors périmètre réseau) |
-| `scripts/test_p1_staging_harness.mjs` | **nouveau** — non-régression du harnais (23 assertions) |
-| `scripts/test_p1_staging.mjs` | **modifié** — contournement Vercel optionnel ; verdict en annotation ; **contrat de l'export inter-organisation aligné sur le refus réel** (refus + absence d'élargissement du périmètre) ; aucune modification du contrat des quatre variables |
-| `package.json` | **modifié** — `test:p1-harness` |
+| `scripts/test_p1_staging_harness.mjs` | **nouveau** — non-régression du harnais (**38 assertions** ; le contrôle vérifie lui-même que son nom de script reste collecté par la CI) |
+| `scripts/test_p1_staging.mjs` | **modifié** — contournement Vercel optionnel ; verdict en annotation ; **contrat de l'export inter-organisation aligné sur le refus réel** : refus 404 `organization_not_found` exigé (plus seulement toléré), preuve au niveau des **données** (zéro ligne dans un refus, export propre inchangé avec un `organizationId` étranger), contrôle positif, identités distinctes vérifiées au format UUID ; aucune modification du contrat des quatre variables |
+| `package.json` | **modifié** — `test:p1-harness` (renommé : la CI collecte automatiquement les scripts `test:*` **sauf** ceux dont le nom porte `neon` ou `staging` ; le nom précédent était donc **silencieusement jamais exécuté**) |
 | `.github/workflows/p1-staging-surface.yml` | **nouveau** — diagnostic sans secret ni environnement (seul workflow jouable sans approbation) |
 | `.github/workflows/p1-staging-inventaire.yml` | **nouveau** — inventaire des noms de secrets |
 | `.github/workflows/p1-staging-authenticated.yml` | **nouveau** — exécution réelle : pré-vol, inspection, sessions, `npm run test:p1:staging`, sonde d'identité |
@@ -261,33 +299,60 @@ jamais affichés.
 
 ---
 
-## 7. La seule action demandée au propriétaire
+## 7. Les deux actions manuelles demandées au propriétaire
 
-**Déverrouiller l'exécution authentifiée du chantier P1 sur la branche
-`arena/88857a44-tracefab`** — trois gestes, tous dans les interfaces
-d'administration du dépôt et du projet, aucun ne modifiant la Production :
+Les jetons de l'agent ne permettent ni l'administration de l'environnement
+GitHub, ni celle du projet Vercel. Les deux tentatives ont été faites et
+leurs erreurs exactes sont reproduites ci-dessous : **elles n'ont pas été
+contournées**.
 
-1. **Vercel** — projet `tracefab` : créer le secret
-   « Protection Bypass for Automation » (Deployment Protection → *Protection
-   bypass for automation*), ou désactiver la protection de déploiement des
-   aperçus. Sans cela, aucun aperçu du projet n'est atteignable (§2).
-2. **GitHub** — environnement `tracefab-clerk-test` : enregistrer ce secret sous
-   le nom `VERCEL_AUTOMATION_BYPASS_SECRET` (et vérifier que
-   `CLERK_SECRET_KEY` est bien une clé `sk_test_` ainsi que
-   `TRACEFAB_NOTIFICATION_WORKER_SECRET` est présent et aligné sur celui de la
-   Preview).
-3. **GitHub** — environnement `tracefab-clerk-test` : autoriser la branche
-   `arena/88857a44-tracefab` dans *Deployment branches and tags*, puis approuver
-   le déploiement d'environnement du run (le relecteur obligatoire est
-   `prevent_self_review` : l'approbation ne peut pas venir du jeton
-   d'application).
+```
+POST /repos/Huberaya/Tracefab/environments/tracefab-clerk-test/deployment-branch-policies
+  -> 403 {"message":"Resource not accessible by integration"}
 
-Dès que ces trois gestes sont faits, un `git push` sur la branche rejoue la
-chaîne complète, sans intervention supplémentaire : pré-vol, inspection de
-l'instance Clerk de test, fabrication des trois sessions, `npm run
-test:p1:staging`, puis la sonde d'identité runtime. Le journal de chaque
-mesure sort en annotation, lisible sans accès à l'hôte de stockage des
-journaux.
+GET  /repos/Huberaya/Tracefab/environments/tracefab-clerk-test/secrets
+  -> 403 {"message":"Resource not accessible by integration"}
+
+Connecteur Vercel : list_projects -> « Access denied. Your token may not have
+the required permissions. » (et l'API Vercel n'expose pas, ici, le secret de
+contournement de protection).
+```
+
+### Action 1 — créer le secret de contournement et l'enregistrer
+
+1. **Vercel** — projet `tracefab` → *Settings* → *Deployment Protection* →
+   **Protection Bypass for Automation** → générer/choisir un secret, puis le
+   copier. (La protection de déploiement reste **active**.)
+2. **GitHub** — dépôt → *Settings* → *Environments* → `tracefab-clerk-test` →
+   *Environment secrets* → *New secret* :
+   * Name : `VERCEL_AUTOMATION_BYPASS_SECRET`
+   * Secret : la valeur copiée depuis Vercel.
+
+   Le workflow accepte aussi, à défaut, les alias
+   `VERCEL_PROTECTION_BYPASS_SECRET` et `VERCEL_BYPASS_SECRET`. Il lit dans
+   le même emplacement `CLERK_SECRET_KEY` (ou `CLERK_TEST_SECRET_KEY` /
+   `CLERK_INSTANCE_SECRET_KEY`, qui doit être une clé `sk_test_`) et
+   `TRACEFAB_NOTIFICATION_WORKER_SECRET` (ou `TRACEFAB_STAGING_WORKER_SECRET`
+   / `TRACEFAB_WORKER_SECRET`, aligné sur celui de la Preview).
+
+### Action 2 — autoriser la branche et approuver le déploiement
+
+1. **GitHub** — dépôt → *Settings* → *Environments* → `tracefab-clerk-test` →
+   *Deployment branches and tags* → ajouter la branche
+   `arena/88857a44-tracefab` (la politique actuelle ne contient que `main`).
+2. À l'exécution, approuver le déploiement d'environnement du run
+   (*Review pending deployments*). L'environnement impose un relecteur
+   obligatoire avec `prevent_self_review` : l'approbation ne peut pas venir
+   du jeton d'application, elle demande la session web du propriétaire.
+
+Dès que ces deux actions sont faites, **un `git push` sur la branche rejoue la
+chaîne complète**, sans intervention supplémentaire : pré-vol, inspection de
+l'instance Clerk de test, fabrication des trois sessions,
+`npm run test:p1:staging`, puis la sonde d'identité runtime. Un watcher
+(`/tmp/p1_watcher.sh`) pousse un commit vide dès que la politique de branche
+change, et un second (`/tmp/p1_followup.sh`) suit le run et publie ses
+annotations. Chaque mesure sort en annotation, lisible sans accès à l'hôte
+de stockage des journaux.
 
 ---
 
@@ -304,8 +369,10 @@ La suite `npm run test:p1:staging` exercera, sur la Preview du SHA
    **`savedMaterialsCount === 0`** ;
 4. **disclaimer Quality Center** — « statuts déclaratifs » et « certification »
    présents ;
-5. **organisations marque A et marque B distinctes**, et **export
-   inter-organisation refusé en HTTP 403** ;
+5. **organisations marque A et marque B réellement distinctes** (identifiants
+   UUID comparés), **export inter-organisation refusé en 404
+   `organization_not_found`** avec **zéro ligne de données**, et **export du
+   locataire autorisé inchangé** (octet pour octet) ;
 6. **identité DB runtime** — `currentUser = sessionUser = tracefab_app`,
    `bypassesRls === false`, `isSuperuser === false`, secret uniquement dans
    l'en-tête `x-tracefab-worker-secret`, réponse complète jamais publiée.
