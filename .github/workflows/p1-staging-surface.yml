@@ -29,6 +29,7 @@ on:
   push:
     branches:
       - 'arena/88857a44-tracefab'
+  pull_request:
   workflow_dispatch:
     inputs:
       preview_url:
