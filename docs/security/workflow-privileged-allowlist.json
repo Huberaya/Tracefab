@@ -21,14 +21,6 @@
       "rotation": "Jeton dedie, distinct de tout jeton d'administration, revoque des la ligne recuperee ; l'environnement ne doit pas conserver le secret apres le diagnostic.",
       "journal": "La sortie est caviardee par le script : jeton, entetes d'autorisation, chaines de connexion, identifiants opaques."
     },
-    "p1-staging.yml": {
-      "secret": "aucune VALEUR : inventaire en lecture seule des NOMS de secrets visibles (toJSON(secrets)), affiche par scripts/list_secret_names.mjs",
-      "portee": "job `diagnostic` uniquement ; aucun environnement ; permissions minimales ; actions epinglees par SHA",
-      "justification": "Mesurer la surface reelle d'une Preview Vercel et savoir quels noms de secrets sont disponibles. Un NOM n'est pas une valeur : le script n'affiche que des noms, jamais une valeur ni un prefixe de valeur.",
-      "lecture_seule": "Aucune ecriture, aucune base, aucun tenant. Le job joint uniquement la Preview en GET sur /api/health, /api/config et /api/internal/p2/readiness (sans secret).",
-      "rotation": "Sans objet : aucune valeur de secret n'est lue ni affichee.",
-      "journal": "Noms de secrets, code HTTP, classe de la cle publique Clerk (pk_test / pk_live). Aucune valeur, aucun cookie, aucun jeton."
-    },
     "p1-staging-authenticated.yml": {
       "secret": "CLERK_SECRET_KEY, TRACEFAB_NOTIFICATION_WORKER_SECRET",
       "portee": "job `p1-staging` uniquement ; declencheur `push` limite a la branche de travail `arena/88857a44-tracefab` et `workflow_dispatch` manuel ; environnement `tracefab-clerk-test` avec relecteur obligatoire",
@@ -36,6 +28,14 @@
       "lecture_seule": "La cle Clerk n'ecrite que dans l'instance Clerk de test (comptes `.test`, organisations de test) et dans /tmp du runner ; les etats de session ne sont ni commites ni publies en artefact. La sonde d'identite DB runtime interroge l'application par son en-tete interne, sans URL de base et sans aucune ecriture.",
       "rotation": "Cle d'instance de test uniquement ; ne jamais reutiliser une cle `sk_live_`. Le secret de sonde interne est celui de l'environnement Preview ; il n'est jamais place dans une URL ni dans un journal.",
       "journal": "Sorties caviardees : role et deux booleens pour l'identite DB, compteurs et verdicts pour les tests. Aucun cookie, aucun jeton, aucune valeur de secret, aucune ligne CSV."
+    },
+    "p1-staging-surface.yml": {
+      "secret": "aucune VALEUR : inventaire en lecture seule des NOMS de secrets visibles (toJSON(secrets)), affiche par scripts/list_secret_names.mjs",
+      "portee": "job `diagnostic` uniquement ; aucun environnement ; permissions minimales ; actions epinglees par SHA",
+      "justification": "Mesurer la surface reelle d'une Preview Vercel et savoir quels noms de secrets sont disponibles. Un NOM n'est pas une valeur : le script n'affiche que des noms, jamais une valeur ni un prefixe de valeur.",
+      "lecture_seule": "Aucune ecriture, aucune base, aucun tenant. Le job joint uniquement la Preview en GET sur /api/health, /api/config et /api/internal/p2/readiness (sans secret).",
+      "rotation": "Sans objet : aucune valeur de secret n'est lue ni affichee.",
+      "journal": "Noms de secrets, code HTTP, classe de la cle publique Clerk (pk_test / pk_live). Aucune valeur, aucun cookie, aucun jeton."
     }
   },
   "//privilegedTriggers": "Declencheurs qui executent du code de branche avec les privileges de la branche de base (`pull_request_target`, `workflow_run`).",
