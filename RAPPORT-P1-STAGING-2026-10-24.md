@@ -1,7 +1,7 @@
 # P1 — workflow staging authentifié : diagnostic, correction, état vérifiable
 
 **Date** : 2026-10-24 · **Branche** : `arena/f9effa2e-tracefab` · **PR** : [#93](https://github.com/Huberaya/Tracefab/pull/93)
-**SHA final** : `b0200bca27ac5d68c37a8854ee689df4b15ef390`
+**SHA de référence** : `1dfc4328a21262aafe254900d9b30852b2d7e542` (correctif + rapport ; aucun changement de code depuis `b0200bc`)
 
 > Statut : **correction terminée et éprouvée hors ligne + CI verte** ;
 > **exécution authentifiée BLOCKED** par une seule règle d'environnement GitHub
@@ -91,11 +91,11 @@ cible est refusée en amont (`hote_de_production_interdit`, `parametres_dans_url
 | 2 | `npm run test:p1-harness` | **PASS** | 73 assertions |
 | 3 | `npm run test:sonde-preview` | **PASS** — 18 assertions | aucune valeur de contournement en sortie |
 | 4 | `npm run test:workflow-policy` / `-temoins` | **PASS** | politique des 9 workflows après ajout de branche |
-| 5 | Résolution réelle du déploiement du SHA (API GitHub, sans jeton Vercel) | **PASS** | `deployment 7290863463`, `sha=f2c6c561667154ba60fb4ee6551797512c253abf`, `etat=success`, `hote=tracefab-gis2uju5m-…`, `correspondance_sha=exacte`, `url_source=deploiement_du_sha` |
+| 5 | Résolution réelle du déploiement du SHA (API GitHub, sans jeton Vercel) | **PASS** | `1dfc432` → `deployment 7291216635`, `deploiement_sha=1dfc4328a21262aafe254900d9b30852b2d7e542`, `etat=success`, `hote=tracefab-khe7r3m5x-…`, `correspondance_sha=exacte`, `url_source=deploiement_du_sha` (idem vérifié pour `f2c6c56` → `deployment 7290863463`) |
 | 6 | Le déploiement du SHA est bien protégé (aucune protection désactivée) | **PASS** | `GET /api/health` sans en-tête → page `Protected Deployment – Vercel` (`vercel.com/login` → `sso-api`) |
-| 7 | CI sur le SHA final `b0200bc` | **PASS** | [run 40040533330](https://github.com/Huberaya/Tracefab/actions/runs/40040533330) — 4/4 jobs `success` (socle, suite de tests, parcours navigateur, isolation RLS) |
+| 7 | CI sur `b0200bc` (correctif seul) | **PASS** | [run 40040533330](https://github.com/Huberaya/Tracefab/actions/runs/40040533330) — 4/4 jobs `success` (socle, suite de tests, parcours navigateur, isolation RLS) |
 | 8 | CI sur `f2c6c56` | **PASS** | [run 40039417150](https://github.com/Huberaya/Tracefab/actions/runs/40039417150) — 4/4 `success` |
-| 9 | Diagnostic de surface sur le SHA final | **PASS** (mesure) | [run 40040533407](https://github.com/Huberaya/Tracefab/actions/runs/40040533407) / [40040528054](https://github.com/Huberaya/Tracefab/actions/runs/40040528054) |
+| 9 | Diagnostic de surface | **PASS** (mesure) | [40041953324](https://github.com/Huberaya/Tracefab/actions/runs/40041953324) / [40041959575](https://github.com/Huberaya/Tracefab/actions/runs/40041959575) — hôtes des déploiements du SHA inclus |
 | 10 | `p1-staging-authenticated.yml` | **BLOCKED** | [run 40040528026](https://github.com/Huberaya/Tracefab/actions/runs/40040528026) — rejeté **avant la première étape** |
 | 11 | Tests Clerk réels, isolation inter-organisations exécutée, sonde d'identité DB | **NOT RUN** | dépendent de 10 |
 | 12 | `main` et production | **intacts** | `origin/main` = `b1ae726` (inchangé) ; aucun déploiement `Production` créé depuis le 2026-10-23T00:10 |
