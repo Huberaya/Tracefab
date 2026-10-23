@@ -326,6 +326,12 @@ async function sonder(reponses, options = {}) {
 serveur.close();
 
 const echecs = resultats.filter(([etat]) => etat === 'FAIL');
-console.log(`\n  ${resultats.length} controle(s) — ${resultats.length - echecs.length} PASS, ${echecs.length} FAIL\n`);
+const passes = resultats.length - echecs.length;
+// Le journal d'un job GitHub est heberge hors de l'API : une mesure qui
+// n'existe que dans le journal n'est pas verifiable. Ce resume part donc aussi
+// en annotation, comme les mesures des sondes.
+console.log(`::notice title=P1 selection de la cible Preview::controles=${resultats.length} pass=${passes} fail=${echecs.length}`
+  + (echecs.length ? ` echecs=${echecs.map(([, nom]) => nom).join(' | ').replace(/%/g, '%25')}` : ''));
+console.log(`\n  ${resultats.length} controle(s) — ${passes} PASS, ${echecs.length} FAIL\n`);
 if (echecs.length) process.exit(1);
 console.log('  Selection du deploiement Preview et diagnostic de surface : OK.\n');
