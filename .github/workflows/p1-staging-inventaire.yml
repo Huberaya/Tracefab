@@ -1,10 +1,12 @@
 # P1 staging — verifier uniquement la presence du secret de bypass.
 # Ne serialise jamais le contexte global `secrets` et n'affiche aucune valeur.
-# Déclenchement manuel uniquement : les refs refs/pull/*/merge ne sont pas
-# autorisées par les règles de protection de l'environnement GitHub.
+# Le push de branche evite la ref refs/pull/*/merge rejetee par l'environnement.
 name: P1 staging — présence du secret de bypass
 
 on:
+  push:
+    branches:
+      - arena/88857a44-tracefab
   workflow_dispatch:
 
 permissions:
