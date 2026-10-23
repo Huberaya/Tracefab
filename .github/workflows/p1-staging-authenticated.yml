@@ -6,9 +6,11 @@
 #   interne. Un environnement protege par des relecteurs et par une politique
 #   de branche retient TOUT le run tant que la politique n'est pas levee : un
 #   job de diagnostic partage avec lui ne tournerait donc jamais. D'ou la
-#   separation : `p1-staging.yml` mesure, ce workflow execute.
+#   separation : `p1-staging-surface.yml` mesure, ce workflow execute.
 #
-# CE QUE CE WORKFLOW FAIT
+# CE QUE CE WORKFLOW FAIT, DANS L'ORDRE
+#   0. pre-vol : verifie que la Preview repond comme l'application, et non
+#      comme la protection de deploiement Vercel ;
 #   1. fabrique trois sessions Clerk de test dans l'instance Clerk DE TEST
 #      (aucune donnee de production), une par persona : marque A, fournisseur,
 #      marque B dans une organisation distincte ;
@@ -29,6 +31,13 @@
 #   - il n'ecrit aucun fichier de suivi du depot (les etats de session restent
 #     dans /tmp du runner) ;
 #   - il n'imprime aucune valeur de secret, aucun cookie, aucun jeton.
+#
+# VARIABLES D'ENVIRONNEMENT ATTENDUES (et ou les trouver)
+#   TRACEFAB_STAGING_URL                        — URL de la Preview (entree du job)
+#   CLERK_SECRET_KEY                            — secret d'environnement, cle `sk_test_`
+#   TRACEFAB_NOTIFICATION_WORKER_SECRET         — secret d'exploitation de la Preview
+#   VERCEL_AUTOMATION_BYPASS_SECRET (optionnel) — contournement de la protection
+#                                                 de deploiement Vercel
 
 name: P1 staging — execution authentifiee (environnement protege)
 
@@ -59,7 +68,9 @@ jobs:
     env:
       NODE_VERSION: '20'
       TRACEFAB_STAGING_URL: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
+      TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
       TF_P1_STATE_DIR: /tmp/p1-storage-states
+      TRACEFAB_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -76,9 +87,22 @@ jobs:
       - name: Installer Chromium pour Playwright
         run: npx playwright install --with-deps chromium
 
+      - name: Pre-vol — la Preview repond-elle comme l application ?
+        # Une Preview derriere la protection de deploiement Vercel repond 302
+        # vers /sso-api : le runner atteint la protection, pas l'application.
+        # Detecter cela ici evite un echec illisible plus loin.
+        run: node scripts/probe_preview_surface.mjs
+
+      - name: Inspection — comptes et organisations de test deja presents
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          TF_P1_PHASE: inspect
+        run: node scripts/prepare_p1_staging_sessions.mjs
+
       - name: Preparer les trois sessions Clerk de test
         env:
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          TF_P1_PHASE: provision
         run: node scripts/prepare_p1_staging_sessions.mjs
 
       - name: Executer la suite P1 staging

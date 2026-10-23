@@ -44,9 +44,18 @@ assert.equal(origin.protocol, 'https:', 'la cible doit etre en HTTPS');
 const url = new URL('/api/internal/p2/readiness', origin);
 url.searchParams.set('identity', '1');
 
+// Contournement de la protection de deploiement Vercel — optionnel. La
+// valeur ne sort jamais dans l'URL ni dans la sortie.
+const vercelBypass = process.env.TRACEFAB_VERCEL_BYPASS?.trim() || '';
+const headers = { 'x-tracefab-worker-secret': workerSecret };
+if (vercelBypass) {
+  headers['x-vercel-protection-bypass'] = vercelBypass;
+  headers['x-vercel-set-bypass-cookie'] = 'true';
+}
+
 const response = await fetch(url, {
   method: 'GET',
-  headers: { 'x-tracefab-worker-secret': workerSecret },
+  headers,
 });
 const body = await response.json().catch(() => ({}));
 

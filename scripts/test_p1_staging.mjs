@@ -7,6 +7,24 @@ const brandStatePath = process.env.TRACEFAB_P1_BRAND_STORAGE_STATE?.trim();
 const supplierStatePath = process.env.TRACEFAB_P1_SUPPLIER_STORAGE_STATE?.trim();
 const secondBrandStatePath = process.env.TRACEFAB_P1_SECOND_BRAND_STORAGE_STATE?.trim();
 
+/**
+ * Contournement de la protection de deploiement Vercel — OPTIONNEL.
+ *
+ * Les Previews Vercel de ce projet sont derriere la protection de deploiement
+ * (SSO). Une requete non authentifiee y reçoit un 302 vers `/sso-api` : le
+ * runner atteint la protection, pas l'application. Quand le projet expose un
+ * secret « Protection Bypass for Automation », l'envoyer dans l'en-tete
+ * `x-vercel-protection-bypass` ouvre la Preview.
+ *
+ * Ce comportement est STRICTEMENT OPTIONNEL : sans cette variable, la suite
+ * s'execute exactement comme avant. La valeur ne doit jamais etre affichee,
+ * ni loguee, ni placee dans une URL.
+ */
+const vercelBypass = process.env.TRACEFAB_VERCEL_BYPASS?.trim() || '';
+const bypassHeaders = vercelBypass
+  ? { 'x-vercel-protection-bypass': vercelBypass, 'x-vercel-set-bypass-cookie': 'true' }
+  : {};
+
 if (!baseUrl || !brandStatePath || !supplierStatePath || !secondBrandStatePath) {
   throw new Error('P1 staging E2E requires TRACEFAB_STAGING_URL, TRACEFAB_P1_BRAND_STORAGE_STATE, TRACEFAB_P1_SUPPLIER_STORAGE_STATE and TRACEFAB_P1_SECOND_BRAND_STORAGE_STATE; no mock/demo fallback is allowed');
 }
@@ -20,9 +38,25 @@ const browser = await chromium.launch({ headless: true });
 const contexts = [];
 
 async function openAuthenticated(storageState, path, readySelector, globalName) {
-  const context = await browser.newContext({ storageState });
+  const context = await browser.newContext({
+    storageState,
+    ...(Object.keys(bypassHeaders).length ? { extraHTTPHeaders: bypassHeaders } : {}),
+  });
   contexts.push(context);
   const page = await context.newPage();
+  // Les appels faits par la page elle-meme (les exports, les simulations) sont
+  // same-origin : ils doivent porter le meme contournement que la navigation,
+  // sinon la protection les intercepterait aussi.
+  if (Object.keys(bypassHeaders).length) {
+    await page.addInitScript((headers) => {
+      const original = window.fetch.bind(window);
+      window.fetch = (input, init = {}) => {
+        const merged = { ...(init.headers || {}) };
+        for (const [name, value] of Object.entries(headers)) merged[name] = value;
+        return original(input, { ...init, headers: merged });
+      };
+    }, bypassHeaders);
+  }
   const response = await page.goto(new URL(path, origin).toString(), { waitUntil: 'networkidle' });
   assert(response && response.ok(), `staging page failed: ${path}`);
   assert(!page.url().includes('?demo'), `demo mode must not be used: ${path}`);
@@ -97,7 +131,16 @@ try {
   }, { token: secondBrandAuth.token, organizationId: secondBrandAuth.organizationId, foreignOrganizationId: brandAuth.organizationId });
   assert.equal(forbidden.status, 403, `cross-tenant export was not rejected: ${forbidden.status}`);
 
-  console.log('P1 staging E2E passed: non-demo Clerk auth, catalog dry-run, BOM non-persisting validation, Quality Center disclaimer and cross-tenant export denial');
+  const verdict = 'P1 staging E2E passed: non-demo Clerk auth, catalog dry-run, BOM non-persisting validation, Quality Center disclaimer and cross-tenant export denial';
+  console.log(verdict);
+  // Le verdict sort aussi en annotation : l'hote qui sert les journaux de run
+  // n'est pas joignable depuis un bac a sable d'analyse, alors que
+  // api.github.com l'est. Sans cela, une reussite resterait illisible.
+  console.log(`::notice title=P1 staging::${verdict}`);
+} catch (error) {
+  const message = String(error?.message || error).split('\n')[0].slice(0, 200);
+  console.error(`::error title=P1 staging::${message}`);
+  throw error;
 } finally {
   await Promise.all(contexts.map((context) => context.close()));
   await browser.close();

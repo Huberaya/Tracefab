@@ -62,9 +62,16 @@ function classerRepponse(corps, contentType) {
   return { classe, html, marqueursProtection: protection, marqueursApplicatif: applicatif, contentType };
 }
 
+// Contournement de la protection de deploiement Vercel — optionnel. La
+// valeur ne sort jamais dans l'URL ni dans la sortie.
+const vercelBypass = process.env.TRACEFAB_VERCEL_BYPASS?.trim() || '';
+const entetes = vercelBypass
+  ? { 'x-vercel-protection-bypass': vercelBypass, 'x-vercel-set-bypass-cookie': 'true' }
+  : {};
+
 async function sonder(origin, chemin, mesures) {
   try {
-    const response = await fetch(new URL(chemin, origin), { redirect: 'manual' });
+    const response = await fetch(new URL(chemin, origin), { redirect: 'manual', headers: entetes });
     const corps = await response.text();
     const info = classerRepponse(corps, response.headers.get('content-type') || '');
     mesures.push([`${chemin}_http`, response.status]);
