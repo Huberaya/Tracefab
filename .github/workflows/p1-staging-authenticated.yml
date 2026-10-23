@@ -92,11 +92,19 @@ jobs:
       - name: Installer Chromium pour Playwright
         run: npx playwright install --with-deps chromium
 
-      - name: Presence du secret de contournement — sans afficher sa valeur
+      - name: Presence des secrets necessaires aux etapes suivantes — sans afficher leur valeur
         # Distingue deux echecs qu'il faut distinguer : un secret ABSENT de
         # l'environnement, et un secret PRESENT mais faux (la Preview reste
         # alors protegee et le pre-vol le dit). La valeur n'est jamais
         # affichee, ni comparee, ni journalisee.
+        #
+        # SCOPE : ce garde-fou ne verifie que les secrets dont les etapes
+        # SUIVANTES dependent reellement. Le secret de la sonde d'identite
+        # (TF_WORKER_SECRET) n'est requis que par la DERNIERE etape (la sonde
+        # d'identite DB) : exiger ici son presence interromprait les tests
+        # d'isolation, qui n'en dependent pas, et transformerait un manque de
+        # secret de sonde en perte totale de preuves. Il est donc verifie a
+        # l'endroit ou il sert, et la ou il manque, l'echec est nomme.
         run: |
           if [ -n "${TRACEFAB_VERCEL_BYPASS:-}" ]; then
             echo "::notice title=P1 staging::secret_bypass=present"
@@ -108,12 +116,6 @@ jobs:
             echo "::notice title=P1 staging::secret_clerk=present"
           else
             echo "::error title=P1 staging::secret_clerk=absent de l'environnement tracefab-clerk-test"
-            exit 1
-          fi
-          if [ -n "${TF_WORKER_SECRET:-}" ]; then
-            echo "::notice title=P1 staging::secret_sonde=present"
-          else
-            echo "::error title=P1 staging::secret_sonde=absent de l'environnement tracefab-clerk-test"
             exit 1
           fi
 
@@ -144,4 +146,15 @@ jobs:
         run: npm run test:p1:staging
 
       - name: Sonde d'identite DB runtime sur la Preview
-        run: node scripts/probe_preview_runtime_identity.mjs
+        # Le secret de la sonde est verifie ICI, et pas plus tot : c'est la
+        # seule etape qui en depend. Son absence ne doit donc pas priver le
+        # dossier des preuves d'isolation deja mesurees ; elle doit etre
+        # nommee, avec l'action exacte pour la lever.
+        run: |
+          if [ -n "${TF_WORKER_SECRET:-}" ]; then
+            echo "::notice title=P1 staging::secret_sonde=present"
+          else
+            echo "::error title=P1 staging::secret_sonde=absent de l'environnement tracefab-clerk-test — deposer TRACEFAB_NOTIFICATION_WORKER_SECRET (valeur de la Preview) dans l'environnement tracefab-clerk-test ; les tests d'isolation ci-dessus restent valides"
+            exit 1
+          fi
+          node scripts/probe_preview_runtime_identity.mjs

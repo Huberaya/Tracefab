@@ -34,13 +34,59 @@ if (!baseUrl) {
   console.error('TRACEFAB_STAGING_URL absent : aucune Preview a sonder.');
   process.exit(2);
 }
-if (!workerSecret) {
-  console.error('TF_WORKER_SECRET absent : la sonde interne exige le secret d exploitation.');
-  process.exit(2);
-}
 
 const origin = new URL(baseUrl);
 assert.equal(origin.protocol, 'https:', 'la cible doit etre en HTTPS');
+
+// Contournement de la protection de deploiement Vercel — optionnel. La
+// valeur ne sort jamais dans l'URL ni dans la sortie.
+const vercelBypass = process.env.TRACEFAB_VERCEL_BYPASS?.trim() || '';
+
+if (!workerSecret) {
+  // DIAGNOSTIC. Sans le secret de sonde, la mesure est impossible. Mais on
+  // peut encore dire OU le secret manque, au lieu de le deviner : la route
+  // interne repond 503 quand l'application n'a aucun secret d exploitation
+  // configure, 401 quand elle en a un mais que l'appelant ne le presente
+  // pas, et 302 quand la protection Vercel intercepte encore l'appel. Ces
+  // trois reponses designent trois corrections differentes.
+  const urlDiagnostic = new URL('/api/internal/p2/readiness', origin);
+  urlDiagnostic.searchParams.set('identity', '1');
+  const headersDiagnostic = {};
+  if (vercelBypass) {
+    headersDiagnostic['x-vercel-protection-bypass'] = vercelBypass;
+    headersDiagnostic['x-vercel-set-bypass-cookie'] = 'true';
+  }
+  let code = 0;
+  let erreur = 'joignable_non';
+  try {
+    const reponse = await fetch(urlDiagnostic, {
+      method: 'GET',
+      headers: headersDiagnostic,
+      signal: AbortSignal.timeout(15000),
+    });
+    code = reponse.status;
+    const corps = await reponse.json().catch(() => ({}));
+    erreur = corps?.error || 'aucune';
+  } catch {
+    erreur = 'joignable_non';
+  }
+  const diagnostic = code === 503
+    ? 'la Preview na pas de secret d exploitation configure : le poser dans Vercel (environnement Preview, nom TRACEFAB_NOTIFICATION_WORKER_SECRET) puis redeployer'
+    : code === 401
+      ? 'la Preview a un secret d exploitation : il manque dans l environnement GitHub tracefab-clerk-test, sous le nom TRACEFAB_NOTIFICATION_WORKER_SECRET'
+      : code === 302
+        ? 'la protection de deploiement Vercel intercepte encore l appel : le secret de contournement est absent ou faux dans l environnement GitHub tracefab-clerk-test'
+        : code === 200
+          ? 'la route interne ne demande aucun secret : la mesure de l identite nest pas protegee'
+          : 'la Preview est injoignable depuis ce runner : aucun diagnostic possible';
+  annoterMesures('P1 staging — diagnostic du secret de sonde', [
+    ['sonde_sans_secret_http', code],
+    ['sonde_sans_secret_erreur', erreur],
+    ['sonde_sans_secret_diagnostic', diagnostic],
+  ]);
+  console.error(`TF_WORKER_SECRET absent : la sonde interne exige le secret d exploitation. ${diagnostic}`);
+  process.exit(2);
+}
 
 // La sonde de Production sert a etablir que le runtime de staging ne parle
 // PAS a la base de Production. Elle est strictement de LECTURE : un GET sur
@@ -51,9 +97,6 @@ const productionUrl = (process.env.TF_PRODUCTION_PROBE_URL ?? 'https://tracefab.
 const url = new URL('/api/internal/p2/readiness', origin);
 url.searchParams.set('identity', '1');
 
-// Contournement de la protection de deploiement Vercel — optionnel. La
-// valeur ne sort jamais dans l'URL ni dans la sortie.
-const vercelBypass = process.env.TRACEFAB_VERCEL_BYPASS?.trim() || '';
 const headers = { 'x-tracefab-worker-secret': workerSecret };
 if (vercelBypass) {
   headers['x-vercel-protection-bypass'] = vercelBypass;

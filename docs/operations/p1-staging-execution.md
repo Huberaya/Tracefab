@@ -135,7 +135,7 @@ par git.
 
 ---
 
-## 5. Trois verrous externes, et la parade pour chacun
+## 5. Quatre verrous externes, et la parade pour chacun
 
 Les trois sont **extérieurs à l'agent** : ils relèvent de l'administration
 du dépôt GitHub et du projet Vercel. Aucun n'est contournable
@@ -212,6 +212,78 @@ verrou 2. En revanche, l'inventaire des noms de secrets
 (`p1-staging-inventaire.yml`) est retenu, et son approbation doit passer par
 une **session web authentifiée** : ni l'API REST, ni un jeton d'application,
 ni un bot ne peuvent l'accorder.
+
+### Verrou 4 — le secret d'exploitation de la sonde d'identité (mesuré le 2026-10-23)
+
+La route interne `GET /api/internal/p2/readiness?identity=1` est protégée par
+`x-tracefab-worker-secret`, comparé en temps constant à
+`process.env.TRACEFAB_NOTIFICATION_WORKER_SECRET` **côté application**
+(`api/_lib/worker-auth.ts`). Sans ce secret dans l'environnement
+`tracefab-clerk-test`, la mesure est impossible.
+
+La sonde ne devine pas : elle appelle la route **sans** secret et lit la
+réponse, qui désigne la correction.
+
+| Réponse | Ce que cela veut dire | Correction |
+|---|---|---|
+| `503 worker_not_configured` | l'application de Preview n'a **aucun** secret d'exploitation configuré | poser `TRACEFAB_NOTIFICATION_WORKER_SECRET` dans l'environnement Preview du projet Vercel, puis redéployer la Preview |
+| `401 worker_unauthorized` | l'application en a un ; il n'est pas dans l'environnement GitHub | déposer `TRACEFAB_NOTIFICATION_WORKER_SECRET` dans l'environnement GitHub `tracefab-clerk-test` |
+| `302` vers `/sso-api` | la protection de déploiement Vercel intercepte encore | déposer `VERCEL_AUTOMATION_BYPASS_SECRET` dans `tracefab-clerk-test` |
+
+**Règle de calibration à respecter** : un secret est exigé **à l'étape qui
+s'en sert**, jamais avant. Le secret de sonde ne dépend que de la dernière
+étape : l'exiger en tête supprimerait les preuves d'isolation, qui n'en
+dépendent pas. `npm run test:p1-harness` vérifie cette règle.
+
+### L'approbation de l'environnement — la procédure complète
+
+Trois règles de `tracefab-clerk-test` se cumulent :
+
+| Règle | Effet | Qui décide |
+|---|---|---|
+| *Deployment branches and tags* : `main` + `arena/88857a44-tracefab` | une autre branche ne peut pas demander le déploiement | propriétaire |
+| *Required reviewers* : `Huberaya` | chaque déploiement exige une approbation humaine | propriétaire |
+| *Prevent self-review* | l'acteur du push ne peut pas approuver son propre déploiement | propriétaire |
+
+Quand le propriétaire travaille seul, l'acteur du push **est** le relecteur :
+l'approbation devient impossible par construction. Le geste qui lève l'impasse
+(coché par le propriétaire le 2026-10-23, sur autorisation explicite, pour
+l'environnement de test **seulement**) :
+
+1. *Settings* → *Environments* → `tracefab-clerk-test` → *Required reviewers* →
+   décocher **Prevent self-review** — le relecteur obligatoire **reste** ;
+2. approuver chaque exécution en attente depuis la page du run
+   (*Approve and deploy*) ;
+3. **recocher** *Prevent self-review* à la fin de la campagne.
+
+Un jeton d'intégration GitHub ne peut ni approuver
+(`POST /actions/runs/{id}/pending_deployments` → `403 Resource not accessible
+by integration`) ni modifier l'environnement (`PUT /environments/{nom}` →
+`403`) : l'approbation passe par une session web.
+
+### Ce que la suite d'isolation mesure — quatre plans
+
+L'application borne ses données à **trois endroits distincts** ; en mesurer un
+seul ne prouve rien des deux autres.
+
+| # | Plan | Route / action | Requête (session de la marque B) | Attendu |
+|---|---|---|---|---|
+| 1 | Résolveur de locataire | `GET /api/catalog/products/export` | en-tête `<A>` | **404 `organization_not_found`**, **zéro ligne** |
+| 1 bis | idem | idem | `?organizationId=<A>` sans en-tête | **404 `organization_not_found`**, **zéro ligne** |
+| 1 ter | l'en-tête prime sur la query | idem | en-tête `<B>` + `?organizationId=<A>` | **200**, corps **identique** à l'export propre |
+| 2 | RLS seul | `GET /api/catalog/export/products?organizationId=<A>` | en-tête absent | **200**, CSV, **zéro ligne** |
+| 2 bis | contrôle positif | idem | `?organizationId=<B>` | **200**, ses **propres** références |
+| 3 | Lecture JSON bornée | `GET /api/products` | en-tête `<A>` | **404 `organization_not_found`**, **zéro produit** |
+| 3 bis | ligne à ligne | idem | en-tête `<B>` | chaque produit porte `brandOrganizationId` = B |
+| 4 | Écritures | `POST /api/products` | `brandOrganizationId=<A>`, locataire B | **400 `brand_organization_mismatch`**, rien créé |
+| 4 bis | locataire étranger | idem | en-tête `<A>` | **404 `organization_not_found`**, rien créé |
+| 4 ter | Import catalogue | `POST /api/catalog/products/import` | `brandOrganizationId=<A>` | **403 `brand_organization_access_denied`**, rien persisté |
+| 4 quater | Non-persistance | relecture des deux listes | après les trois tentatives | la référence d'écriture est **absente** |
+
+`GET /api/catalog/products/export` et `GET /api/catalog/export/products` sont
+**deux routes d'export différentes** : la première s'appuie sur
+`requireActiveTenant`, la seconde **uniquement** sur RLS. Tester seulement la
+première ne prouverait rien de la barrière RLS.
 
 ---
 

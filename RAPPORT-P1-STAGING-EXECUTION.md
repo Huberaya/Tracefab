@@ -149,7 +149,7 @@ peuvent l'accorder.
 | `npm run test:p1-bom` | vert — import BOM/ lot du Supplier Portal |
 | `npm run test:p1-i18n` | vert — architecture i18n (7 langues) |
 | `npm run test:p1-quality` | vert — contrat Quality Center |
-| `npm run test:p1-harness` (nouveau) | vert — **48 assertions** |
+| `npm run test:p1-harness` (nouveau) | vert — **65 assertions** |
 | `npm run test:active-tenant` | vert — **13 contrôles**, dont « locataire non adhérent -> 404 `organization_not_found` (pas de 403 : aucune révélation) » — la non-régression locale du contrat, exécutée le 2026-10-23 |
 | `npm run test:workflow-policy` | vert — déclaration des workflows privilégiés |
 
@@ -173,6 +173,8 @@ Historique des runs de branche :
 | `8b0eee0` | `39931682245` | `success` |
 | `d6a4543` | `39930400060` | `success` |
 | `e06427f` | `39940082558` | `success` (les quatre jobs) |
+| `8f29cca` | `39985830407` | `success` (les quatre jobs) |
+| `6f40f69` | `39994433908` | `success` (les quatre jobs) |
 
 L'ancienne section indiquait le SHA `d6a4543` ; elle est remplacée par le
 résultat le plus récent.
@@ -259,6 +261,34 @@ session, puis lisait `state.activeOrganizationId` — une course qui aurait
 lui-même (60 s), pour les trois portails concernés.
 
 ---
+
+### 5.6 Première exécution réelle — ce qu'elle a produit (2026-10-23, SHA `6f40f69`)
+
+L'approbation a été obtenue et les deux exécutions ont démarré pour de vrai.
+
+| Exécution | Run | Résultat |
+|---|---|---|
+| `p1-staging-inventaire.yml` (présence du secret de contournement) | `39994425277` | **`success`** — job « Vérification ciblée — aucune valeur affichée » |
+| `p1-staging-authenticated.yml` | `39994425517` | **`failure`** — arrêt à l'étape 6, avant toute mesure |
+| CI de la branche | `39994433908` | **`success`** — 4/4 jobs |
+
+Les annotations de l'exécution authentifiée disent exactement où elle s'est
+arrêtée :
+
+```
+notice : secret_bypass=present
+notice : secret_clerk=present
+error  : secret_sonde=absent de l'environnement tracefab-clerk-test
+```
+
+Autrement dit : le secret Clerk de test **est** déposé, le secret de
+contournement de la protection Vercel **est** déposé, mais **le secret
+d'exploitation de la sonde interne (`TRACEFAB_NOTIFICATION_WORKER_SECRET`) est
+absent** de l'environnement `tracefab-clerk-test`. Les étapes 7 à 11
+(pré-vol, sessions, suite d'isolation, sonde d'identité) ont été **sautées**.
+
+C'est un **échec d'approvisionnement de secret**, pas un échec de la preuve :
+aucune des mesures attendues n'a été produite, et aucune n'est affirmée ici.
 
 ## 5 bis. Écart trouvé entre le critère du chantier et le contrat du dépôt — **tranché le 2026-10-23**
 
@@ -400,68 +430,83 @@ jamais affichés.
 
 ---
 
-## 7. Le blocage restant — une seule action, et sa cause racine exacte
+## 7. Le blocage restant — son histoire, sa cause racine exacte, et l'action qui le lève
 
-### 7.1 Ce qui est déjà fait par le propriétaire
+### 7.1 Le verrou d'approbation : cause racine, puis résolution
 
-| Élément | État mesuré |
-|---|---|
-| Secret `VERCEL_AUTOMATION_BYPASS_SECRET` | **déposé** dans l'environnement `tracefab-clerk-test` (présence à confirmer par le run `p1-staging-inventaire.yml`) |
-| Branche `arena/88857a44-tracefab` autorisée dans *Deployment branches and tags* | **fait** — politique `id=64094181`, en plus de `main` (`id=63966314`) |
-
-### 7.2 Cause racine du statut `waiting` — un verrou d'approbation, pas une erreur
-
-Le run `39959423684` (`p1-staging-inventaire.yml`, SHA `f6b2d63`) est
-`waiting`, son unique job est `waiting`, et `pending_deployments` renvoie :
-
-```
-env=tracefab-clerk-test id=24943335828 reviewers=User waiting_timer=0
-```
-
-Les trois faits qui expliquent l'immobilisation, tous mesurés :
+**Cause racine mesurée.** Le run attendait une approbation impossible :
 
 | Fait | Mesure |
 |---|---|
 | L'acteur du run est `Huberaya` | `actor=Huberaya triggering_actor=Huberaya` |
-| Le seul relecteur requis est `Huberaya` | `protection_rules[required_reviewers].reviewers = [Huberaya]`, `prevent_self_review = true` |
-| Mon jeton ne peut ni approuver ni administrer l'environnement | `POST .../pending_deployments` → `403 Resource not accessible by integration` ; `PUT .../environments/tracefab-clerk-test` → `403 Resource not accessible by integration` |
+| Le seul relecteur requis est `Huberaya`, avec `prevent_self_review` | `GET /environments/tracefab-clerk-test` → `protection_rules[].prevent_self_review = true`, `reviewers = [Huberaya]`, `can_admins_bypass = false` |
+| Mon jeton ne peut ni approuver ni administrer l'environnement | `POST /actions/runs/{id}/pending_deployments` → `403 Resource not accessible by integration` ; `PUT /environments/tracefab-clerk-test` → `403` |
 
-**GitHub interdit à un relecteur d'approuver un déploiement qu'il a
-lui-même déclenché quand `prevent_self_review` est activé.** L'acteur est le
-propriétaire, le relecteur est le propriétaire : **personne ne peut approuver
-ce déploiement**. Ce n'est pas un oubli d'approbation, c'est une impasse
-construite — l'approbation doit venir d'une *autre* personne, et le chantier
-se fait seul.
+GitHub interdit à un relecteur d'approuver un déploiement qu'il a lui-même
+déclenché quand `prevent_self_review` est actif. Acteur = relecteur =
+`Huberaya` ⇒ **personne ne pouvait approuver**. Impasse par construction, pas
+oubli.
 
-Le contournement n'a **pas** été tenté par un contournement de protection :
-ni désactivation de la protection Vercel, ni déplacement du secret vers le
-niveau du dépôt, ni suppression de la règle de relecture.
+**Résolution, dans le périmètre autorisé.** Le propriétaire a :
+1. décoché **Prevent self-review** pour l'environnement `tracefab-clerk-test`
+   **seulement**, le relecteur obligatoire `Huberaya` restant requis — la
+   barrière d'approbation humaine est inchangée, seule l'auto-approbation a
+   été rouverte ;
+2. approuvé les deux exécutions du SHA `6f40f69` : `39994425277` (inventaire)
+   puis `39994425517` (authentifiée).
 
-### 7.3 L'action unique demandée
+Rien d'autre n'a bougé : ni `main`, ni les secrets de Production, ni la base
+de Production, ni la protection de déploiement Vercel, ni les règles de
+`Production`. **La case « Prevent self-review » doit être RECHÉCÉE à la fin de
+la campagne P1** (suivi en §9).
 
-> **Désactiver « Prevent self-review » pour l'environnement
-> `tracefab-clerk-test` uniquement, puis approuver les exécutions en attente.**
+### 7.2 Le second blocage — un secret manquant, et un garde-fou mal calibré
 
-- *Où* : GitHub → dépôt → *Settings* → *Environments* → `tracefab-clerk-test`
-  → *Required reviewers* → décocher **Prevent self-review**.
-- *Ce qui reste en place* : le relecteur obligatoire `Huberaya` **reste
-  requis**. Chaque déploiement d'environnement continue donc d'exiger une
-  **approbation humaine explicite** ; seule l'auto-approbation devient
-  possible. La barrière n'est pas retirée, elle est rendue actionnable.
-- *Portée* : l'environnement `tracefab-clerk-test` **seulement**. Aucun
-  environnement de Production n'est touché, aucune règle de `main` n'est
-  touchée, la protection de déploiement Vercel reste active, et
-  `main` n'est pas modifié.
-- *Si GitHub accepte l'approbation malgré `prevent_self_review`* (le run a
-  été relancé une fois, `run_attempt=2`) : il suffit d'approuver les deux
-  exécutions en attente, sans toucher à la configuration.
+L'exécution authentifiée a démarré puis s'est arrêtée à l'étape 6 (§5.6) :
+`secret_sonde=absent de l'environnement tracefab-clerk-test`.
 
-Une fois ce geste fait, les deux exécutions en attente — le contrôle de
-présence du secret et l'exécution authentifiée — démarrent sans autre
-intervention : pré-vol, inspection de l'instance Clerk de test, fabrication
-des trois sessions, `npm run test:p1:staging`, puis la sonde d'identité
-runtime. Chaque mesure sort en **annotation**, lisible sans accès à l'hôte de
-stockage des journaux.
+**La cause de l'absence est double, et la seconde partie était ma faute :**
+
+1. le secret d'exploitation de la sonde interne
+   (`TRACEFAB_NOTIFICATION_WORKER_SECRET`, le nom exact lu par
+   `api/_lib/worker-auth.ts` côté application) n'est pas déposé dans
+   l'environnement `tracefab-clerk-test` — la liste des noms attendus figure
+   dans `docs/experience/CHANTIER-2C-SECURISATION-GITHUB.md` (§7 de ce
+   document) ;
+2. **mon garde-fou était trop large** : l'étape de tête exigeait la présence
+   des *trois* secrets, dont celui de la sonde, alors que **seule la dernière
+   étape en dépend**. Un secret de sonde manquant effaçait donc toutes les
+   preuves d'isolation, qui n'en dépendent pas. C'est exactement le défaut que
+   la mission reproche à un test mal calibré : une dépendance absente a
+   transformé un problème ponctuel en perte totale de preuves.
+
+**Corrections apportées (branche de travail) :**
+
+| Correction | Fichier |
+|---|---|
+| Le secret de sonde n'est **plus** exigé avant la suite d'isolation ; il est vérifié **dans l'étape qui le sert**, et son absence y est nommée avec l'action qui la lève | `.github/workflows/p1-staging-authenticated.yml` |
+| La sonde **mesure** la réponse de la route interne quand le secret manque et distingue les trois causes (503 = la Preview n'a aucun secret configuré ; 401 = elle en a un, absent de l'environnement GitHub ; 302 = la protection Vercel intercepte encore) — elle ne se contente plus d'un « absent » | `scripts/probe_preview_runtime_identity.mjs` |
+| Non-régression : le secret de sonde ne peut plus être exigé avant la suite d'isolation, et l'absence doit être nommée | `scripts/test_p1_staging_harness.mjs` (65 assertions) |
+
+### 7.3 L'action unique qui reste
+
+> **Déposer le secret d'exploitation de la Preview dans l'environnement
+> `tracefab-clerk-test`, sous le nom `TRACEFAB_NOTIFICATION_WORKER_SECRET`,
+> avec la valeur identique à celle configurée dans l'environnement Preview du
+> projet Vercel — puis approuver la nouvelle exécution.**
+
+- *Où* : dépôt GitHub → *Settings* → *Environments* → `tracefab-clerk-test` →
+  *Environment secrets* → *New secret* → nom `TRACEFAB_NOTIFICATION_WORKER_SECRET`.
+- *Pourquoi ce nom* : c'est le nom que l'application lit
+  (`api/_lib/worker-auth.ts` → `process.env.TRACEFAB_NOTIFICATION_WORKER_SECRET`),
+  et la route interne `GET /api/internal/p2/readiness?identity=1` le compare
+  en temps constant à l'en-tête `x-tracefab-worker-secret`.
+- *Aucun secret ne transite par ce rapport, par une annotation, par un
+  commentaire GitHub ou par une URL* : la valeur reste dans le champ secret de
+  GitHub et dans celui de Vercel.
+- *Ce que la nouvelle exécution dira si ce n'est pas Enough* : la sonde
+  mesurée ci-dessus nomme la cause réelle (503 / 401 / 302) au lieu de
+  deviner.
 
 ### 7.4 Ce qui a été fait dans le périmètre autorisé
 
@@ -472,15 +517,32 @@ stockage des journaux.
   `environmentBoundJobs`, avec justification) → `npm run test:workflow-policy`
   **vert**.
 - Le workflow authentifié vérifie désormais **explicitement la présence** des
-  trois secrets dont il a besoin (sans jamais en afficher la valeur), ce qui
+  secrets dont chaque étape dépend (sans jamais en afficher la valeur), ce qui
   distingue « secret absent » de « secret présent mais faux ».
+- Les runs de `8f29cca` (`39985824160` en attente, `39985824488`) n'ont pas
+  été approuvés : ils sont **obsolètes** (SHA antérieur). L'annulation a été
+  tentée et refusée (`403 Resource not accessible by integration` sur
+  `POST /actions/runs/{id}/cancel`) ; `39985824488` a de toute façon abouti à
+  `cancelled`.
 
 ---
 
-## 8. Ce qui restera à prouver une fois le déverrouillage fait
+## 8. Ce qui reste à prouver, et ce qui est déjà prouvé
 
-La suite `npm run test:p1:staging` exercera, sur la Preview du SHA
-`7ec24d4` :
+**Déjà prouvé par une exécution réelle** (run `39994425277`, SHA `6f40f69`) :
+
+- le secret de contournement de la protection de déploiement Vercel **est**
+  déposé dans l'environnement `tracefab-clerk-test` — contrôlé par le job
+  dédié, qui n'affiche qu'une présence ;
+- la CI de la branche est **verte** sur `6f40f69` (run `39994433908`, 4/4
+  jobs), donc le harnais (65 assertions) et les non-régressions du dépôt
+  passent sur le SHA testé ;
+- le garde-fou de présence des secrets fonctionne : il a arrêté l'exécution
+  **avant** toute mesure fausse, et l'a dit par une annotation.
+
+**Reste à produire par la prochaine exécution authentifiée** (après le dépôt
+du secret de sonde, §7.3) — la suite `npm run test:p1:staging` exercera, sur
+la Preview du SHA déployé :
 
 1. **authentification Clerk réelle, non démo** — `state.demo === false`,
    `state.user` et `state.clerk.session` présents sur les trois portails ;
@@ -501,7 +563,17 @@ La suite `npm run test:p1:staging` exercera, sur la Preview du SHA
    403 `brand_organization_access_denied`) et **preuve de non-persistance** ;
 6. **identité DB runtime** — `currentUser = sessionUser = tracefab_app`,
    `bypassesRls === false`, `isSuperuser === false`, secret uniquement dans
-   l'en-tête `x-tracefab-worker-secret`, réponse complète jamais publiée.
+   l'en-tête `x-tracefab-worker-secret`, réponse complète jamais publiée, nom
+   de la base jamais publié (comparaison avec Production **en booléen**).
 
 Aucun de ces six points ne peut être affirmé aujourd'hui : les produire sans
 l'accès à l'application serait écrire un rapport de test qui n'a rien mesuré.
+
+## 9. Dette de configuration à solder par le propriétaire
+
+| Objet | État | Action |
+|---|---|---|
+| `Prevent self-review` de `tracefab-clerk-test` | **décoché** le 2026-10-23, sur autorisation explicite, pour lever l'impasse d'approbation | **recocher** après la campagne P1 — le relecteur obligatoire `Huberaya` n'a, lui, jamais été retiré |
+| Secret `TRACEFAB_NOTIFICATION_WORKER_SECRET` dans `tracefab-clerk-test` | **absent** | déposer la valeur de la Preview (§7.3) |
+| Registre des workflows privilégiés | mis à jour pour acter le décochage temporaire | conservé tel quel |
+

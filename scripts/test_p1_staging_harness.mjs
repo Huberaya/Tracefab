@@ -155,6 +155,35 @@ function executer(args, env = {}) {
   });
   if (sonde.code !== 0) ok(`la sonde d'identite refuse de partir sans secret (code ${sonde.code})`);
   else ko('la sonde d identite part sans secret');
+
+  const sondeIdentite = lire('scripts/probe_preview_runtime_identity.mjs');
+  // Refuser sans dire OU manque le secret laisse le dossier sans avance. La
+  // sonde doit designer la correction : la route interne distingue 503 (la
+  // Preview na aucun secret configure), 401 (elle en a un, absent de
+  // l'environnement GitHub) et 302 (la protection Vercel intercepte encore).
+  if (/sonde_sans_secret_http/.test(sondeIdentite) && /sonde_sans_secret_diagnostic/.test(sondeIdentite)) {
+    ok('la sonde d identite mesure la reponse de la route interne quand le secret manque');
+  } else {
+    ko('la sonde d identite refuse de partir sans secret sans dire ou le secret manque');
+  }
+  const causes = [
+    ['503', /Vercel/],
+    ['401', /tracefab-clerk-test/],
+    ['302', /protection de deploiement Vercel/],
+  ];
+  const causesManquantes = causes.filter(([code, motif]) => !new RegExp(`code === ${code}`).test(sondeIdentite) || !motif.test(sondeIdentite));
+  if (causesManquantes.length === 0) {
+    ok('la sonde d identite distingue les trois causes possibles et nomme la correction de chacune');
+  } else {
+    ko(`la sonde d identite ne distingue pas ces causes du secret manquant : ${causesManquantes.map(([c]) => c).join(', ')}`);
+  }
+  // Le diagnostic ne doit jamais transformer le secret en information
+  // publiee : ni sa valeur, ni sa longueur.
+  if (!/workerSecret\.length/.test(sondeIdentite)) {
+    ok('la sonde d identite ne publie ni la valeur ni la longueur du secret de sonde');
+  } else {
+    ko('la sonde d identite publie une propriete du secret de sonde');
+  }
 }
 
 /* --- 5. aucun etat de session n est versionne ----------------------------- */
@@ -386,6 +415,58 @@ function executer(args, env = {}) {
   else ko("l'inventaire affiche des valeurs de secret");
   if (/Object\.keys\(objet/.test(source)) ok("l'inventaire ne liste que les noms des secrets");
   else ko("l'inventaire ne se limite pas aux noms des secrets");
+}
+
+/* --- 6 bis. le garde-fou du workflow est cale sur le besoin reel ----------- */
+
+{
+  // Le 2026-10-23, l'execution authentifiee a echoue sur une seule cause : le
+  // secret de la sonde d'identite (TF_WORKER_SECRET) manquait dans
+  // l'environnement. Or le garde-fou de presence exigeait ce secret AVANT la
+  // suite d'isolation : une seule sonde non approvisionnee a donc supprime
+  // toutes les preuves d'isolation, qui n'en dependent pas. Chaque secret
+  // doit etre verifie a l'endroit ou il sert, jamais plus tot.
+  const workflow = lire('.github/workflows/p1-staging-authenticated.yml');
+  const marqueurSuite = 'Executer la suite P1 staging';
+  const marqueurSonde = 'identite DB runtime';
+  // La declaration des secrets au niveau du job (le bloc `env:`) precede les
+  // etapes : c'est normal, un secret Declare n'est pas un secret exige. Ce
+  // qui est interdit, c'est d'en EXIGER la presence avant la suite.
+  const debutSteps = workflow.indexOf('    steps:');
+  const avantSuite = workflow.slice(debutSteps, workflow.indexOf(marqueurSuite));
+  const depuisSonde = workflow.slice(workflow.indexOf(marqueurSonde));
+
+  // Le motif recherche est le CONTROLE lui-meme (`[ -n "${TF_WORKER_SECRET:-}" ]`),
+  // pas la simple mention du nom : un commentaire qui explique la regle est
+  // utile, une verification prematuree ne l'est pas.
+  const controleSonde = /\[ -n "\$\{TF_WORKER_SECRET:-\}"/;
+  if (avantSuite.includes('TF_WORKER_SECRET') && controleSonde.test(avantSuite)) {
+    ko('le garde-fou du workflow exige TF_WORKER_SECRET avant la suite d isolation : un secret de sonde manquant effacerait les preuves d isolation, qui n en dependent pas');
+  } else {
+    ok('le garde-fou du workflow n exige pas le secret de sonde avant la suite d isolation');
+  }
+
+  if (depuisSonde.includes('TF_WORKER_SECRET') && controleSonde.test(depuisSonde)) {
+    ok('le secret de sonde est verifie dans l etape de sonde d identite, la ou il sert');
+  } else {
+    ko('le secret de sonde n est plus verifie dans l etape de sonde d identite : son absence passerait inapercue');
+  }
+
+  // L absence du secret doit etre NOMMEE, avec l action qui la leve : une
+  // erreur sans indication ne fait pas avancer le dossier.
+  if (/secret_sonde=absent/.test(depuisSonde) && /deposer TRACEFAB_NOTIFICATION_WORKER_SECRET/.test(depuisSonde)) {
+    ok('l absence du secret de sonde est nommee avec l action qui la leve');
+  } else {
+    ko('l absence du secret de sonde n est plus nommee avec l action qui la leve');
+  }
+
+  // Les deux secrets dont dependent les etapes de tete doivent, eux, rester
+  // verifies avant elles.
+  if (avantSuite.includes('secret_bypass=') && avantSuite.includes('secret_clerk=')) {
+    ok('les secrets necessaires aux etapes de tete restent verifies avant elles');
+  } else {
+    ko('les secrets necessaires aux etapes de tete ne sont plus verifies avant elles');
+  }
 }
 
 /* --- 7. le harnais est branché dans package.json --------------------------- */
