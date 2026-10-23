@@ -20,7 +20,10 @@ permissions:
 
 on:
   push:
-    branches: ['**']
+    # Les branches de PR sont déjà couvertes par pull_request ci-dessous.
+    # Limiter push à main évite deux runs concurrents sur le même SHA et un
+    # required check bloqué par le doublon push alors que la CI PR est verte.
+    branches: ['main']
   pull_request:
   workflow_dispatch:
 
@@ -135,6 +138,10 @@ jobs:
         # Toute route authentifiee doit armer un contexte transactionnel ;
         # les lectures publiques de passeports doivent armer le contexte public.
         run: npm run test:route-context-coverage
+
+      - name: Identité du rôle DB runtime — garde fail-closed
+        # Vérifie le choix de TF_RLS_APP_URL et le contrat de la sonde réelle.
+        run: npm run test:runtime-db-role-guard
 
       - name: Limitation de débit — dispense avant vérification du jeton
         run: npm run test:rate-limit
