@@ -155,22 +155,27 @@ peuvent l'accorder.
 
 ### 5.3 CI de la branche
 
-La PR #91 déclenche `ci.yml` sur `arena/88857a44-tracefab`. Sur le SHA final
-`d6a4543477d7c8559885aa7782cdda00c8b6d9fa` (run `39930400060`, conclusion
-`success`), les quatre jobs sont **verts** :
-
-| Job | Résultat |
-|---|---|
-| `Socle — types, compilation, isolation` | `success` |
-| `Parcours — navigateur réel` | `success` |
-| `Base — isolation RLS exécutée` | `success` |
-| `Vérification — suite de tests` | `success` |
+**Verte sur les quatre jobs** au SHA `e06427f` (run `39940082558`,
+conclusion `success`) : `Socle — types, compilation, isolation`,
+`Base — isolation RLS exécutée`, `Parcours — navigateur réel`,
+`Vérification — suite de tests`. Le contrôle `test:p1-harness` est désormais
+**collecté** par cette dernière (le nom du script ne porte plus `staging`).
 
 Aucun test `staging` n'est auto-collecté par la CI (filtre explicite de
 `ci.yml`), ce qui est correct : ces tests exigent une Preview vivante et trois
-sessions authentifiées. Le **contrôle** de la suite staging, lui, est collecté :
-c'est pourquoi il porte un nom sans `staging` — un contrôle jamais exécuté
-serait vert sans avoir jamais joué.
+sessions authentifiées. Le **contrôle** de la suite staging, lui, est collecté —
+un contrôle jamais exécuté serait vert sans avoir jamais joué.
+
+Historique des runs de branche :
+
+| SHA | Run | Conclusion |
+|---|---|---|
+| `8b0eee0` | `39931682245` | `success` |
+| `d6a4543` | `39930400060` | `success` |
+| `e06427f` | `39940082558` | `success` (les quatre jobs) |
+
+L'ancienne section indiquait le SHA `d6a4543` ; elle est remplacée par le
+résultat le plus récent.
 
 ### 5.4 Ce que le non-régression nouveau garantit
 
