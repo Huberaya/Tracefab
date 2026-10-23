@@ -1,23 +1,6 @@
-# P1 staging — inventaire des NOMS de secrets visibles.
-#
-# POURQUOI CE WORKFLOW EST ISSE
-#   Une cle de test peut porter n'importe quel nom. Deviner des noms dans un
-#   workflow serait une suite d'essais aveugles ; lister les noms est une
-#   mesure. Un NOM n'est pas une valeur : scripts/list_secret_names.mjs
-#   n'affiche que des noms, jamais une valeur, jamais un prefixe de valeur.
-#
-#   Ce workflow est declenche par `pull_request` et non par `push` : une
-#   lecture du contexte `secrets` dans un workflow declenche par push est
-#   retenue par la politique de protection du depot (run en `action_required`,
-#   zero job). La PR vient de la meme branche et de la meme organisation que
-#   la branche : le perimetre des secrets n'est pas elargi, seul le
-#   declencheur change.
-#
-# CE QU'IL NE FAIT PAS
-#   - il n'affiche aucune valeur ;
-#   - il ne joint aucune base, ne deploie rien, ne contacte aucun tenant.
-
-name: P1 staging — inventaire des noms de secrets
+# P1 staging — verifier uniquement la presence du secret de bypass.
+# Ne serialise jamais le contexte global `secrets` et n'affiche aucune valeur.
+name: P1 staging — présence du secret de bypass
 
 on:
   pull_request:
@@ -27,24 +10,23 @@ permissions:
   contents: read
 
 concurrency:
-  group: p1-staging-inventaire-${{ github.ref }}
+  group: p1-staging-secret-check-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  inventaire:
-    name: Inventaire — noms de secrets, aucune valeur
+  secret-check:
+    name: Vérification ciblée — aucune valeur affichée
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    environment: tracefab-clerk-test
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: '20'
-
-      - name: Inventaire — noms de secrets visibles, aucune valeur
+      - name: Vérifier la présence du secret attendu
         env:
-          TF_SECRET_NAMES: ${{ toJSON(secrets) }}
-        run: node scripts/list_secret_names.mjs
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -n "${VERCEL_AUTOMATION_BYPASS_SECRET}" ]; then
+            echo "VERCEL_AUTOMATION_BYPASS_SECRET=present"
+          else
+            echo "::error::VERCEL_AUTOMATION_BYPASS_SECRET absent dans l'environnement tracefab-clerk-test"
+            exit 1
+          fi
