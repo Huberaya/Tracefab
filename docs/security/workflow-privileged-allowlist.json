@@ -36,6 +36,14 @@
       "lecture_seule": "Aucune ecriture, aucune base, aucun tenant. Le job joint uniquement la Preview en GET sur /api/health, /api/config et /api/internal/p2/readiness (sans secret).",
       "rotation": "Sans objet : aucune valeur de secret n'est lue ni affichee.",
       "journal": "Noms de secrets, code HTTP, classe de la cle publique Clerk (pk_test / pk_live). Aucune valeur, aucun cookie, aucun jeton."
+    },
+    "p1-staging-inventaire.yml": {
+      "secret": "aucune VALEUR : inventaire en lecture seule des NOMS de secrets visibles (toJSON(secrets)), affiche par scripts/list_secret_names.mjs",
+      "portee": "job `inventaire` uniquement ; declencheur `pull_request` (branche de travail du depot, meme organisation) et `workflow_dispatch` ; aucun environnement ; permissions minimales",
+      "justification": "Savoir quels noms de secrets sont disponibles avant de batir un harnais qui en a besoin : deviner des noms serait une suite d'essais aveugles. Un NOM n'est pas une valeur : le script n'affiche que des noms, jamais une valeur ni un prefixe de valeur.",
+      "lecture_seule": "Aucune ecriture, aucune base, aucun deploiement, aucun tenant.",
+      "rotation": "Sans objet : aucune valeur de secret n'est lue ni affichee.",
+      "journal": "Noms de secrets uniquement."
     }
   },
   "//privilegedTriggers": "Declencheurs qui executent du code de branche avec les privileges de la branche de base (`pull_request_target`, `workflow_run`).",

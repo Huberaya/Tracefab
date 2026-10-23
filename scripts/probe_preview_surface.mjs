@@ -75,7 +75,6 @@ for (const cible of cibles) {
     mesures.push(['readiness_sans_secret_http', `000 (${String(error?.message || error).split('\n')[0].slice(0, 60)})`]);
   }
 
-  const corps = mesures.map(([cle, valeur]) => `${cle}=${valeur}`).join('\n');
-  console.log(`--- ${corps}`);
-  annoterMesures(`Preview ${origin.hostname}`, corps);
+  console.log(`--- ${mesures.map(([cle, valeur]) => `${cle}=${valeur}`).join('\n')}`);
+  annoterMesures(`Preview ${origin.hostname}`, mesures);
 }
