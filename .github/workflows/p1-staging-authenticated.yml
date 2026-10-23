@@ -70,7 +70,12 @@ jobs:
       TRACEFAB_STAGING_URL: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
       TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
       TF_P1_STATE_DIR: /tmp/p1-storage-states
-      TRACEFAB_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      # Le nom du secret n'est pas impose : plusieurs noms usuels sont
+      # acceptes, le premier non vide gagne. Un secret absent donne une
+      # chaine vide, jamais une erreur.
+      TRACEFAB_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET || secrets.VERCEL_PROTECTION_BYPASS_SECRET || secrets.VERCEL_BYPASS_SECRET }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || secrets.CLERK_TEST_SECRET_KEY || secrets.CLERK_INSTANCE_SECRET_KEY }}
+      TF_WORKER_SECRET: ${{ secrets.TRACEFAB_NOTIFICATION_WORKER_SECRET || secrets.TRACEFAB_STAGING_WORKER_SECRET || secrets.TRACEFAB_WORKER_SECRET }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -98,13 +103,11 @@ jobs:
 
       - name: Inspection — comptes et organisations de test deja presents
         env:
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           TF_P1_PHASE: inspect
         run: node scripts/prepare_p1_staging_sessions.mjs
 
       - name: Preparer les trois sessions Clerk de test
         env:
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           TF_P1_PHASE: provision
         run: node scripts/prepare_p1_staging_sessions.mjs
 
@@ -116,6 +119,4 @@ jobs:
         run: npm run test:p1:staging
 
       - name: Sonde d'identite DB runtime sur la Preview
-        env:
-          TF_WORKER_SECRET: ${{ secrets.TRACEFAB_NOTIFICATION_WORKER_SECRET }}
         run: node scripts/probe_preview_runtime_identity.mjs

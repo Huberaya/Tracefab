@@ -22,7 +22,7 @@
       "journal": "La sortie est caviardee par le script : jeton, entetes d'autorisation, chaines de connexion, identifiants opaques."
     },
     "p1-staging-authenticated.yml": {
-      "secret": "CLERK_SECRET_KEY, TRACEFAB_NOTIFICATION_WORKER_SECRET",
+      "secret": "CLERK_SECRET_KEY (ou CLERK_TEST_SECRET_KEY / CLERK_INSTANCE_SECRET_KEY), TRACEFAB_NOTIFICATION_WORKER_SECRET (ou TRACEFAB_STAGING_WORKER_SECRET / TRACEFAB_WORKER_SECRET), VERCEL_AUTOMATION_BYPASS_SECRET (ou VERCEL_PROTECTION_BYPASS_SECRET / VERCEL_BYPASS_SECRET) — plusieurs noms usuels sont acceptes pour un meme besoin, le premier non vide gagne",
       "portee": "job `p1-staging` uniquement ; declencheur `push` limite a la branche de travail `arena/88857a44-tracefab` et `workflow_dispatch` manuel ; environnement `tracefab-clerk-test` avec relecteur obligatoire",
       "justification": "Executer reellement la suite P1 staging sur une Preview Vercel : le bac a sable d'analyse n'a aucun acces reseau a *.vercel.app ni a api.clerk.com (HTTP 000 mesure), donc seule une machine disposee d'Internet peut joindre la Preview et l'instance Clerk de test. La cle Clerk doit etre une cle `sk_test_` d'instance de test : le script refuse toute autre prefixe, sans jamais l'afficher.",
       "lecture_seule": "La cle Clerk n'ecrite que dans l'instance Clerk de test (comptes `.test`, organisations de test) et dans /tmp du runner ; les etats de session ne sont ni commites ni publies en artefact. La sonde d'identite DB runtime interroge l'application par son en-tete interne, sans URL de base et sans aucune ecriture.",
