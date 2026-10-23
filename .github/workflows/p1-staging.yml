@@ -7,15 +7,18 @@
 #   Internet complet. L'execution reelle part donc d'ici.
 #
 # CE QUE CE WORKFLOW FAIT
-#   1. fabrique trois sessions Clerk de test dans l'instance Clerk DE TEST
+#   1. sonde la surface de la Preview et l'inventaire des NOMS de secrets
+#      visibles (aucune valeur) — etape sans environnement, donc toujours
+#      executable ;
+#   2. fabrique trois sessions Clerk de test dans l'instance Clerk DE TEST
 #      (aucune donnee de production), une par persona : marque A, fournisseur,
 #      marque B dans une organisation distincte ;
-#   2. ecrit trois etats de session Playwright dans l'espace de travail du
+#   3. ecrit trois etats de session Playwright dans l'espace de travail du
 #      runner — jamais dans le depot, jamais en artefact, jamais dans un
 #      journal ;
-#   3. execute `npm run test:p1:staging` contre la Preview (URL fournie par
+#   4. execute `npm run test:p1:staging` contre la Preview (URL fournie par
 #      l'entree du job, pas une valeur codee en dur) ;
-#   4. interroge la sonde d'identite DB runtime
+#   5. interroge la sonde d'identite DB runtime
 #      `/api/internal/p2/readiness?identity=1` avec le secret UNIQUEMENT dans
 #      l'en-tete HTTP, et n'affiche que des booleens et un nom de role.
 #
@@ -53,6 +56,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  diagnostic:
+    name: Diagnostic — surface Preview et inventaire des noms de secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TRACEFAB_PREVIEW_URLS: 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app,https://tracefab-ek0vg39c3-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: Inventaire — noms de secrets visibles, aucune valeur
+        env:
+          TF_SECRET_NAMES: ${{ toJSON(secrets) }}
+        run: node scripts/list_secret_names.mjs
+
+      - name: Preview — sante et configuration Clerk (prefixes seuls)
+        run: node scripts/probe_preview_surface.mjs
+
   p1-staging:
     name: P1 — staging authentifie sur Preview
     environment: tracefab-clerk-test
@@ -77,14 +103,6 @@ jobs:
 
       - name: Installer Chromium pour Playwright
         run: npx playwright install --with-deps chromium
-
-      - name: Inventaire — noms de secrets visibles, aucune valeur
-        env:
-          TF_SECRET_NAMES: ${{ toJSON(secrets) }}
-        run: node scripts/list_secret_names.mjs
-
-      - name: Preview — sante et configuration Clerk (prefixes seuls)
-        run: node scripts/probe_preview_surface.mjs
 
       - name: Preparer les trois sessions Clerk de test
         env:
