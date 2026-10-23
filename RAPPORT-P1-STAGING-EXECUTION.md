@@ -76,7 +76,7 @@ sortie :
 
 Variable d'environnement : `TRACEFAB_VERCEL_BYPASS`. **Absente, le
 comportement est strictement inchangé** — c'est vérifié par le non-régression
-`npm run test:p1-staging:harness`.
+`npm run test:p1-harness`.
 
 ---
 
@@ -149,7 +149,7 @@ peuvent l'accorder.
 | `npm run test:p1-bom` | vert — import BOM/ lot du Supplier Portal |
 | `npm run test:p1-i18n` | vert — architecture i18n (7 langues) |
 | `npm run test:p1-quality` | vert — contrat Quality Center |
-| `npm run test:p1-staging:harness` (nouveau) | vert — 23 assertions |
+| `npm run test:p1-harness` (nouveau) | vert — 23 assertions |
 | `npm run test:workflow-policy` | vert — déclaration des workflows privilégiés |
 
 ### 5.3 CI de la branche
@@ -171,7 +171,7 @@ sessions authentifiées.
 
 ### 5.4 Ce que le non-régression nouveau garantit
 
-`scripts/test_p1_staging_harness.mjs` (`npm run test:p1-staging:harness`) :
+`scripts/test_p1_staging_harness.mjs` (`npm run test:p1-harness`) :
 
 1. la suite P1 staging exige toujours ses quatre variables et refuse toujours
    le repli mock/demo ;
@@ -248,7 +248,7 @@ réintroduire une fuite d'information. Deux voies, et une seule recommendée :
 | `scripts/lib/annotations.mjs` | **nouveau** — canal de mesure lisible depuis `api.github.com` (l'hôte des journaux de run est hors périmètre réseau) |
 | `scripts/test_p1_staging_harness.mjs` | **nouveau** — non-régression du harnais (23 assertions) |
 | `scripts/test_p1_staging.mjs` | **modifié** — contournement Vercel optionnel ; verdict en annotation ; **contrat de l'export inter-organisation aligné sur le refus réel** (refus + absence d'élargissement du périmètre) ; aucune modification du contrat des quatre variables |
-| `package.json` | **modifié** — `test:p1-staging:harness` |
+| `package.json` | **modifié** — `test:p1-harness` |
 | `.github/workflows/p1-staging-surface.yml` | **nouveau** — diagnostic sans secret ni environnement (seul workflow jouable sans approbation) |
 | `.github/workflows/p1-staging-inventaire.yml` | **nouveau** — inventaire des noms de secrets |
 | `.github/workflows/p1-staging-authenticated.yml` | **nouveau** — exécution réelle : pré-vol, inspection, sessions, `npm run test:p1:staging`, sonde d'identité |

@@ -258,9 +258,18 @@ function executer(args, env = {}) {
 
 {
   const pkg = JSON.parse(lire('package.json'));
-  const script = pkg.scripts?.['test:p1-staging:harness'];
-  if (script) ok(`le controle du harnais est branche : npm run ${'test:p1-staging:harness'}`);
+  const script = pkg.scripts?.['test:p1-harness'];
+  if (script) ok('le controle du harnais est branche : npm run test:p1-harness');
   else ko('le controle du harnais n est pas branche dans package.json');
+  // La CI collecte automatiquement les scripts `test:*` SAUF ceux dont le nom
+  // contient `neon` ou `staging`. Un nom contenant `staging` serait donc
+  // silencieusement jamais execute : le controle serait vert sans jamais
+  // avoir joue.
+  // Le filtre de la CI porte sur le NOM du script (la cle), pas sur la
+  // commande : c'est la cle qui decide de l'execution.
+  const cle = 'test:p1-harness';
+  if (!cle.includes('staging') && !cle.includes('neon')) ok(`le controle du harnais est collecte par la CI (cle « ${cle} » : ni 'neon' ni 'staging')`);
+  else ko(`le nom du script de controle porte 'staging' ou 'neon' : la CI ne l'executera jamais`);
   if (pkg.scripts?.['test:p1:staging'] === 'node scripts/test_p1_staging.mjs') ok('la suite P1 staging reste branchee sur scripts/test_p1_staging.mjs');
   else ko('la suite P1 staging n est plus branchee sur scripts/test_p1_staging.mjs');
 }

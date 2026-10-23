@@ -112,7 +112,7 @@ Les mots de passe sont générés par le script : ils ne sont jamais affichés,
 jamais journalisés, jamais demandés en clair. Les états de session sont écrits
 dans `TF_P1_STATE_DIR` (`/tmp/p1-storage-states` sur le runner) : **jamais
 versionnés, jamais publiés en artefact**. Le non-regression
-`npm run test:p1-staging:harness` vérifie qu'aucun état de session n'est suivi
+`npm run test:p1-harness` vérifie qu'aucun état de session n'est suivi
 par git.
 
 ---
@@ -154,7 +154,7 @@ dans une URL, jamais dans une sortie. Le harnais le supporte déjà :
   même en-tête dans les `fetch` same-origin de la page).
 
 Sans cette variable, le comportement est **strictement inchangé** : le
-non-regression `npm run test:p1-staging:harness` le vérifie.
+non-regression `npm run test:p1-harness` le vérifie.
 
 ### Verrou 2 — la politique de branche de l'environnement `tracefab-clerk-test`
 
@@ -229,7 +229,7 @@ complète.
 git checkout arena/88857a44-tracefab
 
 # 2. Contrôles qui ne demandent aucun privilege
-npm run test:p1-staging:harness     # non-regression du harnais
+npm run test:p1-harness     # non-regression du harnais
 npm run test:p1                     # catalogue, BOM, i18n, Quality Center
 npm run test:workflow-policy        # declaration des workflows privileged
 npm run test:ci-no-production-access
