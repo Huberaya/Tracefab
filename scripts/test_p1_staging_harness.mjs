@@ -359,6 +359,16 @@ function executer(args, env = {}) {
   if (/organizationKey: key/.test(staging) && /app\.state\[key\]/.test(staging)) ok('la suite staging attend l identifiant d organisation, pas seulement la session');
   else ko('la suite staging lit l identifiant d organisation sans attendre sa synchronisation');
 
+  // La sonde d identite doit etablir OU se trouve la base : le nom de la
+  // base ne doit JAMAIS etre publie (le depot est public), mais la
+  // comparaison avec la base de Production doit l etre sous forme de
+  // booleen.
+  if (/base_partagee_avec_production/.test(sonde)) ok('la sonde d identite publie la comparaison avec la base de Production sous forme de booleen');
+  else ko('la sonde d identite ne dit pas si la base de staging est celle de Production');
+  const publicationDuNomDeBase = /console\.log\([^)]*\.database/.test(sonde) || /\['database'/.test(sonde);
+  if (!publicationDuNomDeBase) ok('la sonde d identite ne publie jamais le nom de la base');
+  else ko('la sonde d identite publie le nom de la base : le depot est public');
+
   // Les mesures doivent exister en ANNOTATION : le journal de run est
   // heberge hors de l'API GitHub.
   if (/annoterMesures/.test(sonde)) ok('la sonde d identite publie ses mesures en annotation');

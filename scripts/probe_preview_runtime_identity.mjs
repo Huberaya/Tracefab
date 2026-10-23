@@ -42,6 +42,12 @@ if (!workerSecret) {
 const origin = new URL(baseUrl);
 assert.equal(origin.protocol, 'https:', 'la cible doit etre en HTTPS');
 
+// La sonde de Production sert a etablir que le runtime de staging ne parle
+// PAS a la base de Production. Elle est strictement de LECTURE : un GET sur
+// la route de readiness, sans aucune ecriture, sans aucun secret affiche.
+// Elle est desactivable : TF_PRODUCTION_PROBE_URL='' la supprime.
+const productionUrl = (process.env.TF_PRODUCTION_PROBE_URL ?? 'https://tracefab.vercel.app').trim();
+
 const url = new URL('/api/internal/p2/readiness', origin);
 url.searchParams.set('identity', '1');
 
@@ -76,6 +82,34 @@ const sur = identite?.measured === true
   && identite?.sessionUser === 'tracefab_app'
   && identite?.bypassesRls === false
   && identite?.isSuperuser === false;
+
+// La base de Production, pour comparaison. Lecture seule. Si le secret de
+// sonde de Production differe de celui de la Preview, la comparaison est
+// simplement inconclusive — elle ne doit jamais faire echouer la sonde.
+if (productionUrl && productionUrl !== baseUrl) {
+  try {
+    const urlProduction = new URL('/api/internal/p2/readiness', productionUrl);
+    urlProduction.searchParams.set('identity', '1');
+    // Seul le secret de sonde est envoye a Production : le contournement de
+    // la protection Vercel est propre a la Preview et n'a rien a y faire.
+    const reponseProduction = await fetch(urlProduction, {
+      method: 'GET',
+      headers: { 'x-tracefab-worker-secret': workerSecret },
+    });
+    if (reponseProduction.ok) {
+      const corpsProduction = await reponseProduction.json().catch(() => ({}));
+      const identiteProduction = corpsProduction?.databaseIdentity || {};
+      const basePartagee = Boolean(identiteProduction.database)
+        && identiteProduction.database === identite.database;
+      mesures.push(['sonde_production', 'conforme']);
+      mesures.push(['base_partagee_avec_production', basePartagee]);
+    } else {
+      mesures.push(['sonde_production', `non_autorisee_${reponseProduction.status}`]);
+    }
+  } catch {
+    mesures.push(['sonde_production', 'indisponible']);
+  }
+}
 
 mesures.push(['identite_conforme', sur]);
 
