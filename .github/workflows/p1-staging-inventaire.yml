@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - arena/88857a44-tracefab
+      - arena/f9effa2e-tracefab
   workflow_dispatch:
 
 permissions:

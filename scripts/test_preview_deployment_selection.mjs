@@ -28,6 +28,7 @@ import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CODES_SONDE, sonderCible } from '../scripts/lib/preview_surface.mjs';
+import { entetesBypass } from '../scripts/lib/preview_deployment.mjs';
 
 const SHA_OK = 'a'.repeat(40);
 const SHA_AUTRE = 'b'.repeat(40);
@@ -205,12 +206,33 @@ await eprouver('URL imposee identique au deploiement du SHA : acceptee et annote
   assert.equal(valeurSortie(r.sortie, 'deployment_id'), '600');
 });
 
+console.log('\n  --- en-tetes de contournement Vercel');
+
+await eprouver('un seul en-tete de contournement : jamais x-vercel-set-bypass-cookie', async () => {
+  // `x-vercel-set-bypass-cookie` demande a Vercel de POSER un cookie par une
+  // redirection 307 vers la meme URL. Un client serveur n'a pas de bocal a
+  // cookies : il ne verrait qu'un 307 permanent. C'est la cause exacte de
+  // l'`exit code 5` du 2026-10-23 ; ce controle l'empeche de revenir.
+  const entetes = entetesBypass('secret-de-test');
+  assert.deepEqual(Object.keys(entetes), ['x-vercel-protection-bypass']);
+  assert.equal(entetes['x-vercel-protection-bypass'], 'secret-de-test');
+  assert.equal(entetes['x-vercel-set-bypass-cookie'], undefined);
+  assert.deepEqual(entetesBypass(''), {});
+});
+
 console.log('\n  --- diagnostic de surface (reponses simulees)');
 
 const origine = new URL('https://tracefab-7xgup5zjo-baya.vercel.app');
 const reponse = ({ status, headers = {}, body = '' }) => ({
   status,
-  headers: { get: (nom) => headers[nom.toLowerCase()] || null },
+  headers: {
+    get: (nom) => headers[nom.toLowerCase()] || null,
+    getSetCookie: () => {
+      const valeur = headers['set-cookie'];
+      if (!valeur) return [];
+      return Array.isArray(valeur) ? valeur : [valeur];
+    },
+  },
   text: async () => body,
 });
 
@@ -283,6 +305,37 @@ async function sonder(reponses, options = {}) {
     assert.equal(appelsFetch[0].entetes['x-vercel-protection-bypass'], 'secret-de-test');
     assert.equal(appelsFetch[1].entetes['x-vercel-protection-bypass'], undefined);
     assert.equal(appelsFetch[1].redirect, 'manual');
+  });
+}
+
+{
+  // Poignee de main de contournement : 307 vers la MEME URL avec Set-Cookie,
+  // puis 200 applicatif au rejeu. Sans ce rejeu, le pre-vol sortait en
+  // « reponse inattendue » et masquait un contournement qui fonctionnait.
+  const { verdict, mesures, appelsFetch } = await sonder([
+    reponse({ status: 307, headers: { location: 'https://tracefab-7xgup5zjo-baya.vercel.app/api/health', 'set-cookie': '_vercel_jwt=jeton-opaque; Path=/; HttpOnly; Secure' }, body: '' }),
+    reponse({ status: 200, headers: { 'content-type': 'application/json' }, body: jsonSain }),
+  ], { bypass: 'secret-de-test' });
+  await eprouver('307 vers la MEME URL + Set-Cookie : poignee de main rejouee, application atteinte (code 0)', async () => {
+    assert.equal(verdict.code, CODES_SONDE.ok, verdict.message);
+    assert.equal(verdict.cause, 'application_atteinte');
+    const handshake = mesures.find(([cle]) => cle === '/api/health_handshake_bypass');
+    assert.equal(handshake?.[1], 'cookie_recu');
+    assert.equal(appelsFetch.length, 2);
+    assert.equal(appelsFetch[1].url, appelsFetch[0].url, 'le rejeu vise la MEME URL, jamais la destination d un autre hote');
+    assert.match(appelsFetch[1].entetes.cookie || '', /_vercel_jwt=jeton-opaque/);
+    assert.equal(appelsFetch[1].entetes['x-vercel-protection-bypass'], 'secret-de-test');
+    assert.doesNotMatch(JSON.stringify(mesures), /jeton-opaque/, 'le cookie ne doit jamais entrer dans une mesure publiee');
+  });
+}
+
+{
+  const { verdict } = await sonder([
+    reponse({ status: 307, headers: { location: 'https://tracefab-7xgup5zjo-baya.vercel.app/api/health' }, body: '' }),
+  ], { bypass: 'secret-de-test' });
+  await eprouver('307 vers la MEME URL sans Set-Cookie : cause nommee, jamais « reponse inattendue »', async () => {
+    assert.equal(verdict.code, CODES_SONDE.protection);
+    assert.equal(verdict.cause, 'handshake_bypass_sans_cookie');
   });
 }
 

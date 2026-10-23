@@ -224,9 +224,22 @@ mesure différente, et c'est tout l'intérêt de l'hôte dans la mesure :
 masquait le changement d'hôte.)
 
 **Parade** : le projet expose un secret « Protection Bypass for Automation ».
-Il est transmis dans l'en-tête `x-vercel-protection-bypass` (avec
-`x-vercel-set-bypass-cookie: true`), et **uniquement** dans l'en-tête — jamais
-dans une URL, jamais dans une sortie. Le harnais le supporte déjà :
+Il est transmis dans le **seul** en-tête `x-vercel-protection-bypass`, jamais
+dans une URL, jamais dans une sortie.
+
+> **Pourquoi pas `x-vercel-set-bypass-cookie` (cause racine du 2026-10-23).**
+> Cet en-tête optionnel ne contourne rien : il demande à Vercel de **poser un
+> cookie** par une *redirection 307 vers la même URL*. Un client serveur
+> (`fetch`, `curl`, Node) n'a pas de bocal à cookies : il voit un 307 qui ne
+> finit jamais. C'est exactement ce qu'a mesuré le run
+> [40035513421](https://github.com/Huberaya/Tracefab/actions/runs/40035513421) —
+> `/api/health_http=307`, `…_redirection_chemin=/api/health` — lu à tort comme
+> « redirection vers elle-même », puis transformé en `exit code 5`. La sonde
+> rejoue désormais **une** poignée de main sur le même hôte si un `Set-Cookie`
+> est renvoyé, sans jamais publier le cookie, et nomme
+> `handshake_bypass_sans_cookie` / `handshake_bypass_non_abouti` sinon.
+
+Le harnais le supporte déjà :
 
 - `TRACEFAB_VERCEL_BYPASS` pour les sondes (`fetch`) ;
 - `TRACEFAB_VERCEL_BYPASS` pour Playwright (`extraHTTPHeaders` + injection du
@@ -249,6 +262,8 @@ même cause est publiée en annotation `::error title=P1 pre-vol — cause X::`.
 | 3 | `hote_de_production_interdit`, `hote_hors_preview_vercel:…`, `parametres_dans_url` | cible refusée avant tout appel | corriger la cible, jamais l'accepter |
 | 5 | `contournement_invalide` | 302/401/403 **alors que** le secret est présent | régénérer « Protection Bypass for Automation » dans le **projet Vercel de ce déploiement**, puis remplacer `VERCEL_AUTOMATION_BYPASS_SECRET` dans `tracefab-clerk-test` |
 | 5 | `contournement_absent` | 302/401/403 et aucun secret | déposer `VERCEL_AUTOMATION_BYPASS_SECRET` dans `tracefab-clerk-test` |
+| 5 | `handshake_bypass_sans_cookie` | 307 vers la **même** URL, sans `Set-Cookie` exploitable | n'envoyer que `x-vercel-protection-bypass` |
+| 5 | `handshake_bypass_non_abouti` | 307 vers la **même** URL, rejeu avec cookie non concluant | retirer `x-vercel-set-bypass-cookie` des appels serveur |
 | 6 | `hote_injoignable` | aucune réponse (DNS, TLS, déploiement supprimé) | vérifier que le déploiement existe encore |
 | 7 | `cible_obsolete` | 307 vers un **autre** déploiement, même chemin | utiliser l'URL du déploiement du SHA testé |
 | 8 | `application_joignable_base_indisponible`, `application_en_erreur` | l'application répond, sa base non | vérifier la variable de base de l'environnement Preview |
@@ -269,10 +284,19 @@ due to environment protection rules.
 The deployment was rejected or didn't satisfy other protection rules.
 ```
 
-L'environnement `tracefab-clerk-test` n'autorise aujourd'hui que `main`
-(`deployment-branch-policies` → une seule entrée, `main`). Le job authentifié
+L'environnement `tracefab-clerk-test` n'autorise que des branches nommées
+(`deployment-branch-policies` avec `custom_branch_policies`). Le job authentifié
 doit donc être rattaché à un environnement **et** s'exécuter depuis une branche
-autorisée.
+autorisée. Les entrées autorisées sont vérifiables et modifiables par l'API :
+
+```bash
+gh api repos/Huberaya/Tracefab/environments/tracefab-clerk-test/deployment-branch-policies \
+  --jq '.branch_policies[].name'
+```
+
+Une nouvelle branche de travail doit y être ajoutée **avant** le premier push,
+sinon le run est retenu : `Branch "…" is not allowed to deploy to
+tracefab-clerk-test`.
 
 **Parade** : autoriser la branche d'exécution dans l'environnement, ou fusionner
 le workflow sur `main` et le déclencher depuis `main` (déclenchement manuel,
@@ -326,7 +350,7 @@ Trois règles de `tracefab-clerk-test` se cumulent :
 
 | Règle | Effet | Qui décide |
 |---|---|---|
-| *Deployment branches and tags* : `main` + `arena/88857a44-tracefab` | une autre branche ne peut pas demander le déploiement | propriétaire |
+| *Deployment branches and tags* : `main`, `arena/88857a44-tracefab`, `arena/f9effa2e-tracefab` | une autre branche ne peut pas demander le déploiement | propriétaire |
 | *Required reviewers* : `Huberaya` | chaque déploiement exige une approbation humaine | propriétaire |
 | *Prevent self-review* | l'acteur du push ne peut pas approuver son propre déploiement | propriétaire |
 

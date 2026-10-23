@@ -27,7 +27,7 @@
  *   6 injoignable     7 alias obsolete     8 application degradee
  *   9 reponse inattendue
  */
-import { classerHote, entetesBypass, validerUrlPreview } from './preview_deployment.mjs';
+import { classerHote, cookieDeBypass, entetesBypass, validerUrlPreview } from './preview_deployment.mjs';
 
 export const CODES_SONDE = Object.freeze({
   ok: 0,
@@ -174,11 +174,64 @@ export async function sonderCible(origine, options = {}) {
         mesures.push([`${chemin}_redirection_vers_le_deploiement_attendu`, destination.hote === String(hoteDeploiementAttendu).toLowerCase()]);
       }
 
+      // POIGNEE DE MAIN DE CONTOURNEMENT — meme hote, 307/308, un Set-Cookie.
+      // C'est la signature exacte de `x-vercel-set-bypass-cookie` (cf.
+      // entetesBypass) : Vercel ne refuse pas l'appel, il demande d'abord au
+      // client de conserver l'autorisation dans un cookie, par une redirection
+      // vers la MEME URL. Un client serveur n'a pas de bocal a cookies ; sans
+      // ce rejeu il ne verrait qu'un 307 eternel et conclurait — a tort — a un
+      // echec de contournement.
+      //
+      // Le rejeu est unique, sur le MEME hote, avec le cookie renvoye : le
+      // cookie n'est jamais journalise, et l'en-tete de contournement ne sort
+      // pas du domaine autorise (c'est le meme hote que la cible).
+      const estPoigneeDeMain = (reponse.status === 307 || reponse.status === 308)
+        && destination.classe === 'meme_hote';
+      if (estPoigneeDeMain) {
+        const setCookie = reponse.headers.getSetCookie?.() || reponse.headers.get('set-cookie');
+        const cookie = cookieDeBypass(setCookie);
+        resultat.handshake = { cookieRecu: Boolean(cookie) };
+        mesures.push([`${chemin}_handshake_bypass`, cookie ? 'cookie_recu' : 'sans_cookie']);
+        if (cookie) {
+          try {
+            const rejeu = await fetchImpl(url, {
+              method: 'GET',
+              redirect: 'manual',
+              headers: { ...entetes, cookie },
+              signal: AbortSignal.timeout(timeoutMs),
+            });
+            const corpsRejeu = await lireCorpsBorne(rejeu);
+            const contenuRejeu = classerReponse({
+              status: rejeu.status,
+              contentType: rejeu.headers.get('content-type'),
+              corps: corpsRejeu,
+            });
+            resultat.handshake.http = rejeu.status;
+            resultat.handshake.classe = contenuRejeu.classe;
+            mesures.push([`${chemin}_handshake_http`, rejeu.status]);
+            mesures.push([`${chemin}_handshake_classe`, contenuRejeu.classe]);
+            if (contenuRejeu.classe === 'application') {
+              // La poignee de main a abouti : ce qui compte est la reponse
+              // FINALE, pas le 307 intermediaire.
+              resultat.http = rejeu.status;
+              resultat.classe = 'application';
+              resultat.destination = null;
+              resultat.marqueursProtection = contenuRejeu.marqueursProtection;
+              resultat.corpsFinal = corpsRejeu;
+            }
+          } catch (error) {
+            resultat.handshake.erreur = String(error?.message || error).split('\n')[0].slice(0, 60);
+            mesures.push([`${chemin}_handshake_http`, '000']);
+            mesures.push([`${chemin}_handshake_erreur`, resultat.handshake.erreur]);
+          }
+        }
+      }
+
       // La redirection est suivie UNE fois, et seulement vers un deploiement de
       // Preview : jamais vers vercel.com (SSO), jamais vers la production,
       // jamais vers un domaine externe. Et SANS en-tete de contournement :
       // le secret ne sort pas du domaine autorise.
-      if (destination.hote && classerHote(destination.hote) === 'preview_vercel') {
+      if (!estPoigneeDeMain && destination.hote && classerHote(destination.hote) === 'preview_vercel') {
         try {
           const suite = await fetchImpl(new URL(reponse.headers.get('location'), origine), {
             method: 'GET',
@@ -201,18 +254,22 @@ export async function sonderCible(origine, options = {}) {
       }
     }
 
-    if (reponse.status === 200 && contenu.classe === 'application' && chemin === '/api/health') {
+    // Le corps exploite est celui de la reponse FINALE : si la poignee de main
+    // de contournement a abouti, le 307 intermediaire n'a pas de corps utile.
+    const corpsExploitable = resultat.corpsFinal ?? corps;
+
+    if (resultat.http === 200 && resultat.classe === 'application' && chemin === '/api/health') {
       let corpsJson = {};
-      try { corpsJson = JSON.parse(corps); } catch { corpsJson = {}; }
+      try { corpsJson = JSON.parse(corpsExploitable); } catch { corpsJson = {}; }
       const sain = corpsJson?.ok === true;
       resultat.healthOk = sain;
       mesures.push([`${chemin}_ok`, sain]);
       if (!sain && corpsJson?.error) mesures.push([`${chemin}_erreur_applicative`, String(corpsJson.error).slice(0, 40)]);
     }
 
-    if (reponse.status === 200 && contenu.classe === 'application' && chemin === '/api/config') {
+    if (resultat.http === 200 && resultat.classe === 'application' && chemin === '/api/config') {
       let corpsJson = {};
-      try { corpsJson = JSON.parse(corps); } catch { corpsJson = {}; }
+      try { corpsJson = JSON.parse(corpsExploitable); } catch { corpsJson = {}; }
       const cle = typeof corpsJson?.publishableKey === 'string' ? corpsJson.publishableKey : '';
       const classeCle = cle.startsWith('pk_test_') ? 'pk_test'
         : cle.startsWith('pk_live_') ? 'pk_live'
@@ -294,6 +351,27 @@ export function diagnostiquer({ origine, resultats, bypassPresent, hoteDeploieme
         + (memeDeploiement ? ' (qui est bien celui du commit : c est l URL employee qui est obsolete)' : ''),
       action: 'utiliser l URL immuable du deploiement Preview du commit teste, resolue par la liste des Deployments GitHub',
     };
+  }
+
+  const poignee = resultats.find((r) => r.handshake && r.classe !== 'application');
+  if (poignee) {
+    return poignee.handshake.cookieRecu
+      ? {
+        code: CODES_SONDE.protection,
+        cause: 'handshake_bypass_non_abouti',
+        message: `${origine.hostname} repond ${poignee.http} vers la MEME URL et le rejeu avec le cookie `
+          + `renvoye par Vercel donne ${poignee.handshake.http ?? 'aucune reponse'} `
+          + `(${poignee.handshake.classe ?? 'injoignable'}) : la poignee de main de contournement n aboutit pas`,
+        action: 'supprimer l en-tete x-vercel-set-bypass-cookie des appels serveur : il demande a Vercel '
+          + 'de poser un cookie par redirection, ce qu un client sans bocal a cookies ne peut pas terminer',
+      }
+      : {
+        code: CODES_SONDE.protection,
+        cause: 'handshake_bypass_sans_cookie',
+        message: `${origine.hostname} repond ${poignee.http} vers la MEME URL, sans Set-Cookie exploitable : `
+          + 'Vercel demande une poignee de main que le client ne peut pas terminer',
+        action: 'n envoyer que x-vercel-protection-bypass (sans x-vercel-set-bypass-cookie) et relancer le pre-vol',
+      };
   }
 
   const protection = resultats.find((r) => r.classe === 'protection');

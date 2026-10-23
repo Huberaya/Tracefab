@@ -33,7 +33,11 @@ name: P1 staging — diagnostic de surface
 on:
   push:
     branches:
+      # Branche de travail du chantier P1. La liste doit contenir la branche
+      # REELLEMENT poussee : une politique de branche d'environnement qui
+      # n'autorise pas cette branche retient le run avant le premier pas.
       - 'arena/88857a44-tracefab'
+      - 'arena/f9effa2e-tracefab'
   pull_request:
   workflow_dispatch:
     inputs:

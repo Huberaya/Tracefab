@@ -113,14 +113,62 @@ export function exigerCiblePreview(brut, env = process.env) {
   return verdict.url;
 }
 
-/** En-tetes de contournement de la protection de deploiement Vercel. */
+/**
+ * En-tete de contournement de la protection de deploiement Vercel.
+ *
+ * POURQUOI UN SEUL EN-TETE
+ *   Le 2026-10-23, le pre-vol du chantier P1 a recu un `307` dont la
+ *   destination etait la MEME URL que celle demandee, et l'a lu comme une
+ *   « redirection inconnue » avant de sortir en `exit code 5`. Ce 307 n'etait
+ *   ni l'application ni la protection : c'etait la poignee de main que Vercel
+ *   declenche sur `x-vercel-set-bypass-cookie`.
+ *
+ *   Documentation Vercel (« Protection Bypass for Automation », configuration
+ *   avancee) : « This will set the authorization bypass as a cookie using a
+ *   redirect with a Set-Cookie header. » Autrement dit : demander la pose du
+ *   cookie fait repondre 307 vers la meme URL. Un client serveur sans bocal a
+ *   cookies (fetch, curl, Node) ne conserve pas ce Set-Cookie ; s'il renvoie
+ *   l'en-tete, Vercel repose le cookie et redirige encore : boucle, ou 307
+ *   permanent.
+ *
+ *   L'en-tete `x-vercel-protection-bypass` seul ouvre la Preview en UNE
+ *   requete, sans redirection. Le cookie n'est utile qu'a un NAVIGATEUR qui
+ *   enchaine des navigations sans en-tetes personnalises. Playwright pose
+ *   `extraHTTPHeaders` sur toutes les requetes du contexte (`test_p1_staging.mjs`,
+ *   `prepare_p1_staging_sessions.mjs`) : il n'a donc pas besoin du cookie non
+ *   plus.
+ *
+ *   Consequence mesuree et exploitable : avec ce seul en-tete, une Preview
+ *   ouverte repond 200 (application) ; une Preview dont le secret est faux ou
+ *   absent repond 302 vers `vercel.com/sso-api`. Les deux causes restent donc
+ *   distinguables — c'est ce que `preview_surface.mjs` nomme
+ *   `contournement_invalide` et `contournement_absent`.
+ *
+ * La valeur du secret n'est jamais journalisee, ni placee dans une URL.
+ */
 export function entetesBypass(secret) {
   const valeur = String(secret || '').trim();
   if (!valeur) return {};
-  return {
-    'x-vercel-protection-bypass': valeur,
-    'x-vercel-set-bypass-cookie': 'true',
-  };
+  return { 'x-vercel-protection-bypass': valeur };
+}
+
+/**
+ * Extrait du `Set-Cookie` la paire `nom=valeur` a renvoyer telle quelle pour
+ * terminer une poignee de main de contournement.
+ *
+ * Utilise UNIQUEMENT par la sonde, et seulement si Vercel repond malgre tout un
+ * 307 vers le meme hote (par exemple si l'en-tete `x-vercel-set-bypass-cookie`
+ * etait reintroduit par erreur). Le cookie n'est jamais journalise : il porte
+ * une autorisation.
+ */
+export function cookieDeBypass(setCookie) {
+  const brut = Array.isArray(setCookie) ? setCookie.join('\n') : String(setCookie || '');
+  const paires = [];
+  for (const ligne of brut.split('\n')) {
+    const m = ligne.match(/(?:^|;\s*)((?:__)?_?vercel[a-z_]*)=([^;]+)/i);
+    if (m) paires.push(`${m[1]}=${m[2]}`);
+  }
+  return paires.join('; ');
 }
 
 /** Vrai si le SHA est un SHA de commit complet (40 hexadecimaux). */
