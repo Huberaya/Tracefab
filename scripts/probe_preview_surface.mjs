@@ -72,6 +72,20 @@ async function sonder(origin, chemin, mesures) {
     if (info.contentType) mesures.push([`${chemin}_content_type`, info.contentType.split(';')[0]]);
     if (info.marqueursProtection.length) mesures.push([`${chemin}_marqueurs_protection`, info.marqueursProtection.join(',')]);
     if (info.marqueursApplicatif.length) mesures.push([`${chemin}_marqueurs_applicatif`, info.marqueursApplicatif.join(',')]);
+    // Destination de la redirection : le CHEMIN et les NOMS de parametres
+    // suffisent a nommer le mecanisme. Aucune valeur de parametre n'est lue
+    // ni affichee : une URL de protection peut porter un jeton.
+    const location = response.headers.get('location');
+    if (location) {
+      try {
+        const cible = new URL(location, origin);
+        mesures.push([`${chemin}_redirection_chemin`, cible.pathname]);
+        const params = [...cible.searchParams.keys()].sort();
+        if (params.length) mesures.push([`${chemin}_redirection_parametres`, params.join(',')]);
+      } catch {
+        mesures.push([`${chemin}_redirection_chemin`, 'non analysable']);
+      }
+    }
     return { response, corps, info };
   } catch (error) {
     mesures.push([`${chemin}_http`, `000 (${String(error?.message || error).split('\n')[0].slice(0, 60)})`]);
