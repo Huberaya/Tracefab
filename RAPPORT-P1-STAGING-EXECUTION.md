@@ -640,9 +640,10 @@ strict, permission minimale `deployments: read`) et `p1-staging-surface.yml`
 | 3 | `npm run test:p1:preview-deployment` | **PASS** | 16 contrôles hors ligne, 16 PASS |
 | 4 | `npm run test:ci-no-production-access` | **PASS** | — |
 | 5 | Résolution réelle du déploiement (API GitHub) | **PASS** | `deployment 7290546694`, `sha=b85ba688…`, `etat=success`, `hote=tracefab-ctd5lwspg-…`, `correspondance_sha=exacte` |
-| 6 | CI sur le SHA final `8507f72` | **PASS** | [run 40038317353](https://github.com/Huberaya/Tracefab/actions/runs/40038317353) — 4/4 jobs `success` |
-| 7 | Diagnostic de surface sur le SHA final | **PASS** (mesure) | [run 40038317433](https://github.com/Huberaya/Tracefab/actions/runs/40038317433) — voir §10.4 |
-| 8 | `p1-staging-authenticated.yml` sur le SHA final | **NOT RUN — bloqué** | §10.5 |
+| 6 | CI sur le SHA du correctif `8507f72` (code) | **PASS** | [run 40038317353](https://github.com/Huberaya/Tracefab/actions/runs/40038317353) — 4/4 jobs `success` |
+| 6 bis | CI sur le SHA `22c3be0` (documentation) | **PASS** | [run 40039074361](https://github.com/Huberaya/Tracefab/actions/runs/40039074361) — 4/4 jobs `success` |
+| 7 | Diagnostic de surface (dernier run de la branche) | **PASS** (mesure) | [run 40039074593](https://github.com/Huberaya/Tracefab/actions/runs/40039074593) — voir §10.4 |
+| 8 | `p1-staging-authenticated.yml` sur le SHA de la branche | **NOT RUN — bloqué** | §10.5 |
 | 9 | Tests Clerk réels, isolation inter-organisations, identité DB runtime | **BLOCKED** | dépendent de 8 |
 | 10 | `main` et production | **intacts** | aucun commit, aucun déploiement, aucun appel d'écriture |
 
