@@ -37,7 +37,16 @@ assert.equal(origin.protocol, 'https:', 'P1 staging URL must use HTTPS');
 const browser = await chromium.launch({ headless: true });
 const contexts = [];
 
-async function openAuthenticated(storageState, path, readySelector, globalName) {
+/**
+ * Ouvre une page authentifiee et attend qu'elle soit REELLEMENT prete.
+ *
+ * Attendre la seule session Clerk serait une course : `state.clerk.session`
+ * est pose avant la synchronisation des organisations, et
+ * `state.activeOrganizationId` / `state.selectedOrganizationId` n'arrive
+ * qu'apres l'appel serveur qui resout le locataire. Lire l'identifiant
+ * d'organisation avant qu'il soit pose echouerait de facon aleatoire.
+ */
+async function openAuthenticated(storageState, path, readySelector, globalName, organizationKey) {
   const context = await browser.newContext({
     storageState,
     // La locale est forcee : le runner GitHub est en `en-US`, et le
@@ -68,10 +77,16 @@ async function openAuthenticated(storageState, path, readySelector, globalName) 
   assert(!page.url().includes('?demo'), `demo mode must not be used: ${path}`);
   assert.equal(await page.locator('body').getAttribute('data-tracefab-demo'), null, `demo marker found: ${path}`);
   await page.locator(readySelector).waitFor();
-  await page.waitForFunction((name) => {
-    const app = window[name];
-    return Boolean(app?.state && app.state.demo === false && app.state.user && app.state.clerk?.session);
-  }, globalName);
+  await page.waitForFunction(
+    ({ name, organizationKey: key }) => {
+      const app = window[name];
+      if (!app?.state || app.state.demo !== false || !app.state.user || !app.state.clerk?.session) return false;
+      if (key && !app.state[key]) return false;
+      return true;
+    },
+    { name: globalName, organizationKey: organizationKey },
+    { timeout: 60000 },
+  );
   return page;
 }
 
@@ -145,7 +160,7 @@ try {
   // etrangere au controle lui-meme.
   const referenceSimulation = `P1-STAGING-DRY-RUN-${Date.now()}`;
 
-  const brandPage = await openAuthenticated(brandStatePath, '/brand-console/', 'h1.mc-headline', 'tracefabBrandConsole');
+  const brandPage = await openAuthenticated(brandStatePath, '/brand-console/', 'h1.mc-headline', 'tracefabBrandConsole', 'activeOrganizationId');
   const brandAuth = await authContext(brandPage, 'tracefabBrandConsole', 'activeOrganizationId');
   const catalogPreview = await jsonRequest(brandPage, '/api/catalog/products/import', brandAuth, {
     brandOrganizationId: brandAuth.organizationId,
@@ -168,7 +183,7 @@ try {
     'Quality Center disclaimer missing on staging',
   );
 
-  const supplierPage = await openAuthenticated(supplierStatePath, '/supplier-portal/', 'h1.sp-hero-h1', 'tracefabSupplierPortal');
+  const supplierPage = await openAuthenticated(supplierStatePath, '/supplier-portal/', 'h1.sp-hero-h1', 'tracefabSupplierPortal', 'selectedOrganizationId');
   const supplierAuth = await authContext(supplierPage, 'tracefabSupplierPortal', 'selectedOrganizationId');
   const bomResult = await jsonRequest(supplierPage, '/api/supplier/materials/import-bom', supplierAuth, {
     autoSaveMaterials: false,
@@ -178,7 +193,7 @@ try {
   assert.equal(bomResult.body.isValid, true);
   assert.equal(bomResult.body.savedMaterialsCount, 0, 'staging BOM proof must not persist materials');
 
-  const secondBrandPage = await openAuthenticated(secondBrandStatePath, '/brand-console/', 'h1.mc-headline', 'tracefabBrandConsole');
+  const secondBrandPage = await openAuthenticated(secondBrandStatePath, '/brand-console/', 'h1.mc-headline', 'tracefabBrandConsole', 'activeOrganizationId');
   const secondBrandAuth = await authContext(secondBrandPage, 'tracefabBrandConsole', 'activeOrganizationId');
   assert.notEqual(secondBrandAuth.organizationId, brandAuth.organizationId, 'tenant-isolation test requires two distinct brand organizations');
 

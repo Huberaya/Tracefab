@@ -149,7 +149,7 @@ peuvent l'accorder.
 | `npm run test:p1-bom` | vert — import BOM/ lot du Supplier Portal |
 | `npm run test:p1-i18n` | vert — architecture i18n (7 langues) |
 | `npm run test:p1-quality` | vert — contrat Quality Center |
-| `npm run test:p1-harness` (nouveau) | vert — **47 assertions** |
+| `npm run test:p1-harness` (nouveau) | vert — **48 assertions** |
 | `npm run test:active-tenant` | vert — **13 contrôles**, dont « locataire non adhérent -> 404 `organization_not_found` (pas de 403 : aucune révélation) » — la non-régression locale du contrat, exécutée le 2026-10-23 |
 | `npm run test:workflow-policy` | vert — déclaration des workflows privilégiés |
 
@@ -247,6 +247,12 @@ Enfin, la sonde d'identité ne publiait ses mesures que dans le journal de run,
 hébergé hors de l'API GitHub : elle publie désormais ses mesures en
 annotation, seul canal lisible depuis l'extérieur.
 
+Un troisième risque, plus discret, a également été fermé : `state.clerk.session`
+est posé **avant** la synchronisation des organisations. La suite attendait la
+session, puis lisait `state.activeOrganizationId` — une course qui aurait
+échoué de façon aléatoire. Elle attend désormais l'identifiant d'organisation
+lui-même (60 s), pour les trois portails concernés.
+
 ---
 
 ## 5 bis. Écart trouvé entre le critère du chantier et le contrat du dépôt — **tranché le 2026-10-23**
@@ -330,7 +336,7 @@ aucune valeur de donnée) : `inter_tenant_export_refusal_status`,
 | `scripts/probe_preview_surface.mjs` | **nouveau** — surface de la Preview + classification réponse applicative / protection Vercel, annotations comprises |
 | `scripts/list_secret_names.mjs` | **nouveau** — inventaire des **noms** de secrets, aucune valeur |
 | `scripts/lib/annotations.mjs` | **nouveau** — canal de mesure lisible depuis `api.github.com` (l'hôte des journaux de run est hors périmètre réseau) |
-| `scripts/test_p1_staging_harness.mjs` | **nouveau** — non-régression du harnais (**47 assertions** ; le contrôle vérifie lui-même que son nom de script reste collecté par la CI) |
+| `scripts/test_p1_staging_harness.mjs` | **nouveau** — non-régression du harnais (**48 assertions** ; le contrôle vérifie lui-même que son nom de script reste collecté par la CI) |
 | `scripts/test_p1_staging.mjs` | **modifié** — contournement Vercel optionnel ; verdict en annotation ; **contrat de l'export inter-organisation aligné sur le refus réel** : refus 404 `organization_not_found` exigé (plus seulement toléré), preuve au niveau des **données** (zéro ligne dans un refus, export propre inchangé avec un `organizationId` étranger), contrôle positif, identités distinctes vérifiées au format UUID ; aucune modification du contrat des quatre variables |
 | `package.json` | **modifié** — `test:p1-harness` (renommé : la CI collecte automatiquement les scripts `test:*` **sauf** ceux dont le nom porte `neon` ou `staging` ; le nom précédent était donc **silencieusement jamais exécuté**) |
 | `.github/workflows/p1-staging-surface.yml` | **nouveau** — diagnostic sans secret ni environnement (seul workflow jouable sans approbation) |

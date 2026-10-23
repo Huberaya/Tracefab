@@ -313,6 +313,11 @@ function executer(args, env = {}) {
   if (/TRACEFAB_VERCEL_BYPASS/.test(sonde) && /x-vercel-protection-bypass/.test(sonde)) ok('la sonde d identite porte le contournement Vercel');
   else ko('la sonde d identite ne porte pas le contournement Vercel');
 
+  // La session Clerk est posee AVANT la synchronisation des organisations :
+  // lire l'identifiant d'organisation sans attendre serait une course.
+  if (/organizationKey: key/.test(staging) && /app\.state\[key\]/.test(staging)) ok('la suite staging attend l identifiant d organisation, pas seulement la session');
+  else ko('la suite staging lit l identifiant d organisation sans attendre sa synchronisation');
+
   // Les mesures doivent exister en ANNOTATION : le journal de run est
   // heberge hors de l'API GitHub.
   if (/annoterMesures/.test(sonde)) ok('la sonde d identite publie ses mesures en annotation');
