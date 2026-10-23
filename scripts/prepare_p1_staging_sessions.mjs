@@ -116,6 +116,9 @@ async function clerkApi(path, options = {}) {
 
 /* --- 1. etat de l'instance Clerk de test ---------------------------------- */
 
+const { createClerkClient } = await import('@clerk/backend');
+const clerk = createClerkClient({ secretKey: cle });
+
 const instance = await clerkApi('/instance').catch(() => null);
 const auth = instance?.auth_settings || {};
 console.log(`instance_instance=${instance?.instance_type || 'inconnue'}`);
@@ -126,8 +129,11 @@ console.log(`instance_sign_up=${auth?.sign_up?.enabled === false ? 'desactive' :
 /* --- 2. comptes de test deja presents -------------------------------------- */
 
 async function utilisateur(email) {
-  const page = await clerkApi(`/users?email_address=${encodeURIComponent(email)}&limit=1`);
-  return page?.[0] || null;
+  // La reponse paginee du Backend API porte ses elements dans `data` : lire le
+  // tableau de premier niveau donnerait toujours « aucun compte » et le
+  // script recréerait un compte a chaque passage.
+  const page = await clerk.users.getUserList({ emailAddress: [email], limit: 1 });
+  return page?.data?.[0] || null;
 }
 
 const etats = [];
@@ -137,10 +143,18 @@ for (const persona of PERSONAS) {
   console.log(`compte_present=${persona.cle}:${Boolean(u)}`);
 }
 
-const organisations = await clerkApi('/organizations?limit=100').catch(() => []);
+async function organisationsDeTest() {
+  try {
+    const page = await clerk.organizations.getOrganizationList({ limit: 100 });
+    return page?.data || [];
+  } catch {
+    return [];
+  }
+}
+
+const organisations = await organisationsDeTest();
 for (const persona of PERSONAS) {
-  const trouvee = (Array.isArray(organisations) ? organisations : [])
-    .find((o) => o?.name === persona.organisation.nom);
+  const trouvee = organisations.find((o) => o?.name === persona.organisation.nom);
   console.log(`organisation_presente=${persona.cle}:${Boolean(trouvee)}`);
 }
 
@@ -151,48 +165,45 @@ if (PHASE === 'inspect') {
 
 /* --- 3. provision : comptes, organisations, adhesions ----------------------- */
 
-const { createClerkClient } = await import('@clerk/backend');
-const clerk = createClerkClient({ secretKey: cle });
-
 async function assurerUtilisateur(persona) {
   const existant = await utilisateur(persona.email);
   if (existant) {
-    // Le mot de passe n'est pas relisible : on le rejoue par l'API de mot de
-    // passe de l'utilisateur, pour que la session soit ouvrable meme si un
-    // ancien mot de passe a ete pose.
-    await clerk.users.createPassword({ userId: existant.id, password: persona.motDePasse })
-      .catch(() => clerk.users.updatePassword({ userId: existant.id, newPassword: persona.motDePasse }))
-      .catch(() => null);
+    // Un mot de passe deja pose n'est pas relisible : on le repose pour que la
+    // session soit ouvrable meme si le compte precedait ce chantier.
+    // `updateUser` accepte le mot de passe en clair (il est chiffre par
+    // Clerk) ; `skipPasswordChecks` evite le refus des listes de mots de
+    // passe faibles.
+    await clerk.users.updateUser(existant.id, {
+      password: persona.motDePasse,
+      skipPasswordChecks: true,
+    });
     return existant;
   }
   return clerk.users.createUser({
-    emailAddress: [{ emailAddress: persona.email, verified: true, primary: true }],
+    // En v3, `emailAddress` est une liste d'adresses et le statut de
+    // verification est un tableau parallele. Les adresses sont verifiees par
+    // defaut ; on l'ecrit quand meme pour ne pas dependre de ce defaut.
+    emailAddress: [persona.email],
+    emailAddressIdentificationStatus: ['verified'],
     firstName: 'P1',
     lastName: persona.cle,
     password: persona.motDePasse,
-    skipPasswordInvitation: true,
-    skipEmailInvitation: true,
+    skipPasswordChecks: true,
   });
 }
 
 async function assurerOrganisation(persona, utilisateurClerk) {
-  const liste = await clerkApi('/organizations?limit=100');
-  const existante = (Array.isArray(liste) ? liste : []).find((o) => o?.name === persona.organisation.nom);
+  const metadata = {
+    tracefab_organization_type: persona.organisation.type,
+    legal_name: persona.organisation.nom,
+  };
+  const liste = await organisationsDeTest();
+  const existante = liste.find((o) => o?.name === persona.organisation.nom);
   const organisation = existante
-    ? await clerk.organizations.updateOrganization({
-        organizationId: existante.id,
-        name: persona.organisation.nom,
-        publicMetadata: {
-          tracefab_organization_type: persona.organisation.type,
-          legal_name: persona.organisation.nom,
-        },
-      })
+    ? await clerk.organizations.updateOrganizationMetadata(existante.id, { publicMetadata: metadata })
     : await clerk.organizations.createOrganization({
         name: persona.organisation.nom,
-        publicMetadata: {
-          tracefab_organization_type: persona.organisation.type,
-          legal_name: persona.organisation.nom,
-        },
+        publicMetadata: metadata,
       });
 
   const adhesions = await clerk.organizations.getOrganizationMembershipList({

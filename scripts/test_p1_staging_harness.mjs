@@ -181,6 +181,44 @@ function executer(args, env = {}) {
   else ko("le repertoire des etats de session n est pas parametrable");
 }
 
+/* --- 5 bis. les appels Clerk utilises existent bien dans le SDK installe --- */
+
+{
+  // Le SDK `clerk/backend` evolue : les signatures d'une version a l'autre
+  // ont change (creation de compte, reponse paginee, reinitialisation d'un
+  // mot de passe). Un harnais qui appellerait une methode inexistante
+  // echouerait A L'EXECUTION, chez le proprietaire, apres tout ce travail.
+  // Ce controle verifie la presence des methodes, sans appel reseau.
+  const { createClerkClient } = await import('@clerk/backend');
+  const client = createClerkClient({ secretKey: 'sk_test_faux' });
+  const attendues = [
+    ['users.createUser', client.users?.createUser],
+    ['users.updateUser', client.users?.updateUser],
+    ['users.getUserList', client.users?.getUserList],
+    ['organizations.createOrganization', client.organizations?.createOrganization],
+    ['organizations.updateOrganizationMetadata', client.organizations?.updateOrganizationMetadata],
+    ['organizations.getOrganizationList', client.organizations?.getOrganizationList],
+    ['organizations.createOrganizationMembership', client.organizations?.createOrganizationMembership],
+    ['organizations.getOrganizationMembershipList', client.organizations?.getOrganizationMembershipList],
+  ];
+  const manquantes = attendues.filter(([, fn]) => typeof fn !== 'function').map(([nom]) => nom);
+  if (manquantes.length === 0) ok(`le SDK Clerk installe expose les ${attendues.length} methodes utilisees par le harnais`);
+  else ko(`methodes absentes du SDK Clerk installe : ${manquantes.join(', ')}`);
+
+  const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
+  // Une reponse paginee porte ses elements dans `data`. Lire le tableau de
+  // premier niveau ferait croire que rien n'existe et recréerait un compte a
+  // chaque passage.
+  if (/\.data\?\.\[0\]/.test(sessions)) ok('la recherche de compte lit la reponse paginee dans `data`');
+  else ko('la recherche de compte ne lit pas la reponse paginee dans `data`');
+  if (/getOrganizationList/.test(sessions) && /\?\.data \|\| \[\]/.test(sessions)) ok('la liste des organisations lit la reponse paginee dans `data`');
+  else ko('la liste des organisations ne lit pas la reponse paginee dans `data`');
+  const apiObsolete = ['skipPasswordInvitation', 'skipEmailInvitation', 'users.createPassword', 'users.updatePassword']
+    .filter((motif) => sessions.includes(motif));
+  if (apiObsolete.length === 0) ok("le harnais n'appelle aucune signature d'API Clerk obsolete");
+  else ko(`signatures d'API Clerk obsoletes utilisees : ${apiObsolete.join(', ')}`);
+}
+
 /* --- 6. l'inventaire des secrets n'affiche que des noms -------------------- */
 
 {
