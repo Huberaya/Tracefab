@@ -8,16 +8,15 @@
 #
 # CE QUE CE WORKFLOW FAIT
 #   Il mesure ce qui est mesurable sans privilege : la surface reelle de la
-#   Preview (sante, configuration Clerk, presence de la sonde interne protegee)
-#   et l'inventaire des NOMS de secrets visibles dans le contexte du runner —
-#   jamais une valeur.
+#   Preview — sante, configuration Clerk, presence de la sonde interne protegee.
+#   Il ne lit AUCUN secret : une reference au contexte `secrets` ferait retenir
+#   le run entier par la politique de protection du depot.
 #
 # CE QU'IL NE FAIT PAS
-#   - il ne lit aucun secret de valeur : `toJSON(secrets)` sert uniquement a
-#     lister des NOMS ;
+#   - il ne lit aucun secret, ni valeur ni nom ;
 #   - il n'ecrit rien, ne cree aucun tenant, ne joint aucune base ;
-#   - il n'est rattache a aucun environnement, donc n'est jamais bloque par une
-#     approbation : c'est ce qui le rend toujours jouable.
+#   - il n'est rattache a aucun environnement et ne lit aucun secret : il n'est
+#     donc jamais retenu par une approbation, ce qui le rend toujours jouable.
 #
 # L'URL de la Preview n'est pas codee en dur : elle vient de l'entree
 # `preview_url`, ce qui permet de rejouer le meme test sur un autre
@@ -46,7 +45,7 @@ concurrency:
 
 jobs:
   diagnostic:
-    name: Diagnostic — surface Preview et inventaire des noms de secrets
+    name: Diagnostic — surface Preview
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -59,11 +58,6 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
-
-      - name: Inventaire — noms de secrets visibles, aucune valeur
-        env:
-          TF_SECRET_NAMES: ${{ toJSON(secrets) }}
-        run: node scripts/list_secret_names.mjs
 
       - name: Preview — sante et configuration Clerk (prefixes seuls)
         run: node scripts/probe_preview_surface.mjs
