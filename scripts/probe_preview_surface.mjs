@@ -19,8 +19,13 @@
  *   - il n'ecrit rien, ne cree aucun tenant, ne joint aucune base ;
  *   - il ne lit aucun secret ; il ne peut donc pas appeler la sonde interne
  *     avec le secret d'exploitation.
+ *
+ * Les mesures sont aussi emises en annotations : l'hote qui sert les journaux
+ * de run n'est pas joignable depuis le bac a sable d'analyse, alors que
+ * api.github.com l'est.
  */
 import assert from 'node:assert/strict';
+import { annoterMesures } from './lib/annotations.mjs';
 
 const cibles = (process.env.TRACEFAB_PREVIEW_URLS || process.env.TRACEFAB_STAGING_URL || '')
   .split(',')
@@ -35,20 +40,20 @@ if (!cibles.length) {
 for (const cible of cibles) {
   const origin = new URL(cible);
   assert.equal(origin.protocol, 'https:', 'la Preview doit etre en HTTPS');
-  console.log(`--- preview_hote=${origin.hostname}`);
+  const mesures = [['preview_hote', origin.hostname]];
 
   try {
     const health = await fetch(new URL('/api/health', origin));
     const healthBody = await health.text();
-    console.log(`health_http=${health.status}`);
-    console.log(`health_ok=${/"ok"\s*:\s*true/.test(healthBody)}`);
+    mesures.push(['health_http', health.status]);
+    mesures.push(['health_ok', /"ok"\s*:\s*true/.test(healthBody)]);
   } catch (error) {
-    console.log(`health_http=000 (${String(error?.message || error).split('\n')[0].slice(0, 80)})`);
+    mesures.push(['health_http', `000 (${String(error?.message || error).split('\n')[0].slice(0, 60)})`]);
   }
 
   try {
     const config = await fetch(new URL('/api/config', origin));
-    console.log(`config_http=${config.status}`);
+    mesures.push(['config_http', config.status]);
     if (config.status === 200) {
       const corps = await config.json().catch(() => ({}));
       const cle = typeof corps?.publishableKey === 'string' ? corps.publishableKey : '';
@@ -56,17 +61,21 @@ for (const cible of cibles) {
       if (cle.startsWith('pk_test_')) classe = 'pk_test';
       else if (cle.startsWith('pk_live_')) classe = 'pk_live';
       else if (cle) classe = 'inconnue';
-      console.log(`config_clerk=${classe}`);
-      console.log(`config_proxy_url_present=${Boolean(corps?.proxyUrl)}`);
+      mesures.push(['config_clerk', classe]);
+      mesures.push(['config_proxy_url_present', Boolean(corps?.proxyUrl)]);
     }
   } catch (error) {
-    console.log(`config_http=000 (${String(error?.message || error).split('\n')[0].slice(0, 80)})`);
+    mesures.push(['config_http', `000 (${String(error?.message || error).split('\n')[0].slice(0, 60)})`]);
   }
 
   try {
     const readiness = await fetch(new URL('/api/internal/p2/readiness', origin));
-    console.log(`readiness_sans_secret_http=${readiness.status}`);
+    mesures.push(['readiness_sans_secret_http', readiness.status]);
   } catch (error) {
-    console.log(`readiness_sans_secret_http=000 (${String(error?.message || error).split('\n')[0].slice(0, 80)})`);
+    mesures.push(['readiness_sans_secret_http', `000 (${String(error?.message || error).split('\n')[0].slice(0, 60)})`]);
   }
+
+  const corps = mesures.map(([cle, valeur]) => `${cle}=${valeur}`).join('\n');
+  console.log(`--- ${corps}`);
+  annoterMesures(`Preview ${origin.hostname}`, corps);
 }
