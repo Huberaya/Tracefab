@@ -149,7 +149,7 @@ peuvent l'accorder.
 | `npm run test:p1-bom` | vert — import BOM/ lot du Supplier Portal |
 | `npm run test:p1-i18n` | vert — architecture i18n (7 langues) |
 | `npm run test:p1-quality` | vert — contrat Quality Center |
-| `npm run test:p1-harness` (nouveau) | vert — **38 assertions** |
+| `npm run test:p1-harness` (nouveau) | vert — **47 assertions** |
 | `npm run test:active-tenant` | vert — **13 contrôles**, dont « locataire non adhérent -> 404 `organization_not_found` (pas de 403 : aucune révélation) » — la non-régression locale du contrat, exécutée le 2026-10-23 |
 | `npm run test:workflow-policy` | vert — déclaration des workflows privilégiés |
 
@@ -232,6 +232,20 @@ accepte les deux variantes de la phrase. De même, la référence de simulation
 catalogue est désormais unique par exécution : un doublon préexistant ferait
 ré-écho la valeur CSV dans le message d'erreur du serveur, et le contrôle
 « la réponse ne ré-écho pas les valeurs CSV » échouerait à tort.
+
+**Un second défaut, bloquant, a été trouvé et corrigé :** la préparation des
+sessions (`scripts/prepare_p1_staging_sessions.mjs`) **ne portait pas** le
+contournement de la protection Vercel. Elle aurait donc atteint la protection
+et non le formulaire de connexion Clerk de l'application : l'échec aurait été
+un dépassement de délai sur le champ « identifiant », sans rapport avec le
+produit. Les trois scripts qui touchent la Preview portent désormais le
+contournement — préparation des sessions, suite staging, sonde d'identité — et
+les deux premiers le portent **aussi sur leurs appels same-origin**, sans quoi
+la page aurait reçu un 302 HTML au lieu de ses réponses JSON.
+
+Enfin, la sonde d'identité ne publiait ses mesures que dans le journal de run,
+hébergé hors de l'API GitHub : elle publie désormais ses mesures en
+annotation, seul canal lisible depuis l'extérieur.
 
 ---
 
@@ -316,7 +330,7 @@ aucune valeur de donnée) : `inter_tenant_export_refusal_status`,
 | `scripts/probe_preview_surface.mjs` | **nouveau** — surface de la Preview + classification réponse applicative / protection Vercel, annotations comprises |
 | `scripts/list_secret_names.mjs` | **nouveau** — inventaire des **noms** de secrets, aucune valeur |
 | `scripts/lib/annotations.mjs` | **nouveau** — canal de mesure lisible depuis `api.github.com` (l'hôte des journaux de run est hors périmètre réseau) |
-| `scripts/test_p1_staging_harness.mjs` | **nouveau** — non-régression du harnais (**38 assertions** ; le contrôle vérifie lui-même que son nom de script reste collecté par la CI) |
+| `scripts/test_p1_staging_harness.mjs` | **nouveau** — non-régression du harnais (**47 assertions** ; le contrôle vérifie lui-même que son nom de script reste collecté par la CI) |
 | `scripts/test_p1_staging.mjs` | **modifié** — contournement Vercel optionnel ; verdict en annotation ; **contrat de l'export inter-organisation aligné sur le refus réel** : refus 404 `organization_not_found` exigé (plus seulement toléré), preuve au niveau des **données** (zéro ligne dans un refus, export propre inchangé avec un `organizationId` étranger), contrôle positif, identités distinctes vérifiées au format UUID ; aucune modification du contrat des quatre variables |
 | `package.json` | **modifié** — `test:p1-harness` (renommé : la CI collecte automatiquement les scripts `test:*` **sauf** ceux dont le nom porte `neon` ou `staging` ; le nom précédent était donc **silencieusement jamais exécuté**) |
 | `.github/workflows/p1-staging-surface.yml` | **nouveau** — diagnostic sans secret ni environnement (seul workflow jouable sans approbation) |
