@@ -93,6 +93,14 @@ function executer(args, env = {}) {
   if (!afficheTout) ok("la sonde d'identite n'affiche jamais le secret");
   else ko("la sonde d'identite affiche le secret");
 
+  // Le jeu d'en-tetes vit desormais dans UN module partage
+  // (`scripts/lib/preview_deployment.mjs`), pour que les trois scripts ne
+  // puissent pas diverger. Le controle reste strict : soit l'en-tete est
+  // ecrit dans le script, soit le script importe le module partage ET le
+  // module contient bien l'en-tete exact de Vercel.
+  const libApercu = lire('scripts/lib/preview_deployment.mjs');
+  const porteEntetes = (source) => /x-vercel-protection-bypass/.test(source)
+    || (/entetesBypass\(/.test(source) && /x-vercel-protection-bypass/.test(libApercu));
   const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
   // Controle LIGNE PAR LIGNE : une regex multiligne confondrait deux
   // instructions voisines et signalerait un faux secret.
@@ -112,6 +120,14 @@ function executer(args, env = {}) {
 /* --- 3. une cle de production est refusee, une cle de test est exigee ------ */
 
 {
+  // Le jeu d'en-tetes vit desormais dans UN module partage
+  // (`scripts/lib/preview_deployment.mjs`), pour que les trois scripts ne
+  // puissent pas diverger. Le controle reste strict : soit l'en-tete est
+  // ecrit dans le script, soit le script importe le module partage ET le
+  // module contient bien l'en-tete exact de Vercel.
+  const libApercu = lire('scripts/lib/preview_deployment.mjs');
+  const porteEntetes = (source) => /x-vercel-protection-bypass/.test(source)
+    || (/entetesBypass\(/.test(source) && /x-vercel-protection-bypass/.test(libApercu));
   const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
   if (/sk_test_/.test(sessions) && /production/i.test(sessions)) ok('la preparation des sessions exige une instance de test et refuse la production');
   else ko('la preparation des sessions ne distingue pas instance de test et instance de production');
@@ -205,6 +221,14 @@ function executer(args, env = {}) {
 
   // Le script de preparation doit ecrire la ou le workflow le dit : hors du
   // depot. Le chemin par defaut est /tmp du runner.
+  // Le jeu d'en-tetes vit desormais dans UN module partage
+  // (`scripts/lib/preview_deployment.mjs`), pour que les trois scripts ne
+  // puissent pas diverger. Le controle reste strict : soit l'en-tete est
+  // ecrit dans le script, soit le script importe le module partage ET le
+  // module contient bien l'en-tete exact de Vercel.
+  const libApercu = lire('scripts/lib/preview_deployment.mjs');
+  const porteEntetes = (source) => /x-vercel-protection-bypass/.test(source)
+    || (/entetesBypass\(/.test(source) && /x-vercel-protection-bypass/.test(libApercu));
   const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
   if (/TF_P1_STATE_DIR/.test(sessions)) ok("le repertoire des etats de session est parametrable et vaut /tmp par defaut");
   else ko("le repertoire des etats de session n est pas parametrable");
@@ -234,6 +258,14 @@ function executer(args, env = {}) {
   if (manquantes.length === 0) ok(`le SDK Clerk installe expose les ${attendues.length} methodes utilisees par le harnais`);
   else ko(`methodes absentes du SDK Clerk installe : ${manquantes.join(', ')}`);
 
+  // Le jeu d'en-tetes vit desormais dans UN module partage
+  // (`scripts/lib/preview_deployment.mjs`), pour que les trois scripts ne
+  // puissent pas diverger. Le controle reste strict : soit l'en-tete est
+  // ecrit dans le script, soit le script importe le module partage ET le
+  // module contient bien l'en-tete exact de Vercel.
+  const libApercu = lire('scripts/lib/preview_deployment.mjs');
+  const porteEntetes = (source) => /x-vercel-protection-bypass/.test(source)
+    || (/entetesBypass\(/.test(source) && /x-vercel-protection-bypass/.test(libApercu));
   const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
   // Une reponse paginee porte ses elements dans `data`. Lire le tableau de
   // premier niveau ferait croire que rien n'existe et recréerait un compte a
@@ -369,10 +401,18 @@ function executer(args, env = {}) {
   //     connexion, et les appels same-origin de la page) ;
   //   - la suite staging (navigation et appels same-origin) ;
   //   - la sonde d identite (appel HTTP direct).
+  // Le jeu d'en-tetes vit desormais dans UN module partage
+  // (`scripts/lib/preview_deployment.mjs`), pour que les trois scripts ne
+  // puissent pas diverger. Le controle reste strict : soit l'en-tete est
+  // ecrit dans le script, soit le script importe le module partage ET le
+  // module contient bien l'en-tete exact de Vercel.
+  const libApercu = lire('scripts/lib/preview_deployment.mjs');
+  const porteEntetes = (source) => /x-vercel-protection-bypass/.test(source)
+    || (/entetesBypass\(/.test(source) && /x-vercel-protection-bypass/.test(libApercu));
   const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
   if (/TRACEFAB_VERCEL_BYPASS/.test(sessions) && /extraHTTPHeaders/.test(sessions)) ok('la preparation des sessions porte le contournement Vercel');
   else ko('la preparation des sessions ne porte pas le contournement Vercel : elle n atteindrait jamais le formulaire de connexion');
-  if (/addInitScript/.test(sessions) && /x-vercel-protection-bypass/.test(sessions)) ok('la preparation des sessions porte le contournement sur les appels same-origin');
+  if (/addInitScript/.test(sessions) && porteEntetes(sessions)) ok('la preparation des sessions porte le contournement sur les appels same-origin');
   else ko('la preparation des sessions ne porte pas le contournement sur les appels same-origin');
 
   const staging = lire('scripts/test_p1_staging.mjs');
@@ -380,7 +420,7 @@ function executer(args, env = {}) {
   else ko('la suite staging ne porte pas le contournement Vercel');
 
   const sonde = lire('scripts/probe_preview_runtime_identity.mjs');
-  if (/TRACEFAB_VERCEL_BYPASS/.test(sonde) && /x-vercel-protection-bypass/.test(sonde)) ok('la sonde d identite porte le contournement Vercel');
+  if (/TRACEFAB_VERCEL_BYPASS/.test(sonde) && porteEntetes(sonde)) ok('la sonde d identite porte le contournement Vercel');
   else ko('la sonde d identite ne porte pas le contournement Vercel');
 
   // La session Clerk est posee AVANT la synchronisation des organisations :
@@ -466,6 +506,61 @@ function executer(args, env = {}) {
     ok('les secrets necessaires aux etapes de tete restent verifies avant elles');
   } else {
     ko('les secrets necessaires aux etapes de tete ne sont plus verifies avant elles');
+  }
+}
+
+/* --- 6 ter. la cible du workflow n est JAMAIS figee ---------------------- */
+
+{
+  // Cause racine du 2026-10-23 : le pre-vol testait une URL de Preview ecrite
+  // en dur (alias de branche). Un alias n'est pas le deploiement du commit :
+  // Vercel le re-canonicalise (307 vers un AUTRE hote) et le test mesure une
+  // redirection. Ces controles empechent le retour d'une URL figee.
+  const authentifie = lire('.github/workflows/p1-staging-authenticated.yml');
+  const surface = lire('.github/workflows/p1-staging-surface.yml');
+
+  // Une URL de Preview litterale dans un workflow est une cible perimee.
+  const urlFigee = /https:\/\/[a-z0-9-]+\.vercel\.app/i;
+  if (!urlFigee.test(authentifie)) ok('le workflow authentifie ne code aucune URL de Preview en dur');
+  else ko('le workflow authentifie code une URL de Preview en dur : elle designera bientot un autre commit');
+
+  if (!urlFigee.test(surface)) ok('le diagnostic de surface ne code aucune URL de Preview en dur');
+  else ko('le diagnostic de surface code une URL de Preview en dur');
+
+  // La cible est resolue par le script dedie, a partir du SHA teste.
+  if (/scripts\/resolve_preview_deployment\.mjs/.test(authentifie) && /TF_TARGET_SHA/.test(authentifie)) {
+    ok('le workflow authentifie resout le deploiement Preview du SHA teste');
+  } else {
+    ko('le workflow authentifie ne resout pas le deploiement Preview du SHA teste');
+  }
+
+  // ... et c'est bien cette resolution qui alimente le pre-vol et les tests :
+  // une resolution qui ne serait pas utilisee ne prouverait rien.
+  const usages = (authentifie.match(/steps\.preview\.outputs\.preview_url/g) || []).length;
+  if (usages >= 4) ok(`le pre-vol et les quatre etapes de test utilisent l URL resolue (${usages} references)`);
+  else ko(`l URL resolue n alimente que ${usages} etape(s) : une resolution inutilisee ne prouve rien`);
+
+  // Le pre-vol doit rester BLOQUANT : un pre-vol qui n'arrete rien laisse les
+  // tests s'executer contre une cible non verifiee.
+  if (/TF_PROBE_STRICT: '1'/.test(authentifie)) ok('le pre-vol du workflow authentifie est strict : il bloque les tests dependants');
+  else ko('le pre-vol du workflow authentifie n est pas strict : les tests peuvent s executer sans cible verifiee');
+
+  // La resolution lit l API des Deployments : elle exige la permission.
+  if (/deployments: read/.test(authentifie)) ok('le workflow authentifie demande la permission minimale deployments: read');
+  else ko('le workflow authentifie lit les Deployments sans demander deployments: read');
+
+  // Une URL imposee ne doit jamais etre acceptee sans verification du SHA.
+  if (/TF_PREVIEW_URL_OVERRIDE/.test(authentifie) && /url_imposee_hors_du_deploiement_du_sha/.test(lire('scripts/resolve_preview_deployment.mjs'))) {
+    ok('une URL imposee n est acceptee que si elle est le deploiement de ce SHA');
+  } else {
+    ko('une URL imposee pourrait etre acceptee sans correspondance de SHA : ce serait un faux vert');
+  }
+
+  // La production reste interdite comme cible.
+  if (/hote_de_production_interdit/.test(lire('scripts/lib/preview_deployment.mjs'))) {
+    ok('un hote de production est refuse comme cible de test');
+  } else {
+    ko('un hote de production pourrait devenir une cible de test');
   }
 }
 

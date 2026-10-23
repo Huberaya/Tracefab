@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { entetesBypass, exigerCiblePreview } from './lib/preview_deployment.mjs';
 
 const baseUrl = process.env.TRACEFAB_STAGING_URL?.trim();
 const brandStatePath = process.env.TRACEFAB_P1_BRAND_STORAGE_STATE?.trim();
@@ -21,9 +22,7 @@ const secondBrandStatePath = process.env.TRACEFAB_P1_SECOND_BRAND_STORAGE_STATE?
  * ni loguee, ni placee dans une URL.
  */
 const vercelBypass = process.env.TRACEFAB_VERCEL_BYPASS?.trim() || '';
-const bypassHeaders = vercelBypass
-  ? { 'x-vercel-protection-bypass': vercelBypass, 'x-vercel-set-bypass-cookie': 'true' }
-  : {};
+const bypassHeaders = entetesBypass(vercelBypass);
 
 if (!baseUrl || !brandStatePath || !supplierStatePath || !secondBrandStatePath) {
   throw new Error('P1 staging E2E requires TRACEFAB_STAGING_URL, TRACEFAB_P1_BRAND_STORAGE_STATE, TRACEFAB_P1_SUPPLIER_STORAGE_STATE and TRACEFAB_P1_SECOND_BRAND_STORAGE_STATE; no mock/demo fallback is allowed');
@@ -31,8 +30,10 @@ if (!baseUrl || !brandStatePath || !supplierStatePath || !secondBrandStatePath) 
 for (const path of [brandStatePath, supplierStatePath, secondBrandStatePath]) {
   if (!existsSync(path)) throw new Error(`P1 staging storage state not found: ${path}`);
 }
-const origin = new URL(baseUrl);
-assert.equal(origin.protocol, 'https:', 'P1 staging URL must use HTTPS');
+// La cible est validee par la meme fonction que le pre-vol et le resolveur :
+// HTTPS, hote de Preview Vercel du projet, sans parametre, et JAMAIS un hote de
+// production. Trois scripts, une seule regle : elle ne peut pas diverger.
+const origin = exigerCiblePreview(baseUrl);
 
 const browser = await chromium.launch({ headless: true });
 const contexts = [];

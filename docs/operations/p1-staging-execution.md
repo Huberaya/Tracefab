@@ -29,31 +29,76 @@ Internet complet. L'exécution réelle part donc de `.github/workflows/`.
 
 ---
 
-## 2. Cible exacte : SHA et déploiement Preview
+## 2. Cible : le déploiement Preview **du SHA testé**
 
-Le chantier porte sur la branche `security/production-rls-identity-20261021`.
+### 2.1 Ce qui a été corrigé le 2026-10-23
 
-| Élément | Valeur |
-|---|---|
-| SHA de la branche | `7ec24d44ff729b485c44bb92f1ddeaf4e3b3afbf` |
-| Commit | `docs(security): correct function allowlist count and dependency` |
-| Déploiement GitHub | `7222946292`, environnement `Preview` |
-| URL du déploiement (1er déploiement, 2026-10-21T09:48:56Z) | `https://tracefab-ek0vg39c3-baya-ibraimmayoanouedu-8164s-projects.vercel.app` |
-| URL du redéploiement (2026-10-23T08:21:21Z, même SHA) | `https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app` |
+Le pré-vol testait une **URL figée** dans le workflow
+(`https://tracefab-git-arena-e13749-….vercel.app`, un alias de branche). Il a
+reçu, sur les trois routes :
 
-Les deux URL répondent au même SHA : ce sont deux déploiements du même commit.
-Le redéploiement du 23 octobre est le plus récent ; c'est celui que le job
-utilise par défaut, et son URL est **paramétrable** (`preview_url` du job) —
-aucune URL n'est figée dans le code.
+```
+/api/health_http=307
+/api/health_classe=inconnue
+/api/health_content_type=text/plain
+/api/health_redirection_chemin=/api/health
+```
 
-Vérification indépendante de l'URL :
+Le chemin de destination étant **identique** au chemin demandé, la mesure a été
+lue comme une « redirection vers elle-même ». Elle ne l'était pas : la sonde
+n'affichait que le **chemin**, jamais l'**hôte**. Un alias de branche qui ne
+désigne plus le déploiement du commit est re-canonicalisé par Vercel par un
+**307 vers un autre hôte**. Le run mesurait donc une redirection, pas
+l'application — et le `exit code 5` ne disait rien d'autre.
+
+Deux défauts distincts, corrigés séparément :
+
+| Défaut | Correction | Preuve |
+|---|---|---|
+| URL de Preview **figée** dans le workflow, périmée à chaque commit | résolution du déploiement par l'API GitHub des Deployments, à partir du SHA | `scripts/resolve_preview_deployment.mjs` |
+| diagnostic qui ne lit que le **chemin** d'une redirection | mesure de la classe **et de l'hôte** de la destination, puis diagnostic nommé | `scripts/lib/preview_surface.mjs` |
+
+### 2.2 Mécanisme de sélection (aucune URL figée, aucun jeton Vercel)
+
+L'application GitHub de Vercel crée un **Deployment** par build, portant le
+`sha` du commit et un statut dont `environment_url` est l'URL **immuable** du
+déploiement. Le workflow lit cette source avec le jeton du run et la seule
+permission `deployments: read`.
+
+Le step `Resoudre le deploiement Preview du commit teste` :
+
+1. cherche les déploiements du SHA testé (`?sha=`), puis **garde uniquement
+   ceux dont le champ `sha` égale exactement le SHA testé** — le paramètre de
+   requête filtre des refs, il ne garantit rien sur le build ;
+2. attend que le dernier soit à l'état `success` (20 min au plus, 15 s
+   d'intervalle) ; un état `pending`, `in_progress`, `failure` ou `error` est
+   **nommé**, jamais ignoré ;
+3. refuse toute URL qui n'est pas `https://<projet>-….vercel.app` du projet,
+   qui porte des paramètres, ou qui vise un **hôte de production** ;
+4. publie `preview_url`, `deployment_id`, `deployment_sha` en sorties de step,
+   et une annotation qui rend la correspondance vérifiable sans journal.
+
+L'URL ainsi résolue alimente **le pré-vol et les quatre étapes de test**. Un
+step de preuve refuse le job si `deployment_sha != TF_TARGET_SHA` (code 14).
+
+Vérification indépendante, depuis n'importe quelle machine où `gh` est
+authentifié :
 
 ```bash
-gh api "repos/Huberaya/Tracefab/deployments?ref=7ec24d44ff729b485c44bb92f1ddeaf4e3b3afbf" \
-  --jq '.[] | {id, sha, ref, environment, created_at}'
-gh api "repos/Huberaya/Tracefab/deployments/7222946292/statuses" \
-  --jq '.[] | {state, environment_url, created_at, creator: .creator.login}'
+gh api "repos/Huberaya/Tracefab/deployments?sha=<SHA>" \
+  --jq '.[] | {id, sha, environment, created_at}'
+gh api "repos/Huberaya/Tracefab/deployments/<ID>/statuses" \
+  --jq '.[] | {state, environment_url, created_at}'
 ```
+
+### 2.3 Ce qui n'est jamais accepté
+
+- une URL imposée (`workflow_dispatch.inputs.preview_url`) qui **n'est pas**
+  l'URL du déploiement `success` de ce SHA → échec `cause=url_imposee_hors_du_deploiement_du_sha`, code 14 ;
+- un déploiement d'un **autre commit**, même sur la même branche ;
+- une URL de **production** (`tracefab.vercel.app`) ;
+- un déploiement dont l'URL porte un paramètre (un jeton ne doit jamais entrer
+  dans une URL, donc une URL qui en porte est refusée).
 
 ---
 
@@ -145,22 +190,38 @@ utilisateur.
 
 ### Verrou 1 — la protection Vercel de déploiement (le plus bloquant)
 
-**Mesure** (`scripts/probe_preview_surface.mjs`, runner GitHub) :
+**Mesure** (`scripts/probe_preview_surface.mjs`, runner GitHub) — sur un
+déploiement **du SHA testé**, sans en-tête de contournement :
 
 ```
-preview_hote=tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app
+preview_hote=tracefab-7xgup5zjo-baya-ibraimmayoanouedu-8164s-projects.vercel.app
+contournement_disponible=false
 /api/health_http=302
-/api/health_classe=protection_possible
-/api/health_content_type=text/plain
-/api/health_marqueurs_protection=vercel
+/api/health_classe=redirection
+/api/health_redirection_classe=sso_vercel
+/api/health_redirection_hote=tracefab-7xgup5zjo-baya-ibraimmayoanouedu-8164s-projects.vercel.app
 /api/health_redirection_chemin=/sso-api
 /api/health_redirection_parametres=nonce,url
 ```
 
-Identique sur `/api/config` et sur `/api/internal/p2/readiness`, et identique
-sur l'URL du premier déploiement (`ek0vg39c3`). Les trois routes de
-l'application — dont la sonde interne — sont **inaccessibles** : le runner
-atteint la protection, pas l'application.
+Identique sur `/api/config` et sur `/api/internal/p2/readiness`. Les trois
+routes de l'application — dont la sonde interne — sont **inaccessibles** : le
+runner atteint la protection, pas l'application.
+
+Sur une URL qui **n'est pas** le déploiement du commit, la sonde produit une
+mesure différente, et c'est tout l'intérêt de l'hôte dans la mesure :
+
+```
+/api/health_http=307
+/api/health_classe=redirection
+/api/health_redirection_classe=autre_deploiement
+/api/health_redirection_hote=<un AUTRE deploiement>
+/api/health_redirection_chemin=/api/health
+/api/health_redirection_parametres=aucun
+```
+
+(`redirection_chemin` identique au chemin demandé : c'est précisément ce qui
+masquait le changement d'hôte.)
 
 **Parade** : le projet expose un secret « Protection Bypass for Automation ».
 Il est transmis dans l'en-tête `x-vercel-protection-bypass` (avec
@@ -173,6 +234,30 @@ dans une URL, jamais dans une sortie. Le harnais le supporte déjà :
 
 Sans cette variable, le comportement est **strictement inchangé** : le
 non-regression `npm run test:p1-harness` le vérifie.
+
+### Le pré-vol dit POURQUOI il échoue — un code par cause
+
+`node scripts/probe_preview_surface.mjs` en mode `TF_PROBE_STRICT=1` bloque
+les étapes dépendantes et termine avec un code **distinct par cause** ; la
+même cause est publiée en annotation `::error title=P1 pre-vol — cause X::`.
+« Process completed with exit code 5 » ne peut plus être le seul message.
+
+| Code | `cause` | Signification | Action |
+|---|---|---|---|
+| 0 | — | l'application a répondu | aucune |
+| 2 | `configuration_absente` | aucune cible fournie | résoudre le déploiement (étape précédente) |
+| 3 | `hote_de_production_interdit`, `hote_hors_preview_vercel:…`, `parametres_dans_url` | cible refusée avant tout appel | corriger la cible, jamais l'accepter |
+| 5 | `contournement_invalide` | 302/401/403 **alors que** le secret est présent | régénérer « Protection Bypass for Automation » dans le **projet Vercel de ce déploiement**, puis remplacer `VERCEL_AUTOMATION_BYPASS_SECRET` dans `tracefab-clerk-test` |
+| 5 | `contournement_absent` | 302/401/403 et aucun secret | déposer `VERCEL_AUTOMATION_BYPASS_SECRET` dans `tracefab-clerk-test` |
+| 6 | `hote_injoignable` | aucune réponse (DNS, TLS, déploiement supprimé) | vérifier que le déploiement existe encore |
+| 7 | `cible_obsolete` | 307 vers un **autre** déploiement, même chemin | utiliser l'URL du déploiement du SHA testé |
+| 8 | `application_joignable_base_indisponible`, `application_en_erreur` | l'application répond, sa base non | vérifier la variable de base de l'environnement Preview |
+| 9 | `reponse_inattendue` | ni application, ni protection reconnue | comparer aux classes attendues |
+
+Et, en amont, le résolveur de cible a ses propres codes : `2` configuration,
+`3` API refusée, `11` aucun déploiement pour ce SHA, `12` déploiement jamais
+prêt, `13` URL inutilisable (production, autre projet, paramètres), `14` URL
+imposée hors du déploiement du SHA.
 
 ### Verrou 2 — la politique de branche de l'environnement `tracefab-clerk-test`
 
@@ -319,13 +404,19 @@ complète.
 git checkout arena/88857a44-tracefab
 
 # 2. Contrôles qui ne demandent aucun privilege
-npm run test:p1-harness     # non-regression du harnais (38 assertions)
+npm run test:p1-harness              # non-regression du harnais
+npm run test:p1:preview-deployment   # selection de la cible + diagnostic (hors ligne, 16 controles)
 npm run test:active-tenant  # contrat de refus 404 du locataire non adherent
 npm run test:p1                     # catalogue, BOM, i18n, Quality Center
 npm run test:workflow-policy        # declaration des workflows privileged
 npm run test:ci-no-production-access
 
-# 3. Mesure de la surface de la Preview (runner GitHub, aucun secret)
+# 3. Quelle cible le workflow va-t-il utiliser pour ce SHA ?
+GITHUB_REPOSITORY=Huberaya/Tracefab GH_TOKEN="$(gh auth token)" \
+  TF_TARGET_SHA="$(git rev-parse HEAD)" TF_PREVIEW_WAIT_SECONDS=0 \
+  node scripts/resolve_preview_deployment.mjs
+
+# 4. Mesure de la surface de la Preview (runner GitHub, aucun secret)
 gh run list --branch arena/88857a44-tracefab --workflow "P1 staging — diagnostic de surface"
 
 # 4. Exécution authentifiée : exige les trois parades ci-dessus

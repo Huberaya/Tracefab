@@ -9,31 +9,39 @@
 #   separation : `p1-staging-surface.yml` mesure, ce workflow execute.
 #
 # CE QUE CE WORKFLOW FAIT, DANS L'ORDRE
-#   0. pre-vol : verifie que la Preview repond comme l'application, et non
-#      comme la protection de deploiement Vercel ;
-#   1. fabrique trois sessions Clerk de test dans l'instance Clerk DE TEST
+#   0. resout le deploiement Preview DU COMMIT TESTE par l'API GitHub des
+#      Deployments (aucune URL figee, aucun jeton Vercel) et verifie que le SHA
+#      du deploiement egale le SHA teste ;
+#   1. pre-vol : verifie que l'URL resolue repond comme l'APPLICATION et non
+#      comme la protection de deploiement Vercel, et que le contournement
+#      fonctionne reellement ; en cas d'echec, il nomme la cause exacte
+#      (contournement absent / invalide, cible obsolete, application
+#      indisponible) avec un code de sortie distinct par cause ;
+#   2. fabrique trois sessions Clerk de test dans l'instance Clerk DE TEST
 #      (aucune donnee de production), une par persona : marque A, fournisseur,
 #      marque B dans une organisation distincte ;
-#   2. ecrit trois etats de session Playwright dans l'espace de travail du
+#   3. ecrit trois etats de session Playwright dans l'espace de travail du
 #      runner — jamais dans le depot, jamais en artefact, jamais dans un
 #      journal ;
-#   3. execute `npm run test:p1:staging` contre la Preview (URL fournie par
-#      l'entree du job, pas une valeur codee en dur) ;
-#   4. interroge la sonde d'identite DB runtime
+#   4. execute `npm run test:p1:staging` contre la Preview resolue ;
+#   5. interroge la sonde d'identite DB runtime
 #      `/api/internal/p2/readiness?identity=1` avec le secret UNIQUEMENT dans
 #      l'en-tete HTTP, et n'affiche que des booleens et un nom de role.
 #
 # CE QUE CE WORKFLOW NE FAIT PAS
 #   - il ne lit aucun secret de Production : la cle Clerk est une cle
 #     `sk_test_` d'instance de test, refusee si elle commence par `sk_live_` ;
-#   - il ne contacte aucune base Neon : le test P1 cible une Preview dont la
-#     base est elle-meme un environnement de test ;
+#   - il ne contacte aucune base Neon directement ; il ne vise JAMAIS un hote
+#     de production (refuse a la resolution comme au pre-vol) ;
 #   - il n'ecrit aucun fichier de suivi du depot (les etats de session restent
 #     dans /tmp du runner) ;
-#   - il n'imprime aucune valeur de secret, aucun cookie, aucun jeton.
+#   - il n'imprime aucune valeur de secret, aucun cookie, aucun jeton ; il
+#     imprime l'URL de la Preview et le SHA, qui ne sont pas des secrets ;
+#   - il n'accepte JAMAIS silencieusement un deploiement d'un autre commit.
 #
 # VARIABLES D'ENVIRONNEMENT ATTENDUES (et ou les trouver)
-#   TRACEFAB_STAGING_URL                        — URL de la Preview (entree du job)
+#   TF_TARGET_SHA                               — SHA teste (entree ou github.sha)
+#   TF_PREVIEW_URL_OVERRIDE                     — URL imposee, verifiee contre le SHA
 #   CLERK_SECRET_KEY                            — secret d'environnement, cle `sk_test_`
 #   TRACEFAB_NOTIFICATION_WORKER_SECRET         — secret d'exploitation de la Preview
 #   VERCEL_AUTOMATION_BYPASS_SECRET (optionnel) — contournement de la protection
@@ -48,12 +56,17 @@ on:
   workflow_dispatch:
     inputs:
       preview_url:
-        description: 'URL de base de la Preview Vercel a tester (https://...vercel.app)'
+        description: 'URL imposee (facultatif). Refusee si ce n est pas l URL du deploiement Preview de target_sha.'
         required: false
-        default: 'https://tracefab-git-arena-e13749-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+        default: ''
+      target_sha:
+        description: 'SHA teste (facultatif ; par defaut le SHA du run)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
   group: p1-staging-authenticated-${{ github.ref }}
@@ -64,12 +77,13 @@ jobs:
     name: P1 — staging authentifie sur Preview
     environment: tracefab-clerk-test
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       NODE_VERSION: '20'
-      TRACEFAB_STAGING_URL: ${{ github.event.inputs.preview_url || 'https://tracefab-git-arena-e13749-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
-      TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || 'https://tracefab-git-arena-e13749-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
       TF_P1_STATE_DIR: /tmp/p1-storage-states
+      # Le SHA teste est une DONNEE, pas une cible : la cible se deduit de lui.
+      TF_TARGET_SHA: ${{ github.event.inputs.target_sha || github.sha }}
+      TF_PREVIEW_URL_OVERRIDE: ${{ github.event.inputs.preview_url || '' }}
       # Le nom du secret n'est pas impose : plusieurs noms usuels sont
       # acceptes, le premier non vide gagne. Un secret absent donne une
       # chaine vide, jamais une erreur.
@@ -100,46 +114,98 @@ jobs:
         #
         # SCOPE : ce garde-fou ne verifie que les secrets dont les etapes
         # SUIVANTES dependent reellement. Le secret de la sonde d'identite
-        # (TF_WORKER_SECRET) n'est requis que par la DERNIERE etape (la sonde
-        # d'identite DB) : exiger ici son presence interromprait les tests
-        # d'isolation, qui n'en dependent pas, et transformerait un manque de
-        # secret de sonde en perte totale de preuves. Il est donc verifie a
-        # l'endroit ou il sert, et la ou il manque, l'echec est nomme.
+        # (TF_WORKER_SECRET) n'est requis que par la DERNIERE etape : exiger sa
+        # presence ici interromprait les tests d'isolation, qui n'en dependent
+        # pas. Il est donc verifie la ou il sert, et la ou il manque, l'echec
+        # est nomme.
         run: |
           if [ -n "${TRACEFAB_VERCEL_BYPASS:-}" ]; then
             echo "::notice title=P1 staging::secret_bypass=present"
           else
-            echo "::error title=P1 staging::secret_bypass=absent de l'environnement tracefab-clerk-test"
+            echo "::error title=P1 staging::secret_bypass=absent de l'environnement tracefab-clerk-test — deposer VERCEL_AUTOMATION_BYPASS_SECRET (valeur « Protection Bypass for Automation » du projet Vercel) dans cet environnement"
             exit 1
           fi
           if [ -n "${CLERK_SECRET_KEY:-}" ]; then
             echo "::notice title=P1 staging::secret_clerk=present"
           else
-            echo "::error title=P1 staging::secret_clerk=absent de l'environnement tracefab-clerk-test"
+            echo "::error title=P1 staging::secret_clerk=absent de l'environnement tracefab-clerk-test — deposer CLERK_SECRET_KEY d'instance de test (`sk_test_`) dans cet environnement"
             exit 1
           fi
+
+      - name: Resoudre le deploiement Preview du commit teste
+        # AUCUNE URL FIGEE. L'URL de Preview est immuable pour UN commit ; une
+        # URL codee en dur designe tot ou tard un autre commit, ou un alias
+        # que Vercel re-canonicalise (307). La source de verite est l'API
+        # GitHub des Deployments, alimentee par l'application Vercel : elle
+        # associe le SHA teste a un deploiement `success` et a son URL.
+        #
+        # Codes de sortie du script, un par cause :
+        #   2 configuration, 3 API refusee, 11 aucun deploiement pour ce SHA,
+        #   12 deploiement jamais pret, 13 URL inutilisable, 14 URL imposee
+        #   qui n'appartient pas a ce SHA.
+        id: preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TF_PREVIEW_WAIT_SECONDS: '1200'
+          TF_PREVIEW_POLL_SECONDS: '15'
+        run: node scripts/resolve_preview_deployment.mjs
+
+      - name: Preuve — le SHA teste et le deploiement resolu correspondent
+        # Une preuve lisible sans telecharger le journal : l'URL et le SHA ne
+        # sont pas des secrets, leur correspondance est verifiable.
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+          DEPLOYMENT_ID: ${{ steps.preview.outputs.deployment_id }}
+          DEPLOYMENT_SHA: ${{ steps.preview.outputs.deployment_sha }}
+          DEPLOYMENT_STATE: ${{ steps.preview.outputs.deployment_state }}
+          DEPLOYMENT_HOST: ${{ steps.preview.outputs.deployment_host }}
+          URL_SOURCE: ${{ steps.preview.outputs.url_source }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PREVIEW_URL:-}" ] || [ -z "${DEPLOYMENT_SHA:-}" ]; then
+            echo "::error title=P1 staging::cause=resolution_incomplete — le deploiement Preview n'a pas ete resolu"
+            exit 2
+          fi
+          if [ "${DEPLOYMENT_SHA,,}" != "${TF_TARGET_SHA,,}" ]; then
+            echo "::error title=P1 staging::cause=sha_divergent — deploiement ${DEPLOYMENT_ID} construit sur ${DEPLOYMENT_SHA}, SHA teste ${TF_TARGET_SHA}"
+            exit 14
+          fi
+          echo "preview_url=${PREVIEW_URL}"
+          echo "deploiement_id=${DEPLOYMENT_ID}"
+          echo "deploiement_sha=${DEPLOYMENT_SHA}"
+          echo "sha_teste=${TF_TARGET_SHA}"
+          echo "deploiement_etat=${DEPLOYMENT_STATE}"
+          echo "url_source=${URL_SOURCE}"
+          echo "::notice title=P1 staging — cible::preview_url=${PREVIEW_URL} deploiement_id=${DEPLOYMENT_ID} deploiement_sha=${DEPLOYMENT_SHA} sha_teste=${TF_TARGET_SHA} correspondance_sha=exacte etat=${DEPLOYMENT_STATE} url_source=${URL_SOURCE}"
 
       - name: Pre-vol — la Preview repond-elle comme l application ?
         # Une Preview derriere la protection de deploiement Vercel repond 302
         # vers /sso-api : le runner atteint la protection, pas l'application.
-        # Detecter cela ici evite un echec illisible plus loin. En mode
-        # strict, l'absence de reponse applicative arrete le job.
+        # Une URL qui n'est pas le deploiement du commit est re-canonicalisee
+        # (307) vers un AUTRE hote. Ces deux situations produisaient le meme
+        # « exit code 5 » ; elles produisent desormais des codes et des causes
+        # distincts, et le pre-vol bloque les tests dependants.
         env:
+          TRACEFAB_PREVIEW_URLS: ${{ steps.preview.outputs.preview_url }}
+          TF_DEPLOYMENT_HOST: ${{ steps.preview.outputs.deployment_host }}
           TF_PROBE_STRICT: '1'
         run: node scripts/probe_preview_surface.mjs
 
       - name: Inspection — comptes et organisations de test deja presents
         env:
+          TRACEFAB_STAGING_URL: ${{ steps.preview.outputs.preview_url }}
           TF_P1_PHASE: inspect
         run: node scripts/prepare_p1_staging_sessions.mjs
 
       - name: Preparer les trois sessions Clerk de test
         env:
+          TRACEFAB_STAGING_URL: ${{ steps.preview.outputs.preview_url }}
           TF_P1_PHASE: provision
         run: node scripts/prepare_p1_staging_sessions.mjs
 
       - name: Executer la suite P1 staging
         env:
+          TRACEFAB_STAGING_URL: ${{ steps.preview.outputs.preview_url }}
           TRACEFAB_P1_BRAND_STORAGE_STATE: /tmp/p1-storage-states/brand.json
           TRACEFAB_P1_SUPPLIER_STORAGE_STATE: /tmp/p1-storage-states/supplier.json
           TRACEFAB_P1_SECOND_BRAND_STORAGE_STATE: /tmp/p1-storage-states/second-brand.json
@@ -150,6 +216,8 @@ jobs:
         # seule etape qui en depend. Son absence ne doit donc pas priver le
         # dossier des preuves d'isolation deja mesurees ; elle doit etre
         # nommee, avec l'action exacte pour la lever.
+        env:
+          TRACEFAB_STAGING_URL: ${{ steps.preview.outputs.preview_url }}
         run: |
           if [ -n "${TF_WORKER_SECRET:-}" ]; then
             echo "::notice title=P1 staging::secret_sonde=present"

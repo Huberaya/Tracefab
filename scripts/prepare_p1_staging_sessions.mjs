@@ -35,6 +35,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { entetesBypass, exigerCiblePreview } from './lib/preview_deployment.mjs';
 
 const PHASE = (process.env.TF_P1_PHASE || 'inspect').trim();
 const CLERK_API = 'https://api.clerk.com/v1';
@@ -60,18 +61,16 @@ if (!cle.startsWith('sk_test_')) {
  * La valeur ne doit jamais etre affichee, ni loguee, ni placee dans une URL.
  */
 const vercelBypass = (process.env.TRACEFAB_VERCEL_BYPASS || '').trim();
-const bypassHeaders = vercelBypass
-  ? { 'x-vercel-protection-bypass': vercelBypass, 'x-vercel-set-bypass-cookie': 'true' }
-  : {};
+const bypassHeaders = entetesBypass(vercelBypass);
 
 const baseUrl = (process.env.TRACEFAB_STAGING_URL || '').trim();
 if (!baseUrl) {
   console.error('TRACEFAB_STAGING_URL absent : aucune cible.');
   process.exit(2);
 }
-const origin = new URL(baseUrl);
-assert.equal(origin.protocol, 'https:', 'la cible doit etre en HTTPS');
-assert.ok(origin.hostname.endsWith('.vercel.app'), 'la cible doit etre une Preview Vercel');
+// Cible validee AVANT tout appel : HTTPS, Preview Vercel du projet, sans
+// parametre, jamais un hote de production.
+const origin = exigerCiblePreview(baseUrl);
 
 const stateDir = (process.env.TF_P1_STATE_DIR || '/tmp/p1-storage-states').trim();
 

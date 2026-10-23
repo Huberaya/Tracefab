@@ -24,8 +24,9 @@
  *   - il n'affiche pas la reponse complete : seulement les champs utiles ;
  *   - il ne joint aucune base directement : il parle a l'application.
  */
-import assert from 'node:assert/strict';
 import { annoterMesures } from './lib/annotations.mjs';
+import { entetesBypass, exigerCiblePreview } from './lib/preview_deployment.mjs';
+import { analyserDestination, classerReponse } from './lib/preview_surface.mjs';
 
 const baseUrl = (process.env.TRACEFAB_STAGING_URL || '').trim();
 const workerSecret = (process.env.TF_WORKER_SECRET || '').trim();
@@ -35,12 +36,13 @@ if (!baseUrl) {
   process.exit(2);
 }
 
-const origin = new URL(baseUrl);
-assert.equal(origin.protocol, 'https:', 'la cible doit etre en HTTPS');
+// Cible validee AVANT tout appel : HTTPS, Preview Vercel du projet, sans
+// parametre, jamais un hote de production.
+const origin = exigerCiblePreview(baseUrl);
 
 // Contournement de la protection de deploiement Vercel — optionnel. La
 // valeur ne sort jamais dans l'URL ni dans la sortie.
-const vercelBypass = process.env.TRACEFAB_VERCEL_BYPASS?.trim() || '';
+const entetesContournement = entetesBypass(process.env.TRACEFAB_VERCEL_BYPASS);
 
 if (!workerSecret) {
   // DIAGNOSTIC. Sans le secret de sonde, la mesure est impossible. Mais on
@@ -51,36 +53,55 @@ if (!workerSecret) {
   // trois reponses designent trois corrections differentes.
   const urlDiagnostic = new URL('/api/internal/p2/readiness', origin);
   urlDiagnostic.searchParams.set('identity', '1');
-  const headersDiagnostic = {};
-  if (vercelBypass) {
-    headersDiagnostic['x-vercel-protection-bypass'] = vercelBypass;
-    headersDiagnostic['x-vercel-set-bypass-cookie'] = 'true';
-  }
   let code = 0;
   let erreur = 'joignable_non';
+  let destination = { classe: 'aucune', hote: null, chemin: null, parametres: [] };
+  let classeReponse = 'injoignable';
   try {
+    // `redirect: 'manual'` : une redirection est une MESURE, pas un detour.
+    // Suivre un 302 vers /sso-api ferait lire une page de connexion comme si
+    // c'etait l'application, et un 307 vers un autre deploiement ferait
+    // mesurer un AUTRE commit que celui teste.
     const reponse = await fetch(urlDiagnostic, {
       method: 'GET',
-      headers: headersDiagnostic,
+      redirect: 'manual',
+      headers: entetesContournement,
       signal: AbortSignal.timeout(15000),
     });
     code = reponse.status;
-    const corps = await reponse.json().catch(() => ({}));
-    erreur = corps?.error || 'aucune';
+    destination = analyserDestination(reponse.headers.get('location'), origin);
+    const corpsBrut = await reponse.text().catch(() => '');
+    classeReponse = classerReponse({
+      status: code,
+      contentType: reponse.headers.get('content-type'),
+      corps: corpsBrut,
+    }).classe;
+    try { erreur = JSON.parse(corpsBrut)?.error || 'aucune'; } catch { erreur = 'aucune'; }
   } catch {
     erreur = 'joignable_non';
   }
-  const diagnostic = code === 503
-    ? 'la Preview na pas de secret d exploitation configure : le poser dans Vercel (environnement Preview, nom TRACEFAB_NOTIFICATION_WORKER_SECRET) puis redeployer'
-    : code === 401
-      ? 'la Preview a un secret d exploitation : il manque dans l environnement GitHub tracefab-clerk-test, sous le nom TRACEFAB_NOTIFICATION_WORKER_SECRET'
-      : code === 302
-        ? 'la protection de deploiement Vercel intercepte encore l appel : le secret de contournement est absent ou faux dans l environnement GitHub tracefab-clerk-test'
-        : code === 200
-          ? 'la route interne ne demande aucun secret : la mesure de l identite nest pas protegee'
-          : 'la Preview est injoignable depuis ce runner : aucun diagnostic possible';
+  const estRedirection = code >= 300 && code < 400;
+  const versProtection = destination.classe === 'sso_vercel' || code === 302;
+  const versAutreDeploiement = destination.classe === 'autre_deploiement' || destination.classe === 'production';
+  const diagnostic = versAutreDeploiement
+    ? 'la cible nest pas le deploiement du commit teste : Vercel la re-canonicalise vers un autre deploiement'
+    : versProtection
+      ? 'la protection de deploiement Vercel intercepte encore l appel : le secret de contournement est absent ou faux dans l environnement GitHub tracefab-clerk-test'
+      : code === 503
+        ? 'la Preview na pas de secret d exploitation configure : le poser dans Vercel (environnement Preview, nom TRACEFAB_NOTIFICATION_WORKER_SECRET) puis redeployer'
+        : code === 401
+          ? 'la Preview a un secret d exploitation : il manque dans l environnement GitHub tracefab-clerk-test, sous le nom TRACEFAB_NOTIFICATION_WORKER_SECRET'
+          : code === 200
+            ? 'la route interne ne demande aucun secret : la mesure de l identite nest pas protegee'
+            : estRedirection
+              ? 'redirection non reconnue : inspecter la destination mesuree ci-dessous'
+              : 'la Preview est injoignable depuis ce runner : aucun diagnostic possible';
   annoterMesures('P1 staging — diagnostic du secret de sonde', [
     ['sonde_sans_secret_http', code],
+    ['sonde_sans_secret_classe', classeReponse],
+    ['sonde_sans_secret_redirection_classe', destination.classe],
+    ['sonde_sans_secret_redirection_hote', destination.hote || 'aucune'],
+    ['sonde_sans_secret_redirection_chemin', destination.chemin || 'aucun'],
     ['sonde_sans_secret_erreur', erreur],
     ['sonde_sans_secret_diagnostic', diagnostic],
   ]);
@@ -97,17 +118,34 @@ const productionUrl = (process.env.TF_PRODUCTION_PROBE_URL ?? 'https://tracefab.
 const url = new URL('/api/internal/p2/readiness', origin);
 url.searchParams.set('identity', '1');
 
-const headers = { 'x-tracefab-worker-secret': workerSecret };
-if (vercelBypass) {
-  headers['x-vercel-protection-bypass'] = vercelBypass;
-  headers['x-vercel-set-bypass-cookie'] = 'true';
-}
+const headers = { 'x-tracefab-worker-secret': workerSecret, ...entetesContournement };
 
 const response = await fetch(url, {
   method: 'GET',
+  // Une redirection n'est pas suivie : elle est nommee. Suivre un 302 vers la
+  // page de protection lirait une page de connexion comme une reponse de
+  // l'application, et suivre un 307 changerait de commit sans le dire.
+  redirect: 'manual',
   headers,
 });
-const body = await response.json().catch(() => ({}));
+const corpsBrut = await response.text().catch(() => '');
+const redirection = response.headers.get('location')
+  ? analyserDestination(response.headers.get('location'), origin)
+  : { classe: 'aucune', hote: null, chemin: null, parametres: [] };
+if (response.status >= 300 && response.status < 400) {
+  annoterMesures('P1 identite DB runtime', [
+    ['readiness_http', response.status],
+    ['readiness_redirection_classe', redirection.classe],
+    ['readiness_redirection_hote', redirection.hote || 'aucun'],
+    ['readiness_redirection_chemin', redirection.chemin || 'aucun'],
+    ['identite_conforme', false],
+  ]);
+  console.error(`La sonde a recu ${response.status} vers ${redirection.hote || 'un hote inconnu'} `
+    + `(${redirection.chemin || '?'}, classe ${redirection.classe}) : l application n'a pas repondu.`);
+  process.exit(4);
+}
+let body = {};
+try { body = JSON.parse(corpsBrut); } catch { body = {}; }
 
 const identite = body?.databaseIdentity || {};
 const mesures = [

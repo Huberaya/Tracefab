@@ -4,23 +4,29 @@
 #   Le bac a sable d'analyse n'a aucun acces reseau a *.vercel.app (HTTP 000
 #   mesure) ni a api.clerk.com : un test lance la n'atteindrait jamais
 #   l'application, donc ne prouverait rien. Les runners GitHub ont un acces
-#   Internet complet. L'execution reelle part donc d'ici.
+#   Internet complet. L'execution reelle part donc d'ici, et la mesure de
+#   surface aussi.
 #
 # CE QUE CE WORKFLOW FAIT
-#   Il mesure ce qui est mesurable sans privilege : la surface reelle de la
-#   Preview — sante, configuration Clerk, presence de la sonde interne protegee.
-#   Il ne lit AUCUN secret : une reference au contexte `secrets` ferait retenir
-#   le run entier par la politique de protection du depot.
+#   Il mesure ce qui est mesurable sans privilege : la surface reelle des
+#   derniers deploiements de Preview — sante, configuration Clerk, presence de
+#   la sonde interne protegee, et surtout la DESTINATION de chaque redirection
+#   (hote compris). Il ne lit AUCUN secret : une reference au contexte
+#   `secrets` ferait retenir le run entier par la politique de protection.
 #
-# CE QU'IL NE FAIT PAS
+# CE QUE CE WORKFLOW NE FAIT PAS
 #   - il ne lit aucun secret, ni valeur ni nom ;
 #   - il n'ecrit rien, ne cree aucun tenant, ne joint aucune base ;
-#   - il n'est rattache a aucun environnement et ne lit aucun secret : il n'est
-#     donc jamais retenu par une approbation, ce qui le rend toujours jouable.
+#   - il n'est rattache a aucun environnement : il n'est donc jamais retenu par
+#     une approbation, ce qui le rend toujours jouable ;
+#   - il n'utilise AUCUNE URL figee : les cibles sont les URL immuables des
+#     deploiements Preview lues dans l'API GitHub des Deployments.
 #
-# L'URL de la Preview n'est pas codee en dur : elle vient de l'entree
-# `preview_url`, ce qui permet de rejouer le meme test sur un autre
-# deploiement sans modifier le code.
+# MODE NON STRICT
+#   Ce diagnostic ne conclut pas : une Preview protegee est le comportement
+#   ATTENDU ici. Il rapporte la classe de chaque reponse et la destination de
+#   chaque redirection. Le verdict bloquant appartient au pre-vol du workflow
+#   authentifie, qui dispose du secret de contournement.
 
 name: P1 staging — diagnostic de surface
 
@@ -32,9 +38,9 @@ on:
   workflow_dispatch:
     inputs:
       preview_url:
-        description: 'URL de base de la Preview Vercel a tester (https://...vercel.app)'
+        description: 'URL de Preview a sonder en plus (facultatif)'
         required: false
-        default: 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+        default: ''
 
 permissions:
   contents: read
@@ -48,9 +54,9 @@ jobs:
   diagnostic:
     name: Diagnostic — surface Preview
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
-      TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || 'https://tracefab-m815yyk4e-baya-ibraimmayoanouedu-8164s-projects.vercel.app,https://tracefab-ek0vg39c3-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
+      TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -60,26 +66,30 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Lister les deploiements Preview du depot
-        # La protection de deploiement Vercel peut etre propre au projet ou a
-        # un deploiement. Sans cette liste, on ne peut pas distinguer les deux
-        # cas, donc on ne peut pas dire au proprietaire quoi changer.
+      - name: Lister les deploiements Preview et leurs URL immuables
+        # Aucune URL n'est ecrite dans ce fichier : elles sont lues a
+        # l'execution, par SHA, via l'API GitHub des Deployments. C'est la
+        # meme source que celle utilisee par le workflow authentifie, donc les
+        # deux workflows ne peuvent pas diverger sur la cible.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           : > /tmp/preview-urls.txt
-          gh api "repos/${{ github.repository }}/deployments?per_page=30" \
+          gh api "repos/${{ github.repository }}/deployments?per_page=40" \
             --jq '.[] | select(.environment == "Preview") | .id' > /tmp/deployment-ids.txt
           while read -r id; do
             [ -n "$id" ] || continue
-            url="$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" --jq '.[0].environment_url // empty' || true)"
+            url="$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" --jq '[.[] | select(.state == "success")][0].environment_url // empty' || true)"
             [ -n "$url" ] && echo "$url" >> /tmp/preview-urls.txt
           done < /tmp/deployment-ids.txt
-          sort -u /tmp/preview-urls.txt -o /tmp/preview-urls.txt
-          echo "preview_deployements=$(wc -l < /tmp/preview-urls.txt)"
+          if [ -s /tmp/preview-urls.txt ]; then
+            sort -u /tmp/preview-urls.txt -o /tmp/preview-urls.txt
+          fi
+          echo "deploiements_preview=$(wc -l < /tmp/preview-urls.txt)"
+          echo "::notice title=P1 diagnostic::deploiements_preview=$(wc -l < /tmp/preview-urls.txt)"
 
-      - name: Preview — sante et configuration Clerk (prefixes seuls)
+      - name: Preview — sante, configuration Clerk et destination des redirections
         env:
           TRACEFAB_PREVIEW_URLS_FILE: /tmp/preview-urls.txt
         run: node scripts/probe_preview_surface.mjs
