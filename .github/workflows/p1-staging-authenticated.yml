@@ -50,7 +50,7 @@ on:
       preview_url:
         description: 'URL de base de la Preview Vercel a tester (https://...vercel.app)'
         required: false
-        default: 'https://tracefab-62etxlvtj-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+        default: 'https://tracefab-od3fmad5b-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
 
 permissions:
   contents: read
@@ -67,8 +67,8 @@ jobs:
     timeout-minutes: 45
     env:
       NODE_VERSION: '20'
-      TRACEFAB_STAGING_URL: ${{ github.event.inputs.preview_url || 'https://tracefab-62etxlvtj-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
-      TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || 'https://tracefab-62etxlvtj-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
+      TRACEFAB_STAGING_URL: ${{ github.event.inputs.preview_url || 'https://tracefab-od3fmad5b-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
+      TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || 'https://tracefab-od3fmad5b-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
       TF_P1_STATE_DIR: /tmp/p1-storage-states
       # Le nom du secret n'est pas impose : plusieurs noms usuels sont
       # acceptes, le premier non vide gagne. Un secret absent donne une
