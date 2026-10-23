@@ -75,9 +75,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # Capacite de sortie : les annotations GitHub sont bornees, donc on
+          # mesure les deploiements les plus recents, et d'abord celui du SHA
+          # du run, qui est celui que le workflow authentifie utilisera.
           : > /tmp/preview-urls.txt
-          gh api "repos/${{ github.repository }}/deployments?per_page=40" \
-            --jq '.[] | select(.environment == "Preview") | .id' > /tmp/deployment-ids.txt
+          gh api "repos/${{ github.repository }}/deployments?sha=${{ github.sha }}&per_page=20" \
+            --jq '.[] | select(.environment == "Preview") | .id' > /tmp/deployment-ids-sha.txt
+          gh api "repos/${{ github.repository }}/deployments?per_page=12" \
+            --jq '.[] | select(.environment == "Preview") | .id' >> /tmp/deployment-ids-sha.txt
+          sort -u /tmp/deployment-ids-sha.txt > /tmp/deployment-ids.txt
           while read -r id; do
             [ -n "$id" ] || continue
             url="$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" --jq '[.[] | select(.state == "success")][0].environment_url // empty' || true)"
@@ -87,7 +93,7 @@ jobs:
             sort -u /tmp/preview-urls.txt -o /tmp/preview-urls.txt
           fi
           echo "deploiements_preview=$(wc -l < /tmp/preview-urls.txt)"
-          echo "::notice title=P1 diagnostic::deploiements_preview=$(wc -l < /tmp/preview-urls.txt)"
+          echo "::notice title=P1 diagnostic::deploiements_preview=$(wc -l < /tmp/preview-urls.txt) sha_du_run=${{ github.sha }}"
 
       - name: Preview — sante, configuration Clerk et destination des redirections
         env:
