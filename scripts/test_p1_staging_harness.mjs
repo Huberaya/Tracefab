@@ -446,6 +446,139 @@ function executer(args, env = {}) {
   else ko('la suite staging ne publie ses mesures qu dans le journal de run');
 }
 
+/* --- 5 sexies. les identites de test restent dans leur perimetre ---------- */
+
+{
+  // Le 2026-10-24, l'API Clerk de l'instance de test a refuse l'adresse
+  // `p1-brand-a@tracefab.test` en 422 `form_param_format_invalid`
+  // (paramName `email_address`) : validation de format cote serveur, plus
+  // stricte que le test syntaxique, sur un domaine special-use `.test`.
+  // Trois familles doivent survivre a une modification du script :
+  //   1. le perimetre d'adresses — liste EXPLICITE, partagee, testee ;
+  //   2. l'echelle de candidats — le refus format de Clerk est nomme, pas
+  //      masque derriere un echec generique ;
+  //   3. le releve reel de l'instance — plus les anciens champs fantomes
+  //      (`auth_settings`, `instance_type`) qui revenaient « inconnus ».
+  const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
+
+  // 1. perimetre partage etegorique
+  if (/identites_test\.mjs/.test(sessions)) {
+    ok('la preparation partage son garde-fou d adresses avec le module dedie');
+  } else {
+    ko('la preparation ne passe plus par le garde-fou d adresses partage');
+  }
+  if (!/endsWith\('\.test'\)/.test(sessions)) {
+    ok("l ancien garde restrictif au domaine `.test` a ete remplace (il etait refuse par Clerk)");
+  } else {
+    ko("l ancien garde `.test` est toujours la : il designe une adresse que Clerk refuse");
+  }
+
+  const { adresseAutorisee, DOMAINES_IDENTITES_DE_TEST } = await import('./lib/identites_test.mjs');
+
+  // Le perimetre est EPIQUE : l'ajout d'un domaine exige d'editer ce test.
+  const perimetreAttendu = ['example.com', 'example.org', 'example.net'];
+  if (JSON.stringify([...DOMAINES_IDENTITES_DE_TEST]) === JSON.stringify(perimetreAttendu)) {
+    ok(`le perimetre des identites de test est exactement [${perimetreAttendu.join(', ')}]`);
+  } else {
+    ko(`le perimetre des identites de test a change sans validation : [${DOMAINES_IDENTITES_DE_TEST.join(', ')}]`);
+  }
+
+  const cas = [
+    ['p1-brand-a@example.com', true],
+    ['P1@Example.COM', true],
+    ['p1-supplier@example.org', true],
+    ['x@example.net', true],
+    ['p1@tracefab.test', false], // refuse par Clerk en 422 — mesure
+    ['p1@gmail.com', false],      // adresse reelle interdite
+    ['p1@sub.example.com', false], // pas de sous-domaine implicite
+    ['p1@notexample.com', false],
+    ['p1@example', false],
+    ['p1 a@example.com', false],
+    ['p1@@example.com', false],
+    [null, false],
+    ['', false],
+  ];
+  const malClasses = cas.filter(([adresse, attendu]) => adresseAutorisee(adresse) !== attendu);
+  if (malClasses.length === 0) ok(`le garde-fou classe exactement les ${cas.length} cas d adresse (positifs et negatifs)`);
+  else ko(`garde-fou d adresses faux pour : ${malClasses.map(([a]) => JSON.stringify(a)).join(', ')}`);
+
+  // Toute adresse litterale du script doit etre dans le perimetre — un
+  // durcissement futur du module ne doit pas laisser derriere lui une
+  // adresse hors perimetre en dur.
+  const adressesLitterales = [...sessions.matchAll(/['"]([\w.+-]+@[\w.-]+)['"]/g)].map((m) => m[1]);
+  const horsPerimetre = adressesLitterales.filter((a) => !adresseAutorisee(a));
+  if (horsPerimetre.length === 0) ok('aucune adresse litterale hors perimetre dans la preparation');
+  else ko(`adresses litterales hors perimetre dans la preparation : ${horsPerimetre.join(', ')}`);
+
+  // 2. echelle de candidats et refus nomme
+  if (/form_param_format_invalid/.test(sessions) && /clerk_adresses_refusees/.test(sessions)) {
+    ok('le refus format de Clerk est nomme, candidat par candidat, avec les codes recus');
+  } else {
+    ko('le refus format de Clerk n est pas nomme : il reapparaitrait en echec generique');
+  }
+  if (/candidat_accepte/.test(sessions) && /candidats\.entries\(\)/.test(sessions)) {
+    ok('la preparation echelonne ses candidats et publie celui que Clerk accepte');
+  } else {
+    ko('la preparation n echelonne pas ses candidats d adresses');
+  }
+  // Toute AUTRE erreur API doit sortir immediatement : masquer un refus
+  // different derriere le format serait un faux diagnostic.
+  if (/clerk_api_inattendue/.test(sessions) && /process\.exit\(7\)/.test(sessions)) {
+    ok('une erreur API Clerk hors format sort sur sa propre cause (code 7)');
+  } else {
+    ko('une erreur API Clerk hors format serait masquee derriere le format');
+  }
+
+  // 3. releve reel de l instance + refus de la production
+  if (/environment_type/.test(sessions) && /instance_de_production/.test(sessions)
+      && /process\.exit\(6\)/.test(sessions)) {
+    ok('la preparation lit l environnement reel de l instance et refuse la production (code 6)');
+  } else {
+    ko('la preparation ne refuse plus une instance relevee en production');
+  }
+  // Verification sur le CODE uniquement : expliquer la disparition des
+  // champs dans un commentaire n'est pas les lire.
+  const codeSansCommentaires = sessions
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  if (!/auth_settings/.test(codeSansCommentaires) && !/instance_type/.test(codeSansCommentaires)) {
+    ok('la preparation ne lit plus les champs fantomes `auth_settings` / `instance_type`');
+  } else {
+    ko('la preparation lit encore `auth_settings` ou `instance_type`, qui n existent plus : l etat est faussement inconnu');
+  }
+  if (/v1\/environment/.test(sessions) && /strategie_mot_de_passe/.test(sessions)
+      && /used_for_first_factor/.test(sessions)) {
+    ok('les strategies de connexion sont relevees sur la Frontend API, champ reel par champ');
+  } else {
+    ko('les strategies de connexion ne sont plus relevees sur l instance');
+  }
+  if (/process\.exit\(4\)/.test(sessions) && /mot de passe/i.test(sessions)) {
+    ok('une strategie sans mot de passe CONFIRMEE arrete la preparation (code 4) avant le navigateur');
+  } else {
+    ko('la preparation arreterait plus tot sur un formulaire sans mot de passe');
+  }
+
+  // Le releve des strategies lit la cle publique de /api/config : elle ne
+  // doit jamais partir dans un journal.
+  const lignesSortie = sessions.split('\n').filter((l) => /console\.(log|error)\(/.test(l));
+  const fuiteClePublique = lignesSortie.filter((l) => /\$\{\s*(pk|publishableKey|config\??\.)/.test(l));
+  if (fuiteClePublique.length === 0) ok('la preparation n affiche jamais la cle publique ni sa source');
+  else ko(`la preparation affiche la cle publique : ${fuiteClePublique[0].trim().slice(0, 80)}`);
+
+  // 4. idempotence mesurable : creation annoncee, recherche avant creation
+  if (/creation_de_lance/.test(sessions) && /creation_organisation_lance/.test(sessions)) {
+    ok('chaque passe annonce ce qu elle cree — une relance se voit en un coup d oeil');
+  } else {
+    ko('la preparation n annonce pas ce qu elle cree : une duplication passerait inapercue');
+  }
+  if (/trouverIdentite/.test(sessions) && sessions.indexOf('trouverIdentite(persona)') >= 0
+      && /const existant = etats\.find/.test(sessions)) {
+    ok('la creation cherche le compte existant (tous candidats) avant toute ecriture');
+  } else {
+    ko('la creation ne cherche plus le compte existant avant d ecrire');
+  }
+}
+
 /* --- 6. l'inventaire des secrets n'affiche que des noms -------------------- */
 
 {

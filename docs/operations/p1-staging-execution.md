@@ -157,19 +157,84 @@ Et, en complément, la sonde d'identité du runtime (§6).
 `scripts/prepare_p1_staging_sessions.mjs` fabrique les trois sessions dans
 l'**instance Clerk de test** (`sk_test_`), jamais en production.
 
-| Persona | Adresse (domaine `.test`) | Organisation |
+### 4.1 Identités : échelle de candidats (cause racine du 2026-10-24)
+
+Le 2026-10-24, l'étape de provisionnement a échoué en 422 sur le premier
+compte ([run 40043764425](https://github.com/Huberaya/Tracefab/actions/runs/40043764425)) :
+
+```
+ClerkAPIResponseError: Unprocessable Entity (status 422)
+  code: 'form_param_format_invalid'
+  longMessage: 'Email address must be a valid email address.'
+  meta: { paramName: 'email_address' }
+```
+
+**Cause racine** : l'API Clerk valide le format des adresses **côté serveur**,
+avec une règle plus stricte que le test syntaxique — le domaine special-use
+`tracefab.test` (TLD `.test`, RFC 6761) est refusé, alors que le même texte
+passe le regex permissif du client (`isEmail` = `/^\S+@\S+\.\S+$/`, « le
+serveur a le dernier mot »). La validation n'est pas contournable : c'est
+l'instance qui tranche.
+
+**Stratégie retenue** — ni « remplacer par `example.com` au hasard » ni
+« assouplir un garde-fou » :
+
+1. **Périmètre explicite et partagé** — `scripts/lib/identites_test.mjs`
+   liste les seuls domaines autorisés, **RFC 2606** (`example.com`,
+   `example.org`, `example.net` : réservés à la documentation, jamais
+   destinés au courrier réel — et pris comme exemple par la documentation
+   Clerk pour `createUser`). Toute adresse hors périmètre est refusée **avant
+   tout appel**, y compris après modification future du script : le garde-fou
+   est un module pur, testé hors ligne par `test:p1-harness` (14 cas
+   positifs/négatifs, périmètre épinglé).
+2. **Échelle de candidats vérifiée contre l'instance** — pour chaque persona,
+   le script offre les trois domaines dans l'ordre et **retient le premier
+   que l'instance accepte** : la vérification « l'adresse est-elle acceptée
+   par cette instance ? » est faite par l'instance elle-même (422 = candidat
+   suivant, `candidat_accepte=<persona>:<indice>` en journal). Si les trois
+   sont refusés : code de sortie **5**, `clerk_adresses_refusees`, avec les
+   codes reçus — jamais un échec générique. Toute **autre** erreur API sort
+   immédiatement en code **7** (masquer un refus de format derrière un refus
+   différent serait un faux diagnostic).
+3. **Compatible avec le mode de vérification** — les comptes sont créés avec
+   `emailAddressIdentificationStatus: ['verified']` : aucune vérification par
+   code n'est exigée à la connexion, quel que soit le réglage
+   `verify_at_sign_up`, dont la valeur réelle est **relevée en phase
+   `inspect`** (§4.3).
+
+| Persona | Candidats (dans l'ordre) | Organisation |
 |---|---|---|
-| marque A | `p1-brand-a@tracefab.test` | Tracefab P1 Marque A (`brand`) |
-| fournisseur | `p1-supplier@tracefab.test` | Tracefab P1 Fournisseur (`supplier`) |
-| marque B | `p1-brand-b@tracefab.test` | Tracefab P1 Marque B (`brand`) |
+| marque A | `p1-brand-a@example.com` → `.org` → `.net` | Tracefab P1 Marque A (`brand`) |
+| fournisseur | `p1-supplier@example.com` → `.org` → `.net` | Tracefab P1 Fournisseur (`supplier`) |
+| marque B | `p1-brand-b@example.com` → `.org` → `.net` | Tracefab P1 Marque B (`brand`) |
 
-Deux phases :
+### 4.2 Idempotence
 
-- `TF_P1_PHASE=inspect` — **lecture seule** : décrit l'instance (strategies de
-  connexion), liste les comptes et organisations de test déjà présents ;
+Chaque passe cherche le compte sur **tous** ses candidats avant toute écriture,
+réutilise l'organisation par son nom, et **publie ce qu'elle crée** :
+`creation_de_lance=<persona>:false` + `creation_organisation_lance=...:false`
+sur une relance = aucun doublon, vérifiable d'un coup d'œil dans le journal.
+
+### 4.3 Deux phases
+
+- `TF_P1_PHASE=inspect` — **lecture seule** : environnement réel de l'instance
+  (`GET /v1/instance` → `environment_type`, refus **code 6** si
+  `production`), strategies de connexion relevées sur la Frontend API
+  (`GET {frontend-api}/v1/environment` — objet que clerk-js charge avant
+  d'afficher le formulaire : `strategie_mot_de_passe`,
+  `mot_de_passe_premier_facteur`, `verification_email_inscription`,
+  `mode_inscription`, `inscription_allowlist_seule`,
+  `second_facteur_obligatoire` ; un relevé indéterminé est **nommé**, pas
+  confondu avec une stratégie absente), comptes et organisations de test
+  déjà présents ;
 - `TF_P1_PHASE=provision` — crée ce qui manque (comptes, organisations,
-  adhésions), puis ouvre **trois sessions réelles par l'IHM Clerk de
+  adhésions), refuse une stratégie sans mot de passe **confirmée**
+  (code **4**), puis ouvre **trois sessions réelles par l'IHM Clerk de
   l'application** et écrit les trois états de session.
+
+Codes de sortie : `2` configuration · `3` cle non-`sk_test_` · `4` stratégie
+sans mot de passe · `5` candidats d'adresses tous refusés · `6` instance
+`production` · `7` erreur API inattendue.
 
 Les mots de passe sont générés par le script : ils ne sont jamais affichés,
 jamais journalisés, jamais demandés en clair. Les états de session sont écrits

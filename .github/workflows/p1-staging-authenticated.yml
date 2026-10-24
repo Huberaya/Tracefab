@@ -202,6 +202,11 @@ jobs:
         run: node scripts/prepare_p1_staging_sessions.mjs
 
       - name: Preparer les trois sessions Clerk de test
+        # Codes de sortie du script, un par cause :
+        #   2 configuration absente, 3 cle non-`sk_test_`, 4 strategie sans
+        #   mot de passe confirmee, 5 echelle de candidats d adresses toutes
+        #   refusee par Clerk (422 format), 6 instance relevee en production,
+        #   7 erreur API Clerk inattendue (code nomme, sans corps).
         env:
           TRACEFAB_STAGING_URL: ${{ steps.preview.outputs.preview_url }}
           TF_P1_PHASE: provision
