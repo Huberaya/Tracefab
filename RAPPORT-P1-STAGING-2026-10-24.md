@@ -146,10 +146,19 @@ Mesures :
 | `workflow_dispatch` sur la branche | `403 Resource not accessible by integration` |
 | relancer le run (`rerun`) | `403 Resource not accessible by integration` |
 
-**Action humaine (une seule, propriétaire)** — *Settings* → *Environments* →
+**Levé le 2026-10-24 par le propriétaire.** La règle est enregistrée ; l'API
+renvoie désormais `total_count: 3` :
+
+```
+arena/88857a44-tracefab
+arena/f9effa2e-tracefab
+main
+```
+
+Procédure qui a permis de la lever — *Settings* → *Environments* →
 `tracefab-clerk-test` → *Deployment branches and tags* → *Add deployment branch
-or tag rule* → saisir exactement `arena/f9effa2e-tracefab` (ou le motif
-`arena/*`, qui couvre les sessions suivantes) → *Add rule*.
+or tag rule* → `arena/f9effa2e-tracefab` (ou le motif `arena/*`, qui couvre les
+sessions suivantes) → *Add rule*.
 
 Vérification immédiate, sans interface :
 
