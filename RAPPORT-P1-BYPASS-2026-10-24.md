@@ -5,10 +5,13 @@
 preuves ci-dessous portent sur ce commit code et sont revérifiées sur le SHA final par la CI de PR)
 **PRs** : #91 (historique), #92, #93 (sessions précédentes), nouvelle PR de cette branche (laissée ouverte)
 
-> **Statut : P1 NON clôturé.** Le bypass est réparé côté client et son échec passé est expliqué et
-> prouvé ; la protection Vercel est confirmée active sur le SHA testé ; mais la passe « avec secret »
-> n'a pas encore pu être exécutée, faute d'une règle de politique de branche GitHub que seul le
-> propriétaire peut ajouter. Aucun test n'a été supprimé, assoupli ou transformé en succès.
+> **Statut : P1 NON clôturé, mais le bypass est désormais PROUVÉ.** Pendant cette session, la
+> politique de branche a été levée pour `arena/f9effa2e-tracefab` (action propriétaire) et le run
+> authentifié [40043764425](https://github.com/Huberaya/Tracefab/actions/runs/40043764425) a passé le
+> pré-vol : `cause=application_atteinte`, `/api/health` 200 JSON, `/api/config` 200 (`pk_test`),
+> contournement accepté. Le blocage a donc **migré** : l'étape « Préparer les trois sessions Clerk »
+> échoue (exit 1) avant la suite d'isolation et la sonde DB. Aucun test n'a été supprimé, assoupli
+> ou transformé en succès.
 
 ---
 
@@ -81,7 +84,9 @@ Le périmètre applicatif n'est pas touché. Aucun test de sécurité, d'isolati
 |---|---|---|---|
 | 1 | Cible = déploiement du SHA | **PASS** | deployment `7291443275`, `state=success`, `environment_url=https://tracefab-oc2d38ap5-baya-ibraimmayoanouedu-8164s-projects.vercel.app`, `deploiement_sha=403a2728…` = `sha_teste` (vérifié aussi par API indépendante) |
 | 2 | Protection Vercel toujours active (passe A, sans en-tête) | **PASS** | `/api/health`, `/api/config`, `/api/internal/p2/readiness` → `302`, `redirection_classe=sso_vercel`, `redirection_hote=vercel.com`, `redirection_chemin=/sso-api` — runs [40043716354](https://github.com/Huberaya/Tracefab/actions/runs/40043716354) et [40043716345](https://github.com/Huberaya/Tracefab/actions/runs/40043716345) |
-| 3 | Passe B (avec secret) | **BLOCKED** | `portee_secret=environnement_seulement_ou_absent` : `VERCEL_AUTOMATION_BYPASS_SECRET` n'existe qu'au niveau de l'environnement `tracefab-clerk-test`, inaccessible à cette branche (§1.3) |
+| 3 | Passe B (avec secret) — **sur cette branche** | **BLOCKED** | `portee_secret=environnement_seulement_ou_absent` : `VERCEL_AUTOMATION_BYPASS_SECRET` n'existe qu'au niveau de l'environnement `tracefab-clerk-test`, inaccessible à `arena/fd3fb758-tracefab` (§1.3) |
+| 3bis | Passe B — **preuve réelle obtenue en parallèle** | **PASS** | run [40043764425](https://github.com/Huberaya/Tracefab/actions/runs/40043764425) (branche `arena/f9effa2e-tracefab`, SHA `dbe73b7b`, déploiement `7291449688`, hôte `tracefab-erjxjapcj-…`) : pré-vol `cause=application_atteinte code=0`, `/api/health_http=200 classe=application`, `/api/config_http=200`, `config_clerk=pk_test`, `/api/internal/p2/readiness_http=401` JSON (protection applicative, attendue sans secret de sonde), `contournement_disponible=true`, correspondance SHA exacte. **Le secret est donc accepté par le projet Vercel : le bypass fonctionne.** |
+| 3ter | Provisioning des 3 sessions Clerk | **FAIL** | même run, étape « Préparer les trois sessions Clerk de test » : exit 1 en ~49 s, après une inspection réussie. Le journal détaillé n'est pas téléchargeable depuis ce bac à sable (hôte de logs injoignable, mesuré) : la cause exacte (formulaire de connexion, stratégie Clerk, compte refusé) doit être lue dans le journal du job 120720616272. Aucune hypothèse n'est présentée comme un fait. |
 | 4 | Bypass « présent ≠ prouvé » | **levé comme ambiguïté** | la présence dans l'environnement est attestée (runs 40035513421 : `secret_bypass=present`, `secret_clerk=present`) ; l'acceptation par Vercel était déjà démontrée par la poignée de main 307 (§1.1) ; seul le 200 final reste à mesurer |
 | 5 | Tests locaux | **PASS** | `test:workflow-policy` OK (nouveau workflow validé : secrets déclarés, actions épinglées par SHA) · `test:p1-harness` OK · `test:p1:preview-deployment` 19/19 · `test:sonde-preview` 18 assertions |
 | 6 | Exécution authentifiée / Clerk / isolation / identité DB | **NOT RUN** | jobs rejetés en 1 s par la politique de branche : runs [40043716325](https://github.com/Huberaya/Tracefab/actions/runs/40043716325), [40043716439](https://github.com/Huberaya/Tracefab/actions/runs/40043716439) |
@@ -98,16 +103,21 @@ Le périmètre applicatif n'est pas touché. Aucun test de sécurité, d'isolati
   (`brand_organization_mismatch` 400, `organization_not_found` 404, `brand_organization_access_denied` 403) ;
 - sonde d'identité DB runtime : `current_user`, `session_user`, `rolsuper=false`, `rolbypassrls=false`.
 
-## 4. Action manuelle restante (une seule, propriétaire)
+## 4. Actions restantes (dans l'ordre)
 
-**GitHub → `Huberaya/Tracefab` → Settings → Environments → `tracefab-clerk-test` →
-« Deployment branches and tags » → Add rule → `arena/fd3fb758-tracefab`** (ou le motif `arena/*`,
-qui couvre les sessions suivantes), puis approuver le déploiement du run authentifié
-(bouton « Review deployments » sur la page du run ; `prevent_self_review` est actuellement décoché).
-
-Vérification : `gh api repos/Huberaya/Tracefab/environments/tracefab-clerk-test/deployment-branch-policies`
-doit passer de `total_count: 2` à `3`. Un push sur la branche relance alors les trois workflows, et
-la suite complète s'exécute sans autre modification de code.
+1. **Lire la cause de l'échec Clerk** (propriétaire ou session autorisée) : page du run
+   [40043764425](https://github.com/Huberaya/Tracefab/actions/runs/40043764425), job
+   `120720616272`, étape « Préparer les trois sessions Clerk de test » — la première ligne d'erreur
+   nomme la cause (délai d'attente du champ identifiant/mot de passe, stratégie de connexion de
+   l'instance de test, ou refus de création de compte/organisation). Relancer ensuite le workflow
+   authentifié sur `arena/f9effa2e-tracefab` (déjà autorisée) : les étapes suivantes — suite
+   d'isolation 4 plans et sonde d'identité DB — n'ont **jamais encore tourné**.
+2. **Pour cette branche-ci** (si on veut les preuves sur son SHA) : Settings → Environments →
+   `tracefab-clerk-test` → « Deployment branches and tags » → Add rule → `arena/fd3fb758-tracefab`
+   (ou `arena/*`), puis approuver le run. Vérification :
+   `gh api repos/Huberaya/Tracefab/environments/tracefab-clerk-test/deployment-branch-policies`
+   doit faire apparaître la branche (état actuel mesuré : `main`, `arena/88857a44-tracefab`,
+   `arena/f9effa2e-tracefab`).
 
 ## 5. Sécurité — confirmations explicites
 
