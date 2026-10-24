@@ -234,10 +234,9 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
                     FILTER (WHERE r.rolsuper OR r.rolbypassrls), '') AS noms
       FROM pg_roles r, attributs a
      WHERE r.oid <> a.oid
-       -- Adhesion DIRECTE ou INDIRECTE. `pg_has_role(oid, oid, text)` est la
-       -- surcharge exacte (oid, oid, text) : passer `current_user` (type
-       -- `name`) ici ne resoudrait aucune fonction et ferait echouer la
-       -- mesure entiere.
+       -- Adhesion DIRECTE ou INDIRECTE. La surcharge (oid, oid, text) est la
+       -- seule exacte ici : passer current_user (type name) ne resoudrait
+       -- aucune fonction et ferait echouer la mesure entiere.
        AND pg_has_role(a.oid, r.oid, 'MEMBER')
   )
   SELECT current_user                                        AS current_user,
