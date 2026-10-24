@@ -49,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return json(res, 400, { error: `Invalid systemType. Supported: ${validSystems.join(', ')}` });
       }
 
-      const result = await ingestPlmErpData(targetOrgId, systemType as PlmErpSystemType, payload, integrationId);
+      const result = await ingestPlmErpData(tx, targetOrgId, systemType as PlmErpSystemType, payload, integrationId);
 
       return json(res, 200, result);
     });

@@ -177,7 +177,8 @@
     "test:brand-journey-58": "node scripts/test_brand_journey_58_defects.mjs",
     "test:route-context-coverage": "node scripts/test_route_context_coverage.mjs",
     "test:customer-journey:blockers": "node scripts/test_customer_journey_release_blockers.mjs",
-    "test:p1:preview-deployment": "node scripts/test_preview_deployment_selection.mjs"
+    "test:p1:preview-deployment": "node scripts/test_preview_deployment_selection.mjs",
+    "test:neon:mission-b": "node scripts/run-db-suite.mjs scripts/test_neon_mission_b_isolation.mjs"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^6.19.3",
