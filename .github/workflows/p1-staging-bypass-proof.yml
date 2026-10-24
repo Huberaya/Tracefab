@@ -1,0 +1,177 @@
+# P1 staging — PREUVE HTTP du contournement de la protection de deploiement.
+#
+# POURQUOI CE WORKFLOW EXISTE
+#   L'execution authentifiee (`p1-staging-authenticated.yml`) est rattachee a
+#   l'environnement GitHub `tracefab-clerk-test`. Cet environnement porte une
+#   politique de branches (`main`, `arena/88857a44-tracefab`) : un push sur une
+#   autre branche est rejete AVANT la premiere etape, sans qu'aucune requete ne
+#   parte. Aucune mesure n'a donc jamais pu etre produite sur une branche de
+#   travail non listee, et « le secret est present » est reste la seule chose
+#   connue. Or la question — « le secret de contournement FONCTIONNE-t-il ? » —
+#   se tranche par deux requetes HTTP, sans cle Clerk, sans base, sans
+#   environnement.
+#
+# CE QU'IL MESURE — deux passes sur la MEME URL immuable du deploiement du SHA
+#   A. sans en-tete de contournement -> doit repondre 302 vers vercel.com/sso-api.
+#      C'est la preuve que la protection est TOUJOURS ACTIVE : le chantier ne
+#      peut donc pas « reussir » en ayant affaibli la securite.
+#   B. avec l'en-tete `x-vercel-protection-bypass` -> doit repondre 200 JSON
+#      applicatif sur /api/health. C'est la preuve que le secret est accepte par
+#      CE projet et CE deploiement precis.
+#   Aucune des deux passes ne suffit seule : A sans B ne distingue pas
+#   « protection » de « protection absente » volontaire ; B sans A ne distingue
+#   pas « contournement accepte » de « protection desactivee ». L'ECART A/B sur
+#   une URL identique est la preuve.
+#
+# CE QU'IL NE FAIT PAS
+#   - il n'affiche jamais la valeur du secret, ni un prefixe, ni une longueur,
+#     ni un cookie, ni un jeton ;
+#   - il n'ecrit rien, ne joint aucune base, ne cree aucun compte ni tenant ;
+#   - il ne vise jamais la production : les hotes de production sont refuses
+#     avant tout appel reseau par `validerUrlPreview` ;
+#   - il ne desactive, ne suspend et n'affaiblit aucune protection : il
+#     constate un etat, il ne le change pas.
+#
+# CONFIDENTIALITE DU SECRET — DEUX BARRIERES
+#   1. le job ne s'execute que sur `refs/heads/arena/fd3fb758-tracefab`
+#      (condition de job evaluee avant injection) : un `workflow_dispatch`
+#      depuis une autre reference est refuse sans que le secret soit lu ;
+#   2. il n'y a AUCUN environnement : si `VERCEL_AUTOMATION_BYPASS_SECRET`
+#      n'existe qu'au niveau de l'environnement `tracefab-clerk-test`, la passe
+#      B est IMPOSSIBLE ici, et le job le NOMME (`portee=environnement_seulement`)
+#      au lieu d'afficher un vert trompeur.
+#
+# CODES DE SORTIE : 0 preuve etablie · 5 contournement non prouve (cause nommee)
+#   11/12/13/14 : la resolution du deploiement a echoue (voir
+#   `scripts/resolve_preview_deployment.mjs`, un code par cause).
+
+name: P1 staging — preuve du contournement Vercel (sans environnement)
+
+on:
+  push:
+    branches:
+      # Une seule reference : celle du chantier P1 en cours. Une liste explicite
+      # est volontaire — un motif `arena/*` elargirait la lecture du secret de
+      # contournement a toute branche de travail future.
+      - 'arena/fd3fb758-tracefab'
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: 'SHA teste (facultatif ; par defaut le SHA du run)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  deployments: read
+
+concurrency:
+  group: p1-bypass-proof-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preuve:
+    name: Preuve — contournement du deploiement du SHA teste
+    # Barriere de confidentialite : le secret n'est injecte que pour cette
+    # reference. Le job est `skipped` (et non `failure`) sur toute autre.
+    if: github.ref == 'refs/heads/arena/fd3fb758-tracefab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NODE_VERSION: '20'
+      # Le SHA teste est une DONNEE : la cible se deduit de lui, elle n'est
+      # jamais ecrite dans ce fichier.
+      TF_TARGET_SHA: ${{ github.event.inputs.target_sha || github.sha }}
+      TRACEFAB_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Portee du secret — presence seulement, jamais la valeur
+        # Ce pas repond a la question de diagnostic restee ouverte : le secret
+        # est-il visible HORS environnement ? Aucune valeur n'est lue, comparee
+        # ni journalisee : seul le fait qu'une chaine non vide soit injectee.
+        run: |
+          if [ -n "${TRACEFAB_VERCEL_BYPASS:-}" ]; then
+            echo "portee_secret=depot"
+            echo "::notice title=P1 bypass — portee::portee_secret=depot (secret visible hors environnement) — la passe B est possible"
+          else
+            echo "portee_secret=environnement_seulement_ou_absent"
+            echo "::warning title=P1 bypass — portee::portee_secret=environnement_seulement_ou_absent — le secret n'est pas lisible hors de l'environnement tracefab-clerk-test : la passe B ne peut pas etre executee ici (voir la conclusion du job)"
+          fi
+
+      - name: Resoudre le deploiement Preview du SHA teste
+        # Source de verite : l'API GitHub des Deployments, alimentee par
+        # l'application Vercel. Aucune URL figee, aucun jeton Vercel.
+        id: preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TF_PREVIEW_WAIT_SECONDS: '1200'
+          TF_PREVIEW_POLL_SECONDS: '15'
+        run: node scripts/resolve_preview_deployment.mjs
+
+      - name: Preuve de cible — le SHA teste et le deploiement resolu correspondent
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+          DEPLOYMENT_ID: ${{ steps.preview.outputs.deployment_id }}
+          DEPLOYMENT_SHA: ${{ steps.preview.outputs.deployment_sha }}
+          DEPLOYMENT_STATE: ${{ steps.preview.outputs.deployment_state }}
+          URL_SOURCE: ${{ steps.preview.outputs.url_source }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PREVIEW_URL:-}" ] || [ -z "${DEPLOYMENT_SHA:-}" ]; then
+            echo "::error title=P1 bypass::cause=resolution_incomplete — le deploiement Preview n'a pas ete resolu"
+            exit 2
+          fi
+          if [ "${DEPLOYMENT_SHA,,}" != "${TF_TARGET_SHA,,}" ]; then
+            echo "::error title=P1 bypass::cause=sha_divergent — deploiement ${DEPLOYMENT_ID} construit sur ${DEPLOYMENT_SHA}, SHA teste ${TF_TARGET_SHA}"
+            exit 14
+          fi
+          echo "preview_url=${PREVIEW_URL}"
+          echo "deploiement_id=${DEPLOYMENT_ID}"
+          echo "deploiement_sha=${DEPLOYMENT_SHA}"
+          echo "sha_teste=${TF_TARGET_SHA}"
+          echo "url_source=${URL_SOURCE}"
+          echo "::notice title=P1 bypass — cible::preview_url=${PREVIEW_URL} deploiement_id=${DEPLOYMENT_ID} deploiement_sha=${DEPLOYMENT_SHA} sha_teste=${TF_TARGET_SHA} correspondance_sha=exacte"
+
+      - name: Passe A — SANS contournement (la protection doit encore intercepter)
+        # Mode non strict : cette passe ne conclut pas, elle MESURE. Un 302 vers
+        # vercel.com/sso-api est ici le resultat ATTENDU et souhaitable.
+        env:
+          TRACEFAB_PREVIEW_URLS: ${{ steps.preview.outputs.preview_url }}
+          TF_DEPLOYMENT_HOST: ${{ steps.preview.outputs.deployment_host }}
+          TRACEFAB_VERCEL_BYPASS: ''
+          TF_PROBE_STRICT: '0'
+        run: |
+          code=0
+          node scripts/probe_preview_surface.mjs || code=$?
+          echo "passe_a_code=${code}"
+          echo "::notice title=P1 bypass — passe A (sans contournement)::code=${code} — attendu : protection Vercel active (302 vers vercel.com/sso-api). Si l'application repond 200, la protection a ete desactivee : c'est une regression de securite, pas une reussite."
+
+      - name: Passe B — AVEC contournement (doit atteindre l application)
+        # Mode strict : un echec est nomme (contournement_invalide, poignee de
+        # main non aboutie, cible obsolete) avec l'action exacte, et sort avec
+        # un code distinct. Pas de vert sans 200 applicatif.
+        env:
+          TRACEFAB_PREVIEW_URLS: ${{ steps.preview.outputs.preview_url }}
+          TF_DEPLOYMENT_HOST: ${{ steps.preview.outputs.deployment_host }}
+          TF_PROBE_STRICT: '1'
+        run: |
+          if [ -z "${TRACEFAB_VERCEL_BYPASS:-}" ]; then
+            echo "::error title=P1 bypass — BLOCKED::cause=secret_portee_environnement_seulement — le secret n'est pas lisible hors environnement. Action : soit (1) deposer VERCEL_AUTOMATION_BYPASS_SECRET au niveau du DEPOT pour rendre cette preuve executable sans environnement, soit (2) autoriser la branche de travail dans la politique de l'environnement tracefab-clerk-test (Settings > Environments > tracefab-clerk-test > Deployment branches) puis approuver le deploiement du run authentifie."
+            exit 5
+          fi
+          node scripts/probe_preview_surface.mjs
+
+      - name: Conclusion — la preuve, ou son absence nommee
+        if: success()
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+          DEPLOYMENT_ID: ${{ steps.preview.outputs.deployment_id }}
+        run: |
+          echo "::notice title=P1 bypass — PREUVE ETABLIE::contournement=prouve deploiement_id=${DEPLOYMENT_ID} preview_url=${PREVIEW_URL} passe_A=protection_active passe_B=application_atteinte. Le secret est accepte par CE deploiement ; la protection n'a pas ete desactivee."

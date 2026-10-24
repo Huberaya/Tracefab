@@ -38,6 +38,7 @@ on:
       # n'autorise pas cette branche retient le run avant le premier pas.
       - 'arena/88857a44-tracefab'
       - 'arena/f9effa2e-tracefab'
+      - 'arena/fd3fb758-tracefab'
   pull_request:
   workflow_dispatch:
     inputs:

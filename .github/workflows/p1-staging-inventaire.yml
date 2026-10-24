@@ -8,6 +8,7 @@ on:
     branches:
       - arena/88857a44-tracefab
       - arena/f9effa2e-tracefab
+      - arena/fd3fb758-tracefab
   workflow_dispatch:
 
 permissions:
