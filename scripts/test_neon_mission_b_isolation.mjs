@@ -60,7 +60,10 @@ const cli = (u) => new pg.Client({
 });
 
 let echecs = 0;
-const ko = (m) => { console.log(`  ECHEC ${m}`); echecs += 1; };
+// Les annotations rendent les echecs lisibles sans telecharger le journal du
+// job : l'hote des journaux n'est pas joignable depuis tous les postes
+// d'analyse, l'API des annotations l'est.
+const ko = (m) => { console.log(`  ECHEC ${m}`); console.log(`::error title=Mission B::${m.replaceAll('::', ':')}`); echecs += 1; };
 const ok = (m) => console.log(`  ok    ${m}`);
 
 const suffixe = randomUUID().slice(0, 8);
@@ -108,7 +111,7 @@ try {
   await proprio.query(
     `insert into data_quality_issues (id, owner_organization_id, product_id, rule_key,
        rule_version, severity, status, message)
-     values ($1, $2, $3, 'mission_b_rule', '1.0', 'major', 'open', 'Anomalie du locataire B')`,
+     values ($1, $2, $3, 'mission_b_rule', '1.0', 'blocking', 'open', 'Anomalie du locataire B')`,
     [issueB, orgB, prodB]);
 
   /* --- 1. le role de test est reellement soumis a la RLS ------------------- */
@@ -217,6 +220,8 @@ try {
   if (!visibles.includes(prodA) && !visibles.includes(prodB)) {
     ok('sans contexte arme : ni le produit de A ni celui de B ne sont visibles (fail-closed)');
   } else ko(`sans contexte arme : produits visibles [${visibles.join(', ')}]`);
+} catch (e) {
+  ko(`erreur inattendue (fixture ou execution) : ${String(e.message || e).split('\n')[0]}`);
 } finally {
   await app.end().catch(() => {});
   // Nettoyage complet de la fixture, y compris les lignes qu'un echec aurait
@@ -229,4 +234,5 @@ try {
 console.log(echecs === 0
   ? '\n  Mission B — isolation des surfaces metier : OK.'
   : `\n  Mission B — isolation des surfaces metier : ${echecs} ECHEC(S).`);
+console.log(`::notice title=Mission B::assertions_en_echec=${echecs} (0 = toutes les surfaces prouvees)`);
 process.exit(echecs === 0 ? 0 : 1);
