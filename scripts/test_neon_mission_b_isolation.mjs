@@ -102,12 +102,20 @@ try {
     `insert into tracefab_products (id, brand_organization_id, reference, name, status) values
        ($1, $3, $5, 'Produit A', 'draft'), ($2, $4, $6, 'Produit B', 'draft')`,
     [prodA, prodB, orgA, orgB, `MBA-${suffixe}`, `MBB-${suffixe}`]);
+  // Les documents naissent `uploaded` (trigger) ; le passage a `available`
+  // est un champ gere, ouvert au proprietaire par le GUC interne le temps de
+  // la fixture — le meme mecanisme que la finalisation applicative.
   await proprio.query(
     `insert into documents (id, owner_organization_id, storage_bucket, storage_path,
        original_filename, content_type, byte_size, visibility, status)
-     values ($1, $3, 'tracefab-private', $5, 'a.pdf', 'application/pdf', 1024, 'private', 'available'),
-            ($2, $4, 'tracefab-private', $6, 'b.pdf', 'application/pdf', 1024, 'private', 'available')`,
+     values ($1, $3, 'tracefab-private', $5, 'a.pdf', 'application/pdf', 1024, 'private', 'uploaded'),
+            ($2, $4, 'tracefab-private', $6, 'b.pdf', 'application/pdf', 1024, 'private', 'uploaded')`,
     [docA, docB, orgA, orgB, `${orgA}/a.pdf`, `${orgB}/b.pdf`]);
+  await proprio.query("select set_config('tracefab.internal_document_update', 'true', false)");
+  await proprio.query(
+    "update documents set status = 'available', available_at = now() where id in ($1, $2)",
+    [docA, docB]);
+  await proprio.query("select set_config('tracefab.internal_document_update', 'false', false)");
   await proprio.query(
     `insert into data_quality_issues (id, owner_organization_id, product_id, rule_key,
        rule_version, severity, status, message)
