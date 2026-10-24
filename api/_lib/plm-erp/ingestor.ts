@@ -1,5 +1,4 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma.js';
 import type { PlmErpSystemType, NormalizedPlmProduct, IngestionJobSummary } from './types.js';
 import { parseCentricPlmPayload } from './parsers/centric-plm.js';
 import { parseLectraKubixPayload } from './parsers/lectra-kubix.js';
@@ -59,6 +58,7 @@ export function normalizePlmErpPayload(systemType: PlmErpSystemType, rawPayload:
 }
 
 export async function ingestPlmErpData(
+  tx: Prisma.TransactionClient,
   organizationId: string,
   systemType: PlmErpSystemType,
   rawPayload: any,
@@ -70,8 +70,15 @@ export async function ingestPlmErpData(
     throw new Error('Aucun produit exploitable trouvé dans le payload d\'ingestion.');
   }
 
-  // Call the atomic stored procedure on Neon
-  const result: any = await prisma.$queryRaw`
+  // La fonction SQL est SECURITY DEFINER et exige le contexte utilisateur
+  // (tracefab_current_user_id + rôle dans l'organisation cible). Elle doit
+  // donc être appelée sur la transaction qui porte ce contexte — jamais sur
+  // le client global, qui ouvrirait une autre connexion sans aucun GUC :
+  // la fonction y lèverait `authentication_required` (échec fermé, mais
+  // route cassée) et la barrière d'appartenance en base ne serait jamais
+  // exercée. Le client est un paramètre obligatoire pour que l'oubli soit
+  // impossible à écrire.
+  const result: any = await tx.$queryRaw`
     SELECT tracefab_ingest_plm_erp_payload(
       ${organizationId}::uuid,
       ${systemType},
