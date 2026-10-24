@@ -71,8 +71,9 @@
  *   ni publies en artefact : ils restent dans /tmp du runner.
  */
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { entetesBypass, exigerCiblePreview } from './lib/preview_deployment.mjs';
 import { adresseAutorisee, candidatsIdentite } from './lib/identites_test.mjs';
@@ -477,6 +478,121 @@ async function assurerOrganisation(persona, utilisateurClerk) {
 
 /* --- 4. sessions reelles et etats de session -------------------------------- */
 
+/**
+ * Expurge une chaine avant journalisation : aucune cle publique ou secrete,
+ * aucun courrier ne doit sortir dans un journal de run.
+ */
+const expurger = (texte) => String(texte)
+  .replace(/pk_(?:test|live)_[A-Za-z0-9]+/g, 'pk_...')
+  .replace(/sk_(?:test|live)_[A-Za-z0-9]+/g, 'sk_...')
+  .replace(/whsec_[A-Za-z0-9]+/g, 'whsec_...')
+  .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]');
+
+// Journaux de diagnostic — chemins et codes seulement, jamais d'entete,
+// jamais de query, jamais de valeur.
+const journalRequetesClerk = [];
+const journalErreursPage = [];
+
+/**
+ * Le CDN `cdn.jsdelivr.net` sert le sdk Clerk que l'APPLICATION charge
+ * (brand-console/index.html, politique de l'application). Mesure depuis le
+ * runner AVANT le navigateur : si le runner ne rejoint pas le CDN, le repli
+ * npm est prepare d'emblee ; si le runner le rejoint, le repli reste paresseux.
+ * La mesure sort en clair : ce n'est ni un secret ni une donnee personnelle.
+ */
+let jsdelivrDepuisRunner = 'non_mesure';
+try {
+  const reponse = await fetch('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js', {
+    method: 'HEAD',
+    redirect: 'follow',
+    signal: AbortSignal.timeout(8000),
+  });
+  jsdelivrDepuisRunner = `http_${reponse.status}`;
+} catch (e) {
+  jsdelivrDepuisRunner = `echec:${e?.cause?.code || e?.name || 'inconnu'}`;
+}
+console.log(`jsdelivr_depuis_runner=${jsdelivrDepuisRunner}`);
+
+/**
+ * Repli documente : si le CDN echoue depuis le navigateur, on sert les
+ * MEMES octets que le CDN (le paquet npm public @clerk/clerk-js@5, meme
+ * range que l'URL de l'application) depuis le disque du runner. Ce n'est
+ * PAS un contournement de Clerk : l'authentification reste reelle, executee
+ * par la Frontend API ; seuls les octets du sdk proviennent de leur source
+ * d'origine, et le journal publie la source retenue (`clerk_js_source`).
+ */
+let dossierClerkNpm = null;
+function obtenirClerkJsNpm() {
+  if (dossierClerkNpm) return dossierClerkNpm;
+  const dest = '/tmp/clerk-js-npm';
+  mkdirSync(dest, { recursive: true });
+  const sortie = execFileSync('npm', ['pack', '@clerk/clerk-js@5', '--silent', '--pack-destination', dest], {
+    encoding: 'utf8',
+    timeout: 120000,
+  }).trim();
+  const tgz = join(dest, sortie.split('\n').pop());
+  execFileSync('tar', ['-xzf', tgz, '-C', dest], { timeout: 120000 });
+  dossierClerkNpm = join(dest, 'package');
+  return dossierClerkNpm;
+}
+
+const VALEUR_BYPASS = bypassHeaders['x-vercel-protection-bypass'] || '';
+
+/**
+ * Interception unique pour TOUTES les requetes du contexte :
+ *   - le contournement de la protection Vercel n'est ajoute qu'aux requetes
+ *     de l'ORIGINE DE LA PREVIEW (navigation et appels de l'application).
+ *     Il etait precedent envoye en aveugle sur tous les hotes : le secret de
+ *     contournement partait vers cdn.jsdelivr.net et les hotes Clerk — une
+ *     fuite de secret vers des tiers, interdite par le chantier ;
+ *   - le sdk Clerk charge par l'application (cdn.jsdelivr.net) est servi
+ *     d'abord par le reseau reel ; si le CDN echoue, repli sur les octets
+ *     npm genuins, avec la cause et la source publiees.
+ */
+async function installerInterceptions(contexte) {
+  await contexte.route('**/*', async (route) => {
+    const requete = route.request();
+    let url;
+    try {
+      url = new URL(requete.url());
+    } catch {
+      return route.continue();
+    }
+    const entetes = { ...requete.headers() };
+    if (VALEUR_BYPASS && url.origin === origineHttp) {
+      entetes['x-vercel-protection-bypass'] = VALEUR_BYPASS;
+    }
+    const estSdkClerk = url.hostname === 'cdn.jsdelivr.net'
+      && url.pathname.includes('/npm/@clerk/clerk-js@5/');
+    if (!estSdkClerk) return route.continue({ headers: entetes });
+
+    const cheminRelatif = url.pathname.includes('/dist/')
+      ? url.pathname.slice(url.pathname.indexOf('/dist/') + 1)
+      : null;
+    try {
+      const reponse = await route.fetch({ headers: entetes });
+      journalRequetesClerk.push({ source: 'cdn', fichier: cheminRelatif, http: reponse.status() });
+      if (reponse.ok()) return route.fulfill({ response: reponse });
+      throw new Error(`cdn_http_${reponse.status()}`);
+    } catch (e) {
+      journalRequetesClerk.push({
+        source: 'npm',
+        fichier: cheminRelatif,
+        cause: String(e?.message || 'echec').slice(0, 60),
+      });
+      if (!cheminRelatif) return route.abort('failed');
+      try {
+        const dossier = obtenirClerkJsNpm();
+        const fichier = resolve(join(dossier, cheminRelatif));
+        if (!fichier.startsWith(dossier) || !existsSync(fichier)) return route.abort('failed');
+        return route.fulfill({ path: fichier, contentType: 'application/javascript' });
+      } catch {
+        return route.abort('failed');
+      }
+    }
+  });
+}
+
 const browser = await chromium.launch({ headless: true });
 try {
   mkdirSync(stateDir, { recursive: true });
@@ -486,24 +602,32 @@ try {
     const organisation = await assurerOrganisation(persona, u);
     console.log(`provisionne=${persona.cle}:utilisateur:${Boolean(u)}:organisation:${Boolean(organisation)}`);
 
-    const context = await browser.newContext({
-      ...(Object.keys(bypassHeaders).length ? { extraHTTPHeaders: bypassHeaders } : {}),
-    });
+    const context = await browser.newContext();
+    // Meme contournement que l'ancien extraHTTPHeaders/addInitScript pour la
+    // PREVIEW (navigation ET appels de la page), mais portee par interception
+    // et borne a l'origine : les hotes tiers ne recoivent aucun secret.
+    await installerInterceptions(context);
     const page = await context.newPage();
-    // Les appels same-origin faits par la page elle-meme doivent porter le
-    // meme contournement que la navigation, sinon la protection les
-    // intercepterait aussi (302 vers /sso-api au lieu de la reponse JSON).
-    if (Object.keys(bypassHeaders).length) {
-      await page.addInitScript((headers) => {
-        const original = window.fetch.bind(window);
-        window.fetch = (input, init = {}) => {
-          const merged = { ...(init.headers || {}) };
-          for (const [name, value] of Object.entries(headers)) merged[name] = value;
-          return original(input, { ...init, headers: merged });
-        };
-      }, bypassHeaders);
-    }
-    await page.goto(new URL(persona.surface, origin).toString(), { waitUntil: 'networkidle' });
+    // Pre-eminence des erreurs navigateur au diagnostic : pageerror et
+    // erreurs console (caviardees) alimentent le dump si le formulaire
+    // n'apparait pas.
+    page.on('pageerror', (e) => {
+      journalErreursPage.push(expurger(`pageerror: ${e?.message || e}`).slice(0, 200));
+    });
+    page.on('console', (m) => {
+      if (m.type() === 'error') journalErreursPage.push(expurger(`console: ${m.text()}`).slice(0, 200));
+    });
+    page.on('requestfailed', (r) => {
+      try {
+        const u = new URL(r.url());
+        if (/clerk|jsdelivr/i.test(u.hostname)) {
+          journalErreursPage.push(`requete_echouee: ${u.hostname}${u.pathname}`.slice(0, 160));
+        }
+      } catch { /* URL illisible : ignore, jamais d exception depuis un listener */ }
+    });
+    // 60 s (et pas 45) : le repli npm lazyn peut prendre ~15 s au premier
+    // echec du CDN — delai MOTIVE par le repli, pas un simple allongement.
+    await page.goto(new URL(persona.surface, origin).toString(), { waitUntil: 'networkidle', timeout: 60000 });
 
     // Connexion reelle par l'IHM Clerk de l'application : ce n'est pas une
     // session injectee, c'est celle que produirait un utilisateur.
@@ -527,8 +651,28 @@ try {
           visible: Boolean(e.getClientRects().length),
         })),
         texte: (document.body?.innerText || '').replace(/\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi, '[email]').slice(0, 700),
+        // Etat reel de l'application (brand-console expose son etat) : la
+        // bootee est-elle en erreur, le sdk est-il charge, un utilisateur
+        // existe-t-il ? C'est LE discriminant entre les trois boites
+        // possibles (erreur de config, chargement bloque, formulaire monte).
+        etatApplication: (() => {
+          const etat = window.tracefabBrandConsole?.state;
+          if (!etat) return null;
+          return {
+            chargement: Boolean(etat.loading),
+            erreur: String(etat.configError || '').slice(0, 160),
+            clerk: Boolean(etat.clerk),
+            utilisateur: Boolean(etat.user),
+            demo: Boolean(etat.demo),
+          };
+        })(),
+        clerkGlobal: typeof window.Clerk,
       }));
-      console.error('formulaire_identifiant_absent=' + JSON.stringify(etatPage));
+      // Couches Node du diagnostic : requetes sdk (CDN vs repli npm) et
+      // erreurs navigateur, expurgees avant publication.
+      etatPage.requetesClerk = journalRequetesClerk.slice(-20);
+      etatPage.erreursNavigateur = journalErreursPage.slice(-10);
+      console.error('formulaire_identifiant_absent=' + expurger(JSON.stringify(etatPage)));
       throw new Error(`champ_identifiant_absent persona=${persona.cle} voie=${voieConnexion} : inspecter formulaire_identifiant_absent ci-dessus`);
     }
     await champIdentifiant.fill(adresse);

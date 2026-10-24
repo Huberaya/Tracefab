@@ -410,10 +410,44 @@ function executer(args, env = {}) {
   const porteEntetes = (source) => /x-vercel-protection-bypass/.test(source)
     || (/entetesBypass\(/.test(source) && /x-vercel-protection-bypass/.test(libApercu));
   const sessions = lire('scripts/prepare_p1_staging_sessions.mjs');
-  if (/TRACEFAB_VERCEL_BYPASS/.test(sessions) && /extraHTTPHeaders/.test(sessions)) ok('la preparation des sessions porte le contournement Vercel');
-  else ko('la preparation des sessions ne porte pas le contournement Vercel : elle n atteindrait jamais le formulaire de connexion');
-  if (/addInitScript/.test(sessions) && porteEntetes(sessions)) ok('la preparation des sessions porte le contournement sur les appels same-origin');
-  else ko('la preparation des sessions ne porte pas le contournement sur les appels same-origin');
+  // Le mecanisme est l'interception requete par requete : meme portee que
+  // l'ancien couple extraHTTPHeaders + addInitScript pour la PREVIEW, mais
+  // BORNEE a l'origine. Le 2026-10-24, le couple precedent envoyait le
+  // secret de contournement en aveugle vers cdn.jsdelivr.net et les hotes
+  // Clerk — une fuite interdite par le chantier.
+  const codeSessions = sessions.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  if (/TRACEFAB_VERCEL_BYPASS/.test(sessions) && /\.route\('\*\*\/\*'/.test(sessions) && porteEntetes(sessions)) {
+    ok('le contournement de la preparation est injecte par interception, requete par requete');
+  } else {
+    ko('la preparation des sessions ne porte plus le contournement Vercel : elle n atteindrait jamais le formulaire de connexion');
+  }
+  if (!/extraHTTPHeaders/.test(codeSessions) && !/addInitScript/.test(codeSessions)) {
+    ok('aucun en-tete secret en aveugle : le contournement ne part plus vers les hotes tiers');
+  } else {
+    ko('la preparation envoie encore le contournement en extraHTTPHeaders ou addInitScript : secret vers des tiers');
+  }
+  if (/url\.origin === origineHttp/.test(sessions)) {
+    ok('le contournement n est ajoute qu aux requetes de l origine de la Preview');
+  } else {
+    ko('le contournement n est plus borne a l origine de la Preview');
+  }
+  if (/cdn\.jsdelivr\.net/.test(sessions) && /obtenirClerkJsNpm/.test(sessions)
+      && /'pack', '@clerk\/clerk-js@5'/.test(sessions)) {
+    ok('si le CDN du sdk Clerk echoue, le repli sert les octets npm genuins, journalise');
+  } else {
+    ko('repli absent : un CDN inaccessible au runner laisserait la console sans sdk Clerk');
+  }
+  if (/jsdelivr_depuis_runner/.test(sessions) && /etatApplication/.test(sessions)
+      && /requetesClerk/.test(sessions) && /erreursNavigateur/.test(sessions)) {
+    ok('le diagnostic de formulaire absent publie etat app, requetes sdk et erreurs navigateur');
+  } else {
+    ko('le diagnostic de formulaire absent ne publie pas l etat application ni les requetes sdk');
+  }
+  if (/formulaire_identifiant_absent=' \+ expurger\(/.test(sessions)) {
+    ok('le dump du formulaire absent passe par l expurgeur de secrets avant publication');
+  } else {
+    ko('le dump du formulaire absent n est pas expurge avant publication');
+  }
 
   const staging = lire('scripts/test_p1_staging.mjs');
   if (/TRACEFAB_VERCEL_BYPASS/.test(staging) && /extraHTTPHeaders/.test(staging) && /addInitScript/.test(staging)) ok('la suite staging porte le contournement Vercel, navigation et appels same-origin');
