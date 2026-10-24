@@ -95,9 +95,18 @@ c'est la CI qui exécute, comme pour toutes les suites `test:neon:*` du dépôt.
 
 ## 5. Preuves CI
 
-À compléter avec les identifiants du run sur le SHA final (voir le commentaire
-de la PR #94) : job « Base — isolation RLS executee », étape
-« Mission B — isolation des surfaces métier par exécution ».
+- Run CI [40095312051](https://github.com/Huberaya/Tracefab/actions/runs/40095312051)
+  sur le SHA code `61a5e2485de720b56a0f94402f7ab6166c8c082f` : **4/4 jobs
+  success** (Socle, Base — isolation RLS executee, Parcours, Verification).
+- Étape « Mission B — isolation des surfaces métier par exécution » :
+  annotation `assertions_en_echec=0` — les 13 assertions passent, y compris
+  les relectures par le propriétaire prouvant l'absence d'effet persisté
+  après chaque refus.
+- Les deux exécutions précédentes ont échoué pour des causes de fixture
+  (enum de sévérité, trigger documentaire), corrigées sans toucher aux
+  assertions — l'historique des runs 40093948908 et 40094646426 le montre.
+- Le SHA final de branche (documentation comprise) est revérifié par la CI de
+  la PR #94 ; `main` est intact.
 
 ## 6. Routes restantes non vérifiées par exécution
 
