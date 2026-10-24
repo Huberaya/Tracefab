@@ -38,6 +38,15 @@ export const DOMAINES_IDENTITES_DE_TEST = Object.freeze([
 ]);
 
 /**
+ * Sous-adressage « adresse de test » de Clerk (voir « Test emails and
+ * phones » de la documentation) : en instance de developpement, il designe
+ * une adresse dont aucun courrier n'est envoye et dont le code de
+ * verification est toujours `424242`. Il est ajoute a la partie locale, le
+ * domaine reste dans le perimetre autorise ci-dessus.
+ */
+export const SUFFIXE_ADRESSE_TEST = '+clerk_test';
+
+/**
  * Vrai uniquement pour une adresse dont le domaine est EXACTEMENT l'un des
  * domaines autorises (apres normalisation en minuscules). Pas de sous-domaine
  * implicite, pas de suffixe partiel : `user@sub.example.com` est refuse,
@@ -61,12 +70,25 @@ export function adresseAutorisee(adresse) {
  * Les candidats d'identite pour un persona, dans l'ordre d'essai : le
  * premier que l'instance Clerk accepte devient l'adresse retenue.
  *
+ * Deux variantes, choisies d'apres la strategie de connexion REELLE de
+ * l'instance (relevee sur la Frontend API) :
+ *   - `plain`  — `p1-brand-a@example.com` : voie mot de passe ;
+ *   - `otp`    — `p1-brand-a+clerk_test@example.com` : voie code email.
+ *     Le sous-adressage `+clerk_test` EST la forme « adresse de test » de
+ *     Clerk (documentation « Test emails and phones ») : en instance de
+ *     developpement (test mode), aucun courrier n'est envoye et le code est
+ *     toujours `424242`. Sans ce suffixe, un code email demanderait une
+ *     boite reelle — ce que le perimetre de test n'autorise pas.
+ *
  * @param {string} base partie locale du persona (ex. `p1-brand-a`)
+ * @param {object} [options]
+ * @param {boolean} [options.otp] variante `+clerk_test` pour la voie code email
  * @returns {string[]}
  */
-export function candidatsIdentite(base) {
+export function candidatsIdentite(base, options = {}) {
   if (typeof base !== 'string' || !base || /\s|@/.test(base)) {
     throw new Error('base_identite_invalide');
   }
-  return DOMAINES_IDENTITES_DE_TEST.map((domaine) => `${base}@${domaine}`);
+  const local = options.otp ? `${base}${SUFFIXE_ADRESSE_TEST}` : base;
+  return DOMAINES_IDENTITES_DE_TEST.map((domaine) => `${local}@${domaine}`);
 }

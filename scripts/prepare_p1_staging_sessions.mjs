@@ -31,10 +31,13 @@
  *   les tests de non-regression : aucune adresse hors perimetre ne peut
  *   etre candidate, meme apres modification.
  *
- *   Verification compatible avec le mode de verification de l'instance : les
- *   comptes sont crees avec `emailAddressIdentificationStatus: ['verified']`
- *   (defaut de l'API, explicite ici) — aucune verification par code n'est donc
- *   demandee a la connexion, quelle que soit la configuration `verify_at_sign_up`
+ *   Verification compatible avec le mode de verification de l'instance : le
+ *   script RELEVE les strategies sur la Frontend API (`GET /v1/environment`)
+ *   et choisit sa voie sur ce releve — mot de passe si c'est le premier
+ *   facteur, sinon code email (`+clerk_test`, code `424242` en instance de
+ *   developpement, aucun courrier emis). Les comptes sont crees avec
+ *   `emailAddressIdentificationStatus: ['verified']` (defaut de l'API,
+ *   explicite ici), quelle que soit la configuration `verify_at_sign_up`
  *   relevee en phase `inspect`.
  *
  * IDEMPOTENCE
@@ -48,14 +51,17 @@
  *   2 configuration absente (cle ou cible manquante)
  *   3 cle qui ne commence pas par `sk_test_` — jamais de cle de production,
  *     meme tronquee dans la sortie
- *   4 strategie de connexion sans mot de passe confirmee sur l'instance
- *     (relevee sur la Frontend API ; indeterminee = on poursuit, le
+ *   4 aucune voie de connexion exploitable confirmee sur l'instance — ni
+ *     mot de passe, ni code email en premier facteur (releve sur la
+ *     Frontend API, facteurs reels publies ; indetermine = on poursuit, le
  *     formulaire reel tranche et le refus est alors nomme)
  *   5 candidats d'adresses tous refuses par Clerk (422 format), avec les
  *     codes recus pour chaque candidat
  *   6 instance dont l'environnement releve est `production` — refusee, la
  *     cle `sk_test_` n'est qu'un premier garde-fou
  *   7 erreur API Clerk inattendue, nommee par son code, sans corps ni secret
+ *   8 connexion ouverte mais session applicative non etablie en 60 s (voie
+ *     et persona nommes, aucun jeton publie)
  *   Toute adresse hors du perimetre `scripts/lib/identites_test.mjs` est
  *   refusee avant tout appel : aucune adresse reelle n'est touchee.
  *
@@ -143,24 +149,27 @@ const PERSONAS = [
   },
 ];
 
-// Garde-fou AVANT tout appel : chaque candidat de chaque persona doit etre
-// dans le perimetre autorise. Une base invalide (espace, `@`) ou une adresse
-// hors domaine est un arret immediat, pas un essai silencieux.
+// Garde-fou AVANT tout appel : chaque candidat de chaque persona — dans les
+// DEUX variantes de voie (mot de passe, code email) — doit etre dans le
+// perimetre autorise. Une base invalide (espace, `@`) ou une adresse hors
+// domaine est un arret immediat, pas un essai silencieux.
 const candidatsParPersona = new Map();
 for (const persona of PERSONAS) {
-  let candidats;
-  try {
-    candidats = candidatsIdentite(persona.base);
-  } catch {
-    throw new Error(`base_identite_invalide:${persona.cle}`);
+  for (const otp of [false, true]) {
+    let candidats;
+    try {
+      candidats = candidatsIdentite(persona.base, { otp });
+    } catch {
+      throw new Error(`base_identite_invalide:${persona.cle}`);
+    }
+    for (const adresse of candidats) {
+      assert.ok(
+        adresseAutorisee(adresse),
+        `adresse hors du perimetre de test autorise : ${adresse}`,
+      );
+    }
+    candidatsParPersona.set(`${persona.cle}:${otp ? 'otp' : 'plain'}`, candidats);
   }
-  for (const adresse of candidats) {
-    assert.ok(
-      adresseAutorisee(adresse),
-      `adresse hors du perimetre de test autorise : ${adresse}`,
-    );
-  }
-  candidatsParPersona.set(persona.cle, candidats);
 }
 
 // Le SDK n'est charge qu'APRES les garde-fous (cle `sk_test_`, cible
@@ -219,6 +228,7 @@ if (environnementInstance === 'production') {
  */
 async function releverStrategiesInstance() {
   const resultats = { cause: null, passwordActif: null, passwordPremierFacteur: null,
+    emailPremierFacteur: null, emailFacteurs: null, emailVerifications: null,
     verificationEmailInscription: null, modeInscription: null, allowlistSeule: null,
     secondFacteurObligatoire: null };
   try {
@@ -255,6 +265,10 @@ async function releverStrategiesInstance() {
     const bool = (v) => (typeof v === 'boolean' ? v : null);
     resultats.passwordActif = bool(us.attributes?.password?.enabled);
     resultats.passwordPremierFacteur = bool(us.attributes?.password?.used_for_first_factor);
+    resultats.emailPremierFacteur = bool(us.attributes?.email_address?.used_for_first_factor);
+    const liste = (v) => (Array.isArray(v) ? v.filter((s) => typeof s === 'string') : null);
+    resultats.emailFacteurs = liste(us.attributes?.email_address?.first_factors);
+    resultats.emailVerifications = liste(us.attributes?.email_address?.verifications);
     resultats.verificationEmailInscription = bool(us.attributes?.email_address?.verify_at_sign_up);
     resultats.modeInscription = typeof us.sign_up?.mode === 'string' ? us.sign_up.mode : null;
     resultats.allowlistSeule = bool(us.sign_up?.allowlist_only);
@@ -274,6 +288,28 @@ console.log(`verification_email_inscription=${strategies.verificationEmailInscri
 console.log(`mode_inscription=${strategies.modeInscription ?? 'inconnu'}`);
 console.log(`inscription_allowlist_seule=${strategies.allowlistSeule ?? 'inconnu'}`);
 console.log(`second_facteur_obligatoire=${strategies.secondFacteurObligatoire ?? 'inconnu'}`);
+console.log(`facteur_premier_email=${strategies.emailPremierFacteur ?? 'inconnu'}`);
+console.log(`facteurs_premier_email=${strategies.emailFacteurs?.join(',') ?? 'inconnu'}`);
+console.log(`strategies_verification_email=${strategies.emailVerifications?.join(',') ?? 'inconnu'}`);
+
+/**
+ * Voie de connexion choisie d'apres le releve REEL de l'instance — jamais au
+ * hasard, jamais en supposant :
+ *   - `password`  — le mot de passe est premier facteur : voie historique ;
+ *   - `email_code`— l'email est premier facteur avec la strategie `email_code`
+ *     : voie OTP de Clerk, code fixe `424242` sur instance de developpement
+ *     avec les adresses `+clerk_test` (aucun courrier emis) ;
+ *   - `null`      — ni l'un ni l'autre n'est exploitable par ce harnais :
+ *     arret nomme (code 4) avec les facteurs reels publies.
+ */
+const voieConnexion = (strategies.passwordPremierFacteur === true)
+  ? 'password'
+  : (strategies.emailPremierFacteur === true
+      && (strategies.emailFacteurs?.includes('email_code')
+        || (strategies.emailFacteurs === null && strategies.emailVerifications?.includes('email_code'))))
+    ? 'email_code'
+    : null;
+console.log(`voie_connexion=${voieConnexion ?? 'indeterminee'}`);
 
 /* --- 2. comptes de test deja presents -------------------------------------- */
 
@@ -286,11 +322,15 @@ console.log(`second_facteur_obligatoire=${strategies.secondFacteurObligatoire ??
  * @returns {Promise<{adresse: string, utilisateur: object}|null>}
  */
 async function trouverIdentite(persona) {
-  const candidats = candidatsParPersona.get(persona.cle);
-  for (const adresse of candidats) {
-    const page = await clerk.users.getUserList({ emailAddress: [adresse], limit: 1 });
-    const u = page?.data?.[0] || null;
-    if (u) return { adresse, utilisateur: u };
+  // Ordre : la variante de la voie active d'abord, puis l'autre — un compte
+  // cree sous une voie precedente reste trouve, donc jamais duplique.
+  const ordre = voieConnexion === 'email_code' ? ['otp', 'plain'] : ['plain', 'otp'];
+  for (const variante of ordre) {
+    for (const adresse of candidatsParPersona.get(`${persona.cle}:${variante}`)) {
+      const page = await clerk.users.getUserList({ emailAddress: [adresse], limit: 1 });
+      const u = page?.data?.[0] || null;
+      if (u) return { adresse, utilisateur: u };
+    }
   }
   return null;
 }
@@ -322,17 +362,20 @@ if (PHASE === 'inspect') {
   process.exit(0);
 }
 
-// La connexion par mot de passe est la seule strategie que ce script sait
-// jouer sans intervention. Si l'instance de test l'interdit CONFIRMEMENT,
-// il faut le dire plutot que d'echouer plus tard sur un delai d'attente
-// trompeur. Un releve indetermine ne bloque pas : le formulaire reel,
-// etape apres, tranche et nomme alors le refus.
-if (strategies.passwordActif === false || strategies.passwordPremierFacteur === false) {
-  console.error(`L'instance Clerk de test n'offre pas la connexion par mot de passe `
+// Le harnais sait jouer DEUX voies, choisies sur le releve reel :
+// mot de passe, ou code email (`+clerk_test`, code `424242` en instance de
+// developpement). Si le releve dit qu'aucune des deux n'est premier facteur
+// — ou s'il est indetermine — il faut le dire plutot que d'echouer plus tard
+// sur un delai d'attente trompeur. Un releve indetermine ne bloque pas :
+// le formulaire reel, etape apres, tranche et nomme alors le refus.
+if (!voieConnexion) {
+  console.error(`voie_connexion_indisponible : aucun premier facteur exploitable par ce harnais `
     + `(strategie_mot_de_passe=${strategies.passwordActif}, `
-    + `mot_de_passe_premier_facteur=${strategies.passwordPremierFacteur}) : `
-    + 'ce harnais ne sait ouvrir une session que par mot de passe. '
-    + "Activez la strategie mot de passe dans l'instance de test, ou fournissez une autre strategie.");
+    + `mot_de_passe_premier_facteur=${strategies.passwordPremierFacteur}, `
+    + `facteur_premier_email=${strategies.emailPremierFacteur}, `
+    + `facteurs_premier_email=${strategies.emailFacteurs?.join(',') ?? 'inconnu'}) : `
+    + 'activez le mot de passe ou le code email comme premier facteur dans '
+    + "l'instance de test, ou fournissez une autre strategie.");
   process.exit(4);
 }
 
@@ -363,7 +406,10 @@ async function assurerUtilisateur(persona) {
     return { adresse: existant.adresse, utilisateur: existant.utilisateur, creation: false };
   }
 
-  const candidats = candidatsParPersona.get(persona.cle);
+  // Creation sur les candidats de la VOIE ACTIVE uniquement : l'adresse
+  // doit correspondre a la strategie de connexion qui sera jouee ensuite.
+  const varianteActive = voieConnexion === 'email_code' ? 'otp' : 'plain';
+  const candidats = candidatsParPersona.get(`${persona.cle}:${varianteActive}`);
   const refus = [];
   for (const [indice, adresse] of candidats.entries()) {
     try {
@@ -467,23 +513,49 @@ try {
     const bouton = page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first();
     await bouton.click();
 
-    const champMotDePasse = page.locator('input[name="password"], input[type="password"]').first();
-    try {
-      await champMotDePasse.waitFor({ state: 'visible', timeout: 45000 });
-    } catch {
-      throw new Error(
-        `le formulaire de connexion n'a pas propose de champ mot de passe pour ${persona.cle} : `
-        + "soit la strategie de l'instance de test n'est pas le mot de passe, "
-        + 'soit le compte a ete refuse a cette etape.',
-      );
+    if (voieConnexion === 'email_code') {
+      // Voie OTP mesuree sur l'instance : champ de code, puis code fixe
+      // `424242` — la valeur de test que Clerk applique aux adresses
+      // `+clerk_test` en instance de developpement (aucun courrier emis).
+      const champCode = page.locator('input[name="code"], input[autocomplete="one-time-code"], input[inputmode="numeric"]').first();
+      try {
+        await champCode.waitFor({ state: 'visible', timeout: 45000 });
+      } catch {
+        throw new Error(
+          `le formulaire de connexion n'a pas propose de champ de code pour ${persona.cle} `
+          + `(voie_connexion=email_code relevee sur l'instance) : `
+          + 'le releve et le formulaire divergent, ou la strategie a change pendant la preparation.',
+        );
+      }
+      await champCode.fill('424242');
+      await page.locator('button[type="submit"], button:has-text("Verify"), button:has-text("Continue"), button:has-text("Continuer")').first().click();
+    } else {
+      const champMotDePasse = page.locator('input[name="password"], input[type="password"]').first();
+      try {
+        await champMotDePasse.waitFor({ state: 'visible', timeout: 45000 });
+      } catch {
+        throw new Error(
+          `le formulaire de connexion n'a pas propose de champ mot de passe pour ${persona.cle} `
+          + `(voie_connexion=password relevee sur l'instance) : `
+          + 'le releve et le formulaire divergent, ou la strategie a change pendant la preparation.',
+        );
+      }
+      await champMotDePasse.fill(persona.motDePasse);
+      await page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first().click();
     }
-    await champMotDePasse.fill(persona.motDePasse);
-    await page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first().click();
 
-    await page.waitForFunction(() => {
-      const app = window.tracefabBrandConsole || window.tracefabSupplierPortal || window.tracefabQualityCenter;
-      return Boolean(app?.state?.clerk?.session);
-    }, null, { timeout: 60000 });
+    try {
+      await page.waitForFunction(() => {
+        const app = window.tracefabBrandConsole || window.tracefabSupplierPortal || window.tracefabQualityCenter;
+        return Boolean(app?.state?.clerk?.session);
+      }, null, { timeout: 60000 });
+    } catch {
+      // Un echec ici sans nom laisserait le dossier sans cause : la voie
+      // mesuree, le persona et l etape atteinte sortent, jamais de jeton.
+      console.error(`session_non_etablie persona=${persona.cle} voie=${voieConnexion} `
+        + `adresse_presente=${Boolean(adresse)} — la connexion n a pas abouti a une session applicative`);
+      process.exit(8);
+    }
 
     const chemin = join(stateDir, persona.fichier);
     await context.storageState({ path: chemin });

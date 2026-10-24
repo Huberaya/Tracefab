@@ -202,11 +202,58 @@ l'instance qui tranche.
    `verify_at_sign_up`, dont la valeur réelle est **relevée en phase
    `inspect`** (§4.3).
 
-| Persona | Candidats (dans l'ordre) | Organisation |
-|---|---|---|
-| marque A | `p1-brand-a@example.com` → `.org` → `.net` | Tracefab P1 Marque A (`brand`) |
-| fournisseur | `p1-supplier@example.com` → `.org` → `.net` | Tracefab P1 Fournisseur (`supplier`) |
-| marque B | `p1-brand-b@example.com` → `.org` → `.net` | Tracefab P1 Marque B (`brand`) |
+### 4.1 bis Deuxième cause racine mesurée : la voie de connexion (code 4)
+
+Après le correctif d'adresses, le run
+[40047432437](https://github.com/Huberaya/Tracefab/actions/runs/40047432437)
+est passé **au-delà** de la création — mais le garde-fou du harnais a arrêté
+la préparation en **code 4**, sur un relevé réel de l'instance :
+
+```
+strategies_source=frontend_api
+strategie_mot_de_passe=true
+mot_de_passe_premier_facteur=false
+verification_email_inscription=true
+mode_inscription=public
+second_facteur_obligatoire=false
+voie_connexion=…
+```
+
+**Cause racine** : sur cette instance, `password.enabled=true` (les comptes
+peuvent avoir un mot de passe) mais
+`password.used_for_first_factor=false` — **le mot de passe n'est pas proposé
+en premier facteur** : la connexion se fait par **code email (OTP)**. Le
+harnais « mot de passe seul » se serait bloqué sur un formulaire sans champ
+mot de passe (délai de 45 s puis échec flou) ; le garde-fou l'arrête
+maintenant en amont, avec les facteurs réels publiés.
+
+**Stratégie retenue** : le harnais joue les **deux** voies, choisies sur le
+relevé (`voie_connexion=password|email_code|indeterminee`) :
+
+- `password` → formulaire mot de passe (voie historique) ;
+- `email_code` → formulaire de code avec la valeur de test `424242` sur les
+  adresses `+clerk_test` (mode test de l'instance de développement, aucun
+  courrier émis — la vérification `email_address.verify_at_sign_up=true`
+  mesurée est justement le mode que Clerk documente pour ces adresses) ;
+- aucune voie exploitable → **code 4** nommé avec les facteurs réels ;
+- le relevé indéterminé ne bloque pas : le formulaire réel tranche et le
+  divergence est alors nommée (erreur explicite « relevé et formulaire
+  divergent »).
+
+Deux variantes de candidats, choisies d'après la stratégie **réelle** de
+l'instance (§4.3) — jamais supposées :
+
+| Persona | Voie mot de passe | Voie code email | Organisation |
+|---|---|---|---|
+| marque A | `p1-brand-a@example.com` → `.org` → `.net` | `p1-brand-a+clerk_test@example.com` → `.org` → `.net` | Tracefab P1 Marque A (`brand`) |
+| fournisseur | `p1-supplier@example.com` → … | `p1-supplier+clerk_test@example.com` → … | Tracefab P1 Fournisseur (`supplier`) |
+| marque B | `p1-brand-b@example.com` → … | `p1-brand-b+clerk_test@example.com` → … | Tracefab P1 Marque B (`brand`) |
+
+Le suffixe `+clerk_test` EST la forme « adresse de test » de Clerk
+(documentation « Test emails and phones ») : en instance de développement
+(test mode), aucun courrier n'est envoyé et le code est toujours `424242`.
+Sans ce suffixe, un code email exigerait une boîte réelle — ce que le
+périmètre de test n'autorise pas.
 
 ### 4.2 Idempotence
 
@@ -219,22 +266,25 @@ sur une relance = aucun doublon, vérifiable d'un coup d'œil dans le journal.
 
 - `TF_P1_PHASE=inspect` — **lecture seule** : environnement réel de l'instance
   (`GET /v1/instance` → `environment_type`, refus **code 6** si
-  `production`), strategies de connexion relevées sur la Frontend API
+  `production`), stratégies de connexion relevées sur la Frontend API
   (`GET {frontend-api}/v1/environment` — objet que clerk-js charge avant
   d'afficher le formulaire : `strategie_mot_de_passe`,
-  `mot_de_passe_premier_facteur`, `verification_email_inscription`,
-  `mode_inscription`, `inscription_allowlist_seule`,
-  `second_facteur_obligatoire` ; un relevé indéterminé est **nommé**, pas
-  confondu avec une stratégie absente), comptes et organisations de test
-  déjà présents ;
+  `mot_de_passe_premier_facteur`, `facteur_premier_email`,
+  `facteurs_premier_email`, `strategies_verification_email`,
+  `verification_email_inscription`, `mode_inscription`,
+  `second_facteur_obligatoire`, puis `voie_connexion=…` déduit du relevé ;
+  un relevé indéterminé est **nommé**, pas confondu avec une stratégie
+  absente), comptes et organisations de test déjà présents ;
 - `TF_P1_PHASE=provision` — crée ce qui manque (comptes, organisations,
-  adhésions), refuse une stratégie sans mot de passe **confirmée**
-  (code **4**), puis ouvre **trois sessions réelles par l'IHM Clerk de
-  l'application** et écrit les trois états de session.
+  adhésions) **avec les candidats de la voie active**, refuse l'absence de
+  toute voie exploitable (code **4**), puis ouvre **trois sessions réelles
+  par l'IHM Clerk de l'application** (champ mot de passe OU champ de code,
+  selon la voie) et écrit les trois états de session.
 
-Codes de sortie : `2` configuration · `3` cle non-`sk_test_` · `4` stratégie
-sans mot de passe · `5` candidats d'adresses tous refusés · `6` instance
-`production` · `7` erreur API inattendue.
+Codes de sortie : `2` configuration · `3` cle non-`sk_test_` · `4` aucune
+voie de connexion exploitable · `5` candidats d'adresses tous refusés ·
+`6` instance `production` · `7` erreur API inattendue · `8` session
+applicative non établie (voie et persona nommés).
 
 Les mots de passe sont générés par le script : ils ne sont jamais affichés,
 jamais journalisés, jamais demandés en clair. Les états de session sont écrits

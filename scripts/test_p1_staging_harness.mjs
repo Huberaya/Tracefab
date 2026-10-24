@@ -473,7 +473,7 @@ function executer(args, env = {}) {
     ko("l ancien garde `.test` est toujours la : il designe une adresse que Clerk refuse");
   }
 
-  const { adresseAutorisee, DOMAINES_IDENTITES_DE_TEST } = await import('./lib/identites_test.mjs');
+  const { adresseAutorisee, candidatsIdentite, DOMAINES_IDENTITES_DE_TEST } = await import('./lib/identites_test.mjs');
 
   // Le perimetre est EPIQUE : l'ajout d'un domaine exige d'editer ce test.
   const perimetreAttendu = ['example.com', 'example.org', 'example.net'];
@@ -553,9 +553,46 @@ function executer(args, env = {}) {
     ko('les strategies de connexion ne sont plus relevees sur l instance');
   }
   if (/process\.exit\(4\)/.test(sessions) && /mot de passe/i.test(sessions)) {
-    ok('une strategie sans mot de passe CONFIRMEE arrete la preparation (code 4) avant le navigateur');
+    ok('une instance sans voie de connexion exploitable arrete la preparation (code 4) avant le navigateur');
   } else {
-    ko('la preparation arreterait plus tot sur un formulaire sans mot de passe');
+    ko('la preparation ne nomme plus l absence de voie de connexion exploitable');
+  }
+
+  // La voie de connexion est CHOISIE sur le releve reel, et les deux voies
+  // sont implementees : le releve du 2026-10-24 a mesure
+  // `password.used_for_first_factor=false` sur cette instance — la voie
+  // historique y est donc inutilisable, et la voie code email doit exister.
+  if (/voie_connexion=\$\{voieConnexion \?\? 'indeterminee'\}/.test(sessions)
+      && /voieConnexion === 'email_code'/.test(sessions)) {
+    ok('la voie de connexion est publiee et choisie sur le releve (password OU email_code)');
+  } else {
+    ko('la voie de connexion n est plus choisie sur le releve de l instance');
+  }
+  if (/'424242'/.test(sessions) && /input\[name="code"\]/.test(sessions)
+      && !/\+clerk_test/.test(codeSansCommentaires)) {
+    ok('la voie OTP joue le formulaire de code avec la valeur de test 424242 (suffixe porte par la lib)');
+  } else {
+    ko('la voie code email n est pas implementee (champ de code + valeur de test 424242)');
+  }
+  if (/varianteActive/.test(sessions) && /'otp' : 'plain'/.test(sessions)) {
+    ok('la creation utilise les candidats de la voie active, la recherche les deux variantes');
+  } else {
+    ko('la creation ne suit plus la voie active : l adresse ne correspondrait pas a la connexion jouee');
+  }
+
+  // La variante `+clerk_test` reste dans le perimetre : c'est la forme
+  // « adresse de test » de Clerk, sur un domaine deja autorise.
+  if (adresseAutorisee('p1-brand-a+clerk_test@example.com')
+      && !adresseAutorisee('p1-brand-a+clerk_test@gmail.com')) {
+    ok('le suffixe +clerk_test reste borne aux domaines autorises');
+  } else {
+    ko('le suffixe +clerk_test sort du perimetre des domaines autorises');
+  }
+  const candidatsOtp = candidatsIdentite('p1-brand-a', { otp: true });
+  if (candidatsOtp[0] === 'p1-brand-a+clerk_test@example.com' && candidatsOtp.length === 3) {
+    ok('la variante OTP produit les trois candidats attendus, suffixe en tete de partie locale');
+  } else {
+    ko(`variante OTP inattendue : ${candidatsOtp.join(', ')}`);
   }
 
   // Le releve des strategies lit la cle publique de /api/config : elle ne
