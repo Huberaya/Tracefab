@@ -66,6 +66,12 @@ const checks = [
     /rowsVisibleWithoutContext/.test(probe) && /FROM \(SELECT 1 FROM public\.tracefab_products LIMIT 1\)/.test(probe),
   ],
   [
+    'la sonde mesure les tables interdites a l ecriture directe (DPP append-only, registre Prisma)',
+    /canWriteDppEvents/.test(probe) && /canWriteMigrationsLedger/.test(probe)
+      && /ecriture_directe_sur_evenements_dpp_append_only/.test(probe)
+      && /ecriture_sur_le_registre_des_migrations_prisma/.test(probe),
+  ],
+  [
     'le contrat refuse une ligne visible sans contexte, et une adhesion privilegiee',
     /lignes_visibles_sans_contexte_arme/.test(probe) && /membre_d_un_role_privilegie/.test(probe),
   ],

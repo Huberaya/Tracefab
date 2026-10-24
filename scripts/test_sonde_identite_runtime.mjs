@@ -218,6 +218,7 @@ if (blocRetour) {
     'rowSecurityGuc', 'privilegedMemberships', 'privilegedMembershipNames',
     'ownsProductTable', 'rlsEnabledOnProducts', 'rlsForcedOnProducts',
     'canSelectProducts', 'canWriteProducts', 'canCreateInDatabase', 'canCreateInSchema',
+    'canWriteDppEvents', 'canWriteMigrationsLedger',
     'rowsVisibleWithoutContext',
   ]);
   const cles = [...blocRetour[1].matchAll(/^\s*(\w+):/gm)].map((m) => m[1]);

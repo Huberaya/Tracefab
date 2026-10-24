@@ -51,12 +51,18 @@ if (!OWNER_URL) {
 assertThrowawayDb({ variables: ['TF_OWNER_URL'], purpose: 'identite runtime — controle negatif' });
 
 let echecs = 0;
+const echecsNommes: string[] = [];
 function verifier(condition: boolean, libelle: string, detail = ''): void {
   if (condition) {
     console.log(`  ok    ${libelle}`);
   } else {
     echecs += 1;
+    echecsNommes.push(libelle);
     console.log(`  ECHEC ${libelle}${detail ? ` — ${detail}` : ''}`);
+    // Le journal d'un job GitHub est heberge hors de l'API : un echec qui n'y
+    // figure que la n'est pas diagnosticable. Chaque echec sort donc aussi en
+    // annotation.
+    console.log(`::error title=P1 identite runtime::${libelle}${detail ? ` — observe : ${detail}` : ''}`);
   }
 }
 
@@ -78,7 +84,18 @@ verifier(identite.rowSecurityGuc === 'on', 'row_security = on', String(identite.
 verifier(identite.rlsEnabledOnProducts === true, 'RLS activee sur tracefab_products', String(identite.rlsEnabledOnProducts));
 verifier(identite.ownsProductTable === false, 'le role ne possede pas tracefab_products', String(identite.ownsProductTable));
 verifier(identite.canSelectProducts === true, 'le role peut lire les produits (sinon l application serait cassee)', String(identite.canSelectProducts));
-verifier(identite.canWriteProducts === false, 'le role n a pas d ecriture directe sur les produits', String(identite.canWriteProducts));
+// `tracefab_products` figure dans TABLES_ECRITURE_DIRECTE : le runtime ecrit
+// les produits par methodes Prisma. Ce n'est pas un exces — la RLS et les
+// politiques WITH CHECK bornent l'ecriture au locataire actif, et
+// `test:neon:app-readiness` le prouve par execution. Le mesurer evite de
+// confondre « moindre privilege » et « interdiction d'ecrire ».
+verifier(identite.canWriteProducts === true, 'le role ecrit les produits directement (attendu : table en ecriture directe)', String(identite.canWriteProducts));
+
+// Les tables qui ne doivent JAMAIS etre ecrites directement : les evenements
+// DPP append-only (fonctions SECURITY DEFINER uniquement) et le registre des
+// migrations Prisma (plan de controle).
+verifier(identite.canWriteDppEvents === false, 'aucune ecriture directe sur les evenements DPP append-only', String(identite.canWriteDppEvents));
+verifier(identite.canWriteMigrationsLedger === false, 'aucune ecriture sur le registre des migrations Prisma', String(identite.canWriteMigrationsLedger));
 
 console.log('\n  --- B. la RLS soumet reellement le role applicatif');
 
@@ -127,7 +144,9 @@ verifier(
 );
 
 console.log(`\n  Instrument d'identite runtime : ${echecs === 0 ? 'OK' : `${echecs} echec(s)`}.\n`);
-console.log(`::notice title=P1 identite runtime — instrument::controles=${echecs === 0 ? 'PASS' : 'FAIL'} `
+console.log(`::notice title=P1 identite runtime — instrument::controles=${echecs === 0 ? 'PASS' : 'FAIL'} echecs=${echecs} `
   + `role=${identite.currentUser ?? 'inconnu'} bypassrls=${identite.bypassesRls} superuser=${identite.isSuperuser} `
+  + `membres_privilegies=${identite.privilegedMemberships} `
+  + `ecriture_dpp=${identite.canWriteDppEvents} ecriture_migrations=${identite.canWriteMigrationsLedger} `
   + `lignes_sans_contexte=${identite.rowsVisibleWithoutContext}`);
 process.exit(echecs === 0 ? 0 : 1);

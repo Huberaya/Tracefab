@@ -120,6 +120,14 @@ export type DatabaseIdentity = {
   rlsForcedOnProducts: boolean | null;
   canSelectProducts: boolean | null;
   canWriteProducts: boolean | null;
+  /**
+   * Ecriture directe sur les tables qui ne doivent passer que par des
+   * fonctions SECURITY DEFINER (`dpp_lifecycle_events`, append-only) ou qui
+   * appartiennent au plan de controle des migrations (`_prisma_migrations`).
+   * `true` = privilege excessif : ces tables sont REVOKE au bootstrap.
+   */
+  canWriteDppEvents: boolean | null;
+  canWriteMigrationsLedger: boolean | null;
   canCreateInDatabase: boolean | null;
   canCreateInSchema: boolean | null;
   /**
@@ -134,6 +142,8 @@ export type DatabaseIdentity = {
 };
 
 type IdentityRow = {
+  can_write_dpp_events: boolean | null;
+  can_write_migrations_ledger: boolean | null;
   current_user: string;
   session_user: string;
   database: string;
@@ -176,6 +186,8 @@ const IDENTITY_UNAVAILABLE: DatabaseIdentity = {
   rlsForcedOnProducts: null,
   canSelectProducts: null,
   canWriteProducts: null,
+  canWriteDppEvents: null,
+  canWriteMigrationsLedger: null,
   canCreateInDatabase: null,
   canCreateInSchema: null,
   rowsVisibleWithoutContext: null,
@@ -273,6 +285,16 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
                  OR has_table_privilege(current_user, 'public.tracefab_products', 'UPDATE')
                  OR has_table_privilege(current_user, 'public.tracefab_products', 'DELETE'))
          END                                                 AS can_write_products,
+         CASE WHEN to_regclass('public.dpp_lifecycle_events') IS NULL THEN NULL
+              ELSE (has_table_privilege(current_user, 'public.dpp_lifecycle_events', 'INSERT')
+                 OR has_table_privilege(current_user, 'public.dpp_lifecycle_events', 'UPDATE')
+                 OR has_table_privilege(current_user, 'public.dpp_lifecycle_events', 'DELETE'))
+         END                                                 AS can_write_dpp_events,
+         CASE WHEN to_regclass('public._prisma_migrations') IS NULL THEN NULL
+              ELSE (has_table_privilege(current_user, 'public._prisma_migrations', 'INSERT')
+                 OR has_table_privilege(current_user, 'public._prisma_migrations', 'UPDATE')
+                 OR has_table_privilege(current_user, 'public._prisma_migrations', 'DELETE'))
+         END                                                 AS can_write_migrations_ledger,
          has_database_privilege(current_user, current_database(), 'CREATE')  AS can_create_in_database,
          has_schema_privilege(current_user, 'public', 'CREATE')               AS can_create_in_schema
 `;
@@ -306,6 +328,8 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
       rlsForcedOnProducts: row.rls_forced_on_products,
       canSelectProducts: row.can_select_products,
       canWriteProducts: row.can_write_products,
+      canWriteDppEvents: row.can_write_dpp_events,
+      canWriteMigrationsLedger: row.can_write_migrations_ledger,
       canCreateInDatabase: row.can_create_in_database,
       canCreateInSchema: row.can_create_in_schema,
       rowsVisibleWithoutContext: visible,
@@ -349,6 +373,11 @@ export function databaseIdentityViolations(identity: DatabaseIdentity | undefine
     violations.push(`row_security_${identity.rowSecurityGuc}`);
   }
   if (identity.rlsEnabledOnProducts === false) violations.push('rls_desactivee_sur_tracefab_products');
+  // Ecriture directe la ou le modele impose une fonction SECURITY DEFINER, ou
+  // sur le registre des migrations : c'est un privilege excessif, meme si le
+  // role parait conforme par ailleurs.
+  if (identity.canWriteDppEvents === true) violations.push('ecriture_directe_sur_evenements_dpp_append_only');
+  if (identity.canWriteMigrationsLedger === true) violations.push('ecriture_sur_le_registre_des_migrations_prisma');
   return violations;
 }
 
