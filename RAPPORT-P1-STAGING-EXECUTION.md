@@ -695,3 +695,133 @@ précise : **régénérer « Protection Bypass for Automation » dans le projet
 Vercel du déploiement** et remplacer `VERCEL_AUTOMATION_BYPASS_SECRET` dans
 l'environnement `tracefab-clerk-test`. Aucune protection Vercel n'a été
 désactivée, et aucune ne doit l'être.
+
+---
+
+## 11. 2026-10-24 — MISSION C : preuve de l'identite PostgreSQL du runtime
+
+### 11.1 Verdict
+
+**PARTIELLEMENT CLOS.** L'instrument de mesure est prouve par execution sur un
+PostgreSQL reel ; la chaine de mesure sur la Preview est corrigee et rendue
+automatique ; **la mesure sur la Preview elle-meme reste BLOQUEE par une regle
+d'environnement GitHub** (§11.6). Aucune conclusion n'est donc tiree du role
+effectif de la Preview.
+
+### 11.2 Methode — pourquoi ce n'est pas une inspection de configuration
+
+Une inspection de configuration ne prouve rien : `DATABASE_URL` peut pointer
+n'importe quel role, et Prisma n'en expose que deux champs (`url`, `directUrl`).
+La mesure part donc de l'application :
+
+```
+scripts/probe_preview_runtime_identity.mjs
+   → GET /api/internal/p2/readiness?identity=1   (en-tete x-tracefab-worker-secret)
+   → probeDatabaseIdentity()                     (api/_lib/readiness-probes.ts)
+   → prisma.$queryRaw                            (MEME client que les routes metier)
+```
+
+`api/_lib/prisma.ts` est l'unique `new PrismaClient()` de `api/` : la sonde
+mesure donc la connexion du runtime, pas une connexion ouverte a cote. Un
+`psql` branche sur la meme URL mesurerait une AUTRE connexion.
+
+### 11.3 Ce qui a change dans l'instrument
+
+La sonde ne mesurait que `current_user`, `session_user`, `rolsuper` et
+`rolbypassrls` — insuffisant : un role **sans** BYPASSRLS peut heriter du
+contournement par adhesion, etre **proprietaire** de la table, ou subir un
+`row_security = off`.
+
+Mesures ajoutees (toutes en lecture, aucune ecriture, aucun `SET ROLE`) :
+
+| Mesure | Ce qu'elle empeche de manquer |
+|---|---|
+| `pg_has_role(a.oid, r.oid, 'MEMBER')` | adhesion DIRECTE ou INDIRECTE a un role `SUPERUSER`/`BYPASSRLS` |
+| `rolcreatedb`, `rolcreaterole`, `rolreplication` | privileges d'infrastructure sans usage applicatif |
+| `current_setting('row_security')` | politiques desactivees pour la session |
+| `relrowsecurity`, `relforcerowsecurity` | table sans politique, ou proprietaire non soumis (`FORCE` absent) |
+| `ownsProductTable` | runtime proprietaire = contournement sans `FORCE` |
+| `canWriteMigrationsLedger` | ecriture sur `_prisma_migrations` (plan de controle) |
+| `canWriteDppEvents` | ecriture directe sur le DPP append-only (fonctions `SECURITY DEFINER` uniquement) |
+| **`rowsVisibleWithoutContext`** | **la mesure decisive** : lignes de `tracefab_products` visibles SANS contexte arme |
+
+Le contrat (`databaseIdentityViolations`) refuse chacun de ces cas et **nomme**
+l'ecart ; la route les publie sous authentification.
+
+### 11.4 Preuve par execution (CI, PostgreSQL 17 jetable) — **PASS**
+
+Run [40094662434](https://github.com/Huberaya/Tracefab/actions/runs/40094662434),
+job `Base — isolation RLS executee`, step *Instrument d'identite runtime —
+eprouve dans les deux sens*. Annotation brute :
+
+```
+controles=PASS echecs=0 role=tracefab_app bypassrls=false superuser=false
+membres_privilegies=0 ecriture_dpp=false ecriture_migrations=false
+lignes_sans_contexte=0
+```
+
+Ce que ce resultat etablit, et ce qu'il n'etablit pas :
+
+- l'instrument **mesure le role de la connexion** (il renvoie `tracefab_app`
+  quand le client Prisma se connecte avec `tracefab_app`) ;
+- il **discrimine** : le controle negatif exige que le proprietaire, lui, voie
+  les lignes (sinon un « 0 ligne » ne prouverait rien) ;
+- il **refuse** les cas permissifs : le test verifie que le contrat rejette un
+  role avec BYPASSRLS, un role proprietaire, une adhesion privilegiee et une
+  ligne visible sans contexte ;
+- il ne mesure **pas** la Preview : c'est un test de CI sur base jetable.
+
+### 11.5 Ce que la mesure a corrige dans nos propres hypotheses
+
+`tracefab_products` est dans `TABLES_ECRITURE_DIRECTE` : le runtime **ecrit**
+les produits par methodes Prisma. L'hypothese « un role conforme n'a aucune
+ecriture directe » etait donc fausse, et le test a ete corrige plutot que
+l'inverse. La garantie de tenancy sur cette ecriture vient de la RLS et des
+politiques `WITH CHECK` (`products_insert_brand`, `products_update_brand`),
+prouvees par `test:neon:app-readiness` et `test:neon:write-policies`. Le controle
+de moindre privilege porte desormais sur les tables qui ne doivent **jamais**
+etre ecrites directement : `dpp_lifecycle_events` et `_prisma_migrations`.
+
+### 11.6 Blocage restant — et l'action exacte
+
+Le workflow authentifie ne peut pas etre execute depuis cette branche :
+
+| Fait mesure (2026-10-24) | Reponse |
+|---|---|
+| politique de branche de `tracefab-clerk-test` | `main`, `arena/88857a44-tracefab`, `arena/f9effa2e-tracefab` — la branche de session n'y est pas |
+| ajouter la branche (API) | `403 Resource not accessible by integration` |
+| `workflow_dispatch` (API) | `403 Resource not accessible by integration` |
+| approuver une retenue d'environnement | `403 Resource not accessible by integration` |
+
+Consequence : **l'identite du runtime de Preview n'est PAS mesuree**, et aucune
+conclusion n'est tiree sur le role effectif de la Preview.
+
+Action humaine, au choix :
+
+1. **preferé** — porter le commit `58d72c1` (ou le SHA final ci-dessous) sur
+   `arena/88857a44-tracefab` ou `arena/f9effa2e-tracefab` : le workflow s'y
+   declenche au push ; approuver l'environnement depuis la page du run. La
+   mesure sera publiee en annotation `P1 identite DB runtime` avec le role, ses
+   attributs et les ecarts exacts ;
+2. ou ajouter `arena/f54fad73-tracefab` dans *Settings → Environments →
+   tracefab-clerk-test → Deployment branches*, puis declencher le workflow ;
+3. si l'annotation indique `cause=secret_sonde_absent` : deposer
+   `TRACEFAB_NOTIFICATION_WORKER_SECRET` (valeur de la Preview) dans
+   l'environnement `tracefab-clerk-test`.
+
+### 11.7 Hors perimetre Preview — ce qui reste a verifier en Production
+
+La mesure Preview, quand elle tournera, ne dira **rien** de la Production : les
+roles, les variables et les privileges y sont distincts. A verifier separement,
+avec une autorisation explicite et sans modification :
+
+| Controle Production | Pourquoi il ne peut pas etre deduit de la Preview |
+|---|---|
+| role de `DATABASE_URL` de Production | variable independante, possiblement `neondb_owner` |
+| `rolbypassrls` / `rolsuper` de ce role | attributs propres a la base de Production |
+| adhesion a un role privilegie | idem |
+| `ROW LEVEL SECURITY` activee et `FORCE` | etat du schema de Production |
+| privileges de table (DPP, registre Prisma) | derives des GRANT de Production |
+
+Aucune modification n'a ete faite en Production, sur les roles de Production,
+ni sur `main`.
