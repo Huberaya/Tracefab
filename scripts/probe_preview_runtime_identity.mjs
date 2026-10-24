@@ -1,28 +1,34 @@
 #!/usr/bin/env node
 /**
- * Sonde d'identite du role DB runtime, executee sur une Preview.
+ * Preuve de l'identite PostgreSQL du runtime, mesuree SUR la Preview.
  *
- * POURQUOI CE SCRIPT EXISTE
- *   La RLS ne protege que si le role applicatif n'a pas BYPASSRLS. Or
- *   l'identite reellement utilisee par le runtime ne se deduit ni du code ni
- *   de la configuration attendue : seul un `current_user` lu sur la connexion
- *   reelle la dit. La route `/api/internal/p2/readiness?identity=1` fait
- *   exactement cela, avec le meme client Prisma que les routes metier.
+ * POURQUOI CETTE SONDE EXISTE
+ *   La RLS ne protege que si le role applicatif n'a ni BYPASSRLS, ni SUPERUSER,
+ *   ni appartenance a un role qui les porte, et s'il n'est pas proprietaire des
+ *   tables. Or l'identite effectivement utilisee ne se deduit ni du code ni de
+ *   la configuration attendue : `DATABASE_URL` peut pointer n'importe quel
+ *   role. Une inspection de configuration ne prouve donc rien.
  *
- *   Cette sonde est donc le SEUL moyen de mesurer l'identite du runtime, et
- *   elle doit etre executee sur le deploiement reellement utilise.
+ *   La route `GET /api/internal/p2/readiness?identity=1` lit ces attributs sur
+ *   la connexion du MEME client Prisma que les routes metier
+ *   (`api/_lib/readiness-probes.ts`, unique `new PrismaClient()` de `api/`).
+ *   C'est la condition pour mesurer le runtime et pas une connexion ouverte a
+ *   cote : un `psql` branche sur la meme URL mesurerait une AUTRE connexion.
  *
- * CE QU'IL AFFICHE
- *   - le role courant et le role de session (noms de roles, pas de secrets) ;
- *   - les deux booleens de securite : contournement RLS et superutilisateur ;
- *   - le verdict, c'est-a-dire la correspondance avec le contrat de securite
- *     (`tracefab_app`, sans contournement, sans superutilisateur).
+ * CE QUE CETTE SONDE N'EST PAS
+ *   - ce n'est pas une connexion administrative : elle n'ouvre aucun socket
+ *     vers PostgreSQL, elle parle a l'application ;
+ *   - elle ne fait aucune ecriture : la route lit le catalogue et compte au
+ *     plus une ligne visible ;
+ *   - elle n'affiche aucun secret, aucune URL, aucun cookie, aucun jeton ;
+ *   - elle n'affiche pas le nom de la base (le depot est public) : seulement un
+ *     booleen de comparaison avec la Production.
  *
- * CE QU'IL NE FAIT JAMAIS
- *   - il ne place le secret ni dans l'URL ni dans un argument de ligne de
- *     commande : il va uniquement dans l'en-tete HTTP, comme le veut la route ;
- *   - il n'affiche pas la reponse complete : seulement les champs utiles ;
- *   - il ne joint aucune base directement : il parle a l'application.
+ * CODES DE SORTIE — un code par cause, pour qu'un echec soit lisible
+ *   2  configuration (URL absente, refusee) ou secret de sonde absent
+ *   4  la cible n'est pas l'application (redirection : protection ou cible obsolete)
+ *   5  l'identite n'a pas pu etre mesuree (route injoignable, reponse inexploitable)
+ *   6  l'identite est mesuree et elle VIOLENTE le contrat — les ecarts sont nommes
  */
 import { annoterMesures } from './lib/annotations.mjs';
 import { entetesBypass, exigerCiblePreview } from './lib/preview_deployment.mjs';
@@ -42,41 +48,45 @@ const origin = exigerCiblePreview(baseUrl);
 
 // Contournement de la protection de deploiement Vercel — optionnel. La
 // valeur ne sort jamais dans l'URL ni dans la sortie.
-const entetesContournement = entetesBypass(process.env.TRACEFAB_VERCEL_BYPASS);
+const vercelBypass = (process.env.TRACEFAB_VERCEL_BYPASS || '').trim();
+const entetesContournement = entetesBypass(vercelBypass);
+
+const url = new URL('/api/internal/p2/readiness', origin);
+url.searchParams.set('identity', '1');
+
+/** Appel unique, redirection NON suivie : une redirection est une mesure. */
+async function appeler(entetes) {
+  const reponse = await fetch(url, {
+    method: 'GET',
+    redirect: 'manual',
+    headers: entetes,
+    signal: AbortSignal.timeout(20000),
+  });
+  const corpsBrut = await reponse.text().catch(() => '');
+  let corps = {};
+  try { corps = JSON.parse(corpsBrut); } catch { corps = {}; }
+  return { reponse, corps };
+}
 
 if (!workerSecret) {
   // DIAGNOSTIC. Sans le secret de sonde, la mesure est impossible. Mais on
   // peut encore dire OU le secret manque, au lieu de le deviner : la route
-  // interne repond 503 quand l'application n'a aucun secret d exploitation
-  // configure, 401 quand elle en a un mais que l'appelant ne le presente
-  // pas, et 302 quand la protection Vercel intercepte encore l'appel. Ces
-  // trois reponses designent trois corrections differentes.
-  const urlDiagnostic = new URL('/api/internal/p2/readiness', origin);
-  urlDiagnostic.searchParams.set('identity', '1');
+  // interne repond 503 quand l'application n'a aucun secret d'exploitation
+  // configure, 401 quand elle en a un mais que l'appelant ne le presente pas,
+  // 302 quand la protection Vercel intercepte encore, et une redirection vers
+  // un AUTRE deploiement quand la cible n'est pas celle du commit.
   let code = 0;
   let erreur = 'joignable_non';
   let destination = { classe: 'aucune', hote: null, chemin: null, parametres: [] };
   let classeReponse = 'injoignable';
   try {
-    // `redirect: 'manual'` : une redirection est une MESURE, pas un detour.
-    // Suivre un 302 vers /sso-api ferait lire une page de connexion comme si
-    // c'etait l'application, et un 307 vers un autre deploiement ferait
-    // mesurer un AUTRE commit que celui teste.
-    const reponse = await fetch(urlDiagnostic, {
-      method: 'GET',
-      redirect: 'manual',
-      headers: entetesContournement,
-      signal: AbortSignal.timeout(15000),
-    });
+    const { reponse, corps } = await appeler(entetesContournement);
     code = reponse.status;
     destination = analyserDestination(reponse.headers.get('location'), origin);
-    const corpsBrut = await reponse.text().catch(() => '');
-    classeReponse = classerReponse({
-      status: code,
-      contentType: reponse.headers.get('content-type'),
-      corps: corpsBrut,
-    }).classe;
-    try { erreur = JSON.parse(corpsBrut)?.error || 'aucune'; } catch { erreur = 'aucune'; }
+    classeReponse = reponse.status >= 300 && reponse.status < 400
+      ? 'redirection'
+      : classerReponse({ status: reponse.status, contentType: reponse.headers.get('content-type'), corps: JSON.stringify(corps) }).classe;
+    erreur = corps?.error || 'aucune';
   } catch {
     erreur = 'joignable_non';
   }
@@ -109,73 +119,97 @@ if (!workerSecret) {
   process.exit(2);
 }
 
-// La sonde de Production sert a etablir que le runtime de staging ne parle
-// PAS a la base de Production. Elle est strictement de LECTURE : un GET sur
-// la route de readiness, sans aucune ecriture, sans aucun secret affiche.
-// Elle est desactivable : TF_PRODUCTION_PROBE_URL='' la supprime.
-const productionUrl = (process.env.TF_PRODUCTION_PROBE_URL ?? 'https://tracefab.vercel.app').trim();
+let resultat;
+try {
+  resultat = await appeler({ 'x-tracefab-worker-secret': workerSecret, ...entetesContournement });
+} catch (error) {
+  console.log('::error title=P1 identite DB::cause=cible_injoignable — la Preview na pas repondu');
+  console.error(`Preview injoignable : ${String(error?.message || error).split('\n')[0].slice(0, 80)}`);
+  process.exit(5);
+}
 
-const url = new URL('/api/internal/p2/readiness', origin);
-url.searchParams.set('identity', '1');
+const { reponse, corps } = resultat;
 
-const headers = { 'x-tracefab-worker-secret': workerSecret, ...entetesContournement };
-
-const response = await fetch(url, {
-  method: 'GET',
-  // Une redirection n'est pas suivie : elle est nommee. Suivre un 302 vers la
-  // page de protection lirait une page de connexion comme une reponse de
-  // l'application, et suivre un 307 changerait de commit sans le dire.
-  redirect: 'manual',
-  headers,
-});
-const corpsBrut = await response.text().catch(() => '');
-const redirection = response.headers.get('location')
-  ? analyserDestination(response.headers.get('location'), origin)
-  : { classe: 'aucune', hote: null, chemin: null, parametres: [] };
-if (response.status >= 300 && response.status < 400) {
+// Une redirection n'est PAS suivie : suivre un 302 vers /sso-api lirait une
+// page de connexion comme une reponse applicative, et suivre un 307 vers un
+// autre deploiement mesurerait un AUTRE commit que celui teste.
+if (reponse.status >= 300 && reponse.status < 400) {
+  const redirection = analyserDestination(reponse.headers.get('location'), origin);
   annoterMesures('P1 identite DB runtime', [
-    ['readiness_http', response.status],
+    ['readiness_http', reponse.status],
     ['readiness_redirection_classe', redirection.classe],
     ['readiness_redirection_hote', redirection.hote || 'aucun'],
     ['readiness_redirection_chemin', redirection.chemin || 'aucun'],
+    ['identite_mesuree', false],
     ['identite_conforme', false],
+    ['cause', 'cible_nest_pas_lapplication'],
   ]);
-  console.error(`La sonde a recu ${response.status} vers ${redirection.hote || 'un hote inconnu'} `
-    + `(${redirection.chemin || '?'}, classe ${redirection.classe}) : l application n'a pas repondu.`);
+  console.error(`La sonde a recu ${reponse.status} vers ${redirection.hote || 'un hote inconnu'} `
+    + `(${redirection.chemin || '?'}, classe ${redirection.classe}) : l application n'a pas repondu, `
+    + "donc l'identite du runtime n'est PAS mesuree.");
   process.exit(4);
 }
-let body = {};
-try { body = JSON.parse(corpsBrut); } catch { body = {}; }
 
-const identite = body?.databaseIdentity || {};
+const identite = corps?.databaseIdentity || {};
+const violations = Array.isArray(corps?.databaseIdentityViolations) ? corps.databaseIdentityViolations : [];
+
+// La sonde de Production sert uniquement a etablir que le runtime de staging
+// ne parle PAS a la base de Production. Strictement en LECTURE, sans aucun
+// secret affiche. Desactivable : TF_PRODUCTION_PROBE_URL='' la supprime.
+const productionUrl = (process.env.TF_PRODUCTION_PROBE_URL ?? 'https://tracefab.vercel.app').trim();
+
 const mesures = [
-  ['readiness_http', response.status],
-  ['readiness_ready', body?.ready === true],
+  ['readiness_http', reponse.status],
+  ['readiness_ready', corps?.ready === true],
   ['identite_mesuree', identite?.measured === true],
+  ['identite_detail', identite?.detail ?? 'inconnu'],
+  // Identite effective.
   ['identite_role_courant', identite?.currentUser ?? 'inconnu'],
   ['identite_role_session', identite?.sessionUser ?? 'inconnu'],
-  ['identite_contournement_rls', identite?.bypassesRls],
-  ['identite_superutilisateur', identite?.isSuperuser],
+  ['identite_set_role_detecte', identite?.currentUser !== identite?.sessionUser],
+  // Attributs de role — le coeur de la preuve.
+  ['attribut_superuser', identite?.isSuperuser],
+  ['attribut_bypassrls', identite?.bypassesRls],
+  ['attribut_canlogin', identite?.canLogin],
+  ['attribut_createrole', identite?.canCreateRole],
+  ['attribut_createdb', identite?.canCreateDb],
+  ['attribut_replication', identite?.canReplicate],
+  ['attribut_inherit', identite?.inheritsPrivileges],
+  // Appartenance a un role privilegie : un role peut etre conforme en
+  // apparence et contourner la RLS par adhesion heritee.
+  ['attribut_membres_privilegies', identite?.privilegedMemberships],
+  ['attribut_membres_privilegies_noms', (identite?.privilegedMembershipNames || []).join('+') || 'aucun'],
+  // RLS reellement applicable.
+  ['rls_guc_row_security', identite?.rowSecurityGuc ?? 'inconnu'],
+  ['rls_activee_sur_products', identite?.rlsEnabledOnProducts],
+  ['rls_forcee_sur_products', identite?.rlsForcedOnProducts],
+  ['role_proprietaire_de_products', identite?.ownsProductTable],
+  // Privileges : lecture oui, ecriture directe non, creation non.
+  ['privilege_select_products', identite?.canSelectProducts],
+  ['privilege_ecriture_directe_products', identite?.canWriteProducts],
+  ['privilege_create_base', identite?.canCreateInDatabase],
+  ['privilege_create_schema', identite?.canCreateInSchema],
+  // La mesure decisive : ce que ce role voit SANS contexte arme.
+  ['lignes_visibles_sans_contexte', identite?.rowsVisibleWithoutContext],
+  ['ecarts', violations.join('|') || 'aucun'],
 ];
 
-const sur = identite?.measured === true
-  && identite?.currentUser === 'tracefab_app'
-  && identite?.sessionUser === 'tracefab_app'
-  && identite?.bypassesRls === false
-  && identite?.isSuperuser === false;
+const mesuree = identite?.measured === true;
+const sur = mesuree && violations.length === 0;
 
-// La base de Production, pour comparaison. Lecture seule. Si le secret de
-// sonde de Production differe de celui de la Preview, la comparaison est
-// simplement inconclusive — elle ne doit jamais faire echouer la sonde.
+// Comparaison avec la base de Production : uniquement un booleen. Le nom de la
+// base ne sort jamais — le depot est public.
 if (productionUrl && productionUrl !== baseUrl) {
   try {
     const urlProduction = new URL('/api/internal/p2/readiness', productionUrl);
     urlProduction.searchParams.set('identity', '1');
-    // Seul le secret de sonde est envoye a Production : le contournement de
-    // la protection Vercel est propre a la Preview et n'a rien a y faire.
+    // Seul le secret de sonde est envoye a Production : le contournement de la
+    // protection Vercel est propre a la Preview et n'a rien a y faire.
     const reponseProduction = await fetch(urlProduction, {
       method: 'GET',
+      redirect: 'manual',
       headers: { 'x-tracefab-worker-secret': workerSecret },
+      signal: AbortSignal.timeout(15000),
     });
     if (reponseProduction.ok) {
       const corpsProduction = await reponseProduction.json().catch(() => ({}));
@@ -194,14 +228,23 @@ if (productionUrl && productionUrl !== baseUrl) {
 
 mesures.push(['identite_conforme', sur]);
 
-// Les mesures sont publiees en ANNOTATION : le journal de run est heberge
-// hors de l'API GitHub, donc illisible depuis l'exterieur. Une mesure qui
-// n'existe que dans le journal n'est pas une preuve.
+// Les mesures sont publiees en ANNOTATION : le journal de run est heberge hors
+// de l'API GitHub, donc illisible depuis l'exterieur. Une mesure qui n'existe
+// que dans le journal n'est pas une preuve.
 annoterMesures('P1 identite DB runtime', mesures);
 for (const [cle, valeur] of mesures) console.log(`${cle}=${valeur}`);
 
-if (!sur) {
-  console.error('Le role effectif du runtime ne respecte pas le contrat de securite.');
-  process.exit(1);
+if (!mesuree) {
+  console.log('::error title=P1 identite DB::cause=identite_non_mesuree — la route interne a repondu mais l identite est indisponible');
+  console.error(`Identite NON MESUREE (detail=${identite?.detail ?? 'inconnu'}) : `
+    + "aucune conclusion sur le role du runtime n'est possible.");
+  process.exit(5);
 }
+
+if (!sur) {
+  console.log(`::error title=P1 identite DB::cause=role_non_conforme — ${violations.join(' | ')}`);
+  console.error(`Le role effectif du runtime ne respecte pas le contrat de securite : ${violations.join(' ; ')}`);
+  process.exit(6);
+}
+
 console.log('identite_runtime=conforme');

@@ -372,28 +372,89 @@ première ne prouverait rien de la barrière RLS.
 
 ---
 
-## 6. Sonde d'identité du rôle PostgreSQL runtime
+## 6. Preuve de l'identité PostgreSQL du runtime (mission C)
 
-```bash
-curl --fail-with-body -sS \
-  -H "x-tracefab-worker-secret: $TRACEFAB_NOTIFICATION_WORKER_SECRET" \
-  "$TRACEFAB_APP_URL/api/internal/p2/readiness?identity=1"
+### 6.1 Ce qui est mesuré, et depuis quelle connexion
+
+La mesure part de l'application, jamais d'un client `psql` branché sur la même
+URL : un `psql` ouvrirait une **autre** connexion et ne prouverait rien du
+runtime. La route `GET /api/internal/p2/readiness?identity=1` lit les attributs
+sur la connexion du **même client Prisma** que les routes métier
+(`api/_lib/prisma.ts` est l'unique `new PrismaClient()` de `api/`).
+
+```
+scripts/probe_preview_runtime_identity.mjs  →  GET /api/internal/p2/readiness?identity=1
+                                                 (en-tête x-tracefab-worker-secret)
+                                            →  probeDatabaseIdentity()  →  prisma.$queryRaw
 ```
 
-Le secret va **uniquement dans l'en-tête**. Jamais dans l'URL, jamais dans un
-journal. La réponse attendue :
+### 6.2 Les attributs relevés — et pourquoi chacun compte
 
-| Champ | Valeur attendue |
-|---|---|
-| `databaseIdentity.measured` | `true` |
-| `databaseIdentity.currentUser` | `tracefab_app` |
-| `databaseIdentity.sessionUser` | `tracefab_app` |
-| `databaseIdentity.bypassesRls` | `false` |
-| `databaseIdentity.isSuperuser` | `false` |
+| Champ publié | Attendu | Pourquoi ce n'est pas décoratif |
+|---|---|---|
+| `identite_role_courant` (`current_user`) | `tracefab_app` | le rôle effectif, pas celui de la configuration |
+| `identite_role_session` (`session_user`) | `tracefab_app` | s'il diverge de `current_user`, un `SET ROLE` agit en amont et la lecture change de sens |
+| `identite_set_role_detecte` | `false` | conséquence du précédent, publiée comme un fait |
+| `attribut_superuser` (`rolsuper`) | `false` | un superutilisateur ignore la RLS |
+| `attribut_bypassrls` (`rolbypassrls`) | `false` | idem, explicitement |
+| `attribut_membres_privilegies` + `_noms` | `0` / `aucun` | **un rôle sans BYPASSRLS peut hériter du contournement** par appartenance (`pg_has_role … 'MEMBER'`) |
+| `attribut_createdb` / `_createrole` / `_replication` | `false` | privilèges d'infrastructure sans usage applicatif |
+| `rls_guc_row_security` | `on` | un `row_security = off` désactiverait les politiques pour la session |
+| `rls_activee_sur_products` | `true` | la politique existe-t-elle vraiment sur la table ? |
+| `rls_forcee_sur_products` | `true` | `false` = le **propriétaire** de la table échappe aux politiques |
+| `role_proprietaire_de_products` | `false` | un runtime propriétaire contourne la RLS sans `FORCE` |
+| `privilege_select_products` | `true` | sans lecture, l'application serait cassée — un « conforme » qui casse tout n'est pas une preuve |
+| `privilege_ecriture_directe_products` | `false` | les mutations passent par des fonctions `SECURITY DEFINER` |
+| `privilege_create_base` / `privilege_create_schema` | `false` | création d'objets = élévation possible |
+| `lignes_visibles_sans_contexte` | `0` | **la mesure décisive** : sous un rôle soumis à la RLS et sans contexte armé, aucune ligne de `tracefab_products` n'est visible |
 
-`scripts/probe_preview_runtime_identity.mjs` fait l'appel et n'affiche **que**
-le rôle courant, le rôle de session et les deux booléens — jamais la réponse
-complète.
+Les politiques de `tracefab_products` exigent toutes un contexte
+(`tracefab_is_org_member(...)` ou `tracefab_public_context() AND
+tracefab_product_is_public(id)`). Une valeur non nulle prouve donc, par
+exécution et non par lecture de configuration, que les politiques **ne sont pas
+évaluées** pour ce rôle.
+
+### 6.3 Pooling, transactions et `SET ROLE`
+
+- Aucun `SET ROLE` n'existe dans le code applicatif — vérifié statiquement
+  (`npm run test:runtime-db-role-guard`), et mesuré (`session_user` doit égaler
+  `current_user`).
+- Le contexte de locataire est posé par `set_config(..., true)`, donc
+  **transactionnel** : il ne fuit pas d'une requête à l'autre dans une
+  connexion poolée. En revanche, une requête qui n'ouvre pas de transaction
+  n'arme aucun contexte et retombe sur la fermeture par défaut (zéro ligne) —
+  c'est le comportement voulu, et c'est exactement ce que mesure
+  `lignes_visibles_sans_contexte`.
+- Le pooler Neon (`-pooler`) ne change pas `current_user` : l'authentification
+  est faite par la chaîne de connexion, pas par une réécriture de rôle. Si un
+  middleware de pool faisait un `SET ROLE`, `session_user` le révélerait.
+
+### 6.4 Codes de sortie de la sonde
+
+| Code | Cause | Signification |
+|---|---|---|
+| 2 | `secret_sonde_absent` | la mesure est impossible : le secret de la route interne n'est pas dans l'environnement GitHub |
+| 4 | `cible_nest_pas_lapplication` | redirection : protection Vercel active ou cible obsolète |
+| 5 | `identite_non_mesuree` | la route a répondu, mais l'identité est indisponible |
+| 6 | `role_non_conforme` | l'identité **est** mesurée et elle viole le contrat — les écarts sont nommés |
+
+### 6.5 Où la mesure tourne, et pourquoi pas en dernier
+
+L'étape `Sonde d'identite PostgreSQL du runtime` s'exécute **dès que la cible est
+vérifiée**, avant les étapes Clerk : elle n'en dépend pas, et placée en dernier
+elle était rendue inatteignable par le premier échec de provisionnement.
+
+Elle porte `continue-on-error: true` pour ne pas priver le dossier des preuves
+d'isolation, et un **portail final** (`if: always()`, `steps.identite_db.outcome`)
+fait échouer le job si l'identité n'a pas été mesurée ou n'est pas conforme.
+Un job vert signifie donc toujours : identité mesurée **et** conforme.
+
+### 6.6 Portée : ce que la Preview ne prouve pas
+
+Cette mesure porte sur la Preview du SHA testé. Elle ne dit **rien** de la
+configuration de Production : rôles, variables et privilèges y sont distincts.
+Toute vérification de Production exige une exécution sur le déploiement de
+Production, avec les mêmes mesures — elle est hors du verdict de ce document.
 
 ---
 
@@ -406,6 +467,8 @@ git checkout arena/88857a44-tracefab
 # 2. Contrôles qui ne demandent aucun privilege
 npm run test:p1-harness              # non-regression du harnais
 npm run test:p1:preview-deployment   # selection de la cible + diagnostic (hors ligne, 16 controles)
+npm run test:runtime-db-role-guard   # contrat de l identite runtime (statique, 12 controles)
+npm run test:neon:identite-runtime   # instrument d identite eprouve sur PostgreSQL jetable (CI)
 npm run test:active-tenant  # contrat de refus 404 du locataire non adherent
 npm run test:p1                     # catalogue, BOM, i18n, Quality Center
 npm run test:workflow-policy        # declaration des workflows privileged

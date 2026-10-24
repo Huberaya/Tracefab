@@ -462,39 +462,69 @@ function executer(args, env = {}) {
 {
   // Le 2026-10-23, l'execution authentifiee a echoue sur une seule cause : le
   // secret de la sonde d'identite (TF_WORKER_SECRET) manquait dans
-  // l'environnement. Or le garde-fou de presence exigeait ce secret AVANT la
-  // suite d'isolation : une seule sonde non approvisionnee a donc supprime
-  // toutes les preuves d'isolation, qui n'en dependent pas. Chaque secret
-  // doit etre verifie a l'endroit ou il sert, jamais plus tot.
+  // l'environnement. Le garde-fou de presence exigeait alors ce secret AVANT la
+  // suite d'isolation : une sonde non approvisionnee supprimait donc toutes les
+  // preuves d'isolation, qui n'en dependent pas.
+  //
+  // MISSION C (2026-10-24) : l'identite PostgreSQL du runtime commande
+  // l'opposabilite de la RLS. Elle ne depend NI de Clerk NI des sessions de
+  // test, donc elle est desormais mesuree DES QUE la cible est verifiee, avant
+  // les etapes Clerk — un echec de provisionnement ne doit plus rendre
+  // l'identite non mesurable.
+  //
+  // La regle n'est donc plus « la sonde passe en dernier » mais, ce qui est
+  // plus fort :
+  //   1. l'exigence du secret est portee par l'etape de sonde, et elle seule ;
+  //   2. cette etape est `continue-on-error`, donc un manque de secret ne
+  //      retire PAS les preuves d'isolation produites ensuite ;
+  //   3. un PORTAIL final (`if: always()`) fait echouer le job si la mesure
+  //      n'a pas reussi — un echec n'est jamais absorbe.
   const workflow = lire('.github/workflows/p1-staging-authenticated.yml');
+  const marqueurSonde = 'Sonde d\'identite PostgreSQL du runtime';
   const marqueurSuite = 'Executer la suite P1 staging';
-  const marqueurSonde = 'identite DB runtime';
-  // La declaration des secrets au niveau du job (le bloc `env:`) precede les
-  // etapes : c'est normal, un secret Declare n'est pas un secret exige. Ce
-  // qui est interdit, c'est d'en EXIGER la presence avant la suite.
-  const debutSteps = workflow.indexOf('    steps:');
-  const avantSuite = workflow.slice(debutSteps, workflow.indexOf(marqueurSuite));
-  const depuisSonde = workflow.slice(workflow.indexOf(marqueurSonde));
+  const marqueurPortail = 'Portail — l identite PostgreSQL du runtime est-elle conforme ?';
+
+  const blocSonde = workflow.slice(workflow.indexOf(marqueurSonde), workflow.indexOf(marqueurSuite));
+  const indexSonde = workflow.indexOf(marqueurSonde);
 
   // Le motif recherche est le CONTROLE lui-meme (`[ -n "${TF_WORKER_SECRET:-}" ]`),
   // pas la simple mention du nom : un commentaire qui explique la regle est
   // utile, une verification prematuree ne l'est pas.
   const controleSonde = /\[ -n "\$\{TF_WORKER_SECRET:-\}"/;
-  if (avantSuite.includes('TF_WORKER_SECRET') && controleSonde.test(avantSuite)) {
-    ko('le garde-fou du workflow exige TF_WORKER_SECRET avant la suite d isolation : un secret de sonde manquant effacerait les preuves d isolation, qui n en dependent pas');
+  const debutSteps = workflow.indexOf('    steps:');
+  const avantSonde = workflow.slice(debutSteps, indexSonde);
+  if (avantSonde.includes('TF_WORKER_SECRET') && controleSonde.test(avantSonde)) {
+    ko('le workflow exige TF_WORKER_SECRET avant l etape de sonde : un secret manquant effacerait les preuves d isolation, qui n en dependent pas');
   } else {
-    ok('le garde-fou du workflow n exige pas le secret de sonde avant la suite d isolation');
+    ok('le workflow n exige pas le secret de sonde avant l etape qui s en sert');
   }
 
-  if (depuisSonde.includes('TF_WORKER_SECRET') && controleSonde.test(depuisSonde)) {
+  if (blocSonde.includes('TF_WORKER_SECRET') && controleSonde.test(blocSonde)) {
     ok('le secret de sonde est verifie dans l etape de sonde d identite, la ou il sert');
   } else {
     ko('le secret de sonde n est plus verifie dans l etape de sonde d identite : son absence passerait inapercue');
   }
 
+  // Sans `continue-on-error`, une identite non conforme interromprait les
+  // tests d'isolation : le dossier perdrait des preuves independantes.
+  if (/id: identite_db[\s\S]{0,400}continue-on-error: true/.test(workflow)) {
+    ok('l etape de sonde est continue-on-error : un role non conforme ne supprime pas les preuves d isolation');
+  } else {
+    ko('l etape de sonde n est pas continue-on-error : un echec d identite effacerait les preuves d isolation');
+  }
+
+  // ... mais l'echec est rattrape par un portail : un echec ne doit jamais
+  // etre absorbe.
+  const blocPortail = workflow.slice(workflow.indexOf(marqueurPortail));
+  if (blocPortail.includes('if: always()') && /steps\.identite_db\.outcome/.test(blocPortail) && /exit 6/.test(blocPortail)) {
+    ok('un portail final fait echouer le job si l identite n est pas conforme (echec jamais absorbe)');
+  } else {
+    ko('aucun portail final ne rattrape le continue-on-error : un role non conforme laisserait le job vert');
+  }
+
   // L absence du secret doit etre NOMMEE, avec l action qui la leve : une
   // erreur sans indication ne fait pas avancer le dossier.
-  if (/secret_sonde=absent/.test(depuisSonde) && /deposer TRACEFAB_NOTIFICATION_WORKER_SECRET/.test(depuisSonde)) {
+  if (/secret_sonde=absent/.test(blocSonde) && /deposer TRACEFAB_NOTIFICATION_WORKER_SECRET/.test(blocSonde)) {
     ok('l absence du secret de sonde est nommee avec l action qui la leve');
   } else {
     ko('l absence du secret de sonde n est plus nommee avec l action qui la leve');
@@ -502,6 +532,7 @@ function executer(args, env = {}) {
 
   // Les deux secrets dont dependent les etapes de tete doivent, eux, rester
   // verifies avant elles.
+  const avantSuite = workflow.slice(debutSteps, workflow.indexOf(marqueurSuite));
   if (avantSuite.includes('secret_bypass=') && avantSuite.includes('secret_clerk=')) {
     ok('les secrets necessaires aux etapes de tete restent verifies avant elles');
   } else {

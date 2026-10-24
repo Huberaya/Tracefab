@@ -191,6 +191,34 @@ jobs:
           TF_PROBE_STRICT: '1'
         run: node scripts/probe_preview_surface.mjs
 
+      - name: Sonde d'identite PostgreSQL du runtime — mesuree sur cette Preview
+        # POURQUOI CETTE ETAPE EST ICI, ET PAS EN DERNIER.
+        # L'identite du role runtime ne depend NI de Clerk NI des sessions de
+        # test : elle ne demande que l'URL de la Preview et le secret de la
+        # route interne. Placee en dernier, elle etait rendue inatteignable par
+        # le premier echec des etapes Clerk — et l'identite, qui commande
+        # l'opposabilite de la RLS, restait non mesuree pour une raison
+        # etrangere. Elle est donc mesuree des que la cible est verifiee.
+        #
+        # `continue-on-error` volontaire : un role non conforme est un
+        # RESULTAT, pas une panne d'execution. Il doit laisser les etapes
+        # suivantes produire leurs preuves (isolation inter-organisations), et
+        # c'est la DERNIERE etape — un portail — qui fait echouer le job. Un
+        # echec n'est donc jamais absorbe : il est deplace a l'endroit ou il
+        # peut etre juge.
+        id: identite_db
+        continue-on-error: true
+        env:
+          TRACEFAB_STAGING_URL: ${{ steps.preview.outputs.preview_url }}
+        run: |
+          if [ -n "${TF_WORKER_SECRET:-}" ]; then
+            echo "::notice title=P1 staging::secret_sonde=present"
+          else
+            echo "::error title=P1 identite DB::cause=secret_sonde_absent — secret_sonde=absent de l'environnement tracefab-clerk-test : deposer TRACEFAB_NOTIFICATION_WORKER_SECRET (valeur de la Preview) dans cet environnement ; l identite du runtime reste NON MESUREE et le portail final fera echouer le job"
+            exit 2
+          fi
+          node scripts/probe_preview_runtime_identity.mjs
+
       - name: Inspection — comptes et organisations de test deja presents
         env:
           TRACEFAB_STAGING_URL: ${{ steps.preview.outputs.preview_url }}
@@ -211,18 +239,32 @@ jobs:
           TRACEFAB_P1_SECOND_BRAND_STORAGE_STATE: /tmp/p1-storage-states/second-brand.json
         run: npm run test:p1:staging
 
-      - name: Sonde d'identite DB runtime sur la Preview
-        # Le secret de la sonde est verifie ICI, et pas plus tot : c'est la
-        # seule etape qui en depend. Son absence ne doit donc pas priver le
-        # dossier des preuves d'isolation deja mesurees ; elle doit etre
-        # nommee, avec l'action exacte pour la lever.
+      - name: Portail — l identite PostgreSQL du runtime est-elle conforme ?
+        # Le portail est ce qui rend le `continue-on-error` de la sonde honnete :
+        # les preuves des etapes intermediaires sont produites, puis le job
+        # echoue si l'identite n'est pas conforme. Un job vert signifie donc
+        # TOUJOURS que l'identite a ete mesuree ET qu'elle respecte le contrat.
+        #
+        # Un resultat « non mesure » n'est pas un resultat : il fait echouer le
+        # portail au meme titre qu'un role permissif, mais avec un message
+        # different.
+        if: always()
         env:
-          TRACEFAB_STAGING_URL: ${{ steps.preview.outputs.preview_url }}
+          IDENTITE_RESULTAT: ${{ steps.identite_db.outcome }}
         run: |
-          if [ -n "${TF_WORKER_SECRET:-}" ]; then
-            echo "::notice title=P1 staging::secret_sonde=present"
-          else
-            echo "::error title=P1 staging::secret_sonde=absent de l'environnement tracefab-clerk-test — deposer TRACEFAB_NOTIFICATION_WORKER_SECRET (valeur de la Preview) dans l'environnement tracefab-clerk-test ; les tests d'isolation ci-dessus restent valides"
-            exit 1
-          fi
-          node scripts/probe_preview_runtime_identity.mjs
+          set -euo pipefail
+          echo "identite_db_outcome=${IDENTITE_RESULTAT:-absent}"
+          case "${IDENTITE_RESULTAT:-absent}" in
+            success)
+              echo "::notice title=P1 identite DB::verdict=conforme — role du runtime mesure sur la Preview du SHA teste, sans privilege de contournement"
+              exit 0
+              ;;
+            skipped)
+              echo "::error title=P1 identite DB::verdict=non_executee — l etape de mesure a ete sautee ; l identite du runtime reste NON PROUVEE"
+              exit 5
+              ;;
+            *)
+              echo "::error title=P1 identite DB::verdict=non_conforme_ou_non_mesuree — lire l annotation 'P1 identite DB runtime' de l etape de mesure : elle nomme le role, ses attributs et les ecarts exacts"
+              exit 6
+              ;;
+          esac
