@@ -508,7 +508,29 @@ try {
     // Connexion reelle par l'IHM Clerk de l'application : ce n'est pas une
     // session injectee, c'est celle que produirait un utilisateur.
     const champIdentifiant = page.locator('input[name="identifier"], input[id*="identifier"], input[type="email"]').first();
-    await champIdentifiant.waitFor({ state: 'visible', timeout: 45000 });
+    try {
+      await champIdentifiant.waitFor({ state: 'visible', timeout: 45000 });
+    } catch {
+      // Diagnostic exploitable sans divulguer de donnees de session :
+      // URL, titre, noms/types des champs et textes des boutons seulement.
+      const etatPage = await page.evaluate(() => ({
+        url: location.origin + location.pathname,
+        titre: document.title.slice(0, 120),
+        champs: Array.from(document.querySelectorAll('input')).slice(0, 20).map((e) => ({
+          type: e.getAttribute('type') || 'text',
+          name: e.getAttribute('name') || '',
+          id: (e.id || '').slice(0, 80),
+          visible: Boolean(e.getClientRects().length),
+        })),
+        boutons: Array.from(document.querySelectorAll('button')).slice(0, 15).map((e) => ({
+          texte: (e.innerText || e.getAttribute('aria-label') || '').trim().slice(0, 80),
+          visible: Boolean(e.getClientRects().length),
+        })),
+        texte: (document.body?.innerText || '').replace(/\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi, '[email]').slice(0, 700),
+      }));
+      console.error('formulaire_identifiant_absent=' + JSON.stringify(etatPage));
+      throw new Error(`champ_identifiant_absent persona=${persona.cle} voie=${voieConnexion} : inspecter formulaire_identifiant_absent ci-dessus`);
+    }
     await champIdentifiant.fill(adresse);
     const bouton = page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first();
     await bouton.click();
