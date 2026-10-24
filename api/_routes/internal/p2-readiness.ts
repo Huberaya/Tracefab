@@ -4,7 +4,7 @@ import { notificationAlertConfigured } from '../../_lib/notification-observabili
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
-import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
+import { databaseIdentityIsSafe, databaseIdentityViolations, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -66,6 +66,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // En mode diagnostic, la readiness est rouge tant que l'identité effective
   // ne prouve pas le rôle applicatif sans privilèges de contournement RLS.
   const identitySafe = !wantIdentity || databaseIdentityIsSafe(databaseIdentity);
+  // Les ecarts sont nommes un par un : « identite non conforme » sans dire
+  // lequel des attributs est en cause ne permet aucune correction.
+  const identityViolations = wantIdentity ? databaseIdentityViolations(databaseIdentity) : [];
 
   if (!live) {
     return json(res, configured_ && identitySafe ? 200 : 503, {
@@ -74,6 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       configurationOnly: true,
       services,
       ...(databaseIdentity ? { databaseIdentity } : {}),
+      ...(wantIdentity ? { databaseIdentityViolations: identityViolations } : {}),
     });
   }
 
@@ -89,5 +93,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     services,
     probes,
     ...(databaseIdentity ? { databaseIdentity } : {}),
+    ...(wantIdentity ? { databaseIdentityViolations: identityViolations } : {}),
   });
 }

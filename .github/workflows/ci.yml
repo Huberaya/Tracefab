@@ -425,6 +425,25 @@ jobs:
         # cible — c est la garde, pas la bonne volonte, qui protege.
         run: npm run db:seed-rls
 
+      - name: Instrument d'identite runtime — eprouve dans les deux sens
+        # L'identite PostgreSQL du runtime est mesuree en Preview par une sonde
+        # (`probeDatabaseIdentity`). Un instrument jamais eprouve peut renvoyer
+        # « conforme » par construction : cette etape le fait tourner contre un
+        # vrai PostgreSQL, sous le role applicatif, ET sous le proprietaire.
+        #
+        #   A. sous tracefab_app : role mesure, ni SUPERUSER ni BYPASSRLS, ni
+        #      appartenance privilegiee, et ZERO ligne visible sans contexte ;
+        #   B. sous le proprietaire : les memes lignes SONT visibles — sans ce
+        #      temoin, un « 0 ligne » ne prouverait rien de la RLS.
+        #
+        # `DATABASE_URL` est ici le role applicatif (c'est ce que lit le client
+        # Prisma du depot) ; `TF_OWNER_URL` sert uniquement au controle negatif.
+        # Les deux cibles passent la garde de cible : localhost, base jetable.
+        env:
+          DATABASE_URL: postgresql://tracefab_app:isolation_ci_jetable@localhost:5432/tracefab_test
+          TF_OWNER_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
+        run: npm run test:neon:identite-runtime
+
       - name: Isolation RLS prouvee par execution
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
