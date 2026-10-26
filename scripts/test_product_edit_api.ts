@@ -11,6 +11,7 @@ const other = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2';
 // bornage utilisateur.
 const TENANT_A = '11111111-1111-4111-8111-111111111111';
 const TENANT_B = '22222222-2222-4222-8222-222222222222';
+const ACTOR_ID = '33333333-3333-4333-8333-333333333333';
 
 let row: any = { id, brand_organization_id: TENANT_A, reference: 'REAL-1', name: 'Produit réel',
   sku: null, category: null, description: null, product_family: null, color_name: null,
@@ -40,10 +41,14 @@ const handler = createProductHandler({
         return row;
       },
     },
+    user: {
+      findUnique: async ({ where }: any) => where.clerkUserId === 'user-a' ? { id: ACTOR_ID } : null,
+    },
     audit_logs: {
       create: async ({ data }: any) => {
         assert.equal(data.organization_id, TENANT_A);
         assert.equal(data.action, 'product.archived');
+        assert.equal(data.actor_user_id, ACTOR_ID);
         assert.deepEqual(data.before_state, { status: 'draft' });
         assert.deepEqual(data.after_state, { status: 'archived' });
         writes++;
