@@ -1,9 +1,9 @@
 # TRACEFAB — Mission UI/UX & qualité frontend — Rapport de diagnostic
 
-**Date : 2026-10-26 (UTC)**  
-**Branche : `arena/63303a21-tracefab`**  
-**SHA de départ (main / origin/main / HEAD) : `4eac0205a9f7c1f9481be6c830e4fc47eefe2908`**  
-**Arbre de départ : propre (aucune modification non commitée)**  
+**Date : 2026-10-26 (UTC)**
+**Branche : `arena/63303a21-tracefab`**
+**SHA de départ (main / origin/main / HEAD) : `4eac0205a9f7c1f9481be6c830e4fc47eefe2908`**
+**Arbre de départ : propre (aucune modification non commitée)**
 **Méthode : Inspecter → reproduire → mesurer → prioriser → corriger → tester → vérifier → documenter**
 
 Ce rapport décrit l'état **avant** corrections. Les corrections et leurs preuves sont dans `02-RAPPORT-CORRECTIONS.md`, les propositions produit dans `03-PROPOSITION-PRODUIT.md`.
