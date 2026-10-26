@@ -1838,7 +1838,20 @@
     "journeyConnectSupplierBeforeCollection": "Connect a supplier before any collection",
     "pxArchiveProduct": "Archive product",
     "pxArchiveConfirm": "Archive this draft product? It will leave the active catalogue, but its history will be retained.",
-    "pxArchiveSuccess": "Product archived. Its history remains available through the status filter."
+    "pxArchiveSuccess": "Product archived. Its history remains available through the status filter.",
+    "paTitle": "Archived products",
+    "paLead": "Review retained products, restore the original record, or reuse verified general information.",
+    "paBack": "Back to active catalogue",
+    "paSearch": "Search by name or reference",
+    "paArchivedAt": "Archived on",
+    "paRestore": "Restore",
+    "paReuse": "Reuse as new",
+    "paEmpty": "No archived products",
+    "paLoading": "Loading archived products…",
+    "paError": "Archived products could not be loaded",
+    "paNext": "Next page",
+    "paRestored": "Product restored",
+    "paReuseNotice": "Check every prefilled field. A new unique reference is required; identifiers, DPP records, evidence and traceability history are not copied."
   },
   "portal": {
     "sites": "Centros de producción",

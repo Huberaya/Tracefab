@@ -76,12 +76,14 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       const body = req.method === 'PATCH'
         ? await readJsonBody<UpdateProductBody & { status?: string }>(req)
         : null;
-      const archiveRequested = body !== null
+      const lifecycleRequested = body !== null
         && Object.keys(body).length === 1
-        && body.status === 'archived';
+        && (body.status === 'archived' || body.status === 'draft');
+      const archiveRequested = lifecycleRequested && body?.status === 'archived';
+      const restoreRequested = lifecycleRequested && body?.status === 'draft';
       const tenant = await requireActiveTenant(tx, req, user.id, {
         types: ['brand'],
-        roles: archiveRequested ? ['owner', 'admin'] : undefined,
+        roles: lifecycleRequested ? ['owner', 'admin'] : undefined,
       });
       const scoped = { id: productId, brand_organization_id: tenantFilter(tenant) };
       const current = await tx.tracefab_products.findFirst({
@@ -116,6 +118,26 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
         const archived = await tx.tracefab_products.findFirst({ where: scoped, select: DETAIL_SELECT });
         if (!archived) throw new Error('product_archive_failed');
         return archived;
+      }
+      if (restoreRequested) {
+        if (current.status !== 'archived') throw new Error('only_archived_products_can_be_restored');
+        await tx.tracefab_products.update({
+          where: { id: current.id },
+          data: { status: 'draft', updated_at: new Date() },
+        });
+        await tx.audit_logs.create({ data: {
+          organization_id: tenant.organizationId,
+          action: 'product.restored',
+          entity_type: 'product',
+          entity_id: current.id,
+          actor_user_id: user.id,
+          before_state: { status: 'archived' },
+          after_state: { status: 'draft' },
+          metadata: { source: 'brand_console', original_record_restored: true },
+        } });
+        const restored = await tx.tracefab_products.findFirst({ where: scoped, select: DETAIL_SELECT });
+        if (!restored) throw new Error('product_restore_failed');
+        return restored;
       }
       if (body && Object.prototype.hasOwnProperty.call(body, 'status')) throw new Error('invalid_product_status_change');
 
@@ -156,7 +178,7 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return json(res, 409, { error: 'product_reference_already_exists' });
     }
-    if (error instanceof Error && error.message === 'only_draft_products_can_be_archived') {
+    if (error instanceof Error && (error.message === 'only_draft_products_can_be_archived' || error.message === 'only_archived_products_can_be_restored')) {
       return json(res, 409, { error: error.message });
     }
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
