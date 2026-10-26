@@ -10,6 +10,7 @@ const publish = read('api/_routes/products/[productId]/dpp/publish-review.ts');
 const portfolio = read('api/_routes/dpp/portfolio.ts');
 const settingsRoute = read('api/_routes/organization-settings.ts');
 const productRoute = read('api/_routes/products/[productId].ts');
+const productsRoute = read('api/_routes/products.ts');
 const migration = read('prisma/migrations/20261021170000_dpp_readiness_truthful_gates/migration.sql');
 
 // Publication must fail closed on current source data, independently from an
@@ -63,6 +64,9 @@ assert.ok(settingsRoute.includes('invalid_dpp_identifier_format'));
 
 assert.match(productRoute, /roles:\s*lifecycleRequested\s*\?\s*\['owner',\s*'admin'\]/, 'Product archival and restoration must require an owner or admin role');
 assert.match(productRoute, /action:\s*'product\.restored'/, 'Product restoration must leave an organization-scoped audit record');
+assert.match(productsRoute, /status:\s*archived\s*\?\s*'archived'\s*:\s*\{\s*not:\s*'archived'\s*\}/, 'The active catalogue must exclude archived products at the API boundary');
+assert.match(productsRoute, /source_archived_product_id:\s*reuseSource\.id/, 'Reused products must retain auditable provenance');
+assert.match(productsRoute, /historical_relations_copied:\s*false/, 'Reuse must not claim historical relations were copied');
 assert.match(productRoute, /current\.status\s*!==\s*'draft'/, 'Only draft products may be archived');
 assert.match(productRoute, /action:\s*'product\.archived'/, 'Product archival must leave an organization-scoped audit record');
 assert.match(productRoute, /const actorUserId = user\.id/, 'Product archival must use the provisioned Tracefab user UUID');
