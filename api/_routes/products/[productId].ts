@@ -94,6 +94,11 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       if (archiveRequested) {
         if (current.status !== 'draft') throw new Error('only_draft_products_can_be_archived');
         const previousStatus = current.status;
+        const actorRows = await tx.$queryRaw<Array<{ id: string | null }>>`
+          SELECT tracefab_current_user_id() AS id
+        `;
+        const actorUserId = actorRows[0]?.id;
+        if (!actorUserId) throw new Error('archive_actor_not_resolved');
         await tx.tracefab_products.update({
           where: { id: current.id },
           data: { status: 'archived', updated_at: new Date() },
@@ -103,6 +108,7 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
           action: 'product.archived',
           entity_type: 'product',
           entity_id: current.id,
+          actor_user_id: actorUserId,
           before_state: { status: previousStatus },
           after_state: { status: 'archived' },
           metadata: { source: 'brand_console', history_retained: true },
