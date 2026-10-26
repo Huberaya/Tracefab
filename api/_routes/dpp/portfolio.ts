@@ -77,11 +77,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM dpp_records d
         JOIN tracefab_products p ON p.id = d.product_id
         WHERE p.brand_organization_id = ANY(${scope}::uuid[])
+          AND p.status <> 'archived'
         ORDER BY d.product_id, d.computed_at DESC
       `;
 
       const totalProducts = await tx.tracefab_products.count({
-        where: { brand_organization_id: { in: scope } },
+        where: { brand_organization_id: { in: scope }, status: { not: 'archived' } },
       });
 
       const statusCounts: Record<string, number> = {

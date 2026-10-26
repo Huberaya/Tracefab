@@ -61,7 +61,8 @@ assert.ok(consoleJs.includes("const canEdit = ['owner', 'admin'].includes"));
 assert.ok(consoleJs.includes("${canEdit ? '' : 'disabled'}"));
 assert.ok(settingsRoute.includes('invalid_dpp_identifier_format'));
 
-assert.match(productRoute, /roles:\s*archiveRequested\s*\?\s*\['owner',\s*'admin'\]/, 'Product archival must require an owner or admin role');
+assert.match(productRoute, /roles:\s*lifecycleRequested\s*\?\s*\['owner',\s*'admin'\]/, 'Product archival and restoration must require an owner or admin role');
+assert.match(productRoute, /action:\s*'product\.restored'/, 'Product restoration must leave an organization-scoped audit record');
 assert.match(productRoute, /current\.status\s*!==\s*'draft'/, 'Only draft products may be archived');
 assert.match(productRoute, /action:\s*'product\.archived'/, 'Product archival must leave an organization-scoped audit record');
 assert.match(productRoute, /const actorUserId = user\.id/, 'Product archival must use the provisioned Tracefab user UUID');

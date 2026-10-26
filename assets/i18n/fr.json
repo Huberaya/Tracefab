@@ -2541,5 +2541,18 @@
     "dppLifecycleTitle": "Vie du produit",
     "dppLifecycleIntro": "Les changements publics significatifs, leur date et leur niveau de contrôle. Les informations confidentielles restent privées.",
     "dppLifecycleEmpty": "Scannez un passeport publié pour consulter son historique."
-  }
+  },
+  "paTitle": "Produits archivés",
+  "paLead": "Consultez les produits conservés, restaurez la fiche originale ou réutilisez des informations générales vérifiées.",
+  "paBack": "Retour au catalogue actif",
+  "paSearch": "Rechercher par nom ou référence",
+  "paArchivedAt": "Date d’archivage",
+  "paRestore": "Restaurer",
+  "paReuse": "Réutiliser comme nouveau",
+  "paEmpty": "Aucun produit archivé",
+  "paLoading": "Chargement des produits archivés…",
+  "paError": "Impossible de charger les produits archivés",
+  "paNext": "Page suivante",
+  "paRestored": "Produit restauré",
+  "paReuseNotice": "Vérifiez chaque champ prérempli. Une nouvelle référence unique est obligatoire ; les identifiants, DPP, preuves et l’historique de traçabilité ne sont pas copiés."
 }
