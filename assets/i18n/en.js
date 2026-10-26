@@ -1606,6 +1606,8 @@ window.TF_I18N_BUNDLES.en = {
     archivedProductsLead: "Archived products are kept here for reference and can be restored to the active catalogue.",
     archivedProductsDate: "Last updated",
     archivedProductsRestore: "Restore to catalogue",
+    archivedProductsReuse: "Use as template",
+    archivedProductsReuseHint: "This creates a new product draft using the archived product’s name and category. Enter a new reference; the archived record and its history remain unchanged.",
     archivedProductsRestoreConfirm: "Restore this product to the active catalogue? It will become a draft again and retain its history.",
     archivedProductsRestoreSuccess: "Product restored to the active catalogue as a draft.",
     archivedProductsEmptyTitle: "No archived products",
