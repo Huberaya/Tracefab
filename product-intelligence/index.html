@@ -110,8 +110,11 @@
     </main>
   </div>
 
-  <script src="/assets/i18n/en.js?v=afeff24e"></script>
+  <script src="/assets/i18n/en.js?v=593f76a4"></script>
   <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
+  <!-- Sans ce garde-fou, tf-i18n.js remplace le titre de cette page par
+       meta.title de la landing des le premier changement de langue. -->
+  <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
   <script src="/assets/js/tf-product.js?v=173ec907"></script>
   <script src="/assets/js/product-intelligence.0.js?v=ef1e1365"></script>

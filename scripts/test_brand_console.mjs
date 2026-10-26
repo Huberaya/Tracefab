@@ -2,13 +2,14 @@ import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { pageSource } from './lib/page_source.mjs';
 
-const [html, reminderRoute, reminderMigration, email, schemaBindingsRoute, configRoute] = await Promise.all([
+const [html, reminderRoute, reminderMigration, email, schemaBindingsRoute, configRoute, clerkPreload] = await Promise.all([
   pageSource('brand-console/index.html'),
   readFile(new URL('../api/_routes/data-requests/[requestId]/remind.ts', import.meta.url), 'utf8'),
   readFile(new URL('../prisma/migrations/20261006130000_tracefab_manual_data_request_reminders/migration.sql', import.meta.url), 'utf8'),
   readFile(new URL('../api/_lib/email.ts', import.meta.url), 'utf8'),
   readFile(new URL('../api/_routes/schema-bindings.ts', import.meta.url), 'utf8'),
   readFile(new URL('../api/_routes/config.ts', import.meta.url), 'utf8'),
+  readFile(new URL('../assets/js/tf-clerk-preload.js', import.meta.url), 'utf8'),
 ]);
 const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert(script, 'Brand Console inline application script is missing');
@@ -88,7 +89,13 @@ assert(!html.includes('localhost'), 'Brand Console must not call localhost from 
 assert(!/sk_live_|secret_key|ghp_[A-Za-z0-9]/i.test(html), 'Brand Console must not contain private credentials');
 assert(html.toLowerCase().includes('tracefab'), 'Brand Console branding is missing');
 assert(html.includes('rel="preconnect" href="https://cdn.jsdelivr.net"'), 'La négociation réseau Clerk doit démarrer pendant le parsing HTML');
-assert(html.includes('rel="preload" href="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"'), 'Le SDK Clerk doit être préchargé avant la réponse /api/config');
+// Le prechargement reste synchrone et anterieur a /api/config, mais il est
+// desormais conditionnel : ?demo=1 ne doit pas contacter un CDN tiers dont
+// il n'a pas besoin. L'ancienne balise statique declenchait une requete en
+// echec (et une erreur console) sur chaque page de demonstration.
+assert(html.includes('<script src="/assets/js/tf-clerk-preload.js'), 'Le préchargement conditionnel du SDK Clerk doit être déclaré dans le <head>');
+assert(clerkPreload.includes("rel = 'preload'") && clerkPreload.includes('clerk.browser.js'), 'Le SDK Clerk doit être préchargé avant la réponse /api/config');
+assert(/get\('demo'\)\s*===\s*'1'/.test(clerkPreload), 'Le mode démonstration ne doit pas précharger le SDK Clerk');
 // La relance manuelle doit etre authentifiee ET bornee a UN locataire actif.
 //
 // L'assertion precedente exigeait la presence de `activeOrganizationIds`. Ce
