@@ -86,7 +86,7 @@ verifier(
 );
 verifier(
   'aucun ALTER DEFAULT PRIVILEGES accordant INSERT par défaut',
-  !/ALTER DEFAULT PRIVILEGES[^;]*\bINSERT[^;]*ON TABLES/i.test(sourceRole),
+  !/ALTER DEFAULT PRIVILEGES[^;]*\bGRANT\b[^;]*\bINSERT\b[^;]*ON TABLES/i.test(sourceRole),
   'un ALTER DEFAULT PRIVILEGES ... INSERT ... ON TABLES est présent',
 );
 verifier(
@@ -234,6 +234,15 @@ try {
       applied_steps_count INTEGER NOT NULL DEFAULT 0
     )
   `);
+  // Simuler le défaut historique observé sur Neon : les tables futures héritent
+  // par défaut de DML pour tracefab_app et PUBLIC. La migration doit le supprimer.
+  const ownerName = (await mig.query('SELECT current_user AS owner')).rows[0].owner;
+  const quotedOwner = '"' + String(ownerName).replace(/"/g, '""') + '"';
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} GRANT INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}`);
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} GRANT INSERT, UPDATE, DELETE ON TABLES TO PUBLIC`);
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} IN SCHEMA public GRANT INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}`);
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} IN SCHEMA public GRANT INSERT, UPDATE, DELETE ON TABLES TO PUBLIC`);
+
   const dossiers = fs.readdirSync(path.join(RACINE, 'prisma', 'migrations'))
     .filter((d) => /^\d{14}_/.test(d)).sort();
   for (const d of dossiers) {
@@ -248,6 +257,20 @@ try {
       throw new Error('migration');
     }
   }
+  const defaultsDml = await mig.query(`
+    SELECT count(*)::int AS n
+    FROM pg_default_acl d
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) a
+    WHERE d.defaclobjtype = 'r'
+      AND (d.defaclnamespace = 0 OR d.defaclnamespace = 'public'::regnamespace)
+      AND a.grantee IN (0, '${APP_ROLE}'::regrole)
+      AND a.privilege_type IN ('INSERT', 'UPDATE', 'DELETE')
+  `);
+  verifier(
+    'les migrations ferment les privilèges DML par défaut pour tracefab_app et PUBLIC',
+    defaultsDml.rows[0]?.n === 0,
+    `${defaultsDml.rows[0]?.n ?? 'inconnu'} privilège(s) DML futur(s) subsistent`,
+  );
   await mig.end();
 
   // Regression: re-running the documented idempotent bootstrap after migrations
@@ -265,6 +288,63 @@ try {
   const identite = await app.query('SELECT current_user AS u, (SELECT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS b');
   verifier('la connexion est bien le rôle applicatif', identite.rows[0].u === APP_ROLE, identite.rows[0].u);
   verifier('le rôle ne contourne pas la RLS', identite.rows[0].b === false, `rolbypassrls=${identite.rows[0].b}`);
+
+  // Les privilèges effectifs incluent les appartenances de rôle, pas seulement
+  // les ACL explicites. Une adhésion indirecte à un rôle administratif invalide
+  // le modèle même si tracefab_app paraît lui-même non privilégié.
+  const rolesElevated = await app.query(`
+    SELECT r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb
+    FROM pg_roles r
+    WHERE (r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb)
+      AND pg_has_role(current_user, r.oid, 'MEMBER')
+  `);
+  verifier(
+    'aucun privilège élevé direct ou hérité via les rôles',
+    rolesElevated.rows.length === 0,
+    rolesElevated.rows.map((r) => r.rolname).join(', ') || 'aucun rôle élevé hérité',
+  );
+
+  // Mesurer les droits EFFECTIFS (y compris héritage et PUBLIC) sur chaque
+  // table : une ACL directe absente ne suffit pas à prouver un refus.
+  const effectiveDml = await app.query(`
+    SELECT c.relname AS nom,
+      has_table_privilege(current_user, c.oid, 'INSERT') AS i,
+      has_table_privilege(current_user, c.oid, 'UPDATE') AS u,
+      has_table_privilege(current_user, c.oid, 'DELETE') AS d
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+      AND c.relname <> '_prisma_migrations'
+    ORDER BY c.relname
+  `);
+  const allowWrite = new Set(TABLES_ECRITURE_DIRECTE);
+  const unexpectedEffective = effectiveDml.rows.filter((r) =>
+    (r.i || r.u || r.d) && !allowWrite.has(r.nom));
+  verifier(
+    'aucun DML effectif direct, hérité ou PUBLIC hors des tables autorisées',
+    unexpectedEffective.length === 0,
+    unexpectedEffective.map((r) => r.nom).join(', ') || 'aucun DML effectif hors allowlist',
+  );
+
+  // Le catalogue PEF et les règles de green claims sont volontairement publics,
+  // mais uniquement en lecture et sur les entrées actives. Ces deux exceptions
+  // n'ont pas besoin de contexte tenant ; la politique RLS doit le prouver.
+  const referencePolicies = await app.query(`
+    SELECT tablename,
+      bool_or(cmd = 'SELECT' AND 'public' = ANY(roles)
+        AND COALESCE(qual, '') ILIKE '%is_active%'
+        AND COALESCE(qual, '') ILIKE '%true%') AS public_active_select
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('pef_emission_factors', 'green_claims_rules')
+    GROUP BY tablename
+  `);
+  const referencePolicyMap = new Map(referencePolicies.rows.map((r) => [r.tablename, r.public_active_select]));
+  verifier(
+    'PEF et green claims ont une politique SELECT publique active-only',
+    referencePolicyMap.get('pef_emission_factors') === true
+      && referencePolicyMap.get('green_claims_rules') === true,
+    JSON.stringify(Object.fromEntries(referencePolicyMap)),
+  );
 
   // Le confinement ne vient PAS des privilèges de table.
   //
