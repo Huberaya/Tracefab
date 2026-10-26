@@ -19,7 +19,7 @@ let row: any = { id, brand_organization_id: TENANT_A, reference: 'REAL-1', name:
   care_instructions: {}, data_completion: 0, status: 'draft', product_identifiers: [], product_materials: [] };
 let writes = 0;
 const handler = createProductHandler({
-  requireClerkUser: async () => ({ user: { id: 'user-a', email: 'a@example.test' } }) as any,
+  requireClerkUser: async () => ({ user: { id: ACTOR_ID, email: 'a@example.test' } }) as any,
   withTracefabUserContext: async (_id: any, _email: any, cb: any) => cb({
     organization_memberships: {
       findMany: async () => [{ organization_id: TENANT_A }],
@@ -40,9 +40,6 @@ const handler = createProductHandler({
         Object.assign(row, data);
         return row;
       },
-    },
-    user: {
-      findUnique: async ({ where }: any) => where.clerkUserId === 'user-a' ? { id: ACTOR_ID } : null,
     },
     audit_logs: {
       create: async ({ data }: any) => {
