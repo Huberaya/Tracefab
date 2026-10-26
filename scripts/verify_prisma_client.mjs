@@ -31,9 +31,9 @@
  * et ce script n'emet aucune requete. Une valeur de connexion factice et non
  * routable est fournie uniquement pour satisfaire la resolution de `env()`.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readFileSync, readdirSync, readSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -150,6 +150,42 @@ const moteurOptionnel =
   /engineType\s*=\s*['"]client['"]/.test(schemaSource) ||
   /previewFeatures\s*=\s*\[[^\]]*queryCompiler/.test(schemaSource);
 
+/**
+ * Deuxieme famille de moteurs : le moteur WASM officiel de Prisma.
+ *
+ * `prisma generate` avec PRISMA_CLIENT_FORCE_WASM=1 (voir
+ * scripts/db-generate-offline.mjs) produit un client complet dont le moteur
+ * de requetes voyage sous la forme de `query_engine_bg.wasm` + son chargeur
+ * `query_engine_bg.js`, references par `config.engineWasm` dans index.js.
+ * C'est le MEME moteur que celui publie par Prisma, compile en WASM ; ce
+ * n'est ni un stub ni un client fabrique a la main.
+ *
+ * Le controle ci-dessous est structurel et strict : il exige le chargeur, un
+ * fichier WASM d'au moins 1 Mo portant la magie `\0asm`, ET la configuration
+ * effective du client. Un fichier vide ou un simple drapeau ne suffit pas.
+ * Sous Node, ce moteur exige un adaptateur de pilote pour executer une
+ * requete : c'est le role de scripts/lib/test_prisma_client.mjs, pas celui
+ * de ce controle d'installation (qui n'ouvre aucune connexion).
+ */
+function moteurWasmComplet(dossier) {
+  try {
+    const contenu = readFileSync(join(dossier, 'index.js'), 'utf8');
+    if (!contenu.includes('config.engineWasm')) return null;
+    const chargeur = join(dossier, 'query_engine_bg.js');
+    const binaire = join(dossier, 'query_engine_bg.wasm');
+    if (!existsSync(chargeur) || statSync(chargeur).size < 1000) return null;
+    if (!existsSync(binaire) || statSync(binaire).size < 1_000_000) return null;
+    const fd = openSync(binaire, 'r');
+    const entete = Buffer.alloc(4);
+    readSync(fd, entete, 0, 4, 0);
+    closeSync(fd);
+    if (entete.toString('hex') !== '0061736d') return null; // \0asm
+    return { taille: statSync(binaire).size };
+  } catch {
+    return null;
+  }
+}
+
 if (moteurOptionnel) {
   console.log('  ---- le schema declare un generateur sans moteur natif');
   console.log('          (engineType = client / queryCompiler) : presence du moteur non exigee.');
@@ -167,6 +203,22 @@ if (moteurOptionnel) {
       fichiers = readdirSync(dossierClient);
     } catch (error) {
       ko(`dossier ${dossierClient} illisible : ${String(error.message).split('\n')[0]}`);
+    }
+
+    const wasm = moteurWasmComplet(dossierClient);
+    if (wasm) {
+      ok(`moteur de requetes WASM officiel present et reference (${wasm.taille} octets, magie \\0asm valide)`);
+      console.log('  ---- mode hors ligne : un adaptateur de pilote est requis pour executer une requete sous Node.');
+      if (typeof client.$disconnect === 'function') await client.$disconnect().catch(() => {});
+      console.log('\n  --------------------------------------------');
+      if (echecs > 0) {
+        console.log(`  Client Prisma NON conforme : ${echecs} echec(s).`);
+        console.log('  --------------------------------------------\n');
+        process.exit(1);
+      }
+      console.log('  Client Prisma conforme : genere, complet, chargeable.');
+      console.log('  --------------------------------------------\n');
+      process.exit(0);
     }
 
     const moteurs = fichiers.filter((f) => /^lib?query_engine/i.test(f) && /\.(node|so|dll|dylib)$/i.test(f));

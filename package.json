@@ -85,6 +85,7 @@
     "schema:static": "python3 scripts/validate_schema.py",
     "db:neon:build": "python3 scripts/build_neon_migration.py",
     "db:generate": "prisma generate",
+    "db:generate:offline": "node scripts/db-generate-offline.mjs",
     "assets:version": "node scripts/build_asset_versions.mjs",
     "db:deploy": "prisma migrate deploy",
     "db:deploy:throwaway": "node scripts/db-deploy-throwaway.mjs",
@@ -176,7 +177,9 @@
     "test:brand-journey": "node scripts/test_brand_journey_truthfulness.mjs",
     "test:brand-journey-58": "node scripts/test_brand_journey_58_defects.mjs",
     "test:route-context-coverage": "node scripts/test_route_context_coverage.mjs",
-    "test:customer-journey:blockers": "node scripts/test_customer_journey_release_blockers.mjs"
+    "test:customer-journey:blockers": "node scripts/test_customer_journey_release_blockers.mjs",
+    "test:mission-functional": "node scripts/run-db-suite.mjs scripts/test_mission_functional_dpp.mjs",
+    "test:mission-ui:states": "node scripts/test_mission_ui_real_states.mjs"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^6.19.3",
