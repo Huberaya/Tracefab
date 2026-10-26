@@ -1838,7 +1838,17 @@
     "journeyConnectSupplierBeforeCollection": "Connectez un fournisseur avant toute collecte",
     "pxArchiveProduct": "Archiver le produit",
     "pxArchiveConfirm": "Archiver ce produit brouillon ? Il quittera le catalogue actif, mais son historique sera conservé.",
-    "pxArchiveSuccess": "Produit archivé. Son historique reste consultable via le filtre de statut."
+    "pxArchiveSuccess": "Produit archivé. Son historique reste consultable via le filtre de statut.",
+    "archivedProductsOpen": "Produits archivés",
+    "archivedProductsViewLabel": "Produits archivés",
+    "archivedProductsTitle": "Produits archivés",
+    "archivedProductsLead": "Retrouvez ici les produits archivés. Vous pouvez les restaurer dans le catalogue actif sans perdre leur historique.",
+    "archivedProductsDate": "Dernière modification",
+    "archivedProductsRestore": "Restaurer dans le catalogue",
+    "archivedProductsRestoreConfirm": "Restaurer ce produit dans le catalogue actif ? Il redeviendra un brouillon et son historique sera conservé.",
+    "archivedProductsRestoreSuccess": "Produit restauré dans le catalogue actif en tant que brouillon.",
+    "archivedProductsEmptyTitle": "Aucun produit archivé",
+    "archivedProductsEmptyBody": "Les produits que vous archivez apparaîtront ici. Vous pourrez les restaurer à tout moment."
   },
   "portal": {
     "sites": "Sites de production",
