@@ -76,6 +76,7 @@
     "test:p1": "npm run test:p1-catalog && npm run test:p1-bom && npm run test:p1-i18n && npm run test:p1-quality",
     "test:p1:browser": "npm run test:brand-console:browser && npm run test:supplier-portal:browser && npm run test:quality-center:browser",
     "test:p1:staging": "node scripts/test_p1_staging.mjs",
+    "test:p1-harness": "node scripts/test_p1_staging_harness.mjs",
     "test:p2:certification-catalog": "node scripts/test_p2_certification_catalog.mjs",
     "test:p2:readiness": "npx tsx scripts/test_p2_readiness.ts",
     "test:p2:staging": "node scripts/test_p2_staging.mjs",
