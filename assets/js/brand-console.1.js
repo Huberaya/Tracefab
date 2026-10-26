@@ -3,7 +3,7 @@
       const app = document.getElementById('app');
       const initialParams = new URLSearchParams(location.search);
       const ROUTABLE_VIEWS = new Set([
-        'overview', 'requests', 'questionnaires', 'products', 'quality', 'risk',
+        'overview', 'requests', 'questionnaires', 'products', 'archivedProducts', 'quality', 'risk',
         'intelligence', 'massBalance', 'integrations', 'suppliers', 'materials',
         'supplyChain', 'documents', 'certifications', 'dpp', 'productDetail', 'reports', 'settings',
       ]);
@@ -754,7 +754,7 @@
       }
 
       function productionAgregats() {
-        const pr = state.products || [], su = state.suppliers || [];
+        const pr = (state.products || []).filter((p) => p.status !== 'archived'), su = state.suppliers || [];
         const pays = new Set([
           ...su.map((s) => s.countryCode || (s.organizations && s.organizations.country_code)),
           ...pr.map((p) => p.countryOfManufacture || p.country_of_manufacture),
@@ -815,7 +815,7 @@
             return Number.isFinite(echeance) && echeance - Date.now() <= 90 * 86400000;
           }).length
           : (sup.length === 0 ? 0 : null);
-        const produits = state.products || [];
+        const produits = (state.products || []).filter((p) => p.status !== 'archived');
         const completionConnue = (p) => p.dataCompletion !== null
           && p.dataCompletion !== undefined && p.dataCompletion !== ''
           && Number.isFinite(Number(p.dataCompletion));
@@ -1533,6 +1533,7 @@
       function viewLabel() { return ({
         overview: bt('overviewViewLabel'),
         products: bt('productsViewLabel'),
+        archivedProducts: bt('archivedProductsViewLabel'),
         suppliers: bt('suppliersViewLabel'),
         materials: bt('materialsViewLabel'),
         supplyChain: bt('supplyChainViewLabel'),
@@ -1804,6 +1805,7 @@
           state.view === 'requests' ? requestsView() :
           state.view === 'questionnaires' ? questionnairesBuilderView() :
           state.view === 'products' ? productsView() :
+          state.view === 'archivedProducts' ? archivedProductsView() :
           state.view === 'quality' ? qualityView() :
             state.view === 'risk' ? riskView() :
             state.view === 'intelligence' ? intelligenceView() :
@@ -2469,9 +2471,18 @@
       function productsView() {
         const resultats = produitsFiltres();
         const tranche = trancher('products', resultats);
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === ''
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-view="archivedProducts">${bt('archivedProductsOpen')}</button><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === ''
   ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`
   : `<div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div>`}</td><td>${p.dataReadiness ? status(p.dataReadiness) : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">${bt('journeyDppInternalPreparation')}</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+      }
+
+
+      function archivedProductsView() {
+        const archived = (state.products || []).filter((product) => product.status === 'archived')
+          .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+        const tranche = trancher('archivedProducts', archived);
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('archivedProductsTitle')}</h1><p>${bt('archivedProductsLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-view="products">${bt('pxBack')}</button></div></div>
+          <div class="card panel">${archived.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('archivedProductsDate')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${date(p.updatedAt || p.updated_at || p.createdAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-primary btn-small" data-action="restore-product" data-product-id="${esc(p.id)}">${bt('archivedProductsRestore')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('archivedProducts', tranche)}` : `<div class="empty"><div class="empty-icon">◇</div><strong>${bt('archivedProductsEmptyTitle')}</strong><p>${bt('archivedProductsEmptyBody')}</p><button class="btn btn-secondary btn-small" data-view="products">${bt('pxBack')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
@@ -4156,6 +4167,27 @@
         notify(bt('pxArchiveSuccess'));
         render();
       }
+
+      async function restoreProduct(productId) {
+        const product = (state.products || []).find((entry) => entry.id === productId && entry.status === 'archived');
+        if (!product) return;
+        if (!window.confirm(bt('archivedProductsRestoreConfirm'))) return;
+        if (state.demo) {
+          product.status = 'draft';
+          product.updatedAt = new Date().toISOString();
+        } else {
+          await api(`/api/products/${encodeURIComponent(product.id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'draft' }),
+          });
+          await sync();
+        }
+        state.pages.archivedProducts = 1;
+        state.view = 'archivedProducts';
+        notify(bt('archivedProductsRestoreSuccess'));
+        render();
+      }
+
       async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify(bt('cnNRevisionDemo')); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify(bt('cnNRevisionCreated')); render(); }
       async function saveSchemaBinding(form) {
         if (!state.selectedProductDetail?.product) return;
@@ -4996,6 +5028,7 @@
             if (action === 'new-chain-link') { state.modal = 'new-chain-link'; render(); }
             if (action === 'product-revision') await reviseProduct();
             if (action === 'archive-product') await archiveProduct();
+            if (action === 'restore-product') await restoreProduct(el.dataset.productId);
             if (action === 'product-quality-from-detail') { state.selectedProduct = state.selectedProductDetail?.product; await loadQuality(state.selectedProduct?.id); }
             if (action === 'product-supply-chain-from-detail') { await loadSupplyChain(state.selectedProductDetail?.product?.id); }
             if (action === 'product-dpp-from-detail') { await loadDpp(state.selectedProductDetail?.product?.id); }
