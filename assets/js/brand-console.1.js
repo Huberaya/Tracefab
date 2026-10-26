@@ -3,7 +3,7 @@
       const app = document.getElementById('app');
       const initialParams = new URLSearchParams(location.search);
       const ROUTABLE_VIEWS = new Set([
-        'overview', 'requests', 'questionnaires', 'products', 'quality', 'risk',
+        'overview', 'requests', 'questionnaires', 'products', 'archivedProducts', 'quality', 'risk',
         'intelligence', 'massBalance', 'integrations', 'suppliers', 'materials',
         'supplyChain', 'documents', 'certifications', 'dpp', 'productDetail', 'reports', 'settings',
       ]);
@@ -32,6 +32,11 @@
         suppliers: [],
         materials: [],
         products: [],
+        archivedProducts: [],
+        archivedProductsLoading: false,
+        archivedProductsError: null,
+        archivedProductsNextCursor: null,
+        archivedProductsQuery: '',
         pages: {},
         filtres: { products: { q: '', category: '', status: '', readiness: '', incomplets: false } },
         requests: [],
@@ -78,6 +83,7 @@
         dppPortfolioLoading: false,
         dppScope: 'portfolio',
         modal: null,
+        reuseSourceProduct: null,
         modalIssueId: null,
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
         supplierImport: { filename: '', content: '', preview: null, job: null, delivery: null, loading: false },
@@ -1842,6 +1848,7 @@
           state.view === 'requests' ? requestsView() :
           state.view === 'questionnaires' ? questionnairesBuilderView() :
           state.view === 'products' ? productsView() :
+          state.view === 'archivedProducts' ? archivedProductsView() :
           state.view === 'quality' ? qualityView() :
             state.view === 'risk' ? riskView() :
             state.view === 'intelligence' ? intelligenceView() :
@@ -2504,10 +2511,45 @@
         </div>`;
       }
 
+      async function loadArchivedProducts(cursor = null) {
+        state.archivedProductsLoading = true;
+        state.archivedProductsError = null;
+        render();
+        try {
+          const query = new URLSearchParams({ lifecycle: 'archived', limit: '25' });
+          if (cursor) query.set('cursor', cursor);
+          const payload = await api(`/api/products?${query}`);
+          state.archivedProducts = payload.products || [];
+          state.archivedProductsNextCursor = payload.nextCursor || null;
+        } catch (error) {
+          state.archivedProductsError = error.message;
+        } finally {
+          state.archivedProductsLoading = false;
+          render();
+        }
+      }
+
+      async function restoreArchivedProduct(id) {
+        await api(`/api/products/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status: 'draft' }) });
+        state.archivedProducts = state.archivedProducts.filter((product) => product.id !== id);
+        const active = await api('/api/products');
+        state.products = active.products || [];
+        notify(bt('paRestored'));
+        render();
+      }
+
+      function archivedProductsView() {
+        if (state.archivedProductsLoading) return `<div class="card panel"><div class="empty"><strong>${esc(bt('paLoading'))}</strong></div></div>`;
+        if (state.archivedProductsError) return `<div class="card panel"><div class="empty"><strong>${esc(bt('paError'))}</strong><p><code>${esc(state.archivedProductsError)}</code></p><button class="btn btn-secondary" data-action="load-archives">${esc(bt('cnRetry'))}</button></div></div>`;
+        const q = state.archivedProductsQuery.toLowerCase().trim();
+        const rows = state.archivedProducts.filter((p) => !q || `${p.name} ${p.reference}`.toLowerCase().includes(q));
+        return `<div class="page-head"><div><div class="eyebrow">${esc(bt('pdProducts'))}</div><h1>${esc(bt('paTitle'))}</h1><p>${esc(bt('paLead'))}</p></div><button class="btn btn-secondary" data-view="products">${esc(bt('paBack'))}</button></div><div class="card panel"><div class="filters"><input id="archive-search" class="input" value="${esc(state.archivedProductsQuery)}" placeholder="${esc(bt('paSearch'))}"></div>${rows.length ? `<div class="table-wrap"><table><thead><tr><th>${esc(bt('pdProduct'))}</th><th>${esc(bt('pdCategory'))}</th><th>${esc(bt('paArchivedAt'))}</th><th></th></tr></thead><tbody>${rows.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)}</div></td><td>${esc(p.category || '—')}</td><td>${esc(date(p.archivedAt))}</td><td><div class="actions"><button class="btn btn-secondary btn-small" data-restore-product="${esc(p.id)}">${esc(bt('paRestore'))}</button><button class="btn btn-primary btn-small" data-reuse-product="${esc(p.id)}">${esc(bt('paReuse'))}</button></div></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><strong>${esc(q ? bt('pdNoMatch') : bt('paEmpty'))}</strong></div>`}${state.archivedProductsNextCursor ? `<button class="btn btn-secondary" data-archive-cursor="${esc(state.archivedProductsNextCursor)}">${esc(bt('paNext'))}</button>` : ''}</div>`;
+      }
+
       function productsView() {
         const resultats = produitsFiltres();
         const tranche = trancher('products', resultats);
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === ''
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-view="archivedProducts">${bt('paTitle')}</button><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === ''
   ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`
   : `<div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div>`}</td><td>${p.dataReadiness ? status(p.dataReadiness) : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">${bt('journeyDppInternalPreparation')}</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
       }
@@ -3852,7 +3894,7 @@
           if (!m) return '';
           return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mtTitle')}</div><h2>${esc(m.name)}</h2></div><button class="close" data-action="close-modal">×</button></div><div class="item-list"><div class="item"><span>${bt('mtType')}</span><strong>${esc(m.materialType || bt('cnUnknown'))}</strong></div><div class="item"><span>${bt('mtOrigin')}</span><strong>${esc(m.originCountryCode || bt('cnCountryUnknown'))}</strong></div><div class="item"><span>${bt('journeyTrustLevel')}</span><strong>${bt('journeyDeclaredNotVerified')}</strong></div><div class="item"><span>${bt('journeyCreatedAt')}</span><strong>${date(m.createdAt)}</strong></div><div class="item"><span>${bt('journeyUpdatedAt')}</span><strong>${date(m.updatedAt)}</strong></div></div><div class="notice" style="margin-top:16px">${bt('journeyMaterialInspectionNotice')}</div><div class="form-actions"><button class="btn btn-secondary" data-action="close-modal">${bt('mdClose')}</button></div></div></div>`;
         }
-        if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>${bt('mdNewProduct')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>${bt('mdReference')}<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>${bt('mdName')}<input class="input" name="name" required placeholder="Cotton Essential"></label><label>${bt('pdCategory')}<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateProduct')}</button></div></form></div></div>`;
+        if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>${bt('mdNewProduct')}</h2></div><button class="close" data-action="close-modal">×</button></div>${state.reuseSourceProduct ? `<div class="notice">${esc(bt('paReuseNotice'))}</div>` : ''}<form id="product-form"><div class="form-grid"><label>${bt('mdReference')}<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>${bt('mdName')}<input class="input" name="name" required value="${esc(state.reuseSourceProduct?.name || '')}" placeholder="Cotton Essential"></label><label>${bt('pdCategory')}<input class="input" name="category" value="${esc(state.reuseSourceProduct?.category || '')}" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" value="" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateProduct')}</button></div></form></div></div>`;
         if (type === 'new-material') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mtTitle')}</div><h2>${bt('mtAdd')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="create-material-form"><div class="form-grid"><label class="field-full">${bt('mtName')}<input class="input" name="name" required maxlength="240"></label><label>${bt('mtType')}<input class="input" name="materialType" required maxlength="120" placeholder="other"></label><label>${bt('mtOrigin')}<input class="input" name="originCountryCode" maxlength="2" pattern="[A-Za-z]{2}" placeholder="${bt('cnUnknown')}"></label><p class="field-full meta">${bt('cnMaterialNoClaim')}</p></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mtAdd')}</button></div></form></div></div>`;
         if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdSupplierOnboarding')}</div><h2>${bt('mdBulkInvite')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdRequiredColumns')} <code>email</code>, <code>legalName</code>${bt('mdInviteNote')}</p><label class="field-full">${bt('mdCsvFile')}<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdCreateValidInvites')}</button></div>${supplierImportPreview()}</div></div>`;
         if (type === 'catalog-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h2>${bt('mdImportCatalogue')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdImportNote')}</p><div class="notice" style="margin:14px 0">${bt('mdRequiredColumns')} <code>reference</code>, <code>name</code>${bt('mdExtraColumnsNote')}</div><label class="field-full">${bt('mdCsvFile')}<input class="input" id="catalog-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="catalog-import-content" rows="8" placeholder="reference,name,category,sku\nAT-NEW-001,Sample product,T-shirt,SKU-001">${esc(state.catalogImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-catalog-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-catalog-import" ${state.catalogImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdImportValidRows')}</button></div>${catalogImportPreview()}</div></div>`;
@@ -4014,8 +4056,11 @@
       async function createProduct(form) {
         const data = Object.fromEntries(new FormData(form));
         if (state.demo) { state.products.unshift({ id: `demo-${Date.now()}`, brandOrganizationId: state.activeOrganizationId, reference: data.reference, name: data.name, category: data.category, status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '0' }); state.modal = null; notify(bt('cnNProductCreatedDemo')); return; }
-        await api('/api/products', { method: 'POST', body: JSON.stringify({ ...data, brandOrganizationId: state.activeOrganizationId }) });
-        state.modal = null; await sync(); notify(bt('cnNProductCreated'));
+        // #99 : reutilisation d'un produit archive. Notre garde-fou i18n du
+        // toast de demonstration est conserve ; le champ de reutilisation et
+        // sa remise a zero aussi. Aucune des deux branches n'est ecrasee.
+        await api('/api/products', { method: 'POST', body: JSON.stringify({ ...data, brandOrganizationId: state.activeOrganizationId, reuseSourceProductId: state.reuseSourceProduct?.id || null }) });
+        state.modal = null; state.reuseSourceProduct = null; await sync(); notify(bt('cnNProductCreated'));
       }
       async function inviteSupplier(form) {
         const data = Object.fromEntries(new FormData(form));
@@ -5006,6 +5051,7 @@
           // Le garde suit dppScope, pas selectedDppProduct : un produit reste
           // pre-selectionne en memoire alors que l'ecran montre l'ensemble.
           if (state.view === 'dpp' && state.dppScope !== 'product' && !state.dppPortfolio) loadDppPortfolio();
+          if (state.view === 'archivedProducts') loadArchivedProducts();
           // Les ecrans qualite et tracabilite ont besoin d'un produit : on
           // charge celui qui est affiche au lieu de laisser « non calculé »
           // alors qu'une route peut repondre.
@@ -5021,7 +5067,8 @@
         document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async (event) => {
           const action = el.dataset.action;
           try {
-            if (action === 'new-product') { state.modal = 'new-product'; render(); }
+            if (action === 'new-product') { state.reuseSourceProduct = null; state.modal = 'new-product'; render(); }
+            if (action === 'load-archives') await loadArchivedProducts();
             if (action === 'new-material') { state.modal = 'new-material'; render(); }
             if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
             if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
@@ -5076,6 +5123,13 @@
             }
           } catch (error) { notify(error.message, true); }
         }));
+        document.querySelectorAll('[data-restore-product]').forEach((el) => el.addEventListener('click', () => restoreArchivedProduct(el.dataset.restoreProduct).catch((error) => notify(error.message, true))));
+        document.querySelectorAll('[data-reuse-product]').forEach((el) => el.addEventListener('click', () => {
+          state.reuseSourceProduct = state.archivedProducts.find((product) => product.id === el.dataset.reuseProduct) || null;
+          state.modal = 'new-product'; render();
+        }));
+        document.querySelectorAll('[data-archive-cursor]').forEach((el) => el.addEventListener('click', () => loadArchivedProducts(el.dataset.archiveCursor)));
+        document.getElementById('archive-search')?.addEventListener('input', (event) => { state.archivedProductsQuery = event.target.value; render(); });
         document.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openRequest(el.dataset.requestId); }));
         document.querySelectorAll('[data-quality-product]').forEach((el) => el.addEventListener('click', () => loadQuality(el.dataset.qualityProduct)));
         document.querySelectorAll('[data-dpp-product]').forEach((el) => el.addEventListener('click', () => loadDpp(el.dataset.dppProduct)));
