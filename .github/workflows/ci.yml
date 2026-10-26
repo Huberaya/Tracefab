@@ -514,6 +514,16 @@ jobs:
         # données de l'autre via INSERT, UPDATE, SELECT, DELETE ni fonctions SD.
         run: npm run test:neon:cross-tenant
 
+      - name: Mission B — isolation des surfaces métier par exécution
+        # Surfaces que les suites génériques n'exercent pas en accès croisé :
+        # téléchargement de documents (tracefab_can_access_document),
+        # mutations qualité par identifiant et identités DPP (refus + absence
+        # d'effet persisté, relu par le propriétaire), ingestion PLM/ERP
+        # (fail-closed sans contexte, refus vers l'organisation d'autrui),
+        # export borné à une organisation étrangère, et absence totale de
+        # contexte. Rôle tracefab_app sans BYPASSRLS, comme en production.
+        run: npm run test:neon:mission-b
+
       - name: Contexte de locataire actif en base
         # La RLS seule ne suffisait pas : le defaut Production du 2026-10-17
         # venait d'un filtre portant sur l'UNION des organisations d'un compte

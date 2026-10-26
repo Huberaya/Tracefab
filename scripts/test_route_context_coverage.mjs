@@ -11,7 +11,7 @@
  * routes de questionnaires, qui ne font que lire des modèles statiques et
  * n'accèdent à aucune base de données.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync as readdirSync2 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -211,6 +211,55 @@ for (const relative of authContextExceptions.keys()) {
   if (!routePaths.some((route) => route.relative === relative)) {
     fail(`exception de contexte devenue orpheline : ${relative}`);
   }
+}
+
+// Le contexte doit aussi PROPAGER : une route qui arme le contexte puis
+// appelle une librairie branchée sur le client Prisma GLOBAL exécute la
+// requête métier sur une autre connexion, sans le GUC utilisateur. La
+// fonction SQL visée y échoue fermée (`authentication_required`), donc la
+// route est cassée — et la barrière d'appartenance en base n'est jamais
+// exercée (défaut relevé sur l'ingestion PLM/ERP, mission B). La règle est
+// étroite : aucun accès base via le client global dans api/_lib hors liste
+// explicite et justifiée ci-dessous.
+const GLOBAL_CLIENT_FORBIDDEN = [
+  // Les wrappers eux-mêmes : ils ouvrent la transaction qui arme le contexte.
+  'api/_lib/context.ts',
+  // Sonde de disponibilité : `SELECT 1`, aucune donnée locataire.
+  'api/_lib/readiness-probes.ts',
+  // Provisioning du compte à la première connexion : s'exécute dans
+  // withTracefabWorkerContext (voir le corps de la fonction, pas l'import).
+  'api/_lib/auth.ts',
+  // Compteurs de débit : table d'infrastructure sans aucune donnée
+  // locataire, gardée par sa propre politique et un trigger dédié ; le
+  // compteur doit fonctionner avant même l'authentification.
+  'api/_lib/rate-limit.ts',
+];
+let globalClientOffenders = 0;
+const libDir = join(ROOT, 'api', '_lib');
+const walkLib = (dir) => {
+  for (const entry of readdirSync2(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) walkLib(full);
+    else if (entry.name.endsWith('.ts')) {
+      const relative = 'api/_lib/' + full.slice(libDir.length + 1).split('\\').join('/');
+      if (GLOBAL_CLIENT_FORBIDDEN.includes(relative)) continue;
+      const source = readFileSync(full, 'utf8');
+      // Le défaut visé est précis : l'import du client GLOBAL (`import {
+      // prisma } from '.../prisma.js'`) suivi d'un appel. Un paramètre nommé
+      // `prisma` (client injecté par l'appelant, contexte compris) est le
+      // motif sain et ne doit pas être confondu avec lui.
+      const importeClientGlobal = /import\s*\{\s*prisma\s*\}\s*from\s*'[^']*prisma\.js'/.test(source)
+        || /await\s+import\s*\(\s*'[^']*prisma\.js'\s*\)/.test(source);
+      if (importeClientGlobal && /\bprisma\s*\.\s*\$?(queryRaw|executeRaw|transaction)/.test(source)) {
+        globalClientOffenders += 1;
+        fail(`${relative} exécute une requête via le client Prisma global : le contexte RLS armé par la route ne le suit pas`);
+      }
+    }
+  }
+};
+walkLib(libDir);
+if (globalClientOffenders === 0) {
+  ok('aucune librairie métier n\'exécute via le client Prisma global (contexte propagé)');
 }
 
 console.log(`\n  Couverture du contexte RLS : ${failures === 0 ? 'OK' : failures + ' échec(s)'}.`);

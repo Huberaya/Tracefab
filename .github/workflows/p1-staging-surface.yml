@@ -1,0 +1,106 @@
+# P1 staging — diagnostic de surface (aucun secret, aucun environnement).
+#
+# POURQUOI CE WORKFLOW EXISTE
+#   Le bac a sable d'analyse n'a aucun acces reseau a *.vercel.app (HTTP 000
+#   mesure) ni a api.clerk.com : un test lance la n'atteindrait jamais
+#   l'application, donc ne prouverait rien. Les runners GitHub ont un acces
+#   Internet complet. L'execution reelle part donc d'ici, et la mesure de
+#   surface aussi.
+#
+# CE QUE CE WORKFLOW FAIT
+#   Il mesure ce qui est mesurable sans privilege : la surface reelle des
+#   derniers deploiements de Preview — sante, configuration Clerk, presence de
+#   la sonde interne protegee, et surtout la DESTINATION de chaque redirection
+#   (hote compris). Il ne lit AUCUN secret : une reference au contexte
+#   `secrets` ferait retenir le run entier par la politique de protection.
+#
+# CE QUE CE WORKFLOW NE FAIT PAS
+#   - il ne lit aucun secret, ni valeur ni nom ;
+#   - il n'ecrit rien, ne cree aucun tenant, ne joint aucune base ;
+#   - il n'est rattache a aucun environnement : il n'est donc jamais retenu par
+#     une approbation, ce qui le rend toujours jouable ;
+#   - il n'utilise AUCUNE URL figee : les cibles sont les URL immuables des
+#     deploiements Preview lues dans l'API GitHub des Deployments.
+#
+# MODE NON STRICT
+#   Ce diagnostic ne conclut pas : une Preview protegee est le comportement
+#   ATTENDU ici. Il rapporte la classe de chaque reponse et la destination de
+#   chaque redirection. Le verdict bloquant appartient au pre-vol du workflow
+#   authentifie, qui dispose du secret de contournement.
+
+name: P1 staging — diagnostic de surface
+
+on:
+  push:
+    branches:
+      # Branche de travail du chantier P1. La liste doit contenir la branche
+      # REELLEMENT poussee : une politique de branche d'environnement qui
+      # n'autorise pas cette branche retient le run avant le premier pas.
+      - 'arena/88857a44-tracefab'
+      - 'arena/f9effa2e-tracefab'
+      - 'arena/fd3fb758-tracefab'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'URL de Preview a sonder en plus (facultatif)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  deployments: read
+
+concurrency:
+  group: p1-staging-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  diagnostic:
+    name: Diagnostic — surface Preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TRACEFAB_PREVIEW_URLS: ${{ github.event.inputs.preview_url || '' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: Lister les deploiements Preview et leurs URL immuables
+        # Aucune URL n'est ecrite dans ce fichier : elles sont lues a
+        # l'execution, par SHA, via l'API GitHub des Deployments. C'est la
+        # meme source que celle utilisee par le workflow authentifie, donc les
+        # deux workflows ne peuvent pas diverger sur la cible.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Capacite de sortie : les annotations GitHub sont bornees, donc on
+          # mesure les deploiements les plus recents, et d'abord celui du SHA
+          # du run, qui est celui que le workflow authentifie utilisera.
+          : > /tmp/preview-urls.txt
+          gh api "repos/${{ github.repository }}/deployments?sha=${{ github.sha }}&per_page=20" \
+            --jq '.[] | select(.environment == "Preview") | .id' > /tmp/deployment-ids-sha.txt
+          gh api "repos/${{ github.repository }}/deployments?per_page=12" \
+            --jq '.[] | select(.environment == "Preview") | .id' >> /tmp/deployment-ids-sha.txt
+          sort -u /tmp/deployment-ids-sha.txt > /tmp/deployment-ids.txt
+          while read -r id; do
+            [ -n "$id" ] || continue
+            url="$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" --jq '[.[] | select(.state == "success")][0].environment_url // empty' || true)"
+            [ -n "$url" ] && echo "$url" >> /tmp/preview-urls.txt
+          done < /tmp/deployment-ids.txt
+          if [ -s /tmp/preview-urls.txt ]; then
+            sort -u /tmp/preview-urls.txt -o /tmp/preview-urls.txt
+          fi
+          echo "deploiements_preview=$(wc -l < /tmp/preview-urls.txt)"
+          echo "::notice title=P1 diagnostic::deploiements_preview=$(wc -l < /tmp/preview-urls.txt) sha_du_run=${{ github.sha }}"
+
+      - name: Preview — sante, configuration Clerk et destination des redirections
+        env:
+          TRACEFAB_PREVIEW_URLS_FILE: /tmp/preview-urls.txt
+        run: node scripts/probe_preview_surface.mjs
