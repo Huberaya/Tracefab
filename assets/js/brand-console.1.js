@@ -3,7 +3,7 @@
       const app = document.getElementById('app');
       const initialParams = new URLSearchParams(location.search);
       const ROUTABLE_VIEWS = new Set([
-        'overview', 'requests', 'questionnaires', 'products', 'quality', 'risk',
+        'overview', 'requests', 'questionnaires', 'products', 'archivedProducts', 'quality', 'risk',
         'intelligence', 'massBalance', 'integrations', 'suppliers', 'materials',
         'supplyChain', 'documents', 'certifications', 'dpp', 'productDetail', 'reports', 'settings',
       ]);
@@ -77,6 +77,7 @@
         dppPortfolioLoading: false,
         dppScope: 'portfolio',
         modal: null,
+        modalProductTemplate: null,
         modalIssueId: null,
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
         supplierImport: { filename: '', content: '', preview: null, job: null, delivery: null, loading: false },
@@ -697,7 +698,7 @@
 
       function demoAgregats() {
 
-        const pr = state.products || [], su = state.suppliers || [];
+        const pr = (state.products || []).filter((p) => p.status !== 'archived'), su = state.suppliers || [];
 
         const pct = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : 0);
 
@@ -754,7 +755,7 @@
       }
 
       function productionAgregats() {
-        const pr = state.products || [], su = state.suppliers || [];
+        const pr = (state.products || []).filter((p) => p.status !== 'archived'), su = state.suppliers || [];
         const pays = new Set([
           ...su.map((s) => s.countryCode || (s.organizations && s.organizations.country_code)),
           ...pr.map((p) => p.countryOfManufacture || p.country_of_manufacture),
@@ -815,7 +816,7 @@
             return Number.isFinite(echeance) && echeance - Date.now() <= 90 * 86400000;
           }).length
           : (sup.length === 0 ? 0 : null);
-        const produits = state.products || [];
+        const produits = (state.products || []).filter((p) => p.status !== 'archived');
         const completionConnue = (p) => p.dataCompletion !== null
           && p.dataCompletion !== undefined && p.dataCompletion !== ''
           && Number.isFinite(Number(p.dataCompletion));
@@ -1533,6 +1534,7 @@
       function viewLabel() { return ({
         overview: bt('overviewViewLabel'),
         products: bt('productsViewLabel'),
+        archivedProducts: bt('archivedProductsViewLabel'),
         suppliers: bt('suppliersViewLabel'),
         materials: bt('materialsViewLabel'),
         supplyChain: bt('supplyChainViewLabel'),
@@ -1804,6 +1806,7 @@
           state.view === 'requests' ? requestsView() :
           state.view === 'questionnaires' ? questionnairesBuilderView() :
           state.view === 'products' ? productsView() :
+          state.view === 'archivedProducts' ? archivedProductsView() :
           state.view === 'quality' ? qualityView() :
             state.view === 'risk' ? riskView() :
             state.view === 'intelligence' ? intelligenceView() :
@@ -2192,7 +2195,7 @@
         const AT = demoMode
           ? Object.assign({}, chiffresDemo().attention, {
             produitsIncomplets: (state.products || [])
-              .filter((p) => Number(p.dataCompletion) < SEUIL_COMPLETUDE).length,
+              .filter((p) => p.status !== 'archived' && Number(p.dataCompletion) < SEUIL_COMPLETUDE).length,
           })
           : productionAttention();
 
@@ -2469,9 +2472,18 @@
       function productsView() {
         const resultats = produitsFiltres();
         const tranche = trancher('products', resultats);
-        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === ''
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('pdProducts')}</h1><p>${bt('pdLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-view="archivedProducts">${bt('archivedProductsOpen')}</button><button class="btn btn-secondary" data-action="catalog-import">${bt('importCsv')}</button><button class="btn btn-secondary" data-action="catalog-export">${bt('exportCsv')}</button><button class="btn btn-secondary" data-action="audit-export">${bt('exportAudit')}</button><button class="btn btn-primary" data-action="new-product">${bt('pdNew')}</button></div></div><div class="card panel">${state.products.length ? barreFiltres(tranche) + (resultats.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('pdCompleteness')}</th><th>${bt('pdReadiness')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${p.dataCompletion === null || p.dataCompletion === undefined || p.dataCompletion === ''
   ? `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`
   : `<div class="progress-line"><div class="progress"><span style="width:${pct(p.dataCompletion)}%"></span></div><small>${moneyless(p.dataCompletion)}%</small></div>`}</td><td>${p.dataReadiness ? status(p.dataReadiness) : `<span class="uncomputed">${esc(bt('cnNotComputed'))}</span>`}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-dpp-product="${esc(p.id)}">${bt('journeyDppInternalPreparation')}</button><button class="btn btn-secondary btn-small" data-quality-product="${esc(p.id)}">${bt('pdQuality')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('products', tranche)}` : `<div class="empty"><div class="empty-icon">⌕</div><strong>${esc(bt('pdNoMatch'))}</strong><p>${esc(bt('pdNoMatchHint'))}</p><button class="btn btn-secondary btn-small" data-tf-act="fx">${esc(bt('pdClearFilters'))}</button></div>`) : `<div class="empty"><div class="empty-icon">◇</div><strong>${esc(bt('cnPdEmptyTitle'))}</strong><p>${bt('pdEmpty')}</p><button class="btn btn-primary btn-small" data-action="new-product">${bt('pdCreate')}</button></div>`}</div>`;
+      }
+
+
+      function archivedProductsView() {
+        const archived = (state.products || []).filter((product) => product.status === 'archived')
+          .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+        const tranche = trancher('archivedProducts', archived);
+        return `<div class="page-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h1>${bt('archivedProductsTitle')}</h1><p>${bt('archivedProductsLead')}</p></div><div class="actions"><button class="btn btn-secondary" data-view="products">${bt('pxBack')}</button></div></div>
+          <div class="card panel">${archived.length ? `<div class="table-wrap"><table><thead><tr><th>${bt('pdProduct')}</th><th>${bt('pdCategory')}</th><th>${bt('pdStatus')}</th><th>${bt('archivedProductsDate')}</th><th></th></tr></thead><tbody>${tranche.lignes.map((p) => `<tr><td><strong>${esc(p.name)}</strong><div class="meta">${esc(p.reference)} · v${esc(p.version)}</div></td><td>${esc(p.category || '—')}</td><td>${status(p.status)}</td><td>${date(p.updatedAt || p.updated_at || p.createdAt)}</td><td><div class="actions" style="justify-content:flex-end"><button class="btn btn-secondary btn-small" data-product-id="${esc(p.id)}">${bt('rqOpen')}</button><button class="btn btn-secondary btn-small" data-action="reuse-product" data-product-id="${esc(p.id)}">${bt('archivedProductsReuse')}</button><button class="btn btn-primary btn-small" data-action="restore-product" data-product-id="${esc(p.id)}">${bt('archivedProductsRestore')}</button></div></td></tr>`).join('')}</tbody></table></div>${barrePagination('archivedProducts', tranche)}` : `<div class="empty"><div class="empty-icon">◇</div><strong>${bt('archivedProductsEmptyTitle')}</strong><p>${bt('archivedProductsEmptyBody')}</p><button class="btn btn-secondary btn-small" data-view="products">${bt('pxBack')}</button></div>`}</div>`;
       }
 
       function suppliersView() {
@@ -3814,7 +3826,7 @@
           if (!m) return '';
           return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mtTitle')}</div><h2>${esc(m.name)}</h2></div><button class="close" data-action="close-modal">×</button></div><div class="item-list"><div class="item"><span>${bt('mtType')}</span><strong>${esc(m.materialType || bt('cnUnknown'))}</strong></div><div class="item"><span>${bt('mtOrigin')}</span><strong>${esc(m.originCountryCode || bt('cnCountryUnknown'))}</strong></div><div class="item"><span>${bt('journeyTrustLevel')}</span><strong>${bt('journeyDeclaredNotVerified')}</strong></div><div class="item"><span>${bt('journeyCreatedAt')}</span><strong>${date(m.createdAt)}</strong></div><div class="item"><span>${bt('journeyUpdatedAt')}</span><strong>${date(m.updatedAt)}</strong></div></div><div class="notice" style="margin-top:16px">${bt('journeyMaterialInspectionNotice')}</div><div class="form-actions"><button class="btn btn-secondary" data-action="close-modal">${bt('mdClose')}</button></div></div></div>`;
         }
-        if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>${bt('mdNewProduct')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="product-form"><div class="form-grid"><label>${bt('mdReference')}<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>${bt('mdName')}<input class="input" name="name" required placeholder="Cotton Essential"></label><label>${bt('pdCategory')}<input class="input" name="category" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateProduct')}</button></div></form></div></div>`;
+        if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>${bt('mdNewProduct')}</h2></div><button class="close" data-action="close-modal">×</button></div>${state.modalProductTemplate ? `<p class="meta">${bt('archivedProductsReuseHint')}</p>` : ''}<form id="product-form"><div class="form-grid"><label>${bt('mdReference')}<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>${bt('mdName')}<input class="input" name="name" required placeholder="Cotton Essential" value="${esc(state.modalProductTemplate?.name || '')}"></label><label>${bt('pdCategory')}<input class="input" name="category" placeholder="T-shirt" value="${esc(state.modalProductTemplate?.category || '')}"></label><label>SKU<input class="input" name="sku" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateProduct')}</button></div></form></div></div>`;
         if (type === 'new-material') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mtTitle')}</div><h2>${bt('mtAdd')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="create-material-form"><div class="form-grid"><label class="field-full">${bt('mtName')}<input class="input" name="name" required maxlength="240"></label><label>${bt('mtType')}<input class="input" name="materialType" required maxlength="120" placeholder="other"></label><label>${bt('mtOrigin')}<input class="input" name="originCountryCode" maxlength="2" pattern="[A-Za-z]{2}" placeholder="${bt('cnUnknown')}"></label><p class="field-full meta">${bt('cnMaterialNoClaim')}</p></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mtAdd')}</button></div></form></div></div>`;
         if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdSupplierOnboarding')}</div><h2>${bt('mdBulkInvite')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdRequiredColumns')} <code>email</code>, <code>legalName</code>${bt('mdInviteNote')}</p><label class="field-full">${bt('mdCsvFile')}<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdCreateValidInvites')}</button></div>${supplierImportPreview()}</div></div>`;
         if (type === 'catalog-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h2>${bt('mdImportCatalogue')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdImportNote')}</p><div class="notice" style="margin:14px 0">${bt('mdRequiredColumns')} <code>reference</code>, <code>name</code>${bt('mdExtraColumnsNote')}</div><label class="field-full">${bt('mdCsvFile')}<input class="input" id="catalog-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="catalog-import-content" rows="8" placeholder="reference,name,category,sku\nAT-NEW-001,Sample product,T-shirt,SKU-001">${esc(state.catalogImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-catalog-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-catalog-import" ${state.catalogImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdImportValidRows')}</button></div>${catalogImportPreview()}</div></div>`;
@@ -3975,9 +3987,9 @@
 
       async function createProduct(form) {
         const data = Object.fromEntries(new FormData(form));
-        if (state.demo) { state.products.unshift({ id: `demo-${Date.now()}`, brandOrganizationId: state.activeOrganizationId, reference: data.reference, name: data.name, category: data.category, status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '0' }); state.modal = null; notify('Produit créé en mode démonstration.'); return; }
+        if (state.demo) { state.products.unshift({ id: `demo-${Date.now()}`, brandOrganizationId: state.activeOrganizationId, reference: data.reference, name: data.name, category: data.category, status: 'draft', version: 1, dataReadiness: 'in_progress', dataCompletion: '0' }); state.modal = null; state.modalProductTemplate = null; notify(bt('cnNProductCreated')); return; }
         await api('/api/products', { method: 'POST', body: JSON.stringify({ ...data, brandOrganizationId: state.activeOrganizationId }) });
-        state.modal = null; await sync(); notify(bt('cnNProductCreated'));
+        state.modal = null; state.modalProductTemplate = null; await sync(); notify(bt('cnNProductCreated'));
       }
       async function inviteSupplier(form) {
         const data = Object.fromEntries(new FormData(form));
@@ -4156,6 +4168,27 @@
         notify(bt('pxArchiveSuccess'));
         render();
       }
+
+      async function restoreProduct(productId) {
+        const product = (state.products || []).find((entry) => entry.id === productId && entry.status === 'archived');
+        if (!product) return;
+        if (!window.confirm(bt('archivedProductsRestoreConfirm'))) return;
+        if (state.demo) {
+          product.status = 'draft';
+          product.updatedAt = new Date().toISOString();
+        } else {
+          await api(`/api/products/${encodeURIComponent(product.id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'draft' }),
+          });
+          await sync();
+        }
+        state.pages.archivedProducts = 1;
+        state.view = 'archivedProducts';
+        notify(bt('archivedProductsRestoreSuccess'));
+        render();
+      }
+
       async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify(bt('cnNRevisionDemo')); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify(bt('cnNRevisionCreated')); render(); }
       async function saveSchemaBinding(form) {
         if (!state.selectedProductDetail?.product) return;
@@ -4974,7 +5007,7 @@
             if (action === 'open-cap-modal') { state.modal = 'create-cap'; render(); }
             if (action === 'open-review-cap-modal') { state.modal = 'review-cap'; render(); }
             if (action === 'open-cap-message-modal') { state.modal = 'cap-message'; render(); }
-            if (action === 'close-modal') { state.modal = null; state.modalProductId = null; render(); }
+            if (action === 'close-modal') { state.modal = null; state.modalProductId = null; state.modalProductTemplate = null; render(); }
             if (action === 'retry') { state.configError = null; state.tenantError = null; boot(); }
             if (action === 'refresh-detail') await refreshDetail();
             if (action === 'send-request') await sendRequest();
@@ -4996,6 +5029,8 @@
             if (action === 'new-chain-link') { state.modal = 'new-chain-link'; render(); }
             if (action === 'product-revision') await reviseProduct();
             if (action === 'archive-product') await archiveProduct();
+            if (action === 'restore-product') await restoreProduct(el.dataset.productId);
+            if (action === 'reuse-product') { state.modalProductTemplate = state.products.find((p) => p.id === el.dataset.productId && p.status === 'archived') || null; state.modal = 'new-product'; render(); }
             if (action === 'product-quality-from-detail') { state.selectedProduct = state.selectedProductDetail?.product; await loadQuality(state.selectedProduct?.id); }
             if (action === 'product-supply-chain-from-detail') { await loadSupplyChain(state.selectedProductDetail?.product?.id); }
             if (action === 'product-dpp-from-detail') { await loadDpp(state.selectedProductDetail?.product?.id); }
