@@ -1,0 +1,735 @@
+#!/usr/bin/env node
+/**
+ * Sessions Clerk de test pour la suite P1 staging.
+ *
+ * POURQUOI CE SCRIPT EXISTE
+ *   `npm run test:p1:staging` exige trois etats de session Playwright
+ *   authentifies et isoles : marque A, fournisseur, marque B dans une
+ *   organisation distincte. Aucun etat de session n'est versionne dans le
+ *   depot : ce sont des artefacts de session, donc des jetons. Ce script les
+ *   fabrique a la volee, dans l'instance Clerk DE TEST, et les ecrit dans
+ *   l'espace de travail du runner.
+ *
+ * CE QU'IL FAIT — deux phases
+ *   phase `inspect`   (defaut) : lecture seule. Il decrit l'instance Clerk de
+ *                      test (environnement, strategies de connexion relevees
+ *                      sur la Frontend API, comptes et organisations de test
+ *                      deja presents). Aucune ecriture, aucun secret affiche.
+ *   phase `provision` : il cree ce qui manque — comptes de test, organisations
+ *                      de test, adhesions — puis ouvre trois sessions
+ *                      reelles et enregistre les trois etats de session.
+ *
+ * IDENTITES : echelle de candidats, perimetre strict
+ *   L'API Clerk valide le format des adresses cote serveur, avec une regle
+ *   plus stricte que le simple test syntaxique. Le 2026-10-24, le domaine
+ *   special-use `tracefab.test` (TLD `.test`) a ete refuse en 422
+ *   `form_param_format_invalid` sur `email_address` (run 40043764425). Le
+ *   script n'improvise pas : il OFFRE a Clerk une echelle de candidats dans
+ *   l'ordre documente dans `scripts/lib/identites_test.mjs` (domaines RFC
+ *   2606 uniquement), retient le premier que l'instance accepte, et nomme le
+ *   refus si les trois sont refuses. Le garde-fou de domaine est partage avec
+ *   les tests de non-regression : aucune adresse hors perimetre ne peut
+ *   etre candidate, meme apres modification.
+ *
+ *   Verification compatible avec le mode de verification de l'instance : le
+ *   script RELEVE les strategies sur la Frontend API (`GET /v1/environment`)
+ *   et choisit sa voie sur ce releve — mot de passe si c'est le premier
+ *   facteur, sinon code email (`+clerk_test`, code `424242` en instance de
+ *   developpement, aucun courrier emis). Les comptes sont crees avec
+ *   `emailAddressIdentificationStatus: ['verified']` (defaut de l'API,
+ *   explicite ici), quelle que soit la configuration `verify_at_sign_up`
+ *   relevee en phase `inspect`.
+ *
+ * IDEMPOTENCE
+ *   Chaque passe cherche les comptes par TOUS leurs candidats avant toute
+ *   creation (`trouverIdentite`) ; l'organisation est reutilisee par son nom ;
+ *   la creation n'a lieu que si le compte est absent de tous les candidats.
+ *   Une relance ne multiplie donc ni utilisateur ni organisation — et elle le
+ *   DIT : `creation_de_lance=<persona>:false` prouve que le compte existait.
+ *
+ * CE QU'IL REFUSE (codes de sortie, un par cause)
+ *   2 configuration absente (cle ou cible manquante)
+ *   3 cle qui ne commence pas par `sk_test_` — jamais de cle de production,
+ *     meme tronquee dans la sortie
+ *   4 aucune voie de connexion exploitable confirmee sur l'instance — ni
+ *     mot de passe, ni code email en premier facteur (releve sur la
+ *     Frontend API, facteurs reels publies ; indetermine = on poursuit, le
+ *     formulaire reel tranche et le refus est alors nomme)
+ *   5 candidats d'adresses tous refuses par Clerk (422 format), avec les
+ *     codes recus pour chaque candidat
+ *   6 instance dont l'environnement releve est `production` — refusee, la
+ *     cle `sk_test_` n'est qu'un premier garde-fou
+ *   7 erreur API Clerk inattendue, nommee par son code, sans corps ni secret
+ *   8 connexion ouverte mais session applicative non etablie en 60 s (voie
+ *     et persona nommes, aucun jeton publie)
+ *   Toute adresse hors du perimetre `scripts/lib/identites_test.mjs` est
+ *   refusee avant tout appel : aucune adresse reelle n'est touchee.
+ *
+ * CE QU'IL N'AFFICHE JAMAIS
+ *   aucune valeur de secret, aucun cookie, aucun jeton de session, aucun
+ *   mot de passe. Les etats de session ecrits sur disque ne sont ni commites
+ *   ni publies en artefact : ils restent dans /tmp du runner.
+ */
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { chromium } from 'playwright';
+import { entetesBypass, exigerCiblePreview } from './lib/preview_deployment.mjs';
+import { adresseAutorisee, candidatsIdentite } from './lib/identites_test.mjs';
+
+const PHASE = (process.env.TF_P1_PHASE || 'inspect').trim();
+const CLERK_API = 'https://api.clerk.com/v1';
+
+const cle = (process.env.CLERK_SECRET_KEY || '').trim();
+if (!cle) {
+  console.error('CLERK_SECRET_KEY absent : aucun acces a l instance Clerk de test.');
+  process.exit(2);
+}
+if (!cle.startsWith('sk_test_')) {
+  console.error("CLERK_SECRET_KEY n'est pas une cle d'instance de test (`sk_test_`) : refus.");
+  process.exit(3);
+}
+
+/**
+ * Contournement de la protection de deploiement Vercel — OPTIONNEL.
+ *
+ * Les Previews Vercel de ce projet sont derriere la protection de deploiement
+ * (SSO) : une requete non authentifiee y recoit un 302 vers `/sso-api`. Sans
+ * contournement, ce script n'atteindrait JAMAIS le formulaire de connexion de
+ * l'application — il mesurerait la protection, pas l'application.
+ *
+ * La valeur ne doit jamais etre affichee, ni loguee, ni placee dans une URL.
+ */
+const vercelBypass = (process.env.TRACEFAB_VERCEL_BYPASS || '').trim();
+const bypassHeaders = entetesBypass(vercelBypass);
+
+const baseUrl = (process.env.TRACEFAB_STAGING_URL || '').trim();
+if (!baseUrl) {
+  console.error('TRACEFAB_STAGING_URL absent : aucune cible.');
+  process.exit(2);
+}
+// Cible validee AVANT tout appel : HTTPS, Preview Vercel du projet, sans
+// parametre, jamais un hote de production.
+const origin = exigerCiblePreview(baseUrl);
+// Valeur canonique d'en-tête `Origin` : scheme + hote (+ port), jamais de
+// chemin ni de barre oblique finale — `origin` est un objet URL.
+const origineHttp = `${origin.protocol}//${origin.host}`;
+
+const stateDir = (process.env.TF_P1_STATE_DIR || '/tmp/p1-storage-states').trim();
+
+/**
+ * Les trois personas du chantier P1. `base` est la partie locale de l'adresse
+ * ; les candidats complets sont construits sur les domaines autorises uniquement
+ * (`scripts/lib/identites_test.mjs`).
+ */
+const PERSONAS = [
+  {
+    cle: 'brand',
+    fichier: 'brand.json',
+    base: 'p1-brand-a',
+    motDePasse: 'Tf-P1-Brand-A-2026!test',
+    organisation: { nom: 'Tracefab P1 Marque A', type: 'brand' },
+    surface: '/brand-console/',
+  },
+  {
+    cle: 'supplier',
+    fichier: 'supplier.json',
+    base: 'p1-supplier',
+    motDePasse: 'Tf-P1-Supplier-2026!test',
+    organisation: { nom: 'Tracefab P1 Fournisseur', type: 'supplier' },
+    surface: '/supplier-portal/',
+  },
+  {
+    cle: 'second-brand',
+    fichier: 'second-brand.json',
+    base: 'p1-brand-b',
+    motDePasse: 'Tf-P1-Brand-B-2026!test',
+    organisation: { nom: 'Tracefab P1 Marque B', type: 'brand' },
+    surface: '/brand-console/',
+  },
+];
+
+// Garde-fou AVANT tout appel : chaque candidat de chaque persona — dans les
+// DEUX variantes de voie (mot de passe, code email) — doit etre dans le
+// perimetre autorise. Une base invalide (espace, `@`) ou une adresse hors
+// domaine est un arret immediat, pas un essai silencieux.
+const candidatsParPersona = new Map();
+for (const persona of PERSONAS) {
+  for (const otp of [false, true]) {
+    let candidats;
+    try {
+      candidats = candidatsIdentite(persona.base, { otp });
+    } catch {
+      throw new Error(`base_identite_invalide:${persona.cle}`);
+    }
+    for (const adresse of candidats) {
+      assert.ok(
+        adresseAutorisee(adresse),
+        `adresse hors du perimetre de test autorise : ${adresse}`,
+      );
+    }
+    candidatsParPersona.set(`${persona.cle}:${otp ? 'otp' : 'plain'}`, candidats);
+  }
+}
+
+// Le SDK n'est charge qu'APRES les garde-fous (cle `sk_test_`, cible
+// Preview, perimetre d'adresses) : un refus immediat ne depend jamais du
+// chargement de la bibliotheque.
+const { createClerkClient } = await import('@clerk/backend');
+const clerk = createClerkClient({ secretKey: cle });
+
+async function clerkApi(path, options = {}) {
+  const response = await fetch(`${CLERK_API}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${cle}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  const text = await response.text();
+  let body = {};
+  try { body = text ? JSON.parse(text) : {}; } catch { body = {}; }
+  if (!response.ok) {
+    const code = body?.errors?.[0]?.code || body?.code || `http_${response.status}`;
+    throw new Error(`clerk_api_${code}`);
+  }
+  return body;
+}
+
+/* --- 1. etat de l'instance Clerk de test ---------------------------------- */
+
+// L'objet `GET /v1/instance` du SDK v3 ne porte QUE `id`, `environment_type`
+// et `allowed_origins` (InstanceJSON du SDK installe) : les anciens champs
+// `instance_type` / `auth_settings` n'existent plus et donnaient un etat
+// silencieusement inconnu. On lit les champs reels, on les nomme, et on
+// refuse toute instance relevee en production.
+const instance = await clerkApi('/instance').catch((e) => ({ __erreur: String(e?.message || e) }));
+const instanceErreur = instance?.__erreur || null;
+const environnementInstance = instance?.environment_type || 'inconnue';
+console.log(`instance_environnement=${environnementInstance}`);
+console.log(`instance_cles=${instance && !instanceErreur ? Object.keys(instance).sort().join(',') : 'absente'}`);
+if (instanceErreur) console.log(`instance_erreur=${instanceErreur.slice(0, 80)}`);
+if (environnementInstance === 'production') {
+  console.error("instance_de_production : l'environment releve est `production`. "
+    + 'Ce harnais ne cree que des comptes de test ; la cle et la configuration sont a revoir.');
+  process.exit(6);
+}
+
+/**
+ * Strategies de connexion reellement activees sur l'instance.
+ *
+ * Source : `GET {frontend-api}/v1/environment` — l'objet que clerk-js lui-meme
+ * charge avant d'afficher le formulaire de connexion. La lecture est
+ * PUBBLIQUE (aucun secret ; la cle publique de l'application est retiree de
+ * `/api/config`, qui sert justement la configuration bootstrap). Tout echec
+ * est nomme mais n'arrete pas : c'est le formulaire reel, etape provision,
+ * qui fait autorite — un releve indetermine n'est pas une strategie absente.
+ */
+async function releverStrategiesInstance() {
+  const resultats = { cause: null, passwordActif: null, passwordPremierFacteur: null,
+    emailPremierFacteur: null, emailFacteurs: null, emailVerifications: null,
+    verificationEmailInscription: null, modeInscription: null, allowlistSeule: null,
+    secondFacteurObligatoire: null };
+  try {
+    const repConfig = await fetch(new URL('/api/config', origin), {
+      headers: bypassHeaders,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!repConfig.ok) { resultats.cause = `config_http_${repConfig.status}`; return resultats; }
+    const config = await repConfig.json();
+    const pk = String(config?.publishableKey || '');
+    if (!pk.startsWith('pk_')) { resultats.cause = 'config_cle_absente'; return resultats; }
+    // La cle publique encode la Frontend API : base64 de `hote$`. Aucune
+    // valeur n'est imprimee — seule l'identification de l'hote sert au
+    // diagnostic.
+    const decode = Buffer.from(pk.replace(/^pk_(test|live)_/, '').replace(/-/g, '+').replace(/_/g, '/'), 'base64')
+      .toString('utf8');
+    const hote = decode.split('$')[0].trim();
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(hote)) { resultats.cause = 'fapi_non_identifiee'; return resultats; }
+
+    const entetesFapi = { Origin: origineHttp };
+    let repEnv = await fetch(`https://${hote}/v1/environment`, {
+      headers: entetesFapi, signal: AbortSignal.timeout(10000),
+    }).catch(() => null);
+    if (!repEnv || !repEnv.ok) {
+      // Certains comptes rejettent un Origin non declare : on retente sans.
+      repEnv = await fetch(`https://${hote}/v1/environment`, {
+        signal: AbortSignal.timeout(10000),
+      }).catch(() => null);
+    }
+    if (!repEnv || !repEnv.ok) { resultats.cause = repEnv ? `environment_http_${repEnv.status}` : 'environment_injoignable'; return resultats; }
+    const env = await repEnv.json();
+    const us = env?.user_settings || {};
+    const bool = (v) => (typeof v === 'boolean' ? v : null);
+    resultats.passwordActif = bool(us.attributes?.password?.enabled);
+    resultats.passwordPremierFacteur = bool(us.attributes?.password?.used_for_first_factor);
+    resultats.emailPremierFacteur = bool(us.attributes?.email_address?.used_for_first_factor);
+    const liste = (v) => (Array.isArray(v) ? v.filter((s) => typeof s === 'string') : null);
+    resultats.emailFacteurs = liste(us.attributes?.email_address?.first_factors);
+    resultats.emailVerifications = liste(us.attributes?.email_address?.verifications);
+    resultats.verificationEmailInscription = bool(us.attributes?.email_address?.verify_at_sign_up);
+    resultats.modeInscription = typeof us.sign_up?.mode === 'string' ? us.sign_up.mode : null;
+    resultats.allowlistSeule = bool(us.sign_up?.allowlist_only);
+    resultats.secondFacteurObligatoire = bool(us.sign_in?.second_factor?.required);
+    return resultats;
+  } catch (e) {
+    resultats.cause = `lecture_strategies:${e?.name || 'erreur'}`;
+    return resultats;
+  }
+}
+
+const strategies = await releverStrategiesInstance();
+console.log(`strategies_source=${strategies.cause ? `indeterminee:${strategies.cause}` : 'frontend_api'}`);
+console.log(`strategie_mot_de_passe=${strategies.passwordActif ?? 'inconnu'}`);
+console.log(`mot_de_passe_premier_facteur=${strategies.passwordPremierFacteur ?? 'inconnu'}`);
+console.log(`verification_email_inscription=${strategies.verificationEmailInscription ?? 'inconnu'}`);
+console.log(`mode_inscription=${strategies.modeInscription ?? 'inconnu'}`);
+console.log(`inscription_allowlist_seule=${strategies.allowlistSeule ?? 'inconnu'}`);
+console.log(`second_facteur_obligatoire=${strategies.secondFacteurObligatoire ?? 'inconnu'}`);
+console.log(`facteur_premier_email=${strategies.emailPremierFacteur ?? 'inconnu'}`);
+console.log(`facteurs_premier_email=${strategies.emailFacteurs?.join(',') ?? 'inconnu'}`);
+console.log(`strategies_verification_email=${strategies.emailVerifications?.join(',') ?? 'inconnu'}`);
+
+/**
+ * Voie de connexion choisie d'apres le releve REEL de l'instance — jamais au
+ * hasard, jamais en supposant :
+ *   - `password`  — le mot de passe est premier facteur : voie historique ;
+ *   - `email_code`— l'email est premier facteur avec la strategie `email_code`
+ *     : voie OTP de Clerk, code fixe `424242` sur instance de developpement
+ *     avec les adresses `+clerk_test` (aucun courrier emis) ;
+ *   - `null`      — ni l'un ni l'autre n'est exploitable par ce harnais :
+ *     arret nomme (code 4) avec les facteurs reels publies.
+ */
+const voieConnexion = (strategies.passwordPremierFacteur === true)
+  ? 'password'
+  : (strategies.emailPremierFacteur === true
+      && (strategies.emailFacteurs?.includes('email_code')
+        || (strategies.emailFacteurs === null && strategies.emailVerifications?.includes('email_code'))))
+    ? 'email_code'
+    : null;
+console.log(`voie_connexion=${voieConnexion ?? 'indeterminee'}`);
+
+/* --- 2. comptes de test deja presents -------------------------------------- */
+
+/**
+ * Recherche l'un des candidats du persona deja enregistre. La reponse
+ * paginee du Backend API porte ses elements dans `data` : lire le tableau de
+ * premier niveau donnerait toujours « aucun compte » et le script
+ * recreerait un compte a chaque passage.
+ *
+ * @returns {Promise<{adresse: string, utilisateur: object}|null>}
+ */
+async function trouverIdentite(persona) {
+  // Ordre : la variante de la voie active d'abord, puis l'autre — un compte
+  // cree sous une voie precedente reste trouve, donc jamais duplique.
+  const ordre = voieConnexion === 'email_code' ? ['otp', 'plain'] : ['plain', 'otp'];
+  for (const variante of ordre) {
+    for (const adresse of candidatsParPersona.get(`${persona.cle}:${variante}`)) {
+      const page = await clerk.users.getUserList({ emailAddress: [adresse], limit: 1 });
+      const u = page?.data?.[0] || null;
+      if (u) return { adresse, utilisateur: u };
+    }
+  }
+  return null;
+}
+
+const etats = [];
+for (const persona of PERSONAS) {
+  const trouve = await trouverIdentite(persona);
+  etats.push({ persona, adresse: trouve?.adresse || null, utilisateur: trouve?.utilisateur || null });
+  console.log(`compte_present=${persona.cle}:${Boolean(trouve)}`);
+}
+
+async function organisationsDeTest() {
+  try {
+    const page = await clerk.organizations.getOrganizationList({ limit: 100 });
+    return page?.data || [];
+  } catch {
+    return [];
+  }
+}
+
+const organisations = await organisationsDeTest();
+for (const persona of PERSONAS) {
+  const trouvee = organisations.find((o) => o?.name === persona.organisation.nom);
+  console.log(`organisation_presente=${persona.cle}:${Boolean(trouvee)}`);
+}
+
+if (PHASE === 'inspect') {
+  console.log('phase=inspect — aucune ecriture effectuee.');
+  process.exit(0);
+}
+
+// Le harnais sait jouer DEUX voies, choisies sur le releve reel :
+// mot de passe, ou code email (`+clerk_test`, code `424242` en instance de
+// developpement). Si le releve dit qu'aucune des deux n'est premier facteur
+// — ou s'il est indetermine — il faut le dire plutot que d'echouer plus tard
+// sur un delai d'attente trompeur. Un releve indetermine ne bloque pas :
+// le formulaire reel, etape apres, tranche et nomme alors le refus.
+if (!voieConnexion) {
+  console.error(`voie_connexion_indisponible : aucun premier facteur exploitable par ce harnais `
+    + `(strategie_mot_de_passe=${strategies.passwordActif}, `
+    + `mot_de_passe_premier_facteur=${strategies.passwordPremierFacteur}, `
+    + `facteur_premier_email=${strategies.emailPremierFacteur}, `
+    + `facteurs_premier_email=${strategies.emailFacteurs?.join(',') ?? 'inconnu'}) : `
+    + 'activez le mot de passe ou le code email comme premier facteur dans '
+    + "l'instance de test, ou fournissez une autre strategie.");
+  process.exit(4);
+}
+
+/* --- 3. provision : comptes, organisations, adhesions ----------------------- */
+
+/**
+ * Cree le compte du persona en offrant chaque candidat a l'instance, dans
+ * l'ordre. Un 422 `form_param_format_invalid` porte sur le format de
+ * l'adresse : le candidat suivant est essaye, le refus est enregistre. Toute
+ * AUTRE erreur API est immediatement rejetee — masquer un refus different
+ * derriere le format serait un faux diagnostic.
+ *
+ * @returns {Promise<{adresse: string, utilisateur: object, creation: boolean}>}
+ */
+async function assurerUtilisateur(persona) {
+  const existant = etats.find((e) => e.persona.cle === persona.cle);
+  if (existant?.utilisateur) {
+    // Un mot de passe deja pose n'est pas relisible : on le repose pour que la
+    // session soit ouvrable meme si le compte precedait ce chantier.
+    // `updateUser` accepte le mot de passe en clair (il est chiffre par
+    // Clerk) ; `skipPasswordChecks` evite le refus des listes de mots de
+    // passe faibles.
+    await clerk.users.updateUser(existant.utilisateur.id, {
+      password: persona.motDePasse,
+      skipPasswordChecks: true,
+    });
+    console.log(`creation_de_lance=${persona.cle}:false`);
+    return { adresse: existant.adresse, utilisateur: existant.utilisateur, creation: false };
+  }
+
+  // Creation sur les candidats de la VOIE ACTIVE uniquement : l'adresse
+  // doit correspondre a la strategie de connexion qui sera jouee ensuite.
+  const varianteActive = voieConnexion === 'email_code' ? 'otp' : 'plain';
+  const candidats = candidatsParPersona.get(`${persona.cle}:${varianteActive}`);
+  const refus = [];
+  for (const [indice, adresse] of candidats.entries()) {
+    try {
+      const u = await clerk.users.createUser({
+        // En v3, `emailAddress` est une liste d'adresses et le statut de
+        // verification est un tableau parallele. Les adresses sont verifiees
+        // par defaut ; on l'ecrit quand meme pour ne pas dependre de ce
+        // defaut : la connexion n'exigera alors aucun code, quel que soit le
+        // mode `verify_at_sign_up` releve en phase inspect.
+        emailAddress: [adresse],
+        emailAddressIdentificationStatus: ['verified'],
+        firstName: 'P1',
+        lastName: persona.cle,
+        password: persona.motDePasse,
+        skipPasswordChecks: true,
+      });
+      console.log(`candidat_accepte=${persona.cle}:${indice}`);
+      console.log(`creation_de_lance=${persona.cle}:true`);
+      return { adresse, utilisateur: u, creation: true };
+    } catch (e) {
+      const codeClerk = e?.errors?.[0]?.code || e?.code || `http_${e?.status || 'inconnu'}`;
+      if (codeClerk === 'form_param_format_invalid') {
+        // Refus de FORMAT de l'adresse : on note, on essaie le candidat
+        // suivant. Le code seul sort dans le journal — jamais de corps.
+        refus.push(`${indice}:${codeClerk}`);
+        continue;
+      }
+      console.error(`clerk_api_inattendue persona=${persona.cle} candidat=${indice} code=${codeClerk}`);
+      process.exit(7);
+    }
+  }
+  console.error(`clerk_adresses_refusees persona=${persona.cle} candidats=${candidats.join(',')} refus=${refus.join('|')}`);
+  process.exit(5);
+}
+
+async function assurerOrganisation(persona, utilisateurClerk) {
+  const metadata = {
+    tracefab_organization_type: persona.organisation.type,
+    legal_name: persona.organisation.nom,
+  };
+  const liste = await organisationsDeTest();
+  const existante = liste.find((o) => o?.name === persona.organisation.nom);
+  const organisation = existante
+    ? await clerk.organizations.updateOrganizationMetadata(existante.id, { publicMetadata: metadata })
+    : await clerk.organizations.createOrganization({
+        name: persona.organisation.nom,
+        publicMetadata: metadata,
+      });
+  console.log(`creation_organisation_lance=${persona.cle}:${existante ? 'false' : 'true'}`);
+
+  const adhesions = await clerk.organizations.getOrganizationMembershipList({
+    organizationId: organisation.id,
+    limit: 100,
+  });
+  const dejaMembre = (adhesions?.data || []).find((m) => m?.publicUserData?.userId === utilisateurClerk.id);
+  if (!dejaMembre) {
+    await clerk.organizations.createOrganizationMembership({
+      organizationId: organisation.id,
+      userId: utilisateurClerk.id,
+      role: 'org:admin',
+    });
+  }
+  return organisation;
+}
+
+/* --- 4. sessions reelles et etats de session -------------------------------- */
+
+/**
+ * Expurge une chaine avant journalisation : aucune cle publique ou secrete,
+ * aucun courrier ne doit sortir dans un journal de run.
+ */
+const expurger = (texte) => String(texte)
+  .replace(/pk_(?:test|live)_[A-Za-z0-9]+/g, 'pk_...')
+  .replace(/sk_(?:test|live)_[A-Za-z0-9]+/g, 'sk_...')
+  .replace(/whsec_[A-Za-z0-9]+/g, 'whsec_...')
+  .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]');
+
+// Journaux de diagnostic — chemins et codes seulement, jamais d'entete,
+// jamais de query, jamais de valeur.
+const journalRequetesClerk = [];
+const journalErreursPage = [];
+
+/**
+ * Le CDN `cdn.jsdelivr.net` sert le sdk Clerk que l'APPLICATION charge
+ * (brand-console/index.html, politique de l'application). Mesure depuis le
+ * runner AVANT le navigateur : si le runner ne rejoint pas le CDN, le repli
+ * npm est prepare d'emblee ; si le runner le rejoint, le repli reste paresseux.
+ * La mesure sort en clair : ce n'est ni un secret ni une donnee personnelle.
+ */
+let jsdelivrDepuisRunner = 'non_mesure';
+try {
+  const reponse = await fetch('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js', {
+    method: 'HEAD',
+    redirect: 'follow',
+    signal: AbortSignal.timeout(8000),
+  });
+  jsdelivrDepuisRunner = `http_${reponse.status}`;
+} catch (e) {
+  jsdelivrDepuisRunner = `echec:${e?.cause?.code || e?.name || 'inconnu'}`;
+}
+console.log(`jsdelivr_depuis_runner=${jsdelivrDepuisRunner}`);
+
+/**
+ * Repli documente : si le CDN echoue depuis le navigateur, on sert les
+ * MEMES octets que le CDN (le paquet npm public @clerk/clerk-js@5, meme
+ * range que l'URL de l'application) depuis le disque du runner. Ce n'est
+ * PAS un contournement de Clerk : l'authentification reste reelle, executee
+ * par la Frontend API ; seuls les octets du sdk proviennent de leur source
+ * d'origine, et le journal publie la source retenue (`clerk_js_source`).
+ */
+let dossierClerkNpm = null;
+function obtenirClerkJsNpm() {
+  if (dossierClerkNpm) return dossierClerkNpm;
+  const dest = '/tmp/clerk-js-npm';
+  mkdirSync(dest, { recursive: true });
+  const sortie = execFileSync('npm', ['pack', '@clerk/clerk-js@5', '--silent', '--pack-destination', dest], {
+    encoding: 'utf8',
+    timeout: 120000,
+  }).trim();
+  const tgz = join(dest, sortie.split('\n').pop());
+  execFileSync('tar', ['-xzf', tgz, '-C', dest], { timeout: 120000 });
+  dossierClerkNpm = join(dest, 'package');
+  return dossierClerkNpm;
+}
+
+const VALEUR_BYPASS = bypassHeaders['x-vercel-protection-bypass'] || '';
+
+/**
+ * Interception unique pour TOUTES les requetes du contexte :
+ *   - le contournement de la protection Vercel n'est ajoute qu'aux requetes
+ *     de l'ORIGINE DE LA PREVIEW (navigation et appels de l'application).
+ *     Il etait precedent envoye en aveugle sur tous les hotes : le secret de
+ *     contournement partait vers cdn.jsdelivr.net et les hotes Clerk — une
+ *     fuite de secret vers des tiers, interdite par le chantier ;
+ *   - le sdk Clerk charge par l'application (cdn.jsdelivr.net) est servi
+ *     d'abord par le reseau reel ; si le CDN echoue, repli sur les octets
+ *     npm genuins, avec la cause et la source publiees.
+ */
+async function installerInterceptions(contexte) {
+  await contexte.route('**/*', async (route) => {
+    const requete = route.request();
+    let url;
+    try {
+      url = new URL(requete.url());
+    } catch {
+      return route.continue();
+    }
+    const entetes = { ...requete.headers() };
+    if (VALEUR_BYPASS && url.origin === origineHttp) {
+      entetes['x-vercel-protection-bypass'] = VALEUR_BYPASS;
+    }
+    const estSdkClerk = url.hostname === 'cdn.jsdelivr.net'
+      && url.pathname.includes('/npm/@clerk/clerk-js@5/');
+    if (!estSdkClerk) return route.continue({ headers: entetes });
+
+    const cheminRelatif = url.pathname.includes('/dist/')
+      ? url.pathname.slice(url.pathname.indexOf('/dist/') + 1)
+      : null;
+    try {
+      const reponse = await route.fetch({ headers: entetes });
+      journalRequetesClerk.push({ source: 'cdn', fichier: cheminRelatif, http: reponse.status() });
+      if (reponse.ok()) return route.fulfill({ response: reponse });
+      throw new Error(`cdn_http_${reponse.status()}`);
+    } catch (e) {
+      journalRequetesClerk.push({
+        source: 'npm',
+        fichier: cheminRelatif,
+        cause: String(e?.message || 'echec').slice(0, 60),
+      });
+      if (!cheminRelatif) return route.abort('failed');
+      try {
+        const dossier = obtenirClerkJsNpm();
+        const fichier = resolve(join(dossier, cheminRelatif));
+        if (!fichier.startsWith(dossier) || !existsSync(fichier)) return route.abort('failed');
+        return route.fulfill({ path: fichier, contentType: 'application/javascript' });
+      } catch {
+        return route.abort('failed');
+      }
+    }
+  });
+}
+
+const browser = await chromium.launch({ headless: true });
+try {
+  mkdirSync(stateDir, { recursive: true });
+
+  for (const { persona } of etats) {
+    const { adresse, utilisateur: u } = await assurerUtilisateur(persona);
+    const organisation = await assurerOrganisation(persona, u);
+    console.log(`provisionne=${persona.cle}:utilisateur:${Boolean(u)}:organisation:${Boolean(organisation)}`);
+
+    const context = await browser.newContext();
+    // Meme contournement que l'ancien extraHTTPHeaders/addInitScript pour la
+    // PREVIEW (navigation ET appels de la page), mais portee par interception
+    // et borne a l'origine : les hotes tiers ne recoivent aucun secret.
+    await installerInterceptions(context);
+    const page = await context.newPage();
+    // Pre-eminence des erreurs navigateur au diagnostic : pageerror et
+    // erreurs console (caviardees) alimentent le dump si le formulaire
+    // n'apparait pas.
+    page.on('pageerror', (e) => {
+      journalErreursPage.push(expurger(`pageerror: ${e?.message || e}`).slice(0, 200));
+    });
+    page.on('console', (m) => {
+      if (m.type() === 'error') journalErreursPage.push(expurger(`console: ${m.text()}`).slice(0, 200));
+    });
+    page.on('requestfailed', (r) => {
+      try {
+        const u = new URL(r.url());
+        if (/clerk|jsdelivr/i.test(u.hostname)) {
+          journalErreursPage.push(`requete_echouee: ${u.hostname}${u.pathname}`.slice(0, 160));
+        }
+      } catch { /* URL illisible : ignore, jamais d exception depuis un listener */ }
+    });
+    // 60 s (et pas 45) : le repli npm lazyn peut prendre ~15 s au premier
+    // echec du CDN — delai MOTIVE par le repli, pas un simple allongement.
+    await page.goto(new URL(persona.surface, origin).toString(), { waitUntil: 'networkidle', timeout: 60000 });
+
+    // Connexion reelle par l'IHM Clerk de l'application : ce n'est pas une
+    // session injectee, c'est celle que produirait un utilisateur.
+    const champIdentifiant = page.locator('input[name="identifier"], input[id*="identifier"], input[type="email"]').first();
+    try {
+      await champIdentifiant.waitFor({ state: 'visible', timeout: 45000 });
+    } catch {
+      // Diagnostic exploitable sans divulguer de donnees de session :
+      // URL, titre, noms/types des champs et textes des boutons seulement.
+      const etatPage = await page.evaluate(() => ({
+        url: location.origin + location.pathname,
+        titre: document.title.slice(0, 120),
+        champs: Array.from(document.querySelectorAll('input')).slice(0, 20).map((e) => ({
+          type: e.getAttribute('type') || 'text',
+          name: e.getAttribute('name') || '',
+          id: (e.id || '').slice(0, 80),
+          visible: Boolean(e.getClientRects().length),
+        })),
+        boutons: Array.from(document.querySelectorAll('button')).slice(0, 15).map((e) => ({
+          texte: (e.innerText || e.getAttribute('aria-label') || '').trim().slice(0, 80),
+          visible: Boolean(e.getClientRects().length),
+        })),
+        texte: (document.body?.innerText || '').replace(/\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi, '[email]').slice(0, 700),
+        // Etat reel de l'application (brand-console expose son etat) : la
+        // bootee est-elle en erreur, le sdk est-il charge, un utilisateur
+        // existe-t-il ? C'est LE discriminant entre les trois boites
+        // possibles (erreur de config, chargement bloque, formulaire monte).
+        etatApplication: (() => {
+          const etat = window.tracefabBrandConsole?.state;
+          if (!etat) return null;
+          return {
+            chargement: Boolean(etat.loading),
+            erreur: String(etat.configError || '').slice(0, 160),
+            clerk: Boolean(etat.clerk),
+            utilisateur: Boolean(etat.user),
+            demo: Boolean(etat.demo),
+          };
+        })(),
+        clerkGlobal: typeof window.Clerk,
+      }));
+      // Couches Node du diagnostic : requetes sdk (CDN vs repli npm) et
+      // erreurs navigateur, expurgees avant publication.
+      etatPage.requetesClerk = journalRequetesClerk.slice(-20);
+      etatPage.erreursNavigateur = journalErreursPage.slice(-10);
+      console.error('formulaire_identifiant_absent=' + expurger(JSON.stringify(etatPage)));
+      throw new Error(`champ_identifiant_absent persona=${persona.cle} voie=${voieConnexion} : inspecter formulaire_identifiant_absent ci-dessus`);
+    }
+    await champIdentifiant.fill(adresse);
+    const bouton = page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first();
+    await bouton.click();
+
+    if (voieConnexion === 'email_code') {
+      // Voie OTP mesuree sur l'instance : champ de code, puis code fixe
+      // `424242` — la valeur de test que Clerk applique aux adresses
+      // `+clerk_test` en instance de developpement (aucun courrier emis).
+      const champCode = page.locator('input[name="code"], input[autocomplete="one-time-code"], input[inputmode="numeric"]').first();
+      try {
+        await champCode.waitFor({ state: 'visible', timeout: 45000 });
+      } catch {
+        throw new Error(
+          `le formulaire de connexion n'a pas propose de champ de code pour ${persona.cle} `
+          + `(voie_connexion=email_code relevee sur l'instance) : `
+          + 'le releve et le formulaire divergent, ou la strategie a change pendant la preparation.',
+        );
+      }
+      await champCode.fill('424242');
+      await page.locator('button[type="submit"], button:has-text("Verify"), button:has-text("Continue"), button:has-text("Continuer")').first().click();
+    } else {
+      const champMotDePasse = page.locator('input[name="password"], input[type="password"]').first();
+      try {
+        await champMotDePasse.waitFor({ state: 'visible', timeout: 45000 });
+      } catch {
+        throw new Error(
+          `le formulaire de connexion n'a pas propose de champ mot de passe pour ${persona.cle} `
+          + `(voie_connexion=password relevee sur l'instance) : `
+          + 'le releve et le formulaire divergent, ou la strategie a change pendant la preparation.',
+        );
+      }
+      await champMotDePasse.fill(persona.motDePasse);
+      await page.locator('button[type="submit"], button:has-text("Continue"), button:has-text("Continuer")').first().click();
+    }
+
+    try {
+      await page.waitForFunction(() => {
+        const app = window.tracefabBrandConsole || window.tracefabSupplierPortal || window.tracefabQualityCenter;
+        return Boolean(app?.state?.clerk?.session);
+      }, null, { timeout: 60000 });
+    } catch {
+      // Un echec ici sans nom laisserait le dossier sans cause : la voie
+      // mesuree, le persona et l etape atteinte sortent, jamais de jeton.
+      console.error(`session_non_etablie persona=${persona.cle} voie=${voieConnexion} `
+        + `adresse_presente=${Boolean(adresse)} — la connexion n a pas abouti a une session applicative`);
+      process.exit(8);
+    }
+
+    const chemin = join(stateDir, persona.fichier);
+    await context.storageState({ path: chemin });
+    console.log(`etat_de_session_ecrit=${persona.cle}:${existsSync(chemin)}`);
+    await context.close();
+  }
+} finally {
+  await browser.close();
+}
+
+console.log('sessions_preparees=3');
