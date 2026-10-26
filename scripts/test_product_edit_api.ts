@@ -41,6 +41,9 @@ const handler = createProductHandler({
         return row;
       },
     },
+    user: {
+      findUnique: async ({ where }: any) => where.clerkUserId === 'user-a' ? { id: ACTOR_ID } : null,
+    },
     audit_logs: {
       create: async ({ data }: any) => {
         assert.equal(data.organization_id, TENANT_A);
@@ -52,8 +55,7 @@ const handler = createProductHandler({
         return data;
       },
     },
-    $queryRaw: async (strings: any, ...args: any[]) => {
-      if (String(strings[0]).includes('tracefab_current_user_id')) return [{ id: ACTOR_ID }];
+    $queryRaw: async (_strings: any, ...args: any[]) => {
       writes++;
       const keys = ['reference', 'sku', 'name', 'category', 'description', 'product_family', 'color_name', 'size_range', 'country_of_design', 'country_of_manufacture', 'weight_grams', 'care_instructions'];
       keys.forEach((key, i) => row[key] = key === 'care_instructions' ? JSON.parse(args[i + 1]) : args[i + 1]);

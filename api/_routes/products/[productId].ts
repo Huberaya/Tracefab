@@ -94,10 +94,11 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       if (archiveRequested) {
         if (current.status !== 'draft') throw new Error('only_draft_products_can_be_archived');
         const previousStatus = current.status;
-        const actorRows = await tx.$queryRaw<Array<{ id: string | null }>>`
-          SELECT tracefab_current_user_id() AS id
-        `;
-        const actorUserId = actorRows[0]?.id;
+        const actor = await tx.user.findUnique({
+          where: { clerkUserId: user.id },
+          select: { id: true },
+        });
+        const actorUserId = actor?.id;
         if (!actorUserId) throw new Error('archive_actor_not_resolved');
         await tx.tracefab_products.update({
           where: { id: current.id },
