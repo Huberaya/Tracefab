@@ -79,9 +79,12 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       const archiveRequested = body !== null
         && Object.keys(body).length === 1
         && body.status === 'archived';
+      const restoreRequested = body !== null
+        && Object.keys(body).length === 1
+        && body.status === 'draft';
       const tenant = await requireActiveTenant(tx, req, user.id, {
         types: ['brand'],
-        roles: archiveRequested ? ['owner', 'admin'] : undefined,
+        roles: archiveRequested || restoreRequested ? ['owner', 'admin'] : undefined,
       });
       const scoped = { id: productId, brand_organization_id: tenantFilter(tenant) };
       const current = await tx.tracefab_products.findFirst({
@@ -91,9 +94,11 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       if (!current) return null;
       if (req.method === 'GET') return current;
 
-      if (archiveRequested) {
-        if (current.status !== 'draft') throw new Error('only_draft_products_can_be_archived');
+      if (archiveRequested || restoreRequested) {
+        if (archiveRequested && current.status !== 'draft') throw new Error('only_draft_products_can_be_archived');
+        if (restoreRequested && current.status !== 'archived') throw new Error('only_archived_products_can_be_restored');
         const previousStatus = current.status;
+        const nextStatus = archiveRequested ? 'archived' : 'draft';
         // requireClerkUser renvoie ici l'utilisateur Tracefab provisionné :
         // user.id est déjà son UUID interne, pas l'identifiant Clerk externe.
         // Le rechercher dans clerk_user_id avec cet UUID renvoyait null et
@@ -101,16 +106,16 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
         const actorUserId = user.id;
         await tx.tracefab_products.update({
           where: { id: current.id },
-          data: { status: 'archived', updated_at: new Date() },
+          data: { status: nextStatus, updated_at: new Date() },
         });
         await tx.audit_logs.create({ data: {
           organization_id: tenant.organizationId,
-          action: 'product.archived',
+          action: archiveRequested ? 'product.archived' : 'product.restored',
           entity_type: 'product',
           entity_id: current.id,
           actor_user_id: actorUserId,
           before_state: { status: previousStatus },
-          after_state: { status: 'archived' },
+          after_state: { status: nextStatus },
           metadata: { source: 'brand_console', history_retained: true },
         } });
         const archived = await tx.tracefab_products.findFirst({ where: scoped, select: DETAIL_SELECT });
@@ -156,7 +161,7 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return json(res, 409, { error: 'product_reference_already_exists' });
     }
-    if (error instanceof Error && error.message === 'only_draft_products_can_be_archived') {
+    if (error instanceof Error && ['only_draft_products_can_be_archived', 'only_archived_products_can_be_restored'].includes(error.message)) {
       return json(res, 409, { error: error.message });
     }
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
