@@ -94,12 +94,11 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       if (archiveRequested) {
         if (current.status !== 'draft') throw new Error('only_draft_products_can_be_archived');
         const previousStatus = current.status;
-        const actor = await tx.user.findUnique({
-          where: { clerkUserId: user.id },
-          select: { id: true },
-        });
-        const actorUserId = actor?.id;
-        if (!actorUserId) throw new Error('archive_actor_not_resolved');
+        // requireClerkUser renvoie ici l'utilisateur Tracefab provisionné :
+        // user.id est déjà son UUID interne, pas l'identifiant Clerk externe.
+        // Le rechercher dans clerk_user_id avec cet UUID renvoyait null et
+        // faisait échouer tout archivage en Production.
+        const actorUserId = user.id;
         await tx.tracefab_products.update({
           where: { id: current.id },
           data: { status: 'archived', updated_at: new Date() },
