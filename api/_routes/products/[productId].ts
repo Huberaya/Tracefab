@@ -93,6 +93,7 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (archiveRequested) {
         if (current.status !== 'draft') throw new Error('only_draft_products_can_be_archived');
+        const previousStatus = current.status;
         await tx.tracefab_products.update({
           where: { id: current.id },
           data: { status: 'archived', updated_at: new Date() },
@@ -102,7 +103,7 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
           action: 'product.archived',
           entity_type: 'product',
           entity_id: current.id,
-          before_state: { status: current.status },
+          before_state: { status: previousStatus },
           after_state: { status: 'archived' },
           metadata: { source: 'brand_console', history_retained: true },
         } });
