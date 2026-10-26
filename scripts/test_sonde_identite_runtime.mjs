@@ -91,11 +91,28 @@ if (!extrait) sortir(1);
 
 const SQL = extrait[1];
 
-const verbesEcriture = [...SQL.matchAll(/\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|TRUNCATE|COPY|SET\s+ROLE|SECURITY\s+LABEL)\b/gi)];
+// Les LITTERAUX sont retires avant l'analyse. La sonde interroge
+// legitimement des NOMS de privilege (`has_table_privilege(…, 'INSERT')`) :
+// ce sont des chaines, pas des ordres. Sans ce retrait, le controle
+// confondrait un nom de privilege avec une ecriture — et le faire taire en
+// retirant les privileges de la sonde affaiblirait la mesure au lieu de la
+// garde. Apres retrait, TOUT verbe d'ecriture reste refuse, ou qu'il soit.
+const SQL_SANS_LITTERAUX = SQL.replace(/'(?:[^']|'')*'/g, "''");
+const verbesEcriture = [...SQL_SANS_LITTERAUX.matchAll(/\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|COPY|SET\s+ROLE|SECURITY\s+LABEL)\b/gi)];
 verifier(
-  'la requête ne contient aucun verbe d écriture',
+  'la requête ne contient aucun verbe d écriture hors littéraux',
   verbesEcriture.length === 0,
   verbesEcriture.map((m) => m[1]).join(', ') || 'aucun',
+);
+verifier(
+  'la requête est une lecture unique (une seule instruction)',
+  SQL.trim().replace(/;$/, '').includes(';') === false && /^\s*(WITH|SELECT)\b/i.test(SQL),
+  SQL.trim().slice(0, 40),
+);
+verifier(
+  'la sonde n utilise aucun chemin d exécution arbitraire',
+  !/\$executeRaw|\$queryRawUnsafe|\$executeRawUnsafe/.test(source),
+  'un chemin unsafe rendrait la lecture non verifiable statiquement',
 );
 
 for (const attendu of ['current_user', 'session_user', 'rolbypassrls', 'rolsuper']) {
@@ -188,9 +205,21 @@ verifier(
 );
 
 if (blocRetour) {
+  // Liste blanche ETENDUE le 2026-10-24 : la sonde mesure desormais les
+  // attributs de role complets (creation de base, replication, appartenance
+  // privilegiee, propriete d objet, RLS activee/forcee, privileges de table,
+  // lignes visibles sans contexte). Ce sont des NOMS et des BOOLEENS : aucun
+  // n'expose de secret. La liste reste explicite, donc une cle ajoutee sans
+  // decision echoue toujours.
   const blanches = new Set([
     'measured', 'currentUser', 'sessionUser', 'database',
     'bypassesRls', 'isSuperuser', 'detail',
+    'canLogin', 'canCreateRole', 'canCreateDb', 'canReplicate', 'inheritsPrivileges',
+    'rowSecurityGuc', 'privilegedMemberships', 'privilegedMembershipNames',
+    'ownsProductTable', 'rlsEnabledOnProducts', 'rlsForcedOnProducts',
+    'canSelectProducts', 'canWriteProducts', 'canCreateInDatabase', 'canCreateInSchema',
+    'canWriteDppEvents', 'canWriteMigrationsLedger',
+    'rowsVisibleWithoutContext',
   ]);
   const cles = [...blocRetour[1].matchAll(/^\s*(\w+):/gm)].map((m) => m[1]);
   const horsListe = cles.filter((c) => !blanches.has(c));
@@ -198,6 +227,14 @@ if (blocRetour) {
     'le résultat ne contient que des clés de la liste blanche',
     horsListe.length === 0,
     horsListe.join(', ') || 'aucune',
+  );
+  // Une cle qui nommerait une chaine de connexion ou un secret serait refusee
+  // meme si elle figurait un jour dans la liste blanche.
+  const sensibles = [...blanches].filter((c) => /url|password|secret|token|host|user_?name/i.test(c));
+  verifier(
+    'aucune clé du résultat ne nomme une donnée de connexion',
+    sensibles.length === 0,
+    sensibles.join(', ') || 'aucune',
   );
 }
 

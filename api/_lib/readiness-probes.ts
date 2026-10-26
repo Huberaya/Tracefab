@@ -103,15 +103,67 @@ export type DatabaseIdentity = {
   database: string | null;
   bypassesRls: boolean | null;
   isSuperuser: boolean | null;
+  /** Attributs de role lus dans pg_roles pour le role EFFECTIF. */
+  canLogin: boolean | null;
+  canCreateRole: boolean | null;
+  canCreateDb: boolean | null;
+  canReplicate: boolean | null;
+  inheritsPrivileges: boolean | null;
+  /** `row_security` du serveur tel que la connexion le voit : `on` attendu. */
+  rowSecurityGuc: string | null;
+  /** Appartenance a un role porteur de SUPERUSER ou BYPASSRLS. */
+  privilegedMemberships: number | null;
+  privilegedMembershipNames: string[];
+  /** Propriete d'objet : un proprietaire echappe a la RLS sans FORCE. */
+  ownsProductTable: boolean | null;
+  rlsEnabledOnProducts: boolean | null;
+  rlsForcedOnProducts: boolean | null;
+  canSelectProducts: boolean | null;
+  canWriteProducts: boolean | null;
+  /**
+   * Ecriture directe sur les tables qui ne doivent passer que par des
+   * fonctions SECURITY DEFINER (`dpp_lifecycle_events`, append-only) ou qui
+   * appartiennent au plan de controle des migrations (`_prisma_migrations`).
+   * `true` = privilege excessif : ces tables sont REVOKE au bootstrap.
+   */
+  canWriteDppEvents: boolean | null;
+  canWriteMigrationsLedger: boolean | null;
+  canCreateInDatabase: boolean | null;
+  canCreateInSchema: boolean | null;
+  /**
+   * La mesure qui tranche, et qui ne se lit pas dans une configuration :
+   * nombre de lignes de `tracefab_products` visibles SANS aucun contexte arme.
+   * Sous un role soumis a la RLS et sans contexte, la reponse est 0 — quelle
+   * que soit la donnee. Une valeur non nulle prouve que les politiques ne sont
+   * pas evaluees pour ce role.
+   */
+  rowsVisibleWithoutContext: number | null;
   detail: string;
 };
 
 type IdentityRow = {
+  can_write_dpp_events: boolean | null;
+  can_write_migrations_ledger: boolean | null;
   current_user: string;
   session_user: string;
   database: string;
   bypasses_rls: boolean | null;
   is_superuser: boolean | null;
+  can_login: boolean | null;
+  can_create_role: boolean | null;
+  can_create_db: boolean | null;
+  can_replicate: boolean | null;
+  inherits_privileges: boolean | null;
+  row_security_guc: string | null;
+  privileged_memberships: number | null;
+  privileged_membership_names: string | null;
+  owns_product_table: boolean | null;
+  rls_enabled_on_products: boolean | null;
+  rls_forced_on_products: boolean | null;
+  can_select_products: boolean | null;
+  can_write_products: boolean | null;
+  can_create_in_database: boolean | null;
+  can_create_in_schema: boolean | null;
 };
 
 const IDENTITY_UNAVAILABLE: DatabaseIdentity = {
@@ -121,25 +173,141 @@ const IDENTITY_UNAVAILABLE: DatabaseIdentity = {
   database: null,
   bypassesRls: null,
   isSuperuser: null,
+  canLogin: null,
+  canCreateRole: null,
+  canCreateDb: null,
+  canReplicate: null,
+  inheritsPrivileges: null,
+  rowSecurityGuc: null,
+  privilegedMemberships: null,
+  privilegedMembershipNames: [],
+  ownsProductTable: null,
+  rlsEnabledOnProducts: null,
+  rlsForcedOnProducts: null,
+  canSelectProducts: null,
+  canWriteProducts: null,
+  canWriteDppEvents: null,
+  canWriteMigrationsLedger: null,
+  canCreateInDatabase: null,
+  canCreateInSchema: null,
+  rowsVisibleWithoutContext: null,
   detail: 'indisponible',
 };
+
+/**
+ * Mesure decisive : ce que ce role VOIT sans aucun contexte arme.
+ *
+ * `LIMIT 1` derive : la question n'est pas « combien de lignes » mais « en
+ * voit-il au moins une ». Un `count(*)` complet sur une table de production
+ * serait un cout sans gain d'information.
+ *
+ * Absence de la table = mesure impossible, pas echec : on renvoie null.
+ */
+async function countRowsVisibleWithoutContext(): Promise<number | null> {
+  try {
+    const rows = await prisma.$queryRaw<{ visible: number }[]>`
+      SELECT count(*)::int AS visible
+        FROM (SELECT 1 FROM public.tracefab_products LIMIT 1) AS visible_rows
+    `;
+    return rows?.[0]?.visible ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
   try {
     if (!process.env.DATABASE_URL?.trim()) {
       return { ...IDENTITY_UNAVAILABLE, detail: 'DATABASE_URL absent' };
     }
+    /*
+     * Requete d'attributs — STRICTEMENT en lecture.
+     *
+     * Chaque expression est gardee par `CASE WHEN to_regclass(...) IS NOT NULL` :
+     * une base plus ancienne ou une table absente ne doit pas faire echouer la
+     * mesure entiere et transformer une identite en « indisponible ».
+     *
+     * `session_user` n'est pas un doublon de `current_user` : si un `SET ROLE`
+     * etait present (pooler, middleware, code applicatif), les deux divergeraient.
+     * Le depot n'en contient aucun — c'est verifie statiquement — donc les deux
+     * doivent etre egaux ; s'ils divergent, quelque chose agit entre la connexion
+     * et la requete, et la mesure doit le dire plutot que de le masquer.
+     */
     const rows = await prisma.$queryRaw<IdentityRow[]>`
-      SELECT current_user                                       AS current_user,
-             session_user                                       AS session_user,
-             current_database()                                 AS database,
-             (SELECT rolbypassrls FROM pg_roles
-               WHERE rolname = current_user)                    AS bypasses_rls,
-             (SELECT rolsuper     FROM pg_roles
-               WHERE rolname = current_user)                    AS is_superuser
-    `;
+  WITH attributs AS (
+    SELECT r.rolsuper, r.rolbypassrls, r.rolcanlogin, r.rolcreaterole,
+           r.rolcreatedb, r.rolreplication, r.rolinherit, r.oid
+      FROM pg_roles r
+     WHERE r.rolname = current_user
+  ),
+  membres AS (
+    SELECT (count(*) FILTER (WHERE r.rolsuper OR r.rolbypassrls))::int AS nombre,
+           coalesce(string_agg(r.rolname::text, ',' ORDER BY r.rolname)
+                    FILTER (WHERE r.rolsuper OR r.rolbypassrls), '') AS noms
+      FROM pg_roles r, attributs a
+     WHERE r.oid <> a.oid
+       -- Adhesion DIRECTE ou INDIRECTE. La surcharge (oid, oid, text) est la
+       -- seule exacte ici : passer current_user (type name) ne resoudrait
+       -- aucune fonction et ferait echouer la mesure entiere.
+       AND pg_has_role(a.oid, r.oid, 'MEMBER')
+  )
+  SELECT current_user                                        AS current_user,
+         session_user                                        AS session_user,
+         current_database()                                  AS database,
+         (SELECT rolsuper      FROM attributs)               AS is_superuser,
+         (SELECT rolbypassrls  FROM attributs)               AS bypasses_rls,
+         (SELECT rolcanlogin   FROM attributs)               AS can_login,
+         (SELECT rolcreaterole FROM attributs)               AS can_create_role,
+         (SELECT rolcreatedb   FROM attributs)               AS can_create_db,
+         (SELECT rolreplication FROM attributs)              AS can_replicate,
+         (SELECT rolinherit    FROM attributs)               AS inherits_privileges,
+         current_setting('row_security', true)               AS row_security_guc,
+         (SELECT nombre FROM membres)                        AS privileged_memberships,
+         (SELECT noms   FROM membres)                        AS privileged_membership_names,
+         CASE WHEN to_regclass('public.tracefab_products') IS NULL THEN NULL
+              ELSE (SELECT c.relowner = a.oid
+                      FROM pg_class c, attributs a
+                     WHERE c.oid = to_regclass('public.tracefab_products'))
+         END                                                 AS owns_product_table,
+         CASE WHEN to_regclass('public.tracefab_products') IS NULL THEN NULL
+              ELSE (SELECT c.relrowsecurity FROM pg_class c
+                     WHERE c.oid = to_regclass('public.tracefab_products'))
+         END                                                 AS rls_enabled_on_products,
+         CASE WHEN to_regclass('public.tracefab_products') IS NULL THEN NULL
+              ELSE (SELECT c.relforcerowsecurity FROM pg_class c
+                     WHERE c.oid = to_regclass('public.tracefab_products'))
+         END                                                 AS rls_forced_on_products,
+         CASE WHEN to_regclass('public.tracefab_products') IS NULL THEN NULL
+              ELSE has_table_privilege(current_user, 'public.tracefab_products', 'SELECT')
+         END                                                 AS can_select_products,
+         CASE WHEN to_regclass('public.tracefab_products') IS NULL THEN NULL
+              ELSE (has_table_privilege(current_user, 'public.tracefab_products', 'INSERT')
+                 OR has_table_privilege(current_user, 'public.tracefab_products', 'UPDATE')
+                 OR has_table_privilege(current_user, 'public.tracefab_products', 'DELETE'))
+         END                                                 AS can_write_products,
+         CASE WHEN to_regclass('public.dpp_lifecycle_events') IS NULL THEN NULL
+              ELSE (has_table_privilege(current_user, 'public.dpp_lifecycle_events', 'INSERT')
+                 OR has_table_privilege(current_user, 'public.dpp_lifecycle_events', 'UPDATE')
+                 OR has_table_privilege(current_user, 'public.dpp_lifecycle_events', 'DELETE'))
+         END                                                 AS can_write_dpp_events,
+         CASE WHEN to_regclass('public._prisma_migrations') IS NULL THEN NULL
+              ELSE (has_table_privilege(current_user, 'public._prisma_migrations', 'INSERT')
+                 OR has_table_privilege(current_user, 'public._prisma_migrations', 'UPDATE')
+                 OR has_table_privilege(current_user, 'public._prisma_migrations', 'DELETE'))
+         END                                                 AS can_write_migrations_ledger,
+         has_database_privilege(current_user, current_database(), 'CREATE')  AS can_create_in_database,
+         has_schema_privilege(current_user, 'public', 'CREATE')               AS can_create_in_schema
+`;
     const row = rows?.[0];
     if (!row) return { ...IDENTITY_UNAVAILABLE, detail: 'requete honoree, aucune ligne' };
+    const visible = await countRowsVisibleWithoutContext();
+    const noms = String(row.privileged_membership_names || '')
+      .split(',')
+      .map((nom) => nom.trim())
+      .filter(Boolean)
+      // Un nom de role n'est pas un secret, mais la reponse est publique des
+      // qu'elle sort de l'authentification : on borne ce qui est publie.
+      .slice(0, 8);
     return {
       measured: true,
       currentUser: row.current_user,
@@ -147,12 +315,70 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
       database: row.database,
       bypassesRls: row.bypasses_rls,
       isSuperuser: row.is_superuser,
+      canLogin: row.can_login,
+      canCreateRole: row.can_create_role,
+      canCreateDb: row.can_create_db,
+      canReplicate: row.can_replicate,
+      inheritsPrivileges: row.inherits_privileges,
+      rowSecurityGuc: row.row_security_guc,
+      privilegedMemberships: row.privileged_memberships,
+      privilegedMembershipNames: noms,
+      ownsProductTable: row.owns_product_table,
+      rlsEnabledOnProducts: row.rls_enabled_on_products,
+      rlsForcedOnProducts: row.rls_forced_on_products,
+      canSelectProducts: row.can_select_products,
+      canWriteProducts: row.can_write_products,
+      canWriteDppEvents: row.can_write_dpp_events,
+      canWriteMigrationsLedger: row.can_write_migrations_ledger,
+      canCreateInDatabase: row.can_create_in_database,
+      canCreateInSchema: row.can_create_in_schema,
+      rowsVisibleWithoutContext: visible,
       detail: 'identite lue sur la connexion applicative',
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { ...IDENTITY_UNAVAILABLE, detail: redact(message).slice(0, 160) };
   }
+}
+
+/**
+ * Ecarts au contrat de securite, nommes un par un.
+ *
+ * La liste est separee du verdict pour deux raisons : un echec doit dire QUOI,
+ * et un rapport doit pouvoir distinguer « role permissif » de « identite non
+ * mesuree ». Une violation n'est jamais devinee : chaque entree correspond a
+ * une mesure de la reponse precedente.
+ */
+export function databaseIdentityViolations(identity: DatabaseIdentity | undefined): string[] {
+  if (!identity?.measured) return [`identite_non_mesuree:${identity?.detail ?? 'inconnue'}`];
+  const violations: string[] = [];
+  if (identity.currentUser !== 'tracefab_app') {
+    violations.push(`role_courant_${identity.currentUser ?? 'inconnu'}_different_de_tracefab_app`);
+  }
+  if (identity.sessionUser !== 'tracefab_app') {
+    violations.push(`role_de_session_${identity.sessionUser ?? 'inconnu'}_different_de_tracefab_app`);
+  }
+  if (identity.bypassesRls !== false) violations.push('role_porte_bypassrls');
+  if (identity.isSuperuser !== false) violations.push('role_superutilisateur');
+  if (identity.canCreateDb !== false) violations.push('privilege_createdb');
+  if (identity.canCreateRole !== false) violations.push('privilege_createrole');
+  if (identity.canReplicate !== false) violations.push('privilege_replication');
+  if ((identity.privilegedMemberships ?? 0) > 0) {
+    violations.push(`membre_d_un_role_privilegie:${identity.privilegedMembershipNames.join('+') || 'non_nomme'}`);
+  }
+  if (identity.rowsVisibleWithoutContext !== 0) {
+    violations.push('lignes_visibles_sans_contexte_arme');
+  }
+  if (identity.rowSecurityGuc !== null && identity.rowSecurityGuc !== 'on') {
+    violations.push(`row_security_${identity.rowSecurityGuc}`);
+  }
+  if (identity.rlsEnabledOnProducts === false) violations.push('rls_desactivee_sur_tracefab_products');
+  // Ecriture directe la ou le modele impose une fonction SECURITY DEFINER, ou
+  // sur le registre des migrations : c'est un privilege excessif, meme si le
+  // role parait conforme par ailleurs.
+  if (identity.canWriteDppEvents === true) violations.push('ecriture_directe_sur_evenements_dpp_append_only');
+  if (identity.canWriteMigrationsLedger === true) violations.push('ecriture_sur_le_registre_des_migrations_prisma');
+  return violations;
 }
 
 /**
@@ -165,7 +391,8 @@ export function databaseIdentityIsSafe(identity: DatabaseIdentity | undefined): 
     identity.currentUser === 'tracefab_app' &&
     identity.sessionUser === 'tracefab_app' &&
     identity.bypassesRls === false &&
-    identity.isSuperuser === false,
+    identity.isSuperuser === false &&
+    databaseIdentityViolations(identity).length === 0,
   );
 }
 
