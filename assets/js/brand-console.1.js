@@ -5007,7 +5007,7 @@
             if (action === 'open-cap-modal') { state.modal = 'create-cap'; render(); }
             if (action === 'open-review-cap-modal') { state.modal = 'review-cap'; render(); }
             if (action === 'open-cap-message-modal') { state.modal = 'cap-message'; render(); }
-            if (action === 'close-modal') { state.modal = null; state.modalProductId = null; render(); }
+            if (action === 'close-modal') { state.modal = null; state.modalProductId = null; state.modalProductTemplate = null; render(); }
             if (action === 'retry') { state.configError = null; state.tenantError = null; boot(); }
             if (action === 'refresh-detail') await refreshDetail();
             if (action === 'send-request') await sendRequest();
