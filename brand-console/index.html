@@ -6,9 +6,11 @@
   <title>Tracefab — Brand Console</title>
   <meta name="description" content="Tracefab Brand Console — collect, review and improve supplier data." data-i18n-attr="content:console.cnMetaDesc">
   <!-- Clerk est indispensable hors démo. Démarrer DNS/TLS et le téléchargement
-       pendant le parsing HTML évite de les sérialiser après /api/config. -->
+       pendant le parsing HTML évite de les sérialiser après /api/config.
+       Le prechargement est conditionnel : ?demo=1 ne contacte aucun CDN
+       tiers (voir tf-clerk-preload.js). -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js" as="script" crossorigin>
+  <script src="/assets/js/tf-clerk-preload.js?v=776eaf73"></script>
   <!-- Systeme de jetons partage. Place avant le <style> en ligne pour que
        les declarations propres a la console conservent la priorite. -->
   <!-- Polices locales versionnées (pas de CDN Google) -->
@@ -708,6 +710,13 @@
       margin-top: 18px;
     }
 
+    /* Le registre documentaire compte quatre familles de preuves, pas cinq.
+       Jusqu'ici la grille etait ecrite en style inline : les media queries
+       ne pouvaient pas la replier et la page debordait de 84 px a 390 px. */
+    .eq-score-strip--four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
     .eq-score-card {
       background: #f7f9f7;
       border: 1px solid #e5ebe6;
@@ -1085,6 +1094,49 @@
     .risk-kpis .kpi-value, .risk-kpis .kpi-label, .risk-kpis .kpi-note { position:relative; z-index:1; }
     .risk-basis { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
 
+    /* ==================================================================
+       Mission UI/UX 2026-10-26 — correction responsive mesuree.
+       A 390 px, .topbar gardait height:64px alors que .top-actions (rendu
+       wrapping par tracefab-spa-responsive.css) mesurait 140 px : le bloc
+       d'actions recouvrait la nav et le haut du contenu. Le portail
+       fournisseur avait deja la bonne approche (min-height + crumb masque
+       + actions pleine largeur) ; la console ne l'avait pas recue.
+       Trois grilles a colonnes figees (4 domaines, 7 echelons, 4 preuves)
+       imposaient aussi un scrollWidth de 423 / 674 / 474 px.
+       ================================================================== */
+    @media (max-width: 860px) {
+      .topbar {
+        height: auto;
+        min-height: 64px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
+      .mc-domains-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mc-domain-card, .mc-domain-header, .mc-stat-sublist { min-width: 0; }
+      .mc-domain-badge { flex: 0 0 auto; }
+      .mc-stat-subitem { gap: 8px; }
+      .mc-stat-subitem > * { min-width: 0; overflow-wrap: anywhere; }
+      .tc-echelons-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .topbar { min-height: 0; }
+      /* Le fil d'Ariane repete l'onglet actif deja visible dans la nav. */
+      .topbar .crumb { display: none; }
+      .top-actions { width: 100%; gap: 8px; }
+      .top-actions > * { min-width: 0; }
+      .top-actions select { flex: 1 1 110px; max-width: 100%; }
+      .top-actions .btn { flex: 0 0 auto; }
+      .eq-score-strip--four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .mc-domains-grid { grid-template-columns: minmax(0, 1fr); }
+      .tc-echelons-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 420px) {
+      .eq-score-strip--four { grid-template-columns: minmax(0, 1fr); }
+    }
 
   </style>
   <link rel="stylesheet" href="/assets/design-system/tracefab-spa-responsive.css?v=aefc6d14">
@@ -1098,13 +1150,13 @@
          cette page : sans lui elle heriterait du titre de la landing. -->
     <script src="/assets/js/tf-actions.js?v=65f8be39"></script>
     <script src="/assets/js/tf-skip-meta.js?v=5d16c499"></script>
-    <script src="/assets/i18n/en.js?v=dfaa5e50"></script>
+    <script src="/assets/i18n/en.js?v=8127042b"></script>
     <script src="/assets/js/tf-i18n.js?v=ec6eafe5"></script>
   <link rel="stylesheet" href="/assets/design-system/tracefab-touch.css?v=e8ad5001">
 </head>
 <body>
   <div id="app"></div>
   <script src="/assets/js/tf-demo-figures.js?v=3d451782"></script>
-    <script src="/assets/js/brand-console.1.js?v=8f4ef3eb"></script>
+    <script src="/assets/js/brand-console.1.js?v=8eed2ee0"></script>
 </body>
 </html>
