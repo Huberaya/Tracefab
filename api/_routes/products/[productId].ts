@@ -97,6 +97,15 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
           where: { id: current.id },
           data: { status: 'archived', updated_at: new Date() },
         });
+        await tx.audit_logs.create({ data: {
+          organization_id: tenant.organizationId,
+          action: 'product.archived',
+          entity_type: 'product',
+          entity_id: current.id,
+          before_state: { status: current.status },
+          after_state: { status: 'archived' },
+          metadata: { source: 'brand_console', history_retained: true },
+        } });
         const archived = await tx.tracefab_products.findFirst({ where: scoped, select: DETAIL_SELECT });
         if (!archived) throw new Error('product_archive_failed');
         return archived;

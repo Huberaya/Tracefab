@@ -40,6 +40,16 @@ const handler = createProductHandler({
         return row;
       },
     },
+    audit_logs: {
+      create: async ({ data }: any) => {
+        assert.equal(data.organization_id, TENANT_A);
+        assert.equal(data.action, 'product.archived');
+        assert.deepEqual(data.before_state, { status: 'draft' });
+        assert.deepEqual(data.after_state, { status: 'archived' });
+        writes++;
+        return data;
+      },
+    },
     $queryRaw: async (_strings: any, ...args: any[]) => {
       writes++;
       const keys = ['reference', 'sku', 'name', 'category', 'description', 'product_family', 'color_name', 'size_range', 'country_of_design', 'country_of_manufacture', 'weight_grams', 'care_instructions'];

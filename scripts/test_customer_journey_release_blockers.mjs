@@ -63,6 +63,7 @@ assert.ok(settingsRoute.includes('invalid_dpp_identifier_format'));
 
 assert.match(productRoute, /roles:\s*archiveRequested\s*\?\s*\['owner',\s*'admin'\]/, 'Product archival must require an owner or admin role');
 assert.match(productRoute, /current\.status\s*!==\s*'draft'/, 'Only draft products may be archived');
+assert.match(productRoute, /action:\s*'product\.archived'/, 'Product archival must leave an organization-scoped audit record');
 assert.match(consoleJs, /data-action="archive-product"/, 'Draft product detail must expose an archive action');
 assert.match(consoleJs, /p\.status\s*===\s*'archived'/, 'Archived products must leave the default active catalogue');
 
