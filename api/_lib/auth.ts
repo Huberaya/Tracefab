@@ -64,10 +64,27 @@ export async function requireClerkUser(req: VercelRequest) {
   if (process.env.NODE_ENV === 'production' && authorizedParties.length === 0) {
     throw new Error('authorized_parties_not_configured');
   }
-  const claims = authorizedParties.length > 0
-    ? await verifyToken(token, { secretKey: clerkSecretKey, authorizedParties })
-    : await verifyToken(token, { secretKey: clerkSecretKey });
-  if (!claims.sub) {
+  /**
+   * `verifyToken` est exporte via `withLegacyReturn` : toute erreur de
+   * verification (signature invalide, jeton expire, audience incorrecte,
+   * JWKS indisponible) est LEVEE, pas retournee dans `claims.errors`. Sans ce
+   * catch, une route renvoyait 500 `internal_server_error` face a un jeton
+   * forge — un refus, certes, mais opaque, non journalisable comme une
+   * tentative d'authentification et impossible a distinguer d'une panne
+   * applicative. Le principe ne change pas : aucun jeton non verifie n'est
+   * accepte ; il devient simplement un 401 explicite.
+   */
+  let claims: { sub?: string };
+  try {
+    claims = authorizedParties.length > 0
+      ? await verifyToken(token, { secretKey: clerkSecretKey, authorizedParties })
+      : await verifyToken(token, { secretKey: clerkSecretKey });
+  } catch {
+    const error = new Error('unauthorized');
+    error.name = 'UnauthorizedError';
+    throw error;
+  }
+  if (!claims?.sub) {
     const error = new Error('unauthorized');
     error.name = 'UnauthorizedError';
     throw error;
