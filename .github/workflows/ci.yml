@@ -531,6 +531,15 @@ jobs:
         # d'analyse absent ne devient « sain ».
         run: npm run test:neon:document-lifecycle
 
+      - name: Mission fonctionnelle DPP — persistance, preuves, apercu prive, isolation
+        # Suite DB introduite par la mission fonctionnelle. Elle est nommee
+        # `test:neon:*` pour suivre la convention du depot : le job
+        # `verification` n'a PAS de PostgreSQL et exclut deja ces suites de
+        # son enumeration. Ici, la base jetable est montee, les migrations
+        # sont appliquees et le role tracefab_app existe : la suite tourne
+        # reellement au lieu d'etre ignoree ou transformee en faux vert.
+        run: npm run test:neon:mission-functional
+
       - name: Privilèges minimaux du rôle applicatif — provisioning réel
         # Ce contrôle couvre un trou : `bootstrap_app_role.mjs` n'était exécuté
         # par aucune étape, donc les privilèges que reçoit vraiment tracefab_app

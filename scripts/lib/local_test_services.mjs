@@ -118,6 +118,23 @@ export function startClerkTestIdp(users) {
     return jwt;
   };
 
+  /** Jeton correctement signe mais EXPIRE : doit etre refuse par verifyToken. */
+  const issueExpiredToken = (userId) => {
+    const now = Math.floor(Date.now() / 1000);
+    const unsigned = `${b64({ alg: 'RS256', typ: 'JWT', kid })}.${b64({
+      sub: userId,
+      sid: `sess_test_expired_${randomUUID().slice(0, 8)}`,
+      iss: 'https://instance-test.clerk.accounts.dev',
+      iat: now - 3600,
+      exp: now - 600,
+      nbf: now - 3600,
+    })}`;
+    const signer = createSign('RSA-SHA256');
+    signer.update(unsigned);
+    jetonsInvalidesServis += 1;
+    return `${unsigned}.${signer.sign(privateKey).toString('base64url')}`;
+  };
+
   /** Jeton signe par une cle etrangere : doit etre refuse par verifyToken. */
   const issueForgedToken = (userId) => {
     const autre = generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -131,10 +148,22 @@ export function startClerkTestIdp(users) {
     return `${unsigned}.${signer.sign(autre.privateKey).toString('base64url')}`;
   };
 
+  /** Trois formes malformees : structure, base64 et algorithme. */
+  const issueMalformedTokens = () => {
+    jetonsInvalidesServis += 3;
+    return [
+      'not-a-jwt',
+      'aaa.bbb.ccc',
+      `${b64({ alg: 'none', typ: 'JWT', kid })}.${b64({ sub: 'user_test_malformed' })}.`,
+    ];
+  };
+
   return {
     secretKey,
     issueToken,
+    issueExpiredToken,
     issueForgedToken,
+    issueMalformedTokens,
     stats: () => ({ interceptions, jetonsEmis: jetonsEmis.length, jetonsInvalidesServis }),
     stop() { globalThis.fetch = originalFetch; },
   };

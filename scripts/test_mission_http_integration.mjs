@@ -169,6 +169,9 @@ try {
   const jetonAlpha = clerk.issueToken(identites.alpha.id);
   const jetonBeta = clerk.issueToken(identites.beta.id);
   const jetonForge = clerk.issueForgedToken(identites.alpha.id);
+  const jetonExpire = clerk.issueExpiredToken(identites.alpha.id);
+  const jetonsMalformes = clerk.issueMalformedTokens();
+  const { isRejectedTokenVerification } = await import('../api/_lib/auth.ts');
 
   /** Vraie requete HTTP contre le vrai routeur. */
   const appeler = async (method, path, options = {}) => {
@@ -386,6 +389,45 @@ try {
   const forge = await appeler('GET', `/api/products/${produit}`, { token: jetonForge, org: orgAlpha });
   verifier(forge.status === 401,
     'F6 jeton RS256 signe par une cle etrangere -> 401 (verification reelle)', `observe=${forge.status}`);
+
+  const expire = await appeler('GET', `/api/products/${produit}`, { token: jetonExpire, org: orgAlpha });
+  verifier(expire.status === 401,
+    'F10 jeton correctement signe mais EXPIRE -> 401', `observe=${expire.status}`);
+
+  let malformesRefuses = 0;
+  for (const [index, jeton] of jetonsMalformes.entries()) {
+    const r = await appeler('GET', `/api/products/${produit}`, { token: jeton, org: orgAlpha });
+    if (r.status === 401) malformesRefuses += 1;
+    verifier(r.status === 401,
+      `F11.${index + 1} jeton malforme -> 401`, `observe=${r.status} corps=${r.text.slice(0, 90)}`);
+  }
+  verifier(malformesRefuses === 3,
+    'F11 les trois formes malformees (structure, base64, algorithme) sont rejetees');
+
+  // Le jeton valide reste accepte APRES tous ces refus : le durcissement ne
+  // transforme pas l'authentification en refus permanent.
+  const encoreValide = await alpha('GET', `/api/products/${produit}`);
+  verifier(encoreValide.status === 200 && encoreValide.body?.product?.id === produit,
+    'F12 le jeton valide est toujours accepte apres les refus (pas de fail-closed global)');
+
+  // Une panne d'infrastructure (JWKS injoignable, cle serveur invalide) ne
+  // doit PAS etre deguisee en 401 : elle doit rester une erreur serveur.
+  const RAISONS_JETON = [
+    'token-expired', 'token-invalid', 'token-invalid-algorithm',
+    'token-invalid-authorized-parties', 'token-invalid-signature',
+    'token-not-active-yet', 'token-iat-in-the-future',
+    'token-verification-failed', 'jwk-kid-mismatch',
+  ];
+  const RAISONS_SERVEUR = [
+    'secret-key-invalid', 'jwk-local-missing', 'jwk-remote-failed-to-load',
+    'jwk-remote-invalid', 'jwk-remote-missing', 'jwk-failed-to-resolve',
+  ];
+  verifier(RAISONS_JETON.every((r) => isRejectedTokenVerification({ reason: r })),
+    'F13 les 9 raisons liees au jeton sont classifiees 401');
+  verifier(RAISONS_SERVEUR.every((r) => !isRejectedTokenVerification({ reason: r })),
+    'F14 les 6 raisons d exploitation restent des erreurs serveur (jamais 401)');
+  verifier(!isRejectedTokenVerification(new Error('unexpected')) && !isRejectedTokenVerification(null),
+    'F15 une exception inattendue ou une valeur nulle n est pas masquee en 401');
 
   // Fichier contenant la signature de test EICAR : l'antivirus doit le
   // declarer infecte et le document doit basculer en « rejected ».
