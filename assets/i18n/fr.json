@@ -1844,7 +1844,9 @@
     "archivedProductsTitle": "Produits archivés",
     "archivedProductsLead": "Retrouvez ici les produits archivés. Vous pouvez les restaurer dans le catalogue actif sans perdre leur historique.",
     "archivedProductsDate": "Dernière modification",
-    "archivedProductsRestore": "Restaurer dans le catalogue",
+    "archivedProductsRestore": "Restaurer dans le catalogue",,
+    "archivedProductsReuse": "Réutiliser comme modèle",
+    "archivedProductsReuseHint": "Cette action crée un nouveau brouillon à partir du nom et de la catégorie du produit archivé. Saisissez une nouvelle référence ; le produit archivé et son historique restent inchangés."
     "archivedProductsRestoreConfirm": "Restaurer ce produit dans le catalogue actif ? Il redeviendra un brouillon et son historique sera conservé.",
     "archivedProductsRestoreSuccess": "Produit restauré dans le catalogue actif en tant que brouillon.",
     "archivedProductsEmptyTitle": "Aucun produit archivé",
