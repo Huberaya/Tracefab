@@ -73,7 +73,16 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       // Locataire actif obligatoire. `{ in: organizationIds }` bornait
       // l'utilisateur, pas le locataire : un administrateur de Ginger et de la
       // recette lisait et modifiait la fiche produit de l'autre tenant.
-      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
+      const body = req.method === 'PATCH'
+        ? await readJsonBody<UpdateProductBody & { status?: string }>(req)
+        : null;
+      const archiveRequested = body !== null
+        && Object.keys(body).length === 1
+        && body.status === 'archived';
+      const tenant = await requireActiveTenant(tx, req, user.id, {
+        types: ['brand'],
+        roles: archiveRequested ? ['owner', 'admin'] : undefined,
+      });
       const scoped = { id: productId, brand_organization_id: tenantFilter(tenant) };
       const current = await tx.tracefab_products.findFirst({
         where: scoped,
@@ -82,8 +91,29 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       if (!current) return null;
       if (req.method === 'GET') return current;
 
-      const body = await readJsonBody<UpdateProductBody>(req);
-      const { reference, sku, name, category, description, productFamily, colorName, sizeRange, countryOfDesign, countryOfManufacture, weightGrams, careInstructions } = validateProductPatch(body, current);
+      if (archiveRequested) {
+        if (current.status !== 'draft') throw new Error('only_draft_products_can_be_archived');
+        const previousStatus = current.status;
+        await tx.tracefab_products.update({
+          where: { id: current.id },
+          data: { status: 'archived', updated_at: new Date() },
+        });
+        await tx.audit_logs.create({ data: {
+          organization_id: tenant.organizationId,
+          action: 'product.archived',
+          entity_type: 'product',
+          entity_id: current.id,
+          before_state: { status: previousStatus },
+          after_state: { status: 'archived' },
+          metadata: { source: 'brand_console', history_retained: true },
+        } });
+        const archived = await tx.tracefab_products.findFirst({ where: scoped, select: DETAIL_SELECT });
+        if (!archived) throw new Error('product_archive_failed');
+        return archived;
+      }
+      if (body && Object.prototype.hasOwnProperty.call(body, 'status')) throw new Error('invalid_product_status_change');
+
+      const { reference, sku, name, category, description, productFamily, colorName, sizeRange, countryOfDesign, countryOfManufacture, weightGrams, careInstructions } = validateProductPatch(body ?? {}, current);
 
       const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id
@@ -119,6 +149,9 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return json(res, 409, { error: 'product_reference_already_exists' });
+    }
+    if (error instanceof Error && error.message === 'only_draft_products_can_be_archived') {
+      return json(res, 409, { error: error.message });
     }
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') {

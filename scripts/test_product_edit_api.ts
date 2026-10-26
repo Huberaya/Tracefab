@@ -15,7 +15,7 @@ const TENANT_B = '22222222-2222-4222-8222-222222222222';
 let row: any = { id, brand_organization_id: TENANT_A, reference: 'REAL-1', name: 'Produit réel',
   sku: null, category: null, description: null, product_family: null, color_name: null,
   size_range: [], country_of_design: null, country_of_manufacture: null, weight_grams: null,
-  care_instructions: {}, data_completion: 0, product_identifiers: [], product_materials: [] };
+  care_instructions: {}, data_completion: 0, status: 'draft', product_identifiers: [], product_materials: [] };
 let writes = 0;
 const handler = createProductHandler({
   requireClerkUser: async () => ({ user: { id: 'user-a', email: 'a@example.test' } }) as any,
@@ -31,7 +31,25 @@ const handler = createProductHandler({
         return { organization_id: TENANT_A, role: 'admin', organizations: { type: 'brand' } };
       },
     },
-    tracefab_products: { findFirst: async ({ where }: any) => where.id === id && where.brand_organization_id.in.includes(row.brand_organization_id) ? row : null },
+    tracefab_products: {
+      findFirst: async ({ where }: any) => where.id === id && where.brand_organization_id.in.includes(row.brand_organization_id) ? row : null,
+      update: async ({ where, data }: any) => {
+        assert.equal(where.id, id);
+        writes++;
+        Object.assign(row, data);
+        return row;
+      },
+    },
+    audit_logs: {
+      create: async ({ data }: any) => {
+        assert.equal(data.organization_id, TENANT_A);
+        assert.equal(data.action, 'product.archived');
+        assert.deepEqual(data.before_state, { status: 'draft' });
+        assert.deepEqual(data.after_state, { status: 'archived' });
+        writes++;
+        return data;
+      },
+    },
     $queryRaw: async (_strings: any, ...args: any[]) => {
       writes++;
       const keys = ['reference', 'sku', 'name', 'category', 'description', 'product_family', 'color_name', 'size_range', 'country_of_design', 'country_of_manufacture', 'weight_grams', 'care_instructions'];
@@ -116,5 +134,20 @@ assert.throws(() => validateProductPatch({ sizeRange: null } as any, row), Produ
   assert.equal(writes, before);
 }
 
-console.log('PASS product edit HTTP handler + serializer: partial edits, nulls, validation, forbidden key, tenant scope (DB mocked; RLS tested separately).');
+{
+  const invalidStatus = await request({ status: 'active' });
+  assert.equal(invalidStatus.status, 400);
+  assert.equal(invalidStatus.payload.error, 'invalid_product_status_change');
+  assert.equal(row.status, 'draft');
+}
+{
+  const archived = await request({ status: 'archived' });
+  assert.equal(archived.status, 200);
+  assert.equal(archived.payload.product.status, 'archived');
+  const secondArchive = await request({ status: 'archived' });
+  assert.equal(secondArchive.status, 409);
+  assert.equal(secondArchive.payload.error, 'only_draft_products_can_be_archived');
+}
+
+console.log('PASS product edit HTTP handler + serializer: partial edits, nulls, validation, forbidden key, tenant scope and draft archival (DB mocked; RLS tested separately).');
 console.log('PASS contexte de locataire actif : absent 400, mal forme 400, autre tenant 404, aucune ecriture dans les trois cas.');

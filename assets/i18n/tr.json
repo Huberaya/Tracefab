@@ -64,7 +64,10 @@
     "pxNoEvidenceWarning": "No evidence is attached: the value will remain declared, not documented or verified.",
     "pxAddDeclaredDataPoint": "Add declared data",
     "pxDataPointCreated": "Structured product data declared successfully.",
-    "pxDataPointsLoading": "Loading structured product data…"
+    "pxDataPointsLoading": "Loading structured product data…",
+    "pxArchiveProduct": "Archive product",
+    "pxArchiveConfirm": "Archive this draft product? It will leave the active catalogue, but its history will be retained.",
+    "pxArchiveSuccess": "Product archived. Its history remains available through the status filter."
   },
   "portal": {
     "spDemoBanner": "Demo modu — aşağıdaki veriler gösterim amaçlıdır. Clerk ve Tracefab API'lerini bağlamak için ?demo=0 adresini açın.",

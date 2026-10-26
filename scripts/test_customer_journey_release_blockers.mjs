@@ -9,6 +9,7 @@ const dppLib = read('api/_lib/dpp.ts');
 const publish = read('api/_routes/products/[productId]/dpp/publish-review.ts');
 const portfolio = read('api/_routes/dpp/portfolio.ts');
 const settingsRoute = read('api/_routes/organization-settings.ts');
+const productRoute = read('api/_routes/products/[productId].ts');
 const migration = read('prisma/migrations/20261021170000_dpp_readiness_truthful_gates/migration.sql');
 
 // Publication must fail closed on current source data, independently from an
@@ -59,5 +60,11 @@ assert.ok(consoleJs.includes("if (!suppliers().length) { notify(bt('journeySuppl
 assert.ok(consoleJs.includes("const canEdit = ['owner', 'admin'].includes"));
 assert.ok(consoleJs.includes("${canEdit ? '' : 'disabled'}"));
 assert.ok(settingsRoute.includes('invalid_dpp_identifier_format'));
+
+assert.match(productRoute, /roles:\s*archiveRequested\s*\?\s*\['owner',\s*'admin'\]/, 'Product archival must require an owner or admin role');
+assert.match(productRoute, /current\.status\s*!==\s*'draft'/, 'Only draft products may be archived');
+assert.match(productRoute, /action:\s*'product\.archived'/, 'Product archival must leave an organization-scoped audit record');
+assert.match(consoleJs, /data-action="archive-product"/, 'Draft product detail must expose an archive action');
+assert.match(consoleJs, /p\.status\s*===\s*'archived'/, 'Archived products must leave the default active catalogue');
 
 console.log('Customer-journey release blockers contract passed');
