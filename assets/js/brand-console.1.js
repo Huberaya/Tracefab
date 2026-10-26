@@ -697,7 +697,7 @@
 
       function demoAgregats() {
 
-        const pr = state.products || [], su = state.suppliers || [];
+        const pr = (state.products || []).filter((p) => p.status !== 'archived'), su = state.suppliers || [];
 
         const pct = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : 0);
 
@@ -2194,7 +2194,7 @@
         const AT = demoMode
           ? Object.assign({}, chiffresDemo().attention, {
             produitsIncomplets: (state.products || [])
-              .filter((p) => Number(p.dataCompletion) < SEUIL_COMPLETUDE).length,
+              .filter((p) => p.status !== 'archived' && Number(p.dataCompletion) < SEUIL_COMPLETUDE).length,
           })
           : productionAttention();
 
