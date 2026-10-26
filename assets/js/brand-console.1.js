@@ -262,6 +262,9 @@
         const q = normaliser(f.q).trim();
         return state.products.filter((p) => {
           if (f.category && String(p.category || '') !== f.category) return false;
+          // Les produits archives quittent le catalogue actif, mais restent
+          // consultables en choisissant explicitement le statut « Archive ».
+          if (!f.status && p.status === 'archived') return false;
           if (f.status && String(p.status || '') !== f.status) return false;
           if (f.readiness && String(p.dataReadiness || 'in_progress') !== f.readiness) return false;
           if (f.incomplets && !(Number(p.dataCompletion) < SEUIL_COMPLETUDE)) return false;
@@ -2512,6 +2515,7 @@
             <button class="btn btn-secondary" ${dppIdentifier ? `data-tf-act="open" data-tf-arg="/dpp/?gtin=${encodeURIComponent(dppIdentifier)}"` : `disabled title="${esc(bt('journeyResolvableIdRequired'))}"`}>📋 ${bt('journeyPreviewDpp')}</button>
               <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/product-intelligence/">${bt('pxOpenIntel')}</button>
             <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${bt('pxNewEvidenceReq')}</button>
+            ${p.status === 'draft' ? `<button class="btn btn-secondary" data-action="archive-product" data-product-id="${esc(p.id)}">${bt('pxArchiveProduct')}</button>` : ''}
           </div>
         </div>
 
@@ -4133,6 +4137,25 @@
           errorBox.textContent = err.message;
         }
       }
+      async function archiveProduct() {
+        const product = state.selectedProductDetail?.product;
+        if (!product || product.status !== 'draft') return;
+        if (!window.confirm(bt('pxArchiveConfirm'))) return;
+        if (state.demo) {
+          product.status = 'archived';
+        } else {
+          await api(`/api/products/${encodeURIComponent(product.id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'archived' }),
+          });
+          state.selectedProduct = null;
+          state.selectedProductDetail = null;
+          await sync();
+        }
+        state.view = 'products';
+        notify(bt('pxArchiveSuccess'));
+        render();
+      }
       async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify(bt('cnNRevisionDemo')); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify(bt('cnNRevisionCreated')); render(); }
       async function saveSchemaBinding(form) {
         if (!state.selectedProductDetail?.product) return;
@@ -4972,6 +4995,7 @@
             if (action === 'new-chain-node') { state.modal = 'new-chain-node'; render(); }
             if (action === 'new-chain-link') { state.modal = 'new-chain-link'; render(); }
             if (action === 'product-revision') await reviseProduct();
+            if (action === 'archive-product') await archiveProduct();
             if (action === 'product-quality-from-detail') { state.selectedProduct = state.selectedProductDetail?.product; await loadQuality(state.selectedProduct?.id); }
             if (action === 'product-supply-chain-from-detail') { await loadSupplyChain(state.selectedProductDetail?.product?.id); }
             if (action === 'product-dpp-from-detail') { await loadDpp(state.selectedProductDetail?.product?.id); }

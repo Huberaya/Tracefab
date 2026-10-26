@@ -1835,7 +1835,10 @@
     "journeyPartialCoverage": "Partial coverage",
     "journeyInternalReadiness": "Internal readiness",
     "journeyNoSupplierConnected": "No supplier connected",
-    "journeyConnectSupplierBeforeCollection": "Connect a supplier before any collection"
+    "journeyConnectSupplierBeforeCollection": "Connect a supplier before any collection",
+    "pxArchiveProduct": "Archive product",
+    "pxArchiveConfirm": "Archive this draft product? It will leave the active catalogue, but its history will be retained.",
+    "pxArchiveSuccess": "Product archived. Its history remains available through the status filter."
   },
   "portal": {
     "sites": "Produktionsstätten",

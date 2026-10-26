@@ -1835,7 +1835,10 @@
     "journeyPartialCoverage": "Couverture partielle",
     "journeyInternalReadiness": "Préparation interne",
     "journeyNoSupplierConnected": "Aucun fournisseur connecté",
-    "journeyConnectSupplierBeforeCollection": "Connectez un fournisseur avant toute collecte"
+    "journeyConnectSupplierBeforeCollection": "Connectez un fournisseur avant toute collecte",
+    "pxArchiveProduct": "Archiver le produit",
+    "pxArchiveConfirm": "Archiver ce produit brouillon ? Il quittera le catalogue actif, mais son historique sera conservé.",
+    "pxArchiveSuccess": "Produit archivé. Son historique reste consultable via le filtre de statut."
   },
   "portal": {
     "sites": "Sites de production",
