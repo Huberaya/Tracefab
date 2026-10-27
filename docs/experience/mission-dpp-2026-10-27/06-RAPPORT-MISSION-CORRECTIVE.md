@@ -34,7 +34,10 @@ déploiement.
 | 15 | Mission de clôture — migration sur la branche Neon | **BLOQUÉE** — JUSTIFICATION FOURNIE | aucune chaîne de connexion fournie (gabarit dans la consigne, rien dans l'environnement) ; API Neon injoignable. Voir §11 |
 | 16 | Mission de clôture — outillage prêt à exécuter | **TERMINÉE ET VÉRIFIÉE** (local) | `verifier_identite_branche.mjs` (codes 0/3/5 éprouvés), `simuler_recalcul_dpp.mjs` réécrit (tableau + classement), `--dry-run` sur le harnais §9 |
 | 17 | Mission de clôture — procédure opérationnelle | **TERMINÉE ET VÉRIFIÉE** | `07-PROCEDURE-VALIDATION-NEON.md` : étapes bloquantes, valeurs attendues, conditions d'arrêt, modèle de rapport |
-| 18 | Vérifier qu'aucune route publique ne sert un passeport suspendu | **PARTIELLEMENT PROUVÉE** | Preuve en base (CAS 4, 6) ; côté API, **lecture de code** : le résolveur public exige `public_slug` + `published` + `reviewed_at`. Aucun test HTTP exécuté |
+| 18 | Mission de clôture (3ᵉ passe, `br-sweet-king-b1n2f4u6`) | **BLOQUÉE** — JUSTIFICATION FOURNIE | ni `DATABASE_URL`, ni accès réseau : `api.neon.tech` et le Preview Vercel répondent `000`. Voir §11.4 |
+| 19 | Parcours DPP sous le rôle applicatif réel, sous RLS | **TERMINÉE ET VÉRIFIÉE** (local) | `test:dpp:role-applicatif` : lecture bornée, isolation par non-appartenance, écriture directe refusée, calcul/revue accessibles, aucune trace après `ROLLBACK` |
+| 20 | Privilèges et RLS du rôle applicatif | **TERMINÉE ET VÉRIFIÉE** (local) | section dédiée de `verifier_identite_branche.mjs` : SELECT seul sur les tables DPP, `PUBLIC` sans `EXECUTE` |
+| 21 | Vérifier qu'aucune route publique ne sert un passeport suspendu | **PARTIELLEMENT PROUVÉE** | Preuve en base (CAS 4, 6) ; côté API, **lecture de code** : le résolveur public exige `public_slug` + `published` + `reviewed_at`. Aucun test HTTP exécuté |
 
 ---
 
@@ -332,4 +335,58 @@ classée « correction attendue ») et restaure la base à l'identique.
 | Volet HTTP de la visibilité publique | aucune API déployée dans cet environnement, client Prisma hors ligne sans moteur | trois appels `curl` documentés au §2.7 |
 | Recalcul des produits réels | interdit tant que la simulation n'est pas lue et approuvée | décision explicite après le tableau de la simulation |
 | Cas 9 (état initial à 58) | ne se rejoue pas après migration sur la même branche | à exécuter avant `db:deploy`, ou sur une branche restée à 58 |
+### 11.4 Troisième passe — branche `br-sweet-king-b1n2f4u6`
+
+**Toujours bloquée au même endroit, pour la même raison.** La consigne nomme une
+branche précise (`br-sweet-king-b1n2f4u6`, projet `autumn-breeze-47342493`,
+base `neondb`) mais ne fournit aucune chaîne de connexion, et l'environnement
+n'en contient aucune (`env` : ni `DATABASE_URL`, ni `PG*`, ni variable Neon).
+
+| Sonde | Résultat |
+|---|---|
+| `https://api.neon.tech` | `000` (injoignable) |
+| `https://tracefab-i33lw8714-…vercel.app` (Preview du SHA `a23da42`) | `000` (injoignable) |
+
+Les deux portes sont fermées par le réseau de cet environnement, pas par une
+authentification. Aucune migration, aucun recalcul, aucune publication n'a donc
+été tenté — et le volet HTTP de la visibilité publique reste **non prouvé**.
+
+### 11.5 Ce qui a été corrigé et ajouté dans cette passe
+
+Trois défauts ont été trouvés **dans mes propres outils**, en les exécutant
+contre un PostgreSQL 18.4 local — pas en les relisant.
+
+| Défaut reproduit | Conséquence si livré tel quel | Correction | Preuve |
+|---|---|---|---|
+| Le banc d'essai sous rôle applicatif appelait le recalcul **hors transaction** | il aurait modifié un dossier réel du parc, exactement ce que la mission interdit | tout est enveloppé dans `BEGIN` … `ROLLBACK`, avec vérification que statut, revue et slug sont identiques après coup | « les appels simulés n'ont laissé aucune trace » : ok |
+| Le contrôle négatif d'isolation armait un autre **locataire** | faux positif : un membre légitime voit ses organisations, c'est voulu | le contrôle emploie un **autre utilisateur, non membre** | « un utilisateur non membre ne voit pas le dossier » : ok (0 ligne) |
+| Le banc cherchait tout seul un dossier à éprouver | impossible : `users` n'est pas lisible par `tracefab_app` et la RLS masque le reste | le produit, l'organisation et l'acteur sont **exigés** en paramètres, comme l'API les reçoit du jeton | exécution avec les trois identifiants : ok |
+
+Ajouts vérifiés :
+
+- `scripts/verifier_identite_branche.mjs` — nouvelle section **rôle applicatif,
+  privilèges et RLS** : `tracefab_app` sans `SUPERUSER` ni `BYPASSRLS`, RLS
+  active sur les quatre tables DPP, **SELECT seul** sur `dpp_records` et
+  `dpp_lifecycle_events` (aucune écriture directe), `PUBLIC` sans `EXECUTE` sur
+  les cinq fonctions DPP. Mesuré sur `tf59` : tout conforme ;
+  `tracefab_dpp_requirement_met` n'est pas exécutable par le rôle applicatif,
+  ce qui correspond au quatrième contrôle du §9 (`false`).
+- `scripts/test_dpp_role_applicatif.mjs` — le parcours DPP exécuté **avec le
+  rôle de l'application**, sous RLS : lecture bornée, isolation par
+  non-appartenance, refus de l'écriture directe, calcul, revue et visibilité
+  accessibles, aucune trace laissée.
+
+### 11.6 État des phases de la mission de clôture
+
+| Phase | État | Motif |
+|---|---|---|
+| A — dépôt et révision | **TERMINÉE** | SHA `a23da42`, arbre propre, migration n° 59 présente, 59 au dépôt |
+| B — identité de la branche Neon | **BLOQUÉE** | aucune chaîne de connexion ; identité non prouvable ⇒ arrêt |
+| C — `npm run db:deploy` | **BLOQUÉE** | dépend de B |
+| D — critères D1 à D6 | **NON MESURÉS SUR NEON** | prouvés en local et en CI seulement |
+| E — scénarios | **PARTIELLE** | 9 cas exécutés en local et en CI ; pas sur Neon ; cas 9 (état à 58) rejoué sur `tf58` |
+| F — simulation du parc réel | **OUTIL PRÊT, NON EXÉCUTÉ** | aucune cible accessible |
+| G — contrôles post-migration | **BLOQUÉE** | dépend de C ; le volet HTTP reste non prouvé |
+| H — CI | **TERMINÉE** | run de la CI sur `a23da42`, 4 jobs verts |
+
 

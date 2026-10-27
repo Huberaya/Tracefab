@@ -173,6 +173,62 @@ if (attenduMigrations !== null) {
 dit(reg.terminees <= depot.length, 'le registre n\'est pas en avance sur le depot',
   `${reg.terminees} / ${depot.length} au depot`);
 
+ligne('Role applicatif, privileges et RLS');
+// Le role applicatif est provisionne hors Prisma. S'il est absent de la cible,
+// ce n'est pas un defaut du depot : la section est declaree non applicable au
+// lieu d'etre comptee comme un echec. S'il est present, ses droits se mesurent.
+const { rows: [roleApp] } = await client.query(
+  "SELECT rolsuper, rolbypassrls, rolcanlogin FROM pg_roles WHERE rolname = 'tracefab_app'");
+if (!roleApp) {
+  console.log('  tracefab_app absent de cette cible — section non applicable');
+} else {
+  console.log(`  tracefab_app : login ${roleApp.rolcanlogin ? 'oui' : 'non'}`
+    + ` · superutilisateur ${roleApp.rolsuper ? 'OUI' : 'non'}`
+    + ` · BYPASSRLS ${roleApp.rolbypassrls ? 'OUI' : 'non'}`);
+  dit(!roleApp.rolsuper && !roleApp.rolbypassrls,
+    'le role applicatif ne contourne ni les privileges ni la RLS');
+
+  const TABLES_RLS = ['dpp_records', 'dpp_lifecycle_events', 'tracefab_products', 'dpp_requirement_profiles'];
+  for (const t of TABLES_RLS) {
+    const { rows: [r] } = await client.query(
+      'SELECT relrowsecurity AS rls FROM pg_class WHERE oid = to_regclass($1)', [`public.${t}`]);
+    dit(Boolean(r && r.rls), `RLS active sur ${t}`, r ? '' : 'table absente');
+  }
+
+  // Les migrations 20261017120000 et 20261023120000 ferment l'ecriture directe
+  // du role applicatif sur les tables DPP : il ne doit garder que la lecture.
+  for (const t of ['dpp_records', 'dpp_lifecycle_events']) {
+    const { rows: [p2] } = await client.query(`
+      SELECT has_table_privilege('tracefab_app', $1, 'SELECT') AS sel,
+             has_table_privilege('tracefab_app', $1, 'INSERT') AS ins,
+             has_table_privilege('tracefab_app', $1, 'UPDATE') AS upd,
+             has_table_privilege('tracefab_app', $1, 'DELETE') AS del`,
+      [`public.${t}`]);
+    console.log(`  ${t} : SELECT ${p2.sel} · INSERT ${p2.ins} · UPDATE ${p2.upd} · DELETE ${p2.del}`);
+    dit(p2.sel === true, `lecture accordee sur ${t}`);
+    dit(p2.ins === false && p2.upd === false && p2.del === false,
+      `aucune ecriture directe du role applicatif sur ${t}`);
+  }
+
+  // PUBLIC ne doit executer aucune fonction DPP (migrations 20261014110000,
+  // 20261021120000) ; le role applicatif, si — c'est son metier.
+  const { rows: droits } = await client.query(`
+    SELECT p.proname,
+           has_function_privilege('public', p.oid, 'EXECUTE') AS public_peut,
+           has_function_privilege('tracefab_app', p.oid, 'EXECUTE') AS app_peut
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname = ANY($1::text[])
+     ORDER BY p.proname`, [['tracefab_compute_dpp_readiness', 'tracefab_mark_dpp_ready_to_publish',
+      'tracefab_set_dpp_publication', 'tracefab_dpp_requirement_met', 'tracefab_product_is_public']]);
+  for (const d of droits) {
+    console.log(`  ${d.proname} : PUBLIC ${d.public_peut} · tracefab_app ${d.app_peut}`);
+  }
+  dit(droits.every((d) => d.public_peut === false), 'PUBLIC n\'execute aucune fonction DPP',
+    droits.filter((d) => d.public_peut).map((d) => d.proname).join(', '));
+}
+
 ligne('Profil d\'exigences actif');
 const { rows: profils } = await client.query(`
   SELECT profile_version, status,

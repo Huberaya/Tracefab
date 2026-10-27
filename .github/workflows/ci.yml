@@ -248,7 +248,10 @@ jobs:
           # raison d'environnement, jamais de code.
           #   test:dpp:review-publication — ecrit un tenant de test, garde de cible
           #   test:dpp:branche            — harnais d'exploitation, cible nommee
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche').join(' '))")
+          #   test:dpp:role-applicatif    — exige un dossier reel + trois
+          #     identifiants (produit, organisation, acteur) que la RLS empeche
+          #     de decouvrir ; cible nommee, hors chaine automatique
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif').join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then

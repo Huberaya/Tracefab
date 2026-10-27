@@ -182,6 +182,7 @@
     "test:customer-journey:blockers": "node scripts/test_customer_journey_release_blockers.mjs",
     "test:dpp:migrations": "node scripts/test_dpp_migration_chain_pglite.mjs",
     "test:dpp:review-publication": "node scripts/run-db-suite.mjs scripts/test_dpp_review_and_publication.mjs",
+    "test:dpp:role-applicatif": "node scripts/test_dpp_role_applicatif.mjs",
     "simuler:recalcul-dpp": "node scripts/simuler_recalcul_dpp.mjs",
     "verifier:identite-cible": "node scripts/verifier_identite_branche.mjs",
     "db:preflight": "node scripts/preflight_etat_base.mjs",

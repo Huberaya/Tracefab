@@ -127,6 +127,10 @@ const ROLLBACK_ONLY_DB_SUITES = [
   // TOUJOURS : la suite verifie ensuite que la base est identique a l'instant
   // d'avant (compteurs et empreintes) et sort en code 4 sinon.
   'scripts/simuler_recalcul_dpp.mjs',
+  // Se connecte avec le ROLE APPLICATIF (pas en proprietaire) pour prouver que
+  // le parcours DPP passe malgre l'absence d'ecriture directe, puis annule :
+  // il verifie apres coup que statut, revue et slug sont identiques.
+  'scripts/test_dpp_role_applicatif.mjs',
 ];
 
 /**

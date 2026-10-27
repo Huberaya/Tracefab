@@ -2,9 +2,12 @@
 
 **Statut : NON EXÉCUTÉE — aucune chaîne de connexion n'a été fournie.**
 **Révision à valider :** `e52f769` · **Branche Git :** `arena/c27ddaa4-tracefab`
-**Cible annoncée :** projet `autumn-breeze-47342493`, base `neondb`,
-branche `br-late-truth-b1q7gy8j`, parent `br-broad-fog-b1rgt68c`, point de
-départ `2026-10-27T13:39:48Z`.
+**Cible annoncée (dernière consigne) :** projet `autumn-breeze-47342493`, base
+`neondb`, branche `br-sweet-king-b1n2f4u6` — état initial annoncé 56 migrations
+réussies, 0 inachevée, 2 entrées historiques annulées.
+*(Consigne antérieure : `br-late-truth-b1q7gy8j`, parent `br-broad-fog-b1rgt68c`.
+La branche à utiliser est la plus récente ; l'identité se mesure, elle ne se
+suppose pas.)*
 
 > Ce document est écrit pour être exécuté **tel quel** dès que l'URL de la
 > branche est disponible. Il ne contient aucun secret et n'en attend aucun dans
@@ -158,6 +161,28 @@ CI « Base ».
 Les cas 7 (produit sans évaluation) et 9 (état initial à 58) exigent un état
 précis : le cas 9 ne se joue **qu'avant** la migration, ou sur une seconde
 branche restée à 58. Il ne peut pas être rejoué après coup sur la même branche.
+
+### 2.5 bis Banc d'essai sous le rôle applicatif réel (RLS)
+
+Les autres suites se connectent en propriétaire : elles prouvent le
+comportement des fonctions, pas l'accès réel de l'application. Ce banc-ci
+emploie `tracefab_app`, sans `BYPASSRLS` et sans écriture directe.
+
+```bash
+TF_RLS_APP_URL='…' TF_PRODUIT_TEST='<uuid>' TF_ORG_TEST='<uuid>' \
+TF_ACTEUR_TEST='<uuid>' [TF_AUTRE_ACTEUR_TEST='<uuid>'] \
+  npm run test:dpp:role-applicatif
+```
+
+Il vérifie : le rôle effectif, la lecture bornée au locataire, l'isolation
+vis-à-vis d'un **utilisateur non membre** (armer un autre locataire ne suffit
+pas : les politiques s'appuient sur l'appartenance, pas sur le locataire actif),
+le refus de l'écriture directe, l'accès aux fonctions de calcul, de revue et de
+visibilité, et — après `ROLLBACK` — qu'aucune trace ne subsiste.
+
+Les trois identifiants sont exigés parce que le rôle applicatif ne peut pas les
+découvrir : `users` ne lui est pas lisible et la RLS masque le reste. C'est le
+comportement voulu.
 
 ### 2.6 Simulation du parc réel (phase F)
 
