@@ -17,10 +17,24 @@
  *
  * GARANTIES
  *
- * - Aucune instruction d'écriture : le script n'exécute que des SELECT (et
- *   refuse son propre code s'il détecte autre chose — voir `lireSeulement`).
+ * - **Session en lecture seule imposée par le serveur** :
+ *   `SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY`. Même si une
+ *   instruction d'écriture se glissait dans le script, PostgreSQL la
+ *   refuserait. Ce n'est pas une convention, c'est un refus du moteur.
+ * - Aucune instruction d'écriture dans le code : seuls SELECT/WITH/SHOW
+ *   passent la garde `lireSeulement`.
+ * - `statement_timeout` et `lock_timeout` courts : une inspection ne doit pas
+ *   peser sur une base en service.
  * - Le mot de passe n'est jamais affiché : seule l'identité de la cible l'est.
  * - Un échec de connexion est rapporté tel quel, sans tentative de repli.
+ *
+ * LIMITE IMPORTANTE — LA RLS
+ *
+ * Sur une base protégée par RLS, un rôle d'audit ne voit que les lignes que les
+ * politiques autorisent : souvent aucune. Les compteurs de données sont donc
+ * potentiellement partiels, et le script le DIT au lieu d'afficher des zéros
+ * trompeurs. Les lectures de catalogue (définition de fonction, registre des
+ * migrations) restent fiables.
  *
  * CE QU'IL NE FAIT PAS
  *
@@ -73,6 +87,19 @@ const ligne = (titre) => console.log(`\n${titre}\n${'-'.repeat(titre.length)}`);
 
 await client.connect();
 
+// Refus serveur de toute écriture, avant la premiere lecture. Ces instructions
+// sont statiques et ne dependent d'aucune donnee : elles ne passent pas par la
+// garde `lireSeulement`, qui protege les requetes construites.
+await client.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY');
+await client.query("SET statement_timeout = '15s'");
+await client.query("SET lock_timeout = '2s'");
+const { rows: [garde] } = await client.query('SHOW transaction_read_only');
+if (garde.transaction_read_only !== 'on') {
+  console.error('REFUS — la session n a pas pu etre placee en lecture seule. Arret avant toute lecture.');
+  await client.end().catch(() => {});
+  process.exit(3);
+}
+
 let sortie = 0;
 try {
   const { rows: [identite] } = await q(`
@@ -84,8 +111,22 @@ try {
   ligne(`Cible ${cible}`);
   console.log(`base ${identite.base} · rôle ${identite.role} · PostgreSQL ${identite.version}`);
   console.log(`superutilisateur : ${identite.superutilisateur} · contourne RLS : ${identite.contourne_rls}`);
-  if (identite.superutilisateur) {
-    console.log('AVERTISSEMENT — ce rôle est superutilisateur : les contrôles RLS ne prouveront rien ici.');
+  console.log('session en lecture seule : imposée par le serveur (transaction_read_only = on)');
+
+  const { rows: [rls] } = await q(`
+    SELECT
+      (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relrowsecurity
+          AND c.relname IN ('tracefab_products','data_quality_scores','data_quality_issues','dpp_records')) AS tables_sous_rls
+  `);
+  // Le role voit-il toutes les lignes ?
+  const voitTout = identite.superutilisateur || identite.contourne_rls;
+  if (!voitTout && Number(rls.tables_sous_rls) > 0) {
+    console.log('');
+    console.log(`RLS ACTIVE sur ${rls.tables_sous_rls}/4 table(s) interrogée(s), et ce rôle n'a ni SUPERUSER`);
+    console.log('ni BYPASSRLS : les COMPTEURS de données ci-dessous ne montrent que les lignes');
+    console.log('visibles par ce rôle (souvent zéro). Ils ne valent pas mesure globale.');
+    console.log('Les lectures de catalogue (fonction, registre, profil) restent exactes.');
   }
 
   /* -- 1. Le registre des migrations -------------------------------------- */
@@ -165,6 +206,8 @@ try {
         WHERE r.readiness_status::text IN ('ready_to_publish','published')
           AND NOT EXISTS (SELECT 1 FROM data_quality_scores s WHERE s.product_id = r.product_id)) AS dossiers_publies_sans_evaluation
   `);
+  const partiel = !voitTout && Number(rls.tables_sous_rls) > 0 ? ' (vue partielle — RLS) ' : '';
+  if (partiel) console.log(`Compteurs${partiel}: à lire comme un minorant, pas comme une mesure.`);
   console.log(`produits : ${impact.produits} · sans evaluation qualite : ${impact.sans_evaluation}`);
   console.log(`évaluations persistées : ${impact.evaluations} · anomalies ouvertes : ${impact.anomalies_ouvertes}`);
   console.log(`produits « data_ready » sans évaluation : ${impact.data_ready_sans_evaluation}`);
