@@ -90,8 +90,11 @@ try {
   // sans lui, le calcul ouvre une anomalie bloquante et la revue reste fermee.
   await admin.query(`INSERT INTO product_identifiers(id,product_id,identifier_type,identifier_value,is_primary)
     VALUES($1,$2,'internal','DPP-LIVE-001',true)`,[randomUUID(),U.product]);
-  await context(U.userA,emailA,()=>app.query(
-    `SELECT tracefab_refresh_product_data_readiness($1)`,[U.product]));
+  // Recalcul de completude en ADMIN : l'EXECUTE est retire au role runtime
+  // (migration 20261021120000), ce qui est voulu — c'est un recalcul de
+  // fixture, pas une action de l'utilisateur. La qualite, elle, est calculee
+  // avec le role applicatif : c'est ce que fait la console.
+  await admin.query(`SELECT tracefab_refresh_product_data_readiness($1)`,[U.product]);
   await context(U.userA,emailA,()=>app.query(
     `SELECT tracefab_compute_product_quality($1)`,[U.product]));
 
