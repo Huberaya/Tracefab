@@ -30,15 +30,28 @@ Colonne **Criticité** :
 
 | Variable | Criticité | Rôle | Conséquence si absente |
 |---|---|---|---|
-| `PRIVATE_STORAGE_ENDPOINT` | fonctionnelle | Hôte S3 compatible | Aucun dépôt ni téléchargement de document |
+| `PRIVATE_STORAGE_BACKEND` | réglage | `s3` par défaut ; `preview-postgres` uniquement pour la branche Preview de test décrite ci-dessous | Une valeur inconnue est refusée |
+| `PRIVATE_STORAGE_ENDPOINT` | fonctionnelle | Hôte S3 compatible | Aucun dépôt ni téléchargement de document avec S3 |
 | `PRIVATE_STORAGE_BUCKET` | fonctionnelle | Nom du bucket | Idem |
 | `PRIVATE_STORAGE_REGION` | fonctionnelle | Région, entre dans la signature SigV4 | Signature refusée |
 | `PRIVATE_STORAGE_ACCESS_KEY_ID` | fonctionnelle | Identifiant d'accès | Signature refusée |
 | `PRIVATE_STORAGE_SECRET_ACCESS_KEY` | fonctionnelle | Clé secrète | Signature refusée |
-| `PRIVATE_STORAGE_ANTIVIRUS_URL` | fonctionnelle | Analyseur antivirus des pièces jointes | **Les dépôts sont refusés** : aucun fichier n'entre sans analyse |
-| `PRIVATE_STORAGE_ANTIVIRUS_TOKEN` | fonctionnelle | Jeton de l'analyseur | Idem |
-| `PRIVATE_STORAGE_PRESIGN_SECONDS` | réglage | Durée de vie des URL signées, 60 à 3 600 s | Défaut appliqué |
+| `PRIVATE_STORAGE_ANTIVIRUS_URL` | fonctionnelle | Analyseur HTTPS authentifié des pièces jointes | Le scan échoue fermé ; un objet déposé reste indisponible sans verdict fiable |
+| `PRIVATE_STORAGE_ANTIVIRUS_TOKEN` | fonctionnelle | Jeton de l'analyseur, côté serveur uniquement | Idem |
+| `PRIVATE_STORAGE_PRESIGN_SECONDS` | réglage | Durée de vie des autorisations : 60 à 3 600 s avec S3, 60 à 600 s pour l'adaptateur Preview | Défaut de 600 s |
 | `ORGANIZATION_STORAGE_QUOTA_BYTES` | réglage | Quota de stockage par organisation | Défaut appliqué |
+
+### Adaptateur PostgreSQL strictement Preview — PR #101
+
+Ces paramètres ne doivent **jamais** être définis en production. Ils ne créent
+ni ne prouvent l'isolation d'une base : voir le [runbook de test](../architecture/23-private-evidence-storage.md#adaptateur-postgresql-réservé-à-la-preview-de-test).
+
+| Variable | Portée | Rôle / absence |
+|---|---|---|
+| `TF_PREVIEW_STORAGE_TEST_ONLY` | Preview de la branche autorisée uniquement | `1` active l'opt-in de test ; absent, l'adaptateur refuse toute opération |
+| `TF_PREVIEW_STORAGE_DB_FINGERPRINT` | Preview de la branche autorisée uniquement | Empreinte approuvée du triplet hôte/port/base, sans identifiant ; absence ou divergence = refus |
+| `TF_PREVIEW_STORAGE_LOCAL_TEST` | Tests locaux jetables seulement | Autorise les fixtures locales uniquement avec `NODE_ENV=test`, hors Vercel ; jamais à configurer dans Vercel |
+| `TF_PREVIEW_STORAGE_LOCAL_ORIGIN` | Tests locaux jetables seulement | Origine de loopback de la fixture HTTP ; jamais à configurer dans Vercel |
 
 ## Courrier électronique
 
@@ -104,7 +117,9 @@ La valeur est validée comme URL HTTPS. Le header HTTP `Host` n’est jamais uti
 | Variable | Criticité | Rôle |
 |---|---|---|
 | `NODE_ENV` | plateforme | Durcit plusieurs contrôles quand sa valeur est `production` |
-| `VERCEL_ENV` | plateforme | Environnement, repris dans chaque remontée d'erreur |
+| `VERCEL` | plateforme | Identifie un déploiement Vercel et interdit les exceptions réservées aux fixtures locales |
+| `VERCEL_ENV` | plateforme | Environnement, repris dans les erreurs ; l'adaptateur de test exige `preview` |
+| `VERCEL_GIT_COMMIT_REF` | plateforme | Branche déployée ; l'adaptateur de test refuse toute autre branche |
 | `VERCEL_GIT_COMMIT_SHA` | plateforme | Version déployée, reprise dans chaque remontée d'erreur |
 
 ---

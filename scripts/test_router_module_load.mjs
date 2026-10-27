@@ -40,6 +40,25 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+/**
+ * Environnement hors ligne : le client WASM exige un adaptateur de pilote
+ * des la premiere requete, alors que les routes construisent le client au
+ * chargement du module. Sans injection, une rejection non geree survient
+ * APRES la fin des assertions et fait tomber le processus : les 136 modules
+ * ont bien ete charges, mais le test sort en echec pour rien.
+ *
+ * Ce point d'injection est celui que api/_lib/prisma.ts expose deja
+ * (globalThis.tracefabPrisma) et que scripts/lib/test_prisma_client.mjs
+ * documente. Il fournit un VRAI client Prisma (aucune doublure), connecte a
+ * une base jetable locale quand TF_OFFLINE_PRISMA_PRELOAD=1 le demande
+ * explicitement. Aucune assertion, aucun controle de securite et aucun
+ * gestionnaire de route ne sont modifies.
+ */
+if (process.env.TF_OFFLINE_PRISMA_PRELOAD === '1' && process.env.DATABASE_URL) {
+  const { createTestPrisma, injectPrismaSingleton } = await import('./lib/test_prisma_client.mjs');
+  injectPrismaSingleton(await createTestPrisma(process.env.DATABASE_URL));
+}
+
 let echecs = 0;
 const ok = (m) => console.log(`  ok    ${m}`);
 const ko = (m) => { echecs += 1; console.log(`  ECHEC ${m}`); };

@@ -103,6 +103,11 @@ const UNWIRED_DESTRUCTIVE_REGISTER = [
   'scripts/test_neon_plm_erp_gs1.mjs',
   'scripts/test_neon_quality_cap.mjs',
   'scripts/test_neon_universal_passport.mjs',
+  // Harnais HTTP de bout en bout : ecrit sa fixture dans une base jetable,
+  // mais exige TF_HTTP_INTEGRATION_HARNESS=1, NODE_ENV=test et des services
+  // de test locaux. Il ne doit jamais etre atteignable depuis npm test,
+  // npm run build ni la CI : il reste une preuve MANUELLE et opt-in.
+  'scripts/test_mission_http_integration.mjs',
 ];
 
 /** Suites de base en lecture seule : pas de garde necessaire, mais declarees. */
@@ -144,6 +149,7 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
 const OPERATOR_WRITER_SCRIPTS = [
   'scripts/seed_pilot.ts',                  // amorcage d un environnement pilote
   'scripts/verifier_checksums_migrations.mjs', // realignement des checksums, sur --appliquer uniquement
+  'scripts/provision_preview_storage.ts',  // schema de test : attestation explicite + empreinte ; jamais lance par la CI
 ];
 
 /**

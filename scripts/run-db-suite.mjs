@@ -65,10 +65,23 @@ if (chargeur === 'tsx' && !existsSync(tsxBin)) {
 
 console.log(`  chargeur : ${chargeur}${chargeur === 'tsx' ? ' (la suite importe du TypeScript)' : ''}`);
 
+/**
+ * Environnement sans moteur natif : injecter un client Prisma WASM réel AVANT
+ * que la suite n'importe les modules de l'API. Opt-in explicite ; voir
+ * scripts/lib/offline-prisma-preload.mjs. Sans la variable, l'environnement
+ * enfant est strictement identique à celui du CI.
+ */
+const envEnfant = { ...process.env };
+if (process.env.TF_OFFLINE_PRISMA_PRELOAD === '1' && process.env.DATABASE_URL) {
+  const preload = new URL('./lib/offline-prisma-preload.mjs', import.meta.url).href;
+  envEnfant.NODE_OPTIONS = [envEnfant.NODE_OPTIONS || '', `--import=${preload}`].join(' ').trim();
+  console.log('  prechargement : client Prisma WASM + adaptateur pg (mode hors ligne)');
+}
+
 const child = spawn(
   chargeur === 'tsx' ? tsxBin : process.execPath,
   [absolute, ...rest],
-  { stdio: 'inherit', cwd: ROOT, env: process.env },
+  { stdio: 'inherit', cwd: ROOT, env: envEnfant },
 );
 
 child.on('exit', (code, signal) => {

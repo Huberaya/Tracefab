@@ -11,12 +11,13 @@ console.log('[TEST 1] Testing Forensic Antivirus Scanner with Clean & Threat Fil
   // 1.1 Clean PDF Document
   const cleanPdf = Buffer.from('%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF');
   const cleanResult = analyzeDocumentBytes(cleanPdf, 'gots-cert.pdf', 'application/pdf');
-  assert.equal(cleanResult.clean, true, 'Clean PDF must be marked clean');
-  assert.equal(cleanResult.status, 'clean');
+  assert.equal(cleanResult.clean, false, 'A heuristic without an antivirus must not certify a file clean');
+  assert.equal(cleanResult.status, 'error');
+  assert.match(cleanResult.engine, /not an antivirus/);
   assert.equal(cleanResult.details.fileHeaderValid, true);
   assert.equal(cleanResult.details.eicarDetected, false);
   assert.equal(cleanResult.details.embeddedScriptsFound, false);
-  console.log('✓ Clean PDF document verified and passed');
+  console.log('✓ Benign fixture remains unverified without an antivirus verdict');
 
   // 1.2 EICAR AntiVirus Test Signature
   const eicarFile = Buffer.from('X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*');

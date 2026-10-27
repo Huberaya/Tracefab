@@ -120,6 +120,7 @@ const nonClerkRouteExceptions = new Map([
   ['api/_routes/pef/factors.ts', 'public-reference'],
   ['api/_routes/green-claims/rules.ts', 'public-reference'],
   ['api/_routes/passport/[tokenOrSlug]/request-access.ts', 'security-definer-entrypoint'],
+  ['api/_routes/preview-storage/object.ts', 'preview-signed-capability'],
 ]);
 
 const helperSources = {
@@ -127,6 +128,7 @@ const helperSources = {
   reminders: readFileSync(join(ROOT, 'api/_lib/notification-reminders.ts'), 'utf8'),
   passport: readFileSync(join(ROOT, 'api/_lib/supplier-passport/passport-manager.ts'), 'utf8'),
   readiness: readFileSync(join(ROOT, 'api/_lib/readiness-probes.ts'), 'utf8'),
+  previewStore: readFileSync(join(ROOT, 'api/_lib/preview-postgres-store.ts'), 'utf8'),
 };
 
 let unauthenticatedRoutes = 0;
@@ -191,6 +193,22 @@ for (const route of routePaths) {
       valid = /requestPassportAccess\s*\(/.test(source)
         && /tracefab_request_passport_access\s*\(/.test(helperSources.passport);
       break;
+    case 'preview-signed-capability': {
+      // Ni route publique, ni exemption Clerk generale : une capacite signee
+      // PUT/GET est obligatoire avant tout transfert, et le stockage arme sa
+      // propre transaction RLS apres verification du role SQL. Les refus sont
+      // egalement exerces contre le vrai routeur et PostgreSQL par la suite CI.
+      const validation = source.indexOf('verifyPreviewCapability(req.headers');
+      const ecriture = source.indexOf('putPreviewObject(capability.key');
+      const lecture = source.indexOf('readPreviewObject(capability.key');
+      valid = !dbAccess && /assertPreviewStorageConfig\s*\(/.test(source)
+        && validation >= 0 && ecriture > validation && lecture > validation
+        && /if\s*\(!capability\)/.test(source)
+        && /assertPreviewTransactionRole\(tx\)/.test(helperSources.previewStore)
+        && /\$transaction\s*\(/.test(helperSources.previewStore)
+        && /set_config\('tracefab\.preview_storage_key'/.test(helperSources.previewStore);
+      break;
+    }
   }
 
   if (!valid) {

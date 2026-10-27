@@ -37,6 +37,8 @@ const ACCESS_MODELS = {
   TENANT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext'] },
   // Surface publique assumee : passeport consommateur, wallets, sante, config.
   PUBLIC: { needs: [] },
+  // Stockage de test protege par une capacite signee et les verrous Preview.
+  CAPABILITY: { needs: ['verifyPreviewCapability', 'assertPreviewStorageConfig'] },
   // Taches de fond declenchees par un worker : secret partage obligatoire.
   WORKER: { needs: ['workerAuthorized', 'cronAuthorized'] },
   // Webhook externe : la signature de l'emetteur fait foi.
@@ -60,6 +62,7 @@ const CLASSIFIED = {
   'resolve/[publicId]/qr': ['PUBLIC', 'QR public uniquement pour une identite rattachee a un produit publie.'],
   'products/[productId]/wallet/apple': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
   'products/[productId]/wallet/google': ['PUBLIC', 'Carte wallet adressee par identifiant produit public.'],
+  'preview-storage/object': ['CAPABILITY', 'Objet de test : capacite signee en en-tete et Preview strictement limitee.'],
   'health': ['PUBLIC', 'Sonde de disponibilite, aucune donnee metier.'],
   'config': ['PUBLIC', 'Configuration client publique (cles publiables).'],
   '__clerk': ['PUBLIC', 'Proxy Frontend API Clerk ; le secret est injecte uniquement cote serveur.'],
@@ -119,7 +122,7 @@ if (routes.length !== declaredLoads) {
 /* ------------------------------------------------------------------- audit */
 
 const failures = [];
-const stats = { TENANT: 0, PUBLIC: 0, WORKER: 0, WEBHOOK: 0, REFERENCE: 0 };
+const stats = { TENANT: 0, PUBLIC: 0, CAPABILITY: 0, WORKER: 0, WEBHOOK: 0, REFERENCE: 0 };
 const unknown = [];
 
 for (const r of routes) {
@@ -136,7 +139,7 @@ for (const r of routes) {
   const anyOf = ACCESS_MODELS[model].anyOf;
   if (needs.length) {
     const satisfied = needs.some((n) => src.includes(n));
-    const all = model === 'TENANT' ? needs.every((n) => src.includes(n)) : satisfied;
+    const all = ['TENANT', 'CAPABILITY'].includes(model) ? needs.every((n) => src.includes(n)) : satisfied;
     if (!all) {
       const missing = needs.filter((n) => !src.includes(n));
       failures.push(`${r.key} [${model}] : maillon d isolation absent -> ${missing.join(', ')}`);
@@ -255,6 +258,7 @@ console.log(`\n=== TRACEFAB — AUDIT D'ISOLATION MULTI-LOCATAIRES ===\n${line}`
 console.log(`Routes inspectees        : ${routes.length}`);
 console.log(`  dont locataire (chaine complete exigee) : ${stats.TENANT}`);
 console.log(`  dont publiques assumees                 : ${stats.PUBLIC}`);
+console.log(`  dont capacites de stockage de test      : ${stats.CAPABILITY}`);
 console.log(`  dont worker (secret partage)            : ${stats.WORKER}`);
 console.log(`  dont webhook (signature)                : ${stats.WEBHOOK}`);
 console.log(`  dont referentiel sans locataire         : ${stats.REFERENCE}`);

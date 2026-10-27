@@ -531,6 +531,15 @@ jobs:
         # d'analyse absent ne devient « sain ».
         run: npm run test:neon:document-lifecycle
 
+      - name: Mission fonctionnelle DPP — persistance, preuves, apercu prive, isolation
+        # Suite DB introduite par la mission fonctionnelle. Elle est nommee
+        # `test:neon:*` pour suivre la convention du depot : le job
+        # `verification` n'a PAS de PostgreSQL et exclut deja ces suites de
+        # son enumeration. Ici, la base jetable est montee, les migrations
+        # sont appliquees et le role tracefab_app existe : la suite tourne
+        # reellement au lieu d'etre ignoree ou transformee en faux vert.
+        run: npm run test:neon:mission-functional
+
       - name: Privilèges minimaux du rôle applicatif — provisioning réel
         # Ce contrôle couvre un trou : `bootstrap_app_role.mjs` n'était exécuté
         # par aucune étape, donc les privilèges que reçoit vraiment tracefab_app
@@ -593,6 +602,21 @@ jobs:
         # expires_at il tombe à 27/30 : raccourcir la fenêtre puis supprimer
         # suffit alors à éliminer un compteur actif en deux étapes autorisées.
         run: npm run test:neon:compteurs-debit
+
+      - name: Installer ClamAV pour la fixture EICAR locale
+        # La seule signature creee par le test est EICAR. Cette base minimale
+        # n'est PAS une protection antivirus utilisable pour des vrais fichiers.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends clamav
+
+      - name: Stockage Preview PostgreSQL — HTTP, base et moteur AV locaux
+        # Vrai routeur, PostgreSQL et ClamAV locaux ; Clerk simule. Signature
+        # EICAR seule : aucune preuve d'un scanner gere ou de la Preview.
+        # Echec ferme si le binaire ou la detection EICAR ne fonctionne pas.
+        env:
+          TF_PREVIEW_TEST_REAL_CLAMAV: '1'
+        run: npm run test:neon:preview-postgres-storage
 
       - name: Sonde d'identité du runtime — justesse de l'instrument
         # Toute la sécurité du runtime repose sur la RLS, et la RLS ne

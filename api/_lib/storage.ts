@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { previewSignedObject, usesPreviewPostgresStorage } from './preview-storage-policy.js';
 
 const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 const PRIVATE_STORAGE_BUCKET = 'tracefab-private';
@@ -94,8 +95,14 @@ function presigned(method: 'PUT' | 'GET', key: string, contentType?: string): Si
   return { url: url.toString(), headers: contentType ? { 'Content-Type': contentType } : {} };
 }
 
-export function presignedUpload(key: string, contentType: string) { return presigned('PUT', key, contentType); }
-export function presignedDownload(key: string) { return presigned('GET', key); }
+export function presignedUpload(key: string, contentType: string, byteSize?: number) {
+  return usesPreviewPostgresStorage()
+    ? previewSignedObject('PUT', key, contentType, byteSize)
+    : presigned('PUT', key, contentType);
+}
+export function presignedDownload(key: string) {
+  return usesPreviewPostgresStorage() ? previewSignedObject('GET', key) : presigned('GET', key);
+}
 
 async function signedRequest(method: 'HEAD' | 'GET', key: string) {
   const config = storageConfig();
@@ -114,6 +121,10 @@ async function signedRequest(method: 'HEAD' | 'GET', key: string) {
 }
 
 export async function headObject(key: string) {
+  if (usesPreviewPostgresStorage()) {
+    const { headPreviewObject } = await import('./preview-postgres-store.js');
+    return headPreviewObject(key);
+  }
   const response = await signedRequest('HEAD', key);
   if (!response.ok) throw new Error(response.status === 404 ? 'document_object_not_found' : 'private_storage_head_failed');
   const length = Number(response.headers.get('content-length') || 0);
@@ -121,6 +132,10 @@ export async function headObject(key: string) {
 }
 
 export async function downloadObject(key: string) {
+  if (usesPreviewPostgresStorage()) {
+    const { readPreviewObject } = await import('./preview-postgres-store.js');
+    return readPreviewObject(key);
+  }
   const response = await signedRequest('GET', key);
   if (!response.ok) throw new Error(response.status === 404 ? 'document_object_not_found' : 'private_storage_download_failed');
   return response.arrayBuffer();
@@ -130,12 +145,25 @@ export async function scanWithAntivirus(bytes: ArrayBuffer, filename: string, co
   const scannerUrl = process.env.PRIVATE_STORAGE_ANTIVIRUS_URL?.trim();
   const scannerToken = process.env.PRIVATE_STORAGE_ANTIVIRUS_TOKEN?.trim();
   if (!scannerUrl || !scannerToken) throw new Error('private_storage_antivirus_not_configured');
-  const response = await fetch(scannerUrl, {
+  let target: URL;
+  try { target = new URL(scannerUrl); } catch { throw new Error('private_storage_antivirus_url_invalid'); }
+  const localFixture = process.env.NODE_ENV === 'test' && !process.env.VERCEL
+    && target.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(target.hostname);
+  if ((!localFixture && target.protocol !== 'https:') || target.username || target.password || target.hash) {
+    throw new Error('private_storage_antivirus_url_invalid');
+  }
+  const response = await fetch(target, {
     method: 'POST',
     headers: { Authorization: `Bearer ${scannerToken}`, 'Content-Type': contentType, 'X-Tracefab-Filename': filename, 'X-Tracefab-Scan-Protocol': 'tracefab-v1' },
     body: Buffer.from(bytes) as unknown as BodyInit,
+    redirect: 'error',
+    signal: AbortSignal.timeout(15000),
   });
-  const payload = await response.json().catch(() => null) as { clean?: unknown; mimeType?: unknown } | null;
+  const payload = await response.json().catch(() => null) as { clean?: unknown; mimeType?: unknown; threat?: unknown } | null;
   if (!response.ok || !payload || typeof payload.clean !== 'boolean') throw new Error('private_storage_antivirus_invalid_response');
-  return { clean: payload.clean, mimeType: typeof payload.mimeType === 'string' ? payload.mimeType : null };
+  return {
+    clean: payload.clean,
+    mimeType: typeof payload.mimeType === 'string' ? payload.mimeType : null,
+    threat: typeof payload.threat === 'string' ? payload.threat.slice(0, 120) : undefined,
+  };
 }
