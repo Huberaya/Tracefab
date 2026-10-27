@@ -460,3 +460,42 @@ de production non), les extensions disponibles diffèrent, et
 | L3 — nœud matière/organisation refusé | **levé** : une seule référence envoyée par nœud |
 | L4 — preuve documentaire non rattachable | **levé** : registre, dépôt, scan obligatoire, sélection dans les formulaires ; limite assumée sur les liens de chaîne |
 | L5 — dossier « prêt » sans contrôle qualité | **levé** : la barrière exige une évaluation persistée, prouvé avant/après en exécution SQL |
+
+
+---
+
+## 9. Constat sur la base de production (27/10, après publication de ce journal)
+
+Trois requêtes en lecture seule, exécutées par le propriétaire dans l'éditeur
+SQL de Neon, ont établi un fait qui **dépasse le périmètre de cette branche** :
+
+- la production compte **56** migrations appliquées, le dépôt **58** ;
+- `20261021170000_dpp_readiness_truthful_gates` n'est **pas** appliquée — et
+  c'est elle qui installe le profil à **13 exigences** ;
+- le profil actif porte **9 exigences**, exactement l'état d'origine.
+
+Mesuré en exécution avec le code réellement déployé (`buildDppSummary`,
+révision `bf55f2a`) sur un dossier parfait : **54 %, statut `in_progress`,
+bouton « prêt à publier » jamais affiché**. Six exigences attendues par l'API ne
+sont calculées par aucune migration en place.
+
+**Conséquence** : en production, aucun dossier DPP ne peut atteindre « prêt à
+publier », quel que soit le travail accompli. La phase C ne peut donc pas
+aboutir là-bas — et ce n'est ni un défaut d'écran, ni un manque de données, mais
+un écart entre la base et le code.
+
+**Bonne nouvelle** : `0` dossier publié et `0` produit marqué prêt sans
+évaluation. Aucune donnée de production n'a été contaminée par le défaut.
+
+Détail complet, ordre impératif des migrations et procédure de vérification :
+`04-ECART-PRODUCTION-CONSTATE.md`.
+
+### 9.1 Une erreur de méthode, consignée
+
+La sonde publiée dans ce journal pour distinguer l'ancienne règle de la nouvelle
+(`position('data_quality_scores' IN prosrc)`) **ne distingue rien** : ce mot
+figure aussi dans la version d'origine, pour `quality.no_blocking_issues`. Elle
+répond `true` dans les deux états. Reproduit puis remplacé par l'extraction de la
+liste réelle des exigences. Une sonde qui ne sépare pas les états qu'elle
+prétend séparer produit une certitude fausse : c'est plus grave qu'une absence
+de mesure.
