@@ -31,7 +31,10 @@ déploiement.
 | 12 | Correction A3 — idempotence complète | **TERMINÉE ET VÉRIFIÉE** | Deux passages : statut, score, empreinte, revue, slug, visibilité, événements, audits identiques |
 | 13 | C — simulation lecture seule sur parc réel | **TERMINÉE ET VÉRIFIÉE** (mécanisme), **NON EXÉCUTÉE** sur les données réelles | `scripts/simuler_recalcul_dpp.mjs` : parc dérivé détecté, base restaurée à l'identique (empreintes + compteurs) |
 | 14 | Politique de routage des suites destructives (CI) | **TERMINÉE ET VÉRIFIÉE** | `npm run test:db-routing` : OK après classification et ajout des modes `--dry-run` |
-| 15 | Vérifier qu'aucune route publique ne sert un passeport suspendu | **PARTIELLEMENT PROUVÉE** | Preuve en base (CAS 4, 6) ; côté API, **lecture de code** : le résolveur public exige `public_slug` + `published` + `reviewed_at`. Aucun test HTTP exécuté |
+| 15 | Mission de clôture — migration sur la branche Neon | **BLOQUÉE** — JUSTIFICATION FOURNIE | aucune chaîne de connexion fournie (gabarit dans la consigne, rien dans l'environnement) ; API Neon injoignable. Voir §11 |
+| 16 | Mission de clôture — outillage prêt à exécuter | **TERMINÉE ET VÉRIFIÉE** (local) | `verifier_identite_branche.mjs` (codes 0/3/5 éprouvés), `simuler_recalcul_dpp.mjs` réécrit (tableau + classement), `--dry-run` sur le harnais §9 |
+| 17 | Mission de clôture — procédure opérationnelle | **TERMINÉE ET VÉRIFIÉE** | `07-PROCEDURE-VALIDATION-NEON.md` : étapes bloquantes, valeurs attendues, conditions d'arrêt, modèle de rapport |
+| 18 | Vérifier qu'aucune route publique ne sert un passeport suspendu | **PARTIELLEMENT PROUVÉE** | Preuve en base (CAS 4, 6) ; côté API, **lecture de code** : le résolveur public exige `public_slug` + `published` + `reviewed_at`. Aucun test HTTP exécuté |
 
 ---
 
@@ -269,8 +272,64 @@ actuel.
 
 ## 10. Prochaine action unique
 
-**Créer la branche Neon `tracefab-dpp-readiness-validation` depuis l'état
-actuel de la production et fournir à l'agent l'URL de cette branche** (jamais
-celle de la production). Dès qu'elle est disponible, la séquence est déjà
-écrite et outillée : `db:deploy`, les 4 requêtes du §9, les 7 scénarios, la
-simulation du parc, puis le bilan avant/après — sans écrire en production.
+**Fournir, par un canal de secrets, la chaîne de connexion de la branche
+`tracefab-dpp-readiness-validation-20261027` (base `neondb`)** — la branche
+existe déjà, il ne reste qu'à la nommer. Dès qu'elle est disponible, la
+séquence est écrite et outillée (`07-PROCEDURE-VALIDATION-NEON.md`) :
+`npm run verifier:identite-cible`, `npm run db:deploy`, les quatre contrôles du
+§9, les neuf cas de non-régression, la simulation du parc, puis le bilan
+avant/après. Aucune migration, aucun recalcul et aucune publication ne sont
+lancés sans cette chaîne de connexion.
+## 11. Mission de clôture — tentative de validation Neon (27/10, seconde passe)
+
+**Résultat : bloquée avant la première écriture.** La chaîne de connexion de la
+branche `tracefab-dpp-readiness-validation-20261027` n'a pas été fournie : le
+message de mission contient un gabarit (« [INSÉRER ICI LA CHAÎNE DE
+CONNEXION…] »), et l'environnement de travail ne porte aucune `DATABASE_URL`,
+aucune variable Neon et aucun `.env`. L'API Neon reste injoignable
+(`api.neon.tech` → `000`), seul le proxy Postgres répond.
+
+Condition d'arrêt appliquée, sans exception : **l'identité de la cible n'étant
+pas prouvable, aucune migration, aucun recalcul, aucune publication n'a été
+tenté.** Aucun résultat local ou de CI n'est présenté comme un résultat Neon.
+
+### 11.1 Ce qui a été vérifié sur le dépôt (phase A)
+
+| Point | Résultat |
+|---|---|
+| Branche / SHA | `arena/c27ddaa4-tracefab` / `e52f7697899632686c2b510c600b92a2a812b258`, arbre propre |
+| Migration n° 59 | `20261027130000_dpp_review_preservation_and_publication_coherence`, dernière dans l'ordre |
+| Migrations 57 et 58 | présentes |
+| Total dépôt | 59 |
+| Compatibilité 58 → 59 | rejouée : les revues antérieures survivent et sont mises à niveau |
+| Compatibilité 59 → 59 | rejouée sur base recréée : 59/59, suite verte |
+| CI du SHA | run **40522253482**, 4 jobs verts (§8) |
+
+### 11.2 Ce qui a été livré pour rendre la session Neon exécutable
+
+Rien ne dépend plus d'une improvisation : la procédure complète est écrite et
+outillée.
+
+| Livrable | Rôle |
+|---|---|
+| `docs/experience/mission-dpp-2026-10-27/07-PROCEDURE-VALIDATION-NEON.md` | mode opératoire pas à pas, valeurs attendues, conditions d'arrêt, modèle de rapport |
+| `scripts/verifier_identite_branche.mjs` (+ `npm run verifier:identite-cible`) | prouve l'identité de la cible **avant écriture** : hôte déclaré, base, rôle, attributs, schéma, registre, profil, agrégats du parc et trois invariants de visibilité. Refuse la production, refuse une cible non nommée |
+| `scripts/simuler_recalcul_dpp.mjs` (réécrit) | produit le tableau avant/après exigé : identifiants pseudonymisés, score, exigences manquantes, évaluation, décision de revue, slug et visibilité, motif, **classement** en correction attendue / anomalie technique / décision métier, quantification, et contrôle « aucune publication par effet de bord » |
+| `scripts/valider_branche_dpp.mjs --dry-run` | rejoue les quatre contrôles du §9 en lecture seule seulement |
+
+Ces trois outils ont été exécutés sur un PostgreSQL 18.4 local avant d'être
+livrés : le vérificateur d'identité rend `0` sur une cible conforme et `5` sur
+un écart déclaré ; la simulation détecte une dérive volontaire (passeport publié
+devenu non conforme → suspension annoncée, slug effacé, visibilité perdue,
+classée « correction attendue ») et restaure la base à l'identique.
+
+### 11.3 Ce qui reste bloqué, sans substitut
+
+| Élément | Motif | Action nécessaire |
+|---|---|---|
+| Migration officielle sur la branche Neon | pas de chaîne de connexion | fournir `DATABASE_URL` de la branche par un canal de secrets |
+| Contrôles post-migration, scénarios, simulation sur le parc réel | dépendent de la ligne ci-dessus | §2.4 à §2.6 de la procédure |
+| Volet HTTP de la visibilité publique | aucune API déployée dans cet environnement, client Prisma hors ligne sans moteur | trois appels `curl` documentés au §2.7 |
+| Recalcul des produits réels | interdit tant que la simulation n'est pas lue et approuvée | décision explicite après le tableau de la simulation |
+| Cas 9 (état initial à 58) | ne se rejoue pas après migration sur la même branche | à exécuter avant `db:deploy`, ou sur une branche restée à 58 |
+

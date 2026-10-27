@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * SIMULATION (lecture seule de fait) du recalcul DPP sur un parc reel.
+ * SIMULATION (sans ecriture conservee) du recalcul DPP sur un parc reel.
  *
- * Objectif (phase C de la mission) : savoir, AVANT tout recalcul reel, ce que
- * le recalcul changerait — statuts, scores, revues, visibilite publique — et
- * prouver que rien n'a bouge.
+ * OBJECTIF — phase F de la mission de cloture : savoir, AVANT tout recalcul
+ * reel, ce que le recalcul changerait — statuts, scores, exigences manquantes,
+ * revues, visibilite publique — et prouver que rien n'a bouge.
  *
  * COMMENT C'EST SUR
  *   Le script ouvre UNE transaction, y execute le recalcul (donc les ecritures
@@ -16,17 +16,22 @@
  * GARDE-FOUS
  *   - refuse la base de production (hote connu ou prefixe `ep-polished-night`) ;
  *   - exige `TF_SIMULATION_CIBLE` egal a l'hote de la cible : l'operateur doit
- *     nommer explicitement la base qu'il vise (pas de "au cas ou") ;
+ *     nommer explicitement la base qu'il vise ;
  *   - n'affiche jamais l'URL de connexion, ni mot de passe, ni secret : seul
  *     l'hote (sans identifiants) est imprime ;
- *   - aucune ecriture hors transaction (pas de table de resultats, pas de
- *     fichier en base) ;
+ *   - pseudonymise les identifiants produits : le rapport se transmet, il ne
+ *     doit pas transporter d'identifiants exploitables ;
+ *   - aucune ecriture hors transaction ;
  *   - `statement_timeout` et `lock_timeout` courts : le script abandonne plutot
  *     que de bloquer une base vivante.
  *
+ * CE QU'IL NE FAIT PAS
+ *   Il ne recalcule pas le parc pour de vrai, il ne publie rien, il ne
+ *   supprime rien. Le ROLLBACK est verifie, pas suppose.
+ *
  * USAGE
  *   DATABASE_URL=... TF_SIMULATION_CIBLE=ep-xxx.eu-central-1.aws.neon.tech \
- *     node scripts/simuler_recalcul_dpp.mjs [--sortie docs/...json]
+ *     node scripts/simuler_recalcul_dpp.mjs [--sortie rapport.json]
  *
  * CODE DE SORTIE
  *   0 simulation jouee, base restauree ; 2 usage ; 3 cible refusee ;
@@ -36,6 +41,7 @@ import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { createHash } from 'node:crypto';
 
 const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
   || 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
@@ -65,48 +71,68 @@ if (cible !== hote) {
 const argSortie = process.argv.indexOf('--sortie');
 const cheminSortie = argSortie > -1 ? process.argv[argSortie + 1] : null;
 
-const client = new pg.Client({
-  connectionString: url,
-  ssl: sslDepuisUrl(url),
-});
+const client = new pg.Client({ connectionString: url, ssl: sslDepuisUrl(url) });
 
 const PROFIL = { key: 'textile_readiness_mvp', version: '1.0' };
+
+/** Pseudonyme stable dans un rapport : 8 caracteres, non reversible en pratique. */
+const pseudo = (uuid) => `P-${createHash('sha256').update(String(uuid)).digest('hex').slice(0, 8)}`;
 
 /** Etat complet, compare avant/apres et autour du rollback. */
 async function etat() {
   const q = async (sql) => (await client.query(sql)).rows;
-  const [recs, prods, evts, audits, verrous] = await Promise.all([
-    q(`SELECT md5(coalesce(string_agg(id::text || ':' || readiness_status || ':'
-        || coalesce(md5(input_fingerprint), '-') || ':'
-        || coalesce(reviewed_at::text, '-') || ':'
-        || coalesce(review_invalidation_reason, '-'), '|' ORDER BY id), '')) AS empreinte,
+  const [recs, prods, evts, audits, slugs, publies] = await Promise.all([
+    q(`SELECT md5(coalesce(string_agg(id::text || ':' || readiness_status || ':' ||
+        coalesce(review_invalidation_reason, '-'), '|' ORDER BY id), '')) AS empreinte,
         count(*)::int AS n
        FROM dpp_records`),
-    q(`SELECT md5(coalesce(string_agg(id::text || ':' || coalesce(public_slug, '-') || ':'
-        || updated_at::text, '|' ORDER BY id), '')) AS empreinte,
+    q(`SELECT md5(coalesce(string_agg(id::text || ':' || coalesce(public_slug, '-') || ':' ||
+        updated_at::text, '|' ORDER BY id), '')) AS empreinte,
         count(*)::int AS n
        FROM tracefab_products`),
     q('SELECT count(*)::int AS n FROM dpp_lifecycle_events'),
     q("SELECT count(*)::int AS n FROM audit_logs WHERE action LIKE 'dpp.%'"),
-    q(`SELECT count(*)::int AS n FROM tracefab_products WHERE public_slug IS NOT NULL`),
+    q('SELECT count(*)::int AS n FROM tracefab_products WHERE public_slug IS NOT NULL'),
+    q("SELECT count(*)::int AS n FROM dpp_records WHERE readiness_status = 'published'"),
   ]);
   return {
     dossiers: recs[0], produits: prods[0],
-    evenements: evts[0].n, audits_dpp: audits[0].n, slugs_poses: verrous[0].n,
+    evenements: evts[0].n, audits_dpp: audits[0].n,
+    slugs_poses: slugs[0].n, publies: publies[0].n,
   };
 }
 
-const resume = (r) => ({
-  statut: r.readiness_status,
-  score: `${(r.source_snapshot?.requirement_results || []).filter((x) => x.met).length}`
-    + `/${(r.source_snapshot?.requirement_results || []).length}`,
-  revu_le: r.reviewed_at ? r.reviewed_at.toISOString() : null,
-  revu_par: r.reviewed_by || null,
-  empreinte_contenu: r.review_basis_fingerprint,
-  revue_figee: r.reviewed_basis_fingerprint,
-  invalide_le: r.review_invalidated_at ? r.review_invalidated_at.toISOString() : null,
-  motif_invalidation: r.review_invalidation_reason || null,
-});
+const resultats = [];
+const maintenant = () => new Date().toISOString();
+
+/** Verdict d'evaluation : le moteur ne doit jamais lire « pas d'evaluation » comme un succes. */
+function evaluation(snapshot) {
+  const score = snapshot && snapshot.latest_quality_score;
+  if (!score) return { presente: false, score: null, validee_le: null };
+  return {
+    presente: true,
+    score: score.score === undefined ? null : score.score,
+    validee_le: score.computed_at || null,
+  };
+}
+
+function resume(r) {
+  const exigences = (r.source_snapshot && r.source_snapshot.requirement_results) || [];
+  const manquantes = exigences.filter((x) => !x.met).map((x) => x.key);
+  return {
+    statut: r.readiness_status,
+    satisfaites: exigences.filter((x) => x.met).length,
+    total_exigences: exigences.length,
+    score: `${exigences.filter((x) => x.met).length}/${exigences.length}`,
+    exigences_manquantes: manquantes,
+    evaluation: evaluation(r.source_snapshot),
+    revue: r.reviewed_at ? 'presente' : 'aucune',
+    revue_le: r.reviewed_at ? new Date(r.reviewed_at).toISOString() : null,
+    revue_figee: r.reviewed_basis_fingerprint || null,
+    motif_invalidation: r.review_invalidation_reason || null,
+    bloquants: Array.isArray(r.blocking_issues) ? r.blocking_issues.length : null,
+  };
+}
 
 await client.connect();
 await client.query("SET statement_timeout = '120s'");
@@ -117,15 +143,15 @@ console.log('Simulation du recalcul DPP — AUCUNE ECRITURE CONSERVEE');
 console.log(`  cible           : ${hote}`);
 console.log(`  dossiers        : ${avant.dossiers.n}`);
 console.log(`  produits        : ${avant.produits.n}`);
+console.log(`  publies         : ${avant.publies}`);
 console.log(`  slugs publics   : ${avant.slugs_poses}`);
 console.log('');
 
 // Perimetre : les dossiers DPP existants. Un recalcul reel ne serait lance que
 // sur eux (creer un dossier est une autre decision, hors simulation).
-// Le moteur exige un utilisateur porteur d'un role organisationnel autorise.
-// La simulation emprunte donc, pour chaque dossier, un membre autorise de
-// l'organisation MARQUE (jamais un compte humain choisi au hasard : on prend
-// celui qui a deja servi au calcul, a defaut un membre actif autorise).
+// Le moteur exige un utilisateur porteur d'un role organisationnel autorise :
+// on emprunte, dossier par dossier, l'auteur du dernier calcul, a defaut un
+// membre actif autorise. Aucun contournement de la regle metier.
 const { rows: dossiers } = await client.query(
   `SELECT d.product_id, d.id AS dpp_id, d.readiness_status,
           d.requirement_profile_key AS cle, d.requirement_profile_version AS version,
@@ -142,50 +168,108 @@ const { rows: dossiers } = await client.query(
     ORDER BY d.product_id`,
 );
 
-await client.query('BEGIN');
-let resultats = [];
 let erreur = null;
+let publiesApresRecalcul = null;
+await client.query('BEGIN');
 try {
   for (const d of dossiers) {
+    const base = {
+      produit: pseudo(d.product_id),
+      publie_avant: d.readiness_status === 'published',
+    };
     if (!d.acteur_id) {
-      resultats.push({
-        produit_id: d.product_id, publie_avant: d.readiness_status === 'published',
-        visible_avant: null, avant: null, apres: null, visible_apres: null,
-        changements: [], non_simule: 'aucun acteur au role autorise dans l\'organisation marque',
-      });
+      resultats.push({ ...base, non_simule: 'aucun acteur au role autorise dans l\'organisation marque' });
       continue;
     }
     // SET LOCAL : le contexte disparait avec le ROLLBACK.
     await client.query("SELECT set_config('tracefab.user_id', $1, true)", [d.acteur_id]);
     const avantUn = (await client.query('SELECT * FROM dpp_records WHERE id = $1', [d.dpp_id])).rows[0];
-    // La visibilite doit etre lue AVANT le recalcul, sinon on mesure l'apres.
+    // La visibilite se lit AVANT le recalcul, sinon on mesure l'apres.
     const visibleAvant = (await client.query('SELECT tracefab_product_is_public($1) AS v', [d.product_id])).rows[0].v;
     const apresUn = (await client.query('SELECT * FROM tracefab_compute_dpp_readiness($1,$2,$3)',
       [d.product_id, d.cle || PROFIL.key, d.version || PROFIL.version])).rows[0];
-    const visible = (await client.query('SELECT tracefab_product_is_public($1) AS v', [d.product_id])).rows[0].v;
-    const slugApres = (await client.query('SELECT public_slug FROM tracefab_products WHERE id = $1', [d.product_id])).rows[0].public_slug;
+    const visibleApres = (await client.query('SELECT tracefab_product_is_public($1) AS v', [d.product_id])).rows[0].v;
+    const slugApres = (await client.query('SELECT public_slug FROM tracefab_products WHERE id = $1',
+      [d.product_id])).rows[0].public_slug;
 
     const a = resume(avantUn);
     const b = resume(apresUn);
     const changements = [];
-    if (a.statut !== b.statut) changements.push(`statut ${a.statut} -> ${b.statut}`);
-    if (a.score !== b.score) changements.push(`score ${a.score} -> ${b.score}`);
-    if (a.revu_le && !b.revu_le) changements.push(`revue invalidee (${b.motif_invalidation || 'sans motif'})`);
-    if (!a.revu_le && b.revu_le) changements.push('revue apparue');
-    if (Boolean(d.public_slug) !== Boolean(slugApres)) {
-      changements.push(slugApres ? 'slug pose' : 'slug efface (passeport retire du public)');
+    let motif = '';
+    let decisionRevue = 'conservee';
+    let decisionVisibilite = 'inchangee';
+
+    if (a.statut !== b.statut) {
+      const baisse = ['published', 'ready_to_publish', 'data_ready'].indexOf(a.statut)
+        < ['published', 'ready_to_publish', 'data_ready'].indexOf(b.statut);
+      changements.push(`statut ${a.statut} -> ${b.statut}${baisse ? ' (baisse)' : ''}`);
     }
-    if (avantUn.readiness_status === 'published' && !visible) {
-      changements.push('VISIBILITE PUBLIQUE PERDUE');
+    if (a.score !== b.score) changements.push(`score ${a.score} -> ${b.score}`);
+
+    if (a.revue === 'presente' && b.revue === 'aucune') {
+      decisionRevue = `invalidee (${b.motif_invalidation || 'sans motif'})`;
+      changements.push('revue invalidee');
+    } else if (a.revue === 'aucune' && b.revue === 'presente') {
+      decisionRevue = 'apparue (improbable : le recalcul ne cree pas de revue)';
+      changements.push('revue apparue');
+    }
+
+    if (Boolean(d.public_slug) !== Boolean(slugApres)) {
+      decisionVisibilite = slugApres ? 'slug pose' : 'slug efface (passeport retire du public)';
+      changements.push(slugApres ? 'slug pose' : 'slug efface');
+    }
+    if (visibleAvant && !visibleApres) changements.push('VISIBILITE PUBLIQUE PERDUE');
+    if (!visibleAvant && visibleApres) changements.push('VISIBILITE PUBLIQUE ACQUISE');
+
+    // Motif metier : ce qui, dans les donnees, explique le mouvement.
+    if (b.exigences_manquantes.length) {
+      motif = `exigences non satisfaites : ${b.exigences_manquantes.join(', ')}`;
+    } else if (!b.evaluation.presente) {
+      motif = 'aucune evaluation qualite persistee';
+    } else if (!changements.length) {
+      motif = 'aucun mouvement';
+    }
+
+    // Classification : distinguer une correction attendue d'une anomalie
+    // technique evite de presenter tout changement comme un progres.
+    let classification = 'aucun changement';
+    if (changements.length) {
+      const perteRevue = decisionRevue.startsWith('invalidee');
+      if (perteRevue && a.score === b.score) {
+        classification = 'ANOMALIE TECHNIQUE — revue invalidee sans changement de score';
+      } else if (visibleAvant && !visibleApres && b.statut === 'published') {
+        classification = 'ANOMALIE TECHNIQUE — visibilite perdue sans suspension';
+      } else if (!visibleAvant && visibleApres && a.statut !== 'published') {
+        classification = 'ANOMALIE TECHNIQUE — visibilite acquise sans publication';
+      } else if (d.readiness_status === 'published' && b.statut !== 'published') {
+        classification = 'correction attendue — passeport publie devenu non conforme, suspendu';
+      } else if (a.statut !== b.statut) {
+        classification = b.exigences_manquantes.length
+          ? 'correction attendue — preuve manquante desormais evaluee'
+          : 'decision metier a confirmer';
+      } else {
+        classification = 'a examiner';
+      }
     }
 
     resultats.push({
-      produit_id: d.product_id,
-      publie_avant: avantUn.readiness_status === 'published',
-      visible_avant: visibleAvant,
-      avant: a, apres: b, visible_apres: visible, changements,
+      ...base,
+      statut_avant: a.statut, statut_apres: b.statut,
+      score_avant: a.score, score_apres: b.score,
+      exigences_satisfaites_apres: b.satisfaites,
+      exigences_manquantes_apres: b.exigences_manquantes,
+      evaluation_avant: a.evaluation, evaluation_apres: b.evaluation,
+      revue_avant: a.revue, revue_apres: b.revue,
+      decision_revue: decisionRevue,
+      slug_avant: Boolean(d.public_slug), slug_apres: Boolean(slugApres),
+      visible_avant: visibleAvant, visible_apres: visibleApres,
+      decision_visibilite: decisionVisibilite,
+      motif, changements, classification,
     });
   }
+  const { rows: [p] } = await client.query(
+    "SELECT count(*)::int AS n FROM dpp_records WHERE readiness_status = 'published'");
+  publiesApresRecalcul = p.n;
 } catch (e) {
   erreur = e.message;
 } finally {
@@ -195,27 +279,59 @@ try {
 const apres = await etat();
 const restauree = JSON.stringify(avant) === JSON.stringify(apres);
 
-console.log('Produits dont le recalcul changerait quelque chose');
+const simules = resultats.filter((r) => !r.non_simule);
+const changes = simules.filter((r) => r.changements.length > 0);
+
+console.log('Tableau avant/apres (identifiants pseudonymises)');
 console.log('------------------------------------------------');
-const changes = resultats.filter((r) => r.changements.length > 0);
-if (changes.length === 0) console.log('  (aucun : le recalcul serait neutre sur ce parc)');
+if (!changes.length) console.log('  (aucun : le recalcul serait neutre sur ce parc)');
 for (const r of changes) {
-  console.log(`  ${r.produit_id}  ${r.changements.join(' ; ')}`);
+  console.log(`  ${r.produit}  ${r.statut_avant} -> ${r.statut_apres}  ${r.score_avant} -> ${r.score_apres}`);
+  console.log(`     revue        : ${r.decision_revue}`);
+  console.log(`     visibilite   : avant ${r.visible_avant ? 'visible' : 'non visible'}`
+    + ` / apres ${r.visible_apres ? 'visible' : 'non visible'} — ${r.decision_visibilite}`);
+  if (r.exigences_manquantes_apres.length) {
+    console.log(`     manquantes   : ${r.exigences_manquantes_apres.join(', ')}`);
+  }
+  console.log(`     motif        : ${r.motif}`);
+  console.log(`     classement   : ${r.classification}`);
 }
-console.log('');
+
 const nonSimules = resultats.filter((r) => r.non_simule);
 if (nonSimules.length) {
-  console.log('  dossiers non simules (contexte insuffisant)');
-  for (const r of nonSimules) console.log(`    ${r.produit_id}  ${r.non_simule}`);
+  console.log('\n  dossiers non simules (contexte insuffisant)');
+  for (const r of nonSimules) console.log(`    ${r.produit}  ${r.non_simule}`);
 }
-console.log(`  dossiers examines : ${resultats.length - nonSimules.length}`);
-console.log(`  dossiers modifies : ${changes.length}`);
-console.log(`  revues invalidees : ${resultats.filter((r) => r.avant.revu_le && !r.apres.revu_le).length}`);
-console.log(`  passeports masques: ${resultats.filter((r) => r.visible_avant && !r.visible_apres).length}`);
-console.log('');
-console.log('Verification post-rollback');
+
+const compte = (pred) => simules.filter(pred).length;
+console.log('\nQuantification');
+console.log('--------------');
+console.log(`  dossiers du parc        : ${resultats.length}`);
+console.log(`  dossiers simules        : ${simules.length}`);
+console.log(`  dossiers modifies       : ${changes.length}`);
+console.log(`  corriges (correction)   : ${compte((r) => r.classification.startsWith('correction attendue'))}`);
+console.log(`  anomalies techniques    : ${compte((r) => r.classification.startsWith('ANOMALIE'))}`);
+console.log(`  decisions metier        : ${compte((r) => r.classification === 'decision metier a confirmer')}`);
+console.log(`  restent prets           : ${compte((r) => r.statut_avant === r.statut_apres && ['data_ready', 'ready_to_publish', 'published'].includes(r.statut_apres))}`);
+console.log(`  passent a revue requise : ${compte((r) => r.statut_apres === 'review_required' && r.statut_avant !== 'review_required')}`);
+console.log(`  passent "pret" -> "en cours" : ${compte((r) => ['data_ready', 'ready_to_publish', 'published'].includes(r.statut_avant) && r.statut_apres === 'in_progress')}`);
+console.log(`  revues conservees       : ${compte((r) => r.revue_avant === 'presente' && r.revue_apres === 'presente')}`);
+console.log(`  revues invalidees       : ${compte((r) => r.revue_avant === 'presente' && r.revue_apres === 'aucune')}`);
+console.log(`  visibilites modifiees   : ${compte((r) => r.visible_avant !== r.visible_apres)}`);
+console.log(`  publications par effet de bord : ${publiesApresRecalcul !== null && publiesApresRecalcul > avant.publies
+  ? `${publiesApresRecalcul - avant.publies} (ANOMALIE)` : 'aucune'}`);
+
+console.log('\nLecture metier');
+console.log('--------------');
+console.log('  Une baisse de score ou de statut n\'est pas une regression : elle peut');
+console.log('  reveler une exigence qui existait deja dans le profil mais n\'etait pas');
+console.log('  evaluee. Le classement ci-dessus separe ces corrections attendues des');
+console.log('  anomalies techniques (revue perdue sans changement, visibilite qui bouge');
+console.log('  sans publication ou sans suspension).');
+
+console.log('\nVerification post-rollback');
 console.log('-------------------------');
-console.log(`  ${restauree ? 'ok  ' : 'ECHEC'} base identique a l'instant d'avant`);
+console.log(`  ${restauree ? 'ok  ' : 'ECHEC'} base identique a l\'instant d\'avant`);
 console.log(`       avant : ${JSON.stringify(avant)}`);
 console.log(`       apres : ${JSON.stringify(apres)}`);
 if (erreur) console.log(`  erreur pendant la simulation : ${erreur}`);
@@ -223,11 +339,15 @@ if (erreur) console.log(`  erreur pendant la simulation : ${erreur}`);
 if (cheminSortie) {
   mkdirSync(dirname(cheminSortie), { recursive: true });
   writeFileSync(cheminSortie, JSON.stringify({
-    genere_le: new Date().toISOString(),
+    genere_le: maintenant(),
     cible_hote: hote,
     mode: 'simulation avec rollback',
-    etat_avant: avant, etat_apres_rollback: apres, base_restauree: restauree,
-    erreur, resultats,
+    etat_avant: avant,
+    etat_apres_rollback: apres,
+    base_restauree: restauree,
+    publies_apres_recalcul: publiesApresRecalcul,
+    erreur,
+    resultats,
   }, null, 2));
   console.log(`  rapport JSON : ${cheminSortie}`);
 }
