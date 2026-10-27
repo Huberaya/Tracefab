@@ -419,6 +419,16 @@ jobs:
         # est classee avant le binaire prisma local. Jamais npx.
         run: npm run db:deploy:throwaway
 
+      - name: Privilèges et RLS effectifs — mesurés dans le catalogue
+        # Une migration qui contient GRANT ne prouve pas ce que la base accorde.
+        # Cet audit lit le catalogue : RLS activée ET forcée sur chaque table de
+        # données, aucun droit d'écriture hors RLS, fonctions SECURITY DEFINER
+        # avec search_path figé, aucune fonction exécutable par PUBLIC. Il sort
+        # en 1 si l'une de ces propriétés tombe.
+        run: npm run audit:privileges
+        env:
+          TF_EXIGER_LOCAL: oui
+
       - name: Privilèges SQL après migrations, avant le seed
         # Vérifie les GRANT conditionnels dans le scénario où tracefab_app
         # existe déjà, comme en production, avant que le seed n'accorde des droits.

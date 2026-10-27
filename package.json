@@ -189,6 +189,8 @@
     "db:recalculer-dpp": "node scripts/simuler_recalcul_dpp.mjs --appliquer",
     "test:garde-fous:recalcul": "node scripts/test_garde_fous_recalcul.mjs",
     "inventaire:consommateurs": "node scripts/inventaire_consommateurs_base.mjs",
+    "audit:privileges": "node scripts/auditer_privileges_effectifs.mjs",
+    "preuve:bypass-worker": "node scripts/prouver_bypass_contexte_worker.mjs",
     "test:inventaire:consommateurs": "node scripts/test_inventaire_consommateurs.mjs",
     "verifier:identite-cible": "node scripts/verifier_identite_branche.mjs",
     "valider:neon": "node scripts/validation_neon_complete.mjs",
