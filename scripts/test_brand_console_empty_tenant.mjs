@@ -61,6 +61,9 @@ const EMPTY_TENANT = {
   '/api/products': { products: [], nextCursor: null },
   '/api/data-requests': { requests: [] },
   '/api/questionnaires': { questionnaires: [] },
+  // Le registre documentaire est charge en arriere-plan au demarrage : sans
+  // cette entree, la fixture fail-closed remonterait une route inattendue.
+  '/api/documents': { documents: [] },
   '/api/catalog/schemas': { schemas: [] },
   '/api/mass-balance/certificates': { certificates: [], count: 0 },
   '/api/organization-settings': { settings: null, history: [] },

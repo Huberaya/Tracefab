@@ -76,6 +76,25 @@ try {
   const role=(await app.query("SELECT rolbypassrls,rolsuper FROM pg_roles WHERE rolname=current_user")).rows[0];
   check(!role.rolbypassrls&&!role.rolsuper,'role runtime soumis a RLS');
 
+  // Barriere 20261027120000 : « aucune anomalie ouverte » n'est vrai que si la
+  // qualite a ete evaluee. On eprouve d'abord le refus — sans evaluation, la
+  // revue doit echouer — puis on calcule, comme le ferait la console.
+  let refusSansEvaluation=null;
+  try {
+    await context(U.userA,emailA,()=>app.query(
+      `SELECT * FROM tracefab_mark_dpp_ready_to_publish($1)`,[U.dpp]));
+  } catch (error) { refusSansEvaluation=error.message; }
+  check(refusSansEvaluation==='dpp_publication_requirements_not_met',
+    'revue refusee tant que la qualite n a pas ete evaluee');
+  // La completude produit (7 exigences du moteur qualite) exige un identifiant :
+  // sans lui, le calcul ouvre une anomalie bloquante et la revue reste fermee.
+  await admin.query(`INSERT INTO product_identifiers(id,product_id,identifier_type,identifier_value,is_primary)
+    VALUES($1,$2,'internal','DPP-LIVE-001',true)`,[randomUUID(),U.product]);
+  await context(U.userA,emailA,()=>app.query(
+    `SELECT tracefab_refresh_product_data_readiness($1)`,[U.product]));
+  await context(U.userA,emailA,()=>app.query(
+    `SELECT tracefab_compute_product_quality($1)`,[U.product]));
+
   const reviewed=await context(U.userA,emailA,()=>app.query(
     `SELECT * FROM tracefab_mark_dpp_ready_to_publish($1)`,[U.dpp]));
   check(reviewed.rows[0].readiness_status==='ready_to_publish'&&reviewed.rows[0].reviewed_at,'revue autorisee horodatee avant publication');

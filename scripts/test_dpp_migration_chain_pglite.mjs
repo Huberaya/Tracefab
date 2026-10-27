@@ -190,6 +190,142 @@ const { rows: privileges } = await db.query(`
 check('PUBLIC ne peut pas executer la fonction', privileges[0].public_peut === false);
 check('tracefab_app ne peut pas executer la fonction', privileges[0].app_peut === false);
 
+
+/* --------------------------------------------------------------------------
+ * Le parcours de publication, de bout en bout, en SQL.
+ *
+ * Les 13 exigences sont satisfaites par les donnees SAUF la qualite : c'est
+ * exactement le cas qui produisait un faux « pret a publier ». On verifie donc
+ * que la revue refuse tant que la qualite n'est pas evaluee, puis qu'elle
+ * accepte apres le calcul, et que la publication pose un slug stable.
+ * ------------------------------------------------------------------------ */
+const USER = '55555555-5555-4555-8555-555555555555';
+const ORG2 = '66666666-6666-4666-8666-666666666666';
+const PROD2 = '77777777-7777-4777-8777-777777777777';
+const DPP2 = '88888888-8888-4888-8888-888888888888';
+const MAT2 = '99999999-9999-4999-8999-999999999999';
+const DOC2 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const NODE_A = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const NODE_B = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+await db.exec(`
+  INSERT INTO users (id, clerk_user_id, email, full_name)
+  VALUES ('${USER}', 'clerk_pglite_1', 'pglite@test.invalid', 'Recette PGlite');
+  INSERT INTO organizations (id, type, legal_name, country_code)
+  VALUES ('${ORG2}', 'brand', 'Marque de recette', 'FR');
+  INSERT INTO organization_memberships (id, organization_id, user_id, role, status)
+  VALUES (gen_random_uuid(), '${ORG2}', '${USER}', 'owner', 'active');
+  INSERT INTO tracefab_products (id, brand_organization_id, version, reference, name, description,
+    category, country_of_manufacture, color_name, size_range, weight_grams, data_readiness, status)
+  VALUES ('${PROD2}', '${ORG2}', 1, 'TS-PUB-001', 'T-shirt publie',
+    'Description de recette suffisamment longue pour depasser trente caracteres.',
+    'shirt', 'FR', 'Blanc', ARRAY['S','M'], 150, 'data_ready', 'active');
+  INSERT INTO materials (id, owner_organization_id, material_type, name, origin_country_code)
+  VALUES ('${MAT2}', '${ORG2}', 'fiber', 'Coton de recette', 'FR');
+  INSERT INTO product_materials (product_id, material_id, percentage, product_version)
+  VALUES ('${PROD2}', '${MAT2}', 100, 1);
+  -- La completude produit (7 exigences du moteur qualite) exige un identifiant :
+  -- sans lui, le calcul qualite ouvre une anomalie bloquante « donnees
+  -- incompletes » et la revue reste fermee — a juste titre.
+  INSERT INTO product_identifiers (id, product_id, identifier_type, identifier_value, is_primary)
+  VALUES (gen_random_uuid(), '${PROD2}', 'internal', 'TS-PUB-001', true);
+  INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path, original_filename,
+    content_type, byte_size, status, visibility)
+  VALUES ('${DOC2}', '${ORG2}', 'tracefab-private', '${ORG2}/pglite/preuve.pdf', 'preuve.pdf',
+    'application/pdf', 128, 'uploaded', 'private');
+  -- Un document ne nait jamais « disponible » : le passage par l'analyse est
+  -- impose par un declencheur, et c'est cette transition qu'on reproduit.
+  BEGIN;
+  SELECT set_config('tracefab.internal_document_update', 'true', true);
+  UPDATE documents SET status='available' WHERE id='${DOC2}';
+  COMMIT;
+  INSERT INTO supply_chain_nodes (id, node_type, product_id, material_id, label, status,
+    source_document_id, graph_product_id)
+  VALUES ('${NODE_A}', 'product', '${PROD2}', NULL, 'Produit documente', 'documented',
+    '${DOC2}', '${PROD2}'),
+         ('${NODE_B}', 'material', NULL, '${MAT2}', 'Matiere documentee', 'documented',
+    '${DOC2}', '${PROD2}');
+  INSERT INTO supply_chain_links (id, product_id, source_node_id, target_node_id, link_type)
+  VALUES (gen_random_uuid(), '${PROD2}', '${NODE_A}', '${NODE_B}', 'contains');
+  INSERT INTO data_points (id, owner_organization_id, product_id, data_key, value, data_type, status,
+    source_document_id)
+  VALUES (gen_random_uuid(), '${ORG2}', '${PROD2}', 'fixture.source', to_jsonb('documented'::text),
+    'text', 'documented', '${DOC2}');
+  INSERT INTO dpp_records (id, product_id, product_version, requirement_profile_key,
+    requirement_profile_version, readiness_status)
+  VALUES ('${DPP2}', '${PROD2}', 1, 'textile_readiness_mvp', '1.0', 'data_ready');
+  SELECT set_config('tracefab.user_id', '${USER}', false);
+`);
+
+const erreur = async (sql, params = []) => {
+  try { await db.query(sql, params); return null; }
+  catch (error) { return String(error.message).split('\n')[0]; }
+};
+
+// 1. Sans evaluation qualite : la revue doit echouer.
+const refus = await erreur('SELECT * FROM tracefab_mark_dpp_ready_to_publish($1)', [DPP2]);
+check(
+  'la revue est refusee tant que la qualite n\'est pas evaluee',
+  refus === 'dpp_publication_requirements_not_met',
+  `message obtenu : ${refus}`,
+);
+
+// 2. La completude produit se recalcule (7 exigences), puis la qualite.
+await erreur('SELECT tracefab_refresh_product_data_readiness($1)', [PROD2]);
+const { rows: completude } = await db.query(
+  'SELECT data_completion, data_readiness FROM tracefab_products WHERE id = $1', [PROD2]);
+check(
+  'la completude produit atteint 100 % sur le jeu de donnees complet',
+  Number(completude[0]?.data_completion) === 100,
+  JSON.stringify(completude[0]),
+);
+
+// 3. Le calcul qualite persiste une evaluation, comme le fait la console.
+const calcul = await erreur('SELECT tracefab_compute_product_quality($1)', [PROD2]);
+check('le calcul qualite s\'execute sur le produit', calcul === null, `erreur : ${calcul}`);
+
+// Diagnostic : quelle exigence manque encore ?
+const { rows: detail } = await db.query(`
+  SELECT k AS cle, tracefab_dpp_requirement_met(k, $1) AS satisfaite
+  FROM unnest(ARRAY['product.reference','product.name','product.description','product.category',
+    'product.country_of_manufacture','product.required_attributes','composition.complete',
+    'materials.origin_documented','traceability.graph','traceability.documented',
+    'quality.no_open_issues','evidence.product_data','product.not_draft']::text[]) AS k`, [PROD2]);
+for (const ligne of detail) if (!ligne.satisfaite) console.error(`  note  exigence non satisfaite : ${ligne.cle}`);
+
+// 4. La revue passe desormais.
+let revue = null;
+try {
+  const { rows } = await db.query('SELECT * FROM tracefab_mark_dpp_ready_to_publish($1)', [DPP2]);
+  revue = rows[0];
+} catch (error) {
+  check('la revue passe apres evaluation de la qualite', false, String(error.message).slice(0, 200));
+}
+if (revue) {
+  check(
+    'la revue passe apres evaluation de la qualite et horodate l\'acte',
+    revue.readiness_status === 'ready_to_publish' && revue.reviewed_at instanceof Date,
+  );
+}
+
+// 5. La publication pose un identifiant public stable.
+const publication = await erreur("SELECT * FROM tracefab_set_dpp_publication($1,'publish','tshirt-recette-001')", [PROD2]);
+check('la publication s\'execute', publication === null, `erreur : ${publication}`);
+
+const { rows: etat } = await db.query(
+  `SELECT r.readiness_status, p.public_slug FROM dpp_records r
+     JOIN tracefab_products p ON p.id = r.product_id WHERE r.id = $1`, [DPP2]);
+check(
+  'le dossier est publie et le slug est pose',
+  etat[0]?.readiness_status === 'published' && etat[0]?.public_slug === 'tshirt-recette-001',
+  JSON.stringify(etat[0]),
+);
+
+// 6. Un slug invalide est refuse : la publication n'est pas un champ libre.
+const slugInvalide = await erreur(
+  "SELECT * FROM tracefab_set_dpp_publication($1,'publish','Pas Valide')", [PROD2]);
+check('un slug non conforme est refuse', slugInvalide !== null, `obtenu : ${slugInvalide}`);
+
 await db.close();
 
 console.log('');
