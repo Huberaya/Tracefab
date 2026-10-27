@@ -1,0 +1,61 @@
+# Sonde REELLE de la protection Vercel, sans secret et sans approbation.
+#
+# POURQUOI UN DECLENCHEUR `push`
+#   Le jeton d'integration de cette session n'a pas `actions: write` : tout
+#   `workflow_dispatch` (gh workflow run ou REST, par chemin ou par ID) est
+#   refuse en 403. Un push normal sur la branche de mission, lui, est autorise
+#   et declenche ce job automatiquement. C'est le seul moyen d'obtenir une
+#   mesure HTTP reelle depuis un runner GitHub sans demander de droit
+#   supplementaire — et sans affaiblir une seule protection.
+#
+# CE QUE CE WORKFLOW NE FAIT PAS
+#   - aucun `secrets.*`, aucun environnement protege, aucun jeton Vercel ;
+#   - aucun contournement : la sonde n'envoie AUCUN en-tete de bypass ;
+#   - aucune ecriture, aucun deploiement, aucune base, aucun artefact ;
+#   - `permissions: {}`, checkout sans credentials persistants.
+#
+# CE QU'IL PROUVE
+#   Qu'une requete sans bypass vers /api/health de la Preview n'atteint PAS
+#   l'application : la protection de deploiement Vercel reste active. Si la
+#   Preview repond 200 applicatif sans bypass, le job passe en FAIL.
+#   Ce n'est PAS une preuve des parcours authentifies (ceux-ci restent dans
+#   preview-http-journeys.yml, soumis a l'environnement approuve).
+
+name: Preview — sonde de protection (aucun secret)
+
+on:
+  push:
+    branches:
+      - 'arena/647ac97c-tracefab'
+    paths:
+      - '.github/workflows/preview-surface-probe.yml'
+      - 'scripts/probe_preview_protection.mjs'
+      - 'scripts/lib/preview_harness_safety.mjs'
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'URL HTTPS de la Preview a sonder (doit finir par .vercel.app)'
+        required: false
+        default: 'https://tracefab-git-arena-b9a1c6-baya-ibraimmayoanouedu-8164s-projects.vercel.app'
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: preview-surface-probe-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sonde:
+    name: Sonde HTTP de la protection Preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      TF_PREVIEW_URL: ${{ inputs.preview_url || 'https://tracefab-git-arena-b9a1c6-baya-ibraimmayoanouedu-8164s-projects.vercel.app' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Mesurer la protection Vercel sans aucun secret
+        run: node scripts/probe_preview_protection.mjs

@@ -59,6 +59,7 @@
  */
 import { randomUUID, createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
+import { creerExpurgateur, gabarit, construireEntetes } from './lib/preview_harness_safety.mjs';
 
 const EXIT = { PASS: 0, FAIL: 1, BLOCKED: 2, REFUS: 3 };
 const RUN_ID = `pv-${randomUUID().slice(0, 12)}`;
@@ -67,40 +68,27 @@ const refuser = (message) => { console.error(`  REFUS — ${message}`); process.
 const bloquer = (message) => { console.error(`  BLOCKED — ${message}`); process.exit(EXIT.BLOCKED); };
 
 /* ---------------------------------------------------------------------------
- * Expurgation : aucune chaine sensible ne doit atteindre un journal.
+ * Expurgation et en-tetes : implementation unique, testee unitairement.
+ * Voir scripts/lib/preview_harness_safety.mjs. L'expurgateur est lie aux
+ * valeurs REELLES des secrets du process apres leur lecture (plus bas), ce
+ * qui couvre aussi les formes de secret non reconnues par les motifs.
  * ------------------------------------------------------------------------- */
-const MOTIFS_SENSIBLES = [
-  /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g,
-  /sk_(?:test|live)_[A-Za-z0-9_-]{6,}/g,
-  /Bearer\s+[A-Za-z0-9._-]{8,}/gi,
-  /postgresql?:\/\/[^\s"']+/gi,
-  /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
-];
-function redigerSur(value) {
-  let texte = String(value ?? '');
-  for (const motif of MOTIFS_SENSIBLES) texte = texte.replace(motif, '[redacted]');
-  return texte;
-}
-/** Gabarit de chemin : les identifiants concrets ne sont jamais journalises. */
-function gabarit(path) {
-  return String(path)
-    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, ':id')
-    .replace(/\?.*$/, '');
-}
-export function redactEvidence(evidence) {
-  return JSON.parse(redigerSur(JSON.stringify(evidence)));
-}
+let expurger = creerExpurgateur([]);
+const redigerSur = (value) => expurger(value);
+export const redactEvidence = (evidence) => JSON.parse(redigerSur(JSON.stringify(evidence)));
 
 /* ---------------------------------------------------------------------------
  * Auto-verification des gardes, sans aucun reseau.
  * ------------------------------------------------------------------------- */
 if (process.env.TF_PREVIEW_SELFTEST === '1') {
+  expurger = creerExpurgateur(['DUMMY_BYPASS_VALUE_123456']);
   const echantillon = {
     runId: RUN_ID,
     token: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.signature',
     cle: 'sk_test_abcdefghijklmnop',
     url: 'postgresql://user:pass@neon.tech/db',
     path: '/api/products/123e4567-e89b-12d3-a456-426614174000/dpp/preview',
+    bypass: 'x-vercel-protection-bypass: DUMMY_BYPASS_VALUE_123456',
   };
   const nettoye = JSON.stringify(redactEvidence(echantillon));
   const controles = [
@@ -108,6 +96,7 @@ if (process.env.TF_PREVIEW_SELFTEST === '1') {
     [/sk_test_abcdefghijklmnop/, 'une cle Clerk de test est expurgee'],
     [/postgresql:\/\//, 'une chaine de connexion est expurgee'],
     [/426614174000/, 'un UUID est expurge'],
+    [/DUMMY_BYPASS_VALUE_123456/, 'une valeur de bypass du process est expurgee'],
   ];
   let echecs = 0;
   for (const [motif, description] of controles) {
@@ -117,7 +106,7 @@ if (process.env.TF_PREVIEW_SELFTEST === '1') {
   }
   console.log(`  ${gabarit('/api/products/123e4567-e89b-12d3-a456-426614174000/dpp/preview') === '/api/products/:id/dpp/preview' ? 'ok   ' : 'ECHEC'} les chemins sont journalises en gabarit`);
   if (gabarit('/api/products/123e4567-e89b-12d3-a456-426614174000/dpp/preview') !== '/api/products/:id/dpp/preview') echecs += 1;
-  console.log(`\n  SELFTEST : ${echecs === 0 ? 'PASS' : 'FAIL'} (${5 - echecs}/5)`);
+  console.log(`\n  SELFTEST : ${echecs === 0 ? 'PASS' : 'FAIL'} (${6 - echecs}/6)`);
   process.exit(echecs === 0 ? EXIT.PASS : EXIT.FAIL);
 }
 
@@ -139,6 +128,7 @@ const BASE_BRUTE = String(process.env.TRACEFAB_STAGING_URL || '').trim();
 const BYPASS = String(process.env.TF_VERCEL_BYPASS || '').trim();
 const USER_ALPHA = String(process.env.TF_PREVIEW_USER_ALPHA || '').trim();
 const USER_BETA = String(process.env.TF_PREVIEW_USER_BETA || '').trim();
+expurger = creerExpurgateur([BYPASS, CLE_CLERK, USER_ALPHA, USER_BETA, BASE_BRUTE]);
 
 const MANQUANTS = [];
 if (!CLE_CLERK) MANQUANTS.push('CLERK_SECRET_KEY');
@@ -185,10 +175,8 @@ const enregistrer = (cas, attendu, obtenu, reussi, detail) => {
 const verifier = (cas, attendu, obtenu, condition, detail) =>
   enregistrer(cas, String(attendu), String(obtenu), Boolean(condition), detail);
 
-/** En-tetes communs : le bypass Vercel autorise, jamais une desactivation. */
-const entetesCommuns = BYPASS
-  ? { 'x-vercel-protection-bypass': BYPASS, 'x-vercel-set-bypass-cookie': 'true' }
-  : {};
+// Le bypass Vercel et le jeton Clerk ne sont JAMAIS envoyes a une origine
+// tierce (URL presignee S3/R2). construireEntetes() applique cette regle.
 
 /**
  * Vrai appel HTTP. `chemin` contient les identifiants reels ; seul
@@ -200,9 +188,9 @@ async function requete(opts) {
     entetes = {}, redirect = 'manual', externe = false,
   } = opts;
   const url = externe ? chemin : `${BASE}${chemin}`;
-  const headers = { ...entetesCommuns, ...entetes };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (org) headers['X-Tracefab-Organization-Id'] = org;
+  const headers = construireEntetes({
+    externe, jeton: token, organisation: org, entetes, bypass: BYPASS,
+  });
   let body;
   if (brut !== undefined) body = brut;
   else if (corps !== undefined) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(corps); }
@@ -422,7 +410,9 @@ if (telechargement.status === 200) {
   // sur un second appel binaire, sans journaliser le contenu.
   let integre = false;
   try {
-    const brut = await fetch(telechargement.body.download.url, { headers: entetesCommuns });
+    const brut = await fetch(telechargement.body.download.url, {
+      headers: construireEntetes({ externe: true }),
+    });
     const recu = Buffer.from(await brut.arrayBuffer());
     integre = brut.status === 200 && createHash('sha256').update(recu).digest('hex')
       === createHash('sha256').update(octets).digest('hex');
