@@ -1,0 +1,97 @@
+# Preview HTTP — parcours authentifies REELS sur une Preview de PR.
+#
+# POURQUOI CE WORKFLOW EST INDEPENDANT
+#   Les workflows des PR #80 et #91 sont lies a des branches qui ne sont pas
+#   celles de la PR #101 (`if: refs/heads/main` pour #80, `on.push.branches`
+#   et URLs de Preview codees en dur pour #91). Les executer imposerait de
+#   fusionner ces PR ou de pousser sur leurs branches : ni l'un ni l'autre
+#   n'est autorise ici. Ce workflow vit donc SUR la branche de travail de la
+#   PR #101 et ne depend d'aucune fusion.
+#
+# PROTECTIONS CONSERVEES
+#   - `environment: tracefab-clerk-test` : les relecteurs obligatoires et la
+#     politique de branche de l'environnement restent en vigueur ;
+#   - declenchement MANUEL uniquement (`workflow_dispatch`), aucun push ;
+#   - aucune URL codee en dur : l'URL de la Preview est une entree du job ;
+#   - la protection de deploiement Vercel n'est JAMAIS desactivee : le secret
+#     de bypass autorise est envoye dans l'en-tete officiel
+#     `x-vercel-protection-bypass` par le harnais, et le cas P9 verifie que
+#     la protection repond toujours sans ce secret ;
+#   - `permissions: contents: read`, checkout sans credentials persistants.
+#
+# CE QUI EST AFFICHE
+#   Des statuts HTTP, des gabarits de chemins et des compteurs. Aucune valeur
+#   de secret, aucun jeton, aucun cookie, aucune donnee personnelle. Le
+#   harnais expurge son fichier de preuves avant de l'ecrire.
+
+name: Preview HTTP — parcours authentifies reels
+
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'URL HTTPS de la Preview Vercel a tester (jamais une URL de production)'
+        required: true
+        type: string
+      allow_provision:
+        description: "Autoriser la creation de deux organisations de test sur la base de TEST de la Preview ('1' ou '0')"
+        required: false
+        default: '1'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-http-journeys-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  parcours:
+    name: Preview — parcours HTTP authentifies
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: tracefab-clerk-test
+    env:
+      NODE_VERSION: '20'
+      TF_PREVIEW_HARNESS: '1'
+      TRACEFAB_STAGING_URL: ${{ inputs.preview_url }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      TF_PREVIEW_USER_ALPHA: ${{ secrets.TF_PREVIEW_USER_ALPHA }}
+      TF_PREVIEW_USER_BETA: ${{ secrets.TF_PREVIEW_USER_BETA }}
+      TF_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      TF_PREVIEW_ALLOW_PROVISION: ${{ inputs.allow_provision }}
+      TF_PREVIEW_EVIDENCE: /tmp/tf-preview-evidence.json
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Presence des secrets de test — sans afficher leur valeur
+        run: |
+          if [ -n "${CLERK_SECRET_KEY:-}" ]; then echo "CLERK_SECRET_KEY=present"; else echo "::error title=secret::CLERK_SECRET_KEY absent de l environnement tracefab-clerk-test"; echo "CLERK_SECRET_KEY=absent"; fi
+          if [ -n "${TF_PREVIEW_USER_ALPHA:-}" ]; then echo "TF_PREVIEW_USER_ALPHA=present"; else echo "TF_PREVIEW_USER_ALPHA=absent"; fi
+          if [ -n "${TF_PREVIEW_USER_BETA:-}" ]; then echo "TF_PREVIEW_USER_BETA=present"; else echo "TF_PREVIEW_USER_BETA=absent"; fi
+          if [ -n "${TF_VERCEL_BYPASS:-}" ]; then echo "TF_VERCEL_BYPASS=present"; else echo "TF_VERCEL_BYPASS=absent (pre-vol P0 signalera si la protection est active)"; fi
+
+      - name: Gardes du harnais — aucune connexion requise
+        # Eprouve en CI, sans secret : refus sans drapeau, refus d une cle
+        # sk_live_, refus d une cible non-Preview, BLOCKED si variable absente,
+        # et expurgation des preuves. Un harnais qui ne peut pas refuser ne
+        # doit jamais etre employe contre une Preview.
+        run: node scripts/test_preview_journeys_guards.mjs
+
+      - name: Parcours HTTP authentifies sur la Preview
+        # Aucun service local : vraies requetes HTTPS vers la Preview, vrais
+        # jetons de session de l instance Clerk de TEST, vrai stockage prive
+        # presigne, vrai antivirus, et controle que la protection Vercel
+        # repond toujours sans le secret de bypass.
+        run: node scripts/test_preview_http_journeys.mjs
