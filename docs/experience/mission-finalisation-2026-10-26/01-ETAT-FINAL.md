@@ -535,3 +535,53 @@ Rafraîchies par `git fetch origin pull/<n>/head` puis analysées avec `git merg
 ## 14.7 Conclusion factuelle
 
 **Statut global : BLOCKED — intervention humaine requise.** La protection Vercel est mesurée active (HTTP 302 sans bypass), le harnais a été corrigé et la CI du code `d2c4ff7` est verte. Les parcours authentifiés réels et les services de Preview restent **NOT RUN / BLOCKED** : aucun résultat local ou simulé ne les remplace. Aucune modification non autorisée de production, aucun force push, aucune fusion. **TraceFab n'est pas déclaré prêt pour la commercialisation.**
+
+# 15. Stockage privé de test sans nouveau compte — 2026-10-27
+
+## 15.1 Constat et périmètre
+
+Les autorisations disponibles ne permettent pas de lire les intégrations ni
+la configuration du projet Vercel ; on ne peut donc ni identifier un bucket
+privé existant, ni affirmer qu'il n'en existe pas. La PR #101 reçoit un
+adaptateur PostgreSQL **opt-in, limité à la Preview de la branche de mission**,
+utilisable avec une base de test déjà isolée et un scanner de test réel. Il ne
+crée pas de compte de stockage et ne fait aucun changement sur la production.
+Le guide opérateur et ses limites sont dans
+`docs/architecture/23-private-evidence-storage.md`.
+
+La base et le scanner distants n'ont pas été provisionnés ou modifiés. Le
+rôle runtime et le schéma test doivent être vérifiés par l'administrateur ;
+l'empreinte de connexion ne prouve pas l'isolation de la base. La RLS du
+nouveau schéma réduit les lectures accidentelles mais un rôle SQL arbitraire
+capable de fixer son contexte ne constitue pas une frontière de sécurité
+multi-organisation. Aucune politique RLS existante n'a été modifiée.
+
+## 15.2 Résultats locaux mesurés
+
+| Contrôle | Statut | Portée réelle |
+|---|---|---|
+| HTTP + PostgreSQL de test + rôle `tracefab_app` | PASS, 12 groupes | Base et routeur locaux réels ; Clerk et antivirus simulés. Upload/download binaires, capacités refusées si absentes/falsifiées, non-écrasement, refus d'accès interorganisation au document et retrait du rapport des attestations inventées. |
+| RLS du nouveau schéma | PASS local | RLS forcée, aucune ligne sans contexte ou avec une clé différente ; propriétaire non autorisé comme rôle runtime. Ce n'est pas une preuve de Preview. |
+| Provisionneur et purge | PASS local | Base jetable distincte, propriétaire non superutilisateur ; 4 politiques créées, l'objet expiré est supprimé et l'objet non expiré conservé. Aucun provisionnement distant. |
+| Scanner absent | PASS local | Réponse 503 et document indisponible ; le test demandant ClamAV échoue si le binaire est absent. Aucun verdict sain supposé. |
+| EICAR | PASS local avec **doublure** | Octets canoniques rejetés par le faux scanner ; cela ne prouve pas le fonctionnement d'un antivirus géré. La CI est configurée pour tester séparément le vrai moteur ClamAV local avec la seule signature EICAR ; résultat à vérifier sur le SHA poussé. |
+| Gardes et régressions | PASS local | 8 groupes de gardes, typechecks, confidentialité, routage et politique CI, 159 refus anonymes avec Prisma local, 26/26 routes sans Clerk explicitement classées, assets. |
+
+La précédente CI [40481534533](https://github.com/Huberaya/Tracefab/actions/runs/40481534533)
+est verte sur `97152f0986dceb1801c1370d71b6c399c6fc4401` **avant** ces
+modifications ; elle ne vaut pas résultat CI sur le nouveau code. Le dernier
+parcours Preview disponible [40481526660](https://github.com/Huberaya/Tracefab/actions/runs/40481526660)
+est **BLOCKED** (code 2) et sa cause exacte n'est pas accessible. Aucun succès
+des parcours authentifiés Preview, du scanner géré ou de l'isolation
+interorganisation réelle n'est revendiqué.
+
+## 15.3 Intervention nécessaire
+
+Un administrateur doit identifier ou approuver une base de test réellement
+isolée et un scanner de test opérationnel ; provisionner uniquement le nouveau
+schéma de cette base selon le runbook ; configurer uniquement la Preview de la
+branche et l'environnement GitHub protégé ; confirmer origine et SHA déployé,
+puis approuver et relancer les parcours. La protection Vercel, les reviewers et
+les politiques GitHub restent actifs. Aucun secret ne doit être partagé dans les
+preuves, logs ou échanges. Sans ces ressources et autorisations, le résultat
+reste **BLOCKED**, et non PASS.

@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       const document = rows[0];
       if (!document) throw new Error('document_registration_failed');
-      return { document, upload: presignedUpload(storagePath, body.contentType) };
+      return { document, upload: presignedUpload(storagePath, body.contentType, body.byteSize) };
     });
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 201, {

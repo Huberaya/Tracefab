@@ -16,7 +16,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { parse } from 'yaml';
-import { construireEntetes, creerExpurgateur, gabarit, classifierProtection,
+import { construireEntetes, construireEntetesStockage, creerExpurgateur, gabarit, classifierProtection,
   validerOriginePreview, validerUrlStockage, eicarTestBytes, attendreExpirationMs } from './lib/preview_harness_safety.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -166,9 +166,35 @@ function lancer(envSuppl, { retirer = [] } = {}) {
 
   const source = readFileSync(HARNAIS, 'utf8');
   verifier(source.includes('validerUrlStockage(chemin, STORAGE_HOST)')
-    && source.includes('externe, jeton: token, organisation: org, entetes, bypass: BYPASS')
+    && source.includes('construireEntetesStockage({ url, previewOrigin: BASE, entetes, bypass: BYPASS })')
     && !source.includes('...entetesCommuns'),
   'harnais : constructeur segrege utilise, aucun spread d en-tetes communs');
+
+  const capability = `payload.${'A'.repeat(43)}`;
+  const interneStockage = construireEntetesStockage({
+    url: `${TEST_ORIGIN}/api/preview-storage/object`, previewOrigin: TEST_ORIGIN,
+    bypass: BYPASS_TEST, entetes: { 'Content-Type': 'application/octet-stream', 'X-Tracefab-Preview-Capability': capability },
+  });
+  verifier(interneStockage['x-vercel-protection-bypass'] === BYPASS_TEST
+    && interneStockage['X-Tracefab-Preview-Capability'] === capability,
+  'stockage Preview meme origine et chemin exact : bypass et capacite autorises');
+  const tiers = construireEntetesStockage({
+    url: 'https://storage.example.test/bucket/key', previewOrigin: TEST_ORIGIN,
+    bypass: BYPASS_TEST, entetes: { 'Content-Type': 'text/plain', 'X-Tracefab-Preview-Capability': capability },
+  });
+  verifier(!JSON.stringify(tiers).includes(BYPASS_TEST) && !JSON.stringify(tiers).includes(capability),
+    'stockage tiers : ni bypass Vercel ni capacite Preview');
+  const mauvaisChemin = construireEntetesStockage({
+    url: `${TEST_ORIGIN}/api/autre`, previewOrigin: TEST_ORIGIN, bypass: BYPASS_TEST,
+    entetes: { 'X-Tracefab-Preview-Capability': capability },
+  });
+  verifier(!JSON.stringify(mauvaisChemin).includes(BYPASS_TEST)
+    && !JSON.stringify(mauvaisChemin).includes(capability),
+  'meme origine mais mauvais chemin : aucun en-tete sensible');
+  let mauvaiseCap = false;
+  try { construireEntetesStockage({ url: `${TEST_ORIGIN}/api/preview-storage/object`, previewOrigin: TEST_ORIGIN,
+    entetes: { 'X-Tracefab-Preview-Capability': 'pas-un-jeton' } }); } catch { mauvaiseCap = true; }
+  verifier(mauvaiseCap, 'capacite Preview malformee refusee avant requete');
 }
 
 

@@ -2097,10 +2097,21 @@
             }),
           });
           if (!intent.upload?.url) throw new Error('private_storage_unavailable');
-          const put = await fetch(intent.upload.url, {
+          const uploadTarget = new URL(intent.upload.url, location.href);
+          let uploadHeaders = intent.upload.headers || { 'Content-Type': file.type };
+          const capability = uploadHeaders['X-Tracefab-Preview-Capability'];
+          if (capability !== undefined) {
+            if (uploadTarget.origin !== location.origin || uploadTarget.pathname !== '/api/preview-storage/object'
+                || uploadTarget.search || uploadTarget.hash || (intent.upload.method || 'PUT') !== 'PUT'
+                || typeof capability !== 'string' || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(capability)
+                || uploadHeaders['Content-Type'] !== 'application/octet-stream') throw new Error('private_storage_unavailable');
+            uploadHeaders = { 'Content-Type': 'application/octet-stream', 'X-Tracefab-Preview-Capability': capability };
+          }
+          const put = await fetch(uploadTarget.href, {
             method: intent.upload.method || 'PUT',
-            headers: intent.upload.headers || { 'Content-Type': file.type },
+            headers: uploadHeaders,
             body: file,
+            redirect: 'error',
           });
           if (!put.ok) throw new Error(`document_upload_failed_${put.status}`);
           // Le scan peut echouer (antivirus/stockage indisponible) : le document
@@ -2142,8 +2153,27 @@
       async function downloadDocument(id) {
         try {
           const result = await api(`/api/documents/${encodeURIComponent(id)}/download`);
-          if (result.download?.url) window.open(result.download.url, '_blank', 'noopener');
-          else throw new Error('document_download_unavailable');
+          if (!result.download?.url) throw new Error('document_download_unavailable');
+          if (result.download.headers) {
+            // Preview PostgreSQL : capacite dans l'en-tete, jamais dans l'URL.
+            // Ne pas transmettre l'en-tete a une origine ou un chemin tiers.
+            const target = new URL(result.download.url, location.href);
+            const capability = result.download.headers['X-Tracefab-Preview-Capability'];
+            if (target.origin !== location.origin || target.pathname !== '/api/preview-storage/object'
+                || target.search || target.hash || typeof capability !== 'string'
+                || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(capability)) throw new Error('document_download_unavailable');
+            const response = await fetch(target.href, {
+              headers: { 'X-Tracefab-Preview-Capability': capability }, credentials: 'same-origin', redirect: 'error',
+            });
+            if (!response.ok) throw new Error('document_download_unavailable');
+            const objectUrl = URL.createObjectURL(await response.blob());
+            const link = document.createElement('a');
+            link.href = objectUrl; link.download = result.document?.originalFilename || 'document';
+            document.body.appendChild(link); link.click(); link.remove();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+          } else {
+            window.open(result.download.url, '_blank', 'noopener');
+          }
         } catch (error) { notify(error.message, true); }
       }
 

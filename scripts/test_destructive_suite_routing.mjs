@@ -149,6 +149,7 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
 const OPERATOR_WRITER_SCRIPTS = [
   'scripts/seed_pilot.ts',                  // amorcage d un environnement pilote
   'scripts/verifier_checksums_migrations.mjs', // realignement des checksums, sur --appliquer uniquement
+  'scripts/provision_preview_storage.ts',  // schema de test : attestation explicite + empreinte ; jamais lance par la CI
 ];
 
 /**

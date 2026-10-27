@@ -10,8 +10,9 @@
  * avec les services manages. Ce script est l'epreuve manquante : il ne
  * demarre AUCUN service. Toutes les requetes partent en HTTP vers l'URL d'une
  * Preview Vercel deployee ; les jetons viennent d'une VERITABLE instance
- * Clerk de test (`sk_test_...`) via la BAPI ; les octets du document vont
- * dans le VRAI bucket prive presigne ; le VRAI antivirus rend le verdict.
+ * Clerk de test (`sk_test_...`) via la BAPI ; les octets vont dans le VRAI
+ * stockage prive de test configure (S3 ou PostgreSQL Preview) et le VRAI
+ * antivirus de test doit rendre le verdict.
  *
  * Aucune fonction interne de l'API n'est importee. Aucun mock, aucun client
  * Prisma, aucune base locale. Si la Preview, Clerk, le stockage ou
@@ -55,7 +56,7 @@
  *                                           la protection reste active
  *   TF_PREVIEW_ORG_ALPHA / _BETA            UUID des organisations de TEST
  *   TF_PREVIEW_EXPECTED_ORIGIN             origine HTTPS verifiee par l'admin
- *   TF_PREVIEW_STORAGE_HOST                hote du stockage de TEST verifie
+ *   TF_PREVIEW_STORAGE_HOST                hote S3 de TEST, ou hote Preview pour PostgreSQL
  *   TF_PREVIEW_DEPLOYED_SHA                SHA de la Preview verifie par l'admin
  *   GITHUB_SHA / TF_PREVIEW_CODE_SHA       SHA du code execute
  *   TF_PREVIEW_TEST_ENV_CONFIRMED=1          attestation ADMIN des services de test
@@ -67,7 +68,7 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { creerExpurgateur, gabarit, construireEntetes, validerOriginePreview,
+import { creerExpurgateur, gabarit, construireEntetes, construireEntetesStockage, validerOriginePreview,
   validerUrlStockage, eicarTestBytes, classifierProtection, attendreExpirationMs } from './lib/preview_harness_safety.mjs';
 
 const EXIT = { PASS: 0, FAIL: 1, BLOCKED: 2, REFUS: 3 };
@@ -282,9 +283,9 @@ async function requete(opts) {
     entetes = {}, redirect = 'manual', externe = false, binary = false,
   } = opts;
   const url = externe ? validerUrlStockage(chemin, STORAGE_HOST).href : `${BASE}${chemin}`;
-  const headers = construireEntetes({
-    externe, jeton: token, organisation: org, entetes, bypass: BYPASS,
-  });
+  const headers = externe
+    ? construireEntetesStockage({ url, previewOrigin: BASE, entetes, bypass: BYPASS })
+    : construireEntetes({ jeton: token, organisation: org, entetes, bypass: BYPASS });
   let body;
   if (brut !== undefined) body = brut;
   else if (corps !== undefined) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(corps); }
@@ -487,7 +488,7 @@ verifierHttp('J1.4', 200, liste, liste.status === 200 && (liste.body?.products |
 /* ---------------------------------------------------------------------------
  * 2. Document : URL signee, VRAI transfert, scan, integrite.
  * ------------------------------------------------------------------------- */
-console.log('\n  2 — document : stockage prive manage, antivirus, integrite');
+console.log('\n  2 — document : stockage prive de test, antivirus, integrite');
 const octets = Buffer.from(`Tracefab Preview — preuve ${RUN_ID}\n`, 'utf8');
 const intention = await A('POST', '/api/documents/upload-intent', {
   originalFilename: `preuve-${suffixe}.txt`, contentType: 'text/plain',
@@ -504,7 +505,22 @@ verifier('J2.2', 'uploaded', intention.body?.document?.status, intention.body?.d
 
 const depot = await requete({ cas: 'J2.3', method: 'PUT', chemin: intention.body.upload.url, brut: octets,
   entetes: intention.body.upload.headers || {}, externe: true });
-verifierHttp('J2.3', 200, depot, depot.status === 200, 'PUT presigne vers le stockage prive manage');
+verifierHttp('J2.3', 200, depot, depot.status === 200, 'PUT autorise vers le stockage prive de test');
+
+// Le backend PostgreSQL de test doit refuser toute reecriture, meme avec une
+// capacite PUT encore valide : sinon un objet analyse pourrait etre remplace.
+const previewCapability = intention.body.upload.headers?.['X-Tracefab-Preview-Capability'];
+if (previewCapability) {
+  const secondeEcriture = await requete({ cas: 'J2.8', method: 'PUT', chemin: intention.body.upload.url,
+    brut: octets, entetes: intention.body.upload.headers, externe: true });
+  verifierHttp('J2.8', 409, secondeEcriture, secondeEcriture.status === 409, 'objet de test immuable');
+  const [charge, signature] = previewCapability.split('.');
+  const capFalsifiee = `${charge}.${signature[0] === 'A' ? 'B' : 'A'}${signature.slice(1)}`;
+  const capInvalide = await requete({ cas: 'J2.9', method: 'PUT', chemin: intention.body.upload.url,
+    brut: octets, entetes: { 'Content-Type': 'application/octet-stream',
+      'X-Tracefab-Preview-Capability': capFalsifiee }, externe: true });
+  verifierHttp('J2.9', 403, capInvalide, capInvalide.status === 403, 'capacite falsifiee refusee');
+}
 
 const urlPublique = intention.body.upload.url.split('?')[0];
 const lienPublic = await requete({ cas: 'J2.4', chemin: urlPublique, externe: true });
@@ -512,6 +528,11 @@ verifierHttp('J2.4', '401/403/404', lienPublic, [401, 403, 404].includes(lienPub
   'lien non signe refuse ; une erreur 5xx ne prouve pas la confidentialite');
 
 const scan = await A('POST', `/api/documents/${documentId}/scan`);
+if (scan.status === 503) {
+  enregistrer('J2.5', 'scanner et stockage disponibles', 503, false,
+    'aucun verdict antivirus fiable', scan, 'BLOCKED');
+  bloquer('scan indisponible : verifier stockage et antivirus de test ; aucun verdict sain nest suppose.');
+}
 verifierHttp('J2.5', 200, scan, scan.status === 200 && scan.body?.document?.status === 'available'
   && scan.body?.scan?.status === 'clean', codeErreur(scan));
 
@@ -519,7 +540,7 @@ const telechargement = await A('GET', `/api/documents/${documentId}/download`);
 verifierHttp('J2.6', 200, telechargement, telechargement.status === 200 && Boolean(telechargement.body?.download?.url), codeErreur(telechargement));
 if (telechargement.status === 200 && telechargement.body?.download?.url) {
   const objet = await requete({ cas: 'J2.7', chemin: telechargement.body.download.url,
-    externe: true, binary: true });
+    entetes: telechargement.body.download.headers || {}, externe: true, binary: true });
   const integre = objet.status === 200 && objet.digest === createHash('sha256').update(octets).digest('hex');
   verifier('J2.7', 'HTTP 200 + SHA256 identique', integre ? 'identique' : 'different',
     integre, 'aucun octet ou URL signee journalise', objet);
@@ -669,6 +690,11 @@ if (intentionInfectee.status !== 201 || !docInfecte || !intentionInfectee.body?.
   verifierHttp('J8.0', 200, depotEicar, depotEicar.status === 200, 'EICAR canonique, 68 octets');
   if (depotEicar.status === 200) {
     const scanInfecte = await A('POST', `/api/documents/${docInfecte}/scan`);
+    if (scanInfecte.status === 503) {
+      enregistrer('J8.1', 'rejet EICAR par un vrai scanner', 503, false,
+        'scanner indisponible', scanInfecte, 'BLOCKED');
+      bloquer('antivirus indisponible pour EICAR ; aucun rejet nest considere prouve.');
+    }
     verifier('J8.1', 'HTTP 200 + rejected', scanInfecte.body?.scan?.status || scanInfecte.status,
       scanInfecte.status === 200 && scanInfecte.body?.scan?.status === 'rejected'
         && scanInfecte.body?.document?.status === 'rejected', 'antivirus manage, aucun mock', scanInfecte);
@@ -734,5 +760,20 @@ try {
   } catch {
     console.error('  FAIL — impossible de conserver la preuve epuree.');
     process.exitCode = EXIT.FAIL;
+  }
+  // Les logs/artefacts Actions peuvent etre inaccessibles hors de GitHub.
+  // Annotation strictement bornee : verdict, nombre de requetes et NOMS
+  // connus des prerequis manquants ; jamais de valeur ou de raison brute.
+  if (!estSelftest && process.env.GITHUB_ACTIONS === 'true') {
+    const names = ['CLERK_SECRET_KEY', 'TRACEFAB_STAGING_URL', 'TF_PREVIEW_EXPECTED_ORIGIN',
+      'TF_PREVIEW_STORAGE_HOST', 'TF_VERCEL_BYPASS', 'TF_PREVIEW_USER_ALPHA',
+      'TF_PREVIEW_USER_BETA', 'TF_PREVIEW_ORG_ALPHA', 'TF_PREVIEW_ORG_BETA',
+      'TF_PREVIEW_DEPLOYED_SHA', 'TF_PREVIEW_TEST_ENV_CONFIRMED'];
+    const missing = String(raisonArret || '').startsWith('variables absentes ou invalides')
+      ? names.filter((name) => String(raisonArret).includes(name)) : [];
+    const finalStatus = process.exitCode === EXIT.BLOCKED ? 'BLOCKED'
+      : process.exitCode === EXIT.REFUS ? 'NOT RUN' : process.exitCode ? 'FAIL' : 'PASS';
+    const count = preuves.filter((p) => p.method && p.httpStatus).length;
+    console.log(`::notice title=Preview prevol et parcours::verdict ${finalStatus}; requetes mesurees ${count}; prerequis absents ${missing.length ? missing.join(', ') : 'non identifies'}`);
   }
 }

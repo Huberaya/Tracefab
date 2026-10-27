@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { AntivirusScanResult } from './types.js';
+import { scanWithAntivirus } from '../storage.js';
 
 const EICAR_SIGNATURE = 'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
 
@@ -118,10 +119,13 @@ export function analyzeDocumentBytes(
     }
   }
 
+  // Une heuristique sans alerte n'est PAS un antivirus et ne peut pas
+  // certifier qu'un fichier est sain. Ce resultat reste non verifie.
   return {
-    clean: true,
-    status: 'clean',
-    engine: 'Tracefab Forensics & ClamAV Engine v2',
+    clean: false,
+    status: 'error',
+    engine: 'Tracefab heuristics (not an antivirus)',
+    threatName: 'antivirus_verdict_unavailable',
     mimeType: contentType,
     sha256,
     scannedAt: now,
@@ -130,65 +134,35 @@ export function analyzeDocumentBytes(
 }
 
 /**
- * Complete antivirus pipeline: runs external REST antivirus if configured,
- * otherwise executes deep heuristic forensics.
+ * Pipeline antivirus : aucun repli heuristique ne peut produire un verdict
+ * positif. Utilise le meme contrat authentifie et fail-closed que le depot
+ * de documents ; l'identite effective du moteur externe n'est pas supposee.
  */
 export async function runAntivirusPipeline(
   bytes: ArrayBuffer,
   filename: string,
-  contentType: string
+  contentType: string,
 ): Promise<AntivirusScanResult> {
-  const scannerUrl = process.env.PRIVATE_STORAGE_ANTIVIRUS_URL?.trim();
-
-  // If external antivirus URL configured, query it according to protocol
-  if (scannerUrl) {
-    try {
-      const response = await fetch(scannerUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': contentType,
-          'X-Tracefab-Filename': filename,
-          'X-Tracefab-Scan-Protocol': 'tracefab-v1',
-        },
-        body: Buffer.from(bytes) as unknown as BodyInit,
-      });
-
-      const payload = (await response.json().catch(() => null)) as {
-        clean?: unknown;
-        mimeType?: unknown;
-        threat?: unknown;
-      } | null;
-
-      if (!response.ok || !payload || typeof payload.clean !== 'boolean') {
-        throw new Error('private_storage_antivirus_invalid_response');
-      }
-
-      const buf = Buffer.from(bytes);
-      const sha256 = createHash('sha256').update(new Uint8Array(buf)).digest('hex');
-
-      return {
-        clean: payload.clean,
-        status: payload.clean ? 'clean' : 'infected',
-        engine: 'External Antivirus Daemon (tracefab-v1)',
-        threatName: typeof payload.threat === 'string' ? payload.threat : undefined,
-        mimeType: typeof payload.mimeType === 'string' ? payload.mimeType : contentType,
-        sha256,
-        scannedAt: new Date().toISOString(),
-        details: {
-          fileHeaderValid: true,
-          suspiciousKeywordsFound: [],
-          embeddedScriptsFound: !payload.clean,
-          eicarDetected: false,
-        },
-      };
-    } catch (err: any) {
-      if (err?.message === 'private_storage_antivirus_invalid_response') {
-        throw err;
-      }
-      throw new Error('private_storage_antivirus_unreachable');
-    }
+  try {
+    const scan = await scanWithAntivirus(bytes, filename, contentType);
+    const sha256 = createHash('sha256').update(new Uint8Array(bytes)).digest('hex');
+    return {
+      clean: scan.clean,
+      status: scan.clean ? 'clean' : 'infected',
+      engine: 'External antivirus (tracefab-v1; engine not attested)',
+      threatName: scan.threat,
+      mimeType: scan.mimeType || contentType,
+      sha256,
+      scannedAt: new Date().toISOString(),
+      details: {
+        fileHeaderValid: null,
+        suspiciousKeywordsFound: [],
+        embeddedScriptsFound: null,
+        eicarDetected: null,
+      },
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('private_storage_antivirus_')) throw error;
+    throw new Error('private_storage_antivirus_unreachable');
   }
-
-  // Fallback to internal heuristic and signature analyzer
-  return analyzeDocumentBytes(bytes, filename, contentType);
 }

@@ -156,6 +156,33 @@ export function construireEntetes({ externe = false, jeton, organisation, entete
 }
 
 /**
+ * Le stockage PostgreSQL de Preview utilise exactement l'origine et le
+ * chemin applicatifs approuves. Dans CE SEUL CAS on transmet le bypass et la
+ * capacite d'objet : S3/R2 ne recoit jamais ni l'un ni l'autre.
+ */
+export function construireEntetesStockage({ url, previewOrigin, entetes = {}, bypass = '' }) {
+  const cible = new URL(url);
+  const localPreview = cible.origin === previewOrigin
+    && cible.pathname === '/api/preview-storage/object' && !cible.search && !cible.hash;
+  if (!localPreview) return construireEntetes({ externe: true, entetes });
+  const propres = {};
+  for (const [nom, valeur] of Object.entries(entetes || {})) {
+    const cle = String(nom).toLowerCase();
+    if (cle === 'content-type') {
+      if (valeur !== 'application/octet-stream') throw new Error('preview_storage_content_type_invalid');
+      propres['Content-Type'] = valeur;
+    } else if (cle === 'x-tracefab-preview-capability') {
+      if (typeof valeur !== 'string' || valeur.length > 1600
+          || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(valeur)) {
+        throw new Error('preview_storage_capability_invalid');
+      }
+      propres['X-Tracefab-Preview-Capability'] = valeur;
+    }
+  }
+  return construireEntetes({ entetes: propres, bypass });
+}
+
+/**
  * Classifie une reponse /api/health obtenue SANS bypass.
  * Fonction pure : les cas sont eprouves unitairement (ce ne sont PAS des
  * preuves de Preview, seulement la logique de la sonde).

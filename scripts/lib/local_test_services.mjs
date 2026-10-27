@@ -378,7 +378,10 @@ export async function startApiHttpServer(handler) {
       res.end(JSON.stringify({ error: 'body_read_failed' }));
       return;
     }
-    const raw = Buffer.concat(chunks).toString('utf8');
+    const rawBytes = Buffer.concat(chunks);
+    // Reproduit le contrat Vercel : octet-stream reste un Buffer. Les autres
+    // parcours locaux continuent a recevoir leurs corps JSON sous forme texte.
+    const raw = req.headers['content-type'] === 'application/octet-stream' ? rawBytes : rawBytes.toString('utf8');
     const query = {};
     for (const [key, value] of url.searchParams.entries()) {
       if (Object.prototype.hasOwnProperty.call(query, key)) {

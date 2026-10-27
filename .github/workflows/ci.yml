@@ -603,6 +603,21 @@ jobs:
         # suffit alors à éliminer un compteur actif en deux étapes autorisées.
         run: npm run test:neon:compteurs-debit
 
+      - name: Installer ClamAV pour la fixture EICAR locale
+        # La seule signature creee par le test est EICAR. Cette base minimale
+        # n'est PAS une protection antivirus utilisable pour des vrais fichiers.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends clamav
+
+      - name: Stockage Preview PostgreSQL — HTTP, base et moteur AV locaux
+        # Vrai routeur, PostgreSQL et ClamAV locaux ; Clerk simule. Signature
+        # EICAR seule : aucune preuve d'un scanner gere ou de la Preview.
+        # Echec ferme si le binaire ou la detection EICAR ne fonctionne pas.
+        env:
+          TF_PREVIEW_TEST_REAL_CLAMAV: '1'
+        run: npm run test:neon:preview-postgres-storage
+
       - name: Sonde d'identité du runtime — justesse de l'instrument
         # Toute la sécurité du runtime repose sur la RLS, et la RLS ne
         # s'applique pas à un rôle qui porte BYPASSRLS. L'identité réellement
