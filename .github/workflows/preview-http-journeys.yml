@@ -1,3 +1,4 @@
+# Déclenchement manuel de la validation Preview
 # Parcours HTTP sur la Preview de la PR #101. Aucun service local ni mock.
 #
 # workflow_dispatch exige que le fichier existe sur la branche par defaut.
