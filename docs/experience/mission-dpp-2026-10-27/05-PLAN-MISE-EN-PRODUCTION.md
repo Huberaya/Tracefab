@@ -16,7 +16,7 @@ corrective n° 59 · **Branche de travail :** `arena/c27ddaa4-tracefab`
 | Preuve | Environnement | Résultat |
 |---|---|---|
 | Chaîne complète des 59 migrations | PostgreSQL WASM | PASS (`test:dpp:migrations`, 59/59) |
-| Chaîne complète, base jetable | PostgreSQL 17, CI GitHub Actions | PASS (à rejouer sur 59) |
+| **`prisma migrate deploy` sur base jetable** | **PostgreSQL 17, CI GitHub Actions** | **PASS** — les 59 migrations, outil officiel (CI 40520806155) |
 | Reprise 56 → 58 avec données | **PostgreSQL 18.4 réel, base de forme production** | **PASS** — 56 appliquées, puis 2 |
 | Chaîne complète des 59 migrations | **PostgreSQL 18.4 réel, base recréée de zéro** | **PASS** — 59/59, y compris la 59<sup>e</sup> |
 | Revue et publication (6 cas + idempotence) | **PostgreSQL 18.4 réel, 59 migrations** | **PASS** (`scripts/test_dpp_review_and_publication.mjs`) |

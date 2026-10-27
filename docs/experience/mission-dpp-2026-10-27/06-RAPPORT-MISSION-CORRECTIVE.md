@@ -20,7 +20,7 @@ déploiement.
 | 1 | A — état initial de la base et du registre | **TERMINÉE ET VÉRIFIÉE** (local) | PostgreSQL 18.4 recréé de zéro, 59/59 migrations, registre lu |
 | 2 | A — état de la production | **TERMINÉE ET VÉRIFIÉE** (lecture seule, 27/10 matin) | 56 migrations appliquées, 2 manquantes ; voir `04-ECART-PRODUCTION-CONSTATE.md` |
 | 3 | B — branche Neon isolée `tracefab-dpp-readiness-validation` | **BLOQUÉE** — JUSTIFICATION FOURNIE | `api.neon.tech` et `console.neon.tech` injoignables (`000`) ; aucune clé API Neon dans l'environnement. Le proxy Postgres (TCP 5432) répond, mais **créer** une branche exige l'API. Procédure opérateur fournie (§8.3) |
-| 4 | C — `npm run db:deploy` sur la branche | **NON APPLICABLE** (dépend de 3) — JUSTIFICATION FOURNIE | Sans branche, pas de cible. Sur base locale, le CLI Prisma est inutilisable (moteur de schéma `binaries.prisma.sh` injoignable) ; `scripts/migrer_fidelement.mjs` a servi de substitut **et ne vaut pas preuve officielle** |
+| 4 | C — `npm run db:deploy` sur la branche | **BLOQUÉE** (dépend de 3) — JUSTIFICATION FOURNIE | Sans branche, pas de cible. En local, le CLI Prisma est inutilisable (moteur de schéma injoignable) : `scripts/migrer_fidelement.mjs` a servi de substitut et **ne vaut pas preuve officielle**. En revanche `prisma migrate deploy` a bien été exécuté, par la CI, sur un PostgreSQL 17 jetable (§3) |
 | 5 | D — les 4 requêtes du §9 | **TERMINÉE ET VÉRIFIÉE** (base de test) | Exécutées par `scripts/valider_branche_dpp.mjs` : 4/4 conformes (§4) |
 | 6 | E — 5 scénarios de calcul DPP | **TERMINÉE ET VÉRIFIÉE** (base de test) | 7 scénarios exécutés (S1–S7), tous conformes ; aucun forcé à 100 % (§5) |
 | 7 | F — identifier et recalculer les 18 produits | **BLOQUÉE** — JUSTIFICATION FOURNIE | Les produits réels n'ont pas été lus (aucun accès, aucune autorisation). Ce qui est fait à leur place : simulation lecture seule **prouvée** (§6) |
@@ -97,8 +97,21 @@ Ce que fait la 59<sup>e</sup> :
 5. ne pose ni `BEGIN` ni `COMMIT` : Prisma gère la transaction, comme les 58
    autres.
 
-**Chaîne complète vérifiée deux fois** : base recréée de zéro → 59/59
-appliquées ; base laissée à 58 → la 59<sup>e</sup> s'ajoute seule, sans erreur.
+**Chaîne complète vérifiée trois fois** :
+
+1. base locale recréée de zéro → 59/59 appliquées (harnais local) ;
+2. base locale laissée à 58 → la 59<sup>e</sup> s'ajoute seule, sans erreur, et
+   les quatre revues posées avant la migration survivent ;
+3. **CI, job « Base — isolation RLS exécutée »** : `prisma migrate deploy`
+   (l'outil officiel, pas un substitut) applique les 59 migrations sur un
+   PostgreSQL 17 jetable, puis la suite de non-régression revue/publication y
+   passe. Étape « Appliquer les migrations sur la base jetable » : `success` ;
+   étape « Revue et publication — non-régression sur base migrée » : `success`
+   (exécution CI n° 40520806155).
+
+C'est la seule exécution **officielle** du registre de migrations dont ce dépôt
+dispose aujourd'hui. Elle ne remplace pas une branche Neon dérivée de la
+production : le moteur est le même, les données ne le sont pas.
 
 ## 4. Les quatre requêtes du §9
 
@@ -245,7 +258,8 @@ actuel.
 
 | Élément | Statut | Pourquoi |
 |---|---|---|
-| `prisma migrate deploy` réel | **non exécuté nulle part** | CLI Prisma inutilisable ici (`binaries.prisma.sh` injoignable) ; le substitut ne vaut pas preuve |
+| `prisma migrate deploy` sur une branche Neon / en production | **non exécuté** | la CI l'exécute sur un PostgreSQL 17 jetable, ce qui prouve la chaîne et le registre, pas l'effet sur vos données |
+| CLI Prisma dans cet environnement | **inutilisable** | `binaries.prisma.sh` injoignable ; d'où le harnais local, assumé comme substitut |
 | Branche Neon isolée | **bloquée** | API HTTP injoignable, aucune clé |
 | Les 4 requêtes §9 en production | **à faire** | aucun accès écriture/lecture à la production |
 | Recalcul des 18 produits réels | **bloqué et non autorisé** | dépend des deux lignes ci-dessus |
