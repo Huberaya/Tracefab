@@ -199,10 +199,22 @@ SELECT profile_version, status,
 FROM dpp_requirement_profiles WHERE profile_key = 'textile_readiness_mvp';
 
 -- 2. la fonction doit porter la correction
-SELECT array_agg(m[1] ORDER BY m[1]) AS exigences_installees
-FROM pg_proc p, regexp_matches(p.prosrc, '''([a-z_]+\.[a-z_]+)''', 'g') AS m
-WHERE p.proname = 'tracefab_dpp_requirement_met';
--- attendu : 13 clés, dont quality.no_open_issues
+--    ATTENTION : la fonction implante PLUS de clés que le profil n'en compte.
+--    Elle conserve deux branches héritées (`product.data_ready`,
+--    `quality.no_blocking_issues`) qui ne sont plus évaluées. Compter les clés
+--    de la fonction et attendre « 13 » est donc faux — première version de ce
+--    contrôle, corrigée après l'avoir vu échouer sur une base migrée.
+--    Ce qui fait foi est la correspondance PROFIL → FONCTION.
+SELECT
+  (SELECT array_agg(e ->> 'key' ORDER BY e ->> 'key')
+     FROM dpp_requirement_profiles,
+          jsonb_array_elements(definition -> 'requirements') e
+    WHERE profile_key = 'textile_readiness_mvp' AND status = 'active') AS exigences_du_profil,
+  (SELECT array_agg(m[1] ORDER BY m[1])
+     FROM pg_proc p, regexp_matches(p.prosrc, '''([a-z_]+\.[a-z_]+)''', 'g') AS m
+    WHERE p.proname = 'tracefab_dpp_requirement_met') AS cles_implantees;
+-- attendu : 13 exigences de profil, toutes présentes dans les clés implantées,
+--           dont quality.no_open_issues.
 
 -- 3. le registre doit compter 58 migrations
 SELECT count(*) FROM _prisma_migrations WHERE finished_at IS NOT NULL;
