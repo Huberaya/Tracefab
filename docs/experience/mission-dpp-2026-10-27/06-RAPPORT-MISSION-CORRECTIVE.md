@@ -473,6 +473,35 @@ la **validation**, pas la production, et la rotation du mot de passe de
 `neondb_owner` reste à faire — après vérification du rôle qu'utilise réellement
 la production, pour ne pas toucher celle-ci par inadvertance.
 
+### 11.5d Simulation du recalcul sur le parc réel de la branche (27/10, 17 h 55)
+
+`npm run simuler:recalcul-dpp` exécuté sur `br-sweet-king-b1n2f4u6` : une
+transaction, le recalcul réel, la mesure, puis **`ROLLBACK`**. Le script vérifie
+ensuite hors transaction que la base est identique — empreintes égales avant et
+après, `evenements 0`, `audits_dpp 0`, `slugs_poses 0`, `publies 0`. Rien n'a
+été conservé.
+
+Parc mesuré : **18 produits, 1 seul dossier DPP**, 0 publié, 0 slug.
+
+| Dossier | Avant | Après recalcul (13 exigences) |
+|---|---|---|
+| `P-2ed11660` | `data_ready` · **9/9** | `in_progress` · **8/13** |
+| revue | — | **conservée** |
+| visibilité | non visible | non visible — **inchangée** |
+| manquantes | — | `product.required_attributes`, `materials.origin_documented`, `traceability.documented`, `quality.no_open_issues`, `evidence.product_data` |
+
+Classement : **correction attendue**, pas régression. Le dossier affichait 9/9
+parce que quatre exigences du profil n'étaient pas évaluées ; le profil à 13
+les évalue, et cinq preuves manquent réellement. Aucune anomalie technique :
+0 revue invalidée sans raison, 0 visibilité modifiée sans publication ni
+suspension, 0 publication par effet de bord.
+
+**Ce que cela change dans le dossier métier.** Le parc de cette branche est
+quasi vide en dossiers : un seul, et il n'est pas publiable en l'état. Le
+« vrai » parc textile n'est donc pas ici — il est en production, qui reste
+interdite d'écriture. La branche a servi à prouver la chaîne, pas à produire un
+passeport.
+
 ### 11.6 État des phases de la mission de clôture
 
 | Phase | État | Motif |
@@ -484,8 +513,8 @@ la production, pour ne pas toucher celle-ci par inadvertance.
 | D ter — parc inchangé | **TERMINÉE** | 18 produits · 1 dossier · 0 publié avant et après : aucune écriture de données |
 | D — critères D1 à D6 | **NON MESURÉS SUR NEON** | prouvés en local et en CI seulement |
 | E — scénarios | **PARTIELLE** | 9 cas exécutés en local et en CI ; pas sur Neon ; cas 9 (état à 58) rejoué sur `tf58` |
-| F — simulation du parc réel | **OUTIL PRÊT, NON EXÉCUTÉ** | aucune cible accessible |
-| G — contrôles post-migration | **BLOQUÉE** | dépend de C ; le volet HTTP reste non prouvé |
+| F — simulation du parc réel | **TERMINÉE (27/10, 17 h 55)** | 1 dossier simulé, `data_ready 9/9` → `in_progress 8/13`, revue conservée, visibilité inchangée, ROLLBACK vérifié |
+| G — contrôles post-migration | **PARTIELLE** | SQL : registre 59, RLS, privilèges, profil 13 — prouvés. HTTP : **non prouvé**, aucun slug en base |
 | H — CI | **TERMINÉE** | run de la CI sur `a23da42`, 4 jobs verts |
 
 
