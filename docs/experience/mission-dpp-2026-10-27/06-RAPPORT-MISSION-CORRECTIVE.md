@@ -30,7 +30,8 @@ déploiement.
 | 11 | Correction A2 — cohérence de la publication publique | **TERMINÉE ET VÉRIFIÉE** | CAS 3, 4, 5, 6 : reste publié, suspension, republication, retrait |
 | 12 | Correction A3 — idempotence complète | **TERMINÉE ET VÉRIFIÉE** | Deux passages : statut, score, empreinte, revue, slug, visibilité, événements, audits identiques |
 | 13 | C — simulation lecture seule sur parc réel | **TERMINÉE ET VÉRIFIÉE** (mécanisme), **NON EXÉCUTÉE** sur les données réelles | `scripts/simuler_recalcul_dpp.mjs` : parc dérivé détecté, base restaurée à l'identique (empreintes + compteurs) |
-| 14 | Vérifier qu'aucune route publique ne sert un passeport suspendu | **PARTIELLEMENT PROUVÉE** | Preuve en base (CAS 4, 6) ; côté API, **lecture de code** : le résolveur public exige `public_slug` + `published` + `reviewed_at`. Aucun test HTTP exécuté |
+| 14 | Politique de routage des suites destructives (CI) | **TERMINÉE ET VÉRIFIÉE** | `npm run test:db-routing` : OK après classification et ajout des modes `--dry-run` |
+| 15 | Vérifier qu'aucune route publique ne sert un passeport suspendu | **PARTIELLEMENT PROUVÉE** | Preuve en base (CAS 4, 6) ; côté API, **lecture de code** : le résolveur public exige `public_slug` + `published` + `reviewed_at`. Aucun test HTTP exécuté |
 
 ---
 
@@ -187,6 +188,7 @@ restaurée (code de sortie 4 sinon).
 | 6 | Outil de simulation non destructif | `scripts/simuler_recalcul_dpp.mjs` | exécution sur parc dérivé |
 | 7 | Harness de migration : borne `--jusqu-a` pour reconstituer un état antérieur sans réécrire d'historique | `scripts/migrer_fidelement.mjs` | base `tf58` |
 | 8 | Registres de suivi remis à jour (59 migrations) | `CHANTIERS-RESTANTS.md`, scripts de contrôle | `test:chantiers`, `test:dpp:migrations` |
+| 9 | Politique de routage des suites destructives respectée : la suite de non-régression passe par la garde de cible, la simulation est classée « écriture annulée par ROLLBACK », les harnais de migration sont classés outils d'exploitation — **et ont reçu un vrai mode sans écriture** (`--dry-run`) | `package.json`, `scripts/test_destructive_suite_routing.mjs`, `scripts/{migrer_fidelement,mesure_effet_migrations_dpp,valider_branche_dpp}.mjs` | `test:db-routing` : OK ; quatre modes `--dry-run` exécutés |
 
 Le point 4 mérite d'être souligné : il n'a **pas** été trouvé par relecture mais
 en rejouant la migration sur une base restée à 58 migrations, avec de vraies

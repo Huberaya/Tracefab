@@ -26,6 +26,12 @@ if (hote === HOTE_PRODUCTION || /^ep-polished-night/.test(hote)) {
   process.exit(3);
 }
 
+// `--dry-run` : n'execute que les quatre controles du §9, qui sont des SELECT.
+// La section B cree un tenant de validation et ecrit des produits : elle est
+// donc sautee. Ce mode existe pour pouvoir lire l'etat d'une base sans rien y
+// laisser, sans avoir a se souvenir de quelles requetes sont sures.
+const LECTURE_SEULE = process.argv.includes('--dry-run');
+
 const client = new pg.Client({
   connectionString: url,
   ssl: /neon\.tech|sslmode=require/.test(url) ? { rejectUnauthorized: false } : false,
@@ -108,6 +114,19 @@ SELECT has_function_privilege('public', 'tracefab_dpp_requirement_met(text, uuid
 /* ========================================================================== */
 /* B. Cinq scenarios de calcul DPP                                           */
 /* ========================================================================== */
+if (LECTURE_SEULE) {
+  console.log('\nB. Scenarios de calcul — SAUTES (--dry-run : aucune ecriture)');
+  console.log('');
+  if (echecs) {
+    console.error(`Validation : ${echecs} verification(s) en echec (section A seulement).`);
+    await client.end();
+    process.exit(1);
+  }
+  console.log('Validation : OK sur la section A seule (--dry-run). Les scenarios n\'ont pas ete joues.');
+  await client.end();
+  process.exit(0);
+}
+
 console.log('\nB. Scenarios de calcul\n' + '-'.repeat(40));
 
 const ORG = '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a';

@@ -67,6 +67,10 @@ const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_neon_bulk_operations_chantier8.mjs',
   'scripts/test_routes_tenant_isolation.mjs',   // ecrit users et organization_memberships
   // dans une base jetable ; deuxiemement gardee par TF_ROUTES_TEST_HARNESS=1.
+  // Ecrit une organisation, un produit, des dossiers DPP, des revues et des
+  // publications. Identifiants tires au hasard a chaque execution, parce que
+  // `dpp_lifecycle_events` est append-only : aucun tenant n'est reutilisable.
+  'scripts/test_dpp_review_and_publication.mjs',
 ];
 
 /**
@@ -119,6 +123,10 @@ const READ_ONLY_DB_SUITES = [
  */
 const ROLLBACK_ONLY_DB_SUITES = [
   'scripts/test_neon_privileges.mjs',
+  // Execute le vrai moteur de calcul DPP pour mesurer son effet, puis annule
+  // TOUJOURS : la suite verifie ensuite que la base est identique a l'instant
+  // d'avant (compteurs et empreintes) et sort en code 4 sinon.
+  'scripts/simuler_recalcul_dpp.mjs',
 ];
 
 /**
@@ -144,6 +152,13 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
 const OPERATOR_WRITER_SCRIPTS = [
   'scripts/seed_pilot.ts',                  // amorcage d un environnement pilote
   'scripts/verifier_checksums_migrations.mjs', // realignement des checksums, sur --appliquer uniquement
+  // Harnais de migration sur une base NOMMEE par l'operateur. Ils refusent la
+  // production eux-memes (hote connu ou prefixe), mais ce refus n'est pas la
+  // garde de cible : ils sont donc hors de toute chaine automatique, et chacun
+  // porte un mode sans ecriture (--dry-run ou --etat).
+  'scripts/migrer_fidelement.mjs',
+  'scripts/mesure_effet_migrations_dpp.mjs',
+  'scripts/valider_branche_dpp.mjs',
 ];
 
 /**

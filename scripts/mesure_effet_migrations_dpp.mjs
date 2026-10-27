@@ -30,9 +30,13 @@ if (hote === HOTE_PRODUCTION || /^ep-polished-night/.test(hote)) {
   process.exit(3);
 }
 
+// `--dry-run` : lecture seule. Affiche l'etat du parc et des dossiers DPP, sans
+// creer, calculer ni enregistrer quoi que ce soit. C'est le mode a utiliser
+// pour regarder une base avant de decider quoi que ce soit.
+const dryRun = process.argv.includes('--dry-run');
 const mode = process.argv.includes('--apres') ? 'apres'
   : process.argv.includes('--avant') ? 'avant' : null;
-if (!mode) { console.error('Preciser --avant ou --apres.'); process.exit(2); }
+if (!mode && !dryRun) { console.error('Preciser --avant, --apres ou --dry-run.'); process.exit(2); }
 
 const client = new pg.Client({
   connectionString: url,
@@ -42,6 +46,29 @@ await client.connect();
 
 const ORG = '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f';
 const USER = '1f1f1f1f-1f1f-4f1f-8f1f-1f1f1f1f1f1f';
+
+if (dryRun) {
+  const { rows } = await client.query(
+    `SELECT p.reference, p.status, d.readiness_status,
+            d.reviewed_at IS NOT NULL AS revue,
+            d.review_invalidation_reason AS motif
+       FROM tracefab_products p
+       LEFT JOIN dpp_records d ON d.product_id = p.id
+      WHERE p.brand_organization_id = $1
+      ORDER BY p.reference`, [ORG]);
+  if (rows.length === 0) {
+    console.log('Parc de recette absent de cette base : rien a lire.');
+  } else {
+    console.log(`Parc de recette : ${rows.length} produit(s) — lecture seule`);
+    for (const r of rows) {
+      console.log(`  ${r.reference}  ${r.status}  ${r.readiness_status || 'sans dossier'}`
+        + `${r.revue ? '  revu' : ''}${r.motif ? `  (${r.motif})` : ''}`);
+    }
+  }
+  console.log('\n--dry-run : aucune ecriture effectuee.');
+  await client.end();
+  process.exit(0);
+}
 
 /* ------------------------------------------------------------------------- */
 /* Parc synthetique : 18 produits, six profils de completude differents.      */

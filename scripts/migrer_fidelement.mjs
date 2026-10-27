@@ -36,7 +36,7 @@
  *
  * - Refus de tout hote ressemblant a la production (`TF_HOTE_PRODUCTION`).
  * - `TF_ALLOW_WRITE=oui` obligatoire : aucune ecriture accidentelle.
- * - Mode `--etat` en lecture seule, qui n'ecrit rien du tout.
+ * - Mode `--etat` (ou `--dry-run`) en lecture seule, qui n'ecrit rien du tout.
  */
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -51,7 +51,11 @@ const DOSSIER = process.env.TF_MIGRATIONS_PATH
 const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
   || 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
 
-const lireEtatSeulement = process.argv.includes('--etat');
+// `--etat` et `--dry-run` sont la meme chose : lire le registre et la liste des
+// migrations en attente, sans rien ecrire. Le second nom existe pour que la
+// politique de routage des suites destructives reconnaisse le mode sans
+// ecriture sans avoir a connaitre ce vocabulaire.
+const lireEtatSeulement = process.argv.includes('--etat') || process.argv.includes('--dry-run');
 // `--jusqu-a <dossier>` : s'arreter a une migration precise incluse. Utile pour
 // reconstituer un etat anterieur (ex. une base a 58 migrations avant d'appliquer
 // la 59e) sans reecrire l'historique : la base est neuve, le registre refletera
