@@ -146,6 +146,23 @@ Le script `scripts/verifier_identite_branche.mjs` :
 - mesure le parc en **agrégats seulement** et les trois incohérences qui
   comptent : slug sans visibilité, visibilité sans slug, publié sans revue.
 
+**Colonnes différées (correctif du 27/10/2026).** Les mesures de revue portent
+sur des colonnes que seule la migration `20261027130000_…_publication_coherence`
+crée (`reviewed_basis_fingerprint`, `review_invalidated_at`, …). Avant elle,
+le script échouait sur `column "reviewed_basis_fingerprint" does not exist` :
+la commande censée autoriser la migration refusait de tourner avant elle. Il
+classe désormais chaque colonne attendue :
+
+| Situation | Traitement | Effet sur le code de sortie |
+|---|---|---|
+| présente | mesurée maintenant | aucune |
+| absente mais créée par une migration **en attente** | ligne `differe`, nom de la migration cité, mesure exigée **après** | aucune |
+| absente et créée par **aucune** migration en attente | ligne `ECHEC` | `5` |
+
+La sortie attendue avant migration contient donc deux lignes `differe`
+(`reviewed_basis_fingerprint`, `review_invalidated_at`) — les taires serait
+perdre un contrôle ; les compter comme échec interdirait toute migration.
+
 Codes de sortie : `0` identité prouvée et état cohérent · `2` usage ·
 `3` cible refusée · `4` identité différente de la déclaration · `5` état
 incohérent (migration en échec, schéma manquant, registre en avance).

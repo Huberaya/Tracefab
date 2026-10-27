@@ -394,6 +394,39 @@ branche migrée par l'opérateur, les étapes en lecture seule (identité, §9,
 scénarios, simulation) redeviennent exécutables **dans cette session**, le proxy
 Postgres étant joignable.
 
+### 11.5b Premier contact réel avec la branche de validation (27/10, 17 h)
+
+Première exécution de la procédure sur `br-sweet-king-b1n2f4u6`, depuis un
+Codespace GitHub de l'opérateur (session `arena/ba652133-tracefab`, worktree
+`/workspaces/validation` sur la révision `8d79d78`).
+
+Résultats obtenus, tels quels :
+
+| Contrôle | Résultat |
+|---|---|
+| `npx prisma migrate status` | `59 migrations found`, **3 non appliquées**, les trois attendues, aucune en échec — hôte `ep-morning-grass-b1pq7stz…`, base `neondb` |
+| `verifier:identite-cible` — identité | hôte conforme à la déclaration, base `neondb`, rôle `neondb_owner`, `rolsuper` non, **`rolbypassrls` OUI** |
+| schéma | 6 tables, 5 fonctions : présentes |
+| registre | 56 terminées, 0 en échec, 0 annulée, 3 en attente |
+| rôle applicatif | `tracefab_app` sans `rolsuper` ni `rolbypassrls`, RLS active sur les 4 tables, `PUBLIC` n'exécute aucune fonction DPP |
+| profil actif | `v1.0`, **9 exigences** (les 13 n'arrivent qu'avec la migration 57) |
+| parc | **non mesuré** — le script s'est arrêté sur `column "reviewed_basis_fingerprint" does not exist` (code `42703`), **exit 1** |
+
+**Défaut reproduit, et corrigé.** Le verificateur interrogeait des colonnes que
+seule la migration `20261027130000_…_publication_coherence` crée : il refusait
+donc de tourner tant que la migration n'était pas passée, c'est-à-dire dans le
+seul état où il est utile. Reproductible localement (`tf_avant`, clone de
+`tf58` ramené à 56 migrations) : version d'avant = crash `42703` ; version
+corrigée = exit 0 avec deux lignes `differe` nommant la migration qui les
+créera. Une colonne absente que **rien** n'ajoute reste un `ECHEC` (code 5) ;
+la distinction est verrouillée par `npm run test:colonnes-differees`
+(9 cas, dont « une colonne absente que rien n'ajoute est INATTENDUE »).
+
+Réserve : `neondb_owner` porte `BYPASSRLS` sur la branche de validation. C'est
+le rôle de migration (il doit modifier le schéma), pas le rôle applicatif — la
+preuve RLS se fait sous `tracefab_app`. La préférence pour un rôle moins
+privilégié reste ouverte.
+
 ### 11.6 État des phases de la mission de clôture
 
 | Phase | État | Motif |

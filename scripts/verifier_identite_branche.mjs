@@ -51,10 +51,11 @@
  * imprimee. Seul l'hote — sans identifiants — est affiche.
  */
 import pg from 'pg';
-import { readdirSync, existsSync } from 'node:fs';
+import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
+import { colonnesAjouteesPar, classerColonnes } from './lib/colonnes_differees.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = join(ROOT, 'prisma/migrations');
@@ -261,31 +262,76 @@ dit(Boolean(actif), 'un profil actif existe');
 if (actif) console.log(`  -> version active : v${actif.profile_version}, ${actif.nb} exigence(s)`);
 
 ligne('Parc (agregats seulement)');
-const { rows: [parc] } = await client.query(`
-  SELECT (SELECT count(*)::int FROM tracefab_products) AS produits,
-         (SELECT count(*)::int FROM dpp_records) AS dossiers,
-         (SELECT count(*)::int FROM dpp_records WHERE readiness_status = 'published') AS publies,
-         (SELECT count(*)::int FROM dpp_records WHERE reviewed_at IS NOT NULL) AS revus,
-         (SELECT count(*)::int FROM dpp_records WHERE reviewed_basis_fingerprint IS NOT NULL) AS revus_avec_empreinte,
-         (SELECT count(*)::int FROM dpp_records WHERE review_invalidated_at IS NOT NULL) AS invalidations,
-         (SELECT count(*)::int FROM tracefab_products WHERE public_slug IS NOT NULL) AS slugs`);
-console.log(`  produits ${parc.produits} · dossiers ${parc.dossiers} · publies ${parc.publies} · revus ${parc.revus}`);
-console.log(`  revus avec empreinte de revue ${parc.revus_avec_empreinte} · invalidations ${parc.invalidations} · slugs ${parc.slugs}`);
+// Les colonnes de revue n'existent qu'APRES les migrations en attente : les
+// interroger avant elles faisait echouer ce verificateur (27/10/2026,
+// `column "reviewed_basis_fingerprint" does not exist`), c'est-a-dire que le
+// script cense autoriser la migration refusait de tourner tant qu'elle n'etait
+// pas passee. On mesure donc ce qui existe, on declare ce qui est differe, et
+// une colonne absente que rien n'ajoute reste une incoherence.
+const COLONNES_REVUE = ['reviewed_at', 'reviewed_basis_fingerprint', 'review_invalidated_at'];
+const { rows: colsPresents } = await client.query(`
+  SELECT column_name FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = 'dpp_records'`);
+const ajoutsParMigration = new Map(
+  enAttente.map((n) => [n, colonnesAjouteesPar([readFileSync(join(MIGRATIONS, n, 'migration.sql'), 'utf8')])]));
+const ajouteesEnAttente = new Set([...ajoutsParMigration.values()].flatMap((s) => [...s]));
+const { mesurables, differees, inattendues } = classerColonnes({
+  presentes: colsPresents.map((c) => c.column_name),
+  ajouteesEnAttente,
+  attendues: COLONNES_REVUE,
+});
+
+const morceaux = [
+  '(SELECT count(*)::int FROM tracefab_products) AS produits',
+  '(SELECT count(*)::int FROM dpp_records) AS dossiers',
+  "(SELECT count(*)::int FROM dpp_records WHERE readiness_status = 'published') AS publies",
+  '(SELECT count(*)::int FROM tracefab_products WHERE public_slug IS NOT NULL) AS slugs',
+];
+if (mesurables.includes('reviewed_at')) {
+  morceaux.push('(SELECT count(*)::int FROM dpp_records WHERE reviewed_at IS NOT NULL) AS revus');
+}
+if (mesurables.includes('reviewed_basis_fingerprint')) {
+  morceaux.push(`(SELECT count(*)::int FROM dpp_records WHERE reviewed_basis_fingerprint IS NOT NULL) AS revus_avec_empreinte`);
+}
+if (mesurables.includes('review_invalidated_at')) {
+  morceaux.push(`(SELECT count(*)::int FROM dpp_records WHERE review_invalidated_at IS NOT NULL) AS invalidations`);
+}
+const { rows: [parc] } = await client.query(`SELECT ${morceaux.join(',\n         ')}`);
+const revus = mesurables.includes('reviewed_at') ? ` · revus ${parc.revus}` : '';
+console.log(`  produits ${parc.produits} · dossiers ${parc.dossiers} · publies ${parc.publies}${revus} · slugs ${parc.slugs}`);
+if (differees.length) {
+  const ou = differees.map((col) => {
+    const par = [...ajoutsParMigration].filter(([, s]) => s.has(col)).map(([n]) => n);
+    return `${col} (ajoutee par ${par.join(', ')})`;
+  });
+  console.log(`  differe  colonne(s) de revue non mesurable(s) AVANT migration : ${ou.join(' · ')}`);
+  console.log('  differe  ces mesures seront exigees APRES migration — elles ne sont pas tues, elles sont datees.');
+}
+dit(inattendues.length === 0, 'les colonnes de revue attendues existent ou sont ajoutees par une migration en attente',
+  inattendues.length ? `absente(s) sans migration pour les creer : ${inattendues.join(', ')}` : '');
+
 
 // Les deux incoherences qui ont motive la migration corrective. Elles se
 // mesurent, elles ne se supposent pas.
+const mesureRevue = mesurables.includes('reviewed_at');
 const { rows: [inco] } = await client.query(`
   SELECT count(*) FILTER (WHERE p.public_slug IS NOT NULL AND NOT tracefab_product_is_public(p.id))::int AS slug_sans_public,
          count(*) FILTER (WHERE p.public_slug IS NULL AND tracefab_product_is_public(p.id))::int AS public_sans_slug,
-         count(*) FILTER (WHERE d.readiness_status = 'published' AND d.reviewed_at IS NULL)::int AS publie_sans_revue
+         ${mesureRevue
+    ? "count(*) FILTER (WHERE d.readiness_status = 'published' AND d.reviewed_at IS NULL)::int AS publie_sans_revue"
+    : '0::int AS publie_sans_revue'}
   FROM tracefab_products p
   LEFT JOIN dpp_records d ON d.product_id = p.id`);
 dit(inco.slug_sans_public === 0, 'aucun produit avec slug mais non resoluble publiquement',
   String(inco.slug_sans_public));
 dit(inco.public_sans_slug === 0, 'aucun produit resoluble publiquement sans slug',
   String(inco.public_sans_slug));
-dit(inco.publie_sans_revue === 0, 'aucun dossier publie sans revue',
-  String(inco.publie_sans_revue));
+if (mesureRevue) {
+  dit(inco.publie_sans_revue === 0, 'aucun dossier publie sans revue', String(inco.publie_sans_revue));
+} else {
+  console.log('  differe  « aucun dossier publie sans revue » sera mesure APRES migration (reviewed_at absent)');
+}
+
 
 await client.end();
 

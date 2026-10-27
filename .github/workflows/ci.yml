@@ -449,6 +449,16 @@ jobs:
         # sort en 1 si un seul de ces cas rend un code nul — un faux succes.
         run: npm run test:garde-fous:neon
 
+      - name: Colonnes différées — mesurable, différée, inattendue
+        # Le verificateur d identite interroge des colonnes de revue creees par
+        # les migrations EN ATTENTE : il echouait donc avant de pouvoir
+        # autoriser la migration. Ce banc verrouille la distinction : une
+        # colonne absente qu une migration en attente ajoute est DIFFEREE
+        # (declaree), une colonne absente que rien n ajoute reste une
+        # INCOHERENCE (echec). Une relaxation future qui rendrait le script
+        # muet sur une vraie colonne manquante casse ce test.
+        run: npm run test:colonnes-differees
+
       - name: Revue et publication — non-regression sur base migree
         # Neuf cas qui echouent si le recalcul efface une revue sans raison,
         # si un passeport publie devient incoherent, ou si l'idempotence
