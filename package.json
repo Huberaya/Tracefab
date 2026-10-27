@@ -181,6 +181,8 @@
     "test:route-context-coverage": "node scripts/test_route_context_coverage.mjs",
     "test:customer-journey:blockers": "node scripts/test_customer_journey_release_blockers.mjs",
     "test:dpp:migrations": "node scripts/test_dpp_migration_chain_pglite.mjs",
+    "test:dpp:review-publication": "node scripts/test_dpp_review_and_publication.mjs",
+    "simuler:recalcul-dpp": "node scripts/simuler_recalcul_dpp.mjs",
     "db:preflight": "node scripts/preflight_etat_base.mjs",
     "test:dpp:branche": "node scripts/valider_branche_dpp.mjs",
     "db:mesure-dpp": "node scripts/mesure_effet_migrations_dpp.mjs"

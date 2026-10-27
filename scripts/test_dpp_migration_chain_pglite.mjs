@@ -10,7 +10,7 @@
    policies). Une migration qui casse sur la base reelle est une migration
    qui n'existe pas.
 
-   Ce test applique donc, dans l'ordre, **les 58 migrations du depot**, sur un
+   Ce test applique donc, dans l'ordre, **toutes les migrations du depot**, sur un
    PostgreSQL compile en WASM (PGlite, devDependency), apres creation des
    roles attendus. Puis il rejoue la sequence avant/apres sur la fonction
    installee :
@@ -333,4 +333,4 @@ if (failures) {
   console.error(`Chaine de migrations : ${failures} verification(s) en echec.`);
   process.exit(1);
 }
-console.log('Chaine de migrations : OK — 58 migrations appliquees sur PostgreSQL WASM, barriere qualite verifiee avant/apres.');
+console.log(`Chaine de migrations : OK — ${applied} migrations appliquees sur PostgreSQL WASM, barriere qualite verifiee avant/apres.`);

@@ -83,12 +83,12 @@ WHERE p.proname = 'tracefab_dpp_requirement_met'`);
     !clesProfil.includes('product.data_ready'));
 }
 
-// A3 — le registre doit compter 58 migrations.
+// A3 — le registre doit compter 59 migrations.
 {
   const { rows } = await client.query(`
 SELECT count(*) FROM _prisma_migrations WHERE finished_at IS NOT NULL`);
   console.log('  A3 :', rows[0].count, 'migration(s) terminee(s)');
-  check('A3 — le registre compte 58 migrations terminees', Number(rows[0].count) === 58, rows[0].count);
+  check('A3 — le registre compte 59 migrations terminees', Number(rows[0].count) === 59, rows[0].count);
   const { rows: ech } = await client.query(
     'SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NULL');
   check('A3 — aucune migration en echec ou inachevee', ech.length === 0,

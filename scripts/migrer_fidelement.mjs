@@ -52,6 +52,12 @@ const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
   || 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
 
 const lireEtatSeulement = process.argv.includes('--etat');
+// `--jusqu-a <dossier>` : s'arreter a une migration precise incluse. Utile pour
+// reconstituer un etat anterieur (ex. une base a 58 migrations avant d'appliquer
+// la 59e) sans reecrire l'historique : la base est neuve, le registre refletera
+// exactement ce qui a ete joue.
+const argJusque = process.argv.indexOf('--jusqu-a');
+const migrationDerniere = argJusque > -1 ? process.argv[argJusque + 1] : null;
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error('NON EXECUTE — DATABASE_URL est obligatoire.');
@@ -114,6 +120,17 @@ const enEchec = registre.filter((r) => !r.finished_at);
 console.log(`cible ${hote} · ${migrationsDisque.length} migration(s) sur disque · ${terminees.size} deja appliquee(s)`);
 if (enEchec.length) {
   console.log(`EN ECHEC dans le registre : ${enEchec.map((r) => r.migration_name).join(', ')}`);
+}
+
+if (migrationDerniere) {
+  if (!migrationsDisque.includes(migrationDerniere)) {
+    console.error(`REFUS — migration inconnue : ${migrationDerniere}`);
+    await client.end();
+    process.exit(2);
+  }
+  const rang = migrationsDisque.indexOf(migrationDerniere);
+  console.log(`borne : arret apres ${migrationDerniere} (rang ${rang + 1}/${migrationsDisque.length}).`);
+  migrationsDisque.length = rang + 1;
 }
 
 const enAttente = migrationsDisque.filter((nom) => !terminees.has(nom));

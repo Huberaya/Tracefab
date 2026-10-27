@@ -216,7 +216,9 @@ SELECT
 -- attendu : 13 exigences de profil, toutes présentes dans les clés implantées,
 --           dont quality.no_open_issues.
 
--- 3. le registre doit compter 58 migrations
+-- 3. le registre doit compter 59 migrations
+--    (58 lors du constat du 27/10 matin + la 59e corrective
+--     20261027130000_dpp_review_preservation_and_publication_coherence)
 SELECT count(*) FROM _prisma_migrations WHERE finished_at IS NOT NULL;
 
 -- 4. aucune régression de privilège
