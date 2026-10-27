@@ -512,11 +512,18 @@ Régressions exécutées localement : `npm test`, `test:preview-harness` (**43 c
 **Reprise, après ces actions et sans fusion :**
 
 ```bash
-# Un administrateur disposant du droit Actions: write peut tenter de relancer
-# le run push déjà enregistré sur la branche ; le job reste protégé.
-gh run rerun 40472716870 --repo Huberaya/Tracefab
+# Depuis cette branche, sélectionner le run push associé au SHA exact de HEAD.
+# L'administrateur doit confirmer le même SHA dans Vercel et le renseigner dans
+# TF_PREVIEW_DEPLOYED_SHA avant l'approbation du job protégé.
+sha=$(git rev-parse HEAD)
+run=$(gh run list --repo Huberaya/Tracefab --branch arena/647ac97c-tracefab --limit 30 \
+  --json databaseId,name,headSha,event \
+  --jq ".[] | select(.name == \"Preview HTTP — parcours authentifies reels\" and .event == \"push\" and .headSha == \"$sha\") | .databaseId" | head -1)
+test -n "$run" || { echo "Aucun run Preview pour le SHA courant"; exit 1; }
+# Tenter de relancer tous les jobs ; le job reste soumis à l'environnement protégé.
+gh run rerun "$run" --repo Huberaya/Tracefab
 # Puis : Actions → run → Review deployments → approbation du relecteur autorisé.
-gh run view 40472716870 --repo Huberaya/Tracefab
+gh run view "$run" --repo Huberaya/Tracefab
 ```
 
 Si la relance reste `skipped`, déclencher un **nouveau push normal** sur `arena/647ac97c-tracefab` après l'opt-in de dépôt, puis, avant approbation, vérifier le nouveau déploiement Vercel et actualiser `TF_PREVIEW_DEPLOYED_SHA` au nouveau SHA. Consulter le run `Preview HTTP — parcours authentifies reels` dans Actions et télécharger **seulement** l'artefact `preview-http-evidence-*` expurgé. Le workflow `workflow_dispatch` reste indisponible tant qu'il n'est pas enregistré sur la branche par défaut ; ne pas fusionner la PR pour contourner cette contrainte.
