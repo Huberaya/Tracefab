@@ -1186,10 +1186,10 @@
         // les rend comme n'importe quelle liste : hors demonstration, la meme
         // vue part de state.documents, vide tant qu'aucune route ne l'alimente.
         state.documents = [
-          { id: 'demo-doc-1', category: 'transfer', title: 'GOTS 2026 Transaction Certificate', type: 'TC GOTS', issuer: 'Control Union Certifications', supplier: 'Filature de Haute-Vienne', issuedAt: '2026-01-14', expiresAt: '2027-01-14', status: 'sealed' },
-          { id: 'demo-doc-2', category: 'lab', title: 'ZDHC MRSL Level 3 Laboratory Report', type: 'ZDHC Test', issuer: 'SGS Textile Testing Services', supplier: 'EcoDye Aquitaine', issuedAt: '2026-03-02', expiresAt: '2027-03-02', status: 'sealed' },
-          { id: 'demo-doc-3', category: 'social', title: 'SMETA 4-Pillar Social Audit (Grade A)', type: 'SMETA Audit', issuer: 'Intertek Ethical Services', supplier: 'Assembly & Tailoring Workshop', issuedAt: '2025-11-10', expiresAt: '2026-11-10', status: 'sealed' },
-          { id: 'demo-doc-4', category: 'product', title: 'OEKO-TEX Standard 100 Certificate', type: 'OEKO-TEX', issuer: 'CITEVE Portugal', supplier: 'Portugal Textile Mill', issuedAt: '2026-02-18', expiresAt: '2027-02-18', status: 'sealed' },
+          { id: 'demo-doc-1', category: 'transfer', title: 'GOTS 2026 Transaction Certificate', type: 'TC GOTS', issuer: 'Control Union Certifications', supplier: 'Filature de Haute-Vienne', issuedAt: '2026-01-14', expiresAt: '2027-01-14', status: 'available' },
+          { id: 'demo-doc-2', category: 'lab', title: 'ZDHC MRSL Level 3 Laboratory Report', type: 'ZDHC Test', issuer: 'SGS Textile Testing Services', supplier: 'EcoDye Aquitaine', issuedAt: '2026-03-02', expiresAt: '2027-03-02', status: 'available' },
+          { id: 'demo-doc-3', category: 'social', title: 'SMETA 4-Pillar Social Audit (Grade A)', type: 'SMETA Audit', issuer: 'Intertek Ethical Services', supplier: 'Assembly & Tailoring Workshop', issuedAt: '2025-11-10', expiresAt: '2026-11-10', status: 'available' },
+          { id: 'demo-doc-4', category: 'product', title: 'OEKO-TEX Standard 100 Certificate', type: 'OEKO-TEX', issuer: 'CITEVE Portugal', supplier: 'Portugal Textile Mill', issuedAt: '2026-02-18', expiresAt: '2027-02-18', status: 'available' },
         ];
 
         // Preparation DPP : 88%, coherent avec le KPI de la vue d'ensemble.
