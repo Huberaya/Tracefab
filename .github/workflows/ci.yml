@@ -241,7 +241,14 @@ jobs:
         # l'automatiser suppose de figer le rendu dans un conteneur.
         run: |
           set -u
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script').join(' '))")
+          # Deux exclusions de plus, pour la meme raison que neon/staging : ces
+          # suites exigent une base PostgreSQL fournie par l'operateur. Elles
+          # s'executent dans le job « Base », sur le Postgres jetable, ou sur
+          # une branche nommee. Les laisser ici les rendrait rouges pour une
+          # raison d'environnement, jamais de code.
+          #   test:dpp:review-publication — ecrit un tenant de test, garde de cible
+          #   test:dpp:branche            — harnais d'exploitation, cible nommee
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche').join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -429,6 +436,14 @@ jobs:
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
+
+      - name: Revue et publication — non-regression sur base migree
+        # Neuf cas qui echouent si le recalcul efface une revue sans raison,
+        # si un passeport publie devient incoherent, ou si l'idempotence
+        # se perd. Tourne sur le Postgres jetable, APRES `prisma migrate
+        # deploy` : c'est aussi une execution reelle du registre de
+        # migrations, pas une reprise maison.
+        run: npm run test:dpp:review-publication
 
       - name: Politiques d'ecriture — WITH CHECK reel, pas suppose
         # Cinq politiques d'ecriture sont declarees sans WITH CHECK. Ce n'est
