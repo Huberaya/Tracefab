@@ -22,12 +22,12 @@
       "journal": "La sortie est caviardee par le script : jeton, entetes d'autorisation, chaines de connexion, identifiants opaques."
     },
     "preview-http-journeys.yml": {
-      "secret": "CLERK_SECRET_KEY (sk_test_), TF_PREVIEW_USER_ALPHA, TF_PREVIEW_USER_BETA, VERCEL_AUTOMATION_BYPASS_SECRET",
-      "portee": "job `parcours` uniquement ; declenchement `workflow_dispatch` uniquement ; environnement `tracefab-clerk-test` avec relecteurs obligatoires et politique de branche ; aucune URL codee en dur (entree du job) ; aucune lecture de secret de base de donnees",
+      "secret": "CLERK_SECRET_KEY (sk_test_), TF_PREVIEW_USER_ALPHA, TF_PREVIEW_USER_BETA, TF_PREVIEW_ORG_ALPHA, TF_PREVIEW_ORG_BETA, VERCEL_AUTOMATION_BYPASS_SECRET",
+      "portee": "job parcours uniquement ; workflow_dispatch ou push uniquement sur arena/647ac97c-tracefab avec opt-in explicite TF_PREVIEW_PUSH_ENABLED=1 ; environnement tracefab-clerk-test avec relecteurs obligatoires et politique de branche ; origine, SHA, hote de stockage et environnement de test attestes par administrateur ; aucune lecture de secret de base de donnees",
       "justification": "Les parcours HTTP authentifies sur une VERITABLE Preview exigent des identites Clerk de TEST et le secret de bypass Vercel autorise. Les workflows des PR #80/#91 sont lies a d autres branches et a des URLs obsolete ; les executer imposerait une fusion interdite. Ce workflow independant vit sur la branche de la PR #101 et conserve l approbation de l environnement protege.",
-      "lecture_seule": "Le harnais n importe aucun module de l API et n ouvre aucune base : il n emet que des requetes HTTP vers la Preview, vers la BAPI Clerk de test et vers les URL presignees du stockage prive. Les ecritures qu il declenche (produits, organisations, documents) sont realisees PAR L APPLICATION sur la base de TEST de la Preview, via les routes authentifiees, jamais par un acces direct.",
+      "lecture_seule": "Aucun acces direct a la base ni service local : requetes HTTP authentifiees vers la Preview, BAPI Clerk de test et URL presignees vers le seul hote de stockage approuve. Les ecritures sur l application sont refusees sans attestation explicite de l administrateur et verification des deux organisations de test preexistantes.",
       "rotation": "Cles d une instance Clerk de TEST dediee, aucune donnee reelle ; secret de bypass Vercel limite aux deploiements de test et reversible depuis les reglages Vercel sans desactiver la protection de deploiement.",
-      "journal": "Le harnais n affiche que des statuts HTTP, des gabarits de chemins et des compteurs. redactEvidence() retire jetons, cles, chaines de connexion et UUID ; les gardes sont eprouvees sans reseau par scripts/test_preview_journeys_guards.mjs. Le cas P9 verifie que la protection Vercel repond toujours SANS le secret."
+      "journal": "Statuts HTTP et chemins generiques, sans secret, cookies ni corps ; preuve JSON expurgee en artefact de courte retention, y compris en cas de pre-vol bloque ; aucune identite ou en-tete de bypass envoyee au stockage."
     }
   },
   "//privilegedTriggers": "Declencheurs qui executent du code de branche avec les privileges de la branche de base (`pull_request_target`, `workflow_run`).",
@@ -49,7 +49,7 @@
     "preview-http-journeys.yml": {
       "environnement": "tracefab-clerk-test",
       "job": "parcours",
-      "pourquoi": "Le job lit des secrets de test : il doit rester soumis aux relecteurs obligatoires et a la politique de branche de l environnement. Aucun declencheur push : une execution ne peut etre lancee que manuellement puis approuvee.",
+      "pourquoi": "Le job lit des secrets de test : relecteurs obligatoires et politique de branche restent en vigueur. Le push est limite a la branche de mission et ne lance le job qu apres opt-in explicite par une variable de depot ADMIN. Tout job saute est NOT RUN.",
       "reglage_attendu": "Settings > Environments > tracefab-clerk-test > Required reviewers : le proprietaire ; Deployment branches : restreintes aux branches de test autorisees. Ces reglages existent deja et ne doivent pas etre assouplis pour ce workflow."
     }
   },

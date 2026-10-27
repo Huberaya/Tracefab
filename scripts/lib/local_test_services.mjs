@@ -26,12 +26,12 @@
  */
 import http from 'node:http';
 import { createHash, createHmac, createSign, generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
+import { eicarTestBytes } from './preview_harness_safety.mjs';
 
 const BUCKET = 'tracefab-private';
-// Chaine de test EICAR reconstruite : aucun fichier du depot ne contient la
-// signature antivirale complete (elle est inoffensive, mais les scanners la
-// detectent).
-const EICAR = ['EICAR', '-STANDARD', '-ANTIVIRUS', '-TEST', '-FILE'].join('');
+// Le service local reste une doublure : il ne prouve pas un antivirus gere.
+// Il reconnait l'echantillon EICAR canonique complet, jamais son seul nom.
+const EICAR = eicarTestBytes();
 
 /* ---------------------------------------------------------------------------
  * Fournisseur d'identite compatible Clerk — INSTANCE DE TEST LOCALE

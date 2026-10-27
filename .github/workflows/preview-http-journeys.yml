@@ -1,42 +1,28 @@
-# Preview HTTP — parcours authentifies REELS sur une Preview de PR.
+# Parcours HTTP sur la Preview de la PR #101. Aucun service local ni mock.
 #
-# POURQUOI CE WORKFLOW EST INDEPENDANT
-#   Les workflows des PR #80 et #91 sont lies a des branches qui ne sont pas
-#   celles de la PR #101 (`if: refs/heads/main` pour #80, `on.push.branches`
-#   et URLs de Preview codees en dur pour #91). Les executer imposerait de
-#   fusionner ces PR ou de pousser sur leurs branches : ni l'un ni l'autre
-#   n'est autorise ici. Ce workflow vit donc SUR la branche de travail de la
-#   PR #101 et ne depend d'aucune fusion.
+# workflow_dispatch exige que le fichier existe sur la branche par defaut.
+# Comme cette PR ne doit pas etre fusionnee, le push est une voie alternative
+# strictement limitee a la branche de la mission et DESACTIVEE par defaut.
+# Un administrateur doit d'abord definir la variable de depot
+# TF_PREVIEW_PUSH_ENABLED=1. Les relecteurs obligatoires et la politique de
+# branche de l'environnement restent applicables dans les DEUX cas.
 #
-# PROTECTIONS CONSERVEES
-#   - `environment: tracefab-clerk-test` : les relecteurs obligatoires et la
-#     politique de branche de l'environnement restent en vigueur ;
-#   - declenchement MANUEL uniquement (`workflow_dispatch`), aucun push ;
-#   - aucune URL codee en dur : l'URL de la Preview est une entree du job ;
-#   - la protection de deploiement Vercel n'est JAMAIS desactivee : le secret
-#     de bypass autorise est envoye dans l'en-tete officiel
-#     `x-vercel-protection-bypass` par le harnais, et le cas P9 verifie que
-#     la protection repond toujours sans ce secret ;
-#   - `permissions: contents: read`, checkout sans credentials persistants.
-#
-# CE QUI EST AFFICHE
-#   Des statuts HTTP, des gabarits de chemins et des compteurs. Aucune valeur
-#   de secret, aucun jeton, aucun cookie, aucune donnee personnelle. Le
-#   harnais expurge son fichier de preuves avant de l'ecrire.
+# Les ecritures exigent en plus une attestation explicite de l'administrateur
+# sur la nature TEST du deploiement, de la base, de Clerk, du bucket et de
+# l'antivirus. Une origine et un SHA autorises doivent correspondre exactement.
+# Cette attestation ne remplace pas la verification reelle de ces services.
 
 name: Preview HTTP — parcours authentifies reels
 
 on:
+  push:
+    branches:
+      - 'arena/647ac97c-tracefab'
   workflow_dispatch:
     inputs:
       preview_url:
-        description: 'URL HTTPS de la Preview Vercel a tester (jamais une URL de production)'
+        description: 'Origine HTTPS de la Preview verifiee (doit correspondre a la variable protegee)'
         required: true
-        type: string
-      allow_provision:
-        description: "Autoriser la creation de deux organisations de test sur la base de TEST de la Preview ('1' ou '0')"
-        required: false
-        default: '1'
         type: string
 
 permissions:
@@ -48,6 +34,9 @@ concurrency:
 
 jobs:
   parcours:
+    # Le push ne lance jamais de job privilegié sans opt-in ADMIN explicite.
+    # Un job saute est NOT RUN, jamais une preuve de test reussi.
+    if: ${{ github.ref == 'refs/heads/arena/647ac97c-tracefab' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.TF_PREVIEW_PUSH_ENABLED == '1')) }}
     name: Preview — parcours HTTP authentifies
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -55,12 +44,17 @@ jobs:
     env:
       NODE_VERSION: '20'
       TF_PREVIEW_HARNESS: '1'
-      TRACEFAB_STAGING_URL: ${{ inputs.preview_url }}
+      TRACEFAB_STAGING_URL: ${{ inputs.preview_url || vars.TF_PREVIEW_EXPECTED_ORIGIN }}
+      TF_PREVIEW_EXPECTED_ORIGIN: ${{ vars.TF_PREVIEW_EXPECTED_ORIGIN }}
+      TF_PREVIEW_STORAGE_HOST: ${{ vars.TF_PREVIEW_STORAGE_HOST }}
+      TF_PREVIEW_DEPLOYED_SHA: ${{ vars.TF_PREVIEW_DEPLOYED_SHA }}
+      TF_PREVIEW_TEST_ENV_CONFIRMED: ${{ vars.TF_PREVIEW_TEST_ENV_CONFIRMED }}
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
       TF_PREVIEW_USER_ALPHA: ${{ secrets.TF_PREVIEW_USER_ALPHA }}
       TF_PREVIEW_USER_BETA: ${{ secrets.TF_PREVIEW_USER_BETA }}
+      TF_PREVIEW_ORG_ALPHA: ${{ secrets.TF_PREVIEW_ORG_ALPHA }}
+      TF_PREVIEW_ORG_BETA: ${{ secrets.TF_PREVIEW_ORG_BETA }}
       TF_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      TF_PREVIEW_ALLOW_PROVISION: ${{ inputs.allow_provision }}
       TF_PREVIEW_EVIDENCE: /tmp/tf-preview-evidence.json
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -75,23 +69,26 @@ jobs:
       - name: Installer les dependances
         run: npm ci
 
-      - name: Presence des secrets de test — sans afficher leur valeur
+      - name: Presence des prerequis — sans afficher leurs valeurs
         run: |
-          if [ -n "${CLERK_SECRET_KEY:-}" ]; then echo "CLERK_SECRET_KEY=present"; else echo "::error title=secret::CLERK_SECRET_KEY absent de l environnement tracefab-clerk-test"; echo "CLERK_SECRET_KEY=absent"; fi
-          if [ -n "${TF_PREVIEW_USER_ALPHA:-}" ]; then echo "TF_PREVIEW_USER_ALPHA=present"; else echo "TF_PREVIEW_USER_ALPHA=absent"; fi
-          if [ -n "${TF_PREVIEW_USER_BETA:-}" ]; then echo "TF_PREVIEW_USER_BETA=present"; else echo "TF_PREVIEW_USER_BETA=absent"; fi
-          if [ -n "${TF_VERCEL_BYPASS:-}" ]; then echo "TF_VERCEL_BYPASS=present"; else echo "TF_VERCEL_BYPASS=absent (pre-vol P0 signalera si la protection est active)"; fi
+          for name in CLERK_SECRET_KEY TF_PREVIEW_USER_ALPHA TF_PREVIEW_USER_BETA TF_PREVIEW_ORG_ALPHA TF_PREVIEW_ORG_BETA TF_VERCEL_BYPASS TF_PREVIEW_EXPECTED_ORIGIN TF_PREVIEW_STORAGE_HOST TF_PREVIEW_DEPLOYED_SHA TF_PREVIEW_TEST_ENV_CONFIRMED; do
+            if [ -n "${!name:-}" ]; then echo "$name=present"; else echo "$name=absent"; fi
+          done
 
       - name: Gardes du harnais — aucune connexion requise
-        # Eprouve en CI, sans secret : refus sans drapeau, refus d une cle
-        # sk_live_, refus d une cible non-Preview, BLOCKED si variable absente,
-        # et expurgation des preuves. Un harnais qui ne peut pas refuser ne
-        # doit jamais etre employe contre une Preview.
         run: node scripts/test_preview_journeys_guards.mjs
 
       - name: Parcours HTTP authentifies sur la Preview
-        # Aucun service local : vraies requetes HTTPS vers la Preview, vrais
-        # jetons de session de l instance Clerk de TEST, vrai stockage prive
-        # presigne, vrai antivirus, et controle que la protection Vercel
-        # repond toujours sans le secret de bypass.
+        # Le harnais refuse toute ecriture sans attestation, SHA/origine
+        # approuves et organisations de test verifiees. Il garde la preuve en
+        # JSON expurge meme si le pre-vol echoue ou qu'un parcours est bloque.
         run: node scripts/test_preview_http_journeys.mjs
+
+      - name: Conserver uniquement la preuve JSON expurgee
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: preview-http-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/tf-preview-evidence.json
+          if-no-files-found: warn
+          retention-days: 7

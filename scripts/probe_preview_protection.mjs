@@ -7,8 +7,9 @@
  * seule requete GET sans en-tete d'autorisation vers /api/health de la
  * Preview et verifie que la reponse n'est PAS une reponse applicative 200.
  *
- *  - protection active  -> redirection vers vercel.com /sso-api, ou page
- *                          "Protected Deployment", ou 401/403 : PASS ;
+ *  - protection active  -> redirection Vercel /sso-api ou /login, ou page
+ *                          identifiee "Protected Deployment" : PASS ;
+ *  - 401/403 generique ou redirection tierce -> BLOCKED (pas une preuve) ;
  *  - application 200    -> la protection est ABSENTE : FAIL (exit 1).
  *
  * Seules des donnees non sensibles sont journalisees : code HTTP, nom d'hote
@@ -37,13 +38,20 @@ if (cible.protocol !== 'https:' || !cible.hostname.endsWith('.vercel.app')) {
 const url = new URL('/api/health', cible.origin);
 let statut = 0;
 let lieu = '';
+let cheminRedirection = '';
 let typeContenu = '';
 let corps = '';
 try {
   const reponse = await fetch(url, { method: 'GET', redirect: 'manual' });
   statut = reponse.status;
   const brutLieu = reponse.headers.get('location') || '';
-  try { lieu = brutLieu ? new URL(brutLieu, cible.origin).hostname : ''; } catch { lieu = '(hote illisible)'; }
+  try {
+    if (brutLieu) {
+      const destination = new URL(brutLieu, cible.origin);
+      lieu = destination.hostname;
+      cheminRedirection = destination.pathname; // jamais la query ni les cookies
+    }
+  } catch { lieu = '(hote illisible)'; }
   typeContenu = (reponse.headers.get('content-type') || '').split(';')[0];
   corps = redact(await reponse.text()).slice(0, 600);
 } catch (error) {
@@ -52,7 +60,7 @@ try {
 }
 
 const { pageProtection, reponseApplicative, verdict } = classifierProtection({
-  statut, lieu, typeContenu, corps,
+  statut, lieu, chemin: cheminRedirection, typeContenu, corps,
 });
 
 console.log(`  sonde_preview                 : ${cible.hostname.replace(/[a-z0-9]{8,}/gi, '<id>')}`);
@@ -61,6 +69,13 @@ console.log(`  type_contenu                  : ${typeContenu || '(aucun)'}`);
 console.log(`  redirection_hote              : ${lieu || '(aucune)'}`);
 console.log(`  page_protection_detectee      : ${pageProtection}`);
 console.log(`  reponse_applicative_200       : ${reponseApplicative}`);
+// Les journaux Actions peuvent etre inaccessibles hors de GitHub. Une
+// annotation non sensible garde le code HTTP et le verdict consultables via
+// l'API check-runs, sans en-tete, cookie, URL signee ni corps de reponse.
+if (process.env.GITHUB_ACTIONS === 'true') {
+  const level = verdict === 'PASS' ? 'notice' : 'warning';
+  console.log(`::${level} title=Preview P9::sans bypass, HTTP ${statut}, verdict ${verdict}`);
+}
 
 if (verdict === 'FAIL') {
   console.error('  FAIL — la Preview repond 200 sans bypass : la protection de deploiement est ABSENTE.');

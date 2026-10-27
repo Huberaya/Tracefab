@@ -59,6 +59,7 @@
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { eicarTestBytes } from './lib/preview_harness_safety.mjs';
 
 const SORTIE_ECHEC = 1;
 const SORTIE_PREREQUIS = 2;
@@ -431,7 +432,7 @@ try {
 
   // Fichier contenant la signature de test EICAR : l'antivirus doit le
   // declarer infecte et le document doit basculer en « rejected ».
-  const infecte = Buffer.from(['EICAR', '-STANDARD', '-ANTIVIRUS', '-TEST', '-FILE'].join('') + `\n${suffixe}\n`);
+  const infecte = eicarTestBytes();
   const intentionInfectee = await alpha('POST', '/api/documents/upload-intent', {
     originalFilename: `infecte-${suffixe}.txt`, contentType: 'text/plain', byteSize: infecte.byteLength,
     kind: 'other', metadata: { productId: produit },
