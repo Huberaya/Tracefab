@@ -11,6 +11,13 @@ production, sans base réelle, sans publication publique.
 > VÉRIFIÉE » que si un contrôle **exécuté** la démontre. Écrire du code, ou
 > écrire un test, ne suffit pas. Tout ce qui n'a pas pu être exécuté ici est
 > marqué EN COURS ou BLOQUÉE, même si le code est en place.
+>
+> Révision du 27/10 (seconde passe) : deux blocages de la première passe sont
+> tombés. Un client Prisma **typé** a été généré hors ligne (§7.1), et les
+> **58 migrations du dépôt ont été réellement appliquées** dans un PostgreSQL
+> compilé en WebAssembly avant d'y jouer la barrière qualité (§7.2). Ces deux
+> preuves portent sur le dépôt, **pas** sur l'environnement de recette :
+> la distinction est maintenue dans chaque ligne du registre.
 
 ---
 
@@ -98,8 +105,8 @@ renvoient au tableau du rapport de phase A.
 | **L3** | Le graphe de traçabilité refuse les nœuds matière/organisation | D3 | Le formulaire n'envoie plus qu'**une** référence, celle du type choisi ; `processCode` n'est plus `required` ; message clair si la référence manque. | Parcours DOM : nœud `material` → `materialId` seul, `processCode` et `organizationId` à `null`, `sourceDocumentId` transmis. 4 vérifications. | **TERMINÉE ET VÉRIFIÉE** (DOM) |
 | **L4** | Aucune preuve documentaire rattachable | D4 / D5 / D6 | `GET /api/documents` (route nouvelle, bornée au locataire) ; chargement du registre dans la console ; modale de dépôt (intent → PUT direct → scan obligatoire) ; sélecteur de document dans les formulaires nœud et data point ; data point envoyé avec `sourceDocumentId` ; compteurs de la vue Documents rendus factuels. | Parcours DOM : `POST /api/documents/upload-intent` avec métadonnées complètes, PUT vers le stockage **sans jeton Clerk**, `POST …/scan`, data point avec `sourceDocumentId` ; seuls les documents `available` sont proposés. 9 vérifications. `test_route_registry.mjs` → 138 routes, intégrité OK. | **TERMINÉE ET VÉRIFIÉE** (API + DOM) — sous réserve que le stockage privé soit configuré (voir §6) |
 | **L4-limite** | Document sur un **lien** de chaîne | D4 | **Non corrigé, et non corrigeable sans décision** : `api/_routes/products/[productId]/supply-chain/links.ts` n'accepte aucun `sourceDocumentId` (ni la table `supply_chain_links`). Ajouter le champ côté UI produirait un champ silencieusement ignoré. | `grep sourceDocumentId` sur `links.ts` : aucun résultat | NON APPLICABLE — JUSTIFICATION FOURNIE (l'API ne porte pas la donnée) |
-| **L5** | Le dossier peut être « prêt » sans contrôle qualité réel | D7 | Migration `20261027100000_dpp_quality_gate_requires_assessment` : `quality.no_open_issues` exige désormais **une évaluation persistée** (`data_quality_scores`) **et** l'absence d'anomalie ouverte. Le reste de la fonction est reproduit à l'identique ; privilèges reposés ; aucune table/policy touchée. | `test_dpp_quality_gate_truthful.mjs` → 7 vérifications PASS (dernière définition, absence de `OR`, 13 exigences, REVOKE, aucun DDL, intention documentée). **La migration n'est pas appliquée** : aucun accès base. | **CORRIGÉE ET VÉRIFIÉE STATIQUEMENT** — effet en base BLOQUÉ (D8) |
-| — | Migrations non confirmées en base | D8 | — | Aucun accès base ici | BLOQUÉE (accès à une base de recette requis) |
+| **L5** | Le dossier peut être « prêt » sans contrôle qualité réel | D7 | Migration `20261027100000_dpp_quality_gate_requires_assessment` : `quality.no_open_issues` exige désormais **une évaluation persistée** (`data_quality_scores`) **et** l'absence d'anomalie ouverte. Le reste de la fonction est reproduit à l'identique ; privilèges reposés ; aucune table/policy touchée. | 1. `test_dpp_quality_gate_truthful.mjs` → **7 vérifications PASS** (dernière définition, absence de `OR`, 13 exigences, REVOKE, aucun DDL, intention documentée) — comptage re-vérifié le 27/10, le journal annonçait déjà 7 : il est exact. 2. `test_dpp_migration_chain_pglite.mjs` → la migration est **appliquée** dans un PostgreSQL réel, sur le **schéma complet du dépôt** (58/58), et la barrière y est **rejouée avant/après** (§7.2). | **TERMINÉE ET VÉRIFIÉE** (sémantique prouvée en exécution) — **application sur la base de recette : BLOQUÉE** faute d'accès (D8) |
+| — | Migrations confirmées en base | D8 | — | Les 58 migrations s'appliquent dans l'ordre sur un PostgreSQL vierge (WASM) ; aucune ne suppose un état absent du dépôt, hormis les rôles provisionnés hors Prisma. | **TERMINÉE ET VÉRIFIÉE** pour le dépôt (chaîne complète jouée) — **BLOQUÉE** pour la base de recette, qui n'est pas accessible ici |
 | — | Manquants dérivés de clés codées en dur | D9 | — | `api/_lib/dpp.ts:64-78` | NON COMMENCÉE |
 | — | Documentation obsolète | D10 | — | `README.md:164` | NON COMMENCÉE |
 
@@ -129,14 +136,17 @@ vérifie désormais que le statut affiché suit la réponse.
 | V10 | Corriger le formulaire de nœud (une seule référence) | TERMINÉE ET VÉRIFIÉE | parcours DOM : `{materialId: <m>, processCode: null, organizationId: null}` |
 | V11 | Publier un passeport depuis la console | TERMINÉE ET VÉRIFIÉE | parcours DOM : publication impossible avant revue, puis requête conforme ; **aucune publication réelle** |
 | V12 | Vérifier la parité i18n et la fraîcheur des assets | TERMINÉE ET VÉRIFIÉE | `test_i18n_consolidation.mjs` OK (2467 clés, 7 locales) ; 0 clé `bt()` non résolue ; `test_assets` PASS |
-| V13 | Rejouer les treize barrières contre une base réelle | BLOQUÉE | aucune base de recette accessible ; D8 non levé |
+| V13 | Rejouer les treize barrières contre une base réelle | TERMINÉE ET VÉRIFIÉE (moteur PostgreSQL réel) / BLOQUÉE (base de recette) | `test_dpp_migration_chain_pglite.mjs` : les 13 branches sont éprouvées une par une sur le schéma complet ; les 4 statuts d'anomalie et la fraîcheur de `data_quality_scores` sont distingués. La base de recette, elle, reste inaccessible |
 | V14 | Valider le parcours dans un vrai navigateur (captures) | BLOQUÉE | binaires Chromium absents et CDN bloqué ; le parcours est exécuté en DOM (jsdom), pas en navigateur |
-| V15 | Corriger D7 (barrière qualitativement vraie) | TERMINÉE ET VÉRIFIÉE (statique) / BLOQUÉE (effet en base) | migration écrite + `test_dpp_quality_gate_truthful.mjs` PASS ; application impossible ici |
+| V15 | Corriger D7 (barrière qualitativement vraie) | TERMINÉE ET VÉRIFIÉE | migration écrite, PASS statique, **et** exécution avant/après : le produit non évalué franchissait la barrière avant, la franchit plus après |
 | V16 | Réconcilier la documentation (D9, D10) | NON COMMENCÉE | hors périmètre immédiat |
 | V17 | Exécuter réellement l'interface (DOM) au lieu de la lire | TERMINÉE ET VÉRIFIÉE | `scripts/test_brand_console_dpp_journey.mjs` : 38/38 |
 | V18 | Brancher le parcours dans la chaîne `npm test` | TERMINÉE ET VÉRIFIÉE | `test:brand-console:dpp-journey` et `test:dpp:quality-gate` ajoutés à `scripts.test` |
 | V19 | Rendre les compteurs de la vue Documents factuels | TERMINÉE ET VÉRIFIÉE | compteurs d'état/expiration ; plus aucune catégorie inexistante |
-| V20 | Vérifier le type des routes modifiées (`api:typecheck`) | BLOQUÉE | `prisma generate` échoue (TLS vers `binaries.prisma.sh`) : le client Prisma n'existe pas ici |
+| V20 | Vérifier le type des routes modifiées (`api:typecheck`) | TERMINÉE ET VÉRIFIÉE — réserve : types seulement | Client Prisma typé généré hors ligne (`db:generate:offline`, §7.1) ; `npm run api:typecheck` → **exit 0**. Réserve explicite : ce client n'a **aucun moteur de requête**, il prouve la compilation TypeScript contre le schéma, **pas** l'exécution d'une requête. `scripts/verify_prisma_client.mjs` le déclare d'ailleurs non conforme pour le runtime |
+| V21 | Rendre la génération Prisma reproductible sans `binaries.prisma.sh` | TERMINÉE ET VÉRIFIÉE | `scripts/generate_prisma_client_offline.mjs` : DMMF WASM + générateur officiel via RPC, `noEngine` + `binaryPathsOverride`. Le script **échoue** si le repli `PrismaClient: any` est écrit (contrôle sur `tracefab_products`) |
+| V22 | Appliquer et éprouver la migration en exécution | TERMINÉE ET VÉRIFIÉE | `scripts/test_dpp_migration_chain_pglite.mjs` : 58/58 migrations, puis avant/après sur la barrière ; branché dans `npm test` sous `test:dpp:migrations` |
+| V23 | Réaligner `package-lock.json` (devDependencies ajoutées) | TERMINÉE ET VÉRIFIÉE | `npm install --package-lock-only --ignore-scripts` ; `npm ci --dry-run` résout sans erreur ; `@prisma/internals` 6.19.3 et `@electric-sql/pglite` 0.5.12 présents au lock |
 
 ---
 
@@ -206,9 +216,19 @@ statut ne compare plus à `sealed`, valeur qui n'existe pas dans
 Un produit jamais évalué n'a aucune ligne d'anomalie : il franchissait la
 barrière sans contrôle. La migration repose la fonction avec une condition
 supplémentaire (`EXISTS (… data_quality_scores …)`), sans `OR`, en reproduisant
-les douze autres branches à l'identique. **Elle n'est pas appliquée** : tant
-qu'elle ne l'est pas, le comportement observé en base reste celui de
-`20261021170000`.
+les douze autres branches à l'identique.
+
+Le défaut a été **reproduit puis corrigé en exécution** (§7.2) : avant la
+migration, un produit sans aucune évaluation renvoie `true` ; après, `false`,
+puis `true` dès qu'une évaluation sans anomalie est persistée. Les quatre
+statuts d'anomalie ont été éprouvés séparément : `open` et `acknowledged`
+ferment la barrière, `resolved` l'ouvre, et **`waived` l'ouvre aussi** — un
+acquiescement de renoncement ne vaut pas preuve ; c'est un comportement à
+assumer explicitement, pas un détail. `quality.no_blocking_issues` suit la
+**dernière** évaluation, pas la première.
+
+Elle n'est **pas** appliquée sur la base de recette : cela suppose un accès qui
+n'existe pas ici, et une autorisation explicite sur l'environnement visé.
 
 ### 4.7 Exécution de l'interface — `scripts/test_brand_console_dpp_journey.mjs`
 
@@ -249,14 +269,19 @@ le rendu CSS réel.
 | `node scripts/test_minified_comments.mjs` | PASS |
 | suites `test:active-tenant`, `test:security:chantier1`, `test:error-reporting`, `test:sql-errors`, `test:bridge:chantier2`, `test:supplychain:*`, `test:context-integrity`, `test:quality-actions:chantier5`, `test:cap:chantier5`, `test:universal-passport:chantier6`, `test:onboarding:chantier6`, `test:mass-balance:chantier7`, `test:supplier-portal`, `test:questionnaires` | PASS |
 | `python3 scripts/validate_schema.py` | PASS — 22 tables historiques, 61 policies |
-| `npm run api:typecheck` | **ÉCHEC environnemental** : `@prisma/client` non généré (`prisma generate` → TLS `binaries.prisma.sh`) |
+| `npm run api:typecheck` | **exit 0** — après génération hors ligne du client Prisma (§7.1). Réserve : types seulement, pas de moteur de requête |
+| `npm run db:generate:offline` | OK — `node_modules/.prisma/client/index.d.ts`, 7 878 Ko, modèle sonde `tracefab_products` présent 2 463 fois |
+| `node scripts/test_dpp_migration_chain_pglite.mjs` | **PASS — 58/58 migrations appliquées**, puis **13 vérifications** avant/après sur la barrière qualité |
+| `npm ci --ignore-scripts --dry-run` | OK — le lock résout `@prisma/internals` 6.19.3 et `@electric-sql/pglite` 0.5.12 |
+| `node scripts/verify_prisma_client.mjs` | **ÉCHEC attendu et non contourné** : « aucun moteur de requêtes » — le client typé ne peut pas exécuter de requête |
 | `node scripts/test_hardcoded_copy.mjs` | **non exécutable** : binaires Chromium absents, CDN bloqué |
 | `node scripts/test_brand_console_empty_tenant.mjs` | **non exécutable** : idem |
 | suites `test:neon:*` (base réelle) | **non exécutables** : aucune base |
 
-Limite explicite : `tsc --noEmit` porte sur le TypeScript du dépôt hors `api/`
-(`api:typecheck` est le pendant API et il échoue faute de client Prisma généré).
-Les routes modifiées n'ont donc **pas** été type-checkées ici.
+Limite explicite après la seconde passe : `api:typecheck` **passe**, mais contre
+un client sans moteur de requête. Les routes modifiées sont donc **type-checkées**
+et **pas** exécutées : aucune requête Prisma n'a été jouée ici, et aucune ne peut
+l'être dans cet environnement.
 
 ---
 
@@ -264,25 +289,110 @@ Les routes modifiées n'ont donc **pas** été type-checkées ici.
 
 **Ne peut pas être fait depuis cet environnement :**
 
-1. **Appliquer la migration `20261027100000`** sur une base de recette, puis
-   rejouer les treize barrières — sans quoi L5 reste sans effet observable et
-   D8 ouvert.
+1. **Appliquer la migration `20261027100000`** sur la base de recette
+   (`prisma migrate deploy`), puis rejouer les treize barrières dessus. La
+   migration est désormais prouvée en exécution sur un PostgreSQL vierge ; ce
+   qui manque est l'état *de votre base*, pas la preuve que la migration
+   fonctionne.
 2. **Vérifier le parcours en navigateur réel** (captures) : Chromium n'est pas
    installable ici (CDN bloqué, bibliothèques système absentes).
-3. **Type-checker `api/`** : `prisma generate` échoue faute d'accès à
-   `binaries.prisma.sh`.
+3. ~~**Type-checker `api/`**~~ — fait (§7.1). Reste que le client généré n'a
+   **pas de moteur de requête** : `prisma generate` complet et toute requête
+   réelle demandent encore `binaries.prisma.sh`.
+4. **Appliquer la migration sur la base de recette** : la chaîne est prouvée sur
+   un PostgreSQL vierge, elle ne l'est pas sur *votre* base (état, rôles,
+   extensions, `_prisma_migrations`). Commande cible : `prisma migrate deploy`,
+   à lancer sur l'environnement de recette avec votre autorisation.
 
 **Dépend d'une décision ou d'une autorisation :**
 
-4. **Publication publique d'un passeport** : le bouton existe, la confirmation
+5. **Publication publique d'un passeport** : le bouton existe, la confirmation
    existe, mais publier reste un acte de la marque. Rien n'a été publié.
-5. **Stockage privé** : le dépôt de document passe par une URL présignée. Si
+6. **Stockage privé** : le dépôt de document passe par une URL présignée. Si
    `PRIVATE_STORAGE_*` n'est pas configuré sur l'environnement, l'API répond
    `503 private_storage_not_configured` et la console affiche cette erreur —
    c'est un blocage d'environnement, pas de code.
 
 **Dépend de données qui n'existent pas encore :**
 
-6. Les **données réelles du T-shirt** (composition et pourcentages, teintures,
+7. Les **données réelles du T-shirt** (composition et pourcentages, teintures,
    fabricants et sites, pays d'origine, certifications). Aucune ne peut être
    inventée ; ce sont elles, et non le code, qui font aujourd'hui défaut.
+
+---
+
+## 7. Deux blocages tombés, et ce que les preuves correspondantes valent
+
+### 7.1 Un client Prisma typé, sans réseau vers `binaries.prisma.sh`
+
+`prisma generate` télécharge un moteur de requête binaire. Ce CDN est
+injoignable ici (`ECONNRESET` ; `api.github.com/.../prisma-engines/releases`
+renvoie `[]`) : sans client, `api:typecheck` échouait et **aucune route de l'API
+n'était type-checkée**.
+
+La génération est pourtant possible sans ce binaire : le DMMF (la description
+du schéma) est disponible en WASM dans `@prisma/internals`, et le générateur
+officiel `@prisma/client/generator-build` sait produire les types à partir de
+ce DMMF. `scripts/generate_prisma_client_offline.mjs` les branche par RPC, avec
+`noEngine: true`, `skipDownload: true` et un `binaryPathsOverride` pointant vers
+un chemin **inexistant** — sans cette dernière option, le générateur écrit un
+**repli** `PrismaClient: any` qui compile et ne vérifie rien.
+
+Le script refuse donc de se déclarer réussi si le modèle sonde
+`tracefab_products` est absent de `index.d.ts`. Résultat : 7 878 Ko de types,
+`tracefab_products` présent 2 463 fois, `npm run api:typecheck` → **exit 0**.
+
+**Ce que cela prouve** : les routes modifiées compilent contre le schéma Prisma
+réel ; une faute de nom de champ ou de type de retour est détectée.
+
+**Ce que cela ne prouve pas** : le client n'embarque **aucun moteur de requête**.
+`scripts/verify_prisma_client.mjs` le dit sans détour (« le client se
+construirait, puis échouerait à la première requête »). Un `api:typecheck` vert
+n'autorise donc **aucune** conclusion sur le fonctionnement de la base.
+
+### 7.2 Les 58 migrations, appliquées, puis la barrière rejouée
+
+Le second blocage était plus gênant : la migration corrective n'avait jamais
+été **exécutée**, seulement lue. Un test qui lit du SQL prouve qu'on a écrit ce
+qu'on voulait écrire ; il ne prouve pas que PostgreSQL en fait ce qu'on croit —
+et le défaut corrigé est précisément un défaut de comportement.
+
+`scripts/test_dpp_migration_chain_pglite.mjs` applique donc, dans l'ordre,
+**les 58 migrations du dépôt** dans un PostgreSQL compilé en WebAssembly
+(`@electric-sql/pglite`, devDependency, extensions `pgcrypto` et `uuid_ossp`),
+après création du rôle runtime `tracefab_app` avec ses attributs attendus
+(`LOGIN`, `NOSUPERUSER`, `NOBYPASSRLS`). Puis il rejoue la séquence :
+
+| Étape | Résultat observé |
+|---|---|
+| 58/58 migrations, dans l'ordre | aucune erreur |
+| Définition d'origine reposée : produit **jamais évalué** | `quality.no_open_issues` = **true** (le faux vert, reproduit) |
+| Migration `20261027100000` réappliquée sur le schéma réel | OK |
+| Même produit, sans évaluation | **false** |
+| Une évaluation persistée, sans anomalie | **true** |
+| Anomalie `open` | **false** |
+| Anomalie `acknowledged` | **false** |
+| Anomalie `waived` | **true** — renoncement assumé, signalé |
+| Anomalie `resolved` | **true** |
+| Barrières témoins (`product.reference`, `composition.complete`, `traceability.documented`, `evidence.product_data`, clé inexistante…) | chacune rend sa propre réponse, aucune n'est auto-satisfaite |
+| `quality.no_blocking_issues` avec deux évaluations | suit la **dernière** |
+| `has_function_privilege` pour `PUBLIC` et `tracefab_app` | **false** dans les deux cas |
+
+**Ce que cela prouve** : la chaîne de migrations est cohérente, la migration
+corrige bien le comportement sur le schéma réel, et la correction ne rend pas
+les autres barrières complaisantes.
+
+**Ce que cela ne prouve pas** : PGlite n'est ni Neon ni la base de recette. La
+RLS n'y est pas éprouvée en conditions réelles (les rôles existent, les données
+de production non), les extensions disponibles diffèrent, et
+`_prisma_migrations` n'est pas géré. Le test ne remplace donc pas
+`prisma migrate deploy` sur l'environnement visé : il établit que la migration
+**mérite** d'y être appliquée, pas qu'elle y est appliquée.
+
+### 7.3 Ce qui reste bloqué, et pourquoi ce n'est pas contournable
+
+| Blocage | Motif | Contournement honnête |
+|---|---|---|
+| Appliquer la migration sur la base de recette | aucun accès base, aucune `DATABASE_URL` | aucun : il faut l'environnement et une autorisation |
+| Exécuter une requête Prisma de bout en bout | moteur de requête introuvable hors ligne | aucun ici ; le type-check est le maximum atteignable |
+| Navigateur réel (captures) | `libnspr4.so` absent, CDN bloqué | aucun installé ici ; le parcours reste prouvé en DOM (jsdom) |
