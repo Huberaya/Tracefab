@@ -376,6 +376,24 @@ Ajouts vérifiés :
   non-appartenance, refus de l'écriture directe, calcul, revue et visibilité
   accessibles, aucune trace laissée.
 
+### 11.6a Environnement d'exécution identifié (preuve, pas supposition)
+
+| Question | Mesure |
+|---|---|
+| Cette session peut-elle exécuter `prisma migrate` ? | **non** — `npx prisma migrate status` avec une URL valide échoue sur le téléchargement du moteur de schéma (`binaries.prisma.sh` injoignable), erreur capturée |
+| Cette session peut-elle parler à Neon en TCP ? | **oui** — connexion TCP 5432 vers le proxy Neon établie |
+| Cette session peut-elle joindre l'API Neon ou un Preview Vercel ? | **non** — `000` dans les deux cas |
+| La CI peut-elle exécuter `prisma migrate deploy` ? | **oui** — le job « Base » l'a fait ; mais la politique du dépôt interdit d'alimenter une connexion de base par `secrets.*` |
+| Où la migration doit-elle donc tourner ? | **sur le poste de l'opérateur**, une commande |
+
+Conséquence opérationnelle : la chaîne complète est ramenée à une commande —
+`npm run valider:neon` — qui enchaîne identité, `prisma migrate status`,
+`db:deploy`, contrôles, scénarios, banc sous rôle applicatif et simulation, en
+s'arrêtant au premier échec et en écrivant un journal sans secret. Une fois la
+branche migrée par l'opérateur, les étapes en lecture seule (identité, §9,
+scénarios, simulation) redeviennent exécutables **dans cette session**, le proxy
+Postgres étant joignable.
+
 ### 11.6 État des phases de la mission de clôture
 
 | Phase | État | Motif |

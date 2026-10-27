@@ -54,10 +54,52 @@ Aucune de ces lignes ne prouve quoi que ce soit sur Neon.
 
 ---
 
+## 1 bis. Environnement d'exécution — où la migration PEUT tourner
+
+Mesuré, pas supposé.
+
+| Environnement | Dépôt + Node | Moteur de schéma Prisma | Réseau vers Neon | Verdict |
+|---|---|---|---|---|
+| Session d'agent actuelle | oui | **non** — `binaries.prisma.sh` injoignable, erreur capturée ci-dessous | HTTP non (API `000`) ; **TCP 5432 vers le proxy Neon : connecté** | ne peut pas exécuter `prisma migrate` |
+| Runner GitHub Actions (`ubuntu-latest`) | oui | oui | oui — le job « Base » applique réellement les 59 migrations | **mais** la politique du dépôt interdit d'alimenter une connexion de base par `secrets.*` (`test:workflow-policy`, contrôle B) |
+| Poste de l'opérateur | oui | oui | oui | **environnement retenu** |
+
+Erreur capturée dans la session d'agent, avec une `DATABASE_URL` valide :
+
+```
+Error: request to https://binaries.prisma.sh/all_commits/c2990dca…/debian-openssl-3.0.x/schema-engine.gz.sha256
+failed, reason: Client network socket disconnected before secure TLS connection was established
+```
+
+Autrement dit : **même avec la chaîne de connexion, cette session ne peut pas
+exécuter `prisma migrate deploy`.** Elle peut en revanche, le proxy Postgres
+étant joignable en TCP, exécuter toutes les étapes en **lecture seule** —
+identité, §9, scénarios, banc sous rôle applicatif, simulation — dès que la
+branche aura été migrée par l'opérateur.
+
 ## 2. Séquence d'exécution sur la branche de validation
 
 Chaque étape est bloquante : si elle échoue, on s'arrête, on collecte, on
 corrige, on ne contourne pas.
+
+### 2.0 Une commande pour tout enchaîner
+
+L'opérateur, sur son poste (environnement retenu ci-dessus) :
+
+```bash
+DATABASE_URL='…' TF_ATTENDU_HOTE='<hôte>' TF_ATTENDU_BASE='neondb' \
+TF_ATTENDU_MIGRATIONS='<avant migration>' \
+  npm run valider:neon
+```
+
+`scripts/validation_neon_complete.mjs` enchaîne, dans cet ordre et en
+s'arrêtant au premier échec : SHA et propreté de l'arbre → identité →
+`prisma migrate status` → `npm run db:deploy` → identité après migration →
+contrôles §9 et sept scénarios → non-régression revue/publication → banc sous
+`tracefab_app` (si les identifiants sont fournis) → simulation avec rollback
+vérifié. Il écrit un journal horodaté, sans secret, et n'utilise jamais de SQL
+maison à la place de Prisma. `--sans-deploy` existe pour rejouer les seuls
+contrôles.
 
 ### 2.1 Identité de la cible (lecture seule, avant tout)
 
