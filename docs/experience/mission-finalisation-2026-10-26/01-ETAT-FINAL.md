@@ -398,10 +398,37 @@ TF_PREVIEW_EVIDENCE=/tmp/tf-preview-evidence.json \
 node scripts/test_preview_http_journeys.mjs
 ```
 
-## 13.5 CI et statut global
+## 13.5 CI sur le SHA exact — preuve
 
-Le commit de cette section est pousse sur `arena/647ac97c-tracefab` par un push normal (aucune force). Le run CI correspondant et son SHA exact sont consignes dans le commentaire de cloture de la PR #101 ; la CI precedente reste verte sur `27981ac` (run `40411584880`). Les controles locaux de cette mission : `npm test`, `typecheck`, `api:typecheck`, `test:preview-harness`, `test:workflow-policy`, `test:workflow-policy-temoins`, `test:db-routing`, `test:routes`, `test:assets`, `test:i18n`, `test:minified-comments`, `test:ci-no-production-access`, `verify:prisma-client` : **tous `exit=0`**. `test:router-load` et `test:route-auth-coverage` affichent leurs assertions OK puis echouent en local sur `The adapter option for PrismaClient is required` (client WASM sans PostgreSQL local) — artefact d'environnement deja documente ; ces deux suites passent en CI avec les moteurs natifs.
+**SHA du code ayant passe les controles : `ec1256b353065bc39a2fe581c4d5c19b59cc1d60`**
+Run CI : [`40465570870`](https://github.com/Huberaya/Tracefab/actions/runs/40465570870) — `conclusion=success`, **4/4 jobs verts**.
 
-**Statut global : BLOQUÉ — intervention humaine requise.** Sous-taches reellement terminees : permissions re-mesurees, protection Vercel confirmee active, harnais Preview reel livre et garde par 7 regressions, workflow independant pret avec approbation conservee, registre de securite mis a jour, politique de workflows verte, aucun secret expose, aucune protection desactivee, aucune modification de production. Restent **BLOCKED** : execution des 9 parcours sur la Preview, usage effectif de Clerk de test, stockage prive et antivirus manages, isolation Alpha/Beta par HTTP sur Preview, rejet EICAR par l'antivirus manage.
+| Job | Conclusion | URL |
+|---|---|---|
+| Socle — types, compilation, isolation | success | [job](https://github.com/Huberaya/Tracefab/actions/runs/40465570870/job/122060008181) |
+| Verification — suite de tests | success | [job](https://github.com/Huberaya/Tracefab/actions/runs/40465570870/job/122060248366) |
+| Base — isolation RLS executee | success | [job](https://github.com/Huberaya/Tracefab/actions/runs/40465570870/job/122060248374) |
+| Parcours — navigateur reel | success | [job](https://github.com/Huberaya/Tracefab/actions/runs/40465570870/job/122060248464) |
 
-**TraceFab n'est pas declare pret pour la commercialisation.**
+Le job `Verification` inclut desormais `test:preview-harness` (7 gardes, sans secret), `test:workflow-policy`, `test:db-routing`, `test:routes`, le chargement des routes, la couverture d'authentification, le build complet et la generation Prisma **native**. La CI precedente reste verte sur `27981ac` (run [`40411584880`](https://github.com/Huberaya/Tracefab/actions/runs/40411584880)) et sur `3d2f61f` (run [`40409887448`](https://github.com/Huberaya/Tracefab/actions/runs/40409887448)).
+
+Controles locaux de cette mission : `npm test`, `typecheck`, `api:typecheck`, `test:preview-harness`, `test:workflow-policy`, `test:workflow-policy-temoins`, `test:db-routing`, `test:routes`, `test:assets`, `test:i18n`, `test:minified-comments`, `test:ci-no-production-access`, `verify:prisma-client`, `npm run test:neon:mission-functional` : **tous `exit=0`**. `test:router-load` et `test:route-auth-coverage` affichent leurs assertions OK puis echouent en local sur `The adapter option for PrismaClient is required` (client WASM sans PostgreSQL local) — artefact d'environnement deja documente, **PAS** une regression ; ces deux suites sont vertes dans le run `40465570870`.
+
+## 13.6 Blocages supplementaires mesures pendant cette mission
+
+| Blocage | Mesure exacte | Responsable |
+|---|---|---|
+| Dispatch du workflow | `gh workflow run preview-http-journeys.yml --ref arena/647ac97c-tracefab` -> `HTTP 403: Resource not accessible by integration` (pas de portee `actions: write`). `gh run list --workflow preview-http-journeys.yml` -> `HTTP 404` : le workflow n'est pas enregistre sur la branche par defaut tant qu'il n'a jamais ete execute. | Administrateur GitHub : accorder `actions: write` au jeton d'integration, ou declencher le workflow depuis l'UI une fois approuve. |
+| Politique de branches de l'environnement | Annotations du run [`40095308112`](https://github.com/Huberaya/Tracefab/actions/runs/40095308112) : `Branch "arena/fd3fb758-tracefab" is not allowed to deploy to tracefab-clerk-test due to environment protection rules.` / `The deployment was rejected or didn't satisfy other protection rules.` Meme cause sur les runs `40095977987` et `40095977944`. **Aucun job de ces workflows n'a jamais demarre**, donc aucune preuve de presence de secret n'a pu etre obtenue — et aucune n'est pretendue. | Administrateur GitHub : ajouter `arena/647ac97c-tracefab` aux branches autorisees de l'environnement `tracefab-clerk-test` **sans retirer** les relecteurs obligatoires. |
+| API repository partiellement inaccessible | `gh api repos/.../contents/...?ref=...` -> `403` ; `gh pr checks 101` / `gh pr view 101` (GraphQL) -> `403 Resource not accessible by integration (repository)` en fin de mission, alors que l'API REST `repos/.../pulls/101` et `actions/runs/...` restent lisibles. | Administrateur GitHub : verifier les portees du jeton d'integration. |
+| Sortie reseau du sandbox | `fetch failed` vers `*.vercel.app` (voir 13.2). | Aucun : le harnais doit tourner sur un runner GitHub. |
+
+## 13.7 Statut global et décision
+
+**BLOQUÉ — intervention humaine requise.**
+
+Sous-taches reellement **PASS** : etat distant et CI reverifies (4/4 sur `ec1256b`) ; arbre de travail preserve et realigne sans perte ; deux tags locaux recrees ; permissions re-mesurees ; protection Vercel confirmee active par une requete reelle ; harnais de Preview **reel** livre (9 parcours + P9, aucun mock ni service local) ; 7 regressions de gardes vertes en CI sans secret ; workflow independant pret sans fusion de #80/#91, avec approbation d'environnement conservee ; registre de securite mis a jour et politique de workflows verte ; aucun secret expose, aucune protection desactivee, aucune modification de production, aucun push force, aucune fusion.
+
+Restent **BLOCKED** : execution des 9 parcours sur la Preview, usage effectif de Clerk `sk_test_`, stockage prive et antivirus **manages**, isolation Alpha/Beta par HTTP sur Preview, rejet EICAR par l'antivirus manage. Restent **NOT RUN** : fermeture ou fusion des PR concurrentes (#98, #70, #82, #92, #93, #94), modification des branches de #80/#91.
+
+**Decision : pret pour la revue de PR ; non pret pour les tests de Preview. TraceFab n'est pas declare pret pour la commercialisation.**
