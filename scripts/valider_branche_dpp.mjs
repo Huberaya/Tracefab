@@ -14,6 +14,7 @@
  * de la partie A sont partiels : le script le signale.
  */
 import pg from 'pg';
+import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 
 const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
   || 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
@@ -34,7 +35,7 @@ const LECTURE_SEULE = process.argv.includes('--dry-run');
 
 const client = new pg.Client({
   connectionString: url,
-  ssl: /neon\.tech|sslmode=require/.test(url) ? { rejectUnauthorized: false } : false,
+  ssl: sslDepuisUrl(url),
 });
 await client.connect();
 

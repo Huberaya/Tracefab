@@ -25,6 +25,7 @@
  * Usage : DATABASE_URL=... node scripts/test_dpp_review_and_publication.mjs
  */
 import pg from 'pg';
+import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { randomUUID } from 'node:crypto';
 
 const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
@@ -40,7 +41,7 @@ if (hote === HOTE_PRODUCTION || /^ep-polished-night/.test(hote)) {
 
 const client = new pg.Client({
   connectionString: url,
-  ssl: /neon\.tech|sslmode=require/.test(url) ? { rejectUnauthorized: false } : false,
+  ssl: sslDepuisUrl(url),
 });
 await client.connect();
 

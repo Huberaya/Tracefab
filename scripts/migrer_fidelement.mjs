@@ -42,6 +42,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import pg from 'pg';
+import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 
 const RACINE = process.cwd();
 const DOSSIER = process.env.TF_MIGRATIONS_PATH
@@ -94,7 +95,7 @@ const empreinte = (fichier) => createHash('sha256').update(readFileSync(fichier)
 
 const client = new pg.Client({
   connectionString: url,
-  ssl: /neon\.tech|sslmode=require/.test(url) ? { rejectUnauthorized: false } : false,
+  ssl: sslDepuisUrl(url),
   application_name: 'tracefab-migration-fidele',
 });
 await client.connect();

@@ -33,6 +33,7 @@
  *   4 base non restauree (alerte) ; 1 erreur d'execution.
  */
 import pg from 'pg';
+import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -66,7 +67,7 @@ const cheminSortie = argSortie > -1 ? process.argv[argSortie + 1] : null;
 
 const client = new pg.Client({
   connectionString: url,
-  ssl: /neon\.tech|sslmode=require/.test(url) ? { rejectUnauthorized: false } : false,
+  ssl: sslDepuisUrl(url),
 });
 
 const PROFIL = { key: 'textile_readiness_mvp', version: '1.0' };

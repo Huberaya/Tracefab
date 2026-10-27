@@ -50,6 +50,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
+import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -78,7 +79,7 @@ const cible = (() => {
 
 const client = new pg.Client({
   connectionString: url,
-  ssl: /neon\.tech|sslmode=require|sslmode=verify/.test(url) ? { rejectUnauthorized: false } : false,
+  ssl: sslDepuisUrl(url),
   application_name: 'tracefab-preflight-lecture-seule',
 });
 

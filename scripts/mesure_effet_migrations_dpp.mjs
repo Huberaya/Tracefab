@@ -17,6 +17,7 @@
  *   fabricant n'y figurent pas et ne doivent pas y figurer.
  */
 import pg from 'pg';
+import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
@@ -40,7 +41,7 @@ if (!mode && !dryRun) { console.error('Preciser --avant, --apres ou --dry-run.')
 
 const client = new pg.Client({
   connectionString: url,
-  ssl: /neon\.tech|sslmode=require/.test(url) ? { rejectUnauthorized: false } : false,
+  ssl: sslDepuisUrl(url),
 });
 await client.connect();
 
