@@ -21,7 +21,7 @@
  *   3. les sequences et leurs droits ;
  *   4. les fonctions : SECURITY DEFINER, `search_path` fige, qui peut executer,
  *      et surtout celles executables par PUBLIC ;
- *   5. les privileges par defaut (ALTER DEFAULT PRIVILEGES) ;
+ *   5. les privileges par defaut enregistres dans le catalogue ;
  *   6. les politiques RLS par table, avec leur commande et leur expression.
  *
  * CODES DE SORTIE
@@ -143,7 +143,7 @@ for (const f of publicExec) {
 }
 
 // 4. Privileges par defaut ---------------------------------------------------
-titre('Privileges par defaut (ALTER DEFAULT PRIVILEGES)');
+titre('Privileges par defaut (ACL par defaut du catalogue)');
 const { rows: defauts } = await client.query(`
   SELECT pg_get_userbyid(d.defaclrole) AS createur,
          n.nspname AS schema,
