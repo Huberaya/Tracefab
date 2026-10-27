@@ -137,7 +137,7 @@ vérifie désormais que le statut affiché suit la réponse.
 | V11 | Publier un passeport depuis la console | TERMINÉE ET VÉRIFIÉE | parcours DOM : publication impossible avant revue, puis requête conforme ; **aucune publication réelle** |
 | V12 | Vérifier la parité i18n et la fraîcheur des assets | TERMINÉE ET VÉRIFIÉE | `test_i18n_consolidation.mjs` OK (2467 clés, 7 locales) ; 0 clé `bt()` non résolue ; `test_assets` PASS |
 | V13 | Rejouer les treize barrières contre une base réelle | TERMINÉE ET VÉRIFIÉE (moteur PostgreSQL réel) / BLOQUÉE (base de recette) | `test_dpp_migration_chain_pglite.mjs` : les 13 branches sont éprouvées une par une sur le schéma complet ; les 4 statuts d'anomalie et la fraîcheur de `data_quality_scores` sont distingués. La base de recette, elle, reste inaccessible |
-| V14 | Valider le parcours dans un vrai navigateur (captures) | BLOQUÉE | binaires Chromium absents et CDN bloqué ; le parcours est exécuté en DOM (jsdom), pas en navigateur |
+| V14 | Valider le parcours dans un vrai navigateur (captures) | TERMINÉE ET VÉRIFIÉE (CI) | le job CI « Parcours — navigateur réel » exécute Chromium (Playwright, GitHub Actions) sur cette branche : 10 min 44 s, **vert**, y compris le scénario multi-locataire. Aucune capture d'écran n'est produite par ce journal : la preuve est le job, pas une image |
 | V15 | Corriger D7 (barrière qualitativement vraie) | TERMINÉE ET VÉRIFIÉE | migration écrite, PASS statique, **et** exécution avant/après : le produit non évalué franchissait la barrière avant, la franchit plus après |
 | V16 | Réconcilier la documentation (D9, D10) | NON COMMENCÉE | hors périmètre immédiat |
 | V17 | Exécuter réellement l'interface (DOM) au lieu de la lire | TERMINÉE ET VÉRIFIÉE | `scripts/test_brand_console_dpp_journey.mjs` : 38/38 |
@@ -419,4 +419,44 @@ de production non), les extensions disponibles diffèrent, et
 |---|---|---|
 | Appliquer la migration sur la base de recette | aucun accès base, aucune `DATABASE_URL` | aucun : il faut l'environnement et une autorisation |
 | Exécuter une requête Prisma de bout en bout | moteur de requête introuvable hors ligne | aucun ici ; le type-check est le maximum atteignable |
-| Navigateur réel (captures) | `libnspr4.so` absent, CDN bloqué | aucun installé ici ; le parcours reste prouvé en DOM (jsdom) |
+| Navigateur réel **depuis cet environnement** | `libnspr4.so` absent, CDN bloqué | aucun : mais la CI de la branche exécute Chromium réel et passe (V14) — le blocage est local, pas méthodologique |
+
+
+---
+
+## 8. État final de la branche (contrôles exécutés)
+
+| Contrôle | Résultat |
+|---|---|
+| `Socle — types, compilation, isolation` | **pass** (48 s) |
+| `Base — isolation RLS exécutée` | **pass** (1 min 09 s) |
+| `Parcours — navigateur réel` (Chromium) | **pass** (10 min 44 s) |
+| `Vérification — suite de tests` | **pass** (8 min 01 s) |
+| `Chaîne 34/36/41 sur Postgres 17 jetable` | **pass** |
+| Déploiement de prévisualisation Vercel | **pass** |
+| `npm test` local (40 suites) | **exit 0** |
+| `node scripts/test_dpp_migration_chain_pglite.mjs` | **PASS** — 58/58 migrations, 20 vérifications |
+| `node scripts/test_dpp_quality_gate_truthful.mjs` | **PASS** — 7 vérifications |
+
+### 8.1 Ce que ces verts ne disent pas
+
+- **Aucune migration n'a été appliquée à une base de recette ou de production.**
+  La chaîne est prouvée sur un PostgreSQL jetable (CI) et un PostgreSQL WASM
+  (local) ; l'état de *votre* base reste inconnu.
+- **Aucun passeport n'a été publié.** Les écrans existent, les contrôles
+  existent, les tests simulent l'appel ; aucune publication réelle n'a eu lieu.
+- **Le dossier T-shirt n'existe pas encore.** Il manque les données de la
+  marque : composition et pourcentages, teintures et traitements, fabricants et
+  sites, pays d'origine, certifications. Aucune n'a été inventée.
+- **`api:typecheck` passe**, mais contre un client Prisma sans moteur de
+  requête : la compilation est prouvée, l'exécution des requêtes non.
+
+### 8.2 Les cinq verrous, en une ligne chacun
+
+| Verrou | État |
+|---|---|
+| L1 — sortir du brouillon | **levé** : transition ouverte, auditée, bouton présent, épreuve API + navigateur |
+| L2 — écran du passeport public | **levé** : identité résolvable (QR) + publication/suspension/retrait, tous confirmés avant écriture |
+| L3 — nœud matière/organisation refusé | **levé** : une seule référence envoyée par nœud |
+| L4 — preuve documentaire non rattachable | **levé** : registre, dépôt, scan obligatoire, sélection dans les formulaires ; limite assumée sur les liens de chaîne |
+| L5 — dossier « prêt » sans contrôle qualité | **levé** : la barrière exige une évaluation persistée, prouvé avant/après en exécution SQL |
