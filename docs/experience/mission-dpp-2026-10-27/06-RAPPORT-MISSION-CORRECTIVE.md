@@ -502,6 +502,36 @@ quasi vide en dossiers : un seul, et il n'est pas publiable en l'état. Le
 interdite d'écriture. La branche a servi à prouver la chaîne, pas à produire un
 passeport.
 
+### 11.5e Recalcul réel appliqué sur la branche, et idempotence vérifiée (27/10, 18 h)
+
+`npm run db:recalculer-dpp` (soit `simuler_recalcul_dpp.mjs --appliquer`) sur
+`br-sweet-king-b1n2f4u6`, révision `aa2ad40`. Écriture réelle, conservée.
+
+| Contrôle du mode écriture | Résultat |
+|---|---|
+| deux noms concordants (`TF_SIMULATION_CIBLE` + `TF_RECALCUL_CONFIRME`) | fournis |
+| sauvegarde avant écriture | `/tmp/recalcul.sauvegarde.json` |
+| dossier `P-2ed11660` | `data_ready` 9/9 → **`in_progress` 8/13** |
+| revue | **conservée** — 0 invalidée |
+| visibilité | **inchangée** — 0 publié, 0 slug posé ou retiré |
+| anomalies techniques / décisions métier | **0 / 0** → `COMMIT` |
+| empreinte des dossiers | `6a4682…` → **`d0fbf0…`** : l'écriture est bien conservée |
+| empreinte des produits | `f15da9…` → `f15da9…` : aucun produit touché |
+
+**Idempotence (A3) rejouée** juste après, sans `--appliquer` : empreinte des
+dossiers **identique** (`d0fbf0…` → `d0fbf0…`), produits identiques, `exit 0`.
+Le recalcul est donc stable : le rejouer ne change plus rien.
+
+Ce qui reste vrai après ce recalcul :
+
+- le seul dossier DPP de la branche n'est **pas publiable** : 5 exigences sur 13
+  non satisfaites (`product.required_attributes`, `materials.origin_documented`,
+  `traceability.documented`, `quality.no_open_issues`, `evidence.product_data`) ;
+- ces 5 manques sont **réels**, pas un artefact de calcul — le dossier les
+  affichait satisfaits parce que le profil à 9 ne les évaluait pas ;
+- la production n'a toujours pas été touchée, et le volet HTTP reste non prouvé
+  (aucun slug en base, donc aucun passeport public à résoudre).
+
 ### 11.6 État des phases de la mission de clôture
 
 | Phase | État | Motif |
@@ -511,6 +541,8 @@ passeport.
 | C — `npm run db:deploy` | **TERMINÉE (27/10, 17 h 40)** | `prisma migrate deploy` : 3 migrations appliquées dans l'ordre, registre à 59, exit 0 |
 | D bis — profil d'exigences | **TERMINÉE** | 9 → **13 exigences** après la migration 57 |
 | D ter — parc inchangé | **TERMINÉE** | 18 produits · 1 dossier · 0 publié avant et après : aucune écriture de données |
+| D quater — recalcul réel | **TERMINÉE (27/10, 18 h)** | 1 dossier `data_ready 9/9` → `in_progress 8/13`, revue conservée, visibilité inchangée, empreinte changée puis stable au rejeu |
+| D quinquies — idempotence A3 | **TERMINÉE** | rejeu sans écriture : empreinte `d0fbf0…` identique, 0 dossier modifié |
 | D — critères D1 à D6 | **NON MESURÉS SUR NEON** | prouvés en local et en CI seulement |
 | E — scénarios | **PARTIELLE** | 9 cas exécutés en local et en CI ; pas sur Neon ; cas 9 (état à 58) rejoué sur `tf58` |
 | F — simulation du parc réel | **TERMINÉE (27/10, 17 h 55)** | 1 dossier simulé, `data_ready 9/9` → `in_progress 8/13`, revue conservée, visibilité inchangée, ROLLBACK vérifié |
