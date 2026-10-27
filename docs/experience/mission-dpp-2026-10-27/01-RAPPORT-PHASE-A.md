@@ -10,6 +10,14 @@
 
 > Ce rapport décrit **ce que le code fait**. Il ne prouve pas **ce que la base de recette contient**, ni les migrations réellement appliquées. Cette distinction est maintenue partout ci-dessous.
 
+> **Suite des travaux (27/10, seconde passe).** Les constats ci-dessous restent
+> l'état du dépôt à la révision examinée. Les corrections apportées ensuite —
+> dont la preuve d'exécution de la barrière qualité et la génération hors ligne
+> du client Prisma — sont consignées dans `02-LEVEE-DES-VERROUS.md` (§7). En cas
+> de divergence entre les deux documents sur un **statut**, le journal fait foi ;
+> ce rapport fait foi sur le **diagnostic**. Pour la même raison, les constats
+> « non exécutable » y sont explicites : ils ne sont pas levés par la suite.
+
 ---
 
 ## 1. Résumé exécutif

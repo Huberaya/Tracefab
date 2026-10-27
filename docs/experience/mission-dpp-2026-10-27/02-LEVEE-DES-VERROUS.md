@@ -283,6 +283,30 @@ un client sans moteur de requête. Les routes modifiées sont donc **type-check�
 et **pas** exécutées : aucune requête Prisma n'a été jouée ici, et aucune ne peut
 l'être dans cet environnement.
 
+### 5.1 Deux régressions trouvées par la CI, invisibles ici
+
+La CI de la PR a rejeté deux suites, et aucune des deux ne venait du code
+applicatif : toutes deux étaient la **conséquence directe** des corrections.
+
+| Suite | Message | Cause réelle | Correction |
+|---|---|---|---|
+| Parcours navigateur — « un utilisateur, deux organisations » | `aucune route inattendue n'a ete appelee — /api/documents` | la console charge le registre documentaire au démarrage ; la fixture du test est **fail-closed** et refusait cette route | route déclarée dans les deux fixtures fail-closed (`documents: []`), au lieu de laisser la console atteindre un backend réel |
+| Base — « cycle de vie DPP dynamique » | `dpp_publication_requirements_not_met` puis `permission denied for function tracefab_refresh_product_data_readiness` | la revue exige désormais une évaluation qualité persistée — c'est exactement L5 ; la fixture n'en créait aucune, et le recalcul de complétude n'est plus exécutable par le rôle runtime | l'épreuve **vérifie d'abord le refus**, puis calcule la complétude (en admin : c'est une fixture) et la qualité (avec le rôle applicatif, comme la console), puis publie |
+
+C'est la démonstration la plus utile de ce journal : une barrière corrigée ne
+se voit pas dans un test statique, elle se voit dans les suites qui
+**publiaient sans avoir rien évalué**. La première version de ce journal
+affirmait que L5 était corrigée ; la CI a montré ce que « corrigée » implique
+ailleurs dans la chaîne.
+
+Après correction, la CI de la PR #102 est **verte** sur les quatre contrôles
+exécutables : `Socle — types, compilation, isolation`, `Base — isolation RLS
+exécutée`, `Parcours — navigateur réel` (Chromium réel, GitHub Actions) et le
+déploiement de prévisualisation Vercel. C'est la seule preuve de navigateur
+réel disponible dans ce dossier : elle ne peut pas être produite depuis
+l'environnement de travail (bibliothèques système absentes), mais elle existe
+et porte sur cette branche.
+
 ---
 
 ## 6. Ce qu'il reste à faire, et par qui
