@@ -449,6 +449,13 @@ jobs:
         # sort en 1 si un seul de ces cas rend un code nul — un faux succes.
         run: npm run test:garde-fous:neon
 
+      - name: Garde-fous du recalcul réel — deux noms pour écrire
+        # `--appliquer` ecrit. Ce banc prouve, sans ouvrir de connexion, qu'il
+        # ne franchit pas les gardes sans deux noms concordants (cible +
+        # confirmation), qu'il refuse la production, et qu'une simple lecture
+        # ne demande, elle, qu'un seul nom.
+        run: npm run test:garde-fous:recalcul
+
       - name: Colonnes différées — mesurable, différée, inattendue
         # Le verificateur d identite interroge des colonnes de revue creees par
         # les migrations EN ATTENTE : il echouait donc avant de pouvoir

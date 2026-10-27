@@ -243,6 +243,41 @@ Les cas 7 (produit sans évaluation) et 9 (état initial à 58) exigent un état
 précis : le cas 9 ne se joue **qu'avant** la migration, ou sur une seconde
 branche restée à 58. Il ne peut pas être rejoué après coup sur la même branche.
 
+### 2.4 bis Recalcul réel d'un parc — `--appliquer` (écriture)
+
+La simulation (`npm run simuler:recalcul-dpp`) lit et annule. Pour appliquer :
+
+```bash
+export TF_SIMULATION_CIBLE='<hôte de la cible>'      # nomme ce qu'on regarde
+export TF_RECALCUL_CONFIRME='<le même hôte>'         # nomme ce qu'on écrit
+npm run db:recalculer-dpp -- --sortie /tmp/recalcul.json
+```
+
+**Deux noms pour écrire, un seul pour lire.** `--appliquer` sans
+`TF_RECALCUL_CONFIRME` sort en `2` ; une confirmation différente de l'hôte réel
+sort en `3` ; la production reste refusée en lecture comme en écriture (`3`).
+
+Ce que le mode écriture fait, dans l'ordre :
+
+1. il sélectionne les dossiers existants et **écrit une sauvegarde JSON des
+   lignes concernées** avant toute modification ;
+2. il ouvre **une** transaction et y exécute le recalcul réel, dossier par
+   dossier, via `tracefab_compute_dpp_readiness` — le même moteur que la route
+   `POST /api/products/:id/dpp`, pas une réimplémentation ;
+3. il classe chaque mouvement : correction attendue, décision métier, ou
+   **anomalie technique** (revue perdue sans changement de score, visibilité
+   perdue sans suspension, visibilité acquise sans publication) ;
+4. il ne `COMMIT` que si **aucune** anomalie et **aucune** décision métier non
+   tranchée ne subsiste ; sinon `ROLLBACK` et code `4` ;
+5. après écriture, il vérifie hors transaction qu'aucun dossier n'a été publié
+   par effet de bord et qu'aucun slug n'a bougé.
+
+Codes de sortie : `0` appliqué et vérifié (ou simulation restaurée) · `2` usage ·
+`3` cible refusée · `4` écriture refusée par un contrôle, ou base non restaurée ·
+`1` erreur d'exécution.
+
+Garde-fous éprouvés : `npm run test:garde-fous:recalcul` (6 cas, sans connexion).
+
 ### 2.5 bis Garde-fous de la commande elle-même
 
 ```bash

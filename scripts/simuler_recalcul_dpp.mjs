@@ -33,9 +33,30 @@
  *   DATABASE_URL=... TF_SIMULATION_CIBLE=ep-xxx.eu-central-1.aws.neon.tech \
  *     node scripts/simuler_recalcul_dpp.mjs [--sortie rapport.json]
  *
+ *   Mode ECRITURE (27/10/2026), pour appliquer le recalcul pour de vrai :
+ *   DATABASE_URL=... TF_SIMULATION_CIBLE=<hote> TF_RECALCUL_CONFIRME=<hote> \
+ *     node scripts/simuler_recalcul_dpp.mjs --appliquer [--sortie rapport.json]
+ *
+ * DEUX NOMS POUR ECRIRE, UN SEUL POUR SIMULER
+ *   `TF_SIMULATION_CIBLE` designe la base qu'on regarde ; `TF_RECALCUL_CONFIRME`
+ *   doit repeter le meme hote pour autoriser l'ecriture. Un nom suffit a lire,
+ *   deux a ecrire : c'est volontaire. Le meme controle refuse toujours la
+ *   production, en lecture comme en ecriture.
+ *
+ * CE QUE FAIT `--appliquer`, ET CE QU'IL REFUSE DE FAIRE
+ *   Il execute le recalcul dans UNE transaction, puis :
+ *     - si une ANOMALIE TECHNIQUE apparait (revue perdue sans changement de
+ *       score, visibilite perdue sans suspension, visibilite acquise sans
+ *       publication) -> ROLLBACK, code 4, rien n'est ecrit ;
+ *     - si une decision metier reste a confirmer -> ROLLBACK, code 4 ;
+ *     - sinon -> COMMIT, puis verification hors transaction.
+ *   Une sauvegarde JSON des lignes concernees est ecrite AVANT le recalcul.
+ *
  * CODE DE SORTIE
- *   0 simulation jouee, base restauree ; 2 usage ; 3 cible refusee ;
- *   4 base non restauree (alerte) ; 1 erreur d'execution.
+ *   0 simulation jouee base restauree, ou recalcul applique et verifie ;
+ *   2 usage (dont `--appliquer` sans confirmation) ; 3 cible refusee ;
+ *   4 base non restauree, ou ecriture refusee par un controle (alerte) ;
+ *   1 erreur d'execution.
  */
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
@@ -66,6 +87,24 @@ if (cible !== hote) {
   console.error('REFUS — TF_SIMULATION_CIBLE ne correspond pas a l\'hote de DATABASE_URL.');
   console.error(`         declare : ${cible} / reel : ${hote}`);
   process.exit(3);
+}
+
+// --- Mode d'execution ------------------------------------------------------
+// Lire ne demande qu'un nom : la cible. Ecrire en demande deux. Les deux
+// controles sont places AVANT la connexion : un refus n'ouvre aucune session.
+const appliquer = process.argv.includes('--appliquer');
+if (appliquer) {
+  const confirme = process.env.TF_RECALCUL_CONFIRME;
+  if (!confirme) {
+    console.error('REFUS — --appliquer exige TF_RECALCUL_CONFIRME egal a l\'hote de la cible.');
+    console.error('         (lire demande un nom, ecrire en demande deux : c\'est voulu)');
+    process.exit(2);
+  }
+  if (confirme !== hote) {
+    console.error('REFUS — TF_RECALCUL_CONFIRME ne correspond pas a l\'hote de DATABASE_URL.');
+    console.error(`         confirme : ${confirme} / reel : ${hote}`);
+    process.exit(3);
+  }
 }
 
 const argSortie = process.argv.indexOf('--sortie');
@@ -170,6 +209,23 @@ const { rows: dossiers } = await client.query(
 
 let erreur = null;
 let publiesApresRecalcul = null;
+let cheminSauvegarde = null;
+
+// Sauvegarde AVANT d'ecrire : les lignes telles qu'elles sont, en JSON local.
+// Un ROLLBACK malheureux ou une erreur applicative ne doit jamais laisser
+// l'operateur sans l'etat d'avant. Le fichier reste hors du depot.
+if (appliquer && dossiers.length) {
+  const { rows: lignes } = await client.query(
+    'SELECT * FROM dpp_records WHERE product_id = ANY($1::uuid[])',
+    [dossiers.map((d) => d.product_id)]);
+  cheminSauvegarde = (cheminSortie ? cheminSortie.replace(/\.json$/, '') : '/tmp/recalcul-dpp')
+    + '.sauvegarde.json';
+  mkdirSync(dirname(cheminSauvegarde), { recursive: true });
+  writeFileSync(cheminSauvegarde, JSON.stringify({
+    date: new Date().toISOString(), hote, mode: 'avant-recalcul', lignes,
+  }, null, 2));
+}
+
 await client.query('BEGIN');
 try {
   for (const d of dossiers) {
@@ -272,7 +328,20 @@ try {
   publiesApresRecalcul = p.n;
 } catch (e) {
   erreur = e.message;
-} finally {
+}
+
+// Decision d'ecriture : on ne commit QUE si rien d'anormal n'a ete classe.
+// Une anomalie technique ou une decision metier non tranchee annule tout :
+// un recalcul qui perd une revue ou change une visibilite sans decision
+// explicite ne doit pas etre conserve « parce qu'il est deja calcule ».
+const anomalies = resultats.filter((r) => typeof r.classification === 'string'
+  && r.classification.startsWith('ANOMALIE'));
+const aTrancher = resultats.filter((r) => r.classification === 'decision metier a confirmer');
+let committe = false;
+if (appliquer && !erreur && !anomalies.length && !aTrancher.length) {
+  await client.query('COMMIT');
+  committe = true;
+} else {
   await client.query('ROLLBACK');
 }
 
@@ -329,22 +398,50 @@ console.log('  evaluee. Le classement ci-dessus separe ces corrections attendues
 console.log('  anomalies techniques (revue perdue sans changement, visibilite qui bouge');
 console.log('  sans publication ou sans suspension).');
 
-console.log('\nVerification post-rollback');
-console.log('-------------------------');
-console.log(`  ${restauree ? 'ok  ' : 'ECHEC'} base identique a l\'instant d\'avant`);
+const titreVerif = appliquer ? '\nVerification post-ecriture' : '\nVerification post-rollback';
+console.log(titreVerif);
+console.log('-'.repeat(titreVerif.trim().length));
+if (!appliquer) {
+  console.log(`  ${restauree ? 'ok  ' : 'ECHEC'} base identique a l\'instant d\'avant`);
+} else if (committe) {
+  // Ecrire n'autorise pas a publier : le nombre de dossiers publies doit etre
+  // identique, et aucune revue ne doit avoir disparu sans motif.
+  const publiesStables = apres.publies === avant.publies;
+  const slugsStables = apres.slugs_poses === avant.slugs_poses;
+  console.log(`  ${publiesStables ? 'ok  ' : 'ECHEC'} aucun dossier publie par effet de bord`
+    + ` — ${avant.publies} avant, ${apres.publies} apres`);
+  console.log(`  ${slugsStables ? 'ok  ' : 'ECHEC'} aucun slug pose ou retire`
+    + ` — ${avant.slugs_poses} avant, ${apres.slugs_poses} apres`);
+  console.log(`  ok   dossiers inchanges : ${apres.dossiers.n} (aucune creation, aucune suppression)`);
+  if (!publiesStables || !slugsStables) {
+    console.error('ALERTE — ecriture conservee alors que la visibilite a bouge. Analyse immediate.');
+    process.exitCode = 4;
+  }
+} else {
+  console.log('  aucun commit — ROLLBACK');
+  if (anomalies.length) {
+    for (const a of anomalies) console.log(`    anomalie : ${a.produit} — ${a.classification}`);
+  }
+  if (aTrancher.length) {
+    for (const a of aTrancher) console.log(`    a trancher : ${a.produit} — decision metier`);
+  }
+  if (erreur) console.log(`    erreur : ${erreur}`);
+}
 console.log(`       avant : ${JSON.stringify(avant)}`);
 console.log(`       apres : ${JSON.stringify(apres)}`);
-if (erreur) console.log(`  erreur pendant la simulation : ${erreur}`);
+if (cheminSauvegarde) console.log(`  sauvegarde avant recalcul : ${cheminSauvegarde}`);
+if (erreur) console.log(`  erreur pendant ${appliquer ? "l'ecriture" : 'la simulation'} : ${erreur}`);
 
 if (cheminSortie) {
   mkdirSync(dirname(cheminSortie), { recursive: true });
   writeFileSync(cheminSortie, JSON.stringify({
     genere_le: maintenant(),
     cible_hote: hote,
-    mode: 'simulation avec rollback',
+    mode: appliquer ? (committe ? 'recalcul applique' : 'recalcul refuse, rollback') : 'simulation avec rollback',
     etat_avant: avant,
-    etat_apres_rollback: apres,
-    base_restauree: restauree,
+    etat_apres: apres,
+    base_restauree: appliquer ? !committe : restauree,
+    commit: committe,
     publies_apres_recalcul: publiesApresRecalcul,
     erreur,
     resultats,
@@ -353,6 +450,13 @@ if (cheminSortie) {
 }
 
 await client.end();
-if (!restauree) { console.error('ALERTE — la base ne correspond plus a l\'etat d\'avant simulation.'); process.exit(4); }
+if (!appliquer && !restauree) {
+  console.error('ALERTE — la base ne correspond plus a l\'etat d\'avant simulation.');
+  process.exit(4);
+}
+if (appliquer && !committe) {
+  console.error('ALERTE — recalcul NON applique : un controle s\'y est oppose (voir ci-dessus).');
+  process.exit(4);
+}
 if (erreur) process.exit(1);
-process.exit(0);
+process.exit(process.exitCode || 0);
