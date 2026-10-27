@@ -449,6 +449,13 @@ jobs:
         # sort en 1 si un seul de ces cas rend un code nul — un faux succes.
         run: npm run test:garde-fous:neon
 
+      - name: Inventaire des consommateurs de la base — un seul point d'entrée
+        # Analyse statique : une seule variable de connexion, un seul client
+        # Prisma, aucun secret de base dans les workflows, crons inventories.
+        # Le banc a ete ecrit apres que la premiere version a compte deux
+        # clients Prisma et un secret qui etaient... des commentaires.
+        run: npm run test:inventaire:consommateurs
+
       - name: Garde-fous du recalcul réel — deux noms pour écrire
         # `--appliquer` ecrit. Ce banc prouve, sans ouvrir de connexion, qu'il
         # ne franchit pas les gardes sans deux noms concordants (cible +
