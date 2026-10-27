@@ -34,7 +34,13 @@
  *   TF_ATTENDU_HOTE=ep-xxx.eu-central-1.aws.neon.tech \
  *   TF_ATTENDU_BASE=neondb \
  *   [TF_ATTENDU_MIGRATIONS=56] \
+ *   [TF_EXIGER_MIGRATIONS=nom1,nom2,nom3] \
  *     node scripts/verifier_identite_branche.mjs
+ *
+ * `TF_EXIGER_MIGRATIONS` est la liste des migrations qui DOIVENT etre
+ * appliquees et terminees. Sans elle, le script constate ; avec elle, il exige.
+ * C'est ce qui distingue « l'etat est coherent » de « les trois migrations
+ * attendues sont bien la ».
  *
  * CODES DE SORTIE
  *   0 identite prouvee et etat coherent ; 2 usage ; 3 cible refusee ;
@@ -85,6 +91,8 @@ if (attenduHote !== hote) {
 
 const attenduMigrations = process.env.TF_ATTENDU_MIGRATIONS
   ? Number(process.env.TF_ATTENDU_MIGRATIONS) : null;
+const exigees = (process.env.TF_EXIGER_MIGRATIONS || '')
+  .split(',').map((n) => n.trim()).filter(Boolean);
 
 const depot = readdirSync(MIGRATIONS)
   .filter((n) => /^\d/.test(n) && existsSync(join(MIGRATIONS, n, 'migration.sql')))
@@ -172,6 +180,17 @@ if (attenduMigrations !== null) {
 }
 dit(reg.terminees <= depot.length, 'le registre n\'est pas en avance sur le depot',
   `${reg.terminees} / ${depot.length} au depot`);
+
+// Exigence nominative : chaque migration citee doit etre appliquee ET terminee.
+if (exigees.length) {
+  for (const nom of exigees) {
+    const appliquee = nomsAppliques.has(nom);
+    dit(appliquee, `migration exigee appliquee : ${nom}`,
+      appliquee ? '' : (depot.includes(nom) ? 'presente au depot mais NON appliquee' : 'absente du depot'));
+  }
+} else {
+  console.log('  (aucune migration exigee nominativement : TF_EXIGER_MIGRATIONS absent)');
+}
 
 ligne('Role applicatif, privileges et RLS');
 // Le role applicatif est provisionne hors Prisma. S'il est absent de la cible,

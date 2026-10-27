@@ -183,6 +183,7 @@
     "test:dpp:migrations": "node scripts/test_dpp_migration_chain_pglite.mjs",
     "test:dpp:review-publication": "node scripts/run-db-suite.mjs scripts/test_dpp_review_and_publication.mjs",
     "test:dpp:role-applicatif": "node scripts/test_dpp_role_applicatif.mjs",
+    "test:garde-fous:neon": "node scripts/test_garde_fous_validation_neon.mjs",
     "simuler:recalcul-dpp": "node scripts/simuler_recalcul_dpp.mjs",
     "verifier:identite-cible": "node scripts/verifier_identite_branche.mjs",
     "valider:neon": "node scripts/validation_neon_complete.mjs",

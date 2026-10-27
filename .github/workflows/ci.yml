@@ -251,7 +251,9 @@ jobs:
           #   test:dpp:role-applicatif    — exige un dossier reel + trois
           #     identifiants (produit, organisation, acteur) que la RLS empeche
           #     de decouvrir ; cible nommee, hors chaine automatique
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif').join(' '))")
+          #   test:garde-fous:neon        — eprouve un verrou de commande, il a
+          #     donc besoin d'une base ; il tourne dans le job « Base »
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon').join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -439,6 +441,13 @@ jobs:
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
+
+      - name: Garde-fous de la commande de validation Neon
+        # Neuf chemins d'arret eprouves par execution : arbre modifie, revision
+        # inattendue, cible de production, cible non nommee, banc applicatif
+        # incomplet, `db:deploy` en echec, migration exigee absente. Le banc
+        # sort en 1 si un seul de ces cas rend un code nul — un faux succes.
+        run: npm run test:garde-fous:neon
 
       - name: Revue et publication — non-regression sur base migree
         # Neuf cas qui echouent si le recalcul efface une revue sans raison,

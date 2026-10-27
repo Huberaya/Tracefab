@@ -84,13 +84,35 @@ corrige, on ne contourne pas.
 
 ### 2.0 Une commande pour tout enchaîner
 
-L'opérateur, sur son poste (environnement retenu ci-dessus) :
+L'opérateur, sur son poste (environnement retenu ci-dessus). **Toutes** les
+variables sont obligatoires : la commande refuse de démarrer s'il en manque une,
+plutôt que de rendre un succès partiel.
 
 ```bash
-DATABASE_URL='…' TF_ATTENDU_HOTE='<hôte>' TF_ATTENDU_BASE='neondb' \
-TF_ATTENDU_MIGRATIONS='<avant migration>' \
-  npm run valider:neon
+DATABASE_URL='…'                                  # canal de secrets
+TF_ATTENDU_SHA='<SHA complet autorisé>'           # sinon code 4
+TF_ATTENDU_HOTE='<hôte de la branche>'            # sinon code 3
+TF_ATTENDU_BASE='neondb'                          # sinon code 3
+TF_ATTENDU_MIGRATIONS='<compte avant migration>'
+TF_RLS_APP_URL='…' TF_PRODUIT_TEST='<uuid>' \
+TF_ORG_TEST='<uuid>' TF_ACTEUR_TEST='<uuid>'      # sinon code 6
+  npm run valider:neon [--rapport <fichier>]
 ```
+
+| Code | Signification | Écritures effectuées ? |
+|---|---|---|
+| `0` | tous les contrôles obligatoires exécutés et passés | oui (migration) |
+| `2` | usage : `DATABASE_URL` absente | non |
+| `3` | cible refusée : production, ou cible non nommée | non |
+| `4` | `TF_ATTENDU_SHA` absent, mal formé ou différent de `HEAD` | non |
+| `5` | arbre Git modifié | non |
+| `6` | banc sous `tracefab_app` incomplet | non |
+| `7` | une étape a échoué (son code est imprimé) | jusqu'à cette étape |
+
+Après migration, la commande exige **nominairement** les trois migrations
+(`TF_EXIGER_MIGRATIONS`), refuse une migration en échec ou inachevée, et refuse
+tout écart entre le registre et le dépôt. Le banc sous rôle applicatif n'est
+plus optionnel : sans lui, la commande s'arrête avant la première écriture.
 
 `scripts/validation_neon_complete.mjs` enchaîne, dans cet ordre et en
 s'arrêtant au premier échec : SHA et propreté de l'arbre → identité →
@@ -204,7 +226,18 @@ Les cas 7 (produit sans évaluation) et 9 (état initial à 58) exigent un état
 précis : le cas 9 ne se joue **qu'avant** la migration, ou sur une seconde
 branche restée à 58. Il ne peut pas être rejoué après coup sur la même branche.
 
-### 2.5 bis Banc d'essai sous le rôle applicatif réel (RLS)
+### 2.5 bis Garde-fous de la commande elle-même
+
+```bash
+DATABASE_URL='…' npm run test:garde-fous:neon
+```
+
+Neuf chemins d'arrêt sont éprouvés par exécution ; un seul qui rendrait `0`
+fait échouer le banc. Trois d'entre eux (révision, échec de `db:deploy`)
+exigent un arbre propre : sur un arbre modifié, le banc le dit et sort en `2`
+au lieu de faire semblant de les jouer.
+
+### 2.5 ter Banc d'essai sous le rôle applicatif réel (RLS)
 
 Les autres suites se connectent en propriétaire : elles prouvent le
 comportement des fonctions, pas l'accès réel de l'application. Ce banc-ci
