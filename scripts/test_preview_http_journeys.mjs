@@ -194,8 +194,9 @@ const ORG_ALPHA = String(process.env.TF_PREVIEW_ORG_ALPHA || '').trim();
 const ORG_BETA = String(process.env.TF_PREVIEW_ORG_BETA || '').trim();
 const SHA_DEPLOYE = String(process.env.TF_PREVIEW_DEPLOYED_SHA || '').trim();
 const SHA_CODE = String(process.env.GITHUB_SHA || process.env.TF_PREVIEW_CODE_SHA || '').trim();
-expurger = creerExpurgateur([BYPASS, CLE_CLERK, USER_ALPHA, USER_BETA, BASE_BRUTE,
-  ORG_ALPHA, ORG_BETA]);
+const valeursSensibles = [BYPASS, CLE_CLERK, USER_ALPHA, USER_BETA, BASE_BRUTE,
+  ORG_ALPHA, ORG_BETA];
+expurger = creerExpurgateur(valeursSensibles);
 
 // Le proprietaire de l'environnement doit verifier HORS de ce script que le
 // deploiement, la base, Clerk, le bucket et l'antivirus sont tous de TEST.
@@ -404,6 +405,9 @@ async function jeterSession(userId, expiresInSeconds) {
   const jeton = await clerk.sessions.getToken(session.id, undefined, expiresInSeconds);
   const jwt = typeof jeton === 'string' ? jeton : jeton?.jwt;
   if (!jwt) throw new Error('session_token_empty');
+  // Couvrir aussi les jetons dont le format ne correspond pas au motif JWT.
+  valeursSensibles.push(jwt);
+  expurger = creerExpurgateur(valeursSensibles);
   return jwt;
 }
 

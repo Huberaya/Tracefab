@@ -150,10 +150,16 @@ function lancer(envSuppl, { retirer = [] } = {}) {
   let refuse = false;
   try { construireEntetes({ externe: true, jeton: 'jwt.test.value' }); } catch { refuse = true; }
   verifier(refuse, 'URL presignee + jeton explicite : refuse par construction');
+  let mimeRefuse = false;
+  try { construireEntetes({ externe: true, entetes: { 'Content-Type': BYPASS_TEST } }); }
+  catch { mimeRefuse = true; }
+  verifier(mimeRefuse, 'URL presignee : valeur Content-Type arbitraire refusee');
 
   const expurgerTest = creerExpurgateur([BYPASS_TEST]);
   verifier(!expurgerTest(`x-vercel-protection-bypass: ${BYPASS_TEST}`).includes(BYPASS_TEST),
     'expurgateur : valeur de bypass du process retiree litteralement');
+  verifier(!creerExpurgateur(['xy'])('valeur xy').includes('xy'),
+    'expurgateur : meme une valeur sensible courte est retiree');
   verifier(gabarit('/api/documents/123e4567-e89b-12d3-a456-426614174000/download?X-Amz=abc')
     === '/api/documents/:id/download',
   'gabarit : UUID et query presignee jamais journalises');

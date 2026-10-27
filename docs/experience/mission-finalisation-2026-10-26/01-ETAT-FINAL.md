@@ -1,5 +1,7 @@
 # 01 — ÉTAT FINAL — publication, CI et blocages Preview
 
+> **Actualisation 2026-10-27 : consulter le §14 pour les résultats et la procédure courante.** Les anciennes instructions avec `allow_provision=1` sont obsolètes ; les parcours Preview réels restent bloqués.
+
 **Date** : 2026-10-26 (Europe/Paris)
 **Branche publiée** : `arena/647ac97c-tracefab` — **nouvelle** branche distante (absente de `origin` avant cette mission), dédiée à cette livraison. La contrainte de session Arena impose de rester sur cette branche ; elle joue donc le rôle de « branche dédiée au nom explicite ». Aucune autre branche locale ou distante n'a été créée.
 **PR** : [#101](https://github.com/Huberaya/Tracefab/pull/101) — **ouverte, non fusionnée**, état `MERGEABLE`, base `main`.
@@ -432,3 +434,97 @@ Sous-taches reellement **PASS** : etat distant et CI reverifies (4/4 sur `ec1256
 Restent **BLOCKED** : execution des 9 parcours sur la Preview, usage effectif de Clerk `sk_test_`, stockage prive et antivirus **manages**, isolation Alpha/Beta par HTTP sur Preview, rejet EICAR par l'antivirus manage. Restent **NOT RUN** : fermeture ou fusion des PR concurrentes (#98, #70, #82, #92, #93, #94), modification des branches de #80/#91.
 
 **Decision : pret pour la revue de PR ; non pret pour les tests de Preview. TraceFab n'est pas declare pret pour la commercialisation.**
+
+---
+
+# 14. Vérification finale Preview — 2026-10-27
+
+> **Cette section actualise et corrige les instructions de §13 sans effacer ses preuves.** En particulier, ne pas utiliser l'ancienne entrée `allow_provision=1` : la version actuelle exige deux organisations de test préexistantes. Le test ne doit pas écrire tant que l'administrateur n'a pas confirmé séparément l'isolation de tous les services de Preview.
+
+## 14.1 État et contrôles effectivement exécutés
+
+| Action / contrôle | SHA, commande et preuve | Résultat | Statut |
+|---|---|---|---|
+| Branche et base initiales | `git ls-remote origin refs/heads/main refs/heads/arena/647ac97c-tracefab` | Base `bf55f2ae6534cde84d072d9b975520216c7b6d4e`, branche initiale `facf1eddc1894204f94d95e26dd7f1b9ab26ca05` ; arbre local identique et propre | **PASS** |
+| PR #101 | `gh api repos/Huberaya/Tracefab/pulls/101` | Ouverte, non fusionnée, `mergeable=true` ; aucune action sur `main` | **PASS** |
+| CI du SHA de référence | [run 40466721146](https://github.com/Huberaya/Tracefab/actions/runs/40466721146) | 4/4 jobs verts sur `facf1ed` | **PASS** |
+| CI après correction du bypass | [run 40470603952](https://github.com/Huberaya/Tracefab/actions/runs/40470603952) | 4/4 jobs verts sur `019ceee25abded9791e3e91f037b62a90c7bd4ec` | **PASS** |
+| CI du harnais corrigé | [run 40472721951](https://github.com/Huberaya/Tracefab/actions/runs/40472721951) | 4/4 jobs verts sur `d2c4ff7c7e4bff3c65f46e4749a8457d7949f28a` : [Socle](https://github.com/Huberaya/Tracefab/actions/runs/40472721951/job/122083447203), [Parcours](https://github.com/Huberaya/Tracefab/actions/runs/40472721951/job/122083708801), [Base](https://github.com/Huberaya/Tracefab/actions/runs/40472721951/job/122083708863), [Verification](https://github.com/Huberaya/Tracefab/actions/runs/40472721951/job/122083709012) | **PASS** |
+| Protection Vercel, sans secret | [sonde HTTP depuis un runner GitHub, run 40472716887](https://github.com/Huberaya/Tracefab/actions/runs/40472716887), job `122083430689` | Annotation de contrôle `Preview P9` : **« sans bypass, HTTP 302, verdict PASS »**, sur `d2c4ff7` ; redirection spécifique à Vercel, aucune protection désactivée | **PASS** |
+| Exécution authentifiée Preview | [run 40472716870](https://github.com/Huberaya/Tracefab/actions/runs/40472716870), job `122083431356` | `skipped`, **0 étape**. L'opt-in administrateur du déclenchement par push n'est pas actif ; sa présence/valeur est illisible. Ce run n'est **pas** une validation Preview. | **NOT RUN** |
+| Test d'authentification / stockage / antivirus managés | Aucun jeton de test ni accès à l'environnement protégé disponibles dans cette session | Aucun test authentifié effectué sur la Preview. `P0`, `J1`–`J8` restent à exécuter. | **BLOCKED** |
+
+La CI du commit portant cette mise à jour de rapport doit être vérifiée séparément sur son SHA de tête (`git rev-parse HEAD`) : un commit ne peut pas contenir à l'avance son propre SHA. Le résultat exact du dernier run sera conservé dans la réponse de clôture et, si autorisé, en commentaire de [la PR #101](https://github.com/Huberaya/Tracefab/pull/101).
+
+## 14.2 Autorisations recontrôlées : ressource et erreur
+
+| Ressource | Mesure | Ce qui est connu / inconnu | Responsable |
+|---|---|---|---|
+| `GET /repos/Huberaya/Tracefab/actions/secrets`, `/actions/variables` | **403 `Resource not accessible by integration`** | Aucun nom ni valeur de secret n'a été lu ; pour les variables, l'en-tête d'API indique `actions_variables=read` | Administrateur GitHub : accorder la lecture des variables si un inventaire est souhaité, ou vérifier les noms dans l'interface |
+| `GET /repos/Huberaya/Tracefab/environments/tracefab-clerk-test/secrets` | **403** ; en-tête `X-Accepted-Github-Permissions: environments=read` | La présence des secrets est **inconnue** | Administrateur GitHub : `Environments: read` pour les métadonnées, ou vérification directe dans Settings |
+| `GET …/environments/tracefab-clerk-test/deployment-branch-policies` | **200** : branches `main`, `arena/88857a44-tracefab`, `arena/f9effa2e-tracefab` | La branche de la mission n'est pas autorisée. Règles `branch_policy` et `required_reviewers` conservées ; `can_admins_bypass=false` | Administrateur GitHub : ajouter **uniquement** `arena/647ac97c-tracefab` |
+| `POST …/deployment-branch-policies` pour la branche exacte | **403 `Resource not accessible by integration`** | Aucune modification appliquée. La création via API nécessite `Administration: write` sur le dépôt ; un administrateur peut aussi agir dans l'interface sans accorder ce droit à l'agent | Administrateur GitHub |
+| `POST …/actions/workflows/{id}/dispatches` (y compris workflow sans secret) | **403** ; en-tête `actions=write` | Aucun dispatch créé. Un workflow uniquement `workflow_dispatch` absent de la branche par défaut n'est pas directement déclenchable : le chemin **push opt-in** décrit ci-dessous évite de fusionner #101 | Administrateur GitHub : `Actions: write` pour relancer, ou utilisation de l'interface Actions |
+| Vercel — projet et variables Preview | `get_project` / `list_projects` / `list_env_vars` : **Access denied** ; `get_deployment` sur l'identifiant fourni par le bot : **404** | Identifiants du connecteur valides mais limités ; pas d'accès au projet. Le 404 ne prouve pas que le déploiement n'existe pas. Aucune variable ni valeur de Preview lue | Administrateur Vercel : donner un accès au projet permettant de consulter les métadonnées Preview ; vérifier les valeurs dans la console, sans les communiquer dans le rapport |
+| Sandbox → Preview | `fetch failed` pour `*.vercel.app` ; le runner GitHub peut la joindre | Les parcours authentifiés doivent tourner sur le runner protégé, pas dans ce sandbox | Équipe technique après approbation |
+
+## 14.3 Corrections indépendantes et régressions
+
+1. **Secret de bypass vers le stockage.** Sur l'ancien harnais, les en-têtes communs auraient été transmis à une URL S3/R2 présignée, notamment `x-vercel-protection-bypass`. Corrigé par `construireEntetes` : aucun bypass, jeton ni identifiant de locataire sur une origine tierce ; seul un `Content-Type` documentaire autorisé est accepté. Le harnais n'a pas été exécuté avec de vrai secret : aucune fuite réelle n'a été observée. La preuve est un test de régression, pas un test managé.
+2. **EICAR.** Le fichier utilisé dans les contrôles locaux précédents ne contenait que le texte partiel du nom EICAR. Le résultat local antérieur ne démontre donc pas le rejet de l'échantillon standard. Le code reconstruit maintenant en mémoire les **68 octets canoniques**, empreinte SHA-256 `275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f`, sans imprimer son contenu. Retest local ciblé : `NODE_ENV=test TF_HTTP_INTEGRATION_HARNESS=1 npx tsx scripts/test_mission_http_integration.mjs` → **53/53**, dont rejet du fichier canonique par le service antivirus **simulé local**. Ce résultat ne prouve toujours rien sur l'antivirus managé.
+3. **Prévention des écritures en production.** L'ancien suffixe `*.vercel.app` n'établissait pas qu'une URL était une Preview isolée. Le harnais exige maintenant un alias de branche Tracefab, l'égalité avec `TF_PREVIEW_EXPECTED_ORIGIN`, le SHA déployé attesté égal au SHA exécuté, `TF_PREVIEW_TEST_ENV_CONFIRMED=1`, un hôte HTTPS de stockage approuvé et deux organisations de test distinctes déjà existantes. `/api/me` vérifie les adhésions, rôles et non-appartenance croisée. **L'attestation humaine n'est pas une preuve technique** : l'administrateur doit vérifier séparément base, Clerk, stockage et antivirus avant de l'activer.
+4. **Qualité des preuves.** Chaque requête d'isolation et chaque refus anonyme conserve son identifiant, la méthode, le gabarit de route, le statut HTTP attendu/obtenu et sa durée, sans corps, identifiant, cookie, URL signée ou jeton. La preuve JSON est écrite aussi sur arrêt anticipé, avec `BLOCKED` et les parcours restants en `NOT RUN`, puis conservée 7 jours comme artefact GitHub. Les sessions Clerk de test créées sont révoquées en fin d'exécution. L'historique vérifie les décisions d'acceptation et de rejet **du document concerné et avec leurs motifs**, pas seulement un compteur global.
+5. **Expiration et protection.** L'attente utilise l'expiration réelle du jeton BAPI, plus 7 secondes pour le décalage d'horloge du SDK ; un 401 générique ou une redirection tierce ne suffit plus à déclarer la protection Vercel active.
+
+Régressions exécutées localement : `npm test`, `test:preview-harness` (**43 contrôles** après le dernier durcissement), `test:workflow-policy`, `test:workflow-policy-temoins`, `test:db-routing`, `test:ci-no-production-access`, `test:routes`, `test:assets`, `test:i18n`, `verify:prisma-client`, `test:router-load`, `test:route-auth-coverage` (**159/159**), `test:neon:mission-functional` : sorties 0. Les tests DB ont utilisé PostgreSQL jetable local ; seule la ligne `CREATE EXTENSION pgcrypto` a été neutralisée **dans le flux local**, pas dans les migrations du dépôt, car PostgreSQL 16 fournit `gen_random_uuid` nativement.
+
+## 14.4 Parcours Preview : attendu, observation, statut
+
+| Parcours | Attendu | Obtenu sur Preview réelle | Statut |
+|---|---|---|---|
+| Pré-vol applicatif avec bypass approuvé | `GET /api/health` → 200 | Non exécuté : accès et configuration indisponibles | **BLOCKED** |
+| Authentification Clerk de test valide | 200 et identité autorisée | Non exécuté ; existence / type de clé non vérifiés | **BLOCKED** |
+| Requêtes anonymes, jetons forgés, malformés, expirés | 401 pour chaque requête | Non exécuté | **BLOCKED** |
+| Produit créé, modifié, relu | 201 / 200 / 200 | Non exécuté | **BLOCKED** |
+| Document : URL signée, PUT, scan, GET, intégrité | 201 / 200 / `available` / 200 / SHA-256 identique | Non exécuté ; stockage et antivirus managés non vérifiés | **BLOCKED** |
+| Acceptation, rejet motivé, historique | 200 / 400 sans motif / 200 / décisions et motifs relus | Non exécuté | **BLOCKED** |
+| Aperçu DPP privé | 200, `no-store, private`, `noindex` | Non exécuté | **BLOCKED** |
+| Isolation Alpha/Beta en lecture et écriture | 404 ou liste vide selon la route ; contrôle positif Beta 200 | Non exécuté | **BLOCKED** |
+| EICAR canonique sur antivirus managé | upload 200, scan `rejected`, téléchargement 404 | Non exécuté ; ne pas confondre avec le mock local | **BLOCKED** |
+| Protection Vercel sans bypass | redirection SSO Vercel ou page de protection spécifique | **HTTP 302**, annotation `Preview P9` du run `40472716887` | **PASS** |
+
+## 14.5 Actions administratives minimales et reprise
+
+**GitHub — administrateur du dépôt**
+
+1. `Settings → Environments → tracefab-clerk-test → Deployment branches and tags` : ajouter la branche exacte `arena/647ac97c-tracefab`. **Conserver les relecteurs obligatoires et toutes les règles existantes.**
+2. Dans `Settings → Environments → tracefab-clerk-test → Environment secrets`, configurer ou vérifier uniquement les noms : `CLERK_SECRET_KEY` (instance Clerk **de test**, `sk_test_`), `TF_PREVIEW_USER_ALPHA`, `TF_PREVIEW_USER_BETA`, `TF_PREVIEW_ORG_ALPHA`, `TF_PREVIEW_ORG_BETA`, `VERCEL_AUTOMATION_BYPASS_SECRET`. Les utilisateurs et organisations doivent être distincts et ne contenir que des données de test. Ne jamais transmettre les valeurs dans la conversation ou les journaux.
+3. Dans les **variables du même environnement**, définir après vérification : `TF_PREVIEW_EXPECTED_ORIGIN` (origine exacte de la Preview de #101), `TF_PREVIEW_STORAGE_HOST` (hôte du stockage privé de **test**), `TF_PREVIEW_DEPLOYED_SHA` (SHA effectivement déployé), `TF_PREVIEW_TEST_ENV_CONFIRMED=1`. Le SHA doit correspondre au commit exécuté par le workflow. Cette confirmation est une responsabilité humaine, pas une preuve automatique d'isolation.
+4. Dans `Settings → Secrets and variables → Actions → Variables` (variables du dépôt), définir `TF_PREVIEW_PUSH_ENABLED=1` **uniquement lorsque la configuration de test est prête**. Le push reste limité à la branche de mission et le job reste soumis à l'environnement protégé et à son approbation. La variable de dépôt n'est pas consommée par les workflows de production.
+5. `TRACEFAB_NOTIFICATION_WORKER_SECRET` peut être configuré dans l'environnement de test pour la sonde worker du workflow #91 si elle est requise ; le harnais HTTP de cette PR ne l'utilise pas.
+
+**Vercel / exploitation — administrateur du projet TraceFab**
+
+- `Project → Settings → Environment Variables` : vérifier/configurer **uniquement la cible Preview**, jamais Production. Confirmer, en dehors des journaux, que `DATABASE_URL` désigne une base de test isolée, que les clés Clerk sont celles de l'instance de test, et que `TRACEFAB_AUTHORIZED_PARTIES` correspond à l'origine de Preview.
+- Vérifier le bucket S3/R2 **privé et de test**, son hôte et les variables `PRIVATE_STORAGE_ENDPOINT`, `PRIVATE_STORAGE_BUCKET`, `PRIVATE_STORAGE_REGION`, `PRIVATE_STORAGE_ACCESS_KEY_ID`, `PRIVATE_STORAGE_SECRET_ACCESS_KEY`, `PRIVATE_STORAGE_PRESIGN_SECONDS` ; vérifier le scanner de test `PRIVATE_STORAGE_ANTIVIRUS_URL` et `PRIVATE_STORAGE_ANTIVIRUS_TOKEN` (`tracefab-v1`). La protection Vercel doit rester active ; le bypass autorisé est un secret de test, non un changement de protection.
+- Le bot Vercel de la PR indiquait l'origine `https://tracefab-git-arena-b9a1c6-baya-ibraimmayoanouedu-8164s-projects.vercel.app` et l'inspecteur du déploiement de `d2c4ff7` : `https://vercel.com/baya-ibraimmayoanouedu-8164s-projects/tracefab/HAxtV6SbDy2XmvL6Ks7tKEAeZGjA`. **Reconfirmer l'URL et le SHA après tout nouveau push.**
+
+**Reprise, après ces actions et sans fusion :**
+
+```bash
+# Un administrateur disposant du droit Actions: write peut tenter de relancer
+# le run push déjà enregistré sur la branche ; le job reste protégé.
+gh run rerun 40472716870 --repo Huberaya/Tracefab
+# Puis : Actions → run → Review deployments → approbation du relecteur autorisé.
+gh run view 40472716870 --repo Huberaya/Tracefab
+```
+
+Si la relance reste `skipped`, déclencher un **nouveau push normal** sur `arena/647ac97c-tracefab` après l'opt-in de dépôt, puis, avant approbation, vérifier le nouveau déploiement Vercel et actualiser `TF_PREVIEW_DEPLOYED_SHA` au nouveau SHA. Consulter le run `Preview HTTP — parcours authentifies reels` dans Actions et télécharger **seulement** l'artefact `preview-http-evidence-*` expurgé. Le workflow `workflow_dispatch` reste indisponible tant qu'il n'est pas enregistré sur la branche par défaut ; ne pas fusionner la PR pour contourner cette contrainte.
+
+## 14.6 PR concurrentes — aucun changement effectué
+
+Rafraîchies par `git fetch origin pull/<n>/head` puis analysées avec `git merge-tree --write-tree` sur `019ceee` : #70 **5 conflits**, #80 **1**, #82 **1**, #91 **1**, #92/#93/#94 **2 chacune**, #98 **3** ; #99 est déjà fusionnée. Les conflits #80/#91 sont dans `docs/security/workflow-privileged-allowlist.json` et ceux de #92/#93/#94 ajoutent `package.json` : résolution **additive**, sans supprimer de clé ni de script. #70 exige un arbitrage de sécurité sur les fichiers SQL/roles ; #82 un arbitrage documentaire/sécurité ; #98 est redondante avec #99 sauf la confirmation avant restauration. Aucune PR n'a été fusionnée ni fermée.
+
+## 14.7 Conclusion factuelle
+
+**Statut global : BLOCKED — intervention humaine requise.** La protection Vercel est mesurée active (HTTP 302 sans bypass), le harnais a été corrigé et la CI du code `d2c4ff7` est verte. Les parcours authentifiés réels et les services de Preview restent **NOT RUN / BLOCKED** : aucun résultat local ou simulé ne les remplace. Aucune modification non autorisée de production, aucun force push, aucune fusion. **TraceFab n'est pas déclaré prêt pour la commercialisation.**

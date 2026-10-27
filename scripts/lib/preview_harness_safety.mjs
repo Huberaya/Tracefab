@@ -30,7 +30,7 @@ const MOTIFS_SENSIBLES = [
 
 /** Cree une fonction d'expurgation liee aux valeurs de secrets du process. */
 export function creerExpurgateur(valeurs = []) {
-  const supplementaires = valeurs.filter((v) => typeof v === 'string' && v.length >= 8);
+  const supplementaires = valeurs.filter((v) => typeof v === 'string' && v.length > 0);
   return function expurger(value) {
     let texte = String(value ?? '');
     for (const motif of MOTIFS_SENSIBLES) texte = texte.replace(motif, '[redacted]');
@@ -115,6 +115,7 @@ export function gabarit(path) {
 
 /** En-tetes autorises sur une requete vers une URL presignee (origine tierce). */
 const EN_TETES_EXTERNES_AUTORISES = new Set(['content-type']);
+const TYPES_EXTERNES_AUTORISES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'text/plain']);
 
 /**
  * Construit les en-tetes d'une requete du harnais.
@@ -133,7 +134,13 @@ export function construireEntetes({ externe = false, jeton, organisation, entete
     }
     const propres = {};
     for (const [cle, valeur] of Object.entries(entetes || {})) {
-      if (EN_TETES_EXTERNES_AUTORISES.has(String(cle).toLowerCase())) propres[cle] = valeur;
+      if (!EN_TETES_EXTERNES_AUTORISES.has(String(cle).toLowerCase())) continue;
+      // Un service compromis ne doit pas pouvoir exfiltrer un secret en le
+      // placant comme valeur de Content-Type dans sa reponse presignee.
+      if (typeof valeur !== 'string' || !TYPES_EXTERNES_AUTORISES.has(valeur.toLowerCase())) {
+        throw new Error('external_content_type_not_allowed');
+      }
+      propres[cle] = valeur.toLowerCase();
     }
     return propres;
   }
