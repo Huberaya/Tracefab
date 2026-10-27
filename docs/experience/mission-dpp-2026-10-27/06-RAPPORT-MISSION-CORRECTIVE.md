@@ -427,13 +427,61 @@ le rôle de migration (il doit modifier le schéma), pas le rôle applicatif —
 preuve RLS se fait sous `tracefab_app`. La préférence pour un rôle moins
 privilégié reste ouverte.
 
+### 11.5c Migration exécutée sur la branche de validation (27/10, 17 h 40)
+
+`npm run db:deploy` — c'est-à-dire **`prisma migrate deploy`**, la voie
+officielle, sans SQL artisanal ni runner maison — a été exécuté sur
+`br-sweet-king-b1n2f4u6` (hôte `ep-morning-grass-b1pq7stz…`, base `neondb`),
+révision `65c14d3`.
+
+```
+Applying migration `20261021170000_dpp_readiness_truthful_gates`
+Applying migration `20261027100000_dpp_quality_gate_requires_assessment`
+Applying migration `20261027130000_dpp_review_preservation_and_publication_coherence`
+All migrations have been successfully applied.
+--- exit=0
+```
+
+Contrôle post-migration, `TF_EXIGER_MIGRATIONS` nommant les trois :
+
+| Contrôle | Avant | Après |
+|---|---|---|
+| migrations terminées | 56 | **59** |
+| en attente | 3 | **0** |
+| en échec / annulées | 0 / 0 | **0 / 0** |
+| migrations exigées nommément | — | **3 × ok** |
+| profil `textile_readiness_mvp` | v1.0 · 9 exigences | **v1.0 · 13 exigences** |
+| colonnes de revue | 2 différées | **mesurées, plus aucune différée** |
+| parc | 18 produits · 1 dossier · 0 publié | **inchangé** |
+
+Ce que cela prouve, et ce que cela ne prouve pas :
+
+- **prouvé** : la voie officielle fonctionne sur une branche Neon réelle ; les
+  trois migrations s'appliquent dans l'ordre et laissent le registre sain ; le
+  profil passe de 9 à 13 exigences ; RLS et privilèges du rôle applicatif
+  restent intacts après migration (`PUBLIC` n'exécute aucune fonction DPP).
+- **prouvé aussi** : la migration **n'a recalculé ni publié aucun dossier** —
+  le parc est identique avant/après (18 / 1 / 0 / 0 / 0). Les scores affichés
+  restent ceux de l'ancienne évaluation jusqu'au recalcul.
+- **non prouvé** : le rendu HTTP des passeports (aucun slug en base) ; le
+  recalcul réel sur les 18 produits (seule une simulation lecture seule existe) ;
+  la production, qui n'a pas été touchée.
+
+Réserve de sécurité ouverte : la chaîne de connexion de cette branche a été
+collée en clair dans une conversation, donc exposée. L'hôte visé était celui de
+la **validation**, pas la production, et la rotation du mot de passe de
+`neondb_owner` reste à faire — après vérification du rôle qu'utilise réellement
+la production, pour ne pas toucher celle-ci par inadvertance.
+
 ### 11.6 État des phases de la mission de clôture
 
 | Phase | État | Motif |
 |---|---|---|
 | A — dépôt et révision | **TERMINÉE** | SHA `a23da42`, arbre propre, migration n° 59 présente, 59 au dépôt |
-| B — identité de la branche Neon | **BLOQUÉE** | aucune chaîne de connexion ; identité non prouvable ⇒ arrêt |
-| C — `npm run db:deploy` | **BLOQUÉE** | dépend de B |
+| B — identité de la branche Neon | **TERMINÉE (27/10, 17 h)** | hôte `ep-morning-grass-b1pq7stz…` conforme à la déclaration, base `neondb`, registre 56/0/0, RLS et privilèges mesurés, exit 0 |
+| C — `npm run db:deploy` | **TERMINÉE (27/10, 17 h 40)** | `prisma migrate deploy` : 3 migrations appliquées dans l'ordre, registre à 59, exit 0 |
+| D bis — profil d'exigences | **TERMINÉE** | 9 → **13 exigences** après la migration 57 |
+| D ter — parc inchangé | **TERMINÉE** | 18 produits · 1 dossier · 0 publié avant et après : aucune écriture de données |
 | D — critères D1 à D6 | **NON MESURÉS SUR NEON** | prouvés en local et en CI seulement |
 | E — scénarios | **PARTIELLE** | 9 cas exécutés en local et en CI ; pas sur Neon ; cas 9 (état à 58) rejoué sur `tf58` |
 | F — simulation du parc réel | **OUTIL PRÊT, NON EXÉCUTÉ** | aucune cible accessible |
