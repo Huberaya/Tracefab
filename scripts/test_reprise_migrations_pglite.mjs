@@ -231,7 +231,15 @@ console.log('\n  3. Reprise complete d un historique bloque');
     await db.exec(`INSERT INTO public._prisma_migrations (id, checksum, finished_at, migration_name, applied_steps_count)
       VALUES (gen_random_uuid()::text, repeat('0',64), now(), '${d}', 1)`);
   }
-  ok('58 migrations appliquees et enregistrees', manquantes.length === 5, `${manquantes.length} manquante(s)`);
+  // 58 est le nombre de lignes de l'historique de production mesure le 28/10,
+  // pas une propriete du depot : il ne doit pas suivre le nombre de migrations
+  // du depot, sans quoi ce test casserait a chaque migration ajoutee.
+  const ATTENDU_PRODUCTION = 58;
+  ok(`${ATTENDU_PRODUCTION} migrations appliquees et enregistrees`,
+    appliquees.length === ATTENDU_PRODUCTION, `${appliquees.length}`);
+  ok('les migrations posterieures a l historique de production sont les seules manquantes',
+    manquantes.length === dossiers.length - ATTENDU_PRODUCTION,
+    `${manquantes.length} manquante(s) pour ${dossiers.length} migrations`);
 
   // Les incidents rapportes, poses sur des migrations DEJA appliquees : c'est
   // la lecture qui rend le compte de 58 coherent. Les deux fautives et deux
@@ -302,7 +310,7 @@ console.log('\n  3. Reprise complete d un historique bloque');
     await db.exec(`INSERT INTO public._prisma_migrations (id, checksum, finished_at, migration_name, applied_steps_count)
       VALUES (gen_random_uuid()::text, repeat('1',64), now(), '${d}', 1)`);
   }
-  ok('les cinq migrations manquantes se sont appliquees', true);
+  ok(`les ${manquantes.length} migrations manquantes se sont appliquees`, true);
 
   // --- Postconditions : ce que la production doit montrer apres reprise.
   const registre = await db.query(
@@ -319,7 +327,7 @@ console.log('\n  3. Reprise complete d un historique bloque');
 
   const distinctes = await db.query(
     `select count(DISTINCT migration_name)::int n from public._prisma_migrations where finished_at is not null`);
-  ok('POSTCONDITION : les 63 migrations sont attestees terminees',
+  ok(`POSTCONDITION : les ${dossiers.length} migrations sont attestees terminees`,
     distinctes.rows[0].n === dossiers.length, `${distinctes.rows[0].n} / ${dossiers.length}`);
 
   await db.close();

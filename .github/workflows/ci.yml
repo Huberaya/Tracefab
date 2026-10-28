@@ -192,6 +192,13 @@ jobs:
         # execute n est pas un diagnostic.
         run: npm run test:diagnostic-m6
 
+      - name: Correctif supplier_portal — defaut reproduit puis corrige
+        # La production refuse l invitation d un owner portant un relationship_id.
+        # Ce test reproduit le refus sur l etat de production, applique la
+        # migration corrective, verifie la non-regression (owner sans relation
+        # reste refuse) et l idempotence, et controle qu aucun GRANT n est ajoute.
+        run: npm run test:supplier-invitation-corrective
+
       - name: Divergences d empreinte — effet reel mesure
         # Trois migrations ont une empreinte de production differente du depot.
         # Une empreinte ne dit pas si le schema differe : ce test rejoue les deux

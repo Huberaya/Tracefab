@@ -158,8 +158,16 @@ ok('LE DEPOT l accepte — c est la difference fonctionnelle', depot.avecRelatio
   depot.avecRelation);
 ok('=> la divergence est SEMANTIQUE, pas cosmetique',
   prod.avecRelation !== depot.avecRelation);
-ok('=> la production porte la regle la PLUS STRICTE (aucune ouverture de droit creee par le depot)',
-  prod.sansRelation === 'refuse' && depot.sansRelation === 'refuse');
+// Assertion INDEPENDANTE des deux precedentes : elle porte sur la seule
+// question qui compte pour la securite — le depot accorde-t-il, en production,
+// un droit que la production n'a pas ? La reponse doit etre non.
+ok('=> aucune invitation acceptee en production ne l est aussi par le depot par ouverture',
+  !(prod.sansRelation === 'accepte' && depot.sansRelation === 'refuse'),
+  'le depot ne peut pas etre plus permissif que la production sur un cas qu elle refuse',
+);
+ok('=> la seule difference est une ACCEPTATION supplementaire cote depot, jamais un refus',
+  prod.sansRelation === 'refuse' && depot.sansRelation === 'refuse'
+  && prod.avecRelation === 'refuse' && depot.avecRelation === 'accepte');
 
 /* ==========================================================================
    2. public_read_context — divergence ENVIRONNEMENTALE
@@ -178,7 +186,8 @@ ok('le bloc de GRANT est present dans les deux versions',
   blocGrant(prodRead) !== null && blocGrant(depotRead) !== null);
 ok('les deux blocs DIFFERENT', blocGrant(prodRead) !== blocGrant(depotRead));
 
-/** Joue le bloc de GRANT avec, puis sans, le role `tracefab_app`. */
+/** Joue le bloc de GRANT avec, puis sans, le role `tracefab_app`,
+ *  et rend les PRIVILEGES REELS obtenus — pas seulement « ca passe ». */
 async function grant(bloc, avecRole) {
   const db = new PGlite();
   await db.waitReady;
@@ -194,8 +203,26 @@ async function grant(bloc, avecRole) {
   let issue;
   try { await db.exec(bloc); issue = 'ok'; }
   catch (e) { issue = /does not exist/.test(String(e.message)) ? 'role_absent' : `erreur:${e.message}`; }
+
+  // Les privileges effectivement detenus par tracefab_app sur les cinq
+  // fonctions. Deux versions peuvent « passer » sans accorder la meme chose :
+  // c'est precisement ce qu'une assertion « code 0 » ne verrait pas.
+  let privileges = [];
+  if (avecRole && issue === 'ok') {
+    const r = await db.query(`
+      SELECT p.proname
+        FROM pg_catalog.pg_proc p
+        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public'
+         AND p.proname IN ('tracefab_public_context','tracefab_product_is_public',
+                           'tracefab_material_is_public','tracefab_supplier_site_is_public',
+                           'tracefab_public_brand')
+         AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
+       ORDER BY p.proname`);
+    privileges = r.rows.map((x) => x.proname);
+  }
   await db.close();
-  return issue;
+  return { issue, privileges };
 }
 
 const rProdAvec = await grant(blocGrant(prodRead), true);
@@ -203,17 +230,22 @@ const rDepotAvec = await grant(blocGrant(depotRead), true);
 const rProdSans = await grant(blocGrant(prodRead), false);
 const rDepotSans = await grant(blocGrant(depotRead), false);
 
-console.log(`        role present : production=${rProdAvec}, depot=${rDepotAvec}`);
-console.log(`        role absent  : production=${rProdSans}, depot=${rDepotSans}`);
+console.log(`        role present : production=${rProdAvec.issue}, depot=${rDepotAvec.issue}`);
+console.log(`        privileges   : production=${rProdAvec.privileges.length}, depot=${rDepotAvec.privileges.length}`);
+console.log(`        role absent  : production=${rProdSans.issue}, depot=${rDepotSans.issue}`);
 
-ok('AVEC le role, les deux versions passent : en production l effet est IDENTIQUE',
-  rProdAvec === 'ok' && rDepotAvec === 'ok', `${rProdAvec} / ${rDepotAvec}`);
+ok('AVEC le role, les deux versions passent', rProdAvec.issue === 'ok' && rDepotAvec.issue === 'ok',
+  `${rProdAvec.issue} / ${rDepotAvec.issue}`);
+ok('les CINQ fonctions sont accordees dans les deux cas',
+  rProdAvec.privileges.length === 5 && rDepotAvec.privileges.length === 5,
+  `${rProdAvec.privileges.length} / ${rDepotAvec.privileges.length}`);
+ok('les privileges obtenus sont IDENTIQUES, fonction par fonction',
+  JSON.stringify(rProdAvec.privileges) === JSON.stringify(rDepotAvec.privileges),
+  `${rProdAvec.privileges.join(',')} != ${rDepotAvec.privileges.join(',')}`);
 ok('SANS le role, la version de production echoue (la chaine casse sur base neuve)',
-  rProdSans === 'role_absent', rProdSans);
+  rProdSans.issue === 'role_absent', rProdSans.issue);
 ok('SANS le role, la version du depot passe (idempotence corrigee)',
-  rDepotSans === 'ok', rDepotSans);
-ok('=> la divergence est ENVIRONNEMENTALE : sans effet sur la production ou le role existe',
-  rProdAvec === rDepotAvec);
+  rDepotSans.issue === 'ok', rDepotSans.issue);
 
 /* ==========================================================================
    3. plm_erp_gs1_interoperability — contenu historique INTROUVABLE

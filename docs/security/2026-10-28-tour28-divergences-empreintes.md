@@ -8,7 +8,7 @@ localement, à partir de l'export d'historique fourni au tour 26.
 
 | Migration | Empreinte dépôt `bc6b4a8` | Empreinte production | Contenu historique exécuté | Effet réel | Décision |
 |---|---|---|---|---|---|
-| `20261005090000_supplier_portal_advanced_hardening` | `13581e6c…` | `560356c2…` | **RETROUVÉ** (objet Git `3f5ecb8`) | **SÉMANTIQUE** — règle d'autorisation | **Migration corrective** |
+| `20261005090000_supplier_portal_advanced_hardening` | `13581e6c…` | `560356c2…` | **RETROUVÉ** (objet Git `3f5ecb8`) | **SÉMANTIQUE** — règle d'autorisation | **Migration corrective écrite** — `20261028140000`, prouvée au tour 29, non appliquée |
 | `20261009180000_public_read_context` | `9100ed08…` | `c12ee333…` | **RETROUVÉ** (objet Git `59a57fa`) | **NUL** en production | **Ne rien faire** |
 | `20261006210000_plm_erp_gs1_interoperability` | `330b6689…` | `c944ce0c…` | **INTROUVABLE** | **INCONNU** | **Confrontation requise** |
 
@@ -181,6 +181,11 @@ Votre recommandation de ne pas déployer est confirmée par la mesure : il y a
 bien une divergence effective de **règle d'autorisation** derrière l'une des
 empreintes. Elle est bénigne dans le sens dangereux (la production est plus
 stricte), mais elle est réelle — et l'une des trois reste inconnue.
+
+> **Suites (tour 29).** Le correctif de `supplier_portal` est écrit et prouvé
+> hors production : `20261028140000_supplier_invitation_owner_relationship_scope`,
+> voir `2026-10-28-tour29-correctif-supplier-portal.md`. Deux assertions de ce
+> tour ont été renforcées après revue critique (§1 du document du tour 29).
 
 ## 6. Livré dans ce tour
 
