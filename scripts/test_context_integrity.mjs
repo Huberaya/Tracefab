@@ -87,10 +87,17 @@ ok(setConfigs.length === 0,
 //   sans GUC -> 0 ligne ; GUC = e-mail de la victime -> 1 ligne ; autre -> 0.
 // Une adresse non verifiee suffirait donc a lire les demandes d'un tiers.
 const auth = readFileSync(join('api', '_lib', 'auth.ts'), 'utf8');
-ok(/verification\?\.status\s*!==\s*'verified'/.test(auth),
-  "api/_lib/auth.ts exige une adresse Clerk verifiee avant de propager tracefab.user_email");
-ok(auth.includes('clerk_email_unverified'),
+const identite = readFileSync(join('api', '_lib', 'clerk-identity.ts'), 'utf8');
+ok(auth.includes('verifiedPrimaryEmail(clerkUser)'),
+  "api/_lib/auth.ts propage l'e-mail via verifiedPrimaryEmail (aucune autre source)");
+ok(!/emailAddresses/.test(auth),
+  "api/_lib/auth.ts ne lit plus lui-meme emailAddresses : un seul chemin d'identite");
+ok(/verification\?\.status\s*!==\s*'verified'/.test(identite),
+  "api/_lib/clerk-identity.ts exige une adresse Clerk verifiee");
+ok(identite.includes('clerk_email_unverified'),
   "le refus d'une adresse non verifiee porte un motif nomme (clerk_email_unverified)");
+// Le comportement lui-meme est eprouve, cas par cas, par test:clerk-identity :
+// une assertion statique ne prouve pas qu'une adresse non verifiee est refusee.
 
 console.log(`\n  Intégrité du contexte d'identité : ${echecs === 0 ? 'OK' : `${echecs} échec(s)`}.`);
 process.exit(echecs === 0 ? 0 : 1);
