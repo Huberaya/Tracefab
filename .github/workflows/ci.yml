@@ -688,3 +688,54 @@ jobs:
         # (true). Il borne aussi ce que la sonde expose et vérifie que la route
         # interne authentifie avant de l'appeler.
         run: npm run test:neon:sonde-identite
+
+      # ---------------------------------------------------------------------
+      # Six suites qui n'etaient cablees dans AUCUN workflow
+      # ---------------------------------------------------------------------
+      # Elles existaient, portaient des assertions de securite et de parcours,
+      # et ne tournaient nulle part : ni en CI, ni sur un poste. Un test qu'on
+      # ne lance jamais ne protege rien, et son vert suppose est un mensonge.
+      #
+      # Elles tournent ici, sur le Postgres 17 jetable, avec DATABASE_URL (le
+      # proprietaire) et non TF_RLS_APP_URL : ce sont des parcours qui creent
+      # leurs propres organisations et utilisateurs, puis eprouvent la RLS en
+      # se plaçant dans un role de test dedie.
+      #
+      # Deux corrections ont ete necessaires pour qu'elles mesurent vraiment
+      # quelque chose, aucune ne les affaiblit :
+      #   1. le role de test recoit SELECT sur les tables, comme le runtime
+      #      (tracefab_app : SELECT sur les 51). Sans ce GRANT il s'arretait sur
+      #      42501 AVANT la RLS : ce n'etait pas la politique qui refusait,
+      #      c'etait l'absence de privilege, et le test ne prouvait rien ;
+      #   2. l'ecriture directe par un viewer est acceptee comme refusee si elle
+      #      l'est par le privilege (42501) OU par la RLS (0 ligne). L'assertion
+      #      d'origine n'admettait que 0 ligne, ce qui supposait le DML accorde a
+      #      PUBLIC — revoque par 20261014130000 et 20261023120000. Une ecriture
+      #      reussie fait toujours echouer les deux formes.
+      # ---------------------------------------------------------------------
+
+      - name: Securite multi-tenant — isolation et refus de role
+        # Cree un role de test, deux organisations, et verifie que la RLS
+        # n'ouvre rien entre locataires : lecture des organisations et des
+        # fournisseurs, ecriture directe refusee, et refus explicite de la
+        # fonction de mise a jour de profil pour un viewer.
+        run: npm run test:neon:security
+
+      - name: Parcours produit — donnees, composition, identifiants
+        # Cree deux marques, un produit et sa composition de chaque cote, puis
+        # verifie l'isolation de lecture et le refus d'ecriture pour un viewer.
+        run: npm run test:neon:product
+
+      - name: Parcours fournisseur — invitation, partage, portee
+        run: npm run test:neon:supplier
+
+      - name: Parcours qualite — signalement, actions correctives, roles
+        run: npm run test:neon:quality
+
+      - name: Collecte de donnees — demandes, reponses, isolation
+        run: npm run test:neon:collection
+
+      - name: Quotas de stockage — calcul et refus au-dela du quota
+        # Celui-ci passe par TF_RLS_APP_URL quand il est fourni ; il exige le
+        # client Prisma, genere plus haut dans ce job.
+        run: npm run test:neon:storage:chantier10
