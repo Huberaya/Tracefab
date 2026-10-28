@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `20261028150000_plm_erp_policy_convergence` sur la CHAINE REELLE.
+ * `20261028150000_reconcile_plm_erp_sync_job_policies` sur la CHAINE REELLE.
  *
  * POURQUOI CE TEST EXISTE, EN PLUS DE CELUI QUI L'ACCOMPAGNE
  *
@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
-const CIBLE = '20261028150000_plm_erp_policy_convergence';
+const CIBLE = '20261028150000_reconcile_plm_erp_sync_job_policies';
 
 const { PGlite } = await import('@electric-sql/pglite');
 const { pgcrypto } = await import('@electric-sql/pglite/contrib/pgcrypto');
@@ -159,6 +159,48 @@ ok('elle se rejoue sans erreur (`DROP POLICY IF EXISTS`)', rejeu === null, rejeu
 const apresRejeu = await politiques();
 ok('l etat est inchange apres rejeu',
   JSON.stringify(apresRejeu.map((p) => p.policyname)) === JSON.stringify(apres.map((p) => p.policyname)));
+
+/* -------------------------------------------------------------------------
+   4 bis. L'ETAT FINAL EST LA REFERENCE, pas seulement « plus de derive »
+
+   Le critere de cloture n'est pas « la derive a disparu » mais « le catalogue
+   final correspond a la reference validee ». On compare donc les politiques
+   une par une, definition comprise : nom, commande, roles, USING, WITH CHECK.
+   ------------------------------------------------------------------------- */
+
+console.log('\n  4 bis. Le catalogue final est exactement la reference');
+
+const finales = await db.query(`
+  SELECT polname,
+         polcmd::text AS cmd,
+         coalesce(pg_catalog.pg_get_expr(polqual, polrelid), '(aucun)') AS using,
+         coalesce(pg_catalog.pg_get_expr(polwithcheck, polrelid), '(aucun)') AS chk
+    FROM pg_catalog.pg_policy
+   WHERE polrelid = 'public.plm_erp_sync_jobs'::regclass
+   ORDER BY polname`);
+
+ok('il reste exactement DEUX politiques sur plm_erp_sync_jobs',
+  finales.rows.length === 2, `${finales.rows.length}`);
+ok('ce sont les deux canoniques, et elles seules',
+  finales.rows.map((r) => r.polname).join(',')
+    === 'plm_sync_jobs_insert_brand,plm_sync_jobs_select_org',
+  finales.rows.map((r) => r.polname).join(','));
+
+const ins = finales.rows.find((r) => r.polname === 'plm_sync_jobs_insert_brand');
+const sel = finales.rows.find((r) => r.polname === 'plm_sync_jobs_select_org');
+
+ok('INSERT : commande a, aucune clause USING (WITH CHECK seulement)',
+  ins && ins.cmd === 'a' && ins.using === '(aucun)', ins ? `${ins.cmd}/${ins.using}` : 'absente');
+ok('INSERT : WITH CHECK limite a owner, admin, manager — et rien d autre',
+  ins && /\['owner'::membership_role, 'admin'::membership_role, 'manager'::membership_role\]\)$/.test(ins.chk),
+  ins ? ins.chk : 'absente');
+ok('INSERT : le mot contributor n apparait nulle part dans la definition',
+  ins && !/contributor/i.test(ins.chk), ins ? ins.chk : 'absente');
+ok('SELECT : commande r, aucune clause WITH CHECK',
+  sel && sel.cmd === 'r' && sel.chk === '(aucun)', sel ? `${sel.cmd}/${sel.chk}` : 'absente');
+ok('SELECT : predicat borne au tenant, jamais true',
+  sel && sel.using === 'tracefab_is_org_member(brand_organization_id)',
+  sel ? sel.using : 'absente');
 
 /* -------------------------------------------------------------------------
    5. Sur une base neuve, la migration ne fait rien — et ne casse rien

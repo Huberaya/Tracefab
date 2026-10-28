@@ -266,7 +266,7 @@ FAIL  1 divergence(s) franche(s), 2 a qualifier.
 
 **64 faits sur 66 concordent.** Les deux « à qualifier » ne sont pas une
 inconnue : ce sont **exactement** les deux politiques que
-`20261028150000_plm_erp_policy_convergence` retire, et dont
+`20261028150000_reconcile_plm_erp_sync_job_policies` retire, et dont
 `test:plm-erp-convergence:chaine` a mesuré l'effet. La qualification est faite,
 dans le sens défavorable : **la production est plus permissive que le dépôt**,
 et le correctif existe mais **n'est pas appliqué**.
@@ -518,7 +518,7 @@ WITH depot(nom) AS (
     ('20261028120200_document_reserved_fields_internal_only'),
     ('20261028130000_product_computed_fields_column_scoped'),
     ('20261028140000_supplier_invitation_owner_relationship_scope'),
-    ('20261028150000_plm_erp_policy_convergence')
+    ('20261028150000_reconcile_plm_erp_sync_job_policies')
 )
 SELECT d.nom,
        CASE WHEN m.migration_name IS NULL THEN 'ABSENTE de l historique'
@@ -562,7 +562,7 @@ Sortie de la requête du §8.3, sur `Primary` :
 | `20261028120200_document_reserved_fields_internal_only` | ABSENTE |
 | `20261028130000_product_computed_fields_column_scoped` | ABSENTE |
 | `20261028140000_supplier_invitation_owner_relationship_scope` | ABSENTE |
-| `20261028150000_plm_erp_policy_convergence` | ABSENTE |
+| `20261028150000_reconcile_plm_erp_sync_job_policies` | ABSENTE |
 
 **Onze, pas sept.** Le comptage `56` se réconcilie : `56` lignes avec
 `finished_at`, dont **deux** sont aussi `rolled_back_at` — donc **54**

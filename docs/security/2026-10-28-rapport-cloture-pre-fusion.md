@@ -159,7 +159,7 @@ Les deux politiques surnuméraires sont `plm_erp_sync_jobs_insert_brand` et
   `tracefab_is_org_member`. Ce n'est **pas** une fuite inter-tenant.
 
 **Aucune politique n'a été supprimée.** Le correctif est
-`20261028150000_plm_erp_policy_convergence`, dans la branche, testé (19
+`20261028150000_reconcile_plm_erp_sync_job_policies`, dans la branche, testé (19
 vérifications), non appliqué.
 
 ---

@@ -43,7 +43,7 @@ voir §3.
 | 62 | `20261028120200_document_reserved_fields_internal_only` | ABSENTE | `tracefab_mark_document_scanning` ; `tracefab_app` **sans** `INSERT/UPDATE/DELETE` sur `documents` | **INCONNU** | aucune | en attente de la sonde (fait 8) |
 | 63 | `20261028130000_product_computed_fields_column_scoped` | ABSENTE | écriture au niveau **colonne** sur `tracefab_products` ; le déclencheur ne lit plus le GUC | **INCONNU** | aucune | en attente de la sonde (fait 9) |
 | 64 | `20261028140000_supplier_invitation_owner_relationship_scope` | ABSENTE | `tracefab_validate_member_invitation_role` avec contrôle d'appartenance et de statut | **INCONNU** | aucune | en attente de la sonde (fait 10) |
-| 65 | `20261028150000_plm_erp_policy_convergence` | ABSENTE | 2 politiques retirées de `plm_erp_sync_jobs` | **ABSENTS — prouvé** : la table porte **4** politiques au lieu de 2 (lecture du 28/10) | aucune | **correctif à appliquer**, sonde C fait 11 en confirmation |
+| 65 | `20261028150000_reconcile_plm_erp_sync_job_policies` | ABSENTE | 2 politiques retirées de `plm_erp_sync_jobs` | **ABSENTS — prouvé** : la table porte **4** politiques au lieu de 2 (lecture du 28/10) | aucune | **correctif à appliquer**, sonde C fait 11 en confirmation |
 
 ---
 

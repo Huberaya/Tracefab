@@ -105,7 +105,7 @@ const HISTORIQUE_ATTENDU = {
   // Absente : la requete rend `present=0`, sans date ni nombre d'etapes.
   '20261028140000_supplier_invitation_owner_relationship_scope':
     { present: '0', steps: '-', termine: 'false' },
-  '20261028150000_plm_erp_policy_convergence':
+  '20261028150000_reconcile_plm_erp_sync_job_policies':
     { present: '0', steps: '-', termine: 'false' },
 };
 const ligneHistorique = (nom) => {

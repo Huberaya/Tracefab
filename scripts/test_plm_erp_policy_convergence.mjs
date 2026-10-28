@@ -70,7 +70,7 @@ try {
   const path = await import('node:path');
   const { fileURLToPath } = await import('node:url');
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const migration = fs.readFileSync(path.join(root, 'prisma/migrations/20261028150000_plm_erp_policy_convergence/migration.sql'), 'utf8');
+  const migration = fs.readFileSync(path.join(root, 'prisma/migrations/20261028150000_reconcile_plm_erp_sync_job_policies/migration.sql'), 'utf8');
   await db.exec(migration);
 
   const policies = (await db.query(`

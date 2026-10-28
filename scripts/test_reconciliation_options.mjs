@@ -79,7 +79,7 @@ const ECARTS = [
   '20261028120200_document_reserved_fields_internal_only',
   '20261028130000_product_computed_fields_column_scoped',
   '20261028140000_supplier_invitation_owner_relationship_scope',
-  '20261028150000_plm_erp_policy_convergence',
+  '20261028150000_reconcile_plm_erp_sync_job_policies',
 ];
 const ANNULEES = ['20261010120000_publication_explicite',
   '20261017120000_active_tenant_context'];
