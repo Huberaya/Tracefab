@@ -66,12 +66,39 @@ ok('elle ne cree ni ne remplace aucune politique canonique',
   !/CREATE POLICY|CREATE OR REPLACE FUNCTION|CREATE FUNCTION/i.test(doc.replace(/--[^\n]*/g, '')));
 ok('elle ne touche pas a la table des integrations',
   !/plm_erp_integrations/.test(doc.replace(/--[^\n]*/g, '')));
-ok('elle est la derniere migration de la chaine', dossiers[dossiers.length - 1] === CIBLE,
-  dossiers[dossiers.length - 1]);
-ok('les deux noms n apparaissent dans aucune AUTRE migration du depot',
+/**
+ * DEUX ASSERTIONS ONT CHANGE DE FORME, ET VOICI POURQUOI.
+ *
+ * Elles exigeaient (1) que la reconciliation soit la DERNIERE migration de la
+ * chaine et (2) que les noms des politiques derivees n'apparaissent dans AUCUNE
+ * autre migration. La premiere etait une photographie de l'etat du depot : elle
+ * cassait des qu'une migration etait ajoutee apres — ce qui est arrive, sans
+ * que la securite change d'un iota. La seconde confondait « nommer » et
+ * « recreer » : une migration qui ne fait que RETIRER ces politiques les nomme
+ * legitimement.
+ *
+ * Ce qui compte n'est donc pas la position dans la chaine, ni le silence, mais
+ * qu'aucune migration ne RECREE une politique permissive, et que l'etat FINAL
+ * reste la reference — ce que verifie la section 4 bis sur le catalogue reel.
+ * Les deux controles sont plus precis qu'avant, pas plus laxistes.
+ */
+ok('aucune AUTRE migration ne CREE les politiques derivees',
   dossiers.filter((d) => d !== CIBLE).every((d) => {
-    const sql = LIRE(d);
-    return !sql.includes('plm_erp_sync_jobs_insert_brand') && !sql.includes('plm_erp_sync_jobs_select_brand');
+    const sql = LIRE(d).replace(/--[^\n]*/g, '');
+    return !/CREATE\s+POLICY\s+(plm_erp_sync_jobs_insert_brand|plm_erp_sync_jobs_select_brand)\b/i.test(sql);
+  }));
+ok('les migrations qui nomment les politiques derivees ne font que les retirer',
+  dossiers.filter((d) => d !== CIBLE).every((d) => {
+    const sql = LIRE(d).replace(/--[^\n]*/g, '');
+    const lignes = sql.split('\n').filter((l) =>
+      l.includes('plm_erp_sync_jobs_insert_brand') || l.includes('plm_erp_sync_jobs_select_brand'));
+    return lignes.every((l) => /DROP\s+POLICY/i.test(l));
+  }));
+ok('aucune migration posterieure ne cree de politique permissive sur la table',
+  dossiers.filter((d) => d > CIBLE).every((d) => {
+    const sql = LIRE(d).replace(/--[^\n]*/g, '');
+    const creations = sql.match(/CREATE\s+POLICY[^;]*;/gi) ?? [];
+    return creations.every((c) => !/USING\s*\(\s*true\s*\)/i.test(c) && !/contributor/i.test(c));
   }));
 
 /* -------------------------------------------------------------------------
@@ -218,7 +245,7 @@ let surVierge = null;
 try {
   for (const d of dossiers) await vierge.exec(LIRE(d));
 } catch (e) { surVierge = `${e.code} ${e.message}`; }
-ok('les 65 migrations s appliquent sur une base vierge, cible comprise', surVierge === null, surVierge || '');
+ok(`les ${dossiers.length} migrations s appliquent sur une base vierge, cible comprise`, surVierge === null, surVierge || '');
 const viergePol = (await vierge.query(`
   SELECT policyname FROM pg_catalog.pg_policies
    WHERE schemaname = 'public' AND tablename = 'plm_erp_sync_jobs' ORDER BY 1`)).rows.map((r) => r.policyname);

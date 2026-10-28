@@ -81,6 +81,9 @@ const ECARTS = [
   '20261028130000_product_computed_fields_column_scoped',
   '20261028140000_supplier_invitation_owner_relationship_scope',
   '20261028150000_reconcile_plm_erp_sync_job_policies',
+  // Ajoutee par l utilisateur apres la derniere lecture de production : elle
+  // n y est donc pas attestee. C est un ecart de plus, pas une erreur.
+  '20261028230000_plm_erp_gs1_policy_drift_repair',
 ];
 
 /** Les deux marquees ANNULEES dans l'historique de production. */
@@ -183,6 +186,7 @@ for (const d of aAppliquer) {
   const r = await appliquer(db, d);
   if (!r.ok) { console.error(`ECHEC  construction de la base a ${d.slice(0, 14)} : ${r.message}`); process.exit(1); }
 }
+// 66 migrations - 12 ecarts + 2 annulees deja presentes = 56.
 ok('la base « production avec les deux annulees presentes » se construit',
   aAppliquer.length === 56, `${aAppliquer.length}`);
 
@@ -192,7 +196,7 @@ for (const d of ECARTS) {
   resultats.push({ d, ...r });
   console.log(`  ${r.ok ? 'ok   ' : 'ECHEC'}  ${d.slice(0, 14)}${r.ok ? '' : `  ${r.message.slice(0, 100)}`}`);
 }
-ok('les onze migrations s appliquent dans l ordre, sans echec',
+ok('les douze migrations s appliquent dans l ordre, sans echec',
   resultats.every((r) => r.ok),
   resultats.filter((r) => !r.ok).map((r) => r.d.slice(0, 14)).join(', '));
 
@@ -232,7 +236,11 @@ console.log('\n  4. Echec injecte sur 20261028120000 — atomicite et blocage');
 
   ok('la migration dont l effet existe deja fait ECHOUER le deploy',
     premiereCasse === '20261028120000_runtime_function_registry', String(premiereCasse));
-  ok('cet echec bloque les cinq migrations qui viennent apres', apres.length === 5,
+  // Six, et non cinq, depuis que la chaine compte une migration de plus apres
+  // ce point : le blocage emporte TOUT ce qui suit, y compris la toute
+  // derniere. Un nombre fige sans explication aurait fait passer une chaine
+  // qui s allonge pour une regression.
+  ok('cet echec bloque les six migrations qui viennent apres', apres.length === 6,
     `${apres.length}`);
   console.log(`        bloquees : ${apres.map((d) => d.slice(0, 14)).join(', ')}`);
   ok('l echec n a laisse aucune trace partielle (transaction annulee)',

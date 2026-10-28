@@ -1,4 +1,4 @@
-# Matrice des 65 migrations — état recalculé au 28 octobre 2026
+# Matrice des 66 migrations — état recalculé au 28 octobre 2026
 
 **Dépôt** : `Huberaya/Tracefab`, branche `arena/c27ddaa4-tracefab`, PR #102.
 **Production** : branche `Primary`, lectures en **lecture seule** des 28/10.
@@ -24,30 +24,45 @@ effets sont présents. Les deux sont séparés dans le tableau, et
 ## 1. Le décompte, recalculé
 
 ```
-migrations du dépôt            : 65
+migrations du dépôt            : 66
 appliquées (attestées)         : 49
   dont hors bande              : 5
 annulées (rolled_back_at)      : 2
-absentes de l'historique       : 9
-écarts nommés                  : 11
-arithmétique                   : 54 + 2 + 9 = 65
+absentes de l'historique       : 10
+écarts nommés                  : 12
+arithmétique                   : 54 + 2 + 10 = 66
 préfixes en double (connus)    : 4 / 4 déclarées
 effets MESURÉS                 : 7
 effets DÉDUITS                 : 1
-effets NON PROUVÉS             : 57
+effets NON PROUVÉS             : 58
 ```
 
-**Ce qui a changé depuis la matrice précédente.** Le dépôt comptait encore
-`20261028150000_plm_erp_policy_convergence` (ajoutée par un agent, jamais
-déployée) et `20261028230000_plm_erp_sync_jobs_policy_deduplication` : toutes
-deux retirées au commit `9208391`, la première parce qu'elle **collisionnait**
-avec `20261028150000_reconcile_plm_erp_sync_job_policies` et faisait échouer la
-CI, la seconde parce que sa redondance est **mesurée** (chaîne complète avec et
-sans → catalogue identique) et qu'elle était de surcroît **inatteignable** : la
-migration `reconcile` échoue *avant* elle dès que les politiques canoniques
-dérivent. Le compte reste 65 parce que la paire retirée était postérieure à la
-dernière lecture de production, non attestée, et que le total d'avant incluse
-les deux.
+**Ce qui a changé depuis la matrice précédente — et qui explique 65 → 66.**
+
+Trois mouvements, tous documentés, aucun historique réécrit :
+
+1. **Retirées** au commit `9208391` : `20261028150000_plm_erp_policy_convergence`
+   (ajoutée par un agent, **collisionnait** avec la réconciliation et faisait
+   échouer la CI) et `20261028230000_plm_erp_sync_jobs_policy_deduplication`
+   (redondance **mesurée** — chaîne complète avec/sans → catalogue identique —
+   et de surcroît **inatteignable**, la réconciliation échouant avant elle).
+2. **Ajoutée** par le commit `963a524` de l'utilisateur :
+   `…_plm_erp_gs1_policy_drift_repair`. Elle **recrée** les deux politiques
+   canoniques après les avoir retirées, là où la réconciliation se contente de
+   les **protéger**. Gardée : elle apporte quelque chose.
+3. **Renommée** au commit suivant, **contenu inchangé au caractère près** :
+   `20261028150000_…_gs1_policy_drift_repair` → `20261028230000_…_gs1_policy_drift_repair`.
+
+Le point 3 mérite une justification explicite, parce qu'on ne renomme pas une
+migration à la légère. Celle-ci portait **le même préfixe** que la
+réconciliation — la collision exacte qui avait mis la CI en échec une heure plus
+tôt, et que le commit `9208391` venait de lever. `test:migrations:horodatages`
+échoue donc à nouveau, et avec lui l'étape 28 du job *Socle*. Le renommage est
+possible ici parce que la migration **n'a jamais été appliquée nulle part** :
+elle a été poussée moins d'une heure avant, elle est postérieure à la dernière
+lecture de production, et `_prisma_migrations` ne peut pas en porter la trace.
+Renommer une migration **non appliquée** ne touche aucun historique ; renommer
+une migration appliquée en serait une falsification, et n'a pas été fait.
 
 ## 2. Les quatre préfixes en double, déclarés
 
@@ -146,6 +161,7 @@ transaction, même ordre). Contrôle ciblé souhaitable, non bloquant.
 | 63 | `20261028130000_product_computed_fields_column_scoped` | `19b34a90620a` | ABSENTE | ecriture au niveau COLONNE sur tracefab_products ; le declencheur ne lit plus le GUC | aucune mesure | **NON PROUVE** | decision separee : pas de deploy global pour ce seul point |
 | 64 | `20261028140000_supplier_invitation_owner_relationship_scope` | `6a94aea73674` | ABSENTE | tracefab_validate_member_invitation_role avec controle d appartenance et de statut | aucune mesure | **NON PROUVE** | deploy |
 | 65 | `20261028150000_reconcile_plm_erp_sync_job_policies` | `19062d095519` | ABSENTE | 2 politiques permissives retirees de plm_erp_sync_jobs | la table porte 4 politiques au lieu de 2 (lecture du 28/10) | **MESURE** | seul correctif PLM retenu ; sonde C fait 11 en confirmation |
+| 66 | `20261028230000_plm_erp_gs1_policy_drift_repair` | `a57827bed347` | ABSENTE | retire les 3 politiques derivees puis RECREE les 2 canoniques (sans garde fail-closed) | creee apres la derniere lecture de production | **NON PROUVE** | redondante avec la reconciliation, mais elle RECREE ce que celle-ci ne fait que proteger |
 
 ## 5. Ordre de remédiation proposé — **aucune étape n'a été exécutée**
 
@@ -163,7 +179,7 @@ elle échoue. Or c'est un **prérequis** de `20261028120100`. Donc :
   <nom>`**, après avoir **constaté** que l'objet attendu existe — jamais
   `--rolled-back`, qui ferait rejouer un fichier non rejouable.
 
-Les cinq migrations affectées en aval, dans l'ordre de la chaîne :
+Les **six** migrations affectées en aval, dans l'ordre de la chaîne :
 
 | # | Migration | Dépendance | Si `…120000` échoue |
 |---|---|---|---|
@@ -172,6 +188,7 @@ Les cinq migrations affectées en aval, dans l'ordre de la chaîne :
 | 3 | `20261028130000_product_computed_fields_column_scoped` | indépendante | non atteinte |
 | 4 | `20261028140000_supplier_invitation_owner_relationship_scope` | indépendante | non atteinte |
 | 5 | `20261028150000_reconcile_plm_erp_sync_job_policies` | indépendante | non atteinte |
+| 6 | `20261028230000_plm_erp_gs1_policy_drift_repair` | indépendante | non atteinte |
 
 **Conséquence pratique** : le correctif PLM (`…150000`), qui est le seul dont
 l'écart est *mesuré* en production (4 politiques au lieu de 2), ne peut pas
@@ -187,7 +204,7 @@ en premier, et non la migration PLM en premier.
 | 3 | Appliquer `20261028120000` **seule** | accord explicite distinct | registre absent | table + `FORCE RLS` présente | rien à défaire : migration additive |
 | 4 | `resolve --applied` **si et seulement si** l'étape 3 a échoué après création de l'objet | constat catalogue | objet absent | objet présent, `steps=0` assumé | sans objet |
 | 5 | Appliquer `…120100`, `…120200`, `…130000`, `…140000` dans l'ordre | étape 3 | politiques en place | 11 politiques réindexées sur `current_user` | `…120100` **retire** des droits : le retour arrière est un `GRANT` explicite, à préparer |
-| 6 | Appliquer `20261028150000_reconcile_…` | étape 1 (état 4 politiques) | 4 politiques | **2** politiques | recréer les 2 politiques retirées — SQL à rédiger |
+| 6 | Appliquer `20261028150000_reconcile_…` puis `20261028230000_…_drift_repair` | étape 1 (état 4 politiques) | 4 politiques | **2** politiques | recréer les 2 politiques retirées — SQL à rédiger |
 | 7 | Relever le catalogue et confronter | étapes 1-6 | référence de l'étape 1 | 0 divergence, ou divergences nommées | sans objet |
 
 ### 5.3 Risques propres à chaque étape
@@ -203,7 +220,7 @@ en premier, et non la migration PLM en premier.
   l'exécuter. À n'utiliser que sur **constat** du catalogue, jamais pour
   « débloquer ».
 - **Aucune étape ne doit être faite par `prisma migrate deploy` global** : le
-  déploiement global appliquerait les onze d'un coup, y compris `…140000` qui
+  déploiement global appliquerait les douze écarts d'un coup, y compris `…140000` qui
   est une **décision séparée** (point 2 du plan de l'utilisateur).
 
 ## 6. Ce que cette matrice ne prouve pas

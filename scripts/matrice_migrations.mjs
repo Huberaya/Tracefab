@@ -98,6 +98,16 @@ const ECARTS = {
     effets: ['NON PROUVE', 'aucune mesure'],
     suite: 'deploy',
   },
+  // Ajoutee par le commit `963a524` de l utilisateur, APRES la derniere lecture
+  // de production : elle ne peut donc pas y etre attestee. Elle n est pas
+  // « probablement absente » — elle est absente par construction, et ses effets
+  // ne sont pas prouves pour la meme raison.
+  '20261028230000_plm_erp_gs1_policy_drift_repair': {
+    historique: 'ABSENTE',
+    objet: 'retire les 3 politiques derivees puis RECREE les 2 canoniques (sans garde fail-closed)',
+    effets: ['NON PROUVE', 'creee apres la derniere lecture de production'],
+    suite: 'redondante avec la reconciliation, mais elle RECREE ce que celle-ci ne fait que proteger',
+  },
   '20261028150000_reconcile_plm_erp_sync_job_policies': {
     historique: 'ABSENTE',
     objet: '2 politiques permissives retirees de plm_erp_sync_jobs',
@@ -160,11 +170,11 @@ const annulees = compter('ANNULEE');
 const absentes = compter('ABSENTE');
 
 const total = lignes.length;
-if (total !== 65) erreurs.push(`le depot ne contient pas 65 migrations mais ${total}`);
+if (total !== 66) erreurs.push(`le depot ne contient pas 66 migrations mais ${total}`);
 if (appliquees + horsBande + annulees + absentes !== total) {
   erreurs.push(`l arithmetique ne ferme pas : ${appliquees}+${horsBande}+${annulees}+${absentes} != ${total}`);
 }
-if (annulees + absentes !== 11) erreurs.push(`${annulees + absentes} ecarts nommes, 11 attendus`);
+if (annulees + absentes !== 12) erreurs.push(`${annulees + absentes} ecarts nommes, 12 attendus`);
 if (horsBande !== 5) erreurs.push(`${horsBande} migrations hors bande, 5 attendues`);
 
 // Les migrations citees comme en ecart doivent exister : sinon la matrice
@@ -242,6 +252,6 @@ if (erreurs.length > 0) {
   process.exit(1);
 }
 if (!process.argv.includes('--markdown')) {
-  console.log('\nLa matrice ferme : 65 migrations, 11 ecarts, 5 hors bande,');
+  console.log('\nLa matrice ferme : 66 migrations, 12 ecarts, 5 hors bande,');
   console.log('aucun nouveau prefixe en double.');
 }
