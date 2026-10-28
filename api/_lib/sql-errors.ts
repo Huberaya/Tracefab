@@ -177,6 +177,13 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   organization_node_reference_required: { status: 400 },
   passport_not_found: { status: 404 },
   passport_not_found_or_private: { status: 404 },
+  // Les fonctions PLM/ERP refusent explicitement toute dérive de leurs politiques
+  // canoniques. 409 signale un conflit avec l'état de schéma attendu sans exposer
+  // le SQL interne ni transformer une garde métier en erreur serveur.
+  plm_erp_sync_jobs_absente: { status: 409 },
+  politique_canonique_insert_absente: { status: 409 },
+  politique_canonique_insert_inattendue: { status: 409 },
+  politique_canonique_select_absente: { status: 409 },
   pef_brand_role_required: { status: 403 },
   pef_product_not_found: { status: 404 },
   platform_organization_not_user_creatable: { status: 403 },
