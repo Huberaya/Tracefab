@@ -15,8 +15,8 @@ l'opérateur les jours précédents, citées comme telles.
 | | |
 |---|---|
 | SHA de départ réel | **`4aab56c`** (et non `508caef` : huit commits s'étaient ajoutés) |
-| Commit intermédiaire | `9208391` — une seule migration PLM, fail-closed |
-| **SHA final** | **`978c761`** — poussé sur `arena/c27ddaa4-tracefab` |
+| Commits de la session | `9208391` · `978c761` · `5b989b7` · `a5b6189` · `7f03ba9` |
+| **SHA final** | **`4b7f06c`** — CI verte, PR `CLEAN` |
 | `main` (base de la PR) | `bf55f2ae6534cde84d072d9b975520216c7b6d4e` |
 
 **La tête de branche avait changé.** Huit commits de l'utilisateur, tous lus
@@ -265,9 +265,46 @@ casser la connexion de l'application.
 
 ## G. CI exacte et conflits
 
-*(à compléter avec le run du SHA `978c761`)*
+| Run | SHA | Résultat |
+|---|---|---|
+| `40778270995` (Socle) | `4aab56c` — **départ** | **échec**, étape 28 : duplication `20261028150000` |
+| `40784257315` | `7f03ba9` | **échec** — une seule suite : `test:sql-errors` |
+| `40786338140` (Chaîne 34/36/41) | `4b7f06c` | **succès** |
+| **`40786338281`** | **`4b7f06c` — final** | **succès, 5 jobs sur 5** |
 
----
+```
+Socle — types, compilation, isolation        => success
+Parcours — navigateur reel                   => success
+Base — isolation RLS executee                => success
+Verification — suite de tests                => success
+Chaîne 34/36/41 sur Postgres 17 jetable      => success
+```
+
+**État de la PR #102** : `draft = true`, `mergeable = MERGEABLE`,
+`mergeStateStatus = CLEAN`, tête `4b7f06c`. Aucun conflit avec `main`.
+
+**Aucun déploiement déclenché.** Les workflows du dépôt sont `ci.yml`,
+`migrations-34-36-41.yml`, `audit-sql-privileges.yml`, `h1-4-postgres.yml`,
+`sondage-preview.yml`, `vercel-log-search.yml` : **aucun job de déploiement**.
+Les contrôles « Vercel » et « Vercel Preview Comments » sont des **builds de
+prévisualisation** attachés à la PR, pas une mise en production. Aucun
+`prisma migrate deploy` n'a été lancé nulle part : les seules exécutions de
+migrations sont sur PostgreSQL jetable (service CI et PGlite).
+
+**Trois pannes réelles traversées pendant la session**, toutes corrigées et
+aucune contournée :
+
+1. **Étape 28, duplication `20261028150000`** — corrigée (`9208391`), puis
+   **réapparue** par un commit concurrent, corrigée de nouveau, puis réglée
+   définitivement par la suppression de la migration en double côté utilisateur.
+2. **`test:sql-errors`** — quatre codes `RAISE EXCEPTION` de la réconciliation
+   sans statut HTTP. L'utilisateur les a mappés en `409` (`4b7f06c`). J'avais
+   proposé une autre voie (distinguer une garde de bloc `DO` d'une garde de
+   fonction) ; **je ne l'ai pas imposée** : la correction de l'utilisateur est
+   suffisante et le test passe. Une seule solution, pas deux.
+3. **Un `git mv` incomplet** de ma part a laissé le dossier d'origine en place :
+   détecté par le contrôle d'horodatages lui-même (`duplications NOUVELLES : 1`),
+   corrigé en `a5b6189` avec vérification `diff` du contenu.
 
 ## H. Risques résiduels et preuves manquantes
 
@@ -287,4 +324,46 @@ casser la connexion de l'application.
 
 ## I. Verdict
 
-*(à compléter après la CI)*
+### **PRÊTE À SOUMETTRE À VALIDATION** — pour le code et la CI.
+
+Ce qui le justifie, et qui est **mesuré sur le SHA `4b7f06c`** :
+
+- CI **verte, 5 jobs sur 5**, sans exclusion ajoutée ni test neutralisé ;
+- la règle métier « `contributor` ne crée pas de job de synchro » est **prouvée
+  par écriture réelle**, dans les trois états (canonique, dérive, corrigé),
+  avec l'isolation entre deux organisations testée y compris par identifiant
+  fourni par le client ;
+- la correction PLM est **une seule** migration, *fail-closed*, et le catalogue
+  final est comparé à la référence sur la chaîne réelle ;
+- le vérificateur de confrontation **mord** : 12 falsifications refusées, dont
+  deux nouvelles (sens inverse d'appartenance, changement d'options) ;
+- le décompte des migrations est **recalculé**, pas recopié : 65 = 54 + 2 + 9.
+
+**Ce que ce verdict ne dit pas.** Il ne dit pas que la production est conforme :
+3 preuves de production manquent (§H, lignes 1 à 3) et une décision
+(`…140000`) reste à prendre séparément. Ces points **n'empêchent pas** de
+soumettre la PR à validation ; ils empêchent de **déployer**. Les confondre
+serait l'erreur qui a coûté le plus cher dans ce chantier.
+
+### Ce qu'il reste à faire, dans l'ordre, et par qui
+
+1. **Vous** — coller `docs/security/2026-10-28-appartenances-roles-production.sql`
+   (Q1 à Q4) sur `Primary`. Q2 doit rendre **2 lignes**. C'est le seul point
+   encore capable de changer la conclusion sécurité.
+2. **Vous** — relever le catalogue avec
+   `docs/security/2026-10-28-tour30-A-confrontation-lecture-seule.sql`, puis
+   `node scripts/verifier_confrontation_production.mjs <sortie>` : 85 faits
+   attendus, 0 divergence espérée sur `plm_erp_sync_jobs` **après** application
+   du correctif.
+3. **Vous** — décider du sort de `20261028140000` (décision séparée, pas de
+   `deploy` global).
+4. **Personne, tant que 1 à 3 ne sont pas faits** — aucune migration en
+   production, aucune révocation d'appartenance, aucun retrait du Draft.
+
+### Ce qui, de mon côté, n'est pas prouvé
+
+`test_privileges_role_app.mjs` et `test_isolation_lignes_reelles.mjs` **n'ont
+pas tourné dans cet environnement** (pas de serveur PostgreSQL). Le premier
+tourne désormais en CI et **y est vert** ; le second reste hors CI (redondant
+avec `test:neon:rls`, qui tourne et est vert). Je ne les compte donc pas comme
+preuves — je les nomme.
