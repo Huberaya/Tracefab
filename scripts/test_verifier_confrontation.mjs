@@ -119,6 +119,24 @@ for (const [libelle, fichier, attendu] of cas) {
 }
 
 /* -------------------------------------------------------------------------
+   2 bis. Les deux formats de sortie sont acceptes
+   ------------------------------------------------------------------------- */
+
+console.log('\n  2 bis. psql et export CSV du SQL Editor de Neon');
+
+// Le SQL Editor de Neon ne connait pas `-A -t` : on y colle la requete et on
+// exporte en CSV. Une ligne d'en-tete prise pour une mesure ferait echouer la
+// comparaison pour une raison etrangere a la production.
+const csv = ecrire('export.csv', `ligne\n${ref.map((l) => `"${l}"`).join('\n')}\n`);
+ok('un export CSV (en-tete + guillemets) donne le meme verdict',
+  lancer([csv, `--referentiel=${refPath}`]).code === 0);
+
+const csvFaux = ecrire('export-faux.csv',
+  `ligne\n${ref.map((l) => `"${l.replace('|rls=true|', '|rls=false|')}"`).join('\n')}\n`);
+ok('un export CSV falsifie echoue quand meme (le format ne masque pas le fond)',
+  lancer([csvFaux, `--referentiel=${refPath}`]).code === 1);
+
+/* -------------------------------------------------------------------------
    3. Le verificateur ne peut pas rendre PASS sur une sortie vide ou partielle
    ------------------------------------------------------------------------- */
 

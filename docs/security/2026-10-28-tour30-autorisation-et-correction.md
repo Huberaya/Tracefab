@@ -139,6 +139,12 @@ même instrument.
 node scripts/verifier_confrontation_production.mjs /tmp/etat-production.txt
 ```
 
+Le vérificateur accepte aussi l'**export CSV** du SQL Editor de Neon (qui ne
+connaît pas `-A -t`) : ligne d'en-tête retirée, guillemets et `""` dépliés. Un
+export falsifié échoue quand même — le format ne masque pas le fond, et
+`test:confrontation-production` (20 vérifications) le prouve dans les deux
+formats.
+
 ### 3.3 Le vérificateur a été vu échouer
 
 `test:confrontation-production` — **18 vérifications**. Neuf états soumis :

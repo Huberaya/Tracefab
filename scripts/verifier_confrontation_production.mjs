@@ -111,8 +111,30 @@ if (refSortie) {
    Mesure de production
    ------------------------------------------------------------------------- */
 
-const brut = fs.readFileSync(fichier, 'utf8');
-const mesure = brut.split('\n').map((l) => l.trim()).filter((l) => l && l.includes('|'));
+const brut = fs.readFileSync(fichier, 'utf8').replace(/^\uFEFF/, '');
+
+/**
+ * La sortie peut venir de deux endroits, et il faut accepter les deux :
+ *
+ *  - `psql -A -t` : une valeur par ligne, brute ;
+ *  - le SQL Editor de Neon, qui ne connait pas `-A -t` : on colle la requete,
+ *    on copie la colonne, ou on exporte en CSV. Les valeurs arrivent alors
+ *    entourees de guillemets, avec une ligne d'en-tete, et les guillemets
+ *    internes doubles (`""`).
+ *
+ * Une ligne d'en-tete prise pour une mesure ferait echouer la comparaison pour
+ * une raison qui n'a rien a voir avec la production : on la retire.
+ */
+const mesure = brut
+  .split('\n')
+  .map((l) => l.trim())
+  .filter((l) => l && l !== 'ligne' && l !== '"ligne"')
+  .map((l) => {
+    let v = l;
+    if (v.startsWith('"') && v.endsWith('"') && v.length > 1) v = v.slice(1, -1).replace(/""/g, '"');
+    return v.trim();
+  })
+  .filter((l) => l.includes('|'));
 
 if (mesure.length === 0) {
   console.error('ECHEC  aucun fait exploitable dans le fichier fourni.');
