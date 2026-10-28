@@ -125,7 +125,13 @@ try {
       await app.query('ROLLBACK');
     }
   })();
-  ok(sansGuc.accepte === false, '1. champ calcule refuse sans GUC', `accepte=${sansGuc.accepte}`);
+  // Un refus ne compte que s'il vient des PRIVILEGES (42501). Un 42804 (type),
+  // un 23502 (contrainte) ou un 42P01 (relation absente) refuseraient aussi
+  // l'ecriture sans rien prouver sur le modele de privileges : ce serait un
+  // faux positif, et c'est le piege dans lequel un test mal ecrit tombe.
+  ok(sansGuc.accepte === false && sansGuc.code === '42501',
+    '1. champ calcule refuse sans GUC, par refus de privilege',
+    `accepte=${sansGuc.accepte} code=${sansGuc.code}`);
 
   // --- 2. GUC forge : refuse (c'est la propriete qui manquait) -------------
   await app.query('BEGIN');
@@ -148,7 +154,41 @@ try {
     await app.query('ROLLBACK');
   }
   ok(pose, '2a. le role applicatif peut toujours poser le GUC (temoin : la garde ne doit pas en dependre)');
-  ok(gucForge.accepte === false, '2b. champ calcule refuse MEME avec le GUC forge', `accepte=${gucForge.accepte}`);
+  ok(gucForge.accepte === false && gucForge.code === '42501',
+    '2b. champ calcule refuse MEME avec le GUC forge, par refus de privilege',
+    `accepte=${gucForge.accepte} code=${gucForge.code}`);
+
+  // --- 2c. l'exploitation du mandat, colonne par colonne -------------------
+  // Le tour 23 demande de reproduire EXACTEMENT l'exploitation initiale :
+  // set_config('tracefab.internal_product_revision', 'true', true) puis
+  // UPDATE ... SET <champ calcule>. Les quatre champs calcules sont eprouves
+  // sous les DEUX GUC, dans une transaction propre a chaque essai.
+  const ecritures = {
+    version: 'version + 1',
+    data_completion: '100',
+    data_readiness: `'data_ready'::product_data_readiness`,
+    data_ready_at: 'now()',
+  };
+  const gucs = ['tracefab.internal_product_revision', 'tracefab.internal_product_readiness_update'];
+  for (const [colonne, expression] of Object.entries(ecritures)) {
+    for (const guc of gucs) {
+      let issue;
+      await app.query('BEGIN');
+      try {
+        await contexte(userId, email, orgId);
+        await app.query(`select set_config('${guc}', 'true', true)`);
+        await app.query(`update tracefab_products set ${colonne} = ${expression} where id = $1`, [produit.id]);
+        issue = { accepte: true };
+      } catch (error) {
+        issue = { accepte: false, code: error.code };
+      } finally {
+        await app.query('ROLLBACK');
+      }
+      ok(issue.accepte === false && issue.code === '42501',
+        `2c. « ${colonne} » reste hors de portee sous ${guc.replace('tracefab.internal_', '')}`,
+        `accepte=${issue.accepte} code=${issue.code}`);
+    }
+  }
 
   // --- 3. non-regression : un champ non calcule reste modifiable -----------
   const libre = await essai(() => app.query(
