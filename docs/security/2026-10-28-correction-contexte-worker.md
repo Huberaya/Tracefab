@@ -101,6 +101,15 @@ l'intérieur de leur exécution — et seulement là.
 - **réduction** : `INSERT/UPDATE/DELETE/TRUNCATE` sur `users` est retiré à
   `tracefab_app`, les écritures passant désormais par les fonctions.
 
+  *Conséquence à connaître* : la politique `users_update_self` (un utilisateur
+  modifie sa propre ligne) existe toujours dans le schéma mais n'est plus
+  atteignable par le runtime. Aucune route n'écrivait dans `users` en direct —
+  `/api/me` est en lecture seule — donc le privilège était sans usage. Pour une
+  édition de profil, il faudra une **fonction nommée** déclarée au registre, pas
+  un `GRANT` sur la table : c'est le contrôle `test:tables-ecriture-directe` qui
+  l'exige, et c'est ce qui empêche un privilège d'écriture de revenir sans
+  chemin applicatif.
+
 ## 4. Preuves mesurées
 
 | # | Propriété | Mesure |

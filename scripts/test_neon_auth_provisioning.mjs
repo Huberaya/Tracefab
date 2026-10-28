@@ -141,27 +141,34 @@ const directInsert = await proprio.query(
 if (Number(directInsert.rows[0].n) === 1) ok('politique INSERT worker presente (users_insert_worker)');
 else ko('politique users_insert_worker introuvable');
 
+// La politique users_update_self existe toujours, mais le role applicatif n'a
+// plus le privilege UPDATE sur `users` depuis le 28/10/2026 : les ecritures
+// passent par tracefab_upsert_clerk_user, possedee par tracefab_worker. Aucune
+// route n'ecrivait dans `users` en direct (/api/me est en lecture seule), donc
+// le privilege etait sans usage — et un privilege sans usage est une surface
+// d'attaque gratuite. On verifie donc ici le RETRAIT, pas la capacite.
+// Pour la retablir (par exemple pour une edition de profil), il faudra une
+// fonction nommee et une ligne au registre runtime, pas un GRANT sur la table.
 try {
-  // users_update_self (20260923) : id = tracefab_current_user_id().
   await withTracefabUserContext(user1.id, 'first@auth.test', async (tx) => {
     await tx.user.update({ where: { id: user1.id }, data: { fullName: 'Via User Context' } });
   });
-  const ligne = (await proprio.query('SELECT full_name FROM users WHERE id = $1', [user1.id])).rows[0];
-  assert.equal(ligne.full_name, 'Via User Context');
-  ok('UPDATE de soi-meme via tracefab.user_id : possible (users_update_self)');
+  ko('le role applicatif a pu ecrire directement dans users — le privilege aurait du etre retire');
 } catch (e) {
-  ko(`UPDATE de soi-meme refuse : ${e.message}`);
+  if (e.code === '42501' || /permission denied/i.test(e.message)) {
+    ok('ecriture directe dans users refusee au role applicatif (42501) — privilege retire');
+  } else {
+    ko(`echec inattendu sur l ecriture directe dans users : ${e.message}`);
+  }
 }
 
 try {
   await withTracefabUserContext(user1.id, 'first@auth.test', async (tx) => {
     await tx.user.update({ where: { id: U.userB }, data: { fullName: 'Piratage' } });
   });
-  const ligne = (await proprio.query('SELECT full_name FROM users WHERE id = $1', [U.userB])).rows[0];
-  if (ligne.full_name === 'User B') ok('UPDATE d un autre utilisateur : sans effet (0 ligne), isolation tenue');
-  else ko('un utilisateur a pu modifier un autre utilisateur');
+  ko('un utilisateur a pu tenter une ecriture sur un autre — aucune erreur levee');
 } catch (e) {
-  ok('UPDATE d un autre utilisateur : rejete par la RLS');
+  ok('UPDATE d un autre utilisateur : rejete (privilege retire, isolation tenue)');
 }
 
 console.log('\n  5. isolation entre organisations');

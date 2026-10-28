@@ -13,6 +13,13 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   active_supplier_invitation_exists: { status: 409 },
   invalid_or_expired_invitation: { status: 400 },
   clerk_email_required: { status: 422 },
+  // Parametres rejetes par les fonctions de provisionnement Clerk
+  // (tracefab_upsert_clerk_user, tracefab_ensure_clerk_user,
+  // tracefab_archive_clerk_organization). 422 : la requete est bien formee mais
+  // l'identite fournie par le fournisseur est inexploitable.
+  clerk_user_id_required: { status: 422 },
+  clerk_email_invalid: { status: 422 },
+  clerk_organization_id_required: { status: 422 },
   invitation_email_mismatch: { status: 403 },
   user_already_member: { status: 409 },
   invitation_not_found: { status: 404 },
