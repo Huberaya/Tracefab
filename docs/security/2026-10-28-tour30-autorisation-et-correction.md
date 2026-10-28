@@ -625,3 +625,33 @@ ligne d'historique. Elle ne dira pas :
   la sonde lit des objets et deux libellés ;
 - si les effets manquants sont **exploitables** par un attaquant : elle mesure
   la présence d'un contrôle, pas la faisabilité d'une attaque.
+
+### 9.4 Portée des mesures — confirmée par l'exécutant
+
+Le 28/10, le propriétaire du dépôt a précisé que **toutes** les requêtes de ce
+tour ont été exécutées sur la branche **`Primary`**, c'est-à-dire sur la
+production elle-même — et non sur une branche enfant de Neon.
+
+La distinction n'est pas décorative. Une branche enfant de Neon herite du
+schema de son parent **au moment de sa creation** : elle peut ensuite diverger,
+et une lecture faite dessus ne decrirait qu'une copie. Ce que je rapporte est
+donc l'etat de la production, et rien d'autre.
+
+Ce que cela etablit, sans reserve :
+
+| Mesure | Portee |
+|---|---|
+| 14 tables, `rls=true`, `force=true`, proprietaire unique | **production** |
+| 33 politiques, lues une par une | **production** |
+| 14 fonctions, `secdef`, `search_path`, `EXECUTE` | **production** |
+| Les deux correctives `present=0` | **production** |
+| Les 11 ecarts d'historique (dont 2 annulees) | **production** |
+
+Ce que cela ne change pas : **les onze effets restent inconnus**. Le §9.1 tient
+entier — un `resolve --rolled-back` corrige l'historique, pas les objets. C'est
+la sonde du §9.2, et elle seule, qui dira ce que la production exécute
+reellement.
+
+Une lecture faite sur la production n'est pas une lecture de l'effet : elle dit
+ce que le catalogue porte, pas ce que le registre raconte. Les deux niveaux
+restent distincts, et c'est precisement l'ecart entre eux qui fait le `BLOCKED`.
