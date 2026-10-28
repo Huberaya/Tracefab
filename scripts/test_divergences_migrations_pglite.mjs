@@ -279,6 +279,47 @@ ok('le contenu historique est absent de TOUS les objets Git', trouveDansGit === 
    4. plm_erp_gs1_interoperability — valeurs attendues, calculees depuis le depot
    ========================================================================== */
 
+/**
+ * La requete que fera foi en production. Elle ne lit que le catalogue et ne
+ * compare rien elle-meme : elle rend le reel, et c'est ce reel qui sera
+ * confronte aux valeurs ci-dessus. Aucune fonction applicative n'est appelee,
+ * aucune ecriture n'est faite.
+ *
+ * Elle est imprimee par le test pour que le referentiel et la mesure ne
+ * puissent pas diverger : c'est le meme instrument qui produit les deux.
+ */
+const CONFRONTATION = `
+SELECT 'table' AS genre, c.relname AS objet, NULL::text AS detail,
+       c.relrowsecurity::text AS rls, c.relforcerowsecurity::text AS force_rls,
+       NULL::text AS roles, NULL::text AS cmd,
+       NULL::text AS using_expr, NULL::text AS with_check_expr,
+       NULL::text AS proprietaire, NULL::text AS search_path, NULL::text AS exec_public
+  FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public' AND c.relname IN ('plm_erp_integrations','plm_erp_sync_jobs')
+UNION ALL
+SELECT 'policy', tablename || '.' || policyname, NULL,
+       NULL, NULL, array_to_string(roles, ','), cmd,
+       coalesce(qual,'(aucun)'), coalesce(with_check,'(aucun)'),
+       NULL, NULL, NULL
+  FROM pg_catalog.pg_policies
+ WHERE schemaname = 'public' AND tablename IN ('plm_erp_integrations','plm_erp_sync_jobs')
+UNION ALL
+SELECT 'fonction', p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid),
+       p.prosecdef::text, NULL, NULL, NULL, NULL, NULL,
+       pg_catalog.pg_get_userbyid(p.proowner),
+       coalesce(array_to_string(p.proconfig, ','), '(vide)'),
+       has_function_privilege('public', p.oid, 'EXECUTE')::text
+  FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public' AND p.proname = 'tracefab_ingest_plm_erp_payload'
+UNION ALL
+SELECT 'exec_app', p.proname, 'tracefab_app',
+       has_function_privilege('tracefab_app', p.oid, 'EXECUTE')::text, NULL, NULL, NULL, NULL, NULL,
+       NULL, NULL, NULL
+  FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public' AND p.proname = 'tracefab_ingest_plm_erp_payload'
+ORDER BY 1, 2, 3;
+`;
+
 console.log('\n  4. `plm_erp_gs1_interoperability` : valeurs de reference du depot');
 
 {
@@ -326,13 +367,59 @@ console.log('\n  4. `plm_erp_gs1_interoperability` : valeurs de reference du dep
   const fonction = await db.query(`
     SELECT p.prosecdef, p.provolatile,
            pg_catalog.pg_get_function_identity_arguments(p.oid) AS arguments,
-           md5(pg_catalog.pg_get_functiondef(p.oid)) AS empreinte_definition
+           md5(pg_catalog.pg_get_functiondef(p.oid)) AS empreinte_definition,
+           pg_catalog.pg_get_userbyid(p.proowner) AS proprietaire,
+           coalesce(array_to_string(p.proconfig, ','), '') AS search_path,
+           coalesce(array_to_string(p.proacl, '|'), '(defaut)') AS acl,
+           has_function_privilege('public', p.oid, 'EXECUTE') AS exec_public,
+           has_function_privilege('tracefab_app', p.oid, 'EXECUTE') AS exec_app,
+           (SELECT coalesce(array_to_string(r.rolname_herites, ','), '(aucune)')
+              FROM (SELECT array_agg(g.rolname) AS rolname_herites
+                      FROM pg_catalog.pg_auth_members m
+                      JOIN pg_catalog.pg_roles g ON g.oid = m.roleid
+                      JOIN pg_catalog.pg_roles u ON u.oid = m.member
+                     WHERE u.rolname = 'tracefab_app') r) AS app_memberships
       FROM pg_catalog.pg_proc p
       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'public' AND p.proname = 'tracefab_ingest_plm_erp_payload'`);
   ok('la fonction d ingestion existe et est SECURITY DEFINER',
     fonction.rows.length === 1 && fonction.rows[0].prosecdef === true,
     JSON.stringify(fonction.rows[0] || null));
+
+  // §4 de la mission exige plus qu'une empreinte : les ROLES de chaque
+  // politique, USING et WITH CHECK separes, le proprietaire de la fonction, son
+  // search_path, et l EXECUTE effectif (PUBLIC, role applicatif, herite). Une
+  // comparaison qui ne porterait que sur des empreintes ne dirait rien de ces
+  // dimensions — et une empreinte identique ne prouve pas un privilege identique.
+  const politiquesDetail = await db.query(`
+    SELECT tablename, policyname, permissive,
+           array_to_string(roles, ',') AS roles, cmd,
+           coalesce(qual, '(aucun)') AS using_expr,
+           coalesce(with_check, '(aucun)') AS with_check_expr
+      FROM pg_catalog.pg_policies
+     WHERE schemaname = 'public' AND tablename IN ('plm_erp_integrations','plm_erp_sync_jobs')
+     ORDER BY tablename, policyname`);
+  ok('chaque politique porte des roles identifies et explicites',
+    politiquesDetail.rows.length === 4
+    && politiquesDetail.rows.every((r) => typeof r.roles === 'string' && r.roles.length > 0),
+    JSON.stringify(politiquesDetail.rows.map((r) => [r.policyname, r.roles])));
+  ok('chaque politique a un USING et/ou un WITH CHECK effectivement defini (aucun des deux nul)',
+    politiquesDetail.rows.every((r) => r.using_expr !== '(aucun)' || r.with_check_expr !== '(aucun)'));
+  ok('les politiques ALL et INSERT portent un WITH CHECK (le controle d ecriture n est pas absent)',
+    politiquesDetail.rows.filter((r) => r.cmd === 'ALL' || r.cmd === 'INSERT')
+      .every((r) => r.with_check_expr !== '(aucun)'),
+    JSON.stringify(politiquesDetail.rows.map((r) => [r.policyname, r.cmd, r.with_check_expr === '(aucun)'])));
+
+  const f0 = fonction.rows[0];
+  ok('la fonction a un proprietaire identifie', Boolean(f0?.proprietaire), String(f0?.proprietaire));
+  ok('la fonction fixe un search_path (une fonction DEFINER sans search_path est detournable)',
+    Boolean(f0?.search_path) && f0.search_path.length > 0, String(f0?.search_path));
+  ok('l EXECUTE de PUBLIC et celui de tracefab_app sont mesures, pas deduits de l ACL',
+    f0 && typeof f0.exec_public === 'boolean' && typeof f0.exec_app === 'boolean',
+    JSON.stringify({ public: f0?.exec_public, app: f0?.exec_app }));
+  ok('la base de reference ne donne AUCUNE appartenance a tracefab_app : « herite » y vaut « direct »',
+    f0?.app_memberships === '(aucune)',
+    `${f0?.app_memberships} — si ce n est plus vrai, la conclusion « herite = direct » ne tient plus`);
 
   console.log('\n  VALEURS DE REFERENCE — a comparer a la sortie de la requete');
   console.log('  de confrontation du document 2026-10-28-tour28-divergences-empreintes.md :\n');
@@ -342,10 +429,21 @@ console.log('\n  4. `plm_erp_gs1_interoperability` : valeurs de reference du dep
   for (const p of politiques.rows) {
     console.log(`    policy  ${p.tablename}.${p.policyname}  cmd=${p.cmd}  regle=${p.empreinte_regle}`);
   }
+  for (const p of politiquesDetail.rows) {
+    console.log(`    policy  ${p.tablename}.${p.policyname}  permissive=${p.permissive}  roles={${p.roles}}  cmd=${p.cmd}`);
+    console.log(`            using=${p.using_expr}`);
+    console.log(`            check=${p.with_check_expr}`);
+  }
   const f = fonction.rows[0];
   if (f) {
     console.log(`    fonction ${f.arguments}  secdef=${f.prosecdef}  definition=${f.empreinte_definition}`);
+    console.log(`            proprietaire=${f.proprietaire}  search_path=${f.search_path || '(vide)'}`);
+    console.log(`            exec_public=${f.exec_public}  exec_tracefab_app=${f.exec_app}  acl=${f.acl}`);
   }
+  console.log('');
+  console.log('  REQUETE DE CONFRONTATION (lecture seule, a executer sur la base a');
+  console.log('  qualifier ; aucune ecriture, aucune fonction applicative appelee) :');
+  console.log(CONFRONTATION.trimEnd().split('\n').map((l) => `  ${l}`).join('\n'));
   await db.close();
 }
 

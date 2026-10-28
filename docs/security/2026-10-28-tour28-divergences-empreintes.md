@@ -195,3 +195,39 @@ stricte), mais elle est réelle — et l'une des trois reste inconnue.
 | `scripts/fixtures/empreintes-production-20261028/*.sql` | les deux contenus historiques, empreinte vérifiée par le test |
 
 Aucune migration créée ni modifiée, aucun changement de posture, aucune écriture.
+
+---
+
+## 10. Tour 29 — référentiel `plm_erp_gs1` étendu, et ce qui manque encore
+
+Le test est passé de 20 à **33 vérifications**. Les valeurs de référence du
+dépôt ne sont plus une empreinte de définition : elles couvrent les six
+dimensions exigées par la mission finale.
+
+| Dimension | Référence dépôt |
+|---|---|
+| `plm_erp_integrations` / `plm_erp_sync_jobs` | `rls=true`, `force_rls=true` |
+| `plm_integrations_mutate_brand` | `ALL`, rôle `public`, `USING` = `WITH CHECK` = `tracefab_has_org_role(organization_id, {owner,admin,manager})` |
+| `plm_integrations_select_org` | `SELECT`, rôle `public`, `USING` = `tracefab_is_org_member(organization_id)` |
+| `plm_sync_jobs_insert_brand` | `INSERT`, `WITH CHECK` = `tracefab_has_org_role(brand_organization_id, {owner,admin,manager})` |
+| `plm_sync_jobs_select_org` | `SELECT`, `USING` = `tracefab_is_org_member(brand_organization_id)` |
+| `tracefab_ingest_plm_erp_payload(uuid,text,jsonb,uuid)` | `SECURITY DEFINER`, propriétaire `postgres`, `search_path=public`, `EXECUTE` à `PUBLIC` **et** à `tracefab_app` |
+
+Trois assertions nouvelles empêchent le référentiel de se dégrader sans qu'on le
+voie : chaque politique doit porter des rôles explicites, chaque politique doit
+avoir un `USING` **ou** un `WITH CHECK` défini, et les politiques `ALL`/`INSERT`
+doivent porter un `WITH CHECK` — une politique d'écriture sans `WITH CHECK` ne
+filtre pas ce qu'elle écrit.
+
+Le test imprime désormais la **requête de confrontation** elle-même (catalogue
+seul, aucune fonction applicative appelée). Référentiel et mesure sortent du même
+instrument, ce qui interdit qu'ils divergent.
+
+**Limite inscrite dans le test** : la base de référence ne donne aucune
+appartenance à `tracefab_app`, donc « droits hérités » y vaut « droits directs ».
+Une assertion le vérifie explicitement pour que la conclusion ne survive pas
+silencieusement à un changement. En production, `neondb_owner` est membre d'autres
+rôles : la même requête y mesurera des droits hérités qui peuvent, eux, différer.
+
+Statut inchangé : **`BLOCKED`** côté production — le contenu historique n'a
+jamais été retrouvé, seule une lecture du catalogue de production tranchera.

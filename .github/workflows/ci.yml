@@ -206,6 +206,18 @@ jobs:
         # autorisation, GRANT conditionnel, objets RLS de reference).
         run: npm run test:divergences-migrations
 
+      - name: Migrations hors bande — deux chemins, meme schema
+        # Cinq migrations de production portent `applied_steps_count = 0` : leur
+        # SQL a ete execute par des lanceurs, pas par `migrate deploy`. Ce test
+        # rejoue la chaine privee des cinq (elle s arrete — elles sont
+        # portantes), puis applique les cinq par les deux chemins sur deux bases
+        # jetables et compare les catalogues objet par objet : tables, colonnes,
+        # contraintes, index, politiques RLS, declencheurs, fonctions
+        # (SECURITY DEFINER, search_path, proprietaire, EXECUTE de
+        # tracefab_app et de PUBLIC), RLS forcee. Il mesure aussi la seule
+        # difference reelle : l atomicite.
+        run: npm run test:migrations:hors-bande
+
       - name: Reprise des migrations — incidents reproduits puis franchis
         # Sur PostgreSQL 18 (PGlite), meme majeure que Neon : les deux incidents
         # rapportes (refus de privilege sur public, conflit de signature de

@@ -1,5 +1,5 @@
 -- TRACEFAB — invitation d'un `owner` fournisseur : la regle du depot rejoint
--- celle que le code attend.
+-- celle que le code attend, sans elargir d'un pouce.
 --
 -- POURQUOI CETTE MIGRATION EXISTE
 --
@@ -26,23 +26,51 @@
 --
 -- Consequence en production : le parcours d'onboarding fournisseur, qui invite
 -- le premier `owner` avec un `relationship_id`, echoue avec
--- `owner_role_not_invitable`. Le correctif existe dans le depot depuis le commit
--- « fix: preserve supplier onboarding owner invitations », il n'est pas applique.
+-- `owner_role_not_invitable`.
 --
--- POURQUOI UNE MIGRATION NOUVELLE, ET NON UNE REECRITURE
+-- POURQUOI LA REGLE DU DEPOT NE SUFFIT PAS
 --
--- Reecrire `20261005090000` changerait son empreinte une seconde fois et
--- laisserait la base de production, qui l'a deja executee, avec un historique
--- qui ne correspond a aucun contenu. L'historique ne se reecrit pas : on ajoute.
+-- `NEW.relationship_id IS NULL` ne verifie RIEN sur la relation elle-meme :
+-- n'importe quel identifiant non nul ouvre la porte. Or le role applicatif
+-- ecrit `organization_invitations` en direct (`TABLES_ECRITURE_DIRECTE`) et la
+-- politique `invitations_insert_admin` autorise tout `admin` de
+-- l'organisation visee. Consequences mesurees sur base jetable :
+--
+--   - un `admin` peut inviter un `owner` dans SA PROPRE organisation en
+--     presentant une relation quelconque : c'est une elevation de privileges,
+--     un `admin` n'a pas le droit de fabriquer un `owner` ;
+--   - une relation appartenant a DEUX AUTRES organisations est acceptee :
+--     c'est une reutilisation inter-organisations.
+--
+-- La regle retenue ici est donc celle du parcours reel — `tracefab_invite_supplier`
+-- cree une relation (marque -> fournisseur) puis insere l'invitation avec
+-- `organization_id = supplier_organization_id` et `target_role = 'owner'` — et
+-- rien de plus :
+--
+--   1. `owner` sans relation                      -> REFUS (inchange)
+--   2. relation inexistante                       -> REFUS
+--   3. relation dont le FOURNISSEUR n'est pas
+--      l'organisation invitee                     -> REFUS  (couvre la marque
+--                                                             elle-meme et le
+--                                                             tiers)
+--   4. relation terminee (`status = 'ended'`)     -> REFUS
+--   5. relation au statut invited/active/
+--      suspended, cote fournisseur                -> ACCEPT (onboarding)
+--
+-- Les statuts `invited` et `suspended` sont acceptes deliberement : le premier
+-- est celui de l'onboarding, le second ne retire pas le role. Seul `ended`
+-- ferme la relation.
 --
 -- CE QUE CETTE MIGRATION NE FAIT PAS
 --   - aucune ecriture dans `_prisma_migrations` ;
---   - aucune modification de `20261005090000` ni d'aucune migration anterieure ;
---   - aucun GRANT : elle remplace un corps de fonction, elle n'accorde rien.
---     Le registre runtime (20261028120000) n'est pas touche ;
---   - aucun elargissement : `owner` reste non invitable SANS relation. Le seul
---     changement est l'acceptation du cas « owner + relation », qui est celui du
---     parcours produit.
+--   - aucune modification de `20261005090000`, `20261005100000` ni d'aucune
+--     migration anterieure : cette migration-ci n'a jamais ete appliquee a une
+--     base (elle figure parmi les migrations non attestees en production), la
+--     completer n'est donc pas une reecriture d'historique livre ;
+--   - aucun `GRANT`/`REVOKE` : elle remplace un corps de fonction. La fonction
+--     n'est pas appelee par `tracefab_app` (seul le declencheur l'est), et son
+--     privilege d'execution reste celui pose par la migration d'origine ;
+--   - aucune politique RLS touchee.
 --
 -- IDEMPOTENCE : `CREATE OR REPLACE` + `DROP TRIGGER IF EXISTS` avant
 -- `CREATE TRIGGER`. Rejouable sans erreur.
@@ -59,21 +87,52 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_relation brand_supplier_relationships;
 BEGIN
-  -- L'onboarding marque-fournisseur invite volontairement le premier
-  -- proprietaire. Les invitations de gestion de membres n'ont aucun contexte de
-  -- relation et ne peuvent jamais accorder `owner` directement.
-  IF NEW.target_role = 'owner' AND NEW.relationship_id IS NULL THEN
-    RAISE EXCEPTION 'owner_role_not_invitable';
+  -- Les invitations de gestion de membres n'ont aucun contexte de relation et
+  -- ne peuvent jamais accorder `owner` directement.
+  IF NEW.target_role = 'owner' THEN
+    IF NEW.relationship_id IS NULL THEN
+      RAISE EXCEPTION 'owner_role_not_invitable';
+    END IF;
+
+    SELECT * INTO v_relation
+      FROM brand_supplier_relationships r
+     WHERE r.id = NEW.relationship_id;
+
+    -- La cle etrangere garantit l'existence en pratique ; ce controle couvre le
+    -- cas d'un declencheur sollicite hors du chemin nominal, et rend l'echec
+    -- explicite plutot que silencieux.
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'invitation_relationship_not_found';
+    END IF;
+
+    -- Le proprietaire invite est celui du FOURNISSEUR. Inviter un `owner` dans
+    -- l'organisation marque, ou en presentant la relation d'un autre couple
+    -- d'organisations, est refuse. C'est ce controle qui ferme l'elevation de
+    -- privileges par un `admin` et la reutilisation inter-organisations.
+    IF v_relation.supplier_organization_id IS DISTINCT FROM NEW.organization_id THEN
+      RAISE EXCEPTION 'invitation_relationship_organization_mismatch';
+    END IF;
+
+    -- Une relation terminee ne porte plus d'invitation de proprietaire.
+    IF v_relation.status = 'ended' THEN
+      RAISE EXCEPTION 'invitation_relationship_ended';
+    END IF;
   END IF;
+
   RETURN NEW;
 END;
 $$;
 
 COMMENT ON FUNCTION tracefab_validate_member_invitation_role() IS
-  'Interdit l''invitation d''un owner sans contexte de relation. Le cas '
-  'owner + relationship_id est celui de l''onboarding fournisseur et reste '
-  'autorise. Aligne la production sur 20261005090000 telle que versionnee.';
+  'Interdit l''invitation d''un owner hors onboarding fournisseur. Le owner '
+  'n''est acceptable que sur le cote FOURNISSEUR d''une relation non terminee : '
+  'sans relation, sur l''organisation marque, sur la relation d''un autre '
+  'couple d''organisations, ou sur une relation terminee, l''invitation est '
+  'refusee. Aligne la production sur 20261005090000 telle que versionnee, en '
+  'fermant la faille de portee de relation.';
 
 -- Le declencheur est repose : s'il manquait ou pointait ailleurs, la fonction
 -- corrigee ne serait jamais appelee, et la migration semblerait avoir reussi.

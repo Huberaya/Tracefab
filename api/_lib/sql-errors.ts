@@ -35,6 +35,17 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   data_point_type_mismatch: { status: 400 },
   owner_role_not_promotable: { status: 403 },
   owner_role_not_invitable: { status: 403 },
+  // Portee de la relation presentee pour une invitation `owner`
+  // (20261028140000_supplier_invitation_owner_relationship_scope). Les trois
+  // codes distinguent trois refus differents : une reference inexistante est une
+  // requete mal formee (400) ; viser une relation d'une autre organisation est
+  // un refus d'autorisation (403) ; une relation terminee ne peut plus porter
+  // d'invitation de proprietaire (409). Sans ces entrees, `sql-errors` refuse
+  // la migration : un code SQL metier sans traduction HTTP sure est un 500 en
+  // puissance.
+  invitation_relationship_not_found: { status: 400 },
+  invitation_relationship_organization_mismatch: { status: 403 },
+  invitation_relationship_ended: { status: 409 },
   membership_identity_immutable: { status: 403 },
   last_owner_membership_required: { status: 409 },
   supplier_not_found: { status: 404 },

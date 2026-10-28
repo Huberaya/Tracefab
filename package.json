@@ -189,6 +189,7 @@
     "test:diagnostic-m6": "node scripts/test_diagnostic_m6_executable.mjs",
     "test:reprise-migrations": "node scripts/test_reprise_migrations_pglite.mjs",
     "test:divergences-migrations": "node scripts/test_divergences_migrations_pglite.mjs",
+    "test:migrations:hors-bande": "node scripts/test_migrations_hors_bande_pglite.mjs",
     "test:supplier-invitation-corrective": "node scripts/test_supplier_invitation_corrective_pglite.mjs",
     "test:dpp:review-publication": "node scripts/run-db-suite.mjs scripts/test_dpp_review_and_publication.mjs",
     "test:dpp:role-applicatif": "node scripts/test_dpp_role_applicatif.mjs",
