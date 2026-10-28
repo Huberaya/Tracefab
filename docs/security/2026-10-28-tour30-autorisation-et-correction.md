@@ -395,3 +395,153 @@ Fusionner ne déploie pas : même après l'application, `deploy` reste gelé
 jusqu'à ce que l'historique Prisma porte les deux correctifs — et il les portera
 par l'application elle-même, pas par une écriture à la main dans
 `_prisma_migrations`.
+
+## 8. Le comptage est revenu : `56` au lieu de `63` — arrêt avant écriture
+
+Résultat de la requête du §4.3, en lecture seule, sur `Primary` :
+
+```
+appliquees = 56    en_cours = 0    annulees = 2
+derniere   = 20261023120000_revoke_app_default_dml
+```
+
+**Le critère d'arrêt est atteint.** Le dépôt compte 65 migrations ; si les deux
+correctives seules étaient en attente, le comptage aurait rendu `63`. Il en
+manque donc **au moins sept**, et la dernière migration enregistrée en
+production est datée du **23 octobre** — cinq jours avant le dernier lot du
+dépôt.
+
+### 8.1 Ce que ce chiffre ne dit pas encore, et pourquoi je ne le comble pas
+
+Mon comptage n'était pas exclusif : `finished_at IS NOT NULL` inclut les lignes
+**annulées** (`rolled_back_at` renseigné). `56` est donc une **borne haute** :
+le nombre réellement appliqué est `54` ou `56`. C'est une imprécision de ma
+requête, pas de la production — et elle suffit à interdire de conclure au doigt
+mouillé sur *combien* manquent et *lesquelles*.
+
+La seule lecture qui tranche est une comparaison nommée des 65 migrations du
+dépôt à l'historique. Elle est fournie au §8.3 ; sa sortie est courte (une
+ligne par écart) et ne demande aucune écriture.
+
+### 8.2 Ce que cela change dans le diagnostic — et c'est grave
+
+Si les écarts sont ceux que la date suggère, la production n'a **jamais**
+reçu le lot du 27-28 octobre :
+
+| Migration | Ce qu'elle ferme |
+|---|---|
+| `20261027100000_dpp_quality_gate_requires_assessment` | un passage de porte DPP sans évaluation |
+| `20261027130000_dpp_review_preservation_and_publication_coherence` | cohérence revue / publication |
+| `20261028120000_runtime_function_registry` | registre des fonctions d'exécution |
+| `20261028120100_worker_identity_not_forgeable` | identité de worker forgeable |
+| `20261028120200_document_reserved_fields_internal_only` | champs réservés de document |
+| `20261028130000_product_computed_fields_column_scoped` | portée par colonne des champs calculés |
+
+Ce ne sont pas des migrations de confort : ce sont des **fermetures de
+contrôles**. Le `BLOCKED` du tour 29 les visait déjà sous le nom de
+« réconciliation de l'historique » ; on sait maintenant qu'il ne s'agissait pas
+d'une formalité de registre.
+
+**Conséquence directe sur `migrate deploy`** : il appliquerait ces six
+migrations **et** les deux correctives, en une seule fois, sans que personne
+les ait autorisées nommément dans ce tour. Le gel de `deploy` n'était donc pas
+une précaution de principe — il évitait exactement cela.
+
+### 8.3 La lecture qui tranche
+
+```sql
+-- LECTURE SEULE. Compare les 65 migrations du depot a l'historique de
+-- production, et ne rend QUE les ecarts.
+WITH depot(nom) AS (
+  VALUES
+    ('20260923130000_tracefab_neon_initial'),
+    ('20260923140000_tracefab_clerk_context'),
+    ('20260923150000_fix_invitation_acceptance'),
+    ('20260923160000_tracefab_product_api_functions'),
+    ('20260923170000_fix_data_collection_workflow_context'),
+    ('20260923180000_fix_data_response_progress_guard'),
+    ('20260923190000_tracefab_notification_outbox'),
+    ('20260923200000_tracefab_collection_reminders'),
+    ('20261005090000_supplier_portal_advanced_hardening'),
+    ('20261005100000_supplier_invitation_compatibility'),
+    ('20261006100000_security_force_rls_and_document_access'),
+    ('20261006110000_quality_center_shared_access'),
+    ('20261006113000_clerk_directory_membership_sync'),
+    ('20261006120000_data_collection_bridge_and_quality_automation'),
+    ('20261006120000_external_schema_bindings'),
+    ('20261006123000_clerk_sync_security_functions'),
+    ('20261006130000_tracefab_manual_data_request_reminders'),
+    ('20261006140000_supply_chain_traceability_api'),
+    ('20261006160000_dpp_readiness_exposure'),
+    ('20261006180000_supplier_self_onboarding'),
+    ('20261006190000_catalog_import_export'),
+    ('20261006200000_catalog_import_kind'),
+    ('20261006200000_document_ai_automated_verification'),
+    ('20261006210000_plm_erp_gs1_interoperability'),
+    ('20261006220000_esg_pef_footprint_engine'),
+    ('20261006220000_production_hardening'),
+    ('20261006230000_green_claims_anti_greenwashing_engine'),
+    ('20261006240000_quality_corrective_action_plans_cap'),
+    ('20261006250000_universal_supplier_passport'),
+    ('20261006260000_mass_balance_anti_fraud_engine'),
+    ('20261007100000_security_definer_execute_hardening'),
+    ('20261007120000_force_rls_schema_bindings'),
+    ('20261008100000_rate_limit_counters'),
+    ('20261009120000_fix_materials_policy_recursion'),
+    ('20261009180000_public_read_context'),
+    ('20261010120000_publication_explicite'),
+    ('20261012120000_close_public_execute_gap'),
+    ('20261014100000_revoke_material_visible_public'),
+    ('20261014110000_revoke_dpp_functions_public'),
+    ('20261014120000_close_global_default_function_execute'),
+    ('20261014130000_revoke_public_schema_privileges'),
+    ('20261014140000_remove_public_supplier_passport_share_token'),
+    ('20261016130000_dynamic_dpp_lifecycle'),
+    ('20261016150000_dpp_claim_evidence_chain'),
+    ('20261016170000_dpp_resolvable_identity'),
+    ('20261017100000_fix_document_lifecycle_access'),
+    ('20261017120000_active_tenant_context'),
+    ('20261017120000_harden_dpp_table_privileges'),
+    ('20261017150000_harden_finalize_ops_gate'),
+    ('20261019120000_restreindre_dml_role_applicatif'),
+    ('20261019140000_restreindre_suppression_compteurs_debit'),
+    ('20261019160000_retablir_dml_tables_ecrites_directement'),
+    ('20261020120000_structured_supply_chain_graph_membership'),
+    ('20261021120000_limit_app_function_execute'),
+    ('20261021130000_reconcile_runtime_dml_and_migration_history'),
+    ('20261021170000_dpp_readiness_truthful_gates'),
+    ('20261023120000_revoke_app_default_dml'),
+    ('20261027100000_dpp_quality_gate_requires_assessment'),
+    ('20261027130000_dpp_review_preservation_and_publication_coherence'),
+    ('20261028120000_runtime_function_registry'),
+    ('20261028120100_worker_identity_not_forgeable'),
+    ('20261028120200_document_reserved_fields_internal_only'),
+    ('20261028130000_product_computed_fields_column_scoped'),
+    ('20261028140000_supplier_invitation_owner_relationship_scope'),
+    ('20261028150000_plm_erp_policy_convergence')
+)
+SELECT d.nom,
+       CASE WHEN m.migration_name IS NULL THEN 'ABSENTE de l historique'
+            WHEN m.rolled_back_at IS NOT NULL THEN 'ANNULEE (rolled back)'
+            WHEN m.finished_at IS NULL THEN 'COMMENCEE, jamais terminee'
+            ELSE 'appliquee' END AS etat
+  FROM depot d
+  LEFT JOIN _prisma_migrations m ON m.migration_name = d.nom
+ WHERE m.migration_name IS NULL
+    OR m.rolled_back_at IS NOT NULL
+    OR m.finished_at IS NULL
+ ORDER BY d.nom;
+```
+
+Sa sortie nomme les écarts. **Aucune écriture n'est autorisée avant de l'avoir
+lue** : l'autorisation du tour 30 portait sur `20261028140000` et sur la
+lecture, pas sur six fermetures de contrôles appliquées à la faveur d'un
+`deploy`.
+
+### 8.4 Ce que cela fait de la PR #102
+
+Rien de bon, et il faut le dire sans détour : **la PR n'est pas le problème, et
+la fusionner ne le réglerait pas**. Elle contient les deux correctifs ; la
+production, elle, attend six autres migrations plus anciennes. `PRÊTE À
+FUSIONNER` et `production à jour` sont deux questions distinctes, et la seconde
+vient d'être tranchée : **non**.
