@@ -152,6 +152,12 @@ const CAS = {
   relationTerminee: { role: 'owner', organisation: FOURNISSEUR_B, relation: REL_A_ENDED },
   adminAvecRelation: { role: 'admin', organisation: FOURNISSEUR_A, relation: REL_A },
   viewerSansRelation: { role: 'viewer', organisation: FOURNISSEUR_A, relation: null },
+  // Identifiant bien forme mais absent de la table : ce n'est ni NULL ni une
+  // relation d'un autre couple. C'est le cas que `invitation_relationship_not_found`
+  // est cense couvrir — a condition qu'une contrainte de cle etrangere ne tire
+  // pas avant lui.
+  relationInexistante: { role: 'owner', organisation: FOURNISSEUR_A,
+    relation: 'eeeeeeee-0000-0000-0000-0000000000ff' },
 };
 
 async function jouerTous(db) {
@@ -240,6 +246,20 @@ ok('CORRECTIF : admin + relation reste ACCEPTE (le declencheur ne vise que owner
   rCorrectif.adminAvecRelation === 'accepte', rCorrectif.adminAvecRelation);
 ok('CORRECTIF : viewer sans relation reste ACCEPTE',
   rCorrectif.viewerSansRelation === 'accepte', rCorrectif.viewerSansRelation);
+// Le cas « relation inexistante » — identifiant bien forme, absent de la table.
+// Mesure : sur la chaine complete, il est refuse par l AUTRE declencheur
+// (`invitation_relationship_mismatch`), pas par la branche
+// `invitation_relationship_not_found` du correctif. Cette branche existe et
+// fonctionne — elle est simplement OMBRAGEE par la contrainte de cle etrangere
+// et par le premier declencheur. C est une defense en profondeur, pas un trou ;
+// mais l affirmer sans le mesurer serait une supposition.
+ok('CORRECTIF : relation inexistante REFUSEE sur la chaine complete',
+  rCorrectif.relationInexistante === 'invitation_relationship_mismatch',
+  rCorrectif.relationInexistante);
+ok('DEPOT : relation inexistante est deja refusee (l autre declencheur)',
+  rDepot.relationInexistante === 'invitation_relationship_mismatch',
+  rDepot.relationInexistante);
+
 ok('CORRECTIF : aucune recuperation de decision par rapport au depot, sauf relation terminee',
   Object.keys(CAS).filter((k) => (rDepot[k] === 'accepte') !== (rCorrectif[k] === 'accepte'))
     .join(',') === 'relationTerminee',
@@ -263,6 +283,10 @@ ok('sans l autre declencheur, elle LAISSE PASSER une relation d un autre couple'
 await installerCorps(db, corpsCorrectif);
 const correctifSansAutre = await jouerTous(db);
 console.log(`        correctif sans l autre declencheur : ${JSON.stringify(correctifSansAutre)}`);
+
+ok('CORRECTIF : sa branche `_not_found` est ombragee, pas morte — elle rend la main sans l autre declencheur',
+  correctifSansAutre.relationInexistante === 'invitation_relationship_not_found',
+  correctifSansAutre.relationInexistante);
 ok('le controle d appartenance du correctif, SEUL, refuse owner cote marque',
   correctifSansAutre.ownerCoteMarque === 'invitation_relationship_organization_mismatch',
   correctifSansAutre.ownerCoteMarque);

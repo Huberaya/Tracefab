@@ -194,6 +194,7 @@
     "test:sondes-effets": "node scripts/test_sondes_effets_pglite.mjs",
     "test:rejeu-migrations": "node scripts/test_rejeu_migrations.mjs",
     "test:deploiement-simule": "node scripts/test_deploiement_simule.mjs",
+    "test:reconciliation-options": "node scripts/test_reconciliation_options.mjs",
     "test:runbook-application": "node scripts/test_runbook_application.mjs",
     "test:plm-erp-convergence": "node scripts/test_plm_erp_policy_convergence.mjs",
     "test:plm-erp-convergence:chaine": "node scripts/test_plm_erp_convergence_chaine.mjs",

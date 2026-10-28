@@ -240,6 +240,13 @@ jobs:
         # puis simule le deploy des onze et l'echec injecte sur le registre.
         run: npm run test:deploiement-simule
 
+      - name: Reconciliation de l historique — les deux options, comparees
+        # Option A (deploy direct) et option B (resolve --applied sur preuve,
+        # puis deploy) sont executees sur des bases jetables reproduisant
+        # l'historique ET le catalogue de production. Aucune ne reecrit
+        # l'historique ; la sonde decide, pas l'historique.
+        run: npm run test:reconciliation-options
+
       - name: Rejeu des migrations — une migration livree est-elle rejouable ?
         # Mesure, pas supposition : si l'effet d'une migration non rejouable est
         # deja present en production alors que son historique l'ignore,
