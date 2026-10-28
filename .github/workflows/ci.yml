@@ -192,6 +192,13 @@ jobs:
         # execute n est pas un diagnostic.
         run: npm run test:diagnostic-m6
 
+      - name: Divergences d empreinte — effet reel mesure
+        # Trois migrations ont une empreinte de production differente du depot.
+        # Une empreinte ne dit pas si le schema differe : ce test rejoue les deux
+        # versions et compare ce que la base produit reellement (regle d
+        # autorisation, GRANT conditionnel, objets RLS de reference).
+        run: npm run test:divergences-migrations
+
       - name: Reprise des migrations — incidents reproduits puis franchis
         # Sur PostgreSQL 18 (PGlite), meme majeure que Neon : les deux incidents
         # rapportes (refus de privilege sur public, conflit de signature de
