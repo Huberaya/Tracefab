@@ -100,12 +100,12 @@ et pour nommer l'erreur au lieu de la laisser dans l'historique.
 
 `docs/security/2026-10-28-tour30-A-confrontation-lecture-seule.sql` — catalogue
 système uniquement, aucune table métier, aucun appel de fonction applicative. Il
-produit 39 faits en lignes plates :
+produit 66 faits en lignes plates :
 
 | Genre | Contenu |
 |---|---|
 | `T` | les 14 tables : existence, `rls`, `force_rls`, nombre de politiques, propriétaire |
-| `P` | les 4 politiques de `plm_erp_gs1` : rôle, commande, `permissive`, `USING`, `WITH CHECK` |
+| `P` | **les 31 politiques** des quatorze tables : rôle, commande, `permissive`, `USING`, `WITH CHECK` |
 | `F` | les 14 fonctions : `SECURITY DEFINER`, `search_path`, `EXECUTE` de `PUBLIC` et de `tracefab_app`, propriétaire |
 | `H` | l'historique Prisma des 5 hors bande et des deux correctives |
 
@@ -126,7 +126,7 @@ Il distingue trois issues, et refuse de les confondre :
 
 | Issue | Sens |
 |---|---|
-| `PASS` (0) | les 39 faits concordent |
+| `PASS` (0) | les 66 faits concordent |
 | `FAIL` (1) | la **règle** diffère : mauvais rôle, mauvais prédicat, `RLS` absente, `EXECUTE` ouvert, `SECURITY INVOKER` |
 | `À QUALIFIER` (3) | mêmes fonctions, mêmes jetons, **rendu** différent (cast réécrit entre PG 17 et 18) |
 
@@ -161,7 +161,7 @@ formats.
 | corrective déjà en historique | `FAIL` | `FAIL` |
 | différence de cast seule | `À QUALIFIER` | `À QUALIFIER` |
 
-Et une sortie vide, ou trois faits sur trente-neuf, sont des échecs — jamais un
+Et une sortie vide, ou trois faits sur soixante-six, sont des échecs — jamais un
 silence.
 
 ## 4. Opération (2) — l'application, prête et vérifiée
@@ -217,54 +217,83 @@ n'avais pas mesuré sur la version cible. Corrigé (`[...matchAll()]`), puis
 revérifié en Node 20 sur les quatre nouveaux tests et sur les six tests de
 migrations — tous verts.
 
-## 5. La confrontation a eu lieu — elle a trouvé une dérive réelle
+## 5. La confrontation a eu lieu — verdict : `FAIL`, une divergence, nommée
 
-**Ce n'est pas moi qui l'ai faite.** Le propriétaire du dépôt a exécuté la
-lecture et poussé ses conclusions sur la branche (`fe00f41`, `c1b7912`). Je
-rapporte ce qu'elles établissent, et ce qu'elles n'établissent pas.
+**Ce n'est pas moi qui l'ai exécutée.** Le propriétaire du dépôt a lancé la
+lecture dans le SQL Editor de Neon, sur la branche `Primary` (production), et
+m'a transmis les **41 lignes** produites. Je les ai transcrites, **recontrôlées
+ligne à ligne** (une faute de transcription — `search_path:public` pour
+`search_path=public` — aurait suffi à fabriquer une fausse divergence), puis
+soumises au vérificateur.
 
-### 5.1 Ce que la production porte
+### 5.1 Le verdict
 
-Sur `plm_erp_sync_jobs`, **deux politiques supplémentaires**, absentes du fichier
-versionné : `plm_erp_sync_jobs_insert_brand` et `plm_erp_sync_jobs_select_brand`.
-PostgreSQL combine les politiques permissives par `OR` : la première autorisait
-`contributor` à insérer, alors que la canonique `plm_sync_jobs_insert_brand`
-réserve cette action à `owner`/`admin`/`manager`.
+```
+39 faits attendus, 41 faits mesures.
+A QUALIFIER  2 faits en production, absents du referentiel :
+  P|plm_erp_sync_jobs.plm_erp_sync_jobs_insert_brand
+  P|plm_erp_sync_jobs.plm_erp_sync_jobs_select_brand
+ECHEC  T|plm_erp_sync_jobs  politiques : attendu « 2 », obtenu « 4 »
+FAIL  1 divergence(s) franche(s), 2 a qualifier.
+```
 
-Ce n'est donc pas une différence de commentaire ni de rendu : **la production est
-plus permissive que le dépôt sur une règle d'autorisation**. C'est exactement ce
-que le `BLOCKED` du tour 29 refusait de supposer dans un sens ou dans l'autre — et
-il avait raison de refuser : le sens était celui-là.
+Les deux faits « à qualifier » ne sont pas une inconnue : ce sont **exactement**
+les deux politiques que `20261028150000_plm_erp_policy_convergence` retire, et
+dont `test:plm-erp-convergence:chaine` a mesuré l'effet. La qualification est
+donc faite, dans le sens défavorable : **la production est plus permissive que
+le dépôt**, et le correctif existe mais **n'est pas appliqué**.
 
-### 5.2 Ce qui y répond
+### 5.2 Ce que la production porte — et qui est enfin lu
 
-`20261028150000_plm_erp_policy_convergence` retire les deux politiques, et rien
-d'autre : aucun `GRANT`/`REVOKE`, aucune politique canonique touchée, aucune
-donnée. Les deux noms n'apparaissent dans aucune autre migration du dépôt, donc
-sur une base neuve les `DROP POLICY IF EXISTS` ne font rien.
+| Objet | Mesure | Verdict |
+|---|---|---|
+| **14 tables** | toutes existent, `rls=true`, `force=true`, 1 à 3 politiques, propriétaire `neondb_owner` | conforme |
+| **14 fonctions** | `secdef=true`, `search_path=search_path=public`, `exec_public=false`, `exec_app=true`, propriétaire `neondb_owner` | conforme |
+| `plm_erp_integrations` | 2 politiques, les deux canoniques | conforme |
+| `plm_erp_sync_jobs` | **4 politiques** — 2 canoniques + 2 surnuméraires | **divergent** |
+| Historique Prisma | 5 hors bande `present=1|steps=0|termine=true` | conforme à la réconciliation |
+| `20261028140000` | **`present=0`** | correctif **non appliqué** |
+| `20261028150000` | **`present=0`** | correctif **non appliqué** |
 
-### 5.3 Ce que j'ai ajouté, et pourquoi
+La lacune du tour 29 — « les douze tables n'ont jamais été lues » — est donc
+**comblée** : 14 tables sur 14, avec RLS, `FORCE`, nombre de politiques,
+propriétaire.
 
-Le test livré avec la migration monte un **schéma écrit à la main** — une table
-réduite, `tracefab_has_org_role` remplacée par un `current_setting`. Il prouve la
-combinaison `OR`, ce qui est déjà beaucoup, mais pas que la migration s'applique
-au **vrai** schéma. C'est le piège exact dans lequel je suis tombé au tour 29.
+### 5.3 Deux défauts de mon propre outil, trouvés par ce premier passage réel
 
-Deux corrections, sans rien retirer au test existant :
+Un vérificateur jamais confronté à une vraie sortie n'est pas un contrôle.
 
-| Ajout | Ce qu'il prouve |
-|---|---|
-| `test:plm-erp-convergence` (enregistré) | le test existant **tourne enfin** — il n'était branché nulle part, ni dans `package.json` ni dans la CI. Un test qui ne tourne pas n'est pas un contrôle. |
-| `test:plm-erp-convergence:chaine` (19 vérifications) | sur la **chaîne réelle** : dérive recréée sur la vraie table, migration appliquée, seules les deux canoniques subsistent **inchangées**, RLS toujours forcée, rejeu sans erreur, et base neuve intacte |
+1. **Le nombre de politiques d'une table n'était pas comparé.** `politiques`
+   manquait dans la liste des champs durs. La dérive a été trouvée par les
+   lignes `P`, soit, mais le compteur — le fait le plus simple — ne la
+   signalait pas.
+2. **L'historique était comparé à celui d'une base neuve.** La base de
+   référence est construite par application des migrations : son
+   `_prisma_migrations` est vide, donc toutes ses lignes `H` disent
+   `present=0`. Comparée à cela, la production produisait **quinze « échecs »**
+   qui ne disaient rien d'elle — et qui masquaient la seule divergence réelle.
+   L'état attendu de l'historique est désormais **écrit dans le vérificateur**,
+   d'après la réconciliation, et non déduit d'une base qui n'a jamais vu
+   `prisma migrate`.
 
-### 5.4 Ce que cela n'établit pas
+Les deux sont corrigés, et **le test couvre maintenant les deux cas** : un
+compteur de politiques qui bouge sur une table hors PLM, et un historique remis
+à zéro. Le test est passé de 20 à **25 vérifications**.
 
-- **l'état des douze tables** des cinq migrations hors bande (propriétaires,
-  privilèges, politiques) : la lecture faite portait sur `plm_erp_*`, pas sur
-  elles ;
-- **M6** : toujours `NOT RUN` ;
-- que la production a bien été modifiée : la migration est dans le dépôt, elle
-  n'est **pas appliquée**.
+### 5.4 Ce que cela n'établit pas — et pourquoi une seconde lecture est nécessaire
+
+La requête exécutée n'a rendu que **six lignes `P`** : les politiques des deux
+tables PLM. Les politiques des **douze autres tables** n'ont donc **pas** été
+lues une par une — seul leur nombre l'a été.
+
+J'ai élargi la requête pour lire **les 31 politiques** des quatorze tables
+(66 faits au lieu de 39). Le vérificateur accepte un drapeau
+`--perimetre-plm` pour comparer honnêtement la sortie partielle déjà en main
+— sans jamais relâcher les contrôles sur ce qui a été lu — mais **la lecture
+complète reste à faire**, et c'est elle que la décision attend.
+
+Restent également, sans changement : **M6** (`NOT RUN`) et l'application des
+deux correctifs, dont la migration `20261028140000` pour `supplier_portal`.
 
 ## 6. État après ce tour
 
@@ -272,8 +301,10 @@ Deux corrections, sans rien retirer au test existant :
 |---|---|---|
 | Autorisation des deux opérations | absente | **accordée** |
 | Accès à la production | absent | **absent** — identifiants et sortie réseau |
-| Confrontation `plm_erp_gs1` | outil inexistant | **faite par le propriétaire** : dérive réelle, production plus permissive ; correctif dans le dépôt, **vérifié sur la chaîne réelle** |
-| Cinq migrations hors bande — les 12 tables en production | non lues | **non lues** |
+| Confrontation `plm_erp_gs1` | outil inexistant | **exécutée en production** ; verdict automatique : **`FAIL`**, 1 divergence nommée + 2 politiques surnuméraires |
+| Cinq migrations hors bande — les 14 tables en production | non lues | **lues** : 14/14, RLS + `FORCE`, propriétaire unique, nombre de politiques |
+| Politiques des 12 tables hors PLM, une par une | non lues | **non lues** — requête élargie prête (31 politiques, 66 faits) |
+| Correctifs en production | inconnu | **mesuré absent** : `20261028140000` et `20261028150000` `present=0` |
 | Version de Node des nouveaux tests | — | vérifiés en **Node 20** (la version de la CI) |
 | Application du correctif | procédure non écrite | **runbook prêt et éprouvé** ; application **`NOT RUN`** |
 | `supplier_portal` | « deux contournements fermés » | **une erreur corrigée** : un seul trou réel, la relation terminée ; redondance mesurée |
@@ -281,44 +312,44 @@ Deux corrections, sans rien retirer au test existant :
 | 5 migrations hors bande | `PASS` hors production | inchangé |
 | M6 | `NOT RUN` | `NOT RUN` |
 
-## 7. Décision — le motif a changé deux fois
+## 7. Décision — le motif a changé trois fois
 
 **NON PRÊTE À FUSIONNER.**
 
-Le motif a changé de nature deux fois en un tour, et il faut le dire dans cet
-ordre :
+Le motif a changé de nature trois fois, et il faut le dire dans cet ordre :
 
 1. **tour 29** : « divergence `plm_erp_gs1` non qualifiée » ;
-2. **ce tour, avant la confrontation** : « autorisation absente » ;
-3. **maintenant** : elle est qualifiée, et **corrigée dans le dépôt**. Le motif
-   restant est **un seul point, précis** : l'état des **douze tables** des cinq
-   migrations hors bande n'a pas été lu en production. La mission l'exige, il
-   n'est pas fait, et je ne prononce pas `PRÊTE` sur un contrôle manquant.
+2. **ce tour, avant la lecture** : « autorisation absente, donc accès absent » ;
+3. **maintenant** : la lecture est faite, et le motif n'est plus un doute mais
+   un **fait mesuré** — **la production porte encore la dérive, et aucun des
+   deux correctifs n'y est appliqué** (`present=0` pour `20261028140000` comme
+   pour `20261028150000`).
+
+Le troisième motif est le plus solide des trois : il ne dépend d'aucune
+interprétation. La production autorise aujourd'hui `contributor` à insérer dans
+`plm_erp_sync_jobs`, alors que le dépôt réserve cette action à
+`owner`/`admin`/`manager`.
 
 Ce qui est acquis, et ne dépend plus d'aucun accès :
 
 | Contrôle | État |
 |---|---|
-| `plm_erp_gs1` — dérive identifiée | **fait** (par le propriétaire) |
+| `plm_erp_gs1` — dérive **mesurée en production** | **fait** — 4 politiques au lieu de 2, verdict automatique `FAIL` |
 | `plm_erp_gs1` — correctif vérifié sur la chaîne réelle | **fait** — 19 vérifications, canoniques intactes, rejeu sans erreur |
 | `supplier_portal` — correctif vérifié sur la chaîne réelle | **fait** — 42 vérifications, un seul trou réel fermé |
 | Cinq migrations hors bande — équivalence des deux chemins | **fait** — 46 vérifications |
+| 14 tables — état RLS en production | **fait** — conforme |
+| 14 fonctions — `SECURITY DEFINER`, `search_path`, `EXECUTE` | **fait** — conforme |
 | CI complète sur le SHA exact | **fait** |
 
-Ce qui reste, et tient en **une commande** :
+Ce qui reste, et qui tient en **deux opérations autorisées** :
 
-```bash
-psql "$DIRECT_URL" -A -t -v ON_ERROR_STOP=1 \
-     -f docs/security/2026-10-28-tour30-A-confrontation-lecture-seule.sql \
-     > /tmp/etat-production.txt
-node scripts/verifier_confrontation_production.mjs /tmp/etat-production.txt
-```
+1. **une seconde lecture**, avec la requête élargie — les 31 politiques, une par
+   une, pour couvrir les douze tables que la première n'a lues qu'en nombre ;
+2. **l'application** de `20261028150000` puis `20261028140000`, par le runbook
+   éprouvé.
 
-Elle couvre `plm_erp_gs1` **et** les douze tables, et rend un verdict par
-comparaison, pas par relecture. `PASS` lève le dernier point ; `FAIL` nomme le
-fait divergent.
-
-Une fois la fusion faite, **la production n'est pas pour autant sûre** : deux
-correctifs restent à appliquer (`20261028140000`, `20261028150000`), et `deploy`
-doit rester gelé jusque-là. Fusionner ne déploie pas.
-
+`PASS` sur la seconde lecture **ne vaudra pas** `PRÊTE À FUSIONNER` à lui seul :
+la fusion laisserait la production dans l'état mesuré ci-dessus. Fusionner ne
+déploie pas — `deploy` doit rester gelé, et le rester jusqu'à ce que
+l'historique Prisma porte les deux correctifs.

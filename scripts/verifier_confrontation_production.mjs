@@ -53,6 +53,14 @@ const refCache = (args.find((a) => a.startsWith('--referentiel=')) || '').split(
 // `--ecrire-referentiel=<fichier>` produit le referentiel sans rien comparer.
 const refSortie = (args.find((a) => a.startsWith('--ecrire-referentiel=')) || '').split('=')[1];
 
+// `--perimetre-plm` : comparaison limitee aux politiques des deux tables PLM.
+// La requete du 28/10 ne les interrogeait qu'elles ; sans ce drapeau, les
+// vingt-sept politiques des douze autres tables manqueraient a l'appel et
+// passeraient pour des divergences. Le drapeau ne RESTREINT que ce qui est
+// compare : il ne desactive aucun controle sur ce qui a ete lu.
+const PERIMETRE_PLM = args.includes('--perimetre-plm');
+const TABLES_PLM = ['plm_erp_integrations', 'plm_erp_sync_jobs'];
+
 if (!fichier && !refSortie) {
   console.error('usage : node scripts/verifier_confrontation_production.mjs <sortie-psql.txt>');
   process.exit(2);
@@ -71,6 +79,57 @@ const dossiers = fs.readdirSync(MIGRATIONS).filter((d) => /^\d{14}_/.test(d)).so
    s'execute des deux cotes ; elle reste vide, donc toutes les lignes `H`
    ressortent a `present=0`, ce qui est l'etat attendu d'une base neuve.
    ------------------------------------------------------------------------- */
+
+/**
+ * L'HISTORIQUE NE SE COMPARE PAS A UNE BASE NEUVE.
+ *
+ * La base de reference est construite par application des migrations : elle
+ * n'a jamais vu `prisma migrate`, donc son `_prisma_migrations` est vide, et
+ * toutes ses lignes `H` disent `present=0`. Comparer la production a cela
+ * produisait quinze « echecs » qui ne disaient rien de la production : le
+ * 28/10, le premier passage du verificateur l'a fait, et ces quinze echecs
+ * masquaient la seule divergence reelle.
+ *
+ * L'etat attendu de l'historique est donc ECRIT ici, a partir de la
+ * reconciliation du 28/10 : les cinq migrations hors bande sont presentes avec
+ * `applied_steps_count = 0`, les deux correctives ne le sont pas encore. Ce
+ * bloc remplace les lignes `H` du referentiel, qu'il vienne d'une base neuve
+ * ou d'un cache.
+ */
+const HISTORIQUE_ATTENDU = {
+  '20261006220000_esg_pef_footprint_engine': { present: '1', steps: '0', termine: 'true' },
+  '20261006230000_green_claims_anti_greenwashing_engine': { present: '1', steps: '0', termine: 'true' },
+  '20261006240000_quality_corrective_action_plans_cap': { present: '1', steps: '0', termine: 'true' },
+  '20261006250000_universal_supplier_passport': { present: '1', steps: '0', termine: 'true' },
+  '20261006260000_mass_balance_anti_fraud_engine': { present: '1', steps: '0', termine: 'true' },
+  // Absente : la requete rend `present=0`, sans date ni nombre d'etapes.
+  '20261028140000_supplier_invitation_owner_relationship_scope':
+    { present: '0', steps: '-', termine: 'false' },
+  '20261028150000_plm_erp_policy_convergence':
+    { present: '0', steps: '-', termine: 'false' },
+};
+const ligneHistorique = (nom) => {
+  const champsAttendus = HISTORIQUE_ATTENDU[nom];
+  if (!champsAttendus) return null;
+  const corps = Object.entries(champsAttendus).map(([c, v]) => `${c}=${v}`).join('|');
+  return `H|${nom}|${corps}`;
+};
+const appliquerHistorique = (lignes) => {
+  const hors = lignes.filter((l) => !l.startsWith('H|'));
+  const vues = new Set();
+  const hist = [];
+  for (const l of lignes) {
+    if (!l.startsWith('H|')) continue;
+    const nom = l.split('|')[1];
+    vues.add(nom);
+    const attendue = ligneHistorique(nom);
+    if (attendue) hist.push(attendue);
+  }
+  for (const nom of Object.keys(HISTORIQUE_ATTENDU)) {
+    if (!vues.has(nom)) hist.push(ligneHistorique(nom));
+  }
+  return [...hors, ...hist];
+};
 
 let referentiel;
 if (refCache) {
@@ -99,6 +158,13 @@ console.log(`  ${dossiers.length} migrations appliquees.`);
 
 referentiel = (await db.query(fs.readFileSync(REQUETE, 'utf8'))).rows.map((r) => r.ligne ?? Object.values(r)[0]);
 await db.close();
+}
+
+// Les lignes `H` de la base neuve ne decrivent pas la production : remplacees.
+referentiel = appliquerHistorique(referentiel);
+if (PERIMETRE_PLM) {
+  referentiel = referentiel.filter((l) => !l.startsWith('P|')
+    || TABLES_PLM.some((t) => l.startsWith(`P|${t}.`)));
 }
 
 if (refSortie) {
@@ -157,8 +223,13 @@ const parCle = (lignes) => {
 const ref = parCle(referentiel);
 const mes = parCle(mesure);
 
+
 // Le proprietaire n'est pas dans la requete : il est mesure separement plus bas.
-const CHAMPS_DURS = ['existe', 'rls', 'force', 'cmd', 'roles', 'permissive',
+// `politiques` (le nombre de politiques d'une table) manquait : une table qui
+// gagne une politique supplementaire passait donc inapercue par ce champ. C'est
+// exactement la derive du 28/10 — trouvee sur les lignes `P`, mais le compteur
+// aurait du la signaler aussi.
+const CHAMPS_DURS = ['existe', 'rls', 'force', 'politiques', 'cmd', 'roles', 'permissive',
   'secdef', 'search_path', 'exec_public', 'exec_app', 'present', 'steps', 'termine'];
 const CHAMPS_TEXTE = ['using', 'check']; // rendu d'expression : peut differer sans changer le sens
 
@@ -213,7 +284,7 @@ const champs = (ligne) => {
 let echecs = 0;
 let aQualifier = 0;
 const manquantes = [...ref.keys()].filter((k) => !mes.has(k));
-const surnumeraires = [...mes.keys()].filter((k) => !ref.has(k));
+const surnumeraires = [...mes.keys()].filter((k) => !ref.has(k) && !k.startsWith('H|'));
 
 console.log(`\n  ${ref.size} faits attendus, ${mes.size} faits mesures.`);
 
@@ -281,9 +352,16 @@ for (const [cle, attendu] of ref) {
 
 const proprietaires = new Set();
 for (const l of mesure) {
-  if (l.startsWith('F|')) {
-    const m = l.match(/\|props?rietaire=([^|]+)/);
-    if (m) proprietaires.add(m[1]);
+  const m = l.match(/\|proprietaire=([^|]+)$/);
+  if (m) proprietaires.add(m[1]);
+}
+if (proprietaires.size) {
+  const liste = [...proprietaires].sort().join(', ');
+  console.log(`\n  Proprietaires des objets mesures : ${liste}`);
+  if (proprietaires.size > 1) {
+    aQualifier += 1;
+    console.log('  A QUALIFIER  plusieurs proprietaires : un catalogue ou les objets appartiennent');
+    console.log('               a des roles differents n est pas l etat attendu.');
   }
 }
 

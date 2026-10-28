@@ -64,9 +64,9 @@ const refPath = path.join(tmp, 'referentiel.txt');
 const gen = lancer([`--ecrire-referentiel=${refPath}`]);
 ok('le referentiel se calcule', gen.code === 0, gen.sortie.slice(0, 300));
 const ref = fs.readFileSync(refPath, 'utf8').split('\n').filter(Boolean);
-ok('le referentiel est substantiel (39 faits attendus)', ref.length === 39, `${ref.length}`);
-ok('il porte les quatre politiques de plm_erp_gs1',
-  ref.filter((l) => l.startsWith('P|')).length === 4,
+ok('le referentiel est substantiel (66 faits attendus)', ref.length === 66, `${ref.length}`);
+ok('il porte TOUTES les politiques des quatorze tables (31), pas seulement celles de plm',
+  ref.filter((l) => l.startsWith('P|')).length === 31,
   `${ref.filter((l) => l.startsWith('P|')).length}`);
 ok('il porte les quatorze tables et les fonctions des cinq',
   ref.filter((l) => l.startsWith('T|')).length === 14 && ref.filter((l) => l.startsWith('F|')).length >= 14,
@@ -106,6 +106,10 @@ const cas = [
   ['corrective deja presente dans l historique', muter('m7.txt',
     (l) => (l.startsWith('H|20261028140000')
       ? 'H|20261028140000_supplier_invitation_owner_relationship_scope|present=1|steps=1|termine=true' : l)), 1],
+  ['politique en plus sur une table hors PLM (compteur)', muter('m9.txt',
+    (l) => (l.startsWith('T|green_claims_audits|') ? l.replace('|politiques=2|', '|politiques=3|') : l)), 1],
+  ['historique remis a zero (cinq hors bande effacees)', muter('m10.txt',
+    (l) => (l.startsWith('H|2026100622') ? l.replace(/\|present=1\|steps=0\|termine=true$/, '|present=0|steps=-|termine=false') : l)), 1],
   ['rendu seulement : espaces et casts differents', muter('m8.txt',
     (l) => (l.includes("'owner'::membership_role")
       ? l.replace("'owner'::membership_role", "'owner' :: membership_role") : l)), 3],
@@ -117,6 +121,28 @@ for (const [libelle, fichier, attendu] of cas) {
   ok(`${libelle} → ${nom} (code ${attendu})`, r.code === attendu,
     `code ${r.code} — ${r.sortie.split('\n').filter((l) => /ECHEC|QUALIFIER/.test(l)).slice(0, 3).join(' | ')}`);
 }
+
+/* -------------------------------------------------------------------------
+   2 ter. Le perimetre restreint ne masque rien de ce qu'il lit
+   ------------------------------------------------------------------------- */
+
+console.log('\n  2 ter. Comparaison limitee aux deux tables PLM');
+
+// La requete du 28/10 n'interrogeait que les politiques de ces deux tables.
+// Sans le drapeau, les vingt-sept politiques des douze autres passeraient pour
+// des divergences. Avec, la comparaison doit rester stricte sur ce qui a ete lu.
+const plmRef = ecrire('plm-referentiel.txt',
+  `${ref.filter((l) => !l.startsWith('P|') || l.startsWith('P|plm_erp_')).join('\n')}\n`);
+const rPlm = lancer([plmRef, plmRef, '--perimetre-plm']);
+ok('un relevé conforme sur le perimetre PLM → PASS (code 0)', rPlm.code === 0,
+  `code ${rPlm.code} — ${rPlm.sortie.split('\n').filter((l) => /ECHEC/.test(l)).slice(0, 2).join(' | ')}`);
+
+const plmDerive = ecrire('plm-derive.txt', `${fs.readFileSync(plmRef, 'utf8').trimEnd()}
+P|plm_erp_sync_jobs.plm_erp_sync_jobs_select_brand|roles=public|cmd=SELECT|permissive=PERMISSIVE|using=tracefab_is_org_member(brand_organization_id)|check=(aucun)
+`);
+const rDerive = lancer([plmDerive, plmRef, '--perimetre-plm']);
+ok('une politique surnumeraire sur le perimetre PLM → pas un PASS (code 3)', rDerive.code === 3,
+  `code ${rDerive.code}`);
 
 /* -------------------------------------------------------------------------
    2 bis. Les deux formats de sortie sont acceptes
@@ -147,7 +173,9 @@ ok('une sortie vide est un echec, pas un silence', lancer([vide, `--referentiel=
 
 const partielle = ecrire('partielle.txt', `${ref.slice(0, 3).join('\n')}\n`);
 const rp = lancer([partielle, `--referentiel=${refPath}`]);
-ok('trois faits sur trente-neuf est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);
+ok('le perimetre restreint ne desactive pas les onze autres controles de table',
+  lancer([muter('m11.txt', (l) => (l.startsWith('T|pef_emission_factors|') ? l.replace('|rls=true|', '|rls=false|') : l)), plmRef, '--perimetre-plm']).code === 1);
+ok('trois faits sur soixante-six est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);
 ok('les faits manquants sont nommes', /absent/.test(rp.sortie));
 
 /* -------------------------------------------------------------------------
@@ -166,7 +194,7 @@ fs.rmSync(tmp, { recursive: true, force: true });
 console.log('\n  --------------------------------------------');
 if (echecs === 0) {
   console.log(`  ${verifies} verifications passees.`);
-  console.log('  Le verificateur refuse les cinq falsifications et accepte le rendu.');
+  console.log('  Le verificateur refuse les falsifications et accepte le rendu conforme.');
   console.log('  Il peut donc trancher le BLOCKED de plm_erp_gs1.\n');
   process.exit(0);
 }

@@ -13,9 +13,14 @@
 --
 --   node scripts/verifier_confrontation_production.mjs /tmp/etat-production.txt
 --
+-- 66 faits : 14 tables, 31 politiques, 14 fonctions, 7 lignes d'historique.
+-- Une sortie partielle (par exemple la seule perimetre PLM) se compare avec
+-- `--perimetre-plm`, qui restreint le PERIMETRE compare sans relacher aucun
+-- controle sur ce qui a ete lu.
+--
 -- Format : une ligne par fait, champs separes par `|`, sans en-tete.
 --   T|table|existe|rls|force|politiques|proprietaire   etat RLS de chaque table
---   P|table.politique|roles|cmd|using|check   les quatre politiques de plm_erp_gs1
+--   P|table.politique|roles|cmd|using|check   toutes les politiques des tables
 --   F|fonction|secdef|search_path|exec|proprietaire    fonctions des cinq
 --   H|migration|present|steps|termine         historique Prisma, en lecture (7 lignes)
 
@@ -73,7 +78,13 @@ SELECT ligne FROM (
            ON cl.relname = c.nom AND cl.relnamespace = 'public'::regnamespace
 
   UNION ALL
-  -- 2. Les quatre politiques de `plm_erp_gs1`, en entier.
+  -- 2. TOUTES les politiques des quatorze tables, en entier.
+  --
+  -- Ne comparer que le NOMBRE de politiques ne dit rien des regles : une
+  -- politique peut etre reecrite a nombre constant. Le 28/10, le compteur a
+  -- signale la derive PLM, mais il ne l'aurait pas fait si la production avait
+  -- remplace une politique par une autre du meme nom. Les regles sont donc
+  -- lues une par une.
   SELECT 2, tablename || '.' || policyname,
          'P|' || tablename || '.' || policyname
          || '|roles=' || array_to_string(roles, ',')
@@ -83,7 +94,7 @@ SELECT ligne FROM (
          || '|check=' || regexp_replace(coalesce(with_check, '(aucun)'), '\s+', ' ', 'g')
     FROM pg_catalog.pg_policies
    WHERE schemaname = 'public'
-     AND tablename IN ('plm_erp_integrations', 'plm_erp_sync_jobs')
+     AND tablename IN (SELECT nom FROM cibles)
 
   UNION ALL
   -- 3. Les fonctions : DEFINER, search_path, EXECUTE effectif.
