@@ -8,22 +8,32 @@ import { requestedTenantId } from './tenant.js';
  * internal user UUID and email available to PostgreSQL RLS and SECURITY
  * DEFINER functions.
  */
+/**
+ * Execute une operation de synchronisation systeme.
+ *
+ * CE QUE CETTE FONCTION NE FAIT PLUS, ET POURQUOI
+ *
+ * Jusqu'au 27/10/2026, elle posait `set_config('tracefab.worker_context')` et
+ * onze politiques RLS s'ouvraient sur ce drapeau. Le drapeau etait falsifiable :
+ * mesure sur base jetable, `tracefab_app` seul voyait 0 ligne, puis 2 / 2 / 2
+ * (organisations, utilisateurs, adhesions) apres avoir pose le GUC lui-meme.
+ * L'isolation de ces tables ne tenait donc pas a la base mais au code.
+ *
+ * Desormais le privilege ne vient plus d'un etat de session, mais de fonctions
+ * nommees, possedees par l'identite `tracefab_worker` et declarees au registre
+ * runtime (migrations 20261028120000 et 20261028120100). Cette enveloppe reste
+ * le point d'entree unique des operations systeme — les garde-fous
+ * `test_route_context_coverage` et `test_context_integrity` s'appuient dessus —
+ * mais elle n'accorde plus aucun droit par elle-meme.
+ *
+ * Consequence assumee : si une requete ecrite ici lit une table gardee par une
+ * politique worker, elle rendra zero ligne. C'est le comportement voulu — le
+ * silence vaut mieux qu'une fuite — et `test:worker:non-forgeable` le verifie.
+ */
 export async function withTracefabWorkerContext<T>(
   callback: (tx: Prisma.TransactionClient) => Promise<T>,
 ) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('tracefab.worker_context', 'true', true)`;
-    try {
-      return await callback(tx);
-    } finally {
-      try {
-        await tx.$executeRaw`SELECT set_config('tracefab.worker_context', 'false', true)`;
-      } catch {
-        // Preserve the original transaction error if PostgreSQL has already
-        // marked the transaction as aborted.
-      }
-    }
-  });
+  return prisma.$transaction(callback);
 }
 
 /**

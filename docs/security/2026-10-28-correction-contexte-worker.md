@@ -1,118 +1,189 @@
-# Contexte worker : la faille est fermable, deux garde-fous du dépôt bloquent la livraison
+# Contexte worker : la falsification est neutralisée, et livrable
 
-Date : 28/10/2026 · Branche : `arena/c27ddaa4-tracefab` · Base d'essai : PostgreSQL 18.4 jetable, 60 migrations, rôle `tracefab_app` sans `BYPASSRLS`.
+Date : 28/10/2026 · Branche : `arena/c27ddaa4-tracefab` · Base d'essai : PostgreSQL 18.4 jetable, 61 migrations, rôle `tracefab_app` sans `BYPASSRLS`.
 
-Ce document remplace et corrige `docs/security/2026-10-27-isolation-contexte-worker.md`
-sur un point : l'option A n'était pas seulement coûteuse, elle est **incompatible avec
-un invariant du dépôt**. Et l'option B, que ce tour a construite et mesurée, bute sur
-un second garde-fou. Rien n'a été livré : voir §6.
+Ce document remplace `2026-10-28-correction-contexte-worker.md` (version « bloquée ») :
+les deux obstacles identifiés la veille sont levés, sans modifier l'historique des
+migrations et sans écrire dans `_prisma_migrations`.
 
 ---
 
-## 1. Faits mesurés
+## 1. Le défaut, et pourquoi il durait
 
-| # | Fait | Preuve |
+Onze politiques RLS s'ouvraient sur un GUC de session :
+
+```sql
+current_setting('tracefab.worker_context', true) = 'true'
+```
+
+Un GUC est positionnable par n'importe quel rôle. Mesure sur base jetable, rôle
+`tracefab_app` sans `BYPASSRLS` :
+
+| État | organizations | users | organization_memberships |
+|---|---|---|---|
+| sans contexte | 0 | 0 | 0 |
+| après `SET tracefab.worker_context = 'true'` | 2 | 2 | 2 |
+
+L'isolation ne tenait donc pas à la base mais à la bonne volonté de l'appelant.
+
+Une piste « propre » a été mesurée puis écartée : `REVOKE SET ON PARAMETER` ne
+protège pas un paramètre personnalisé — après révocation, `set_config()` **et**
+`SET` passent encore. Il n'existe pas de version sûre de ce mécanisme.
+
+## 2. Les deux obstacles levés
+
+### 2.1 La liste blanche des fonctions ne pouvait pas grandir
+
+`20261021120000_limit_app_function_execute` figeait les fonctions exécutables par
+`tracefab_app` dans un tableau `runtime_names`, et vérifiait à la fin que **chaque
+nom existe déjà** — sinon `42883`. Une migration postérieure ne pouvait donc rien
+ajouter sans modifier un fichier déjà appliqué, ce qui change son empreinte et
+exige d'écrire dans `_prisma_migrations`.
+
+**Réponse : `20261028120000_runtime_function_registry`.**
+
+Les noms quittent le code de la migration pour une table, `tracefab_runtime_function_registry`.
+Une migration ultérieure ajoute un nom par `INSERT`. Le contrôle n'est pas levé, il
+est **déplacé et renforcé** — la fonction `tracefab_apply_runtime_function_grants()`
+vérifie, à chaque application :
+
+1. chaque nom enregistré désigne **exactement une** fonction, publique, appartenant
+   à un propriétaire de confiance — sinon `42883` ;
+2. toute fonction appelée par une politique RLS est enregistrée ;
+3. aucun `EXECUTE` ne subsiste hors registre — sinon `42501` ;
+4. chaque nom enregistré est réellement exécutable ;
+5. aucune `SECURITY DEFINER` n'est exécutable par `PUBLIC`.
+
+La migration ne fait pas que créer le registre : elle reconstruit le périmètre
+existant à partir de lui, et échouerait si les 84 noms hérités n'étaient pas
+retrouvés à l'identique.
+
+### 2.2 Une fonction `SECURITY DEFINER` ne pouvait pas voir les tables protégées
+
+C'est le point que la version précédente du candidat avait faux, et il ne se voit
+pas en test local : toutes les tables sensibles sont en `FORCE ROW LEVEL SECURITY`,
+donc **même le propriétaire de la table est soumis aux politiques**. Or
+`current_user` vaut le *propriétaire* à l'intérieur d'une fonction `SECURITY DEFINER`.
+
+Mesure directe (rôle propriétaire **non superutilisateur**, `FORCE RLS` activée) :
+
+| Propriétaire de la fonction | Ce que la fonction voit |
+|---|---|
+| propriétaire des migrations | **0 ligne** |
+| `tracefab_worker` (le rôle testé par la politique) | **1 ligne** |
+
+Le candidat précédent avait été validé sous `postgres`, qui **contourne** la RLS :
+il aurait donc été muet sur la base gérée. Les six fonctions appartiennent
+désormais à `tracefab_worker`, ce qui rend `current_user` égal à lui-même à
+l'intérieur de leur exécution — et seulement là.
+
+## 3. Ce qui a été livré
+
+### `20261028120000_runtime_function_registry`
+
+- table `tracefab_runtime_function_registry` : RLS **activée et forcée**, unique
+  politique réservée au propriétaire, aucun privilège applicatif utile ;
+- reprise des 84 noms hérités, à l'identique ;
+- `tracefab_apply_runtime_function_grants()` : `SECURITY INVOKER`, `search_path`
+  figé à `pg_catalog`, `EXECUTE` retiré à `PUBLIC` **et** au rôle applicatif —
+  sinon le runtime pourrait s'ouvrir lui-même n'importe quelle fonction.
+
+### `20261028120100_worker_identity_not_forgeable`
+
+- `tracefab_worker` : `NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE
+  NOCREATEDB` — aucun mot de passe, aucune session, donc aucun secret à créer ;
+- les onze politiques lisent `current_user`, plus le GUC ;
+- `tracefab_app` ne peut pas endosser le worker (`SET ROLE` et
+  `SET SESSION AUTHORIZATION` refusés, aucune appartenance croisée) ;
+- six opérations système nommées, possédées par `tracefab_worker`, déclarées au
+  registre ;
+- privilèges du worker limités aux tables que ces six fonctions touchent ;
+- **réduction** : `INSERT/UPDATE/DELETE/TRUNCATE` sur `users` est retiré à
+  `tracefab_app`, les écritures passant désormais par les fonctions.
+
+## 4. Preuves mesurées
+
+| # | Propriété | Mesure |
 |---|---|---|
-| 1 | `tracefab_app` seul, sans contexte : 0 ligne sur `organizations`, `users`, `organization_memberships` | `prouver_bypass_contexte_worker.mjs`, sortie 1 |
-| 2 | même rôle, après `SET tracefab.worker_context = 'true'` : 2 / 2 / 2 | même script, avant correctif |
-| 3 | 11 politiques RLS s'ouvrent sur ce GUC | catalogue `pg_policies` |
-| 4 | Après réécriture des 11 politiques sur `current_user = 'tracefab_worker'` : le GUC ne donne plus **aucune** ligne (0 / 0 / 0) | même script, sortie 0 |
-| 5 | Le test de non-régression **échoue** si une seule politique repasse sur le GUC | remise temporaire de `organizations_worker_select` → 2 échecs immédiats |
-| 6 | `REVOKE SET ON PARAMETER` **ne protège pas** un paramètre personnalisé : `set_config()` et `SET` passent quand même | mesuré : les deux acceptés après révocation |
-| 7 | Un rôle `tracefab_worker` NOLOGIN ne peut pas être endossé par `tracefab_app` : `SET ROLE` et `SET SESSION AUTHORIZATION` refusés | mesuré |
-| 8 | Les six opérations système converties en fonctions nommées fonctionnent sous `tracefab_app` dans une transaction annulée | mesuré, 10 assertions |
+| 1 | sans contexte, le rôle applicatif ne voit rien | 0 / 0 / 0 |
+| 2 | GUC worker posé par l'appelant | **0 / 0 / 0** (avant : 2 / 2 / 2) |
+| 3 | contexte tenant légitime préservé | sa propre organisation : 1 ; les autres : 0 |
+| 4 | six opérations worker sous identité autorisée | 6/6 fonctionnelles |
+| 5 | DPP : rien sans contexte, contexte public forcé n'ouvre ni org ni adhésion | conforme |
+| 6 | ni l'un ni l'autre ne peut endosser l'autre | `SET ROLE` refusé, 0 appartenance |
+| 7 | aucun privilège élargi | 0 table lisible par le worker seul |
+| 8 | registre | 90 noms = 90 `EXECUTE`, **0 hors registre** |
 
-Les faits 1 à 3 sont l'état d'origine ; 4 à 8 sont l'état du correctif candidat.
+**Le test est mordant** : en remettant une seule politique sur le GUC, la propriété 2
+échoue immédiatement et la suite sort en code 1. Vérifié, pas supposé.
 
-## 2. Option A écartée — et pourquoi cette fois c'est dirimant
+## 5. Tests bloquants ajoutés en CI
 
-L'option A consistait à créer une identité `tracefab_worker` connectable et à lui
-donner un **second client Prisma**. Elle ferme bien la faille (fait 4), mais :
+| Test | Ce qu'il refuse |
+|---|---|
+| `test:worker:non-forgeable` | la falsification du GUC, l'usurpation d'identité, tout élargissement |
+| `test:registre:fonctions` | nom fantôme, divergence module↔base, `EXECUTE` hors registre, perte du périmètre hérité, **modification de `20261021120000`** (empreinte épinglée), `GRANT` direct contournant le registre |
 
-- elle exige un mot de passe de plus, donc un **nouveau secret** et une modification
-  de rôle sur la base gérée ;
-- surtout, elle **casse un invariant du dépôt** : « une seule variable de connexion,
-  un seul client Prisma ». Le banc `test:inventaire:consommateurs` l'a refusée
-  immédiatement — 4 cas en échec, dont « le rapport ne liste qu'un client Prisma —
-  `["api/_lib/context.ts","api/_lib/prisma.ts"]` ».
+## 6. Déploiement
 
-Un correctif de sécurité qui désarme un garde-fou existant n'est pas un correctif.
-L'option A est donc abandonnée, pas reportée.
+**Prérequis à vérifier en lecture seule avant toute exécution** (non exécutés ici) :
 
-## 3. Option B construite et mesurée
+1. le rôle de connexion des migrations possède `CREATEROLE` — la migration crée
+   `tracefab_worker` ;
+2. il peut attribuer la propriété d'une fonction (`ALTER FUNCTION … OWNER TO`),
+   ce qui est vrai s'il peut créer un rôle et s'en accorder l'appartenance ;
+3. l'historique `_prisma_migrations` contient bien les 59 migrations antérieures
+   et aucune migration en échec.
 
-Six fonctions nommées remplacent les requêtes faites sous contexte worker :
+**Ordre** : `prisma migrate deploy` applique `20261028120000` puis
+`20261028120100`. Les deux sont transactionnelles.
 
-| Fonction | Remplace | Portée |
-|---|---|---|
-| `tracefab_upsert_clerk_user` | `user.upsert` (`auth.ts`, webhook) | rend la seule ligne écrite |
-| `tracefab_ensure_clerk_user` | `user.upsert` conditionnel | ne réécrit jamais un compte existant |
-| `tracefab_soft_delete_clerk_user` | `user.updateMany` | une ligne, par identifiant Clerk |
-| `tracefab_clerk_organization_uuid` | `organizations.findUnique` | rend un seul uuid |
-| `tracefab_archive_clerk_organization` | `organizations.update` + `updateMany` | l'organisation désignée |
-| `tracefab_notification_outbox_health` | `COUNT` direct | des compteurs, aucune donnée nominative |
+**Vérification après application** (lecture seule) :
 
-Chacune : `SECURITY DEFINER`, `search_path = public` figé, `EXECUTE` retiré à `PUBLIC`,
-accordé au seul rôle applicatif, paramètres contrôlés, aucune lecture en masse.
+```sql
+-- 90 noms, 0 hors registre, worker sans LOGIN
+SELECT count(*) FROM public.tracefab_runtime_function_registry;
+SELECT c.relname FROM public.tracefab_runtime_function_registry;
+SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public' AND p.prokind = 'f'
+   AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
+   AND p.proname NOT IN (SELECT name FROM public.tracefab_runtime_function_registry);
+SELECT rolcanlogin, rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'tracefab_worker';
+```
 
-Deux détails appris par l'exécution, pas par la lecture :
+Attendu : `90`, `0`, `f | f | f`.
 
-- **Sans alias, la fonction ne compile pas en pratique** : les colonnes de sortie
-  portent les mêmes noms que celles de `users`, et `ON CONFLICT (clerk_user_id)`
-  devient ambigu. Les sorties sont donc préfixées `out_`.
-- **`tracefab_archive_clerk_organization` échoue sur `last_owner_membership_required`**.
-  Ce n'est pas une régression : le même `UPDATE` lancé par le propriétaire de la base,
-  hors RLS et hors de la fonction, échoue à l'identique. Le garde métier préexiste ;
-  l'ancien code le rencontrait déjà puisqu'il révoquait toutes les adhésions.
+## 7. Retour arrière
 
-## 4. Ce qui bloque la livraison
+Le retour arrière est **techniquement possible et opérationnellement déconseillé** :
+revenir au GUC rouvre la faille. Il n'est légitime que pour rétablir un service
+pendant une fenêtre de quelques minutes.
 
-### Blocage 1 — la liste d'autorisation des fonctions SQL ne peut pas grandir
+```sql
+-- 1. Remettre les onze politiques sur le GUC (état d'origine exact) :
+--    exécuter docs/security/candidats/2026-10-28-retour-arriere-contexte-worker.sql
+-- 2. Détacher les fonctions de l'identité worker
+ALTER FUNCTION public.tracefab_upsert_clerk_user(TEXT,TEXT,TEXT) OWNER TO <propriétaire des migrations>;
+-- … idem pour les cinq autres
+-- 3. Rendre au rôle applicatif l'écriture directe sur users (rétablit l'ancien chemin)
+GRANT INSERT, UPDATE, DELETE ON TABLE public.users TO tracefab_app;
+-- 4. Détruire le registre
+DROP FUNCTION public.tracefab_apply_runtime_function_grants();
+DROP TABLE public.tracefab_runtime_function_registry;
+-- 5. Détruire l'identité worker
+DROP ROLE tracefab_worker;
+```
 
-Le dépôt tient une liste blanche des fonctions exécutables par le runtime, en deux
-endroits qui doivent être **identiques** :
+Les migrations restant enregistrées dans `_prisma_migrations`, un redéploiement
+ultérieur ne les rejouera pas : c'est un retour arrière **manuel**, à documenter
+comme incident si utilisé.
 
-- `scripts/lib/tracefab_runtime_functions.mjs` ;
-- le tableau `runtime_names text[] := ARRAY[...]` de la migration
-  `20261021120000_limit_app_function_execute`.
+## 8. Ce qui reste ouvert
 
-Cette migration vérifie que **chaque** nom du tableau existe déjà à cet instant
-(`missing, overloaded or foreign-owned functions`). Ajouter les six fonctions au
-tableau casse donc la chaîne sur une base neuve — vérifié : `42883 Runtime EXECUTE
-allowlist has missing…`. Ne pas les y ajouter laisse les deux listes désaccordées —
-vérifié aussi : `module=90, migration=84`.
-
-Le mécanisme n'accepte aujourd'hui **aucune fonction nouvelle appelée depuis `api/`**
-sans modifier une migration déjà appliquée. Or cette modification change son empreinte,
-et la réparation correspondante se fait en écrivant dans `_prisma_migrations` — geste
-explicitement interdit sans autorisation.
-
-### Blocage 2 — conséquence de service
-
-La migration de correction, seule, **casse les chemins worker** : sans le GUC, plus
-aucune de leurs requêtes ne passe. Elle n'est donc pas livrable sans le volet code,
-et le volet code n'est pas livrable sans lever le blocage 1. Les deux vont ensemble
-ou pas du tout.
-
-## 5. Ce qu'il faudrait décider
-
-Une seule décision débloque tout, et elle n'appartient pas au correctif :
-
-> **Étendre le mécanisme de liste blanche pour qu'il accepte les fonctions créées par
-> une migration postérieure**, par exemple en lisant le dernier instantané
-> `runtime_names` au lieu du chemin figé, et en tolérant les noms qui n'existent pas
-> encore à la date de la migration d'origine.
-
-Une fois cette décision prise, la livraison est mécanique : le candidat SQL
-`docs/security/candidats/2026-10-28-fermer-contexte-worker.sql` et son banc
-`2026-10-27-test-worker-non-forgeable.mjs` sont prêts et **ont déjà tourné**.
-
-## 6. État exact — rien n'est clos
-
-- Correctif **prouvé** sur base jetable, **non livré** : les deux blocages ci-dessus.
-- Aucune migration ajoutée au dépôt : le candidat est hors `prisma/migrations`, il ne
-  peut donc pas partir en production par accident.
-- Code applicatif **rendu à son état d'origine** : `git status` ne montre aucune
-  modification de `api/`.
-- Aucun secret créé, aucun rôle modifié ailleurs qu'en jetable, production non touchée.
-- P0 : **OUVERT**.
+- **P0 non clos** : la falsification est neutralisée dans un correctif livrable,
+  mais les migrations **ne sont appliquées à aucune base distante**. Tant que ce
+  n'est pas fait en production, le défaut y subsiste.
+- **Identité DB de production non mesurée** (`databaseIdentity.measured !== true`).
+- `test:neon:auth-provisioning` et `test:neon:security` n'ont pas pu être exécutés
+  hors ligne : le client Prisma ne se génère pas ici (`binaries.prisma.sh`
+  inaccessible). Ils tournent en CI, où le client est généré.

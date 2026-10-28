@@ -452,6 +452,25 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
+      - name: Registre des fonctions runtime — perimetre et coherence
+        # Bloquant. Echoue si (1) une fonction autorisee n'existe pas, (2) le
+        # module TypeScript et la base divergent, (3) une fonction executable
+        # existe hors registre, (4) le perimetre herite de 84 noms est perdu,
+        # (5) la migration 20261021120000 a change de contenu, (6) une migration
+        # posterieure accorde EXECUTE directement sans passer par le registre.
+        # Sans ce controle, un elargissement silencieux passerait inapercu.
+        run: npm run test:registre:fonctions
+
+      - name: L'identite worker n'est pas falsifiable — bloquant
+        # CE TEST ECHOUE SUR LE CODE VULNERABLE, pas seulement il passe sur le
+        # correctif : verifie le 28/10/2026 en remettant une politique sur le
+        # GUC worker — la propriete 2 tombe immediatement.
+        # Il prouve que tracefab_app ne peut plus lire organisations,
+        # utilisateurs et adhesions en posant tracefab.worker_context, que les
+        # six operations systeme fonctionnent sous identite autorisee, et
+        # qu'aucun des deux roles ne peut endosser l'autre.
+        run: npm run test:worker:non-forgeable
+
       - name: Garde-fous de la commande de validation Neon
         # Neuf chemins d'arret eprouves par execution : arbre modifie, revision
         # inattendue, cible de production, cible non nommee, banc applicatif

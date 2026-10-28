@@ -34,16 +34,18 @@ export async function provisionUserFromClerk(params: {
   fullName: string;
 }): Promise<{ id: string; email: string; fullName: string; clerkUserId: string }> {
   return withTracefabWorkerContext(async (tx: Prisma.TransactionClient) => {
-    const user = await tx.user.upsert({
-      where: { clerkUserId: params.clerkUserId },
-      create: {
-        clerkUserId: params.clerkUserId,
-        email: params.email,
-        fullName: params.fullName,
-      },
-      update: { email: params.email, fullName: params.fullName },
-    });
-    return { id: user.id, email: user.email, fullName: user.fullName, clerkUserId: user.clerkUserId };
+    // Fonction nommee et non requete Prisma : l'ecriture systeme ne passe plus
+    // par un contexte de session falsifiable. La fonction ne rend que la ligne
+    // ecrite, donc rien ne permet d'enumerer les utilisateurs a travers elle.
+    const rows = await tx.$queryRaw<Array<{
+      id: string; email: string; full_name: string; out_clerk_user_id: string;
+    }>>`
+      SELECT id, email, full_name, out_clerk_user_id
+        FROM tracefab_upsert_clerk_user(${params.clerkUserId}, ${params.email}, ${params.fullName})
+    `;
+    const user = rows[0];
+    if (!user) throw new Error('user_provisioning_failed');
+    return { id: user.id, email: user.email, fullName: user.full_name, clerkUserId: user.out_clerk_user_id };
   });
 }
 

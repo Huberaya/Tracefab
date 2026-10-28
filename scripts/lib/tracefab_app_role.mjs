@@ -64,7 +64,13 @@ export const APP_ROLE = 'tracefab_app';
 //   supplier_sites                api/_routes/supplier/sites/[siteId].ts:32            (supplier_sites.create, supplier_sites.update)
 //   tracefab_catalog_import_jobs  api/_routes/catalog/products/import.ts:138           (insert, update)
 //   tracefab_products             api/_lib/bulk-operations/bulk-importer.ts:97         (tracefab_products.create, tracefab_products.update)
-//   users                         api/_lib/auth.ts:37                                  (user.updatemany, user.upsert)
+//   users                         RETIREE le 28/10/2026 — les ecritures passent
+//                                 desormais par tracefab_upsert_clerk_user et
+//                                 tracefab_ensure_clerk_user, possedees par
+//                                 tracefab_worker et declarees au registre
+//                                 runtime. Aucune ecriture directe ne subsiste
+//                                 dans api/ (verifie par
+//                                 test:tables-ecriture-directe).
 //
 // Retirer une table d'ici exige d'avoir d'abord deplace son chemin applicatif
 // vers une fonction SECURITY DEFINER. Le controle
@@ -88,7 +94,6 @@ export const TABLES_ECRITURE_DIRECTE = [
   'supplier_sites',
   'tracefab_catalog_import_jobs',
   'tracefab_products',
-  'users',
 ];
 
 function quote(s) {

@@ -21,28 +21,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!workerAuthorized(req)) return json(res, 401, { error: 'unauthorized' });
 
   try {
+    // Compteurs lus par une fonction dediee : la sante de l'outbox n'a pas
+    // besoin de voir les lignes, seulement de les compter. Une requete directe
+    // exigerait le contexte worker, c'est-a-dire le drapeau falsifiable que le
+    // correctif vient de retirer.
     const rows = await withTracefabWorkerContext((tx) => tx.$queryRaw<OutboxHealthRow[]>`
-      SELECT
-        COUNT(*) FILTER (WHERE status = 'pending')::integer AS "pending",
-        COUNT(*) FILTER (WHERE status = 'processing')::integer AS "processing",
-        COUNT(*) FILTER (WHERE status = 'sent')::integer AS "sent",
-        COUNT(*) FILTER (WHERE status = 'failed')::integer AS "failed",
-        COUNT(*) FILTER (
-          WHERE status IN ('pending', 'failed')
-            AND available_at <= now()
-            AND attempts < 5
-        )::integer AS "ready",
-        COUNT(*) FILTER (
-          WHERE status = 'processing'
-            AND locked_at < now() - interval '15 minutes'
-        )::integer AS "staleProcessing",
-        COUNT(*) FILTER (WHERE status = 'failed' AND attempts >= 5)::integer AS "exhausted",
-        MIN(available_at) FILTER (
-          WHERE status IN ('pending', 'failed')
-            AND available_at <= now()
-            AND attempts < 5
-        ) AS "oldestReadyAt"
-      FROM tracefab_notification_outbox
+      SELECT * FROM tracefab_notification_outbox_health()
     `);
     const health = rows[0] || { pending: 0, processing: 0, sent: 0, failed: 0, ready: 0, staleProcessing: 0, exhausted: 0, oldestReadyAt: null };
     const degraded = health.staleProcessing > 0 || health.exhausted > 0;

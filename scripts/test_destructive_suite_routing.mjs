@@ -131,6 +131,11 @@ const ROLLBACK_ONLY_DB_SUITES = [
   // le parcours DPP passe malgre l'absence d'ecriture directe, puis annule :
   // il verifie apres coup que statut, revue et slug sont identiques.
   'scripts/test_dpp_role_applicatif.mjs',
+  // Ecrit via les six fonctions systeme (provisionnement d utilisateur, sante
+  // de l outbox) DANS une transaction toujours annulee, sous le role
+  // applicatif. Il verifie que les donnees ne survivent pas : c est le prix
+  // pour prouver que l ecriture legitime fonctionne encore.
+  'scripts/test_worker_non_forgeable.mjs',
 ];
 
 /**
@@ -178,6 +183,11 @@ const PATTERN_ONLY_FILES = [
   // throwaway. Elle n'ouvre aucune connexion. La suite SQL correspondante
   // est scripts/test_neon_supplier_advanced.mjs.
   'scripts/test_supplier_advanced.mjs',
+  // Lit le catalogue et les migrations. Le motif d ecriture qu il contient est
+  // une EXPRESSION REGULIERE servant a DETECTER les GRANT directs dans les
+  // migrations — il n en execute aucun. Le classer destructif l enverrait
+  // derriere une garde de cible sans rien proteger de plus.
+  'scripts/test_registre_fonctions_runtime.mjs',
 ];
 
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));

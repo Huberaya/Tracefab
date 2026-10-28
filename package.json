@@ -42,6 +42,8 @@
     "test:onboarding:chantier6": "node scripts/test_supplier_onboarding_chantier6.mjs",
     "test:neon:security": "node scripts/run-db-suite.mjs scripts/test_neon_security.mjs",
     "test:neon:rls": "node scripts/run-db-suite.mjs scripts/test_rls_isolation.mjs",
+    "test:worker:non-forgeable": "node scripts/test_worker_non_forgeable.mjs",
+    "test:registre:fonctions": "node scripts/test_registre_fonctions_runtime.mjs",
     "test:neon:document-lifecycle": "node scripts/run-db-suite.mjs scripts/test_neon_document_lifecycle.mjs",
     "test:context-integrity": "node scripts/test_context_integrity.mjs",
     "test:runtime-db-role-guard": "node scripts/test_runtime_db_role_guard.mjs",

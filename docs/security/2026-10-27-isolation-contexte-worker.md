@@ -1,9 +1,11 @@
-> **Suite du 28/10/2026 — lire `docs/security/2026-10-28-correction-contexte-worker.md`.**
-> Ce document decrit le defaut et un correctif candidat. Le tour suivant a mesure que
-> l'option A retenue ici est incompatible avec l'invariant « un seul client Prisma »,
-> et que l'option B bute sur la liste blanche des fonctions SQL. Le defaut est
-> toujours ouvert ; les conclusions de ce document sur l'origine du defaut restent
-> valables.
+> **Suite du 28/10/2026 — voir `docs/security/2026-10-28-correction-contexte-worker.md`.**
+> Ce document decrit le defaut et le premier correctif candidat. Le tour suivant a
+> leve les deux obstacles (registre des fonctions runtime, propriete des fonctions
+> par l'identite worker) et livre le correctif : la falsification ne donne plus
+> aucune ligne. Les constats de ce document sur l'origine du defaut restent
+> valables ; ses conclusions sur la livraison sont perimees.
+
+
 
 # Isolation multi-organisations — le contexte worker est contournable
 
