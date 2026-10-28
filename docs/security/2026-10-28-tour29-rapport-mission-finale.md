@@ -9,13 +9,19 @@ Branche `arena/c27ddaa4-tracefab`. Aucune connexion de production, aucune
 | | |
 |---|---|
 | SHA de départ, relevé sur le distant | `8ba7c8b66bc7649d6291147d4c825db679e78257` — **identique** à la révision annoncée |
-| SHA final | `42a3e3e3e18f8ffeeecfcb40cfc31f11f9c31927` |
-| PR #102 | `OPEN`, draft, `mergeable=MERGEABLE`, tête `42a3e3e` |
+| SHA de code et de tests, mesuré | `42a3e3e3e18f8ffeeecfcb40cfc31f11f9c31927` — CI **7/7** |
+| Commit de documentation suivant | `e5951a14365fb4d2144a58fce0e9484059a75515` — CI **6/6** |
+| PR #102 | `OPEN`, draft, `mergeable=MERGEABLE` |
+
+Les commits postérieurs à `42a3e3e` ne touchent que `docs/` : ils ne modifient
+ni test, ni migration, ni workflow. Chacun est vérifié séparément, et les
+valeurs ci-dessus sont celles effectivement relevées — pas une extrapolation
+d'un commit à l'autre.
 | Écart de travail | `/home/user/tf-p0`, 0 fichier modifié au départ |
 
-## 2. CI — vérifiée sur le SHA final exact
+## 2. CI — vérifiée sur le SHA exact, pas sur un ancêtre
 
-7 check-runs, **tous `success`**, tous `head_sha = 42a3e3e…` :
+Sur `42a3e3e…` : 7 check-runs, **tous `success`**, tous `head_sha = 42a3e3e…` :
 
 | Check | Job |
 |---|---|
@@ -216,7 +222,8 @@ ait été fait sur la production.
 | `test:route-auth-coverage` | **`NOT RUN`** — 113 échecs, **identiques** avec `git stash -u` sur l'arbre non modifié : cause = client Prisma non généré |
 | Suites navigateur (`test:copy`, `test:console-css`, `test:mission-ui`, `test:coherence`, …) | **`NOT RUN`** — Chromium absent / `libnspr4.so` manquante |
 | `test:dpp:review-publication`, `test:dpp:role-applicatif`, `test:dpp:branche`, `test:garde-fous:neon` | **`NOT RUN`** — cible base obligatoire, sortie 2 assumée par le dépôt et déjà exclue de la CI |
-| CI complète sur le SHA final | **`PASS`** — 7/7 |
+| CI complète sur `42a3e3e` (code + tests) | **`PASS`** — 7/7 |
+| CI complète sur les commits de documentation suivants | **`PASS`** — 6/6 chacun |
 
 Les 18 échecs locaux ont été instruits un par un : aucun ne provient d'un
 changement de ce tour.
