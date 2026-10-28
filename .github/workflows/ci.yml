@@ -218,6 +218,22 @@ jobs:
         # difference reelle : l atomicite.
         run: npm run test:migrations:hors-bande
 
+      - name: Confrontation production — le verificateur mord
+        # L instrument qui tranchera le BLOCKED de plm_erp_gs1 n a jamais vu la
+        # production ; il doit au moins avoir ete vu echouer. Ce test lui soumet
+        # neuf etats : conforme, et huit falsifications (RLS desactivee,
+        # politique supprimee, predicat remplace par true, mauvais
+        # organisation_id, SECURITY INVOKER, EXECUTE ouvert a PUBLIC, corrective
+        # deja presente, sortie partielle). Il exige FAIL sur les unes et
+        # A QUALIFIER sur la seule difference de rendu.
+        run: npm run test:confrontation-production
+
+      - name: Runbook d application — executable et discriminant
+        # Le SQL qui sera lance en production est joue ici, tel qu ecrit, sur la
+        # chaine complete : sans correctif puis avec. Les sondes doivent donner
+        # un resultat DIFFERENT, sinon elles ne prouvent rien.
+        run: npm run test:runbook-application
+
       - name: Reprise des migrations — incidents reproduits puis franchis
         # Sur PostgreSQL 18 (PGlite), meme majeure que Neon : les deux incidents
         # rapportes (refus de privilege sur public, conflit de signature de

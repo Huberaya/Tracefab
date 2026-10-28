@@ -49,31 +49,59 @@ comparaison, pas sur une absence d'erreur.
 
 `prisma/migrations/20261028140000_supplier_invitation_owner_relationship_scope/`
 
-### 2.1 Ce que la première rédaction ne fermait pas
+### 2.1 Une erreur que je dois corriger, et qui venait de mon propre test
 
-Ma rédaction initiale reposait le corps **tel que versionné** :
+*(Section réécrite au tour 30. Ce qui suit remplace une affirmation fausse que
+j'avais écrite ici.)*
+
+J'avais écrit que la règle du dépôt (`relationship_id IS NULL`) ouvrait **deux
+contournements** : un `admin` fabriquant un `owner` dans sa propre organisation,
+et la réutilisation d'une relation d'un autre couple. **C'était faux.**
+
+La chaîne pose un **second** déclencheur sur `organization_invitations` —
+`invitations_validate_relationship`, migration initiale `20260923130000` — dont
+la fonction exige déjà :
 
 ```sql
-IF NEW.target_role = 'owner' AND NEW.relationship_id IS NULL THEN RAISE ...
+r.id = NEW.relationship_id AND r.supplier_organization_id = NEW.organization_id
 ```
 
-En la relisant avant de la mesurer, j'ai constaté que ce prédicat ne vérifie
-**rien** sur la relation : il exige un identifiant non nul, pas une relation
-validée. Ce n'est pas une règle d'autorisation, c'est un test de présence.
+Il tire **avant** le nôtre (ordre alphabétique) et refuse les deux cas. Mesure
+sur la chaîne complète, tous déclencheurs en place :
 
-Or `tracefab_app` possède un `INSERT` direct sur `organization_invitations`
-(`TABLES_ECRITURE_DIRECTE`) et la politique `invitations_insert_admin` autorise
-tout `admin` de l'organisation visée. Deux contournements étaient donc réels :
+| Cas | Règle du dépôt |
+|---|---|
+| owner côté marque | `invitation_relationship_mismatch` |
+| relation d'un autre couple | `invitation_relationship_mismatch` |
 
-| Contournement | Mécanisme | Conséquence |
+**D'où venait l'erreur** : mon test montait un schéma écrit à la main — les deux
+tables, **une seule** fonction. Ce montage ne contenait pas le second
+déclencheur, donc il mesurait un système qui n'existe pas. Un test qui
+reconstruit une partie du système ne mesure pas le système. C'est exactement le
+reproche que je faisais aux empreintes du dépôt, appliqué à mon propre travail.
+
+### 2.2 Ce qui reste vrai — et c'est plus étroit, donc plus utile
+
+Sur la chaîne complète, l'écart entre production et dépôt tient en **deux
+lignes** :
+
+| Cas | production | dépôt |
 |---|---|---|
-| **(a) élévation de privilèges** | un `admin` invite un `owner` dans **sa propre** organisation en présentant une relation quelconque | un `admin` fabrique un `owner` — il ne devrait pas en avoir le droit |
-| **(b) réutilisation inter-organisations** | la relation présentée appartient à **deux autres** organisations | une relation d'autrui sert de laissez-passer |
+| onboarding : owner + relation fournisseur | **refusé** | accepté |
+| relation terminée (`status = 'ended'`) | refusé — mais seulement parce que *tout* `owner` est refusé | **accepté** ← le seul trou réel |
 
-Recopier le corps versionné aurait donc reproduit la faille **en production**.
-Le correctif a été renforcé avant toute exécution.
+Rien, dans aucun des deux déclencheurs, ne regarde le **statut** de la relation.
+Une relation terminée porte encore une invitation de propriétaire. C'est le seul
+défaut que la règle du dépôt introduit vraiment, et c'est celui que la migration
+corrige.
 
-### 2.2 La règle retenue
+Le contrôle d'appartenance ajouté devient une **redondance assumée** avec
+`tracefab_validate_invitation_relationship`. Elle est mesurée dans les deux sens :
+retirée sur la chaîne complète, rien ne change ; l'autre déclencheur retiré, elle
+est la seule barrière. Deux verrous sur la même porte ne sont pas un défaut — à
+condition de dire lequel porte, et de le prouver.
+
+### 2.3 La règle retenue
 
 Celle du parcours réel, et rien de plus. `tracefab_invite_supplier` crée une
 relation (marque → fournisseur) puis insère l'invitation avec
@@ -87,12 +115,10 @@ relation (marque → fournisseur) puis insère l'invitation avec
 | relation terminée (`status = 'ended'`) | **REFUS** — `invitation_relationship_ended` |
 | relation `invited` / `active` / `suspended`, côté fournisseur | **ACCEPT** — l'onboarding |
 
-Le contrôle d'appartenance couvre **les deux** contournements : la marque
-elle-même n'est pas le fournisseur de sa propre relation, et le couple d'un tiers
-non plus. `invited` et `suspended` restent acceptés délibérément : le premier est
-l'état de l'onboarding, le second ne retire pas le rôle. Seul `ended` ferme.
+`invited` et `suspended` restent acceptés délibérément : le premier est l'état
+de l'onboarding, le second ne retire pas le rôle. Seul `ended` ferme.
 
-### 2.3 Ce que la migration ne fait pas
+### 2.4 Ce que la migration ne fait pas
 
 - elle ne réécrit **aucune** migration livrée — et ce n'est pas une réécriture
   d'historique : `20261028140000` n'a **jamais été appliquée à aucune base**
@@ -109,54 +135,58 @@ l'état de l'onboarding, le second ne retire pas le rôle. Seul `ended` ferme.
 
 ## 3. Preuve, dans l'ordre demandé
 
-`npm run test:supplier-invitation-corrective` — **37 vérifications**, exécutées
-sur PostgreSQL 18.6 jetable (PGlite), 4 organisations et 3 relations.
+`npm run test:supplier-invitation-corrective` — **40 vérifications**, exécutées
+sur PostgreSQL 18.6 jetable (PGlite), sur la **chaîne complète** des 64
+migrations (moins la corrective), avec quatre organisations, un utilisateur et
+trois relations.
 
-Les trois versions sont installées **et sollicitées** dans la même base : le
-corps de production, la règle du dépôt, puis le correctif. Aucune n'est jugée sur
-son texte.
+*(Section réécrite au tour 30 : la version précédente annonçait 37 vérifications
+sur un schéma écrit à la main, et un tableau faux.)*
+
+Les trois versions ne diffèrent que par le corps de la fonction de rôle : c'est
+exactement ce que les migrations changent. Tout le reste — les deux déclencheurs,
+les contraintes, les politiques — est le schéma réel.
 
 | Cas | production | dépôt (avant) | correctif (après) |
 |---|---|---|---|
-| `onboarding` — owner + relation fournisseur | refusé | accepté | **accepté** |
+| `onboarding` — owner + relation fournisseur | **refusé** | accepté | **accepté** |
 | `ownerSansRelation` | refusé | refusé | **refusé** |
-| `ownerCoteMarque` — owner dans l'organisation marque | refusé | **accepté** | **refusé** (mismatch) |
-| `relationAutreOrg` — relation d'un autre couple | refusé | **accepté** | **refusé** (mismatch) |
-| `relationTerminee` — relation `ended` | refusé | **accepté** | **refusé** (ended) |
+| `ownerCoteMarque` | refusé | **refusé** (`mismatch`, autre déclencheur) | **refusé** |
+| `relationAutreOrg` | refusé | **refusé** (`mismatch`, autre déclencheur) | **refusé** |
+| `relationTerminee` — relation `ended` | refusé | **accepté** ← le trou | **refusé** (`ended`) |
 | `adminAvecRelation` | accepté | accepté | **accepté** |
 | `viewerSansRelation` | accepté | accepté | **accepté** |
 
-Trois lectures en découlent, chacune avec son assertion :
+Trois lectures, chacune avec son assertion :
 
 1. **le défaut de production est reproduit** — l'onboarding échoue avant ;
-2. **la règle du dépôt est un élargissement** — elle accepte trois cas que la
-   production refuse, dont les deux contournements ;
-3. **le correctif ne change la décision que sur un cas** — l'onboarding. Sur les
-   six autres, la décision est celle de la production. Et il n'ouvre aucun cas
-   que la règle du dépôt fermait.
+2. **l'écart réel du dépôt tient en une ligne utile** — la relation terminée. Les
+   deux autres acceptations que j'avais annoncées n'existent pas ; elles étaient
+   un artefact de mon montage ;
+3. **le correctif rend au parcours ce que la production lui refuse sans
+   rouvrir ce que le dépôt ferme** — la seule décision qui change par rapport au
+   dépôt est `relationTerminee`, et elle va dans le sens de la fermeture.
 
-> Mon premier jet comparait les **messages** et échouait : `ownerCoteMarque`
-> passait de `owner_role_not_invitable` à
-> `invitation_relationship_organization_mismatch`. Deux refus de motifs
-> différents restent deux refus — l'assertion portait sur la mauvaise chose. Elle
-> porte désormais sur la **décision**.
+**Attribution, pas supposition.** Le test retire
+`invitations_validate_relationship` et rejoue : la règle du dépôt **laisse alors
+passer** `ownerCoteMarque` et `relationAutreOrg`, et le correctif, seul, les
+refuse encore. C'est la preuve que le contrôle d'appartenance est une redondance
+sur la chaîne complète **et** une barrière réelle si l'autre déclencheur
+disparaissait.
 
 **Contrôles négatifs** (le test doit mordre) :
 
-| Mutation | Résultat attendu | Obtenu |
-|---|---|---|
-| retrait du contrôle d'appartenance | `ownerCoteMarque` et `relationAutreOrg` redeviennent **acceptés** | oui — les assertions rougissent |
-| retrait du contrôle de statut | `relationTerminee` redevient **accepté** | oui |
+| Mutation | Résultat mesuré |
+|---|---|
+| retrait du contrôle de statut | `relationTerminee` redevient **accepté** — l'assertion dépend bien de ce contrôle |
+| retrait du contrôle d'appartenance, chaîne complète | **aucun changement** — la redondance est mesurée, pas supposée |
+| retrait du contrôle d'appartenance **et** de l'autre déclencheur | `ownerCoteMarque` et `relationAutreOrg` **passent** — le trou serait réel |
 
-Sans ces mutations, une assertion négative pourrait passer parce que le cas est
-refusé par une autre règle. Ici, elle dépend bien du contrôle qu'elle nomme.
-
-**Idempotence et intégrité** : rejeu sans erreur, comportement inchangé après
-rejeu, un contournement reste fermé après rejeu, déclencheur unique pointant sur
-la fonction corrigée et gardant sa portée, fonction toujours `SECURITY DEFINER`,
-aucun `GRANT`. **Chaîne** : les **64** migrations s'appliquent sur une base
-vierge, la corrective en dernière position, aucune renumérotation, et la chaîne
-finale porte bien les deux contrôles.
+**Idempotence et intégrité** : rejeu sans erreur, déclencheur unique pointant sur
+la fonction corrigée et gardant **exactement** sa portée historique (`tgtype = 23`),
+fonction toujours `SECURITY DEFINER` avec `search_path` fixé, aucun `GRANT`/`REVOKE`,
+aucune politique RLS touchée. **Chaîne** : les **64** migrations s'appliquent sur
+une base vierge, la corrective en dernière position, aucune renumérotation.
 
 La migration est jouée **en entier**, pas seulement le corps de fonction.
 

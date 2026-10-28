@@ -58,61 +58,51 @@ Le statut `Vercel` est un statut séparé : il n'est compté nulle part comme pr
 Aucun fichier hors mission. Aucun secret, aucune URL, aucun identifiant dans le
 diff — vérifié par recherche avant commit.
 
-## 4. `supplier_portal` — `PASS` hors production
+## 4. `supplier_portal` — `PASS` hors production, avec une erreur corrigée au tour 30
 
-### 4.1 Ce que la règle du dépôt ne vérifiait pas
+> **Section corrigée au tour 30.** Ce qui suit remplace une affirmation fausse :
+> j'avais écrit que la règle du dépôt ouvrait deux contournements (élévation
+> `admin` → `owner`, réutilisation inter-organisations). La mesure sur la chaîne
+> **complète** les réfute. Détail : `2026-10-28-tour30-autorisation-et-correction.md`.
 
-`NEW.target_role = 'owner' AND NEW.relationship_id IS NULL` exige un identifiant
-**non nul**, pas une relation **valide**. Or `tracefab_app` écrit
-`organization_invitations` en direct et `invitations_insert_admin` autorise tout
-`admin` de l'organisation visée. Deux contournements réels, mesurés :
+### 4.1 La règle réellement en place
 
-- **(a)** un `admin` invite un `owner` dans **sa propre** organisation en
-  présentant une relation quelconque → élévation de privilèges ;
-- **(b)** la relation présentée appartient à **deux autres** organisations →
-  réutilisation inter-organisations.
+Deux déclencheurs gardent `organization_invitations` :
 
-Recopier le corps versionné, comme le prévoyait ma première rédaction, aurait
-donc reproduit la faille **en production**.
+| Déclencheur | Vérifie |
+|---|---|
+| `invitations_validate_relationship` (initiale, **tire en premier**) | `r.id = NEW.relationship_id AND r.supplier_organization_id = NEW.organization_id` |
+| `organization_invitations_validate_role` | le rôle visé |
 
-### 4.2 La règle appliquée
+### 4.2 Ce que le dépôt change vraiment
 
-`owner` accepté **si et seulement si** : `relationship_id` non nul, relation
-existante, `supplier_organization_id = NEW.organization_id`, `status <> 'ended'`.
-Trois codes d'exception nomment les refus ; `owner_role_not_invitable` est
-conservé. `invited` et `suspended` restent acceptés (état de l'onboarding, et
-suspension ne retire pas le rôle) ; seul `ended` ferme.
-
-### 4.3 Mesure — 37 vérifications, exécutées
-
-| Cas | production | dépôt (avant) | correctif |
+| Cas | production | dépôt | correctif |
 |---|---|---|---|
-| onboarding — owner + relation fournisseur | refusé | accepté | **accepté** |
-| owner sans relation | refusé | refusé | **refusé** |
-| owner côté marque | refusé | **accepté** | **refusé** |
-| relation d'un autre couple | refusé | **accepté** | **refusé** |
-| relation terminée | refusé | **accepté** | **refusé** |
-| admin + relation | accepté | accepté | **accepté** |
-| viewer sans relation | accepté | accepté | **accepté** |
+| onboarding : `owner` + relation fournisseur | **refusé** | accepté | accepté |
+| relation **terminée** (`status = 'ended'`) | refusé (tout `owner` l'est) | **accepté** | **refusé** |
 
-**Contrôles négatifs** : retirer le contrôle d'appartenance fait **accepter**
-`owner côté marque` et `relation d'un autre couple` ; retirer le contrôle de
-statut fait **accepter** la relation terminée. Les assertions négatives
-dépendent donc bien du contrôle qu'elles nomment.
+**Un seul trou réel** : aucun déclencheur ne regarde le statut de la relation.
+Le correctif le ferme, et rend l'onboarding possible.
 
-**Intégrité** : idempotence (rejeu sans erreur, comportement inchangé, un
-contournement reste fermé), déclencheur unique, pointant sur la fonction
-corrigée, gardant **exactement** sa portée historique (`tgtype = 23`,
-`BEFORE INSERT OR UPDATE FOR EACH ROW`), fonction toujours `SECURITY DEFINER`,
-**aucun `GRANT`/`REVOKE`**, aucune politique RLS touchée. Chaîne : **64/64**
-migrations sur base vierge, la corrective en dernière position, aucune
-renumérotation.
+### 4.3 Mesure — 40 vérifications sur la chaîne complète
 
-**Correction d'une erreur de ma part** : mon premier jet comparait les
-*messages* et échouait à tort — deux refus de motifs différents restent deux
-refus. L'assertion porte désormais sur la **décision**, et une assertion
-supplémentaire vérifie que le correctif n'ouvre aucun cas que la règle du dépôt
-fermait.
+Trois versions du **seul corps de fonction** que les migrations changent, tout le
+reste étant le schéma réel. Le test retire aussi
+`invitations_validate_relationship` pour **attribuer** chaque refus au
+déclencheur qui le porte :
+
+- sans lui, la règle du dépôt **laisse passer** `ownerCoteMarque` et
+  `relationAutreOrg` ; le correctif les refuse encore ;
+- sur la chaîne complète, retirer le contrôle d'appartenance du correctif **ne
+  change rien** — c'est une redondance, mesurée et non supposée.
+
+**Contrôles négatifs** : retirer le contrôle de statut fait réaccepter la relation
+terminée ; retirer le contrôle d'appartenance **et** l'autre déclencheur rouvre
+les deux cas.
+
+**Intégrité** : idempotence, déclencheur unique gardant `tgtype = 23`, fonction
+`SECURITY DEFINER` avec `search_path` fixé, aucun `GRANT`/`REVOKE`, aucune
+politique touchée, **64/64** migrations, corrective en dernière position.
 
 ## 5. `plm_erp_gs1` — `BLOCKED`
 
@@ -209,7 +199,9 @@ ait été fait sur la production.
 | Contrôle | Résultat |
 |---|---|
 | Rejeu complet de la chaîne (64 migrations, base reconstruite) | **`PASS`** |
-| `test:supplier-invitation-corrective` | **`PASS`** — 37 |
+| `test:supplier-invitation-corrective` | **`PASS`** — 40 (chaîne complète, tour 30) |
+| `test:confrontation-production` | **`PASS`** — 18 (tour 30) |
+| `test:runbook-application` | **`PASS`** — 10 (tour 30) |
 | `test:migrations:hors-bande` | **`PASS`** — 46 |
 | `test:divergences-migrations` | **`PASS`** — 33 |
 | `test:reprise-migrations` | **`PASS`** — 28 |
@@ -248,6 +240,18 @@ Aucune connexion à la production de ce tour. Aucun `migrate deploy`, aucun
 `migrate resolve`, aucun `GRANT`/`REVOKE`, aucun changement de rôle, aucun
 déploiement, aucune modification de `_prisma_migrations`. `deploy` reste
 **gelé**. PR #102 **non fusionnée, non fermée**.
+
+## 11 bis. Tour 30 — autorisation accordée, accès absent
+
+Le propriétaire a autorisé les deux opérations manquantes (lecture du catalogue
+de production, application de `20261028140000`). L'environnement d'exécution n'a
+ni identifiants ni sortie réseau vers Neon : les deux restent **`NOT RUN`**, avec
+des outils désormais prêts et **éprouvés** (`tour30-autorisation-et-correction.md`).
+
+Correction importante apportée dans le même tour : l'affirmation de deux
+contournements `supplier_portal` était **fausse** — un second déclencheur, de la
+migration initiale, les refuse. Un seul trou réel subsiste (relation terminée) ;
+la migration le ferme.
 
 ## 12. Décision
 

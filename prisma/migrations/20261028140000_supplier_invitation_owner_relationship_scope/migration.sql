@@ -28,38 +28,63 @@
 -- le premier `owner` avec un `relationship_id`, echoue avec
 -- `owner_role_not_invitable`.
 --
--- POURQUOI LA REGLE DU DEPOT NE SUFFIT PAS
+-- POURQUOI LA REGLE DU DEPOT NE SUFFIT PAS — ET OU J'AI EU TORT
 --
--- `NEW.relationship_id IS NULL` ne verifie RIEN sur la relation elle-meme :
--- n'importe quel identifiant non nul ouvre la porte. Or le role applicatif
--- ecrit `organization_invitations` en direct (`TABLES_ECRITURE_DIRECTE`) et la
--- politique `invitations_insert_admin` autorise tout `admin` de
--- l'organisation visee. Consequences mesurees sur base jetable :
+-- J'ai d'abord ecrit ici que la regle du depot ouvrait deux contournements :
+-- un `admin` fabriquant un `owner` dans sa propre organisation, et la
+-- reutilisation d'une relation d'un autre couple d'organisations. C'etait FAUX.
 --
---   - un `admin` peut inviter un `owner` dans SA PROPRE organisation en
---     presentant une relation quelconque : c'est une elevation de privileges,
---     un `admin` n'a pas le droit de fabriquer un `owner` ;
---   - une relation appartenant a DEUX AUTRES organisations est acceptee :
---     c'est une reutilisation inter-organisations.
+-- La chaine pose un SECOND declencheur sur `organization_invitations`,
+-- `invitations_validate_relationship` (migration initiale 20260923130000), dont
+-- la fonction `tracefab_validate_invitation_relationship` exige deja :
 --
--- La regle retenue ici est donc celle du parcours reel — `tracefab_invite_supplier`
--- cree une relation (marque -> fournisseur) puis insere l'invitation avec
--- `organization_id = supplier_organization_id` et `target_role = 'owner'` — et
--- rien de plus :
+--     r.id = NEW.relationship_id AND r.supplier_organization_id = NEW.organization_id
 --
---   1. `owner` sans relation                      -> REFUS (inchange)
---   2. relation inexistante                       -> REFUS
+-- Il tire avant celui-ci (ordre alphabetique) et refuse les deux cas. Mesure sur
+-- la chaine complete, tous declencheurs en place :
+--
+--   owner cote marque                     -> invitation_relationship_mismatch
+--   relation d'un autre couple            -> invitation_relationship_mismatch
+--
+-- Mon erreur venait de mon propre montage de test : un schema ecrit a la main,
+-- avec une seule fonction, donc sans ce declencheur. Un test qui reconstruit une
+-- partie du systeme ne mesure pas le systeme.
+--
+-- CE QUI RESTE VRAI APRES CORRECTION
+--
+-- Sur la chaine complete, l'ecart reel entre production et depot tient en deux
+-- lignes, pas en deux failles :
+--
+--   onboarding (owner + relation fournisseur)  production : REFUSE
+--                                              depot      : accepte
+--
+--   relation terminee (`status = 'ended'`)     production : refuse (parce que
+--                                                         TOUT owner est refuse)
+--                                              depot      : ACCEPTE   <- le trou
+--
+-- Le second point est le seul trou reel de la regle du depot : rien, dans aucun
+-- des deux declencheurs, ne regarde le statut de la relation. Une relation
+-- terminee porte encore une invitation de proprietaire.
+--
+-- LA REGLE RETENUE ICI
+--
+--   1. owner sans relation                     -> REFUS (inchange)
+--   2. relation inexistante                    -> REFUS
 --   3. relation dont le FOURNISSEUR n'est pas
---      l'organisation invitee                     -> REFUS  (couvre la marque
---                                                             elle-meme et le
---                                                             tiers)
---   4. relation terminee (`status = 'ended'`)     -> REFUS
---   5. relation au statut invited/active/
---      suspended, cote fournisseur                -> ACCEPT (onboarding)
+--      l'organisation invitee                  -> REFUS
+--   4. relation terminee (`status = 'ended'`)  -> REFUS   <- ce qui est nouveau
+--   5. relation invited/active/suspended       -> ACCEPT  (l'onboarding)
 --
--- Les statuts `invited` et `suspended` sont acceptes deliberement : le premier
--- est celui de l'onboarding, le second ne retire pas le role. Seul `ended`
--- ferme la relation.
+-- Les points 2 et 3 sont une REDONDANCE ASSUMEE avec
+-- `tracefab_validate_invitation_relationship`. Elle est mesuree dans les deux
+-- sens par `test:supplier-invitation-corrective` : sur la chaine complete, la
+-- retirer ne change rien ; sans l'autre declencheur, elle est la seule barriere.
+-- Deux verrous sur la meme porte ne sont pas un defaut — a condition de dire
+-- lequel porte, et de le prouver. C'est fait.
+--
+-- Les statuts `invited` et `suspended` restent acceptes deliberement : le
+-- premier est celui de l'onboarding, le second ne retire pas le role. Seul
+-- `ended` ferme la relation.
 --
 -- CE QUE CETTE MIGRATION NE FAIT PAS
 --   - aucune ecriture dans `_prisma_migrations` ;
@@ -70,6 +95,9 @@
 --   - aucun `GRANT`/`REVOKE` : elle remplace un corps de fonction. La fonction
 --     n'est pas appelee par `tracefab_app` (seul le declencheur l'est), et son
 --     privilege d'execution reste celui pose par la migration d'origine ;
+--   - elle ne touche pas `tracefab_validate_invitation_relationship`, l'autre
+--     declencheur : le laisser tel quel est deliberé, c'est la defense en
+--     profondeur ;
 --   - aucune politique RLS touchee.
 --
 -- IDEMPOTENCE : `CREATE OR REPLACE` + `DROP TRIGGER IF EXISTS` avant
