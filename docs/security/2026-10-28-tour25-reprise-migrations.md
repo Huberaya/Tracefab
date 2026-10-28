@@ -1,5 +1,18 @@
 # Tour 25 — incidents reproduits, procédure de reprise prouvée, production intacte
 
+> **CORRECTION (tour 26, 28/10/2026).** Ce document contient une hypothèse qui
+> s'est révélée **fausse** : il affirme que le registre absent est la
+> « conséquence mécanique d'un historique bloqué » et qu'« une migration non
+> terminée empêche `migrate deploy` de poursuivre ». L'export réel de
+> `_prisma_migrations` montre l'inverse : **aucune entrée n'est bloquante**, les
+> deux entrées « non terminées » sont les deux entrées *annulées* (mêmes
+> lignes), et les deux ont été rejouées avec succès. Le registre est absent
+> parce que **sept migrations n'ont jamais été déployées**, pas parce que
+> l'historique est bloqué. Voir `2026-10-28-tour26-reconciliation-production.md`.
+> Le reste du document — reproduction des deux incidents, exigence d'idempotence
+> avant `resolve`, plan de reprise — reste valide et a servi à établir le plan
+> corrigé.
+
 Branche `arena/c27ddaa4-tracefab`, commit `709f834` + ce tour. Aucune connexion à
 la production, aucune écriture distante, aucun secret demandé ni manipulé,
 aucune fusion, aucun déploiement.

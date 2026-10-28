@@ -8,18 +8,19 @@
  * connexion, si la production atteste avoir execute les migrations du depot —
  * et avec quel contenu. Un outil de diagnostic qui rend toujours « coherent »
  * est pire qu'aucun outil : il autorise a conclure. Ce test fabrique donc des
- * exports SYNTHETIQUES surs (aucune donnee de production, aucun secret) et
- * verifie que l'outil distingue cinq situations :
+ * exports SYNTHETIQUES (aucune donnee de production) et verifie que l'outil
+ * distingue les situations reelles.
  *
- *   1. historique complet et conforme                -> exit 0
- *   2. migrations du depot non attestees             -> exit 1, liste exacte
- *   3. empreinte divergente pour un meme nom         -> exit 1, nomme
- *   4. migration non terminee, puis annulee          -> exit 1, nommee
- *   5. entree orpheline cote production              -> exit 1, nommee
+ * LES CAS QUI COMPTENT, et qui ont tous ete observes sur l'export reel du
+ * 28 octobre 2026 :
  *
- * Et deux garde-fous de forme : un export vide est refuse (exit 2), et un
- * export sans en-tete ne doit PAS etre declare coherent — l'outil ne suppose
- * jamais « terminee » par silence.
+ *   - une migration peut avoir PLUSIEURS lignes (annulee puis rejouee) :
+ *     les ecraser dans une table de hachage effacerait l'information ;
+ *   - une ligne annulee suivie d'une reussite est un incident RESOLU, pas un
+ *     blocage — c'est la difference entre « rien a faire » et « deploy bloque » ;
+ *   - une migration marquee appliquee avec `applied_steps_count = 0` n'a
+ *     probablement jamais ete executee : ses objets peuvent manquer ;
+ *   - un nom present en production mais absent du depot est une orpheline.
  *
  *   npm run test:reconciliation-historique
  */
@@ -40,7 +41,7 @@ const controle = (libelle, condition, detail) => {
   verifies += 1;
 };
 
-/* --- Materiau : les 63 migrations du depot, empreintes reelles ------------ */
+/* --- Materiau : les migrations du depot, empreintes reelles --------------- */
 
 const depot = readdirSync(DOSSIER).filter((d) => /^\d{14}_/.test(d)).sort();
 const empreinte = (nom) => createHash('sha256')
@@ -48,94 +49,130 @@ const empreinte = (nom) => createHash('sha256')
   .digest('hex');
 const empreintes = new Map(depot.map((n) => [n, empreinte(n)]));
 
-const ENTETE = 'migration_name,checksum,finished_at,rolled_back_at,applied_steps_count';
-
-/** Fabrique un export synthetique au format CSV avec en-tete. */
-function exporter(lignes) {
-  const contenu = [ENTETE, ...lignes.map((l) => {
-    const c = empreintes.get(l.nom) ?? '';
-    const fin = l.finished ?? '2026-10-01 10:00:00+00';
-    const rb = l.rolledBack ?? '';
-    return `${l.nom},${l.checksum ?? c},${fin},${rb},1`;
-  })].join('\n');
-  const f = join(dir, `export-${Math.random().toString(36).slice(2)}.csv`);
+let compteur = 0;
+const ecrire = (contenu, ext = 'json') => {
+  compteur += 1;
+  const f = join(dir, `export-${compteur}.${ext}`);
   writeFileSync(f, contenu);
   return f;
-}
+};
 
-function executer(args) {
+/** Export JSON, la forme qui porte les etats. */
+const exporterJson = (lignes) => ecrire(JSON.stringify(lignes.map((l) => ({
+  migration_name: l.nom,
+  checksum: l.checksum === undefined ? empreintes.get(l.nom) : l.checksum,
+  finished_at: l.finished === undefined ? '2026-10-01 10:00:00+00' : l.finished,
+  rolled_back_at: l.rolledBack === undefined ? null : l.rolledBack,
+  applied_steps_count: l.steps === undefined ? 1 : l.steps,
+}))), 'json');
+
+const executer = (args) => {
   const r = spawnSync('node', [OUTIL, ...args], { encoding: 'utf8' });
   return { code: r.status, sortie: `${r.stdout}${r.stderr}` };
-}
+};
 
 /* --- 1. Historique complet et conforme ------------------------------------ */
 
 {
-  const f = exporter(depot.map((nom) => ({ nom })));
+  const f = exporterJson(depot.map((nom) => ({ nom })));
   const { code, sortie } = executer([f]);
   controle('un historique complet et conforme sort en 0', code === 0, `code=${code}`);
   controle('le compte du depot est annonce', sortie.includes(`${depot.length} migrations`));
   controle('la conclusion est explicite', /Historique coherent/.test(sortie));
+  controle('le commit est imprime (provenance)', /commit\s+:\s+[0-9a-f]{40}/.test(sortie), sortie.slice(0, 200));
 }
 
 /* --- 2. Migrations du depot non attestees --------------------------------- */
 
 {
-  const manquantes = depot.slice(-5); // les cinq plus recentes, comme en production
+  const manquantes = depot.slice(-7);
   const presentes = depot.filter((n) => !manquantes.includes(n));
-  const f = exporter(presentes.map((nom) => ({ nom })));
-  const { code, sortie } = executer([f]);
+  const { code, sortie } = executer([exporterJson(presentes.map((nom) => ({ nom })))]);
   controle('des migrations non attestees font echouer', code === 1, `code=${code}`);
-  controle('le nombre d ecarts est exact', sortie.includes('NON ATTESTEES : au depot, jamais executees en production (5)'),
+  controle('le nombre d ecarts est exact',
+    sortie.includes(`NON ATTESTEES : au depot, aucune execution reussie en production (7)`),
     sortie.slice(0, 400));
-  for (const m of manquantes) {
-    controle(`la migration absente ${m.slice(0, 14)} est nommee`, sortie.includes(m));
-  }
+  for (const m of manquantes) controle(`la migration absente ${m.slice(0, 14)} est nommee`, sortie.includes(m));
 }
 
 /* --- 3. Empreinte divergente ---------------------------------------------- */
 
 {
-  const cible = depot[Math.floor(depot.length / 2)];
-  const f = exporter(depot.map((nom) => ({
+  const cible = depot[10];
+  const f = exporterJson(depot.map((nom) => ({
     nom,
-    // Une empreinte plausible mais differente : le fichier a change depuis
-    // l'execution distante. C'est le cas P3018 des migrations corrigees.
     checksum: nom === cible ? 'f'.repeat(64) : undefined,
   })));
   const { code, sortie } = executer([f]);
   controle('une empreinte divergente fait echouer', code === 1, `code=${code}`);
   controle('la divergence est nommee', sortie.includes(cible));
-  controle('la divergence est qualifiee', /EMPREINTE DIVERGENTE/.test(sortie));
   controle('l empreinte du depot est affichee', sortie.includes(empreintes.get(cible)));
 }
 
-/* --- 4. Non terminee, puis annulee ---------------------------------------- */
+/* --- 4. Le cas reel : annulee PUIS reussie = incident resolu, pas blocage -- */
 
 {
-  const cible = depot[depot.length - 6];
-  const f1 = exporter(depot.map((nom) => ({ nom, finished: nom === cible ? '' : undefined })));
-  const r1 = executer([f1]);
-  controle('une migration non terminee fait echouer', r1.code === 1, `code=${r1.code}`);
-  controle('la non-terminee est nommee', r1.sortie.includes(cible));
-  controle('l entree en echec est qualifiee', /NON TERMINEES/.test(r1.sortie));
-
-  const f2 = exporter(depot.map((nom) => ({
-    nom,
-    finished: nom === cible ? '' : undefined,
-    rolledBack: nom === cible ? '2026-10-20 09:00:00+00' : undefined,
-  })));
-  const r2 = executer([f2]);
-  controle('une migration annulee fait echouer', r2.code === 1, `code=${r2.code}`);
-  controle('l annulee est qualifiee', /ANNULEES/.test(r2.sortie));
-  controle('une annulee n est pas comptee comme non terminee',
-    !r2.sortie.includes('NON TERMINEES : `finished_at` absent (1)'));
+  const cible = depot[depot.length - 8];
+  // Ordre REEL de l export du 28/10 : la ligne annulee precede la reussite, et
+  // son empreinte differe — c'est le contenu d'avant correction. Un outil qui
+  // retiendrait la premiere ligne conclurait a une divergence qui n'existe pas.
+  const lignes = [];
+  for (const nom of depot) {
+    if (nom === cible) lignes.push({ nom, checksum: 'a'.repeat(64), finished: null,
+      rolledBack: '2026-10-16 02:04:36+00', steps: 0 });
+    lignes.push({ nom });
+  }
+  const f = exporterJson(lignes);
+  const { code, sortie } = executer([f]);
+  controle('une annulee suivie d une reussite est classee « incident resolu »',
+    /ANNULEES PUIS REUSSIES \(incident resolu\) \(1\)/.test(sortie), sortie.slice(0, 500));
+  controle('elle n est PAS comptee comme bloquante', !/BLOQUANTES : ni terminees ni annulees \(1\)/.test(sortie));
+  controle('elle n est PAS comptee comme non attestee', !sortie.includes(`NON ATTESTEES : au depot, aucune execution reussie en production (1)`));
+  controle('le doublon est signale', /NOMS EN DOUBLE : plusieurs lignes pour une migration \(1\)/.test(sortie));
+  controle('la ligne retenue est la REUSSITE, pas l annulation : aucune divergence inventee',
+    !/DIVERGENTES : la ligne retenue/.test(sortie), sortie.slice(0, 600));
+  controle('l empreinte perimee de la ligne annulee n est pas confondue avec celle du depot',
+    !sortie.includes('a'.repeat(64)));
+  // Une trace d'incident resolu ne declenche PAS d'echec : elle n'empeche pas
+  // `migrate deploy` de fonctionner. La distinction vaut d'etre tenue : c'est
+  // elle qui separe « rien a faire » de « historique bloque ».
+  controle('un incident resolu ne fait pas echouer la reconciliation', code === 0, `code=${code}`);
+  controle('mais il reste visible dans le rapport', /ANNULEES PUIS REUSSIES/.test(sortie));
 }
 
-/* --- 5. Orpheline cote production ----------------------------------------- */
+/* --- 5. Une vraie bloquante : ni terminee ni annulee ---------------------- */
 
 {
-  const f = exporter([
+  const cible = depot[depot.length - 9];
+  const f = exporterJson([
+    ...depot.map((nom) => ({ nom })),
+    { nom: cible, finished: null, rolledBack: null, steps: 0 },
+  ]);
+  const { code, sortie } = executer([f]);
+  controle('une entree ni terminee ni annulee est BLOQUANTE',
+    /BLOQUANTES : ni terminees ni annulees \(1\)/.test(sortie), sortie.slice(0, 500));
+  controle('elle est nommee', sortie.includes(cible));
+  controle('le blocage fait echouer', code === 1);
+}
+
+/* --- 6. Marquees appliquees sans etape ------------------------------------ */
+
+{
+  const cibles = depot.slice(5, 8);
+  const f = exporterJson(depot.map((nom) => ({
+    nom,
+    steps: cibles.includes(nom) ? 0 : 1,
+  })));
+  const { sortie } = executer([f]);
+  controle('les migrations a 0 etape sont signalees',
+    /MARQUEES APPLIQUEES SANS AUCUNE ETAPE \(applied_steps_count = 0\) \(3\)/.test(sortie), sortie.slice(0, 600));
+  for (const c of cibles) controle(`la migration sans etape ${c.slice(0, 14)} est nommee`, sortie.includes(c));
+}
+
+/* --- 7. Orpheline cote production ----------------------------------------- */
+
+{
+  const f = exporterJson([
     ...depot.map((nom) => ({ nom })),
     { nom: '20260101000000_migration_fantome', checksum: 'a'.repeat(64) },
   ]);
@@ -144,22 +181,40 @@ function executer(args) {
   controle('l orpheline est nommee', sortie.includes('20260101000000_migration_fantome'));
 }
 
-/* --- 6. Garde-fous de forme ----------------------------------------------- */
+/* --- 8. Formats acceptes -------------------------------------------------- */
 
 {
-  const vide = join(dir, 'vide.csv');
-  writeFileSync(vide, '');
-  controle('un export vide est refuse', executer([vide]).code === 2);
-  controle('un export introuvable est refuse', executer([join(dir, 'absent.csv')]).code === 2);
-  controle('sans argument, l outil explique son usage', executer([]).code === 2);
+  // CSV avec en-tete : meme verdict que le JSON sur un historique conforme.
+  const csv = ['migration_name,checksum,finished_at,rolled_back_at,applied_steps_count',
+    ...depot.map((n) => `${n},${empreintes.get(n)},2026-10-01 10:00:00+00,,1`)].join('\n');
+  const r = executer([ecrire(csv, 'csv')]);
+  controle('un CSV avec en-tete est lu', r.code === 0, `code=${r.code} ${r.sortie.slice(0, 200)}`);
 
-  // Sans en-tete : noms et empreintes suffisent a comparer, mais l'outil ne
-  // doit pas conclure « coherent » — il ignore si les migrations ont abouti.
-  const sansEntete = join(dir, 'sans-entete.txt');
-  writeFileSync(sansEntete, depot.map((n) => `${n}|${empreintes.get(n)}`).join('\n'));
-  const r = executer([sansEntete]);
-  controle('un export sans en-tete ne conclut pas a la coherence', r.code === 1, `code=${r.code}`);
-  controle('l absence d en-tete est signalee', /ETATS INCONNUS/.test(r.sortie));
+  // Une ligne CSV dont le champ `logs` contient des virgules ne doit pas
+  // decaler les colonnes : le decoupage respecte les guillemets.
+  const csvGuillemets = ['migration_name,checksum,finished_at,rolled_back_at,applied_steps_count,logs',
+    ...depot.map((n, i) => i === 0
+      ? `"${n}",${empreintes.get(n)},2026-10-01 10:00:00+00,,1,"erreur, avec des virgules, et un ""guillemet"""`
+      : `${n},${empreintes.get(n)},2026-10-01 10:00:00+00,,1,`)].join('\n');
+  const g = executer([ecrire(csvGuillemets, 'csv')]);
+  controle('les champs CSV entre guillemets ne decalent pas les colonnes', g.code === 0,
+    `code=${g.code} ${g.sortie.slice(0, 300)}`);
+
+  // Sans en-tete : noms et empreintes suffisent, mais l'outil ne conclut pas
+  // sur les etats — il ne suppose jamais « terminee » par silence.
+  const sansEntete = ecrire(depot.map((n) => `${n}|${empreintes.get(n)}`).join('\n'), 'txt');
+  const s = executer([sansEntete]);
+  controle('un export sans en-tete ne conclut pas a la coherence', s.code === 1, `code=${s.code}`);
+  controle('l absence d en-tete est signalee', /ETATS INCONNUS/.test(s.sortie));
+}
+
+/* --- 9. Garde-fous de forme ----------------------------------------------- */
+
+{
+  controle('un export vide est refuse', executer([ecrire('', 'json')]).code === 2);
+  controle('un export introuvable est refuse', executer([join(dir, 'absent.json')]).code === 2);
+  controle('sans argument, l outil explique son usage', executer([]).code === 2);
+  controle('un JSON sans nom de migration est refuse', executer([ecrire('{"a":1}', 'json')]).code === 2);
 }
 
 console.log(`\n  ${verifies} verifications passees.`);

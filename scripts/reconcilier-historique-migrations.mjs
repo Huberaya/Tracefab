@@ -9,51 +9,56 @@
  * production : le proprietaire contourne la RLS, `_prisma_migrations` contient
  * des entrees non terminees et annulees, et la table
  * `tracefab_runtime_function_registry` est absente alors que la branche
- * candidate la cree. Ces trois constats se tiennent ou tombent ensemble, et
- * aucun ne se lit dans un nom de branche.
+ * candidate la cree.
  *
- * La question qui decide de tout est simple et n'exige AUCUNE connexion :
- * pour chaque migration du depot, la production atteste-t-elle l'avoir
- * executee, et l'a-t-elle executee avec CE contenu ?
+ * La question qui decide de tout n'exige AUCUNE connexion : pour chaque
+ * migration du depot, la production atteste-t-elle l'avoir executee, et l'a-t-
+ * elle executee avec CE contenu ?
  *
  * Prisma calcule le `checksum` d'une migration comme le SHA-256 hexadecimal du
  * contenu de son fichier `migration.sql` (verifie dans le paquet installe :
- * `node_modules/prisma/build/index.js`, fonction de hachage en flux, digest
- * "hex"). Ce script recalcule les 63 empreintes du depot et les compare a
- * celles exportees de la production. Une empreinte qui differe pour un meme
- * nom de migration signifie que le fichier a change depuis l'execution
- * distante — c'est le cas des migrations corrigees apres un incident (P3018
- * du 15 octobre 2026 sur `tracefab_public_brand`).
+ * `node_modules/prisma/build/index.js`, hachage en flux, digest "hex"). Ce
+ * script recalcule les 63 empreintes du depot et les compare aux lignes
+ * exportees de la production.
+ *
+ * UNE MIGRATION PEUT AVOIR PLUSIEURS LIGNES
+ *
+ * `_prisma_migrations` n'a pas de contrainte d'unicite sur `migration_name` :
+ * une migration echouee puis `resolve --rolled-back` puis rejouee laisse DEUX
+ * lignes — une annulee, une terminee. Ecraser les doublons dans une table de
+ * hachage effacerait precisement l'information la plus utile. Cet outil garde
+ * donc toutes les lignes d'un meme nom et les classe :
+ *
+ *   - ATTESTEE     : au moins une ligne terminee (`finished_at` non NULL) ;
+ *   - BLOQUANTE    : une ligne ni terminee ni annulee — `migrate deploy`
+ *                    s'arrete la ;
+ *   - ANNULEE      : une ligne `rolled_back_at` non NULL — trace d'un incident
+ *                    resolu SI une execution ulterieure a abouti, sinon
+ *                    incident ouvert ;
+ *   - DIVERGENTE   : l'empreinte de la ligne retenue par Prisma differe de
+ *                    celle du depot — le fichier a change depuis l'execution.
  *
  * POURQUOI PAS UNE CONNEXION
  *
  * Cet outil ne se connecte a rien. Il ne lit aucune variable d'environnement,
- * aucune URL, aucun secret. L'operateur exporte le resultat du bloc de lecture
- * seule de `docs/security/2026-10-28-m6-lecture-seule.sql` (colonnes
- * `migration_name`, `checksum`, `finished_at`, `rolled_back_at`,
- * `applied_steps_count`) dans un fichier, et le passe ici. Rien de ce que
- * manipule cet outil n'est sensible : des noms de migration et des empreintes.
+ * aucune URL, aucun secret. L'operateur exporte le resultat d'un SELECT en
+ * lecture seule (voir docs/security/2026-10-28-m6-lecture-seule.sql) et le
+ * passe ici. Rien de ce que manipule cet outil n'est sensible : des noms de
+ * migration, des empreintes, des horodatages.
  *
  * USAGE
  *
  *   node scripts/reconcilier-historique-migrations.mjs <export>
  *   node scripts/reconcilier-historique-migrations.mjs --sans-export
  *
- * `--sans-export` n'imprime que les empreintes attendues du depot : utile pour
- * prepare une comparaison a la main.
- *
- * FORMAT ACCEPTE pour <export> : tout texte ou chaque ligne utile contient un
- * nom de migration (`20261017120000_active_tenant_context`) et, s'il est
- * present, une empreinte SHA-256 de 64 caracteres hexadecimaux. CSV, TSV,
- * sorties `psql` avec separateur `|` et JSON sont acceptes : le parseur ne
- * suppose ni separateur ni ordre de colonnes, il lit ce qu'il reconnait.
+ * FORMAT ACCEPTE pour <export> : JSON (objet ou tableau), CSV/TSV avec en-tete,
+ * ou sortie `psql`. Le parseur ne suppose ni separateur ni ordre de colonnes.
  *
  * CODES DE SORTIE
  *
- *   0  historique coherent : toutes les migrations du depot sont attestees
- *      terminees, sans divergence d'empreinte, et aucune entree en echec.
- *   1  ecart detecte (migration manquante, non terminee, annulee, divergente,
- *      ou entree orpheline dans l'historique distant).
+ *   0  historique coherent : toutes les migrations du depot sont attestees,
+ *      aucun blocage, aucune divergence sur la ligne retenue.
+ *   1  ecart detecte.
  *   2  entree illisible : argument absent ou export vide.
  *
  * L'outil ne modifie rien, ni localement ni a distance.
@@ -85,15 +90,27 @@ const NOM = /\b(\d{14}_[a-z0-9_]+)\b/g;
 const EMPREINTE = /\b([0-9a-f]{64})\b/gi;
 const VIDE = new Set(['', 'null', '\\n', '-', 'na', 'n/a']);
 
-/** Decoupe une ligne CSV/TSV en respectant les guillemets. */
-function decouper(ligne, sep) {
+const vide = (v) => v === null || v === undefined || VIDE.has(String(v).trim().toLowerCase());
+
+/** Normalise une ligne brute, quelle que soit son origine. */
+function ligne(nom, checksum, finished, rolledBack, steps) {
+  return {
+    nom,
+    checksum: vide(checksum) ? null : String(checksum).trim().toLowerCase(),
+    finished_at: vide(finished) ? null : String(finished).trim(),
+    rolled_back_at: vide(rolledBack) ? null : String(rolledBack).trim(),
+    applied_steps_count: vide(steps) ? null : Number(steps),
+  };
+}
+
+function decouperCsv(ligneBrute, sep) {
   const champs = [];
   let courant = '';
   let entreGuillemets = false;
-  for (let i = 0; i < ligne.length; i += 1) {
-    const c = ligne[i];
+  for (let i = 0; i < ligneBrute.length; i += 1) {
+    const c = ligneBrute[i];
     if (entreGuillemets) {
-      if (c === '"' && ligne[i + 1] === '"') { courant += '"'; i += 1; }
+      if (c === '"' && ligneBrute[i + 1] === '"') { courant += '"'; i += 1; }
       else if (c === '"') entreGuillemets = false;
       else courant += c;
     } else if (c === '"') entreGuillemets = true;
@@ -105,82 +122,84 @@ function decouper(ligne, sep) {
 }
 
 function delimiterDe(entete) {
-  const candidats = [',', '\t', '|'];
   let meilleur = null;
   let compte = 0;
-  for (const c of candidats) {
+  for (const c of [',', '\t', '|']) {
     const n = entete.split(c).length - 1;
     if (n > compte) { compte = n; meilleur = c; }
   }
   return meilleur;
 }
 
-/**
- * Lit l'export. Deux formes acceptees :
- *
- *   a) AVEC EN-TETE (recommande) — la premiere ligne nomme les colonnes
- *      (`migration_name`, `checksum`, `finished_at`, `rolled_back_at`,
- *      `applied_steps_count`). Les etats sont alors connus.
- *   b) SANS EN-TETE — seuls les noms et les empreintes sont reconnus. Les
- *      etats (terminee / annulee) restent INCONNUS : l'outil le dira, il ne
- *      supposera pas « terminee » par silence.
- */
-export function lireExport(texte) {
-  const lignes = texte.split(/\r?\n/).filter((l) => l.trim() !== '');
-  const entete = lignes.find((l) => /migration_name/i.test(l) && /checksum/i.test(l));
+const ajouter = (index, l) => {
+  if (!index.has(l.nom)) index.set(l.nom, []);
+  index.get(l.nom).push(l);
+};
+
+function lireJson(texte) {
+  let donnees;
+  try { donnees = JSON.parse(texte); } catch { return null; }
+  const brut = Array.isArray(donnees) ? donnees : [donnees];
+  if (brut.length === 0) return null;
+  const premier = brut[0];
+  if (typeof premier !== 'object' || premier === null) return null;
+  // Un JSON sans les colonnes attendues n'est pas un export d'historique.
+  if (!('migration_name' in premier) && !('migrationName' in premier)) return null;
+
+  const index = new Map();
+  for (const r of brut) {
+    const nom = r.migration_name ?? r.migrationName;
+    if (!nom) continue;
+    ajouter(index, ligne(nom, r.checksum, r.finished_at ?? r.finishedAt,
+      r.rolled_back_at ?? r.rolledBackAt, r.applied_steps_count ?? r.appliedStepsCount));
+  }
+  return { lignes: index, etatsConnus: true, format: 'JSON' };
+}
+
+function lireTableau(texte) {
+  const brutes = texte.split(/\r?\n/).filter((l) => l.trim() !== '');
+  const entete = brutes.find((l) => /migration_name/i.test(l) && /checksum/i.test(l));
 
   if (entete) {
     const sep = delimiterDe(entete);
-    if (!sep) return { entrees: new Map(), etatsConnus: false };
-    const colonnes = decouper(entete, sep).map((c) => c.toLowerCase());
+    if (!sep) return null;
+    const colonnes = decouperCsv(entete, sep).map((c) => c.toLowerCase());
     const idx = (nom) => colonnes.indexOf(nom);
     const iNom = idx('migration_name');
-    if (iNom === -1) return { entrees: new Map(), etatsConnus: false };
+    if (iNom === -1) return null;
 
-    const entrees = new Map();
-    for (const ligne of lignes) {
-      if (ligne === entete) continue;
-      const champs = decouper(ligne, sep);
+    const index = new Map();
+    for (const l of brutes) {
+      if (l === entete) continue;
+      const champs = decouperCsv(l, sep);
       const nom = (champs[iNom] || '').trim();
       if (!/^\d{14}_[a-z0-9_]+$/.test(nom)) continue;
-      const lire = (colonne) => {
-        const i = idx(colonne);
-        if (i === -1) return null;
-        const v = (champs[i] || '').trim().toLowerCase();
-        return VIDE.has(v) ? null : champs[i].trim();
-      };
-      entrees.set(nom, {
-        nom,
-        checksum: (lire('checksum') || '').toLowerCase() || null,
-        finished_at: lire('finished_at'),
-        rolled_back_at: lire('rolled_back_at'),
-        applied_steps_count: lire('applied_steps_count'),
-      });
+      const champ = (c) => { const i = idx(c); return i === -1 ? null : champs[i]; };
+      ajouter(index, ligne(nom, champ('checksum'), champ('finished_at'),
+        champ('rolled_back_at'), champ('applied_steps_count')));
     }
-    return { entrees, etatsConnus: true };
+    return { lignes: index, etatsConnus: true, format: 'CSV avec en-tete' };
   }
 
-  // Repli sans en-tete : noms et empreintes seulement.
-  const entrees = new Map();
-  for (const ligne of lignes) {
-    const nom = [...ligne.matchAll(NOM)].map((m) => m[1])[0];
+  // Repli sans en-tete : noms et empreintes seulement, une ligne = une entree.
+  const index = new Map();
+  let trouve = false;
+  for (const l of brutes) {
+    const nom = [...l.matchAll(NOM)].map((m) => m[1])[0];
     if (!nom) continue;
-    const empreinte = [...ligne.matchAll(EMPREINTE)].map((m) => m[1].toLowerCase())[0] || null;
-    const entree = entrees.get(nom) || { nom, checksum: null, finished_at: null, rolled_back_at: null };
-    if (!entree.checksum && empreinte) entree.checksum = empreinte;
-    entrees.set(nom, entree);
+    trouve = true;
+    const e = [...l.matchAll(EMPREINTE)].map((m) => m[1].toLowerCase())[0] || null;
+    ajouter(index, ligne(nom, e, null, null, null));
   }
-  return { entrees, etatsConnus: false };
+  return trouve ? { lignes: index, etatsConnus: false, format: 'sans en-tete' } : null;
 }
 
-/* --- 3 bis. Provenance : a quel commit cette comparaison se rapporte ------- */
+export function lireExport(texte) {
+  return lireJson(texte) || lireTableau(texte) || { lignes: new Map(), etatsConnus: false, format: 'inconnu' };
+}
 
-/**
- * Un export de production ne vaut que rapporte au commit dont on a recalcule
- * les empreintes. Sans cette mention, deux rapports produits a quinze jours
- * d'intervalle sont incomparables — c'est exactement l'erreur qui a rendu
- * `CHANTIERS-RESTANTS.md` trompeur avant que `test:chantiers` ne l'interdise.
- */
+/* --- 3. Provenance : a quel commit cette comparaison se rapporte ---------- */
+
 export function provenance() {
   const git = (cmd) => {
     try { return execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
@@ -190,8 +209,6 @@ export function provenance() {
   const statut = git('git status --porcelain');
   return {
     sha,
-    // Un arbre modifie rend les empreintes non reproductibles : on le dit au
-    // lieu de laisser croire que le commit suffit.
     arbrePropre: statut !== null && statut === '',
     modifications: statut ? statut.split('\n').filter(Boolean).length : null,
   };
@@ -199,45 +216,84 @@ export function provenance() {
 
 /* --- 4. Comparaison ------------------------------------------------------ */
 
+/** La ligne que Prisma considere comme l'execution courante. */
+const retenue = (lignes) =>
+  lignes.find((l) => l.finished_at !== null && l.rolled_back_at === null)
+  || lignes.find((l) => l.finished_at !== null)
+  || null;
+
 export function reconcilier(texteExport) {
   const attendues = empreintesDepot();
-  const { entrees: lues, etatsConnus } = lireExport(texteExport);
+  const { lignes: index, etatsConnus, format } = lireExport(texteExport);
 
-  const absentes = [];      // au depot, pas dans l'historique distant
-  const divergentes = [];   // meme nom, empreinte differente
-  const orphelines = [];    // dans l'historique distant, absentes du depot
+  const absentes = [];
+  const divergentes = [];
+  const bloquees = [];
+  const annuleesOuvertes = [];
+  const annuleesResolues = [];
+  const doublons = [];
+  const sansEtape = [];
+  let attestees = 0;
 
   for (const [nom, empreinte] of attendues) {
-    if (!lues.has(nom)) { absentes.push(nom); continue; }
-    const lue = lues.get(nom).checksum;
-    if (lue && lue !== empreinte) divergentes.push({ nom, attendue: empreinte, lue });
-  }
-  for (const nom of lues.keys()) if (!attendues.has(nom)) orphelines.push(nom);
+    const lignes = index.get(nom);
+    if (!lignes) { absentes.push(nom); continue; }
 
-  const nonTerminees = [...lues.values()]
-    .filter((e) => attendues.has(e.nom) && e.rolled_back_at === null && e.finished_at === null)
-    .map((e) => e.nom);
-  const annuleesConnues = [...lues.values()]
-    .filter((e) => attendues.has(e.nom) && e.rolled_back_at !== null)
-    .map((e) => e.nom);
+    if (lignes.length > 1) doublons.push({ nom, lignes });
+
+    const courante = retenue(lignes);
+    if (courante) {
+      attestees += 1;
+      if (courante.checksum && courante.checksum !== empreinte) {
+        divergentes.push({ nom, attendue: empreinte, lue: courante.checksum });
+      }
+      if (courante.applied_steps_count === 0) sansEtape.push(nom);
+    }
+
+    for (const l of lignes) {
+      const niTermineeNiAnnulee = l.finished_at === null && l.rolled_back_at === null;
+      const annulee = l.rolled_back_at !== null;
+      if (niTermineeNiAnnulee) { bloquees.push({ nom, l }); continue; }
+      if (annulee) {
+        // Une annulation suivie d'une reussite est une trace d'incident resolu.
+        // Une annulation sans reussite ulterieure laisse la migration non
+        // appliquee : `deploy` la rejouera, ce qui n'est pas un blocage.
+        if (retenue(lignes)) annuleesResolues.push({ nom, l });
+        else annuleesOuvertes.push({ nom, l });
+      }
+    }
+  }
+
+  const orphelines = [];
+  for (const [nom, lignes] of index) {
+    if (!attendues.has(nom)) orphelines.push({ nom, lignes });
+  }
 
   return {
     depot: attendues.size,
-    attestees: attendues.size - absentes.length,
+    lignesLues: [...index.values()].reduce((n, l) => n + l.length, 0),
+    nomsLus: index.size,
+    format,
+    attestees,
     absentes,
     divergentes,
+    bloquees,
+    annuleesResolues,
+    annuleesOuvertes,
+    doublons,
+    sansEtape,
     orphelines,
-    nonTerminees,
-    annulees: annuleesConnues,
     etatsConnus,
     coherent:
       etatsConnus
-      && absentes.length === 0 && divergentes.length === 0 && orphelines.length === 0
-      && nonTerminees.length === 0 && annuleesConnues.length === 0,
+      && absentes.length === 0 && divergentes.length === 0 && bloquees.length === 0
+      && annuleesOuvertes.length === 0 && orphelines.length === 0,
   };
 }
 
 /* --- 5. Sortie ------------------------------------------------------------ */
+
+const nomDate = (n) => n.slice(0, 14);
 
 function principal() {
   const arg = process.argv[2];
@@ -260,52 +316,61 @@ function principal() {
     console.error('usage : node scripts/reconcilier-historique-migrations.mjs <export> | --sans-export');
     process.exit(2);
   }
-  const chemin = arg;
-  if (!existsSync(chemin)) {
-    console.error(`  export introuvable : ${chemin}`);
+  if (!existsSync(arg)) {
+    console.error(`  export introuvable : ${arg}`);
     process.exit(2);
   }
-  const texte = readFileSync(chemin, 'utf8');
+  const texte = readFileSync(arg, 'utf8');
   if (texte.trim() === '') {
     console.error('  export vide : aucune ligne a comparer.');
     process.exit(2);
   }
 
   const r = reconcilier(texte);
+  if (r.nomsLus === 0) {
+    console.error('  aucun nom de migration reconnu dans l export : rien a comparer.');
+    process.exit(2);
+  }
 
-  console.log(`\n  depot                          : ${r.depot} migrations`);
-  console.log(`  attestees par la production     : ${r.attestees}`);
-  console.log(`  presentes, empreinte identique  : ${r.attestees - r.divergentes.length}`);
+  console.log(`  format           : ${r.format}`);
+  console.log(`  depot            : ${r.depot} migrations`);
+  console.log(`  production       : ${r.lignesLues} ligne(s) d historique, ${r.nomsLus} nom(s) distinct(s)`);
+  console.log(`  attestees        : ${r.attestees} / ${r.depot}`);
 
-  const bloc = (titre, liste, note) => {
-    if (liste.length === 0) return;
-    console.log(`\n  ${titre} (${liste.length})`);
-    for (const l of liste) console.log(`    - ${typeof l === 'string' ? l : l.nom}`);
+  const bloc = (titre, items, rendu, note) => {
+    if (items.length === 0) return;
+    console.log(`\n  ${titre} (${items.length})`);
+    for (const i of items) console.log(`    - ${rendu(i)}`);
     if (note) console.log(`      ${note}`);
   };
 
-  bloc('NON ATTESTEES : au depot, jamais executees en production', r.absentes,
-    'Ces migrations n\'ont pas de ligne dans l\'historique distant.');
-  bloc('EMPREINTE DIVERGENTE : meme nom, contenu different', r.divergentes,
-    'Le fichier a change depuis l\'execution distante. Re-executer ne remplace pas ce qui a ete joue.');
-  if (!r.etatsConnus) {
-    console.log('\n  ETATS INCONNUS : l\'export n\'a pas d\'en-tete de colonnes.');
-    console.log('    Les migrations presentes sont donc seulement « attestees », pas');
-    console.log('    « terminees ». Reexporter avec les colonnes finished_at et');
-    console.log('    rolled_back_at pour conclure sur les echecs.');
-  }
-  bloc('NON TERMINEES : `finished_at` absent', r.nonTerminees,
-    'Une migration non terminee bloque `prisma migrate deploy` tant qu\'elle n\'est pas resolue.');
-  bloc('ANNULEES : `rolled_back_at` renseigne', r.annulees);
-  bloc('ORPHELINES : dans l\'historique distant, absentes du depot', r.orphelines);
+  bloc('NON ATTESTEES : au depot, aucune execution reussie en production',
+    r.absentes, (n) => n,
+    'Absentes de l historique : `migrate deploy` tentera de les appliquer.');
+  bloc('BLOQUANTES : ni terminees ni annulees', r.bloquees,
+    (b) => `${b.nom}  (commencee ${b.l.started_at || '?'})`,
+    '`migrate deploy` s arrete ici. Aucune n etait signalee si la liste est vide.');
+  bloc('DIVERGENTES : la ligne retenue ne correspond pas au depot', r.divergentes,
+    (d) => `${d.nom}\n        depot      ${d.attendue}\n        production ${d.lue}`,
+    'Le fichier a change depuis l execution distante.');
+  bloc('ANNULEES SANS REUSSITE ULTERIEURE', r.annuleesOuvertes,
+    (a) => `${a.nom}  (annulee ${a.l.rolled_back_at})`,
+    '`deploy` rejouera ces migrations.');
+  bloc('ANNULEES PUIS REUSSIES (incident resolu)', r.annuleesResolues,
+    (a) => `${a.nom}  (annulee ${a.l.rolled_back_at}, puis reussie)`,
+    'Trace d incident : rien a faire, mais la ligne reste dans l historique.');
+  bloc('NOMS EN DOUBLE : plusieurs lignes pour une migration', r.doublons,
+    (d) => `${d.nom}  (${d.lignes.length} lignes : ${d.lignes.map((l) => (l.rolled_back_at ? 'annulee' : l.finished_at ? 'terminee' : 'en cours')).join(', ')})`,
+    'Normal apres un resolve suivi d un rejeu — anormal si les lignes se contredisent.');
+  bloc('MARQUEES APPLIQUEES SANS AUCUNE ETAPE (applied_steps_count = 0)', r.sansEtape,
+    (n) => n,
+    'Prisma enregistre 0 quand la migration a ete marquee appliquee sans etre executee (resolve --applied).');
+  bloc('ORPHELINES : en production, absentes du depot', r.orphelines,
+    (o) => o.nom);
 
-  if (r.divergentes.length > 0) {
-    console.log('\n  Detail des divergences :');
-    for (const d of r.divergentes) {
-      console.log(`    ${d.nom}`);
-      console.log(`      depot        ${d.attendue}`);
-      console.log(`      production   ${d.lue}`);
-    }
+  if (!r.etatsConnus) {
+    console.log('\n  ETATS INCONNUS : l export n a pas de colonnes d etat.');
+    console.log('    Les migrations presentes sont « attestees », pas « terminees ».');
   }
 
   console.log('\n  --------------------------------------------');
