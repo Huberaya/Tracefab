@@ -121,6 +121,25 @@ const cas = [
     (l) => (l.startsWith('G|hors-cible|documents|') ? l.replace('app=SELECT', 'app=SELECT,INSERT,UPDATE,DELETE') : l)), 1],
   ['ecriture rendue au role runtime sur une table cible', muter('m10e.txt',
     (l) => (l.startsWith('G|table|green_claims_audits|') ? l.replace('app=SELECT', 'app=SELECT,INSERT') : l)), 1],
+  ['appartenance de role ajoutee (tracefab_app membre de tracefab_worker)',
+    ecrire('m12.txt', `${ref.join('\n')}
+G|membre|tracefab_worker|dans|tracefab_app|admin=false|herite=oui
+`), 1],
+  ['politique surnumeraire hors perimetre PLM', muter('m13.txt',
+    (l) => (l.startsWith('P|green_claims_rules.green_claims_rules_select|')
+      ? `${l}\nP|green_claims_rules.politique_fantome|roles=public|cmd=SELECT|permissive=PERMISSIVE|using=(true)|check=(aucun)` : l)), 1],
+  ['ligne dupliquee a l identique', ecrire('m14.txt', `${ref.join('\n')}
+${ref.find((l) => l.startsWith('P|plm_erp_integrations.plm_integrations_select_org|'))}
+`), 1],
+  ['ligne dupliquee avec une valeur differente (ecrasement silencieux interdit)',
+    ecrire('m15.txt', `${ref.join('\n')}
+G|attributs|tracefab_app|super=false|bypassrls=true|inherit=true|createrole=false|createdb=false|login=true
+`), 1],
+  ['ligne mal formee (segment sans affectation)', muter('m16.txt',
+    (l) => (l.startsWith('G|attributs|tracefab_worker|')
+      ? l.replace('|inherit=false|', '|inherit|') : l)), 1],
+  ['genre inconnu', muter('m17.txt',
+    (l) => (l.startsWith('T|green_claims_rules|') ? l.replace(/^T\|/, 'Z|') : l)), 1],
   ['historique remis a zero (cinq hors bande effacees)', muter('m10.txt',
     (l) => (l.startsWith('H|2026100622') ? l.replace(/\|present=1\|steps=0\|termine=true$/, '|present=0|steps=-|termine=false') : l)), 1],
   ['rendu seulement : espaces et casts differents', muter('m8.txt',
@@ -154,8 +173,8 @@ const plmDerive = ecrire('plm-derive.txt', `${fs.readFileSync(plmRef, 'utf8').tr
 P|plm_erp_sync_jobs.plm_erp_sync_jobs_select_brand|roles=public|cmd=SELECT|permissive=PERMISSIVE|using=tracefab_is_org_member(brand_organization_id)|check=(aucun)
 `);
 const rDerive = lancer([plmDerive, plmRef, '--perimetre-plm']);
-ok('une politique surnumeraire sur le perimetre PLM → pas un PASS (code 3)', rDerive.code === 3,
-  `code ${rDerive.code}`);
+ok('une politique surnumeraire sur le perimetre PLM → FAIL (code 1), plus un simple « a qualifier »',
+  rDerive.code === 1, `code ${rDerive.code}`);
 
 /* -------------------------------------------------------------------------
    2 bis. Les deux formats de sortie sont acceptes
@@ -186,6 +205,11 @@ ok('une sortie vide est un echec, pas un silence', lancer([vide, `--referentiel=
 
 const partielle = ecrire('partielle.txt', `${ref.slice(0, 3).join('\n')}\n`);
 const rp = lancer([partielle, `--referentiel=${refPath}`]);
+ok('un proprietaire de role runtime est refuse',
+  lancer([muter('m18.txt', (l) => (l.startsWith('T|green_claims_rules|')
+    ? l.replace(/\|proprietaire=[a-z_]+$/, '|proprietaire=tracefab_app') : l)),
+  refPath]).code === 1);
+
 ok('le perimetre restreint ne desactive pas les onze autres controles de table',
   lancer([muter('m11.txt', (l) => (l.startsWith('T|pef_emission_factors|') ? l.replace('|rls=true|', '|rls=false|') : l)), plmRef, '--perimetre-plm']).code === 1);
 ok('trois faits sur quatre-vingt-cinq est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);

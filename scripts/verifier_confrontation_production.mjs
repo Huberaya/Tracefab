@@ -228,13 +228,50 @@ const cleDe = (ligne) => {
   const [genre, objet, detail] = ligne.split('|');
   return genre === 'G' ? `G|${objet}|${detail}` : `${genre}|${objet}`;
 };
-const parCle = (lignes) => {
+/**
+ * Analyse d'un jeu de lignes : cle, doublons, lignes mal formees.
+ *
+ * Un `Map.set` silencieux est le pire des comportements pour un comparateur :
+ * deux lignes de meme cle, la seconde ecrase la premiere, et le controle
+ * annonce un perimetre qu'il n'a pas couvert. Les doublons sont donc REMONTES,
+ * pas absorbes.
+ */
+const GENRES = new Set(['T', 'P', 'F', 'H', 'G', 'S']);
+const parCle = (lignes, source) => {
   const m = new Map();
-  for (const l of lignes) m.set(cleDe(l), l);
-  return m;
+  const doublons = [];
+  const malformees = [];
+  for (const l of lignes) {
+    const morceaux = l.split('|');
+    const [genre, objet] = morceaux;
+    const profilValide = genre === 'G'
+      ? morceaux.length >= 4 && objet && morceaux[2]
+      : morceaux.length >= 3 && objet;
+    if (!GENRES.has(genre) || !profilValide) {
+      malformees.push(l);
+      continue;
+    }
+    // Chaque segment apres l'en-tete doit porter une affectation `cle=valeur`.
+    const debutChamps = genre === 'G' ? 3 : 2;
+    const champsMalFormes = morceaux.slice(debutChamps).filter((x) => x.indexOf('=') <= 0);
+    if (champsMalFormes.length) {
+      malformees.push(`${l}   (segment sans affectation : ${champsMalFormes.join(', ')})`);
+      continue;
+    }
+    const k = cleDe(l);
+    if (m.has(k)) {
+      doublons.push(`${k}  [${source}]`);
+      continue;
+    }
+    m.set(k, l);
+  }
+  return { map: m, doublons, malformees };
 };
-const ref = parCle(referentiel);
-const mes = parCle(mesure);
+
+const analyseRef = parCle(referentiel, 'referentiel');
+const analyseMes = parCle(mesure, 'production');
+const ref = analyseRef.map;
+const mes = analyseMes.map;
 
 
 // Le proprietaire n'est pas dans la requete : il est mesure separement plus bas.
@@ -256,6 +293,24 @@ const CHAMPS_DURS = ['existe', 'rls', 'force', 'politiques', 'cmd', 'roles', 'pe
   // G|table, G|hors-cible, G|schema
   'app', 'public'];
 const CHAMPS_TEXTE = ['using', 'check']; // rendu d'expression : peut differer sans changer le sens
+
+/**
+ * Champs NI durs NI textuels : ils ne sont pas comparés caractère par
+ * caractère, et ce n'est pas un oubli — c'est une DÉCISION, écrite.
+ *
+ *   proprietaire — le propriétaire de la base de référence est le rôle du
+ *   cluster jetable (`postgres`), celui de la production est le rôle
+ *   d'infrastructure (`neondb_owner`). Comparer les deux produirait un écart
+ *   qui ne dit rien de la sécurité. Ce qui compte, et qui est contrôlé plus
+ *   bas : un propriétaire UNIQUE et JAMAIS un rôle runtime. La qualification
+ *   est donc structurelle, pas nominale.
+ *
+ * Tout autre champ présent dans les lignes mais absent de ces trois listes
+ * provoque un ÉCHEC : un fait produit et non comparé est un angle mort.
+ */
+const CHAMPS_QUALIFIES = {
+  proprietaire: 'proprietaire unique, jamais un role runtime (qualification structurelle)',
+};
 
 /**
  * Deux expressions textuellement differentes peuvent porter la MEME regle (un
@@ -308,8 +363,39 @@ const champs = (ligne) => {
 
 let echecs = 0;
 let aQualifier = 0;
+
+/* Doublons et lignes mal formees : ni l'un ni l'autre ne se tait. */
+for (const [analyse, source] of [[analyseRef, 'referentiel'], [analyseMes, 'sortie de production']]) {
+  if (analyse.doublons.length) {
+    echecs += analyse.doublons.length;
+    console.log(`\n  ECHEC  ${analyse.doublons.length} cle(s) en double dans ${source} :`);
+    for (const d of analyse.doublons.slice(0, 20)) console.log(`    ${d}`);
+  }
+  if (analyse.malformees.length) {
+    echecs += analyse.malformees.length;
+    console.log(`\n  ECHEC  ${analyse.malformees.length} ligne(s) mal formee(s) dans ${source} :`);
+    for (const d of analyse.malformees.slice(0, 20)) console.log(`    ${d}`);
+  }
+}
+
 const manquantes = [...ref.keys()].filter((k) => !mes.has(k));
-const surnumeraires = [...mes.keys()].filter((k) => !ref.has(k) && !k.startsWith('H|'));
+
+/**
+ * Un fait surnumeraire en production n'a pas le meme poids selon son genre.
+ *
+ *   T / F / H  un objet inconnu du depot : a qualifier, il n'accorde rien par
+ *              lui-meme ;
+ *   P / G      une POLITIQUE ou un PRIVILEGE que le depot ne prevoit pas :
+ *              c'est une capacite en plus, pas une curiosite. Echec dur.
+ *
+ * Le 28/10, les deux politiques surnumeraires de `plm_erp_sync_jobs` etaient
+ * classees « a qualifier » ; elles sont desormais un echec, et leur
+ * qualification manuelle reste possible — mais elle doit etre ECRITE, pas
+ * deduite d'un code de sortie permissif.
+ */
+const tousSurnumeraires = [...mes.keys()].filter((k) => !ref.has(k) && !k.startsWith('H|'));
+const surnumeraires = tousSurnumeraires.filter((k) => !/^[PG]\|/.test(k));
+const surnumerairesSecurite = tousSurnumeraires.filter((k) => /^[PG]\|/.test(k));
 
 console.log(`\n  ${ref.size} faits attendus, ${mes.size} faits mesures.`);
 
@@ -319,10 +405,39 @@ if (manquantes.length) {
   for (const k of manquantes.slice(0, 20)) console.log(`    ${k}`);
 }
 
+if (surnumerairesSecurite.length) {
+  echecs += surnumerairesSecurite.length;
+  console.log(`\n  ECHEC  ${surnumerairesSecurite.length} politique(s) ou privilege(s) en production, absent(s) du referentiel :`);
+  console.log('         Le depot ne les prevoit pas : c est une capacite en plus.');
+  for (const k of surnumerairesSecurite.slice(0, 20)) console.log(`    ${k}   ${mes.get(k)}`);
+}
+
 if (surnumeraires.length) {
   aQualifier += surnumeraires.length;
   console.log(`\n  A QUALIFIER  ${surnumeraires.length} fait(s) en production, absent(s) du referentiel :`);
   for (const k of surnumeraires.slice(0, 20)) console.log(`    ${k}   ${mes.get(k)}`);
+}
+
+/* -------------------------------------------------------------------------
+   Aucun fait produit ne doit rester hors comparaison
+   ------------------------------------------------------------------------- */
+
+const compares = new Set([...CHAMPS_DURS, ...CHAMPS_TEXTE]);
+const qualifies = new Set(Object.keys(CHAMPS_QUALIFIES));
+const champsVus = new Set();
+for (const l of [...ref.values(), ...mes.values()]) {
+  for (const c of Object.keys(champs(l))) champsVus.add(c);
+}
+const nonTraites = [...champsVus].filter((c) => !compares.has(c) && !qualifies.has(c));
+if (nonTraites.length) {
+  echecs += nonTraites.length;
+  console.log(`\n  ECHEC  ${nonTraites.length} champ(s) produit(s) et NON compare(s) : ${nonTraites.join(', ')}`);
+  console.log('         Un fait annonce mais jamais compare est un angle mort, pas un detail.');
+}
+if (qualifies.size) {
+  for (const [c, raison] of Object.entries(CHAMPS_QUALIFIES)) {
+    if (champsVus.has(c)) console.log(`  qualifie  ${c} — ${raison}`);
+  }
 }
 
 for (const [cle, attendu] of ref) {
@@ -384,9 +499,22 @@ if (proprietaires.size) {
   const liste = [...proprietaires].sort().join(', ');
   console.log(`\n  Proprietaires des objets mesures : ${liste}`);
   if (proprietaires.size > 1) {
-    aQualifier += 1;
-    console.log('  A QUALIFIER  plusieurs proprietaires : un catalogue ou les objets appartiennent');
-    console.log('               a des roles differents n est pas l etat attendu.');
+    echecs += 1;
+    console.log('  ECHEC  plusieurs proprietaires : un catalogue ou les objets appartiennent');
+    console.log('         a des roles differents n est pas l etat attendu.');
+  }
+  // La qualification structurelle du proprietaire n a de valeur que si elle
+  // exclut les roles qui, eux, sont soumis a la RLS. Un objet dont le
+  // proprietaire est le role runtime echappe a `FORCE ROW LEVEL SECURITY`
+  // pose sur les AUTRES tables... et surtout : le proprietaire d une table
+  // peut y faire ce que la RLS interdit a tous les autres.
+  const ROLES_RUNTIME = ['tracefab_app', 'tracefab_worker'];
+  const fautifs = [...proprietaires].filter((p) => ROLES_RUNTIME.includes(p));
+  if (fautifs.length) {
+    echecs += 1;
+    console.log(`  ECHEC  proprietaire(s) de role RUNTIME : ${fautifs.join(', ')}`);
+    console.log('         Les objets doivent appartenir a un role d administration, pas au role');
+    console.log('         que l application utilise.');
   }
 }
 
