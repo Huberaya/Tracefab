@@ -49,7 +49,6 @@ export const APP_ROLE = 'tracefab_app';
 //   audit_logs                    api/_lib/audit-vault.ts:65                           (audit_logs.create, insert)
 //   data_points                   api/_routes/products/[productId]/data-points.ts:77   (data_points.create)
 //   data_shares                   api/_routes/supplier/shares.ts:67                    (data_shares.create)
-//   documents                     api/_lib/documents.ts:107                            (update)
 //   materials                     api/_lib/bulk-operations/bulk-importer.ts:178        (materials.create)
 //   organization_invitations      api/_routes/supplier/member-invitations/[invitationId].ts:47 (organization_invitations.create, organization_invitations.update)
 //   organization_memberships      api/_routes/supplier/members.ts:148                  (organization_memberships.update, organization_memberships.updatemany)
@@ -71,6 +70,14 @@ export const APP_ROLE = 'tracefab_app';
 //                                 runtime. Aucune ecriture directe ne subsiste
 //                                 dans api/ (verifie par
 //                                 test:tables-ecriture-directe).
+//   documents                     RETIREE le 28/10/2026 — la bascule
+//                                 `uploaded -> scanning` passait par un UPDATE
+//                                 brut sous tracefab_app, qui pouvait poser
+//                                 tracefab.internal_document_update et ecrire
+//                                 ainsi status/sha256/available_at. Elle passe
+//                                 desormais par tracefab_mark_document_scanning,
+//                                 declaree au registre runtime. Le role
+//                                 applicatif ne garde que SELECT sur documents.
 //
 // Retirer une table d'ici exige d'avoir d'abord deplace son chemin applicatif
 // vers une fonction SECURITY DEFINER. Le controle
@@ -79,7 +86,6 @@ export const TABLES_ECRITURE_DIRECTE = [
   'audit_logs',
   'data_points',
   'data_shares',
-  'documents',
   'materials',
   'organization_invitations',
   'organization_memberships',

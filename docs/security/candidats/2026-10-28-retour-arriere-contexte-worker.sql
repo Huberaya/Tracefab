@@ -15,12 +15,25 @@
 -- ============================================================================
 BEGIN;
 
+BEGIN;
+
 -- 1. Les onze politiques reviennent au GUC ----------------------------------
+--    ATTENTION : PostgreSQL reecrit le mot-cle en MAJUSCULES dans pg_policies
+--    (CURRENT_USER). Un replace() qui ne vise qu'une seule casse ne remplacerait
+--    RIEN, tout en laissant le script continuer : le role worker et le registre
+--    seraient supprimes plus bas alors que les politiques seraient toujours
+--    accrochees au role, et la base serait cassee en silence.
+--    On traite donc les deux graphies, et le garde-fou qui suit refuse de
+--    poursuivre si une politique n'a pas ete remise.
+--    Piege voisin : dans un LIKE, '_' est un joker — '%tracefab_worker%'
+--    matcherait aussi 'tracefab.worker_context'. On compare donc litteralement
+--    avec strpos().
 DO $$
 DECLARE
   p RECORD;
-  actuelle TEXT := '(current_user = ''tracefab_worker''::name)';
-  ancienne TEXT := 'current_setting(''tracefab.worker_context''::text, true) = ''true''::text';
+  maj TEXT := '(CURRENT_USER = ''tracefab_worker''::name)';
+  min TEXT := '(current_user = ''tracefab_worker''::name)';
+  ancienne TEXT := '(current_setting(''tracefab.worker_context''::text, true) = ''true''::text)';
   nq TEXT;
   nc TEXT;
   clauses TEXT;
@@ -29,11 +42,11 @@ BEGIN
     SELECT schemaname, tablename, policyname, qual, with_check
       FROM pg_catalog.pg_policies
      WHERE schemaname = 'public'
-       AND (qual LIKE '%tracefab_worker%' OR with_check LIKE '%tracefab_worker%')
+       AND (strpos(qual, 'tracefab_worker') > 0 OR strpos(with_check, 'tracefab_worker') > 0)
      ORDER BY tablename, policyname
   LOOP
-    nq := replace(p.qual, actuelle, ancienne);
-    nc := replace(p.with_check, actuelle, ancienne);
+    nq := replace(replace(p.qual, maj, ancienne), min, ancienne);
+    nc := replace(replace(p.with_check, maj, ancienne), min, ancienne);
     clauses := NULL;
     IF p.qual IS NOT NULL THEN
       clauses := format('USING (%s)', nq);
@@ -45,6 +58,20 @@ BEGIN
       EXECUTE format('ALTER POLICY %I ON %I.%I %s', p.policyname, p.schemaname, p.tablename, clauses);
     END IF;
   END LOOP;
+END
+$$;
+
+-- 1 bis. Garde-fou : aucune politique ne doit rester accrochee au role worker.
+--        Bloc separe, donc etat relu apres les ALTER.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+     WHERE schemaname = 'public'
+       AND (strpos(qual, 'tracefab_worker') > 0 OR strpos(with_check, 'tracefab_worker') > 0)
+  ) THEN
+    RAISE EXCEPTION 'retour_arriere_incomplet : politiques encore liees a tracefab_worker';
+  END IF;
 END
 $$;
 
@@ -90,10 +117,48 @@ BEGIN
 END
 $$;
 
+-- 5. Defaire 20261028120200 --------------------------------------------------
+--    Les champs reserves de documents redeviennent ecrits par le role
+--    applicatif, qui peut de nouveau poser le drapeau interne. C'est un
+--    retour a l'etat FAUILLE : un adherent peut auto-approuver un document.
+--    Le GRANT doit revenir AVANT que le code applicatif ne repasse au chemin
+--    direct, sinon le parcours de scan echoue en 42501 entre les deux.
+--    (l'etape 4 a deja detruit le registre : la ligne n'existe plus que si
+--    l'etape 4 a ete sautee volontairement)
+DO $$
+BEGIN
+  IF to_regclass('public.tracefab_runtime_function_registry') IS NOT NULL THEN
+    DELETE FROM public.tracefab_runtime_function_registry
+     WHERE name = 'tracefab_mark_document_scanning';
+  END IF;
+END
+$$;
+DROP FUNCTION IF EXISTS public.tracefab_mark_document_scanning(UUID);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app') THEN
+    EXECUTE 'GRANT INSERT, UPDATE, DELETE ON TABLE public.documents TO tracefab_app';
+  END IF;
+END
+$$;
+
+-- 5 bis. Garde-fou : documents doit avoir retrouve son ecriture pour l'app.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app')
+     AND NOT pg_catalog.has_table_privilege('tracefab_app', 'public.documents', 'UPDATE') THEN
+    RAISE EXCEPTION 'retour_arriere_incomplet : tracefab_app ne peut pas ecrire dans documents';
+  END IF;
+END
+$$;
+
 COMMIT;
 
 -- Apres execution, verifier que l'echelle est bien revenue a l'etat d'origine :
 --   SELECT count(*) FROM pg_policies
---    WHERE schemaname = 'public' AND coalesce(qual,'') LIKE '%worker_context%';
--- Attendu : 11.
+--    WHERE schemaname = 'public'
+--      AND (strpos(coalesce(qual,''),'worker_context') > 0
+--        OR strpos(coalesce(with_check,''),'worker_context') > 0);
+-- Attendu : 11. (strpos et non LIKE : '_' est un joker dans LIKE, et
+-- '%tracefab_worker%' matcherait aussi 'tracefab.worker_context'.)
 -- Et se souvenir que ces 11 politiques sont EXACTEMENT la faille.

@@ -187,8 +187,15 @@ await fix.query(
   `INSERT INTO tracefab_products (id, brand_organization_id, reference, name, status)
    VALUES ($1,$2,'B-002','Brouillon B','draft')`, [prodBBrouillon, B.org]);
 
+// Un produit de A : sert de controle positif d'ecriture, desormais que
+// tracefab_app n'a plus aucun droit d'ecriture sur documents.
+const prodA = uuid('proda-001');
+await fix.query(
+  `INSERT INTO tracefab_products (id, brand_organization_id, reference, name, status, public_slug)
+   VALUES ($1,$2,'A-001','Article A','active','a-001')`, [prodA, A.org]);
+
 await fix.end();
-console.log('  fixture : 2 organisations, 2 utilisateurs, 2 documents, 2 produits (1 publié, 1 brouillon)');
+console.log('  fixture : 2 organisations, 2 utilisateurs, 2 documents, 3 produits (1 par A, 1 publié B, 1 brouillon B)');
 
 /* --- Connexion applicative ------------------------------------------------ */
 
@@ -212,12 +219,35 @@ async function enTantQue(userId, fn) {
   }
 }
 
-/** Renvoie { ok, code, rows } sans lever. */
+/**
+ * Renvoie { ok, code, rows } sans lever.
+ *
+ * Depuis que certains refus sont DURS (42501 « permission denied ») et non plus
+ * « 0 ligne », une erreur avorterait la transaction englobante et ferait
+ * echouer toutes les assertions suivantes en 25P02. Chaque tentative est donc
+ * isolee dans un point de sauvegarde, quand on est bien dans une transaction.
+ */
 async function tente(sql, params = []) {
+  let pointDeSauvegarde = false;
+  try {
+    await app.query('SAVEPOINT tente');
+    pointDeSauvegarde = true;
+  } catch {
+    // Hors transaction : rien a isoler.
+  }
   try {
     const r = await app.query(sql, params);
+    if (pointDeSauvegarde) await app.query('RELEASE SAVEPOINT tente');
     return { ok: true, rows: r.rows, count: r.rowCount };
   } catch (e) {
+    if (pointDeSauvegarde) {
+      try {
+        await app.query('ROLLBACK TO SAVEPOINT tente');
+        await app.query('RELEASE SAVEPOINT tente');
+      } catch {
+        // La transaction est deja perdue : l'erreur d'origine reste la plus utile.
+      }
+    }
     return { ok: false, code: e.code, message: String(e.message).split('\n')[0] };
   }
 }
@@ -279,10 +309,33 @@ await enTantQue(A.user, async () => {
     !r.ok || r.count === 0,
     r.ok ? `${r.count} ligne supprimée` : `${r.code} ${r.message}`,
   );
-  // Contrôle positif sur la même table : le privilège d'écrire existe bien,
-  // donc le refus ci-dessus vient de la RLS et pas d'une absence de droit.
-  const r2 = await tente(`UPDATE documents SET original_filename = 'renommé-par-a.pdf' WHERE id = $1`, [docA]);
-  verifier("contrôle positif : A peut toucher son propre document", r2.ok && r2.count === 1, r2.ok ? `${r2.count} ligne` : `${r2.code} ${r2.message}`);
+  // Contrôle positif DÉPLACÉ sur tracefab_products. Depuis 20261028120200,
+  // tracefab_app n'a plus aucun droit d'écriture sur documents : le refus
+  // ci-dessus vient donc d'une absence de privilège, pas de la RLS. Un
+  // contrôle positif sur documents serait désormais vert pour la mauvaise
+  // raison ; il faut une table que le runtime écrit encore.
+  const r2 = await tente(`UPDATE tracefab_products SET name = 'renomme-par-a' WHERE id = $1`, [prodA]);
+  verifier("contrôle positif : A peut modifier son propre produit", r2.ok && r2.count === 1, r2.ok ? `${r2.count} ligne` : `${r2.code} ${r2.message}`);
+  const r3 = await tente(`UPDATE tracefab_products SET name = 'infiltre' WHERE id = $1`, [prodBPublie]);
+  verifier("A ne peut pas modifier le produit de B", !r3.ok || r3.count === 0, r3.ok ? `${r3.count} ligne` : `${r3.code} ${r3.message}`);
+
+  // Le document de A n'est pas modifiable non plus : c'est le correctif, et
+  // il doit mordre même sur sa propre ligne.
+  const r4 = await tente(`UPDATE documents SET original_filename = 'renomme-par-a.pdf' WHERE id = $1`, [docA]);
+  verifier(
+    "A n'a aucun droit d'écriture sur documents, même sur son propre document",
+    !r4.ok && r4.code === '42501',
+    r4.ok ? `${r4.count} ligne modifiée` : `${r4.code} ${r4.message}`,
+  );
+  // Le drapeau interne ne rouvre rien : il n'y a plus de privilège à contourner.
+  await app.query(`SELECT set_config('tracefab.internal_document_update', 'true', true)`);
+  const r5 = await tente(`UPDATE documents SET status = 'available' WHERE id = $1`, [docA]);
+  verifier(
+    "poser internal_document_update ne rouvre pas l'écriture des champs réservés",
+    !r5.ok && r5.code === '42501',
+    r5.ok ? `${r5.count} ligne modifiée` : `${r5.code} ${r5.message}`,
+  );
+  await app.query(`SELECT set_config('tracefab.internal_document_update', 'false', true)`);
 });
 
 const docBExiste = await (async () => {
