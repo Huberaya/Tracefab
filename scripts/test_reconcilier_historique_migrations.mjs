@@ -155,18 +155,53 @@ const executer = (args) => {
   controle('le blocage fait echouer', code === 1);
 }
 
-/* --- 6. Marquees appliquees sans etape ------------------------------------ */
+/* --- 6. Marquees appliquees sans etape : toujours visibles ---------------- */
 
 {
+  // Le classement (hors bande / inexplique) est teste en 6 bis. Ici, on verifie
+  // seulement qu'aucune migration a 0 etape ne disparait du rapport : un
+  // diagnostic qui passe sous silence une ligne anormale ne sert a rien.
   const cibles = depot.slice(5, 8);
   const f = exporterJson(depot.map((nom) => ({
     nom,
     steps: cibles.includes(nom) ? 0 : 1,
   })));
   const { sortie } = executer([f]);
-  controle('les migrations a 0 etape sont signalees',
-    /MARQUEES APPLIQUEES SANS AUCUNE ETAPE \(applied_steps_count = 0\) \(3\)/.test(sortie), sortie.slice(0, 600));
-  for (const c of cibles) controle(`la migration sans etape ${c.slice(0, 14)} est nommee`, sortie.includes(c));
+  for (const c of cibles) {
+    controle(`la migration sans etape ${c.slice(0, 14)} apparait dans le rapport`, sortie.includes(c));
+  }
+  controle('les 0 etape sont separes en deux categories (avec / sans lanceur)',
+    /APPLIQUEES HORS BANDE|SANS EXECUTEUR CONNU/.test(sortie), sortie.slice(0, 600));
+}
+
+/* --- 6 bis. 0 etape : hors bande (lanceur du depot) vs inexplique ---------- */
+
+{
+  // Cas reel du 28/10 : `20261006250000_universal_supplier_passport` porte
+  // applied_steps_count = 0 en production, et le depot contient
+  // `apply_migration_chantier6_passport.mjs` qui execute EXACTEMENT ce fichier.
+  // L'application hors bande explique le 0 ; ce n'est pas un oubli d'execution.
+  const avecLanceur = '20261006250000_universal_supplier_passport';
+  controle('la migration choisie a bien un lanceur dans le depot',
+    depot.includes(avecLanceur));
+
+  const f = exporterJson(depot.map((nom) => ({ nom, steps: nom === avecLanceur ? 0 : 1 })));
+  const { code, sortie } = executer([f]);
+  controle('un 0 etape avec lanceur est classe « hors bande »',
+    /APPLIQUEES HORS BANDE : 0 etape, mais un lanceur du depot existe \(1\)/.test(sortie),
+    sortie.slice(0, 600));
+  controle('le lanceur est nomme', /chantier6_passport/.test(sortie));
+  controle('un 0 etape explique ne fait PAS echouer la reconciliation', code === 0, `code=${code}`);
+
+  // A l'inverse, un 0 etape qu'aucun script du depot n'explique reste une
+  // anomalie : les objets peuvent manquer, et `deploy` ne rejouera pas.
+  const sansLanceur = '20260923140000_tracefab_clerk_context';
+  const g = exporterJson(depot.map((nom) => ({ nom, steps: nom === sansLanceur ? 0 : 1 })));
+  const r = executer([g]);
+  controle('un 0 etape sans executeur connu est signale',
+    /SANS EXECUTEUR CONNU \(1\)/.test(r.sortie), r.sortie.slice(0, 600));
+  controle('il nomme la migration', r.sortie.includes(sansLanceur));
+  controle('il fait echouer la reconciliation', r.code === 1, `code=${r.code}`);
 }
 
 /* --- 7. Orpheline cote production ----------------------------------------- */

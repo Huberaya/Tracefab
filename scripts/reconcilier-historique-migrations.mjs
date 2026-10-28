@@ -198,6 +198,36 @@ export function lireExport(texte) {
   return lireJson(texte) || lireTableau(texte) || { lignes: new Map(), etatsConnus: false, format: 'inconnu' };
 }
 
+/* --- 2 bis. Lanceurs maison : qui d'autre a pu appliquer une migration ? --- */
+
+/**
+ * Le depot contient des scripts qui executent un `migration.sql` SANS passer
+ * par `prisma migrate deploy` (famille `apply_migration_chantier*.mjs`). Ils
+ * n'ecrivent pas `_prisma_migrations` : la ligne d'historique a donc ete posee
+ * autrement, typiquement par un `resolve --applied`, ce qui explique un
+ * `applied_steps_count = 0`.
+ *
+ * Cette correlation change la lecture d'un 0 etape : ce n'est pas forcement
+ * « rien n'a ete execute », c'est souvent « execute par un autre chemin ».
+ * Les deux hypotheses n'ont pas les memes consequences, donc l'outil les
+ * separe au lieu de les confondre.
+ */
+export function lanceursMaison() {
+  const scripts = join(RACINE, 'scripts');
+  const trouves = new Map();
+  if (!existsSync(scripts)) return trouves;
+  for (const f of readdirSync(scripts)) {
+    if (!/\.(mjs|js|cjs)$/.test(f)) continue;
+    const brut = readFileSync(join(scripts, f), 'utf8');
+    for (const m of brut.matchAll(/(\d{14}_[a-z0-9_]+)\//g)) {
+      const nom = m[1];
+      if (!trouves.has(nom)) trouves.set(nom, []);
+      if (!trouves.get(nom).includes(f)) trouves.get(nom).push(f);
+    }
+  }
+  return trouves;
+}
+
 /* --- 3. Provenance : a quel commit cette comparaison se rapporte ---------- */
 
 export function provenance() {
@@ -269,6 +299,13 @@ export function reconcilier(texteExport) {
     if (!attendues.has(nom)) orphelines.push({ nom, lignes });
   }
 
+  // Un 0 etape s'explique de deux facons tres differentes selon qu'un lanceur
+  // maison execute cette migration ou non.
+  const lanceurs = lanceursMaison();
+  const sansEtapeAvecLanceur = sansEtape.filter((n) => lanceurs.has(n))
+    .map((n) => ({ nom: n, lanceurs: lanceurs.get(n) }));
+  const sansEtapeSansLanceur = sansEtape.filter((n) => !lanceurs.has(n));
+
   return {
     depot: attendues.size,
     lignesLues: [...index.values()].reduce((n, l) => n + l.length, 0),
@@ -282,12 +319,15 @@ export function reconcilier(texteExport) {
     annuleesOuvertes,
     doublons,
     sansEtape,
+    sansEtapeAvecLanceur,
+    sansEtapeSansLanceur,
     orphelines,
     etatsConnus,
     coherent:
       etatsConnus
       && absentes.length === 0 && divergentes.length === 0 && bloquees.length === 0
-      && annuleesOuvertes.length === 0 && orphelines.length === 0,
+      && annuleesOuvertes.length === 0 && orphelines.length === 0
+      && sansEtapeSansLanceur.length === 0,
   };
 }
 
@@ -362,9 +402,14 @@ function principal() {
   bloc('NOMS EN DOUBLE : plusieurs lignes pour une migration', r.doublons,
     (d) => `${d.nom}  (${d.lignes.length} lignes : ${d.lignes.map((l) => (l.rolled_back_at ? 'annulee' : l.finished_at ? 'terminee' : 'en cours')).join(', ')})`,
     'Normal apres un resolve suivi d un rejeu — anormal si les lignes se contredisent.');
-  bloc('MARQUEES APPLIQUEES SANS AUCUNE ETAPE (applied_steps_count = 0)', r.sansEtape,
-    (n) => n,
-    'Prisma enregistre 0 quand la migration a ete marquee appliquee sans etre executee (resolve --applied).');
+  bloc('APPLIQUEES HORS BANDE : 0 etape, mais un lanceur du depot existe',
+    r.sansEtapeAvecLanceur,
+    (x) => `${x.nom}  (execute par ${x.lanceurs.join(', ')})`,
+    'Executees sans `prisma migrate deploy`, puis enregistrees comme appliquees. '
+    + 'Le schema peut differer de ce que produirait la migration : a verifier objet par objet.');
+  bloc('MARQUEES APPLIQUEES SANS AUCUNE ETAPE ET SANS EXECUTEUR CONNU',
+    r.sansEtapeSansLanceur, (n) => n,
+    'Rien dans le depot n explique l application : les objets peuvent manquer.');
   bloc('ORPHELINES : en production, absentes du depot', r.orphelines,
     (o) => o.nom);
 

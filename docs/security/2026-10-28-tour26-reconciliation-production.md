@@ -72,25 +72,49 @@ Je ne peux pas en juger : le dépôt n'a qu'un commit pour ces fichiers
 revue humaine** des trois diffs. C'est la question la plus importante du
 rapport et elle n'était pas dans la liste initiale.
 
-## 4. Constat nouveau nº2 — cinq migrations « appliquées » sans aucune étape
+## 4. Constat nº2 — cinq migrations appliquées HORS BANDE : expliqué, pas anodin
 
-`applied_steps_count = 0` alors que `finished_at` est renseigné :
+`applied_steps_count = 0` alors que `finished_at` est renseigné, sur cinq
+migrations :
 
-| Migration | Tables créées |
-|---|---|
-| `20261006220000_esg_pef_footprint_engine` | `pef_emission_factors`, `product_pef_assessments` |
-| `20261006230000_green_claims_anti_greenwashing_engine` | `green_claims_rules`, `product_green_claims`, `green_claims_audits` |
-| `20261006240000_quality_corrective_action_plans_cap` | `quality_corrective_action_plans`, `quality_cap_messages` |
-| `20261006250000_universal_supplier_passport` | `supplier_universal_passports`, `supplier_passport_access_requests` |
-| `20261006260000_mass_balance_anti_fraud_engine` | `transaction_certificates`, `mass_balance_allocations`, `mass_balance_reconciliations` |
+| Migration | Tables créées | Lanceur du dépôt |
+|---|---|---|
+| `20261006220000_esg_pef_footprint_engine` | `pef_emission_factors`, `product_pef_assessments` | `test_pef_chantier3.mjs` |
+| `20261006230000_green_claims_anti_greenwashing_engine` | `green_claims_rules`, `product_green_claims`, `green_claims_audits` | `test_green_claims_chantier4.mjs` |
+| `20261006240000_quality_corrective_action_plans_cap` | `quality_corrective_action_plans`, `quality_cap_messages` | `test_quality_cap_chantier5.mjs` |
+| `20261006250000_universal_supplier_passport` | `supplier_universal_passports`, `supplier_passport_access_requests` | `apply_migration_chantier6_passport.mjs` |
+| `20261006260000_mass_balance_anti_fraud_engine` | `transaction_certificates`, `mass_balance_allocations`, `mass_balance_reconciliations` | `apply_migration_chantier7_mass_balance.mjs` |
 
-Prisma enregistre `0` lorsqu'une migration est **marquée appliquée sans être
-exécutée** (`migrate resolve --applied`). Les onze tables ci-dessus peuvent donc
-**ne pas exister en production**, alors que l'historique affirme le contraire.
-Toutes les autres migrations du même lot portent `applied_steps_count = 1`.
+**Vérification en production (lecture seule) : les douze tables existent.**
+Mon alerte du tour 26 (« onze tables peuvent manquer ») est donc **infirmée** —
+et c'est une bonne nouvelle.
 
-À noter : ces cinq lignes ont été enregistrées à `15:47` le 06/10, en rafale de
-cinq secondes — la signature d'une résolution en masse, pas d'une application.
+**L'explication est dans le dépôt, et elle est nette.** Ces cinq migrations
+correspondent une à une à cinq scripts qui exécutent **exactement** leur fichier
+`migration.sql` sans passer par `prisma migrate deploy` :
+
+```
+apply_migration_chantier6_passport.mjs:9
+  const sqlFile = path.resolve('prisma/migrations/20261006250000_universal_supplier_passport/migration.sql');
+```
+
+Ces scripts **n'écrivent pas** `_prisma_migrations` (vérifié : aucun ne
+mentionne la table). La ligne d'historique a donc été posée autrement — un
+`resolve --applied`, qui enregistre `applied_steps_count = 0`. Les cinq lignes
+sont horodatées à `15:47` le 06/10, à cinq secondes d'intervalle : la signature
+d'une résolution groupée, pas d'une application.
+
+**Conséquence réelle, et c'est l'enseignement à retenir** : le SQL exécuté est
+bien celui du fichier, mais il l'a été **hors du contrôle de Prisma** — ni la
+même transaction, ni le même ordre. Le schéma devrait donc être équivalent, sans
+que ce soit prouvé. Un contrôle ciblé reste souhaitable (§6 bis), mais **ce
+n'est plus un obstacle au déploiement**.
+
+Ce constat n'était pas signalé au départ, et il ne pouvait pas être déduit de
+`_prisma_migrations` seul : c'est la confrontation avec le dépôt qui l'explique.
+L'outil de réconciliation fait désormais cette corrélation lui-même et sépare
+« appliquée hors bande » (lanceur connu) de « marquée appliquée sans exécuteur
+connu » (anomalie réelle).
 
 ## 5. Constat nouveau nº3 — sept migrations non attestées, pas cinq
 
@@ -122,39 +146,39 @@ hypothèse fausse**. Il est remplacé par ceci — plus simple, et sans écritur
 
 | # | Action | Écriture | Risque |
 |---|---|---|---|
-| 0 | Vérifier les onze tables du §4 en lecture seule | non | — |
-| 1 | Revue humaine des trois diffs du §3 | non | — |
-| 2 | `prisma migrate deploy` : applique les sept manquantes | **oui**, schéma | les cinq migrations à 0 étape ne sont **pas** rejouées |
+| 0 | ~~Vérifier les onze tables~~ — **fait** : les douze existent | non | levé |
+| 1 | Revue humaine des trois diffs du §3 | non | **ouvert** |
+| 2 | `prisma migrate deploy` : applique les sept manquantes | **oui**, schéma | faible, voir ci-dessous |
 | 3 | Re-exporter et réconcilier : attendu 63 attestées, 0 écart | non | — |
 | 4 | M6 mesurable, puis M3 tranchable | non | — |
 
 **Pas de `resolve`.** Aucune entrée n'est bloquante : l'étape du tour 25 devient
 inutile. C'est un allègement, pas un renoncement.
 
-**Mais un angle mort subsiste, et il est sérieux** : `deploy` ne rejouera **pas**
-les cinq migrations marquées appliquées. Si leurs onze tables manquent, il faut
-décider séparément quoi faire — et ce ne sera pas un `deploy`, ce sera une
-décision explicite (marquer non appliquées puis rejouer, ou appliquer le SQL à
-la main). **C'est pourquoi l'étape 0 conditionne tout le reste.**
+**L'angle mort du §4 est levé** : les douze tables existent, et les cinq
+migrations ont été exécutées par des lanceurs du dépôt qui jouent le même
+fichier. `deploy` les ignorera, ce qui est ici **sans conséquence connue**.
+Il reste prudent de vérifier que le schéma produit hors bande correspond à celui
+que produirait la migration (§6 bis) — mais ce n'est plus un préalable bloquant.
 
-### Requête de vérification à exécuter (lecture seule)
+### Risque résiduel de l'étape 2, nommé précisément
 
-```sql
-SELECT t.nom,
-       to_regclass('public.' || t.nom) IS NOT NULL AS existe
-  FROM (VALUES
-    ('pef_emission_factors'), ('product_pef_assessments'),
-    ('green_claims_rules'), ('product_green_claims'), ('green_claims_audits'),
-    ('quality_corrective_action_plans'), ('quality_cap_messages'),
-    ('supplier_universal_passports'), ('supplier_passport_access_requests'),
-    ('transaction_certificates'), ('mass_balance_allocations'),
-    ('mass_balance_reconciliations')
-  ) AS t(nom)
- ORDER BY 1;
-```
+Les sept migrations manquantes incluent le registre runtime et le durcissement
+worker — les plus structurantes du dépôt. Elles ont été validées sur base
+reconstruite depuis zéro (tour 23, 63/63) mais **jamais sur une base à
+l'historique partiel**. Deux d'entre elles (`20261028120100`,
+`20261028120200`) créent et altèrent des rôles : leur exécution dépend des
+privilèges du rôle de migration, ce qui est exactement l'objet du bloc 5 bis du
+relevé M6. **Lancer le bloc 5 bis avant l'étape 2** évite de découvrir un
+`42501` en cours de déploiement.
 
-Si une seule répond `false`, le §4 est confirmé et le plan doit être révisé
-**avant** toute écriture.
+### 6 bis. Contrôle d'équivalence du schéma hors bande (facultatif, lecture seule)
+
+Les cinq migrations du §4 ont été appliquées hors Prisma. Les tables existent ;
+reste à vérifier que leur **forme** correspond au fichier. Comparer, pour ces
+douze tables, `information_schema.columns` (nom, type, nullabilité, défaut) et
+`pg_policies` à ce que produit une base reconstruite depuis zéro suffit. Ce
+n'est pas un préalable bloquant : c'est une vérification de cohérence.
 
 ## 7. Ce qui reste `BLOCKED`
 
