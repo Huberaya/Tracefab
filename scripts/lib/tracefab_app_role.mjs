@@ -117,6 +117,19 @@ export const TABLES_ECRITURE_DIRECTE = [
  * (42501) avec ET sans le GUC forge ; `SET name` accepte ; INSERT accepte ;
  * `tracefab_start_product_revision` accepte.
  */
+export const TABLES_ECRITURE_COLONNES = ['tracefab_products'];
+
+/**
+ * Colonnes calculees, hors de portee du role runtime quel que soit le chemin.
+ * Verifiees par la garde statique et par test:neon:produit-champs-calcules.
+ */
+export const COLONNES_CALCULEES_PRODUIT = [
+  'version',
+  'data_completion',
+  'data_readiness',
+  'data_ready_at',
+];
+
 export const COLONNES_ECRITURE_PRODUIT = [
   'id',
   'brand_organization_id',
