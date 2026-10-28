@@ -167,9 +167,11 @@ function analyser(expr) {
     [...sansCasts.matchAll(/\b([a-z_][a-z0-9_]*)\s*\(/gi)].map((m) => m[1].toLowerCase()));
   const litteraux = [...sansCasts.matchAll(/'([^']*)'/g)].map((m) => `'${m[1]}'`);
   const sansChaines = sansCasts.replace(/'[^']*'/g, ' ');
+  // `[...matchAll()]` et non `matchAll().map()` : les methodes d iterateur
+  // n existent qu a partir de Node 22, et la CI tourne en Node 20. Ecrit pour
+  // Node 22, ce fichier passait ici et echouait la-bas — vu par la CI.
   const jetons = [
-    ...sansChaines.matchAll(/\b([a-z_][a-z0-9_]*)\b/gi)
-      .map((m) => m[1].toLowerCase())
+    ...[...sansChaines.matchAll(/\b([a-z_][a-z0-9_]*)\b/gi)].map((m) => m[1].toLowerCase())
       .filter((t) => !MOTS_CLES.has(t) && !TYPES.has(t) && !fonctions.has(t)),
     ...litteraux,
   ].sort();

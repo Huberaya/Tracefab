@@ -200,6 +200,17 @@ C'est sans danger **parce qu'elle est idempotente** (`CREATE OR REPLACE`,
 de plus de ne pas rouvrir `deploy` avant que les huit migrations non attestées
 soient qualifiées.
 
+### 4.2 Une erreur attrapée par la CI, pas par moi
+
+Le premier passage de la CI sur ce tour a **échoué** : `matchAll(...).map(...)`
+n'existe qu'à partir de Node 22, et la CI tourne en **Node 20**. Le code passait
+sur mon poste et tombait là-bas.
+
+C'est la CI qui a fait son travail, et c'est la bonne façon de le dire : je
+n'avais pas mesuré sur la version cible. Corrigé (`[...matchAll()]`), puis
+revérifié en Node 20 sur les quatre nouveaux tests et sur les six tests de
+migrations — tous verts.
+
 ## 5. État après ce tour
 
 | Point | Avant (tour 29) | Après |
@@ -207,6 +218,7 @@ soient qualifiées.
 | Autorisation des deux opérations | absente | **accordée** |
 | Accès à la production | absent | **absent** — identifiants et sortie réseau |
 | Confrontation `plm_erp_gs1` | outil inexistant | **outil prêt et éprouvé** ; mesure **`NOT RUN`** |
+| Version de Node des nouveaux tests | — | vérifiés en **Node 20** (la version de la CI) |
 | Application du correctif | procédure non écrite | **runbook prêt et éprouvé** ; application **`NOT RUN`** |
 | `supplier_portal` | « deux contournements fermés » | **une erreur corrigée** : un seul trou réel, la relation terminée ; redondance mesurée |
 | `public_read_context` | clos sous réserve | inchangé |
