@@ -234,6 +234,12 @@ jobs:
         # subsistent, inchangees, avec RLS forcee et rejeu sans erreur.
         run: npm run test:plm-erp-convergence:chaine
 
+      - name: Rejeu des migrations — une migration livree est-elle rejouable ?
+        # Mesure, pas supposition : si l'effet d'une migration non rejouable est
+        # deja present en production alors que son historique l'ignore,
+        # `migrate deploy` s'y arrete et rien apres ne passe.
+        run: npm run test:rejeu-migrations
+
       - name: Sondes d'effet — la sonde distingue, mesure sur la chaine du depot
         # Les onze migrations dont l'historique de production n'a pas la trace.
         # Une sonde qui rend la meme valeur dans les deux etats ne vaut rien :

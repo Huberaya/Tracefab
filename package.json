@@ -192,6 +192,7 @@
     "test:migrations:hors-bande": "node scripts/test_migrations_hors_bande_pglite.mjs",
     "test:confrontation-production": "node scripts/test_verifier_confrontation.mjs",
     "test:sondes-effets": "node scripts/test_sondes_effets_pglite.mjs",
+    "test:rejeu-migrations": "node scripts/test_rejeu_migrations.mjs",
     "test:runbook-application": "node scripts/test_runbook_application.mjs",
     "test:plm-erp-convergence": "node scripts/test_plm_erp_policy_convergence.mjs",
     "test:plm-erp-convergence:chaine": "node scripts/test_plm_erp_convergence_chaine.mjs",
