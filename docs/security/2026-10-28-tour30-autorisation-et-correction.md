@@ -655,3 +655,42 @@ reellement.
 Une lecture faite sur la production n'est pas une lecture de l'effet : elle dit
 ce que le catalogue porte, pas ce que le registre raconte. Les deux niveaux
 restent distincts, et c'est precisement l'ecart entre eux qui fait le `BLOCKED`.
+
+### 9.5 Une branche « validation DPP » datee du 27/10 — une piste, pas une preuve
+
+L'executant a precise que les lectures n'ont pas ete faites sur la branche
+`tracefab-dpp-readiness-validation-20261027`.
+
+Le nom de cette branche recoupe trois des onze ecarts :
+
+| Migration absente de production | Date |
+|---|---|
+| `20261021170000_dpp_readiness_truthful_gates` | 21/10 |
+| `20261027100000_dpp_quality_gate_requires_assessment` | 27/10 |
+| `20261027130000_dpp_review_preservation_and_publication_coherence` | 27/10 |
+
+Une branche de Neon nommee « validation » et datee du **27 octobre** — le jour
+meme de deux des migrations manquantes — suggere une trajectoire plausible : les
+fermetures DPP ont ete developpees et validees sur une branche de travail, puis
+**jamais promues en production**.
+
+J'ecris « suggere », et je m'y tiens. Deux raisons de ne pas aller plus loin :
+
+1. **La regle du mandat est explicite : on ne juge pas une base non productive
+   sur son nom ou son URL.** Un nom de branche n'est pas une mesure. Sans
+   lecture, je ne sais ni ce que cette branche contient, ni si elle existe
+   encore, ni si elle a servi a ces migrations plutot qu'a un test.
+2. **Meme lue, elle ne comblerait pas le trou.** Ce qui compte n'est pas ce qui
+   a ete valide ailleurs, c'est ce que la production execute. Une lecture de la
+   branche de validation decrirait une intention, pas un etat de production.
+
+Ce que cette precision **etablit** en revanche, et c'est utile : les onze ecarts
+ne sont pas un artefact d'observation. Les requetes n'ont pas pu lire une copie
+par erreur, ni confondre deux branches. Ce que le §9.3 liste est l'etat de la
+production — et l'hypothese la plus simple, un lot DPP reste sur une branche de
+travail, est aussi la plus derangeante : elle signifierait que des fermetures de
+controles ont ete **developpees, validees et documentees sans jamais atteindre
+la base qui les applique**.
+
+La sonde du §9.2 reste le seul juge : elle ne lit ni les noms, ni les
+historiques, ni les branches — seulement les objets de la production.
