@@ -59,6 +59,7 @@
  * L'outil ne modifie rien, ni localement ni a distance.
  */
 import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -172,6 +173,30 @@ export function lireExport(texte) {
   return { entrees, etatsConnus: false };
 }
 
+/* --- 3 bis. Provenance : a quel commit cette comparaison se rapporte ------- */
+
+/**
+ * Un export de production ne vaut que rapporte au commit dont on a recalcule
+ * les empreintes. Sans cette mention, deux rapports produits a quinze jours
+ * d'intervalle sont incomparables — c'est exactement l'erreur qui a rendu
+ * `CHANTIERS-RESTANTS.md` trompeur avant que `test:chantiers` ne l'interdise.
+ */
+export function provenance() {
+  const git = (cmd) => {
+    try { return execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+    catch { return null; }
+  };
+  const sha = git('git rev-parse HEAD');
+  const statut = git('git status --porcelain');
+  return {
+    sha,
+    // Un arbre modifie rend les empreintes non reproductibles : on le dit au
+    // lieu de laisser croire que le commit suffit.
+    arbrePropre: statut !== null && statut === '',
+    modifications: statut ? statut.split('\n').filter(Boolean).length : null,
+  };
+}
+
 /* --- 4. Comparaison ------------------------------------------------------ */
 
 export function reconcilier(texteExport) {
@@ -216,6 +241,12 @@ export function reconcilier(texteExport) {
 
 function principal() {
   const arg = process.argv[2];
+  const p = provenance();
+  console.log(`\n  commit           : ${p.sha || 'inconnu (pas un depot git)'}`);
+  if (!p.arbrePropre) {
+    console.log(`  ARBRE MODIFIE    : ${p.modifications} fichier(s) — les empreintes ne sont pas`);
+    console.log('                     reproductibles depuis le commit seul.');
+  }
 
   if (arg === '--sans-export') {
     const attendues = empreintesDepot();

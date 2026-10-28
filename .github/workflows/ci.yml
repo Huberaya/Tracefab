@@ -192,6 +192,14 @@ jobs:
         # execute n est pas un diagnostic.
         run: npm run test:diagnostic-m6
 
+      - name: Reprise des migrations — incidents reproduits puis franchis
+        # Sur PostgreSQL 18 (PGlite), meme majeure que Neon : les deux incidents
+        # rapportes (refus de privilege sur public, conflit de signature de
+        # fonction) sont reproduits avec leur code d erreur, le contenu du depot
+        # les franchit, et les rejeux sont idempotents. Conditionne la surete du
+        # plan de reprise, qui re-execute ces migrations.
+        run: npm run test:reprise-migrations
+
   # -------------------------------------------------- 2. suite de verification
   verification:
     name: Verification — suite de tests
