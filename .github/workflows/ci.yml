@@ -234,6 +234,12 @@ jobs:
         # subsistent, inchangees, avec RLS forcee et rejeu sans erreur.
         run: npm run test:plm-erp-convergence:chaine
 
+      - name: Deploiement simule — la sequence des onze, son point de rupture
+        # Etablit par deduction que les effets de 20261017120000 sont presents en
+        # production (20261021120000 y est appliquee et EXIGE ses trois fonctions),
+        # puis simule le deploy des onze et l'echec injecte sur le registre.
+        run: npm run test:deploiement-simule
+
       - name: Rejeu des migrations — une migration livree est-elle rejouable ?
         # Mesure, pas supposition : si l'effet d'une migration non rejouable est
         # deja present en production alors que son historique l'ignore,
