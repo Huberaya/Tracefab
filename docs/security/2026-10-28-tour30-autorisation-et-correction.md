@@ -694,3 +694,69 @@ la base qui les applique**.
 
 La sonde du §9.2 reste le seul juge : elle ne lit ni les noms, ni les
 historiques, ni les branches — seulement les objets de la production.
+
+## 10. « Héritage des droits » : la seule partie du mandat qui n'était pas mesurée
+
+En reprenant le mandat point par point, une lacune subsistait derrière les
+mesures déjà faites. La confrontation couvrait les politiques (`USING`,
+`WITH CHECK`), les propriétaires, `search_path` et les `EXECUTE` **de
+fonction**. Elle ne couvrait pas :
+
+- les **attributs** du rôle runtime — `SUPERUSER` en particulier ferait
+  s'effondrer toute la RLS lue par ailleurs, et `BYPASSRLS` aussi ;
+- les **appartenances** de rôles : `20261028120100` révoque explicitement
+  `tracefab_worker` de `tracefab_app`, précisément parce que cette appartenance
+  permettait l'usurpation ;
+- les **privilèges de table**, y compris sur `documents` et `tracefab_products`,
+  que `20261028120200` et `20261028130000` dépouillent.
+
+### 10.1 Ajout au référentiel
+
+Dix-neuf faits `G` sont désormais produits par la même requête, donc comparés
+automatiquement des deux côtés :
+
+| Ligne `G` | Ce qu'elle établit |
+|---|---|
+| `attributs` (2) | `super=false`, `bypassrls=false`, `inherit`, `createrole`, `createdb`, `login` |
+| `membre` (0) | aucune arête d'appartenance — pas même celle que `20261028120100` révoque |
+| `table` (14) | privilèges `tracefab_app` et `PUBLIC` sur les quatorze cibles |
+| `hors-cible` (2) | `documents` et `tracefab_products` — `app=SELECT` attendu, aucune écriture |
+| `schema` (1) | `USAGE`/`CREATE` sur `public` |
+
+Le référentiel passe de **66 à 85 faits**.
+
+`neondb_owner` est volontairement exclu des attributs : il appartient à
+l'infrastructure de la base, pas au dépôt. Ses attributs ne sont pas prédictibles
+depuis la chaîne, et les comparer fabriquerait une divergence qui n'en est pas
+une. Sa **propriété** des objets reste mesurée par les lignes `T` et `F`.
+
+### 10.2 Deux défauts de plus dans mon vérificateur — trouvés par les tests
+
+1. **Les champs `G` n'étaient pas comparés.** Écrits dans la requête, produits
+   des deux côtés, et ignorés au moment de la comparaison, qui ne regardait que
+   les noms qu'elle connaissait. Une élévation de privilèges serait passée au
+   vert.
+2. **Le pire : les lignes `G` s'écrasaient entre elles.** La clé d'un fait
+   était `genre|objet` — suffisante pour `T`, `P`, `F`, `H`, insuffisante pour
+   `G`, dont la troisième colonne discrimine. Dix-neuf lignes se réduisaient à
+   quatre, et la comparaison ne portait que sur la **dernière de chaque
+   famille**.
+
+Le second défaut est le plus instructif : sans les mutations injectées par le
+test — `bypassrls=true`, `super=true`, écriture rendue sur `documents` — je
+n'aurais jamais su que la comparaison ne portait que sur une ligne sur cinq.
+C'est la troisième fois dans ce chantier qu'un contrôle écrit par moi mesurait
+moins que son intitulé.
+
+Le test est passé de **25 à 31 vérifications**, dont cinq mutations de
+privilèges que le vérificateur doit refuser.
+
+### 10.3 Ce que cela impose
+
+La lecture de production déjà en main (68 lignes) a été produite par la
+**version précédente** de la requête : elle ne contient aucun fait `G`.
+Confrontée au nouveau référentiel, elle rend **19 « faits attendus absents »** —
+c'est-à-dire une lecture à refaire, pas une divergence de la production.
+
+Une lecture finale est donc nécessaire, avec les **85 faits**, avant toute
+décision de fusion.

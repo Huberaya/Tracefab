@@ -17,7 +17,9 @@ et prouvé.
    *absentes*.
 3. La dérive `plm_erp_sync_jobs` (4 politiques au lieu de 2) est **mesurée en
    production**, et le correctif existe dans le dépôt.
-4. **64 faits sur 66** du catalogue de production concordent avec le dépôt.
+4. **64 faits sur 66** du catalogue de production concordent avec le dépôt —
+   sur un référentiel qui vient de passer à **85 faits** avec l'ajout des
+   privilèges et de l'héritage des droits (§10 du tour 30).
 5. La PR #102 est **fusionnable** (`mergeable=MERGEABLE`, CI verte) — mais elle
    ne corrige pas la production, elle ne fait que la décrire.
 6. Terminer demande **deux gestes** : une sonde de lecture, puis une
@@ -77,9 +79,14 @@ migration non appliquée, la production peut très bien la porter.
 
 ### Étape 1 — Lire (aucune écriture)
 
-Coller la sonde C dans le SQL Editor de Neon, branche **`Primary`**.
-Onze lignes en retour, à comparer aux deux colonnes de référence du §9.2 du
-document de tour 30.
+**Deux lectures**, toutes deux en lecture seule, sur `Primary` :
+
+1. **la confrontation étendue** (`2026-10-28-tour30-A-...sql`, 85 faits) — elle
+   couvre désormais les privilèges et l'héritage des droits, ce que la
+   précédente lecture ne mesurait pas ;
+2. **la sonde d'effet** (`2026-10-28-tour30-C-sondes-effets.sql`, 11 sondes) —
+   elle dit, pour chacune des onze migrations en écart, si l'effet est présent
+   dans les objets.
 
 **Durée** : un `SELECT`. **Risque** : nul.
 

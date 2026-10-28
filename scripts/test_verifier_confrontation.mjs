@@ -64,7 +64,7 @@ const refPath = path.join(tmp, 'referentiel.txt');
 const gen = lancer([`--ecrire-referentiel=${refPath}`]);
 ok('le referentiel se calcule', gen.code === 0, gen.sortie.slice(0, 300));
 const ref = fs.readFileSync(refPath, 'utf8').split('\n').filter(Boolean);
-ok('le referentiel est substantiel (66 faits attendus)', ref.length === 66, `${ref.length}`);
+ok('le referentiel est substantiel (85 faits attendus)', ref.length === 85, `${ref.length}`);
 ok('il porte TOUTES les politiques des quatorze tables (31), pas seulement celles de plm',
   ref.filter((l) => l.startsWith('P|')).length === 31,
   `${ref.filter((l) => l.startsWith('P|')).length}`);
@@ -74,6 +74,11 @@ ok('il porte les quatorze tables et les fonctions des cinq',
 ok('il porte les sept lignes d historique (cinq hors bande + les deux correctives)',
   ref.filter((l) => l.startsWith('H|')).length === 7,
   `${ref.filter((l) => l.startsWith('H|')).length}`);
+ok('il porte les privileges et l heritage des droits (19 faits G)',
+  ref.filter((l) => l.startsWith('G|')).length === 19,
+  `${ref.filter((l) => l.startsWith('G|')).length}`);
+ok('le role runtime n a ni SUPERUSER ni BYPASSRLS dans le depot',
+  ref.some((l) => l.startsWith('G|attributs|tracefab_app|super=false|bypassrls=false')));
 
 /* -------------------------------------------------------------------------
    2. Six etats soumis au verificateur
@@ -108,6 +113,14 @@ const cas = [
       ? 'H|20261028140000_supplier_invitation_owner_relationship_scope|present=1|steps=1|termine=true' : l)), 1],
   ['politique en plus sur une table hors PLM (compteur)', muter('m9.txt',
     (l) => (l.startsWith('T|green_claims_audits|') ? l.replace('|politiques=2|', '|politiques=3|') : l)), 1],
+  ['BYPASSRLS accorde au role runtime', muter('m10b.txt',
+    (l) => (l.startsWith('G|attributs|tracefab_app|') ? l.replace('bypassrls=false', 'bypassrls=true') : l)), 1],
+  ['SUPERUSER accorde au role runtime', muter('m10c.txt',
+    (l) => (l.startsWith('G|attributs|tracefab_app|') ? l.replace('super=false', 'super=true') : l)), 1],
+  ['ecriture rendue au role runtime sur documents', muter('m10d.txt',
+    (l) => (l.startsWith('G|hors-cible|documents|') ? l.replace('app=SELECT', 'app=SELECT,INSERT,UPDATE,DELETE') : l)), 1],
+  ['ecriture rendue au role runtime sur une table cible', muter('m10e.txt',
+    (l) => (l.startsWith('G|table|green_claims_audits|') ? l.replace('app=SELECT', 'app=SELECT,INSERT') : l)), 1],
   ['historique remis a zero (cinq hors bande effacees)', muter('m10.txt',
     (l) => (l.startsWith('H|2026100622') ? l.replace(/\|present=1\|steps=0\|termine=true$/, '|present=0|steps=-|termine=false') : l)), 1],
   ['rendu seulement : espaces et casts differents', muter('m8.txt',
@@ -175,7 +188,7 @@ const partielle = ecrire('partielle.txt', `${ref.slice(0, 3).join('\n')}\n`);
 const rp = lancer([partielle, `--referentiel=${refPath}`]);
 ok('le perimetre restreint ne desactive pas les onze autres controles de table',
   lancer([muter('m11.txt', (l) => (l.startsWith('T|pef_emission_factors|') ? l.replace('|rls=true|', '|rls=false|') : l)), plmRef, '--perimetre-plm']).code === 1);
-ok('trois faits sur soixante-six est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);
+ok('trois faits sur quatre-vingt-cinq est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);
 ok('les faits manquants sont nommes', /absent/.test(rp.sortie));
 
 /* -------------------------------------------------------------------------

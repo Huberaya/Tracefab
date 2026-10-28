@@ -212,12 +212,25 @@ if (mesure.length === 0) {
    ------------------------------------------------------------------------- */
 
 const norm = (s) => s.replace(/\s+/g, ' ').trim();
+/**
+ * La cle d'un fait.
+ *
+ * Elle retenait `genre|objet` — suffisant pour T, P, F, H, ou l'objet identifie
+ * la ligne. PAS pour `G`, dont les lignes se discriminent sur la TROISIEME
+ * colonne : `G|attributs|tracefab_app` et `G|attributs|tracefab_worker`, ou
+ * `G|table|<nom>`. Toutes les lignes `G` s'ecrasaient donc les unes les autres,
+ * et la comparaison ne portait en realite que sur la DERNIERE de chaque
+ * famille : une elevation de privileges sur `tracefab_app` serait passee au
+ * vert. Mesure du 28/10, sur le test : quatre mutations de privileges non
+ * detectees.
+ */
+const cleDe = (ligne) => {
+  const [genre, objet, detail] = ligne.split('|');
+  return genre === 'G' ? `G|${objet}|${detail}` : `${genre}|${objet}`;
+};
 const parCle = (lignes) => {
   const m = new Map();
-  for (const l of lignes) {
-    const [genre, objet] = l.split('|');
-    m.set(`${genre}|${objet}`, l);
-  }
+  for (const l of lignes) m.set(cleDe(l), l);
   return m;
 };
 const ref = parCle(referentiel);
@@ -229,8 +242,19 @@ const mes = parCle(mesure);
 // gagne une politique supplementaire passait donc inapercue par ce champ. C'est
 // exactement la derive du 28/10 — trouvee sur les lignes `P`, mais le compteur
 // aurait du la signaler aussi.
+// Les champs `G` (privileges et heritage) ont failli manquer : ecrits dans la
+// requete, produits dans les deux referentiels, ils n'etaient PAS compares —
+// le comparateur ne regardait que les noms qu'il connaissait, et une elevation
+// de privileges serait passee inapercue. C'est la troisieme fois dans ce
+// chantier qu'un controle ecrit par moi mesurait moins que son intitule.
 const CHAMPS_DURS = ['existe', 'rls', 'force', 'politiques', 'cmd', 'roles', 'permissive',
-  'secdef', 'search_path', 'exec_public', 'exec_app', 'present', 'steps', 'termine'];
+  'secdef', 'search_path', 'exec_public', 'exec_app', 'present', 'steps', 'termine',
+  // G|attributs|role
+  'super', 'bypassrls', 'inherit', 'createrole', 'createdb', 'login',
+  // G|membre
+  'dans', 'admin', 'herite',
+  // G|table, G|hors-cible, G|schema
+  'app', 'public'];
 const CHAMPS_TEXTE = ['using', 'check']; // rendu d'expression : peut differer sans changer le sens
 
 /**
@@ -272,7 +296,8 @@ function analyser(expr) {
 }
 
 const champs = (ligne) => {
-  const [, , ...reste] = ligne.split('|');
+  const morceaux = ligne.split('|');
+  const reste = morceaux[0] === 'G' ? morceaux.slice(3) : morceaux.slice(2);
   const o = {};
   for (const morceau of reste) {
     const i = morceau.indexOf('=');
