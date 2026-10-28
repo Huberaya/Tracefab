@@ -3,6 +3,10 @@
 **Date** : 28 octobre 2026
 **Branche** : `arena/c27ddaa4-tracefab`
 **SHA initial de la mission** : `1d46902` — vérifié, c'était bien la tête.
+**SHA de code validé** : `59a11d4` — CI verte, **47 étapes, 0 échec, 0
+ignorée** (runs [40758795016](https://github.com/Huberaya/Tracefab/actions/runs/40758795016)
+et [40758795028](https://github.com/Huberaya/Tracefab/actions/runs/40758795028)).
+Ce document est ajouté par le commit qui le porte, après cette validation.
 **Verdict** : **BLOQUÉE — preuve de production manquante**, nommée au §9.
 
 ---
@@ -194,7 +198,8 @@ Décompte clos : **54 appliquées + 9 absentes + 2 annulées = 65**.
 | Draft | **oui** — non retiré, décision argumentée au §8 |
 | Mergeable | **MERGEABLE**, `CLEAN` |
 | Conflit avec `main` | aucun |
-| CI sur le SHA final | **verte** (voir §3 et le rapport de session) |
+| CI sur `59a11d4` | **verte** — 47 étapes, 0 échec, 0 ignorée |
+| CI sur le commit de ce document | voir le dernier run de la branche |
 
 ---
 
