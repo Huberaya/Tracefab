@@ -164,14 +164,15 @@ try {
   }
 
   // ---------------------------------------------------------------- E
-  // Le webhook Clerk n'insere PAS directement : `organizations_insert_creator`
-  // exige `created_by = tracefab_current_user_id()`, qu'un contexte worker ne
-  // fournit pas. Il passe par trois fonctions SECURITY DEFINER. Le test rejoue
-  // ce chemin reel, pas un INSERT nu qui ne correspond a aucune route.
+  // Le webhook Clerk n'insere PAS directement dans `users` : depuis le
+  // 28/10/2026 il appelle `tracefab_upsert_clerk_user`, fonction possedee par
+  // l'identite `tracefab_worker`. Le test rejoue ce chemin reel, pas un INSERT
+  // nu qui ne correspond a aucune route — et l'ancien INSERT nu, lui, doit
+  // desormais echouer : c'est le privilege qui a ete retire, pas seulement le
+  // drapeau de session.
   const stamp = Date.now();
-  const ecritureWorker = await dansContexte({ 'tracefab.worker_context': 'true' }, async (c) => {
-    const u = await c.query(`INSERT INTO users (clerk_user_id, email, full_name)
-      VALUES ($1, $2, 'Sonde worker') RETURNING id`,
+  const ecritureWorker = await dansContexte({}, async (c) => {
+    const u = await c.query(`SELECT id, email FROM tracefab_upsert_clerk_user($1, $2, 'Sonde worker')`,
       [`sonde-worker-${stamp}`, `sonde-worker-${stamp}@sonde.invalid`]);
     const o = await c.query(`SELECT * FROM tracefab_sync_clerk_organization($1, $2, $3, 'brand'::organization_type)`,
       [`sonde-org-${stamp}`, `Sonde Worker ${stamp}`, `Sonde ${stamp}`]);
@@ -181,8 +182,26 @@ try {
     return { users: u.rowCount, organisations: o.rowCount, adhesions: m.rowCount };
   });
   verifier(ecritureWorker.users === 1 && ecritureWorker.organisations === 1 && ecritureWorker.adhesions === 1,
-    'contexte WORKER arme : le provisionnement Clerk passe par ses fonctions SECURITY DEFINER',
+    'contexte WORKER : le provisionnement Clerk passe par ses fonctions nommees',
     `users=${ecritureWorker.users} organizations=${ecritureWorker.organisations} memberships=${ecritureWorker.adhesions}`);
+
+  // Controle negatif : l'ecriture DIRECTE sur `users` sous le role applicatif
+  // doit echouer. Sans lui, on ne saurait pas si le privilege a vraiment ete
+  // retire, ou si l'ancien chemin fonctionne encore par un autre bout.
+  let ecritureDirecteUsers = null;
+  try {
+    await dansContexte({ 'tracefab.worker_context': 'true' }, async (c) => {
+      await c.query(`INSERT INTO users (clerk_user_id, email, full_name)
+        VALUES ($1, $2, 'Sonde directe')`,
+        [`sonde-directe-${stamp}`, `sonde-directe-${stamp}@sonde.invalid`]);
+    });
+    ecritureDirecteUsers = 'acceptee';
+  } catch (e) {
+    ecritureDirecteUsers = e.code || e.message.slice(0, 40);
+  }
+  verifier(ecritureDirecteUsers === '42501',
+    'le role applicatif ne peut plus ecrire directement dans users, meme avec le GUC worker',
+    String(ecritureDirecteUsers));
 
   // ---------------------------------------------------------------- F
   let ecritureAnonyme = 0;

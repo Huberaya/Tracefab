@@ -121,8 +121,8 @@ l'intérieur de leur exécution — et seulement là.
 
 | Test | Ce qu'il refuse |
 |---|---|
-| `test:worker:non-forgeable` | la falsification du GUC, l'usurpation d'identité, tout élargissement |
-| `test:registre:fonctions` | nom fantôme, divergence module↔base, `EXECUTE` hors registre, perte du périmètre hérité, **modification de `20261021120000`** (empreinte épinglée), `GRANT` direct contournant le registre |
+| `test:neon:worker-non-forgeable` | la falsification du GUC, l'usurpation d'identité, tout élargissement |
+| `test:neon:registre-fonctions` | nom fantôme, divergence module↔base, `EXECUTE` hors registre, perte du périmètre hérité, **modification de `20261021120000`** (empreinte épinglée), `GRANT` direct contournant le registre |
 
 ## 6. Déploiement
 

@@ -28,7 +28,7 @@ import { requestedTenantId } from './tenant.js';
  *
  * Consequence assumee : si une requete ecrite ici lit une table gardee par une
  * politique worker, elle rendra zero ligne. C'est le comportement voulu — le
- * silence vaut mieux qu'une fuite — et `test:worker:non-forgeable` le verifie.
+ * silence vaut mieux qu'une fuite — et `test:neon:worker-non-forgeable` le verifie.
  */
 export async function withTracefabWorkerContext<T>(
   callback: (tx: Prisma.TransactionClient) => Promise<T>,

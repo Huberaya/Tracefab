@@ -459,7 +459,7 @@ jobs:
         # (5) la migration 20261021120000 a change de contenu, (6) une migration
         # posterieure accorde EXECUTE directement sans passer par le registre.
         # Sans ce controle, un elargissement silencieux passerait inapercu.
-        run: npm run test:registre:fonctions
+        run: npm run test:neon:registre-fonctions
 
       - name: L'identite worker n'est pas falsifiable — bloquant
         # CE TEST ECHOUE SUR LE CODE VULNERABLE, pas seulement il passe sur le
@@ -469,7 +469,7 @@ jobs:
         # utilisateurs et adhesions en posant tracefab.worker_context, que les
         # six operations systeme fonctionnent sous identite autorisee, et
         # qu'aucun des deux roles ne peut endosser l'autre.
-        run: npm run test:worker:non-forgeable
+        run: npm run test:neon:worker-non-forgeable
 
       - name: Garde-fous de la commande de validation Neon
         # Neuf chemins d'arret eprouves par execution : arbre modifie, revision
