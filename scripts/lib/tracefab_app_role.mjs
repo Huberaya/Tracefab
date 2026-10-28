@@ -99,7 +99,45 @@ export const TABLES_ECRITURE_DIRECTE = [
   'rate_limit_counters',
   'supplier_sites',
   'tracefab_catalog_import_jobs',
-  'tracefab_products',
+];
+
+/**
+ * Colonnes de `tracefab_products` que le runtime ecrit directement.
+ *
+ * `tracefab_products` n'est PLUS dans TABLES_ECRITURE_DIRECTE : le role
+ * applicatif n'a plus l'ecriture au niveau table, mais colonne par colonne.
+ * Les quatre colonnes calculees — version, data_completion, data_readiness,
+ * data_ready_at — sont absentes de cette liste, et c'est tout l'objet de la
+ * migration 20261028130000 : leur ecriture passait par un GUC de session que
+ * n'importe quel role pouvait poser. Elles ne sont desormais accessibles que
+ * par les fonctions SECURITY DEFINER (create, update_product_data,
+ * start_product_revision, set_dpp_publication, ingest_plm_erp_payload).
+ *
+ * Mesure du banc, role `tracefab_app` sans BYPASSRLS : `SET version` refuse
+ * (42501) avec ET sans le GUC forge ; `SET name` accepte ; INSERT accepte ;
+ * `tracefab_start_product_revision` accepte.
+ */
+export const COLONNES_ECRITURE_PRODUIT = [
+  'id',
+  'brand_organization_id',
+  'reference',
+  'sku',
+  'name',
+  'category',
+  'status',
+  'public_slug',
+  'created_by',
+  'created_at',
+  'updated_at',
+  'description',
+  'product_family',
+  'color_name',
+  'size_range',
+  'country_of_design',
+  'country_of_manufacture',
+  'weight_grams',
+  'care_instructions',
+  'last_data_updated_by',
 ];
 
 function quote(s) {
@@ -156,6 +194,14 @@ export async function ensureAppRole(db, password) {
          EXECUTE 'GRANT INSERT, UPDATE, DELETE ON ${listeEcriture} TO ${APP_ROLE}';
        END IF;
      END $$;`,
+    // `tracefab_products` : ecriture COLONNE PAR COLONNE, jamais au niveau
+    // table. Les champs calcules restent hors de portee du runtime.
+    `DO $$ BEGIN
+       IF to_regclass('public.tracefab_products') IS NOT NULL THEN
+         EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.tracefab_products FROM ${APP_ROLE}';
+         EXECUTE 'GRANT INSERT (${COLONNES_ECRITURE_PRODUIT.join(', ')}), UPDATE (${COLONNES_ECRITURE_PRODUIT.join(', ')}) ON public.tracefab_products TO ${APP_ROLE}';
+       END IF;
+     END $$;`,
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`,
     // EXECUTE sur les fonctions : les nouveaux objets ne doivent pas en hériter.
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
@@ -199,6 +245,7 @@ export async function ensureAppRole(db, password) {
   console.log(
     `  droits applicatifs accordes a ${APP_ROLE} ` +
     `(lecture generale filtree par RLS ; ecriture directe limitee a ${TABLES_ECRITURE_DIRECTE.length} tables ; ` +
+      `tracefab_products en ecriture colonne par colonne (${COLONNES_ECRITURE_PRODUIT.length} colonnes, champs calcules exclus) ; ` +
     `le reste des mutations par fonctions SECURITY DEFINER)`,
   );
 }

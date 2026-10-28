@@ -735,6 +735,14 @@ jobs:
       - name: Collecte de donnees — demandes, reponses, isolation
         run: npm run test:neon:collection
 
+      # Non-regression 20261028130000 : les champs calcules d'un produit ne
+      # dependent plus d'un GUC falsifiable — l'ecriture du role runtime est
+      # colonne par colonne et exclut version/data_completion/data_readiness/
+      # data_ready_at. Le test echoue sur l'etat vulnerable, pas seulement sur
+      # le correctif, et verifie que l'INSERT et la revision fonctionnent encore.
+      - name: Champs calcules produit — hors de portee du role runtime
+        run: npm run test:neon:produit-champs-calcules
+
       - name: Quotas de stockage — calcul et refus au-dela du quota
         # Celui-ci passe par TF_RLS_APP_URL quand il est fourni ; il exige le
         # client Prisma, genere plus haut dans ce job.
