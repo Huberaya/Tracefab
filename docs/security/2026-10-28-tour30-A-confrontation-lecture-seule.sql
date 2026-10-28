@@ -17,7 +17,7 @@
 --   T|table|existe|rls|force|politiques|proprietaire   etat RLS de chaque table
 --   P|table.politique|roles|cmd|using|check   les quatre politiques de plm_erp_gs1
 --   F|fonction|secdef|search_path|exec|proprietaire    fonctions des cinq
---   H|migration|present|steps|termine         historique Prisma, en lecture
+--   H|migration|present|steps|termine         historique Prisma, en lecture (7 lignes)
 
 WITH cibles(nom) AS (
   VALUES
@@ -53,7 +53,8 @@ migrations(nom) AS (
     ('20261006240000_quality_corrective_action_plans_cap'),
     ('20261006250000_universal_supplier_passport'),
     ('20261006260000_mass_balance_anti_fraud_engine'),
-    ('20261028140000_supplier_invitation_owner_relationship_scope')
+    ('20261028140000_supplier_invitation_owner_relationship_scope'),
+    ('20261028150000_plm_erp_policy_convergence')
 )
 SELECT ligne FROM (
   -- 1. Etat RLS des quatorze tables.

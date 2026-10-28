@@ -100,14 +100,14 @@ et pour nommer l'erreur au lieu de la laisser dans l'historique.
 
 `docs/security/2026-10-28-tour30-A-confrontation-lecture-seule.sql` — catalogue
 système uniquement, aucune table métier, aucun appel de fonction applicative. Il
-produit 38 faits en lignes plates :
+produit 39 faits en lignes plates :
 
 | Genre | Contenu |
 |---|---|
 | `T` | les 14 tables : existence, `rls`, `force_rls`, nombre de politiques, propriétaire |
 | `P` | les 4 politiques de `plm_erp_gs1` : rôle, commande, `permissive`, `USING`, `WITH CHECK` |
 | `F` | les 14 fonctions : `SECURITY DEFINER`, `search_path`, `EXECUTE` de `PUBLIC` et de `tracefab_app`, propriétaire |
-| `H` | l'historique Prisma des 5 hors bande et de la corrective |
+| `H` | l'historique Prisma des 5 hors bande et des deux correctives |
 
 ```bash
 psql "$DIRECT_URL" -A -t -v ON_ERROR_STOP=1 \
@@ -126,7 +126,7 @@ Il distingue trois issues, et refuse de les confondre :
 
 | Issue | Sens |
 |---|---|
-| `PASS` (0) | les 38 faits concordent |
+| `PASS` (0) | les 39 faits concordent |
 | `FAIL` (1) | la **règle** diffère : mauvais rôle, mauvais prédicat, `RLS` absente, `EXECUTE` ouvert, `SECURITY INVOKER` |
 | `À QUALIFIER` (3) | mêmes fonctions, mêmes jetons, **rendu** différent (cast réécrit entre PG 17 et 18) |
 
@@ -161,7 +161,7 @@ formats.
 | corrective déjà en historique | `FAIL` | `FAIL` |
 | différence de cast seule | `À QUALIFIER` | `À QUALIFIER` |
 
-Et une sortie vide, ou trois faits sur trente-huit, sont des échecs — jamais un
+Et une sortie vide, ou trois faits sur trente-neuf, sont des échecs — jamais un
 silence.
 
 ## 4. Opération (2) — l'application, prête et vérifiée
@@ -217,13 +217,63 @@ n'avais pas mesuré sur la version cible. Corrigé (`[...matchAll()]`), puis
 revérifié en Node 20 sur les quatre nouveaux tests et sur les six tests de
 migrations — tous verts.
 
-## 5. État après ce tour
+## 5. La confrontation a eu lieu — elle a trouvé une dérive réelle
+
+**Ce n'est pas moi qui l'ai faite.** Le propriétaire du dépôt a exécuté la
+lecture et poussé ses conclusions sur la branche (`fe00f41`, `c1b7912`). Je
+rapporte ce qu'elles établissent, et ce qu'elles n'établissent pas.
+
+### 5.1 Ce que la production porte
+
+Sur `plm_erp_sync_jobs`, **deux politiques supplémentaires**, absentes du fichier
+versionné : `plm_erp_sync_jobs_insert_brand` et `plm_erp_sync_jobs_select_brand`.
+PostgreSQL combine les politiques permissives par `OR` : la première autorisait
+`contributor` à insérer, alors que la canonique `plm_sync_jobs_insert_brand`
+réserve cette action à `owner`/`admin`/`manager`.
+
+Ce n'est donc pas une différence de commentaire ni de rendu : **la production est
+plus permissive que le dépôt sur une règle d'autorisation**. C'est exactement ce
+que le `BLOCKED` du tour 29 refusait de supposer dans un sens ou dans l'autre — et
+il avait raison de refuser : le sens était celui-là.
+
+### 5.2 Ce qui y répond
+
+`20261028150000_plm_erp_policy_convergence` retire les deux politiques, et rien
+d'autre : aucun `GRANT`/`REVOKE`, aucune politique canonique touchée, aucune
+donnée. Les deux noms n'apparaissent dans aucune autre migration du dépôt, donc
+sur une base neuve les `DROP POLICY IF EXISTS` ne font rien.
+
+### 5.3 Ce que j'ai ajouté, et pourquoi
+
+Le test livré avec la migration monte un **schéma écrit à la main** — une table
+réduite, `tracefab_has_org_role` remplacée par un `current_setting`. Il prouve la
+combinaison `OR`, ce qui est déjà beaucoup, mais pas que la migration s'applique
+au **vrai** schéma. C'est le piège exact dans lequel je suis tombé au tour 29.
+
+Deux corrections, sans rien retirer au test existant :
+
+| Ajout | Ce qu'il prouve |
+|---|---|
+| `test:plm-erp-convergence` (enregistré) | le test existant **tourne enfin** — il n'était branché nulle part, ni dans `package.json` ni dans la CI. Un test qui ne tourne pas n'est pas un contrôle. |
+| `test:plm-erp-convergence:chaine` (19 vérifications) | sur la **chaîne réelle** : dérive recréée sur la vraie table, migration appliquée, seules les deux canoniques subsistent **inchangées**, RLS toujours forcée, rejeu sans erreur, et base neuve intacte |
+
+### 5.4 Ce que cela n'établit pas
+
+- **l'état des douze tables** des cinq migrations hors bande (propriétaires,
+  privilèges, politiques) : la lecture faite portait sur `plm_erp_*`, pas sur
+  elles ;
+- **M6** : toujours `NOT RUN` ;
+- que la production a bien été modifiée : la migration est dans le dépôt, elle
+  n'est **pas appliquée**.
+
+## 6. État après ce tour
 
 | Point | Avant (tour 29) | Après |
 |---|---|---|
 | Autorisation des deux opérations | absente | **accordée** |
 | Accès à la production | absent | **absent** — identifiants et sortie réseau |
-| Confrontation `plm_erp_gs1` | outil inexistant | **outil prêt et éprouvé** ; mesure **`NOT RUN`** |
+| Confrontation `plm_erp_gs1` | outil inexistant | **faite par le propriétaire** : dérive réelle, production plus permissive ; correctif dans le dépôt, **vérifié sur la chaîne réelle** |
+| Cinq migrations hors bande — les 12 tables en production | non lues | **non lues** |
 | Version de Node des nouveaux tests | — | vérifiés en **Node 20** (la version de la CI) |
 | Application du correctif | procédure non écrite | **runbook prêt et éprouvé** ; application **`NOT RUN`** |
 | `supplier_portal` | « deux contournements fermés » | **une erreur corrigée** : un seul trou réel, la relation terminée ; redondance mesurée |
@@ -231,20 +281,44 @@ migrations — tous verts.
 | 5 migrations hors bande | `PASS` hors production | inchangé |
 | M6 | `NOT RUN` | `NOT RUN` |
 
-## 6. Décision — inchangée, et pour une raison qui a changé de nature
+## 7. Décision — le motif a changé deux fois
 
 **NON PRÊTE À FUSIONNER.**
 
-Le motif n'est plus « autorisation absente » : elle est là. Il est
-**« accès absent »** — et tant que la lecture n'a pas eu lieu, la divergence
-d'empreinte de `plm_erp_gs1` reste non qualifiée sur une règle d'autorisation.
+Le motif a changé de nature deux fois en un tour, et il faut le dire dans cet
+ordre :
 
-Deux commandes suffisent désormais à faire tomber le blocage, dans cet ordre :
+1. **tour 29** : « divergence `plm_erp_gs1` non qualifiée » ;
+2. **ce tour, avant la confrontation** : « autorisation absente » ;
+3. **maintenant** : elle est qualifiée, et **corrigée dans le dépôt**. Le motif
+   restant est **un seul point, précis** : l'état des **douze tables** des cinq
+   migrations hors bande n'a pas été lu en production. La mission l'exige, il
+   n'est pas fait, et je ne prononce pas `PRÊTE` sur un contrôle manquant.
 
-1. la **lecture** (fichier A), puis `verifier_confrontation_production` : la
-   sortie est comparée automatiquement, pas relue ;
-2. si le verdict est `PASS`, l'**application** (fichier B) — décision distincte,
-   et seulement après.
+Ce qui est acquis, et ne dépend plus d'aucun accès :
 
-Tant que (1) n'a pas rendu son verdict, je ne prononce pas `PRÊTE À FUSIONNER`,
-et je ne convertis pas un `BLOCKED` en `PASS` parce que tout le reste est vert.
+| Contrôle | État |
+|---|---|
+| `plm_erp_gs1` — dérive identifiée | **fait** (par le propriétaire) |
+| `plm_erp_gs1` — correctif vérifié sur la chaîne réelle | **fait** — 19 vérifications, canoniques intactes, rejeu sans erreur |
+| `supplier_portal` — correctif vérifié sur la chaîne réelle | **fait** — 42 vérifications, un seul trou réel fermé |
+| Cinq migrations hors bande — équivalence des deux chemins | **fait** — 46 vérifications |
+| CI complète sur le SHA exact | **fait** |
+
+Ce qui reste, et tient en **une commande** :
+
+```bash
+psql "$DIRECT_URL" -A -t -v ON_ERROR_STOP=1 \
+     -f docs/security/2026-10-28-tour30-A-confrontation-lecture-seule.sql \
+     > /tmp/etat-production.txt
+node scripts/verifier_confrontation_production.mjs /tmp/etat-production.txt
+```
+
+Elle couvre `plm_erp_gs1` **et** les douze tables, et rend un verdict par
+comparaison, pas par relecture. `PASS` lève le dernier point ; `FAIL` nomme le
+fait divergent.
+
+Une fois la fusion faite, **la production n'est pas pour autant sûre** : deux
+correctifs restent à appliquer (`20261028140000`, `20261028150000`), et `deploy`
+doit rester gelé jusque-là. Fusionner ne déploie pas.
+

@@ -352,9 +352,20 @@ await dbM.close();
 
 console.log('\n  6. Chaine complete des migrations');
 
-ok('la migration corrective est la DERNIERE de la chaine',
-  dossiers[dossiers.length - 1] === CORRECTIVE, dossiers[dossiers.length - 1]);
-ok('aucune migration historique n a ete renumerotee (64 au total)', dossiers.length === 64, `${dossiers.length}`);
+// Ne pas recoder un total : il change a chaque migration ajoutee, et un test
+// qui casse a chaque ajout n'apprend rien. Ce qui doit etre vrai est structurel :
+// la corrective est presente UNE fois, et elle precede les migrations plus
+// recentes (celles ajoutees apres elle).
+const rang = dossiers.indexOf(CORRECTIVE);
+ok('la migration corrective est presente une seule fois',
+  rang >= 0 && dossiers.filter((d) => d === CORRECTIVE).length === 1, `${rang}`);
+ok('elle precede toutes les migrations plus recentes (aucune renumerotation)',
+  rang >= 0 && dossiers.slice(rang + 1).every((d) => d > CORRECTIVE),
+  dossiers.slice(rang + 1).join(', '));
+ok('son horodatage est posterieur a la derniere migration historique connue (20261005100000)',
+  CORRECTIVE > '20261005100000_supplier_invitation_compatibility');
+ok('la chaine compte au moins les 64 migrations constatees au tour 29',
+  dossiers.length >= 64, `${dossiers.length}`);
 
 const dbC = await baseChaine({ avecCorrective: true });
 const creees = await dbC.query(`

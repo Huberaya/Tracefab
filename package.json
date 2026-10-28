@@ -192,6 +192,8 @@
     "test:migrations:hors-bande": "node scripts/test_migrations_hors_bande_pglite.mjs",
     "test:confrontation-production": "node scripts/test_verifier_confrontation.mjs",
     "test:runbook-application": "node scripts/test_runbook_application.mjs",
+    "test:plm-erp-convergence": "node scripts/test_plm_erp_policy_convergence.mjs",
+    "test:plm-erp-convergence:chaine": "node scripts/test_plm_erp_convergence_chaine.mjs",
     "test:supplier-invitation-corrective": "node scripts/test_supplier_invitation_corrective_pglite.mjs",
     "test:dpp:review-publication": "node scripts/run-db-suite.mjs scripts/test_dpp_review_and_publication.mjs",
     "test:dpp:role-applicatif": "node scripts/test_dpp_role_applicatif.mjs",

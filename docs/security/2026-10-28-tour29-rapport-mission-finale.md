@@ -255,9 +255,16 @@ la migration le ferme.
 
 ## 12. Décision
 
+> **Mis à jour au tour 30** : `plm_erp_gs1` a été confronté depuis (par le
+> propriétaire du dépôt) — la production portait deux politiques supplémentaires
+> élargissant l'insertion à `contributor`. Une migration corrective
+> (`20261028150000`) est dans le dépôt et vérifiée sur la chaîne réelle. Le motif
+> du refus s'est déplacé sur l'état des **douze tables hors bande**, non lu en
+> production. Voir `2026-10-28-tour30-autorisation-et-correction.md` §7.
+
 ### **NON PRÊTE À FUSIONNER**
 
-Motif unique et explicite : **`plm_erp_gs1` reste `BLOCKED`**. La production a
+Motif initial (tour 29) : **`plm_erp_gs1` reste `BLOCKED`**. La production a
 exécuté un contenu qui n'est plus celui du dépôt, et ce contenu n'a jamais été
 retrouvé. Rien dans ce tour ne permet de dire si les politiques RLS, le
 propriétaire, le `search_path` ou l'`EXECUTE` y diffèrent. Une divergence

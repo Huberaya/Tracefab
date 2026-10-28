@@ -218,6 +218,22 @@ jobs:
         # difference reelle : l atomicite.
         run: npm run test:migrations:hors-bande
 
+      - name: Derive PLM/ERP — politique permissive reproduite puis retiree
+        # La production portait deux politiques supplementaires sur
+        # `plm_erp_sync_jobs` ; PostgreSQL combinant les politiques permissives
+        # par OR, l une d elles elargissait l insertion a `contributor`. Ce test
+        # monte le schema reduit qui reproduit la combinaison, verifie que
+        # `contributor` passe avant et echoue apres, et que `manager` passe dans
+        # les deux cas.
+        run: npm run test:plm-erp-convergence
+
+      - name: Derive PLM/ERP — la migration sur la chaine reelle
+        # Le test precedent utilise un schema ecrit a la main. Celui-ci rejoue la
+        # chaine complete, recree la derive sur la vraie table, applique la
+        # migration et verifie que seules les deux politiques canoniques
+        # subsistent, inchangees, avec RLS forcee et rejeu sans erreur.
+        run: npm run test:plm-erp-convergence:chaine
+
       - name: Confrontation production — le verificateur mord
         # L instrument qui tranchera le BLOCKED de plm_erp_gs1 n a jamais vu la
         # production ; il doit au moins avoir ete vu echouer. Ce test lui soumet

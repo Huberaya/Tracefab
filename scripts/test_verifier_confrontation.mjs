@@ -64,15 +64,15 @@ const refPath = path.join(tmp, 'referentiel.txt');
 const gen = lancer([`--ecrire-referentiel=${refPath}`]);
 ok('le referentiel se calcule', gen.code === 0, gen.sortie.slice(0, 300));
 const ref = fs.readFileSync(refPath, 'utf8').split('\n').filter(Boolean);
-ok('le referentiel est substantiel (38 faits attendus)', ref.length === 38, `${ref.length}`);
+ok('le referentiel est substantiel (39 faits attendus)', ref.length === 39, `${ref.length}`);
 ok('il porte les quatre politiques de plm_erp_gs1',
   ref.filter((l) => l.startsWith('P|')).length === 4,
   `${ref.filter((l) => l.startsWith('P|')).length}`);
 ok('il porte les quatorze tables et les fonctions des cinq',
   ref.filter((l) => l.startsWith('T|')).length === 14 && ref.filter((l) => l.startsWith('F|')).length >= 14,
   `T=${ref.filter((l) => l.startsWith('T|')).length} F=${ref.filter((l) => l.startsWith('F|')).length}`);
-ok('il porte les six lignes d historique (cinq hors bande + corrective)',
-  ref.filter((l) => l.startsWith('H|')).length === 6,
+ok('il porte les sept lignes d historique (cinq hors bande + les deux correctives)',
+  ref.filter((l) => l.startsWith('H|')).length === 7,
   `${ref.filter((l) => l.startsWith('H|')).length}`);
 
 /* -------------------------------------------------------------------------
@@ -147,7 +147,7 @@ ok('une sortie vide est un echec, pas un silence', lancer([vide, `--referentiel=
 
 const partielle = ecrire('partielle.txt', `${ref.slice(0, 3).join('\n')}\n`);
 const rp = lancer([partielle, `--referentiel=${refPath}`]);
-ok('trois faits sur trente-huit est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);
+ok('trois faits sur trente-neuf est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);
 ok('les faits manquants sont nommes', /absent/.test(rp.sortie));
 
 /* -------------------------------------------------------------------------
