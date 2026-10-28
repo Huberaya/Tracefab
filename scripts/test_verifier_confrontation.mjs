@@ -121,10 +121,17 @@ const cas = [
     (l) => (l.startsWith('G|hors-cible|documents|') ? l.replace('app=SELECT', 'app=SELECT,INSERT,UPDATE,DELETE') : l)), 1],
   ['ecriture rendue au role runtime sur une table cible', muter('m10e.txt',
     (l) => (l.startsWith('G|table|green_claims_audits|') ? l.replace('app=SELECT', 'app=SELECT,INSERT') : l)), 1],
+  // Le format suit desormais la ligne REELLE : les options d'appartenance
+  // (`inherit_option`, `set_option`) sont lues sur la ligne d'appartenance, plus
+  // sur l'attribut du role accorde. La version precedente de ce cas ecrivait
+  // `herite=oui` et se faisait refuser comme ligne MAL FORMEE ('dans' sans
+  // affectation) : elle ne prouvait donc pas ce qu'elle annoncait.
   ['appartenance de role ajoutee (tracefab_app membre de tracefab_worker)',
-    ecrire('m12.txt', `${ref.join('\n')}
-G|membre|tracefab_worker|dans|tracefab_app|admin=false|herite=oui
-`), 1],
+    ecrire('m12.txt', `${ref.join('\n')}\nG|membre|tracefab_app|dans|tracefab_worker|admin=false|herite=false|setrole=true\n`), 1],
+  ['appartenance posee dans le sens INVERSE (neondb_owner membre de tracefab_app)',
+    ecrire('m12b.txt', `${ref.join('\n')}\nG|membre|neondb_owner|dans|tracefab_app|admin=false|herite=true|setrole=true\n`), 1],
+  ['options d appartenance modifiees (admin et heritage accordes)',
+    ecrire('m12c.txt', `${ref.join('\n')}\nG|membre|tracefab_worker|dans|tracefab_app|admin=true|herite=true|setrole=true\n`), 1],
   ['politique surnumeraire hors perimetre PLM', muter('m13.txt',
     (l) => (l.startsWith('P|green_claims_rules.green_claims_rules_select|')
       ? `${l}\nP|green_claims_rules.politique_fantome|roles=public|cmd=SELECT|permissive=PERMISSIVE|using=(true)|check=(aucun)` : l)), 1],

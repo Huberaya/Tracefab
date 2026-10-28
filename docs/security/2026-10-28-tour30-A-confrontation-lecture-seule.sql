@@ -13,7 +13,16 @@
 --
 --   node scripts/verifier_confrontation_production.mjs /tmp/etat-production.txt
 --
--- 66 faits : 14 tables, 31 politiques, 14 fonctions, 7 lignes d'historique.
+-- 85 faits : 14 tables, 31 politiques, 14 fonctions, 7 lignes d'historique,
+-- et 19 faits de roles/priviliges : 2 lignes d'attributs, 14 lignes de droits
+-- par table, 2 tables hors cible, 1 ligne de schema. Les APPARTENANCES n'y
+-- figurent pas en reference — le depot n'en pose aucune sur le role runtime —
+-- mais la requete les lit desormais dans les DEUX sens : toute arete observee
+-- chez l'operateur sortira donc en divergence, a qualifier.
+--
+-- Les 66 d'origine n'en comptaient que 15 : une appartenance lue dans un seul
+-- sens, sans ses options. Le decompte a change parce que la lecture a change —
+-- voir le commentaire de la section 5.
 -- Une sortie partielle (par exemple la seule perimetre PLM) se compare avec
 -- `--perimetre-plm`, qui restreint le PERIMETRE compare sans relacher aucun
 -- controle sur ce qui a ete lu.
@@ -145,14 +154,60 @@ SELECT ligne FROM (
    WHERE r.rolname IN ('tracefab_app', 'tracefab_worker')
 
   UNION ALL
+  -- ANOMALIE CORRIGEE ICI, et elle etait de taille.
+  --
+  -- La version precedente ecrivait :
+  --     '|herite=' || CASE WHEN r.rolinherit THEN 'oui' ELSE 'non' END
+  -- ou `r` est le role ACCORDE. Elle lisait donc l'attribut INHERIT du role
+  -- accorde, et non l'option d'heritage DE L'APPARTENANCE. Les deux different :
+  --     GRANT neondb_owner TO tracefab_app WITH INHERIT FALSE;
+  -- laisse `neondb_owner.rolinherit = true` (il n'a pas change) et pose
+  -- `am.inherit_option = false`. La ligne affichait « herite=oui » alors que
+  -- l'heritage etait coupe — et l'inverse est possible aussi.
+  --
+  -- Les options se lisent sur la ligne d'appartenance : `admin_option`,
+  -- `inherit_option`, `set_option` (PostgreSQL 16+). Pour rester lisible sur
+  -- une version anterieure, on les extrait par `to_jsonb`, qui rend NULL au
+  -- lieu d'echouer sur une colonne absente : la sortie dit alors `n/a`, ce qui
+  -- est un etat a qualifier, jamais un « identique ».
+  --
+  -- Pourquoi `set_option` compte autant qu'`inherit_option` : mesure sur base
+  -- jetable (scripts/test_appartenances_roles.mjs), les ATTRIBUTS de role ne
+  -- s'heritent pas. L'appartenance seule ne donne donc pas BYPASSRLS — mais
+  -- elle autorise `SET ROLE neondb_owner`, qui le donne. Une appartenance
+  -- dangereuse peut donc afficher `herite=false` et rester une evasion.
   SELECT 5, 'membre.' || r.rolname || '.' || m.rolname,
          'G|membre|' || m.rolname || '|dans|' || r.rolname
          || '|admin=' || am.admin_option::text
-         || '|herite=' || CASE WHEN r.rolinherit THEN 'oui' ELSE 'non' END
+         || '|herite=' || coalesce(to_jsonb(am)->>'inherit_option', 'n/a')
+         || '|setrole=' || coalesce(to_jsonb(am)->>'set_option', 'n/a')
     FROM pg_catalog.pg_auth_members am
     JOIN pg_catalog.pg_roles r ON r.oid = am.roleid
     JOIN pg_catalog.pg_roles m ON m.oid = am.member
    WHERE m.rolname IN ('tracefab_app', 'tracefab_worker')
+
+  UNION ALL
+  -- Le sens INVERSE. Le role runtime n'y est pas le membre, donc l'ancienne
+  -- lecture ne le voyait pas du tout : `neondb_owner` membre de `tracefab_app`
+  -- etait invisible, alors que c'est le temoin d'un fournisseur integre au
+  -- role applicatif. Sur le plan des droits, ce sens est benin (le
+  -- proprietaire a deja tout) ; sur le plan de la gouvernance, il dit qu'une
+  -- appartenance a ete posee dans le mauvais sens — et c'est exactement le
+  -- genre d'objet qu'on ne veut pas decouvrir apres coup.
+  --
+  -- Il est lu, donc il sera compare : toute arete de ce sens apparaitra en
+  -- divergence face au referentiel du depot, qui n'en contient aucune. C'est
+  -- voulu. Une divergence a qualifier vaut mieux qu'un angle mort.
+  SELECT 5, 'membre-inverse.' || r.rolname || '.' || m.rolname,
+         'G|membre|' || m.rolname || '|dans|' || r.rolname
+         || '|admin=' || am.admin_option::text
+         || '|herite=' || coalesce(to_jsonb(am)->>'inherit_option', 'n/a')
+         || '|setrole=' || coalesce(to_jsonb(am)->>'set_option', 'n/a')
+    FROM pg_catalog.pg_auth_members am
+    JOIN pg_catalog.pg_roles r ON r.oid = am.roleid
+    JOIN pg_catalog.pg_roles m ON m.oid = am.member
+   WHERE r.rolname IN ('tracefab_app', 'tracefab_worker')
+     AND m.rolname NOT IN ('tracefab_app', 'tracefab_worker')
 
   UNION ALL
   SELECT 6, 'table.' || c.nom,

@@ -240,6 +240,15 @@ jobs:
         # puis simule le deploy des onze et l'echec injecte sur le registre.
         run: npm run test:deploiement-simule
 
+      - name: Matrice des migrations — le decompte est recalcule, pas recopie
+        # Echoue si le depot ne contient plus 65 migrations, si l'arithmetique
+        # (appliquees + annulees + absentes) ne ferme plus, si une migration
+        # citee comme en ecart disparait, ou si un CINQUIEME prefixe
+        # d'horodatage en double apparait. Les quatre paires preexistantes sont
+        # declarees dans le script : c'est la collision non declaree qui a mis
+        # la CI en echec le 28/10.
+        run: npm run matrice:migrations
+
       - name: Reconciliation de l historique — les deux options, comparees
         # Option A (deploy direct) et option B (resolve --applied sur preuve,
         # puis deploy) sont executees sur des bases jetables reproduisant
@@ -258,6 +267,34 @@ jobs:
         # Une sonde qui rend la meme valeur dans les deux etats ne vaut rien :
         # ce test retire chaque migration SEULE et exige que sa sonde change.
         run: npm run test:sondes-effets
+
+      - name: Appartenances de roles — le SENS, pas l'existence
+        # `tracefab_app` est-il membre de `neondb_owner`, ou l'inverse ? La seule
+        # existence d'une appartenance ne dit rien : les privileges du role
+        # fourni sont herites dans un sens, et dans l'autre c'est le role
+        # fourni qui recoit les droits de l'application. Ce test mesure les deux
+        # sens, puis mesure le seul chemin qui donne reellement BYPASSRLS a
+        # l'application : `SET ROLE neondb_owner` (les ATTRIBUTS de role ne
+        # s'heritent pas, contrairement aux privileges sur les objets).
+        run: npm run test:appartenances-roles
+
+      - name: Appartenances — le SQL de production est joue avant d'etre colle
+        # Le script de la section precedente mesure le mecanisme ; celui-ci joue
+        # le SQL REEL destine a la production (docs/security/...appartenances-
+        # roles-production.sql) sur une base jetable, verifie le nombre de
+        # lignes annonce par le document, et fait varier le sens de
+        # l'appartenance pour exiger que le verdict change. Une requete de
+        # production non jouee est une intention, pas une preuve.
+        run: npm run test:appartenances-roles:sql
+
+      - name: PLM sync jobs — contributor refuse, rôles autorisés acceptés
+        # La politique se lit dans le catalogue ; ce qu'elle FAIT se mesure en
+        # essayant d'ecrire. Ce test insere reellement, avec `SET ROLE
+        # tracefab_app` et une identite d'utilisateur, dans quatre etats :
+        # canonique, derive de production (ou contributor REUSSIT — ce qui
+        # prouve que la fuite etait reelle), migration appliquee, puis isolation
+        # avec un uuid d'organisation fourni par le client.
+        run: npm run test:plm-sync-jobs-acces
 
       - name: Confrontation production — le verificateur mord
         # L instrument qui tranchera le BLOCKED de plm_erp_gs1 n a jamais vu la
@@ -536,6 +573,14 @@ jobs:
         # Vérifie les GRANT conditionnels dans le scénario où tracefab_app
         # existe déjà, comme en production, avant que le seed n'accorde des droits.
         run: npm run test:neon:privileges
+
+      - name: Privilèges du rôle applicatif — minimaux, et éprouvés par écriture
+        # L'audit precedent lit le catalogue. Celui-ci se CONNECTE avec le role
+        # applicatif et tente d'ecrire : une ecriture sur une table non autorisee
+        # doit echouer, l'ecriture autorisee doit reussir. Il cree et detruit sa
+        # propre base dans le cluster du service, pour ne pas modifier les
+        # privileges vus par les suites suivantes.
+        run: npm run test:neon:privileges-role-app
 
       - name: Garde propriétaire SQL — scénario de refus
         # Crée un objet PUBLIC EXECUTE possédé par un autre rôle et prouve que
