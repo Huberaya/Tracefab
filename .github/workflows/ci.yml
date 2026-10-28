@@ -234,6 +234,12 @@ jobs:
         # subsistent, inchangees, avec RLS forcee et rejeu sans erreur.
         run: npm run test:plm-erp-convergence:chaine
 
+      - name: Sondes d'effet — la sonde distingue, mesure sur la chaine du depot
+        # Les onze migrations dont l'historique de production n'a pas la trace.
+        # Une sonde qui rend la meme valeur dans les deux etats ne vaut rien :
+        # ce test retire chaque migration SEULE et exige que sa sonde change.
+        run: npm run test:sondes-effets
+
       - name: Confrontation production — le verificateur mord
         # L instrument qui tranchera le BLOCKED de plm_erp_gs1 n a jamais vu la
         # production ; il doit au moins avoir ete vu echouer. Ce test lui soumet

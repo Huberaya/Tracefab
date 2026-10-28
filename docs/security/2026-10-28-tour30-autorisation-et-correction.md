@@ -545,3 +545,83 @@ la fusionner ne le réglerait pas**. Elle contient les deux correctifs ; la
 production, elle, attend six autres migrations plus anciennes. `PRÊTE À
 FUSIONNER` et `production à jour` sont deux questions distinctes, et la seconde
 vient d'être tranchée : **non**.
+
+## 9. La lecture nommée est revenue : onze écarts, dont deux « annulés »
+
+Sortie de la requête du §8.3, sur `Primary` :
+
+| Migration | État dans l'historique |
+|---|---|
+| `20261010120000_publication_explicite` | **ANNULEE** (`rolled_back`) |
+| `20261017120000_active_tenant_context` | **ANNULEE** (`rolled_back`) |
+| `20261021170000_dpp_readiness_truthful_gates` | ABSENTE |
+| `20261027100000_dpp_quality_gate_requires_assessment` | ABSENTE |
+| `20261027130000_dpp_review_preservation_and_publication_coherence` | ABSENTE |
+| `20261028120000_runtime_function_registry` | ABSENTE |
+| `20261028120100_worker_identity_not_forgeable` | ABSENTE |
+| `20261028120200_document_reserved_fields_internal_only` | ABSENTE |
+| `20261028130000_product_computed_fields_column_scoped` | ABSENTE |
+| `20261028140000_supplier_invitation_owner_relationship_scope` | ABSENTE |
+| `20261028150000_plm_erp_policy_convergence` | ABSENTE |
+
+**Onze, pas sept.** Le comptage `56` se réconcilie : `56` lignes avec
+`finished_at`, dont **deux** sont aussi `rolled_back_at` — donc **54**
+migrations réellement appliquées sur 65.
+
+Le §8.2 annonçait six fermetures récentes ; la mesure en donne **sept**, la
+septième étant `20261021170000_dpp_readiness_truthful_gates`, datée du
+**21 octobre**. L'hypothèse fondée sur la date était donc incomplète : c'est
+précisément pourquoi il fallait la lecture nommée et pas une déduction.
+
+### 9.1 Ce que « ANNULEE » veut dire — et ce que cela ne dit pas
+
+`rolled_back_at` renseigné signifie qu'un `prisma migrate resolve --rolled-back`
+a été exécuté : l'historique a été **corrigé**, pas la base. Ces deux
+migrations peuvent donc être :
+
+- **appliquées sans trace** — leurs effets sont là, l'historique ment ;
+- **partiellement appliquées** — un `resolve` est souvent posé après un échec
+  en cours de route ;
+- **absentes** — et alors `deploy` les rejouerait.
+
+Les trois hypothèses sont incompatibles et aucune ne se déduit de
+l'historique. C'est la définition d'un `BLOCKED`, et c'est pour cela que la
+sonde du §9.2 ne demande rien à `_prisma_migrations`.
+
+### 9.2 La sonde d'effet, étalonnée avant d'être envoyée
+
+Onze sondes, une par migration, qui interrogent le **catalogue** (et deux
+tables de référentiel) au lieu de l'historique :
+`docs/security/2026-10-28-tour30-C-sondes-effets.sql`.
+
+**Une sonde non étalonnée ne vaut rien.** Trois d'entre elles étaient fausses
+au premier jet, et le test les a arrêtées :
+
+| Sonde | Défaut trouvé | Correction |
+|---|---|---|
+| `20261027100000` | cherchait `assessment` dans le corps de la fonction : le mot n'y est pas | cherche le marqueur réel, la lecture des scores **par produit** |
+| `20261027100000` (2ᵉ essai) | cherchait `data_quality_scores` : la version **précédente** le contient déjà | idem — c'est la lecture par produit qui distingue |
+| `20261028140000` | cherchait `invitation_relationship_mismatch` : le message exact est `invitation_relationship_organization_mismatch` | message exact |
+| `20261028120100` | comptait les politiques contenant `tracefab_worker` : 9 dans les **deux** états | compte celles qui nomment `current_user` : **11** / 1 |
+| `20261028150000` | ne peut rien distinguer sur une base neuve — il n'y a rien à y retirer | muette **par construction**, et justifiée |
+
+`test:sondes-effets` construit **une base par migration retirée seule** — et
+non une base où les onze manquent, qui laissait passer une coïncidence entre
+deux versions successives d'une même fonction. Il exige que chaque sonde change
+quand sa migration disparaît : **17 vérifications**, dont dix qui distinguent et
+une muette justifiée.
+
+C'est la deuxième fois dans ce tour qu'un contrôle écrit par moi mesurait autre
+chose que ce que je croyais. Les deux fois, c'est un test qui l'a dit.
+
+### 9.3 Ce que la sonde établira, et ce qu'elle n'établira pas
+
+Elle dira, pour chacune des onze, si la production porte **l'effet** — pas la
+ligne d'historique. Elle ne dira pas :
+
+- si un état intermédiaire a existé ;
+- si les données ont été transformées (les `UPDATE` de `publication_explicite`
+  et de `dpp_readiness_truthful_gates` touchent des lignes, pas des objets) —
+  la sonde lit des objets et deux libellés ;
+- si les effets manquants sont **exploitables** par un attaquant : elle mesure
+  la présence d'un contrôle, pas la faisabilité d'une attaque.
