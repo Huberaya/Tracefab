@@ -1,8 +1,9 @@
 # Tour 22 — vérifications finales avant fusion (28/10/2026)
 
-Branche `arena/c27ddaa4-tracefab`, PR #102. SHA de départ et de fin de ce tour :
-`0d22c9b6a5140c88d90195122a9b8f7705d9240d` (les corrections de ce tour sont
-listées au §2 et portent le commit suivant).
+Branche `arena/c27ddaa4-tracefab`, PR #102. SHA de départ :
+`0d22c9b6a5140c88d90195122a9b8f7705d9240d`. Les corrections de ce tour portent
+`2fce6c1` (Clerk), `2634cc1` (GUC produit), `6637da0` (garde statique) et
+`9d302df` (registre des chantiers).
 
 Aucune fusion, aucun déploiement, aucune écriture distante, aucune modification
 de production. Toutes les mesures ci-dessous ont été **exécutées** sur une base
@@ -70,7 +71,7 @@ tous posés depuis la principalité authentifiée).
 
 ---
 
-## 2. Défaut trouvé ce tour : un GUC encore falsifiable sur `tracefab_products`
+## 2. Défaut trouvé puis corrigé : un GUC falsifiable sur `tracefab_products`
 
 ### Mesure (reproductible, base jetable, rôle `tracefab_app` sans BYPASSRLS)
 
@@ -112,29 +113,63 @@ GUC. Une seule table est concernée.
 | C. Déclencheur `INVOKER` + garde `current_user = session_user` | refuse aussi le **seed** et les scripts d'administration | casse l'exploitation légitime |
 | D. `INVOKER` + aide `SECURITY DEFINER` | fonctionnelle, mais exige `GRANT EXECUTE` dans une migration postérieure | fait tomber l'invariant « aucune `SECURITY DEFINER` exécutable par `PUBLIC` », puis `test:neon:registre-fonctions` (grant direct interdit par construction) |
 
-### La voie correcte, identifiée et non appliquée
+### La correction retenue — périmètre colonne
 
-C'est celle du précédent `20261028120200` : **retirer à `tracefab_app` l'écriture
-directe sur `tracefab_products`**, les écritures passant déjà par cinq fonctions
-`SECURITY DEFINER` déclarées au registre (`tracefab_create_product`,
-`tracefab_update_product_data`, `tracefab_start_product_revision`,
-`tracefab_set_dpp_publication`, `tracefab_ingest_plm_erp_payload`).
+C'est la voie du précédent `20261028120200` : **retirer l'écriture directe**,
+les mutations passant déjà par cinq fonctions `SECURITY DEFINER` déclarées au
+registre (`tracefab_create_product`, `tracefab_update_product_data`,
+`tracefab_start_product_revision`, `tracefab_set_dpp_publication`,
+`tracefab_ingest_plm_erp_payload`).
 
-Elle n'a **pas** été appliquée, pour une raison mesurée : deux chemins écrivent
-encore la table directement.
+Un retrait **total** aurait cassé deux chemins mesurés :
 
-1. `scripts/lib/tracefab_app_role.mjs` — `TABLES_ECRITURE_DIRECTE` contient
-   `tracefab_products` (17 tables) et le provisionnement runtime **réaccorde**
-   l'écriture après les migrations ; un `REVOKE` posé par migration est donc
-   annulé à la première exécution du provisionnement (mesuré : après `REVOKE`
-   puis relance du seed, `has_table_privilege` rend I/U/D = true).
-2. `api/_lib/bulk-operations/bulk-importer.ts` écrit la table directement
-   (`tx.tracefab_products.update` / `.create`) pour des champs non calculés.
+1. `api/_lib/bulk-operations/bulk-importer.ts` (`tx.tracefab_products.update` /
+   `.create`) écrit les champs métier — c'est l'import en masse ;
+2. `api/_routes/products/[productId].ts` archive en écrivant `status` et
+   `updated_at`.
 
-Retirer le privilège sans traiter ces deux points casserait l'import en masse.
-La correction propre demande donc un redécoupage (privilèges colonne par colonne,
-ou passage de l'importeur par une fonction), c'est-à-dire une revue dédiée — pas
-un correctif de fin de mission. **Défaut laissé ouvert et documenté.**
+La migration `20261028130000_product_computed_fields_column_scoped` retire donc
+`INSERT/UPDATE/DELETE/TRUNCATE` au niveau **table** et accorde `INSERT` et
+`UPDATE` **colonne par colonne** sur les vingt colonnes métier. Les quatre
+colonnes calculées en sont exclues : elles ne sont plus écrites que par les
+fonctions. Aucune politique RLS, aucun déclencheur, aucune fonction, aucun nom
+de registre ne change.
+
+**Le provisionnement devait changer aussi.** `scripts/lib/tracefab_app_role.mjs`
+listait `tracefab_products` dans `TABLES_ECRITURE_DIRECTE` et **ré-accordait**
+l'écriture table à chaque exécution — mesuré : après `REVOKE` puis relance du
+seed, `has_table_privilege` rendait I/U/D = true, annulant la migration. La
+table quitte cette liste ; le module accorde les mêmes vingt colonnes, source
+unique reprise par la garde statique.
+
+Mesure après correctif, même banc, même rôle :
+
+| Essai | Résultat |
+|---|---|
+| `UPDATE … SET version` (sans GUC) | **REFUS 42501** |
+| le même, GUC forgé posé | **REFUS 42501** |
+| `UPDATE … SET name` | ACCEPTÉ |
+| `INSERT` produit | ACCEPTÉ (import en masse préservé) |
+| `tracefab_start_product_revision` | ACCEPTÉ |
+| `DELETE` produit | REFUS 42501 (aucun appel applicatif) |
+
+### Non-régression, éprouvée dans les deux sens
+
+`scripts/test_produit_champs_calcules.mjs` — 11 assertions, câblé en CI
+(*Base*, étape « Champs calcules produit — hors de portee du role runtime ») :
+privilèges table et colonne, refus sans GUC, refus **avec** le GUC forgé, champ
+métier modifiable, `INSERT` possible, révision produit fonctionnelle, état final
+inchangé.
+
+Contrôle négatif exécuté : privilège table rendu → **4 échecs, exit 1** ;
+correctif réappliqué → exit 0. Le test échoue donc bien sur l'état vulnérable.
+
+La garde statique `test:tables-ecriture-directe` a d'abord **refusé** la
+correction (une table écrite sans octroi table), ce qui a révélé le troisième
+site d'écriture que je n'avais pas relevé. Elle distingue désormais les deux
+périmètres et ajoute trois assertions : aucune colonne calculée dans la liste
+accordée, pas de cumul avec un octroi table, liste explicite et bornée.
+Éprouvée : `version` ajoutée à la liste accordée → échec nommé.
 
 ---
 
@@ -167,7 +202,7 @@ disponible ici, et aucun secret n'a été demandé ni affiché.
 
 ## 4. Résultats d'exécution de ce tour
 
-Base reconstruite depuis zéro : **62/62 migrations**, puis `db:prepare-ci-role`
+Base reconstruite depuis zéro : **63/63 migrations**, puis `db:prepare-ci-role`
 et `db:seed-rls` dans l'ordre du workflow.
 
 Séquence complète du job *Base* (40 étapes) rejouée :
@@ -178,6 +213,15 @@ Séquence complète du job *Base* (40 étapes) rejouée :
 | BLOCKED | 2 | `db:generate` (moteurs non téléchargeables hors ligne), `db:deploy:throwaway` (moteur de migration absent) |
 | NOT RUN | 1 | `npm ci` (dépendances déjà installées) |
 | FAIL (instrument) | 4 | `garde-fous:neon`, `deploiement-publication`, `ecriture-non-authentifiee`, `audit-script` — artefacts du banc : client Prisma généré hors ligne (`P2038`) et base sans `_prisma_migrations` ; **verts en CI sur le même SHA** |
+
+Après le correctif produit, la base a été reconstruite de nouveau (**63/63**) et
+les seize suites ciblées rejouées, dont `produit-champs-calcules`,
+`privileges-role-app`, `ecarts-privileges`, `cross-tenant`,
+`registre-fonctions`, `worker-non-forgeable` : **16/16 exit 0**.
+
+CI sur le SHA final `9d302df` : **7/7 vertes** — *Socle*, *Base*, *Parcours*,
+*Verification*, *Chaîne*, *Vercel*, *Vercel Preview Comments*. L'étape
+« Champs calcules produit — hors de portee du role runtime » y est `success`.
 
 Hors séquence : `npm test` **exit 0** ; `api:typecheck`, `test:routes`,
 `test:security:chantier1`, `test:production-readiness`, `test:clerk-proxy`,
@@ -193,8 +237,8 @@ incluse dans `npm test`, verte en CI.
 1. **M3** — dépendance au privilège du propriétaire (`FORCE RLS` + fonctions
    `SECURITY DEFINER` + boucle `memberships_select_member`). Inchangée, décision
    suspendue à M6.
-2. **GUC `internal_product_revision` / `internal_product_readiness_update`** —
-   falsifiable, exploitable par le rôle runtime (§2). Correction identifiée,
-   non appliquée : elle exige de traiter `TABLES_ECRITURE_DIRECTE` et
-   `bulk-importer.ts`.
+2. ~~GUC falsifiable sur `tracefab_products`~~ — **corrigé** (§2), avec test de
+   non-régression câblé en CI et contrôle négatif.
 3. **M6** — `BLOCKED` faute de connexion de production autorisée.
+4. **Migrations** : le dépôt compte désormais 63 migrations. Le registre
+   `docs/experience/CHANTIERS-RESTANTS.md` a été mis à jour en conséquence.
