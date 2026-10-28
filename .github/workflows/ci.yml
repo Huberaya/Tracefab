@@ -180,6 +180,18 @@ jobs:
         # courant et que le compte de migrations cite correspond au depot.
         run: npm run test:chantiers
 
+      - name: Reconciliation de l historique de migrations
+        # Hors ligne : compare les empreintes SHA-256 recalculees du depot a un
+        # export d historique. Aucune connexion, aucun secret. Eprouve dans les
+        # deux sens par le test (export conforme, absent, divergent, annule).
+        run: npm run test:reconciliation-historique
+
+      - name: Releve M6 executable et inoffensif
+        # Le script de diagnostic de production doit s executer sur le schema
+        # complet (63 migrations, PGlite) et ne rien modifier. Un releve jamais
+        # execute n est pas un diagnostic.
+        run: npm run test:diagnostic-m6
+
   # -------------------------------------------------- 2. suite de verification
   verification:
     name: Verification — suite de tests

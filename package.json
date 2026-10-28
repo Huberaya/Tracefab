@@ -185,6 +185,8 @@
     "test:route-context-coverage": "node scripts/test_route_context_coverage.mjs",
     "test:customer-journey:blockers": "node scripts/test_customer_journey_release_blockers.mjs",
     "test:dpp:migrations": "node scripts/test_dpp_migration_chain_pglite.mjs",
+    "test:reconciliation-historique": "node scripts/test_reconcilier_historique_migrations.mjs",
+    "test:diagnostic-m6": "node scripts/test_diagnostic_m6_executable.mjs",
     "test:dpp:review-publication": "node scripts/run-db-suite.mjs scripts/test_dpp_review_and_publication.mjs",
     "test:dpp:role-applicatif": "node scripts/test_dpp_role_applicatif.mjs",
     "test:garde-fous:neon": "node scripts/test_garde_fous_validation_neon.mjs",

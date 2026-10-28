@@ -211,6 +211,49 @@ SELECT rolname, rolbypassrls, rolsuper
  ORDER BY rolname;
 
 -- ----------------------------------------------------------------------------
+-- 5 bis. QUI PEUT APPLIQUER DES MIGRATIONS — et pourquoi « permission denied
+--        for schema public » est un diagnostic, pas un accident
+-- ----------------------------------------------------------------------------
+-- Contexte (constat rapporte du 28/10/2026, NON mesure par ce depot) :
+-- `20261017120000_active_tenant_context` a echoue en production sur un refus
+-- de privileges du schema `public`. Depuis PostgreSQL 15, le schema `public`
+-- appartient a `pg_database_owner` et `CREATE` a ete retire a PUBLIC : un role
+-- qui n'est pas proprietaire de la base ne peut plus y creer d'objet. Ce n'est
+-- donc pas un defaut de la migration, c'est une propriete du role qui l'a
+-- jouee. Ces trois requetes nomment ce role, sans rien modifier.
+
+-- a) Proprietaire de la base courante, et proprietaire du schema public.
+SELECT current_database()                                   AS base,
+       pg_catalog.pg_get_userbyid(d.datdba)                 AS proprietaire_base,
+       pg_catalog.pg_get_userbyid(n.nspowner)                AS proprietaire_schema_public,
+       n.nspacl                                              AS acl_schema_public
+  FROM pg_catalog.pg_database d
+  CROSS JOIN pg_catalog.pg_namespace n
+ WHERE d.datname = current_database()
+   AND n.nspname = 'public';
+
+-- b) Privileges effectifs sur le schema public, pour les roles qui comptent.
+--    `create` = false pour le role de migration explique l'echec observe ;
+--    c'est la premiere chose a regarder avant d'accuser la migration.
+SELECT r.rolname,
+       r.rolsuper,
+       r.rolbypassrls,
+       r.rolcreaterole,
+       r.rolcreatedb,
+       has_schema_privilege(r.rolname, 'public', 'CREATE') AS peut_creer_dans_public,
+       has_schema_privilege(r.rolname, 'public', 'USAGE')  AS peut_utiliser_public,
+       pg_catalog.pg_has_role(r.rolname, 'pg_database_owner', 'MEMBER') AS membre_pg_database_owner
+  FROM pg_catalog.pg_roles r
+ WHERE r.rolname IN ('neondb_owner', 'tracefab_app', 'tracefab_worker')
+    OR r.rolsuper
+ ORDER BY r.rolname;
+
+-- c) Le role de la session courante peut-il, ici et maintenant, creer dans
+--    public ? C'est la reponse directe a « pourquoi la migration a echoue ».
+SELECT current_user AS role_session,
+       has_schema_privilege(current_user, 'public', 'CREATE') AS peut_creer_maintenant;
+
+-- ----------------------------------------------------------------------------
 -- 6. État des migrations appliquées — EN DERNIER, À DESSEIN
 --    (lecture seule ; on ne modifie jamais cette table)
 --
@@ -277,4 +320,16 @@ ROLLBACK;
 --
 --   E. Une migration avec finished_at NULL ou rolled_back_at non NULL est un
 --      incident : ne rien rejouer avant de l'avoir compris.
+--
+--   F. `peut_creer_dans_public = false` pour le role de migration explique un
+--      echec `42501 permission denied for schema public` : le defaut est dans
+--      le role employe, pas dans la migration. Corriger le role, jamais la
+--      migration — l'historique deja ecrit ne se reecrit pas.
+--
+--   G. Le proprietaire de la base et des tables porte `rolbypassrls` : il
+--      contourne donc la RLS en tant que proprietaire. Ce n'est PAS une posture
+--      sure, et ce n'est pas non plus un attribut a retirer a l'aveugle : la
+--      chaine de migrations exige aujourd'hui un proprietaire superutilisateur
+--      (mesure du tour 23). Tant que ce n'est pas corrige et valide, l'attribut
+--      reste.
 -- ============================================================================
