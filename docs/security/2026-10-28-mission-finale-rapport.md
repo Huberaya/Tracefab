@@ -94,33 +94,40 @@ import de catalogue.
 
 **4. La matrice des 65 migrations, recalculée** — voir §E.
 
-**5. Une collision de préfixe réapparue, levée sans réécrire le travail d'autrui.**
+**5. Une collision de préfixe réapparue, puis refermée — sans réécrire le travail d'autrui.**
 
 Pendant que la CI tournait sur `978c761`, le commit `963a524` de l'utilisateur a
 ajouté `20261028150000_plm_erp_gs1_policy_drift_repair` — **le préfixe que
 `9208391` venait de libérer**, en collision avec la réconciliation. L'étape 28
-de la CI (*Socle*, `test:migrations:horodatages`) échoue donc à nouveau.
+de la CI (*Socle*, `test:migrations:horodatages`) échouait de nouveau.
 
-Correction apportée : **renommage en `20261028230000_…`, contenu inchangé au
-caractère près**. Ce renommage est licite **parce que la migration n'a jamais
-été appliquée** (poussée moins d'une heure avant, postérieure à la dernière
-lecture de production, absente de `_prisma_migrations`) : aucun historique n'est
-touché. Renommer une migration **appliquée** aurait été une falsification, et
-n'a pas été fait. Le travail de l'utilisateur est **conservé**, pas remplacé.
+J'ai renommé cette migration en `20261028230000_…`, **contenu inchangé au
+caractère près** (vérifié par `diff`). Ce renommage était licite **parce que la
+migration n'avait jamais été appliquée** : poussée moins d'une heure avant,
+postérieure à la dernière lecture de production, absente de
+`_prisma_migrations`. Renommer une migration **appliquée** aurait été une
+falsification, et n'a pas été fait.
 
-Deux tests ont dû suivre ce changement, sans être affaiblis :
+**L'utilisateur l'a ensuite supprimée** (`88758ce`, « Remove duplicate unsafe
+PLM policy repair migration »). Cette décision est la bonne, et pour une raison
+de fond que je n'avais pas mise en avant : cette migration **DROPait puis
+RECRÉAIT** les politiques canoniques *sans aucune garde* — sur une base où une
+canonique manquerait, elle l'aurait recréée sans le dire, **masquant la dérive
+au lieu de la signaler**. La réconciliation, elle, **échoue avant de toucher à
+quoi que ce soit**. Il reste donc **une** migration, et c'est la *fail-closed*.
 
-- `test_deploiement_simule.mjs` : 12 écarts au lieu de 11, et l'échec injecté
-  sur `…120000` bloque désormais **6** migrations au lieu de 5 — parce qu'il y a
-  réellement une migration de plus après. Le nombre est commenté, pas ajusté en
-  silence.
+Deux tests ont suivi ces mouvements, sans être affaiblis :
+
+- `test_deploiement_simule.mjs` : la liste des écarts et le nombre de migrations
+  bloquées par l'échec injecté sur `…120000` sont revenus à 11 et 5, avec le
+  calcul écrit en commentaire (65 − 11 + 2 = 56) plutôt qu'un nombre nu.
 - `test_plm_erp_convergence_chaine.mjs` : l'assertion « la réconciliation est la
   dernière migration de la chaîne » était une **photographie du dépôt**, pas une
   propriété de sécurité — elle cassait dès qu'une migration était ajoutée
-  après. Elle est remplacée par trois contrôles **plus précis** : aucune autre
-  migration ne **crée** les politiques dérivées ; celles qui les nomment ne font
-  que les **retirer** ; aucune migration postérieure ne crée de politique
-  permissive sur la table. 26 → **27 vérifications**.
+  après. Remplacée par trois contrôles **plus précis** : aucune autre migration
+  ne **crée** les politiques dérivées ; celles qui les nomment ne font que les
+  **retirer** ; aucune migration postérieure ne crée de politique permissive sur
+  la table. 26 → **27 vérifications**.
 
 **6. Deux défauts du vérificateur de confrontation** — voir §D.
 
@@ -138,7 +145,7 @@ via PGlite.
 | `test_plm_sync_jobs_acces.mjs` | **PASS 19/19** | refus de `contributor` et isolation, par écriture réelle |
 | `test_appartenances_roles.mjs` | **PASS 16/16** | sens des appartenances, héritage vs `SET ROLE` |
 | `test_appartenances_sql_production.mjs` | **PASS 20/20** | le SQL de prod s'exécute et tranche |
-| `matrice_migrations.mjs` | **PASS** | 66 = 54 + 2 + 10 ; aucun 5ᵉ préfixe double |
+| `matrice_migrations.mjs` | **PASS** | 65 = 54 + 2 + 9 ; aucun 5ᵉ préfixe double |
 | `test_verifier_confrontation.mjs` | **PASS 40/40** | 12 falsifications refusées, dont 2 nouvelles |
 | `test_sondes_effets_pglite.mjs` | **PASS 17/17** | chaque sonde change quand on retire sa migration |
 | `test_deploiement_simule.mjs` | **PASS 11/11** | le point de rupture du déploiement est identifié |
@@ -201,8 +208,8 @@ chacune provoque un échec. Et le rendu conforme, à espaces et casts près, est
 
 ## E. Migrations manquantes ou annulées
 
-**Recalculé, non repris : 66 migrations** = **54 appliquées** (dont **5 hors
-bande**) + **2 annulées** (`rolled_back_at`) + **10 absentes**. Arithmétique
+**Recalculé, non repris : 65 migrations** = **54 appliquées** (dont **5 hors
+bande**) + **2 annulées** (`rolled_back_at`) + **9 absentes**. Arithmétique
 fermée par le script, qui échoue sinon.
 
 Détail complet dans `docs/security/2026-10-28-matrice-migrations-etat-final.md`
@@ -219,7 +226,7 @@ Détail complet dans `docs/security/2026-10-28-matrice-migrations-etat-final.md`
    `IF NOT EXISTS`) et c'est un **prérequis** de `…120100`. Si le déploiement
    s'arrête là, la reprise est `resolve --applied` **sur constat du catalogue**,
    jamais `--rolled-back`. Les cinq migrations aval sont nommées dans la matrice.
-3. **58 lignes sur 66 sont `NON PROUVÉ`** en effets observés. Elles ne sont pas
+3. **57 lignes sur 65 sont `NON PROUVÉ`** en effets observés. Elles ne sont pas
    conformes : elles ne sont **pas lues**.
 
 **Ordre de remédiation** proposé (aucune étape exécutée) : relever le catalogue
