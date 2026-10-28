@@ -77,8 +77,20 @@ export async function requireClerkUser(req: VercelRequest) {
 
   const clerk = createClerkClient({ secretKey: clerkSecretKey });
   const clerkUser = await clerk.users.getUser(claims.sub);
-  const email = clerkUser.emailAddresses.find(({ id }) => id === clerkUser.primaryEmailAddressId)?.emailAddress;
+  const primaryAddress = clerkUser.emailAddresses.find(({ id }) => id === clerkUser.primaryEmailAddressId);
+  const email = primaryAddress?.emailAddress;
   if (!email) throw new Error('clerk_email_required');
+
+  // L'adresse alimente `tracefab.user_email`, qui est la SEULE barriere de la
+  // politique `passport_access_select` (migration 20261006250000) : un
+  // demandeur externe voit ses propres demandes d'acces par egalite d'e-mail.
+  // Mesure du 28/10/2026 sur base jetable, role `tracefab_app` sans BYPASSRLS :
+  //   sans GUC -> 0 ligne · GUC = e-mail de la victime -> 1 ligne · autre -> 0.
+  // Sans ce controle, une adresse non verifiee suffirait a lire les demandes
+  // d'un tiers : on exige donc la verification Clerk avant de la propager.
+  if (primaryAddress?.verification?.status !== 'verified') {
+    throw new Error('clerk_email_unverified');
+  }
 
   const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || email;
   const user = await provisionUserFromClerk({

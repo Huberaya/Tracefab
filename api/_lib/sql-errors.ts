@@ -13,6 +13,10 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   active_supplier_invitation_exists: { status: 409 },
   invalid_or_expired_invitation: { status: 400 },
   clerk_email_required: { status: 422 },
+  // L'adresse primaire Clerk doit etre verifiee : `tracefab.user_email` est la
+  // seule barriere de la politique `passport_access_select`. 403 : l'identite
+  // est bien etablie, c'est l'autorisation qui manque.
+  clerk_email_unverified: { status: 403 },
   // Parametres rejetes par les fonctions de provisionnement Clerk
   // (tracefab_upsert_clerk_user, tracefab_ensure_clerk_user,
   // tracefab_archive_clerk_organization). 422 : la requete est bien formee mais
