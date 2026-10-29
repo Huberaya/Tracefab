@@ -121,10 +121,18 @@ for (const p of TOUTES) {
   console.log(`      detruit par  : ${detruit.length ? detruit.join(', ') : '(aucune)'}`);
 }
 
-ok('les deux canoniques sont creees par une migration du depot, et une seule',
-  CANONIQUES.every((p) => (createurs.get(p) ?? []).length === 1),
+// Une migration ultérieure peut légitimement DROP puis recréer les politiques
+// canoniques pour réaffirmer leur définition. On vérifie la provenance initiale
+// ET la liste exhaustive des recréations autorisées, plutôt que de compter chaque
+// CREATE POLICY comme une création concurrente.
+const createursCanoniquesAttendus = [
+  '20261006210000_plm_erp_gs1_interoperability',
+  '20261029180000_plm_erp_sync_jobs_policy_dedup',
+];
+ok('les politiques canoniques sont créées initialement puis recréées uniquement par la migration de déduplication',
+  CANONIQUES.every((p) => JSON.stringify(createurs.get(p) ?? []) === JSON.stringify(createursCanoniquesAttendus)),
   JSON.stringify(Object.fromEntries(CANONIQUES.map((p) => [p, createurs.get(p)]))));
-ok('elles sont creees par 20261006210000_plm_erp_gs1_interoperability',
+ok('leur création initiale est bien 20261006210000_plm_erp_gs1_interoperability',
   CANONIQUES.every((p) => (createurs.get(p) ?? [])[0] === '20261006210000_plm_erp_gs1_interoperability'),
   JSON.stringify(Object.fromEntries(CANONIQUES.map((p) => [p, createurs.get(p)]))));
 
