@@ -16,7 +16,7 @@ l'opérateur les jours précédents, citées comme telles.
 |---|---|
 | SHA de départ réel | **`4aab56c`** (et non `508caef` : huit commits s'étaient ajoutés) |
 | Commits de la session | `9208391` · `978c761` · `5b989b7` · `a5b6189` · `7f03ba9` |
-| **SHA final** | **`4b7f06c`** puis `b1c0ffff` (voir §G) — CI verte, PR `CLEAN` |
+| **SHA final** | **`ad9856d`** — CI verte, PR `CLEAN` |
 | `main` (base de la PR) | `bf55f2ae6534cde84d072d9b975520216c7b6d4e` |
 
 **La tête de branche avait changé.** Huit commits de l'utilisateur, tous lus
@@ -346,7 +346,8 @@ casser la connexion de l'application.
 | `40778270995` (Socle) | `4aab56c` — **départ** | **échec**, étape 28 : duplication `20261028150000` |
 | `40784257315` | `7f03ba9` | **échec** — une seule suite : `test:sql-errors` |
 | `40786338140` (Chaîne 34/36/41) | `4b7f06c` | **succès** |
-| **`40786338281`** | **`4b7f06c` — final** | **succès, 5 jobs sur 5** |
+| `40786338281` | `4b7f06c` | succès, 5 jobs sur 5 |
+| **`40833023724`** | **`ad9856d` — final** | **succès, 5 jobs sur 5** |
 
 ```
 Socle — types, compilation, isolation        => success
@@ -357,7 +358,11 @@ Chaîne 34/36/41 sur Postgres 17 jetable      => success
 ```
 
 **État de la PR #102** : `draft = true`, `mergeable = MERGEABLE`,
-`mergeStateStatus = CLEAN`, tête `4b7f06c`. Aucun conflit avec `main`.
+`mergeStateStatus = CLEAN`, tête `ad9856d`, base `main`.
+**Aucun conflit** : `git merge-tree` sur la base de fusion ne signale rien, et
+GitHub rapporte `MERGEABLE`. Le diff avec `main` est de **147 fichiers**
+(+26 692 / −197) — l'essentiel étant la branche DPP elle-même, pas les ajouts de
+cette session.
 
 **Aucun déploiement déclenché.** Les workflows du dépôt sont `ci.yml`,
 `migrations-34-36-41.yml`, `audit-sql-privileges.yml`, `h1-4-postgres.yml`,
