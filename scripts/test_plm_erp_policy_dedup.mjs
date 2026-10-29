@@ -22,5 +22,6 @@ assert.match(migration, /CREATE POLICY plm_sync_jobs_insert_brand[\s\S]*?FOR INS
 assert.doesNotMatch(migration, /ARRAY\[[^\]]*'contributor'[^\]]*\]::membership_role\[\]/);
 assert.match(migration, /CREATE POLICY plm_sync_jobs_select_org[\s\S]*?FOR SELECT TO PUBLIC[\s\S]*?tracefab_is_org_member\(brand_organization_id\)/);
 assert.match(migration, /to_regclass\('public\.plm_erp_sync_jobs'\)[\s\S]*?RAISE EXCEPTION/);
-assert.doesNotMatch(migration, /\b(GRANT|REVOKE)\b/i);
+const executableSql = migration.split('\n').filter((line) => !line.trimStart().startsWith('--')).join('\n');
+assert.doesNotMatch(executableSql, /GRANT|REVOKE/i);
 console.log('PLM/ERP RLS policy dedup: 7/7 checks passed');
