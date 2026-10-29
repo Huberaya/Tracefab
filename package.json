@@ -233,7 +233,8 @@
     "valider:neon": "node scripts/validation_neon_complete.mjs",
     "db:preflight": "node scripts/preflight_etat_base.mjs",
     "test:dpp:branche": "node scripts/valider_branche_dpp.mjs",
-    "db:mesure-dpp": "node scripts/mesure_effet_migrations_dpp.mjs"
+    "db:mesure-dpp": "node scripts/mesure_effet_migrations_dpp.mjs",
+    "test:plm-erp:policy-dedup": "node scripts/test_plm_erp_policy_dedup.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",
