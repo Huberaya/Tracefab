@@ -5617,6 +5617,28 @@
             clearTimeout(timeout);
           }
         }
+        // `/api/config` normally remains the source of truth. If every
+        // serverless attempt fails, use the checked-in PUBLIC Clerk bootstrap
+        // only. This contains no secret and prevents a regional function/edge
+        // incident from making sign-in impossible while the Clerk proxy itself
+        // is healthy.
+        try {
+          const fallbackResponse = await fetch('/assets/config/clerk.json', {
+            headers: { Accept: 'application/json' },
+            cache: 'no-cache',
+          });
+          const fallback = await fallbackResponse.json().catch(() => ({}));
+          if (fallbackResponse.ok
+            && typeof fallback.publishableKey === 'string'
+            && fallback.publishableKey.startsWith('pk_live_')
+            && fallback.proxyUrl === 'https://tracefab.vercel.app/__clerk') {
+            console.warn('[tracefab] /api/config unavailable; using public static Clerk bootstrap');
+            return fallback;
+          }
+        } catch {
+          // Preserve the original API error: it is more actionable than a
+          // secondary static-asset failure.
+        }
         throw lastError;
       }
 
