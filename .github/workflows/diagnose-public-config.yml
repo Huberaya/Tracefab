@@ -35,7 +35,13 @@ jobs:
             publishableKeyKind: typeof payload.publishableKey === 'string' ? payload.publishableKey.split('_').slice(0, 2).join('_') : null,
             proxyConfigured: typeof payload.proxyUrl === 'string' && payload.proxyUrl.length > 0,
           }));
-          if (code !== '200') process.exitCode = 1;
+          if (code !== '200') throw new Error(`/api/config returned ${code}`);
+          if (typeof payload.publishableKey !== 'string' || !payload.publishableKey.startsWith('pk_live_')) {
+            throw new Error('/api/config did not return a Production publishable key');
+          }
+          if (payload.proxyUrl !== 'https://tracefab.vercel.app/__clerk') {
+            throw new Error('/api/config did not return the canonical Clerk proxy URL');
+          }
           NODE
           echo 'En-tetes utiles :'
           grep -iE '^(content-type|cache-control|x-vercel-id|age|server):' "$headers" || true
