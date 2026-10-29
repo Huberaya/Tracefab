@@ -132,6 +132,27 @@ const createursCanoniquesAttendus = [
 ok('les politiques canoniques sont créées initialement puis recréées uniquement par la migration de déduplication',
   CANONIQUES.every((p) => JSON.stringify(createurs.get(p) ?? []) === JSON.stringify(createursCanoniquesAttendus)),
   JSON.stringify(Object.fromEntries(CANONIQUES.map((p) => [p, createurs.get(p)]))));
+/**
+ * TEMOINS de l'allowlist : « accepte uniquement les migrations explicitement
+ * autorisees » ne se prouve pas en constatant que l'etat courant passe — il
+ * faut montrer que tout le reste echoue. On rejoue donc le PREDICAT exact sur
+ * des listes synthetiques.
+ */
+{
+  const accepte = (listeCreateurs) => CANONIQUES.every(
+    (pol) => JSON.stringify(listeCreateurs[pol] ?? []) === JSON.stringify(createursCanoniquesAttendus));
+  const base = Object.fromEntries(CANONIQUES.map((pol) => [pol, [...createursCanoniquesAttendus]]));
+  ok('temoin allowlist : la liste autorisee est acceptee', accepte(base));
+  ok('temoin allowlist : une migration NON autorisee qui cree une canonique est refusee',
+    !accepte({ ...base, [CANONIQUES[0]]: [...createursCanoniquesAttendus, '20261030120000_intrus'] }));
+  ok('temoin allowlist : une recréation par une AUTRE migration suffit a faire echouer',
+    !accepte({ ...base, [CANONIQUES[1]]: ['20261006210000_plm_erp_gs1_interoperability', '20261030120000_intrus'] }));
+  ok('temoin allowlist : l ordre compte, une recréation anteriorisee est refusee',
+    !accepte({ ...base, [CANONIQUES[0]]: [...createursCanoniquesAttendus].reverse() }));
+  ok('temoin allowlist : une canonique jamais creee est refusee',
+    !accepte({ ...base, [CANONIQUES[0]]: [] }));
+}
+
 ok('leur création initiale est bien 20261006210000_plm_erp_gs1_interoperability',
   CANONIQUES.every((p) => (createurs.get(p) ?? [])[0] === '20261006210000_plm_erp_gs1_interoperability'),
   JSON.stringify(Object.fromEntries(CANONIQUES.map((p) => [p, createurs.get(p)]))));
@@ -167,6 +188,43 @@ if (!gitDisponible) {
   console.error('  NON EXECUTE — pas de depot git : la provenance historique n est pas prouvee.');
   echecs += 1;
 } else {
+  // TEMOINS du balayage historique : il doit voir une creation multiligne,
+  // voir une creation sur une ligne, et ignorer une mention en commentaire.
+  {
+    const multiligne = `CREATE POLICY\n  plm_erp_sync_jobs_insert_brand ON public.plm_erp_sync_jobs\n  FOR INSERT WITH CHECK (true);`;
+    const surUne = `CREATE POLICY plm_erp_sync_jobs_insert_brand ON public.plm_erp_sync_jobs FOR INSERT WITH CHECK (true);`;
+    const commente = `-- CREATE POLICY plm_erp_sync_jobs_insert_brand ON plm_erp_sync_jobs`;
+    const trouve = (t) => creations(t).some((c) => c.nom === 'plm_erp_sync_jobs_insert_brand' && c.table === TABLE);
+    ok('temoin balayage : une creation MULTILIGNE est detectee', trouve(multiligne), multiligne);
+    ok('temoin balayage : une creation sur une ligne est detectee', trouve(surUne));
+    ok('temoin balayage : une mention en COMMENTAIRE ne l est pas', !trouve(commente));
+    ok('temoin balayage : une creation sur une AUTRE table n est pas comptee',
+      !creations(`CREATE POLICY plm_erp_sync_jobs_insert_brand ON plm_erp_integrations USING (true);`)
+        .some((c) => c.table === TABLE));
+
+    // TEMOIN SUR L'HISTORIQUE REEL : le pipeline complet (git log -> git show
+    // -> texte ajoute -> creations()) doit retrouver une creation qui existe
+    // vraiment. Sans ce temoin, les trois precedents ne prouvent que la
+    // fonction `creations()` : ils ne disent rien du balayage lui-meme.
+    try {
+      const commitAjout = execSync(
+        `git log --all --format=%H --diff-filter=A -- prisma/migrations/20261006210000_plm_erp_gs1_interoperability/migration.sql`,
+        { cwd: racine, encoding: 'utf8' }).trim().split('\n').filter(Boolean)[0];
+      const diffReel = execSync(`git show ${commitAjout} -- prisma/migrations`,
+        { cwd: racine, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+      const ajouteReel = diffReel.split('\n')
+        .filter((l) => /^\+/.test(l) && !/^\+\+\+/.test(l))
+        .map((l) => l.slice(1)).join('\n');
+      const trouvees = creations(ajouteReel).filter((c) => c.table === TABLE).map((c) => c.nom);
+      ok('temoin historique REEL : le balayage retrouve les creations du commit qui a pose 20261006210000',
+        CANONIQUES.every((n) => trouvees.includes(n)), `${commitAjout.slice(0, 7)} -> ${JSON.stringify(trouvees)}`);
+    } catch (e) {
+      echecs += 1;
+      verifies += 1;
+      console.error(`  ECHEC temoin historique REEL : ${String(e.message).split('\n')[0]}`);
+    }
+  }
+
   const createursHistoriques = [];
   for (const p of SURNUMERAIRES) {
     const commits = execSync(
@@ -178,11 +236,25 @@ if (!gitDisponible) {
       const diff = execSync(`git show ${c} -- prisma/migrations`, {
         cwd: racine, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
       });
-      for (const ligne of diff.split('\n')) {
-        // Une ligne ajoutee qui CREE la politique, hors commentaire.
-        if (/^\+(?!\+)/.test(ligne) && /CREATE\s+POLICY/i.test(ligne) && ligne.includes(p)) {
-          lignesCreees.push(c.slice(0, 7));
-        }
+      /**
+       * On reconstitue le TEXTE AJOUTE par le commit, puis on lui applique le
+       * MEME analyseur `creations()` que la section 1.
+       *
+       * L'ancienne version testait chaque ligne isolement :
+       *   /^\+/ && /CREATE POLICY/ && ligne.includes(nom)
+       * Elle manquait donc toute creation ecrite sur DEUX lignes —
+       *   CREATE POLICY
+       *     plm_erp_sync_jobs_insert_brand ON public.plm_erp_sync_jobs
+       * — cas mesure comme non detecte. Or ce balayage est la seule preuve de
+       * la provenance « hors depot » : un detecteur qui peut manquer ne prouve
+       * pas une absence. Il doit voir toute creation reelle.
+       */
+      const texteAjoute = diff.split('\n')
+        .filter((l) => /^\+/.test(l) && !/^\+\+\+/.test(l))
+        .map((l) => l.slice(1))
+        .join('\n');
+      for (const cr of creations(texteAjoute)) {
+        if (cr.nom === p && cr.table === TABLE) lignesCreees.push(c.slice(0, 7));
       }
     }
     console.log(`  ${p} : ${commits.length} commit(s) touchent le nom, ${lignesCreees.length} ligne(s) ` +

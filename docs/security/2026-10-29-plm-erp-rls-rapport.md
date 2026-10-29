@@ -456,3 +456,98 @@ absentes + 2 nouvelles**.
    prédicat exact de `select_brand`, seule donnée encore supposée.
 3. Le plan de réconciliation : application **une par une**, jamais un `deploy`
    global.
+
+---
+
+# Mission de clôture CI — SHA `125c9e0`
+
+## 1. CI sur le SHA exact : ÉCHEC, cause unique et démontrée
+
+| Élément | Valeur |
+|---|---|
+| SHA | `125c9e0749a65e935cc301dc99d32584eeed3e82` |
+| CI | [run 40930771805](https://github.com/Huberaya/Tracefab/actions/runs/40930771805) — **failure** |
+| Intégration migrations | [run 40930771778](https://github.com/Huberaya/Tracefab/actions/runs/40930771778) — success |
+| Job en échec | `Socle — types, compilation, isolation` |
+| Étape en échec | **`PLM — les deux migrations correctives jumelles, comparees par mesure`** |
+
+**Cause exacte, reproduite localement** (`ERR_ASSERTION`, ligne 22 de
+`scripts/test_plm_migrations_correctives_jumelles.mjs`) :
+
+```
+Une seule migration corrective PLM/ERP attendue, trouvees:
+  20261028150000_reconcile_plm_erp_sync_job_policies,
+  20261029180000_plm_erp_sync_jobs_policy_dedup
+```
+
+Le garde exigeait **exactement une** migration corrective. Or le dépôt en porte
+**deux**, avec des rôles distincts et voulus : réconciliation (gardes
+fail-closed) et normalisation. Son motif `plm_erp_sync_jobs_policy` capture
+donc aussi la nouvelle migration **du même auteur** — le garde échouait sur sa
+propre livraison.
+
+**Correction** : la propriété à protéger n'est pas « une seule » mais « **aucune
+en dehors de la liste** ». L'ensemble autorisé est explicite (2 entrées), et
+**trois témoins** prouvent que le contrôle refuse toujours une 3ᵉ migration, le
+retour d'une ancienne jumelle, et reconnaît les deux légitimes.
+
+Aucun contrôle n'a été supprimé ni contourné : le contrôle est **aussi strict**
+sur ce qu'il doit interdire, et **exact** sur ce qu'il doit autoriser.
+
+## 2. Exigence 2 — l'allowlist des créations canoniques : PASS
+
+`scripts/test_provenance_politiques_plm.mjs` n'accepte que
+`['20261006210000_plm_erp_gs1_interoperability', '20261029180000_plm_erp_sync_jobs_policy_dedup']`,
+par **égalité exacte de tableau** (ordre compris). Cinq témoins négatifs ajoutés
+prouvent le refus : migration non autorisée, recréation par une autre migration,
+ordre inversé, canonique jamais créée.
+
+## 3. Exigence 3 — le balayage Git : défaut trouvé et corrigé
+
+Le balayage historique testait **chaque ligne isolément** :
+`/^\+/ && /CREATE POLICY/ && ligne.includes(nom)`. Mesuré : une création écrite
+sur deux lignes —
+
+```sql
+CREATE POLICY
+  plm_erp_sync_jobs_insert_brand ON public.plm_erp_sync_jobs
+```
+
+— n'était **pas détectée**. Or ce balayage est la seule preuve de la provenance
+« hors dépôt » : un détecteur qui peut manquer ne prouve pas une absence.
+
+**Correction** : le texte ajouté de chaque commit est reconstitué puis passé au
+**même analyseur** que la section 1 (qui gère le multiligne et les commentaires).
+Quatre témoins ajoutés, dont un sur l'**historique réel** : le pipeline complet
+retrouve bien les créations du commit qui a posé `20261006210000`.
+
+État mesuré après correction : **23 commits** touchent chaque nom,
+**0 ligne de création** pour les deux surnuméraires → provenance hors dépôt
+confirmée, cette fois avec un détecteur qui mord.
+
+## 4. Exigence 4 — fail-closed et transaction : PASS sur la réconciliation
+
+`20261028150000` : les **cinq gardes** (table absente, nombre/identité des
+politiques, canonique INSERT absente, canonique SELECT absente, forme de la
+canonique INSERT) sont dans un bloc `DO` **avant** les deux `DROP`
+(`RAISE` à l'offset 219, premier `DROP` à 1809), et la migration est encadrée
+par `BEGIN`/`COMMIT`. Vérifié par le texte **et** par exécution (PGlite) : sur
+un état dégradé, la migration refuse et **ne supprime rien**.
+
+**Constat à traiter (non corrigé par moi, décision d'auteur)** :
+`20261029180000_plm_erp_sync_jobs_policy_dedup` **ne contient aucun
+`BEGIN`/`COMMIT`** et son seul garde est la présence de la table. Elle
+`DROP` puis recrée les canoniques : une interruption entre le `DROP` et le
+`CREATE` laisserait la table sans politique INSERT. Prisma encadre
+normalement chaque migration dans une transaction, mais **je ne l'ai pas
+prouvé ici** — à confirmer, ou à rendre explicite par `BEGIN`/`COMMIT`.
+
+## 5. Résultats
+
+| Suite | Résultat |
+|---|---|
+| `test_provenance_politiques_plm` | **22 vérifications** |
+| `test_plm_migrations_correctives_jumelles` | **13/13 checks** |
+| Batterie autonome complète | **29/29 suites vertes** |
+| `matrice:migrations` | 66 = 54 + 2 + 9 + 1 |
+| `plan:reconciliation` + autotest | exit 0, 7/7 témoins |
