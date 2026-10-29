@@ -23,9 +23,31 @@ DO $$
 DECLARE
   v_table regclass := to_regclass('public.plm_erp_sync_jobs');
   v_insert_check text;
+  v_policy_count integer;
+  v_unexpected_count integer;
 BEGIN
   IF v_table IS NULL THEN
     RAISE EXCEPTION 'plm_erp_sync_jobs_absente';
+  END IF;
+
+  -- Le catalogue mesuré comporte soit les quatre politiques connues (état
+  -- avant correction), soit les deux canoniques (rejeu idempotent). Toute
+  -- cinquième politique — ou tout état partiel inattendu — doit bloquer avant
+  -- les DROP : ne jamais supprimer à l'aveugle une configuration inconnue.
+  SELECT count(*) INTO v_policy_count
+    FROM pg_catalog.pg_policy WHERE polrelid = v_table;
+  SELECT count(*) INTO v_unexpected_count
+    FROM pg_catalog.pg_policy
+   WHERE polrelid = v_table
+     AND polname NOT IN (
+       'plm_sync_jobs_insert_brand',
+       'plm_sync_jobs_select_org',
+       'plm_erp_sync_jobs_insert_brand',
+       'plm_erp_sync_jobs_select_brand'
+     );
+  IF v_policy_count NOT IN (2, 4) OR v_unexpected_count <> 0 THEN
+    RAISE EXCEPTION 'nombre_ou_identite_politiques_inattendu: total=%, inattendues=%',
+      v_policy_count, v_unexpected_count;
   END IF;
 
   IF NOT EXISTS (
