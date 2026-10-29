@@ -91,6 +91,17 @@ for (const [fichier, texte] of corpus) {
   lignes.forEach((ligne, i) => {
     const sansCommentaire = ligne.replace(/--.*$/, '').replace(/\/\/.*$/, '');
     if (!/\b(I?LIKE)\b/i.test(sansCommentaire)) return;
+    /**
+     * Une PROSE qui cite un motif n'est pas un motif execute.
+     *
+     * Un rapport peut legitiment ecrire « le compteur utilisait
+     * LIKE '%tracefab_worker%' » pour expliquer un defaut : cette phrase ne
+     * s'execute pas. La CI a signale exactement cela sur le rapport de mission,
+     * et le detecteur avait raison de mordre — c'est la regle qui etait trop
+     * large. On ne retient donc que les lignes qui ressemblent a du SQL, par la
+     * presence d'un mot-cle de requete sur la MEME ligne.
+     */
+    if (!/\b(SELECT|WHERE|AND|OR|WHEN|qual|with_check|prosrc|pg_get_expr)\b/i.test(sansCommentaire)) return;
     for (const m of sansCommentaire.matchAll(MOTIF)) {
       const corps = m[2].slice(1, -1);
       if (!/^[a-z][a-z0-9_]*$/.test(corps)) continue;
