@@ -41,6 +41,11 @@ const check = (name, condition) => checks.push({ name, condition });
 check('wraps the correction in a transaction',
   /^\s*BEGIN;[\s\S]*COMMIT;\s*$/i.test(migrationCode.trim()));
 check('fails closed if the target table is missing', /plm_erp_sync_jobs_absente/i.test(migration));
+check('fails closed unless the policy count is exactly the known pre/post state (2 or 4)',
+  /v_policy_count NOT IN \\(2, 4\\)/i.test(migrationCode));
+check('fails closed if any policy name is outside the four measured names',
+  /v_unexpected_count <> 0/i.test(migrationCode) &&
+  /nombre_ou_identite_politiques_inattendu/i.test(migrationCode));
 check('fails closed if canonical INSERT policy is missing', /politique_canonique_insert_absente/i.test(migration));
 check('fails closed if canonical SELECT policy is missing', /politique_canonique_select_absente/i.test(migration));
 check('fails closed if canonical INSERT policy is unexpectedly permissive', /politique_canonique_insert_inattendue/i.test(migration));
