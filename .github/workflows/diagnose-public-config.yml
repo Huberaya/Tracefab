@@ -1,0 +1,41 @@
+name: Diagnostic configuration publique
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'arena/77d62bed-tracefab'
+    paths:
+      - '.github/workflows/diagnose-public-config.yml'
+
+permissions: {}
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Sonder la configuration publique sans afficher la cle
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          headers="$(mktemp)"
+          code="$(curl -sS --max-time 25 -D "$headers" -o "$body" -w '%{http_code}' -H 'accept: application/json' https://tracefab.vercel.app/api/config)"
+          node - "$code" "$body" <<'NODE'
+          const fs = require('node:fs');
+          const [code, file] = process.argv.slice(2);
+          const raw = fs.readFileSync(file, 'utf8');
+          let payload = {};
+          try { payload = JSON.parse(raw); } catch {}
+          console.log(JSON.stringify({
+            status: Number(code),
+            error: typeof payload.error === 'string' ? payload.error : null,
+            correlationId: typeof payload.correlationId === 'string' ? payload.correlationId : null,
+            publishableKeyKind: typeof payload.publishableKey === 'string' ? payload.publishableKey.split('_').slice(0, 2).join('_') : null,
+            proxyConfigured: typeof payload.proxyUrl === 'string' && payload.proxyUrl.length > 0,
+          }));
+          if (code !== '200') process.exitCode = 1;
+          NODE
+          echo 'En-tetes utiles :'
+          grep -iE '^(content-type|cache-control|x-vercel-id|age|server):' "$headers" || true
