@@ -196,6 +196,7 @@
     "test:appartenances-roles": "node scripts/test_appartenances_roles.mjs",
     "test:appartenances-roles:sql": "node scripts/test_appartenances_sql_production.mjs",
     "test:plm-sync-jobs-acces": "node scripts/test_plm_sync_jobs_acces.mjs",
+    "test:plm-rls-isolation": "node scripts/test_plm_rls_isolation_prouvee.mjs",
     "test:plm-provenance-politiques": "node scripts/test_provenance_politiques_plm.mjs",
     "test:appartenances-double-octroi": "node scripts/test_appartenances_double_octroi.mjs",
     "test:privileges-effectifs:sql": "node scripts/test_privileges_effectifs_sql_production.mjs",

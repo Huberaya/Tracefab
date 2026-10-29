@@ -344,6 +344,14 @@ jobs:
         # avec un uuid d'organisation fourni par le client.
         run: npm run test:plm-sync-jobs-acces
 
+      - name: PLM — politique partielle vs complete, idempotence, privileGES effectifs
+        # Le chef de chantier traite les migrations et le reste de la securite ;
+        # ce job ne couvre QUE `plm_erp_sync_jobs`. Il mesure le piege de la
+        # combinaison par OR (retirer la seule insertion ne ferme pas la
+        # lecture inter-organisations), l idempotence sur trois executions, les
+        # gardes fail-closed, et les privileges EFFECTIFS du role applicatif.
+        run: npm run test:plm-rls-isolation
+
       - name: Confrontation production — le verificateur mord
         # L instrument qui tranchera le BLOCKED de plm_erp_gs1 n a jamais vu la
         # production ; il doit au moins avoir ete vu echouer. Ce test lui soumet
