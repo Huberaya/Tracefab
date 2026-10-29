@@ -56,7 +56,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Garde-fou PLM/ERP : une politique surnuméraire subsiste';
   END IF;
-END
-$$;
+END;
+$;
 
 COMMIT;
