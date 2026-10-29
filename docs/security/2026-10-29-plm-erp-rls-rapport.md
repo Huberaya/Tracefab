@@ -134,6 +134,7 @@ après revue indépendante.
 |---|---|---|
 | `40872223854` (CI) | `6f09cc8` | **4/4 jobs verts**, étape PLM **exécutée** |
 | `40872223952` (Intégration migrations) | `6f09cc8` | vert |
+| **`40876085411` (CI)** | **`5ea5fad`** | **4/4 jobs verts**, les 3 nouvelles étapes **exécutées** (`success` chacune) |
 
 ## B bis. Correction de l'énoncé précédent — une donnée n'était pas mesurée
 
@@ -240,6 +241,7 @@ qu'un plan correct.
 | `test:plm-lecture-seule` | **33/33** |
 | `plan:reconciliation` + autotest | exit 0, 7/7 témoins |
 | Batterie autonome complète | **26/26 suites vertes** |
+| **CI `40876085411` sur `5ea5fad`** | **4/4 jobs verts**, 9 étapes PLM/migrations exécutées |
 
 ## H bis. Risques résiduels (mis à jour)
 
