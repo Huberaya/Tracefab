@@ -16,7 +16,7 @@ l'opérateur les jours précédents, citées comme telles.
 |---|---|
 | SHA de départ réel | **`4aab56c`** (et non `508caef` : huit commits s'étaient ajoutés) |
 | Commits de la session | `9208391` · `978c761` · `5b989b7` · `a5b6189` · `7f03ba9` |
-| **SHA final** | **`4b7f06c`** — CI verte, PR `CLEAN` |
+| **SHA final** | **`4b7f06c`** puis `b1c0ffff` (voir §G) — CI verte, PR `CLEAN` |
 | `main` (base de la PR) | `bf55f2ae6534cde84d072d9b975520216c7b6d4e` |
 
 **La tête de branche avait changé.** Huit commits de l'utilisateur, tous lus
@@ -133,6 +133,69 @@ Deux tests ont suivi ces mouvements, sans être affaiblis :
 
 ---
 
+**7. Provenance des quatre politiques — établie par balayage, pas par intuition.**
+
+Le catalogue ne peut pas répondre (`pg_policy` ne porte aucune date de
+création). `scripts/test_provenance_politiques_plm.mjs` (12 vérifications)
+balaye **toutes** les migrations, puis **chaque commit** de l'historique qui a
+fait varier le nom (`git log -S`), et cherche une ligne **ajoutée** contenant
+`CREATE POLICY` :
+
+| Politique | Créée par |
+|---|---|
+| `plm_sync_jobs_insert_brand`, `plm_sync_jobs_select_org` | `20261006210000_plm_erp_gs1_interoperability` |
+| `plm_erp_sync_jobs_insert_brand`, `plm_erp_sync_jobs_select_brand` | **aucune migration, aucune version historique** |
+
+**Conclusion : provenance hors dépôt.** Aucun déploiement ne les recréera, donc
+un `DROP` dans une migration corrective est suffisant **et durable**. Trois
+témoins vérifient que le détecteur n'est pas cassé (il trouve une création
+réelle, il ignore une création écrite dans un commentaire, il rapporte la
+table). Ce que ce balayage **ne dit pas** : qui les a créées, ni quand.
+
+**8. Les deux appartenances identiques — deux octrois, pas un doublon.**
+
+`scripts/test_appartenances_double_octroi.mjs` (14 vérifications) mesure sur
+PostgreSQL que, depuis la version 16, la clé de `pg_auth_members` inclut le
+**grantor** : deux `GRANT` de grantors différents donnent **deux lignes** pour
+la même paire, chacune avec **ses** options. Mesuré :
+
+```
+apres 2 GRANT : 2 lignes
+  [tracefab_app<-neondb_owner par neon_service inherit=false set=true]
+  [tracefab_app<-neondb_owner par postgres     inherit=true  set=true]
+```
+
+Et le piège, mesuré aussi : `REVOKE … GRANTED BY postgres` retire **une** ligne,
+la seconde survit, et `pg_has_role(..., 'MEMBER')` **reste vrai**. Une
+révocation partielle n'a donc rien réglé — avec un rapport qui afficherait
+« révoqué ». Conséquence directe pour la remédiation : il faudra **autant de
+`REVOKE … GRANTED BY` qu'il y a de lignes**.
+
+Le SQL de production (`…appartenances-roles-production.sql`, Q1) rend désormais
+le **grantor** ; sans lui, deux lignes restent inexplicables à l'œil.
+
+**9. Les privilèges effectifs — « `rolbypassrls = false` » ne suffit pas.**
+
+Nouveau document `docs/security/2026-10-28-privileges-effectifs-production.sql`,
+**joué** par `scripts/test_privileges_effectifs_sql_production.mjs`
+(18 vérifications) sur trois bases jetables :
+
+- Q1 : droits de table **effectifs** (héritage compris) sur les six tables du
+  mandat, avec propriétaire et droits de `PUBLIC` ;
+- Q2 : **la question qui compte** — l'application peut-elle endosser un rôle
+  `BYPASSRLS` par `SET ROLE` ? Une ligne par rôle atteignable, avec son grantor
+  et l'option `setrole` ; une ligne `aucun` s'il n'y en a pas (et c'est le seul
+  résultat rassurant) ;
+- Q3 : fonctions `SECURITY DEFINER` et `EXECUTE` ouverts à `PUBLIC`, **nommés**,
+  pas seulement comptés ;
+- Q4 : `ALTER DEFAULT PRIVILEGES` — ce que le **prochain** objet recevra sans
+  `GRANT`.
+
+Le test construit trois états (sain / écriture **héritée** par appartenance /
+évasion `BYPASSRLS` atteignable) et **exige que la sortie change**. Il vérifie
+aussi que deux rôles atteignables donnent deux lignes et qu'un rôle atteignable
+**sans** `BYPASSRLS` ne pollue pas la sortie.
+
 ## C. Tests : PASS / FAIL / NON EXÉCUTÉ
 
 Environnement : Node **20.20.2** (la version de la CI), PostgreSQL **18.6**
@@ -146,6 +209,9 @@ via PGlite.
 | `test_appartenances_roles.mjs` | **PASS 16/16** | sens des appartenances, héritage vs `SET ROLE` |
 | `test_appartenances_sql_production.mjs` | **PASS 20/20** | le SQL de prod s'exécute et tranche |
 | `matrice_migrations.mjs` | **PASS** | 65 = 54 + 2 + 9 ; aucun 5ᵉ préfixe double |
+| `test_provenance_politiques_plm.mjs` | **PASS 12/12** | provenance des 4 politiques, historique compris |
+| `test_appartenances_double_octroi.mjs` | **PASS 14/14** | deux lignes = deux grantors ; révocation partielle insuffisante |
+| `test_privileges_effectifs_sql_production.mjs` | **PASS 18/18** | le SQL des privilèges effectifs s'exécute et distingue 3 états |
 | `test_verifier_confrontation.mjs` | **PASS 40/40** | 12 falsifications refusées, dont 2 nouvelles |
 | `test_sondes_effets_pglite.mjs` | **PASS 17/17** | chaque sonde change quand on retire sa migration |
 | `test_deploiement_simule.mjs` | **PASS 11/11** | le point de rupture du déploiement est identifié |
@@ -208,8 +274,7 @@ chacune provoque un échec. Et le rendu conforme, à espaces et casts près, est
 
 ## E. Migrations manquantes ou annulées
 
-**Recalculé, non repris : 65 migrations** = **54 appliquées** (dont **5 hors
-bande**) + **2 annulées** (`rolled_back_at`) + **9 absentes**. Arithmétique
+**Recalculé, non repris : 65 migrations** = **49 attestées** + **5 hors bande** + **2 annulées** (`rolled_back_at`) + **9 absentes**. Arithmétique
 fermée par le script, qui échoue sinon.
 
 Détail complet dans `docs/security/2026-10-28-matrice-migrations-etat-final.md`
@@ -227,7 +292,13 @@ Détail complet dans `docs/security/2026-10-28-matrice-migrations-etat-final.md`
    s'arrête là, la reprise est `resolve --applied` **sur constat du catalogue**,
    jamais `--rolled-back`. Les cinq migrations aval sont nommées dans la matrice.
 3. **57 lignes sur 65 sont `NON PROUVÉ`** en effets observés. Elles ne sont pas
-   conformes : elles ne sont **pas lues**.
+   conformes : elles ne sont **pas lues**. La matrice sépare désormais trois
+   niveaux — (a) historique Prisma, (b) catalogue observé, (c) SQL du dépôt — et
+   porte un statut parmi `CONFORME` / `DIVERGENCE` / `NON PROUVÉ` /
+   `À QUALIFIER`. **Aucune migration n'est `CONFORME`**, et ce n'est pas un
+   oubli : ce serait une affirmation sans mesure. Les **deux** `DIVERGENCE`
+   sont les seules divergences mesurées (`…120000` : table lue absente ;
+   `…150000` : 4 politiques au lieu de 2).
 
 **Ordre de remédiation** proposé (aucune étape exécutée) : relever le catalogue
 → trancher le sens des appartenances → `…120000` **seule** → `resolve` si et
@@ -247,14 +318,19 @@ coup, y compris `…140000`, qui est une décision séparée.
 |---|---|
 | `tracefab_app` : `NOSUPERUSER`, `NOBYPASSRLS`, `INHERIT` | lecture production |
 | `neondb_owner`, `neon_service` : `BYPASSRLS` + `CREATEROLE` + `CREATEDB` | lecture production |
-| **2 appartenances** `neondb_owner` ↔ `tracefab_app`, options différentes | lecture production |
-| **le sens réel n'est PAS établi** | **À OBTENIR** — requête fournie, non exécutée |
+| **2 appartenances** entre `neondb_owner` et `tracefab_app`, options différentes | lecture production |
+| **ces deux lignes sont DEUX OCTROIS**, distingués par leur `grantor` | **mesuré** — PG 16+ inclut le grantor dans la clé (14 vérifications) |
+| une révocation qui ne vise qu'un grantor **laisse l'autre octroi en place** | **mesuré** — `MEMBER` reste vrai après le premier `REVOKE … GRANTED BY` |
+| **le sens réel n'est PAS établi** | **À OBTENIR** — requête fournie (rend désormais le grantor), non exécutée |
 | héritage ≠ `SET ROLE` : le danger passe par `SET ROLE` | **mesuré** (base jetable, 16 vérifications) |
 | `contributor` ne doit pas insérer ; owner/admin/manager si | **mesuré** (19 vérifications) |
 | pas de `REVOKE` préparé à l'aveugle | décision : les appartenances de `neondb_owner` sont **fournisseur**, pas applicatives |
 
-**Ce que la production doit encore répondre** (§G du blocage) :
-`docs/security/2026-10-28-appartenances-roles-production.sql`. Q2 rend deux
+**Ce que la production doit encore répondre** :
+`docs/security/2026-10-28-appartenances-roles-production.sql` (le sens, avec
+grantor) **et** `docs/security/2026-10-28-privileges-effectifs-production.sql`
+(ce que le rôle peut réellement faire, y compris par `SET ROLE`). Q2 du premier
+rend deux
 lignes ; si `tracefab_app_vers_neondb_owner` affiche `membre=true`, alors
 `setrole_possible=true` très probablement, et la RLS est **contournable** — ce
 serait le constat le plus grave du chantier. **Aucune révocation n'est proposée
@@ -337,7 +413,12 @@ Ce qui le justifie, et qui est **mesuré sur le SHA `4b7f06c`** :
   final est comparé à la référence sur la chaîne réelle ;
 - le vérificateur de confrontation **mord** : 12 falsifications refusées, dont
   deux nouvelles (sens inverse d'appartenance, changement d'options) ;
-- le décompte des migrations est **recalculé**, pas recopié : 65 = 54 + 2 + 9.
+- le décompte des migrations est **recalculé**, pas recopié : 49 + 5 + 2 + 9 = 65 ;
+- la **provenance** des deux politiques surnuméraires est établie : **aucune
+  migration, aucune version historique** ne les crée — donc un `DROP` suffit et
+  aucun déploiement ne les ramènera ;
+- les **deux appartenances identiques** sont expliquées : deux octrois, deux
+  grantors, et une révocation partielle ne retirerait rien.
 
 **Ce que ce verdict ne dit pas.** Il ne dit pas que la production est conforme :
 3 preuves de production manquent (§H, lignes 1 à 3) et une décision
@@ -348,8 +429,11 @@ serait l'erreur qui a coûté le plus cher dans ce chantier.
 ### Ce qu'il reste à faire, dans l'ordre, et par qui
 
 1. **Vous** — coller `docs/security/2026-10-28-appartenances-roles-production.sql`
-   (Q1 à Q4) sur `Primary`. Q2 doit rendre **2 lignes**. C'est le seul point
-   encore capable de changer la conclusion sécurité.
+   (Q1 à Q4) **et** `docs/security/2026-10-28-privileges-effectifs-production.sql`
+   (Q1 à Q4) sur `Primary`. Le premier doit rendre **2 lignes** en Q2 ; le
+   second doit rendre la ligne `bypass-atteignable|aucun` — toute autre ligne
+   est un constat grave. C'est le seul point encore capable de changer la
+   conclusion sécurité.
 2. **Vous** — relever le catalogue avec
    `docs/security/2026-10-28-tour30-A-confrontation-lecture-seule.sql`, puis
    `node scripts/verifier_confrontation_production.mjs <sortie>` : 85 faits

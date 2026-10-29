@@ -107,6 +107,80 @@ const ECARTS = {
 };
 
 /**
+ * LES TROIS NIVEAUX, ET POURQUOI ILS NE SE CONFONDENT PAS.
+ *
+ * Le mandat demande de distinguer trois choses, et les confondre est l'erreur
+ * qui a coute le plus cher de ce chantier :
+ *
+ *   a) `historique` : ce que `_prisma_migrations` ATTESTE (une ligne terminee,
+ *      annulee, ou rien du tout) ;
+ *   b) `catalogue`  : ce que les objets et politiques de la production
+ *      MONTRENT, quand on les a lus ;
+ *   c) `sql`        : le contenu du fichier du depot, qui dit ce que la
+ *      migration FERAIT si elle etait jouee.
+ *
+ * Une migration absente de l'historique ne prouve pas que ses effets sont
+ * absents (b peut etre present sans a). Une migration attestee ne prouve pas
+ * que ses effets sont la (a sans b). Et le SQL du depot ne dit rien de l'un ni
+ * de l'autre : il dit ce qui se passerait au prochain deploiement (c).
+ *
+ * STATUTS — quatre valeurs, jamais « identique » par defaut :
+ *   CONFORME      a et b disent la meme chose, et c'est ce qu'on attend
+ *   DIVERGENCE    a et b se contredisent, ou b contredit l'attendu du depot
+ *   NON PROUVE    b n'a pas ete lu — on ne sait pas
+ *   A QUALIFIER   b a ete lu mais ne tranche pas (objet partage entre deux
+ *                 migrations, effet indistinguable d'une autre source)
+ */
+const CATALOGUE = {
+  '20261010120000_publication_explicite': {
+    catalogue: 'NON LU — la fonction qui la porte (20261009180000) existe deja',
+    statut: 'NON PROUVE',
+  },
+  '20261017120000_active_tenant_context': {
+    catalogue: 'PRESENT — deduit : 20261021120000, attestee, echoue sans ces 3 fonctions',
+    statut: 'A QUALIFIER',
+  },
+  '20261021170000_dpp_readiness_truthful_gates': {
+    catalogue: 'NON LU — redéfinie par 20261027100000 et 20261027130000',
+    statut: 'NON PROUVE',
+  },
+  '20261027100000_dpp_quality_gate_requires_assessment': {
+    catalogue: 'NON LU',
+    statut: 'NON PROUVE',
+  },
+  '20261027130000_dpp_review_preservation_and_publication_coherence': {
+    catalogue: 'NON LU',
+    statut: 'NON PROUVE',
+  },
+  '20261028120000_runtime_function_registry': {
+    catalogue: 'ABSENT — table tracefab_runtime_function_registry lue absente',
+    statut: 'DIVERGENCE',
+  },
+  '20261028120100_worker_identity_not_forgeable': {
+    catalogue: 'NON LU — depend du registre, dont l absence a ete lue',
+    statut: 'NON PROUVE',
+  },
+  '20261028120200_document_reserved_fields_internal_only': {
+    catalogue: 'NON LU — les droits sur documents se lisent avec le SQL des privileges effectifs',
+    statut: 'NON PROUVE',
+  },
+  '20261028130000_product_computed_fields_column_scoped': {
+    catalogue: 'NON LU — les droits sur tracefab_products se lisent de meme',
+    statut: 'NON PROUVE',
+  },
+  '20261028140000_supplier_invitation_owner_relationship_scope': {
+    catalogue: 'NON LU — decision separee, aucun deploy global pour ce seul point',
+    statut: 'NON PROUVE',
+  },
+  '20261028150000_reconcile_plm_erp_sync_job_policies': {
+    catalogue: 'DIVERGENCE MESUREE — 4 politiques au lieu de 2 ; les 2 surnumeraires n ont AUCUN createur dans le depot (provenance hors depot)',
+    statut: 'DIVERGENCE',
+  },
+};
+
+const STATUTS = new Set(['CONFORME', 'DIVERGENCE', 'NON PROUVE', 'A QUALIFIER']);
+
+/**
  * Les cinq migrations appliquees HORS BANDE (`applied_steps_count = 0` alors
  * que `finished_at` est renseigne) : executees par un lanceur du depot, puis
  * marquees par `resolve --applied`. Le SQL est celui du fichier ; l'execution
@@ -147,6 +221,8 @@ const lignes = migrations.map((nom) => {
     objet: ecart?.objet ?? (horsBande ? `cree ${horsBande.join(', ')}` : '—'),
     effets: ecart?.effets ?? (horsBande ? ['MESURE', 'les 12 tables existent en production (lecture du 28/10)'] : ['NON PROUVE', 'aucune mesure ciblee']),
     suite: ecart?.suite ?? (horsBande ? 'schema equivalent, non prouve ; controle cible souhaitable' : '—'),
+    catalogue: ecart ? CATALOGUE[nom]?.catalogue : (horsBande ? 'PRESENT MESURE — les 12 tables existent en production' : 'NON LU'),
+    statut: ecart ? CATALOGUE[nom]?.statut : (horsBande ? 'A QUALIFIER' : 'NON PROUVE'),
   };
 });
 
@@ -174,6 +250,22 @@ for (const nom of Object.keys(ECARTS)) {
 }
 for (const nom of Object.keys(HORS_BANDE)) {
   if (!migrations.includes(nom)) erreurs.push(`hors bande cite mais absent du depot : ${nom}`);
+}
+
+// Les trois niveaux doivent etre renseignes pour chaque ecart, sinon la matrice
+// affiche un vide que le lecteur lira comme « conforme ».
+for (const nom of Object.keys(ECARTS)) {
+  const c = CATALOGUE[nom];
+  if (!c) erreurs.push(`ecart sans niveau catalogue : ${nom}`);
+  else if (!STATUTS.has(c.statut)) erreurs.push(`statut inconnu pour ${nom} : ${c.statut}`);
+  if (c && (!c.catalogue || c.catalogue.trim() === '')) erreurs.push(`catalogue vide pour ${nom}`);
+}
+// Le niveau « historique » et le niveau « catalogue » ne doivent pas etre
+// fusionnes : un ecart dont les deux se contredisent doit porter DIVERGENCE.
+for (const l of lignes) {
+  if (l.statut === 'CONFORME' && (l.historique === 'ABSENTE' || l.catalogue === 'NON LU')) {
+    erreurs.push(`CONFORME incompatible avec un historique absent ou un catalogue non lu : ${l.nom}`);
+  }
 }
 
 // Une empreinte nulle = un dossier sans migration.sql : la matrice serait vide
@@ -212,10 +304,10 @@ for (const d of PREFIXES_DOUBLES_CONNUS) {
 
 // --- 3. Sorties -----------------------------------------------------------
 if (process.argv.includes('--markdown')) {
-  console.log('| # | Migration | Empreinte (12) | Historique | Objets attendus | Effets observes | Nature | Suite |');
-  console.log('|---|---|---|---|---|---|---|---|');
+  console.log('| # | Migration | Empreinte (12) | (a) Historique Prisma | (b) Catalogue observe | (c) SQL attendu | Nature | Statut | Suite |');
+  console.log('|---|---|---|---|---|---|---|---|---|');
   lignes.forEach((l, i) => {
-    console.log(`| ${i + 1} | \`${l.nom}\` | \`${(l.sha ?? '').slice(0, 12)}\` | ${l.historique} | ${l.objet} | ${l.effets[1]} | **${l.effets[0]}** | ${l.suite} |`);
+    console.log(`| ${i + 1} | \`${l.nom}\` | \`${(l.sha ?? '').slice(0, 12)}\` | ${l.historique} | ${l.catalogue} | ${l.objet} | **${l.effets[0]}** | **${l.statut}** | ${l.suite} |`);
   });
 } else {
   console.log('Matrice des migrations — etat recalcule depuis le depot\n');
@@ -229,6 +321,9 @@ if (process.argv.includes('--markdown')) {
   console.log(`  prefixes en double (connus)    : ${doubles.length} / ${PREFIXES_DOUBLES_CONNUS.length} declares`);
   const mesures = lignes.filter((l) => l.effets[0] === 'MESURE').length;
   const deduits = lignes.filter((l) => l.effets[0] === 'DEDUIT').length;
+  for (const st of ['CONFORME', 'DIVERGENCE', 'NON PROUVE', 'A QUALIFIER']) {
+    console.log(`  statut ${st.padEnd(11)}: ${lignes.filter((l) => l.statut === st).length}`);
+  }
   console.log(`\n  effets MESURES      : ${mesures}`);
   console.log(`  effets DEDUITS      : ${deduits}`);
   console.log(`  effets NON PROUVES  : ${total - mesures - deduits}`);

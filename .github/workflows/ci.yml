@@ -278,6 +278,14 @@ jobs:
         # s'heritent pas, contrairement aux privileges sur les objets).
         run: npm run test:appartenances-roles
 
+      - name: Appartenances — deux lignes pour une paire, deux octrois ?
+        # En PostgreSQL 16+, la cle de pg_auth_members inclut le GRANTOR : la
+        # meme paire de roles peut porter DEUX lignes, avec des options
+        # differentes. Ce test le mesure, puis mesure le piege : `REVOKE ...
+        # GRANTED BY x` ne retire QUE l octroi de x, et l application reste
+        # membre. Une revocation partielle n a donc rien regle.
+        run: npm run test:appartenances-double-octroi
+
       - name: Appartenances — le SQL de production est joue avant d'etre colle
         # Le script de la section precedente mesure le mecanisme ; celui-ci joue
         # le SQL REEL destine a la production (docs/security/...appartenances-
@@ -286,6 +294,22 @@ jobs:
         # l'appartenance pour exiger que le verdict change. Une requete de
         # production non jouee est une intention, pas une preuve.
         run: npm run test:appartenances-roles:sql
+
+      - name: Privilèges effectifs — le SQL de production est joué, et il mord
+        # rolbypassrls = false ne dit rien de ce que le role PEUT. Ce test joue
+        # le SQL des privileges effectifs sur trois bases jetables (saine,
+        # ecriture heritee, evasion BYPASSRLS atteignable) et exige que la
+        # sortie change. Une sortie identique sur une base trouee et sur une
+        # base saine ne mesurerait rien.
+        run: npm run test:privileges-effectifs:sql
+
+      - name: PLM — provenance des quatre politiques, balayage exhaustif
+        # Deux politiques surnumeraires en production, aucune migration ne les
+        # cree. Ce test le PROUVE par balayage de toutes les migrations ET de
+        # l historique (git -S, chaque commit, lignes ajoutees), avec trois
+        # temoins verifiant que le detecteur n est pas casse. Il echoue si une
+        # migration se met a les creer : le probleme deviendrait reproductible.
+        run: npm run test:plm-provenance-politiques
 
       - name: PLM sync jobs — contributor refuse, rôles autorisés acceptés
         # La politique se lit dans le catalogue ; ce qu'elle FAIT se mesure en

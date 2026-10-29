@@ -59,13 +59,21 @@
 --      trois lignes : c'etait faux, et une attente fausse sur ce point fait
 --      passer un etat sain pour une mesure ratee.)
 -- =====================================================================
+-- Le GRANTOR est indispensable. Depuis PostgreSQL 16, la cle primaire de
+-- `pg_auth_members` est (roleid, member, grantor) : la MEME paire de roles peut
+-- porter DEUX lignes, posees par deux grantors differents, avec des options
+-- differentes. Sans le grantor, deux lignes identiques a l'oeil restent
+-- inexplicables — et une revocation qui ne vise pas le bon grantor laisse
+-- l'autre octroi en place sans que rien ne le signale.
+-- Mesure : scripts/test_appartenances_double_octroi.mjs, 14 verifications.
 SELECT format(
-         'appartenance|%s|membre_de|%s|admin=%s|inherit=%s|set=%s',
+         'appartenance|%s|membre_de|%s|par|%s|admin=%s|inherit=%s|set=%s',
          pg_get_userbyid(am.member),
          pg_get_userbyid(am.roleid),
-         am.admin_option,
-         am.inherit_option,
-         am.set_option
+         pg_get_userbyid(am.grantor),
+         CASE WHEN am.admin_option THEN 'true' ELSE 'false' END,
+         coalesce(to_jsonb(am)->>'inherit_option', 'n/a'),
+         coalesce(to_jsonb(am)->>'set_option', 'n/a')
        ) AS ligne
   FROM pg_catalog.pg_auth_members am
  WHERE pg_get_userbyid(am.member) IN ('tracefab_app', 'neondb_owner', 'neon_service')
