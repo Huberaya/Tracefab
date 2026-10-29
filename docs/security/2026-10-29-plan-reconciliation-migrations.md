@@ -1,6 +1,6 @@
 # Plan de reconciliation des migrations — genere
 
-`node scripts/plan_reconciliation_migrations.mjs --markdown` sur 66 migrations du depot.
+`node scripts/plan_reconciliation_migrations.mjs --markdown` sur 67 migrations du depot.
 
 **Aucune etape de ce plan n a ete executee.** Aucun acces en ecriture a la production.
 
@@ -8,7 +8,8 @@
 
 | Migration | Historique | Effets (production) | Action | Prerequis | Risque |
 |---|---|---|---|---|---|
-| `20261029150000_plm_sync_jobs_policy_alignment` | NOUVELLE | NON DEPLOYEE | **APPLIQUER SEULE (jamais deployee)** | decision sur le doublon avec 20261028150000 (meme DROP, deux fois) | aucun historique a reconcilier : elle n a jamais ete jouee |
+| `20261029150000_plm_sync_jobs_policy_alignment` | NOUVELLE | NON DEPLOYEE | **APPLIQUER SEULE (jamais deployee)** | decision sur les migrations jumelles : plusieurs fichiers font le meme DROP | aucun historique a reconcilier : elle n a jamais ete jouee |
+| `20261029160000_plm_erp_sync_jobs_policy_drift` | NOUVELLE | NON DEPLOYEE | **APPLIQUER SEULE (jamais deployee)** | decision sur les migrations jumelles : plusieurs fichiers font le meme DROP | aucun historique a reconcilier : elle n a jamais ete jouee |
 | `20261021170000_dpp_readiness_truthful_gates` | ABSENTE | NON PROUVE | **SONDE → APPLIED SI PRESENT, SINON APPLIQUER SEULE** | sonde de la chaine ; la branche est choisie par la mesure, pas par defaut | rejouable : un second passage est sans effet |
 | `20261027100000_dpp_quality_gate_requires_assessment` | ABSENTE | NON PROUVE | **SONDE → APPLIED SI PRESENT, SINON APPLIQUER SEULE** | sonde de la chaine ; la branche est choisie par la mesure, pas par defaut | rejouable : un second passage est sans effet |
 | `20261027130000_dpp_review_preservation_and_publication_coherence` | ABSENTE | NON PROUVE | **SONDE → APPLIED SI PRESENT, SINON APPLIQUER SEULE** | sonde de la chaine ; la branche est choisie par la mesure, pas par defaut | rejouable : un second passage est sans effet |

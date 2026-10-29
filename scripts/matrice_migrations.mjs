@@ -28,7 +28,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ECARTS, CATALOGUE, HORS_BANDE, NOUVELLES } from './lib/ecarts_migrations.mjs';
+import { ECARTS, CATALOGUE, HORS_BANDE, BORNE_RELEVE } from './lib/ecarts_migrations.mjs';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dossier = join(racine, 'prisma', 'migrations');
@@ -89,6 +89,14 @@ const empreinte = (nom) => {
   return createHash('sha256').update(readFileSync(f)).digest('hex');
 };
 
+// Est « nouvelle » toute migration posterieure au dernier releve, qui n'est ni
+// un ecart de derive ni une hors bande. Regle derivee, pas liste recopiee : une
+// migration ajoutee demain est classee sans qu'on retouche ce script.
+const NOUVELLES = {};
+for (const n of migrations) {
+  if (!ECARTS[n] && !HORS_BANDE[n] && n > BORNE_RELEVE) NOUVELLES[n] = true;
+}
+
 const lignes = migrations.map((nom) => {
   const sha = empreinte(nom);
   const ecart = ECARTS[nom];
@@ -103,9 +111,9 @@ const lignes = migrations.map((nom) => {
     nom,
     sha,
     historique,
-    objet: ecart?.objet ?? nouvelle?.objet ?? (horsBande ? `cree ${horsBande.join(', ')}` : '—'),
-    effets: ecart?.effets ?? nouvelle?.effets ?? (horsBande ? ['MESURE', 'les 12 tables existent en production (lecture du 28/10)'] : ['NON PROUVE', 'aucune mesure ciblee']),
-    suite: ecart?.suite ?? nouvelle?.suite ?? (horsBande ? 'schema equivalent, non prouve ; controle cible souhaitable' : '—'),
+    objet: ecart?.objet ?? (nouvelle ? 'migration ecrite apres le releve du 28/10' : null) ?? (horsBande ? `cree ${horsBande.join(', ')}` : '—'),
+    effets: ecart?.effets ?? (nouvelle ? ['NON DEPLOYEE', 'aucune ligne _prisma_migrations : posterieure au releve'] : null) ?? (horsBande ? ['MESURE', 'les 12 tables existent en production (lecture du 28/10)'] : ['NON PROUVE', 'aucune mesure ciblee']),
+    suite: ecart?.suite ?? (nouvelle ? 'appliquable seule ; depend d une decision sur les migrations jumelles' : null) ?? (horsBande ? 'schema equivalent, non prouve ; controle cible souhaitable' : '—'),
     catalogue: ecart ? CATALOGUE[nom]?.catalogue
       : nouvelle ? 'ABSENTE — jamais deployee, aucune ligne _prisma_migrations'
       : (horsBande ? 'PRESENT MESURE — les 12 tables existent en production' : 'NON LU'),
@@ -126,23 +134,22 @@ const annulees = compter('ANNULEE');
 const absentes = compter('ABSENTE');
 
 const total = lignes.length;
-// 65 au releve du 28/10, +1 le 29/10 (`20261029150000`, jamais deployee).
-if (total !== 66) erreurs.push(`le depot ne contient pas 66 migrations mais ${total}`);
+// Le TOTAL n'est pas fige : il augmente a chaque migration ajoutee, et le
+// figer transformait une livraison normale en echec. Ce qui doit rester fige,
+// ce sont les FAITS de production : 11 ecarts, 5 hors bande.
 if (appliquees + horsBande + annulees + absentes + nouvelles !== total) {
   erreurs.push(`l arithmetique ne ferme pas : ${appliquees}+${horsBande}+${annulees}+${absentes}+${nouvelles} != ${total}`);
 }
 // Les onze ECARTS de derive restent onze : une migration neuve n'en est pas un.
 if (annulees + absentes !== 11) erreurs.push(`${annulees + absentes} ecarts nommes, 11 attendus`);
-if (nouvelles !== 1) erreurs.push(`${nouvelles} migration(s) nouvelle(s), 1 attendue`);
+if (nouvelles === 0) erreurs.push('aucune migration posterieure au releve : la regle de classement ne s applique pas');
+if (total < 65) erreurs.push(`le depot ne contient plus que ${total} migrations : une a disparu`);
 if (horsBande !== 5) erreurs.push(`${horsBande} migrations hors bande, 5 attendues`);
 
 // Les migrations citees comme en ecart doivent exister : sinon la matrice
 // decrit un depot qui n'existe plus.
 for (const nom of Object.keys(ECARTS)) {
   if (!migrations.includes(nom)) erreurs.push(`ecart cite mais absent du depot : ${nom}`);
-}
-for (const nom of Object.keys(NOUVELLES)) {
-  if (!migrations.includes(nom)) erreurs.push(`nouvelle citee mais absente du depot : ${nom}`);
 }
 for (const nom of Object.keys(HORS_BANDE)) {
   if (!migrations.includes(nom)) erreurs.push(`hors bande cite mais absent du depot : ${nom}`);

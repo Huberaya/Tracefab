@@ -31,7 +31,7 @@ import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ECARTS, NOUVELLES } from './lib/ecarts_migrations.mjs';
+import { ECARTS, HORS_BANDE, BORNE_RELEVE } from './lib/ecarts_migrations.mjs';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = join(racine, 'prisma', 'migrations');
@@ -48,7 +48,8 @@ const lire = (d) => readFileSync(join(MIGRATIONS, d, 'migration.sql'), 'utf8');
 
 const absentes = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ABSENTE').sort();
 const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE').sort();
-const nouvelles = Object.keys(NOUVELLES).sort();
+// Derivee, pas recopiee : toute migration posterieure au releve et hors ecarts.
+const nouvelles = dossiers.filter((d) => !ECARTS[d] && !HORS_BANDE[d] && d > BORNE_RELEVE);
 const manquantes = [...absentes, ...nouvelles].sort();
 
 const nouveauCluster = async () => {

@@ -17,7 +17,7 @@
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ECARTS, CATALOGUE, HORS_BANDE, NOUVELLES } from './lib/ecarts_migrations.mjs';
+import { ECARTS, CATALOGUE, HORS_BANDE, BORNE_RELEVE } from './lib/ecarts_migrations.mjs';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dossier = join(racine, 'prisma', 'migrations');
@@ -41,7 +41,9 @@ const rejouable = (n) => {
 const absentes = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ABSENTE');
 const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE');
 const horsBande = Object.keys(HORS_BANDE);
-const nouvellesNoms = Object.keys(NOUVELLES);
+// Meme regle derivee que la matrice : posterieure au releve, ni ecart ni hors bande.
+const nouvellesNoms = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && n > BORNE_RELEVE);
+const NOUVELLES = Object.fromEntries(nouvellesNoms.map((n) => [n, true]));
 const appliquees = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && !NOUVELLES[n]);
 
 /**
@@ -53,7 +55,7 @@ function actionDe(nom) {
   if (NOUVELLES[nom]) {
     return { action: 'APPLIQUER SEULE (jamais deployee)', preuve: 'aucune ligne _prisma_migrations ; ecrite le 29/10',
       risque: 'aucun historique a reconcilier : elle n a jamais ete jouee',
-      prerequis: 'decision sur le doublon avec 20261028150000 (meme DROP, deux fois)' };
+      prerequis: 'decision sur les migrations jumelles : plusieurs fichiers font le meme DROP' };
   }
   const e = ECARTS[nom];
   const c = CATALOGUE[nom];

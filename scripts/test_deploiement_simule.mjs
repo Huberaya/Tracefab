@@ -88,7 +88,9 @@ const ECARTS = [
  * pas dans `ECARTS` (qui decrit une DERIVE), mais un `deploy` l appliquerait.
  * La simuler separement evite de la faire passer pour « deja appliquee ».
  */
-const NOUVELLES = ['20261029150000_plm_sync_jobs_policy_alignment'];
+const NOUVELLES = fs.readdirSync(MIGRATIONS)
+  .filter((d) => /^\d{14}_/.test(d) && d > '20261028150000' && !ECARTS.includes(d))
+  .sort();
 
 /** Les deux marquees ANNULEES dans l'historique de production. */
 const ANNULEES = ['20261010120000_publication_explicite',

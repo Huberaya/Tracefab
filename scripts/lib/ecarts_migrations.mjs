@@ -15,14 +15,18 @@
  * ete deployees, et ce n'est pas une derive. Les confondre avec les onze ecarts
  * ferait dire a la matrice qu'elles sont « appliquees » — ce qui serait faux.
  */
-export const NOUVELLES = {
-  '20261029150000_plm_sync_jobs_policy_alignment': {
-    historique: 'NOUVELLE',
-    objet: 'retire les deux memes politiques derivees que 20261028150000, puis verifie les canoniques',
-    effets: ['NON DEPLOYEE', 'aucune ligne _prisma_migrations ; migration ecrite le 29/10'],
-    suite: 'decision de fusion : deux migrations font le meme DROP (voir rapport)',
-  },
-};
+/**
+ * Borne du DERNIER releve de production : 20261028150000 a ete lue ABSENTE.
+ * Toute migration horodatee APRES cette borne n'existait pas lors du releve,
+ * donc elle n'a pas de ligne `_prisma_migrations` — ce n'est pas une derive,
+ * et la classer « appliquee » serait faux. C'est le defaut que ce fichier
+ * corrige : `matrice` et `plan` la comptaient parmi les appliquees.
+ *
+ * Limite assumee : la regle repose sur l'HORODATAGE. Une migration antidatee
+ * devrait recevoir une entree explicite dans `ECARTS` (compare
+ * `matrice_migrations.mjs`, qui refuse une categorie vide).
+ */
+export const BORNE_RELEVE = '20261028150000';
 
 export const ECARTS = {
   '20261010120000_publication_explicite': {

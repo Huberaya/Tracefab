@@ -375,3 +375,84 @@ aujourd'hui, et elles échouent si ce contrat change sans être vu.
 | `test:application-une-par-une` | **20** |
 | `matrice:migrations` | 66 = 54 + 2 + 9 + 1 |
 | `plan:reconciliation` + autotest | exit 0, 7/7 témoins |
+
+---
+
+# Tour du 29/10 (fin) — la branche a encore avancé, et une CI a été annulée
+
+## G ter. Deux commits de plus, et une CI `cancelled`
+
+Pendant mon run CI, deux commits ont été poussés (`48acde2`, `7e98148`). La CI
+`40887385904` sur `a5a0e46` a été **annulée par concurrence**, pas échouée : un
+run plus récent a pris la main. **Je ne compte pas une annulation comme un
+succès** — elle ne prouve rien.
+
+## H ter. Trois migrations pour un seul correctif
+
+| Migration | Gardes | Comportement mesuré sur un état dégradé |
+|---|---|---|
+| `20261028150000_reconcile_plm_erp_sync_job_policies` | **avant** + comptage des politiques | **refuse** et ne supprime rien |
+| `20261029150000_plm_sync_jobs_policy_alignment` | vérification **après**, transactionnelle | refuse (les DROP sont annulés), mais **ne compte pas** |
+| `20261029160000_plm_erp_sync_jobs_policy_drift` | **aucun** | **passe quand une canonique manque** et laisse 1 politique |
+
+`npm run test:plm-migrations-jumelles` — **54 vérifications** sur les trois :
+
+- les trois corrigent bien l'état réel (4 → 2), dans les deux variantes de la
+  surnuméraire, et **laissent les canoniques intactes** (définitions identiques) ;
+- les trois sont idempotentes et s'enchaînent sans dommage (les suivantes sont
+  des no-ops) ;
+- avec une **5ᵉ politique inattendue** : seule la `20261028150000` refuse ; les
+  deux autres passent et laissent 3 politiques ;
+- avec une **canonique absente** : les deux premières refusent, la
+  `20261029160000` **réussit** et laisse la table avec une seule politique.
+
+Ce n'est pas un jugement de valeur sur le travail du chef de chantier : c'est ce
+que la mesure dit. **Trois fichiers pour un `DROP`, et la garantie dépend de
+celui qui s'exécute.** Un seul devrait rester — le plus gardé est le plus sûr —
+mais le choix ne m'appartient pas.
+
+## I ter. Un test rouge que personne ne voyait
+
+`scripts/test_plm_sync_policy_drift.mjs` existe dans le dépôt mais n'était
+**câblé ni dans `package.json` ni dans `ci.yml`** : il ne s'exécutait jamais. Et
+il était **rouge sur sa propre migration**, parce que son détecteur
+`\b(GRANT|REVOKE)\b` lisait aussi les commentaires — le commentaire de la
+migration dit « Aucun GRANT/REVOKE ».
+
+Corrigé en neutralisant les commentaires **pour les seuls contrôles d'absence**
+(les contrôles de présence gardent le texte entier), avec **deux témoins** qui
+vérifient que le détecteur voit encore un vrai `GRANT` et ignore une mention en
+commentaire. Puis **câblé** dans `package.json` et dans la CI.
+
+## J ter. Générateurs : le total ne se fige plus
+
+Le total figé (65, puis 66) cassait à chaque migration ajoutée — un contrôle qui
+signale une livraison normale finit par être ignoré. Le total est désormais
+**dérivé**, et ce qui reste figé, ce sont les **faits de production** : 11 écarts,
+5 hors bande, 2 annulées. La catégorie « nouvelle » est elle aussi **dérivée**
+(toute migration postérieure au relevé, hors écarts) au lieu d'être recopiée.
+
+État courant : **67 migrations = 49 attestées + 5 hors bande + 2 annulées + 9
+absentes + 2 nouvelles**.
+
+## K ter. Tests, après les deux commits du chef de chantier
+
+| Suite | Vérifications |
+|---|---|
+| Batterie autonome | **29/29 suites vertes** |
+| `test:plm-migrations-jumelles` | **54** |
+| `test:plm-sync-policy-drift` | **10** (câblé pour la première fois) |
+| `test:application-une-par-une` | 20 |
+| `test:plm-confrontation` | 57 |
+| `test:plm-rls-isolation` | 43 |
+| `test:plm-lecture-seule` | 33 |
+| `matrice:migrations` | 67 = 54 + 2 + 9 + 2 |
+
+## L ter. Ce qui reste à décider (chef de chantier)
+
+1. **Une seule** des trois migrations jumelles, ou la plus faible dotée des mêmes
+   gardes.
+2. Exécuter le relevé `2026-10-29-plm-politiques-lecture-seule.sql` : il donne le
+   prédicat exact de `select_brand`, seule donnée encore supposée.
+3. Le plan de réconciliation : application **une par une**, jamais un `deploy`
+   global.

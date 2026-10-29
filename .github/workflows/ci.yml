@@ -377,6 +377,13 @@ jobs:
         # second essai. Aucune connexion : base jetable.
         run: npm run test:application-une-par-une
 
+      - name: PLM — garde statique de la migration 20261029160000
+        # Ce test existait dans le depot mais n etait cable NULLE PART : il ne
+        # tournait donc jamais, et il etait rouge sur sa propre migration (son
+        # detecteur de GRANT lisait les commentaires). Cable ici pour qu il
+        # s execute vraiment.
+        run: npm run test:plm-sync-policy-drift
+
       - name: Migrations — plan de reconciliation, et autotest de ses controles
         # Le generateur refuse UPDATE/DELETE sur _prisma_migrations, resolve
         # --rolled-back, deploy global, et resolve --applied sans preuve. Ses

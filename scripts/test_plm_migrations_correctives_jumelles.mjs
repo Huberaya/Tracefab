@@ -28,8 +28,13 @@ import { fileURLToPath } from 'node:url';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = join(racine, 'prisma', 'migrations');
+// TROIS migrations retirent les memes politiques. Ce test n'en designe aucune
+// comme la bonne : il mesure ce que chacune garantit, pour que le choix se
+// fasse sur des faits. La troisieme est arrivee sans garde.
 const M1 = '20261028150000_reconcile_plm_erp_sync_job_policies';
 const M2 = '20261029150000_plm_sync_jobs_policy_alignment';
+const M3 = '20261029160000_plm_erp_sync_jobs_policy_drift';
+const TOUTES = [['28150000', M1], ['29150000', M2], ['29160000', M3]];
 const CANONIQUES = ['plm_sync_jobs_insert_brand', 'plm_sync_jobs_select_org'];
 const SURNUMERAIRES = ['plm_erp_sync_jobs_insert_brand', 'plm_erp_sync_jobs_select_brand'];
 
@@ -102,7 +107,7 @@ async function jouer(db, dossier) {
 }
 
 // =========================================================================
-console.log('1. Chaine complete (66 migrations) sur base neuve  [MESURE]');
+console.log('1. Chaine complete (67 migrations) sur base neuve  [MESURE]');
 {
   const db = await base();
   const ps = await politiques(db);
@@ -116,7 +121,7 @@ console.log('1. Chaine complete (66 migrations) sur base neuve  [MESURE]');
 
 // =========================================================================
 console.log('\n2. Chacune SEULE sur l etat de derive (4 politiques)  [MESURE]');
-for (const [libelle, mig] of [['20261028150000', M1], ['20261029150000', M2]]) {
+for (const [libelle, mig] of TOUTES) {
   for (const variante of ['true', 'duplicata']) {
     const db = await base({ arreterAvant: M1 });
     await deriver(db, variante);
@@ -166,7 +171,7 @@ console.log('\n4. Ordre inverse, et rejeu de chacune  [MESURE]');
   ok('2 politiques', (await politiques(db)).length === 2);
   await db.close();
 
-  for (const mig of [M1, M2]) {
+  for (const mig of [M1, M2, M3]) {
     const db = await base({ arreterAvant: M1 });
     await deriver(db);
     const a = await jouer(db, mig);
@@ -181,21 +186,33 @@ console.log('\n4. Ordre inverse, et rejeu de chacune  [MESURE]');
 console.log('\n5. Etats DEGRADES : ce que chacune garantit  [MESURE]');
 {
   // 5.1 canonique INSERT absente -> les deux doivent echouer, et ne rien laisser casse.
-  for (const [libelle, mig] of [['28150000', M1], ['29150000', M2]]) {
+  // Le comportement n'est PAS le meme : on l'encode au lieu de l'esperer.
+  const ATTENDU = { '28150000': 'refuse', '29150000': 'refuse', '29160000': 'passe' };
+  for (const [libelle, mig] of TOUTES) {
     const db = await base({ arreterAvant: M1 });
     await deriver(db);
     await db.exec(`DROP POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs;`);
     const r = await jouer(db, mig);
-    ok(`[${libelle}] canonique absente : REFUS`, !r.ok, r.message);
     const apres = await politiques(db);
-    ok(`[${libelle}] canonique absente : les 2 surnumeraires sont INTACTES`,
-      SURNUMERAIRES.every((n) => apres.some((p) => p.nom === n)), JSON.stringify(noms(apres)));
+    if (ATTENDU[libelle] === 'refuse') {
+      ok(`[${libelle}] canonique absente : REFUS`, !r.ok, r.message);
+      ok(`[${libelle}] canonique absente : les 2 surnumeraires sont INTACTES`,
+        SURNUMERAIRES.every((n) => apres.some((p) => p.nom === n)), JSON.stringify(noms(apres)));
+    } else {
+      // Mesure, pas souhait : sur une base dont le contrat canonique est deja
+      // casse, cette migration annonce un succes.
+      ok(`[${libelle}] canonique absente : PASSE, sans le voir`, r.ok, r.message);
+      ok(`[${libelle}] canonique absente : il laisse UNE seule politique`,
+        apres.length === 1, JSON.stringify(noms(apres)));
+      ok(`[${libelle}] canonique absente : celle qui reste est la SELECT canonique`,
+        apres[0]?.nom === 'plm_sync_jobs_select_org', JSON.stringify(noms(apres)));
+    }
     await db.close();
   }
 
   // 5.2 une 5e politique inattendue -> DIVERGENCE DE GARANTIE entre les deux.
   const resultats = {};
-  for (const [libelle, mig] of [['28150000', M1], ['29150000', M2]]) {
+  for (const [libelle, mig] of TOUTES) {
     const db = await base({ arreterAvant: M1 });
     await deriver(db);
     await db.exec(`
@@ -213,9 +230,33 @@ console.log('\n5. Etats DEGRADES : ce que chacune garantit  [MESURE]');
     resultats['29150000'].passe === true, JSON.stringify(resultats['29150000']));
   ok('5e politique : et laisse 3 politiques au lieu de 2',
     resultats['29150000'].reste === 3, JSON.stringify(resultats['29150000'].noms));
+  ok('5e politique : 29160000 PASSE aussi — aucun garde du tout',
+    resultats['29160000'].passe === true, JSON.stringify(resultats['29160000']));
+  ok('5e politique : et laisse 3 politiques',
+    resultats['29160000'].reste === 3, JSON.stringify(resultats['29160000'].noms));
   console.log('  --    ce n est pas un defaut du test : c est la difference de');
-  console.log('  --    garantie entre les deux migrations, et l argument pour conserver');
-  console.log('  --    28150000 (ou pour doter 29150000 du meme garde).');
+  console.log('  --    garantie entre les trois migrations, mesuree.');
+  console.log(`  --    garantie : 28150000 = gardes avant + comptage ; 29150000 = verification apres ; 29160000 = aucun garde.`);
+
+  // 5.3 Les canoniques ABSENTES : 29160000 (aucun garde) reussit quand meme et
+  // laisse la table sans aucune politique. La RLS refuse alors tout — l'etat
+  // est sur, mais MUET : la migration annonce un succes sur une base dont le
+  // contrat canonique est absent.
+  {
+    const db = await base({ arreterAvant: M1 });
+    await deriver(db);
+    await db.exec(`
+      DROP POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs;
+      DROP POLICY plm_sync_jobs_select_org  ON public.plm_erp_sync_jobs;`);
+    const r = await jouer(db, M3);
+    const apres = await politiques(db);
+    ok('29160000 PASSE alors que les canoniques manquent (aucun garde)',
+      r.ok, r.message);
+    ok('il laisse la table avec ZERO politique — refus total et silencieux',
+      apres.length === 0, JSON.stringify(noms(apres)));
+    console.log('  --    les deux autres migrations refusent ce meme etat (mesure ci-dessus).');
+    await db.close();
+  }
 }
 
 // =========================================================================
