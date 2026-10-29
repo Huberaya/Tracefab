@@ -57,6 +57,10 @@ jobs:
           if (payload.proxyUrl !== 'https://tracefab.vercel.app/__clerk') {
             throw new Error('/api/config did not return the canonical Clerk proxy URL');
           }
+          // A Clerk publishable key is intentionally public and already sent to
+          // every browser. The annotation lets maintainers compare CDN edges
+          // without ever exposing the secret key.
+          console.log(`::notice title=Clerk public key::${payload.publishableKey}`);
           NODE
           echo 'En-tetes utiles :'
           grep -iE '^(content-type|cache-control|x-vercel-id|age|server):' "$headers" || true
