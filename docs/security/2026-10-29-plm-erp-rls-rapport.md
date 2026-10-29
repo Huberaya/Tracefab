@@ -123,3 +123,139 @@ sur le SHA exact.
 Ce verdict **ne vaut pas** autorisation de fusion. La PR #102 reste en **Draft** ;
 la décision de fusion et le sort des migrations relèvent du chef de chantier
 après revue indépendante.
+
+---
+
+# Suite du 29/10 — contrôles sur `6f09cc8`, gardes, et plan de réconciliation
+
+## A bis. CI sur le dernier SHA
+
+| Run | SHA | Résultat |
+|---|---|---|
+| `40872223854` (CI) | `6f09cc8` | **4/4 jobs verts**, étape PLM **exécutée** |
+| `40872223952` (Intégration migrations) | `6f09cc8` | vert |
+
+## B bis. Correction de l'énoncé précédent — une donnée n'était pas mesurée
+
+**Ce rapport affirmait plus haut que « retirer la seule insertion ne suffit
+pas »**. C'est vrai **sous une hypothèse**, et cette hypothèse n'a jamais été
+mesurée : le **prédicat exact** de `plm_erp_sync_jobs_select_brand` n'est
+consigné dans aucun artefact. Les lectures de production n'ont conservé que son
+**nom** (`P|plm_erp_sync_jobs.plm_erp_sync_jobs_select_brand`).
+
+Or la gravité en dépend :
+
+| Hypothèse | Conséquence |
+|---|---|
+| **Doublon** du prédicat canonique (ce que dit le commentaire de la migration) | elle **n'élargit rien** ; retirer la seule insertion **suffit** ; la retirer reste une mise au net |
+| **`USING (true)`** (pire cas, ce que mon test précédent simulait) | la lecture inter-organisations est ouverte ; la retirer **est** la correction |
+
+Les deux variantes sont désormais mesurées côte à côte
+(`test:plm-confrontation`, sections 2 et 3). Dans les deux cas **le correctif
+est le même** — retirer les deux — donc la décision ne change pas ; ce qui
+change, c'est **ce qu'on peut affirmer** sur la gravité. Le test précédent a été
+renommé pour dire « reconstruction au pire cas » au lieu de « telle que lue ».
+
+## C bis. Confrontation : 4 observées → 2 canoniques
+
+| Politique | Provenance | Commande | Verdict |
+|---|---|---|---|
+| `plm_sync_jobs_select_org` | créée par `20261006210000` | SELECT | **canonique attendue** |
+| `plm_sync_jobs_insert_brand` | créée par `20261006210000` | INSERT | **canonique attendue** |
+| `plm_erp_sync_jobs_insert_brand` | **aucune** migration du dépôt | INSERT | **surnuméraire** — admet `contributor` |
+| `plm_erp_sync_jobs_select_brand` | **aucune** migration du dépôt | SELECT | **surnuméraire** — prédicat non relevé |
+
+`4 = 2 + 2`, sans reste. Aucune migration du dépôt ne **crée** les deux
+surnuméraires (balayage de tout le dossier `prisma/migrations`) : leur
+provenance est **hors dépôt**, donc un `DROP` est durable.
+
+## D bis. Les gardes acceptent l'état réel — et refusent le reste
+
+`npm run test:plm-confrontation` — **56 vérifications**.
+
+| Scénario | Attendu | Mesuré |
+|---|---|---|
+| état à 4 politiques (pire cas et doublon) | accepte, laisse 2 | **accepte** |
+| canoniques non réécrites | définitions identiques avant/après | **identiques** |
+| table absente | refuse `plm_erp_sync_jobs_absente` | refuse, **rien supprimé** |
+| canonique INSERT absente | refuse | refuse, **surnuméraires intactes** |
+| canonique SELECT absente | refuse | refuse, **surnuméraires intactes** |
+| canonique INSERT rouverte à `contributor` | refuse | refuse, **intactes** |
+| canonique INSERT sans `manager` | refuse | refuse, **intactes** |
+| canonique INSERT sans `WITH CHECK` | refuse | refuse, **intactes** |
+| politique **inattendue** présente | passe et la **préserve** | préservée, définition identique |
+
+**Limite mesurée, à trancher par le chef de chantier** : les gardes vérifient la
+**présence** des canoniques et la **forme** de la canonique INSERT ; elles ne
+**comptent pas** les politiques. Avec une 5ᵉ politique inattendue, la migration
+passe et laisse **3** politiques au lieu de 2. Mesuré, pas supposé. Un garde
+supplémentaire est possible (compter les politiques restantes) ; il n'a pas été
+ajouté — c'est une modification de migration, hors de mon périmètre.
+
+## E bis. Le relevé qui ferme la donnée manquante
+
+`docs/security/2026-10-29-plm-politiques-lecture-seule.sql` — **strictement
+lecture seule** (`BEGIN READ ONLY`, aucun DDL/DML, 5 questions Q0–Q5). Il rend
+le prédicat exact des quatre politiques, la classification
+canonique/surnuméraire, le compte et l'écart, les conditions que la migration
+exigera, et les privilèges effectifs.
+
+Il a été **joué avant d'être livré** (`npm run test:plm-lecture-seule`,
+**33 vérifications**) sur trois états : production reconstruite, base saine,
+base **sans la table**. Il ne casse dans aucun des trois.
+
+Deux faux positifs de mes propres contrôles ont été corrigés en corrigeant le
+**détecteur**, pas le SQL : `'TRUNCATE'` dans un `ARRAY` de noms de privilèges
+n'est pas une écriture, et `current_setting('transaction_read_only')` est un
+littéral.
+
+## F bis. Plan de réconciliation des migrations — généré et vérifié
+
+`npm run plan:reconciliation` — liste **recalculée** depuis
+`scripts/lib/ecarts_migrations.mjs` (faits mesurés, extraits de
+`matrice_migrations.mjs` sans changer un chiffre : 65 = 49 + 5 + 2 + 9).
+
+| Catégorie | Nombre | Action |
+|---|---|---|
+| **Annulées** `20261010120000`, `20261017120000` | 2 | sonde ; `resolve --applied` **sur preuve** si effets présents |
+| **Absentes**, effets **mesurés** `20261028120000`, `20261028150000` | 2 | appliquer **seules**, dans cet ordre |
+| **Absentes**, effets **non prouvés** | 7 | sonde → `applied` si présents, sinon appliquer **une fois** |
+| **Déjà matérialisées** (hors bande, `applied_steps_count = 0`) | 5 | **ne rien rejouer** |
+
+Le générateur **refuse** et sort en code 1 si le plan contient un `UPDATE`/`DELETE`
+sur `_prisma_migrations`, un `resolve --rolled-back`, un `deploy` global, un
+`resolve --applied` sans preuve nommée, un ordre violant la dépendance
+registre → `…120100`, ou une migration hors de toute catégorie.
+
+`npm run plan:reconciliation:autotest` — **7 témoins sur 7 détectés**. Sans eux,
+« aucune violation » ne prouverait rien : un contrôle cassé rend le même silence
+qu'un plan correct.
+
+## G bis. Tests, sur `6f09cc8` + ce tour
+
+| Suite | Vérifications |
+|---|---|
+| `test:plm-rls-isolation` | 43/43 |
+| `test:plm-confrontation` | **56/56** |
+| `test:plm-lecture-seule` | **33/33** |
+| `plan:reconciliation` + autotest | exit 0, 7/7 témoins |
+| Batterie autonome complète | **26/26 suites vertes** |
+
+## H bis. Risques résiduels (mis à jour)
+
+1. Le prédicat de `select_brand` reste **non mesuré** tant que Q1 n'a pas été
+   exécuté en production. Le relevé est prêt et testé.
+2. Les gardes ne comptent pas les politiques : une 5ᵉ inattendue survivrait.
+3. Rien n'a été appliqué : lots 1 à 4 non exécutés, `deploy` gelé.
+4. `20261028120000` reste **non rejouable** ; elle doit passer **en premier** ou
+   être résolue sur preuve, jamais rejouée après un échec.
+
+## I bis. Verdict
+
+**PASS sur le périmètre PLM/ERP** — correctif présent, preuves exécutables,
+gardes qualifiées, relevé de production prêt et testé, plan de réconciliation
+généré et auto-vérifié.
+
+**Toujours pas de fusion.** Deux points appartiennent au chef de chantier :
+ajouter ou non un garde sur le **nombre** de politiques, et exécuter Q1 pour
+convertir une hypothèse en mesure.

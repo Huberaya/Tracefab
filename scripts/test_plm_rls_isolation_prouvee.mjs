@@ -6,7 +6,10 @@
  *
  * CE QUE LE CATALOGUE DE PRODUCTION PORTE (lecture du 28/10) :
  *   plm_erp_sync_jobs_insert_brand   surnumerai re   owner/admin/manager/CONTRIBUTOR
- *   plm_erp_sync_jobs_select_brand   surnumerai re   USING (true)
+ *   plm_erp_sync_jobs_select_brand   surnumerai re   predicat NON MESURE
+ *                                   (le commentaire de la migration le dit
+ *                                   « doublon » de la canonique ; ce test
+ *                                   prend l'HYPOTHESE PIRE : USING (true))
  *   plm_sync_jobs_insert_brand       canonique       owner/admin/manager
  *   plm_sync_jobs_select_org         canonique       tracefab_is_org_member(...)
  *
@@ -16,8 +19,8 @@
  * d'insertion trop large ne suffit donc PAS si une autre politique conserve le
  * meme acces. Ce test le demontre en trois temps plutot que de l'affirmer :
  *
- *   - etat A (production) : contributor insere, et voit les jobs d'une AUTRE
- *     organisation ;
+ *   - etat A (production reconstruite au pire cas) : contributor insere, et
+ *     voit les jobs d'une AUTRE organisation ;
  *   - etat B (correctif PARTIEL : on retire la seule insertion) : contributor
  *     n'insere plus, MAIS la lecture inter-organisations reste ouverte —
  *     retirer une politique n'a pas suffi ;
@@ -171,7 +174,11 @@ console.log('1. Le correctif PARTIEL ne suffit pas — la combinaison par OR');
 {
   const db = await chaine({ arreterAvant: CIBLE });
   await peupler(db);
-  // La derive de production, telle que lue : les deux surnumeraires.
+  // La derive de production, RECONSTRUITE AU PIRE CAS : les deux
+  // surnumeraires. Le predicat exact de `select_brand` n'est pas consigne dans
+  // les artefacts ; `USING (true)` est l'hypothese la plus large. La variante
+  // « doublon » (benigne, ou seule l'insertion elargit) est mesuree
+  // separement par `test_plm_erp_confrontation_politiques.mjs`.
   await db.exec(`
     CREATE POLICY plm_erp_sync_jobs_insert_brand ON public.plm_erp_sync_jobs
       FOR INSERT TO PUBLIC WITH CHECK (
@@ -187,7 +194,7 @@ console.log('1. Le correctif PARTIEL ne suffit pas — la combinaison par OR');
   await comme(db, U.contributor);
   ok('etat A : contributor INSERE (la fuite est reelle)', (await inserer(db, ORG_A, 'a1')).ok);
   const vuesB = await voirChez(db, ORG_B);
-  ok('etat A : il VOIT les jobs de l organisation B', vuesB === 1, `n=${vuesB}`);
+  ok('etat A (pire cas) : il VOIT les jobs de l organisation B', vuesB === 1, `n=${vuesB}`);
 
   // --- Correctif partiel : on ne retire QUE la politique d'insertion -------
   await db.exec('RESET ROLE;');
@@ -197,7 +204,7 @@ console.log('1. Le correctif PARTIEL ne suffit pas — la combinaison par OR');
   ok('etat B : contributor n insere plus — le correctif partiel agit', refusRls(apresPartiel),
     JSON.stringify(apresPartiel));
   const vuesBApres = await voirChez(db, ORG_B);
-  ok('etat B : MAIS il voit toujours les jobs de B — retirer une politique n a pas suffi',
+  ok('etat B (pire cas) : MAIS il voit toujours les jobs de B — retirer une politique n a pas suffi',
     vuesBApres === 1, `n=${vuesBApres}`);
   await db.close();
 }
