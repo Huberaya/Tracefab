@@ -49,7 +49,6 @@ export const APP_ROLE = 'tracefab_app';
 //   audit_logs                    api/_lib/audit-vault.ts:65                           (audit_logs.create, insert)
 //   data_points                   api/_routes/products/[productId]/data-points.ts:77   (data_points.create)
 //   data_shares                   api/_routes/supplier/shares.ts:67                    (data_shares.create)
-//   documents                     api/_lib/documents.ts:107                            (update)
 //   materials                     api/_lib/bulk-operations/bulk-importer.ts:178        (materials.create)
 //   organization_invitations      api/_routes/supplier/member-invitations/[invitationId].ts:47 (organization_invitations.create, organization_invitations.update)
 //   organization_memberships      api/_routes/supplier/members.ts:148                  (organization_memberships.update, organization_memberships.updatemany)
@@ -64,7 +63,21 @@ export const APP_ROLE = 'tracefab_app';
 //   supplier_sites                api/_routes/supplier/sites/[siteId].ts:32            (supplier_sites.create, supplier_sites.update)
 //   tracefab_catalog_import_jobs  api/_routes/catalog/products/import.ts:138           (insert, update)
 //   tracefab_products             api/_lib/bulk-operations/bulk-importer.ts:97         (tracefab_products.create, tracefab_products.update)
-//   users                         api/_lib/auth.ts:37                                  (user.updatemany, user.upsert)
+//   users                         RETIREE le 28/10/2026 — les ecritures passent
+//                                 desormais par tracefab_upsert_clerk_user et
+//                                 tracefab_ensure_clerk_user, possedees par
+//                                 tracefab_worker et declarees au registre
+//                                 runtime. Aucune ecriture directe ne subsiste
+//                                 dans api/ (verifie par
+//                                 test:tables-ecriture-directe).
+//   documents                     RETIREE le 28/10/2026 — la bascule
+//                                 `uploaded -> scanning` passait par un UPDATE
+//                                 brut sous tracefab_app, qui pouvait poser
+//                                 tracefab.internal_document_update et ecrire
+//                                 ainsi status/sha256/available_at. Elle passe
+//                                 desormais par tracefab_mark_document_scanning,
+//                                 declaree au registre runtime. Le role
+//                                 applicatif ne garde que SELECT sur documents.
 //
 // Retirer une table d'ici exige d'avoir d'abord deplace son chemin applicatif
 // vers une fonction SECURITY DEFINER. Le controle
@@ -73,7 +86,6 @@ export const TABLES_ECRITURE_DIRECTE = [
   'audit_logs',
   'data_points',
   'data_shares',
-  'documents',
   'materials',
   'organization_invitations',
   'organization_memberships',
@@ -87,8 +99,58 @@ export const TABLES_ECRITURE_DIRECTE = [
   'rate_limit_counters',
   'supplier_sites',
   'tracefab_catalog_import_jobs',
-  'tracefab_products',
-  'users',
+];
+
+/**
+ * Colonnes de `tracefab_products` que le runtime ecrit directement.
+ *
+ * `tracefab_products` n'est PLUS dans TABLES_ECRITURE_DIRECTE : le role
+ * applicatif n'a plus l'ecriture au niveau table, mais colonne par colonne.
+ * Les quatre colonnes calculees — version, data_completion, data_readiness,
+ * data_ready_at — sont absentes de cette liste, et c'est tout l'objet de la
+ * migration 20261028130000 : leur ecriture passait par un GUC de session que
+ * n'importe quel role pouvait poser. Elles ne sont desormais accessibles que
+ * par les fonctions SECURITY DEFINER (create, update_product_data,
+ * start_product_revision, set_dpp_publication, ingest_plm_erp_payload).
+ *
+ * Mesure du banc, role `tracefab_app` sans BYPASSRLS : `SET version` refuse
+ * (42501) avec ET sans le GUC forge ; `SET name` accepte ; INSERT accepte ;
+ * `tracefab_start_product_revision` accepte.
+ */
+export const TABLES_ECRITURE_COLONNES = ['tracefab_products'];
+
+/**
+ * Colonnes calculees, hors de portee du role runtime quel que soit le chemin.
+ * Verifiees par la garde statique et par test:neon:produit-champs-calcules.
+ */
+export const COLONNES_CALCULEES_PRODUIT = [
+  'version',
+  'data_completion',
+  'data_readiness',
+  'data_ready_at',
+];
+
+export const COLONNES_ECRITURE_PRODUIT = [
+  'id',
+  'brand_organization_id',
+  'reference',
+  'sku',
+  'name',
+  'category',
+  'status',
+  'public_slug',
+  'created_by',
+  'created_at',
+  'updated_at',
+  'description',
+  'product_family',
+  'color_name',
+  'size_range',
+  'country_of_design',
+  'country_of_manufacture',
+  'weight_grams',
+  'care_instructions',
+  'last_data_updated_by',
 ];
 
 function quote(s) {
@@ -145,6 +207,14 @@ export async function ensureAppRole(db, password) {
          EXECUTE 'GRANT INSERT, UPDATE, DELETE ON ${listeEcriture} TO ${APP_ROLE}';
        END IF;
      END $$;`,
+    // `tracefab_products` : ecriture COLONNE PAR COLONNE, jamais au niveau
+    // table. Les champs calcules restent hors de portee du runtime.
+    `DO $$ BEGIN
+       IF to_regclass('public.tracefab_products') IS NOT NULL THEN
+         EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.tracefab_products FROM ${APP_ROLE}';
+         EXECUTE 'GRANT INSERT (${COLONNES_ECRITURE_PRODUIT.join(', ')}), UPDATE (${COLONNES_ECRITURE_PRODUIT.join(', ')}) ON public.tracefab_products TO ${APP_ROLE}';
+       END IF;
+     END $$;`,
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`,
     // EXECUTE sur les fonctions : les nouveaux objets ne doivent pas en hériter.
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
@@ -188,6 +258,7 @@ export async function ensureAppRole(db, password) {
   console.log(
     `  droits applicatifs accordes a ${APP_ROLE} ` +
     `(lecture generale filtree par RLS ; ecriture directe limitee a ${TABLES_ECRITURE_DIRECTE.length} tables ; ` +
+      `tracefab_products en ecriture colonne par colonne (${COLONNES_ECRITURE_PRODUIT.length} colonnes, champs calcules exclus) ; ` +
     `le reste des mutations par fonctions SECURITY DEFINER)`,
   );
 }

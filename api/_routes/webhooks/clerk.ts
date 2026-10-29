@@ -44,26 +44,28 @@ function userFromEvent(event: ClerkEventData) {
 
 async function upsertUserFromClerkEvent(tx: Prisma.TransactionClient, event: ClerkEventData) {
   const user = userFromEvent(event);
-  return tx.user.upsert({
-    where: { clerkUserId: user.clerkUserId },
-    create: user,
-    update: { email: user.email, fullName: user.fullName },
-  });
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM tracefab_upsert_clerk_user(${user.clerkUserId}, ${user.email}, ${user.fullName})
+  `;
+  if (!rows[0]) throw new Error('clerk_user_sync_failed');
+  return rows[0];
 }
 
 async function ensureUser(tx: Prisma.TransactionClient, clerkUserId: string, data: ClerkEventData) {
-  const existing = await tx.user.findUnique({ where: { clerkUserId } });
-  if (existing) return existing;
+  // La lecture directe `user.findUnique` echouerait : sans drapeau worker, la
+  // politique RLS des utilisateurs ne s'ouvre plus. On demande donc a une
+  // fonction dediee de faire « creer si absent » — elle ne modifie jamais un
+  // compte existant, comme le faisait le code d'origine.
 
   const publicUserData = data.public_user_data && typeof data.public_user_data === 'object' ? data.public_user_data as ClerkEventData : {};
   const identifier = stringValue(publicUserData.identifier);
   if (identifier?.includes('@')) {
     const fullName = [stringValue(publicUserData.first_name), stringValue(publicUserData.last_name)].filter(Boolean).join(' ') || identifier;
-    return tx.user.upsert({
-      where: { clerkUserId },
-      create: { clerkUserId, email: identifier.toLowerCase(), fullName },
-      update: { email: identifier.toLowerCase(), fullName },
-    });
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM tracefab_ensure_clerk_user(${clerkUserId}, ${identifier.toLowerCase()}, ${fullName})
+    `;
+    if (!rows[0]) throw new Error('clerk_user_sync_failed');
+    return rows[0];
   }
 
   const secretKey = process.env.CLERK_SECRET_KEY?.trim();
@@ -72,11 +74,11 @@ async function ensureUser(tx: Prisma.TransactionClient, clerkUserId: string, dat
   const email = clerkUser.emailAddresses.find(({ id }) => id === clerkUser.primaryEmailAddressId)?.emailAddress;
   if (!email) throw new Error('clerk_primary_email_required');
   const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || email;
-  return tx.user.upsert({
-    where: { clerkUserId },
-    create: { clerkUserId, email, fullName },
-    update: { email, fullName },
-  });
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM tracefab_ensure_clerk_user(${clerkUserId}, ${email}, ${fullName})
+  `;
+  if (!rows[0]) throw new Error('clerk_user_sync_failed');
+  return rows[0];
 }
 
 function organizationData(data: ClerkEventData) {
@@ -114,7 +116,11 @@ function membershipData(data: ClerkEventData) {
 async function syncMembership(tx: Prisma.TransactionClient, data: ClerkEventData) {
   const membership = membershipData(data);
   const user = await ensureUser(tx, membership.clerkUserId, data);
-  const organizationRows = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM organizations WHERE clerk_organization_id = ${membership.clerkOrganizationId}`;
+  // Lecture bornee a un identifiant : la requete directe sur `organizations`
+  // ne s'ouvre plus sans contexte worker falsifiable, et n'a pas a s'ouvrir.
+  const organizationRows = await tx.$queryRaw<Array<{ id: string | null }>>`
+    SELECT tracefab_clerk_organization_uuid(${membership.clerkOrganizationId}) AS id
+  `;
   const organization = organizationRows[0];
   if (!organization) throw new Error('clerk_organization_not_synced');
   const rows = await tx.$queryRaw`SELECT * FROM tracefab_sync_clerk_membership(${membership.clerkMembershipId}, ${organization.id}::uuid, ${user.id}::uuid, ${membership.role}::membership_role)`;
@@ -145,23 +151,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const event = await verifyWebhook(requestForVerification(req, rawBody), { signingSecret: process.env.CLERK_WEBHOOK_SIGNING_SECRET.trim() }) as unknown as ClerkWebhookEvent;
     verified = true;
     eventType = event.type || eventType;
-    // Clerk parle au nom du systeme, pas d'un utilisateur connecte : il n'y a
-    // aucun tracefab.user_email a poser. Sans contexte worker, les politiques
-    // RLS refusent ces ecritures des que l'application tourne en tracefab_app.
+    // Clerk parle au nom du systeme, pas d'un utilisateur connecte. Les
+    // ecritures passent desormais par des fonctions nommees : plus aucune
+    // politique ne s'ouvre sur une variable de session que l'appelant pourrait
+    // poser lui-meme.
     await withTracefabWorkerContext(async (tx) => {
       if (eventType === 'user.created' || eventType === 'user.updated') await upsertUserFromClerkEvent(tx, event.data);
       else if (eventType === 'user.deleted') {
         const clerkUserId = stringValue(event.data.id);
-        if (clerkUserId) await tx.user.updateMany({ where: { clerkUserId }, data: { email: `deleted+${clerkUserId}@invalid.tracefab.local`, fullName: 'Deleted Clerk user' } });
+        if (clerkUserId) await tx.$executeRaw`
+          SELECT tracefab_soft_delete_clerk_user(${clerkUserId})
+        `;
       } else if (eventType === 'organization.created' || eventType === 'organization.updated') await syncOrganization(tx, event.data);
       else if (eventType === 'organization.deleted') {
         const organizationId = stringValue(event.data.id);
         if (organizationId) {
-          const organization = await tx.organizations.findUnique({ where: { clerkOrganizationId: organizationId }, select: { id: true } });
-          if (organization) {
-            await tx.organizations.update({ where: { id: organization.id }, data: { status: 'archived' } });
-            await tx.organization_memberships.updateMany({ where: { organization_id: organization.id }, data: { status: 'revoked' } });
-          }
+          await tx.$executeRaw`
+            SELECT tracefab_archive_clerk_organization(${organizationId})
+          `;
         }
       } else if (eventType === 'organizationMembership.created' || eventType === 'organizationMembership.updated') await syncMembership(tx, event.data);
       else if (eventType === 'organizationMembership.deleted') await revokeMembership(tx, event.data);

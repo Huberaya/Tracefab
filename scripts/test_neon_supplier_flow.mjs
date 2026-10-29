@@ -1,12 +1,15 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
+// Client partage : engine standard en CI, moteur client WASM + adaptateur pg
+// sur un poste sans acces aux binaires Prisma (voir scripts/lib/test_prisma_client.mjs).
+// Meme URL, donc meme role et meme base : la semantique du test est inchangee.
+import { createTestPrisma } from './lib/test_prisma_client.mjs';
 
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL is required');
   process.exit(2);
 }
 
-const prisma = new PrismaClient();
+const prisma = await createTestPrisma(process.env.DATABASE_URL);
 const brandUser = randomUUID();
 const supplierUser = randomUUID();
 const wrongUser = randomUUID();

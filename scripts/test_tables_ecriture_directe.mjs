@@ -27,6 +27,18 @@
  *   3. écritures SQL              : INSERT INTO | UPDATE | DELETE FROM <table>
  *   4. comparaison avec TABLES_ECRITURE_DIRECTE (source unique importée)
  *
+ * DEPUIS LA MIGRATION 20261028130000, une table peut être accordée en écriture
+ * COLONNE PAR COLONNE au lieu du niveau table : `tracefab_products`. Le rôle
+ * runtime n'a plus INSERT/UPDATE/DELETE sur la table, seulement sur vingt
+ * colonnes métier — les quatre colonnes calculées (version, data_completion,
+ * data_readiness, data_ready_at) en sont exclues, sinon le GUC falsifiable de
+ * `products_validate_brand_ownership` redeviendrait atteignable.
+ *
+ * Ce fichier distingue donc deux périmètres et vérifie, pour le périmètre
+ * colonne, que la liste accordée n'inclut AUCUNE colonne calculée. Le contenu
+ * réel des écritures est lui vérifié à l'exécution par
+ * test:neon:produit-champs-calcules, sur une base réelle.
+ *
  * Le sens qui compte est le premier : une table écrite mais non accordée donne
  * 42501 en production. L'autre sens (accordée sans écriture) est un excès de
  * privilège : signalé, et il fait aussi échouer, parce qu'un privilège
@@ -39,7 +51,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import {
+  TABLES_ECRITURE_DIRECTE,
+  TABLES_ECRITURE_COLONNES,
+  COLONNES_ECRITURE_PRODUIT,
+  COLONNES_CALCULEES_PRODUIT,
+} from './lib/tracefab_app_role.mjs';
 
 const RACINE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const VERBES = ['create', 'createMany', 'update', 'updateMany', 'delete', 'deleteMany', 'upsert'];
@@ -134,7 +151,8 @@ if (controleNegatif) {
 }
 
 const tablesEcrites = [...ecrites.keys()].sort();
-const declarees = [...TABLES_ECRITURE_DIRECTE].sort();
+// Les deux périmètres d'écriture : niveau table, et colonne par colonne.
+const declarees = [...new Set([...TABLES_ECRITURE_DIRECTE, ...TABLES_ECRITURE_COLONNES])].sort();
 
 console.log(`\n  2. écritures directes relevées dans api/ : ${tablesEcrites.length} tables sur ${fichiersApi.length} fichiers`);
 console.log(`     liste du provisioning               : ${declarees.length} tables`);
@@ -165,6 +183,26 @@ verifier(
   JSON.stringify(tablesEcrites) === JSON.stringify(declarees),
   `écrites=${tablesEcrites.length} accordées=${declarees.length}`,
 );
+
+// Périmètre colonne : la liste accordée ne doit contenir aucune colonne calculée.
+for (const table of TABLES_ECRITURE_COLONNES) {
+  const fuites = COLONNES_CALCULEES_PRODUIT.filter((c) => COLONNES_ECRITURE_PRODUIT.includes(c));
+  verifier(
+    `les colonnes calculées de ${table} sont hors de la liste accordée`,
+    fuites.length === 0,
+    fuites.length ? `colonnes calculées accordées : ${fuites.join(', ')}` : '',
+  );
+  verifier(
+    `${table} n est pas accordée AUSSI au niveau table`,
+    !TABLES_ECRITURE_DIRECTE.includes(table),
+    'présente dans TABLES_ECRITURE_DIRECTE : l octroi table rendrait le périmètre colonne inopérant',
+  );
+  verifier(
+    `la liste de colonnes de ${table} est explicite et non vide`,
+    COLONNES_ECRITURE_PRODUIT.length > 0 && COLONNES_ECRITURE_PRODUIT.length < 60,
+    `${COLONNES_ECRITURE_PRODUIT.length} colonnes`,
+  );
+}
 
 verifier(
   'la liste du provisioning reste explicite (pas d octroi global)',

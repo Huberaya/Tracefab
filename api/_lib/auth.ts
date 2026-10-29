@@ -3,6 +3,7 @@ import type { VercelRequest } from './vercel-types.js';
 import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
 import { withTracefabWorkerContext } from './context.js';
+import { verifiedPrimaryEmail } from './clerk-identity.js';
 
 const clerkSecretKey = process.env.CLERK_SECRET_KEY;
 
@@ -34,16 +35,18 @@ export async function provisionUserFromClerk(params: {
   fullName: string;
 }): Promise<{ id: string; email: string; fullName: string; clerkUserId: string }> {
   return withTracefabWorkerContext(async (tx: Prisma.TransactionClient) => {
-    const user = await tx.user.upsert({
-      where: { clerkUserId: params.clerkUserId },
-      create: {
-        clerkUserId: params.clerkUserId,
-        email: params.email,
-        fullName: params.fullName,
-      },
-      update: { email: params.email, fullName: params.fullName },
-    });
-    return { id: user.id, email: user.email, fullName: user.fullName, clerkUserId: user.clerkUserId };
+    // Fonction nommee et non requete Prisma : l'ecriture systeme ne passe plus
+    // par un contexte de session falsifiable. La fonction ne rend que la ligne
+    // ecrite, donc rien ne permet d'enumerer les utilisateurs a travers elle.
+    const rows = await tx.$queryRaw<Array<{
+      id: string; email: string; full_name: string; out_clerk_user_id: string;
+    }>>`
+      SELECT id, email, full_name, out_clerk_user_id
+        FROM tracefab_upsert_clerk_user(${params.clerkUserId}, ${params.email}, ${params.fullName})
+    `;
+    const user = rows[0];
+    if (!user) throw new Error('user_provisioning_failed');
+    return { id: user.id, email: user.email, fullName: user.full_name, clerkUserId: user.out_clerk_user_id };
   });
 }
 
@@ -75,8 +78,11 @@ export async function requireClerkUser(req: VercelRequest) {
 
   const clerk = createClerkClient({ secretKey: clerkSecretKey });
   const clerkUser = await clerk.users.getUser(claims.sub);
-  const email = clerkUser.emailAddresses.find(({ id }) => id === clerkUser.primaryEmailAddressId)?.emailAddress;
-  if (!email) throw new Error('clerk_email_required');
+  // L'adresse alimente `tracefab.user_email`, seule barriere de la politique
+  // `passport_access_select`. La regle vit dans un module pur, eprouve cas par
+  // cas par `scripts/test_clerk_identity.mjs` : adresse primaire, verifiee,
+  // non vide, et refus a motif nomme sans recopier l'adresse recue.
+  const email = verifiedPrimaryEmail(clerkUser);
 
   const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || email;
   const user = await provisionUserFromClerk({

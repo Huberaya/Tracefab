@@ -13,6 +13,17 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   active_supplier_invitation_exists: { status: 409 },
   invalid_or_expired_invitation: { status: 400 },
   clerk_email_required: { status: 422 },
+  // L'adresse primaire Clerk doit etre verifiee : `tracefab.user_email` est la
+  // seule barriere de la politique `passport_access_select`. 403 : l'identite
+  // est bien etablie, c'est l'autorisation qui manque.
+  clerk_email_unverified: { status: 403 },
+  // Parametres rejetes par les fonctions de provisionnement Clerk
+  // (tracefab_upsert_clerk_user, tracefab_ensure_clerk_user,
+  // tracefab_archive_clerk_organization). 422 : la requete est bien formee mais
+  // l'identite fournie par le fournisseur est inexploitable.
+  clerk_user_id_required: { status: 422 },
+  clerk_email_invalid: { status: 422 },
+  clerk_organization_id_required: { status: 422 },
   invitation_email_mismatch: { status: 403 },
   user_already_member: { status: 409 },
   invitation_not_found: { status: 404 },
@@ -24,6 +35,17 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   data_point_type_mismatch: { status: 400 },
   owner_role_not_promotable: { status: 403 },
   owner_role_not_invitable: { status: 403 },
+  // Portee de la relation presentee pour une invitation `owner`
+  // (20261028140000_supplier_invitation_owner_relationship_scope). Les trois
+  // codes distinguent trois refus differents : une reference inexistante est une
+  // requete mal formee (400) ; viser une relation d'une autre organisation est
+  // un refus d'autorisation (403) ; une relation terminee ne peut plus porter
+  // d'invitation de proprietaire (409). Sans ces entrees, `sql-errors` refuse
+  // la migration : un code SQL metier sans traduction HTTP sure est un 500 en
+  // puissance.
+  invitation_relationship_not_found: { status: 400 },
+  invitation_relationship_organization_mismatch: { status: 403 },
+  invitation_relationship_ended: { status: 409 },
   membership_identity_immutable: { status: 403 },
   last_owner_membership_required: { status: 409 },
   supplier_not_found: { status: 404 },
@@ -155,6 +177,13 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   organization_node_reference_required: { status: 400 },
   passport_not_found: { status: 404 },
   passport_not_found_or_private: { status: 404 },
+  // Les fonctions PLM/ERP refusent explicitement toute dérive de leurs politiques
+  // canoniques. 409 signale un conflit avec l'état de schéma attendu sans exposer
+  // le SQL interne ni transformer une garde métier en erreur serveur.
+  plm_erp_sync_jobs_absente: { status: 409 },
+  politique_canonique_insert_absente: { status: 409 },
+  politique_canonique_insert_inattendue: { status: 409 },
+  politique_canonique_select_absente: { status: 409 },
   pef_brand_role_required: { status: 403 },
   pef_product_not_found: { status: 404 },
   platform_organization_not_user_creatable: { status: 403 },

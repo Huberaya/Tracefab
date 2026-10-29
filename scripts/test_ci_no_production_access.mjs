@@ -15,13 +15,15 @@
  * Aucune base n'est requise : c'est un contrôle structurel du YAML, rapide,
  * qui tourne dans le socle comme sur un poste sans Docker.
  *
- * CE QU'IL VÉRIFIE — 10 assertions
+ * CE QU'IL VÉRIFIE — 11 assertions
  *
  *    1. Le workflow CI existe et est lisible.
  *    2. Aucune expression `${{ secrets.* }}` n'apparaît dans le workflow.
  *    3. `TF_SECRET_PRODUCTION` est absent (l'ancien passeur du secret).
  *    4. Aucune étape ne cible la « base de production ».
- *    5. Les suites neon historiquement branchées sur la production
+ *    5. Les suites neon historiquement branchées sur la production ne sont
+ *       invoquées QUE dans le job à base jetable, et ce job pointe la base
+ *       locale tracefab_test (assertion 5 bis).
  *       (security, supplier, product, quality, collection) ne sont pas
  *       invoquées par le workflow.
  *    6. Le job base-de-donnees monte un service Postgres jetable.
@@ -52,7 +54,7 @@ try {
   wf = readFileSync(chemin, 'utf8');
 } catch {
   ko(`workflow CI introuvable ou illisible : ${chemin}`);
-  console.log(`\n  ${10 - echecs}/10 assertions`);
+  console.log(`\n  ${11 - echecs}/11 assertions`);
   process.exit(1);
 }
 if (wf.trim().length > 0) ok('workflow CI présent et lisible');
@@ -68,11 +70,36 @@ else ko('TF_SECRET_PRODUCTION est présent : l’ancien passeur du secret de pro
 if (!/contre la base de production/i.test(wf)) ok('aucune étape ne cible la base de production');
 else ko('une étape cible la base de production');
 
-/* --- 5. les anciennes suites branchées production ne sont pas invoquées ------ */
-const suitesProd = ['security', 'supplier', 'product', 'quality', 'collection']
-  .filter((s) => new RegExp(`test:neon:${s}(?![\\w:-])`).test(wf));
-if (suitesProd.length === 0) ok('les suites neon de production ne sont pas invoquées par le workflow');
-else ko(`suites neon invoquées par le workflow : ${suitesProd.map((s) => `test:neon:${s}`).join(', ')}`);
+/* --- 5. les suites historique « production » ne tournent QUE sur la jetable --- */
+// Ces cinq suites ont ete ecrites quand la CI pointait vers la base de
+// production. L'interdiction pure et simple a tenu tant qu'elles ne tournaient
+// nulle part — c'est-a-dire tant qu'elles ne prouvaient rien. Elles sont
+// desormais executees, sur le Postgres 17 jetable du job `base-de-donnees`.
+// Le controle n'est donc pas retire, il est RESSERRE : ces suites ne doivent
+// apparaitre nulle part ailleurs dans le workflow. Une invocation ajoutee dans
+// un job qui lit un secret, ou vers une cible distante, echoue toujours ici.
+const SEQ = ['security', 'supplier', 'product', 'quality', 'collection', 'storage:chantier10'];
+const lignes = wf.split('\n');
+const debut = lignes.findIndex((l) => /^  base-de-donnees:\s*$/.test(l));
+let fin = lignes.length;
+if (debut !== -1) {
+  for (let i = debut + 1; i < lignes.length; i += 1) {
+    if (/^  [a-zA-Z0-9_-]+:\s*$/.test(lignes[i])) { fin = i; break; }
+  }
+}
+const blocBase = debut === -1 ? '' : lignes.slice(debut, fin).join('\n');
+const horsBloc = SEQ.filter(
+  (s) => new RegExp(`test:neon:${s}(?![\\w:-])`).test(wf.replace(blocBase, '')),
+);
+if (horsBloc.length === 0) {
+  ok('les suites neon ne sont invoquees que dans le job a base jetable');
+} else {
+  ko(`suites neon invoquees hors du job a base jetable : ${horsBloc.map((s) => `test:neon:${s}`).join(', ')}`);
+}
+// Et, dans ce job, la cible doit rester la base locale jetable.
+const cibleLocale = /DATABASE_URL: postgresql:\/\/postgres:postgres@localhost:5432\/tracefab_test/.test(blocBase);
+if (cibleLocale) ok('le job qui execute ces suites pointe une base locale jetable');
+else ko('le job qui execute ces suites ne pointe pas la base locale jetable');
 
 /* --- 6-7. la base du job est jetable, locale, sans secret ---------------------- */
 if (/postgres:17/.test(wf) && /services:/.test(wf)) ok('le job base-de-donnees monte un Postgres jetable (service postgres:17)');
@@ -94,5 +121,5 @@ for (const [etape, nom] of [
   else ko(`étape ${etape} absente (${nom})`);
 }
 
-console.log(`\n  ${10 - echecs}/10 assertions — aucun chemin CI vers la production.`);
+console.log(`\n  ${11 - echecs}/11 assertions — aucun chemin CI vers la production.`);
 process.exit(echecs ? 1 : 0);

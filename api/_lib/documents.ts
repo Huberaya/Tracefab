@@ -103,10 +103,16 @@ export async function beginDocumentScan(
   document: DocumentRecord,
 ): Promise<DocumentRecord> {
   if (document.status === 'deleted') throw new Error('document_deleted');
-  await tx.$executeRaw`SELECT set_config('tracefab.internal_document_update', 'true', true)`;
-  await tx.$executeRaw`UPDATE documents SET status = 'scanning'::document_status WHERE id = ${document.id}::uuid`;
-  await tx.$executeRaw`SELECT set_config('tracefab.internal_document_update', 'false', true)`;
-  return document;
+  // La bascule `scanning` touche un champ reserve au pipeline (status). Le role
+  // applicatif n'a plus aucun droit d'ecriture sur documents : la transition
+  // passe par une fonction SECURITY DEFINER, qui pose elle-meme le drapeau
+  // interne. Un client ne peut donc plus poser ce drapeau et ecrire lui-meme
+  // status/sha256/available_at — c'est ce que faisait l'ancien chemin direct.
+  const rows = await tx.$queryRaw<DocumentRecord[]>`
+    SELECT * FROM tracefab_mark_document_scanning(${document.id}::uuid)
+  `;
+  if (!rows[0]) throw new Error('document_not_found');
+  return rows[0];
 }
 
 /**

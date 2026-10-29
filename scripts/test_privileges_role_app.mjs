@@ -113,10 +113,31 @@ const allowlistSqlBlock = migrationFunctionAcl.match(/runtime_names text\[\] := 
 const allowlistSqlNames = allowlistSqlBlock
   ? [...allowlistSqlBlock[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]).sort()
   : [];
+// La liste figee de 20261021120000 n est plus la source de verite : elle ne
+// peut pas contenir de fonction creee plus tard (la migration verifie que
+// chaque nom existe deja et leve 42883 sinon). Les ajouts passent par le
+// registre runtime (migration 20261028120000), qui recoit un INSERT par
+// migration posterieure. Le perimetre attendu est donc l union des deux.
+const registreAjouts = [];
+for (const dossier of fs.readdirSync(path.join(RACINE, 'prisma', 'migrations')).sort()) {
+  if (dossier <= '20261028120000_runtime_function_registry') continue;
+  const fichier = path.join(RACINE, 'prisma', 'migrations', dossier, 'migration.sql');
+  if (!fs.existsSync(fichier)) continue;
+  const sql = fs.readFileSync(fichier, 'utf8').replace(/--[^\n]*/g, '');
+  for (const bloc of sql.matchAll(/INSERT INTO public\.tracefab_runtime_function_registry[\s\S]*?;/g)) {
+    for (const ligne of bloc[0].matchAll(/\(\s*'([a-z0-9_]+)'\s*,/g)) registreAjouts.push(ligne[1]);
+  }
+}
+const allowlistAttendue = [...new Set([...allowlistSqlNames, ...registreAjouts])].sort();
 verifier(
-  'la liste SQL de migration est synchronisée avec le module runtime',
-  JSON.stringify(allowlistSqlNames) === JSON.stringify([...RUNTIME_FUNCTION_NAMES].sort()),
-  `module=${RUNTIME_FUNCTION_NAMES.length}, migration=${allowlistSqlNames.length}`,
+  'le module runtime est synchronisé avec la liste figée et le registre',
+  JSON.stringify(allowlistAttendue) === JSON.stringify([...RUNTIME_FUNCTION_NAMES].sort()),
+  `module=${RUNTIME_FUNCTION_NAMES.length}, figée=${allowlistSqlNames.length}, registre ajouté=${registreAjouts.length}, attendu=${allowlistAttendue.length}`,
+);
+verifier(
+  'la liste figée garde son périmètre d origine',
+  allowlistSqlNames.length === 84,
+  `figée=${allowlistSqlNames.length}`,
 );
 
 // Ré-extraction indépendante des appels SQL directs de api/. Les commentaires

@@ -17,6 +17,24 @@ for (const directory of await readdir(migrationsRoot)) {
 const unmapped = [...raised].filter((code) => !defined.has(code)).sort();
 assert.deepEqual(unmapped, [], `Exceptions SQL métier sans mapping HTTP sûr : ${unmapped.join(', ')}`);
 
+/**
+ * Un code métier traduit en 5xx n'est pas traduit : le client reçoit une erreur
+ * de serveur pour une décision d'autorisation. Les quatre codes de
+ * `20261028140000_supplier_invitation_owner_relationship_scope`
+ * (`owner_role_not_invitable`, `invitation_relationship_not_found`,
+ * `invitation_relationship_organization_mismatch`, `invitation_relationship_ended`)
+ * sont concernés : une invitation refusée est un 4xx, pas une panne.
+ */
+const statuts = new Map();
+for (const m of definitions.matchAll(/^  ([a-z][a-z0-9_]+): \{ status: (\d+)/gm)) {
+  statuts.set(m[1], Number(m[2]));
+}
+const serveur = [...raised]
+  .filter((code) => statuts.has(code) && statuts.get(code) >= 500)
+  .sort();
+assert.deepEqual(serveur, [],
+  `Codes métier traduits en 5xx (le client lit une panne au lieu d'un refus) : ${serveur.join(', ')}`);
+
 async function routeFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];

@@ -61,6 +61,9 @@ const EMPTY_TENANT = {
   '/api/products': { products: [], nextCursor: null },
   '/api/data-requests': { requests: [] },
   '/api/questionnaires': { questionnaires: [] },
+  // Le registre documentaire est charge en arriere-plan au demarrage : sans
+  // cette entree, la fixture fail-closed remonterait une route inattendue.
+  '/api/documents': { documents: [] },
   '/api/catalog/schemas': { schemas: [] },
   '/api/mass-balance/certificates': { certificates: [], count: 0 },
   '/api/organization-settings': { settings: null, history: [] },
@@ -278,7 +281,13 @@ try {
   await page.locator('button[data-view="documents"]').first().click();
   const documentsText = await appText(page);
   assert.ok(!documentsText.includes('142'), 'aucun inventaire de 142 preuves hors demo');
-  assert.match(documentsText, /Not computed/, 'sans route de liste, les compteurs de preuves sont non calcules');
+  // Depuis que la console lit le registre documentaire (GET /api/documents),
+  // un registre VIDE est un fait mesurable : il vaut zero, et l'ecran doit
+  // afficher l'etat vide — pas un inventaire, pas un « non calcule » qui
+  // laisserait croire que la question n'a pas ete posee.
+  assert.match(documentsText, /0 Documents/, 'un registre vide vaut zero document, pas « non calcule »');
+  assert.match(documentsText, /No documentary source/, "l'ecran dit explicitement qu'aucune source n'est chargee");
+  assert.ok(!/Not computed/.test(documentsText), 'le registre a ete lu : le total ne peut plus etre « non calcule »');
 
   await page.locator('button[data-view="certifications"]').first().click();
   const certText = await appText(page);

@@ -33,6 +33,7 @@ const routes: Route[] = [
   { pattern: /^data\-requests\/([^\/]+)$/, params: ['requestId'], load: () => import('./_routes/data-requests/[requestId].js') },
   { pattern: /^data\-requests$/, params: [], load: () => import('./_routes/data-requests.js') },
   { pattern: /^data\-responses\/([^\/]+)\/review$/, params: ['responseId'], load: () => import('./_routes/data-responses/[responseId]/review.js') },
+  { pattern: /^documents$/, params: [], load: () => import('./_routes/documents.js') },
   { pattern: /^documents\/upload\-intent$/, params: [], load: () => import('./_routes/documents/upload-intent.js') },
   { pattern: /^documents\/([^\/]+)\/scan$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/scan.js') },
   { pattern: /^documents\/([^\/]+)\/security\-report$/, params: ['documentId'], load: () => import('./_routes/documents/[documentId]/security-report.js') },

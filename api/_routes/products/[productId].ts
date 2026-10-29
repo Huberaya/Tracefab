@@ -76,14 +76,25 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       const body = req.method === 'PATCH'
         ? await readJsonBody<UpdateProductBody & { status?: string }>(req)
         : null;
+      // Trois transitions de cycle de vie, jamais un effet de bord d'un autre
+      // champ. `active` est desormais une transition EXPLICITE : sans elle,
+      // un produit cree par la console restait `draft` pour toujours et la
+      // barriere DPP `product.not_draft` etait structurellement inatteignable
+      // (seul l'import CSV creait des produits actifs).
       const lifecycleRequested = body !== null
         && Object.keys(body).length === 1
-        && (body.status === 'archived' || body.status === 'draft');
+        && (body.status === 'archived' || body.status === 'draft' || body.status === 'active');
       const archiveRequested = lifecycleRequested && body?.status === 'archived';
       const restoreRequested = lifecycleRequested && body?.status === 'draft';
+      const activateRequested = lifecycleRequested && body?.status === 'active';
+      // Sortir du brouillon engage la marque et conditionne la publication du
+      // passeport : owner, admin et manager seulement. L'archivage reste
+      // reserve a owner/admin.
       const tenant = await requireActiveTenant(tx, req, user.id, {
         types: ['brand'],
-        roles: lifecycleRequested ? ['owner', 'admin'] : undefined,
+        roles: activateRequested ? ['owner', 'admin', 'manager']
+          : lifecycleRequested ? ['owner', 'admin']
+          : undefined,
       });
       const scoped = { id: productId, brand_organization_id: tenantFilter(tenant) };
       const current = await tx.tracefab_products.findFirst({
@@ -94,7 +105,9 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       if (req.method === 'GET') return current;
 
       if (archiveRequested) {
-        if (current.status !== 'draft') throw new Error('only_draft_products_can_be_archived');
+        // Un produit actif doit pouvoir etre archive : sans cela l'activation
+        // serait une porte a sens unique.
+        if (current.status !== 'draft' && current.status !== 'active') throw new Error('product_not_archivable_from_current_status');
         const previousStatus = current.status;
         // requireClerkUser renvoie ici l'utilisateur Tracefab provisionné :
         // user.id est déjà son UUID interne, pas l'identifiant Clerk externe.
@@ -139,6 +152,37 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
         if (!restored) throw new Error('product_restore_failed');
         return restored;
       }
+      if (activateRequested) {
+        // Activation EXPLICITE : sortir du brouillon est un acte de
+        // gouvernance, trace, et rejoue n'est pas idempotent (409). L'etat
+        // `active` ne vaut ni conformite ni autorisation de publication : il
+        // leve seulement la barriere de statut du profil de preparation DPP.
+        if (current.status === 'active') throw new Error('product_already_active');
+        if (current.status !== 'draft') throw new Error('product_not_activatable_from_current_status');
+        await tx.tracefab_products.update({
+          where: { id: current.id },
+          data: { status: 'active', updated_at: new Date() },
+        });
+        await tx.audit_logs.create({ data: {
+          organization_id: tenant.organizationId,
+          action: 'product.activated',
+          entity_type: 'product',
+          entity_id: current.id,
+          actor_user_id: user.id,
+          before_state: { status: 'draft' },
+          after_state: { status: 'active' },
+          metadata: {
+            source: 'brand_console',
+            // Une activation n'est ni une validation de donnees ni une
+            // publication : le dossier DPP doit encore passer les treize
+            // barrieres et la revue.
+            requires_dpp_readiness_review: true,
+          },
+        } });
+        const activated = await tx.tracefab_products.findFirst({ where: scoped, select: DETAIL_SELECT });
+        if (!activated) throw new Error('product_activation_failed');
+        return activated;
+      }
       if (body && Object.prototype.hasOwnProperty.call(body, 'status')) throw new Error('invalid_product_status_change');
 
       const { reference, sku, name, category, description, productFamily, colorName, sizeRange, countryOfDesign, countryOfManufacture, weightGrams, careInstructions } = validateProductPatch(body ?? {}, current);
@@ -178,7 +222,13 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return json(res, 409, { error: 'product_reference_already_exists' });
     }
-    if (error instanceof Error && (error.message === 'only_draft_products_can_be_archived' || error.message === 'only_archived_products_can_be_restored')) {
+    const LIFECYCLE_CONFLICTS = new Set([
+      'only_archived_products_can_be_restored',
+      'product_not_archivable_from_current_status',
+      'product_not_activatable_from_current_status',
+      'product_already_active',
+    ]);
+    if (error instanceof Error && LIFECYCLE_CONFLICTS.has(error.message)) {
       return json(res, 409, { error: error.message });
     }
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });

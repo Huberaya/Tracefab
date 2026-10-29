@@ -67,6 +67,10 @@ const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_neon_bulk_operations_chantier8.mjs',
   'scripts/test_routes_tenant_isolation.mjs',   // ecrit users et organization_memberships
   // dans une base jetable ; deuxiemement gardee par TF_ROUTES_TEST_HARNESS=1.
+  // Ecrit une organisation, un produit, des dossiers DPP, des revues et des
+  // publications. Identifiants tires au hasard a chaque execution, parce que
+  // `dpp_lifecycle_events` est append-only : aucun tenant n'est reutilisable.
+  'scripts/test_dpp_review_and_publication.mjs',
 ];
 
 /**
@@ -119,6 +123,19 @@ const READ_ONLY_DB_SUITES = [
  */
 const ROLLBACK_ONLY_DB_SUITES = [
   'scripts/test_neon_privileges.mjs',
+  // Execute le vrai moteur de calcul DPP pour mesurer son effet, puis annule
+  // TOUJOURS : la suite verifie ensuite que la base est identique a l'instant
+  // d'avant (compteurs et empreintes) et sort en code 4 sinon.
+  'scripts/simuler_recalcul_dpp.mjs',
+  // Se connecte avec le ROLE APPLICATIF (pas en proprietaire) pour prouver que
+  // le parcours DPP passe malgre l'absence d'ecriture directe, puis annule :
+  // il verifie apres coup que statut, revue et slug sont identiques.
+  'scripts/test_dpp_role_applicatif.mjs',
+  // Ecrit via les six fonctions systeme (provisionnement d utilisateur, sante
+  // de l outbox) DANS une transaction toujours annulee, sous le role
+  // applicatif. Il verifie que les donnees ne survivent pas : c est le prix
+  // pour prouver que l ecriture legitime fonctionne encore.
+  'scripts/test_worker_non_forgeable.mjs',
 ];
 
 /**
@@ -144,6 +161,13 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
 const OPERATOR_WRITER_SCRIPTS = [
   'scripts/seed_pilot.ts',                  // amorcage d un environnement pilote
   'scripts/verifier_checksums_migrations.mjs', // realignement des checksums, sur --appliquer uniquement
+  // Harnais de migration sur une base NOMMEE par l'operateur. Ils refusent la
+  // production eux-memes (hote connu ou prefixe), mais ce refus n'est pas la
+  // garde de cible : ils sont donc hors de toute chaine automatique, et chacun
+  // porte un mode sans ecriture (--dry-run ou --etat).
+  'scripts/migrer_fidelement.mjs',
+  'scripts/mesure_effet_migrations_dpp.mjs',
+  'scripts/valider_branche_dpp.mjs',
 ];
 
 /**
@@ -159,6 +183,11 @@ const PATTERN_ONLY_FILES = [
   // throwaway. Elle n'ouvre aucune connexion. La suite SQL correspondante
   // est scripts/test_neon_supplier_advanced.mjs.
   'scripts/test_supplier_advanced.mjs',
+  // Lit le catalogue et les migrations. Le motif d ecriture qu il contient est
+  // une EXPRESSION REGULIERE servant a DETECTER les GRANT directs dans les
+  // migrations — il n en execute aucun. Le classer destructif l enverrait
+  // derriere une garde de cible sans rien proteger de plus.
+  'scripts/test_registre_fonctions_runtime.mjs',
 ];
 
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
