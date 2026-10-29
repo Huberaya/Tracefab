@@ -303,6 +303,30 @@ jobs:
         # base saine ne mesurerait rien.
         run: npm run test:privileges-effectifs:sql
 
+      - name: État de production reproduit, puis cinq correctifs mesurés
+        # La lecture du 29/10 sur la branche `production` releve trois ecarts.
+        # Ce test REPRODUIT l etat lu sur une base jetable (chaine sans les onze
+        # migrations), puis applique les cinq correctifs et mesure ce qu ils
+        # changent REELLEMENT : worker, champs reserves, politiques PLM. Si la
+        # reproduction ne donnait pas les memes constats, la lecture et le depot
+        # ne parleraient pas du meme etat.
+        run: npm run test:etat-production-correction
+
+      - name: Étendue des champs réservés — lecture seule RÉELLE
+        # `BEGIN READ ONLY` refuse une ecriture au niveau du moteur : le test le
+        # MESURE en tentant un CREATE dans la transaction. Le script rend 53
+        # colonnes ecrivables dans l etat lu, 30 dans l etat corrige, et cette
+        # difference est exigee. Un script qui rend la meme chose dans les deux
+        # etats ne mesure rien.
+        run: npm run test:etendue-champs-reserves:sql
+
+      - name: Motifs LIKE — `_` est un joker, pas un caractère
+        # `LIKE '%tracefab_worker%'` matche `tracefab.worker_context` : une sonde
+        # de securite batie dessus rendait 11 sur une base NON corrigee. Le test
+        # signale les motifs dont le joker est demontre (la variante pointee
+        # existe ailleurs dans le depot) et exige `strpos(lower(...))`.
+        run: npm run test:motifs-like
+
       - name: PLM — provenance des quatre politiques, balayage exhaustif
         # Deux politiques surnumeraires en production, aucune migration ne les
         # cree. Ce test le PROUVE par balayage de toutes les migrations ET de

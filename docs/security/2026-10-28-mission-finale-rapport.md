@@ -16,7 +16,7 @@ l'opérateur les jours précédents, citées comme telles.
 |---|---|
 | SHA de départ réel | **`4aab56c`** (et non `508caef` : huit commits s'étaient ajoutés) |
 | Commits de la session | `9208391` · `978c761` · `5b989b7` · `a5b6189` · `7f03ba9` |
-| **SHA final** | **`ad9856d`** — CI verte, PR `CLEAN` |
+| **SHA final** | **`f0b1e2a3`** — CI verte, PR `CLEAN` |
 | `main` (base de la PR) | `bf55f2ae6534cde84d072d9b975520216c7b6d4e` |
 
 **La tête de branche avait changé.** Huit commits de l'utilisateur, tous lus
@@ -196,6 +196,58 @@ Le test construit trois états (sain / écriture **héritée** par appartenance 
 aussi que deux rôles atteignables donnent deux lignes et qu'un rôle atteignable
 **sans** `BYPASSRLS` ne pollue pas la sortie.
 
+**10. Les lectures de production du 29/10 — reproduites, puis corrigées.**
+
+Les lectures faites sur la branche `production` (base `neondb`, rôle
+`neondb_owner`) relèvent trois écarts. Avant de proposer quoi que ce soit,
+`scripts/test_etat_production_correction.mjs` (31 vérifications) **reproduit
+l'état lu** sur base jetable — chaîne sans les onze migrations — puis applique
+les cinq correctifs et mesure ce qu'ils changent **réellement** :
+
+| Constat | État reproduit | Après correctifs | Mesure |
+|---|---|---|---|
+| registre runtime | **absent** | présent | identique à la lecture |
+| rôle `tracefab_worker` | **absent** | présent, `NOLOGIN`, ni `SUPERUSER` ni `BYPASSRLS` | identique |
+| `documents.status` | **écrivable** | refusé — `42501` en exécution, pas seulement au catalogue | **plus large** que la lecture |
+| `tracefab_products.version` | **écrivable** | refusé — `42501` | identique |
+| colonnes métier | écrivables | **toujours** écrivables (le parcours légitime survit) | — |
+| `PUBLIC` | — | n'a **rien gagné** ce qu'on a retiré | — |
+
+**Un écart de nommage, relevé et corrigé.** La lecture signale « absentes »
+quatre fonctions : `tracefab_worker_context`, `tracefab_set_worker_context`,
+`tracefab_current_worker_id`, `tracefab_is_worker_context_valid`. Ces quatre
+noms **n'existent nulle part dans le dépôt** — balayage des 65 migrations, du
+SQL, des scripts, de la documentation : **zéro occurrence**. Le correctif réel
+n'est pas un jeu de fonctions de contexte : c'est un **rôle** `tracefab_worker`
+`NOLOGIN`, des politiques indexées sur `current_user`, et **six** fonctions
+nommées possédées par ce rôle. Chercher les quatre noms aurait conclu « écart »
+sur un correctif qui n'a jamais été écrit. Le script d'étendue porte une
+requête dédiée (Q5) qui rend `trouvees=0` et clôt la question.
+
+**Un point plus grave que la lecture.** Le droit d'écriture sur `documents`
+n'est pas accordé colonne par colonne : il est accordé sur la **TABLE**
+entière — `has_column_privilege` rend vrai dans les deux cas, mais le second
+couvre toute colonne présente **et future**. Le script de contrôle distingue
+donc `oui` de `TABLE-OUVERTE`, et le test exige que l'état corrigé ne contienne
+plus aucun `TABLE-OUVERTE`.
+
+**Un défaut d'instrument, trouvé en écrivant ce contrôle.** Mon premier compteur
+de politiques utilisait `LIKE '%tracefab_worker%'`. Dans un motif `LIKE`, `_`
+est un **joker** : il matchait `tracefab.worker_context` — l'**ancienne** forme,
+celle que le correctif doit remplacer — et affichait « 11 politiques corrigées »
+sur une base **non corrigée**. Corrigé par `strpos`. Puis `strpos` seul a cassé
+la sonde de `tour30-C` : `pg_policies` rend `CURRENT_USER` en **majuscules**, et
+un `strpos` sensible à la casse ne trouvait qu'**une** politique sur onze. La
+forme juste est `strpos(lower(...))`. Un test dédié
+(`test_motifs_like_identifiants.mjs`, 8 vérifications) recherche désormais la
+**classe** de défaut : tout motif `LIKE` à identifiant dont le joker est
+**démontré** (la variante pointée existe ailleurs dans le dépôt) fait échouer la
+CI.
+
+**Démarche de réconciliation :** `docs/security/2026-10-29-strategie-reconciliation-migrations.md`
+— cinq lots, chacun réversible, aucun `deploy` global, aucune réécriture
+d'historique. **Aucune étape exécutée.**
+
 ## C. Tests : PASS / FAIL / NON EXÉCUTÉ
 
 Environnement : Node **20.20.2** (la version de la CI), PostgreSQL **18.6**
@@ -212,6 +264,9 @@ via PGlite.
 | `test_provenance_politiques_plm.mjs` | **PASS 12/12** | provenance des 4 politiques, historique compris |
 | `test_appartenances_double_octroi.mjs` | **PASS 14/14** | deux lignes = deux grantors ; révocation partielle insuffisante |
 | `test_privileges_effectifs_sql_production.mjs` | **PASS 18/18** | le SQL des privilèges effectifs s'exécute et distingue 3 états |
+| `test_etat_production_correction.mjs` | **PASS 31/31** | l'état lu est reproduit, les 5 correctifs le changent |
+| `test_etendue_champs_reserves_sql.mjs` | **PASS 22/22** | lecture seule **réelle** (25006 mesuré), 53 → 30 colonnes écrivables |
+| `test_motifs_like_identifiants.mjs` | **PASS 8/8** | `_` est un joker : aucun motif démontré ne subsiste |
 | `test_verifier_confrontation.mjs` | **PASS 40/40** | 12 falsifications refusées, dont 2 nouvelles |
 | `test_sondes_effets_pglite.mjs` | **PASS 17/17** | chaque sonde change quand on retire sa migration |
 | `test_deploiement_simule.mjs` | **PASS 11/11** | le point de rupture du déploiement est identifié |
@@ -392,6 +447,9 @@ aucune contournée :
 | # | Manque | Nature | Ce qu'il faut pour le lever |
 |---|---|---|---|
 | 1 | **Sens des appartenances en production** | inconnu | coller `…appartenances-roles-production.sql` (Q1-Q4), branche `Primary` ; Q2 doit rendre 2 lignes |
+| 1 bis | **`BYPASSRLS` atteignable par `SET ROLE` ?** | inconnu | coller `…privileges-effectifs-production.sql` Q2 ; `bypass-atteignable\|aucun` est le seul résultat rassurant |
+| 1 ter | **Étendue exacte des champs réservés** | 3 écarts mesurés, étendue non mesurée en prod | coller `…etendue-champs-reserves-lecture-seule.sql` en `BEGIN READ ONLY`, Q2/Q3 |
+| 1 quater | **`deploy` complet sur une branche de validation** | non exécuté | `neonctl branches create --parent production` puis `deploy` **là seulement** |
 | 2 | Effets de 57 migrations | non prouvés | `…tour30-A-confrontation-lecture-seule.sql` puis `verifier_confrontation_production.mjs` |
 | 3 | Trois empreintes divergentes (tour 28) | non résolues | revue humaine des diffs, pas une migration |
 | 4 | `test_privileges_role_app` | non exécuté ici | il tourne en CI (nouveau) |
@@ -405,54 +463,59 @@ aucune contournée :
 
 ## I. Verdict
 
-### **PRÊTE À SOUMETTRE À VALIDATION** — pour le code et la CI.
+### **NON PRÊTE À FUSIONNER** — et je suis votre lecture, pas la mienne.
 
-Ce qui le justifie, et qui est **mesuré sur le SHA `4b7f06c`** :
+Vos lectures du 29/10 établissent trois écarts **mesurés** en production, et je
+ne les requalifie pas :
 
-- CI **verte, 5 jobs sur 5**, sans exclusion ajoutée ni test neutralisé ;
-- la règle métier « `contributor` ne crée pas de job de synchro » est **prouvée
-  par écriture réelle**, dans les trois états (canonique, dérive, corrigé),
-  avec l'isolation entre deux organisations testée y compris par identifiant
-  fourni par le client ;
-- la correction PLM est **une seule** migration, *fail-closed*, et le catalogue
-  final est comparé à la référence sur la chaîne réelle ;
-- le vérificateur de confrontation **mord** : 12 falsifications refusées, dont
-  deux nouvelles (sens inverse d'appartenance, changement d'options) ;
-- le décompte des migrations est **recalculé**, pas recopié : 49 + 5 + 2 + 9 = 65 ;
-- la **provenance** des deux politiques surnuméraires est établie : **aucune
-  migration, aucune version historique** ne les crée — donc un `DROP` suffit et
-  aucun déploiement ne les ramènera ;
-- les **deux appartenances identiques** sont expliquées : deux octrois, deux
-  grantors, et une révocation partielle ne retirerait rien.
+| Écart | Niveau | Statut |
+|---|---|---|
+| identité worker absente (rôle, registre, 0 politique sur `current_user`) | P0 | **mesuré** |
+| `documents` et `tracefab_products` encore écrits à la main | P0 | **mesuré**, et **plus large** que la lecture (droit de TABLE) |
+| 4 politiques PLM au lieu de 2, dont une ouverte à `contributor` | P1 | **mesuré** |
 
-**Ce que ce verdict ne dit pas.** Il ne dit pas que la production est conforme :
-3 preuves de production manquent (§H, lignes 1 à 3) et une décision
-(`…140000`) reste à prendre séparément. Ces points **n'empêchent pas** de
-soumettre la PR à validation ; ils empêchent de **déployer**. Les confondre
-serait l'erreur qui a coûté le plus cher dans ce chantier.
+Le code de la PR contient les correctifs, et ils sont **mesurés sur base
+jetable** : l'état lu est reproduit, puis les cinq correctifs le changent
+(31 vérifications), les politiques reviennent à deux (27), `contributor` est
+refusé par écriture réelle (19). **Cela ne rend pas la production conforme.**
+Une PR verte n'est pas un déploiement.
 
-### Ce qu'il reste à faire, dans l'ordre, et par qui
+### Ce qui a changé dans mon appréciation depuis le rapport précédent
 
-1. **Vous** — coller `docs/security/2026-10-28-appartenances-roles-production.sql`
-   (Q1 à Q4) **et** `docs/security/2026-10-28-privileges-effectifs-production.sql`
-   (Q1 à Q4) sur `Primary`. Le premier doit rendre **2 lignes** en Q2 ; le
-   second doit rendre la ligne `bypass-atteignable|aucun` — toute autre ligne
-   est un constat grave. C'est le seul point encore capable de changer la
-   conclusion sécurité.
-2. **Vous** — relever le catalogue avec
-   `docs/security/2026-10-28-tour30-A-confrontation-lecture-seule.sql`, puis
-   `node scripts/verifier_confrontation_production.mjs <sortie>` : 85 faits
-   attendus, 0 divergence espérée sur `plm_erp_sync_jobs` **après** application
-   du correctif.
-3. **Vous** — décider du sort de `20261028140000` (décision séparée, pas de
-   `deploy` global).
-4. **Personne, tant que 1 à 3 ne sont pas faits** — aucune migration en
-   production, aucune révocation d'appartenance, aucun retrait du Draft.
+J'écrivais « PRÊTE À SOUMETTRE À VALIDATION pour le code ». **Cela reste vrai du
+code**, et c'était une erreur de ma part de laisser entendre que la fusion
+pouvait suivre. La différence entre « le code contient le correctif » et « la
+base porte le correctif » est exactement celle que ce chantier n'a cessé de
+mettre en évidence. Je ne la referai pas.
 
-### Ce qui, de mon côté, n'est pas prouvé
+### Ce qui débloque quoi
 
-`test_privileges_role_app.mjs` et `test_isolation_lignes_reelles.mjs` **n'ont
-pas tourné dans cet environnement** (pas de serveur PostgreSQL). Le premier
-tourne désormais en CI et **y est vert** ; le second reste hors CI (redondant
-avec `test:neon:rls`, qui tourne et est vert). Je ne les compte donc pas comme
-preuves — je les nomme.
+| Question | Réponse | Débloqué par |
+|---|---|---|
+| Le code est-il prêt ? | **oui** — CI verte, 5 jobs, aucun test neutralisé | — |
+| Peut-on **fusionner** ? | **non** | lot 1 : `deploy` complet réussi sur une **branche Neon de validation** |
+| Peut-on **déployer** ? | **non** | lots 1 à 4, avec accord explicite **par lot** |
+
+### Ce que je ne peux pas faire, et qui bloque
+
+1. **Je n'ai aucun accès à Neon.** Créer `validation-<sha>` et y lancer un
+   `deploy` demande votre `neonctl` et votre accord. C'est le **seul** point qui
+   bloque la fusion, et il est de votre côté.
+2. **Les trois relevés avant/après** (`…etendue-champs-reserves…`,
+   `…privileges-effectifs…`, `…tour30-A…`) sont prêts, **joués en CI**, et
+   attendent d'être collés sur `Primary` — en `BEGIN READ ONLY;`, la série du
+   29/10 ayant rendu `transaction_read_only = off`.
+
+### Ce que ce chantier a appris sur ses propres instruments
+
+Trois instruments étaient faux, et chacun a été trouvé **en s'en servant** :
+
+- le vérificateur d'appartenances lisait `rolinherit` du rôle accordé au lieu de
+  l'option de l'appartenance, et ignorait le sens inverse ;
+- le compteur de politiques confondait `tracefab_worker` et
+  `tracefab.worker_context` (`_` est un joker dans `LIKE`) ;
+- la sonde de `tour30-C` ne distinguait plus rien après une correction
+  « évidente » — `pg_policies` rend `CURRENT_USER` en majuscules.
+
+Aucun des trois n'a été corrigé en affaiblissant ce qu'il vérifiait.
+

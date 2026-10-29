@@ -82,10 +82,24 @@ SELECT ligne FROM (
          || '|politiques_sur_current_user|'
          || (SELECT count(*)::text FROM pg_catalog.pg_policies
               WHERE schemaname = 'public'
-                -- `pg_get_expr` rend le mot-cle en majuscules et le cast du nom
-                -- de role : on cherche donc les deux fragments, sans casse.
-                AND (qual ILIKE '%current_user%' OR with_check ILIKE '%current_user%')
-                AND (qual ILIKE '%tracefab_worker%' OR with_check ILIKE '%tracefab_worker%'))
+                -- `strpos` ET NON `LIKE`, pour la raison qui a produit un faux
+                -- positif ailleurs dans ce chantier : dans un motif LIKE, `_`
+                -- est un JOKER. `LIKE '%tracefab_worker%'` matche donc
+                -- `'tracefab.worker_context'` — l'ANCIENNE forme, celle que la
+                -- migration doit avoir remplacee. Cette sonde exigeait aussi
+                -- `current_user`, ce qui la sauvait ; elle ne doit pas dependre
+                -- de cette coincidence.
+                --
+                -- ET `lower()` N'EST PAS DECORATIF : `pg_policies.qual` rend le
+                -- mot-cle en MAJUSCULES (`CURRENT_USER = 'tracefab_worker'`).
+                -- Un `strpos` sensible a la casse ne trouvait qu'UNE politique
+                -- sur onze, et faisait echouer la calibration. Mesure : 24
+                -- politiques mentionnent current_user en ILIKE, 11 en
+                -- strpos(lower(...)). Les deux doivent s'accorder.
+                AND (strpos(pg_catalog.lower(coalesce(qual, '')), 'current_user') > 0
+                  OR strpos(pg_catalog.lower(coalesce(with_check, '')), 'current_user') > 0)
+                AND (strpos(pg_catalog.lower(coalesce(qual, '')), 'tracefab_worker') > 0
+                  OR strpos(pg_catalog.lower(coalesce(with_check, '')), 'tracefab_worker') > 0))
 
   UNION ALL
   -- 8. `document_reserved_fields_internal_only`.
