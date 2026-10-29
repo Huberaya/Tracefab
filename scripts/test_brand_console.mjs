@@ -79,6 +79,9 @@ assert(html.includes('Authorization = `Bearer ${token}`'), 'Clerk session token 
 assert(html.includes('for (let attempt = 0; attempt < 3; attempt += 1)'), 'Le bootstrap public doit réessayer une panne transitoire de /api/config');
 assert(html.includes("new AbortController()") && html.includes("config_fetch_timeout"), 'Le bootstrap config doit être borné par un timeout explicite');
 assert(html.includes("cache: attempt === 0 ? 'default' : 'no-cache'"), 'Les nouvelles tentatives config doivent contourner une réponse d’erreur mise en cache');
+assert(html.includes("fetch('/assets/config/clerk.json'"), 'Une panne régionale de /api/config doit utiliser le bootstrap Clerk public statique');
+assert(html.includes("fallback.publishableKey.startsWith('pk_live_')"), 'Le bootstrap statique doit refuser une clé qui ne soit pas Production');
+assert(html.includes("fallback.proxyUrl === 'https://tracefab.vercel.app/__clerk'"), 'Le bootstrap statique doit rester borné au proxy Clerk canonique');
 assert(html.includes('sessionTokenPromise = state.clerk.session.getToken()'), 'Les appels initiaux doivent partager une seule résolution du jeton Clerk');
 assert(html.includes('Date.now() - cachedSessionTokenAt < 30000'), 'Le jeton Clerk ne doit être réutilisé que sur une fenêtre courte');
 assert(html.includes('const prefetchedTenantData = validStoredTenant'), 'Les données du tenant mémorisé doivent démarrer en parallèle de /api/me');

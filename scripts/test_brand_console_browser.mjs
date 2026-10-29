@@ -26,6 +26,7 @@ try {
     contentType: 'application/json',
     body: JSON.stringify({ error: 'clerk_not_configured' }),
   }));
+  await unavailablePage.route('**/assets/config/clerk.json', (route) => route.abort('failed'));
   await unavailablePage.goto(`http://127.0.0.1:${port}/brand-console/?lang=fr`, { waitUntil: 'domcontentloaded' });
   await unavailablePage.locator('.config-error').waitFor();
   assert.equal(await unavailablePage.evaluate(() => window.tracefabBrandConsole?.state.demo), false);

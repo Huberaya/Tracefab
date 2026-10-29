@@ -1,0 +1,73 @@
+name: Diagnostic configuration publique
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'arena/77d62bed-tracefab'
+    paths:
+      - '.github/workflows/diagnose-public-config.yml'
+
+permissions: {}
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Installer Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Sonder la configuration publique sans afficher la cle
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          headers="$(mktemp)"
+          code="$(curl -sS --max-time 25 -D "$headers" -o "$body" -w '%{http_code}' -H 'accept: application/json' https://tracefab.vercel.app/api/config)"
+          node - "$code" "$body" <<'NODE'
+          const fs = require('node:fs');
+          const [code, file] = process.argv.slice(2);
+          const raw = fs.readFileSync(file, 'utf8');
+          let payload = {};
+          try { payload = JSON.parse(raw); } catch {}
+          console.log(JSON.stringify({
+            status: Number(code),
+            error: typeof payload.error === 'string' ? payload.error : null,
+            correlationId: typeof payload.correlationId === 'string' ? payload.correlationId : null,
+            publishableKeyKind: typeof payload.publishableKey === 'string' ? payload.publishableKey.split('_').slice(0, 2).join('_') : null,
+            proxyConfigured: typeof payload.proxyUrl === 'string' && payload.proxyUrl.length > 0,
+          }));
+          if (code !== '200') throw new Error(`/api/config returned ${code}`);
+          if (typeof payload.publishableKey !== 'string' || !payload.publishableKey.startsWith('pk_live_')) {
+            throw new Error('/api/config did not return a Production publishable key');
+          }
+          if (payload.proxyUrl !== 'https://tracefab.vercel.app/__clerk') {
+            throw new Error('/api/config did not return the canonical Clerk proxy URL');
+          }
+          // A Clerk publishable key is intentionally public and already sent to
+          // every browser. The annotation lets maintainers compare CDN edges
+          // without ever exposing the secret key.
+          console.log(`::notice title=Clerk public key::${payload.publishableKey}`);
+          NODE
+          echo 'En-tetes utiles :'
+          grep -iE '^(content-type|cache-control|x-vercel-id|age|server):' "$headers" || true
+
+      - name: Vérifier le chargement réel de Clerk dans la Brand Console
+        env:
+          TRACEFAB_CLERK_SMOKE_URL: https://tracefab.vercel.app
+        run: node scripts/smoke_clerk_production.mjs
