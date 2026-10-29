@@ -363,6 +363,20 @@ jobs:
       - name: PLM — le releve de production en lecture seule, joue avant d etre colle
         run: npm run test:plm-lecture-seule
 
+      - name: PLM — les deux migrations correctives jumelles, comparees par mesure
+        # Deux migrations retirent les memes politiques. Ce job mesure ce que
+        # chacune garantit : les deux corrigent l etat reel et laissent les
+        # canoniques intactes, mais seule 20261028150000 refuse un etat qui
+        # contient une politique inattendue.
+        run: npm run test:plm-migrations-jumelles
+
+      - name: Migrations — application UNE PAR UNE, rupture de 20261028120000 mesuree
+        # Etat de production reconstitue (56 migrations), puis les 10 manquantes
+        # appliquees une par une. Mesure la non-rejouabilite du registre, la
+        # dependance de 20261028120100, et ce qu un `deploy` global ferait au
+        # second essai. Aucune connexion : base jetable.
+        run: npm run test:application-une-par-une
+
       - name: Migrations — plan de reconciliation, et autotest de ses controles
         # Le generateur refuse UPDATE/DELETE sur _prisma_migrations, resolve
         # --rolled-back, deploy global, et resolve --applied sans preuve. Ses

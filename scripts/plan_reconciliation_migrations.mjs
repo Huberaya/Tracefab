@@ -17,7 +17,7 @@
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ECARTS, CATALOGUE, HORS_BANDE } from './lib/ecarts_migrations.mjs';
+import { ECARTS, CATALOGUE, HORS_BANDE, NOUVELLES } from './lib/ecarts_migrations.mjs';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dossier = join(racine, 'prisma', 'migrations');
@@ -41,7 +41,8 @@ const rejouable = (n) => {
 const absentes = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ABSENTE');
 const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE');
 const horsBande = Object.keys(HORS_BANDE);
-const appliquees = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n]);
+const nouvellesNoms = Object.keys(NOUVELLES);
+const appliquees = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && !NOUVELLES[n]);
 
 /**
  * L'action, deduite de DEUX faits seulement : ce que l'historique dit, et ce
@@ -49,11 +50,15 @@ const appliquees = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n]);
  * absent » n'est pas une deduction valide — c'est demontre par 20261017120000).
  */
 function actionDe(nom) {
+  if (NOUVELLES[nom]) {
+    return { action: 'APPLIQUER SEULE (jamais deployee)', preuve: 'aucune ligne _prisma_migrations ; ecrite le 29/10',
+      risque: 'aucun historique a reconcilier : elle n a jamais ete jouee',
+      prerequis: 'decision sur le doublon avec 20261028150000 (meme DROP, deux fois)' };
+  }
   const e = ECARTS[nom];
   const c = CATALOGUE[nom];
   const r = rejouable(nom);
   const effets = e.effets[0];      // MESURE | DEDUIT | NON PROUVE
-  const present = /^(DIVERGENCE|PRESENT)/.test(String(c?.statut)) || effets === 'MESURE';
 
   if (nom === '20261028150000_reconcile_plm_erp_sync_job_policies') {
     return { action: 'APPLIQUER SEULE', preuve: '4 politiques mesurees au lieu de 2',
@@ -83,7 +88,11 @@ function actionDe(nom) {
   };
 }
 
-const lignes = [...absentes, ...annulees].map((nom) => {
+const lignes = [...nouvellesNoms, ...absentes, ...annulees].map((nom) => {
+  if (NOUVELLES[nom]) {
+    const a = actionDe(nom);
+    return { nom, historique: 'NOUVELLE', effets: 'NON DEPLOYEE', ...a, dependDe: ['—'] };
+  }
   const e = ECARTS[nom];
   const a = actionDe(nom);
   return { nom, historique: e.historique, effets: e.effets[0], ...a,
@@ -139,7 +148,7 @@ function fermeture(ms, categories) {
 }
 
 const erreurs = [...controler(lignes, migrations, horsBande),
-                 ...fermeture(migrations, [absentes, annulees, horsBande, appliquees])];
+                 ...fermeture(migrations, [nouvellesNoms, absentes, annulees, horsBande, appliquees])];
 
 // --- 2 bis. Autotest : les controles savent-ils ECHOUER ? ----------------
 // Sans cela, « aucune violation » ne prouve rien : un detecteur casse rend le
@@ -201,6 +210,7 @@ if (markdown) {
 } else {
   console.log(`migrations du depot : ${migrations.length}`);
   console.log(`  appliquees (attestees) : ${appliquees.length}`);
+  console.log(`  nouvelles (jamais deployees) : ${nouvellesNoms.length}  ${JSON.stringify(nouvellesNoms)}`);
   console.log(`  appliquees hors bande  : ${horsBande.length}`);
   console.log(`  annulees              : ${annulees.length}  ${JSON.stringify(annulees)}`);
   console.log(`  absentes              : ${absentes.length}  ${JSON.stringify(absentes)}`);

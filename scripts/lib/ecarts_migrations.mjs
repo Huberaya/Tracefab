@@ -10,6 +10,20 @@
  * Chaque entree est datee et attribuee dans le corps du document de matrice.
  */
 
+/**
+ * Migrations creees APRES le releve de production du 28/10 : elles n'ont jamais
+ * ete deployees, et ce n'est pas une derive. Les confondre avec les onze ecarts
+ * ferait dire a la matrice qu'elles sont « appliquees » — ce qui serait faux.
+ */
+export const NOUVELLES = {
+  '20261029150000_plm_sync_jobs_policy_alignment': {
+    historique: 'NOUVELLE',
+    objet: 'retire les deux memes politiques derivees que 20261028150000, puis verifie les canoniques',
+    effets: ['NON DEPLOYEE', 'aucune ligne _prisma_migrations ; migration ecrite le 29/10'],
+    suite: 'decision de fusion : deux migrations font le meme DROP (voir rapport)',
+  },
+};
+
 export const ECARTS = {
   '20261010120000_publication_explicite': {
     historique: 'ANNULEE',

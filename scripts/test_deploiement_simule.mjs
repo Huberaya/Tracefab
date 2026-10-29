@@ -83,6 +83,13 @@ const ECARTS = [
   '20261028150000_reconcile_plm_erp_sync_job_policies',
 ];
 
+/**
+ * La migration ecrite le 29/10 : elle n a jamais ete deployee, donc elle n est
+ * pas dans `ECARTS` (qui decrit une DERIVE), mais un `deploy` l appliquerait.
+ * La simuler separement evite de la faire passer pour « deja appliquee ».
+ */
+const NOUVELLES = ['20261029150000_plm_sync_jobs_policy_alignment'];
+
 /** Les deux marquees ANNULEES dans l'historique de production. */
 const ANNULEES = ['20261010120000_publication_explicite',
   '20261017120000_active_tenant_context'];
@@ -183,9 +190,10 @@ for (const d of aAppliquer) {
   const r = await appliquer(db, d);
   if (!r.ok) { console.error(`ECHEC  construction de la base a ${d.slice(0, 14)} : ${r.message}`); process.exit(1); }
 }
-// 65 migrations - 11 ecarts + 2 annulees deja presentes = 56.
+// depot - (ecarts hors annulees) : le compte se derive, il ne se recopie pas.
+const attendu = dossiers.length - (ECARTS.length - ANNULEES.length);
 ok('la base « production avec les deux annulees presentes » se construit',
-  aAppliquer.length === 56, `${aAppliquer.length}`);
+  aAppliquer.length === attendu, `${aAppliquer.length} / ${attendu}`);
 
 const resultats = [];
 for (const d of ECARTS) {
@@ -196,6 +204,13 @@ for (const d of ECARTS) {
 ok('les onze migrations s appliquent dans l ordre, sans echec',
   resultats.every((r) => r.ok),
   resultats.filter((r) => !r.ok).map((r) => r.d.slice(0, 14)).join(', '));
+
+// La migration nouvelle suit les onze : un deploy l appliquerait aussi, et elle
+// doit passer sur l etat correctement reconcilie.
+for (const d of NOUVELLES) {
+  const r = await appliquer(db, d);
+  ok(`la migration nouvelle ${d.slice(0, 14)} s applique apres les onze`, r.ok, r.message);
+}
 
 /* L'ordre importe : `20261027130000` redefinit une fonction que
    `20261027100000` vient de poser. Les inverser casserait la chaine. */

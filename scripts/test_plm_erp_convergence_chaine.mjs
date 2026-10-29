@@ -87,13 +87,48 @@ ok('aucune AUTRE migration ne CREE les politiques derivees',
     const sql = LIRE(d).replace(/--[^\n]*/g, '');
     return !/CREATE\s+POLICY\s+(plm_erp_sync_jobs_insert_brand|plm_erp_sync_jobs_select_brand)\b/i.test(sql);
   }));
-ok('les migrations qui nomment les politiques derivees ne font que les retirer',
-  dossiers.filter((d) => d !== CIBLE).every((d) => {
-    const sql = LIRE(d).replace(/--[^\n]*/g, '');
-    const lignes = sql.split('\n').filter((l) =>
-      l.includes('plm_erp_sync_jobs_insert_brand') || l.includes('plm_erp_sync_jobs_select_brand'));
-    return lignes.every((l) => /DROP\s+POLICY/i.test(l));
-  }));
+/**
+ * Une migration qui NOMME les politiques derivees peut le faire pour deux
+ * raisons opposees : les retirer (correctif) ou les recreer/elargir (derive).
+ * La version precedente de ce controle exigeait que CHAQUE LIGNE citant un nom
+ * soit un DROP — ce qui declarait fautive une verification legitime en lecture
+ * (`WHERE policyname IN (...)`) et forcait a ne plus rien verifier.
+ *
+ * Le controle porte desormais sur ce qui COMPTE : aucune instruction qui cite
+ * ces noms ne doit creer, alterer, accorder ou revoquer. Une lecture de
+ * catalogue reste permise ; un DROP reste permis.
+ */
+const NOMS_DERIVES = /plm_erp_sync_jobs_insert_brand|plm_erp_sync_jobs_select_brand/;
+const INTERDIT_QUAND_CITE = /CREATE\s+POLICY|ALTER\s+POLICY|\bGRANT\b|\bREVOKE\b/i;
+function instructionsCitantes(sqlBrut) {
+  const sql = sqlBrut.replace(/--[^\n]*/g, '');
+  return sql.split(';').filter((i) => NOMS_DERIVES.test(i));
+}
+ok('les migrations qui nomment les politiques derivees ne les CREENT, ALTERENT, GRANTENT ni REVOQUENT',
+  dossiers.filter((d) => d !== CIBLE).every((d) =>
+    instructionsCitantes(LIRE(d)).every((i) => !INTERDIT_QUAND_CITE.test(i))));
+
+// Temoins : le controle doit voir une recreation, un GRANT et un ALTER.
+{
+  // Tous les pieges doivent CITER un nom de politique : un GRANT porte sur la
+  // TABLE, pas sur une politique, il est donc hors du perimetre de ce controle
+  // (c'est un autre controle, dans test_plm_rls_isolation_prouvee).
+  const pieges = [
+    ['CREATE', `CREATE POLICY plm_erp_sync_jobs_insert_brand ON t FOR INSERT WITH CHECK (true)`],
+    ['CREATE dans un bloc DO',
+      `DO $$ BEGIN CREATE POLICY plm_erp_sync_jobs_select_brand ON t USING (true); END $$`],
+    ['ALTER', `ALTER POLICY plm_erp_sync_jobs_select_brand ON t USING (true)`],
+  ];
+  const vus = pieges.filter(([, sql]) => {
+    const instr = instructionsCitantes(sql);
+    return instr.length > 0 && instr.some((i) => INTERDIT_QUAND_CITE.test(i));
+  }).length;
+  ok('temoin : les 3 ecritures interdites sont detectees', vus === 3, `${vus}/3`);
+  const lecture = instructionsCitantes(
+    `SELECT 1 FROM pg_catalog.pg_policies WHERE policyname IN ('plm_erp_sync_jobs_insert_brand')`);
+  ok('temoin : une simple lecture de catalogue n est PAS signalee',
+    lecture.every((i) => !INTERDIT_QUAND_CITE.test(i)));
+}
 ok('aucune migration posterieure ne cree de politique permissive sur la table',
   dossiers.filter((d) => d > CIBLE).every((d) => {
     const sql = LIRE(d).replace(/--[^\n]*/g, '');

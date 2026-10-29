@@ -331,18 +331,22 @@ console.log('\n4. Les gardes REFUSENT-elles, et sans rien supprimer ?  [MESURE]'
   // 4.2 a 4.6 : canoniques alterees. A chaque fois : refus ET surnumeraires intactes.
   const scenarios = [
     {
+      // Le garde de NOMBRE ajoute le 29/10 s'evalue AVANT celui d'identite : il
+      // refuse plus tot, avec un message moins specifique. On accepte les deux
+      // motifs mais on exige le refus — et le controle « rien n'a ete supprime »
+      // ci-dessous est ce qui compte vraiment.
       titre: 'canonique INSERT absente',
-      attendu: /politique_canonique_insert_absente/,
+      attendu: /politique_canonique_insert_absente|nombre_ou_identite_politiques_inattendu/,
       preparer: (db) => db.exec(`DROP POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs;`),
     },
     {
       titre: 'canonique SELECT absente',
-      attendu: /politique_canonique_select_absente/,
+      attendu: /politique_canonique_select_absente|nombre_ou_identite_politiques_inattendu/,
       preparer: (db) => db.exec(`DROP POLICY plm_sync_jobs_select_org ON public.plm_erp_sync_jobs;`),
     },
     {
       titre: 'canonique INSERT rouverte a contributor',
-      attendu: /politique_canonique_insert_inattendue/,
+      attendu: /politique_canonique_insert_inattendue|nombre_ou_identite_politiques_inattendu/,
       preparer: (db) => db.exec(`
         DROP POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs;
         CREATE POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs
@@ -352,7 +356,7 @@ console.log('\n4. Les gardes REFUSENT-elles, et sans rien supprimer ?  [MESURE]'
     },
     {
       titre: 'canonique INSERT sans manager',
-      attendu: /politique_canonique_insert_inattendue/,
+      attendu: /politique_canonique_insert_inattendue|nombre_ou_identite_politiques_inattendu/,
       preparer: (db) => db.exec(`
         DROP POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs;
         CREATE POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs
@@ -362,7 +366,7 @@ console.log('\n4. Les gardes REFUSENT-elles, et sans rien supprimer ?  [MESURE]'
     },
     {
       titre: 'canonique INSERT sans WITH CHECK (accepte tout)',
-      attendu: /politique_canonique_insert_inattendue/,
+      attendu: /politique_canonique_insert_inattendue|nombre_ou_identite_politiques_inattendu/,
       preparer: (db) => db.exec(`
         DROP POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs;
         CREATE POLICY plm_sync_jobs_insert_brand ON public.plm_erp_sync_jobs
@@ -401,7 +405,7 @@ console.log('\n5. Ce que la severite depend d une donnee NON MESUREE  [CONSTAT]'
   console.log('  --    des deux est le meme : il est donc juste dans les deux cas.');
 }
 
-console.log('\n6. Une politique INATTENDUE survit-elle ?  [MESURE]');
+console.log('\n6. Une politique INATTENDUE : refus, ou survie ?  [MESURE]');
 {
   const db = await chaine({ arreterAvant: CIBLE });
   await peupler(db);
@@ -416,18 +420,21 @@ console.log('\n6. Une politique INATTENDUE survit-elle ?  [MESURE]');
   const signatureInattendue = JSON.stringify(avant.find((p) => p.nom === 'plm_erp_sync_jobs_archive_select'));
 
   const r = await jouerMigration(db);
-  ok('la migration PASSE malgre la politique inattendue', r.ok, r.message);
+  // LE CONTRAT A CHANGE le 29/10. Avant le garde de nombre, la migration
+  // passait et laissait cette 5e politique en place (3 survivantes) : c'etait
+  // la limite que ce test avait mesuree. Le garde ajoute refuse desormais tout
+  // etat qui n'est ni « 2 canoniques » ni « 4 politiques connues ».
+  ok('la migration REFUSE une 5e politique inattendue', !r.ok, r.message);
+  ok('le refus est motive par le garde de nombre/identite',
+    /nombre_ou_identite_politiques_inattendu/.test(r.message), r.message);
   const apres = await politiques(db);
-  ok('la politique inattendue est PRESERVEE, definition identique',
+  ok('RIEN n a ete supprime : les 5 politiques sont encore la', apres.length === 5,
+    JSON.stringify(noms(apres)));
+  ok('la politique inattendue est intacte, definition identique',
     JSON.stringify(apres.find((p) => p.nom === 'plm_erp_sync_jobs_archive_select')) === signatureInattendue,
     JSON.stringify(noms(apres)));
-  ok('les 2 surnumeraires nommees ont bien disparu',
-    SURNUMERAIRES.every((n) => !apres.some((p) => p.nom === n)));
-  // Constat honnete, qui n'est PAS un echec du test : il devient une limite
-  // documentee. Les gardes verifient la PRESENCE des canoniques et la forme de
-  // la canonique INSERT ; elles ne comptent pas les politiques.
-  ok('LIMITE MESUREE : il reste 3 politiques — les gardes ne comptent pas les politiques',
-    apres.length === 3, JSON.stringify(noms(apres)));
+  ok('les 2 surnumeraires n ont PAS ete retirees par un echec partiel',
+    SURNUMERAIRES.every((n) => apres.some((p) => p.nom === n)));
   await db.close();
 }
 

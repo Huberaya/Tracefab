@@ -261,3 +261,117 @@ généré et auto-vérifié.
 **Toujours pas de fusion.** Deux points appartiennent au chef de chantier :
 ajouter ou non un garde sur le **nombre** de politiques, et exécuter Q1 pour
 convertir une hypothèse en mesure.
+
+---
+
+# Tour du 29/10 (suite) — la branche a avancé sans moi
+
+## A ter. Ce que j'ai trouvé en arrivant
+
+Le `worktree` avait encore disparu ; la branche, elle, avait **avancé de 5
+commits que je n'ai pas écrits** — le chef de chantier a implémenté le garde sur
+le **nombre** de politiques que je lui avais signalé hors périmètre :
+
+| Commit | Apport |
+|---|---|
+| `82e7ec8` | garde `nombre_ou_identite_politiques_inattendu` dans `20261028150000` |
+| `ded2f06`, `450b4c8` | test de ce garde, puis correction d'une assertion |
+| `08e850f` | **nouvelle** migration `20261029150000_plm_sync_jobs_policy_alignment` |
+| `83cb442` | mise à jour du compte de migrations |
+
+**Je n'ai rien écrasé.** J'ai repris sur `83cb442`.
+
+## B ter. Deux migrations pour le même `DROP` — à trancher
+
+`20261028150000` (gardes **avant**) et `20261029150000` (vérification **après**,
+dans la même transaction) retirent **les deux mêmes** politiques. Ce n'est pas
+dangereux — mesuré — mais c'est **deux sources de vérité** pour un seul
+correctif.
+
+`npm run test:plm-migrations-jumelles` — **38 vérifications**. Ce qui est établi :
+
+| Point | Résultat |
+|---|---|
+| Les deux corrigent l'état réel (4 → 2), variantes « doublon » et `USING (true)` | **oui, pour les deux** |
+| Les canoniques sont **inchangées** (définitions identiques avant/après) | **oui, pour les deux** |
+| Idempotence (deux exécutions de chacune) | **oui** |
+| Chaînées dans les deux ordres | **aucun dommage**, la seconde est un no-op |
+| Canonique absente | les deux **refusent**, surnuméraires intactes |
+| **5ᵉ politique inattendue** | **`20261028150000` refuse** · **`20261029150000` passe et laisse 3 politiques** |
+
+Sur le dernier point, la `20261029150000` ne contrôle que la présence des deux
+canoniques et la disparition des deux nommées : elle **ne compte pas** les
+politiques. C'est exactement la limite que j'avais mesurée, et le garde du chef
+de chantier la ferme — mais **dans l'autre migration**. Si les deux restent, la
+protection dépend de l'ordre ; si l'une doit partir, c'est `20261029150000` qui
+est redondante. **Décision au chef de chantier**, pas à moi.
+
+## C ter. Dette des migrations : ce que « une par une » donne
+
+`npm run test:application-une-par-une` — **20 vérifications**, sur une base
+reconstituée à l'état de production (**56 migrations jouées** = 49 attestées +
+5 hors bande + 2 annulées, les 10 autres non jouées).
+
+| Mesure | Résultat |
+|---|---|
+| Les 10 manquantes, **une par une dans l'ordre** | **toutes passent**, sans rupture |
+| État d'arrivée | **2 politiques**, registre présent |
+| `20261028120000` **rejouée** | **échoue** (`CREATE TABLE` sans `IF NOT EXISTS`) |
+| `20261028120100` **sans** le registre | **échoue** — dépendance réelle, mesurée |
+| Les 5 suivantes, une par une | passent : **elles ne bloquent pas par elles-mêmes** |
+| Les 2 migrations **annulées**, rejouées | **passent** — donc elles ne sont pas le danger |
+
+**Correction d'une affirmation antérieure** : le risque d'un `deploy` global
+n'est pas qu'il reprenne les deux annulées (elles sont rejouables, mesuré). Il
+est double, et les deux sont démontrés :
+
+1. au **premier** essai il passerait (le registre est absent) ;
+2. au **second** essai — après un échec plus loin — il retombe sur
+   `20261028120000`, **casse**, et n'essaie **jamais** les cinq suivantes, dont
+   les deux correctifs.
+
+C'est ce qui justifie l'application **une par une**, un lot = un effet mesurable,
+et jamais un `deploy` global sur `Primary`.
+
+## D ter. Générateurs réparés (ils mentaient après l'ajout de la migration)
+
+| Fichier | Ce qui était faux | Correction |
+|---|---|---|
+| `matrice_migrations.mjs` | la nouvelle migration était classée **APPLIQUÉE** (faux) et le total bloquait à 65 | catégorie `NOUVELLE (jamais deployee)`, statut `NON DEPLOYEE`, total **66**, arithmétique `54 + 2 + 9 + 1 = 66` |
+| idem | `effets NON PROUVES` comptait la migration neuve | compte sur les **65** concernées par le relevé |
+| `plan_reconciliation_migrations.mjs` | même erreur, et la nouvelle comptait comme « attestée » | catégorie propre, action « appliquer seule (jamais déployée) » |
+| `test_deploiement_simule.mjs` | `=== 56` en dur | compte **dérivé** + la nouvelle migration simulée après les onze |
+
+Les onze **écarts de dérive** restent **onze** : une migration neuve n'est pas
+une dérive, et les confondre était précisément le défaut à corriger.
+
+## E ter. Deux contrôles corrigés — parce qu'ils étaient faux, pas parce qu'ils étaient verts
+
+1. **`test_plm_erp_convergence_chaine`** exigeait que *chaque ligne* citant un
+   nom de politique soit un `DROP`. Or la `20261029150000` cite ces noms dans un
+   `WHERE policyname IN (...)` de vérification : le contrôle condamnait une
+   lecture de catalogue légitime et poussait à ne plus rien vérifier. Remplacé
+   par : aucune instruction citante ne peut **créer, altérer, accorder ou
+   révoquer** — **3 témoins** injectés (dont un `CREATE POLICY` dans un bloc
+   `DO`) sont détectés, et une lecture de catalogue ne l'est pas.
+2. **`test_plm_erp_confrontation_politiques`** : sa section 6 affirmait « la
+   politique inattendue survit ». C'était vrai, et c'est devenu **faux** avec le
+   garde du chef de chantier. L'assertion dit désormais le **nouveau contrat** :
+   refus motivé, **rien n'est supprimé**, les 5 politiques sont encore là, la
+   surnuméraire est intacte. **57 vérifications.**
+
+Aucune assertion n'a été affaiblie : elles décrivent le contrat tel qu'il est
+aujourd'hui, et elles échouent si ce contrat change sans être vu.
+
+## F ter. Tests et CI
+
+| Élément | Valeur |
+|---|---|
+| Batterie autonome | **28/28 suites vertes** |
+| `test:plm-rls-isolation` | 43 |
+| `test:plm-confrontation` | 57 |
+| `test:plm-lecture-seule` | 33 |
+| `test:plm-migrations-jumelles` | **38** |
+| `test:application-une-par-une` | **20** |
+| `matrice:migrations` | 66 = 54 + 2 + 9 + 1 |
+| `plan:reconciliation` + autotest | exit 0, 7/7 témoins |

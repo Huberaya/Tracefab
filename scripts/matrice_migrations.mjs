@@ -28,7 +28,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ECARTS, CATALOGUE, HORS_BANDE } from './lib/ecarts_migrations.mjs';
+import { ECARTS, CATALOGUE, HORS_BANDE, NOUVELLES } from './lib/ecarts_migrations.mjs';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dossier = join(racine, 'prisma', 'migrations');
@@ -67,7 +67,7 @@ const dossier = join(racine, 'prisma', 'migrations');
  */
 
 
-const STATUTS = new Set(['CONFORME', 'DIVERGENCE', 'NON PROUVE', 'A QUALIFIER']);
+const STATUTS = new Set(['CONFORME', 'DIVERGENCE', 'NON PROUVE', 'A QUALIFIER', 'NON DEPLOYEE']);
 
 /**
  * Les cinq migrations appliquees HORS BANDE (`applied_steps_count = 0` alors
@@ -93,19 +93,25 @@ const lignes = migrations.map((nom) => {
   const sha = empreinte(nom);
   const ecart = ECARTS[nom];
   const horsBande = HORS_BANDE[nom];
+  const nouvelle = NOUVELLES[nom];
   let historique;
   if (ecart) historique = ecart.historique;
+  else if (nouvelle) historique = 'NOUVELLE (jamais deployee)';
   else if (horsBande) historique = 'APPLIQUEE HORS BANDE';
   else historique = 'APPLIQUEE';
   return {
     nom,
     sha,
     historique,
-    objet: ecart?.objet ?? (horsBande ? `cree ${horsBande.join(', ')}` : '—'),
-    effets: ecart?.effets ?? (horsBande ? ['MESURE', 'les 12 tables existent en production (lecture du 28/10)'] : ['NON PROUVE', 'aucune mesure ciblee']),
-    suite: ecart?.suite ?? (horsBande ? 'schema equivalent, non prouve ; controle cible souhaitable' : '—'),
-    catalogue: ecart ? CATALOGUE[nom]?.catalogue : (horsBande ? 'PRESENT MESURE — les 12 tables existent en production' : 'NON LU'),
-    statut: ecart ? CATALOGUE[nom]?.statut : (horsBande ? 'A QUALIFIER' : 'NON PROUVE'),
+    objet: ecart?.objet ?? nouvelle?.objet ?? (horsBande ? `cree ${horsBande.join(', ')}` : '—'),
+    effets: ecart?.effets ?? nouvelle?.effets ?? (horsBande ? ['MESURE', 'les 12 tables existent en production (lecture du 28/10)'] : ['NON PROUVE', 'aucune mesure ciblee']),
+    suite: ecart?.suite ?? nouvelle?.suite ?? (horsBande ? 'schema equivalent, non prouve ; controle cible souhaitable' : '—'),
+    catalogue: ecart ? CATALOGUE[nom]?.catalogue
+      : nouvelle ? 'ABSENTE — jamais deployee, aucune ligne _prisma_migrations'
+      : (horsBande ? 'PRESENT MESURE — les 12 tables existent en production' : 'NON LU'),
+    statut: ecart ? CATALOGUE[nom]?.statut
+      : nouvelle ? 'NON DEPLOYEE'
+      : (horsBande ? 'A QUALIFIER' : 'NON PROUVE'),
   };
 });
 
@@ -113,23 +119,30 @@ const lignes = migrations.map((nom) => {
 const erreurs = [];
 
 const compter = (h) => lignes.filter((l) => l.historique === h).length;
+const nouvelles = compter('NOUVELLE (jamais deployee)');
 const appliquees = compter('APPLIQUEE');
 const horsBande = compter('APPLIQUEE HORS BANDE');
 const annulees = compter('ANNULEE');
 const absentes = compter('ABSENTE');
 
 const total = lignes.length;
-if (total !== 65) erreurs.push(`le depot ne contient pas 65 migrations mais ${total}`);
-if (appliquees + horsBande + annulees + absentes !== total) {
-  erreurs.push(`l arithmetique ne ferme pas : ${appliquees}+${horsBande}+${annulees}+${absentes} != ${total}`);
+// 65 au releve du 28/10, +1 le 29/10 (`20261029150000`, jamais deployee).
+if (total !== 66) erreurs.push(`le depot ne contient pas 66 migrations mais ${total}`);
+if (appliquees + horsBande + annulees + absentes + nouvelles !== total) {
+  erreurs.push(`l arithmetique ne ferme pas : ${appliquees}+${horsBande}+${annulees}+${absentes}+${nouvelles} != ${total}`);
 }
+// Les onze ECARTS de derive restent onze : une migration neuve n'en est pas un.
 if (annulees + absentes !== 11) erreurs.push(`${annulees + absentes} ecarts nommes, 11 attendus`);
+if (nouvelles !== 1) erreurs.push(`${nouvelles} migration(s) nouvelle(s), 1 attendue`);
 if (horsBande !== 5) erreurs.push(`${horsBande} migrations hors bande, 5 attendues`);
 
 // Les migrations citees comme en ecart doivent exister : sinon la matrice
 // decrit un depot qui n'existe plus.
 for (const nom of Object.keys(ECARTS)) {
   if (!migrations.includes(nom)) erreurs.push(`ecart cite mais absent du depot : ${nom}`);
+}
+for (const nom of Object.keys(NOUVELLES)) {
+  if (!migrations.includes(nom)) erreurs.push(`nouvelle citee mais absente du depot : ${nom}`);
 }
 for (const nom of Object.keys(HORS_BANDE)) {
   if (!migrations.includes(nom)) erreurs.push(`hors bande cite mais absent du depot : ${nom}`);
@@ -200,16 +213,21 @@ if (process.argv.includes('--markdown')) {
   console.log(`  annulees (rolled_back_at)      : ${annulees}`);
   console.log(`  absentes de l historique       : ${absentes}`);
   console.log(`  ecarts nommes                  : ${annulees + absentes}`);
-  console.log(`  arithmetique                   : ${appliquees + horsBande} + ${annulees} + ${absentes} = ${total}`);
+  console.log(`  nouvelles (jamais deployees)   : ${nouvelles}`);
+  console.log(`  arithmetique                   : ${appliquees + horsBande} + ${annulees} + ${absentes} + ${nouvelles} = ${total}`);
   console.log(`  prefixes en double (connus)    : ${doubles.length} / ${PREFIXES_DOUBLES_CONNUS.length} declares`);
   const mesures = lignes.filter((l) => l.effets[0] === 'MESURE').length;
   const deduits = lignes.filter((l) => l.effets[0] === 'DEDUIT').length;
-  for (const st of ['CONFORME', 'DIVERGENCE', 'NON PROUVE', 'A QUALIFIER']) {
+  for (const st of ['CONFORME', 'DIVERGENCE', 'NON PROUVE', 'A QUALIFIER', 'NON DEPLOYEE']) {
     console.log(`  statut ${st.padEnd(11)}: ${lignes.filter((l) => l.statut === st).length}`);
   }
+  // Les effets se comptent sur les 65 migrations CONCERNEES par le releve du
+  // 28/10 : une migration ecrite apres n'a pas d'effet « non prouve », elle a
+  // simplement jamais ete deployee.
+  const concernes = total - nouvelles;
   console.log(`\n  effets MESURES      : ${mesures}`);
   console.log(`  effets DEDUITS      : ${deduits}`);
-  console.log(`  effets NON PROUVES  : ${total - mesures - deduits}`);
+  console.log(`  effets NON PROUVES  : ${concernes - mesures - deduits}  (sur ${concernes})`);
   console.log('\n  (le statut d historique vient d une lecture de production ;');
   console.log('   il n est pas relu par ce script, qui ne se connecte a rien)');
 }
