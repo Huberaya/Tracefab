@@ -62,9 +62,9 @@ export function normalizePlmErpPayload(systemType: PlmErpSystemType, rawPayload:
  *
  * POURQUOI CE PARAMÈTRE EXISTE
  *
- * `withTracefabUserContext` pose l'identité avec
- * `set_config('tracefab.user_id', ..., true)` — donc pour la SEULE transaction
- * en cours. Cette fonction appelait auparavant le client Prisma GLOBAL : la
+ * `withTracefabUserContext` pose l'identité de l'utilisateur (GUC
+ * `tracefab.user_id`, portée par la SEULE transaction en cours). Cette fonction
+ * appelait auparavant le client Prisma GLOBAL : la
  * requête partait sur une autre connexion du pool, où `tracefab.user_id` vaut
  * NULL. Mesure du 30/10 sur base jetable : l'appel réel échoue alors en
  * `authentication_required`, et la fonction d'ingestion n'est atteignable
