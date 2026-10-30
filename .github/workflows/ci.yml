@@ -489,7 +489,13 @@ jobs:
           #     de decouvrir ; cible nommee, hors chaine automatique
           #   test:garde-fous:neon        — eprouve un verrou de commande, il a
           #     donc besoin d'une base ; il tourne dans le job « Base »
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon').join(' '))")
+          #   test:jetables:*             — quatorze commandes cablees via
+          #     run-db-suite.mjs (registre de routage). Elles EXIGENT une base
+          #     migree : hors DATABASE_URL, la garde de cible sort en 2 et la
+          #     suite ne mesure rien. Elles s'executent dans le job « Base »,
+          #     qui porte deja leur liste. Les laisser ici les rendrait rouges
+          #     pour une raison d'environnement, jamais de code.
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
