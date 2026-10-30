@@ -71,6 +71,7 @@
  * fin de parcours. Aucune donnee existante n'est modifiee de facon durable.
  */
 import pg from 'pg';
+import { nomRoleEphemere } from './lib/ephemeral-role.mjs';
 
 const ADMIN_URL = process.env.DATABASE_URL;
 if (!ADMIN_URL) {
@@ -79,7 +80,10 @@ if (!ADMIN_URL) {
   process.exit(2);
 }
 
-const PROBE_ROLE = 'rls_probe_write_policy';
+// Nom UNIQUE par execution : le nom fixe `rls_probe_write_policy` etait cree
+// « si absent » puis SUPPRIME en fin de course — donc un role preexistant de ce
+// nom disparaissait. Voir scripts/lib/ephemeral-role.mjs.
+const PROBE_ROLE = nomRoleEphemere('tf_rls_write_probe');
 const PROBE_PASSWORD = 'sonde_locale_jetable';
 let echecs = 0;
 let assertions = 0;

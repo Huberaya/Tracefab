@@ -38,7 +38,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
+import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(RACINE, 'prisma', 'migrations');
@@ -161,6 +163,15 @@ const url = process.env.DATABASE_URL;
 if (!url) {
   console.log('\nE. Phase base — NON EXECUTE (DATABASE_URL absent)');
 } else {
+  // R11 (30/10) : la phase base se connectait SANS aucune garde de cible. Elle
+  // est en lecture ici, mais rien ne l'empechait de viser un serveur reel — et
+  // la garde commune est la seule reponse qui ne depend pas de la vigilance de
+  // l'operateur.
+  requireThrowawayDb({
+    variables: ['DATABASE_URL'],
+    purpose: 'registre des fonctions runtime (phase base)',
+    exitOnFailure: true,
+  });
   console.log('\nE. Phase base : le registre est reellement applique');
   const { default: pg } = await import('pg');
   const client = new pg.Client({ connectionString: url, ssl: false });
@@ -249,6 +260,44 @@ if (!url) {
     );
   } finally {
     await client.end().catch(() => {});
+  }
+}
+
+// --- G. Controles negatifs de la garde de cible (R11) ---
+// La garde doit REFUSER avant toute connexion. La preuve n'est pas le message :
+// c'est le compteur de transactions du serveur vise, qui ne doit pas bouger.
+{
+  console.log('\nG. Controle negatif — la garde refuse AVANT de se connecter');
+  const source = process.env.DATABASE_URL;
+  if (!source) {
+    console.log('  NON EXECUTE — sans DATABASE_URL, il n y a pas de cible a refuser.');
+  } else {
+    const pgModule = await import('pg');
+    const { sslDepuisUrl } = await import('./lib/pg-ssl.mjs');
+    // Cible JOIGNABLE mais REFUSEE : le serveur local, en contexte de
+    // production. La garde doit refuser AVANT de s'y connecter — sinon le
+    // compteur de transactions du serveur bougerait.
+    const cibleRefusee = new URL(source);
+    cibleRefusee.pathname = '/postgres';
+    const sonde = new pgModule.default.Client({
+      connectionString: source, ssl: sslDepuisUrl(source),
+    });
+    await sonde.connect();
+    const commits = async () => Number((await sonde.query(
+      "select coalesce(sum(xact_commit),0)::bigint as n from pg_stat_database where datname = 'postgres'",
+    )).rows[0].n);
+    const avant = await commits();
+    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], {
+      cwd: RACINE, encoding: 'utf8',
+      env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: cibleRefusee.toString() },
+    });
+    const apres = await commits();
+    await sonde.end();
+    ok(r.status === 3, 'la garde refuse une cible non jetable (sortie 3)', String(r.status));
+    ok(/REFUS — cible non autorisee/.test(r.stderr || ''), 'le refus est explicite dans le journal');
+    ok(apres === avant,
+      'aucune transaction sur la cible refusee : la garde agit avant la connexion',
+      `avant=${avant} apres=${apres}`);
   }
 }
 

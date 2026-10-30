@@ -167,22 +167,166 @@ function quote(s) {
  * @param {pg.Client} db connexion proprietaire de la base
  * @param {string} password mot de passe du role applicatif
  */
-export async function ensureAppRole(db, password) {
-  const existe = await db.query('select 1 from pg_roles where rolname = $1', [APP_ROLE]);
-  if (existe.rowCount === 0) {
-    await db.query(`CREATE ROLE ${APP_ROLE} LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
-    console.log(`  role ${APP_ROLE} cree (sans BYPASSRLS)`);
+/**
+ * Provisioning du role : idempotent ET robuste aux provisions simultanees.
+ *
+ * Deux executions paralleles qui visent le MEME cluster modifient la meme ligne
+ * de `pg_authid` : PostgreSQL repond alors XX000 `tuple concurrently updated`
+ * (mesure du 30/10 sur PG 17.10 : 1 execution sur 3 en echouait, sur
+ * `ALTER ROLE`). Le role etant un objet de CLUSTER, ce n'est pas la base
+ * jetable qui est en cause.
+ *
+ * Les deux instructions sont idempotentes par nature (CREATE si absent,
+ * ALTER sinon), donc les reprendre est sur. `42710` (role cree par l'autre
+ * execution entre la lecture et le CREATE) bascule sur ALTER au lieu d'echouer.
+ */
+const REPRISE_ROLE = { tentatives: 6 };
+
+async function provoquerRole(db, sqlCreate, sqlAlter, etiquette) {
+  for (let i = 1; ; i += 1) {
+    try {
+      await db.query(etiquette === 'creation' ? sqlCreate : sqlAlter);
+      return;
+    } catch (e) {
+      const collision = e.code === '42710' || e.code === '42P04';
+      if (collision) { etiquette = 'alter'; continue; }
+      if (e.code !== 'XX000' || i >= REPRISE_ROLE.tentatives) throw e;
+      // `tuple concurrently updated` : l'autre execution a modifie la ligne
+      // entre-temps. Attente courte et croissante, puis reprise.
+      await new Promise((r) => setTimeout(r, 20 * i + Math.floor(Math.random() * 30)));
+    }
+  }
+}
+
+/**
+ * Refus de provisioning : un role preexistant n'est PAS « le notre ».
+ *
+ * Ce n'est pas une panne, c'est une decision : on n'ecrit pas sur un role
+ * qu'on n'a pas cree et dont on ne peut pas prouver la nature. Les appelants
+ * doivent echouer bruyamment plutot que de reecrire un mot de passe.
+ */
+export class RolePreexistantRefuse extends Error {
+  constructor(nom, raisons) {
+    super(`role ${nom} preexistant REFUSE : ${raisons.join(' ; ')} — aucune modification`);
+    this.name = 'RolePreexistantRefuse';
+    this.code = 'TF_ROLE_REFUSE';
+    this.role = nom;
+    this.raisons = raisons;
+  }
+}
+
+/**
+ * Etat d'un role, lu en une seule requete.
+ *
+ * `objets_possedes` compte les dependances de type `o` (proprietaire) : les
+ * GRANT, eux, sont de type `a` et ne rendent pas un role « proprietaire ». Un
+ * role qui possede des objets a servi a quelque chose qu'on ignore : il n'est
+ * pas un role applicatif frais.
+ */
+async function etatRole(db, nom) {
+  const { rows } = await db.query(
+    `SELECT r.oid, r.rolbypassrls, r.rolsuper, r.rolcreaterole, r.rolcreatedb, r.rolcanlogin,
+            (SELECT count(*)::int
+               FROM pg_shdepend d
+              WHERE d.refclassid = 'pg_authid'::regclass
+                AND d.refobjid = r.oid
+                AND d.deptype = 'o') AS objets_possedes
+       FROM pg_roles r
+      WHERE r.rolname = $1`,
+    [nom],
+  );
+  return rows.length === 0 ? null : { ...rows[0], oid: String(rows[0].oid) };
+}
+
+/**
+ * Cree (ou reaffirme) le role applicatif et ses droits par defaut.
+ *
+ * Idempotent : relancer ne duplique ni ne casse rien. Doit etre appelee
+ * avant `prisma migrate deploy` sur une base vierge, et reste sans effet
+ * dommageable sur une base ou le role existe deja.
+ *
+ * GARDE D'OID ET DE CONSERVATION (30/10)
+ *
+ * Avant : `select 1 from pg_roles` puis `CREATE` ou `ALTER ROLE ... PASSWORD`.
+ * Un `tracefab_app` PREEXISTANT et etranger voyait son mot de passe reecrit et
+ * ses attributs rabattus, sans qu'aucune preuve n'ait ete faite qu'il etait le
+ * notre. Desormais :
+ *
+ *   1. l'etat est lu UNE fois, avant toute ecriture (OID, attributs, objets
+ *      possedes) ;
+ *   2. un role preexistant PRIVILEGIE (SUPERUSER, BYPASSRLS, CREATEROLE,
+ *      CREATEDB) ou PROPRIETAIRE d'objets est REFUSE par `RolePreexistantRefuse`
+ *      — aucune ecriture, mot de passe et attributs intacts ;
+ *   3. un role preexistant ordinaire est reaffirme (comportement historique) ;
+ *   4. l'OID est relu APRES : s'il a change, le provisioning ne portait pas sur
+ *      le role inspecte et l'appel echoue.
+ *
+ * Le pendant de cette garde pour `prepare_ci_db_role.mjs` a ete pose dans le
+ * meme chantier ; les deux scripts sont invoques sur la meme base par des
+ * chemins differents et doivent se comporter pareil.
+ *
+ * @param {import('pg').Client} db connexion proprietaire de la base
+ * @param {string} password mot de passe du role applicatif
+ */
+export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
+  // Surcharge de nom : elle n'existe que pour eprouver les refus sur un cluster
+  // jetable, et reste bornee aux noms `tf_*` — un test ne peut donc pas viser
+  // `postgres` ni un role d'exploitation. Meme regle que
+  // `prepare_ci_db_role.mjs` (`TF_APP_ROLE_NAME`).
+  if (role !== APP_ROLE && !/^tf_[a-z0-9_]+$/.test(role)) {
+    throw new Error(`nom de role ${role} hors liste fermee (${APP_ROLE} ou tf_*)`);
+  }
+  const avant = await etatRole(db, role);
+
+  const sqlCreate = `CREATE ROLE ${role} LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`;
+  const sqlAlter = `ALTER ROLE ${role} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`;
+
+  if (avant === null) {
+    await provoquerRole(db, sqlCreate, sqlAlter, 'creation');
+    console.log(`  role ${role} cree (sans BYPASSRLS)`);
   } else {
-    await db.query(`ALTER ROLE ${APP_ROLE} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
-    console.log(`  role ${APP_ROLE} deja present, attributs reaffirmes (sans BYPASSRLS)`);
+    // Refus AVANT toute ecriture : ni le mot de passe ni les attributs du role
+    // preexistant ne sont touches.
+    const raisons = [];
+    if (avant.rolsuper) raisons.push('SUPERUSER');
+    if (avant.rolbypassrls) raisons.push('BYPASSRLS');
+    if (avant.rolcreaterole) raisons.push('CREATEROLE');
+    if (avant.rolcreatedb) raisons.push('CREATEDB');
+    if (avant.objets_possedes > 0) raisons.push(`proprietaire de ${avant.objets_possedes} objet(s)`);
+    if (raisons.length > 0) {
+      throw new RolePreexistantRefuse(role, raisons);
+    }
+    await provoquerRole(db, sqlCreate, sqlAlter, 'alter');
+    console.log(`  role ${role} deja present (OID ${avant.oid}), attributs reaffirmes (sans BYPASSRLS)`);
+  }
+
+  // Preuve d'identite : le role relu doit etre celui qu'on a cree ou reaffirme.
+  const apres = await etatRole(db, role);
+  if (apres === null) {
+    throw new Error(`le role ${role} a disparu pendant le provisioning.`);
+  }
+  if (avant !== null && apres.oid !== avant.oid) {
+    throw new Error(`le role ${role} a change d'OID pendant le provisioning `
+      + `(${avant.oid} -> ${apres.oid}) : le provisioning ne porte pas sur le role inspecte.`);
+  }
+  if (apres.rolbypassrls || apres.rolsuper || apres.rolcreaterole || apres.rolcreatedb) {
+    throw new Error(`${role} possede un attribut privilegie inattendu apres provisioning.`);
+  }
+  if (!apres.rolcanlogin) {
+    throw new Error(`${role} n'a pas LOGIN apres provisioning.`);
+  }
+
+  if (role !== APP_ROLE) {
+    // Surcharge de test : les droits applicatifs visent `tracefab_app` par leur
+    // nom dans plusieurs blocs `DO`/`GRANT`. Les accorder a un role de sonde
+    // elargirait sa surface sans rien prouver — on s'arrete au provisioning,
+    // qui est precisement ce que la surcharge sert a eprouver.
+    console.log(`  role ${role} provisonne (surcharge de test : droits applicatifs non accordes)`);
+    return;
   }
 
   const base = (await db.query('select current_database() d')).rows[0].d;
   const proprio = (await db.query('select current_user u')).rows[0].u;
-
-  // Liste des tables en ecriture directe : voir TABLES_ECRITURE_DIRECTE,
-  // exportee au niveau module (source unique, importee par les controles).
-  const listeEcriture = TABLES_ECRITURE_DIRECTE.join(', ');
 
   for (const sql of [
     `GRANT CONNECT ON DATABASE "${base}" TO ${APP_ROLE}`,
@@ -200,13 +344,34 @@ export async function ensureAppRole(db, password) {
     // ECRITURE sur les seules tables que le runtime touche hors fonction.
     // Auparavant : GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES, ce qui
     // rendait toute table modifiable directement et vidait de son sens le
-    // principe « mutations par fonctions ». Conditionnel : au bootstrap d'une
-    // base vierge ces tables n'existent pas encore.
-    `DO $$ BEGIN
-       IF to_regclass('public.rate_limit_counters') IS NOT NULL THEN
-         EXECUTE 'GRANT INSERT, UPDATE, DELETE ON ${listeEcriture} TO ${APP_ROLE}';
-       END IF;
-     END $$;`,
+    // principe « mutations par fonctions ».
+    //
+    // CORRECTION DU 29/10 — la condition portait sur UNE table :
+    //     IF to_regclass('public.rate_limit_counters') IS NOT NULL THEN
+    //       EXECUTE 'GRANT ... ON <les 16 tables> ...'
+    // `rate_limit_counters` servait donc de sentinelle pour seize tables, avec
+    // deux consequences MESUREES sur base jetable :
+    //   — sentinelle absente, autres tables presentes : aucune des 16 ne recoit
+    //     son droit d'ecriture (mesure : organizations et audit_logs a false) ;
+    //   — sentinelle presente, une seule des 16 absente : le GRANT global leve
+    //     42P01 (`relation "data_points" does not exist`) et TOUT le
+    //     provisionnement echoue. Le bootstrap devenait dependant de l'existence
+    //     simultanee des seize.
+    // L'octroi est desormais fait TABLE PAR TABLE, sur celles qui existent :
+    // idempotent, independant de l'ordre role/migrations, et sans elargissement
+    // (meme liste, memes privileges, seules les tables presentes).
+    `DO $grant_dml$
+     DECLARE
+       v_table text;
+     BEGIN
+       FOREACH v_table IN ARRAY ARRAY[${TABLES_ECRITURE_DIRECTE.map((t) => `'${t}'`).join(', ')}]::text[]
+       LOOP
+         IF to_regclass(format('public.%I', v_table)) IS NOT NULL THEN
+           EXECUTE format('GRANT INSERT, UPDATE, DELETE ON public.%I TO %I', v_table, '${APP_ROLE}');
+         END IF;
+       END LOOP;
+     END
+     $grant_dml$;`,
     // `tracefab_products` : ecriture COLONNE PAR COLONNE, jamais au niveau
     // table. Les champs calcules restent hors de portee du runtime.
     `DO $$ BEGIN

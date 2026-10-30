@@ -1,32 +1,158 @@
-import assert from 'node:assert/strict';
-import { PrismaClient } from '@prisma/client';
-import { bulkImportProducts, bulkImportSuppliers, parseCompositionString } from '../api/_lib/bulk-operations/bulk-importer.ts';
-import { exportProductsCsv, exportSuppliersCsv, exportAuditDossierJson } from '../api/_lib/bulk-operations/compliance-exporter.ts';
-import { parseCsvRows } from '../api/_lib/bulk-operations/csv-parser.ts';
+// R11 (30/10) : garde de cible AVANT tout import susceptible de construire un
+// client ou d'ouvrir une connexion. Import placé en PREMIÈRE position : en ESM
+// il s'évalue avant les imports suivants. Aucune écriture sans cible jetable.
+import './lib/garde_import.mjs';
 
-const prisma = new PrismaClient();
+import assert from 'node:assert/strict';
+import { register } from 'node:module';
+import { createTestPrisma, fermerPrismaDeTest } from './lib/test_prisma_client.mjs';
+
+/**
+ * P8 (30/10) — ce test ne s'exécutait jamais, et laissait des données.
+ *
+ * TROIS DÉFAUTS, TROIS CORRECTIONS
+ *
+ * 1. LIAISON IMPOSSIBLE. `bulk-importer.ts` importe `'../plm-erp/gtin-engine.js'`
+ *    alors que le fichier est en `.ts` : convention du bundler Next, que Node
+ *    ESM ne résout pas. Le graphe échouait en `ERR_MODULE_NOT_FOUND` AVANT
+ *    d'évaluer la garde. Le hook `lib/resolveur_ts.mjs` est enregistré ici,
+ *    puis les modules de l'API sont importés DYNAMIQUEMENT — l'ordre est
+ *    indispensable : `register()` doit précéder le chargement. Aucun module
+ *    applicatif n'est modifié.
+ *
+ * 2. CLIENT SANS ADAPTATEUR. `new PrismaClient()` sans `datasourceUrl` exige un
+ *    moteur Prisma natif, absent hors CI. Le client vient désormais de
+ *    `createTestPrisma` (moteur standard en CI, WASM + pg sinon) et se ferme
+ *    par `fermerPrismaDeTest`, qui ferme aussi le pool pg — sans quoi la base
+ *    de test resterait verrouillée par une connexion survivante.
+ *
+ * 3. FIXTURE EMPRUNTÉE, DONNÉES LAISSÉES. Le test prenait la première
+ *    organisation « brand » et le premier utilisateur de la base, puis
+ *    forçait leur membership en `admin`. Sur une base déjà peuplée, cela
+ *    rétrogradait le propriétaire unique de cette organisation : le trigger
+ *    `tracefab_validate_membership_mutation` levait
+ *    `last_owner_membership_required`. Et sur une base vide, il créait une
+ *    organisation et un utilisateur qu'il ne supprimait jamais.
+ *
+ *    Le test possède maintenant SA fixture : un utilisateur et une
+ *    organisation créés pour l'exécution, identifiables par un suffixe
+ *    unique, et supprimés dans `finally` — succès comme échec.
+ */
+register('./lib/resolveur_ts.mjs', import.meta.url);
+
+const { bulkImportProducts, bulkImportSuppliers, parseCompositionString } = await import('../api/_lib/bulk-operations/bulk-importer.ts');
+const { exportProductsCsv, exportSuppliersCsv, exportAuditDossierJson } = await import('../api/_lib/bulk-operations/compliance-exporter.ts');
+const { parseCsvRows } = await import('../api/_lib/bulk-operations/csv-parser.ts');
+
+const prisma = await createTestPrisma(process.env.DATABASE_URL);
+
+// Suffixe unique : deux exécutions consécutives sur la même base ne peuvent
+// pas entrer en collision, et les lignes créées sont reconnaissables.
+const SUFFIXE = `${process.pid}-${Date.now().toString(36)}`;
+
+/** Ce que cette exécution a créé. Rien d'autre ne sera jamais supprimé. */
+const fixture = { userId: null, organizationId: null };
+
+/**
+ * Supprime UNIQUEMENT les données de la fixture de cette exécution.
+ *
+ * L'ordre suit les dépendances réelles du schéma, de la feuille vers la
+ * racine :
+ *
+ *   invitations   (FK organizations, users)
+ *   relations     (FK organizations ; CASCADE)
+ *   fournisseurs  (FK organizations)
+ *   produits      (CASCADE vers product_materials / product_identifiers)
+ *   matériaux     (product_materials.material_id est en RESTRICT : ils ne
+ *                  peuvent partir qu'après les produits)
+ *   memberships   (FK organizations, users)
+ *   organisation  (racine de tout ce qui précède)
+ *   utilisateur   (dernier : organizations.created_by est en SET NULL)
+ *
+ * Le nettoyage est idempotent : si l'exécution a échoué DANS la transaction,
+ * celle-ci a déjà été annulée et les suppressions ne touchent aucune ligne.
+ * Aucune donnée étrangère ne peut l'être : chaque suppression est bornée par
+ * l'identifiant de l'organisation ou de l'utilisateur créés ici.
+ */
+async function nettoyerFixture() {
+  const { userId, organizationId: orgId } = fixture;
+  if (!orgId && !userId) return;
+
+  const q = async (sql, params) => prisma.$executeRawUnsafe(sql, ...params);
+
+  // Les fournisseurs créés par `tracefab_invite_supplier` sont rattachés à
+  // l'organisation de marque par `brand_supplier_relationships`.
+  const fournisseurs = orgId
+    ? (await prisma.$queryRawUnsafe(
+      'SELECT supplier_organization_id::text AS id FROM brand_supplier_relationships WHERE brand_organization_id = $1::uuid',
+      orgId,
+    )).map((r) => r.id)
+    : [];
+
+  if (userId) {
+    // `invited_by` porte notre utilisateur : cela couvre aussi une invitation
+    // dont la relation aurait disparu.
+    await q('DELETE FROM organization_invitations WHERE invited_by = $1::uuid', [userId]);
+  }
+  if (orgId) {
+    await q('DELETE FROM organization_invitations WHERE organization_id = $1::uuid', [orgId]);
+    await q('DELETE FROM brand_supplier_relationships WHERE brand_organization_id = $1::uuid', [orgId]);
+    await q('DELETE FROM tracefab_products WHERE brand_organization_id = $1::uuid', [orgId]);
+    await q('DELETE FROM materials WHERE owner_organization_id = $1::uuid', [orgId]);
+    if (fournisseurs.length > 0) {
+      await q('DELETE FROM suppliers WHERE organization_id = ANY($1::uuid[])', [fournisseurs]);
+      await q('DELETE FROM organizations WHERE id = ANY($1::uuid[])', [fournisseurs]);
+    }
+    await q('DELETE FROM organization_memberships WHERE organization_id = $1::uuid', [orgId]);
+    await q('DELETE FROM organizations WHERE id = $1::uuid', [orgId]);
+  }
+  if (userId) {
+    await q('DELETE FROM users WHERE id = $1::uuid', [userId]);
+  }
+
+  // Preuve de nettoyage : plus rien ne doit subsister sous nos identifiants.
+  const restes = [];
+  if (orgId) {
+    const [o] = await prisma.$queryRawUnsafe('SELECT count(*)::int AS n FROM organizations WHERE id = $1::uuid', orgId);
+    const [p] = await prisma.$queryRawUnsafe('SELECT count(*)::int AS n FROM tracefab_products WHERE brand_organization_id = $1::uuid', orgId);
+    const [m] = await prisma.$queryRawUnsafe('SELECT count(*)::int AS n FROM materials WHERE owner_organization_id = $1::uuid', orgId);
+    const [b] = await prisma.$queryRawUnsafe('SELECT count(*)::int AS n FROM brand_supplier_relationships WHERE brand_organization_id = $1::uuid', orgId);
+    if (o.n + p.n + m.n + b.n !== 0) restes.push(`organisation=${o.n} produits=${p.n} matériaux=${m.n} relations=${b.n}`);
+  }
+  if (userId) {
+    const [u] = await prisma.$queryRawUnsafe('SELECT count(*)::int AS n FROM users WHERE id = $1::uuid', userId);
+    const [i] = await prisma.$queryRawUnsafe('SELECT count(*)::int AS n FROM organization_invitations WHERE invited_by = $1::uuid', userId);
+    if (u.n + i.n !== 0) restes.push(`utilisateur=${u.n} invitations=${i.n}`);
+  }
+  if (restes.length > 0) throw new Error(`fixture non nettoyée : ${restes.join(' · ')}`);
+  console.log(`[CLEANUP] Fixture ${SUFFIXE} supprimée (organisation ${orgId ? 'oui' : 'non créée'}, utilisateur ${userId ? 'oui' : 'non créé'}).`);
+}
 
 async function run() {
   console.log('=== TEST INTEGRATION NEON CHANTIER 8: BULK IMPORT & REGULATORY EXPORT ===\n');
 
+  let echec = false;
   try {
-    // 1. Fetch or create a test brand organization and user
-    let brandOrg = await prisma.organizations.findFirst({
-      where: { type: 'brand' }
+    // 1. Fixture PROPRE au test : aucun emprunt à l'existant.
+    const testUser = await prisma.user.create({
+      data: {
+        clerkUserId: `clerk_tf-c8-${SUFFIXE}`,
+        email: `tf-c8-${SUFFIXE}@example.test`,
+        fullName: `Chantier 8 ${SUFFIXE}`,
+      },
     });
+    fixture.userId = testUser.id;
 
-    if (!brandOrg) {
-      brandOrg = await prisma.organizations.create({
-        data: {
-          legal_name: 'Atelier Test Chantier 8 SAS',
-          display_name: 'Atelier Chantier 8',
-          country_code: 'FR',
-          type: 'brand'
-        }
-      });
-    }
-
-    let testUser = await prisma.user.findFirst();
+    const brandOrg = await prisma.organizations.create({
+      data: {
+        legal_name: `Atelier Test Chantier 8 ${SUFFIXE} SAS`,
+        display_name: `Atelier Chantier 8 ${SUFFIXE}`,
+        country_code: 'FR',
+        type: 'brand',
+        created_by: testUser.id,
+      },
+    });
+    fixture.organizationId = brandOrg.id;
 
     console.log(`[SETUP] Using Brand Organization: "${brandOrg.display_name || brandOrg.legal_name}" (${brandOrg.id})`);
 
@@ -34,14 +160,15 @@ async function run() {
     await prisma.$transaction(async (tx) => {
       const timestamp = Date.now().toString().slice(-6);
 
-      if (testUser) {
-        await tx.$executeRaw`
-          INSERT INTO organization_memberships (id, organization_id, user_id, role, clerk_membership_id)
-          VALUES (gen_random_uuid(), ${brandOrg.id}::uuid, ${testUser.id}::uuid, 'admin'::membership_role, ${'mem_bulk_' + timestamp})
-          ON CONFLICT (organization_id, user_id) DO UPDATE SET role = 'admin'::membership_role;
-        `;
-        await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${testUser.id}, true)`;
-      }
+      // Le membership porte sur NOTRE organisation : aucun propriétaire
+      // préexistant n'est touché, et le rôle `owner` reflète la réalité (c'est
+      // ce même utilisateur qui vient de créer l'organisation).
+      await tx.$executeRaw`
+        INSERT INTO organization_memberships (id, organization_id, user_id, role, clerk_membership_id)
+        VALUES (gen_random_uuid(), ${brandOrg.id}::uuid, ${testUser.id}::uuid, 'owner'::membership_role, ${'mem_bulk_' + SUFFIXE})
+      `;
+      await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${testUser.id}, true)`;
+
       const csvContent = `reference,name,category,sku,countryOfManufacture,weightGrams,materialsSummary,gtin
 TF-BULK-01-${timestamp},"Pull Laine Mérinos Bio",Pull,SKU-MERINOS-01,PT,380,"100% Laine Mérinos",376034583359
 TF-BULK-02-${timestamp},"Veste Jean Selvedge",Veste,SKU-DENIM-02,TN,720,"98% Coton biologique, 2% Élasthanne",400638133393`;
@@ -121,14 +248,14 @@ TF-BULK-02-${timestamp},"Veste Jean Selvedge",Veste,SKU-DENIM-02,TN,720,"98% Cot
         {
           legalName: `Filature Guimarães SAS ${timestamp}`,
           displayName: `Filature Guimarães ${timestamp}`,
-          email: `contact.guimaraes.${timestamp}@example.com`,
+          email: `contact.guimaraes.${SUFFIXE}@example.test`,
           countryCode: 'PT',
           tier: 'spinning'
         },
         {
           legalName: `Atelier Confection Tunisien ${timestamp}`,
           displayName: `Confection Tunis ${timestamp}`,
-          email: `contact.confection.${timestamp}@example.com`,
+          email: `contact.confection.${SUFFIXE}@example.test`,
           countryCode: 'TN',
           tier: 'assembly'
         }
@@ -181,11 +308,26 @@ TF-BULK-02-${timestamp},"Veste Jean Selvedge",Veste,SKU-DENIM-02,TN,720,"98% Cot
     console.log('SUCCESS: All Chantier 8 Neon live integration tests passed!');
     console.log('=============================================================\n');
   } catch (err) {
+    echec = true;
     console.error('Test failed with error:', err);
-    process.exit(1);
   } finally {
-    await prisma.$disconnect();
+    // Le nettoyage s'exécute quoi qu'il arrive : succès, assertion fausse,
+    // exception de préparation, ou transaction annulée. Il est borné aux
+    // identifiants de la fixture et vérifie lui-même qu'il ne reste rien.
+    try {
+      await nettoyerFixture();
+    } catch (err) {
+      echec = true;
+      console.error('[CLEANUP] Échec du nettoyage :', err);
+    } finally {
+      await fermerPrismaDeTest(prisma);
+    }
   }
+
+  // Fermeture faite, nettoyage vérifié : c'est seulement ici que le code de
+  // sortie est décidé. Un échec de nettoyage ne peut pas être masqué par un
+  // succès fonctionnel.
+  process.exit(echec ? 1 : 0);
 }
 
 run();

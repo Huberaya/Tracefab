@@ -691,6 +691,43 @@ jobs:
         # cible — c est la garde, pas la bonne volonte, qui protege.
         run: npm run db:seed-rls
 
+      - name: Identite applicative — refus du superutilisateur (R13)
+        # Le job cree des roles : il lui faut une connexion d administration,
+        # `postgres`, SUPERUTILISATEUR donc BYPASSRLS. Mesurer la RLS avec elle
+        # serait mesurer un contournement. Cette etape PROUVE par connexion que
+        # l identite applicative est distincte, non privilegiee, et sur le meme
+        # cluster ; elle sort en 2 (bloquant) si TF_RLS_APP_URL a disparu, en 3
+        # si elle est identique a DATABASE_URL ou porte un attribut interdit.
+        run: node scripts/verifier_identite_app_ci.mjs
+
+      - name: Gardes des ressources jetables, du verrou et de la reprise (R6/R7/R9)
+        # Douze suites, 334 assertions, qui n etaient joignables par AUCUN
+        # workflow. Elles exigent une base migree ET la base canonique
+        # `tracefab_test` : quatre d entre elles passent par prepare_ci_db_role,
+        # qui refuse tout autre nom. Elles restent donc ici, pas dans le job
+        # `verification` (sans base), et SANS entree `test:*` — la boucle
+        # dynamique de `verification` les y rendrait rouges pour une raison
+        # d environnement.
+        run: |
+          set -e
+          for suite in \
+            test_garde_cible_ecriture \
+            test_verrou_fail_closed \
+            test_verrou_cluster \
+            test_concurrence_suites \
+            test_ressources_fixes_garde \
+            test_migration_atomicite_plm_dedup \
+            test_base_ephemere_garde \
+            test_role_ephemere_garde \
+            test_ensure_app_role_garde \
+            test_provisioning_role_app \
+            test_destruction_verrouillee \
+            test_reprise_ressources_jetables \
+          ; do
+            echo "== $suite"
+            node scripts/run-db-suite.mjs "scripts/$suite.mjs"
+          done
+
       - name: Isolation RLS prouvee par execution
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.

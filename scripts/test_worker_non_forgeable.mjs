@@ -30,15 +30,23 @@
  *                   catalogue — obligatoire
  * Sortie 0 = conforme, 1 = regression, 2 = environnement incomplet (NON EXECUTE).
  */
+import { spawnSync } from 'node:child_process';
 import pg from 'pg';
+import { assertMemeCluster, assertRoleApplicatif } from './lib/identite_app.mjs';
+import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 
 const APP_URL = process.env.TF_RLS_APP_URL;
 const ADMIN_URL = process.env.DATABASE_URL;
 
-if (!APP_URL || !ADMIN_URL) {
-  console.log('NON EXECUTE — TF_RLS_APP_URL et DATABASE_URL sont obligatoires.');
-  process.exit(2);
-}
+// R11 (30/10) : cette suite ecrit (fonctions SECURITY DEFINER, GUC, fixtures)
+// et se connectait SANS aucune garde de cible. Une `DATABASE_URL` exportee par
+// erreur vers une base reelle suffisait a y ecrire. La garde commune est
+// desormais appliquee ICI, pas seulement chez l'appelant.
+requireThrowawayDb({
+  variables: ['DATABASE_URL', 'TF_RLS_APP_URL'],
+  purpose: 'identite worker non falsifiable',
+  exitOnFailure: true,
+});
 
 const refus = [];
 const ok = (condition, libelle, detail) => {
@@ -57,8 +65,16 @@ const compter = async (client, cible) =>
   (await client.query(`select count(*)::int as n from ${cible}`)).rows[0].n;
 
 try {
+  // R11 : les deux connexions doivent viser le MEME cluster, et la session
+  // applicative doit etre celle du role sans BYPASSRLS. Sans ces deux preuves,
+  // les assertions qui suivent ne mesurent pas ce qu'elles annoncent.
   await app.connect();
   await admin.connect();
+
+  // R11 : preuves d'identite AVANT toute assertion metier. Une identite fausse
+  // doit arreter la suite, pas la faire echouer apres coup.
+  await assertMemeCluster(admin, app);
+  await assertRoleApplicatif(app, { attendu: 'tracefab_app', etiquette: 'identite worker' });
 
   // Un role privilegie ne prouverait rien : on refuse de conclure plutot que
   // d'afficher un vert trompeur.
@@ -280,6 +296,54 @@ try {
 } finally {
   await app.end().catch(() => {});
   await admin.end().catch(() => {});
+}
+
+// ── 10. Controles negatifs de la garde de cible (R11) ────────────────────────
+// Deux refus doivent etre prouves : une cible non jetable, et une identite
+// applicative privee de `TF_RLS_APP_URL`. Dans les deux cas, la suite doit
+// s'arreter AVANT d'ecrire — la preuve est le compteur de transactions du
+// serveur, pas le message affiche.
+{
+  console.log('\n10. Controles negatifs — la garde arrete avant toute ecriture');
+  const { spawnSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  const sonde = new pg.Client({ connectionString: ADMIN_URL, ssl: false });
+  await sonde.connect();
+  const commits = async () => Number((await sonde.query(
+    "select coalesce(sum(xact_commit),0)::bigint as n from pg_stat_database where datname = 'postgres'",
+  )).rows[0].n);
+
+  const cibleRefusee = new URL(ADMIN_URL);
+  cibleRefusee.pathname = '/postgres';
+  const avant = await commits();
+  const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], {
+    cwd: process.cwd(), encoding: 'utf8',
+    env: {
+      ...process.env,
+      NODE_ENV: 'production',
+      DATABASE_URL: cibleRefusee.toString(),
+      TF_RLS_APP_URL: cibleRefusee.toString(),
+    },
+  });
+  const apres = await commits();
+  ok(r.status === 3, 'cible non jetable : sortie 3', String(r.status));
+  ok(/REFUS — cible non autorisee/.test(r.stderr || ''), 'cible non jetable : refus explicite');
+  ok(apres === avant, 'cible non jetable : aucune transaction sur le serveur vise',
+    `avant=${avant} apres=${apres}`);
+
+  const avant2 = await commits();
+  const sansApp = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], {
+    cwd: process.cwd(), encoding: 'utf8',
+    env: { ...process.env, DATABASE_URL: ADMIN_URL, TF_RLS_APP_URL: '' },
+  });
+  const apres2 = await commits();
+  ok(sansApp.status === 2, 'TF_RLS_APP_URL absente : sortie 2 (non execute)',
+    String(sansApp.status));
+  ok(/NON EXECUTE|REFUS/.test(sansApp.stderr || sansApp.stdout || ''),
+    'TF_RLS_APP_URL absente : arret explicite');
+  ok(apres2 === avant2, 'TF_RLS_APP_URL absente : aucune transaction sur le serveur vise',
+    `avant=${avant2} apres=${apres2}`);
+  await sonde.end();
 }
 
 console.log('\nVerdict');

@@ -65,10 +65,19 @@ verif_pg17() {
   echo "ok    serveur 17, base tracefab_test ($ver)"
 }
 
+# La remise a zero passe par la GARDE (scripts/lib/base_jetable.mjs) : le
+# `DROP DATABASE IF EXISTS tracefab_test` precedent ne verifiait rien. Une base
+# preexistante qui porte des objets et pas la marque « tracefab:base-jetable »
+# est desormais CONSERVEE et le script s'arrete en refus (code 2). Le preflight
+# ci-dessus declare la cible jetable ; il ne prouve pas que CETTE base l'est.
 reset_db() {
-  "${PSQL[@]}" -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'tracefab_test' AND pid <> pg_backend_pid();" >/dev/null
-  "${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS tracefab_test;"
-  "${PSQL[@]}" -d postgres -c "CREATE DATABASE tracefab_test OWNER postgres;"
+  local code=0
+  node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs || code=$?
+  case "$code" in
+    0) ;;
+    2|3) refuse "base tracefab_test non prouvee jetable — CONSERVEE (code $code)" ;;
+    *) fail "remise a zero de tracefab_test (code $code)" ;;
+  esac
   echo "ok    base tracefab_test recreee vide"
 }
 
@@ -76,8 +85,12 @@ deploy() {
   node scripts/db-deploy-throwaway.mjs
 }
 
+# Provisioning du role : appele ISOLEMENT par ce script (aucun appelant ne tient
+# le verrou). Le lanceur commun le prend donc pour nous — `prepare_ci_db_role.mjs`
+# lui-meme ne le prend pas, sinon un appelant deja verrouille attendrait
+# indefiniment (verrou consultatif NON reentrant entre sessions).
 prepare_role() {
-  node scripts/run-db-suite.mjs scripts/prepare_ci_db_role.mjs
+  node scripts/run-db-suite.mjs --verrou-cluster scripts/prepare_ci_db_role.mjs
 }
 
 install_sql() {

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { nomRoleEphemere } from './lib/ephemeral-role.mjs';
 // Client partage : engine standard en CI, moteur client WASM + adaptateur pg
 // sur un poste sans acces aux binaires Prisma (voir scripts/lib/test_prisma_client.mjs).
 // Meme URL, donc meme role et meme base : la semantique du test est inchangee.
@@ -10,7 +11,10 @@ if (!process.env.DATABASE_URL) {
 }
 
 const prisma = await createTestPrisma(process.env.DATABASE_URL);
-const role = `tracefab_product_rls_test_${process.pid}`;
+// Nom UNIQUE par execution (et non `_${process.pid}`, reutilisable) et plus
+// aucun `DROP ROLE IF EXISTS` preventif : un role preexistant ne doit jamais
+// etre supprime pour faire passer un test.
+const role = nomRoleEphemere('tf_product_rls');
 const ownerA = randomUUID();
 const viewerA = randomUUID();
 const ownerB = randomUUID();
