@@ -201,7 +201,7 @@ Base `tracefab` du cluster jetable, 67 migrations, fixtures `db:seed-rls`
 | 3 | Parcours complets (quatre contextes) | `test_neon:app-readiness` **13/13** |
 | 4 | Fonctions `SECURITY DEFINER` | allowlist 91/91 exécutables, 0 hors allowlist ; worker `test:neon:worker-non-forgeable` vert |
 | 5 | Ingestion PLM/ERP | voir ci-dessous |
-| 6 | Workers et traitements différés | `test:plm:rls-isolation` **43 vérifications**, contrat du planificateur de notifications vert |
+| 6 | Workers et traitements différés | `test:plm-rls-isolation` **43 vérifications**, contrat du planificateur de notifications vert |
 | 7 | Deux organisations | `Maison Alpha` / `Maison Beta`, produits visibles 3 vs 5 selon le rôle |
 | 8 | Refus inter-organisations | `test:neon:isolation` (7 tables), `test:neon:write-policies` **16/16**, `test:rls:bypass-controle-negatif` **6/6** |
 | 9 | Migrations avec le rôle dédié | § 2.2 |
@@ -234,7 +234,7 @@ que l'architecture HMAC du § 4 doit fermer, et elle seule.
 | `test:rls:bypass-controle-negatif` | 6/6 |
 | `test:neon:isolation` | vert (7 tables porteuses, contexte public, contexte non persistant) |
 | `test:jetables:ingest-acl` | 30/30 |
-| `test:plm:rls-isolation` | 43 vérifications |
+| `test:plm-rls-isolation` | 43 vérifications |
 | `test:neon:privileges-role-app` | 40/40 |
 | `test:neon:ecarts-privileges` | 13/13 |
 | `test:neon:worker-non-forgeable` | vert |
