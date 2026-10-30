@@ -34,7 +34,7 @@
  * Sorties : 0 conforme · 1 defaut · 2 prerequis manquant.
  */
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
@@ -322,10 +322,19 @@ console.log('\n  B3. neuf scripts hors lanceur : garde evaluee a l import, aucun
 // position du fichier, donc evalue avant tout autre import — y compris avant
 // les modules qui construisent un client Prisma.
 const SCRIPTS_GARDE_IMPORT = [
-  'apply_migration_chantier2', 'apply_migration_chantier3',
-  'apply_migration_chantier4', 'apply_migration_chantier5',
   'test_neon_bulk_operations_chantier8', 'test_neon_chantier7_mass_balance',
   'test_neon_document_ai', 'test_neon_plm_erp_gs1', 'test_neon_supplier_advanced',
+];
+
+// P10.2 : les quatre `apply_migration_chantier{2,3,4,5}.mjs` ont ete SUPPRIMES.
+// Ils reproduisaient des GRANT ... TO PUBLIC abrogés par 20261014130000 et
+// 20261019120000, etaient sans consommateur, et leur SQL est integralement
+// porte par les migrations versionnees. Les supprimer retire le chemin
+// d execution : c est plus sur qu une garde sur un fichier qu on peut relancer.
+// scripts/test_scripts_migration_obsoletes.mjs verifie qu ils ne reviennent pas.
+const SCRIPTS_SUPPRIMES = [
+  'apply_migration_chantier2', 'apply_migration_chantier3',
+  'apply_migration_chantier4', 'apply_migration_chantier5',
 ];
 
 function compterCanari() {
@@ -400,6 +409,17 @@ verifier('la table canari est intacte apres 36 lancements refuses (aucune ecritu
   } finally {
     await c.end();
   }
+}
+
+console.log('\n  B3bis. les quatre scripts obsoletes restent supprimes');
+
+// P10.2 : supprimer le fichier supprime le chemin d execution. Une garde sur un
+// fichier qu on peut relancer ne protege rien si ce fichier reaccorde EXECUTE a
+// PUBLIC sur une fonction SECURITY DEFINER. On verifie donc l ABSENCE, ici, en
+// plus du test dedie scripts/test_scripts_migration_obsoletes.mjs.
+for (const nom of SCRIPTS_SUPPRIMES) {
+  const chemin = join(RACINE, 'scripts', `${nom}.mjs`);
+  verifier(`${nom} : fichier absent`, !existsSync(chemin), `${chemin} existe encore`);
 }
 
 console.log('\n  B4. ordre d evaluation : la garde precede tout autre import');

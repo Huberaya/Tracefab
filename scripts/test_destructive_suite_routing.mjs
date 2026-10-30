@@ -239,6 +239,14 @@ const PATTERN_ONLY_FILES = [
   // migrations — il n en execute aucun. Le classer destructif l enverrait
   // derriere une garde de cible sans rien proteger de plus.
   'scripts/test_registre_fonctions_runtime.mjs',
+  // P10.2 : meme cas. Les motifs d ecriture qu il contient sont des
+  // EXPRESSIONS REGULIERES qui DETECTENT les GRANT ... TO PUBLIC des scripts et
+  // des migrations — il n en execute aucun. Il lit le catalogue (partie D) et
+  // exige pour cela une cible classee jetable ; il n ecrit jamais. Le classer
+  // destructif le ferait tourner derriere le lanceur pour ne rien proteger de
+  // plus, et priverait `verification` d un controle STATIQUE qui, lui, n a pas
+  // besoin de base.
+  'scripts/test_scripts_migration_obsoletes.mjs',
 ];
 
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
