@@ -61,22 +61,27 @@
  */
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
+import { exigerCibleEcriture } from './lib/garde_cible_ecriture.mjs';
 
-const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
-  || 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
-
-const url = process.env.TF_RLS_APP_URL;
-if (!url) {
-  console.error('NON EXECUTE — TF_RLS_APP_URL obligatoire (role applicatif).');
-  console.error('  Ce test ne vaut que s\'il se connecte avec le role de l\'application.');
-  process.exit(2);
-}
-let hote;
-try { hote = new URL(url).hostname; } catch { console.error('NON EXECUTE — URL illisible.'); process.exit(2); }
-if (hote === HOTE_PRODUCTION || /^ep-polished-night/.test(hote)) {
-  console.error(`REFUS — ${hote} est la production.`);
-  process.exit(3);
-}
+// GARDE DE CIBLE — remplace la liste noire d'hotes.
+//
+// Avant : un seul nom de production, ecrit en dur et surchargeable par
+// `TF_HOTE_PRODUCTION`. Tout ce qui n'etait pas ce nom etait accepte, y compris
+// une autre base Neon, une base locale qui n'est pas de test, ou une chaine
+// portant `?host=`. Ce script ECRIT (`UPDATE` par le role applicatif) : la
+// regle appliquee est desormais celle du reste du depot, REFUS PAR DEFAUT
+// (`scripts/lib/require-throwaway-db.mjs`), plus la concordance entre
+// `TF_RLS_APP_URL` et `DATABASE_URL` si les deux sont fournies, plus l'identite
+// de cluster exigible par `TF_SYSID_ATTENDU`.
+//
+// Codes : 2 non execute (variable absente) ; 3 cible refusee — aucune ecriture.
+const garde = await exigerCibleEcriture({
+  variables: ['TF_RLS_APP_URL', 'DATABASE_URL'],
+  requise: 'TF_RLS_APP_URL',
+  purpose: 'test_dpp_role_applicatif — ecriture par le role applicatif',
+});
+const url = garde.url;
+const hote = garde.verdict.database || '(base classee)';
 
 const argProduit = process.argv.indexOf('--produit');
 const produitImpose = argProduit > -1 ? process.argv[argProduit + 1] : process.env.TF_PRODUIT_TEST || null;

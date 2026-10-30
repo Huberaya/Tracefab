@@ -42,6 +42,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import pg from 'pg';
+import { verrouillerCluster } from './lib/ephemeral-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 
 const RACINE = process.cwd();
@@ -152,6 +153,10 @@ if (lireEtatSeulement) {
   process.exit(0);
 }
 
+// Verrou de CLUSTER : la chaine contient un `ALTER ROLE` (20261028120100). Deux
+// applications concurrentes sur le meme serveur se heurtent en `XX000`.
+const verrou = await verrouillerCluster({ urlProprietaire: url });
+
 let appliquees = 0;
 for (const nom of enAttente) {
   const fichier = path.join(DOSSIER, nom, 'migration.sql');
@@ -184,9 +189,11 @@ for (const nom of enAttente) {
     console.error(`  ECHEC      ${nom}`);
     console.error(`             ${String(error.message).split('\n')[0]}`);
     await client.end();
+    await verrou.relacher();
     process.exit(1);
   }
 }
 
 console.log(`\n${appliquees} migration(s) appliquee(s).`);
 await client.end();
+await verrou.relacher();

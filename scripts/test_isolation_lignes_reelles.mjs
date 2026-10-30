@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
 import { TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,7 +40,11 @@ const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
 
 const APP_ROLE = 'tracefab_app';
-const BASE_EPHEMERE = 'tracefab_isolation_lignes';
+// Aucun nom de base fixe. Il rendait la suite destructrice pour une base
+// homonyme preexistante : `DROP DATABASE IF EXISTS tracefab_isolation_lignes`
+// s'executait avant tout, sans verification ni preuve de propriete. Mesure du
+// 29/10 sur un cluster jetable : la base homonyme et sa donnee metier ont ete
+// detruites, suite verte. Voir scripts/lib/ephemeral-db.mjs.
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
 
 let vertes = 0;
@@ -65,25 +70,43 @@ requireThrowawayDb({
   exitOnFailure: true,
 });
 
-const urlAdmin = process.env.DATABASE_URL;
-const hote = (urlAdmin.match(/@([^/:]+)/) || [])[1] ?? 'illisible';
-const urlMaintenance = urlAdmin.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
+/* --- Base de travail : creee et prouvee par la garde ---------------------- */
 
 const uuid = (graine) => {
   const h = crypto.createHash('sha1').update(`tracefab-isol-${graine}`).digest('hex');
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 };
 
-const admin = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-await admin.connect();
-await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await admin.query(`CREATE DATABASE ${BASE_EPHEMERE}`);
-await admin.end();
+const base = await creerBaseEphemere({
+  urlProprietaire: process.env.DATABASE_URL,
+  prefixe: 'tf_isolation',
+});
 
-const url = urlAdmin.replace(/\/[^/?]+(\?|$)/, `/${BASE_EPHEMERE}$1`);
+// Une session coupee par `DROP DATABASE ... WITH (FORCE)` emet un evenement
+// `error` : non ecoute, il tue le processus et masque la cause reelle.
+const session = (connectionString) => {
+  const c = new pg.Client({ connectionString, ssl: sslDepuisUrl(connectionString) });
+  c.on('error', () => {});
+  return c;
+};
+
+// Declares AVANT le try : le `finally` doit pouvoir fermer les sessions avant
+// de detruire la base, sinon le DROP les coupe et leur 57P01 masque l'erreur.
+let mig = null;
+let app = null;
+let verrou = null;
+
+try {
+
+const url = base.url;
 const urlApp = url.replace(/:\/\/[^@]*@/, `://${APP_ROLE}:${encodeURIComponent(MOT_DE_PASSE)}@`);
 
-console.log(`\n  base éphémère sur ${hote} — ${BASE_EPHEMERE}`);
+// Serialise avec les autres suites du meme cluster : le provisioning du role et
+// la chaine de migrations touchent des objets de CLUSTER (pg_authid, ALTER ROLE).
+verrou = await verrouillerCluster(base);
+
+console.log(`\n  base éphémère unique : ${base.nom} (oid ${base.oid})`);
+console.log(`  même cluster que la maintenance : ${base.identite.systemIdentifier}`);
 
 const boot = () =>
   execFileSync('node', [path.join(RACINE, 'scripts', 'bootstrap_app_role.mjs')], {
@@ -91,7 +114,7 @@ const boot = () =>
     stdio: 'ignore',
   });
 
-const mig = new pg.Client({ connectionString: url, ssl: sslDepuisUrl(url) });
+mig = session(url);
 await mig.connect();
 await mig.query(
   `CREATE TABLE IF NOT EXISTS _prisma_migrations (
@@ -199,7 +222,7 @@ console.log('  fixture : 2 organisations, 2 utilisateurs, 2 documents, 3 produit
 
 /* --- Connexion applicative ------------------------------------------------ */
 
-const app = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp) });
+app = session(urlApp);
 await app.connect();
 
 const identite = await app.query('SELECT current_user AS u, (SELECT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS b');
@@ -461,15 +484,19 @@ verifier('aucun DML n est accordé à PUBLIC', pubDml.rows[0].n === 0, `${pubDml
 
 await app.end();
 
-/* --- Verdict --------------------------------------------------------------- */
+} finally {
+  // Ordre : les sessions D'ABORD, la base ENSUITE. Detruire une base dont une
+  // session depend produit un 57P01 qui remplacerait l'erreur d'origine.
+  if (app) await app.end().catch(() => {});
+  if (mig) await mig.end().catch(() => {});
+  // Nettoyage dans un `finally`, et uniquement sur l'OID cree : une assertion
+  // qui leve, une fixture qui echoue ou un client perdu passent tous par ici.
+  await base.fermer();
+  if (verrou) await verrou.relacher();
+  console.log(`  base éphémère détruite : ${base.nom}`);
+}
 
-// Un client pg ne se reconnecte pas après end() : la destruction passe par un
-// client neuf, sinon le verdict est masqué par une erreur de réutilisation.
-const nettoyeur = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-await nettoyeur.connect();
-await nettoyeur.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await nettoyeur.end();
-console.log('  base éphémère détruite');
+/* --- Verdict --------------------------------------------------------------- */
 
 console.log(`\n  ${vertes}/${vertes + rouges} assertions vertes`);
 if (rouges > 0) {

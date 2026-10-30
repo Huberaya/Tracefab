@@ -52,6 +52,11 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   supplier_profile_role_required: { status: 403 },
   supplier_profile_status_does_not_allow_submission: { status: 409 },
   brand_product_role_required: { status: 403 },
+  // P10.2 — garde de ROLE de `tracefab_ingest_plm_erp_payload` : l execution
+  // est reservee au role applicatif. Ce n'est pas un defaut de l appelant mais
+  // une tentative d execution depuis un role qui n'y a pas droit : 403, et le
+  // corps de la reponse ne dit pas QUEL role a ete refuse.
+  ingest_role_not_allowed: { status: 403 },
   brand_product_manager_role_required: { status: 403 },
   product_not_found: { status: 404 },
   product_identifier_not_found: { status: 404 },
