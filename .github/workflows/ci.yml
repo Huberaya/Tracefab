@@ -1034,3 +1034,68 @@ jobs:
         # Celui-ci passe par TF_RLS_APP_URL quand il est fourni ; il exige le
         # client Prisma, genere plus haut dans ce job.
         run: npm run test:neon:storage:chantier10
+
+      # ---------------------------------------------------------------------
+      # P10.2 — CHANTIERS A, B, C.
+      #
+      # Ces quatre etapes n'existaient dans AUCUN workflow : la fonction
+      # d'ingestion SECURITY DEFINER, la suppression des scripts a GRANT PUBLIC
+      # et la reprise des bases jetables n'etaient couvertes par rien.
+      #
+      # Elles vivent ICI et pas dans `verification` : elles exigent une base
+      # migree, un role applicatif et un cluster ou creer des bases. Dans
+      # `verification`, elles seraient rouges pour raison d'environnement — et
+      # un rouge d'environnement apprend a ignorer le rouge.
+      #
+      # Aucune n'est en `continue-on-error`, aucune ne termine par `|| true`.
+      # ---------------------------------------------------------------------
+
+      - name: Ingestion PLM/ERP — la fonction est fermee, le chemin reel fonctionne
+        # Chantier A. La fonction est SECURITY DEFINER : la RLS est contournee a
+        # l'interieur, donc l'ACL et une garde de ROLE sont la vraie barriere.
+        # Le test passe par le VRAI chemin (role applicatif + GUC transactionnel)
+        # et mesure les refus : role non autorise, identite absente, GUC
+        # falsifie, identite d'une AUTRE organisation.
+        run: npm run test:jetables:ingest-acl
+
+      - name: Scripts de migration obsoletes — absents, et non reintroduits
+        # Chantier B. Les quatre `apply_migration_chantier{2,3,4,5}` rejouaient
+        # des GRANT ... TO PUBLIC abroges depuis ; ils ont ete supprimes.
+        # TF_EXIGER_CATALOGUE : ici il y a une base, donc la partie catalogue
+        # doit etre mesuree, pas seulement les controles statiques.
+        env:
+          TF_EXIGER_CATALOGUE: '1'
+        run: npm run test:scripts-migration-obsoletes
+
+      - name: Ressources jetables — inscription (R4), SIGKILL et reprise
+        # Chantier C. `reinitialiser_base_jetable` creait une base SANS
+        # l'inscrire au manifeste : orpheline definitive. Le test fait tuer un
+        # enfant par SIGKILL apres creation, puis reprend par les seules
+        # donnees durables, et verifie qu'une ressource vivante est CONSERVEE.
+        run: npm run test:jetables:r4-inscription
+
+      - name: Outils de cycle de vie — harnais, reinitialisation, reprise
+        # Les trois outils n'etaient joignables par aucun workflow (audit
+        # P10.1). Aucune destruction non bornee : le manifeste est DEDIE a cette
+        # etape, donc `nettoyer` ne peut viser que ce qu'elle a cree. Depuis R4,
+        # `reinitialiser_base_jetable` inscrit sa base : la reprise la detruit
+        # SUR PREUVE (nom + OID + cluster), sans DROP manuel de complaisance.
+        run: |
+          set -e
+          export TF_MANIFESTE="$RUNNER_TEMP/jetables-ci.jsonl"
+          : > "$TF_MANIFESTE"
+
+          echo "== harnais des suites RLS (une base ephemere par suite)"
+          npm run test:jetables:harnais-rls
+
+          echo "== reinitialisation d une base jetable nommee"
+          TF_RESET_BASE=tf_ci_cycle_de_vie node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs
+
+          echo "== reprise : simulation puis destruction sur preuve"
+          node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs
+          node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs --confirmer
+
+      - name: Aucune base jetable residuelle apres le job
+        # Controle SEPARE des suites qu'il controle : une suite qui oublie de se
+        # ranger ne peut pas se declarer propre. Il ne detruit rien.
+        run: npm run test:jetables:absence-bases

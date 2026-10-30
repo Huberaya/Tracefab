@@ -246,10 +246,14 @@
     "test:jetables:provisioning": "node scripts/run-db-suite.mjs scripts/test_provisioning_role_app.mjs",
     "test:jetables:garde-cible": "node scripts/run-db-suite.mjs scripts/test_garde_cible_ecriture.mjs",
     "test:jetables:migration-atomicite": "node scripts/run-db-suite.mjs scripts/test_migration_atomicite_plm_dedup.mjs",
+    "test:jetables:r4-inscription": "node scripts/run-db-suite.mjs scripts/test_r4_inscription_base_jetable.mjs",
+    "test:jetables:ingest-acl": "node scripts/run-db-suite.mjs scripts/test_ingest_payload_acl.mjs",
+    "test:scripts-migration-obsoletes": "node scripts/test_scripts_migration_obsoletes.mjs",
+    "test:jetables:absence-bases": "node scripts/verifier_absence_bases_jetables.mjs",
     "test:jetables:harnais-rls": "node scripts/run-db-suite.mjs scripts/harnais_suites_rls.mjs scripts/test_rls_write_policies.mjs scripts/test_rls_bypass_controle_negatif.mjs",
     "test:jetables:reinitialiser-base": "node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs",
     "test:jetables:nettoyer": "node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs",
-    "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:harnais-rls"
+    "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:r4-inscription && npm run test:jetables:harnais-rls"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",
