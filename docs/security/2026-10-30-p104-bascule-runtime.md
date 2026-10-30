@@ -25,7 +25,7 @@ production :
 
 | Composant | Point d'entrée | Accès base | Rôle utilisé |
 |---|---|---|---|
-| API serverless (135 routes) | `api/index.ts` → `api/_routes/**` | client Prisma **unique** (`api/_lib/prisma.ts`, seul `new PrismaClient()` de `api/`) | `DATABASE_URL` |
+| API serverless (139 entrées de routage, 138 modules) | `api/index.ts` → `api/_routes/**` | client Prisma **unique** (`api/_lib/prisma.ts`, seul `new PrismaClient()` de `api/`) | `DATABASE_URL` |
 | Route de readiness interne | `api/_routes/internal/p2-readiness.ts` | même client | `DATABASE_URL` |
 | Tâche planifiée quotidienne | `vercel.json` → `/api/internal/notification-outbox/schedule` | même client | `DATABASE_URL` |
 | Traitement différé (outbox) | `internal/notification-outbox/{process,reminders,health}` | même client | `DATABASE_URL` |
