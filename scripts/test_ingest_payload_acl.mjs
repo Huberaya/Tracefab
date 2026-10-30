@@ -359,6 +359,115 @@ try {
     }
   }
 
+  console.log('\n  A9 — le propriétaire de la fonction reste autorisé (runtime actuel)');
+  // POURQUOI CE CAS EXISTE (P10.3)
+  //
+  // Le runtime de production ne se connecte pas encore avec `tracefab_app` :
+  // il utilise le rôle PROPRIÉTAIRE de la base, celui des migrations
+  // (documenté dans `.github/workflows/ci.yml`). Ce rôle n'est ni
+  // superutilisateur ni membre de `tracefab_app`. La garde de P10.2, dans sa
+  // première version, le REFUSAIT : mesure sur base jetable avec un rôle au
+  // profil identique (NOSUPERUSER BYPASSRLS, propriétaire, hors
+  // `tracefab_app`) → `ingest_role_not_allowed` sur l'appel nominal. Appliquer
+  // cette version aurait coupé l'ingestion au déploiement.
+  //
+  // La branche « propriétaire » n'élargit rien : ce rôle peut déjà ALTER et
+  // DROP la fonction, et il possède les tables qu'elle écrit.
+  const ROLE_PROPRIO = 'tf_p103_proprietaire';
+  let proprietaireInitial = null;
+  {
+    const r0 = await admin.query(
+      `SELECT pg_get_userbyid(p.proowner) AS proprietaire FROM pg_proc p WHERE p.oid = $1::regprocedure`,
+      [SIGNATURE]);
+    proprietaireInitial = r0.rows[0].proprietaire;
+
+    // Reprise d'une exécution interrompue.
+    await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});
+    await admin.query(`DROP OWNED BY ${ROLE_PROPRIO}`).catch(() => {});
+    await admin.query(`DROP ROLE IF EXISTS ${ROLE_PROPRIO}`);
+    await admin.query(`CREATE ROLE ${ROLE_PROPRIO} LOGIN PASSWORD '${MDP_SONDE}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    nettoyage.push(async () => {
+      await admin.query(`ALTER FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) OWNER TO "${proprietaireInitial}"`).catch(() => {});
+      await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});
+      await admin.query(`DROP OWNED BY ${ROLE_PROPRIO}`).catch(() => {});
+      await admin.query(`DROP ROLE IF EXISTS ${ROLE_PROPRIO}`);
+    });
+
+    // Ce que la propriété donne en production : l'accès aux tables et aux
+    // fonctions utilitaires. On le reproduit ici, sur une base jetable.
+    await admin.query(`GRANT USAGE ON SCHEMA public TO ${ROLE_PROPRIO}`);
+    await admin.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${ROLE_PROPRIO}`);
+    await admin.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${ROLE_PROPRIO}`);
+    // Toutes les fonctions utilitaires : en production, le propriétaire les
+    // possède, donc en a l'EXECUTE par propriété. On reproduit ce point.
+    await admin.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${ROLE_PROPRIO}`);
+    await admin.query(`ALTER FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) OWNER TO ${ROLE_PROPRIO}`);
+
+    const c = await ouvrir(urlAvecRole(URL_PROPRIETAIRE, ROLE_PROPRIO, MDP_SONDE));
+    try {
+      const r = await appelerParCheminApplicatif(c, {
+        userId: userA,
+        organizationId: orgA,
+        payload: { products: [{ reference: `REF-${MARQUEUR}-PROPRIO`, name: 'Ingestion par le propriétaire' }] },
+      });
+      verifier('A9 le propriétaire (non superutilisateur, hors tracefab_app) est autorisé',
+        Boolean(r && typeof r === 'object'), JSON.stringify(r || null).slice(0, 120));
+    } catch (e) {
+      verifier('A9 le propriétaire (non superutilisateur, hors tracefab_app) est autorisé', false, e.message);
+    } finally {
+      await c.end();
+    }
+
+    const p = await admin.query(
+      `SELECT count(*)::int n FROM tracefab_products WHERE brand_organization_id = $1 AND reference = $2`,
+      [orgA, `REF-${MARQUEUR}-PROPRIO`]);
+    verifier('A9 l écriture du propriétaire aboutit dans la bonne organisation', p.rows[0].n === 1, `n=${p.rows[0].n}`);
+  }
+
+  console.log('\n  A10 — propriété retirée : le même rôle est de nouveau refusé');
+  {
+    await admin.query(`ALTER FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) OWNER TO "${proprietaireInitial}"`);
+    // L'EXECUTE est conservé : ce qui doit refuser, c'est la GARDE, pas l'ACL.
+    await admin.query(`GRANT EXECUTE ON FUNCTION ${SIGNATURE} TO ${ROLE_PROPRIO}`);
+    const c = await ouvrir(urlAvecRole(URL_PROPRIETAIRE, ROLE_PROPRIO, MDP_SONDE));
+    try {
+      const r = await attendreRefus(() => appelerParCheminApplicatif(c, {
+        userId: userA,
+        organizationId: orgA,
+        payload: { products: [{ reference: `REF-${MARQUEUR}-PLUSPROPRIO`, name: 'Doit être refusé' }] },
+      }));
+      verifier('A10 sans la propriété, le rôle est refusé par la garde',
+        r.ok && /ingest_role_not_allowed/.test(r.message), r.ok ? r.message : 'appel ACCEPTÉ');
+    } finally {
+      await c.end();
+    }
+    const p = await admin.query(`SELECT count(*)::int n FROM tracefab_products WHERE reference = $1`,
+      [`REF-${MARQUEUR}-PLUSPROPRIO`]);
+    verifier('A10 aucune écriture n a eu lieu après retrait de la propriété', p.rows[0].n === 0, `n=${p.rows[0].n}`);
+
+    const proprietaireApres = (await admin.query(
+      `SELECT pg_get_userbyid(p.proowner) AS proprietaire FROM pg_proc p WHERE p.oid = $1::regprocedure`,
+      [SIGNATURE])).rows[0].proprietaire;
+    verifier('A10 le propriétaire de la fonction est restauré',
+      proprietaireApres === proprietaireInitial, `${proprietaireApres} ≠ ${proprietaireInitial}`);
+
+    // Remise à l'état du dépôt : l'ACL mesurée par A8 doit être celle des
+    // migrations, pas celle des sondes de ce test.
+    await admin.query(`REVOKE EXECUTE ON FUNCTION ${SIGNATURE} FROM ${ROLE_PROPRIO}`);
+    await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});
+    await admin.query(`DROP OWNED BY ${ROLE_PROPRIO}`).catch(() => {});
+    await admin.query(`DROP ROLE IF EXISTS ${ROLE_PROPRIO}`);
+    const restants = await admin.query(`
+      SELECT DISTINCT a.grantee::regrole::text AS role_name
+        FROM pg_proc p CROSS JOIN LATERAL aclexplode(p.proacl) a
+       WHERE p.oid = $1::regprocedure AND a.privilege_type = 'EXECUTE'
+         AND a.grantee <> 0
+         AND a.grantee::regrole::text NOT IN ('tracefab_app', pg_get_userbyid(p.proowner))`,
+      [SIGNATURE]);
+    verifier('A10 l ACL est revenue à l état des migrations', restants.rows.length === 0,
+      restants.rows.map((r) => r.role_name).join(', '));
+  }
+
   console.log('\n  A8 — ACL après toutes les migrations');
   {
     const pub = await admin.query(`SELECT has_function_privilege('public', $1::regprocedure, 'EXECUTE') AS peut`, [SIGNATURE]);

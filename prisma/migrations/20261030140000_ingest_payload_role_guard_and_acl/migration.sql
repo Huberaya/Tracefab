@@ -12,8 +12,11 @@
 --
 -- CE QUE CETTE MIGRATION FAIT
 --
---   1. L execution est reservee au ROLE DE SESSION applicatif : c est le seul
---      element authentifie par PostgreSQL, donc non falsifiable par le client.
+--   1. L execution est reservee au ROLE DE SESSION : c est le seul element
+--      authentifie par PostgreSQL, donc non falsifiable par le client. Sont
+--      admis le role applicatif `tracefab_app`, un superutilisateur, et le
+--      PROPRIETAIRE de la fonction (le runtime actuel se connecte sous ce
+--      role ; voir la branche 3 dans le corps).
 --      Un GUC n est jamais accepte comme preuve d identite.
 --   2. `search_path` est epingle a `pg_catalog, public` : les noms non
 --      qualifies ne peuvent pas etre detournes par un schema place devant.
@@ -108,9 +111,36 @@ BEGIN
     v_role_autorise := (pg_catalog.to_regrole('tracefab_app') IS NOT NULL)
       AND pg_catalog.pg_has_role(session_user, 'tracefab_app', 'MEMBER');
   END IF;
+  -- 3) LE PROPRIETAIRE DE LA FONCTION (P10.3).
+  --
+  -- MESURE QUI A IMPOSE CETTE BRANCHE : le runtime de production ne se connecte
+  -- pas (encore) avec `tracefab_app` mais avec le role PROPRIETAIRE de la base,
+  -- qui est aussi celui des migrations (documente : `.github/workflows/ci.yml`,
+  -- « Le runtime se connecte aujourd hui avec neondb_owner »). Ce role n est ni
+  -- superutilisateur ni membre de `tracefab_app` : sans cette branche, la garde
+  -- refusait le chemin LEGITIME. Reproduit sur base jetable avec un role au
+  -- profil identique (NOSUPERUSER BYPASSRLS, proprietaire de la fonction,
+  -- hors `tracefab_app`) : `ingest_role_not_allowed` sur l appel nominal.
+  --
+  -- Ce n est pas un affaiblissement : le proprietaire peut deja ALTER et DROP
+  -- cette fonction, et il possede les tables qu elle ecrit. Le refuser ne
+  -- protegerait rien et casserait le service. `prosecdef` est verifie pour que
+  -- la branche ne puisse pas survivre a un passage en SECURITY INVOKER, ou
+  -- « proprietaire » et « appelant » se confondraient.
+  IF NOT COALESCE(v_role_autorise, false) THEN
+    SELECT true INTO v_role_autorise
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname = 'tracefab_ingest_plm_erp_payload'
+       AND p.prosecdef
+       AND pg_catalog.pg_get_userbyid(p.proowner) = session_user
+     LIMIT 1;
+    v_role_autorise := COALESCE(v_role_autorise, false);
+  END IF;
   IF NOT COALESCE(v_role_autorise, false) THEN
     RAISE EXCEPTION 'ingest_role_not_allowed'
-      USING HINT = 'tracefab_ingest_plm_erp_payload est reserve au role applicatif tracefab_app.';
+      USING HINT = 'tracefab_ingest_plm_erp_payload est reserve au role applicatif tracefab_app ou au proprietaire de la fonction.';
   END IF;
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'authentication_required';
