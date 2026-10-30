@@ -234,7 +234,22 @@
     "db:preflight": "node scripts/preflight_etat_base.mjs",
     "test:dpp:branche": "node scripts/valider_branche_dpp.mjs",
     "db:mesure-dpp": "node scripts/mesure_effet_migrations_dpp.mjs",
-    "test:plm-erp:policy-dedup": "node scripts/test_plm_erp_policy_dedup.mjs"
+    "test:plm-erp:policy-dedup": "node scripts/test_plm_erp_policy_dedup.mjs",
+    "test:jetables:verrou-cluster": "node scripts/run-db-suite.mjs scripts/test_verrou_cluster.mjs",
+    "test:jetables:concurrence": "node scripts/run-db-suite.mjs scripts/test_concurrence_suites.mjs",
+    "test:jetables:base-ephemere": "node scripts/run-db-suite.mjs scripts/test_base_ephemere_garde.mjs",
+    "test:jetables:role-ephemere": "node scripts/run-db-suite.mjs scripts/test_role_ephemere_garde.mjs",
+    "test:jetables:role-app": "node scripts/run-db-suite.mjs scripts/test_ensure_app_role_garde.mjs",
+    "test:jetables:destruction": "node scripts/run-db-suite.mjs scripts/test_destruction_verrouillee.mjs",
+    "test:jetables:ressources-fixes": "node scripts/run-db-suite.mjs scripts/test_ressources_fixes_garde.mjs",
+    "test:jetables:reprise": "node scripts/run-db-suite.mjs scripts/test_reprise_ressources_jetables.mjs",
+    "test:jetables:provisioning": "node scripts/run-db-suite.mjs scripts/test_provisioning_role_app.mjs",
+    "test:jetables:garde-cible": "node scripts/run-db-suite.mjs scripts/test_garde_cible_ecriture.mjs",
+    "test:jetables:migration-atomicite": "node scripts/run-db-suite.mjs scripts/test_migration_atomicite_plm_dedup.mjs",
+    "test:jetables:harnais-rls": "node scripts/run-db-suite.mjs scripts/harnais_suites_rls.mjs scripts/test_rls_write_policies.mjs scripts/test_rls_bypass_controle_negatif.mjs",
+    "test:jetables:reinitialiser-base": "node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs",
+    "test:jetables:nettoyer": "node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs",
+    "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:harnais-rls"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",

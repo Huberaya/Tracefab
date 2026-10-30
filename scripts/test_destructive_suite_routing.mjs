@@ -71,6 +71,37 @@ const DESTRUCTIVE_DB_SUITES = [
   // publications. Identifiants tires au hasard a chaque execution, parce que
   // `dpp_lifecycle_events` est append-only : aucun tenant n'est reutilisable.
   'scripts/test_dpp_review_and_publication.mjs',
+  // --- Chantier des ressources jetables (P8) -------------------------------
+  // Ces quatorze fichiers ont ete ajoutes avec les bibliotheques de ressources
+  // jetables sans que le registre soit mis a jour : la politique les voyait
+  // ecrire en base sans declaration, et `test:db-routing` echouait. Ils sont
+  // desormais declares ICI (donc exiges derriere le lanceur) et cables dans
+  // `package.json` uniquement via `scripts/run-db-suite.mjs` — la section A le
+  // verifie, elle refuse toute invocation directe.
+  //
+  // Aucun n'est exempte : chacun cree, detruit ou verrouille des ressources du
+  // cluster (bases `tf_*`, roles ephemeres, verrou advisory). Plusieurs creent
+  // une base ephemere par execution : le nom porte un identifiant tire au sort.
+  'scripts/test_verrou_cluster.mjs',
+  'scripts/test_concurrence_suites.mjs',
+  'scripts/test_base_ephemere_garde.mjs',
+  'scripts/test_role_ephemere_garde.mjs',
+  'scripts/test_ensure_app_role_garde.mjs',
+  'scripts/test_destruction_verrouillee.mjs',
+  'scripts/test_ressources_fixes_garde.mjs',
+  'scripts/test_reprise_ressources_jetables.mjs',
+  'scripts/test_provisioning_role_app.mjs',
+  'scripts/test_garde_cible_ecriture.mjs',
+  'scripts/test_migration_atomicite_plm_dedup.mjs',
+  // Harnais : execute les suites qu'on lui passe. Sa propre documentation
+  // d'emploi impose le lanceur, et il cree une base ephemere par suite.
+  'scripts/harnais_suites_rls.mjs',
+  // Outils de cycle de vie des ressources jetables, cables eux aussi derriere
+  // le lanceur. `reinitialiser_base_jetable` refuse par ailleurs tout nom hors
+  // liste fermee (`tracefab_test`, `tf_*`) ; `nettoyer_ressources_jetables`
+  // exige `--confirmer` et ne touche qu'aux ressources citees au manifeste.
+  'scripts/reinitialiser_base_jetable.mjs',
+  'scripts/nettoyer_ressources_jetables.mjs',
 ];
 
 /**
@@ -146,6 +177,26 @@ const ROLLBACK_ONLY_DB_SUITES = [
  */
 const REFUSED_WRITE_PROBE_DB_SUITES = [
   'scripts/test_audit_neon_readonly.mjs',
+];
+
+/**
+ * Outils d'ecriture qui portent EUX-MEMES la garde de cible, avec arret.
+ *
+ * `db-deploy-throwaway.mjs` applique les migrations : il n'est pas une suite,
+ * donc il ne peut pas etre confie au lanceur de suites. Il appelle pourtant
+ * `requireThrowawayDb({ exitOnFailure: true })` au chargement du module, avant
+ * la premiere instruction qui touche la base — exactement la propriete que le
+ * lanceur apporte aux suites. Le classer « outil d'exploitation » serait faux
+ * (la CI l'invoque), et le router par `run-db-suite.mjs` ferait executer le
+ * deployeur par le lanceur de suites.
+ *
+ * La declaration n'est PAS un blanc-seing : la section F2 relit le source et
+ * exige l'appel a la garde au chargement du module, sans `exitOnFailure: false`
+ * (la garde sort par defaut). Un outil qui perdrait son garde-fou ferait
+ * echouer la politique.
+ */
+const SELF_GUARDED_DB_TOOLS = [
+  'scripts/db-deploy-throwaway.mjs',
 ];
 
 /**
@@ -259,6 +310,7 @@ console.log('\n  C. aucune suite destructive non declaree');
     if (PATTERN_ONLY_FILES.includes(rel)) continue;
     if (ROLLBACK_ONLY_DB_SUITES.includes(rel)) continue;
     if (REFUSED_WRITE_PROBE_DB_SUITES.includes(rel)) continue;
+    if (SELF_GUARDED_DB_TOOLS.includes(rel)) continue;
     // Une suite invoquee uniquement via le lanceur est couverte.
     const invocations = scriptInvocations(rel);
     if (invocations.length > 0 && invocations.every(([, command]) => command.includes(WRAPPER))) continue;
@@ -363,6 +415,30 @@ for (const rel of OPERATOR_WRITER_SCRIPTS) {
   body.includes('--dry-run') || body.includes('--appliquer')
     ? ok(`${rel} — porte un mode sans ecriture`)
     : ko(`${rel} n offre aucun mode sans ecriture`);
+}
+
+console.log('\n  F2. les outils auto-gardes appellent vraiment la garde, avec arret');
+for (const rel of SELF_GUARDED_DB_TOOLS) {
+  if (!existsSync(join(ROOT, rel))) { ko(`outil auto-garde introuvable : ${rel}`); continue; }
+  const corps = readFileSync(join(ROOT, rel), 'utf8');
+  if (!/requireThrowawayDb\s*\(/.test(corps)) {
+    ko(`${rel} est declare auto-garde mais n appelle pas requireThrowawayDb`);
+    continue;
+  }
+  // L'appel doit etre au niveau du module (marge nulle ou deux espaces), pas
+  // dans une fonction qui pourrait ne jamais s executer.
+  const auChargement = /^\s{0,2}(?:const \w+ = )?requireThrowawayDb\s*\(/.test(
+    corps.split('\n').filter((l) => /requireThrowawayDb\s*\(/.test(l) && !/^\s*\*/.test(l)).join('\n'),
+  );
+  // `requireThrowawayDb` sort par defaut (`exitOnFailure = true`) : ce qui
+  // retirerait l arret, c est un `exitOnFailure: false` explicite.
+  const avecArret = !/exitOnFailure\s*:\s*false/.test(corps);
+  auChargement
+    ? ok(`${rel} — garde appelee au chargement du module`)
+    : ko(`${rel} — la garde n est pas appelee au chargement : elle peut ne jamais s executer`);
+  avecArret
+    ? ok(`${rel} — garde sans exitOnFailure desactive`)
+    : ko(`${rel} — exitOnFailure: false : le script continuerait sur une cible refusee`);
 }
 
 console.log('\n  E. les suites declarees sans ecriture le sont vraiment');
