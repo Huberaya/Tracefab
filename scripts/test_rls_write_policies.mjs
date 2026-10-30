@@ -149,12 +149,42 @@ try {
       : `${sansCheck.length} politique(s) heritent de USING comme WITH CHECK`);
 
   // ---------------------------------------------------------------- D
+  // La propriete exigee est « search_path FIXE, et fixe sur des schemas de
+  // confiance ». La version precedente comparait a la chaine exacte
+  // 'search_path=public' : elle confondait la propriete avec une valeur
+  // particuliere, et refusait donc tout durcissement. Depuis
+  // 20261030140000_ingest_payload_role_guard_and_acl, la fonction d'ingestion
+  // epingle 'search_path=pg_catalog, public' — plus strict qu'avant, puisque
+  // pg_catalog y passe en tete et ne peut plus etre masque par un schema
+  // utilisateur. Le controle porte donc sur la FORME : un search_path eponyme
+  // doit exister, et il ne doit lister que pg_catalog et public.
   const sd = await all(`
-    SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public' AND p.prosecdef
-      AND NOT ('search_path=public' = ANY(COALESCE(p.proconfig, '{}')))`);
-  verifier(sd.length === 0, 'aucune fonction SECURITY DEFINER sans search_path fixe',
-    sd.length ? sd.map((r) => r.proname).join(', ') : '0');
+    SELECT p.proname,
+           array_to_string(COALESCE(p.proconfig, '{}'), '|') AS config
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public' AND p.prosecdef`);
+  // `proconfig` est un tableau : le lire en texte puis le decouper est plus
+  // sur que d'analyser sa representation (`{search_path=public}`) par
+  // expression reguliere — c'est cette analyse qui a produit 124 faux positifs
+  // au premier essai.
+  const chemin = (config) => {
+    const brut = String(config || '').split('|').find((x) => x.startsWith('search_path='));
+    if (!brut) return null;
+    return brut.slice('search_path='.length).split(',').map((x) => x.trim().replace(/^"|"$/g, ''));
+  };
+  const schemasAutorises = ['pg_catalog', 'public'];
+  const sansChemin = sd.filter((r) => chemin(r.config) === null);
+  const horsConfiance = sd.filter((r) => {
+    const c = chemin(r.config);
+    return c !== null && c.some((sch) => !schemasAutorises.includes(sch));
+  });
+  verifier(sansChemin.length === 0, 'aucune fonction SECURITY DEFINER sans search_path fixe',
+    sansChemin.length ? sansChemin.map((r) => r.proname).join(', ') : `0 sur ${sd.length}`);
+  verifier(horsConfiance.length === 0,
+    'tout search_path epingle ne nomme que pg_catalog et public',
+    horsConfiance.length
+      ? horsConfiance.map((r) => `${r.proname} (${chemin(r.config).join(',')})`).join(', ')
+      : `0 sur ${sd.length}`);
 
   // ---------------------------------------------------------------- F puis E
   // Fixture : deux organisations avec un proprietaire chacune, et un produit
