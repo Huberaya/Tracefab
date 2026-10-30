@@ -90,6 +90,7 @@ const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_destruction_verrouillee.mjs',
   'scripts/test_ressources_fixes_garde.mjs',
   'scripts/test_reprise_ressources_jetables.mjs',
+  'scripts/test_r4_inscription_base_jetable.mjs',
   'scripts/test_provisioning_role_app.mjs',
   'scripts/test_garde_cible_ecriture.mjs',
   'scripts/test_migration_atomicite_plm_dedup.mjs',

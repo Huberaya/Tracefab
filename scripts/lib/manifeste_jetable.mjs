@@ -40,6 +40,49 @@ export function cheminManifeste() {
 }
 
 /**
+ * Instant de demarrage d'un processus, en ticks depuis le boot.
+ *
+ * Lu dans `/proc/<pid>/stat`, champ 22. On isole la partie apres la derniere
+ * parenthese : le champ 2 (`comm`) peut contenir des espaces et des
+ * parentheses, et decouper naivement la ligne decalerait tous les champs.
+ *
+ * Rend `null` hors Linux, ou si le processus n'existe pas.
+ */
+export function demarrageProcessus(pid) {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+    const finComm = stat.lastIndexOf(')');
+    if (finComm === -1) return null;
+    const champs = stat.slice(finComm + 2).split(' ');
+    return champs[19] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Le createur enregistre est-il encore en train de tourner ?
+ *
+ * Trois conditions, toutes necessaires, parce qu'un PID recycle produirait
+ * sinon un faux « vivant » qui empecherait toute reprise :
+ *
+ *   1. meme hote — un PID n'a de sens que sur la machine qui l'a vu naitre ;
+ *   2. le PID existe ;
+ *   3. son instant de demarrage est celui enregistre.
+ *
+ * Une entree SANS ces champs (manifeste ecrit par une version anterieure) est
+ * traitee comme « createur inconnu » : elle n'empeche pas la reprise, et le
+ * triplet nom/OID/cluster reste la seule autorisation.
+ */
+export function createurVivant(entree) {
+  if (!entree || entree.pid === undefined || entree.pid === null) return false;
+  if (entree.hote && entree.hote !== os.hostname()) return false;
+  if (!entree.pid_debut) return false;
+  const actuel = demarrageProcessus(entree.pid);
+  return actuel !== null && String(actuel) === String(entree.pid_debut);
+}
+
+/**
  * Enregistre une ressource creee par un test.
  *
  * @param {object} entree
@@ -60,6 +103,17 @@ export function enregistrerRessource({ genre, nom, oid, systemIdentifier, create
     createur: createur || path.basename(process.argv[1] || 'inconnu'),
     cree_le: new Date().toISOString(),
     pid: process.pid,
+    // R4/R11 (P10.2) — de quoi prouver plus tard que le CREATEUR est encore
+    // vivant, et pas seulement qu'un PID a existe.
+    //
+    // `pid` seul ne suffit pas : les PID sont recycles. On enregistre donc
+    // l'instant de demarrage du processus (champ 22 de /proc/<pid>/stat,
+    // exprime en ticks depuis le boot) et l'hote. Une entree dont le couple
+    // (hote, pid, pid_debut) correspond encore a un processus vivant designe
+    // une ressource EN COURS D'UTILISATION : la detruire reviendrait a
+    // arracher la base sous les pieds d'un test en train de tourner.
+    hote: os.hostname(),
+    pid_debut: demarrageProcessus(process.pid),
   });
   try {
     const chemin = cheminManifeste();
@@ -121,6 +175,8 @@ export function lireManifeste(chemin = cheminManifeste()) {
         createur: e.createur,
         cree_le: e.cree_le,
         pid: e.pid,
+        hote: e.hote,
+        pid_debut: e.pid_debut,
       });
     } catch {
       // Une ligne tronquee par une interruption n'est pas exploitable : on

@@ -15,7 +15,10 @@
  *
  *   — le `system_identifier` du cluster doit etre CELUI d'aujourd'hui ;
  *   — le nom doit figurer au manifeste ;
- *   — l'OID relu en direct doit etre EXACTEMENT celui du manifeste.
+ *   — l'OID relu en direct doit etre EXACTEMENT celui du manifeste ;
+ *   — le CREATEUR enregistre ne doit plus etre vivant (P10.2). Une base en
+ *     cours d'utilisation n'est pas une orpheline : la detruire reviendrait a
+ *     arracher le tapis sous un test qui tourne, avec `57P01` a la cle.
  *
  * Une base renommee, recreee ou appartenant a un autre cluster est refusee. Un
  * refus porte sur l'ensemble du lot : on ne detruit pas la moitie de ce qu'on a
@@ -41,7 +44,7 @@ import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { classifyTarget, requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { deriverUrl, avecVerrouDeCluster, identiteServeur } from './lib/ephemeral-db.mjs';
-import { cheminManifeste, lireManifeste } from './lib/manifeste_jetable.mjs';
+import { cheminManifeste, createurVivant, lireManifeste } from './lib/manifeste_jetable.mjs';
 
 const argv = process.argv.slice(2);
 const confirmer = argv.includes('--confirmer');
@@ -100,6 +103,7 @@ try {
   const aDetruire = [];
   const refus = [];
   const dejaAbsentes = [];
+  const vivantes = [];
 
   for (const e of derniere.values()) {
     const cle = `${e.genre}:${e.nom}`;
@@ -123,6 +127,15 @@ try {
         refus.push(`${cle} — OID actuel ${rows[0].oid} ≠ OID cree ${e.oid} (base recreee : pas la notre)`);
         continue;
       }
+      // Ressource VIVANTE : l'identite est la bonne (nom + OID + cluster) mais
+      // le createur tourne encore. Ce n'est pas une orpheline, c'est un test en
+      // cours : on la CONSERVE. Ce controle vient APRES la preuve d'identite —
+      // mesure du 30/10 : place avant, il masquait le refus d'OID divergent et
+      // transformait un controle negatif en faux « conserve ».
+      if (createurVivant(e)) {
+        vivantes.push(`${cle} — createur encore vivant (pid ${e.pid}, ${e.createur ?? '?'})`);
+        continue;
+      }
       aDetruire.push(e);
     } else if (e.genre === 'role') {
       const { rows } = await admin.query(`
@@ -140,10 +153,20 @@ try {
         refus.push(`${cle} — le role possede ${rows[0].objets} objet(s) : destruction refusee`);
         continue;
       }
+      if (createurVivant(e)) {
+        vivantes.push(`${cle} — createur encore vivant (pid ${e.pid}, ${e.createur ?? '?'})`);
+        continue;
+      }
       aDetruire.push(e);
     } else {
       refus.push(`${cle} — genre inconnu (${e.genre})`);
     }
+  }
+
+  if (vivantes.length > 0) {
+    console.log('  CONSERVEES — ressources vivantes, createur toujours en cours :');
+    for (const v of vivantes) console.log(`    ~ ${v}`);
+    console.log('');
   }
 
   if (refus.length > 0) {

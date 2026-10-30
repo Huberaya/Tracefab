@@ -49,7 +49,8 @@
 import pg from 'pg';
 import { sslDepuisUrl } from './pg-ssl.mjs';
 import { classifyTarget } from './require-throwaway-db.mjs';
-import { avecVerrouDeCluster, deriverUrl, verrouillerCluster } from './ephemeral-db.mjs';
+import { avecVerrouDeCluster, deriverUrl, identiteServeur, verrouillerCluster } from './ephemeral-db.mjs';
+import { enregistrerRessource } from './manifeste_jetable.mjs';
 
 /** Marque posee sur la base : sa presence autorise la destruction. */
 export const MARQUE = 'tracefab:base-jetable';
@@ -164,6 +165,10 @@ export async function reinitialiserBaseJetable({ urlProprietaire, nom = 'tracefa
   const verrou = await verrouillerCluster({ urlProprietaire });
   const admin = await ouvrir(urlMaintenance);
   try {
+    // Identite du cluster relue AVANT toute ecriture : c'est elle qui sera
+    // inscrite au manifeste avec l'OID, pour que la reprise apres SIGKILL
+    // puisse prouver qu'elle s'adresse au bon serveur.
+    const identiteCluster = await identiteServeur(admin);
     const avant = await etatBase(urlProprietaire, nom);
     let adoption;
 
@@ -202,7 +207,39 @@ export async function reinitialiserBaseJetable({ urlProprietaire, nom = 'tracefa
 
     const apres = await etatBase(urlProprietaire, nom);
     if (apres === null || apres.marque !== MARQUE) {
-      throw new Error(`base ${nom} creee sans marque verifiable — etat inattendu`);
+      await admin.query(`DROP DATABASE IF EXISTS ${ident(nom)} WITH (FORCE)`);
+      throw new Error(`base ${nom} creee sans marque verifiable — detruite, etat inattendu`);
+    }
+
+    // R4 (P10.2) — INSCRIPTION AU MANIFESTE.
+    //
+    // Avant, cette fonction creait une base `tf_*` SANS rien ecrire au
+    // manifeste : `nettoyer_ressources_jetables` ne pouvait donc jamais la
+    // reprendre, et une interruption en laissait une orpheline DEFINITIVE.
+    // Mesure P10.1 : base `tf_p101_z` creee, manifeste vide, « aucun
+    // enregistrement : rien a reprendre ».
+    //
+    // L'identite enregistree est le triplet que `nettoyer` exige : nom, OID
+    // relu APRES creation, et `system_identifier` du cluster. Le `pid` est
+    // ecrit aussi : `nettoyer` refuse desormais de detruire une ressource dont
+    // le createur est encore vivant.
+    //
+    // ECHEC PARTIEL : si la trace ne peut pas etre ecrite, la base vient
+    // d'etre creee et serait orpheline. On la DETRUIT donc immediatement
+    // (fail-closed) plutot que de laisser une ressource non reprenable.
+    const tracee = enregistrerRessource({
+      genre: 'base',
+      nom,
+      oid: apres.oid,
+      systemIdentifier: identiteCluster.systemIdentifier,
+      createur: 'reinitialiser_base_jetable',
+    });
+    if (!tracee) {
+      await admin.query(`DROP DATABASE IF EXISTS ${ident(nom)} WITH (FORCE)`);
+      throw new Error(
+        `base ${nom} creee mais NON inscrite au manifeste — detruite pour ne pas laisser `
+        + 'une orpheline non reprenable (R4). Verifier TF_MANIFESTE et les droits du fichier.',
+      );
     }
 
     return {
@@ -211,6 +248,7 @@ export async function reinitialiserBaseJetable({ urlProprietaire, nom = 'tracefa
       oidApres: String(apres.oid),
       action: avant === null ? 'creee' : 'recreee',
       adoption,
+      tracee: true,
     };
   } finally {
     await admin.end();
