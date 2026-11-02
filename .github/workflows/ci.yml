@@ -1218,6 +1218,25 @@ jobs:
         # jetable, et le script refuse toute cible non locale avant connexion.
         run: npm run test:p107:demonstration
 
+      - name: P10.7 — la sonde de configuration HMAC n expose aucun fragment de cle
+        # Chantier C. La sonde lit la cle en memoire et n en publie que la
+        # PRESENCE, le FORMAT (valide ou non) et un libelle d etat ; ce test
+        # l etablit avec des cles FACTICES et refuse toute fenetre de huit
+        # caracteres dans la sortie, y compris sur le chemin d erreur. Il
+        # verifie aussi que deux etats distincts ne se confondent pas : une
+        # cle presente mais malformee sort en 1 (erreur d exploitation), une
+        # cle absente en 0 (etat de transition documente). La sonde elle-meme
+        # tourne ici sur la cle ABSENTE de la CI, ce qui exerce le chemin reel.
+        run: npm run test:p107:sonde-hmac
+
+      - name: P10.7 — etat de la configuration HMAC de l environnement de CI
+        # Sortie informative et EXPURGEE : la CI n a pas de cle d identite, et
+        # la mesure doit le dire au lieu de laisser croire que tout est pret.
+        # Non bloquant PARCE QUE l absence est l etat documente, pas une panne ;
+        # une cle PRESENTE mais invalide sort en 1 et ferait echouer l etape,
+        # ce qui est le comportement voulu. Ce n est pas un `continue-on-error`.
+        run: npm run sonde:p107:hmac --silent -- ci
+
       - name: P10.5 — la hierarchie des roles, mesuree dans les deux sens
         # Douze assertions : attributs, appartenances directes ET transitives,
         # refus de `SET ROLE` vers le migrator, le worker et le proprietaire,
