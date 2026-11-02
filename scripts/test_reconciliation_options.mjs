@@ -84,6 +84,9 @@ const ECARTS = [
 const ANNULEES = ['20261010120000_publication_explicite',
   '20261017120000_active_tenant_context'];
 
+/** Derniere migration dont le releve de production porte la trace. */
+const BORNE_RELEVE = '20261028150000';
+
 const dossiers = fs.readdirSync(MIGRATIONS).filter((d) => /^\d{14}_/.test(d)).sort();
 const lire = (d) => fs.readFileSync(path.join(MIGRATIONS, d, 'migration.sql'), 'utf8');
 
@@ -105,6 +108,10 @@ async function baseRealiste({ avecTableRegistre = false } = {}) {
   `);
   for (const d of dossiers) {
     if (ECARTS.includes(d) && !ANNULEES.includes(d)) continue;
+    // L'etat lu ne porte aucune migration posterieure a la borne du releve :
+    // elles n'ont jamais ete deployees. Depuis 20261031120000, les inclure est
+    // une erreur mesurable (elle exige le registre runtime, absent d'ici).
+    if (d.slice(0, 14) > BORNE_RELEVE) continue;
     await db.exec(lire(d));
   }
   /**
@@ -123,6 +130,10 @@ async function baseRealiste({ avecTableRegistre = false } = {}) {
    */
   for (const d of dossiers) {
     if (ECARTS.includes(d) && !ANNULEES.includes(d)) continue;
+    // L'etat lu ne porte aucune migration posterieure a la borne du releve :
+    // elles n'ont jamais ete deployees. Depuis 20261031120000, les inclure est
+    // une erreur mesurable (elle exige le registre runtime, absent d'ici).
+    if (d.slice(0, 14) > BORNE_RELEVE) continue;
     await db.exec(`INSERT INTO _prisma_migrations
       (id, checksum, migration_name, finished_at, applied_steps_count)
       VALUES (md5('${d}'), md5('${d}-c'), '${d}', now(), 1)`);
@@ -148,10 +159,21 @@ async function baseRealiste({ avecTableRegistre = false } = {}) {
   return db;
 }
 
-/** La règle de Prisma, telle quelle. */
+/**
+ * La règle de Prisma, telle quelle — restreinte à l'univers de CE test.
+ *
+ * Ce test traite la réconciliation de la DÉRIVE : onze migrations présentes au
+ * dépôt dont l'historique de production ne porte pas la trace. Les migrations
+ * postérieures à la borne du relevé n'existent pas dans cet état (elles n'ont
+ * jamais été déployées) et sont traitées par `test:deploiement-simule`, qui les
+ * joue APRÈS réconciliation. Les inclure ici ferait porter au scénario des
+ * migrations que la production ne connaît pas.
+ */
+const UNIVERS = dossiers.filter((d) => d.slice(0, 14) <= BORNE_RELEVE);
+
 async function aAppliquer(db) {
   const { rows } = await db.query(`
-    SELECT d AS nom FROM (VALUES ${dossiers.map((d) => `('${d}')`).join(',')}) AS v(d)
+    SELECT d AS nom FROM (VALUES ${UNIVERS.map((d) => `('${d}')`).join(',')}) AS v(d)
      WHERE NOT EXISTS (
        SELECT 1 FROM _prisma_migrations m
         WHERE m.migration_name = d AND m.finished_at IS NOT NULL AND m.rolled_back_at IS NULL)
