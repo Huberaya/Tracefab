@@ -495,7 +495,14 @@ jobs:
           #     suite ne mesure rien. Elles s'executent dans le job « Base »,
           #     qui porte deja leur liste. Les laisser ici les rendrait rouges
           #     pour une raison d'environnement, jamais de code.
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')).join(' '))")
+          #   test:p105:*                 — les six suites du chantier P10.5
+          #     (roles et migrations, jeton, HMAC, ingestion, hierarchie,
+          #     sonde). Elles exigent le Postgres jetable migre ET les roles
+          #     `tracefab_app` / `tracefab_migrator` ; hors DATABASE_URL elles
+          #     sortent en 2, ce qu'une boucle ne doit pas lire comme un echec
+          #     de code. Meme raison que test:jetables:* : elles tournent dans
+          #     le job « Base », qui les cable une par une.
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -714,8 +721,14 @@ jobs:
         # `verification` (sans base), et SANS entree `test:*` — la boucle
         # dynamique de `verification` les y rendrait rouges pour une raison
         # d environnement.
+        # Le comptage est ACCUMULE et non `set -e` : quand une suite tombe, le
+        # journal du job est heberge hors de l'API GitHub, donc illisible depuis
+        # la session de travail. Sans la ligne `::error::` ci-dessous, on ne sait
+        # que « exit code 1 » — mesure du 02/11 ou une seule suite en echec a
+        # coute une investigation complete. Un echec reste un echec : la derniere
+        # ligne le nomme, et l'etape sort en 1.
         run: |
-          set -e
+          echouees=''
           for suite in \
             test_garde_cible_ecriture \
             test_verrou_fail_closed \
@@ -731,8 +744,17 @@ jobs:
             test_reprise_ressources_jetables \
           ; do
             echo "== $suite"
-            node scripts/run-db-suite.mjs "scripts/$suite.mjs"
+            if node scripts/run-db-suite.mjs "scripts/$suite.mjs"; then
+              echo "OK    $suite"
+            else
+              echo "ECHEC $suite"
+              echouees="$echouees $suite"
+            fi
           done
+          if [ -n "$echouees" ]; then
+            echo "::error::suites en echec :$echouees"
+            exit 1
+          fi
 
       - name: Isolation RLS prouvee par execution
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
