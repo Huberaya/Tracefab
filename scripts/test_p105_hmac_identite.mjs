@@ -110,6 +110,7 @@ await admin.query('UPDATE public.tracefab_identity_cles SET actif = (version = $
 // 1. Identité légitime
 // ---------------------------------------------------------------------------
 const jetonA = jeton({ userId: A.user_id, orgId: A.id, exp: MAINTENANT + 60 });
+const jetonB = jeton({ userId: B.user_id, orgId: B.id, exp: MAINTENANT + 60 });
 const r1 = await dansTransaction({ identite: jetonA, orgId: A.id }, async () => ({
   id: await identite(), n: await produits(A.id),
 }));
@@ -145,6 +146,105 @@ try {
   ok(n3 === 0, 'S3 aucune ligne de B visible par usurpation du GUC', `${n3} ligne(s)`);
 } finally {
   await admin.query('UPDATE public.tracefab_identity_politique SET strict = $1, modifie_le = now() WHERE singleton', [strictAvant]);
+}
+
+// ---------------------------------------------------------------------------
+// 3 bis. FAIL-CLOSED sur une ECRITURE (R-A1)
+//
+// Le scenario 3 prouve qu'une identite forgee ne rend pas d'identite. Il ne
+// prouve pas qu'une OPERATION est refusee : une fonction qui ne consulte pas
+// l'identite, ou une politique permissive, pourrait encore laisser passer une
+// ecriture « sans identite », et l'absence de fuite ne serait alors qu'une
+// absence de lecture.
+//
+// On mesure donc l'ecriture elle-meme : un INSERT direct, par le role
+// applicatif, dans `product_materials` — table dont la politique d'insertion
+// repose sur `tracefab_has_org_role(...)`, donc sur l'identite.
+//
+//   1. strict + aucune identite     -> REFUSEE (42501, RLS)
+//   2. strict + GUC forge           -> REFUSEE (aucun repli sur le GUC)
+//   3. permissif + aucune identite  -> REFUSEE
+//   4. strict + jeton valide        -> ACCEPTEE (controle positif : sans lui,
+//                                      les trois refus ne prouveraient rien de
+//                                      la verification, seulement que la table
+//                                      refuse tout le monde)
+//
+// Et une MESURE qui n'est pas une assertion : en mode permissif, le GUC forge
+// reste accepte. C'est le residu M3, documente dans le rapport P10.5 § 7. Il
+// est affiche pour que personne ne le confonde avec une protection acquise ;
+// il n'est pas affirme « conforme », et il disparaitra le jour ou le mode
+// strict sera arme (voir docs/security/2026-10-31-p105-hmac.md).
+// ---------------------------------------------------------------------------
+console.log('');
+{
+  // Le locataire VISÉ est B : le scénario M3 de P10.4 consistait à forger
+  // l'identité d'un membre de B pour écrire chez B. C'est donc B qu'il faut
+  // attaquer ici, pas A — mesuré le 02/11 : en forgeant un utilisateur qui
+  // n'appartient PAS au locataire visé, la RLS refuse pour une autre raison
+  // (non-membre), et le test passerait sans rien prouver de la vérification.
+  const org = B.id;
+  const matiere = (await admin.query(
+    `INSERT INTO public.materials (owner_organization_id, material_type, name, composition)
+     VALUES ($1, 'fibre', 'matiere ephemere p105 (hmac)', '{"test":true}'::jsonb)
+     RETURNING id`, [org])).rows[0].id;
+  const produit = (await admin.query(
+    `SELECT id, version FROM public.tracefab_products
+      WHERE brand_organization_id = $1 ORDER BY id LIMIT 1`, [org])).rows[0];
+
+  /** Tente l'ecriture sous un contexte donne ; rend un code, jamais une exception. */
+  const ecrire = (contexte) => dansTransaction(contexte, async () => {
+    try {
+      await app.query(
+        `INSERT INTO public.product_materials
+           (product_id, material_id, material_role, unit, product_version)
+         VALUES ($1, $2, 'fibre', 'kg', $3)`,
+        [produit.id, matiere, produit.version],
+      );
+      return 'ACCEPTEE';
+    } catch (e) {
+      return `${e.code || 'inconnu'}`;
+    }
+  });
+
+  const strictInitial = strictAvant;
+  try {
+    await admin.query('UPDATE public.tracefab_identity_politique SET strict = true, modifie_le = now() WHERE singleton');
+
+    const sansIdentite = await ecrire({ orgId: org });
+    ok(sansIdentite === '42501',
+      'S3 bis mode strict, aucune identité : l écriture est REFUSÉE par la RLS',
+      sansIdentite);
+
+    // LE scénario M3 : l'identité d'un membre RÉEL de B, forgée par GUC.
+    const gucForge = await ecrire({ userId: B.user_id, orgId: org });
+    ok(gucForge === '42501',
+      'S3 bis mode strict, GUC forgé (membre réel du locataire visé) : écriture REFUSÉE',
+      gucForge);
+
+    const jetonValide = await ecrire({ identite: jetonB, orgId: org });
+    ok(jetonValide === 'ACCEPTEE',
+      'S3 bis contrôle positif : avec un jeton VALIDE la même écriture passe',
+      jetonValide);
+
+    await admin.query('UPDATE public.tracefab_identity_politique SET strict = $1, modifie_le = now() WHERE singleton', [strictInitial]);
+
+    const permissifSansIdentite = await ecrire({ orgId: org });
+    ok(permissifSansIdentite === '42501',
+      'S3 bis mode permissif sans jeton : refusé aussi — le permissif ne dispense pas d identité',
+      permissifSansIdentite);
+
+    const permissifGuc = await ecrire({ userId: B.user_id, orgId: org });
+    console.log(`        MESURE (résidu M3, NON conforme) — mode permissif + GUC forgé : ${permissifGuc}`);
+    ok(permissifGuc === 'ACCEPTEE',
+      'S3 bis le résidu M3 est MESURÉ, pas supposé : le permissif accepte le GUC forgé',
+      permissifGuc);
+  } finally {
+    await admin.query('UPDATE public.tracefab_identity_politique SET strict = $1, modifie_le = now() WHERE singleton', [strictInitial]);
+    await admin.query('DELETE FROM public.materials WHERE id = $1', [matiere]);
+  }
+  ok((await admin.query('SELECT strict FROM public.tracefab_identity_politique WHERE singleton')).rows[0].strict === strictInitial,
+    'S3 bis la politique d identité est rendue à son état initial',
+    String(strictInitial));
 }
 
 // ---------------------------------------------------------------------------
