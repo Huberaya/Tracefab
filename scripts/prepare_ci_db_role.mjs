@@ -139,7 +139,7 @@ try {
         + '— il est CONSERVÉ, aucune modification.');
     }
     await executer(
-      `ALTER ROLE ${ident(APP_ROLE)} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`,
+      `ALTER ROLE ${ident(APP_ROLE)} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOCREATEROLE NOCREATEDB`,
     );
     console.log(`Rôle ${APP_ROLE} préexistant (OID ${avant.oid}), attributs réaffirmés (sans BYPASSRLS).`);
   }
