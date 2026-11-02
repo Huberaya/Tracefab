@@ -73,6 +73,29 @@ function relayer(source, dest) {
   });
 }
 
+// Verrou de CLUSTER pendant toute la duree de `prisma migrate deploy` : la
+// chaine contient un `ALTER ROLE` (20261028120100), objet partage par toutes les
+// bases du serveur. Le verrou est tenu par CE processus, pas par prisma.
+// Verrou de CLUSTER pendant toute la duree de `prisma migrate deploy` : la
+// chaine contient un `ALTER ROLE` (20261028120100), objet partage par toutes les
+// bases du serveur. Le verrou est tenu par CE processus, pas par prisma.
+//
+// Import DYNAMIQUE et acquisition non bloquante : ce wrapper est aussi copie
+// dans un harnais de test isole (scripts/test_db_throwaway_entrypoints.mjs) ou
+// `lib/ephemeral-db.mjs` n'existe pas. Un verrou impossible a prendre ne doit
+// pas changer le contrat du wrapper — le deploiement echouera de lui-meme.
+async function prendreVerrouCluster() {
+  try {
+    const { verrouillerCluster } = await import('./lib/ephemeral-db.mjs');
+    return await verrouillerCluster({ urlProprietaire: process.env.DATABASE_URL });
+  } catch (e) {
+    console.error(`  AVERTISSEMENT — verrou de cluster non pris (${e.code ?? String(e.message).split('\n')[0]})`);
+    return { relacher: async () => {} };
+  }
+}
+
+const verrou = await prendreVerrouCluster();
+
 const child = spawn(
   prismaBin,
   ['migrate', 'deploy'],
@@ -87,7 +110,7 @@ let fluxOuverts = 2;
 let enfantFini = false;
 function tenterSortie() {
   if (!enfantFini || fluxOuverts > 0) return;
-  process.exit(codeSortie);
+  verrou.relacher().finally(() => process.exit(codeSortie));
 }
 child.stdout.on('end', () => { fluxOuverts -= 1; tenterSortie(); });
 child.stderr.on('end', () => { fluxOuverts -= 1; tenterSortie(); });

@@ -33,14 +33,29 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
 
 const APP_ROLE = 'tracefab_app';
-const BASE_EPHEMERE = 'tracefab_compteurs_debit';
+// Aucun nom de base fixe : il rendait la suite destructrice pour une base
+// homonyme preexistante (defaut reproduit le 29/10 — une base portant ce nom et
+// sa donnee metier ont ete detruites par `DROP DATABASE IF EXISTS`, suite verte).
+// Le nom est desormais unique par execution, et la destruction est reservee a
+// l'OID cree. Voir scripts/lib/ephemeral-db.mjs.
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
+const CONTROLE_NEGATIF = process.env.COMPTEURS_CONTROLE_NEGATIF || '';
+/** Les quatre politiques attendues, inventaire EXACT. */
+const POLITIQUES_ATTENDUES = [
+  'rate_limit_counters_insert',
+  'rate_limit_counters_purge_expiree',
+  'rate_limit_counters_select',
+  'rate_limit_counters_update',
+];
+const DECLENCHEUR_ATTENDU = 'tracefab_rate_limit_counter_guard';
+const FONCTION_ATTENDUE = 'tracefab_guard_rate_limit_counter';
 
 let vertes = 0;
 let rouges = 0;
@@ -63,20 +78,38 @@ requireThrowawayDb({
   exitOnFailure: true,
 });
 
-const urlAdmin = process.env.DATABASE_URL;
-const hote = (urlAdmin.match(/@([^/:]+)/) || [])[1] ?? 'illisible';
-const urlMaintenance = urlAdmin.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
+// Base de travail : nom unique, existence verifiee AVANT creation, OID retenu,
+// destruction reservee a cet OID. Aucune base preexistante n est touchee.
+const base = await creerBaseEphemere({
+  urlProprietaire: process.env.DATABASE_URL,
+  prefixe: 'tf_compteurs',
+});
 
-const admin = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-await admin.connect();
-await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await admin.query(`CREATE DATABASE ${BASE_EPHEMERE}`);
-await admin.end();
+// Une session coupee par `DROP DATABASE ... WITH (FORCE)` emet un evenement
+// `error` : non ecoute, il tue le processus et masque la cause reelle.
+const session = (connectionString) => {
+  const c = new pg.Client({ connectionString, ssl: sslDepuisUrl(connectionString) });
+  c.on('error', () => {});
+  return c;
+};
 
-const url = urlAdmin.replace(/\/[^/?]+(\?|$)/, `/${BASE_EPHEMERE}$1`);
+// Declares AVANT le try : le `finally` doit pouvoir fermer les sessions avant
+// de detruire la base, sinon le DROP les coupe et leur 57P01 masque l'erreur.
+let mig = null;
+let app = null;
+let verrou = null;
+
+try {
+
+const url = base.url;
 const urlApp = url.replace(/:\/\/[^@]*@/, `://${APP_ROLE}:${encodeURIComponent(MOT_DE_PASSE)}@`);
 
-console.log(`\n  base éphémère sur ${hote} — ${BASE_EPHEMERE}`);
+// Serialise avec les autres suites du meme cluster : le provisioning du role et
+// la chaine de migrations touchent des objets de CLUSTER (pg_authid, ALTER ROLE).
+verrou = await verrouillerCluster(base);
+
+console.log(`\n  base éphémère unique : ${base.nom} (oid ${base.oid})`);
+console.log(`  même cluster que la maintenance : ${base.identite.systemIdentifier}`);
 
 // Rôle AVANT les migrations : ordre réel.
 execFileSync('node', [path.join(RACINE, 'scripts', 'bootstrap_app_role.mjs')], {
@@ -84,7 +117,7 @@ execFileSync('node', [path.join(RACINE, 'scripts', 'bootstrap_app_role.mjs')], {
   stdio: 'ignore',
 });
 
-const mig = new pg.Client({ connectionString: url, ssl: sslDepuisUrl(url) });
+mig = session(url);
 await mig.connect();
 await mig.query(
   `CREATE TABLE IF NOT EXISTS _prisma_migrations (
@@ -109,7 +142,41 @@ for (const d of dossiers) {
 await mig.end();
 console.log(`  ${dossiers.length} migrations appliquées, provisioning avant migrations`);
 
-const app = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp) });
+/* --- Contrôle négatif : rendre la suite CAPABLE d'échouer ------------------
+ *
+ * Une suite qui ne peut pas échouer ne prouve rien. `COMPTEURS_CONTROLE_NEGATIF`
+ * introduit volontairement une dérive sur la base jetable ; les sections F et C
+ * DOIVENT alors passer au rouge. Sans cette expérience, un vert ne dit que
+ * « le chemin nominal n'a pas bougé ».
+ */
+if (CONTROLE_NEGATIF) {
+  const derive = new pg.Client({ connectionString: url, ssl: sslDepuisUrl(url) });
+  await derive.connect();
+  const injections = {
+    politique_permissive: `CREATE POLICY derivee_ouverte ON rate_limit_counters
+        FOR SELECT TO PUBLIC USING (true);`,
+    politique_all: `CREATE POLICY derivee_all ON rate_limit_counters
+        FOR ALL TO PUBLIC USING (true) WITH CHECK (true);`,
+    politique_role_etendu: `CREATE POLICY derivee_role ON rate_limit_counters
+        FOR SELECT TO tracefab_app USING (true);`,
+    declencheur_desactive: `ALTER TABLE rate_limit_counters
+        DISABLE TRIGGER tracefab_rate_limit_counter_guard;`,
+    declencheur_absent: `DROP TRIGGER tracefab_rate_limit_counter_guard ON rate_limit_counters;`,
+    declencheur_renomme: `ALTER TRIGGER tracefab_rate_limit_counter_guard
+        ON rate_limit_counters RENAME TO intrus_avant_update;`,
+  };
+  const sql = injections[CONTROLE_NEGATIF];
+  if (!sql) {
+    console.error(`  COMPTEURS_CONTROLE_NEGATIF inconnu : ${CONTROLE_NEGATIF}`);
+    await derive.end();
+    process.exit(2);
+  }
+  await derive.query(sql);
+  await derive.end();
+  console.log(`  CONTRÔLE NÉGATIF ACTIF : ${CONTROLE_NEGATIF} — F et C doivent échouer`);
+}
+
+app = session(urlApp);
 await app.connect();
 
 const ident = await app.query('SELECT current_user AS u, (SELECT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS b');
@@ -338,25 +405,158 @@ verifier('PUBLIC n a aucune entrée d ACL sur la table', pubRole.rows[0].n === 0
 
 console.log('\n  F. état des politiques');
 
+/**
+ * Inventaire EXACT, et pas un index par commande.
+ *
+ * La version precedente faisait :
+ *     Object.fromEntries(pol.rows.map(r => [r.cmd, r]))
+ * ce qui a deux consequences mesurees le 29/10 sur une base jetable :
+ *   — deux politiques de meme `cmd` s'ecrasent : une SELECT permissive
+ *     ajoutee etait invisible, la suite restait VERTE ;
+ *   — seules trois colonnes etaient lues, donc `permissive`, `roles` et
+ *     `with_check` n'etaient jamais verifies.
+ * On lit desormais toutes les colonnes utiles et on compare l'inventaire
+ * complet, nom par nom.
+ */
 const pol = await app.query(
-  `SELECT policyname, cmd, qual FROM pg_policies WHERE tablename = 'rate_limit_counters' ORDER BY 1`,
+  `SELECT policyname, cmd, permissive, roles::text AS roles, qual, with_check
+     FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'rate_limit_counters'
+    ORDER BY policyname`,
 );
-const parCmd = Object.fromEntries(pol.rows.map((r) => [r.cmd, r]));
-verifier('la politique globale FOR ALL a disparu', !parCmd.ALL, parCmd.ALL ? parCmd.ALL.policyname : '');
+const inventaire = pol.rows.map((r) => r.policyname);
 verifier(
-  'la suppression est bornée aux fenêtres expirées',
-  parCmd.DELETE && /expires_at\s*<\s*now\(\)/.test(parCmd.DELETE.qual ?? ''),
-  parCmd.DELETE ? `USING = ${parCmd.DELETE.qual}` : 'aucune politique DELETE',
+  `l'inventaire des politiques est EXACTEMENT celui attendu (${POLITIQUES_ATTENDUES.length})`,
+  JSON.stringify(inventaire) === JSON.stringify(POLITIQUES_ATTENDUES),
+  `observé : ${JSON.stringify(inventaire)}`,
 );
-verifier('la lecture reste globale', parCmd.SELECT && parCmd.SELECT.qual === 'true', parCmd.SELECT?.qual);
-verifier('l insertion reste globale', !!parCmd.INSERT, parCmd.INSERT ? 'ok' : 'absente');
-verifier('la mise à jour reste globale', parCmd.UPDATE && parCmd.UPDATE.qual === 'true', parCmd.UPDATE?.qual);
+verifier(
+  'aucune politique supplémentaire n existe',
+  inventaire.length === POLITIQUES_ATTENDUES.length,
+  `${inventaire.length} politiques au lieu de ${POLITIQUES_ATTENDUES.length}`,
+);
+const parNom = new Map(pol.rows.map((r) => [r.policyname, r]));
+verifier(
+  'aucune politique FOR ALL (elle rouvrirait DELETE, INSERT et UPDATE d un coup)',
+  !pol.rows.some((r) => r.cmd === 'ALL'),
+  pol.rows.filter((r) => r.cmd === 'ALL').map((r) => r.policyname).join(', ') || 'aucune',
+);
+verifier(
+  'chaque politique porte une commande unique de son nom',
+  new Set(pol.rows.map((r) => r.cmd)).size === pol.rows.length,
+  pol.rows.map((r) => `${r.policyname}:${r.cmd}`).join(', '),
+);
 
-const decl = await app.query(
-  `SELECT count(*)::int n FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
-   WHERE c.relname = 'rate_limit_counters' AND NOT t.tgisinternal`,
+/* Rôles : toutes les politiques de cette table visent PUBLIC, et c'est
+ * volontaire — la table n'a pas de locataire. Ce qui compte est qu'aucune ne
+ * vise un rôle plus étroit ou plus large sans que ce soit attendu. */
+const rolesAttendus = '{public}';
+verifier(
+  'toutes les politiques visent le rôle PUBLIC',
+  pol.rows.every((r) => r.roles === rolesAttendus),
+  pol.rows.filter((r) => r.roles !== rolesAttendus).map((r) => `${r.policyname}:${r.roles}`).join(', ') || 'toutes',
 );
-verifier('un déclencheur garde les mises à jour', decl.rows[0].n === 1, `${decl.rows[0].n} déclencheur`);
+verifier(
+  'toutes les politiques sont PERMISSIVE (aucune RESTRICTIVE ajoutée)',
+  pol.rows.every((r) => r.permissive === 'PERMISSIVE'),
+  pol.rows.filter((r) => r.permissive !== 'PERMISSIVE').map((r) => r.policyname).join(', ') || 'toutes',
+);
+
+/* Clauses, selon le contrat attendu :
+ *   SELECT  USING (true)                          lecture globale
+ *   INSERT  WITH CHECK (true)                     insertion globale
+ *   UPDATE  USING (true) WITH CHECK (true)        mise à jour globale
+ *   DELETE  USING (expires_at < now())            purge des seules fenêtres expirées
+ */
+const normalise = (v) => (v ?? '').replace(/[()\s]/g, '');
+const pSelect = parNom.get('rate_limit_counters_select');
+const pInsert = parNom.get('rate_limit_counters_insert');
+const pUpdate = parNom.get('rate_limit_counters_update');
+const pDelete = parNom.get('rate_limit_counters_purge_expiree');
+
+verifier('SELECT : lecture globale (USING true, sans WITH CHECK)',
+  pSelect?.cmd === 'SELECT' && normalise(pSelect.qual) === 'true' && pSelect.with_check === null,
+  pSelect ? `${pSelect.cmd} using=${pSelect.qual} check=${pSelect.with_check}` : 'absente');
+verifier('INSERT : insertion globale (WITH CHECK true, sans USING)',
+  pInsert?.cmd === 'INSERT' && normalise(pInsert.with_check) === 'true' && pInsert.qual === null,
+  pInsert ? `${pInsert.cmd} using=${pInsert.qual} check=${pInsert.with_check}` : 'absente');
+verifier('UPDATE : mise à jour globale (USING true ET WITH CHECK true)',
+  pUpdate?.cmd === 'UPDATE' && normalise(pUpdate.qual) === 'true' && normalise(pUpdate.with_check) === 'true',
+  pUpdate ? `${pUpdate.cmd} using=${pUpdate.qual} check=${pUpdate.with_check}` : 'absente');
+
+/* La politique DELETE est le cœur du correctif du 19/10. Elle ne doit autoriser
+ * QUE les compteurs expirés : borne par expires_at, comparée à now(), et rien
+ * d'autre. Un `OR true`, un `true` nu, ou une borne sur une autre colonne
+ * rouvrirait la purge massive. */
+const qualDelete = (pDelete?.qual ?? '').replace(/\s+/g, ' ');
+verifier('DELETE : la politique porte bien la commande DELETE',
+  pDelete?.cmd === 'DELETE', pDelete?.cmd ?? 'absente');
+verifier(
+  'DELETE : USING borne par expires_at < now()',
+  /^\s*\(?\s*expires_at\s*<\s*now\(\)\s*\)?\s*$/.test(qualDelete),
+  `USING = ${qualDelete || '(aucune)'}`,
+);
+verifier(
+  'DELETE : aucun élargissement (pas de true nu, pas de OR, pas de autre colonne)',
+  !/\btrue\b/i.test(qualDelete) && !/\bor\b/i.test(qualDelete) && !/\bcurrent_user\b/i.test(qualDelete),
+  qualDelete || '(aucune)',
+);
+
+/* --- C. Le déclencheur, précisément --------------------------------------
+ *
+ * Le contrôle précédent comptait les déclencheurs : `n === 1`. Mesuré le 29/10
+ * sur base jetable, cette assertion reste VERTE quand le déclencheur est
+ * DÉSACTIVÉ (compte inchangé), quand il est RENOMMÉ, et quand un intrus le
+ * remplace. Un compteur ne dit rien de ce qui garde réellement la table.
+ */
+const decl = await app.query(
+  `SELECT t.tgname, p.proname, t.tgenabled, t.tgtype,
+          pg_get_triggerdef(t.oid) AS definition
+     FROM pg_trigger t
+     JOIN pg_class c ON c.oid = t.tgrelid
+     JOIN pg_proc  p ON p.oid = t.tgfoid
+    WHERE c.relname = 'rate_limit_counters' AND NOT t.tgisinternal
+    ORDER BY t.tgname`,
+);
+const declencheurs = decl.rows;
+verifier(
+  'un seul déclencheur non interne sur la table',
+  declencheurs.length === 1,
+  declencheurs.map((d) => d.tgname).join(', ') || 'aucun',
+);
+const garde = declencheurs.find((d) => d.tgname === DECLENCHEUR_ATTENDU);
+verifier(
+  `le déclencheur porte le nom exact ${DECLENCHEUR_ATTENDU}`,
+  Boolean(garde),
+  declencheurs.map((d) => d.tgname).join(', ') || 'aucun',
+);
+verifier(
+  `il exécute la fonction exacte ${FONCTION_ATTENDUE}`,
+  garde?.proname === FONCTION_ATTENDUE,
+  garde?.proname ?? 'aucune',
+);
+verifier(
+  'il est ACTIVÉ (tgenabled = O)',
+  garde?.tgenabled === 'O',
+  `tgenabled=${garde?.tgenabled ?? 'aucun'} (O=activé, D=désactivé, R=replica, A=always)`,
+);
+// tgtype encode les options : 2=BEFORE, 16=UPDATE, 1=FOR EACH ROW.
+const tg = Number(garde?.tgtype ?? 0);
+verifier(
+  'il se déclenche BEFORE UPDATE, FOR EACH ROW',
+  (tg & 2) !== 0 && (tg & 16) !== 0 && (tg & 1) !== 0,
+  `tgtype=${tg} (attendu 19 = BEFORE|UPDATE|ROW)`,
+);
+verifier(
+  'sa définition SQL le confirme (BEFORE UPDATE ... FOR EACH ROW)',
+  /BEFORE UPDATE ON/i.test(garde?.definition ?? '') && /FOR EACH ROW/i.test(garde?.definition ?? ''),
+  garde?.definition ?? 'aucune',
+);
+verifier(
+  'aucun déclencheur supplémentaire non prévu',
+  declencheurs.every((d) => d.tgname === DECLENCHEUR_ATTENDU),
+  declencheurs.map((d) => d.tgname).join(', ') || 'aucun',
+);
 
 console.log('\n  G. contrat de migration — base fraîche puis seconde application');
 
@@ -528,11 +728,18 @@ verifier(
 
 await app.end();
 
-const nettoyeur = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-await nettoyeur.connect();
-await nettoyeur.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await nettoyeur.end();
-console.log('  base éphémère détruite');
+} finally {
+  // Ordre : les sessions D'ABORD, la base ENSUITE. Detruire une base dont une
+  // session depend produit un 57P01 qui remplacerait l'erreur d'origine.
+  if (app) await app.end().catch(() => {});
+  if (mig) await mig.end().catch(() => {});
+  // Nettoyage dans un `finally` : une assertion qui leve, une migration en
+  // echec ou une connexion perdue passent toutes par ici. La garde ne detruit
+  // que la base qu'elle a creee (OID verifie a nouveau).
+  await base.fermer();
+  if (verrou) await verrou.relacher();
+  console.log(`  base éphémère détruite : ${base.nom}`);
+}
 
 console.log(`\n  ${vertes}/${vertes + rouges} assertions vertes`);
 if (rouges > 0) {

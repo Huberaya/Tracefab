@@ -15,17 +15,17 @@
  */
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
+import { exigerCibleEcriture } from './lib/garde_cible_ecriture.mjs';
 
-const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
-  || 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
-
-const url = process.env.DATABASE_URL;
-if (!url) { console.error('NON EXECUTE — DATABASE_URL obligatoire.'); process.exit(2); }
-const hote = new URL(url).hostname;
-if (hote === HOTE_PRODUCTION || /^ep-polished-night/.test(hote)) {
-  console.error(`REFUS — ${hote} est la base de production. Sortie 3.`);
-  process.exit(3);
-}
+// GARDE DE CIBLE — remplace la liste noire d'hotes (meme raison que dans
+// `test_dpp_role_applicatif.mjs`). La section B cree un tenant de validation et
+// ecrit des produits : la cible est classee AVANT toute connexion d'ecriture,
+// par defaut refusee, et son cluster peut etre exige par `TF_SYSID_ATTENDU`.
+const garde = await exigerCibleEcriture({
+  variables: ['DATABASE_URL'],
+  purpose: 'valider_branche_dpp — creation d un tenant et de produits',
+});
+const url = garde.url;
 
 // `--dry-run` : n'execute que les quatre controles du §9, qui sont des SELECT.
 // La section B cree un tenant de validation et ecrit des produits : elle est

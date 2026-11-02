@@ -35,12 +35,21 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { creerBaseEphemere } from './lib/ephemeral-db.mjs';
+import { creerRoleEphemere } from './lib/ephemeral-role.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FICHIER_SONDE = path.join(RACINE, 'api', '_lib', 'readiness-probes.ts');
 const FICHIER_ROUTE = path.join(RACINE, 'api', '_routes', 'internal', 'p2-readiness.ts');
-const BASE_EPHEMERE = 'tracefab_sonde_identite';
-const ROLE_SOUMIS = 'tracefab_sonde_soumis';
+// Nom unique par execution : `DROP DATABASE IF EXISTS tracefab_sonde_identite`
+// s'executait AVANT le premier controle, sur une base qui pouvait preexister et
+// contenir des donnees reelles. Voir scripts/lib/ephemeral-db.mjs.
+// Aucun nom de role fixe : `DROP ROLE IF EXISTS tracefab_sonde_soumis`
+// s'executait AVANT le premier controle. Un role est un objet de CLUSTER — il
+// survit a toutes les bases et peut porter des appartenances et des droits.
+// Le nom est desormais unique et la destruction reservee a l'OID cree.
+// Voir scripts/lib/ephemeral-role.mjs.
+const MOT_DE_PASSE_SOUMIS = 'epreuve_locale_jetable';
 
 let vertes = 0;
 let rouges = 0;
@@ -57,6 +66,14 @@ function verifier(etiquette, ok, detail) {
   }
 }
 
+// Une session coupee par `DROP DATABASE ... WITH (FORCE)` emet un evenement
+// `error` : non ecoute, il tue le processus avant le nettoyage.
+function clientCoupe(connectionString) {
+  const c = new pg.Client({ connectionString, ssl: sslDepuisUrl(connectionString) });
+  c.on('error', () => {});
+  return c;
+}
+
 function sortir(code) {
   console.log(`\n  ${vertes}/${vertes + rouges} assertions vertes`);
   if (echecs.length) console.log(`  en échec : ${echecs.join(' · ')}`);
@@ -71,9 +88,25 @@ requireThrowawayDb({
 
 const urlAdmin = process.env.DATABASE_URL;
 const hote = (urlAdmin.match(/@([^/:]+)/) || [])[1] ?? 'illisible';
-const urlMaintenance = urlAdmin.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
 
-console.log(`\n  base éphémère sur ${hote} — ${BASE_EPHEMERE}`);
+// Créée, prouvée (OID + cluster) et détruite par la garde — plus de `DROP` fixe.
+const baseEphemere = await creerBaseEphemere({
+  urlProprietaire: urlAdmin,
+  prefixe: 'tf_sonde_identite',
+});
+const BASE_EPHEMERE = baseEphemere.nom;
+
+let nettoyageFait = false;
+const nettoyerEnSecurite = async (code) => {
+  if (nettoyageFait) return;
+  nettoyageFait = true;
+  await baseEphemere.fermer().catch(() => {});
+  if (typeof roleSoumis !== 'undefined' && roleSoumis) await roleSoumis.fermer().catch(() => {});
+  process.exit(code);
+};
+process.on('uncaughtException', () => nettoyerEnSecurite(1));
+process.on('unhandledRejection', () => nettoyerEnSecurite(1));
+console.log(`\n  base éphémère sur ${hote} — ${BASE_EPHEMERE} (oid ${baseEphemere.oid})`);
 
 /* --- 1. La requête vient du fichier source, pas d'une copie --------------- */
 
@@ -110,21 +143,20 @@ for (const attendu of ['current_user', 'session_user', 'rolbypassrls', 'rolsuper
 
 console.log('\n  B. la requête discrimine un rôle soumis d un rôle qui contourne');
 
-const admin = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-await admin.connect();
-await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await admin.query(`CREATE DATABASE ${BASE_EPHEMERE}`);
-await admin.query(`DROP ROLE IF EXISTS ${ROLE_SOUMIS}`);
-await admin.query(
-  `CREATE ROLE ${ROLE_SOUMIS} LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD 'epreuve_locale_jetable'`,
-);
-await admin.end();
+// Role cree et PROUVE par la garde : nom unique, absence verifiee avant
+// creation, OID retenu, destruction limitee a cet OID.
+const roleSoumis = await creerRoleEphemere({
+  urlProprietaire: urlAdmin,
+  prefixe: 'tf_sonde_soumis',
+  attributs: { login: true, motDePasse: MOT_DE_PASSE_SOUMIS, bypassrls: false },
+});
+const ROLE_SOUMIS = roleSoumis.nom;
 
-const url = urlAdmin.replace(/\/[^/?]+(\?|$)/, `/${BASE_EPHEMERE}$1`);
-const urlSoumis = url.replace(/:\/\/[^@]*@/, `://${ROLE_SOUMIS}:epreuve_locale_jetable@`);
+const url = baseEphemere.url;
+const urlSoumis = roleSoumis.urlAvecRole(MOT_DE_PASSE_SOUMIS, url);
 
 async function mesurer(connectionString) {
-  const client = new pg.Client({ connectionString, ssl: sslDepuisUrl(connectionString) });
+  const client = clientCoupe(connectionString);
   await client.connect();
   try {
     const r = await client.query(SQL);
@@ -323,11 +355,9 @@ verifier(
 
 /* --- nettoyage ------------------------------------------------------------ */
 
-const nettoyeur = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-await nettoyeur.connect();
-await nettoyeur.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await nettoyeur.query(`DROP ROLE IF EXISTS ${ROLE_SOUMIS}`);
-await nettoyeur.end();
+// La garde ne detruit que ce qu'elle a cree : base ET role, verifies par OID.
+await baseEphemere.fermer();
+await roleSoumis.fermer();
 console.log('\n  base éphémère et rôle de test détruits');
 
 sortir(rouges === 0 ? 0 : 1);

@@ -21,6 +21,8 @@
  * (garde refusée). Un test qui ne s'exécute pas ne vaut pas un test qui passe.
  */
 import pg from 'pg';
+import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
+import { assertRoleApplicatif } from './lib/identite_app.mjs';
 import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { join, dirname } from 'node:path';
@@ -30,8 +32,11 @@ import { execFileSync } from 'node:child_process';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIG_DIR = join(ROOT, 'prisma/migrations');
 const MIGRATION = '20261010120000_publication_explicite';
-const PREPROD = 'tracefab_preprod';
-const RESTORE = 'tracefab_restore_check';
+// Noms attribues a l'execution : `DROP DATABASE IF EXISTS tracefab_preprod`
+// s'executait avant tout controle, sur une base qui pouvait preexister.
+// Voir scripts/lib/ephemeral-db.mjs.
+let PREPROD = null;
+let RESTORE = null;
 const SAUVEGARDE = '/tmp/tracefab_preprod_sauvegarde.json';
 
 const URL_BASE = process.env.DATABASE_URL;
@@ -55,13 +60,47 @@ const ok = (m) => console.log(`  ok    ${m}`);
 const ko = (m) => { console.log(`  ECHEC ${m}`); echecs += 1; };
 const verif = (cond, m, detail) => (cond ? ok(m) : ko(`${m}${detail ? ` — ${detail}` : ''}`));
 
-const base = new pg.Client({ connectionString: URL_BASE, database: 'postgres' });
+// Une session coupee par `DROP DATABASE ... WITH (FORCE)` emet un evenement
+// `error` : non ecoute, il tue le processus et masque la cause reelle. Chaque
+// client de ce script l'absorbe donc explicitement.
+const client = (options) => {
+  const c = new pg.Client(options);
+  c.on('error', () => {});
+  return c;
+};
+
+const base = client({ connectionString: URL_BASE, database: 'postgres' });
 await base.connect();
 
-const creerBase = async (nom) => {
-  await base.query(`DROP DATABASE IF EXISTS ${nom}`);
-  await base.query(`CREATE DATABASE ${nom}`);
+// Chaque base est creee par la garde (nom unique, absence verifiee, OID
+// retenu) : elle seule pourra la detruire, et seulement a la fin.
+const creees = [];
+const creerBase = async (prefixe) => {
+  const b = await creerBaseEphemere({ urlProprietaire: URL_BASE, prefixe });
+  creees.push(b);
+  return b;
 };
+
+// Filet de securite : une interruption brutale laissait la base derriere elle.
+// Le nettoyage ne vise que les bases creees ci-dessus, et respecte TF_GARDER_BASES.
+let nettoyageEnCours = false;
+const nettoyerEnSecurite = async (code) => {
+  if (nettoyageEnCours) return;
+  nettoyageEnCours = true;
+  if (process.env.TF_GARDER_BASES !== '1') {
+    for (const b of creees) await b.fermer().catch(() => {});
+  }
+  if (typeof verrouCluster !== 'undefined' && verrouCluster) await verrouCluster.relacher().catch(() => {});
+  process.exit(code);
+};
+process.on('uncaughtException', (e) => {
+  console.log(`\n  ARRET — ${e.code ?? String(e.message).split('\n')[0]}`);
+  nettoyerEnSecurite(1);
+});
+process.on('unhandledRejection', (e) => {
+  console.log(`\n  ARRET — ${(e && e.code) ?? String(e && e.message).split('\n')[0]}`);
+  nettoyerEnSecurite(1);
+});
 const URL_DB = (nom) => new URL(URL_BASE).toString().replace(/\/[^/?]+(\?|$)/, `/${nom}$1`);
 
 /* ========================================================================== *
@@ -69,8 +108,14 @@ const URL_DB = (nom) => new URL(URL_BASE).toString().replace(/\/[^/?]+(\?|$)/, `
  * ========================================================================== */
 console.log('\n  A. base de préproduction — migrations 1..35 (état de production)');
 
-await creerBase(PREPROD);
-const preprod = new pg.Client({ connectionString: URL_DB(PREPROD) });
+// Verrou de CLUSTER : cette repetition provisionne le role (bootstrap_app_role)
+// et applique la chaine de migrations, qui contient un `ALTER ROLE`. Meme verrou
+// que les autres suites ; maintenu pendant toute la repetition.
+const verrouCluster = await verrouillerCluster({ urlProprietaire: URL_BASE });
+
+PREPROD = (await creerBase('tf_preprod')).nom;
+console.log(`  base de préproduction jetable : ${PREPROD}`);
+const preprod = client({ connectionString: URL_DB(PREPROD) });
 await preprod.connect();
 
 // Journal Prisma + application dans l'ordre de `prisma migrate deploy`,
@@ -287,10 +332,35 @@ console.log('\n  E. matrice d’accès (rôle tracefab_app, sans BYPASSRLS)');
 }
 // Le rôle applicatif est forcé sur la base de préprod dédiée (jamais sur la base
 // partagée de la suite, qui porte d'autres fixtures et fausserait l'inventaire).
-const URL_APP = (process.env.TF_RLS_APP_URL || URL_DB(PREPROD)).replace(/\/[^/?]+(\?|$)/, `/${PREPROD}$1`);
-const app = new pg.Client({ connectionString: URL_APP.replace(/\/[^/?]+(\?|$)/, `/${PREPROD}$1`) });
+//
+// R13 (30/10) : plus AUCUN repli sur `DATABASE_URL`. Avant, l'absence de
+// `TF_RLS_APP_URL` faisait retomber silencieusement l'épreuve sur l'URL
+// propriétaire : les assertions de RLS s'exécutaient alors avec un rôle
+// BYPASSRLS et la suite pouvait verdir sans rien mesurer. Désormais : absence
+// de la variable => arrêt AVANT les assertions métier (sortie 2).
+const URL_APP_SOURCE = (process.env.TF_RLS_APP_URL || '').trim();
+if (!URL_APP_SOURCE) {
+  console.error('\n  NON EXECUTE — TF_RLS_APP_URL est obligatoire : cette épreuve mesure la RLS');
+  console.error('  sous le rôle applicatif. Aucun repli sur DATABASE_URL (propriétaire) n est permis.');
+  console.error('  Sortie 2 : un test qui ne mesure pas ce qu il annonce ne passe pas.\n');
+  // R6 : on sort par le filet de securite, sinon les bases deja creees par les
+  // sections A a D resteraient derriere (mesure du 30/10 : deux bases
+  // tf_preprod_* laissees par un `process.exit(2)` direct).
+  await nettoyerEnSecurite(2);
+}
+const URL_APP = URL_APP_SOURCE.replace(/\/[^/?]+(\?|$)/, `/${PREPROD}$1`);
+const app = client({ connectionString: URL_APP });
 await app.connect();
 {
+  // Preuves d'identité AVANT toute assertion métier : même cluster que
+  // l'administration, rôle applicatif réel, sans attribut privilégié.
+  try {
+    await assertRoleApplicatif(app, { attendu: 'tracefab_app', etiquette: 'rôle applicatif (publication)' });
+    ok('identité applicative prouvée : tracefab_app, sans SUPERUSER ni BYPASSRLS');
+  } catch (e) {
+    console.error(`  ARRET — ${e.message}`);
+    await nettoyerEnSecurite(2);
+  }
   const r = await app.query('SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user');
   verif(r.rows[0] && !r.rows[0].rolsuper && !r.rows[0].rolbypassrls,
     'le rôle applicatif n’est ni superuser ni BYPASSRLS', JSON.stringify(r.rows[0]));
@@ -365,7 +435,26 @@ console.log('\n  F. gestionnaire GET /api/dpp/:gtinOrReference — rôle applica
   const databaseUrlOriginal = process.env.DATABASE_URL;
   process.env.DATABASE_URL = URL_APP;
   let prismaClient;
+  const singletonOriginal = globalThis.tracefabPrisma;
+  let clientInjecte;
+  let fermerPrisma;
   try {
+    // Chantier B (30/10) : hors CI il n'y a pas de moteur Prisma natif (le
+    // telechargement depuis binaries.prisma.sh est bloque), et l'import de la
+    // route echouait en `PrismaClientInitializationError : The 'adapter'
+    // option for PrismaClient is required in this context`. La section F
+    // n'etait donc jamais executee.
+    //
+    // On utilise le point d'injection PREVU par le depot : `api/_lib/prisma.ts`
+    // reutilise `globalThis.tracefabPrisma` s'il existe. Aucune modification de
+    // l'application, aucune requete ne contourne ce module — seulement la
+    // facon d'obtenir le client (moteur standard en CI, WASM + pg sinon), via
+    // l'utilitaire deja employe par neuf suites `test_neon_*`.
+    const { createTestPrisma, fermerPrismaDeTest } = await import('./lib/test_prisma_client.mjs');
+    fermerPrisma = fermerPrismaDeTest;
+    clientInjecte = await createTestPrisma(URL_APP);
+    globalThis.tracefabPrisma = clientInjecte;
+
     const routeModule = await import('../api/_routes/dpp/[gtin].ts');
     ({ prisma: prismaClient } = await import('../api/_lib/prisma.ts'));
     const handler = routeModule.default;
@@ -413,7 +502,15 @@ console.log('\n  F. gestionnaire GET /api/dpp/:gtinOrReference — rôle applica
       );
     }
   } finally {
-    if (prismaClient) await prismaClient.$disconnect();
+    // `$disconnect()` seul laisse le pool pg ouvert sur le chemin WASM : la
+    // base serait detruite plus bas alors qu'une connexion y vit encore
+    // (57P01 constate le 30/10, puis 3D000 au nettoyage).
+    if (clientInjecte && fermerPrisma) await fermerPrisma(clientInjecte);
+    else if (prismaClient) await prismaClient.$disconnect();
+    // Le singleton injecte ne doit pas survivre a la section : les sections
+    // suivantes travaillent avec leurs propres connexions pg.
+    if (singletonOriginal === undefined) delete globalThis.tracefabPrisma;
+    else globalThis.tracefabPrisma = singletonOriginal;
     if (databaseUrlOriginal === undefined) delete process.env.DATABASE_URL;
     else process.env.DATABASE_URL = databaseUrlOriginal;
   }
@@ -551,8 +648,8 @@ console.log('\n  I. sauvegarde logique et restauration vérifiée');
   writeFileSync(SAUVEGARDE + '.db.json', JSON.stringify(dump));
   ok(`sauvegarde logique : ${tables.length} tables (${Object.values(dump).reduce((n, t) => n + t.rows.length, 0)} lignes)`);
 
-  await creerBase(RESTORE);
-  const restore = new pg.Client({ connectionString: URL_DB(RESTORE) });
+  RESTORE = (await creerBase('tf_restore')).nom;
+  const restore = client({ connectionString: URL_DB(RESTORE) });
   await restore.connect();
   {
     const dirs = readdirSync(MIG_DIR).filter((n) => statSync(join(MIG_DIR, n)).isDirectory()).sort(); // y compris la 36
@@ -600,6 +697,19 @@ console.log('\n  I. sauvegarde logique et restauration vérifiée');
 
 await app.end();
 await preprod.end();
+
+// Nettoyage : uniquement les bases creees par cette execution, identifiees par
+// OID. TF_GARDER_BASES=1 conserve les bases pour inspection (comportement
+// historique du script) et imprime leurs noms, desormais uniques.
+if (process.env.TF_GARDER_BASES === '1') {
+  console.log(`\n  bases conservees pour inspection : ${creees.map((b) => b.nom).join(', ')}`);
+} else {
+  for (const b of creees) {
+    await b.fermer().catch((e) => console.log(`  ECHEC nettoyage ${b.nom} — ${e.code ?? e.message}`));
+  }
+}
+
+await verrouCluster.relacher();
 await base.end();
 
 console.log(echecs

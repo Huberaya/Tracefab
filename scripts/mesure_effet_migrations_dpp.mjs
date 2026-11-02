@@ -19,17 +19,18 @@
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { exigerCibleEcriture } from './lib/garde_cible_ecriture.mjs';
 
-const HOTE_PRODUCTION = process.env.TF_HOTE_PRODUCTION
-  || 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
-
-const url = process.env.DATABASE_URL;
-if (!url) { console.error('NON EXECUTE — DATABASE_URL obligatoire.'); process.exit(2); }
-const hote = new URL(url).hostname;
-if (hote === HOTE_PRODUCTION || /^ep-polished-night/.test(hote)) {
-  console.error(`REFUS — ${hote} est la base de production. Ce script n'ecrit que sur une base de test.`);
-  process.exit(3);
-}
+// GARDE DE CIBLE — remplace la liste noire d'hotes (meme raison que dans
+// `test_dpp_role_applicatif.mjs`). Le mode `--avant` cree un parc de produits
+// et `--apres` met a jour des documents : la cible est classee AVANT toute
+// connexion d'ecriture, refusee par defaut, et son cluster peut etre exige par
+// `TF_SYSID_ATTENDU`.
+const garde = await exigerCibleEcriture({
+  variables: ['DATABASE_URL'],
+  purpose: 'mesure_effet_migrations_dpp — creation d un parc et mise a jour de documents',
+});
+const url = garde.url;
 
 // `--dry-run` : lecture seule. Affiche l'etat du parc et des dossiers DPP, sans
 // creer, calculer ni enregistrer quoi que ce soit. C'est le mode a utiliser

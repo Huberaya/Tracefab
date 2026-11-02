@@ -35,6 +35,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { creerBaseEphemere, verrouillerCluster, filetDeNettoyage } from './lib/ephemeral-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 import { API_RUNTIME_FUNCTION_NAMES, RLS_POLICY_FUNCTION_NAMES, RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
@@ -43,7 +44,11 @@ const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
 
 const RACINE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const BASE_EPHEMERE = 'tracefab_privileges_ephemere';
+// Aucun nom de base fixe : `DROP DATABASE IF EXISTS tracefab_privileges_ephemere`
+// s'executait avant tout controle, sur une base qui pouvait preexister. Meme
+// defaut que dans test_isolation_lignes_reelles et test_compteurs_debit, mesure
+// le 29/10 : base homonyme et donnee metier detruites, suite verte.
+// Voir scripts/lib/ephemeral-db.mjs.
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
 
 /**
@@ -197,27 +202,37 @@ requireThrowawayDb({
   exitOnFailure: true,
 });
 
-const hote = (urlAdmin.match(/@([^/:]+)/) || [])[1] ?? 'illisible';
+console.log('\n  2. base éphémère — nom unique, OID retenu, destruction réservée');
 
-// La connexion d'administration vise la base de maintenance `postgres`, pas la
-// base configurée. CREATE DATABASE ne peut pas s'exécuter depuis une base qui
-// n'existe pas encore, et le contrôle doit pouvoir tourner avant tout
-// déploiement : avec urlAdmin tel quel, il mourait en 3D000 invalid_catalog_name
-// dès que la base configurée était absente.
-const urlMaintenance = urlAdmin.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
-const admin = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-console.log(`\n  2. base éphémère sur ${hote}`);
+// La base de travail est créée et PROUVÉE par la garde : nom unique par
+// exécution, existence vérifiée avant création, OID conservé, destruction
+// limitée à cet OID. Plus aucun `DROP` inconditionnel.
+const baseEphemere = await creerBaseEphemere({
+  urlProprietaire: urlAdmin,
+  prefixe: 'tf_privileges',
+});
+console.log(`  base : ${baseEphemere.nom} (oid ${baseEphemere.oid}), cluster ${baseEphemere.identite.systemIdentifier}`);
 
-await admin.connect();
-await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await admin.query(`CREATE DATABASE ${BASE_EPHEMERE}`);
-
-const urlEphemere = urlAdmin.replace(/\/[^/?]+(\?|$)/, `/${BASE_EPHEMERE}$1`);
+const urlEphemere = baseEphemere.url;
 const urlApp = urlEphemere.replace(/:\/\/[^@]*@/, `://${APP_ROLE}:${encodeURIComponent(MOT_DE_PASSE)}@`);
 
 let sortie = 0;
 let app = null;
+let verrou = null;
+
+// Filet : une erreur fatale entre la creation et le `finally` ne doit pas
+// laisser la base ni le verrou derriere elle.
+filetDeNettoyage(async () => {
+  if (app) await app.end().catch(() => {});
+  if (verrou) await verrou.relacher().catch(() => {});
+  await baseEphemere.fermer().catch(() => {});
+});
+
 try {
+  // Verrou de CLUSTER : le provisioning du role touche `pg_authid`, partage par
+  // toutes les bases du serveur. Meme verrou que les autres suites.
+  verrou = await verrouillerCluster(baseEphemere);
+
   // Le mot de passe repris de l'environnement : dans la CI, TF_APP_PASSWORD est
   // celui qu'emploie TF_RLS_APP_URL. En réutiliser un autre réinitialiserait le
   // mot de passe du rôle pour tout le cluster et casserait les suites suivantes.
@@ -566,10 +581,12 @@ try {
   }
   sortie = SORTIE_DEFAUT;
 } finally {
+  // Le client applicatif d'abord, la base ensuite : détruire une base dont une
+  // session dépend produit un 57P01 qui masquerait l'erreur d'origine.
   if (app) await app.end().catch(() => {});
-  await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-  await admin.end();
-  console.log('  base éphémère détruite');
+  await baseEphemere.fermer();
+  if (verrou) await verrou.relacher();
+  console.log(`  base éphémère détruite : ${baseEphemere.nom}`);
 }
 
 console.log(`\n  ${assertions - echecs}/${assertions} assertions vertes\n`);
