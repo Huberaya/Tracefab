@@ -180,6 +180,31 @@ console.log("\n  A. Sentinelle absente — les tables presentes reçoivent leur 
       `${JSON.stringify(avant)} -> ${JSON.stringify(apres)}`,
     );
 
+    /* --- B4 : refuser une appartenance sortante avant toute mutation --- */
+    console.log('\n  B4. Appartenance directe/transitive : refus fail-closed');
+    await c.query('CREATE ROLE tf_b4_parent NOLOGIN BYPASSRLS');
+    await c.query('CREATE ROLE tf_b4_intermediaire NOLOGIN');
+    // Une chaîne transitive suffit à permettre SET ROLE vers le rôle privilégié.
+    await c.query('GRANT tf_b4_parent TO tf_b4_intermediaire');
+    await c.query('GRANT tf_b4_intermediaire TO tracefab_app');
+    let refusB4 = null;
+    try { await ensureAppRole(c, MOT_DE_PASSE); } catch (e) { refusB4 = e.message; }
+    verifier('B4 refuse une appartenance transitive vers un rôle privilégié',
+      Boolean(refusB4 && refusB4.includes('B4 REFUSE') && refusB4.includes('tf_b4_parent')),
+      refusB4 ?? 'aucun refus');
+    const roleInchange = await c.query(
+      "SELECT rolbypassrls, rolcanlogin FROM pg_roles WHERE rolname='tracefab_app'",
+    );
+    verifier('le refus B4 ne modifie pas les attributs du rôle runtime',
+      roleInchange.rows[0].rolbypassrls === false && roleInchange.rows[0].rolcanlogin === true,
+      JSON.stringify(roleInchange.rows[0]));
+    await c.query('REVOKE tf_b4_intermediaire FROM tracefab_app');
+    await c.query('REVOKE tf_b4_parent FROM tf_b4_intermediaire');
+    await c.query('DROP ROLE tf_b4_intermediaire');
+    await c.query('DROP ROLE tf_b4_parent');
+    await ensureAppRole(c, MOT_DE_PASSE);
+    verifier('après révocation complète, le provisioning redevient possible', true);
+
     /* --- Une table ajoutée plus tard ------------------------------------ */
     console.log('\n  C. Table créée après coup — le passage suivant la couvre');
     await c.query('CREATE TABLE data_points (id int)');
