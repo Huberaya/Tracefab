@@ -323,7 +323,9 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
   // NOCREATEDB est volontairement omis sur ALTER : PostgreSQL exige CREATEDB
   // pour modifier cet attribut, même pour le mettre à false. L'état préexistant
   // est déjà vérifié false et l'assertion post-ALTER le recontrôle.
-  const sqlAlter = `ALTER ROLE ${role} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOCREATEROLE`;
+  // NOBYPASSRLS ne peut pas être imposé par un rôle CREATEROLE ordinaire ;
+  // l'état préexistant est contrôlé false et sera revalidé après ALTER.
+  const sqlAlter = `ALTER ROLE ${role} WITH LOGIN PASSWORD ${quote(password)} NOCREATEROLE`;
 
   if (avant === null) {
     await provoquerRole(db, sqlCreate, sqlAlter, 'creation');
