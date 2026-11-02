@@ -205,6 +205,38 @@ console.log("\n  A. Sentinelle absente — les tables presentes reçoivent leur 
     await ensureAppRole(c, MOT_DE_PASSE);
     verifier('après révocation complète, le provisioning redevient possible', true);
 
+    /* --- B3 : ALTER ROLE depuis un provisionneur NOSUPERUSER ------------ */
+    console.log('\n  B3. Provisionnement par un rôle CREATEROLE non-superutilisateur');
+    await c.query('CREATE ROLE tf_b3_provisioner NOLOGIN NOSUPERUSER NOBYPASSRLS CREATEROLE NOCREATEDB');
+    await c.query('CREATE ROLE tf_b3_target NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB');
+    const b3Avant = await c.query(
+      "SELECT rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname='tf_b3_provisioner'",
+    );
+    verifier('le provisionneur de test est réellement NOSUPERUSER + CREATEROLE',
+      b3Avant.rows[0].rolsuper === false && b3Avant.rows[0].rolcreaterole === true,
+      JSON.stringify(b3Avant.rows[0]));
+    let erreurB3 = null;
+    try {
+      await c.query('SET ROLE tf_b3_provisioner');
+      await ensureAppRole(c, 'mot_de_passe_test_b3', { role: 'tf_b3_target' });
+    } catch (e) {
+      erreurB3 = `${e.code ?? ''} ${e.message}`;
+    } finally {
+      await c.query('RESET ROLE');
+    }
+    verifier('B3 : un rôle CREATEROLE non-superutilisateur peut provisionner un rôle ordinaire',
+      erreurB3 === null, erreurB3 ?? '');
+    const b3Apres = await c.query(
+      "SELECT rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolcanlogin FROM pg_roles WHERE rolname='tf_b3_target'",
+    );
+    verifier('la cible reste non privilégiée et reçoit LOGIN',
+      b3Apres.rows[0]?.rolsuper === false && b3Apres.rows[0]?.rolbypassrls === false
+        && b3Apres.rows[0]?.rolcreaterole === false && b3Apres.rows[0]?.rolcreatedb === false
+        && b3Apres.rows[0]?.rolcanlogin === true,
+      JSON.stringify(b3Apres.rows[0]));
+    await c.query('DROP ROLE tf_b3_target');
+    await c.query('DROP ROLE tf_b3_provisioner');
+
     /* --- Une table ajoutée plus tard ------------------------------------ */
     console.log('\n  C. Table créée après coup — le passage suivant la couvre');
     await c.query('CREATE TABLE data_points (id int)');
