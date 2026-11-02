@@ -106,6 +106,29 @@ BEGIN
 END
 $$;
 
+-- 1 bis. Le worker doit lire ce réglage, lui aussi ----------------------------
+--    `tracefab_current_user_id()` est SECURITY INVOKER : executee DANS une
+--    fonction SECURITY DEFINER appartenant a `tracefab_worker`
+--    (`tracefab_ensure_clerk_user`, `tracefab_upsert_clerk_user`), elle lit le
+--    drapeau `strict` avec les droits du WORKER, pas ceux de l'appelant.
+--    Mesure du 02/11/2026 (test:neon:worker-non-forgeable) : sans ce GRANT,
+--    la creation d'un utilisateur echoue en `42501 permission denied for table
+--    tracefab_identity_politique`. Le defaut ne se voyait pas dans les suites
+--    qui appellent la verification directement : il ne se declenche que par le
+--    chemin d'identite systeme.
+--
+--    Ce n'est pas un elargissement : un booleen de reglage, non secret, deja
+--    lisible par le runtime, accorde a une identite NOLOGIN sans appartenance
+--    et non assumable. Aucun privilege d'ecriture, la RLS reste FORCE.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.tracefab_identity_politique FROM tracefab_worker';
+    EXECUTE 'GRANT SELECT ON TABLE public.tracefab_identity_politique TO tracefab_worker';
+  END IF;
+END
+$$;
+
 -- 2. Les clés ----------------------------------------------------------------
 --    Possédée par `tracefab_worker` : une identité NOLOGIN, sans appartenance,
 --    à laquelle `tracefab_app` ne peut pas se substituer (mesuré :
@@ -253,6 +276,27 @@ END
 $$;
 
 REVOKE ALL ON FUNCTION public.tracefab_identity_jeton_utilisateur(TEXT) FROM PUBLIC;
+
+-- 4 bis. Le worker doit pouvoir appeler la verification ----------------------
+--    `tracefab_current_user_id()` est SECURITY INVOKER. Appelee DANS une
+--    fonction SECURITY DEFINER possedee par `tracefab_worker`
+--    (`tracefab_ensure_clerk_user`, `tracefab_upsert_clerk_user`), elle execute
+--    la verification avec les droits du worker — qui, sans ce GRANT, ne l'a
+--    pas : mesure du 02/11/2026, `42501 permission denied for function
+--    tracefab_identity_jeton_utilisateur` sur la creation d'un utilisateur.
+--
+--    Ce droit est STRICTEMENT le meme que celui du runtime (verifier, jamais
+--    signer) et il est porte par une identite NOLOGIN non assumable. Le GRANT
+--    est ecrit ici et non obtenu par la redistribution du registre : celle-ci
+--    ne gere que les droits de `tracefab_app`, et l'elargir au worker ferait
+--    du worker un second runtime.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.tracefab_identity_jeton_utilisateur(TEXT) TO tracefab_worker';
+  END IF;
+END
+$$;
 
 -- 5. Le point de passage unique ----------------------------------------------
 --    `tracefab_current_user_id()` est appelée, directement ou par les helpers,

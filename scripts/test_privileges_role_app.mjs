@@ -467,15 +467,46 @@ try {
     JSON.stringify(hm),
   );
 
+  // Les tables FERMÉES par conception, et la raison de chacune. Une liste
+  // d'exceptions est un affaiblissement si elle n'est pas elle-même contrôlée :
+  // chaque nom listé ici est donc affirmé FERMÉ juste après, ce qui rend une
+  // ouverture accidentelle aussi visible qu'une fermeture accidentelle.
+  const FERMEES_PAR_CONCEPTION = new Map([
+    ['_prisma_migrations',
+      "l'historique de migration n'est pas une table applicative"],
+    ['tracefab_identity_cles',
+      "la clé HMAC ne doit être lisible par aucun chemin du runtime (P10.5, R-A1)"],
+  ]);
+
   const lecture = await app.query(`
     SELECT c.relname AS nom, has_table_privilege('${APP_ROLE}', c.oid, 'SELECT') AS s
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname='public' AND c.relkind='r' AND c.relname <> '_prisma_migrations' ORDER BY 1`);
+    WHERE n.nspname='public' AND c.relkind='r'
+      AND NOT (c.relname = ANY($1::text[])) ORDER BY 1`,
+  [[...FERMEES_PAR_CONCEPTION.keys()]]);
   verifier(
     'la lecture reste disponible sur les tables métier',
     lecture.rows.every((r) => r.s),
-    `${lecture.rows.filter((r) => !r.s).length} table(s) sans SELECT`,
+    `${lecture.rows.filter((r) => !r.s).length} table(s) sans SELECT : `
+      + lecture.rows.filter((r) => !r.s).map((r) => r.nom).join(', '),
   );
+
+  // Le pendant : ce qui est déclaré fermé l'est RÉELLEMENT, sur les cinq
+  // verbes. Une table ajoutée ici par erreur pour faire passer la ligne
+  // ci-dessus serait donc démasquée.
+  for (const [table, raison] of FERMEES_PAR_CONCEPTION) {
+    const d = (await app.query(`
+      SELECT has_table_privilege(current_user, $1, 'SELECT') AS s,
+             has_table_privilege(current_user, $1, 'INSERT') AS i,
+             has_table_privilege(current_user, $1, 'UPDATE') AS u,
+             has_table_privilege(current_user, $1, 'DELETE') AS d,
+             has_table_privilege(current_user, $1, 'TRUNCATE') AS t`, [`public.${table}`])).rows[0];
+    verifier(
+      `${table} reste fermée au runtime — ${raison}`,
+      d && !d.s && !d.i && !d.u && !d.d && !d.t,
+      JSON.stringify(d),
+    );
+  }
 
   /* --- 3. Comportement : ce qui doit échouer, ce qui doit passer ----------- */
 

@@ -47,7 +47,6 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_get_product_traceability',
   'tracefab_get_public_supplier_passport',
   'tracefab_has_org_role',
-  'tracefab_identity_jeton_utilisateur',
   'tracefab_in_active_tenant',
   'tracefab_ingest_plm_erp_payload',
   'tracefab_invite_supplier',
@@ -107,6 +106,14 @@ export const RLS_POLICY_FUNCTION_NAMES = Object.freeze([
 ]);
 
 export const RUNTIME_FUNCTION_DEPENDENCY_NAMES = Object.freeze([
+  // `tracefab_current_user_id()` (SECURITY INVOKER, donc soumise aux droits de
+  // l'appelant) appelle la verification du jeton d'identite. Le runtime n'appelle
+  // jamais cette fonction directement — il pose `tracefab.identity` — mais il lui
+  // faut l'EXECUTE, sans quoi toute lecture d'identite echoue en 42501.
+  // C'est pourquoi elle est ici et non dans la liste des appels SQL de `api/` :
+  // la derivation qui compare `api/` a la liste figee ne la voit pas, et elle a
+  // raison de ne pas la voir (constate sur CI, 02/11/2026).
+  'tracefab_identity_jeton_utilisateur',
   // tracefab_require_active_tenant is SECURITY INVOKER and calls this
   // context reader; the caller must retain EXECUTE on the transitive helper.
   'tracefab_active_organization_id',
