@@ -507,7 +507,12 @@ jobs:
           #     un meme cluster). Memes exigences que test:p105:* : base
           #     migree, roles applicatifs, et pour la seconde le droit de
           #     creer une base. Cablees une par une dans le job « Base ».
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')).join(' '))")
+          #   test:p107:*                 — les quatre suites P10.7 (contrat
+          #     d identite pur, sonde de catalogue, sonde cote runtime,
+          #     demonstration du mode strict). Trois exigent la base migree et
+          #     les deux roles ; la premiere n exige rien et tourne partout.
+          #     Cablees une par une dans le job « Base ».
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -1178,6 +1183,40 @@ jobs:
         # une entree du registre accorde une appartenance sans fournir de
         # bloc « avant ».
         run: npm run test:p106:rejouabilite-chaine
+
+      - name: P10.7 — le contrat d identite runtime refuse aussi l ESCALADE
+        # Onze cas sur une fonction PURE (aucune base) : le role doit etre
+        # `tracefab_app`, sans SUPERUSER, sans BYPASSRLS, ET sans appartenance
+        # atteignable vers un role privilegie. Ce dernier point est nouveau en
+        # P10.7 : un role sans attribut qui peut `SET ROLE` vers un role
+        # BYPASSRLS redevient privilegie, donc la RLS n est pas opposable.
+        run: npm run test:p107:contrat-identite
+
+      - name: P10.7 — la sonde d etat cible est en LECTURE SEULE, et ses arrets se declenchent
+        # Controle statique (chaque instruction commence par SELECT ou WITH),
+        # execution reelle dans une transaction READ ONLY avec tentative
+        # d ecriture refusee (25006), idempotence de l etat, puis TEMOIN
+        # NEGATIF : un role de connexion qui atteint un role privilegie doit
+        # faire sortir la sonde en 1 avec un arret nomme, et le meme role sans
+        # l appartenance ne le fait plus.
+        run: npm run test:p107:sonde
+
+      - name: P10.7 — la sonde cote RUNTIME distingue une identite conforme d une identite privilegiee
+        # T1 conforme (code 0) ; T2 `postgres` refuse avec chaque attribut
+        # nomme ; T3 role sans attribut mais membre d un role privilegie
+        # refuse ; T5 contexte transactionnel (absent apres la transaction,
+        # donc sur quel que soit le mode du pooler) ; T6 cible distante
+        # refusee sans opt-in. Aucune valeur de cle n est lue.
+        run: npm run test:p107:sonde-runtime
+
+      - name: P10.7 — demonstration du mode STRICT sur cluster jetable
+        # D1..D9 : jeton valide, sans jeton, jeton invalide, GUC forge,
+        # organisation incoherente, rotation avec DEUX cles actives,
+        # revocation de l ancienne, parcours metier (lecture RLS isolee +
+        # ingestion PLM/ERP refusee sans identite puis acceptee avec), et
+        # restauration de l etat. Le mode strict n est pose QUE sur la base
+        # jetable, et le script refuse toute cible non locale avant connexion.
+        run: npm run test:p107:demonstration
 
       - name: P10.5 — la hierarchie des roles, mesuree dans les deux sens
         # Douze assertions : attributs, appartenances directes ET transitives,

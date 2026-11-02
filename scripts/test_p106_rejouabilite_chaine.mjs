@@ -139,6 +139,29 @@ try {
       'R4 les membres tracefab_* hors périmètre sont révoqués (chaîne rejouable)',
       `avant=${avant.join(',')} · après=${apres.join(',') || 'aucun'}`);
 
+    // R4 bis (P10.7) : un membre SUPERUSER est RETIRÉ sans refus.
+    //
+    // Mesuré le 02/11 : sur un cluster partagé, `apres` avait accordé
+    // `tracefab_worker` à `postgres` lors d'une exécution précédente. La
+    // préparation, qui ne retirait que les rôles `tracefab_*`, refusait alors la
+    // chaîne au rang 61 — pour un rôle dont l'appartenance n'est PAS une
+    // frontière de privilège (il peut tout s'accorder lui-même). Le retirer
+    // n'ôte aucune capacité ; le garder rendait la chaîne non rejouable.
+    const superRole = `p107_super_${randomBytes(3).toString('hex')}`;
+    await admin.query(`CREATE ROLE ${superRole} SUPERUSER`);
+    await admin.query(`GRANT ${cible} TO ${superRole}`);
+    rolesSondes.push(superRole);
+    let refusSuper = null;
+    let revoqueSuper = [];
+    try {
+      revoqueSuper = (await preparerAppartenance(admin, nomAssistee, roleExecutant)).revoques;
+    } catch (e) {
+      refusSuper = e.message;
+    }
+    ok(refusSuper === null && revoqueSuper.includes(superRole),
+      'R4 bis un membre SUPERUSER est retiré sans refus (son appartenance n est pas une frontière)',
+      refusSuper || `révoqué : ${revoqueSuper.join(', ') || 'aucun'}`);
+
     // R5 : un membre étranger doit FAIRE ÉCHOUER la préparation.
     const etranger = `p106_etranger_${randomBytes(2).toString('hex')}`;
     await admin.query(`CREATE ROLE ${etranger}`);

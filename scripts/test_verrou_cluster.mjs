@@ -112,6 +112,11 @@ const DOIVENT_VERROUILLER = [
   // section critique que les autres : sans verrou, l'`ALTER ROLE` de
   // 20261028120100 se heurte a une application concurrente (XX000).
   'scripts/test_p106_rejouabilite_chaine.mjs',
+  // P10.7 : ces deux suites CREENT un role de connexion de sonde et lui
+  // accordent temporairement un role privilegie pour prouver que la detection
+  // se declenche. Roles = objets de CLUSTER : meme section critique.
+  'scripts/test_p107_sonde_lecture_seule.mjs',
+  'scripts/test_p107_sonde_runtime.mjs',
 ];
 
 // Chemins qui ne doivent PAS le prendre, avec la raison.

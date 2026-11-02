@@ -213,45 +213,6 @@ if (lireEtatSeulement) {
 }
 
 // ---------------------------------------------------------------------------
-// Preflight de PROPRIETE (P10.6).
-//
-// `CREATE OR REPLACE FUNCTION` exige d'etre le proprietaire de la fonction :
-// mesure du 02/11 sur le cluster jetable, avec `tracefab_migrator` et CREATE sur
-// le schema —
-//
-//     CREATE OR REPLACE FUNCTION public.tf_sonde() ... -> 42501 must be owner
-//     DROP FUNCTION public.tf_sonde()                 -> 42501 must be owner
-//
-// Une chaine appliquee par le role de migration ne peut donc remplacer que les
-// fonctions qu'il a lui-meme creees. Sur une base ou elles appartiennent a un
-// autre role, la premiere migration qui les remplace echouerait au MILIEU de la
-// chaine, en laissant une ligne d'echec dans `_prisma_migrations`. On refuse
-// AVANT, en nommant la fonction, son proprietaire et la migration : c'est une
-// operation qui exige le proprietaire, et elle doit etre decidee, pas subie.
-// ---------------------------------------------------------------------------
-{
-  const migrationsAExaminer = enAttente.map((nom) => ({
-    nom,
-    sql: readFileSync(path.join(DOSSIER, nom, 'migration.sql'), 'utf8'),
-    assistee: Boolean(MIGRATIONS_ASSISTEES[nom]),
-  }));
-  const ecarts = await propriétairesInjoignables(client, roleExecutant, migrationsAExaminer);
-  if (ecarts.length > 0) {
-    console.error('  REFUS      propriete des fonctions visees par les migrations en attente');
-    for (const e of ecarts) {
-      console.error(`             ${e.migration} : public.${e.fonction} appartient a ${e.proprietaire},`);
-      console.error(`             que ${roleExecutant} ne peut pas endosser (SET ROLE refuse).`);
-    }
-    console.error('             Cette operation exige le PROPRIETAIRE de ces fonctions.');
-    console.error('             Relancer avec la connexion de ce proprietaire (DATABASE_URL), ou');
-    console.error('             transferer la propriete par une decision explicite. Rien n a ete joue.');
-    await client.end();
-    if (clientAdmin) await clientAdmin.end();
-    process.exit(3);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Rattrapage d'une elevation laissee ouverte.
 //
 // L'elevation de 20261028120100 est temporaire ET reverifiee apres coup. Il
@@ -364,6 +325,33 @@ for (const nom of enAttente) {
     } catch (e) {
       console.error(`  REFUS      ${nom}`);
       console.error(`             ${String(e.message).split('\n')[0]}`);
+      await client.end();
+      if (clientAdmin) await clientAdmin.end();
+      await verrou.relacher();
+      process.exit(3);
+    }
+  }
+
+  // PRÉFLIGHT DE PROPRIÉTÉ (P10.6/D6), PAR MIGRATION ET NON UNE FOIS POUR TOUTES.
+  //
+  // `CREATE OR REPLACE FUNCTION` exige d'être le propriétaire. Un préflight
+  // global, calculé avant la boucle, se trompe : la propriété CHANGE pendant la
+  // chaîne — `20261028120100` transfère six fonctions à `tracefab_worker`, et
+  // les migrations suivantes doivent pouvoir les remplacer. Mesuré le 02/11 :
+  // un contrôle global refusait la chaîne au rang 60, alors que l'exécutant
+  // devient membre de `tracefab_worker` entre-temps. Le contrôle porte donc sur
+  // l'état du catalogue AU MOMENT d'exécuter la migration.
+  if (!assisee) {
+    const ecarts = await propriétairesInjoignables(client, roleExecutant, [{ nom, sql }]);
+    if (ecarts.length > 0) {
+      console.error(`  REFUS      ${nom}`);
+      for (const e of ecarts) {
+        console.error(`             public.${e.fonction} appartient a ${e.proprietaire},`);
+        console.error(`             que ${roleExecutant} ne peut pas endosser (SET ROLE refuse).`);
+      }
+      console.error('             Cette operation exige le PROPRIETAIRE de ces fonctions.');
+      console.error('             Relancer avec la connexion de ce proprietaire (DATABASE_URL), ou');
+      console.error('             transferer la propriete par une decision explicite. Rien n a ete joue.');
       await client.end();
       if (clientAdmin) await clientAdmin.end();
       await verrou.relacher();

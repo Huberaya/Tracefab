@@ -206,6 +206,13 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
   // n'est jamais tentee hors de cette transaction, et la suite echoue si le
   // refus n'est pas observe — la declaration n'est pas un blanc-seing.
   'scripts/test_p105_sonde_lecture_seule.mjs',
+  // P10.7 : les deux sondes P10.7 — celle du catalogue et celle du runtime —
+  // executent leurs instructions dans une transaction READ ONLY, puis tentent
+  // UNE ecriture qui DOIT echouer en 25006. Si elle passe, le lanceur sort en
+  // 1 et refuse de produire un rapport : la declaration n'est pas un
+  // blanc-seing, elle est verifiee a chaque execution.
+  'scripts/sonde_p107_etat_cible.mjs',
+  'scripts/sonde_p107_runtime.mjs',
 ];
 
 /**

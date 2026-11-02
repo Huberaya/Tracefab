@@ -1,3 +1,4 @@
+import { type IdentiteRuntime, identiteRuntimeSure } from './identite-contrat.js';
 import { prisma } from './prisma.js';
 import { headObject, storageConfig } from './storage.js';
 import { redact } from './error-reporting.js';
@@ -96,15 +97,7 @@ export function probeDatabase(): Promise<ProbeResult> {
  * publier sans authentification revelerait a quel point l'application est
  * proche — ou non — d'un contournement de RLS.
  */
-export type DatabaseIdentity = {
-  measured: boolean;
-  currentUser: string | null;
-  sessionUser: string | null;
-  database: string | null;
-  bypassesRls: boolean | null;
-  isSuperuser: boolean | null;
-  detail: string;
-};
+export type DatabaseIdentity = IdentiteRuntime;
 
 type IdentityRow = {
   current_user: string;
@@ -112,6 +105,7 @@ type IdentityRow = {
   database: string;
   bypasses_rls: boolean | null;
   is_superuser: boolean | null;
+  privileged_memberships: string[] | null;
 };
 
 const IDENTITY_UNAVAILABLE: DatabaseIdentity = {
@@ -121,6 +115,8 @@ const IDENTITY_UNAVAILABLE: DatabaseIdentity = {
   database: null,
   bypassesRls: null,
   isSuperuser: null,
+  privilegedMemberships: [],
+  canEscalate: false,
   detail: 'indisponible',
 };
 
@@ -130,16 +126,35 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
       return { ...IDENTITY_UNAVAILABLE, detail: 'DATABASE_URL absent' };
     }
     const rows = await prisma.$queryRaw<IdentityRow[]>`
+      WITH RECURSIVE atteignables(oid, profondeur) AS (
+        SELECT r.oid, 0
+          FROM pg_roles r
+         WHERE r.rolname = current_user
+        UNION
+        SELECT m.roleid, a.profondeur + 1
+          FROM atteignables a
+          JOIN pg_auth_members m ON m.member = a.oid
+         WHERE a.profondeur < 8
+      )
       SELECT current_user                                       AS current_user,
              session_user                                       AS session_user,
              current_database()                                 AS database,
              (SELECT rolbypassrls FROM pg_roles
                WHERE rolname = current_user)                    AS bypasses_rls,
              (SELECT rolsuper     FROM pg_roles
-               WHERE rolname = current_user)                    AS is_superuser
+               WHERE rolname = current_user)                    AS is_superuser,
+             ARRAY(
+               SELECT r.rolname
+                 FROM atteignables a
+                 JOIN pg_roles r ON r.oid = a.oid
+                WHERE a.profondeur > 0
+                  AND (r.rolsuper OR r.rolbypassrls)
+                ORDER BY 1
+             )                                                  AS privileged_memberships
     `;
     const row = rows?.[0];
     if (!row) return { ...IDENTITY_UNAVAILABLE, detail: 'requete honoree, aucune ligne' };
+    const membres = row.privileged_memberships ?? [];
     return {
       measured: true,
       currentUser: row.current_user,
@@ -147,6 +162,8 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
       database: row.database,
       bypassesRls: row.bypasses_rls,
       isSuperuser: row.is_superuser,
+      privilegedMemberships: membres,
+      canEscalate: membres.length > 0,
       detail: 'identite lue sur la connexion applicative',
     };
   } catch (error) {
@@ -160,13 +177,7 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
  * pour que la route ne publie pas de champs d'identite par defaut.
  */
 export function databaseIdentityIsSafe(identity: DatabaseIdentity | undefined): boolean {
-  return Boolean(
-    identity?.measured &&
-    identity.currentUser === 'tracefab_app' &&
-    identity.sessionUser === 'tracefab_app' &&
-    identity.bypassesRls === false &&
-    identity.isSuperuser === false,
-  );
+  return identiteRuntimeSure(identity ?? null);
 }
 
 /** Stockage prive : on interroge une cle qui n'existe pas. Un 404 est un
