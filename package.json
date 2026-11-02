@@ -21,7 +21,7 @@
     "test:p105:sonde": "node scripts/test_p105_sonde_lecture_seule.mjs",
     "test:p105:hierarchie": "node scripts/run-db-suite.mjs scripts/verifier_hierarchie_roles.mjs",
     "test:p106:identite-negative": "node scripts/run-db-suite.mjs scripts/test_p106_identite_negative.mjs",
-    "test:p106:rejouabilite-chaine": "node scripts/test_p106_rejouabilite_chaine.mjs",
+    "test:p106:rejouabilite-chaine": "node scripts/run-db-suite.mjs scripts/test_p106_rejouabilite_chaine.mjs",
     "test:neon:write-policies": "node scripts/run-db-suite.mjs scripts/test_rls_write_policies.mjs",
     "test:neon:wallet:chantier9": "node scripts/run-db-suite.mjs scripts/test_neon_wallet_chantier9.ts",
     "test:storage:chantier10": "npx tsx scripts/test_chantier10_cloud_storage.ts",
