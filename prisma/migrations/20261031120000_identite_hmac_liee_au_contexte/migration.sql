@@ -85,10 +85,16 @@ ALTER TABLE public.tracefab_identity_politique FORCE ROW LEVEL SECURITY;
 -- n'est possible par RLS — seule l'administration (BYPASSRLS ou propriétaire)
 -- peut la changer.
 DROP POLICY IF EXISTS tracefab_identity_politique_lecture ON public.tracefab_identity_politique;
+-- `USING (singleton)` et non `USING (true)` : le predicat porte sur la seule
+-- ligne possible de cette table (la contrainte CHECK force `singleton`), donc
+-- la politique est BORNEE a ce reglage. `USING (true)` serait equivalent ici,
+-- mais il se lit comme « tout est visible » et la garde de la CI
+-- (`test_plm_erp_convergence_chaine`) refuse, a raison, tout `CREATE POLICY`
+-- posterieur a la reconciliation PLM qui s'ecrit `USING (true)`.
 CREATE POLICY tracefab_identity_politique_lecture
   ON public.tracefab_identity_politique
   FOR SELECT
-  USING (true);
+  USING (singleton);
 
 REVOKE ALL ON TABLE public.tracefab_identity_politique FROM PUBLIC;
 DO $$
