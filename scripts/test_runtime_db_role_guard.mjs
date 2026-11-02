@@ -9,6 +9,11 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const prisma = read('../api/_lib/prisma.ts');
 const readiness = read('../api/_routes/internal/p2-readiness.ts');
 const probe = read('../api/_lib/readiness-probes.ts');
+// P10.7 : le contrat d'identite vit dans un module SANS Prisma, pour etre
+// testable hors ligne. La garde le lit donc la ou il est, et elle exige EN PLUS
+// la regle d'escalade : un role qui peut endosser un role privilegie n'est pas
+// sur, meme si ses propres attributs sont irreprochables.
+const contrat = read('../api/_lib/identite-contrat.ts');
 
 const checks = [
   [
@@ -26,12 +31,19 @@ const checks = [
   [
     'la readiness diagnostique échoue si le rôle effectif n’est pas tracefab_app sans bypass',
     /databaseIdentityIsSafe\(databaseIdentity\)/.test(readiness) &&
-      /function databaseIdentityIsSafe\(identity: DatabaseIdentity \| undefined\)/.test(probe) &&
-      /identity\.currentUser === 'tracefab_app'/.test(probe) &&
-      /identity\.sessionUser === 'tracefab_app'/.test(probe) &&
-      /identity\.bypassesRls === false/.test(probe) &&
-      /identity\.isSuperuser === false/.test(probe) &&
+      /export function databaseIdentityIsSafe\(identity: DatabaseIdentity \| undefined\): boolean \{\s*return identiteRuntimeSure/.test(probe) &&
+      /identite\.currentUser !== ROLE_RUNTIME_ATTENDU/.test(contrat) &&
+      /identite\.sessionUser !== ROLE_RUNTIME_ATTENDU/.test(contrat) &&
+      /identite\.bypassesRls !== false/.test(contrat) &&
+      /identite\.isSuperuser !== false/.test(contrat) &&
       /configured_ && identitySafe/.test(readiness),
+  ],
+  [
+    'P10.7 — le contrat refuse aussi une appartenance privilégiée ATTEIGNABLE (escalade)',
+    /identite\.canEscalate !== false/.test(contrat) &&
+      /privilegedMemberships/.test(contrat) &&
+      /privileged_memberships/.test(probe) &&
+      /WITH RECURSIVE|pg_auth_members/.test(probe),
   ],
 ];
 
