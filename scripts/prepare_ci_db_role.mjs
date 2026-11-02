@@ -143,7 +143,10 @@ try {
         + '— il est CONSERVÉ, aucune modification.');
     }
     await executer(
-      `ALTER ROLE ${ident(APP_ROLE)} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOCREATEROLE NOCREATEDB`,
+      // NOCREATEDB est omis sur ALTER : seul un rôle portant CREATEDB peut
+      // modifier cet attribut. L'état préexistant est vérifié false ci-dessus
+      // et l'assertion post-ALTER le recontrôle.
+      `ALTER ROLE ${ident(APP_ROLE)} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOCREATEROLE`,
     );
     console.log(`Rôle ${APP_ROLE} préexistant (OID ${avant.oid}), attributs réaffirmés (sans BYPASSRLS).`);
   }
