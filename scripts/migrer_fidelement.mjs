@@ -225,10 +225,22 @@ if (lireEtatSeulement) {
 // d'administration, on s'arrete : constater sans pouvoir corriger n'autorise
 // pas a continuer.
 // ---------------------------------------------------------------------------
+// Un executant DEJA superutilisateur (le compte d'administration du cluster,
+// `postgres`) n'a rien a elever : la migration assistee passe telle quelle. En
+// revanche on ne lui retire jamais son attribut — sur `postgres`, `ALTER ROLE
+// ... NOSUPERUSER` echoue en 0A000 (« The bootstrap superuser must have the
+// SUPERUSER attribute », mesure du 02/11). Cette topologie est celle des suites
+// de CI ; elle n'est pas la cible (voir docs/security/2026-10-31-p105-provisionnement.md).
+let dejaSuperuser = false;
 {
   const { rows } = await client.query(
     'SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = $1', [roleExecutant]);
-  if (rows[0]?.rolsuper === true) {
+  if (rows[0]?.rolsuper === true && roleExecutant === 'postgres') {
+    dejaSuperuser = true;
+    console.log(`NOTE       ${roleExecutant} est le compte d'administration du cluster : la chaîne`);
+    console.log('           s exécute avec SUPERUSER, sans élévation ni révocation. Ce n est PAS');
+    console.log('           la topologie cible — un exécutant non superutilisateur est exigé.');
+  } else if (rows[0]?.rolsuper === true) {
     console.log(`ATTENTION  ${roleExecutant} est SUPERUSER avant la chaine — elevation résiduelle d'une exécution interrompue.`);
     if (!clientAdmin) {
       console.error(`REFUS — ${roleExecutant} doit être réabaissé, et TF_ADMIN_URL est absente.`);
@@ -279,7 +291,7 @@ for (const nom of enAttente) {
   const sql = readFileSync(fichier, 'utf8');
   const id = crypto.randomUUID();
   const assisee = MIGRATIONS_ASSISTEES[nom];
-  if (assisee && (!clientAdmin || !elevationAutorisee)) {
+  if (assisee && !dejaSuperuser && (!clientAdmin || !elevationAutorisee)) {
     console.error(`  REFUS      ${nom}`);
     console.error(`             ${assisee.raison}`);
     console.error('             Procédure : docs/security/2026-10-31-p105-provisionnement.md § 4.');
@@ -292,7 +304,7 @@ for (const nom of enAttente) {
 
   // Élévation bornée : uniquement autour de cette migration, révoquée ensuite.
   let eleve = false;
-  if (assisee) {
+  if (assisee && !dejaSuperuser) {
     await clientAdmin.query(`ALTER ROLE ${roleExecutant} SUPERUSER`);
     eleve = true;
     console.log(`             assistée — élévation temporaire de ${roleExecutant} (SUPERUSER), révoquée après`);

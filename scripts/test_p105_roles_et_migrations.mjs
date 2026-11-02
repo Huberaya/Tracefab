@@ -32,6 +32,7 @@ import { spawnSync } from 'node:child_process';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { ROLE_APP, ROLE_MIGRATOR, ROLE_WORKER, etatRole } from './lib/tracefab_roles.mjs';
+import { verrouillerCluster } from './lib/ephemeral-db.mjs';
 
 const urlAdmin = (process.env.DATABASE_URL || '').trim();
 if (!urlAdmin) {
@@ -90,6 +91,16 @@ for (const nom of [ROLE_APP, ROLE_MIGRATOR]) {
   if (r?.rolpassword) verifieursAvant.set(nom, r.rolpassword);
 }
 
+// Verrou de CLUSTER : le provisioning ecrit dans `pg_authid`, partage par toutes
+// les bases du serveur — et par toutes les suites du meme job. Meme verrou que
+// les autres chemins qui provisionnent (test:jetables:verrou-cluster le verifie).
+//
+// Il est pris UNIQUEMENT autour du provisioning, puis relache : la suite lance
+// ensuite `migrer_fidelement.mjs`, qui prend ce meme verrou dans SA session. Un
+// verrou consultatif n etant pas reentrant d une session a l autre, le garder
+// pendant l enfant bloquait la suite indefiniment (mesure du 02/11).
+let verrou = null;
+
 let codeSortie = 0;
 try {
   // -------------------------------------------------------------------------
@@ -101,12 +112,15 @@ try {
     TF_APP_PASSWORD: MDP_APP,
     TF_MIGRATOR_PASSWORD: MDP_MIG,
   };
+  verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
   const prov1 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
   ok(prov1.status === 0, 'B3.1 provisioning initial réussi', `sortie ${prov1.status}`);
   const prov2 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
   ok(prov2.status === 0, 'B3.1 re-provisioning réussi (idempotent)', `sortie ${prov2.status}`);
   const alterEmis = /durci/.test(prov2.stdout);
   ok(!alterEmis, 'B3.1 le re-provisioning n émet AUCUN ALTER ROLE', alterEmis ? 'un durcissement a eu lieu' : 'aucune instruction ALTER');
+  await verrou.relacher();
+  verrou = null;
 
   // -------------------------------------------------------------------------
   // B2.1 — la chaîne complète, exécutée par le rôle de migration seul.
@@ -281,6 +295,7 @@ try {
     }
   }
 
+  if (verrou) await verrou.relacher().catch(() => {});
   await admin.end();
 }
 
