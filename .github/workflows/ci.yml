@@ -502,7 +502,12 @@ jobs:
           #     sortent en 2, ce qu'une boucle ne doit pas lire comme un echec
           #     de code. Meme raison que test:jetables:* : elles tournent dans
           #     le job « Base », qui les cable une par une.
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')).join(' '))")
+          #   test:p106:*                 — les deux suites P10.6 (controle
+          #     negatif de l identite signee, rejouabilite de la chaine dans
+          #     un meme cluster). Memes exigences que test:p105:* : base
+          #     migree, roles applicatifs, et pour la seconde le droit de
+          #     creer une base. Cablees une par une dans le job « Base ».
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -1147,6 +1152,32 @@ jobs:
 
       - name: P10.5 — ingestion PLM/ERP sous le role applicatif, permissif ET strict
         run: npm run test:p105:ingestion
+
+      - name: P10.6 — controle NEGATIF permanent de l identite signee
+        # Trente-sept assertions qui ne decrivent que des REFUS : GUC forge
+        # ignore, jeton present mais invalide jamais remplace par le GUC,
+        # formes malformees sans exception, organisation, expiration, usage
+        # signe detourne, absence de cle active, rotation et revocation,
+        # adresse non forgee en mode strict. Deux assertions STRUCTURELLES
+        # portent sur le catalogue : aucune fonction hors du point de passage
+        # ne lit un GUC d identite, les trois fonctions d attestation passent
+        # par l identite signee. Elles tiennent donc pour toute fonction
+        # ajoutee plus tard, y compris par une migration qui ignorerait ce
+        # fichier. Aucune n est en continue-on-error.
+        run: npm run test:p106:identite-negative
+
+      - name: P10.6 — la chaine de migrations est REJOUABLE dans un meme cluster
+        # Defaut D5 mesure le 02/11 : 20261028120100 accordait puis revoquait
+        # tracefab_worker dans le meme corps. PostgreSQL refuse ce REVOKE
+        # (2BP01 « dependent privileges exist ») des qu un tiers est membre,
+        # or le rattrapage `apres` de l execution precedente en creait un. La
+        # chaine passait donc UNE fois par cluster, et toute nouvelle base
+        # jetable echouait — en cascade sur trois suites. Ce test cree une
+        # base vierge dans le cluster DEJA migre, applique les 69 migrations,
+        # verifie l appartenance finale, puis detruit la base. Il rougit si
+        # une entree du registre accorde une appartenance sans fournir de
+        # bloc « avant ».
+        run: npm run test:p106:rejouabilite-chaine
 
       - name: P10.5 — la hierarchie des roles, mesuree dans les deux sens
         # Douze assertions : attributs, appartenances directes ET transitives,

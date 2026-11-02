@@ -33,6 +33,8 @@ import {
   signerIdentite,
   cleIdentite,
   identiteSigneeConfiguree,
+  etatCleIdentite,
+  CleIdentiteInvalide,
   IDENTITY_PURPOSE,
   DUREE_JETON_SECONDES,
 } from '../api/_lib/identite-jeton.js';
@@ -100,6 +102,35 @@ process.env.TRACEFAB_IDENTITY_KEY = cle;
 ok(identiteSigneeConfiguree(), 'avec la clé en environnement, la signature est annoncée');
 ok(cleIdentite() === cle, 'cleIdentite rend la clé configurée');
 
+/* --- 2 bis. P10.6 : une clé PRÉSENTE mais INUTILISABLE ne dégrade pas en
+ * silence ---------------------------------------------------------------- */
+// Avant P10.6, une clé malformée était traitée comme une clé ABSENTE : le code
+// retombait sur l'identité non signée (`tracefab.user_id`), c'est-à-dire
+// exactement le mode que P10.5 devait fermer. Une faute de frappe dans un
+// secret ne doit pas dégrader la sécurité sans le dire.
+delete process.env.TRACEFAB_IDENTITY_KEY;
+ok(etatCleIdentite() === 'absente', 'P10.6 clé absente : état « absente » (transition documentée)');
+process.env.TRACEFAB_IDENTITY_KEY = 'pas-de-l-hexadecimal'.repeat(4); // 72 caractères, non hexadécimaux
+ok(etatCleIdentite() === 'invalide', 'P10.6 clé présente mais malformée : état « invalide »');
+ok(!identiteSigneeConfiguree(), 'P10.6 une clé invalide n est PAS annoncée comme configurée');
+let refus: unknown = null;
+try { cleIdentite(); } catch (e) { refus = e; }
+ok(refus instanceof CleIdentiteInvalide,
+  'P10.6 cleIdentite LÈVE au lieu de rendre undefined — la requête échouera',
+  refus instanceof Error ? refus.message.slice(0, 60) : String(refus));
+refus = null;
+try { signerIdentite({ userId: cible.user_id, organizationId: cible.organization_id, cle: process.env.TRACEFAB_IDENTITY_KEY }); } catch (e) { refus = e; }
+ok(refus instanceof CleIdentiteInvalide,
+  'P10.6 signerIdentite LÈVE sur une clé explicite invalide — jamais un jeton sur une clé vide');
+// Clé de longueur impaire : le cas qui produisait silencieusement un HMAC sur
+// une clé tronquée (Buffer.from en hexadécimal ignore le dernier demi-octet).
+refus = null;
+try { signerIdentite({ userId: cible.user_id, organizationId: cible.organization_id, cle: 'a'.repeat(65) }); } catch (e) { refus = e; }
+ok(refus instanceof CleIdentiteInvalide, 'P10.6 clé hexadécimale de longueur IMPAIRE : refusée, pas tronquée');
+// Contrôle positif : une clé valide ne lève pas, et produit un jeton.
+ok(signerIdentite({ userId: cible.user_id, organizationId: cible.organization_id, cle: 'b'.repeat(64) }) !== null,
+  'P10.6 contrôle positif : une clé valide signe normalement');
+
 const maintenant = Math.floor(Date.now() / 1000);
 const signe = signerIdentite({ userId: cible.user_id, organizationId: cible.organization_id, cle, maintenant });
 ok(signe !== null && signe.expiration === maintenant + DUREE_JETON_SECONDES,
@@ -113,9 +144,12 @@ ok(champs.length === 5 && champs[0] === 'v1' && champs[1] === cible.user_id
   'format v1|<user>|<org>|usage|<exp> conforme', corps);
 ok(/^[0-9a-f]{64}$/.test(mac ?? ''), 'le MAC est un HMAC-SHA256 hexadécimal de 64 caractères');
 
-ok(signerIdentite({ userId: cible.user_id, organizationId: cible.organization_id, cle: 'trop-court' }) === null,
-  'une clé trop courte est REFUSÉE, pas tronquée');
-ok(signerIdentite({ userId: cible.user_id, organizationId: cible.organization_id, cle: 'z'.repeat(64) }) === null,
+// Contrat DURCI en P10.6 : ces deux cas levaient auparavant `null`, c'est-à-dire
+// une dégradation SILENCIEUSE vers l'identité non signée. Ils lèvent désormais.
+const leve = (fn: () => unknown): unknown => { try { fn(); return null; } catch (e) { return e; } };
+ok(leve(() => signerIdentite({ userId: cible.user_id, organizationId: cible.organization_id, cle: 'trop-court' })) instanceof CleIdentiteInvalide,
+  'une clé trop courte est REFUSÉE (lève), plus jamais dégradée en silence');
+ok(leve(() => signerIdentite({ userId: cible.user_id, organizationId: cible.organization_id, cle: 'z'.repeat(64) })) instanceof CleIdentiteInvalide,
   'une clé qui n est pas de l hexadécimal est REFUSÉE — sinon Buffer.from tronquerait silencieusement');
 
 /* --- 3. la base vérifie ce que l application a signé ---------------------- */

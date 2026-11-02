@@ -46,6 +46,9 @@
  *   TF_ALLOW_PROVISIONING=oui TF_APP_PASSWORD=… TF_MIGRATOR_PASSWORD=… \
  *     node scripts/provisionner_roles_db.mjs
  *
+ *   TF_ALLOW_PROVISIONING=oui TF_CORRIGER_ATTRIBUTS=oui … (correction d'un
+ *     ecart d'attribut par un executant SUPERUSER ; jamais implicite)
+ *
  * Variables de connexion (toutes optionnelles, aucune n'est affichée) :
  *   DATABASE_ADMIN_URL  compte capable de créer les rôles (prioritaire)
  *   DATABASE_URL        sinon
@@ -59,12 +62,34 @@ import {
   ROLE_APP, ROLE_MIGRATOR, ATTRIBUTS_ATTENDUS,
   etatRole, ecartsAttributs, appartenancesDirectes, appartenancesTransitives,
 } from './lib/tracefab_roles.mjs';
+import { verifierAucuneAppartenance } from './lib/tracefab_app_role.mjs';
+
+// Surcharge du nom du rôle applicatif, bornée aux noms `tf_*`.
+//
+// Elle n'existe que pour éprouver PAR EXÉCUTION les refus de ce script (B4, et
+// refus d'un rôle préexistant divergent) sans toucher au rôle de CLUSTER
+// `tracefab_app`, que partagent toutes les suites d'un même job. Même règle et
+// même liste fermée que `prepare_ci_db_role.mjs` (`TF_APP_ROLE_NAME`) : un test
+// ne peut pas viser `postgres` ni un rôle d'exploitation.
+const ROLE_APP_SURCHARGE = process.env.TF_APP_ROLE_NAME || ROLE_APP;
+if (ROLE_APP_SURCHARGE !== ROLE_APP && !/^tf_[a-z0-9_]+$/.test(ROLE_APP_SURCHARGE)) {
+  console.error(`  REFUS — nom de rôle ${ROLE_APP_SURCHARGE} hors liste fermée (${ROLE_APP} ou tf_*).`);
+  process.exit(2);
+}
 
 // `--verifier` et son alias `--dry-run` : mode SANS ECRITURE, verifie par
 // scripts/test_destructive_suite_routing.mjs (politique de routage des suites
 // qui ecrivent en base). Un outil d'exploitation doit pouvoir se constater
 // sans agir.
 const verifierSeulement = process.argv.includes('--verifier') || process.argv.includes('--dry-run');
+// P10.6 — la CORRECTION d'un ecart d'attribut est une decision explicite.
+// Avant, un executant SUPERUSER rabattait l'ecart en silence : un role
+// preexistant etranger voyait ses attributs reecrits par un script de
+// provisionnement. C'est exactement le geste que la garde de conservation
+// interdit (`RolePreexistantRefuse` dans `ensureAppRole` et
+// `prepare_ci_db_role.mjs`). Ici, l'administrateur PEUT corriger — c'est sa
+// commande — mais il doit le dire.
+const corrigerAttributs = process.env.TF_CORRIGER_ATTRIBUTS === 'oui';
 const url = (process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL || '').trim();
 if (!url) {
   console.error('  NON EXECUTE — DATABASE_ADMIN_URL (ou DATABASE_URL) est absente.');
@@ -104,8 +129,24 @@ const ok = (cond, libelle, detail = '') => {
  * l'instruction exacte que l'administrateur doit jouer.
  */
 async function assurerRole(nom, motDePasse) {
-  const attendus = ATTRIBUTS_ATTENDUS[nom];
+  // Une surcharge de test (`tf_*`) emprunte les attributs attendus du rôle
+  // applicatif réel : c'est le même contrat, sur un autre nom.
+  const attendus = ATTRIBUTS_ATTENDUS[nom] ?? ATTRIBUTS_ATTENDUS[ROLE_APP];
   const avant = await etatRole(db, nom);
+  // B4 — fail closed AVANT toute ecriture : une appartenance, meme transitive,
+  // permet `SET ROLE` vers sa cible. On refuse de provisionner au-dessus d'un
+  // etat dangereux plutot que de le laisser en place. Meme garde que
+  // `ensureAppRole` et `prepare_ci_db_role.mjs` : trois chemins, un contrat.
+  // En `--verifier`, on rapporte l'ecart sans lever (le mode ne doit pas sortir
+  // par une exception, il doit rendre un verdict).
+  if (nom === ROLE_APP_SURCHARGE && avant !== null) {
+    try {
+      await verifierAucuneAppartenance(db, ROLE_APP_SURCHARGE);
+    } catch (e) {
+      ok(false, `B4 : ${nom} n a aucune appartenance`, e.message.slice(0, 160));
+      if (!verifierSeulement) return;
+    }
+  }
   if (avant === null) {
     if (verifierSeulement) {
       ok(false, `le rôle ${nom} existe`);
@@ -130,7 +171,7 @@ async function assurerRole(nom, motDePasse) {
   }
 
   const etat = await etatRole(db, nom);
-  const ecarts = ecartsAttributs(nom, etat);
+  const ecarts = ecartsAttributs(nom, etat, attendus);
 
   if (ecarts.length > 0) {
     // Un écart d'attribut n'est PAS réparable sans le privilège correspondant.
@@ -139,7 +180,7 @@ async function assurerRole(nom, motDePasse) {
       .filter(([k]) => k !== 'rolinherit' && etat && etat[k] !== attendus[k])
       .map(([k, v]) => `${v ? '' : 'NO'}${k.replace(/^rol/, '').toUpperCase()}`)
       .join(' ')};`;
-    if (posture.rolsuper && !verifierSeulement) {
+    if (posture.rolsuper && !verifierSeulement && corrigerAttributs) {
       try {
         await db.query(correction);
         console.log(`  durci  ${nom} — un écart d'attribut a été corrigé (exécutant SUPERUSER)`);
@@ -149,12 +190,16 @@ async function assurerRole(nom, motDePasse) {
     } else {
       ok(false, `attributs de ${nom} conformes`, ecarts.join(' ; '));
       console.error(`         correction requise par un administrateur : ${correction}`);
+      if (posture.rolsuper && !verifierSeulement) {
+        console.error('         (executant SUPERUSER : relancer avec TF_CORRIGER_ATTRIBUTS=oui pour l appliquer ;');
+        console.error('          sans ce drapeau, aucun attribut n est reecrit — un role preexistant n est pas le notre)');
+      }
       return;
     }
   }
 
   const apres = await etatRole(db, nom);
-  const restants = ecartsAttributs(nom, apres);
+  const restants = ecartsAttributs(nom, apres, attendus);
   ok(restants.length === 0, `attributs de ${nom} conformes`, restants.join(' ; ') || 'aucun écart');
 
   if (!verifierSeulement && motDePasse && apres) {
@@ -296,8 +341,8 @@ async function assurerExtensions() {
 async function assurerDroitsSchema() {
   const base = (await db.query('SELECT current_database() AS b')).rows[0].b;
   const instructions = [
-    `GRANT CONNECT ON DATABASE "${base}" TO ${ROLE_APP}, ${ROLE_MIGRATOR}`,
-    `GRANT USAGE ON SCHEMA public TO ${ROLE_APP}`,
+    `GRANT CONNECT ON DATABASE "${base}" TO ${ROLE_APP_SURCHARGE}, ${ROLE_MIGRATOR}`,
+    `GRANT USAGE ON SCHEMA public TO ${ROLE_APP_SURCHARGE}`,
     // Le proprietaire du SCHEMA, et pas seulement un detenteur de CREATE :
     // la premiere migration pose `COMMENT ON SCHEMA public`, qui exige la
     // propriete du schema (« must be owner of schema public », mesure).
@@ -316,16 +361,16 @@ async function assurerDroitsSchema() {
   const { rows } = await db.query(
     `SELECT has_schema_privilege($1, 'public', 'CREATE') AS app_create,
             has_schema_privilege($2, 'public', 'CREATE') AS mig_create`,
-    [ROLE_APP, ROLE_MIGRATOR],
+    [ROLE_APP_SURCHARGE, ROLE_MIGRATOR],
   );
-  ok(rows[0].app_create === false, 'tracefab_app n a pas CREATE sur le schéma public', `create=${rows[0].app_create}`);
+  ok(rows[0].app_create === false, `${ROLE_APP_SURCHARGE} n a pas CREATE sur le schéma public`, `create=${rows[0].app_create}`);
   ok(rows[0].mig_create === true, 'tracefab_migrator a CREATE sur le schéma public', `create=${rows[0].mig_create}`);
 }
 
 if (!verifierSeulement) {
   // L'ordre compte : `tracefab_migrator` doit exister avant la chaîne, et
   // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).
-  await assurerRole(ROLE_APP, process.env.TF_APP_PASSWORD);
+  await assurerRole(ROLE_APP_SURCHARGE, process.env.TF_APP_PASSWORD);
   await assurerRole(ROLE_MIGRATOR, process.env.TF_MIGRATOR_PASSWORD);
   await assurerExtensions();
   await assurerDroitsSchema();
@@ -334,7 +379,7 @@ if (!verifierSeulement) {
   console.log('        fonctions. Le créer avant rendrait cette migration inapplicable');
   console.log('        par un rôle non superutilisateur (mesuré, P10.4).');
 } else {
-  for (const nom of [ROLE_APP, ROLE_MIGRATOR]) {
+  for (const nom of [ROLE_APP_SURCHARGE, ROLE_MIGRATOR]) {
     const etat = await etatRole(db, nom);
     const ecarts = ecartsAttributs(nom, etat);
     ok(ecarts.length === 0, `attributs de ${nom} conformes`, ecarts.join(' ; ') || 'aucun écart');
@@ -353,19 +398,19 @@ if (!verifierSeulement) {
 // On mesure la fermeture transitive, pas seulement les octrois directs :
 // app -> X -> propriétaire est aussi grave que app -> propriétaire.
 // ---------------------------------------------------------------------------
-const directes = await appartenancesDirectes(db, ROLE_APP);
-const transitives = await appartenancesTransitives(db, ROLE_APP);
+const directes = await appartenancesDirectes(db, ROLE_APP_SURCHARGE);
+const transitives = await appartenancesTransitives(db, ROLE_APP_SURCHARGE);
 const acceptables = new Set(['pg_read_all_settings', 'pg_read_all_stats', 'pg_stat_scan_tables']);
 const dangereuses = directes.filter((a) => !acceptables.has(a.role_accorde));
-ok(directes.length === 0, 'tracefab_app n a aucune appartenance directe',
+ok(directes.length === 0, `${ROLE_APP_SURCHARGE} n a aucune appartenance directe`,
   directes.map((a) => `${a.role_accorde}(admin=${a.admin_option},set=${a.set_option})`).join(', ') || 'aucune');
-ok(dangereuses.length === 0, 'tracefab_app n hérite d aucun rôle privilégié',
+ok(dangereuses.length === 0, `${ROLE_APP_SURCHARGE} n hérite d aucun rôle privilégié`,
   dangereuses.map((a) => a.role_accorde).join(', ') || 'aucun');
-ok(transitives.length === 0, 'tracefab_app n atteint aucun rôle par transitivité',
+ok(transitives.length === 0, `${ROLE_APP_SURCHARGE} n atteint aucun rôle par transitivité`,
   transitives.map((t) => `${t.atteint}(d=${t.profondeur})`).join(', ') || 'aucune');
 
 const migDirectes = await appartenancesDirectes(db, ROLE_MIGRATOR);
-ok(migDirectes.every((a) => a.role_accorde !== ROLE_APP), 'tracefab_migrator n est pas membre de tracefab_app',
+ok(migDirectes.every((a) => a.role_accorde !== ROLE_APP_SURCHARGE), 'tracefab_migrator n est pas membre du rôle applicatif',
   migDirectes.map((a) => a.role_accorde).join(', ') || 'aucune appartenance');
 
 console.log('');

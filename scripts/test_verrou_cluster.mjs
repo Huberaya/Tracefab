@@ -107,6 +107,11 @@ const DOIVENT_VERROUILLER = [
   // P10.5 : cree un role temoin pour prouver qu'une appartenance rend bien
   // `SET ROLE` possible (controle non vacuant). Role de CLUSTER, meme verrou.
   'scripts/verifier_hierarchie_roles.mjs',
+  // P10.6 : provisionne le role applicatif (`bootstrap_app_role.mjs`) et cree
+  // une BASE dans le cluster partage pour y rejouer la chaine 69/69. Meme
+  // section critique que les autres : sans verrou, l'`ALTER ROLE` de
+  // 20261028120100 se heurte a une application concurrente (XX000).
+  'scripts/test_p106_rejouabilite_chaine.mjs',
 ];
 
 // Chemins qui ne doivent PAS le prendre, avec la raison.

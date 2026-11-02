@@ -87,12 +87,15 @@ const MAINTENANT = Math.floor(Date.now() / 1000);
 const app = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp), application_name: 'tracefab-hmac-runtime' });
 await app.connect();
 
-async function dansTransaction({ identite, userId, orgId }, corps) {
+async function dansTransaction({ identite, userId, orgId, userEmail }, corps) {
   await app.query('BEGIN');
   try {
     if (identite !== undefined) await app.query('SELECT set_config($1,$2,true)', ['tracefab.identity', identite]);
     if (userId !== undefined) await app.query('SELECT set_config($1,$2,true)', ['tracefab.user_id', userId]);
     if (orgId !== undefined) await app.query('SELECT set_config($1,$2,true)', ['tracefab.active_organization_id', orgId]);
+    // P10.6 : l'adresse est un GUC non signe avant la migration 20261102120000.
+    // Le poser explicitement est ce qui permet de mesurer la forge.
+    if (userEmail !== undefined) await app.query('SELECT set_config($1,$2,true)', ['tracefab.user_email', userEmail]);
     return await corps();
   } finally {
     await app.query('ROLLBACK').catch(() => {});
@@ -325,6 +328,129 @@ ok(tour1 === A.user_id && tour2.id === null && tour2.n === 0,
   `tours=${pids.size} pid · après=${tour2.id} · lignes=${tour2.n}`);
 
 // ---------------------------------------------------------------------------
+// P10.6 — S9. L'ADRESSE EST-ELLE SIGNÉE ?
+//
+// P10.5 signait l'identifiant, pas l'adresse. Mesure de la revue P10.6 : en
+// mode strict, jeton signé de A + `tracefab.user_email` forgé rendait l'adresse
+// forgée. Trois surfaces en dépendent (acceptation d'invitation, auto-
+// inscription fournisseur, politique `passport_access_select`). Depuis
+// 20261102120000, l'adresse est LUE dans `users` sur l'identité signée.
+//
+// Le contrôle négatif compte autant que le refus : en mode permissif, l'adresse
+// vient TOUJOURS du GUC. C'est la transition documentée, et elle est affichée
+// pour que personne ne la confonde avec une protection acquise.
+// ---------------------------------------------------------------------------
+console.log('');
+{
+  const adresseReelle = (await admin.query('SELECT lower(email) e FROM public.users WHERE id = $1', [A.user_id])).rows[0].e;
+  const FORGEE = 'pirate@exemple.test';
+  const lireAdresse = (ctx) => dansTransaction(ctx, () => app.query('SELECT public.tracefab_current_user_email() AS e').then((r) => r.rows[0].e));
+
+  await admin.query('UPDATE public.tracefab_identity_politique SET strict = true, modifie_le = now() WHERE singleton');
+  try {
+    const stricte = await lireAdresse({ identite: jetonA, orgId: A.id, userEmail: FORGEE });
+    ok(stricte === adresseReelle,
+      'S9 mode strict : l adresse vient de l IDENTITÉ SIGNÉE, pas du GUC forgé',
+      `rendue=${stricte} · forgée=${FORGEE}`);
+
+    const sansJeton = await lireAdresse({ orgId: A.id, userEmail: FORGEE });
+    ok(sansJeton === null,
+      'S9 mode strict, GUC d adresse forgé sans jeton : aucune adresse', `${sansJeton}`);
+  } finally {
+    await admin.query('UPDATE public.tracefab_identity_politique SET strict = $1, modifie_le = now() WHERE singleton', [strictAvant]);
+  }
+  const permissive = await lireAdresse({ orgId: A.id, userEmail: FORGEE });
+  console.log(`        MESURE (transition assumée) — mode permissif, adresse non signée : ${permissive}`);
+  ok(permissive === FORGEE,
+    'S9 mode permissif : comportement antérieur CONSERVÉ (transition), mesuré et non supposé',
+    `${permissive}`);
+}
+
+// ---------------------------------------------------------------------------
+// P10.6 — S10. AUCUNE AUTRE LECTURE DU GUC D'IDENTITÉ
+//
+// Contrôle STRUCTUREL, et c'est le seul possible pour les autres fonctions :
+// l'assertion porte sur le catalogue, donc elle couvre toute fonction ajoutée
+// plus tard, y compris par une migration qui ne passerait pas par ce fichier.
+// ---------------------------------------------------------------------------
+console.log('');
+{
+  const brut = await admin.query(
+    `SELECT p.proname
+       FROM pg_catalog.pg_proc p
+       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.prokind = 'f'
+        AND p.proname <> 'tracefab_current_user_id'
+        AND pg_catalog.pg_get_functiondef(p.oid) LIKE '%current_setting(''tracefab.user_id''%'
+      ORDER BY 1`);
+  ok(brut.rows.length === 0,
+    'S10 aucune fonction hors du point de passage ne lit le GUC tracefab.user_id',
+    brut.rows.map((r) => r.proname).join(', ') || 'aucune');
+
+  const politiques = await admin.query(
+    `SELECT policyname, tablename FROM pg_catalog.pg_policies
+      WHERE schemaname = 'public'
+        AND coalesce(qual, '') || coalesce(with_check, '') LIKE '%tracefab.user_email%'`);
+  ok(politiques.rows.length === 0,
+    'S10 aucune politique ne compare au GUC tracefab.user_email',
+    politiques.rows.map((r) => `${r.tablename}.${r.policyname}`).join(', ') || 'aucune');
+}
+
+// ---------------------------------------------------------------------------
+// P10.6 — S11. ROTATION DES CLÉS, SANS COUPURE
+//
+// Avant 20261102120000, la vérification ne retenait que la clé active de
+// version la plus haute : toute rotation invalidait immédiatement les jetons
+// en vol, ce qui décourage de tourner la clé. Deux clés ACTIVES doivent
+// coexister : le jeton signé par l'ancienne reste accepté le temps que la
+// nouvelle se déploie. Une clé DÉSACTIVÉE ne vaut plus rien.
+// ---------------------------------------------------------------------------
+console.log('');
+{
+  const V_ANCIENNE = 99012;
+  const V_NOUVELLE = 99013;
+  const ancienne = randomBytes(32);
+  const nouvelle = randomBytes(32);
+  // La clé de test P10.5 (`VERSION`) n'est PAS touchée : le contrôle négatif
+  // qui suit la réutilise. Seules les deux clés de rotation sont créées puis
+  // retirées ici.
+  const nettoyer = async () => {
+    await admin.query('DELETE FROM public.tracefab_identity_cles WHERE version = ANY($1)', [[V_ANCIENNE, V_NOUVELLE]]);
+  };
+  await nettoyer();
+  try {
+    await admin.query('UPDATE public.tracefab_identity_cles SET actif = (version = $1)', [VERSION]);
+    await admin.query(
+      `INSERT INTO public.tracefab_identity_cles (version, secret, actif) VALUES ($1,$2,true), ($3,$4,true)`,
+      [V_ANCIENNE, ancienne, V_NOUVELLE, nouvelle]);
+
+    const avecAncienne = await dansTransaction(
+      { identite: jeton({ userId: A.user_id, orgId: A.id, exp: MAINTENANT + 60, cle: ancienne }), orgId: A.id },
+      () => identite());
+    ok(avecAncienne === A.user_id,
+      'S11 rotation : un jeton signé par l ANCIENNE clé reste accepté pendant le chevauchement',
+      `${avecAncienne}`);
+
+    const avecNouvelle = await dansTransaction(
+      { identite: jeton({ userId: A.user_id, orgId: A.id, exp: MAINTENANT + 60, cle: nouvelle }), orgId: A.id },
+      () => identite());
+    ok(avecNouvelle === A.user_id,
+      'S11 rotation : un jeton signé par la NOUVELLE clé est accepté', `${avecNouvelle}`);
+
+    await admin.query('UPDATE public.tracefab_identity_cles SET actif = false WHERE version = $1', [V_ANCIENNE]);
+    const apresDesactivation = await dansTransaction(
+      { identite: jeton({ userId: A.user_id, orgId: A.id, exp: MAINTENANT + 60, cle: ancienne }), orgId: A.id },
+      () => identite());
+    ok(apresDesactivation === null,
+      'S11 une clé DÉSACTIVÉE ne vérifie plus rien — la révocation est effective',
+      `${apresDesactivation}`);
+  } finally {
+    await nettoyer();
+    await admin.query('UPDATE public.tracefab_identity_politique SET strict = $1, modifie_le = now() WHERE singleton', [strictAvant]);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Contrôle négatif : une clé connue de l'appelant rend la falsification valide.
 // ---------------------------------------------------------------------------
 const cleConnue = randomBytes(32);
@@ -346,7 +472,7 @@ await admin.end();
 
 console.log('');
 if (echecs === 0) {
-  console.log(`  HMAC d'identité : ${assertions} assertions — les huit scénarios sont couverts.`);
+  console.log(`  HMAC d'identité : ${assertions} assertions — huit scénarios P10.5 (S1-S8) et trois contrôles P10.6 (S9-S11).`);
   process.exit(0);
 }
 console.log(`  ${echecs} ÉCHEC sur ${assertions} assertions.`);

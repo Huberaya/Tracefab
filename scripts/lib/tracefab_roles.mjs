@@ -123,8 +123,12 @@ export async function etatRole(db, nom) {
 }
 
 /** Écarts entre l'état mesuré d'un rôle et les attributs attendus. */
-export function ecartsAttributs(nom, etat) {
-  const attendus = ATTRIBUTS_ATTENDUS[nom];
+export function ecartsAttributs(nom, etat, attendusDeclares = ATTRIBUTS_ATTENDUS[nom]) {
+  // Troisieme argument facultatif : il n'existe que pour les SURCHARGES de nom
+  // (`tf_*`) eprouvees par les suites, qui empruntent le contrat du role reel
+  // sans en heriter le nom. Sans lui, `ATTRIBUTS_ATTENDUS[nom]` est `undefined`
+  // et la fonction levait — mesure du 02/11 sur `tf_p106_prov`.
+  const attendus = attendusDeclares;
   if (!attendus) throw new Error(`aucun attribut attendu déclaré pour ${nom}`);
   if (!etat) return [`le rôle ${nom} n'existe pas`];
   const ecarts = [];

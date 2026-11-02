@@ -33,6 +33,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { exigeAssistance, preparerAppartenance } from './lib/migrations_assistees.mjs';
 import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster, filetDeNettoyage } from './lib/ephemeral-db.mjs';
@@ -283,6 +284,15 @@ try {
     .filter((d) => /^\d{14}_/.test(d)).sort();
   for (const d of dossiers) {
     const sql = fs.readFileSync(path.join(RACINE, 'prisma', 'migrations', d, 'migration.sql'), 'utf8');
+    // P10.6 — la migration assistée n'est rejouable que si l'état
+    // d'appartenance d'avant est rétabli. Sans cette préparation, PostgreSQL
+    // refuse le `REVOKE` de son § 6 bis en 2BP01 dès la deuxième base du même
+    // cluster (mesuré le 02/11). Même helper que `migrer_fidelement.mjs` :
+    // une seule définition de la règle.
+    if (exigeAssistance(d)) {
+      const { revoques } = await preparerAppartenance(mig, d, ownerName);
+      if (revoques.length) console.log(`     préparation ${d} : appartenance retirée de ${revoques.join(', ')}`);
+    }
     await mig.query('BEGIN');
     try { await mig.query(sql); await mig.query('COMMIT'); }
     catch (e) {

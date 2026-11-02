@@ -101,6 +101,10 @@ for (const nom of [ROLE_APP, ROLE_MIGRATOR]) {
 // pendant l enfant bloquait la suite indefiniment (mesure du 02/11).
 let verrou = null;
 
+// Rôles de sonde créés par cette suite : ils sont supprimés APRÈS la
+// destruction de la base, sinon `DROP ROLE` échoue sur leurs privilèges.
+const rolesSondes = new Set();
+
 let codeSortie = 0;
 try {
   // -------------------------------------------------------------------------
@@ -237,6 +241,80 @@ try {
   }
 
   // -------------------------------------------------------------------------
+  // B3.2 bis — `provisionner_roles_db.mjs` : B4 et divergence, PAR EXÉCUTION.
+  //
+  // Les deux refus ci-dessus portent sur `ensureAppRole`. Le script
+  // d'exploitation est un CHEMIN DIFFÉRENT, et il réparait auparavant les
+  // écarts d'attribut en silence dès que l'exécutant était SUPERUSER : un rôle
+  // préexistant étranger voyait ses attributs réécrits par un provisionnement.
+  //
+  // P10.6 corrige deux choses, mesurées ici sur un rôle de SONDE (`tf_*`, jamais
+  // `tracefab_app` qui est un objet de cluster partagé) :
+  //   1. `verifierAucuneAppartenance` est appelée AVANT toute écriture ;
+  //   2. une correction d'attribut exige `TF_CORRIGER_ATTRIBUTS=oui` ; sans ce
+  //      drapeau, le script S'ARRÊTE et ne réécrit RIEN.
+  // Le contrôle positif (drapeau présent -> correction appliquée) est ce qui
+  // donne sa valeur au refus : sans lui, on ne saurait pas distinguer « refuse »
+  // de « ne fait rien ».
+  // -------------------------------------------------------------------------
+  {
+    const sondeApp = `tf_p106_prov_${suffixe}`;
+    const parent = `tf_p106_parent_${suffixe}`;
+    const envSonde = {
+      ...envProv,
+      TF_APP_ROLE_NAME: sondeApp,
+      DATABASE_URL: (() => { const u = new URL(urlAdmin); u.pathname = `/${base}`; return u.toString(); })(),
+    };
+    const nettoyer = async () => {
+      await admin.query(`REVOKE ${parent} FROM ${sondeApp}`).catch(() => {});
+      await admin.query(`DROP ROLE IF EXISTS ${parent}`).catch(() => {});
+      await admin.query(`DROP OWNED BY ${sondeApp}`).catch(() => {});
+      await admin.query(`DROP ROLE IF EXISTS ${sondeApp}`).catch(() => {});
+    };
+    await nettoyer();
+    await admin.query(`CREATE ROLE ${parent} NOLOGIN`);
+    await admin.query(`CREATE ROLE ${sondeApp} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB`);
+    try {
+      await admin.query(`GRANT ${parent} TO ${sondeApp}`);
+      verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
+      const refusB4 = lancer(['scripts/provisionner_roles_db.mjs'], envSonde);
+      await verrou.relacher();
+      verrou = null;
+      ok(refusB4.status !== 0 && /B4 REFUSE/.test(refusB4.stdout + refusB4.stderr),
+        'B3.2 bis provisionner_roles_db REFUSE une appartenance (B4), sortie non nulle',
+        `sortie ${refusB4.status}`);
+
+      await admin.query(`REVOKE ${parent} FROM ${sondeApp}`);
+      await admin.query(`ALTER ROLE ${sondeApp} BYPASSRLS`);
+      const refusDivergence = lancer(['scripts/provisionner_roles_db.mjs'], envSonde);
+      const etatApres = (await admin.query(
+        'SELECT rolbypassrls FROM pg_catalog.pg_roles WHERE rolname = $1', [sondeApp])).rows[0];
+      ok(refusDivergence.status !== 0 && etatApres?.rolbypassrls === true,
+        'B3.2 bis un écart d attribut est REFUSÉ, et RIEN n est réécrit sans drapeau',
+        `sortie ${refusDivergence.status}, bypassrls=${etatApres?.rolbypassrls}`);
+
+      verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
+      const avecDrapeau = lancer(['scripts/provisionner_roles_db.mjs'],
+        { ...envSonde, TF_CORRIGER_ATTRIBUTS: 'oui' });
+      await verrou.relacher();
+      verrou = null;
+      const etatCorrige = (await admin.query(
+        'SELECT rolbypassrls FROM pg_catalog.pg_roles WHERE rolname = $1', [sondeApp])).rows[0];
+      ok(avecDrapeau.status === 0 && etatCorrige?.rolbypassrls === false,
+        'B3.2 bis contrôle positif : avec TF_CORRIGER_ATTRIBUTS=oui la correction est appliquée',
+        `sortie ${avecDrapeau.status}, bypassrls=${etatCorrige?.rolbypassrls}`);
+    } finally {
+      await nettoyer();
+      // `DROP ROLE` échoue tant que le rôle porte des privilèges DANS la base
+      // de la suite (2BP01 « privileges for schema public » / « for database »,
+      // mesuré le 02/11 : deux rôles de sonde avaient fui). La base est détruite
+      // dans le `finally` global ; c'est là que le rôle peut enfin disparaître.
+      rolesSondes.add(sondeApp);
+      rolesSondes.add(parent);
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // B3.3 — l'élévation temporaire a bien été révoquée.
   // -------------------------------------------------------------------------
   const migFinal = (await admin.query('SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = $1', [ROLE_MIGRATOR])).rows[0];
@@ -246,6 +324,14 @@ try {
   console.log(`  ECHEC exécution — ${erreur.code || ''} ${String(erreur.message).slice(0, 140)}`);
 } finally {
   await admin.query(`DROP DATABASE IF EXISTS ${base} WITH (FORCE)`).catch(() => {});
+  // Purge des rôles de sonde : la base détruite, leurs privilèges de schéma le
+  // sont aussi. Le contrôle de non-régression (`test_garde_cible_ecriture`)
+  // échoue si un rôle `tf_*` survit à la suite : ce n'est pas décoratif.
+  for (const r of rolesSondes) {
+    await admin.query(`DROP OWNED BY ${r}`).catch(() => {});
+    await admin.query(`DROP ROLE IF EXISTS ${r}`).catch(() => {});
+  }
+  rolesSondes.clear();
 
   // Restauration des verifieurs : PostgreSQL accepte un verifieur SCRAM deja
   // calcule et le stocke tel quel. C'est la seule facon de rendre au cluster

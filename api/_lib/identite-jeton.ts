@@ -54,6 +54,35 @@ export function cleIdentiteValide(cle: string | undefined): cle is string {
   return v.length >= 64 && v.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(v);
 }
 
+/**
+ * Erreur de configuration : une clé est PRÉSENTE mais inutilisable.
+ *
+ * La distinction avec « clé absente » n'est pas cosmétique. Une clé absente est
+ * l'état de transition documenté : la base est en mode permissif et applique sa
+ * propre politique. Une clé PRÉSENTE mais malformée est une ERREUR
+ * D'EXPLOITATION : quelqu'un a voulu signer, et le code retombait jusqu'ici
+ * silencieusement sur l'identité non signée (`tracefab.user_id`), c'est-à-dire
+ * sur exactement le mode que P10.5 devait fermer. Une faute de frappe dans un
+ * secret ne doit pas dégrader la sécurité en silence : elle doit arrêter la
+ * requête, et être visible.
+ */
+export class CleIdentiteInvalide extends Error {
+  constructor(detail: string) {
+    super(`TRACEFAB_IDENTITY_KEY est présente mais inutilisable : ${detail}. `
+      + 'Aucune identité signée ne peut être produite ; la requête est refusée '
+      + 'plutôt que dégradée silencieusement vers une identité non signée.');
+    this.name = 'CleIdentiteInvalide';
+  }
+}
+
+/** État de la configuration de signature, sans jamais révéler la clé. */
+export type EtatCleIdentite = 'absente' | 'valide' | 'invalide';
+
+export function etatCleIdentite(brute: string | undefined = process.env.TRACEFAB_IDENTITY_KEY): EtatCleIdentite {
+  if (brute === undefined || brute.trim() === '') return 'absente';
+  return cleIdentiteValide(brute) ? 'valide' : 'invalide';
+}
+
 /** Duree de vie par defaut : 60 s. Une transaction dure des millisecondes. */
 export const DUREE_JETON_SECONDES = 60;
 
@@ -85,7 +114,10 @@ export function signerIdentite({
   maintenant?: number;
   dureeSecondes?: number;
 }): JetonIdentite | null {
-  if (!cleIdentiteValide(cle)) return null;
+  if (cle === undefined || cle.trim() === '') return null; // transition : pas de clé, pas de jeton
+  if (!cleIdentiteValide(cle)) {
+    throw new CleIdentiteInvalide('format attendu : hexadécimal, au moins 64 caractères, longueur paire');
+  }
   const cleHex = cle.trim();
   const expiration = maintenant + dureeSecondes;
   const corps = `v1|${userId}|${organizationId ?? ''}|${IDENTITY_PURPOSE}|${expiration}`;
@@ -93,13 +125,24 @@ export function signerIdentite({
   return { jeton: `${corps}.${mac}`, expiration };
 }
 
-/** Vrai si une clé d'identité est configurée. Ne révèle jamais sa valeur. */
+/** Vrai si une clé d'identité est configurée ET utilisable. Ne révèle jamais sa valeur. */
 export function identiteSigneeConfiguree(): boolean {
-  return cleIdentiteValide(process.env.TRACEFAB_IDENTITY_KEY);
+  return etatCleIdentite() === 'valide';
 }
 
-/** La clé, ou `undefined`. Point unique de lecture de l'environnement. */
+/**
+ * La clé, ou `undefined` si elle est ABSENTE. Point unique de lecture de
+ * l'environnement.
+ *
+ * Une clé présente mais inutilisable lève `CleIdentiteInvalide` : c'est un
+ * défaut de configuration, pas un mode de fonctionnement. Elle est levée ici,
+ * avant toute transaction, donc la requête échoue sans avoir rien écrit.
+ */
 export function cleIdentite(): string | undefined {
-  const cle = process.env.TRACEFAB_IDENTITY_KEY;
-  return cleIdentiteValide(cle) ? cle.trim() : undefined;
+  const etat = etatCleIdentite();
+  if (etat === 'absente') return undefined;
+  if (etat === 'invalide') {
+    throw new CleIdentiteInvalide('TRACEFAB_IDENTITY_KEY ne respecte pas le format attendu');
+  }
+  return process.env.TRACEFAB_IDENTITY_KEY!.trim();
 }
