@@ -47,6 +47,7 @@
  */
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
+import { verifierAucuneAppartenance } from './lib/tracefab_app_role.mjs';
 
 const rawUrl = process.env.DATABASE_URL;
 const password = process.env.TF_APP_PASSWORD;
@@ -123,6 +124,9 @@ try {
     );
     console.log(`Rôle ${APP_ROLE} créé (aucun rôle de ce nom ne préexistait).`);
   } else {
+    if (APP_ROLE === 'tracefab_app') {
+      await verifierAucuneAppartenance(client, APP_ROLE);
+    }
     // Un rôle privilégié ou propriétaire d'objets n'est PAS le nôtre : il est
     // conservé tel quel, et le script s'arrête avant toute écriture.
     const privilegies = [];
@@ -139,7 +143,12 @@ try {
         + '— il est CONSERVÉ, aucune modification.');
     }
     await executer(
-      `ALTER ROLE ${ident(APP_ROLE)} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`,
+      // NOCREATEDB est omis sur ALTER : seul un rôle portant CREATEDB peut
+      // modifier cet attribut. L'état préexistant est vérifié false ci-dessus
+      // et l'assertion post-ALTER le recontrôle.
+      // NOBYPASSRLS ne peut pas être imposé par un rôle CREATEROLE ordinaire ;
+      // l'état préexistant est contrôlé false et sera revalidé après ALTER.
+      `ALTER ROLE ${ident(APP_ROLE)} WITH LOGIN PASSWORD ${quote(password)} NOCREATEROLE`,
     );
     console.log(`Rôle ${APP_ROLE} préexistant (OID ${avant.oid}), attributs réaffirmés (sans BYPASSRLS).`);
   }

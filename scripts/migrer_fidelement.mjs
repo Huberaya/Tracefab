@@ -337,7 +337,15 @@ for (const nom of enAttente) {
       // l'option ADMIN — mesuré : « permission denied to grant role ». C'est
       // donc l'administrateur qui pose cette appartenance, une fois.
       const sqlApres = assisee.apres.replace(/%ROLE%/g, roleExecutant);
-      await clientAdmin.query(sqlApres);
+      // `clientAdmin` est NULL quand l'exécutant est DÉJÀ superutilisateur
+      // (`dejaSuperuser`, branche du 02/11) : il n'y a pas de connexion
+      // d'administration séparée. L'exécutant porte alors lui-même le
+      // privilège exigé par « GRANT … WITH ADMIN OPTION, SET TRUE », et le
+      // rattrapage passe par la connexion de migration. Défaut mesuré le
+      // 02/11 : sans ce repli, la chaîne s'arrêtait en
+      // « Cannot read properties of null (reading 'query') » APRÈS le COMMIT de
+      // la migration, donc sur un état mi-ratricapé.
+      await (clientAdmin ?? client).query(sqlApres);
       console.log(`             rattrapage — ${sqlApres}`);
     }
   } catch (error) {
