@@ -158,6 +158,42 @@ function quote(s) {
 }
 
 /**
+ * B4 — refuse toute appartenance sortante directe ou transitive du runtime.
+ *
+ * pg_auth_members peut contenir plusieurs octrois pour une meme paire
+ * (grantor distincts). Le parcours conserve donc chaque arete et son grantor.
+ * Toute appartenance est bloquee, pas seulement BYPASSRLS : elle pourrait
+ * permettre SET ROLE vers un proprietaire ou un role d'administration.
+ */
+async function verifierAucuneAppartenance(db, nom) {
+  const { rows } = await db.query(`
+    WITH RECURSIVE chemins(roleid, chemin, grantors) AS (
+      SELECT am.roleid, ARRAY[am.member, am.roleid]::oid[],
+             ARRAY[pg_get_userbyid(am.grantor)]::text[]
+        FROM pg_catalog.pg_auth_members am
+        JOIN pg_catalog.pg_roles m ON m.oid = am.member
+       WHERE m.rolname = $1
+      UNION ALL
+      SELECT am.roleid, c.chemin || am.roleid,
+             c.grantors || pg_get_userbyid(am.grantor)
+        FROM chemins c
+        JOIN pg_catalog.pg_auth_members am ON am.member = c.roleid
+       WHERE NOT am.roleid = ANY(c.chemin)
+    )
+    SELECT DISTINCT r.rolname AS role_cible,
+           array_to_string(c.grantors, ' -> ') AS grantors
+      FROM chemins c
+      JOIN pg_catalog.pg_roles r ON r.oid = c.roleid
+     ORDER BY 1, 2
+  `, [nom]);
+  if (rows.length) {
+    throw new Error(`B4 REFUSE : ${nom} est membre directement ou indirectement de rôles `
+      + rows.map((r) => `${r.role_cible} (grantors: ${r.grantors})`).join('; ')
+      + `. Supprimer tous les octrois, y compris les octrois multiples par grantor, avant provisioning.`);
+  }
+}
+
+/**
  * Cree (ou reaffirme) le role applicatif et ses droits par defaut.
  *
  * Idempotent : relancer ne duplique ni ne casse rien. Doit etre appelee
@@ -277,6 +313,11 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
     throw new Error(`nom de role ${role} hors liste fermee (${APP_ROLE} ou tf_*)`);
   }
   const avant = await etatRole(db, role);
+  if (role === APP_ROLE && avant !== null) {
+    // Fail closed AVANT ALTER ROLE ou tout GRANT : le provisionnement ne
+    // masque jamais une appartenance dangereuse preexistante.
+    await verifierAucuneAppartenance(db, role);
+  }
 
   const sqlCreate = `CREATE ROLE ${role} LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`;
   const sqlAlter = `ALTER ROLE ${role} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`;
