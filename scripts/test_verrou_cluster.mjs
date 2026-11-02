@@ -104,6 +104,9 @@ const DOIVENT_VERROUILLER = [
   // P10.5 : provisionne `tracefab_app` et `tracefab_migrator` sur le cluster
   // partage (memes roles que le job), donc meme section critique.
   'scripts/test_p105_roles_et_migrations.mjs',
+  // P10.5 : cree un role temoin pour prouver qu'une appartenance rend bien
+  // `SET ROLE` possible (controle non vacuant). Role de CLUSTER, meme verrou.
+  'scripts/verifier_hierarchie_roles.mjs',
 ];
 
 // Chemins qui ne doivent PAS le prendre, avec la raison.
