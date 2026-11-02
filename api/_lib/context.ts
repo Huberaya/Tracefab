@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
+import { cleIdentite, signerIdentite } from './identite-jeton.js';
 import type { VercelRequest } from './vercel-types.js';
 import { requestedTenantId } from './tenant.js';
 
@@ -104,6 +105,23 @@ export async function withTracefabUserContext<T>(
     // `tracefab_active_organization_id()` la rend en NULL — jamais en repli sur
     // les autres organisations du compte.
     await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${activeOrganizationId ?? ''}, true)`;
+    // Jeton d'identité signé — P10.5.
+    //
+    // Posé APRÈS le locataire actif, parce que l'organisation fait partie du
+    // corps signé : l'ordre inverse signerait une valeur que la base ne
+    // retrouverait pas dans la session, et le jeton serait refusé.
+    //
+    // Si aucune clé n'est configurée, rien n'est posé : la base reste en mode
+    // permissif et se comporte comme avant. Ce n'est pas un repli silencieux
+    // dangereux — c'est le mode de déploiement progressif décrit dans
+    // docs/security/2026-10-31-p105-hmac.md. Le passage en mode strict est une
+    // décision d'exploitation, prise côté base, pas ici.
+    const signe = signerIdentite({
+      userId,
+      organizationId: activeOrganizationId ?? '',
+      cle: cleIdentite(),
+    });
+    await tx.$executeRaw`SELECT set_config('tracefab.identity', ${signe?.jeton ?? ''}, true)`;
     try {
       return await callback(tx);
     } finally {

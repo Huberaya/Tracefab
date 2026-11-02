@@ -1095,6 +1095,51 @@ jobs:
           node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs
           node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs --confirmer
 
+      # ---------------------------------------------------------------------
+      # P10.5 — CHANTIERS B2/B3, E (HMAC), et la sonde de production.
+      #
+      # Ces cinq etapes mesurent les quatre blocages de la bascule : role
+      # applicatif non escaladable, chaine de migrations jouable par le role
+      # de migration, cles HMAC illisibles par le runtime, identite non
+      # forgeable par un GUC. Chacune tourne sur le Postgres jetable du job ;
+      # aucune ne lit un secret, aucune n'est en `continue-on-error`.
+      #
+      # `test:p105:roles-et-migrations` cree sa PROPRE base et la detruit :
+      # elle verifie la chaine 68/68 sous le role de migration, la reprise,
+      # et les refus (tracefab_app ne cree pas d objet, n ecrit pas dans
+      # `_prisma_migrations`, ne prend aucun role).
+      # ---------------------------------------------------------------------
+
+      - name: P10.5 — chaine de migrations et escalade de role, refuses
+        run: npm run test:p105:roles-et-migrations
+
+      - name: P10.5 — les jetons d identite sont signes par l application et verifies par la base
+        # Chemin reel : provisionnement de la cle par le script operateur,
+        # signature par `signerIdentite()`, verification sous `tracefab_app`.
+        # Il verifie aussi les echecs fermes (cle trop courte, non hexadecimale).
+        # Il lui faut le client Prisma, genere plus haut dans ce job.
+        run: npm run test:p105:jeton
+
+      - name: P10.5 — HMAC, huit scenarios et un controle negatif
+        run: npm run test:p105:hmac
+
+      - name: P10.5 — ingestion PLM/ERP sous le role applicatif, permissif ET strict
+        run: npm run test:p105:ingestion
+
+      - name: P10.5 — la hierarchie des roles, mesuree dans les deux sens
+        # Douze assertions : attributs, appartenances directes ET transitives,
+        # refus de `SET ROLE` vers le migrator, le worker et le proprietaire,
+        # puis un CONTROLE POSITIF (GRANT -> SET ROLE -> lecture -> REVOKE) qui
+        # prouve que le refus vient bien de l absence d appartenance et pas d un
+        # test qui ne mesure rien.
+        run: npm run test:p105:hierarchie
+
+      - name: P10.5 — la sonde de production ne modifie rien (lecture seule prouvee)
+        # Verifie, statiquement et par execution, que la sonde destinee a
+        # l operateur n execute que des SELECT : une sonde qui ecrit en
+        # production est pire qu'aucune sonde.
+        run: npm run test:p105:sonde
+
       - name: Aucune base jetable residuelle apres le job
         # Controle SEPARE des suites qu'il controle : une suite qui oublie de se
         # ranger ne peut pas se declarer propre. Il ne detruit rien.

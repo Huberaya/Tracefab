@@ -25,6 +25,7 @@ Colonne **Criticité** :
 | `TRACEFAB_APP_URL` | bloquante | URL canonique, utilisée dans les e-mails et les liens de passeport | Liens d'invitation cassés |
 | `CLERK_WEBHOOK_SIGNING_SECRET` | bloquante | Signature du webhook Clerk | Les comptes ne se créent plus |
 | `TRACEFAB_AUTHORIZED_PARTIES` | bloquante | Origines autorisées pour les jetons Clerk | Jetons d'une autre origine acceptés |
+| `TRACEFAB_IDENTITY_KEY` | fonctionnelle | Clé HMAC (`hex`, ≥ 64 caractères) qui signe le jeton d'identité posé dans `tracefab.identity` (P10.5). La valeur ne sort jamais de la fonction : `GET /api/internal/p2-readiness` n'en publie que la présence (`identityTokens.configured`) | L'application ne signe plus : la base retombe sur le mode permissif (`tracefab.user_id`), donc R-A1 reste ouvert. Rien n'est cassé pour autant — c'est l'état antérieur |
 
 ## Stockage privé — documents, preuves, certificats
 

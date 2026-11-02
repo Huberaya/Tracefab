@@ -17,7 +17,7 @@
  */
 import process from 'node:process';
 import pg from 'pg';
-import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { APP_ROLE, TABLES_ECRITURE_DIRECTE, TABLES_FERMEES_PAR_CONCEPTION } from './lib/tracefab_app_role.mjs';
 import { RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const url = process.env.DATABASE_URL;
@@ -80,14 +80,22 @@ try {
   // 1. Privileges sur chaque table du schema public.
   //    _prisma_migrations est exclue : c'est la table de journal de Prisma,
   //    reservee au role de migration. L'application ne doit pas y toucher.
+  // Tables FERMEES au runtime par conception. Les exclure d'un simple filtre
+  // serait les rendre invisibles ; elles sont donc nommees ci-dessous, et le
+  // script VERIFIE qu'elles sont bien fermees (voir § 6). Une table metier qui
+  // perdrait son SELECT resterait, elle, un ecart.
+  // Liste importee de la lib : elle n'est pas recopiee, donc elle ne peut pas
+  // deriver de celle du provisioning.
+  const FERMEES_PAR_CONCEPTION = new Set(TABLES_FERMEES_PAR_CONCEPTION);
   const tables = await client.query(
     `SELECT tablename FROM pg_tables
-     WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'
-     ORDER BY tablename`
+     WHERE schemaname = 'public' AND NOT (tablename = ANY($1::text[]))
+     ORDER BY tablename`,
+    [[...FERMEES_PAR_CONCEPTION]],
   );
   const noms = tables.rows.map((x) => x.tablename);
   console.log(`  2. privileges sur ${noms.length} tables publiques`);
-  console.log('     (_prisma_migrations exclue : reservee au role de migration)');
+  console.log(`     (exclues : ${TABLES_FERMEES_PAR_CONCEPTION.join(', ')})`);
 
   // La politique d'ecriture declaree par le depot est TABLES_ECRITURE_DIRECTE
   // (scripts/lib/tracefab_app_role.mjs), la meme liste que celle accordee par le

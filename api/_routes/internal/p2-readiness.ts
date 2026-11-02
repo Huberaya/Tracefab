@@ -5,6 +5,7 @@ import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
 import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
+import { identiteSigneeConfiguree } from '../../_lib/identite-jeton.js';
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -61,6 +62,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // psql branche sur la meme URL mesurerait une autre connexion et ne
   // prouverait rien. Tant que cette sonde n'a pas ete executee sur le runtime
   // reel, l'identite de Production reste non mesuree.
+  // P10.5 — l'application sait-elle SIGNER l'identite qu'elle pose en base ?
+  //
+  // C'est un booleen, jamais la cle : un operateur peut donc verifier sur le
+  // deploiement reel que `TRACEFAB_IDENTITY_KEY` est posee, sans lire de
+  // secret. L'absence n'est PAS bloquante : le mode permissif est l'etat de
+  // transition documente (docs/security/2026-10-31-p105-hmac.md § 4). Le mode
+  // qui fait foi est celui de la BASE (`tracefab_identity_politique.strict`).
+  const jetonsIdentite = {
+    configured: identiteSigneeConfiguree(),
+    mode: identiteSigneeConfiguree() ? 'signe' : 'non_configure',
+  };
+
   const wantIdentity = req.query?.identity === '1';
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
   // En mode diagnostic, la readiness est rouge tant que l'identité effective
@@ -73,6 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ready: configured_ && identitySafe,
       configurationOnly: true,
       services,
+      identityTokens: jetonsIdentite,
       ...(databaseIdentity ? { databaseIdentity } : {}),
     });
   }
@@ -88,6 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     configurationOnly: false,
     services,
     probes,
+    identityTokens: jetonsIdentite,
     ...(databaseIdentity ? { databaseIdentity } : {}),
   });
 }

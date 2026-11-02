@@ -117,13 +117,36 @@ const DESTRUCTIVE_DB_SUITES = [
  * classee destructrice qui n'ecrit plus, ou classee en lecture qui se met a
  * ecrire, fait echouer la politique.
  */
+const P105_DB_SUITES = [
+  // Ecrit une cle HMAC de test (version 99011), la retire, bascule puis
+  // restaure `tracefab_identity_politique.strict`. Committe : ce n'est pas une
+  // suite « rollback only ».
+  'scripts/test_p105_hmac_identite.mjs',
+  // Meme chose, et rejoue l'ingestion PLM/ERP sous le role applicatif : les
+  // transactions d'ingestion sont annulees, la cle de test est reellement
+  // posee puis supprimee. Aucun privilege large n'est accorde.
+  'scripts/test_p105_ingestion_isolation.mjs',
+  // Cree une BASE et un role de sonde dans le cluster, puis les detruit.
+  // C'est la suite la plus destructrice des trois : elle ne doit jamais voir
+  // une cible non classee jetable.
+  'scripts/test_p105_roles_et_migrations.mjs',
+  // Provisionne une cle par le module du script operateur, signe, verifie,
+  // puis retire la cle. Ecrit en base, donc garde.
+  'scripts/test_p105_identite_jeton.ts',
+  // Controle POSITIF de la hierarchie : GRANT d'un role sonde a
+  // `tracefab_app`, `SET ROLE`, mesure, puis REVOKE. Sans ce GRANT, les douze
+  // assertions ne prouveraient rien ; avec lui, la suite modifie temporairement
+  // `pg_auth_members` et doit donc etre gardee.
+  'scripts/verifier_hierarchie_roles.mjs',
+];
+
 const DATA_READING_DB_SUITES = [
   'scripts/test_neon_wallet_chantier9.ts',
   'scripts/test_neon_chantier10_storage.ts',
 ];
 
 /** Toutes les suites qui doivent passer par le lanceur garde. */
-const MUST_ROUTE_THROUGH_WRAPPER = [...DESTRUCTIVE_DB_SUITES, ...DATA_READING_DB_SUITES];
+const MUST_ROUTE_THROUGH_WRAPPER = [...DESTRUCTIVE_DB_SUITES, ...P105_DB_SUITES, ...DATA_READING_DB_SUITES];
 
 /**
  * Suites destructives presentes dans le depot mais rattachees a aucune
@@ -178,6 +201,11 @@ const ROLLBACK_ONLY_DB_SUITES = [
  */
 const REFUSED_WRITE_PROBE_DB_SUITES = [
   'scripts/test_audit_neon_readonly.mjs',
+  // P10.5 : execute la sonde de production dans une transaction READ ONLY,
+  // puis tente un `CREATE TEMP TABLE` qui DOIT echouer en 25006. L'ecriture
+  // n'est jamais tentee hors de cette transaction, et la suite echoue si le
+  // refus n'est pas observe — la declaration n'est pas un blanc-seing.
+  'scripts/test_p105_sonde_lecture_seule.mjs',
 ];
 
 /**
@@ -218,6 +246,16 @@ const OPERATOR_WRITER_SCRIPTS = [
   // garde de cible : ils sont donc hors de toute chaine automatique, et chacun
   // porte un mode sans ecriture (--dry-run ou --etat).
   'scripts/migrer_fidelement.mjs',
+  // P10.5. Aucune commande npm ni aucun workflow ne les nomme : ils sont
+  // invoques par les suites P10.5 comme processus ENFANT, sur une base que ces
+  // suites ont creee et qu'elles detruisent (voir P105_DB_SUITES). Ce qui les
+  // borne n'est donc pas l'absence d'appel — elle serait une illusion — mais
+  // `TF_ALLOW_PROVISIONING=oui` exige a chaque execution, plus la cible que
+  // l'appelant fournit. Les classer « suites gardees » serait faux : un
+  // operateur doit pouvoir provisionner une branche Neon, que le classifieur
+  // de cible jetable refuse par construction.
+  'scripts/provisionner_roles_db.mjs',
+  'scripts/provisionner_cle_identite.mjs',
   'scripts/mesure_effet_migrations_dpp.mjs',
   'scripts/valider_branche_dpp.mjs',
 ];

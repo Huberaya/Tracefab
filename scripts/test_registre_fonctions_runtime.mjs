@@ -182,14 +182,14 @@ if (!url) {
     const invalides = await client.query(`
       select r.name,
              count(p.oid) filter (where n.nspname = 'public') as trouvees,
-             coalesce(bool_or(pg_get_userbyid(p.proowner) not in (current_user, 'tracefab_worker'))
+             coalesce(bool_or(pg_get_userbyid(p.proowner) not in (current_user, 'tracefab_worker', 'tracefab_migrator'))
                       filter (where n.nspname = 'public'), false) as proprietaire_suspect
         from public.tracefab_runtime_function_registry r
         left join pg_proc p on p.proname = r.name and p.prokind = 'f'
         left join pg_namespace n on n.oid = p.pronamespace
        group by r.name
       having count(p.oid) filter (where n.nspname = 'public') <> 1
-          or coalesce(bool_or(pg_get_userbyid(p.proowner) not in (current_user, 'tracefab_worker'))
+          or coalesce(bool_or(pg_get_userbyid(p.proowner) not in (current_user, 'tracefab_worker', 'tracefab_migrator'))
                       filter (where n.nspname = 'public'), false)
        order by r.name`);
     ok(

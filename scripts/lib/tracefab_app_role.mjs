@@ -120,6 +120,36 @@ export const TABLES_ECRITURE_DIRECTE = [
 export const TABLES_ECRITURE_COLONNES = ['tracefab_products'];
 
 /**
+ * Tables qu'AUCUN droit n'ouvre au runtime, par conception.
+ *
+ * Elles ne se mesurent pas comme les autres : `lire-disponibilite-role-app`
+ * les exclut de son inventaire de privileges (leur fermeture est voulue, pas
+ * un ecart), et `test_rls_isolation` exige qu'elles rendent `42501` plutot
+ * qu'une politique.
+ *
+ * La liste vit ICI et nulle part ailleurs. Une liste recopiee dans un script
+ * de controle finit toujours par diverger de celle du provisioning — et c'est
+ * la version du controle qui reste, donc le controle ne controle plus rien.
+ */
+export const TABLES_FERMEES_PAR_CONCEPTION = [
+  '_prisma_migrations',                  // registre Prisma : owner-only
+  'tracefab_identity_cles',              // cle HMAC (20261031120000)
+  'tracefab_runtime_function_registry',  // registre des droits du runtime
+];
+
+/**
+ * Sous-ensemble dont la fermeture passe par l'ACL et non par la RLS : le
+ * runtime n'a AUCUN privilege dessus, donc toute lecture rend `42501`.
+ *
+ * `tracefab_runtime_function_registry` n'en fait pas partie : il est lisible
+ * (SELECT accorde) et c'est une politique qui borne ce qu'il montre. Les
+ * confondre ferait echouer le balayage d'isolation sur la meilleure de ses
+ * protections, ou — pire — passerait une table reellement fermee pour une
+ * table simplement vide.
+ */
+export const TABLES_SANS_PRIVILEGE_RUNTIME = ['tracefab_identity_cles'];
+
+/**
  * Colonnes calculees, hors de portee du role runtime quel que soit le chemin.
  * Verifiees par la garde statique et par test:neon:produit-champs-calcules.
  */
@@ -279,10 +309,9 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
   const avant = await etatRole(db, role);
 
   const sqlCreate = `CREATE ROLE ${role} LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`;
-  const sqlAlter = `ALTER ROLE ${role} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`;
 
   if (avant === null) {
-    await provoquerRole(db, sqlCreate, sqlAlter, 'creation');
+    await provoquerRole(db, sqlCreate, sqlCreate, 'creation');
     console.log(`  role ${role} cree (sans BYPASSRLS)`);
   } else {
     // Refus AVANT toute ecriture : ni le mot de passe ni les attributs du role
@@ -296,8 +325,45 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
     if (raisons.length > 0) {
       throw new RolePreexistantRefuse(role, raisons);
     }
-    await provoquerRole(db, sqlCreate, sqlAlter, 'alter');
-    console.log(`  role ${role} deja present (OID ${avant.oid}), attributs reaffirmes (sans BYPASSRLS)`);
+    // ------------------------------------------------------------------
+    // B3 — AUCUN `ALTER ROLE` QUAND LE ROLE EST DEJA CONFORME.
+    //
+    // Avant P10.5, cette branche jouait systematiquement
+    //     ALTER ROLE … NOSUPERUSER NOCREATEROLE NOCREATEDB
+    // Or PostgreSQL 16+ exige SUPERUSER pour changer l'attribut SUPERUSER :
+    // « Only roles with the SUPERUSER attribute may change the SUPERUSER
+    // attribute » (mesure, PG 17.10). Consequence : le provisioning — donc le
+    // demarrage de la CI et de l'application — dependait d'un privilege
+    // d'administration, alors que le role etait deja correct.
+    //
+    // Desormais : on COMPARE, et on n'ecrit que si un attribut diverge. Un role
+    // conforme ne recoit aucune instruction. Un role non conforme n'est pas
+    // rabattu en silence : il est refuse, avec la correction a faire jouer par
+    // un administrateur. Le runtime ne s'accorde jamais de privilege.
+    // ------------------------------------------------------------------
+    const divergents = [];
+    if (!avant.rolcanlogin) divergents.push('LOGIN manquant');
+    if (avant.rolsuper) divergents.push('SUPERUSER');
+    if (avant.rolbypassrls) divergents.push('BYPASSRLS');
+    if (avant.rolcreaterole) divergents.push('CREATEROLE');
+    if (avant.rolcreatedb) divergents.push('CREATEDB');
+    if (divergents.length > 0) {
+      throw new RolePreexistantRefuse(role, divergents);
+    }
+    console.log(`  role ${role} deja present (OID ${avant.oid}), attributs conformes — aucune instruction ALTER emise`);
+
+    // Le mot de passe n'est pas un attribut observable : il ne se deduit pas
+    // de l'etat. On ne le pose que si l'appelant en fournit un, et son echec
+    // n'est pas fatal — PostgreSQL 16+ exige l'option ADMIN sur le role pour
+    // le changer, ce que l'executant n'a pas forcement. Les attributs, eux,
+    // sont deja prouves conformes ci-dessus.
+    if (password !== undefined) {
+      try {
+        await db.query(`ALTER ROLE ${role} PASSWORD ${quote(password)}`);
+      } catch (e) {
+        console.log(`  note ${role} : mot de passe non modifie (${e.code || ''}) — attributs inchanges`);
+      }
+    }
   }
 
   // Preuve d'identite : le role relu doit etre celui qu'on a cree ou reaffirme.
@@ -339,6 +405,15 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
     `DO $bootstrap$ BEGIN
        IF to_regclass('public._prisma_migrations') IS NOT NULL THEN
          EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public._prisma_migrations FROM ${APP_ROLE}';
+       END IF;
+     END $bootstrap$;`,
+    // P10.5 — même raison, et plus grave : `GRANT SELECT ON ALL TABLES`
+    // ci-dessus rendrait au runtime la LECTURE DE LA CLÉ HMAC, ce qui
+    // annulerait tout le mécanisme. Le REVOKE est donc explicite, idempotent,
+    // et vérifié par un test dédié (test_p105_hmac_identite.mjs).
+    `DO $bootstrap$ BEGIN
+       IF to_regclass('public.tracefab_identity_cles') IS NOT NULL THEN
+         EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public.tracefab_identity_cles FROM ${APP_ROLE}';
        END IF;
      END $bootstrap$;`,
     // ECRITURE sur les seules tables que le runtime touche hors fonction.

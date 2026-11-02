@@ -47,6 +47,7 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_get_product_traceability',
   'tracefab_get_public_supplier_passport',
   'tracefab_has_org_role',
+  'tracefab_identity_jeton_utilisateur',
   'tracefab_in_active_tenant',
   'tracefab_ingest_plm_erp_payload',
   'tracefab_invite_supplier',
