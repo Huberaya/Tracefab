@@ -129,12 +129,38 @@ ok('les migrations qui nomment les politiques derivees ne les CREENT, ALTERENT, 
   ok('temoin : une simple lecture de catalogue n est PAS signalee',
     lecture.every((i) => !INTERDIT_QUAND_CITE.test(i)));
 }
+/**
+ * CE CONTROLE A ETE RENDU EXACT LE 02/11/2026 (P10.6).
+ *
+ * Il annoncait « sur la table » mais testait TOUTES les politiques creees par
+ * les migrations posterieures : une politique parfaitement bornee sur une AUTRE
+ * table, contenant le mot `contributor` dans sa liste de roles, le faisait
+ * echouer. Mesure : `20261102120000` cree `passport_access_select` sur
+ * `supplier_passport_access_requests` avec `ARRAY['owner','admin','manager',
+ * 'contributor','viewer']` — un refus, alors que `plm_erp_sync_jobs` n'est pas
+ * touchee. Le controle porte desormais sur ce qu'il annonce : les politiques
+ * creees SUR `plm_erp_sync_jobs`. Il n'est pas plus laxiste — les deux temoins
+ * ci-dessous prouvent qu'il voit encore une politique permissive sur la table,
+ * et qu'il ne confond plus une autre table avec elle.
+ */
+const TABLE_INTEGRATION = /\bplm_erp_sync_jobs\b/;
+function politiquesPermissivesSurLaTable(sqlBrut) {
+  const sql = sqlBrut.replace(/--[^\n]*/g, '');
+  const creations = sql.match(/CREATE\s+POLICY[^;]*;/gi) ?? [];
+  return creations.filter((c) => TABLE_INTEGRATION.test(c)
+    && (/(USING|WITH\s+CHECK)\s*\(\s*true\s*\)/i.test(c) || /contributor/i.test(c)));
+}
 ok('aucune migration posterieure ne cree de politique permissive sur la table',
-  dossiers.filter((d) => d > CIBLE).every((d) => {
-    const sql = LIRE(d).replace(/--[^\n]*/g, '');
-    const creations = sql.match(/CREATE\s+POLICY[^;]*;/gi) ?? [];
-    return creations.every((c) => !/USING\s*\(\s*true\s*\)/i.test(c) && !/contributor/i.test(c));
-  }));
+  dossiers.filter((d) => d > CIBLE).every((d) => politiquesPermissivesSurLaTable(LIRE(d)).length === 0));
+{
+  const temoinPermissive = `CREATE POLICY plm_erp_sync_jobs_insert_brand ON public.plm_erp_sync_jobs FOR INSERT WITH CHECK (true);`;
+  const temoinContributor = `CREATE POLICY plm_erp_sync_jobs_insert_brand ON public.plm_erp_sync_jobs FOR INSERT WITH CHECK (tracefab_has_org_role(a, ARRAY['contributor']::membership_role[]));`;
+  const autreTable = `CREATE POLICY passport_access_select ON public.supplier_passport_access_requests FOR SELECT USING (tracefab_has_org_role(a, ARRAY['contributor']::membership_role[]));`;
+  const permissivePlm = [temoinPermissive, temoinContributor].every((t) => politiquesPermissivesSurLaTable(t).length === 1);
+  ok('temoin : une politique permissive sur plm_erp_sync_jobs est bien detectee', permissivePlm);
+  ok('temoin : une politique bornee sur une AUTRE table n est pas confondue avec elle',
+    politiquesPermissivesSurLaTable(autreTable).length === 0);
+}
 
 /* -------------------------------------------------------------------------
    2. Sur la chaine complete, avant la migration
