@@ -209,6 +209,9 @@ console.log("\n  A. Sentinelle absente — les tables presentes reçoivent leur 
     console.log('\n  B3. Provisionnement par un rôle CREATEROLE non-superutilisateur');
     await c.query('CREATE ROLE tf_b3_provisioner NOLOGIN NOSUPERUSER NOBYPASSRLS CREATEROLE NOCREATEDB');
     await c.query('CREATE ROLE tf_b3_target NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB');
+    // PostgreSQL exige CREATEROLE et ADMIN sur le rôle cible pour ALTER ROLE.
+    // Le scénario reproduit donc un grant administratif explicite, sans SUPERUSER.
+    await c.query('GRANT tf_b3_target TO tf_b3_provisioner WITH ADMIN OPTION');
     const b3Avant = await c.query(
       "SELECT rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname='tf_b3_provisioner'",
     );
