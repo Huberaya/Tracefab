@@ -320,7 +320,7 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
   }
 
   const sqlCreate = `CREATE ROLE ${role} LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`;
-  const sqlAlter = `ALTER ROLE ${role} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`;
+  const sqlAlter = `ALTER ROLE ${role} WITH LOGIN PASSWORD ${quote(password)} NOBYPASSRLS NOCREATEROLE NOCREATEDB`;
 
   if (avant === null) {
     await provoquerRole(db, sqlCreate, sqlAlter, 'creation');
