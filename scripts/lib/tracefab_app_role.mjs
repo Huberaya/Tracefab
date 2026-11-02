@@ -165,7 +165,7 @@ function quote(s) {
  * Toute appartenance est bloquee, pas seulement BYPASSRLS : elle pourrait
  * permettre SET ROLE vers un proprietaire ou un role d'administration.
  */
-async function verifierAucuneAppartenance(db, nom) {
+export async function verifierAucuneAppartenance(db, nom) {
   const { rows } = await db.query(`
     WITH RECURSIVE chemins(roleid, chemin, grantors) AS (
       SELECT am.roleid, ARRAY[am.member, am.roleid]::oid[],
