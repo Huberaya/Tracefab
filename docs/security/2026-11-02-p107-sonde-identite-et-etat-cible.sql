@@ -15,9 +15,12 @@
 --   runtime. Le nom de la variable `DATABASE_URL` ne prouve rien.
 --
 -- MODE D'EMPLOI
---   psql "$TRACEFAB_LECTURE_URL" -v ON_ERROR_STOP=1 -f <ce fichier>
+--   node scripts/sonde_p107_etat_cible.mjs --url "$TRACEFAB_LECTURE_URL"
 --   Conserver la sortie AVEC sa date : sans date, ce n'est pas une mesure.
---   Aucun secret ne doit être recopié dans un ticket ou un journal.
+--   Le lanceur conditionne B1/B2/B3 et B7 à la présence mesurée en B0 : un
+--   `CASE` ne met pas à l'abri de l'analyse d'une relation absente (42P01).
+--   Une exécution psql directe n'est donc valide que si toutes les relations
+--   lues existent déjà. Aucun secret ne doit être recopié dans un journal.
 -- ============================================================================
 
 
@@ -101,7 +104,20 @@ SELECT m.rolname                                AS role_de_connexion,
 
 
 -- ============================================================================
+-- B0. EXISTENCE DES RELATIONS ET DE LA FONCTION D'IDENTITÉ
+--     Ce bloc ne lit que le catalogue. Le lanceur s'en sert pour NE PAS
+--     analyser les requêtes dépendantes lorsqu'une relation est absente.
+-- ============================================================================
+SELECT to_regclass('public._prisma_migrations')                    IS NOT NULL AS migrations_presentes,
+       to_regclass('public.tracefab_identity_cles')                IS NOT NULL AS cles_presentes,
+       to_regclass('public.tracefab_identity_politique')           IS NOT NULL AS politique_presente,
+       to_regprocedure('public.tracefab_identity_jeton_utilisateur(text)') IS NOT NULL AS fonction_verification_presente,
+       to_regrole('tracefab_app')                                  IS NOT NULL AS app_present;
+
+
+-- ============================================================================
 -- B1. L'HISTORIQUE DES MIGRATIONS
+--     Exécuté par le lanceur seulement si B0.migrations_presentes = true.
 --     ATTENDU : terminees = migrations sur disque (69 dans la branche
 --     `arena/96848462-tracefab`), aucun echec en attente de resolution.
 -- ============================================================================
@@ -166,12 +182,21 @@ SELECT p.proname                                        AS fonction,
 -- ============================================================================
 -- B5. HYGIÈNE DES FONCTIONS SECURITY DEFINER
 --     ATTENDU : 0 sans `search_path` figé, 0 exécutable par PUBLIC.
+--     PUBLIC est le grantee OID 0, pas un rôle à inventer. proacl = NULL ne
+--     signifie pas « aucun droit » : il faut alors développer acldefault, qui
+--     donne notamment EXECUTE à PUBLIC pour une fonction nouvellement créée.
 -- ============================================================================
 SELECT count(*) FILTER (WHERE p.prosecdef)                                              AS definer_total,
        count(*) FILTER (WHERE p.prosecdef AND (p.proconfig IS NULL
                          OR NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c
                                          WHERE c LIKE 'search_path=%')))                AS definer_sans_search_path,
-       count(*) FILTER (WHERE pg_catalog.has_function_privilege('public', p.oid, 'EXECUTE')) AS executables_par_public,
+       count(*) FILTER (WHERE EXISTS (
+                         SELECT 1
+                           FROM pg_catalog.aclexplode(
+                             COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+                           ) AS acl
+                          WHERE acl.grantee = 0
+                            AND acl.privilege_type = 'EXECUTE'))                         AS executables_par_public,
        count(*) FILTER (WHERE p.prokind = 'f')                                          AS fonctions_publiques
   FROM pg_catalog.pg_proc p
   JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
@@ -194,6 +219,10 @@ SELECT to_regrole('tracefab_worker')                                         IS 
 
 -- ============================================================================
 -- B7. L'ÉTAT DE L'IDENTITÉ HMAC (aucune valeur secrète n'est lue)
+--     Exécuté par le lanceur seulement si B0 confirme les DEUX relations.
+--     Les `to_regclass` ci-dessous produisent le détail du résultat ; ils ne
+--     rendent pas la requête autonome en cas d'absence : PostgreSQL analyse
+--     aussi les relations des branches CASE non choisies et lèverait 42P01.
 --     `versions_actives` est un nombre : il dit combien de clés peuvent
 --     vérifier un jeton. Deux clés actives = rotation en cours, ce qui est
 --     l'état attendu pendant un chevauchement.
@@ -218,7 +247,20 @@ SELECT to_regclass('public.tracefab_identity_cles')                 IS NOT NULL 
 --     Mesure de catalogue ; la preuve par exécution (42501) est dans
 --     `test:p105:hmac` (S7) et `test:p106:identite-negative` (N14).
 -- ============================================================================
-SELECT pg_catalog.has_table_privilege('tracefab_app', 'public.tracefab_identity_cles', 'SELECT') AS app_lit_les_cles,
-       pg_catalog.has_table_privilege('tracefab_app', 'public.tracefab_identity_cles', 'INSERT') AS app_ecrit_les_cles,
-       pg_catalog.has_function_privilege('tracefab_app',
-         'public.tracefab_identity_jeton_utilisateur(text)', 'EXECUTE')                            AS app_peut_verifier;
+SELECT to_regrole('tracefab_app') IS NOT NULL                                           AS app_present,
+       to_regclass('public.tracefab_identity_cles') IS NOT NULL                          AS table_cles_presente,
+       to_regprocedure('public.tracefab_identity_jeton_utilisateur(text)') IS NOT NULL   AS fonction_verification_presente,
+       CASE WHEN to_regrole('tracefab_app') IS NULL
+               OR to_regclass('public.tracefab_identity_cles') IS NULL THEN NULL
+            ELSE pg_catalog.has_table_privilege(
+              'tracefab_app', 'public.tracefab_identity_cles', 'SELECT') END              AS app_lit_les_cles,
+       CASE WHEN to_regrole('tracefab_app') IS NULL
+               OR to_regclass('public.tracefab_identity_cles') IS NULL THEN NULL
+            ELSE pg_catalog.has_table_privilege(
+              'tracefab_app', 'public.tracefab_identity_cles', 'INSERT') END              AS app_ecrit_les_cles,
+       CASE WHEN to_regrole('tracefab_app') IS NULL
+               OR to_regprocedure('public.tracefab_identity_jeton_utilisateur(text)') IS NULL THEN NULL
+            ELSE pg_catalog.has_function_privilege(
+              'tracefab_app', 'public.tracefab_identity_jeton_utilisateur(text)', 'EXECUTE') END AS app_peut_verifier;
+-- NULL signifie NON MESURABLE (rôle ou objet absent), jamais « privilège
+-- refusé ». Le lanceur transforme notamment l'absence du rôle en ARRÊT B8.
