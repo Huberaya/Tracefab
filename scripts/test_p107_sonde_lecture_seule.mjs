@@ -78,6 +78,12 @@ try { rapport = JSON.parse(premier.stdout); } catch { rapport = null; }
 ok(Boolean(rapport), 'S2 la sortie est un rapport exploitable (JSON)');
 ok(rapport?.lecture_seule_prouvee === '25006',
   'S2 le moteur REFUSE une écriture dans la transaction de la sonde (25006)', rapport?.lecture_seule_prouvee || 'non observé');
+ok(rapport?.test_lecture_seule?.verdict === 'TENTATIVE_ECRITURE_REFUSEE'
+    && rapport?.test_lecture_seule?.sqlstate === '25006',
+  'S2 le verdict de lecture seule repose sur le SQLSTATE 25006, pas sur son message');
+ok(rapport?.rollback_mesures_effectue === true
+    && rapport?.test_lecture_seule?.rollback_effectue === true,
+  'S2 les mesures et le test d écriture sont annulés dans deux transactions distinctes');
 ok(rapport?.b1_historique?.en_echec === 0,
   'S2 l historique des migrations est lisible et sans échec', JSON.stringify(rapport?.b1_historique));
 ok(Array.isArray(rapport?.b2_migrations_p105_p106) && rapport.b2_migrations_p105_p106.length === 2,

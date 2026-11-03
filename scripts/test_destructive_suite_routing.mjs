@@ -507,11 +507,26 @@ for (const rel of READ_ONLY_DB_SUITES) {
 for (const rel of REFUSED_WRITE_PROBE_DB_SUITES) {
   if (!existsSync(join(ROOT, rel))) { ko(`${rel} — declaree introuvable`); continue; }
   const corps = readFileSync(join(ROOT, rel), 'utf8');
-  const tente = /CREATE TABLE tracefab_readonly_probe/.test(corps);
-  const affirme = /UNE ECRITURE A REUSSI/.test(corps) && /read-only transaction/i.test(corps);
-  if (tente && affirme) ok(`${rel} — sonde d ecriture tentee et refus affirme explicitement`);
-  else if (!tente) ko(`${rel} ne tente aucune ecriture : la declaration est fausse`);
-  else ko(`${rel} tente une ecriture sans affirmer le refus attendu`);
+  // Deux formes sont acceptees, mais aucune n'est declaree sur la seule foi du
+  // CREATE TABLE. L'ancienne forme porte son temoin textuel ; la sonde P10.7
+  // parametree doit prouver son refus par SQLSTATE, distinguer 25P02 et traiter
+  // explicitement une ecriture acceptee comme ECRITURE_VALIDEE.
+  const tenteHistorique = /CREATE TABLE tracefab_readonly_probe/.test(corps);
+  const tenteParametree = /CREATE TABLE public\.\$\{TABLE_CONTROLE\}/.test(corps)
+    && /const TABLE_CONTROLE = 'tracefab_readonly_probe'/.test(corps);
+  const affirmeHistorique = /UNE ECRITURE A REUSSI/.test(corps) && /read-only transaction/i.test(corps);
+  const affirmeParSqlstate = /erreur\.sqlstate === '25006'/.test(corps)
+    && /verdict = 'TENTATIVE_ECRITURE_REFUSEE'/.test(corps)
+    && /erreur\.sqlstate === '25P02'/.test(corps)
+    && /verdict = 'TRANSACTION_ABORTEE'/.test(corps)
+    && /rapport\.verdict = 'ECRITURE_VALIDEE'/.test(corps);
+  if ((tenteHistorique || tenteParametree) && (affirmeHistorique || affirmeParSqlstate)) {
+    ok(`${rel} — sonde d ecriture tentee et refus affirme explicitement`);
+  } else if (!(tenteHistorique || tenteParametree)) {
+    ko(`${rel} ne tente aucune ecriture : la declaration est fausse`);
+  } else {
+    ko(`${rel} tente une ecriture sans affirmer le refus attendu`);
+  }
 }
 for (const rel of ROLLBACK_ONLY_DB_SUITES) {
   if (!existsSync(join(ROOT, rel))) { ko(`${rel} — declaree introuvable`); continue; }
