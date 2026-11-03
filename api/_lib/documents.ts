@@ -41,7 +41,6 @@ export async function documentAccessibleFromTenant(
       SELECT 1
       FROM documents d
       WHERE d.id = ${documentId}::uuid
-        AND d.status = 'available'
         AND (
           d.owner_organization_id = ${tenant.organizationId}::uuid
           OR (
