@@ -57,10 +57,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const roleExpected = 'tracefab_app';
   const table = `tracefab_p107_ro_${randomBytes(4).toString('hex')}`;
-  let identity: IdentityRow | null = null;
-  let memberships: MembershipRow[] = [];
-  let contextVisible = false;
-  let writeSqlState: string | null = null;
+  const measured = {
+    identity: null as IdentityRow | null,
+    memberships: [] as MembershipRow[],
+    contextVisible: false,
+    writeSqlState: null as string | null,
+  };
   let transactionError: string | null = null;
 
   try {
@@ -80,9 +82,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                (SELECT rolcreaterole FROM pg_catalog.pg_roles WHERE rolname = current_user) AS createrole,
                (SELECT rolcreatedb FROM pg_catalog.pg_roles WHERE rolname = current_user) AS createdb
       `);
-      identity = identityRows[0] ?? null;
+      measured.identity = identityRows[0] ?? null;
 
-      memberships = await tx.$queryRawUnsafe<MembershipRow[]>(`
+      measured.memberships = await tx.$queryRawUnsafe<MembershipRow[]>(`
         WITH RECURSIVE atteignables(oid, profondeur) AS (
           SELECT r.oid, 0 FROM pg_catalog.pg_roles r WHERE r.rolname = current_user
           UNION
@@ -107,15 +109,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const pendant = await tx.$queryRawUnsafe<ValueRow[]>(
         `SELECT current_setting('tracefab.p107_portee', true) AS value`,
       );
-      contextVisible = pendant[0]?.value === 'pose';
+      measured.contextVisible = pendant[0]?.value === 'pose';
 
       try {
         await tx.$executeRawUnsafe(`CREATE TABLE public.${table} (x integer)`);
         // If this unexpectedly succeeds, the thrown sentinel forces Prisma to
         // ROLLBACK the transaction, so the table can never persist.
-        writeSqlState = 'ECRITURE_ACCEPTEE';
+        measured.writeSqlState = 'ECRITURE_ACCEPTEE';
       } catch (error) {
-        writeSqlState = sqlState(error) ?? 'ERREUR_TECHNIQUE';
+        measured.writeSqlState = sqlState(error) ?? 'ERREUR_TECHNIQUE';
       }
       throw new Error('P107_FORCE_ROLLBACK');
     });
@@ -152,6 +154,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     poolerError = erreurCodeOnly(error);
   }
 
+  const identity = measured.identity;
+  const memberships = measured.memberships;
+  const contextVisible = measured.contextVisible;
+  const writeSqlState = measured.writeSqlState;
   const privileged = memberships.filter((m) => m.privilegie);
   const canTakePrivileged = privileged.some((m) => m.peut_prendre);
   const contextAbsentAfter = contextAfter === null || contextAfter === '';
