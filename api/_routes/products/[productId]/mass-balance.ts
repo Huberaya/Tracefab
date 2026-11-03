@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabRequestContext } from '../../../_lib/context.js';
+import { withTracefabRequestContext, withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid } from '../../../_lib/data-requests.js';
@@ -48,8 +48,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'production_volume_units_must_be_positive_or_zero' });
     }
 
-    const recon = await withTracefabRequestContext(req, user, async (tx) => {
-      const product = await accessibleProduct(tx, productId);
+    const recon = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] }, async (tx, tenant) => {
+      const product = await tx.tracefab_products.findFirst({
+        where: { id: productId, brand_organization_id: tenant.organizationId },
+        select: { id: true },
+      });
       if (!product) return null;
       return reconcileProductMassBalance(tx, {
         productId,
