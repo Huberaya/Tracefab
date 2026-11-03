@@ -32,7 +32,7 @@ function sqlState(error: unknown): string | null {
   for (const candidate of [e?.meta?.code, e?.cause?.code, e?.code]) {
     if (typeof candidate === 'string' && /^[0-5][0-9A-Z]{4}$/.test(candidate)) return candidate;
   }
-  const match = String(e?.message ?? '').match(/\b([0-9A-Z]{5})\b/);
+  const match = String(e?.message ?? '').match(/\b([0-5][0-9A-Z]{4})\b/);
   return match?.[1] ?? null;
 }
 
