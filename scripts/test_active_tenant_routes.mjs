@@ -63,6 +63,12 @@ const SUPPLIER_ROUTES = [
   'api/_routes/supplier/sites.ts',
   'api/_routes/supplier/passport.ts',
   'api/_routes/supplier/passport/access-requests.ts',
+  'api/_routes/suppliers/[supplierId]/profile/submit.ts',
+];
+
+const MULTI_TENANT_ROUTES = [
+  'api/_routes/quality/suppliers/[supplierId].ts',
+  'api/_routes/suppliers/[supplierId]/profile.ts',
 ];
 
 const failures = [];
@@ -110,6 +116,16 @@ if (
   && /currentSupplier\(tx, auth\.user\.id, requestedOrganizationId\(req\)\)/.test(bom)
 ) ok('supplier/materials/import-bom: tenant demandé transmis au contexte et à la sélection');
 else fail('supplier/materials/import-bom: le tenant demandé ne borne pas le contexte et le profil');
+
+for (const path of MULTI_TENANT_ROUTES) {
+  let source;
+  try { source = read(path); } catch (error) { fail(String(error)); continue; }
+  if (!/withTracefabTenantContext\\s*\\(/.test(source) || !/supplierAccessibleFromTenant|accessibleSupplier\\(tx,[^;]*tenant/.test(source)) {
+    fail(`${path}: accès fournisseur multi-tenant non borné au tenant actif`);
+  } else {
+    ok(`${path}: accès fournisseur borné au tenant actif (relation ou partage)`);
+  }
+}
 
 const supplierProfile = read('api/_lib/supplier-profile.ts');
 if (/if \(!organizationId\) return null;/.test(supplierProfile) && !/orderBy:\s*\{\s*created_at:\s*'asc'\s*\}/.test(supplierProfile)) {
