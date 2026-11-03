@@ -6,7 +6,7 @@ import { withTracefabTenantContext } from '../../_lib/context.js';
 import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../_lib/email.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile.js';
+import { currentSupplier } from '../../_lib/supplier-profile.js';
 
 const INVITABLE_ROLES = new Set(['admin', 'manager', 'contributor', 'viewer', 'auditor']);
 const MEMBER_STATUSES = new Set(['active', 'suspended', 'revoked']);
@@ -49,7 +49,7 @@ function validEmail(value: unknown) {
 }
 
 async function memberContext(tx: Prisma.TransactionClient, userId: string, organizationId: string | null) {
-  const supplier = await currentSupplier(tx, userId, tenant.organizationId);
+  const supplier = await currentSupplier(tx, userId, organizationId);
   if (!supplier) return null;
   const actor = await tx.organization_memberships.findUnique({
     where: { organization_id_user_id: { organization_id: supplier.organization_id, user_id: userId } },
