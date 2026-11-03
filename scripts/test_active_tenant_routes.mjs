@@ -138,10 +138,11 @@ for (const path of SUPPLIER_ROUTES) {
 
 const bom = read('api/_routes/supplier/materials/import-bom.ts');
 if (
-  /withTracefabUserContext\(auth\.user\.id, auth\.user\.email, async \(tx\) => \{[\s\S]*?\}, requestedOrganizationId\(req\)\)/.test(bom)
-  && /currentSupplier\(tx, auth\.user\.id, requestedOrganizationId\(req\)\)/.test(bom)
-) ok('supplier/materials/import-bom: tenant demandé transmis au contexte et à la sélection');
-else fail('supplier/materials/import-bom: le tenant demandé ne borne pas le contexte et le profil');
+  /withTracefabTenantContext\s*\(/.test(bom)
+  && /types:\s*\['supplier'\]/.test(bom)
+  && /currentSupplier\(tx, auth\.user\.id, tenant\.organizationId\)/.test(bom)
+) ok('supplier/materials/import-bom: tenant fournisseur validé et utilisé pour le profil');
+else fail('supplier/materials/import-bom: le tenant actif ne borne pas le contexte et le profil');
 
 for (const path of MULTI_TENANT_ROUTES) {
   let source;
