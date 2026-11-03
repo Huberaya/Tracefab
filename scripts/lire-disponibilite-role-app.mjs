@@ -268,6 +268,45 @@ try {
   }
   console.log('');
 
+  // 6. Les tables FERMEES PAR CONCEPTION le sont-elles vraiment ?
+  //
+  //    Elles ont ete exclues du balayage de la section 2 : ce serait une
+  //    faute de les rendre invisibles. On VERIFIE donc ce que leur nom
+  //    affirme — aucun privilege pour le runtime. Sans cette section, le
+  //    commentaire de la section 2 decrirait un controle qui n'existe pas.
+  console.log(`  6. tables fermees par conception (${TABLES_FERMEES_PAR_CONCEPTION.length})`);
+  {
+    let ouvertes = 0;
+    for (const t of TABLES_FERMEES_PAR_CONCEPTION) {
+      const existe = (await client.query(
+        `SELECT count(*)::int AS n FROM pg_tables WHERE schemaname = 'public' AND tablename = $1`,
+        [t])).rows[0].n;
+      const r = (await client.query(
+        `SELECT has_table_privilege($1, $2, 'SELECT') AS s,
+                has_table_privilege($1, $2, 'INSERT') AS i,
+                has_table_privilege($1, $2, 'UPDATE') AS u,
+                has_table_privilege($1, $2, 'DELETE') AS d`, [cible, t])).rows[0];
+      // Ecriture : interdite sur TOUTES ces tables, sans exception.
+      // Lecture : interdite aussi, SAUF `tracefab_runtime_function_registry`,
+      // qui est lisible par conception (le runtime doit pouvoir constater son
+      // propre perimetre) et dont la lecture est bornee par une politique.
+      // La distinction est mesuree, pas supposee : elle est ecrite ici parce
+      // que la liste des tables fermees, elle, ne distingue pas les deux cas.
+      const lectureAttendue = t === 'tracefab_runtime_function_registry';
+      const ouvert = r.i || r.u || r.d || (r.s && !lectureAttendue);
+      if (ouvert) ouvertes += 1;
+      console.log(`     ${t} : ${existe ? 'presente' : 'absente de la cible'},`
+        + ` SELECT=${r.s}${lectureAttendue ? ' (lisible par conception)' : ''}`
+        + ` INSERT=${r.i} UPDATE=${r.u} DELETE=${r.d}`
+        + (ouvert ? '  ECART : le runtime a un privilege dessus' : ''));
+    }
+    if (ouvertes) {
+      console.log(`     ECART : ${ouvertes} table(s) censee(s) fermee(s) est/sont ouverte(s) au runtime.`);
+      ecarts += 1;
+    }
+  }
+  console.log('');
+
   if (obstacles === 0 && ecarts === 0) {
     console.log('  VERDICT : le role est pret pour la bascule. Rien ne s y oppose');
     console.log('  cote privileges. Cela ne dispense pas d un test d isolation en');
