@@ -14,9 +14,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const body = documentMetadata(await readJsonBody<Record<string, unknown>>(req));
-    const queryOrgId = req.query.organizationId;
-    const requestedId = Array.isArray(queryOrgId) ? queryOrgId[0] : queryOrgId;
-
     const result = await withTracefabTenantContext(
       req,
       user,
