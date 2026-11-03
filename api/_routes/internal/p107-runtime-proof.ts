@@ -30,7 +30,7 @@ type PidRow = { pid: number };
 function sqlState(error: unknown): string | null {
   const e = error as { code?: unknown; meta?: { code?: unknown }; cause?: { code?: unknown }; message?: unknown };
   for (const candidate of [e?.meta?.code, e?.cause?.code, e?.code]) {
-    if (typeof candidate === 'string' && /^[0-9A-Z]{5}$/.test(candidate)) return candidate;
+    if (typeof candidate === 'string' && /^[0-5][0-9A-Z]{4}$/.test(candidate)) return candidate;
   }
   const match = String(e?.message ?? '').match(/\b([0-9A-Z]{5})\b/);
   return match?.[1] ?? null;
