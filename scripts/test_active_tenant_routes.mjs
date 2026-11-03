@@ -120,7 +120,7 @@ else fail('supplier/materials/import-bom: le tenant demandé ne borne pas le con
 for (const path of MULTI_TENANT_ROUTES) {
   let source;
   try { source = read(path); } catch (error) { fail(String(error)); continue; }
-  if (!/withTracefabTenantContext\\s*\\(/.test(source) || !/supplierAccessibleFromTenant|accessibleSupplier\\(tx,[^;]*tenant/.test(source)) {
+  if (!/withTracefabTenantContext\s*\(/.test(source) || !/supplierAccessibleFromTenant|accessibleSupplier\(tx,[^;]*tenant/.test(source)) {
     fail(`${path}: accès fournisseur multi-tenant non borné au tenant actif`);
   } else {
     ok(`${path}: accès fournisseur borné au tenant actif (relation ou partage)`);
