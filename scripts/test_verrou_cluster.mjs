@@ -117,6 +117,13 @@ const DOIVENT_VERROUILLER = [
   // se declenche. Roles = objets de CLUSTER : meme section critique.
   'scripts/test_p107_sonde_lecture_seule.mjs',
   'scripts/test_p107_sonde_runtime.mjs',
+  // P10.8 : provisionne le role applicatif (`bootstrap_app_role.mjs`) et cree
+  // une BASE dans le cluster partage pour y amener l'etat de la production
+  // (tout applique sauf les deux migrations), puis y rejoue la chaine avec le
+  // role de migration. Meme section critique que les autres suites qui
+  // provisionnent : elle prend le verrou, et le relache avant d'appeler
+  // `migrer_fidelement.mjs` (verrou non reentrant).
+  'scripts/test_p106_preflight_avant_ecriture.mjs',
 ];
 
 // Chemins qui ne doivent PAS le prendre, avec la raison.
