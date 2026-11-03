@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { Prisma } from '@prisma/client';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { manualInvitationFallbackAllowed, sendSupplierInvitationEmail } from '../../../_lib/email.js';
@@ -67,15 +67,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const invitationToken = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256').update(invitationToken).digest('hex');
 
-    const transactionResult = await withTracefabUserContext(user.id, user.email, async (tx): Promise<InvitationTransactionResult> => {
+    const transactionResult = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager'] }, async (tx, tenant): Promise<InvitationTransactionResult> => {
+      if (organizationId !== tenant.organizationId) throw new Error('organization_context_mismatch');
       const brand = await tx.organizations.findUnique({
-        where: { id: organizationId },
+        where: { id: tenant.organizationId },
         select: { legal_name: true, display_name: true },
       });
       const rows = await tx.$queryRaw<InvitationRow[]>`
         SELECT *
         FROM tracefab_invite_supplier(
-          ${organizationId}::uuid,
+          ${tenant.organizationId}::uuid,
           ${email},
           ${legalName},
           ${displayName},
