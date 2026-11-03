@@ -209,9 +209,9 @@ for (const r of routes) {
     // SQL `= ANY(${organizationIds}::uuid[])`. La seconde etait invisible a la
     // premiere version du controle, et c'est par elle que
     // catalog/products/import-jobs passait entre les mailles.
-    const MULTI_ORG_FALLBACK = /(\{\s*in:\s*|=\s*ANY\(\s*\$\{\s*)(organizationIds|brandOrganizationIds|brandOrgIds|brandIds|orgIds|activeOrganizationIds|scopedOrganizations|organizationIdList)\b/;
+    const MULTI_ORG_FALLBACK = /(\{\s*in:\s*|=\s*ANY\(\s*\$\{\s*)(organizationIds|brandOrganizationIds|brandOrgIds|brandIds|supplierOrganizationIds|supplierOrgIds|orgIds|activeOrganizationIds|scopedOrganizations|organizationIdList)\b/;
     const declaresActiveTenant = /requireActiveTenant|resolveActiveTenant/.test(src);
-    const usesMembershipUnion = /\bactiveBrandOrganizationIds\s*\(|\bactiveOrganizationIds\s*\(/.test(src);
+    const usesMembershipUnion = /\bactiveBrandOrganizationIds\s*\(|\bactiveSupplierOrganizationIds\s*\(|\bactiveOrganizationIds\s*\(/.test(src);
     if (usesMembershipUnion && !declaresActiveTenant && !MULTI_ORG_EXEMPT.has(r.key)) {
       failures.push(`${r.key} [TENANT] : utilise l'union des adhésions sans valider le tenant actif`);
     }
