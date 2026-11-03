@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
@@ -44,7 +44,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'due_date_required' });
     }
 
-    const cap = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const cap = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] }, async (tx, tenant) => {
+      const issue = await tx.data_quality_issues.findFirst({
+        where: { id: issueId, owner_organization_id: tenant.organizationId },
+        select: { id: true },
+      });
+      if (!issue) return null;
+      const relationship = await tx.brand_supplier_relationships.findFirst({
+        where: {
+          brand_organization_id: tenant.organizationId,
+          supplier_organization_id: supplierOrganizationId,
+          status: 'active',
+        },
+        select: { id: true },
+      });
+      if (!relationship) return null;
       return await createQualityCap(tx, {
         qualityIssueId: issueId,
         supplierOrganizationId,
@@ -56,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     });
 
+    if (!cap) return json(res, 404, { error: 'quality_issue_or_supplier_relationship_not_found' });
     return json(res, 201, {
       message: 'cap_created',
       cap,
