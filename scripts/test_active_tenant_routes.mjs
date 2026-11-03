@@ -180,6 +180,30 @@ if (/if \(!organizationId\) return null;/.test(currentSupplierSource) && !/order
 // Ces deux routes sont explicitement hors tenant : l'une enregistre une nouvelle
 // organisation (aucun tenant fournisseur n'existe encore), l'autre sert le
 // sélecteur et retourne uniquement les adhésions du compte authentifié.
+const dataRequestHelpers = read('api/_lib/data-requests.ts');
+if (
+  !/activeOrganizationIds|activeSupplierOrganizationIds/.test(dataRequestHelpers)
+  && /brand_organization_id: organizationId/.test(dataRequestHelpers)
+  && /supplier_organization_id: organizationId/.test(dataRequestHelpers)
+) {
+  fail('data-request helpers utilisent encore une union d’adhésions au lieu du tenant explicite');
+} else {
+  ok('data-request helpers bornent chaque demande à une seule organisation active');
+}
+
+const capMessages = read('api/_routes/quality/caps/[capId]/messages.ts');
+if (
+  /withTracefabTenantContext/.test(capMessages)
+  && /sender_organization_id: tenant\.organizationId/.test(capMessages)
+  && !/organization_memberships\.findMany/.test(capMessages)
+) ok('messages CAP utilisent exclusivement l’organisation active comme expéditeur');
+else fail('messages CAP sélectionnent encore l’organisation depuis l’union des adhésions');
+
+const auditChain = read('api/_routes/traceability/audit-chain.ts');
+if (/withTracefabTenantContext/.test(auditChain) && /tenant\.organizationId/.test(auditChain) && !/orderBy:\s*\{\s*created_at:\s*'asc'\s*\}/.test(auditChain)) {
+  ok('audit-chain utilise le tenant actif, sans première adhésion par défaut');
+} else fail('audit-chain conserve une sélection implicite d’organisation');
+
 const onboarding = read('api/_routes/supplier/onboarding.ts');
 if (/tracefab_register_supplier_organization/.test(onboarding) && /withTracefabUserContext/.test(onboarding)) {
   ok('supplier/onboarding: exception account-level justifiée par la création initiale');
