@@ -43,7 +43,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ] },
         });
         if (!cap) return null;
-        if (attachmentDocumentId && !(await documentAccessibleFromTenant(tx, user.id, attachmentDocumentId, tenant))) return null;
+        if (attachmentDocumentId) {
+          const attachment = await tx.documents.findFirst({
+            where: { id: attachmentDocumentId, status: 'available' },
+            select: { id: true },
+          });
+          if (!attachment || !(await documentAccessibleFromTenant(tx, user.id, attachmentDocumentId, tenant))) return null;
+        }
         const senderRole: 'brand' | 'supplier' = tenant.organizationType === 'supplier' ? 'supplier' : 'brand';
         return tx.quality_cap_messages.create({
           data: {
