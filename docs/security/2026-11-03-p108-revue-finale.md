@@ -278,17 +278,17 @@ défaut de code :
 **Conditions de la fusion** (toutes vérifiables, aucune ne demande un accès
 privilégié) :
 
-1. **CI verte sur le SHA exact de la tête finale** — les cinq jobs, plus le
-   workflow de migrations, avec `head_sha` égal au SHA annoncé. Sans cela, rien
-   n'est validé (les runs d'une tête antérieure ne comptent pas).
+1. **CI verte sur le SHA exact de la tête finale** — `ff9d126` : 4/4 jobs plus
+   l'intégration migrations, `head_sha` égal au SHA annoncé. Sans cela, rien
+   n'est validé (les runs d'une tête antérieure ne comptent pas). **Satisfaite.**
 2. **Aucun test affaibli** : le diff de tests entre `main` et la tête ne contient
    que des ajouts ou des renforcements, et `test:workflow-policy` +
    `test:destructive-suite-routing` restent verts.
 3. **`main` non modifiée** au moment de la fusion (`f6d39aa…`), et fusion
    **sans écraser** les commits de la branche ; aucun `--force`.
 
-Conditions 1 et 2 sont satisfaites si la CI l'est (voir le SHA et les runs
-annoncés en fin de ce document) ; la 3 se vérifie au moment de l'acte.
+Conditions 1 et 2 sont **satisfaites** sur `ff9d126` (voir § 10) ; la 3 se
+vérifie au moment de l'acte, et `main` n'a pas bougé de toute la revue.
 
 ### Ce que cette décision n'est pas
 
@@ -332,16 +332,37 @@ reste NO-GO, quelle que soit la couleur de la CI.**
 
 ---
 
-## 9. Traçabilité de cette revue
+## 9. Deux défauts trouvés par la CI pendant cette revue
+
+Les deux ont été corrigés, jamais contournés — et les deux méritent d'être
+consignés, parce qu'ils disent ce que la CI apporte que la mesure locale ne
+donnait pas.
+
+| # | Ce que la CI a signalé | Ce que c'était | Correction |
+|---|---|---|---|
+| CI-1 | job `Base`, étape des gardes jetables : **échec** | la nouvelle suite D6 provisionne le rôle applicatif et crée une base, mais n'était pas déclarée dans le registre des chemins qui **doivent** prendre le verrou de cluster. La garde de découverte a fait exactement son travail. | suite ajoutée au registre (`test_verrou_cluster` : 36/36, assertion **ajoutée**, pas retirée) |
+| CI-2 | job `Base`, étape P10.8 : **échec** | la suite accordait des privilèges à `tracefab_migrator` **avant** de vérifier que ce rôle existe ; en CI il n'est pas provisionné, le `GRANT` échouait, et toutes les assertions du refus tombaient pour une raison étrangère au préflight. | exécutant résolu à l'exécution : rôle réel s'il est joignable, sinon rôle jetable `tf_d6_*` créé sous verrou et détruit ensuite, avec assertion qu'il ne reste ni base ni rôle. Les deux modes sont verts en local (19 et 20 assertions) |
+
+Les journaux de job ne sont pas accessibles depuis l'API GitHub (mesure
+antérieure) : les deux échecs ont été reproduits **en local** avant correction,
+puis reverifiés, et non devinés.
+
+## 10. Traçabilité de cette revue
 
 | Élément | Valeur |
 |---|---|
 | Tête contrôlée en Phase A | `5fb216f3b081d2b91ed4e7496fb4eb422ec6a52b` |
-| Corrections apportées en revue | `f724354` (suite D6), `2d394d2` (C1 + C2) |
+| Corrections apportées en revue | `f724354` (suite D6), `2d394d2` (C1 + C2), `6f87731` (CI-1), `ff9d126` (CI-2) |
+| **Tête vérifiée** | **`ff9d126`** |
+| CI sur ce SHA exact | [41559697162](https://github.com/Huberaya/Tracefab/actions/runs/41559697162) — 4/4 jobs (Socle 3m48, Base 2m23, Parcours 1m38, Verification 12m54) |
+| Intégration migrations | [41559697208](https://github.com/Huberaya/Tracefab/actions/runs/41559697208) — succès (1m23) |
+| `main` pendant toute la revue | `f6d39aa027e4cdea1a2e7a381fe432310cc77fdc`, inchangé |
 | Rapport de mission P10.7 | `docs/security/2026-11-02-p107-rapport.md` |
 | Plan d'activation stricte | `docs/security/2026-11-02-p107-plan-activation-stricte.md` |
 | Rapport P10.6 | `docs/security/2026-11-02-p106-identite-stricte.md` |
 
-Les commits de revue modifient le SHA de tête : **la CI doit être vérifiée sur
-le SHA final**, et c'est cette vérification qui figure en tête de la PR, pas
-celle de `5fb216f`.
+Les commits de revue modifient le SHA de tête : **la CI est vérifiée sur le SHA
+final**, et c'est cette vérification qui fait foi — pas celle de `5fb216f`.
+
+Runs périmés, conservés pour la traçabilité (chacun a servi à trouver un
+défaut) : `41554352211` (échec Base, CI-1), `41556872612` (échec Base, CI-2).
