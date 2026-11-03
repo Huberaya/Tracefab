@@ -353,9 +353,10 @@ puis reverifiés, et non devinés.
 |---|---|
 | Tête contrôlée en Phase A | `5fb216f3b081d2b91ed4e7496fb4eb422ec6a52b` |
 | Corrections apportées en revue | `f724354` (suite D6), `2d394d2` (C1 + C2), `6f87731` (CI-1), `ff9d126` (CI-2) |
-| **Tête vérifiée** | **`ff9d126`** |
+| Tête de code vérifiée | `ff9d126` |
 | CI sur ce SHA exact | [41559697162](https://github.com/Huberaya/Tracefab/actions/runs/41559697162) — 4/4 jobs (Socle 3m48, Base 2m23, Parcours 1m38, Verification 12m54) |
 | Intégration migrations | [41559697208](https://github.com/Huberaya/Tracefab/actions/runs/41559697208) — succès (1m23) |
+| Tête suivante, **documentaire seulement** (`fb5e563`) | CI [41562195145](https://github.com/Huberaya/Tracefab/actions/runs/41562195145) — 4/4 (Base 2m21, Verification 13m06) · migrations [41562195053](https://github.com/Huberaya/Tracefab/actions/runs/41562195053) — succès |
 | `main` pendant toute la revue | `f6d39aa027e4cdea1a2e7a381fe432310cc77fdc`, inchangé |
 | Rapport de mission P10.7 | `docs/security/2026-11-02-p107-rapport.md` |
 | Plan d'activation stricte | `docs/security/2026-11-02-p107-plan-activation-stricte.md` |
@@ -366,3 +367,9 @@ final**, et c'est cette vérification qui fait foi — pas celle de `5fb216f`.
 
 Runs périmés, conservés pour la traçabilité (chacun a servi à trouver un
 défaut) : `41554352211` (échec Base, CI-1), `41556872612` (échec Base, CI-2).
+
+**Convention de lecture** : le code vérifié est celui des deux têtes ci-dessus.
+Tout commit postérieur **purement documentaire** ne change pas le code ; sa
+vérification est celle du SHA porté par la PR au moment de la lecture (l'API
+GitHub donne `headRefOid` et les runs associés — c'est la seule référence qui
+faut, et elle ne se recopie pas ici, où elle serait périmée dès l'écriture).
