@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
@@ -35,16 +35,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'response_summary_required' });
     }
 
-    const updatedCap = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      return await submitQualityRemediation(
-        tx,
-        capId,
-        responseSummary,
-        supportingDocumentId,
-        message
-      );
+    const updatedCap = await withTracefabTenantContext(req, user, { types: ['supplier'] }, async (tx, tenant) => {
+      const cap = await tx.quality_corrective_action_plans.findFirst({
+        where: { id: capId, supplier_organization_id: tenant.organizationId },
+        select: { id: true },
+      });
+      if (!cap) return null;
+      if (supportingDocumentId) {
+        const document = await tx.documents.findFirst({
+          where: { id: supportingDocumentId, owner_organization_id: tenant.organizationId, status: 'available' },
+          select: { id: true },
+        });
+        if (!document) return null;
+      }
+      return submitQualityRemediation(tx, capId, responseSummary, supportingDocumentId, message);
     });
 
+    if (!updatedCap) return json(res, 404, { error: 'cap_or_supporting_document_not_found' });
     return json(res, 200, {
       message: 'remediation_submitted',
       cap: updatedCap,
