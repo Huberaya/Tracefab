@@ -48,7 +48,7 @@ export async function runDocumentScanFlow(
     });
     if (!current) return null;
     return beginDocumentScan(tx, current);
-  });
+  }, ownerOrganizationId);
   if (!started) return { kind: 'not_found' };
 
   let checks;
@@ -58,6 +58,7 @@ export async function runDocumentScanFlow(
     if (isDefinitiveScanError(error)) {
       const rejected = await withTracefabUserContext(user.id, user.email, (tx) =>
         rejectDocumentScan(tx, started.id, Number(started.byte_size)),
+        ownerOrganizationId,
       );
       return {
         kind: 'rejected',
@@ -77,6 +78,7 @@ export async function runDocumentScanFlow(
 
   const document = await withTracefabUserContext(user.id, user.email, (tx: Prisma.TransactionClient) =>
     completeDocumentScan(tx, started.id, checks),
+    ownerOrganizationId,
   );
   return {
     kind: 'done',
