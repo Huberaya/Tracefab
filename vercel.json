@@ -160,8 +160,8 @@
   ],
   "crons": [
     {
-      "path": "/api/internal/notification-outbox/schedule",
-      "schedule": "0 7 * * *"
+      "path": "/api/internal/p107/runtime-proof",
+      "schedule": "0 15 * * *"
     }
   ]
 }
