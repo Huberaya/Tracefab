@@ -220,9 +220,19 @@ verifier(
 );
 
 if (blocRetour) {
+  /*
+   * P10.7 — deux clés AJOUTÉES, et voici pourquoi ce n'est pas un
+   * élargissement de complaisance : `privilegedMemberships` ne contient que des
+   * NOMS de rôles du catalogue (aucune valeur, aucun secret, aucune chaîne de
+   * connexion), et `canEscalate` est un booléen. Ils sont nécessaires parce
+   * que, sans eux, la sonde déclarait « sûre » une identité qui peut endosser
+   * un rôle privilégié par `SET ROLE` — c'est-à-dire une preuve fausse.
+   * Le contrôle qui compte reste en place : toute AUTRE clé hors liste échoue.
+   */
   const blanches = new Set([
     'measured', 'currentUser', 'sessionUser', 'database',
     'bypassesRls', 'isSuperuser', 'detail',
+    'privilegedMemberships', 'canEscalate',
   ]);
   const cles = [...blocRetour[1].matchAll(/^\s*(\w+):/gm)].map((m) => m[1]);
   const horsListe = cles.filter((c) => !blanches.has(c));

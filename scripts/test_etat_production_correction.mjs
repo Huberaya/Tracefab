@@ -66,6 +66,9 @@ const ECARTS = [
 /** Les deux annulees, dont les effets sont presents : on les rejoue. */
 const ANNULEES = ['20261010120000_publication_explicite', '20261017120000_active_tenant_context'];
 
+/** Derniere migration dont le releve de production porte la trace. */
+const BORNE_RELEVE = '20261028150000';
+
 /** Les cinq correctifs de securite du mandat, dans l'ordre de la chaine. */
 const CORRECTIFS = [
   '20261028120000_runtime_function_registry',
@@ -164,7 +167,11 @@ console.log('\n1. Etat REPRODUIT — la chaine sans les onze ecarts (production)
 let etat = {};
 {
   const db = await base();
-  const aAppliquer = dossiers.filter((d) => !ECARTS.includes(d) || ANNULEES.includes(d));
+  // Etat LU : il ne peut pas contenir une migration posterieure a la borne du
+  // releve, qui n'a jamais ete deployee. Depuis 20261031120000 c'est mesurable :
+  // elle reclame le registre runtime, absent de cet etat, et echoue a raison.
+  const aAppliquer = dossiers.filter((d) => (!ECARTS.includes(d) || ANNULEES.includes(d))
+    && d.slice(0, 14) <= BORNE_RELEVE);
   let echec = null;
   for (const d of aAppliquer) {
     const r = await appliquer(db, d);

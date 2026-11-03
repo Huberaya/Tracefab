@@ -495,7 +495,24 @@ jobs:
           #     suite ne mesure rien. Elles s'executent dans le job « Base »,
           #     qui porte deja leur liste. Les laisser ici les rendrait rouges
           #     pour une raison d'environnement, jamais de code.
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')).join(' '))")
+          #   test:p105:*                 — les six suites du chantier P10.5
+          #     (roles et migrations, jeton, HMAC, ingestion, hierarchie,
+          #     sonde). Elles exigent le Postgres jetable migre ET les roles
+          #     `tracefab_app` / `tracefab_migrator` ; hors DATABASE_URL elles
+          #     sortent en 2, ce qu'une boucle ne doit pas lire comme un echec
+          #     de code. Meme raison que test:jetables:* : elles tournent dans
+          #     le job « Base », qui les cable une par une.
+          #   test:p106:*                 — les deux suites P10.6 (controle
+          #     negatif de l identite signee, rejouabilite de la chaine dans
+          #     un meme cluster). Memes exigences que test:p105:* : base
+          #     migree, roles applicatifs, et pour la seconde le droit de
+          #     creer une base. Cablees une par une dans le job « Base ».
+          #   test:p107:*                 — les quatre suites P10.7 (contrat
+          #     d identite pur, sonde de catalogue, sonde cote runtime,
+          #     demonstration du mode strict). Trois exigent la base migree et
+          #     les deux roles ; la premiere n exige rien et tourne partout.
+          #     Cablees une par une dans le job « Base ».
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -714,8 +731,14 @@ jobs:
         # `verification` (sans base), et SANS entree `test:*` — la boucle
         # dynamique de `verification` les y rendrait rouges pour une raison
         # d environnement.
+        # Le comptage est ACCUMULE et non `set -e` : quand une suite tombe, le
+        # journal du job est heberge hors de l'API GitHub, donc illisible depuis
+        # la session de travail. Sans la ligne `::error::` ci-dessous, on ne sait
+        # que « exit code 1 » — mesure du 02/11 ou une seule suite en echec a
+        # coute une investigation complete. Un echec reste un echec : la derniere
+        # ligne le nomme, et l'etape sort en 1.
         run: |
-          set -e
+          echouees=''
           for suite in \
             test_garde_cible_ecriture \
             test_verrou_fail_closed \
@@ -731,8 +754,17 @@ jobs:
             test_reprise_ressources_jetables \
           ; do
             echo "== $suite"
-            node scripts/run-db-suite.mjs "scripts/$suite.mjs"
+            if node scripts/run-db-suite.mjs "scripts/$suite.mjs"; then
+              echo "OK    $suite"
+            else
+              echo "ECHEC $suite"
+              echouees="$echouees $suite"
+            fi
           done
+          if [ -n "$echouees" ]; then
+            echo "::error::suites en echec :$echouees"
+            exit 1
+          fi
 
       - name: Isolation RLS prouvee par execution
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
@@ -1094,6 +1126,143 @@ jobs:
           echo "== reprise : simulation puis destruction sur preuve"
           node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs
           node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs --confirmer
+
+      # ---------------------------------------------------------------------
+      # P10.5 — CHANTIERS B2/B3, E (HMAC), et la sonde de production.
+      #
+      # Ces cinq etapes mesurent les quatre blocages de la bascule : role
+      # applicatif non escaladable, chaine de migrations jouable par le role
+      # de migration, cles HMAC illisibles par le runtime, identite non
+      # forgeable par un GUC. Chacune tourne sur le Postgres jetable du job ;
+      # aucune ne lit un secret, aucune n'est en `continue-on-error`.
+      #
+      # `test:p105:roles-et-migrations` cree sa PROPRE base et la detruit :
+      # elle verifie la chaine 68/68 sous le role de migration, la reprise,
+      # et les refus (tracefab_app ne cree pas d objet, n ecrit pas dans
+      # `_prisma_migrations`, ne prend aucun role).
+      # ---------------------------------------------------------------------
+
+      - name: P10.5 — chaine de migrations et escalade de role, refuses
+        run: npm run test:p105:roles-et-migrations
+
+      - name: P10.5 — les jetons d identite sont signes par l application et verifies par la base
+        # Chemin reel : provisionnement de la cle par le script operateur,
+        # signature par `signerIdentite()`, verification sous `tracefab_app`.
+        # Il verifie aussi les echecs fermes (cle trop courte, non hexadecimale).
+        # Il lui faut le client Prisma, genere plus haut dans ce job.
+        run: npm run test:p105:jeton
+
+      - name: P10.5 — HMAC, huit scenarios et un controle negatif
+        run: npm run test:p105:hmac
+
+      - name: P10.5 — ingestion PLM/ERP sous le role applicatif, permissif ET strict
+        run: npm run test:p105:ingestion
+
+      - name: P10.6 — controle NEGATIF permanent de l identite signee
+        # Trente-sept assertions qui ne decrivent que des REFUS : GUC forge
+        # ignore, jeton present mais invalide jamais remplace par le GUC,
+        # formes malformees sans exception, organisation, expiration, usage
+        # signe detourne, absence de cle active, rotation et revocation,
+        # adresse non forgee en mode strict. Deux assertions STRUCTURELLES
+        # portent sur le catalogue : aucune fonction hors du point de passage
+        # ne lit un GUC d identite, les trois fonctions d attestation passent
+        # par l identite signee. Elles tiennent donc pour toute fonction
+        # ajoutee plus tard, y compris par une migration qui ignorerait ce
+        # fichier. Aucune n est en continue-on-error.
+        run: npm run test:p106:identite-negative
+
+      - name: P10.6 — la chaine de migrations est REJOUABLE dans un meme cluster
+        # Defaut D5 mesure le 02/11 : 20261028120100 accordait puis revoquait
+        # tracefab_worker dans le meme corps. PostgreSQL refuse ce REVOKE
+        # (2BP01 « dependent privileges exist ») des qu un tiers est membre,
+        # or le rattrapage `apres` de l execution precedente en creait un. La
+        # chaine passait donc UNE fois par cluster, et toute nouvelle base
+        # jetable echouait — en cascade sur trois suites. Ce test cree une
+        # base vierge dans le cluster DEJA migre, applique les 69 migrations,
+        # verifie l appartenance finale, puis detruit la base. Il rougit si
+        # une entree du registre accorde une appartenance sans fournir de
+        # bloc « avant ».
+        run: npm run test:p106:rejouabilite-chaine
+
+      - name: P10.8 — le preflight D6 refuse AVANT la premiere ecriture (etat de forme production)
+        # Sur une base jetable amenee a l'ETAT DE LA PRODUCTION (tout applique
+        # sauf les deux migrations P10.5/P10.6, fonctions detenues par le
+        # proprietaire), la chaine est rejouee par `tracefab_migrator` :
+        #   - code 3, refus NOMME qui cite la migration et le proprietaire ;
+        #   - `_prisma_migrations` INCHANGE, aucune ligne d'echec ;
+        #   - ni la table des cles ni la fonction de verification ne sont creees
+        #     (preuve d'absence d'etat partiel) ;
+        #   - aucune elevation demandee ni residuelle.
+        # Controle POSITIF dans la meme suite : jouee par le proprietaire, la
+        # chaine s'applique — le preflight ne refuse pas a tort.
+        run: npm run test:p106:preflight-avant-ecriture
+
+      - name: P10.7 — le contrat d identite runtime refuse aussi l ESCALADE
+        # Onze cas sur une fonction PURE (aucune base) : le role doit etre
+        # `tracefab_app`, sans SUPERUSER, sans BYPASSRLS, ET sans appartenance
+        # atteignable vers un role privilegie. Ce dernier point est nouveau en
+        # P10.7 : un role sans attribut qui peut `SET ROLE` vers un role
+        # BYPASSRLS redevient privilegie, donc la RLS n est pas opposable.
+        run: npm run test:p107:contrat-identite
+
+      - name: P10.7 — la sonde d etat cible est en LECTURE SEULE, et ses arrets se declenchent
+        # Controle statique (chaque instruction commence par SELECT ou WITH),
+        # execution reelle dans une transaction READ ONLY avec tentative
+        # d ecriture refusee (25006), idempotence de l etat, puis TEMOIN
+        # NEGATIF : un role de connexion qui atteint un role privilegie doit
+        # faire sortir la sonde en 1 avec un arret nomme, et le meme role sans
+        # l appartenance ne le fait plus.
+        run: npm run test:p107:sonde
+
+      - name: P10.7 — la sonde cote RUNTIME distingue une identite conforme d une identite privilegiee
+        # T1 conforme (code 0) ; T2 `postgres` refuse avec chaque attribut
+        # nomme ; T3 role sans attribut mais membre d un role privilegie
+        # refuse ; T5 contexte transactionnel (absent apres la transaction,
+        # donc sur quel que soit le mode du pooler) ; T6 cible distante
+        # refusee sans opt-in. Aucune valeur de cle n est lue.
+        run: npm run test:p107:sonde-runtime
+
+      - name: P10.7 — demonstration du mode STRICT sur cluster jetable
+        # D1..D9 : jeton valide, sans jeton, jeton invalide, GUC forge,
+        # organisation incoherente, rotation avec DEUX cles actives,
+        # revocation de l ancienne, parcours metier (lecture RLS isolee +
+        # ingestion PLM/ERP refusee sans identite puis acceptee avec), et
+        # restauration de l etat. Le mode strict n est pose QUE sur la base
+        # jetable, et le script refuse toute cible non locale avant connexion.
+        run: npm run test:p107:demonstration
+
+      - name: P10.7 — la sonde de configuration HMAC n expose aucun fragment de cle
+        # Chantier C. La sonde lit la cle en memoire et n en publie que la
+        # PRESENCE, le FORMAT (valide ou non) et un libelle d etat ; ce test
+        # l etablit avec des cles FACTICES et refuse toute fenetre de huit
+        # caracteres dans la sortie, y compris sur le chemin d erreur. Il
+        # verifie aussi que deux etats distincts ne se confondent pas : une
+        # cle presente mais malformee sort en 1 (erreur d exploitation), une
+        # cle absente en 0 (etat de transition documente). La sonde elle-meme
+        # tourne ici sur la cle ABSENTE de la CI, ce qui exerce le chemin reel.
+        run: npm run test:p107:sonde-hmac
+
+      - name: P10.7 — etat de la configuration HMAC de l environnement de CI
+        # Sortie informative et EXPURGEE : la CI n a pas de cle d identite, et
+        # la mesure doit le dire au lieu de laisser croire que tout est pret.
+        # Non bloquant PARCE QUE l absence est l etat documente, pas une panne ;
+        # une cle PRESENTE mais invalide sort en 1 et ferait echouer l etape,
+        # ce qui est le comportement voulu. Ce n est pas un `continue-on-error`.
+        run: npm run sonde:p107:hmac --silent -- ci
+
+      - name: P10.5 — la hierarchie des roles, mesuree dans les deux sens
+        # Douze assertions : attributs, appartenances directes ET transitives,
+        # refus de `SET ROLE` vers le migrator, le worker et le proprietaire,
+        # puis un CONTROLE POSITIF (GRANT -> SET ROLE -> lecture -> REVOKE) qui
+        # prouve que le refus vient bien de l absence d appartenance et pas d un
+        # test qui ne mesure rien.
+        run: npm run test:p105:hierarchie
+
+      - name: P10.5 — la sonde de production ne modifie rien (lecture seule prouvee)
+        # Verifie, statiquement et par execution, que la sonde destinee a
+        # l operateur n execute que des SELECT : une sonde qui ecrit en
+        # production est pire qu'aucune sonde.
+        run: npm run test:p105:sonde
 
       - name: Aucune base jetable residuelle apres le job
         # Controle SEPARE des suites qu'il controle : une suite qui oublie de se

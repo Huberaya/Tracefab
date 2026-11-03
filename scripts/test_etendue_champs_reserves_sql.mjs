@@ -52,6 +52,9 @@ const ECARTS = [
 ];
 const ANNULEES = ['20261010120000_publication_explicite', '20261017120000_active_tenant_context'];
 
+/** Derniere migration dont le releve de production porte la trace. */
+const BORNE_RELEVE = '20261028150000';
+
 const dossierMigrations = readdirSync(MIGRATIONS).filter((d) => /^\d{14}_/.test(d)).sort();
 const lire = (d) => readFileSync(join(MIGRATIONS, d, 'migration.sql'), 'utf8');
 
@@ -88,6 +91,13 @@ async function base({ corrige }) {
   const exclus = corrige ? [] : ECARTS.filter((d) => !ANNULEES.includes(d));
   for (const d of dossierMigrations) {
     if (exclus.includes(d)) continue;
+    // Une migration POSTERIEURE a la borne du releve n'a jamais ete deployee :
+    // la faire figurer dans « l'etat lu en production » serait une fiction.
+    // Depuis 20261031120000 c'est aussi une erreur mesurable : cette migration
+    // exige le registre runtime (20261028120000), absent de cet etat, et refuse
+    // a raison de laisser le runtime sans EXECUTE sur la verification du jeton.
+    // Fixer l'etat, pas la chaine : `corrige` applique tout, dans l'ordre.
+    if (!corrige && d.slice(0, 14) > BORNE_RELEVE) continue;
     if (!existsSync(join(MIGRATIONS, d, 'migration.sql'))) continue;
     try {
       await db.exec('BEGIN'); await db.exec(lire(d)); await db.exec('COMMIT');

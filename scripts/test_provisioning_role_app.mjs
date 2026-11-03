@@ -205,12 +205,18 @@ console.log("\n  A. Sentinelle absente — les tables presentes reçoivent leur 
     await ensureAppRole(c, MOT_DE_PASSE);
     verifier('après révocation complète, le provisioning redevient possible', true);
 
-    /* --- B3 : ALTER ROLE depuis un provisionneur NOSUPERUSER ------------ */
+    /* --- B3 : provisionner depuis un rôle CREATEROLE NOSUPERUSER -------- */
     console.log('\n  B3. Provisionnement par un rôle CREATEROLE non-superutilisateur');
     await c.query('CREATE ROLE tf_b3_provisioner NOLOGIN NOSUPERUSER NOBYPASSRLS CREATEROLE NOCREATEDB');
-    await c.query('CREATE ROLE tf_b3_target NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB');
-    // PostgreSQL exige CREATEROLE et ADMIN sur le rôle cible pour ALTER ROLE.
-    // Le scénario reproduit donc un grant administratif explicite, sans SUPERUSER.
+    // REÉCRITURE P10.5 (contrat durci, pas un test affaibli) :
+    // la cible est créée DÉJÀ CONFORME (LOGIN, aucun attribut privilégié), ce
+    // qui est l'état réel de la production. `ensureAppRole` n'émet alors AUCUN
+    // `ALTER ROLE` d'attribut : c'est la seule façon de ne pas exiger
+    // SUPERUSER, car PG 16+ réserve le changement de l'attribut SUPERUSER aux
+    // superutilisateurs. L'ancienne version créait la cible NOLOGIN et
+    // attendait que le provisionneur la rabatte par `ALTER ROLE … LOGIN` : ce
+    // geste est un auto-octroi, et il est désormais REFUSÉ (assertion ci-dessous).
+    await c.query("CREATE ROLE tf_b3_target LOGIN PASSWORD 'mot_de_passe_test_b3' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB");
     await c.query('GRANT tf_b3_target TO tf_b3_provisioner WITH ADMIN OPTION');
     const b3Avant = await c.query(
       "SELECT rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname='tf_b3_provisioner'",
@@ -227,16 +233,39 @@ console.log("\n  A. Sentinelle absente — les tables presentes reçoivent leur 
     } finally {
       await c.query('RESET ROLE');
     }
-    verifier('B3 : un rôle CREATEROLE non-superutilisateur peut provisionner un rôle ordinaire',
+    verifier('B3 : un rôle CREATEROLE non-superutilisateur peut provisionner un rôle DÉJÀ CONFORME',
       erreurB3 === null, erreurB3 ?? '');
     const b3Apres = await c.query(
       "SELECT rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolcanlogin FROM pg_roles WHERE rolname='tf_b3_target'",
     );
-    verifier('la cible reste non privilégiée et reçoit LOGIN',
+    verifier('la cible reste non privilégiée (LOGIN inchangé, aucun attribut ajouté)',
       b3Apres.rows[0]?.rolsuper === false && b3Apres.rows[0]?.rolbypassrls === false
         && b3Apres.rows[0]?.rolcreaterole === false && b3Apres.rows[0]?.rolcreatedb === false
         && b3Apres.rows[0]?.rolcanlogin === true,
       JSON.stringify(b3Apres.rows[0]));
+
+    // B3 négatif (nouveau, P10.5) : une cible SANS LOGIN n'est pas rabattue en
+    // silence par le provisionneur — elle est refusée, et reste sans LOGIN.
+    await c.query('CREATE ROLE tf_b3_sans_login NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB');
+    await c.query('GRANT tf_b3_sans_login TO tf_b3_provisioner WITH ADMIN OPTION');
+    let refusSansLogin = null;
+    try {
+      await c.query('SET ROLE tf_b3_provisioner');
+      await ensureAppRole(c, 'mot_de_passe_test_b3', { role: 'tf_b3_sans_login' });
+    } catch (e) {
+      refusSansLogin = e.message;
+    } finally {
+      await c.query('RESET ROLE');
+    }
+    verifier('B3 : une cible sans LOGIN est REFUSÉE (aucun auto-octroi de LOGIN)',
+      Boolean(refusSansLogin && refusSansLogin.includes('LOGIN manquant')), refusSansLogin ?? 'aucun refus');
+    const sansLoginApres = await c.query(
+      "SELECT rolcanlogin FROM pg_roles WHERE rolname='tf_b3_sans_login'",
+    );
+    verifier('la cible refusée reste SANS LOGIN — le refus n a rien écrit',
+      sansLoginApres.rows[0]?.rolcanlogin === false, JSON.stringify(sansLoginApres.rows[0]));
+
+    await c.query('DROP ROLE tf_b3_sans_login');
     await c.query('DROP ROLE tf_b3_target');
     await c.query('DROP ROLE tf_b3_provisioner');
 

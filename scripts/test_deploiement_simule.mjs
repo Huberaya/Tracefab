@@ -187,13 +187,22 @@ console.log('\n  2. Preuve indirecte : une migration « annulee » n est pas abs
 console.log('\n  3. Sequence des onze, sur une base qui porte deja les cinquante-quatre autres');
 
 const db = await nouvelleBase();
-const aAppliquer = dossiers.filter((d) => !ECARTS.includes(d) || ANNULEES.includes(d));
+// La base de depart du scenario porte les cinquante-quatre et les deux
+// annulees — rien d'autre. Les NOUVELLES sont exclues ici : elles n'ont jamais
+// ete deployees, et les appliquer AVANT les onze les ferait passer pour « deja
+// appliquees » sur un etat qui ne les porte pas. Mesure du 02/11/2026 : avec
+// elles dans cette boucle, `20261031120000` s'executait sans le registre
+// runtime, ne pouvait donc pas redistribuer l'EXECUTE, et refusait a raison de
+// laisser le runtime sans droit d'appeler la verification du jeton. C'est le
+// scenario `NOUVELLES` qui les applique, apres reconciliation.
+const aAppliquer = dossiers.filter(
+  (d) => (!ECARTS.includes(d) || ANNULEES.includes(d)) && !NOUVELLES.includes(d));
 for (const d of aAppliquer) {
   const r = await appliquer(db, d);
   if (!r.ok) { console.error(`ECHEC  construction de la base a ${d.slice(0, 14)} : ${r.message}`); process.exit(1); }
 }
-// depot - (ecarts hors annulees) : le compte se derive, il ne se recopie pas.
-const attendu = dossiers.length - (ECARTS.length - ANNULEES.length);
+// depot - (ecarts hors annulees) - (nouvelles) : le compte se derive, il ne se recopie pas.
+const attendu = dossiers.length - (ECARTS.length - ANNULEES.length) - NOUVELLES.length;
 ok('la base « production avec les deux annulees presentes » se construit',
   aAppliquer.length === attendu, `${aAppliquer.length} / ${attendu}`);
 

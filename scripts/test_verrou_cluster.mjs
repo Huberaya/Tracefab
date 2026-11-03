@@ -101,6 +101,29 @@ const DOIVENT_VERROUILLER = [
   'scripts/harnais_suites_rls.mjs',
   // Epreuve de `ensureAppRole` : elle cree et detruit des roles de sonde.
   'scripts/test_ensure_app_role_garde.mjs',
+  // P10.5 : provisionne `tracefab_app` et `tracefab_migrator` sur le cluster
+  // partage (memes roles que le job), donc meme section critique.
+  'scripts/test_p105_roles_et_migrations.mjs',
+  // P10.5 : cree un role temoin pour prouver qu'une appartenance rend bien
+  // `SET ROLE` possible (controle non vacuant). Role de CLUSTER, meme verrou.
+  'scripts/verifier_hierarchie_roles.mjs',
+  // P10.6 : provisionne le role applicatif (`bootstrap_app_role.mjs`) et cree
+  // une BASE dans le cluster partage pour y rejouer la chaine 69/69. Meme
+  // section critique que les autres : sans verrou, l'`ALTER ROLE` de
+  // 20261028120100 se heurte a une application concurrente (XX000).
+  'scripts/test_p106_rejouabilite_chaine.mjs',
+  // P10.7 : ces deux suites CREENT un role de connexion de sonde et lui
+  // accordent temporairement un role privilegie pour prouver que la detection
+  // se declenche. Roles = objets de CLUSTER : meme section critique.
+  'scripts/test_p107_sonde_lecture_seule.mjs',
+  'scripts/test_p107_sonde_runtime.mjs',
+  // P10.8 : provisionne le role applicatif (`bootstrap_app_role.mjs`) et cree
+  // une BASE dans le cluster partage pour y amener l'etat de la production
+  // (tout applique sauf les deux migrations), puis y rejoue la chaine avec le
+  // role de migration. Meme section critique que les autres suites qui
+  // provisionnent : elle prend le verrou, et le relache avant d'appeler
+  // `migrer_fidelement.mjs` (verrou non reentrant).
+  'scripts/test_p106_preflight_avant_ecriture.mjs',
 ];
 
 // Chemins qui ne doivent PAS le prendre, avec la raison.
@@ -110,6 +133,15 @@ const NE_DOIVENT_PAS = [
   // (deux sessions differentes : un verrou consultatif n'est pas reentrant).
   ['scripts/bootstrap_app_role.mjs', 'section critique appelée par un porteur déjà verrouillé'],
   ['scripts/prepare_ci_db_role.mjs', 'idem — appele par les scripts verrouilles'],
+  // P10.5 : c'est LE point d'entree du provisioning des deux roles ; il est la
+  // section critique, comme `bootstrap_app_role.mjs`. Ses appelants prennent le
+  // verrou (mesure : `test:p105:roles-et-migrations` le prend depuis le 02/11).
+  ['scripts/provisionner_roles_db.mjs', 'section critique — verrouille par ses appelants'],
+  // Test STATIQUE de routage : il cite des noms de scripts dans ses assertions,
+  // il n en execute aucun. Le laisser hors des listes ferait croire qu il
+  // provisionne.
+  ['scripts/test_destructive_suite_routing.mjs', 'test statique — ne provisionne rien'],
+
   // Cluster prive, cree et detruit par le script lui-meme : rien a serialiser.
   ['scripts/test_routes_sous_role_app.mjs', 'embedded-postgres prive'],
   ['scripts/test_routes_ecriture_non_authentifiee.mjs', 'embedded-postgres prive'],
@@ -179,7 +211,7 @@ for (const chemin of VERROUILLENT_PAR_LANCEUR) {
     'scripts/test_verrou_cluster.mjs',
     'scripts/test_concurrence_suites.mjs',
   ]);
-  const marqueurs = /ensureAppRole\(|execFileSync\(\s*'node'[^\n]*prepare_ci_db_role|bootstrap_app_role\.mjs/;
+  const marqueurs = /ensureAppRole\(|execFileSync\(\s*'node'[^\n]*prepare_ci_db_role|bootstrap_app_role\.mjs|provisionner_roles_db\.mjs/;
   const intrus = readdirSync(join(RACINE, 'scripts'))
     .filter((n) => n.endsWith('.mjs'))
     .map((n) => `scripts/${n}`)

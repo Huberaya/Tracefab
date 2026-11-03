@@ -33,6 +33,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { exigeAssistance, preparerAppartenance } from './lib/migrations_assistees.mjs';
 import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster, filetDeNettoyage } from './lib/ephemeral-db.mjs';
@@ -283,6 +284,15 @@ try {
     .filter((d) => /^\d{14}_/.test(d)).sort();
   for (const d of dossiers) {
     const sql = fs.readFileSync(path.join(RACINE, 'prisma', 'migrations', d, 'migration.sql'), 'utf8');
+    // P10.6 — la migration assistée n'est rejouable que si l'état
+    // d'appartenance d'avant est rétabli. Sans cette préparation, PostgreSQL
+    // refuse le `REVOKE` de son § 6 bis en 2BP01 dès la deuxième base du même
+    // cluster (mesuré le 02/11). Même helper que `migrer_fidelement.mjs` :
+    // une seule définition de la règle.
+    if (exigeAssistance(d)) {
+      const { revoques } = await preparerAppartenance(mig, d, ownerName);
+      if (revoques.length) console.log(`     préparation ${d} : appartenance retirée de ${revoques.join(', ')}`);
+    }
     await mig.query('BEGIN');
     try { await mig.query(sql); await mig.query('COMMIT'); }
     catch (e) {
@@ -467,15 +477,46 @@ try {
     JSON.stringify(hm),
   );
 
+  // Les tables FERMÉES par conception, et la raison de chacune. Une liste
+  // d'exceptions est un affaiblissement si elle n'est pas elle-même contrôlée :
+  // chaque nom listé ici est donc affirmé FERMÉ juste après, ce qui rend une
+  // ouverture accidentelle aussi visible qu'une fermeture accidentelle.
+  const FERMEES_PAR_CONCEPTION = new Map([
+    ['_prisma_migrations',
+      "l'historique de migration n'est pas une table applicative"],
+    ['tracefab_identity_cles',
+      "la clé HMAC ne doit être lisible par aucun chemin du runtime (P10.5, R-A1)"],
+  ]);
+
   const lecture = await app.query(`
     SELECT c.relname AS nom, has_table_privilege('${APP_ROLE}', c.oid, 'SELECT') AS s
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname='public' AND c.relkind='r' AND c.relname <> '_prisma_migrations' ORDER BY 1`);
+    WHERE n.nspname='public' AND c.relkind='r'
+      AND NOT (c.relname = ANY($1::text[])) ORDER BY 1`,
+  [[...FERMEES_PAR_CONCEPTION.keys()]]);
   verifier(
     'la lecture reste disponible sur les tables métier',
     lecture.rows.every((r) => r.s),
-    `${lecture.rows.filter((r) => !r.s).length} table(s) sans SELECT`,
+    `${lecture.rows.filter((r) => !r.s).length} table(s) sans SELECT : `
+      + lecture.rows.filter((r) => !r.s).map((r) => r.nom).join(', '),
   );
+
+  // Le pendant : ce qui est déclaré fermé l'est RÉELLEMENT, sur les cinq
+  // verbes. Une table ajoutée ici par erreur pour faire passer la ligne
+  // ci-dessus serait donc démasquée.
+  for (const [table, raison] of FERMEES_PAR_CONCEPTION) {
+    const d = (await app.query(`
+      SELECT has_table_privilege(current_user, $1, 'SELECT') AS s,
+             has_table_privilege(current_user, $1, 'INSERT') AS i,
+             has_table_privilege(current_user, $1, 'UPDATE') AS u,
+             has_table_privilege(current_user, $1, 'DELETE') AS d,
+             has_table_privilege(current_user, $1, 'TRUNCATE') AS t`, [`public.${table}`])).rows[0];
+    verifier(
+      `${table} reste fermée au runtime — ${raison}`,
+      d && !d.s && !d.i && !d.u && !d.d && !d.t,
+      JSON.stringify(d),
+    );
+  }
 
   /* --- 3. Comportement : ce qui doit échouer, ce qui doit passer ----------- */
 

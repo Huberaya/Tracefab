@@ -101,6 +101,23 @@ try {
   assert.equal(JSON.stringify(payload).includes('unit-secret-key'), false);
   assert.equal(JSON.stringify(payload).includes('unit-resend-key'), false);
 
+  // P10.5 — la sonde dit si l'application sait signer l'identite, et ne dit
+  // RIEN de la cle. Un booleen suffit a l'operateur ; la valeur n'a aucune
+  // raison de sortir de la fonction.
+  const jetons = (payload as { identityTokens?: { configured: boolean; mode: string } }).identityTokens;
+  assert.ok(jetons, 'identityTokens doit figurer dans la reponse');
+  assert.equal(jetons!.configured, false, 'sans TRACEFAB_IDENTITY_KEY, la signature doit etre annoncee non configuree');
+  assert.equal(jetons!.mode, 'non_configure');
+
+  const cleTest = 'ab'.repeat(32);
+  process.env.TRACEFAB_IDENTITY_KEY = cleTest;
+  res = response();
+  handler(req as never, res as never);
+  const avecCle = res.payload as { identityTokens?: { configured: boolean; mode: string } };
+  assert.equal(avecCle.identityTokens?.configured, true, 'avec une cle hexadecimale de 32 octets, la signature est configuree');
+  assert.equal(avecCle.identityTokens?.mode, 'signe');
+  assert.equal(JSON.stringify(avecCle).includes(cleTest), false, 'la cle ne doit JAMAIS apparaitre dans la reponse');
+
   console.log('P2 readiness unit contract passed: worker authentication, fail-closed configuration and secret-free configuration-only readiness');
 } finally {
   for (const [name, value] of saved) {
