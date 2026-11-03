@@ -150,7 +150,17 @@ for (const r of routes) {
   }
   // Un contexte utilisateur seul ne suffit pas pour une route métier :
   // il doit aussi valider le tenant actif, ou passer par le wrapper atomique.
-  if (model === 'TENANT' && !/withTracefabTenantContext|requireActiveTenant|resolveActiveTenant/.test(src)) {
+  const hasExplicitTenantGuard =
+    /withTracefabTenantContext|requireActiveTenant|resolveActiveTenant/.test(src)
+    || (
+      /withTracefabRequestContext/.test(src)
+      && /accessibleProduct|documentAccessibleFromTenant|tracefab_in_active_tenant/.test(src)
+    )
+    || (
+      /withTracefabUserContext[\\s\\S]*requestedTenantId\\(req\\)/.test(src)
+      && /accessibleProduct|documentAccessibleFromTenant|tracefab_in_active_tenant/.test(src)
+    );
+  if (model === 'TENANT' && !hasExplicitTenantGuard) {
     failures.push(`${r.key} [TENANT] : aucun contrôle explicite du tenant actif`);
   }
 
