@@ -162,7 +162,7 @@ for (const r of routes) {
       && /accessibleProduct|documentAccessibleFromTenant|tracefab_in_active_tenant/.test(src)
     )
     || (
-      /withTracefabUserContext[\s\\S]*requestedTenantId\\(req\\)/.test(src)
+      /withTracefabUserContext[\s\S]*requestedTenantId\(req\)/.test(src)
       && /accessibleProduct|documentAccessibleFromTenant|tracefab_in_active_tenant/.test(src)
     );
   if (model === 'TENANT' && !hasExplicitTenantGuard) {
@@ -254,7 +254,7 @@ const scenarios = [
 
 const schema = read('prisma/schema.prisma');
 const rlsScenarios = scenarios.map(([title, table, col]) => {
-  const m = schema.match(new RegExp(`model\s+${table}\s*\\{([\s\\S]*?)\\n\\}`));
+  const m = schema.match(new RegExp(`model\s+${table}\s*\\{([\s\S]*?)\\n\\}`));
   const hasCol = m ? m[1].includes(col) : false;
   return { title, table, ok: hasCol, why: m ? (hasCol ? '' : `colonne ${col} absente`) : 'modele absent du schema' };
 });
