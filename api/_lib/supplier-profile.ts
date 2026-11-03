@@ -23,12 +23,16 @@ export type SupplierProfileRecord = Prisma.suppliersGetPayload<{ select: typeof 
 export function requestedOrganizationId(request: {
   query?: Record<string, unknown>;
   headers?: Record<string, string | string[] | undefined>;
+  body?: unknown;
 }) {
   const header = request.headers?.['x-tracefab-organization-id'];
   const query = request.query?.organizationId;
-  const raw = Array.isArray(header) ? header[0] : header || (Array.isArray(query) ? query[0] : query);
+  const body = request.body && typeof request.body === 'object' && !Array.isArray(request.body)
+    ? (request.body as Record<string, unknown>).organizationId ?? (request.body as Record<string, unknown>).supplierOrganizationId
+    : undefined;
+  const raw = Array.isArray(header) ? header[0] : header || (Array.isArray(query) ? query[0] : query) || body;
   if (raw === undefined || raw === null || raw === '') return null;
-  if (typeof raw !== 'string' || !/^[0-9a-f-]{36}$/i.test(raw)) throw new Error('invalid_organization_id');
+  if (typeof raw !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) throw new Error('invalid_organization_id');
   return raw;
 }
 
@@ -79,15 +83,18 @@ export async function currentSupplier(
   userId: string,
   organizationId?: string | null,
 ) {
+  // A supplier account is a tenant, not a default chosen from the user's
+  // membership history. Missing selection must never fall back to the first
+  // supplier organization when the account has several memberships.
+  if (!organizationId) return null;
   const membership = await tx.organization_memberships.findFirst({
     where: {
       user_id: userId,
+      organization_id: organizationId,
       status: 'active',
-      ...(organizationId ? { organization_id: organizationId } : {}),
       organizations: { type: 'supplier' },
     },
     select: { organization_id: true },
-    orderBy: { created_at: 'asc' },
   });
   if (!membership) return null;
   return tx.suppliers.findUnique({
