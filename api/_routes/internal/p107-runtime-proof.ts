@@ -174,7 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       await client.connect();
       for (let i = 0; i < 3; i += 1) {
-        await client.query('BEGIN');
+        await client.query('BEGIN READ ONLY');
         try {
           await client.query('SELECT 1');
           const rows = await client.query('SELECT pg_catalog.pg_backend_pid() AS pid');
