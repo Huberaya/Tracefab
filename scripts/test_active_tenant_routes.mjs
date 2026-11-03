@@ -32,6 +32,8 @@ const BRAND_ROUTES = [
   'api/_routes/catalog/import/suppliers.ts',
   'api/_routes/catalog/products/import.ts',
   'api/_routes/catalog/suppliers/import.ts',
+  'api/_routes/documents/[documentId]/download.ts',
+  'api/_routes/documents/[documentId]/scan.ts',
   'api/_routes/documents/upload-intent.ts',
   'api/_routes/organization/storage/usage.ts',
   'api/_routes/integrations.ts',
@@ -126,6 +128,20 @@ for (const path of MULTI_TENANT_ROUTES) {
     ok(`${path}: accès fournisseur borné au tenant actif (relation ou partage)`);
   }
 }
+
+const documentsHelper = read('api/_lib/documents.ts');
+if (
+  /documentAccessibleFromTenant/.test(documentsHelper)
+  && /tenant\.organizationId/.test(documentsHelper)
+  && /req\.brand_organization_id = \$\{tenant\.organizationId\}::uuid/.test(documentsHelper)
+  && /req\.supplier_organization_id = \$\{tenant\.organizationId\}::uuid/.test(documentsHelper)
+) ok('documentAccessibleFromTenant borne les partages et réponses au tenant actif');
+else fail('documentAccessibleFromTenant ne borne pas tous les chemins d’accès au tenant actif');
+
+const scanFlow = read('api/_lib/document-scan-flow.ts');
+if ((scanFlow.match(/ownerOrganizationId/g) || []).length >= 6) {
+  ok('document-scan-flow conserve le tenant propriétaire dans les trois transactions');
+} else fail('document-scan-flow perd le tenant propriétaire entre les phases de scan');
 
 const supplierProfile = read('api/_lib/supplier-profile.ts');
 const currentSupplierStart = supplierProfile.indexOf('export async function currentSupplier(');
