@@ -1,7 +1,7 @@
 {
   "//": "Registre des workflows qui detiennent un privilege. Un workflow absent de ce fichier qui demande l'un de ces privileges fait echouer `npm run test:workflow-policy`. Declarer est un acte explicite ; l'omission est impossible.",
   "//version": "1",
-  "//updated": "2026-10-12",
+  "//updated": "2026-10-23",
   "//writePermissionWorkflows": "Workflows qui demandent `contents: write` — donc qui peuvent creer ou modifier des commits dans le depot.",
   "writePermissionWorkflows": {
     "figer-reference-visuelle.yml": {
@@ -20,6 +20,30 @@
       "lecture_seule": "Le script appele n'emet que des GET. Une interception de test hors ligne (npm run test:diagnose-incident) prouve qu'aucune autre methode n'est construite et qu'aucun hote autre que api.vercel.com n'est joint.",
       "rotation": "Jeton dedie, distinct de tout jeton d'administration, revoque des la ligne recuperee ; l'environnement ne doit pas conserver le secret apres le diagnostic.",
       "journal": "La sortie est caviardee par le script : jeton, entetes d'autorisation, chaines de connexion, identifiants opaques."
+    },
+    "p1-staging-authenticated.yml": {
+      "secret": "CLERK_SECRET_KEY (ou CLERK_TEST_SECRET_KEY / CLERK_INSTANCE_SECRET_KEY), TRACEFAB_NOTIFICATION_WORKER_SECRET (ou TRACEFAB_STAGING_WORKER_SECRET / TRACEFAB_WORKER_SECRET), VERCEL_AUTOMATION_BYPASS_SECRET (ou VERCEL_PROTECTION_BYPASS_SECRET / VERCEL_BYPASS_SECRET) — plusieurs noms usuels sont acceptes pour un meme besoin, le premier non vide gagne",
+      "portee": "job `p1-staging` uniquement ; declencheur `push` limite a la branche de travail `arena/88857a44-tracefab` et `workflow_dispatch` manuel ; environnement `tracefab-clerk-test` avec relecteur obligatoire",
+      "justification": "Executer reellement la suite P1 staging sur une Preview Vercel : le bac a sable d'analyse n'a aucun acces reseau a *.vercel.app ni a api.clerk.com (HTTP 000 mesure), donc seule une machine disposee d'Internet peut joindre la Preview et l'instance Clerk de test. La cle Clerk doit etre une cle `sk_test_` d'instance de test : le script refuse toute autre prefixe, sans jamais l'afficher.",
+      "lecture_seule": "La cle Clerk n'ecrite que dans l'instance Clerk de test (comptes `.test`, organisations de test) et dans /tmp du runner ; les etats de session ne sont ni commites ni publies en artefact. La sonde d'identite DB runtime interroge l'application par son en-tete interne, sans URL de base et sans aucune ecriture.",
+      "rotation": "Cle d'instance de test uniquement ; ne jamais reutiliser une cle `sk_live_`. Le secret de sonde interne est celui de l'environnement Preview ; il n'est jamais place dans une URL ni dans un journal.",
+      "journal": "Sorties caviardees : role et deux booleens pour l'identite DB, compteurs et verdicts pour les tests. Aucun cookie, aucun jeton, aucune valeur de secret, aucune ligne CSV."
+    },
+    "p1-staging-surface.yml": {
+      "secret": "aucune VALEUR : inventaire en lecture seule des NOMS de secrets visibles (toJSON(secrets)), affiche par scripts/list_secret_names.mjs",
+      "portee": "job `diagnostic` uniquement ; aucun environnement ; permissions minimales ; actions epinglees par SHA",
+      "justification": "Mesurer la surface reelle d'une Preview Vercel et savoir quels noms de secrets sont disponibles. Un NOM n'est pas une valeur : le script n'affiche que des noms, jamais une valeur ni un prefixe de valeur.",
+      "lecture_seule": "Aucune ecriture, aucune base, aucun tenant. Le job joint uniquement la Preview en GET sur /api/health, /api/config et /api/internal/p2/readiness (sans secret).",
+      "rotation": "Sans objet : aucune valeur de secret n'est lue ni affichee.",
+      "journal": "Noms de secrets, code HTTP, classe de la cle publique Clerk (pk_test / pk_live). Aucune valeur, aucun cookie, aucun jeton."
+    },
+    "p1-staging-inventaire.yml": {
+      "secret": "VERCEL_AUTOMATION_BYPASS_SECRET — la valeur n est jamais affichee : le job teste uniquement sa PRESENCE dans l environnement, et n affiche ni la valeur, ni un prefixe, ni une longueur",
+      "portee": "job `secret-check` uniquement ; declencheur `push` limite a la branche de travail `arena/88857a44-tracefab` et `workflow_dispatch` ; environnement `tracefab-clerk-test` avec relecteur obligatoire",
+      "justification": "Etablir, avant toute execution authentifiee, que le secret de contournement de la protection de deploiement Vercel est bien depose dans l'environnement de staging. Sans lui, la Preview repond 302 vers /sso-api et le runner mesurerait la protection de deploiement au lieu de l'application. Ce controle est isole : il ne joint ni la Preview, ni la base, ni l'instance Clerk.",
+      "lecture_seule": "Aucune ecriture, aucune base, aucun deploiement, aucun tenant, aucun appel reseau. Le job ne fait que tester la presence de la variable d environnement injectee par GitHub.",
+      "rotation": "Secret de contournement de la protection Vercel : il peut etre regenere dans le projet Vercel a tout moment ; la regenération invalide l ancienne valeur, qui doit alors etre remplacee dans l environnement.",
+      "journal": "Une seule ligne : `VERCEL_AUTOMATION_BYPASS_SECRET=present` ou une annotation d erreur. Aucune valeur, aucun prefixe, aucun cookie, aucun jeton."
     }
   },
   "//privilegedTriggers": "Declencheurs qui executent du code de branche avec les privileges de la branche de base (`pull_request_target`, `workflow_run`).",
@@ -37,6 +61,18 @@
       "job": "recherche",
       "pourquoi": "Le workflow ne doit pas lire ce secret sur un push de branche. Le déclenchement est manuel uniquement ; l'environnement avec relecteurs obligatoires doit être vérifié avant toute exécution, faute de quoi le secret pourrait être exposé.",
       "reglage_attendu": "Settings > Environments > vercel-log-search > Required reviewers : le proprietaire. Le workflow refuse aussi toute référence autre que refs/heads/main. Sans le réglage de relecteurs, la condition de branche ne remplace pas l'approbation de l'environnement."
+    },
+    "p1-staging-authenticated.yml": {
+      "environnement": "tracefab-clerk-test",
+      "job": "p1-staging",
+      "pourquoi": "Le job lit la cle secrete Clerk de test et celle de la sonde interne. L'approbation obligatoire et la restriction de branche ajoutent une barriere avant que ces secrets soient injectes ; le job ne lit aucun secret de Production.",
+      "reglage_attendu": "Settings > Environments > tracefab-clerk-test > Required reviewers : le proprietaire. Branches de deploiement : la branche d'execution (actuellement limitee a main, ce qui bloque une branche de travail non fusionnee). Le secret CLERK_SECRET_KEY doit etre une cle `sk_test_` de l'application Clerk de test ; TRACEFAB_NOTIFICATION_WORKER_SECRET doit correspondre a celui de l'environnement Preview."
+    },
+    "p1-staging-inventaire.yml": {
+      "environnement": "tracefab-clerk-test",
+      "job": "secret-check",
+      "pourquoi": "Le job lit un secret d'environnement : il doit donc etre soumis a une approbation humaine explicite et a une restriction de branche, sinon n'importe quel push de branche pourrait lire le secret de contournement. L'approbation et la politique de branche sont deux barrieres distinctes : la restriction de branche limite QUEL code peut demander le deploiement, l'approbation dit QUI autorise.",
+      "reglage_attendu": "Settings > Environments > tracefab-clerk-test > Required reviewers : le proprietaire ; Branches de deploiement : `main` et `arena/88857a44-tracefab` (la branche de travail du chantier P1). ATTENTION - Prevent self-review a ete decoche temporairement le 2026-10-23, sur autorisation explicite du proprietaire, pour lever l impasse d approbation (acteur du push = unique relecteur requis). Le relecteur obligatoire reste requis : chaque deploiement de staging exige toujours une approbation humaine explicite, seule l auto-approbation a ete rouverte. La case doit etre RECOCHEE a la fin de la campagne P1 (voir RAPPORT-P1-STAGING-EXECUTION.md, sections 7 et 9)."
     }
   },
   "//horsPerimetre": "Le workflow `figer-reference-visuelle.yml` porte `contents: write` mais n'existe pas sur la branche de reference : il vit sur `arena/91844ee9-tracefab` (branche de la PR #34). Ce registre ne couvre que les fichiers presents dans l'arbre analyse. Sa neutralisation est preparee dans docs/security/PHASE-1-PIPELINE-GITHUB.md."

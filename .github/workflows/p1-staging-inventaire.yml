@@ -1,0 +1,35 @@
+# P1 staging — verifier uniquement la presence du secret de bypass.
+# Ne serialise jamais le contexte global `secrets` et n'affiche aucune valeur.
+# Le push de branche evite la ref refs/pull/*/merge rejetee par l'environnement.
+name: P1 staging — présence du secret de bypass
+
+on:
+  push:
+    branches:
+      - arena/88857a44-tracefab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-staging-secret-check-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  secret-check:
+    name: Vérification ciblée — aucune valeur affichée
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: tracefab-clerk-test
+    steps:
+      - name: Vérifier la présence du secret attendu
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -n "${VERCEL_AUTOMATION_BYPASS_SECRET}" ]; then
+            echo "VERCEL_AUTOMATION_BYPASS_SECRET=present"
+          else
+            echo "::error::VERCEL_AUTOMATION_BYPASS_SECRET absent dans l'environnement tracefab-clerk-test"
+            exit 1
+          fi
