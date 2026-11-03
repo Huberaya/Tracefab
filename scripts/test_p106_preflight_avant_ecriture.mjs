@@ -94,9 +94,31 @@ console.log('\n  PRÉFLIGHT D6 — le refus tombe-t-il avant la première écrit
 const baseTravail = `tf_p106_d6_${randomBytes(3).toString('hex')}`;
 const urlBase = new URL(urlAdmin);
 urlBase.pathname = `/${baseTravail}`;
-const urlMigrator = new URL(urlBase.toString());
-urlMigrator.username = 'tracefab_migrator';
-urlMigrator.password = motDePasseMigrator;
+/**
+ * L'exécutant du refus, choisi à l'exécution.
+ *
+ * Le scénario veut un rôle NON superuser, NON membre du propriétaire : c'est la
+ * seule propriété dont le préflight dépend. `tracefab_migrator` est le rôle réel
+ * de la production, mais il n'existe pas forcément sur un cluster de CI qui ne
+ * l'a pas provisionné — et un test qui suppose son existence échoue pour une
+ * raison qui n'a rien à voir avec le préflight (constaté en CI le 03/11).
+ *
+ * On l'essaie donc, et à défaut on crée un rôle JETABLE borné `tf_d6_*`, détruit
+ * à la fin. Les deux modes mesurent la même chose ; le mode employé est écrit
+ * dans la sortie, pour qu'on ne puisse pas confondre « le rôle réel a refusé »
+ * avec « un rôle de sonde a refusé ».
+ */
+const roleReel = 'tracefab_migrator';
+let roleExecutant = roleReel;
+let urlMigrator = null;
+let roleJetableCree = null;
+
+function urlPour(role, motDePasse) {
+  const u = new URL(urlBase.toString());
+  u.username = role;
+  u.password = motDePasse;
+  return u;
+}
 
 const admin = new pg.Client({ connectionString: urlAdmin, ssl: sslDepuisUrl(urlAdmin) });
 await admin.connect();
@@ -185,6 +207,43 @@ try {
     await client.end();
   }
 
+  // --- Le rôle exécutant : tracefab_migrator s'il existe, sinon un rôle jetable
+  {
+    const essai = new pg.Client({
+      connectionString: urlPour(roleReel, motDePasseMigrator).toString(),
+      ssl: sslDepuisUrl(urlBase.toString()),
+      connectionTimeoutMillis: 5000,
+    });
+    let disponible = false;
+    try {
+      await essai.connect();
+      disponible = true;
+    } catch {
+      disponible = false;
+    } finally {
+      await essai.end().catch(() => {});
+    }
+    if (disponible) {
+      urlMigrator = urlPour(roleReel, motDePasseMigrator);
+      ok(true, `E3 exécutant : ${roleReel} existe sur ce cluster — rôle réel mesuré`);
+    } else {
+      roleExecutant = `tf_d6_${randomBytes(3).toString('hex')}`;
+      const mdp = randomBytes(12).toString('hex');
+      // Un rôle est un objet de CLUSTER : même section critique que les autres
+      // suites qui provisionnent. Relâché immédiatement après le CREATE.
+      try {
+        verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
+        await admin.query(
+          `CREATE ROLE ${roleExecutant} LOGIN PASSWORD '${mdp}' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB`);
+        roleJetableCree = roleExecutant;
+      } finally {
+        if (verrou) { await verrou.relacher(); verrou = null; }
+      }
+      urlMigrator = urlPour(roleExecutant, mdp);
+      ok(true, `E3 exécutant : ${roleReel} absent — rôle jetable ${roleExecutant} créé pour la mesure`);
+    }
+  }
+
   // Le rôle de migration doit pouvoir TRAVAILLER sur cette base : c'est le cas
   // en production (il possède le registre et écrit dans `public`). Sans ces
   // droits, le test mesurerait un refus de CONNEXION, pas le refus du
@@ -193,9 +252,10 @@ try {
     const prep = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
     await prep.connect();
     try {
-      await prep.query('GRANT USAGE, CREATE ON SCHEMA public TO tracefab_migrator');
-      await prep.query('GRANT ALL PRIVILEGES ON TABLE public._prisma_migrations TO tracefab_migrator');
-      await prep.query('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO tracefab_migrator');
+      await prep.query(`GRANT USAGE, CREATE ON SCHEMA public TO ${roleExecutant}`);
+      await prep.query(`GRANT ALL PRIVILEGES ON TABLE public._prisma_migrations TO ${roleExecutant}`);
+      await prep.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${roleExecutant}`);
+      await prep.query(`GRANT CONNECT ON DATABASE ${baseTravail} TO ${roleExecutant}`);
     } finally {
       await prep.end();
     }
@@ -216,7 +276,7 @@ try {
   });
   const sortieRefus = `${refus.stdout || ''}${refus.stderr || ''}`;
 
-  ok(refus.status === 3, 'E3 la chaîne rejouée par tracefab_migrator sort en code 3', `code ${refus.status}`);
+  ok(refus.status === 3, `E3 la chaîne rejouée par ${roleExecutant} sort en code 3`, `code ${refus.status}`);
   ok(/REFUS/.test(sortieRefus) && sortieRefus.includes(MIGRATION_ATTENDUE),
     'E3 le refus est NOMMÉ : il cite la migration', sortieRefus.split('\n').filter((l) => /REFUS/.test(l))[0] || 'aucun REFUS');
   ok(new RegExp(`appartient a ${roleProprietaire}`).test(sortieRefus),
@@ -251,7 +311,7 @@ try {
 
     // --- E6 (seconde moitié) : le rôle de migration n'a pas gagné de privilège
     const sup = (await apres.query(
-      "SELECT rolsuper, rolbypassrls FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_migrator'")).rows[0];
+      'SELECT rolsuper, rolbypassrls FROM pg_catalog.pg_roles WHERE rolname = $1', [roleExecutant])).rows[0];
     ok(sup && sup.rolsuper === false,
       'E6 le rôle de migration n a reçu AUCUNE élévation résiduelle', `super=${sup?.rolsuper}`);
   } finally {
@@ -269,6 +329,15 @@ try {
   const restantes = (await admin.query(
     'SELECT count(*)::int AS n FROM pg_database WHERE datname = $1', [baseTravail])).rows[0].n;
   ok(restantes === 0, 'E7 la base de travail est détruite (aucune base résiduelle)', `${restantes} restante(s)`);
+
+  if (roleJetableCree) {
+    await admin.query(`DROP ROLE IF EXISTS ${roleJetableCree}`).catch((e) => {
+      console.error(`  info  suppression du rôle ${roleJetableCree} : ${e.message}`);
+    });
+    const reste = (await admin.query(
+      'SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname = $1', [roleJetableCree])).rows[0].n;
+    ok(reste === 0, 'E7 le rôle jetable est détruit (aucun rôle résiduel)', `${reste} restant(s)`);
+  }
   if (verrou) await verrou.relacher();
 }
 
