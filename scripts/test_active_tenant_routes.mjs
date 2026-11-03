@@ -128,7 +128,10 @@ for (const path of MULTI_TENANT_ROUTES) {
 }
 
 const supplierProfile = read('api/_lib/supplier-profile.ts');
-if (/if \(!organizationId\) return null;/.test(supplierProfile) && !/orderBy:\s*\{\s*created_at:\s*'asc'\s*\}/.test(supplierProfile)) {
+const currentSupplierStart = supplierProfile.indexOf('export async function currentSupplier(');
+const currentSupplierEnd = supplierProfile.indexOf('\nexport ', currentSupplierStart + 1);
+const currentSupplierSource = supplierProfile.slice(currentSupplierStart, currentSupplierEnd < 0 ? undefined : currentSupplierEnd);
+if (/if \(!organizationId\) return null;/.test(currentSupplierSource) && !/orderBy:\s*\{\s*created_at:\s*'asc'\s*\}/.test(currentSupplierSource)) {
   ok('currentSupplier refuse l’absence de tenant au lieu de choisir la première adhésion');
 } else {
   fail('currentSupplier conserve un repli ambigu vers la première adhésion fournisseur');
