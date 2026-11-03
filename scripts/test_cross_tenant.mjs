@@ -34,7 +34,7 @@ const ACCESS_MODELS = {
   // le lit dans la requete elle-meme, ce qui rend l'oubli d'armement impossible
   // a ecrire. Les deux arment `tracefab.user_id` et
   // `tracefab.active_organization_id` dans la transaction.
-  TENANT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext'] },
+  TENANT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext', 'withTracefabTenantContext'] },
   // Surface publique assumee : passeport consommateur, wallets, sante, config.
   PUBLIC: { needs: [] },
   // Taches de fond declenchees par un worker : secret partage obligatoire.
@@ -182,8 +182,12 @@ for (const r of routes) {
     // SQL `= ANY(${organizationIds}::uuid[])`. La seconde etait invisible a la
     // premiere version du controle, et c'est par elle que
     // catalog/products/import-jobs passait entre les mailles.
-    const MULTI_ORG_FALLBACK = /(\{\s*in:\s*|=\s*ANY\(\s*\$\{\s*)(organizationIds|brandOrganizationIds|orgIds|activeOrganizationIds|scopedOrganizations|organizationIdList)\b/;
+    const MULTI_ORG_FALLBACK = /(\{\s*in:\s*|=\s*ANY\(\s*\$\{\s*)(organizationIds|brandOrganizationIds|brandOrgIds|brandIds|orgIds|activeOrganizationIds|scopedOrganizations|organizationIdList)\b/;
     const declaresActiveTenant = /requireActiveTenant|resolveActiveTenant/.test(src);
+    const usesMembershipUnion = /\bactiveBrandOrganizationIds\s*\(|\bactiveOrganizationIds\s*\(/.test(src);
+    if (usesMembershipUnion && !declaresActiveTenant && !MULTI_ORG_EXEMPT.has(r.key)) {
+      failures.push(`${r.key} [TENANT] : utilise l'union des adhésions sans valider le tenant actif`);
+    }
     if (MULTI_ORG_FALLBACK.test(src) && !declaresActiveTenant && !MULTI_ORG_EXEMPT.has(r.key)) {
       failures.push(
         `${r.key} [TENANT] : filtre sur toutes les organisations de l'utilisateur `
