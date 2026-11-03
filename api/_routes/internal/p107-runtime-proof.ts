@@ -37,7 +37,13 @@ function sqlState(error: unknown): string | null {
 }
 
 function erreurCodeOnly(error: unknown) {
-  return sqlState(error) ?? 'ERREUR_TECHNIQUE';
+  const state = sqlState(error);
+  if (state) return state;
+  const e = error as { code?: unknown; cause?: { code?: unknown } };
+  for (const candidate of [e?.code, e?.cause?.code]) {
+    if (typeof candidate === 'string' && /^[A-Z_0-9]{3,40}$/.test(candidate)) return candidate;
+  }
+  return 'ERREUR_TECHNIQUE';
 }
 
 /**
