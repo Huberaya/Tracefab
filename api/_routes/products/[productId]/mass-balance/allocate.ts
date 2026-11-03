@@ -1,10 +1,9 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabRequestContext } from '../../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
-import { accessibleProduct } from '../../../../_lib/quality.js';
 import { allocateTcQuantity } from '../../../../_lib/mass-balance/mass-balance-manager.js';
 
 function routeProductId(req: VercelRequest) {
@@ -39,8 +38,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'allocated_weight_kg_must_be_positive' });
     }
 
-    const allocation = await withTracefabRequestContext(req, user, async (tx) => {
-      const product = await accessibleProduct(tx, productId);
+    const allocation = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] }, async (tx, tenant) => {
+      const product = await tx.tracefab_products.findFirst({
+        where: { id: productId, brand_organization_id: tenant.organizationId },
+        select: { id: true },
+      });
       if (!product) return null;
       return await allocateTcQuantity(tx, {
         tcId,
