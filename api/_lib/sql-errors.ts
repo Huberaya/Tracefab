@@ -1,3 +1,5 @@
+import { isTenantError } from './tenant.js';
+
 type SqlErrorDefinition = {
   status: number;
   message?: string;
@@ -254,6 +256,7 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
  * they can contain implementation details or values from a failed query.
  */
 export function sqlBusinessError(error: unknown): { status: number; error: string } | null {
+  if (isTenantError(error)) return { status: error.status, error: error.message };
   const message = error instanceof Error ? error.message : String(error);
   const code = Object.keys(DEFINITIONS).find((candidate) => message.includes(candidate));
   if (code) return { status: DEFINITIONS[code].status, error: code };
