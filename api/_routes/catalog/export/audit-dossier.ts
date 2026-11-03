@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { exportAuditDossierJson } from '../../../_lib/bulk-operations/compliance-exporter.js';
@@ -12,15 +12,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const brandOrganizationId = (req.query.organizationId as string) || (req.headers['x-tracefab-organization-id'] as string) || '';
-
-    if (!brandOrganizationId || !/^[0-9a-f-]{36}$/i.test(brandOrganizationId)) {
-      return json(res, 400, { error: 'invalid_brand_organization_id' });
-    }
-
-    const dossier = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      return await exportAuditDossierJson(tx, brandOrganizationId);
-    });
+    const dossier = await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'], roles: ['owner', 'admin', 'manager', 'auditor'] },
+      async (tx, tenant) => exportAuditDossierJson(tx, tenant.organizationId),
+    );
 
     const dateStr = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
