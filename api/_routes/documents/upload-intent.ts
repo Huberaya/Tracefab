@@ -1,10 +1,10 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabTenantContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { activeBrandOrganizationIds, isUuid } from '../../_lib/products.js';
+
 import { documentMetadata, serializeDocument, DOCUMENT_SELECT } from '../../_lib/documents.js';
 import { presignedUpload, storageObjectKey } from '../../_lib/storage.js';
 import { assertStorageQuotaAvailable } from '../../_lib/cloud-storage/quota-manager.js';
@@ -17,17 +17,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const queryOrgId = req.query.organizationId;
     const requestedId = Array.isArray(queryOrgId) ? queryOrgId[0] : queryOrgId;
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandIds = await activeBrandOrganizationIds(tx, user.id);
-      let targetOrgId: string | undefined;
-
-      if (requestedId && isUuid(requestedId) && brandIds.includes(requestedId)) {
-        targetOrgId = requestedId;
-      } else if (brandIds.length > 0) {
-        targetOrgId = brandIds[0];
-      }
-
-      if (!targetOrgId) return null;
+    const result = await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] },
+      async (tx, tenant) => {
+        const targetOrgId = tenant.organizationId;
 
       // Enforce organization storage quota
       await assertStorageQuotaAvailable(tx, targetOrgId, body.byteSize);
