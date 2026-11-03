@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
-import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile.js';
+import { currentSupplier } from '../../../_lib/supplier-profile.js';
 import { parseSupplierBomCsv, type BomImportRow } from '../../../_lib/bom-importer.js';
+import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 
 type BomImportBody = {
   csvContent?: string;
@@ -27,8 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 400, { error: 'csv_content_required', message: 'Field "csvContent" is mandatory.' });
   }
 
-  return withTracefabUserContext(auth.user.id, auth.user.email, async (tx) => {
-    const supplier = await currentSupplier(tx, auth.user.id, requestedOrganizationId(req));
+  try {
+    return await withTracefabTenantContext(req, auth.user, { types: ['supplier'] }, async (tx, tenant) => {
+    const supplier = await currentSupplier(tx, auth.user.id, tenant.organizationId);
     if (!supplier) {
       return json(res, 404, { error: 'supplier_not_found' });
     }
@@ -68,5 +70,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       detectedStandards: validation.detectedStandards,
       savedMaterialsCount,
     });
-  }, requestedOrganizationId(req));
+    });
+  } catch (error) {
+    const businessError = sqlBusinessError(error);
+    if (businessError) return json(res, businessError.status, { error: businessError.error });
+    console.error('POST /api/supplier/materials/import-bom failed', error);
+    return json(res, 500, { error: 'internal_server_error' });
+  }
 }
