@@ -1184,6 +1184,19 @@ jobs:
         # bloc « avant ».
         run: npm run test:p106:rejouabilite-chaine
 
+      - name: P10.8 — le preflight D6 refuse AVANT la premiere ecriture (etat de forme production)
+        # Sur une base jetable amenee a l'ETAT DE LA PRODUCTION (tout applique
+        # sauf les deux migrations P10.5/P10.6, fonctions detenues par le
+        # proprietaire), la chaine est rejouee par `tracefab_migrator` :
+        #   - code 3, refus NOMME qui cite la migration et le proprietaire ;
+        #   - `_prisma_migrations` INCHANGE, aucune ligne d'echec ;
+        #   - ni la table des cles ni la fonction de verification ne sont creees
+        #     (preuve d'absence d'etat partiel) ;
+        #   - aucune elevation demandee ni residuelle.
+        # Controle POSITIF dans la meme suite : jouee par le proprietaire, la
+        # chaine s'applique — le preflight ne refuse pas a tort.
+        run: npm run test:p106:preflight-avant-ecriture
+
       - name: P10.7 — le contrat d identite runtime refuse aussi l ESCALADE
         # Onze cas sur une fonction PURE (aucune base) : le role doit etre
         # `tracefab_app`, sans SUPERUSER, sans BYPASSRLS, ET sans appartenance
