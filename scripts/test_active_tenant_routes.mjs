@@ -42,6 +42,17 @@ const BRAND_ROUTES = [
   'api/_routes/integrations/jobs.ts',
   'api/_routes/integrations/plm.ts',
   'api/_routes/suppliers.ts',
+  'api/_routes/organizations/[organizationId]/invitations.ts',
+  'api/_routes/documents/[documentId]/security-report.ts',
+  'api/_routes/documents/[documentId]/verify-ai.ts',
+  'api/_routes/documents/[documentId]/verification-report.ts',
+  'api/_routes/products/[productId]/mass-balance.ts',
+  'api/_routes/products/[productId]/mass-balance/allocate.ts',
+  'api/_routes/data-requests/[requestId]/items/from-template.ts',
+  'api/_routes/data-requests/[requestId]/items.ts',
+  'api/_routes/data-requests/[requestId]/send.ts',
+  'api/_routes/data-responses/[responseId]/review.ts',
+  'api/_routes/data-requests/[requestId].ts',
 ];
 
 const SUPPLIER_ROUTES = [
@@ -67,6 +78,8 @@ const SUPPLIER_ROUTES = [
   'api/_routes/supplier/passport.ts',
   'api/_routes/supplier/passport/access-requests.ts',
   'api/_routes/suppliers/[supplierId]/profile/submit.ts',
+  'api/_routes/data-request-items/[itemId]/response.ts',
+  'api/_routes/data-requests/[requestId]/submit.ts',
 ];
 
 const MULTI_TENANT_ROUTES = [
