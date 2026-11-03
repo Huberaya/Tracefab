@@ -55,6 +55,7 @@ const CLASSIFIED = {
   'organizations': ['ACCOUNT', 'Liste/création des organisations auxquelles le compte appartient.'],
   'supplier/organizations': ['ACCOUNT', 'Sélecteur des adhésions fournisseur du compte, sans données métier.'],
   'supplier/onboarding': ['ACCOUNT', 'Création initiale du tenant fournisseur avant toute adhésion.'],
+  'invitations/accept': ['ACCOUNT', 'Acceptation d’une invitation par jeton ; le tenant n’existe pas encore dans les adhésions du compte.'],
   'dpp/validate': ['ACCOUNT', 'Validation pure du payload fourni par le client, sans lecture ni écriture tenant.'],
   'quality/calculate-index': ['ACCOUNT', 'Calcul pur sur les composants fournis, sans lecture ni écriture tenant.'],
   'traceability/lineage-graph': ['ACCOUNT', 'Construction pure du graphe à partir des données fournies, sans lecture ni écriture tenant.'],
