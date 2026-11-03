@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import type { ActiveTenant } from './tenant.js';
 import { downloadObject, headObject, MAX_DOCUMENT_BYTES, scanWithAntivirus } from './storage.js';
 
 export const DOCUMENT_SELECT = {
@@ -24,6 +25,116 @@ export const DOCUMENT_SELECT = {
 
 export type DocumentRecord = Prisma.documentsGetPayload<{ select: typeof DOCUMENT_SELECT }>;
 
+/**
+ * Accès à un document borné au tenant actif.
+ * Reproduit les voies d'accès de tracefab_can_access_document, mais remplace
+ * les unions d'adhésions du compte par l'organisation explicitement sélectionnée.
+ */
+export async function documentAccessibleFromTenant(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  documentId: string,
+  tenant: ActiveTenant,
+): Promise<boolean> {
+  const rows = await tx.$queryRaw<Array<{ accessible: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM documents d
+      WHERE d.id = ${documentId}::uuid
+        AND d.status = 'available'
+        AND (
+          d.owner_organization_id = ${tenant.organizationId}::uuid
+          OR (
+            ${tenant.organizationType} = 'brand'
+            AND (
+              EXISTS (
+                SELECT 1
+                FROM data_shares sh
+                JOIN organization_memberships m
+                  ON m.organization_id = sh.grantee_organization_id
+                 AND m.user_id = ${userId}::uuid
+                 AND m.status = 'active'
+                WHERE sh.supplier_organization_id = d.owner_organization_id
+                  AND sh.grantee_organization_id = ${tenant.organizationId}::uuid
+                  AND sh.status = 'active'
+                  AND sh.starts_at <= now()
+                  AND (sh.ends_at IS NULL OR sh.ends_at >= now())
+                  AND (
+                    COALESCE((sh.scope ->> 'all')::boolean, false)
+                    OR COALESCE(sh.scope -> 'document_ids', '[]'::jsonb) ? d.id::text
+                  )
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM data_responses resp
+                JOIN data_request_items item ON item.id = resp.data_request_item_id
+                JOIN data_requests req ON req.id = item.data_request_id
+                WHERE resp.source_document_id = d.id
+                  AND req.brand_organization_id = ${tenant.organizationId}::uuid
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM certifications cert
+                WHERE cert.document_id = d.id
+                  AND cert.owner_organization_id = ${tenant.organizationId}::uuid
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM certifications cert
+                JOIN tracefab_products p ON p.id = cert.product_id
+                WHERE cert.document_id = d.id
+                  AND p.brand_organization_id = ${tenant.organizationId}::uuid
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM certifications cert
+                JOIN suppliers s ON s.id = cert.supplier_id
+                JOIN brand_supplier_relationships r
+                  ON r.supplier_organization_id = s.organization_id
+                 AND r.brand_organization_id = ${tenant.organizationId}::uuid
+                 AND r.status = 'active'
+                WHERE cert.document_id = d.id
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM data_points dp
+                JOIN tracefab_products p ON p.id = dp.product_id
+                WHERE dp.source_document_id = d.id
+                  AND p.brand_organization_id = ${tenant.organizationId}::uuid
+              )
+            )
+          )
+          OR (
+            ${tenant.organizationType} = 'supplier'
+            AND (
+              EXISTS (
+                SELECT 1
+                FROM data_responses resp
+                JOIN data_request_items item ON item.id = resp.data_request_item_id
+                JOIN data_requests req ON req.id = item.data_request_id
+                WHERE resp.source_document_id = d.id
+                  AND req.supplier_organization_id = ${tenant.organizationId}::uuid
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM certifications cert
+                WHERE cert.document_id = d.id
+                  AND cert.owner_organization_id = ${tenant.organizationId}::uuid
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM certifications cert
+                JOIN suppliers s ON s.id = cert.supplier_id
+                WHERE cert.document_id = d.id
+                  AND s.organization_id = ${tenant.organizationId}::uuid
+              )
+            )
+          )
+        )
+    ) AS accessible
+  `;
+  return rows[0]?.accessible === true;
+}
 export function serializeDocument(document: DocumentRecord) {
   return {
     id: document.id,
