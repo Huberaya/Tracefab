@@ -26,7 +26,6 @@ type MembershipRow = {
   herite: boolean;
 };
 type ValueRow = { value: string | null };
-type PidRow = { pid: number };
 
 function sqlState(error: unknown): string | null {
   const e = error as { code?: unknown; meta?: { code?: unknown }; cause?: { code?: unknown }; message?: unknown };
