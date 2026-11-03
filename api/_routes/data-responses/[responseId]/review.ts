@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, optionalString } from '../../../_lib/data-requests.js';
@@ -66,7 +66,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const reviewComment = optionalString(body.reviewComment, 'review_comment', 4000);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager', 'auditor'] }, async (tx, tenant) => {
+      const scopedResponse = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT dr.id
+        FROM data_responses dr
+        JOIN data_request_items item ON item.id = dr.data_request_item_id
+        JOIN data_requests request ON request.id = item.data_request_id
+        WHERE dr.id = ${responseId}::uuid
+          AND request.brand_organization_id = ${tenant.organizationId}::uuid
+        LIMIT 1
+      `;
+      if (!scopedResponse[0]) return null;
       const rows = await tx.$queryRaw<ResponseRow[]>`
         SELECT *
         FROM tracefab_review_data_response(
@@ -127,6 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     });
 
+    if (!result) return json(res, 404, { error: 'data_response_not_found' });
     return json(res, 200, {
       response: serializeResponse(result.response),
       request: result.request,
