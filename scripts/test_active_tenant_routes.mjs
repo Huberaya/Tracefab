@@ -32,6 +32,7 @@ const BRAND_ROUTES = [
   'api/_routes/catalog/import/suppliers.ts',
   'api/_routes/catalog/products/import.ts',
   'api/_routes/catalog/suppliers/import.ts',
+  'api/_routes/documents.ts',
   'api/_routes/documents/[documentId]/download.ts',
   'api/_routes/documents/[documentId]/scan.ts',
   'api/_routes/documents/upload-intent.ts',
