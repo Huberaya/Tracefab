@@ -117,6 +117,7 @@ export async function supplierAccessibleFromTenant(
   userId: string,
   supplierId: string,
   tenant: ActiveTenant,
+  options: { allowRelationship?: boolean } = {},
 ): Promise<{ id: string; ownerOrganizationId: string; isOwner: boolean } | null> {
   const rows = await tx.$queryRaw<Array<{ id: string; owner_organization_id: string; is_owner: boolean }>>`
     SELECT
@@ -133,12 +134,15 @@ export async function supplierAccessibleFromTenant(
         OR (
           ${tenant.organizationType} = 'brand'
           AND (
-            EXISTS (
-              SELECT 1
-              FROM brand_supplier_relationships r
+            (
+              ${options.allowRelationship === true}::boolean
+              AND EXISTS (
+                SELECT 1
+                FROM brand_supplier_relationships r
               WHERE r.brand_organization_id = ${tenant.organizationId}::uuid
                 AND r.supplier_organization_id = s.organization_id
-                AND r.status = 'active'
+                  AND r.status = 'active'
+              )
             )
             OR EXISTS (
               SELECT 1
