@@ -94,7 +94,7 @@ export async function accessibleSupplier(
   userId: string,
   tenant: ActiveTenant,
 ): Promise<{ id: string; ownerOrganizationId: string; isOwner: boolean } | null> {
-  return supplierAccessibleFromTenant(tx, userId, supplierId, tenant);
+  return supplierAccessibleFromTenant(tx, userId, supplierId, tenant, { allowRelationship: false });
 }
 
 export async function accessibleProduct(
