@@ -60,6 +60,8 @@ const BRAND_ROUTES = [
   'api/_routes/quality-issues/[issueId]/waive.ts',
   'api/_routes/quality/issues/[issueId]/cap.ts',
   'api/_routes/quality/caps/[capId]/review.ts',
+  'api/_routes/quality/caps/[capId]/messages.ts',
+  'api/_routes/schema-bindings.ts',
 ];
 
 const SUPPLIER_ROUTES = [
@@ -91,8 +93,6 @@ const SUPPLIER_ROUTES = [
 ];
 
 const MULTI_TENANT_ROUTES = [
-  'api/_routes/quality/caps/[capId]/messages.ts',
-  'api/_routes/schema-bindings.ts',
   'api/_routes/quality/suppliers/[supplierId].ts',
   'api/_routes/suppliers/[supplierId]/profile.ts',
 ];
