@@ -27,7 +27,7 @@ export function requestedOrganizationId(request: {
   body?: unknown;
 }) {
   const header = request.headers?.['x-tracefab-organization-id'];
-  const query = request.query?.organizationId;
+  const query = request.query?.organizationId ?? request.query?.supplierOrganizationId;
   const body = request.body && typeof request.body === 'object' && !Array.isArray(request.body)
     ? (request.body as Record<string, unknown>).organizationId ?? (request.body as Record<string, unknown>).supplierOrganizationId
     : undefined;
