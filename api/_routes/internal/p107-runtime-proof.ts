@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { createRequire } from 'node:module';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { cronAuthorized, cronSecretConfigured } from '../../_lib/worker-auth.js';
@@ -139,17 +140,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     contextAfterError = erreurCodeOnly(error);
   }
 
+  // R4 uses one pg.Client on the exact DATABASE_URL injected into this
+  // runtime. Unlike the Prisma pool, this single client makes backend-PID
+  // changes across transactions an unambiguous transaction-pooling signal.
   const pids: number[] = [];
   let poolerError: string | null = null;
   try {
-    for (let i = 0; i < 3; i += 1) {
-      const pid = await prisma.$transaction(async (tx) => {
-        const rows = await tx.$queryRawUnsafe<PidRow[]>(
-          'SELECT pg_catalog.pg_backend_pid() AS pid',
-        );
-        return rows[0]?.pid;
-      });
-      if (typeof pid === 'number') pids.push(pid);
+    const connectionString = process.env.DATABASE_URL?.trim();
+    if (!connectionString) throw new Error('DATABASE_URL_ABSENTE');
+    const parsedUrl = new URL(connectionString);
+    const sslmode = parsedUrl.searchParams.get('sslmode')?.toLowerCase() ?? '';
+    const ssl = ['require', 'verify-ca', 'verify-full'].includes(sslmode)
+      ? { rejectUnauthorized: true }
+      : false;
+    const require = createRequire(import.meta.url);
+    const pg = require('pg') as {
+      Client: new (options: Record<string, unknown>) => {
+        connect(): Promise<void>;
+        query(sql: string): Promise<{ rows: Array<{ pid: number | string }> }>;
+        end(): Promise<void>;
+      };
+    };
+    const client = new pg.Client({
+      connectionString,
+      ssl,
+      application_name: 'tracefab-p107-runtime-proof',
+    });
+    try {
+      await client.connect();
+      for (let i = 0; i < 3; i += 1) {
+        await client.query('BEGIN');
+        try {
+          await client.query('SELECT 1');
+          const rows = await client.query('SELECT pg_catalog.pg_backend_pid() AS pid');
+          const pid = Number(rows.rows[0]?.pid);
+          if (Number.isInteger(pid)) pids.push(pid);
+        } finally {
+          await client.query('ROLLBACK');
+        }
+      }
+    } finally {
+      await client.end();
     }
   } catch (error) {
     poolerError = erreurCodeOnly(error);
@@ -210,6 +241,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     canEscalateToPrivilegedRole: canTakePrivileged,
     pooler: {
       mode: pids.length === 3 ? (new Set(pids).size > 1 ? 'transaction_pooling' : 'session_or_direct') : 'not_measured',
+      source: 'pg.Client sur DATABASE_URL du runtime',
       backendCount: new Set(pids).size,
       transactions: pids.length,
       error: poolerError,
