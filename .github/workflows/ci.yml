@@ -78,6 +78,10 @@ jobs:
         # fail-closed. Un locataire absent, mal forme ou non adherent ne doit
         # provoquer aucune requete metier.
         run: npm run test:active-tenant
+      - name: Routes métier — tenant actif obligatoire
+        # Vérifie que les routes catalogue, intégrations, documents et portail fournisseur
+        # utilisent le tenant explicite, sans repli sur la première adhésion.
+        run: npm run test:active-tenant-routes
 
       - name: Commentaires de fin de ligne dans les routes compactees
         # Un commentaire `//` dans une route ecrite sur une ligne met en
