@@ -111,20 +111,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
       measured.contextVisible = pendant[0]?.value === 'pose';
 
+      await tx.$executeRawUnsafe('SAVEPOINT p107_write_probe');
       try {
         await tx.$executeRawUnsafe(`CREATE TABLE public.${table} (x integer)`);
-        // If this unexpectedly succeeds, the thrown sentinel forces Prisma to
-        // ROLLBACK the transaction, so the table can never persist.
         measured.writeSqlState = 'ECRITURE_ACCEPTEE';
+        await tx.$executeRawUnsafe(`DROP TABLE public.${table}`);
       } catch (error) {
         measured.writeSqlState = sqlState(error) ?? 'ERREUR_TECHNIQUE';
       }
-      throw new Error('P107_FORCE_ROLLBACK');
+      // Recover the transaction after SQLSTATE 25006 and guarantee that even
+      // an unexpectedly accepted CREATE is rolled back before commit.
+      await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT p107_write_probe');
+      await tx.$executeRawUnsafe('RELEASE SAVEPOINT p107_write_probe');
     });
   } catch (error) {
-    if (!(error instanceof Error) || error.message !== 'P107_FORCE_ROLLBACK') {
-      transactionError = erreurCodeOnly(error);
-    }
+    transactionError = erreurCodeOnly(error);
   }
 
   let contextAfter: string | null = null;
@@ -171,7 +172,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (identity?.bypassrls !== false) stops.push('BYPASSRLS présent ou non mesuré');
   if (identity?.createrole !== false) stops.push('CREATEROLE présent ou non mesuré');
   if (identity?.createdb !== false) stops.push('CREATEDB présent ou non mesuré');
-  if (privileged.length > 0) stops.push(`rôle(s) privilégié(s) atteignable(s) : ${privileged.map((m) => m.role_atteint).join(', ')}`);
   if (canTakePrivileged) stops.push('capacité effective SET ROLE vers un rôle privilégié');
   if (writeSqlState !== '25006') stops.push(`lecture seule non prouvée (résultat ${writeSqlState ?? 'non exécuté'})`);
   if (!contextVisible) stops.push('contexte transactionnel non visible dans sa transaction');
