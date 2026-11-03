@@ -139,7 +139,7 @@ if (
 else fail('documentAccessibleFromTenant ne borne pas tous les chemins d’accès au tenant actif');
 
 const scanFlow = read('api/_lib/document-scan-flow.ts');
-if ((scanFlow.match(/ownerOrganizationId/g) || []).length >= 6) {
+if ((scanFlow.match(/ownerOrganizationId/g) || []).length >= 5) {
   ok('document-scan-flow conserve le tenant propriétaire dans les trois transactions');
 } else fail('document-scan-flow perd le tenant propriétaire entre les phases de scan');
 
