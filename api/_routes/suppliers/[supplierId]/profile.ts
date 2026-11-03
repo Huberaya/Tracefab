@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import {
@@ -9,6 +9,7 @@ import {
   serializeSupplierProfile,
   SUPPLIER_PROFILE_SELECT,
   type SupplierProfileRecord,
+  supplierAccessibleFromTenant,
 } from '../../../_lib/supplier-profile.js';
 
 function routeSupplierId(req: VercelRequest) {
@@ -26,7 +27,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const scope = req.method === 'PATCH'
+      ? { types: ['supplier'] as Array<'supplier'>, roles: ['owner', 'admin', 'manager', 'contributor'] as Array<'owner' | 'admin' | 'manager' | 'contributor'> }
+      : { types: ['brand', 'supplier'] as Array<'brand' | 'supplier'> };
+    const result = await withTracefabTenantContext(req, user, scope, async (tx, tenant) => {
+      const access = await supplierAccessibleFromTenant(tx, user.id, supplierId, tenant);
+      if (!access) return null;
       const current = await tx.suppliers.findUnique({ where: { id: supplierId }, select: SUPPLIER_PROFILE_SELECT });
       if (!current) return null;
       if (req.method === 'GET') return current;
