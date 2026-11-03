@@ -186,9 +186,9 @@ if (
   && /brand_organization_id: organizationId/.test(dataRequestHelpers)
   && /supplier_organization_id: organizationId/.test(dataRequestHelpers)
 ) {
-  fail('data-request helpers utilisent encore une union d’adhésions au lieu du tenant explicite');
-} else {
   ok('data-request helpers bornent chaque demande à une seule organisation active');
+} else {
+  fail('data-request helpers utilisent encore une union d’adhésions au lieu du tenant explicite');
 }
 
 const capMessages = read('api/_routes/quality/caps/[capId]/messages.ts');
