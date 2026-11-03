@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { Prisma, membership_role, membership_status } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabTenantContext } from '../../_lib/context.js';
 import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../_lib/email.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
@@ -49,7 +49,7 @@ function validEmail(value: unknown) {
 }
 
 async function memberContext(tx: Prisma.TransactionClient, userId: string, organizationId: string | null) {
-  const supplier = await currentSupplier(tx, userId, organizationId);
+  const supplier = await currentSupplier(tx, userId, tenant.organizationId);
   if (!supplier) return null;
   const actor = await tx.organization_memberships.findUnique({
     where: { organization_id_user_id: { organization_id: supplier.organization_id, user_id: userId } },
@@ -63,10 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!['GET', 'POST', 'PATCH'].includes(req.method || '')) return methodNotAllowed(res, ['GET', 'POST', 'PATCH']);
   try {
     const { user } = await requireClerkUser(req);
-    const organizationId = requestedOrganizationId(req);
     if (req.method === 'GET') {
-      const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-        const context = await memberContext(tx, user.id, organizationId);
+      const result = await withTracefabTenantContext(req, user, { types: ['supplier'] }, async (tx, tenant) => {
+        const context = await memberContext(tx, user.id, tenant.organizationId);
         if (!context) return null;
         const [members, invitations] = await Promise.all([
           tx.organization_memberships.findMany({
@@ -101,8 +100,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const body = await readJsonBody<MembersBody>(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const context = await memberContext(tx, user.id, organizationId);
+    const result = await withTracefabTenantContext(req, user, { types: ['supplier'] }, async (tx, tenant) => {
+      const context = await memberContext(tx, user.id, tenant.organizationId);
       if (!context) return null;
       if (!['owner', 'admin'].includes(context.actor.role)) throw new Error('member_management_role_required');
 
