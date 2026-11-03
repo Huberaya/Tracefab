@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import type { ActiveTenant } from './tenant.js';
 
 export const SUPPLIER_PROFILE_SELECT = {
   id: true,
@@ -101,6 +102,70 @@ export async function currentSupplier(
     where: { organization_id: membership.organization_id },
     select: SUPPLIER_PROFILE_SELECT,
   });
+}
+
+/**
+ * Vérifie qu'un profil fournisseur est accessible depuis le tenant actif.
+ *
+ * Un partage vers une marque A ne doit pas être réutilisable par un utilisateur
+ * qui est aussi membre d'une marque B. La vérification borne donc explicitement
+ * la relation ou le partage à l'organisation active, au lieu de s'appuyer sur
+ * tracefab_can_access_shared_subject() qui agrège toutes les adhésions du compte.
+ */
+export async function supplierAccessibleFromTenant(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  supplierId: string,
+  tenant: ActiveTenant,
+): Promise<{ id: string; ownerOrganizationId: string; isOwner: boolean } | null> {
+  const rows = await tx.$queryRaw<Array<{ id: string; owner_organization_id: string; is_owner: boolean }>>`
+    SELECT
+      s.id,
+      s.organization_id AS owner_organization_id,
+      (${tenant.organizationType} = 'supplier' AND s.organization_id = ${tenant.organizationId}::uuid) AS is_owner
+    FROM suppliers s
+    WHERE s.id = ${supplierId}::uuid
+      AND (
+        (
+          ${tenant.organizationType} = 'supplier'
+          AND s.organization_id = ${tenant.organizationId}::uuid
+        )
+        OR (
+          ${tenant.organizationType} = 'brand'
+          AND (
+            EXISTS (
+              SELECT 1
+              FROM brand_supplier_relationships r
+              WHERE r.brand_organization_id = ${tenant.organizationId}::uuid
+                AND r.supplier_organization_id = s.organization_id
+                AND r.status = 'active'
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM data_shares sh
+              JOIN organization_memberships m
+                ON m.organization_id = sh.grantee_organization_id
+               AND m.user_id = ${userId}::uuid
+               AND m.status = 'active'
+              WHERE sh.supplier_organization_id = s.organization_id
+                AND sh.grantee_organization_id = ${tenant.organizationId}::uuid
+                AND sh.status = 'active'
+                AND sh.starts_at <= now()
+                AND (sh.ends_at IS NULL OR sh.ends_at >= now())
+                AND (
+                  COALESCE((sh.scope ->> 'all')::boolean, false)
+                  OR COALESCE(sh.scope -> 'supplier_ids', '[]'::jsonb) ? s.id::text
+                )
+            )
+          )
+        )
+      )
+    LIMIT 1
+  `;
+  const row = rows[0];
+  return row
+    ? { id: row.id, ownerOrganizationId: row.owner_organization_id, isOwner: row.is_owner }
+    : null;
 }
 
 export function serializeSupplierProfile(row: SupplierProfileRecord) {
