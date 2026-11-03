@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabRequestContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
+import { accessibleProduct } from '../../../../_lib/quality.js';
 import { allocateTcQuantity } from '../../../../_lib/mass-balance/mass-balance-manager.js';
 
 function routeProductId(req: VercelRequest) {
@@ -38,7 +39,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'allocated_weight_kg_must_be_positive' });
     }
 
-    const allocation = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const allocation = await withTracefabRequestContext(req, user, async (tx) => {
+      const product = await accessibleProduct(tx, productId);
+      if (!product) return null;
       return await allocateTcQuantity(tx, {
         tcId,
         productId,
@@ -49,6 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     });
 
+    if (!allocation) return json(res, 404, { error: 'product_not_found' });
     return json(res, 201, {
       message: 'tc_quantity_allocated',
       allocation,
