@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
+import { documentAccessibleFromTenant } from '../../../../_lib/documents.js';
 
 function routeCapId(req: VercelRequest) {
   const value = req.query.capId;
@@ -34,37 +35,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return json(res, 400, { error: 'message_required' });
       }
 
-      const created = await withTracefabUserContext(user.id, user.email, async (tx) => {
-        const cap = await tx.quality_corrective_action_plans.findUnique({
-          where: { id: capId },
+      const created = await withTracefabTenantContext(req, user, { types: ['brand', 'supplier'] }, async (tx, tenant) => {
+        const cap = await tx.quality_corrective_action_plans.findFirst({
+          where: { id: capId, OR: [
+            { brand_organization_id: tenant.organizationId },
+            { supplier_organization_id: tenant.organizationId },
+          ] },
         });
-
         if (!cap) return null;
-
-        // Determine user's role on this CAP
-        const memberships = await tx.organization_memberships.findMany({
-          where: { user_id: user.id, status: 'active' },
-          select: { organization_id: true },
-        });
-        const orgIds = memberships.map((m) => m.organization_id);
-
-        let senderOrgId = '';
-        let senderRole: 'brand' | 'supplier' = 'brand';
-
-        if (orgIds.includes(cap.brand_organization_id)) {
-          senderOrgId = cap.brand_organization_id;
-          senderRole = 'brand';
-        } else if (orgIds.includes(cap.supplier_organization_id)) {
-          senderOrgId = cap.supplier_organization_id;
-          senderRole = 'supplier';
-        } else {
-          throw new Error('access_denied_to_cap');
-        }
-
-        return await tx.quality_cap_messages.create({
+        if (attachmentDocumentId && !(await documentAccessibleFromTenant(tx, user.id, attachmentDocumentId, tenant))) return null;
+        const senderRole: 'brand' | 'supplier' = tenant.organizationType === 'supplier' ? 'supplier' : 'brand';
+        return tx.quality_cap_messages.create({
           data: {
             cap_id: capId,
-            sender_organization_id: senderOrgId,
+            sender_organization_id: tenant.organizationId,
             sender_user_id: user.id,
             sender_role: senderRole,
             message,
@@ -85,8 +69,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // GET messages
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const messages = await tx.quality_cap_messages.findMany({
+    const result = await withTracefabTenantContext(req, user, { types: ['brand', 'supplier'] }, async (tx, tenant) => {
+      const cap = await tx.quality_corrective_action_plans.findFirst({
+        where: { id: capId, OR: [
+          { brand_organization_id: tenant.organizationId },
+          { supplier_organization_id: tenant.organizationId },
+        ] },
+        select: { id: true },
+      });
+      if (!cap) return null;
+      return tx.quality_cap_messages.findMany({
         where: { cap_id: capId },
         include: {
           organizations: { select: { display_name: true, legal_name: true } },
@@ -94,10 +86,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         orderBy: { created_at: 'asc' },
       });
-
-      return messages;
     });
-
+    if (!result) return json(res, 404, { error: 'cap_not_found' });
     return json(res, 200, { messages: result, count: result.length });
   } catch (err: unknown) {
     if (isUnauthorized(err)) {
