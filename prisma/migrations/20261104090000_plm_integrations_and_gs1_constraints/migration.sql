@@ -227,7 +227,7 @@ CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node(
 )
 RETURNS supply_chain_nodes
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $
+AS $$
 DECLARE
   v_product tracefab_products; v_node supply_chain_nodes;
   v_site_owner UUID; v_material_owner UUID;
@@ -270,14 +270,14 @@ BEGIN
   ) RETURNING * INTO v_node;
   RETURN v_node;
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node(
   p_graph_product_id UUID, p_node_id UUID, p_label TEXT, p_metadata JSONB,
   p_source_document_id UUID DEFAULT NULL, p_observed_at DATE DEFAULT NULL
 )
 RETURNS supply_chain_nodes LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $
+AS $$
 DECLARE v_product tracefab_products; v_node supply_chain_nodes;
 BEGIN
   SELECT * INTO v_product FROM tracefab_products WHERE id = p_graph_product_id;
@@ -293,6 +293,6 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'traceability_node_not_in_product_graph'; END IF;
   RETURN v_node;
 END;
-$;
+$$;
 
 COMMIT;
