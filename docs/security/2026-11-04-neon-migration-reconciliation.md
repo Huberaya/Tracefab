@@ -1,6 +1,6 @@
 # TraceFab — réconciliation Neon des migrations (04/11/2026)
 
-> **État : investigation en lecture seule terminée ; correctifs, exception de checksum strictement bornée et migration forward PLM/GS1 préparés sur une branche dédiée ; application en Préproduction et Production non encore exécutée.**
+> **État au 04/11 : CI 57/57 verte sur le commit 844ed911 ; correction worker et chaîne SQL testées sur une branche Neon de validation ; aucune migration appliquée sur Production ou Préproduction. Les dernières mises à jour documentaires et assertions de non-régression sont en attente de leur propre CI.**
 >
 > Branche de correction : `fix/neon-migration-reconciliation-20261104`.
 >
@@ -17,7 +17,7 @@ Production et Préproduction présentent le même état :
 - 0 migration inachevée.
 - 69 dossiers dans le snapshot initial ; la branche de correction en contient désormais 70 avec une migration forward post-snapshot.
 - 13 migrations absentes de l'historique réussi.
-- 3 empreintes de migrations déjà appliquées différentes des fichiers de `main` au début de l'audit.
+- 3 empreintes de migrations déjà appliquées différentes des fichiers de main au début de l'audit ; deux ont été restaurées exactement dans la branche dédiée, une variance PLM reste documentée.
 
 Les deux migrations ayant une tentative annulée **ne sont pas en attente** : `20261010120000` et `20261017120000` ont chacune une ligne réussie. Ne pas exécuter `migrate resolve --applied` pour ces deux noms.
 
@@ -61,7 +61,7 @@ Les changements fonctionnels ultérieurs restent portés par des migrations forw
 ### Rôles et exécution des migrations
 
 - `tracefab_app` est le rôle runtime mesuré : non-superutilisateur, sans `BYPASSRLS`, sans privilège `CREATEROLE`, et non membre de `neondb_owner` ou de `tracefab_worker`.
-- `neondb_owner` est le propriétaire de la base et des fonctions actuellement examinées ; il est non-superutilisateur, avec `CREATEROLE` et `BYPASSRLS`. Sur Production ET Préproduction, `pg_has_role('neondb_owner','tracefab_app','MEMBER')=true`, mais la relation inverse est fausse. Une session `tracefab_app` exécutant la requête de compteur de rate-limit a été observée en Production.
+- `neondb_owner` est non-superutilisateur, avec `CREATEROLE` et `BYPASSRLS`. Sur Production ET Préproduction, deux lignes distinctes existent pour l'appartenance de neondb_owner à tracefab_app : une ligne bootstrap grantée par cloud_admin (ADMIN=true, INHERIT=false, SET=false) et une ligne grantée par neondb_owner (ADMIN=false, INHERIT=true, SET=true). Le sens inverse — tracefab_app membre de neondb_owner — est absent. Une session tracefab_app exécutant la requête de compteur de rate-limit a été observée en Production.
 - `tracefab_migrator` est absent de Production.
 - `tracefab_worker` est absent de Production.
 - Le propriétaire du schéma `public` est `pg_database_owner`.
@@ -111,7 +111,9 @@ Le fichier en attente `20261030140000_ingest_payload_role_guard_and_acl` contena
 
 **Correction préparée dans cette branche** : 30140000 conserve les contrôles de rôle de session, mais utilise le modèle de version produit/BOM et les helpers du graphe ; les tests PLM vérifient statiquement l'absence de DML direct, et le test P10.5 exerce désormais BOM + deux étapes de traçabilité dans sa transaction annulée. Cette correction attend encore une exécution CI sur le SHA final.
 
-**Aucune migration n'a été appliquée sur les branches Neon.** Le checksum historique PLM exact reste introuvable et demeure un écart de provenance explicitement documenté. Il ne bloque pas le moteur `prisma migrate deploy` (comportement prouvé sur PostgreSQL 17), mais le catalogue a révélé deux écarts fonctionnels supplémentaires ; ils sont corrigés par une migration forward dédiée avant tout déploiement.
+**Aucune migration n'a été appliquée sur Production ni Préproduction.** En revanche, onze fichiers SQL ont été exécutés manuellement sur la branche Neon non-production `tracefab-dpp-readiness-validation-20261027` (branch id `br-late-truth-b1q7gy8j`). Cette branche avait déjà 59 migrations réussies, dont trois parmi les treize pending sur les bases réelles ; elle n'est donc pas un clone exact du baseline 56. Les onze migrations ont été exécutées sans écrire de lignes dans `_prisma_migrations`. Ce test prouve l'exécution SQL sur Neon et les effets catalogue de cette séquence ; il ne remplace ni un `prisma migrate deploy` sur Préproduction, ni le test d'une copie exacte du baseline 56.
+
+Le checksum historique PLM exact reste introuvable et demeure un écart de provenance explicitement documenté. Le test Prisma 6.19.3 prouve que `migrate deploy` applique les migrations pending sans rejouer l'entrée déjà terminée ni réécrire son checksum. L'écart est donc un avertissement de provenance, pas un blocage du moteur `migrate deploy`. Le catalogue a révélé deux écarts fonctionnels supplémentaires ; ils sont corrigés par une migration forward dédiée.
 
 ### Identité HMAC
 
@@ -147,6 +149,35 @@ La version préparée :
 7. vérifie que `tracefab_app` n'est pas membre du worker.
 
 Le test P10.5 est modifié pour exécuter la chaîne sans `TF_ALLOW_ELEVATION` et vérifier que le rôle de migration reste non-superutilisateur. Cette correction reste candidate jusqu'à validation CI.
+
+## 4 bis. Exécution SQL réelle sur Neon — branche de validation
+
+La branche utilisée est un environnement de validation non-production déjà existant :
+- nom : tracefab-dpp-readiness-validation-20261027 ;
+- identifiant : br-late-truth-b1q7gy8j ;
+- état initial : 59 migrations réussies, registre runtime absent, worker absent, 11 politiques RLS encore fondées sur l'ancien GUC ;
+- exécutant : neondb_owner, CREATEROLE=true, SUPERUSER=false.
+
+La migration worker a d'abord échoué avec worker_migration_membership_not_minimal. La mesure pg_auth_members a identifié deux octrois distincts après CREATE ROLE : un octroi bootstrap cloud_admin avec ADMIN OPTION, puis l'octroi explicite neondb_owner avec INHERIT/SET et sans ADMIN. La migration sélectionnait auparavant une seule ligne arbitraire. Le correctif de cette branche distingue désormais les deux lignes, vérifie l'unique octroi explicite minimal et refuse toute autre ligne inattendue.
+
+Après ce correctif, les migrations suivantes ont été exécutées avec succès sur cette branche Neon, dans cet ordre :
+- 20261028120000_runtime_function_registry ;
+- 20261028120100_worker_identity_not_forgeable ;
+- 20261028120200_document_reserved_fields_internal_only ;
+- 20261028130000_product_computed_fields_column_scoped ;
+- 20261028140000_supplier_invitation_owner_relationship_scope ;
+- 20261028150000_reconcile_plm_erp_sync_job_policies ;
+- 20261029180000_plm_erp_sync_jobs_policy_dedup ;
+- 20261030140000_ingest_payload_role_guard_and_acl ;
+- 20261031120000_identite_hmac_liee_au_contexte ;
+- 20261102120000_identite_stricte_email_et_rotation ;
+- 20261104090000_plm_integrations_and_gs1_constraints.
+
+Vérifications catalogue et sécurité : 25/25 vraies, dont rôle worker minimal, six fonctions possédées et enregistrées, 11 politiques worker basées sur CURRENT_USER, aucun ancien GUC worker, aucune appartenance de tracefab_app au worker, droits documents/produits limités, deux politiques PLM canoniques, garde session_user sur l'ingestion, ACL PUBLIC révoquée, quatre CHECK PLM, GS1/GPC, tables HMAC présentes et mode strict toujours désactivé. Les fonctions worker ont également été appelées sous tracefab_app ; les opérations d'écriture de test ont été annulées par savepoint.
+
+Sur Production et Préproduction, les préconditions de la correction forward ont été relues en lecture seule : zéro ligne PLM invalide, zéro identifiant invalide, quatre CHECK PLM absents et ancienne contrainte GS1 sans gpc. La migration forward a réussi sur la branche Neon de validation.
+
+**Limite importante :** la branche de validation a été modifiée par ces essais SQL manuels et son historique Prisma n'a volontairement pas été modifié. Ne pas l'utiliser comme Préproduction, ne pas lui lancer Prisma migrate deploy et ne pas la présenter comme preuve d'application Prisma. Elle reste un laboratoire de validation Neon.
 
 ## 5. Séquence d'exécution — ne pas sauter d'étape
 
