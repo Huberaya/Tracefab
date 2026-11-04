@@ -192,7 +192,7 @@ Sur Production et Préproduction, les préconditions de la correction forward on
 2. Dans un worktree Codespace séparé, récupérer cette branche. Ne pas remplacer ni réinitialiser le worktree de travail existant.
 3. Avec une connexion directe de migration à Préproduction, vérifier l'identité SQL (`current_user`), les attributs de rôle, la propriété des fonctions et `prisma migrate status`. Pour la migration graphe, exiger `current_user = neondb_owner` tant que les deux fonctions appartiennent à ce rôle et que `tracefab_migrator` n'est pas provisionné. Résultat exigé : exactement une divergence de checksum PLM connue et documentée, 13 migrations historiques en attente et deux migrations forward post-snapshot, PLM/GS1 puis graphe.
 4. Exécuter `prisma migrate deploy` en Préproduction seulement après cette pré-vérification.
-5. Vérifier que les 70 migrations de la branche sont terminées, puis contrôler le catalogue : profil DPP, fonctions, triggers, politiques, privilèges sur documents/produits, rôle worker, registre runtime et ACL.
+5. Vérifier que les 71 migrations de la branche sont terminées, puis contrôler le catalogue : profil DPP, fonctions, triggers, politiques, privilèges sur documents/produits, rôle worker, registre runtime et ACL.
 6. Exécuter les tests d'intégration et les parcours applicatifs sur une cible Preview dont l'isolation de base a été prouvée.
 7. Après réussite complète en Préproduction, appliquer la même procédure en Production avec le rôle administrateur de migration, jamais avec `tracefab_app`.
 8. Provisionner séparément la clé HMAC dans Neon et Vercel. Garder le mode strict désactivé jusqu'à preuve de couverture de toutes les routes.
