@@ -23,6 +23,7 @@ import {
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const migrationsDir = join(root, 'prisma', 'migrations');
 const markdown = process.argv.includes('--markdown');
+const autotest = process.argv.includes('--autotest');
 const migrations = readdirSync(migrationsDir, { withFileTypes: true })
   .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
 
@@ -84,6 +85,23 @@ function planFor(name) {
 
 const lines = pending.map(planFor);
 const errors = [];
+const phases = [
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: 'pré-vérification, checksum=0, 13 pending' },
+  { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
+];
+function violationsFor(planLines, phaseList = phases) {
+  const violations = [];
+  const text = planLines.map((line) => [line.action, line.risk, line.prerequisite].join(' ')).join('\n');
+  if (/migrate\\s+resolve\\s+--(?:applied|rolled-back)/i.test(text)) violations.push('resolve interdit');
+  if (/(?:UPDATE|DELETE\\s+FROM)\\s+_prisma_migrations/i.test(text)) violations.push('écriture directe dans _prisma_migrations interdite');
+  const pre = phaseList.findIndex((phase) => phase.label === 'PREPRODUCTION');
+  const prod = phaseList.findIndex((phase) => phase.label === 'PRODUCTION');
+  if (pre < 0 || prod < 0 || pre > prod) violations.push('Production doit venir après Préproduction');
+  if (phaseList.some((phase) => phase.label === 'PRODUCTION' && !/Préproduction validée/.test(phase.gate))) {
+    violations.push('la phase Production exige une preuve de Préproduction');
+  }
+  return violations;
+}
 const known = new Set([...applied, ...pending, ...newNames]);
 for (const name of migrations) if (!known.has(name)) errors.push(`${name}: aucune categorie dans le snapshot`);
 for (const name of known) if (!migrations.includes(name)) errors.push(`${name}: reference absente du depot`);
@@ -98,9 +116,7 @@ for (const name of outOfBand) {
 for (const attempt of ROLLED_BACK_ATTEMPTS) {
   if (!PRODUCTION_APPLIED[attempt.name]) errors.push(`tentative annulee sans ligne reussie du meme nom : ${attempt.name}`);
 }
-if (lines.some((line) => /RESOLVE --APPLIED|RESOLVE --ROLLED-BACK/i.test(line.action))) {
-  errors.push('un resolve est interdit : les 13 migrations sont a appliquer via Prisma');
-}
+errors.push(...violationsFor(lines));
 const index = (name) => pending.indexOf(name);
 const ordered = [
   ['20261021170000_dpp_readiness_truthful_gates','20261027100000_dpp_quality_gate_requires_assessment'],
@@ -116,12 +132,11 @@ for (const [before,after] of ordered) {
 }
 for (const name of applied) {
   const file = join(migrationsDir,name,'migration.sql');
-  const sha = (awaitImportCryptoHash(readFileSync(file)));
+  const sha = sha256(readFileSync(file));
   if (sha !== PRODUCTION_APPLIED[name]) errors.push(`${name}: checksum depot différent de l'historique Neon`);
 }
 
-function awaitImportCryptoHash(bytes) {
-  // Node crypto is imported statically below via createHash.
+function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
@@ -133,8 +148,12 @@ if (markdown) {
   for (const line of lines) {
     console.log(`| \`${line.name}\` | ${line.evidence} | **${line.action}** | ${line.prerequisite} | ${line.risk} |`);
   }
-    console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
+  console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
   for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
+  console.log('\n## Séquence d’exécution');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 0 divergence de checksum, 13 pending.');
+  console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
+  console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
   console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} absentes, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
 } else {
   console.log(`Plan Neon — snapshot ${SNAPSHOT_DATE}`);
@@ -146,6 +165,7 @@ if (markdown) {
   console.log(`  nouvelles post-snapshot: ${newNames.length}`);
   console.log(`  tentatives annulées    : ${ROLLED_BACK_ATTEMPTS.length} (non en attente)`);
   console.log('');
+  console.log('  Séquence : Préproduction → deploy → vérifications → Production.');
   for (const line of lines) {
     console.log(`  ${line.name}`);
     console.log(`    ${line.action}`);
@@ -159,4 +179,25 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 56 appliquées, 13 en attente, aucun resolve ni changement de checksum.');
+if (autotest) {
+  const mutants = [
+    { label: 'resolve --applied', lines: [{ action: 'prisma migrate resolve --applied' }] },
+    { label: 'écriture historique', lines: [{ action: 'UPDATE _prisma_migrations SET checksum = ...' }] },
+  ];
+  let passed = 0;
+  for (const mutant of mutants) {
+    if (violationsFor(mutant.lines).length > 0) passed += 1;
+    else errors.push(`autotest non détecté : ${mutant.label}`);
+  }
+  const reversed = [...phases].reverse();
+  if (violationsFor(lines, reversed).length > 0) passed += 1;
+  else errors.push('autotest non détecté : Production avant Préproduction');
+  if (errors.length) {
+    console.error('\nAUTOTEST ECHEC');
+    for (const error of errors) console.error(`  - ${error}`);
+    process.exit(1);
+  }
+  console.log(`Autotest OK : ${passed}/3 garde-fous détectent les mutations interdites.`);
+  process.exit(0);
+}
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 en attente, aucun resolve ni changement de checksum.');
