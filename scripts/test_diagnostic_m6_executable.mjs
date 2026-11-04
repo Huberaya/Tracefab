@@ -60,7 +60,7 @@ await db.exec(`
   CREATE ROLE tracefab_app LOGIN PASSWORD 'runtime' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 `);
 
-// Les 70 migrations, dans l'ordre.
+// Les 71 migrations, dans l'ordre.
 const dossiers = fs.readdirSync(MIGRATIONS)
   .filter((d) => /^\d{14}_/.test(d))
   .sort();
