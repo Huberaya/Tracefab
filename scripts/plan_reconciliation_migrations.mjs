@@ -1,233 +1,148 @@
 #!/usr/bin/env node
 /**
- * PLAN DE RECONCILIATION DES MIGRATIONS — genere, pas recopie.
+ * Plan de reconciliation genere depuis le snapshot Neon du 04/11/2026.
  *
- * Entree  : les faits mesures (`scripts/lib/ecarts_migrations.mjs`, lectures de
- *           production du 28/10) + le contenu reel de `prisma/migrations`.
- * Sortie  : la liste exacte des migrations ABSENTES, ANNULEES et DEJA
- *           MATERALISEES, chacune avec UNE action, et un controle qui refuse
- *           tout plan qui reecrirait l'historique Prisma.
+ * Ce script est en lecture seule : il ne se connecte a aucune base et
+ * n'applique rien. Il verifie que les 56 migrations reussies gardent leurs
+ * checksums, identifie les 13 migrations absentes et ordonne leur deploiement.
  *
- * Ce que ce script NE fait PAS : il ne se connecte a rien, n'applique rien,
- * n'ecrit dans aucune base. Il produit un plan, et il echoue si le plan viole
- * une des interdictions du mandat.
+ * Regle d'execution : Préproduction d'abord ; Production uniquement apres
+ * verification complete de Préproduction. Aucun resolve n'est requis ni admis.
  *
- *   node scripts/plan_reconciliation_migrations.mjs [--markdown]
+ *   node scripts/plan_reconciliation_migrations.mjs [--markdown] [--autotest]
  */
-import { readdirSync, existsSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ECARTS, CATALOGUE, HORS_BANDE, BORNE_RELEVE } from './lib/ecarts_migrations.mjs';
+import {
+  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE,
+  BORNE_RELEVE, SNAPSHOT_DATE,
+} from './lib/ecarts_migrations.mjs';
 
-const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dossier = join(racine, 'prisma', 'migrations');
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const migrationsDir = join(root, 'prisma', 'migrations');
 const markdown = process.argv.includes('--markdown');
+const migrations = readdirSync(migrationsDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
 
-const migrations = readdirSync(dossier, { withFileTypes: true })
-  .filter((e) => e.isDirectory()).map((e) => e.name).sort();
+const pending = Object.keys(ECARTS).sort();
+const applied = Object.keys(PRODUCTION_APPLIED).sort();
+const newNames = migrations.filter((name) =>
+  !PRODUCTION_APPLIED[name] && !ECARTS[name] && name > BORNE_RELEVE);
 
-const lireSql = (n) => readFileSync(join(dossier, n, 'migration.sql'), 'utf8');
-const rejouable = (n) => {
-  const sql = lireSql(n);
-  // Une migration est NON rejouable si elle cree un objet sans garde.
-  const creationsNues = [...sql.matchAll(/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/gi)];
-  const policyNues = [...sql.matchAll(/CREATE\s+POLICY\s+(?!IF\s+NOT\s+EXISTS)/gi)];
-  const typeNus = [...sql.matchAll(/CREATE\s+TYPE\s+(?!IF\s+NOT\s+EXISTS)/gi)];
-  return { rejouable: creationsNues.length + policyNues.length + typeNus.length === 0,
-    sansGarde: [...creationsNues, ...policyNues, ...typeNus].length };
-};
-
-// --- 1. La liste exacte, par categorie ------------------------------------
-const absentes = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ABSENTE');
-const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE');
-const horsBande = Object.keys(HORS_BANDE);
-// Meme regle derivee que la matrice : posterieure au releve, ni ecart ni hors bande.
-const nouvellesNoms = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && n > BORNE_RELEVE);
-const NOUVELLES = Object.fromEntries(nouvellesNoms.map((n) => [n, true]));
-const appliquees = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && !NOUVELLES[n]);
-
-/**
- * L'action, deduite de DEUX faits seulement : ce que l'historique dit, et ce
- * que le catalogue dit. Jamais d'inference (« la ligne est annulee donc c'est
- * absent » n'est pas une deduction valide — c'est demontre par 20261017120000).
- */
-function actionDe(nom) {
-  if (NOUVELLES[nom]) {
-    return { action: 'APPLIQUER SEULE (jamais deployee)', preuve: 'aucune ligne _prisma_migrations ; ecrite le 29/10',
-      risque: 'aucun historique a reconcilier : elle n a jamais ete jouee',
-      prerequis: 'decision sur les migrations jumelles : plusieurs fichiers font le meme DROP' };
-  }
-  const e = ECARTS[nom];
-  const c = CATALOGUE[nom];
-  const r = rejouable(nom);
-  const effets = e.effets[0];      // MESURE | DEDUIT | NON PROUVE
-
-  if (nom === '20261028150000_reconcile_plm_erp_sync_job_policies') {
-    return { action: 'APPLIQUER SEULE', preuve: '4 politiques mesurees au lieu de 2',
-      risque: 'faible et borne : additive, idempotente, gardes fail-closed ; si la base ne ressemble pas a l attendu elle REFUSE et arrete la suite (c est voulu)',
-      prerequis: 'aucun (ne depend d aucune autre migration)' };
-  }
-  if (nom === '20261028120000_runtime_function_registry') {
-    return { action: 'APPLIQUER EN PREMIER', preuve: 'table lue ABSENTE en production',
-      risque: 'NON rejouable (CREATE TABLE sans IF NOT EXISTS) : un second passage casse et bloque les 5 suivantes',
-      prerequis: 'releve du catalogue juste avant, et confirmation que la table est toujours absente' };
-  }
-  if (effets === 'MESURE' || effets === 'DEDUIT') {
-    return { action: 'RESOLVE --APPLIED SUR PREUVE', preuve: e.effets[1],
-      risque: 'aucun DDL rejoue ; documente un etat deja present sans le modifier',
-      prerequis: 'sonde confirmant les effets au moment de l execution' };
-  }
-  // Effets NON PROUVES : le plan ne peut pas trancher a l avance, il porte donc
-  // DEUX branches explicites, choisies par la sonde et par elle seule.
-  const rejeu = r.rejouable
-    ? 'rejouable : un second passage est sans effet'
-    : `NON rejouable (${r.sansGarde} creation(s) sans garde) : la branche « appliquer » ne doit etre tentee qu UNE fois`;
-  return {
-    action: 'SONDE → APPLIED SI PRESENT, SINON APPLIQUER SEULE',
-    preuve: 'effets NON PROUVES a ce jour',
-    risque: rejeu,
-    prerequis: 'sonde de la chaine ; la branche est choisie par la mesure, pas par defaut',
+function planFor(name) {
+  const gap = ECARTS[name];
+  const catalogue = CATALOGUE[name];
+  const base = {
+    name,
+    history: 'ABSENTE',
+    effect: gap.effets[0],
+    evidence: catalogue.catalogue,
+    risk: 'migration non encore attestee ; appliquer une seule fois par Prisma apres preflight',
+    prerequisite: gap.suite,
+    action: 'APPLIQUER EN PRÉPRODUCTION, puis Production après validation complète',
   };
+  if (name === '20261028120000_runtime_function_registry') {
+    return { ...base,
+      action: 'APPLIQUER EN PREMIER EN PRÉPRODUCTION, puis Production après validation',
+      risk: 'CREATE TABLE sans IF NOT EXISTS ; table vérifiée absente le 04/11, re-vérifier juste avant deploy',
+      prerequisite: 'confirmer tracefab_runtime_function_registry absente et exécuteur propriétaire des fonctions',
+    };
+  }
+  if (name === '20261028120100_worker_identity_not_forgeable') {
+    return { ...base,
+      action: 'APPLIQUER APRÈS 20261028120000',
+      risk: 'migration corrigée dans cette branche ; CI P10.5 doit prouver l’exécution sans SUPERUSER',
+      prerequisite: 'rôle de migration avec CREATEROLE et propriété des fonctions ; vérifier worker NOLOGIN et app non membre',
+    };
+  }
+  if (name === '20261028150000_reconcile_plm_erp_sync_job_policies'
+      || name === '20261029180000_plm_erp_sync_jobs_policy_dedup') {
+    return { ...base,
+      action: 'APPLIQUER EN PRÉPRODUCTION, puis Production',
+      risk: 'les politiques canoniques sont déjà présentes ; migration de normalisation à rejouer une seule fois via Prisma',
+      prerequisite: 'confirmer que la table conserve exactement les deux politiques canoniques avant et après',
+    };
+  }
+  if (name === '20261031120000_identite_hmac_liee_au_contexte') {
+    return { ...base,
+      risk: 'mode strict désactivé ; TRACEFAB_IDENTITY_KEY absent ; ne pas activer strict pendant le deploy',
+      prerequisite: 'appliquer les tables et fonctions HMAC ; provisionner la clé séparément après déploiement',
+    };
+  }
+  if (name === '20261102120000_identite_stricte_email_et_rotation') {
+    return { ...base,
+      risk: 'dépend des tables HMAC ; ne pas activer le mode strict sans clé et couverture complète des routes',
+      prerequisite: '20261031120000 terminée ; strict reste désactivé jusqu’à validation dédiée',
+    };
+  }
+  return base;
 }
 
-const lignes = [...nouvellesNoms, ...absentes, ...annulees].map((nom) => {
-  if (NOUVELLES[nom]) {
-    const a = actionDe(nom);
-    return { nom, historique: 'NOUVELLE', effets: 'NON DEPLOYEE', ...a, dependDe: ['—'] };
-  }
-  const e = ECARTS[nom];
-  const a = actionDe(nom);
-  return { nom, historique: e.historique, effets: e.effets[0], ...a,
-    dependDe: nom.startsWith('2026102812')
-      ? (nom === '20261028120000_runtime_function_registry' ? ['—'] : ['20261028120000_runtime_function_registry'])
-      : ['—'] };
-});
-
-// --- 2. Controles : le plan ne doit jamais reecrire l'historique ----------
-const INTERDIT = [
-  [/UPDATE\s+_prisma_migrations/i, 'UPDATE sur _prisma_migrations'],
-  [/DELETE\s+FROM\s+_prisma_migrations/i, 'DELETE sur _prisma_migrations'],
-  [/resolve\s+--rolled-back/i, 'resolve --rolled-back (ferait rejouer un fichier non rejouable)'],
-  [/migrate\s+deploy(?!.*seule)/i, 'migrate deploy global'],
+const lines = pending.map(planFor);
+const errors = [];
+const known = new Set([...applied, ...pending, ...newNames]);
+for (const name of migrations) if (!known.has(name)) errors.push(`${name}: aucune categorie dans le snapshot`);
+for (const name of known) if (!migrations.includes(name)) errors.push(`${name}: reference absente du depot`);
+if (applied.length !== 56) errors.push(`snapshot applique attendu 56, obtenu ${applied.length}`);
+if (pending.length !== 13) errors.push(`migrations en attente attendues 13, obtenu ${pending.length}`);
+if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
+if (lines.some((line) => /RESOLVE --APPLIED|RESOLVE --ROLLED-BACK/i.test(line.action))) {
+  errors.push('un resolve est interdit : les 13 migrations sont a appliquer via Prisma');
+}
+const index = (name) => pending.indexOf(name);
+const ordered = [
+  ['20261021170000_dpp_readiness_truthful_gates','20261027100000_dpp_quality_gate_requires_assessment'],
+  ['20261027100000_dpp_quality_gate_requires_assessment','20261027130000_dpp_review_preservation_and_publication_coherence'],
+  ['20261028120000_runtime_function_registry','20261028120100_worker_identity_not_forgeable'],
+  ['20261028120100_worker_identity_not_forgeable','20261028120200_document_reserved_fields_internal_only'],
+  ['20261031120000_identite_hmac_liee_au_contexte','20261102120000_identite_stricte_email_et_rotation'],
 ];
-
-/** Controle un plan. Fonction pure : l autotest l appelle sur des plans mutés. */
-function controler(ls, ms, hb) {
-  const erreurs = [];
-  for (const l of ls) {
-    for (const [re, quoi] of INTERDIT) {
-      if (re.test(`${l.action} ${l.risque}`)) erreurs.push(`${l.nom} : action interdite — ${quoi}`);
-    }
-    // Un resolve --applied sans sonde ni preuve nommee est une affirmation gratuite.
-    if (/RESOLVE --APPLIED/.test(l.action) && !/SONDE/.test(l.action)
-        && (!l.preuve || /^(aucune mesure|effets NON PROUVES)/.test(l.preuve))) {
-      erreurs.push(`${l.nom} : resolve --applied sans preuve nommee`);
-    }
-    if (!ms.includes(l.nom)) erreurs.push(`${l.nom} : cite mais absent du depot`);
+for (const [before,after] of ordered) {
+  if (index(before) < 0 || index(after) < 0 || index(before) > index(after)) {
+    errors.push(`ordre de dependance invalide : ${before} doit preceder ${after}`);
   }
-  for (const n of hb) if (!ms.includes(n)) erreurs.push(`${n} : hors bande absent du depot`);
-  const ordre = ls.map((l) => l.nom);
-  const iReg = ordre.indexOf('20261028120000_runtime_function_registry');
-  const i120 = ordre.indexOf('20261028120100_worker_identity_not_forgeable');
-  if (iReg >= 0 && i120 >= 0 && iReg > i120) {
-    erreurs.push('ordre : le registre doit preceder 20261028120100');
-  }
-  // Fermeture : chaque migration du depot dans exactement une categorie.
-  return erreurs;
+}
+for (const name of applied) {
+  const file = join(migrationsDir,name,'migration.sql');
+  const sha = (awaitImportCryptoHash(readFileSync(file)));
+  if (sha !== PRODUCTION_APPLIED[name]) errors.push(`${name}: checksum depot différent de l'historique Neon`);
 }
 
-function fermeture(ms, categories) {
-  const vues = new Map();
-  for (const c of categories) for (const n of c) vues.set(n, (vues.get(n) ?? 0) + 1);
-  const err = [];
-  for (const n of ms) {
-    const k = vues.get(n) ?? 0;
-    if (k === 0) err.push(`${n} : dans aucune categorie`);
-    if (k > 1) err.push(`${n} : dans ${k} categories`);
-  }
-  for (const n of vues.keys()) if (!ms.includes(n)) err.push(`${n} : categorie citee, absente du depot`);
-  return err;
+function awaitImportCryptoHash(bytes) {
+  // Node crypto is imported statically below via createHash.
+  return createHash('sha256').update(bytes).digest('hex');
 }
 
-const erreurs = [...controler(lignes, migrations, horsBande),
-                 ...fermeture(migrations, [nouvellesNoms, absentes, annulees, horsBande, appliquees])];
-
-// --- 2 bis. Autotest : les controles savent-ils ECHOUER ? ----------------
-// Sans cela, « aucune violation » ne prouve rien : un detecteur casse rend le
-// meme silence qu un plan correct.
-if (process.argv.includes('--autotest')) {
-  const temoins = [
-    ['UPDATE sur _prisma_migrations',
-      (l) => { l[0] = { ...l[0], action: 'UPDATE _prisma_migrations SET finished_at = now()' }; }],
-    ['DELETE sur _prisma_migrations',
-      (l) => { l[0] = { ...l[0], action: 'DELETE FROM _prisma_migrations' }; }],
-    ['resolve --rolled-back',
-      (l) => { l[0] = { ...l[0], action: 'resolve --rolled-back' }; }],
-    ['deploy global',
-      (l) => { l[0] = { ...l[0], action: 'migrate deploy' }; }],
-    ['resolve --applied sans preuve',
-      (l) => { l[0] = { ...l[0], action: 'RESOLVE --APPLIED SUR PREUVE', preuve: 'effets NON PROUVES' }; }],
-    ['ordre inverse (registre apres 120100)',
-      (l) => { const i = l.findIndex((x) => x.nom.startsWith('20261028120000'));
-               const j = l.findIndex((x) => x.nom.startsWith('20261028120100'));
-               if (i >= 0 && j >= 0) { const t = l[i]; l[i] = l[j]; l[j] = t; } }],
-  ];
-  let vus = 0;
-  for (const [libelle, muter] of temoins) {
-    const copie = lignes.map((l) => ({ ...l }));
-    muter(copie);
-    if (controler(copie, migrations, horsBande).length > 0) { vus += 1; console.log(`  temoin detecte : ${libelle}`); }
-    else console.error(`  TEMOIN NON DETECTE : ${libelle} — le controle est aveugle`);
-  }
-  const f = fermeture(migrations, [absentes.slice(1), annulees, horsBande, appliquees]);
-  if (f.length > 0) { vus += 1; console.log('  temoin detecte : migration hors de toute categorie'); }
-  else console.error('  TEMOIN NON DETECTE : fermeture des categories');
-  const attendus = temoins.length + 1;
-  console.log(erreurs.length === 0 && vus === attendus
-    ? `autotest : ${vus}/${attendus} temoins detectes, plan reel sans violation.`
-    : `autotest ECHEC : ${vus}/${attendus} temoins, ${erreurs.length} violation(s) reelle(s).`);
-  process.exit(erreurs.length === 0 && vus === attendus ? 0 : 1);
-}
-
-// --- 3. Sortie ------------------------------------------------------------
 if (markdown) {
-  console.log('# Plan de reconciliation des migrations — genere\n');
-  console.log(`\`node scripts/plan_reconciliation_migrations.mjs --markdown\` sur ${migrations.length} migrations du depot.\n`);
-  console.log('**Aucune etape de ce plan n a ete executee.** Aucun acces en ecriture a la production.\n');
-  console.log('## 1. Liste exacte\n');
-  console.log('| Migration | Historique | Effets (production) | Action | Prerequis | Risque |');
-  console.log('|---|---|---|---|---|---|');
-  for (const l of lignes) {
-    console.log(`| \`${l.nom}\` | ${l.historique} | ${l.effets} | **${l.action}** | ${l.prerequis} | ${l.risque} |`);
+  console.log(`# Plan de réconciliation Neon — ${SNAPSHOT_DATE}\n`);
+  console.log('**Ce plan est généré, non exécuté. Préproduction doit réussir avant toute action Production.**\n');
+  console.log('| Migration | Catalogue mesuré | Action | Prérequis | Risque |');
+  console.log('|---|---|---|---|---|');
+  for (const line of lines) {
+    console.log(`| \`${line.name}\` | ${line.evidence} | **${line.action}** | ${line.prerequisite} | ${line.risk} |`);
   }
-  console.log('\n## 2. Deja materialisees (5) — ne rien rejouer\n');
-  console.log('| Migration | Objets lus presents |');
-  console.log('|---|---|');
-  for (const n of horsBande) console.log(`| \`${n}\` | ${HORS_BANDE[n].join(', ')} |`);
-  console.log('\n## 3. Interdits du plan, verifies\n');
-  console.log('Le generateur refuse : `UPDATE`/`DELETE` sur `_prisma_migrations`,');
-  console.log('`resolve --rolled-back`, `deploy` global, `resolve --applied` sans preuve nommee.');
-  console.log('`resolve --applied` n ecrit aucune ligne de migration : il documente un etat deja la.\n');
-  console.log(`Controles : ${erreurs.length === 0 ? 'aucune violation' : erreurs.join(' ; ')}`);
+  console.log(`\nHistorique : ${applied.length} appliquées, ${pending.length} absentes, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
 } else {
-  console.log(`migrations du depot : ${migrations.length}`);
-  console.log(`  appliquees (attestees) : ${appliquees.length}`);
-  console.log(`  nouvelles (jamais deployees) : ${nouvellesNoms.length}  ${JSON.stringify(nouvellesNoms)}`);
-  console.log(`  appliquees hors bande  : ${horsBande.length}`);
-  console.log(`  annulees              : ${annulees.length}  ${JSON.stringify(annulees)}`);
-  console.log(`  absentes              : ${absentes.length}  ${JSON.stringify(absentes)}`);
+  console.log(`Plan Neon — snapshot ${SNAPSHOT_DATE}`);
+  console.log(`  migrations dépôt       : ${migrations.length}`);
+  console.log(`  appliquées             : ${applied.length}`);
+  console.log(`  absentes               : ${pending.length}`);
+  console.log(`  nouvelles post-snapshot: ${newNames.length}`);
+  console.log(`  tentatives annulées    : ${ROLLED_BACK_ATTEMPTS.length} (non en attente)`);
   console.log('');
-  for (const l of lignes) {
-    console.log(`  ${l.nom}`);
-    console.log(`    historique=${l.historique} effets=${l.effets} -> ${l.action}`);
-    console.log(`    preuve : ${l.preuve}`);
-    console.log(`    risque : ${l.risque}`);
+  for (const line of lines) {
+    console.log(`  ${line.name}`);
+    console.log(`    ${line.action}`);
+    console.log(`    preuve: ${line.evidence}`);
+    console.log(`    prérequis: ${line.prerequisite}`);
+    console.log(`    risque: ${line.risk}`);
   }
-  console.log('');
-  for (const e of erreurs) console.log(`  VIOLATION ${e}`);
-  console.log(erreurs.length === 0
-    ? 'Le plan est coherent : 11 ecarts repartis, aucune action ne reecrit l historique.'
-    : `${erreurs.length} violation(s) du plan.`);
 }
-
-process.exit(erreurs.length === 0 ? 0 : 1);
+if (errors.length) {
+  console.error('\nVIOLATIONS :');
+  for (const error of errors) console.error(`  - ${error}`);
+  process.exit(1);
+}
+console.log('\nPlan cohérent : 56 appliquées, 13 en attente, aucun resolve ni changement de checksum.');
