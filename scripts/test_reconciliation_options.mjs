@@ -25,6 +25,8 @@ const snapshot = JSON.parse(fs.readFileSync(
 ));
 const worker = fs.readFileSync(path.join(root,
   'prisma/migrations/20261028120100_worker_identity_not_forgeable/migration.sql'), 'utf8');
+const plmForward = fs.readFileSync(path.join(root,
+  'prisma/migrations/20261104090000_plm_integrations_and_gs1_constraints/migration.sql'), 'utf8');
 const planPath = path.join(root, 'scripts/plan_reconciliation_migrations.mjs');
 const planResult = spawnSync('node', [planPath, '--markdown'], { encoding: 'utf8' });
 const planAuto = spawnSync('node', [planPath, '--autotest'], { encoding: 'utf8' });
@@ -77,6 +79,9 @@ ok('la correction forward PLM/GS1 est postérieure au snapshot et non appliquée
   fs.existsSync(path.join(migrationsDir, plmRepairName, 'migration.sql'))
   && !PRODUCTION_APPLIED[plmRepairName] && !ECARTS[plmRepairName]
   && plan.includes(plmRepairName));
+ok('la correction forward caste explicitement les statuts des deux fonctions du graphe',
+  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(plmForward)
+  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(plmForward));
 ok('les migrations PLM canoniques restent à appliquer, sans resolve',
   Boolean(ECARTS['20261028150000_reconcile_plm_erp_sync_job_policies'])
   && Boolean(ECARTS['20261029180000_plm_erp_sync_jobs_policy_dedup']));
