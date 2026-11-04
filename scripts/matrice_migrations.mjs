@@ -141,7 +141,7 @@ if (markdown) {
   console.log(`  divergences de checksum         : ${checksumCount}`);
   console.log(`  prefixes en double              : ${duplicates.length} connus`);
   console.log('');
-  for (const row of rows.filter((item) => item.history !== 'APPLIQUEE')) {
+  for (const row of rows.filter((item) => item.history === 'ABSENTE' || item.history.startsWith('NOUVELLE'))) {
     console.log(`  ${row.name}\n    historique=${row.history} catalogue=${row.status}\n    ${row.detail}\n    suite: ${row.next}`);
   }
 }
@@ -150,4 +150,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-if (!markdown) console.log('\nMatrice cohérente : 56 appliquées, 13 absentes, 0 checksum divergent.');
+if (!markdown) console.log('\nMatrice cohérente : 51 via Prisma + 5 hors bande, 13 absentes, 0 checksum divergent.');
