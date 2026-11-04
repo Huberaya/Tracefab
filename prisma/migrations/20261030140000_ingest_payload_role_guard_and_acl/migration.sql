@@ -493,5 +493,5 @@ END
 $acl_ingest$;
 
 COMMENT ON FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) IS
-  'Ingestion PLM/ERP (Centric, Lectra, SAP, GS1). SECURITY DEFINER : execution reservee au role de session tracefab_app (ou superutilisateur). Identite derivee de tracefab.user_id, qui n''est PAS une preuve a lui seul : '
-  'l autorisation technique vient du role de session. search_path epingle a pg_catalog, public. Depuis 20261030140000.';
+  'Ingestion PLM/ERP (Centric, Lectra, SAP, GS1). SECURITY DEFINER : execution reservee a tracefab_app, au superutilisateur ou au proprietaire de la fonction. Identite derivee de tracefab.user_id, qui n''est PAS une preuve a lui seul : '
+  'l autorisation technique vient du role de session. search_path epingle a pg_catalog, public. Ingestion compatible avec le graphe de tracabilite versionne. Depuis 20261030140000.';
