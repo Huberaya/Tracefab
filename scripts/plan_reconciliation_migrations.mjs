@@ -83,22 +83,43 @@ function planFor(name) {
   return base;
 }
 
-const lines = [
-  ...pending.map(planFor),
-  ...newNames.map((name) => ({
+const lignesForward = (name) => {
+  const base = {
     name,
     history: 'NOUVELLE (postérieure au snapshot)',
-    effect: 'ajouter les quatre CHECK PLM, autoriser GS1 GPC et typer explicitement les statuts des deux fonctions du graphe d’ingestion PLM/ERP',
-    evidence: 'catalogue Neon relu le 04/11 : quatre CHECK absents, contrainte GS1 sans gpc ; pg_get_functiondef identique en Production/Préproduction, deux CASE texte en 42804 sur data_value_status',
-    risk: 'contrainte VALIDATE après précondition ; échec fermé si données invalides ou définition inattendue',
-    prerequisite: 'rejouer les comptages de lignes invalides, relire les contraintes et exécuter test:p105:ingestion juste avant application',
-    action: 'APPLIQUER APRÈS LES 13 MIGRATIONS HISTORIQUES, EN PRÉPRODUCTION PUIS PRODUCTION',
-  })),
+    risk: 'correction forward-only ; ne modifie aucune entrée _prisma_migrations déjà terminée',
+    action: 'APPLIQUER EN PRÉPRODUCTION, puis Production après validation complète',
+  };
+  if (name === '20261104090000_plm_integrations_and_gs1_constraints') {
+    return {
+      ...base,
+      effect: 'ajouter les quatre CHECK PLM manquants et autoriser GS1 GPC',
+      evidence: 'catalogue Neon relu le 04/11 : quatre CHECK absents, contrainte GS1 sans gpc, zéro ligne invalide',
+      risk: 'contrainte VALIDATE après précondition ; échec fermé si données invalides ou définition inattendue',
+      prerequisite: 'rejouer les comptages de lignes invalides et relire les contraintes juste avant application',
+      action: 'APPLIQUER APRÈS LES 13 MIGRATIONS HISTORIQUES, EN PRÉPRODUCTION PUIS PRODUCTION',
+    };
+  }
+  if (name === '20261104100000_supply_chain_status_enum_casts') {
+    return {
+      ...base,
+      effect: 'corriger les CASE texte en casts explicites data_value_status dans create/update supply-chain node',
+      evidence: 'pg_get_functiondef identique en Production/Préproduction ; P10.5 a reproduit SQLSTATE 42804 pendant l’ingestion PLM/ERP',
+      risk: 'remplacement de deux fonctions SECURITY DEFINER ; CREATE OR REPLACE doit conserver OID, propriétaire et ACL',
+      prerequisite: '20261104090000 terminée ; exécuter test:p105:ingestion et vérifier propriétaire/ACL des deux fonctions',
+      action: 'APPLIQUER APRÈS LA CORRECTION PLM/GS1, EN PRÉPRODUCTION PUIS PRODUCTION',
+    };
+  }
+  return base;
+};
+const lines = [
+  ...pending.map(planFor),
+  ...newNames.map(lignesForward),
 ];
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + correction forward PLM/GS1 et fonctions de graphe ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 2 corrections forward ordonnées (PLM/GS1, puis graphe) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -121,8 +142,11 @@ if (applied.length !== 56) errors.push(`snapshot applique attendu 56, obtenu ${a
 if (appliedViaPrisma !== 51) errors.push(`migrations via Prisma attendues 51, obtenu ${appliedViaPrisma}`);
 if (outOfBand.length !== 5) errors.push(`migrations hors bande attendues 5, obtenu ${outOfBand.length}`);
 if (pending.length !== 13) errors.push(`migrations historiques en attente attendues 13, obtenu ${pending.length}`);
-if (newNames.length !== 1 || newNames[0] !== '20261104090000_plm_integrations_and_gs1_constraints') {
-  errors.push(`correction forward PLM/GS1 attendue une fois, obtenu ${JSON.stringify(newNames)}`);
+if (JSON.stringify(newNames) !== JSON.stringify([
+  '20261104090000_plm_integrations_and_gs1_constraints',
+  '20261104100000_supply_chain_status_enum_casts',
+])) {
+  errors.push(`les deux corrections forward PLM/GS1 puis graphe sont attendues, obtenu ${JSON.stringify(newNames)}`);
 }
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
 for (const name of outOfBand) {
@@ -233,4 +257,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 1 correction forward PLM/GS1/graphe, 1 écart historique documenté, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 2 corrections forward PLM/GS1 puis graphe, 1 écart historique documenté, aucun resolve ni changement de checksum.');
