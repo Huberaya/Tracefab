@@ -169,4 +169,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-if (!markdown) console.log('\nMatrice cohérente : 51 via Prisma + 5 hors bande, 13 absentes, 1 écart de checksum documenté, 0 non classé.');
+if (!markdown) console.log(`\nMatrice cohérente : 51 via Prisma + 5 hors bande, 13 absentes, ${newCount} correction(s) post-snapshot, 1 écart de checksum documenté, 0 non classé.`);
