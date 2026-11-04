@@ -98,6 +98,11 @@ try {
     `select has_table_privilege('tracefab_app', 'tracefab_products', 'INSERT') AS ins_table,
             has_table_privilege('tracefab_app', 'tracefab_products', 'UPDATE') AS upd_table,
             has_table_privilege('tracefab_app', 'tracefab_products', 'DELETE') AS del_table,
+            has_column_privilege('tracefab_app', 'tracefab_products', 'name', 'INSERT') AS ins_name,
+            has_column_privilege('tracefab_app', 'tracefab_products', 'version', 'INSERT') AS ins_version,
+            has_column_privilege('tracefab_app', 'tracefab_products', 'data_readiness', 'INSERT') AS ins_readiness,
+            has_column_privilege('tracefab_app', 'tracefab_products', 'data_completion', 'INSERT') AS ins_completion,
+            has_column_privilege('tracefab_app', 'tracefab_products', 'data_ready_at', 'INSERT') AS ins_ready_at,
             has_column_privilege('tracefab_app', 'tracefab_products', 'name', 'UPDATE') AS upd_name,
             has_column_privilege('tracefab_app', 'tracefab_products', 'version', 'UPDATE') AS upd_version,
             has_column_privilege('tracefab_app', 'tracefab_products', 'data_readiness', 'UPDATE') AS upd_readiness,
@@ -107,10 +112,14 @@ try {
   ok(droits.ins_table === false && droits.upd_table === false && droits.del_table === false,
     '0a. aucune ecriture au niveau table sur tracefab_products',
     JSON.stringify(droits));
-  ok(droits.upd_name === true, '0b. la colonne metier « name » reste modifiable');
-  ok(droits.upd_version === false, '0c. la colonne calculee « version » est hors de portee');
+  ok(droits.ins_name === true && droits.upd_name === true,
+    '0b. la colonne metier « name » reste inserable et modifiable');
+  ok(droits.ins_version === false && droits.ins_readiness === false
+      && droits.ins_completion === false && droits.ins_ready_at === false,
+    '0c. aucune colonne calculee ne reste inserable');
+  ok(droits.upd_version === false, '0d. la colonne calculee « version » est hors de portee');
   ok(droits.upd_readiness === false && droits.upd_completion === false && droits.upd_ready_at === false,
-    '0d. les trois autres colonnes calculees sont hors de portee');
+    '0e. les trois autres colonnes calculees sont hors de portee');
 
   // --- 1. champ calcule sans GUC : refuse ----------------------------------
   await app.query('BEGIN');
