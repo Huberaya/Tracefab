@@ -142,6 +142,9 @@ ok('les tentatives explicitement annulées ne sont pas signalées comme migratio
 ok('le rejeu accorde CREATE au migrateur seulement sur la base jetable',
   replayTest.includes('GRANT CREATE ON SCHEMA public TO tracefab_migrator')
   && replayTest.includes('has_schema_privilege'));
+ok('P10.6 tolère uniquement un administrateur SUPERUSER préexistant en plus du migrateur',
+  replayTest.includes('membresNonSuper.length === 1')
+  && replayTest.includes('membres.every((r) => r.rolsuper || r.rolname === ROLE_MIGRATOR)'));
 ok('le runner peut endosser explicitement le rôle migrateur sans changer de mot de passe',
   migrationRunner.includes('TF_MIGRATION_ROLE')
   && migrationRunner.includes("pg_catalog.pg_has_role(session_user, $1, 'SET')")
