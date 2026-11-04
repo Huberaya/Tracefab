@@ -130,6 +130,13 @@ try {
   execution = String(error.message || error);
 }
 ok('le releve s execute sans erreur sur le schema complet', execution === 'ok', execution.slice(0, 300));
+const registryState = await db.query(
+  "SELECT to_regclass('public.tracefab_runtime_function_registry') AS registry",
+);
+ok('le releve fonctionne avant la migration du registre runtime',
+  registryState.rows[0].registry === null
+  && snapshot.missing.includes('20261028120000_runtime_function_registry'));
+
 
 /* --- Chaque bloc doit rendre un resultat --------------------------------- */
 
@@ -192,6 +199,15 @@ const incidents = await db.query(`
 `);
 ok('les deux tentatives annulées du snapshot sont visibles',
   incidents.rows.length === 2, `${incidents.rows.length} ligne(s)`);
+const statutsHistorique = await db.query(`
+  SELECT count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL)::int AS actives,
+         count(*) FILTER (WHERE rolled_back_at IS NOT NULL)::int AS annulees
+    FROM public._prisma_migrations
+`);
+ok('les tentatives annulees ne sont pas confondues avec des migrations actives',
+  statutsHistorique.rows[0].actives === 0 && statutsHistorique.rows[0].annulees === 2,
+  JSON.stringify(statutsHistorique.rows[0]));
+
 ok('les 56 migrations réussies et les 13 absentes correspondent au snapshot',
   avant.n === 58 && snapshot.applied.length === 56 && snapshot.missing.length === 13,
   `rows=${avant.n}; applied=${snapshot.applied.length}; missing=${snapshot.missing.length}`);
