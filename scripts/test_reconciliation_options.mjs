@@ -145,7 +145,7 @@ ok('le rejeu accorde CREATE au migrateur seulement sur la base jetable',
   && replayTest.includes('GRANT CREATE ON SCHEMA public TO tracefab_migrator')
   && replayTest.includes('has_database_privilege')
   && replayTest.includes('has_schema_privilege'));
-ok('les jobs Playwright évitent l'installation apt étendue qui bloquait le runner',
+ok("les jobs Playwright évitent l'installation apt étendue qui bloquait le runner",
   !ciWorkflow.includes('playwright install --with-deps chromium'));
 ok('P10.6 tolère uniquement un administrateur SUPERUSER préexistant en plus du migrateur',
   replayTest.includes('membresNonSuper.length === 1')
