@@ -29,6 +29,19 @@ const statuts = new Map();
 for (const m of definitions.matchAll(/^  ([a-z][a-z0-9_]+): \{ status: (\d+)/gm)) {
   statuts.set(m[1], Number(m[2]));
 }
+
+const workerGuardStatuses = new Map([
+  ['worker_migration_requires_admin_role', 403],
+  ['worker_role_creation_requires_createrole', 403],
+  ['tracefab_worker_role_not_least_privilege', 409],
+  ['worker_migration_membership_not_minimal', 409],
+  ['tracefab_app_must_not_be_worker_member', 409],
+  ['tracefab_worker_must_not_retain_schema_create', 409],
+]);
+for (const [code, expected] of workerGuardStatuses) {
+  assert.equal(statuts.get(code), expected, `Statut HTTP incorrect pour ${code}`);
+}
+
 const serveur = [...raised]
   .filter((code) => statuts.has(code) && statuts.get(code) >= 500)
   .sort();
