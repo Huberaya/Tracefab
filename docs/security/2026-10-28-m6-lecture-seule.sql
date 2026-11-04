@@ -204,11 +204,25 @@ SELECT pg_catalog.pg_get_userbyid(d.defaclrole) AS role_emetteur,
 -- 5. Contrôles de cohérence attendu/observé (à lire, pas à croire)
 -- ----------------------------------------------------------------------------
 -- Le role runtime et le registre (eventuellement absent avant migration).
+-- Distinguer EXECUTE explicite, EXECUTE via PUBLIC et privilege effectif.
 SELECT to_regclass('public.tracefab_runtime_function_registry') AS registre_runtime,
-       (SELECT count(*) FROM pg_catalog.pg_proc p
+       (SELECT count(DISTINCT p.oid)
+          FROM pg_catalog.pg_proc p
+          JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+          CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+         WHERE n.nspname = 'public'
+           AND acl.grantee = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app')
+           AND acl.privilege_type = 'EXECUTE') AS execute_app_explicite,
+       (SELECT count(DISTINCT p.oid)
+          FROM pg_catalog.pg_proc p
+          JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+          CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+         WHERE n.nspname = 'public' AND acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') AS execute_public,
+       (SELECT count(*)
+          FROM pg_catalog.pg_proc p
           JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
          WHERE n.nspname = 'public'
-           AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE')) AS executables_par_app;
+           AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE')) AS execute_app_effectif;
 
 -- Rôles qui peuvent lire une table sous FORCE RLS sans passer par elle
 SELECT rolname, rolbypassrls, rolsuper
