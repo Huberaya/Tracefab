@@ -11,7 +11,8 @@
 Production et Préproduction présentent le même état :
 
 - 58 lignes dans `_prisma_migrations`.
-- 56 migrations terminées et non annulées.
+- 56 migrations terminées et non annulées : 51 exécutées par Prisma et 5 marquées terminées hors bande avec `applied_steps_count = 0`.
+- Les 5 hors bande sont les migrations PEF, green claims, quality CAP, supplier passport et mass balance ; leurs 12 objets attendus ont été relus présents sur Production et Préproduction. Ne pas les rejouer.
 - 2 tentatives annulées, toutes deux suivies d'une migration terminée du même nom.
 - 0 migration inachevée.
 - 69 dossiers de migration dans `main`.
@@ -30,7 +31,7 @@ Les empreintes suivantes sont celles enregistrées dans les deux bases :
 | `20261006210000_plm_erp_gs1_interoperability` | `c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861` |
 | `20261009180000_public_read_context` | `c12ee33303084b6710284139786058b8d088b2619d92372ea57f282e86480d04` |
 
-Les versions exactes ont été retrouvées dans l'historique Git et restaurées dans la branche dédiée. Il ne faut **ni modifier les checksums en base, ni utiliser le mode de réparation de `verifier_checksums_migrations.mjs`**.
+Les versions exactes ont été retrouvées dans l'historique Git et restaurées dans la branche dédiée. Le test de matrice compare les 56 checksums appliqués au dépôt. Il ne faut **ni modifier les checksums en base, ni utiliser le mode de réparation de `verifier_checksums_migrations.mjs`**.
 
 Les changements fonctionnels ultérieurs restent portés par des migrations forward :
 - invitation fournisseur : `20261005100000_supplier_invitation_compatibility` ;
