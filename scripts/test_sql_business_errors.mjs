@@ -35,6 +35,7 @@ const workerGuardStatuses = new Map([
   ['worker_role_creation_requires_createrole', 403],
   ['tracefab_worker_role_not_least_privilege', 409],
   ['worker_migration_membership_not_minimal', 409],
+  ['worker_migration_executor_membership_missing', 409],
   ['tracefab_app_must_not_be_worker_member', 409],
   ['tracefab_worker_must_not_retain_schema_create', 409],
 ]);
