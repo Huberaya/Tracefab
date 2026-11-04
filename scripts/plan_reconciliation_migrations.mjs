@@ -16,7 +16,7 @@ import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE,
+  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE,
   BORNE_RELEVE, SNAPSHOT_DATE,
 } from './lib/ecarts_migrations.mjs';
 
@@ -28,6 +28,8 @@ const migrations = readdirSync(migrationsDir, { withFileTypes: true })
 
 const pending = Object.keys(ECARTS).sort();
 const applied = Object.keys(PRODUCTION_APPLIED).sort();
+const outOfBand = Object.keys(HORS_BANDE).sort();
+const appliedViaPrisma = applied.length - outOfBand.length;
 const newNames = migrations.filter((name) =>
   !PRODUCTION_APPLIED[name] && !ECARTS[name] && name > BORNE_RELEVE);
 
@@ -86,8 +88,16 @@ const known = new Set([...applied, ...pending, ...newNames]);
 for (const name of migrations) if (!known.has(name)) errors.push(`${name}: aucune categorie dans le snapshot`);
 for (const name of known) if (!migrations.includes(name)) errors.push(`${name}: reference absente du depot`);
 if (applied.length !== 56) errors.push(`snapshot applique attendu 56, obtenu ${applied.length}`);
+if (appliedViaPrisma !== 51) errors.push(`migrations via Prisma attendues 51, obtenu ${appliedViaPrisma}`);
+if (outOfBand.length !== 5) errors.push(`migrations hors bande attendues 5, obtenu ${outOfBand.length}`);
 if (pending.length !== 13) errors.push(`migrations en attente attendues 13, obtenu ${pending.length}`);
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
+for (const name of outOfBand) {
+  if (!PRODUCTION_APPLIED[name]) errors.push(`hors bande sans ligne terminee : ${name}`);
+}
+for (const attempt of ROLLED_BACK_ATTEMPTS) {
+  if (!PRODUCTION_APPLIED[attempt.name]) errors.push(`tentative annulee sans ligne reussie du meme nom : ${attempt.name}`);
+}
 if (lines.some((line) => /RESOLVE --APPLIED|RESOLVE --ROLLED-BACK/i.test(line.action))) {
   errors.push('un resolve est interdit : les 13 migrations sont a appliquer via Prisma');
 }
@@ -123,11 +133,15 @@ if (markdown) {
   for (const line of lines) {
     console.log(`| \`${line.name}\` | ${line.evidence} | **${line.action}** | ${line.prerequisite} | ${line.risk} |`);
   }
-  console.log(`\nHistorique : ${applied.length} appliquées, ${pending.length} absentes, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
+    console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
+  for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
+  console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} absentes, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
 } else {
   console.log(`Plan Neon — snapshot ${SNAPSHOT_DATE}`);
   console.log(`  migrations dépôt       : ${migrations.length}`);
-  console.log(`  appliquées             : ${applied.length}`);
+  console.log(`  appliquées via Prisma  : ${appliedViaPrisma}`);
+  console.log(`  appliquées hors bande  : ${outOfBand.length}`);
+  console.log(`  appliquées au total    : ${applied.length}`);
   console.log(`  absentes               : ${pending.length}`);
   console.log(`  nouvelles post-snapshot: ${newNames.length}`);
   console.log(`  tentatives annulées    : ${ROLLED_BACK_ATTEMPTS.length} (non en attente)`);
