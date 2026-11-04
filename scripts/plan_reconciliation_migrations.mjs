@@ -88,17 +88,17 @@ const lines = [
   ...newNames.map((name) => ({
     name,
     history: 'NOUVELLE (postérieure au snapshot)',
-    effect: 'ajouter les quatre CHECK PLM manquants et autoriser GS1 GPC',
-    evidence: 'catalogue Neon relu le 04/11 : quatre CHECK absents, contrainte GS1 sans gpc, zéro ligne invalide',
+    effect: 'ajouter les quatre CHECK PLM, autoriser GS1 GPC et typer explicitement les statuts des deux fonctions du graphe d’ingestion PLM/ERP',
+    evidence: 'catalogue Neon relu le 04/11 : quatre CHECK absents, contrainte GS1 sans gpc ; pg_get_functiondef identique en Production/Préproduction, deux CASE texte en 42804 sur data_value_status',
     risk: 'contrainte VALIDATE après précondition ; échec fermé si données invalides ou définition inattendue',
-    prerequisite: 'rejouer les comptages de lignes invalides et relire les contraintes juste avant application',
+    prerequisite: 'rejouer les comptages de lignes invalides, relire les contraintes et exécuter test:p105:ingestion juste avant application',
     action: 'APPLIQUER APRÈS LES 13 MIGRATIONS HISTORIQUES, EN PRÉPRODUCTION PUIS PRODUCTION',
   })),
 ];
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + correction forward PLM/GS1 ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + correction forward PLM/GS1 et fonctions de graphe ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -233,4 +233,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 1 correction forward, 1 écart historique documenté, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 1 correction forward PLM/GS1/graphe, 1 écart historique documenté, aucun resolve ni changement de checksum.');
