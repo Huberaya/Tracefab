@@ -138,6 +138,10 @@ ok('aucune migration assistée ne demande encore SUPERUSER',
   /MIGRATIONS_ASSISTEES\s*=\s*Object\.freeze\(\{\}\)/.test(assisted));
 ok('les tentatives explicitement annulées ne sont pas signalées comme migrations inachevées',
   migrationRunner.includes('const enEchec = registre.filter((r) => !r.finished_at && !r.rolled_back_at);'));
+ok('le runner peut endosser explicitement le rôle migrateur sans changer de mot de passe',
+  migrationRunner.includes('TF_MIGRATION_ROLE')
+  && migrationRunner.includes("pg_catalog.pg_has_role(session_user, $1, 'SET')")
+  && migrationRunner.includes('SET ROLE'));
 
 console.log('\n  --------------------------------------------');
 console.log(`  ${verifies} vérifications passées — snapshot Neon 04/11, aucune réécriture d’historique.`);
