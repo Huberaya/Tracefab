@@ -1,0 +1,123 @@
+# TraceFab — réconciliation Neon des migrations (04/11/2026)
+
+> **État : investigation en lecture seule terminée ; corrections de code préparées sur une branche dédiée ; application en Préproduction et Production non encore exécutée.**
+>
+> Branche de correction : `fix/neon-migration-reconciliation-20261104`.
+>
+> Ce document remplace les hypothèses de l'ancien plan daté du 29/10. Les nombres ci-dessous proviennent d'une lecture réelle de `_prisma_migrations` et du catalogue PostgreSQL sur les branches Production et Préproduction le 04/11/2026.
+
+## 1. Historique Prisma réellement mesuré
+
+Production et Préproduction présentent le même état :
+
+- 58 lignes dans `_prisma_migrations`.
+- 56 migrations terminées et non annulées.
+- 2 tentatives annulées, toutes deux suivies d'une migration terminée du même nom.
+- 0 migration inachevée.
+- 69 dossiers de migration dans `main`.
+- 13 migrations absentes de l'historique réussi.
+- 3 empreintes de migrations déjà appliquées différentes des fichiers de `main` avant correction.
+
+Les deux migrations ayant une tentative annulée **ne sont pas en attente** : `20261010120000` et `20261017120000` ont chacune une ligne réussie. Ne pas exécuter `migrate resolve --applied` pour ces deux noms.
+
+### Les trois divergences d'empreinte
+
+Les empreintes suivantes sont celles enregistrées dans les deux bases :
+
+| Migration | SHA-256 enregistré |
+|---|---|
+| `20261005090000_supplier_portal_advanced_hardening` | `560356c203df6d460f8488f44bdf1ce582d3f609eae1b4acd329ad3cd686bbb7` |
+| `20261006210000_plm_erp_gs1_interoperability` | `c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861` |
+| `20261009180000_public_read_context` | `c12ee33303084b6710284139786058b8d088b2619d92372ea57f282e86480d04` |
+
+Les versions exactes ont été retrouvées dans l'historique Git et restaurées dans la branche dédiée. Il ne faut **ni modifier les checksums en base, ni utiliser le mode de réparation de `verifier_checksums_migrations.mjs`**.
+
+Les changements fonctionnels ultérieurs restent portés par des migrations forward :
+- invitation fournisseur : `20261005100000_supplier_invitation_compatibility` ;
+- normalisation des politiques PLM : `20261028150000` et `20261029180000` ;
+- provisionnement du rôle applicatif avant migrations : `db:deploy` appelle `bootstrap_app_role.mjs` avant `prisma migrate deploy`.
+
+## 2. Les 13 migrations réellement en attente
+
+| Migration | État du catalogue mesuré | Traitement attendu |
+|---|---|---|
+| `20261021170000_dpp_readiness_truthful_gates` | Profil DPP encore à 9 exigences au lieu des 13 définies par la migration ; fonction de contrôle ancienne | Appliquer |
+| `20261027100000_dpp_quality_gate_requires_assessment` | Contrôle `quality.no_open_issues` absent de la définition active | Appliquer après la précédente |
+| `20261027130000_dpp_review_preservation_and_publication_coherence` | Colonnes de base de revue présentes, mais `review_basis_fingerprint`, `reviewed_basis_fingerprint`, `review_invalidated_at`, `review_invalidation_reason` absentes ; fonction de suspension absente | Appliquer ; les nouvelles colonnes sont déclarées `IF NOT EXISTS` |
+| `20261028120000_runtime_function_registry` | Table `tracefab_runtime_function_registry` absente | Appliquer avant 28120100 |
+| `20261028120100_worker_identity_not_forgeable` | Rôle `tracefab_worker` et fonction `tracefab_upsert_clerk_user` absents | Appliquer après correction de la migration dans cette branche |
+| `20261028120200_document_reserved_fields_internal_only` | `tracefab_app` possède encore `UPDATE` sur `documents` | Appliquer |
+| `20261028130000_product_computed_fields_column_scoped` | Des droits d'écriture couvrent encore des colonnes calculées de `tracefab_products` | Appliquer |
+| `20261028140000_supplier_invitation_owner_relationship_scope` | Le trigger existe, mais le validateur actuel ne vérifie pas encore tous les liens et statuts de relation | Appliquer |
+| `20261028150000_reconcile_plm_erp_sync_job_policies` | Les deux politiques canoniques sont déjà présentes | Recréation idempotente attendue |
+| `20261029180000_plm_erp_sync_jobs_policy_dedup` | Les deux politiques canoniques sont déjà présentes | Recréation idempotente attendue |
+| `20261030140000_ingest_payload_role_guard_and_acl` | La fonction d'ingestion est SECURITY DEFINER, exécutable par `tracefab_app`, mais ne possède pas encore la garde sur le rôle de session | Appliquer |
+| `20261031120000_identite_hmac_liee_au_contexte` | Tables d'identité HMAC absentes | Appliquer avec le mode strict désactivé |
+| `20261102120000_identite_stricte_email_et_rotation` | Dépend des tables HMAC précédentes | Appliquer après 31120000, strict toujours désactivé |
+
+## 3. État de sécurité réellement observé
+
+### Rôles et exécution des migrations
+
+- `tracefab_app` est le rôle runtime mesuré : non-superutilisateur, sans `BYPASSRLS`, sans privilège `CREATEROLE`, sans appartenance à un rôle privilégié.
+- `neondb_owner` est le propriétaire de la base et des fonctions actuellement examinées ; il est non-superutilisateur, avec `CREATEROLE` et `BYPASSRLS`.
+- `tracefab_migrator` est absent de Production.
+- `tracefab_worker` est absent de Production.
+- Le propriétaire du schéma `public` est `pg_database_owner`.
+
+Pour l'existant Neon, le rôle de migration mesuré est donc le propriétaire administrateur de la base (`neondb_owner`), et non le rôle runtime `tracefab_app`. Le rôle dédié `tracefab_migrator` du scénario local ne doit pas être provisionné en Production sans une procédure distincte de transfert de propriété validée sur Neon.
+
+Ne pas utiliser la variable `DATABASE_URL` de Vercel pour migrer : elle correspond au runtime applicatif. Utiliser une connexion directe, non poolée, du rôle de migration.
+
+### DPP
+
+Le profil actif ne comporte que 9 exigences. La nouvelle exigence `quality.no_open_issues` n'est pas présente. La fonction actuelle ne doit donc pas être considérée comme équivalente aux migrations DPP en attente.
+
+### Documents et produits
+
+- `tracefab_app` possède encore un droit `UPDATE` sur `documents`.
+- Les droits colonne par colonne sur `tracefab_products` couvrent encore des champs calculés, dont `data_readiness`, `data_completion`, `data_ready_at` et `version`.
+
+Ces deux écarts doivent être fermés par 28120200 et 28130000, puis revérifiés par les privilèges effectifs du rôle, pas seulement par la présence des migrations.
+
+### PLM/ERP et invitations
+
+- `plm_erp_sync_jobs` possède déjà les deux politiques canoniques. Les deux migrations de normalisation peuvent les recréer, mais ne doivent pas être présentées comme la preuve d'un écart actuel à quatre politiques.
+- Le validateur d'invitation fournisseur accepte déjà un `owner` lorsqu'un `relationship_id` est présent. Le trigger et la fonction de la migration 28140000 doivent encore vérifier le rattachement exact et l'état de la relation.
+
+### Identité HMAC
+
+La variable Vercel `TRACEFAB_IDENTITY_KEY` n'est pas configurée. Les migrations HMAC peuvent être appliquées avec le mode strict désactivé ; ne pas activer le mode strict tant que la clé n'est pas provisionnée et que la couverture des routes signées n'est pas prouvée.
+
+## 4. Correction de la migration worker préparée dans cette branche
+
+La migration `20261028120100_worker_identity_not_forgeable` n'est pas appliquée en Production. Elle peut donc être corrigée avant sa première exécution.
+
+La version préparée :
+1. crée `tracefab_worker` directement avec `NOLOGIN`, `NOSUPERUSER`, `NOBYPASSRLS`, `NOCREATEROLE`, `NOCREATEDB`, `NOINHERIT` ;
+2. refuse un rôle préexistant non conforme au lieu de tenter un `ALTER ROLE ... NOSUPERUSER` qui exige un superutilisateur ;
+3. accorde au rôle de migration `INHERIT TRUE, SET TRUE`, sans `ADMIN OPTION` ;
+4. accorde temporairement `CREATE` sur `public` au worker pour le transfert des six fonctions ;
+5. retire immédiatement `CREATE` au worker après le transfert ;
+6. conserve l'appartenance `SET` du rôle de migration pour les migrations suivantes ;
+7. vérifie que `tracefab_app` n'est pas membre du worker.
+
+Le test P10.5 est modifié pour exécuter la chaîne sans `TF_ALLOW_ELEVATION` et vérifier que le rôle de migration reste non-superutilisateur. Cette correction reste candidate jusqu'à validation CI.
+
+## 5. Séquence d'exécution — ne pas sauter d'étape
+
+1. Terminer les corrections de code de cette branche et obtenir une CI entièrement verte.
+2. Dans un worktree Codespace séparé, récupérer cette branche. Ne pas remplacer ni réinitialiser le worktree de travail existant.
+3. Avec une connexion directe de migration à Préproduction, vérifier l'identité SQL (`current_user`), les attributs de rôle, la propriété des fonctions et `prisma migrate status`. Résultat exigé : zéro divergence de checksum et 13 migrations en attente.
+4. Exécuter `prisma migrate deploy` en Préproduction seulement après cette pré-vérification.
+5. Vérifier que les 69 migrations sont terminées, puis contrôler le catalogue : profil DPP, fonctions, triggers, politiques, privilèges sur documents/produits, rôle worker, registre runtime et ACL.
+6. Exécuter les tests d'intégration et les parcours applicatifs sur une cible Preview dont l'isolation de base a été prouvée.
+7. Après réussite complète en Préproduction, appliquer la même procédure en Production avec le rôle administrateur de migration, jamais avec `tracefab_app`.
+8. Provisionner séparément la clé HMAC dans Neon et Vercel. Garder le mode strict désactivé jusqu'à preuve de couverture de toutes les routes.
+
+### Interdictions de cette procédure
+
+- Aucun `migrate resolve --applied` pour les migrations déjà terminées.
+- Aucun UPDATE de checksum dans `_prisma_migrations`.
+- Aucun `prisma migrate deploy` global avant restauration des trois fichiers historiques et validation de 28120100.
+- Aucun déploiement, fusion ou activation du mode strict avant validation des tests et du catalogue.
