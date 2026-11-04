@@ -17,7 +17,7 @@ Production et Préproduction présentent le même état :
 - 0 migration inachevée.
 - 69 dossiers de migration dans `main`.
 - 13 migrations absentes de l'historique réussi.
-- 3 empreintes de migrations déjà appliquées différentes des fichiers de `main` avant correction.
+- 3 empreintes de migrations déjà appliquées différentes des fichiers de `main` au début de l'audit.
 
 Les deux migrations ayant une tentative annulée **ne sont pas en attente** : `20261010120000` et `20261017120000` ont chacune une ligne réussie. Ne pas exécuter `migrate resolve --applied` pour ces deux noms.
 
@@ -31,7 +31,7 @@ Les empreintes suivantes sont celles enregistrées dans les deux bases :
 | `20261006210000_plm_erp_gs1_interoperability` | `c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861` |
 | `20261009180000_public_read_context` | `c12ee33303084b6710284139786058b8d088b2619d92372ea57f282e86480d04` |
 
-Les versions exactes ont été retrouvées dans l'historique Git et restaurées dans la branche dédiée. Le test de matrice compare les 56 checksums appliqués au dépôt. Il ne faut **ni modifier les checksums en base, ni utiliser le mode de réparation de `verifier_checksums_migrations.mjs`**.
+Deux versions exactes ont été retrouvées et restaurées dans la branche dédiée : `20261005090000` et `20261009180000`. Pour `20261006210000`, l'empreinte Production/Préproduction (`c944ce0c…`) ne correspond à aucune version retrouvée dans l'historique Git, les branches actives ou les versions examinées. Le fichier courant est conservé sans modification spéculative ; son checksum reste un **bloqueur**. Il faut retrouver le fichier exact depuis le Codespace, un artefact ou une sauvegarde avant tout `migrate deploy`. Le test de matrice compare les 56 checksums appliqués au dépôt et doit échouer tant que ce point n'est pas résolu. Il ne faut **ni modifier les checksums en base, ni utiliser le mode de réparation de `verifier_checksums_migrations.mjs`**.
 
 Les changements fonctionnels ultérieurs restent portés par des migrations forward :
 - invitation fournisseur : `20261005100000_supplier_invitation_compatibility` ;
