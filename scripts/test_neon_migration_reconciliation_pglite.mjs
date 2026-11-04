@@ -81,19 +81,21 @@ async function scalar(db, sql, params = []) {
 }
 
 console.log(`\n  1. Snapshot Neon ${SNAPSHOT_DATE} — cohérence des catégories`);
-ok('70 dossiers de migration dans le dépôt', dossiers.length === 70, String(dossiers.length));
+ok('71 dossiers de migration dans le dépôt', dossiers.length === 71, String(dossiers.length));
 ok('56 migrations terminées dans les deux bases', baselineNames.length === 56);
 ok('13 migrations réellement en attente', pendingNames.length === 13);
 ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length === 5);
 ok('les 2 tentatives annulées ont aussi une ligne réussie',
   ROLLED_BACK_ATTEMPTS.length === 2 && ROLLED_BACK_ATTEMPTS.every((x) => PRODUCTION_APPLIED[x.name]));
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
-ok('une correction forward est postérieure au snapshot',
-  newNames.length === 1 && newNames[0] === '20261104090000_plm_integrations_and_gs1_constraints', JSON.stringify(newNames));
-const forwardSql = lire('20261104090000_plm_integrations_and_gs1_constraints');
-ok('le correctif forward caste les statuts enum du create ET update supply-chain',
-  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(forwardSql)
-  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(forwardSql));
+ok('les deux corrections forward sont postérieures au snapshot et ordonnées',
+  JSON.stringify(newNames) === JSON.stringify([
+    '20261104090000_plm_integrations_and_gs1_constraints',
+    '20261104100000_supply_chain_status_enum_casts',
+  ]), JSON.stringify(newNames));
+ok('la correction graphe caste les statuts enum du create ET update supply-chain',
+  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(graphForwardSql)
+  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(graphForwardSql));
 ok('toutes les migrations du dépôt sont classées',
   baselineNames.length + pendingNames.length + newNames.length === dossiers.length);
 
@@ -160,7 +162,7 @@ for (const name of newNames) {
   forwardResults.push({ name, ...result });
   console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
 }
-ok('la correction forward post-snapshot s’applique', forwardResults.length === 1 && forwardResults.every((r) => r.ok),
+ok('les deux corrections forward post-snapshot s’appliquent', forwardResults.length === 2 && forwardResults.every((r) => r.ok),
   JSON.stringify(forwardResults.filter((r) => !r.ok)));
 const repairedPlmChecks = await scalar(baseline.db, `
   SELECT count(*)::int AS value FROM pg_constraint
@@ -176,8 +178,10 @@ const repairedIdentifierCheck = await scalar(baseline.db, `
 `);
 ok('les quatre CHECK PLM sont présents et validés', repairedPlmChecks === 4, String(repairedPlmChecks));
 ok('la contrainte GS1 accepte désormais GPC', repairedIdentifierCheck.includes('gpc'), repairedIdentifierCheck);
-const forwardReplay = await jouer(baseline.db, newNames[0]);
-ok('la correction forward est idempotente', forwardReplay.ok, forwardReplay.message);
+const forwardReplay = [];
+for (const name of newNames) forwardReplay.push({ name, ...(await jouer(baseline.db, name)) });
+ok('les deux corrections forward sont idempotentes', forwardReplay.length === 2 && forwardReplay.every((r) => r.ok),
+  JSON.stringify(forwardReplay.filter((r) => !r.ok)));
 
 console.log('\n  5. Contrôles du catalogue après application');
 const registry = await scalar(baseline.db, "SELECT to_regclass('public.tracefab_runtime_function_registry') IS NOT NULL AS value");
@@ -243,4 +247,4 @@ if (echecs) {
   console.error(`  ${echecs} échec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 1 correction forward PLM/GS1, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
+console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 2 corrections forward PLM/GS1 et graphe, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
