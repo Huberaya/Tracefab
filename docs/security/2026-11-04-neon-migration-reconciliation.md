@@ -79,6 +79,10 @@ Le profil actif ne comporte que 9 exigences. La nouvelle exigence `quality.no_op
 - `tracefab_app` possède encore un droit `UPDATE` sur `documents`.
 - Les droits colonne par colonne sur `tracefab_products` couvrent encore des champs calculés, dont `data_readiness`, `data_completion`, `data_ready_at` et `version`.
 
+**Écart supplémentaire découvert le 04/11 dans les ACL réelles :** les deux migrations initiales révoquaient les droits au niveau table, mais les catalogues Neon contiennent aussi des privilèges `INSERT`/`UPDATE` au niveau colonne. Un `REVOKE ... ON TABLE` seul ne retire pas ces droits. Les migrations 28120200 et 28130000 ont donc été corrigées dans la branche : elles construisent la liste réelle des colonnes depuis `pg_attribute`, révoquent explicitement tous les privilèges colonne de `tracefab_app`, puis révoquent les droits table et réaccordent uniquement le périmètre prévu. Les tests documents et produits vérifient désormais l'absence de droits résiduels, y compris l'INSERT sur les champs calculés.
+
+La syntaxe de révocation a été exécutée avec succès sur le projet Neon isolé (PostgreSQL 18.6) : SELECT table-level conservé, aucun droit table-level INSERT/UPDATE/DELETE/TRUNCATE, écriture conservée sur les colonnes métier autorisées et refusée sur la colonne calculée. Cette sonde ne remplace pas la CI complète sur le SHA final.
+
 Ces deux écarts doivent être fermés par 28120200 et 28130000, puis revérifiés par les privilèges effectifs du rôle, pas seulement par la présence des migrations.
 
 ### PLM/ERP et invitations
