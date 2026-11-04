@@ -118,8 +118,10 @@ SELECT to_regclass('public._prisma_migrations')                    IS NOT NULL A
 -- ============================================================================
 -- B1. L'HISTORIQUE DES MIGRATIONS
 --     Exécuté par le lanceur seulement si B0.migrations_presentes = true.
---     ATTENDU : terminees = migrations sur disque (69 dans la branche
---     `arena/96848462-tracefab`), aucun echec en attente de resolution.
+--     ATTENDU après réconciliation : terminees = migrations sur disque (70
+--     dans la branche de correction), aucun échec en attente de résolution.
+--     À l'état Neon mesuré le 04/11 : 56 réussies, 13 historiques absentes,
+--     plus 1 correction forward post-snapshot à appliquer.
 -- ============================================================================
 SELECT count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) AS terminees,
        count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL)     AS en_echec,
