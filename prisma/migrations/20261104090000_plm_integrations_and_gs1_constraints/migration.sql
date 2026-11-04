@@ -152,4 +152,65 @@ BEGIN
   END IF;
 END $$;
 
+-- Le CHECK historique acceptait déjà GS1/GPC, mais le helper SQL conservait
+-- l'ancienne liste de quatre types. CREATE OR REPLACE conserve l'OID, le
+-- propriétaire et les ACL EXECUTE du registre runtime.
+CREATE OR REPLACE FUNCTION tracefab_add_product_identifier(
+  p_product_id UUID,
+  p_identifier_type TEXT,
+  p_identifier_value TEXT,
+  p_is_primary BOOLEAN DEFAULT false
+)
+RETURNS product_identifiers
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $tf_gs1$
+DECLARE
+  v_identifier product_identifiers;
+  v_brand_organization_id UUID;
+  v_type TEXT;
+  v_value TEXT;
+BEGIN
+  SELECT brand_organization_id INTO v_brand_organization_id
+  FROM tracefab_products
+  WHERE id = p_product_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'product_not_found';
+  END IF;
+
+  IF NOT tracefab_has_org_role(
+    v_brand_organization_id,
+    ARRAY['owner', 'admin', 'manager', 'contributor']::membership_role[]
+  ) THEN
+    RAISE EXCEPTION 'brand_product_role_required';
+  END IF;
+
+  v_type := lower(trim(COALESCE(p_identifier_type, '')));
+  v_value := trim(COALESCE(p_identifier_value, ''));
+  IF v_type NOT IN ('gtin', 'ean', 'upc', 'internal', 'gs1_digital_link', 'gln', 'gpc') OR v_value = '' THEN
+    RAISE EXCEPTION 'invalid_product_identifier';
+  END IF;
+
+  INSERT INTO product_identifiers (
+    product_id,
+    identifier_type,
+    identifier_value,
+    is_primary,
+    created_by
+  )
+  VALUES (
+    p_product_id,
+    v_type,
+    v_value,
+    COALESCE(p_is_primary, false),
+    tracefab_current_user_id()
+  )
+  RETURNING * INTO v_identifier;
+
+  RETURN v_identifier;
+END;
+$tf_gs1$;
+
 COMMIT;
