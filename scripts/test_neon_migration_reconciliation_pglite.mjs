@@ -27,6 +27,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const migrationsDir = join(root, 'prisma', 'migrations');
 const dossiers = readdirSync(migrationsDir).filter((d) => /^\d{14}_/.test(d)).sort();
 const lire = (name) => readFileSync(join(migrationsDir, name, 'migration.sql'), 'utf8');
+const graphForwardSql = lire('20261104100000_supply_chain_status_enum_casts');
 const baselineNames = Object.keys(PRODUCTION_APPLIED).sort();
 const pendingNames = Object.keys(ECARTS).sort();
 const newNames = dossiers.filter((d) => !PRODUCTION_APPLIED[d] && !ECARTS[d]);
