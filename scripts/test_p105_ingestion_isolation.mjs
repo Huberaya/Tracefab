@@ -83,7 +83,7 @@ const jeton = (userId, orgId, exp) => {
 const MAINTENANT = Math.floor(Date.now() / 1000);
 
 /** Rejoue un appel d'ingestion, puis annule tout. */
-async function appeler({ gucs = {}, reference }) {
+async function appeler({ gucs = {}, reference, updateFirstNode = false }) {
   await app.query('BEGIN');
   try {
     for (const [cle, valeur] of Object.entries(gucs)) {
@@ -92,6 +92,7 @@ async function appeler({ gucs = {}, reference }) {
     let resultat = null;
     let erreur = null;
     let lignes = 0;
+    let nodeUpdateOk = null;
     try {
       resultat = (await app.query(
         `SELECT public.tracefab_ingest_plm_erp_payload($1::uuid,'generic_csv',$2::jsonb,NULL::uuid) AS s`,
@@ -111,10 +112,28 @@ async function appeler({ gucs = {}, reference }) {
       lignes = (await app.query(
         `SELECT count(*)::int AS n FROM tracefab_products WHERE reference = $1`, [reference],
       )).rows[0].n;
+      if (updateFirstNode && !erreur) {
+        const productId = (await app.query(
+          'SELECT id FROM tracefab_products WHERE reference = $1', [reference],
+        )).rows[0]?.id;
+        if (!productId) throw new Error('product_missing_after_ingest');
+        const graph = (await app.query(
+          'SELECT public.tracefab_get_product_traceability($1::uuid) AS graph', [productId],
+        )).rows[0]?.graph;
+        const node = graph?.nodes?.find((item) => item.node_type === 'process');
+        if (!node?.id) throw new Error('process_node_missing_after_ingest');
+        await app.query(
+          `SELECT public.tracefab_update_supply_chain_node(
+             $1::uuid, $2::uuid, $3, $4::jsonb, NULL::uuid, CURRENT_DATE
+           )`,
+          [productId, node.id, `${reference} updated`, JSON.stringify({ p105EnumCast: true })],
+        );
+        nodeUpdateOk = true;
+      }
     } catch (e) {
       erreur = `${e.code || ''} ${e.message.split('\n')[0].slice(0, 60)}`;
     }
-    return { resultat, erreur, lignes };
+    return { resultat, erreur, lignes, nodeUpdateOk };
   } finally {
     await app.query('ROLLBACK').catch(() => {});
   }
@@ -123,8 +142,10 @@ async function appeler({ gucs = {}, reference }) {
 // ---------------------------------------------------------------------------
 // M1 — identité légitime de A sur A
 // ---------------------------------------------------------------------------
-const m1 = await appeler({ gucs: { 'tracefab.user_id': A.user_id, 'tracefab.active_organization_id': A.id }, reference: 'P105-M1' });
-ok(!m1.erreur && m1.lignes === 1, 'M1 identité légitime de A sur A : succès, 1 produit', m1.erreur || `${m1.lignes} ligne(s)`);
+const m1 = await appeler({ gucs: { 'tracefab.user_id': A.user_id, 'tracefab.active_organization_id': A.id }, reference: 'P105-M1', updateFirstNode: true });
+ok(!m1.erreur && m1.lignes === 1 && m1.nodeUpdateOk === true,
+  'M1 identité légitime de A sur A : ingestion et mise à jour d’un nœud réussies',
+  m1.erreur || `${m1.lignes} produit(s), update=${m1.nodeUpdateOk}`);
 
 // ---------------------------------------------------------------------------
 // M2 — identité de A sur l'organisation B
