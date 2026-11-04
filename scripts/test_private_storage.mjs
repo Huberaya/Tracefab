@@ -40,8 +40,11 @@ const txBlocksWithNetwork = flowBody.split('withTracefabUserContext').slice(1)
 assert(txBlocksWithNetwork.length === 0, 'Network checks must not run inside the SQL transaction');
 
 // TF-02 — parcours scan proprietaire (marque) : route dediee et next.scan coherent.
-assert(files.brandScan.includes('runDocumentScanFlow') && files.brandScan.includes('tracefab_has_org_role'),
-  'Owner scan route must exist with writer-role enforcement');
+assert(files.brandScan.includes('runDocumentScanFlow')
+  && files.brandScan.includes('withTracefabTenantContext')
+  && files.brandScan.includes("roles: ['owner', 'admin', 'manager', 'contributor']")
+  && files.brandScan.includes('owner_organization_id: tenant.organizationId'),
+  'Owner scan route must validate the active brand tenant, enforce writer roles and scope the document owner');
 assert(files.brandUploadIntent.includes('/api/documents/${result.document.id}/scan'),
   'Brand upload intent must point to the owner scan route, not the supplier one');
 assert(files.scan.includes('runDocumentScanFlow'), 'Supplier scan route must use the shared fail-closed flow');
