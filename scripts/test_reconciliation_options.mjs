@@ -35,6 +35,7 @@ const plan = `${planResult.stdout || ''}${planResult.stderr || ''}`;
 const planAutoOutput = `${planAuto.stdout || ''}${planAuto.stderr || ''}`;
 const assisted = fs.readFileSync(path.join(root, 'scripts/lib/migrations_assistees.mjs'), 'utf8');
 const migrationRunner = fs.readFileSync(path.join(root, 'scripts/migrer_fidelement.mjs'), 'utf8');
+const replayTest = fs.readFileSync(path.join(root, 'scripts/test_p106_rejouabilite_chaine.mjs'), 'utf8');
 const migrationsDir = path.join(root, 'prisma/migrations');
 
 let verifies = 0;
@@ -138,6 +139,9 @@ ok('aucune migration assistée ne demande encore SUPERUSER',
   /MIGRATIONS_ASSISTEES\s*=\s*Object\.freeze\(\{\}\)/.test(assisted));
 ok('les tentatives explicitement annulées ne sont pas signalées comme migrations inachevées',
   migrationRunner.includes('const enEchec = registre.filter((r) => !r.finished_at && !r.rolled_back_at);'));
+ok('le rejeu accorde CREATE au migrateur seulement sur la base jetable',
+  replayTest.includes('GRANT CREATE ON SCHEMA public TO tracefab_migrator')
+  && replayTest.includes('has_schema_privilege'));
 ok('le runner peut endosser explicitement le rôle migrateur sans changer de mot de passe',
   migrationRunner.includes('TF_MIGRATION_ROLE')
   && migrationRunner.includes("pg_catalog.pg_has_role(session_user, $1, 'SET')")
