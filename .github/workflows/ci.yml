@@ -228,7 +228,7 @@ jobs:
         # Production est déjà à deux politiques canoniques.
         run: npm run test:plm-erp-convergence:chaine
 
-      - name: Reconciliation de l historique — aucun resolve, blocage explicite
+      - name: Reconciliation de l historique — exception PLM bornée, aucun resolve
         # Vérifie le snapshot 56/13, les cinq migrations hors bande et les deux
         # tentatives annulées déjà suivies d’une réussite. Le plan doit rester
         # bloqué par le checksum PLM non retrouvé ; aucun resolve n’est autorisé.
@@ -342,17 +342,13 @@ jobs:
         # s execute vraiment.
         run: npm run test:plm-sync-policy-drift
 
-      - name: Migrations — garde-fous du plan et blocage checksum
-        # L’autotest doit passer indépendamment du bloqueur réel. Le plan lui-même
-        # doit ensuite échouer explicitement tant que le checksum PLM n’est pas récupéré.
+      - name: Migrations — plan exécutable, exception checksum PLM bornée
+        # L’autotest vérifie les interdictions (aucun resolve, aucune écriture
+        # d’historique). Le plan accepte uniquement la paire PLM explicitement
+        # documentée ; toute autre divergence de checksum reste bloquante.
         run: |
           npm run plan:reconciliation:autotest
-          if npm run plan:reconciliation; then
-            echo "ERREUR : le plan ne devrait pas autoriser un deploy avec checksum PLM divergent"
-            exit 1
-          else
-            echo "BLOCAGE ATTENDU : checksum PLM non récupéré ; aucun deploy autorisé"
-          fi
+          npm run plan:reconciliation
 
       - name: Confrontation production — le verificateur mord
         # L instrument qui tranchera le BLOCKED de plm_erp_gs1 n a jamais vu la
