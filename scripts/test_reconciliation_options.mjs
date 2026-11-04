@@ -100,8 +100,11 @@ console.log('\n  5. La migration worker est compatible avec un rôle non-superut
 ok('aucun ALTER ROLE tracefab_worker', !/ALTER\s+ROLE\s+tracefab_worker/i.test(worker));
 ok('le worker est créé NOLOGIN et sans privilèges élevés',
   /CREATE ROLE tracefab_worker[\s\S]{0,180}NOLOGIN[\s\S]{0,180}NOSUPERUSER[\s\S]{0,180}NOBYPASSRLS/i.test(worker));
-ok('le migrateur obtient INHERIT et SET sans ADMIN OPTION',
-  /GRANT tracefab_worker TO %I WITH INHERIT TRUE, SET TRUE/.test(worker));
+ok('le GRANT explicite impose INHERIT/SET et ADMIN FALSE',
+  /GRANT tracefab_worker TO %I WITH ADMIN FALSE, INHERIT TRUE, SET TRUE/.test(worker));
+ok('un worker préexistant sans appartenance du migrateur est refusé explicitement',
+  /worker_migration_executor_membership_missing/.test(worker)
+  && /v_has_admin/.test(worker));
 const workerVerification = worker.slice(worker.indexOf('v_member_oid'));
 ok('le contrôle distingue le GRANT explicite du bootstrap ADMIN Neon',
   /m\.grantor = v_member_oid/.test(workerVerification)
