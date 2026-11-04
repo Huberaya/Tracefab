@@ -114,20 +114,20 @@ BEGIN
   END IF;
   -- 3) LE PROPRIETAIRE DE LA FONCTION (P10.3).
   --
-  -- MESURE QUI A IMPOSE CETTE BRANCHE : le runtime de production ne se connecte
-  -- pas (encore) avec `tracefab_app` mais avec le role PROPRIETAIRE de la base,
-  -- qui est aussi celui des migrations (documente : `.github/workflows/ci.yml`,
-  -- « Le runtime se connecte aujourd hui avec neondb_owner »). Ce role n est ni
-  -- superutilisateur ni membre de `tracefab_app` : sans cette branche, la garde
-  -- refusait le chemin LEGITIME. Reproduit sur base jetable avec un role au
-  -- profil identique (NOSUPERUSER BYPASSRLS, proprietaire de la fonction,
-  -- hors `tracefab_app`) : `ingest_role_not_allowed` sur l appel nominal.
+  -- Mesure Neon du 04/11 sur Production ET Préproduction :
+  --   - neondb_owner : NOSUPERUSER, BYPASSRLS, propriétaire de la fonction,
+  --     et membre de tracefab_app (pg_has_role = true) ;
+  --   - tracefab_app : NOSUPERUSER, NOBYPASSRLS, membre de lui-même, mais
+  --     PAS membre de neondb_owner ;
+  --   - une session tracefab_app a été observée en Production.
   --
-  -- Ce n est pas un affaiblissement : le proprietaire peut deja ALTER et DROP
-  -- cette fonction, et il possede les tables qu elle ecrit. Le refuser ne
-  -- protegerait rien et casserait le service. `prosecdef` est verifie pour que
-  -- la branche ne puisse pas survivre a un passage en SECURITY INVOKER, ou
-  -- « proprietaire » et « appelant » se confondraient.
+  -- Le propriétaire passe donc aujourd'hui par la première branche
+  -- pg_has_role(session_user, 'tracefab_app', 'MEMBER'). La branche propriétaire
+  -- ci-dessous reste un fallback explicite pour une configuration où le rôle
+  -- propriétaire ne serait pas membre de tracefab_app. Elle ne permet jamais
+  -- à tracefab_app d'endosser neondb_owner. Le contrôle prosecdef empêche que
+  -- cette branche survive à un passage en SECURITY INVOKER, où « propriétaire »
+  -- et « appelant » se confondraient.
   IF NOT COALESCE(v_role_autorise, false) THEN
     SELECT true INTO v_role_autorise
       FROM pg_catalog.pg_proc p
