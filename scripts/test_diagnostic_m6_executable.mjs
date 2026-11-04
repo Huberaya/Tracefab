@@ -9,7 +9,7 @@
  * mais il a ete ecrit sans jamais tourner sur un schema complet : une colonne
  * mal nommee, un catalogue lu au mauvais endroit, et l'operateur decouvre
  * l'erreur au pire moment, sur la base qu'il ne faut pas abimer. Ce test
- * applique les 69 migrations du depot dans un PostgreSQL compile en WASM,
+ * applique les 70 migrations de la branche dans un PostgreSQL compile en WASM,
  * fabrique le snapshot Neon du 04/11/2026 (56 réussies, 2 tentatives annulées,
  * 13 absentes, 0 inachevée), puis execute le fichier de releve en entier.
  *
@@ -60,7 +60,7 @@ await db.exec(`
   CREATE ROLE tracefab_app LOGIN PASSWORD 'runtime' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 `);
 
-// Les 69 migrations, dans l'ordre.
+// Les 70 migrations, dans l'ordre.
 const dossiers = fs.readdirSync(MIGRATIONS)
   .filter((d) => /^\d{14}_/.test(d))
   .sort();
@@ -71,7 +71,7 @@ for (const d of dossiers) {
   await db.exec(fs.readFileSync(f, 'utf8'));
   appliquees += 1;
 }
-ok(`${appliquees} migrations appliquees`, appliquees === dossiers.length && dossiers.length === 69, `${appliquees}/${dossiers.length}`);
+ok(`${appliquees} migrations appliquees`, appliquees === dossiers.length && dossiers.length === 70, `${appliquees}/${dossiers.length}`);
 
 // Historique de migrations SYNTHETIQUE. Aucune donnee de production : on
 // fabrique exactement le cas decrit — deux entrees non terminees, deux
