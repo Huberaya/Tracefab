@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * Verifie que chaque migration deja appliquee en base a toujours le meme
- * contenu que le fichier du depot, et sait reparer l'ecart.
+ * Verifie les checksums des migrations deja appliquees et signale les ecarts.
+ * L'option --appliquer ne peut realigner que les ecarts non proteges, apres revue.
  *
  * Pourquoi cet outil existe
  * -------------------------
  * Prisma stocke dans _prisma_migrations.checksum le sha256 du fichier
  * migration.sql au moment ou il l'a applique. Si le fichier change ensuite,
- * « prisma migrate deploy » refuse de tourner sur cette base.
+ * le checksum diverge. Le comportement de migrate deploy depend de la version :
+ * le test Prisma 6.19.3 prouve qu'il peut appliquer les migrations pending sans
+ * reecrire l'ancien checksum.
  *
  * Or il faut parfois corriger une migration deja appliquee. Exemple reel :
  * 20261009180000_public_read_context accordait des droits a un role qu'aucune
@@ -94,7 +96,7 @@ try {
   }
 
   if (ecarts.length === 0) {
-    console.log('  ok  tous les checksums concordent : migrate deploy passera.\n');
+    console.log('  ok  aucun checksum divergent parmi les migrations enregistrees.\n');
     process.exit(absentes.length > 0 ? 1 : 0);
   }
 
@@ -118,10 +120,10 @@ try {
   }
 
   if (!APPLIQUER) {
-    console.log('  Le fichier a change apres son application. En l\'etat,');
-    console.log('  « prisma migrate deploy » refusera de tourner sur cette base.');
-    console.log('  Relancer avec --appliquer apres avoir verifie que le changement');
-    console.log('  est bien NEUTRE pour une base deja migree.\n');
+    console.log('  Le fichier differe du checksum enregistre. Cela ne prouve pas');
+    console.log('  une equivalence SQL ; consultez la matrice et les attestations.');
+    console.log('  Prisma 6.19.3 peut appliquer les migrations pending sans');
+    console.log('  reecrire ce checksum. --appliquer modifie l historique en base.\n');
     process.exit(1);
   }
 
