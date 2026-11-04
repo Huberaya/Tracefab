@@ -1,13 +1,7 @@
-/**
- * Snapshot de référence mesuré en lecture seule sur Production et Préproduction
- * le 04/11/2026. Les deux historiques sont identiques.
- *
- * PRODUCTION_APPLIED conserve les checksums réels de _prisma_migrations.
- * Les scripts matrice/plan les comparent aux fichiers présents : aucune
- * divergence de checksum ne doit être masquée par une mise à jour SQL.
- *
- * Les tentatives rolled_back sont historisées séparément : leurs migrations
- * possèdent aussi une ligne terminée et ne sont donc pas des migrations en attente.
+/** Snapshot Neon du 04/11/2026 : Production et Préproduction ont le même historique.
+ * Les 56 checksums réussis sont contrôlés contre le dépôt. Les cinq entrées
+ * hors bande ont applied_steps_count=0 et leurs 12 objets ont été relus présents.
+ * Les deux tentatives annulées sont séparées : chaque nom a aussi une ligne réussie.
  */
 export const SNAPSHOT_DATE = "2026-11-04";
 export const BORNE_RELEVE = '20261102120000';
@@ -92,7 +86,7 @@ export const ECARTS = {
   "20261029180000_plm_erp_sync_jobs_policy_dedup": { historique: 'ABSENTE', objet: "les deux politiques canoniques sont déjà présentes", effets: ['MESURE', "les deux politiques canoniques sont déjà présentes"], suite: "appliquer de façon idempotente" },
   "20261030140000_ingest_payload_role_guard_and_acl": { historique: 'ABSENTE', objet: "fonction SECURITY DEFINER sans garde session_user ; EXECUTE tracefab_app, PUBLIC déjà révoqué", effets: ['MESURE', "fonction SECURITY DEFINER sans garde session_user ; EXECUTE tracefab_app, PUBLIC déjà révoqué"], suite: "appliquer pour fermer la garde de rôle de session" },
   "20261031120000_identite_hmac_liee_au_contexte": { historique: 'ABSENTE', objet: "tables d'identité HMAC absentes ; TRACEFAB_IDENTITY_KEY non configurée", effets: ['MESURE', "tables d'identité HMAC absentes ; TRACEFAB_IDENTITY_KEY non configurée"], suite: "appliquer en mode strict désactivé ; provisionner la clé séparément" },
-  "20261102120000_identite_stricte_email_et_rotation": { historique: 'ABSENTE', objet: "dépendance HMAC absente ; mode strict non activable", effets: ['MESURE', "dépendance HMAC absente ; mode strict non activable"], suite: "appliquer après 20261031120000 ; ne pas activer strict" },
+  "20261102120000_identite_stricte_email_et_rotation": { historique: 'ABSENTE', objet: "dépendance HMAC absente ; mode strict non activable", effets: ['MESURE', "dépendance HMAC absente ; mode strict non activable"], suite: "appliquer après 20261031120000 ; strict reste désactivé" },
 };
 export const CATALOGUE = {
   "20261021170000_dpp_readiness_truthful_gates": { catalogue: "profil actif à 9 exigences ; les 13 attendues ne sont pas installées", statut: 'DIVERGENCE' },
@@ -109,4 +103,27 @@ export const CATALOGUE = {
   "20261031120000_identite_hmac_liee_au_contexte": { catalogue: "tables HMAC absentes", statut: 'DIVERGENCE' },
   "20261102120000_identite_stricte_email_et_rotation": { catalogue: "tables HMAC absentes ; clé runtime absente", statut: 'DIVERGENCE' },
 };
-export const HORS_BANDE = {};
+export const HORS_BANDE = {
+  "20261006220000_esg_pef_footprint_engine": [
+    "pef_emission_factors",
+    "product_pef_assessments"
+  ],
+  "20261006230000_green_claims_anti_greenwashing_engine": [
+    "green_claims_rules",
+    "product_green_claims",
+    "green_claims_audits"
+  ],
+  "20261006240000_quality_corrective_action_plans_cap": [
+    "quality_corrective_action_plans",
+    "quality_cap_messages"
+  ],
+  "20261006250000_universal_supplier_passport": [
+    "supplier_universal_passports",
+    "supplier_passport_access_requests"
+  ],
+  "20261006260000_mass_balance_anti_fraud_engine": [
+    "transaction_certificates",
+    "mass_balance_allocations",
+    "mass_balance_reconciliations"
+  ]
+};
