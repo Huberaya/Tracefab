@@ -203,8 +203,8 @@ SELECT pg_catalog.pg_get_userbyid(d.defaclrole) AS role_emetteur,
 -- ----------------------------------------------------------------------------
 -- 5. Contrôles de cohérence attendu/observé (à lire, pas à croire)
 -- ----------------------------------------------------------------------------
--- Le rôle runtime exécute-t-il encore les fonctions du registre ?
-SELECT (SELECT count(*) FROM public.tracefab_runtime_function_registry) AS registre,
+-- Le role runtime et le registre (eventuellement absent avant migration).
+SELECT to_regclass('public.tracefab_runtime_function_registry') AS registre_runtime,
        (SELECT count(*) FROM pg_catalog.pg_proc p
           JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
          WHERE n.nspname = 'public'
