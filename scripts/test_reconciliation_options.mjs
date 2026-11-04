@@ -103,6 +103,10 @@ ok('le plan est exécutable et conserve l’avertissement historique PLM',
 ok('les autotests des garde-fous passent', planAuto.status === 0 && /Autotest OK : 3\/3/.test(planAutoOutput), planAutoOutput.slice(-500));
 ok('le plan ne propose aucun resolve', !/migrate\s+resolve\s+--(?:applied|rolled-back)/i.test(plan));
 ok('le plan ne modifie pas _prisma_migrations', !/(UPDATE|DELETE\s+FROM)\s+_prisma_migrations/i.test(plan));
+ok('l’outil --appliquer refuse toute réécriture du checksum PLM attesté',
+  /CHECKSUM_EXCEPTIONS/.test(checksumRepair)
+  && /ecartsProteges/.test(checksumRepair)
+  && /aucun UPDATE de _prisma_migrations/.test(checksumRepair));
 
 console.log('\n  5. La migration worker est compatible avec un rôle non-superutilisateur');
 ok('aucun ALTER ROLE tracefab_worker', !/ALTER\s+ROLE\s+tracefab_worker/i.test(worker));
