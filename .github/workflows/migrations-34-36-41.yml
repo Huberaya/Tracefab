@@ -78,6 +78,15 @@ jobs:
       - name: Generer le client Prisma
         run: npm run db:generate
 
+      - name: Prisma deploy — checksum historique divergent et pending
+        # Vérifie le vrai binaire Prisma sur le PostgreSQL 17 jetable :
+        # un checksum déjà enregistré ne doit pas être réécrit, et la migration
+        # suivante doit réellement s'appliquer. Le test crée son propre schéma
+        # isolé et le détruit ensuite. Aucune cible Neon/Vercel n'est utilisée.
+        run: npm run test:prisma:checksum-deploy
+        env:
+          TF_EXIGER_LOCAL: oui
+
       - name: Installer le client psql
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
