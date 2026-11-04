@@ -92,8 +92,8 @@ const phases = [
 function violationsFor(planLines, phaseList = phases) {
   const violations = [];
   const text = planLines.map((line) => [line.action, line.risk, line.prerequisite].join(' ')).join('\n');
-  if (/migrate\\s+resolve\\s+--(?:applied|rolled-back)/i.test(text)) violations.push('resolve interdit');
-  if (/(?:UPDATE|DELETE\\s+FROM)\\s+_prisma_migrations/i.test(text)) violations.push('écriture directe dans _prisma_migrations interdite');
+  if (/migrate\s+resolve\s+--(?:applied|rolled-back)/i.test(text)) violations.push('resolve interdit');
+  if (/(?:UPDATE|DELETE\s+FROM)\s+_prisma_migrations/i.test(text)) violations.push('écriture directe dans _prisma_migrations interdite');
   const pre = phaseList.findIndex((phase) => phase.label === 'PREPRODUCTION');
   const prod = phaseList.findIndex((phase) => phase.label === 'PRODUCTION');
   if (pre < 0 || prod < 0 || pre > prod) violations.push('Production doit venir après Préproduction');
