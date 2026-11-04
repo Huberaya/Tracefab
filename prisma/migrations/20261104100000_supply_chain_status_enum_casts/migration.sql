@@ -83,4 +83,131 @@ BEGIN
 END;
 $$;
 
+
+
+-- Les liens portent le même enum que les noeuds : les deux fonctions
+-- historiques doivent caster explicitement leur CASE textuel.
+CREATE OR REPLACE FUNCTION tracefab_add_supply_chain_link(
+  p_product_id UUID,
+  p_source_node_id UUID,
+  p_target_node_id UUID,
+  p_link_type supply_chain_link_type,
+  p_sequence_number INTEGER DEFAULT NULL,
+  p_valid_from DATE DEFAULT NULL,
+  p_valid_until DATE DEFAULT NULL,
+  p_evidence_document_id UUID DEFAULT NULL,
+  p_metadata JSONB DEFAULT '{}'::jsonb
+)
+RETURNS supply_chain_links
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+DECLARE
+  v_product tracefab_products;
+  v_link supply_chain_links;
+BEGIN
+  SELECT * INTO v_product
+  FROM tracefab_products
+  WHERE id = p_product_id;
+
+  IF NOT FOUND OR NOT tracefab_has_org_role(
+    v_product.brand_organization_id,
+    ARRAY['owner', 'admin', 'manager', 'contributor']::membership_role[]
+  ) THEN
+    RAISE EXCEPTION 'traceability_brand_role_required';
+  END IF;
+
+  IF p_sequence_number IS NOT NULL AND p_sequence_number < 0 THEN
+    RAISE EXCEPTION 'traceability_sequence_must_be_positive';
+  END IF;
+
+  INSERT INTO supply_chain_links (
+    product_id,
+    source_node_id,
+    target_node_id,
+    link_type,
+    sequence_number,
+    valid_from,
+    valid_until,
+    evidence_document_id,
+    metadata,
+    status,
+    declared_by
+  )
+  VALUES (
+    p_product_id,
+    p_source_node_id,
+    p_target_node_id,
+    p_link_type,
+    p_sequence_number,
+    p_valid_from,
+    p_valid_until,
+    p_evidence_document_id,
+    COALESCE(p_metadata, '{}'::jsonb),
+    CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public.data_value_status ELSE 'documented'::public.data_value_status END,
+    tracefab_current_user_id()
+  )
+  RETURNING * INTO v_link;
+
+  RETURN v_link;
+END;
+$;
+
+CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_link(
+  p_link_id UUID,
+  p_sequence_number INTEGER,
+  p_valid_from DATE,
+  p_valid_until DATE,
+  p_evidence_document_id UUID DEFAULT NULL,
+  p_metadata JSONB DEFAULT '{}'::jsonb
+)
+RETURNS supply_chain_links
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+DECLARE
+  v_link supply_chain_links;
+  v_brand_organization_id UUID;
+BEGIN
+  SELECT l.* INTO v_link
+  FROM supply_chain_links l
+  WHERE l.id = p_link_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'traceability_link_not_found';
+  END IF;
+
+  SELECT p.brand_organization_id INTO v_brand_organization_id
+  FROM tracefab_products p
+  WHERE p.id = v_link.product_id;
+
+  IF NOT tracefab_has_org_role(
+    v_brand_organization_id,
+    ARRAY['owner', 'admin', 'manager', 'contributor']::membership_role[]
+  ) THEN
+    RAISE EXCEPTION 'traceability_brand_role_required';
+  END IF;
+
+  IF p_sequence_number IS NOT NULL AND p_sequence_number < 0 THEN
+    RAISE EXCEPTION 'traceability_sequence_must_be_positive';
+  END IF;
+
+  UPDATE supply_chain_links
+  SET sequence_number = p_sequence_number,
+      valid_from = p_valid_from,
+      valid_until = p_valid_until,
+      evidence_document_id = p_evidence_document_id,
+      metadata = COALESCE(p_metadata, '{}'::jsonb),
+      status = CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public.data_value_status ELSE 'documented'::public.data_value_status END,
+      declared_by = tracefab_current_user_id()
+  WHERE id = p_link_id
+  RETURNING * INTO v_link;
+
+  RETURN v_link;
+END;
+$;
+
 COMMIT;
