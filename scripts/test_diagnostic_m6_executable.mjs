@@ -9,9 +9,9 @@
  * mais il a ete ecrit sans jamais tourner sur un schema complet : une colonne
  * mal nommee, un catalogue lu au mauvais endroit, et l'operateur decouvre
  * l'erreur au pire moment, sur la base qu'il ne faut pas abimer. Ce test
- * applique les 63 migrations du depot dans un PostgreSQL compile en WASM,
- * fabrique un historique de migrations SYNTHETIQUE, puis execute le fichier de
- * releve en entier.
+ * applique les 69 migrations du depot dans un PostgreSQL compile en WASM,
+ * fabrique le snapshot Neon du 04/11/2026 (56 réussies, 2 tentatives annulées,
+ * 13 absentes, 0 inachevée), puis execute le fichier de releve en entier.
  *
  * CE QUI EST PROUVE
  *   - le script s'execute sans erreur sur le schema reel du produit ;
@@ -60,7 +60,7 @@ await db.exec(`
   CREATE ROLE tracefab_app LOGIN PASSWORD 'runtime' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 `);
 
-// Les 63 migrations, dans l'ordre.
+// Les 69 migrations, dans l'ordre.
 const dossiers = fs.readdirSync(MIGRATIONS)
   .filter((d) => /^\d{14}_/.test(d))
   .sort();
@@ -71,7 +71,7 @@ for (const d of dossiers) {
   await db.exec(fs.readFileSync(f, 'utf8'));
   appliquees += 1;
 }
-ok(`${appliquees} migrations appliquees`, appliquees === dossiers.length, `${appliquees}/${dossiers.length}`);
+ok(`${appliquees} migrations appliquees`, appliquees === dossiers.length && dossiers.length === 69, `${appliquees}/${dossiers.length}`);
 
 // Historique de migrations SYNTHETIQUE. Aucune donnee de production : on
 // fabrique exactement le cas decrit — deux entrees non terminees, deux
@@ -87,16 +87,28 @@ await db.exec(`
     started_at            timestamptz NOT NULL DEFAULT now(),
     applied_steps_count   integer NOT NULL DEFAULT 0
   );
-  INSERT INTO public._prisma_migrations (id, checksum, finished_at, migration_name, applied_steps_count)
-  VALUES ('synth-1', repeat('a', 64), now(), '20261010120000_publication_explicite', 0);
-  UPDATE public._prisma_migrations
-     SET finished_at = NULL, logs = 'ERREUR SYNTHETIQUE : conflit de signature de fonction'
-   WHERE id = 'synth-1';
-  INSERT INTO public._prisma_migrations (id, checksum, finished_at, migration_name, applied_steps_count)
-  VALUES ('synth-2', repeat('b', 64), NULL, '20261017120000_active_tenant_context', 0);
-  INSERT INTO public._prisma_migrations (id, checksum, finished_at, rolled_back_at, migration_name, applied_steps_count)
-  VALUES ('synth-3', repeat('c', 64), NULL, now(), '20261015120000_ancienne_corrigee', 0);
-`);
+ `);
+const snapshot = JSON.parse(fs.readFileSync(
+  path.join(root, 'docs/security/2026-11-04-neon-migration-history-snapshot.json'), 'utf8',
+));
+for (let i = 0; i < snapshot.applied.length; i += 1) {
+  const entry = snapshot.applied[i];
+  await db.query(
+    `INSERT INTO public._prisma_migrations
+      (id, checksum, finished_at, migration_name, applied_steps_count)
+     VALUES ($1, $2, now(), $3, $4)`,
+    [`synth-applied-${i}`, entry.checksum, entry.name, entry.applied_steps_count],
+  );
+}
+for (let i = 0; i < snapshot.rolled_back_attempts.length; i += 1) {
+  const entry = snapshot.rolled_back_attempts[i];
+  await db.query(
+    `INSERT INTO public._prisma_migrations
+      (id, checksum, finished_at, rolled_back_at, migration_name, applied_steps_count)
+     VALUES ($1, repeat('f', 64), NULL, now(), $2, 0)`,
+    [`synth-rolled-back-${i}`, entry.name],
+  );
+}
 
 const etatAvant = async () => (await db.query(
   'SELECT count(*)::int AS n, coalesce(sum(applied_steps_count),0)::int AS s, max(checksum) AS c FROM public._prisma_migrations',
@@ -176,8 +188,11 @@ const incidents = await db.query(`
    WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL
    ORDER BY started_at DESC;
 `);
-ok('les trois incidents synthetiques sont visibles',
-  incidents.rows.length === 3, `${incidents.rows.length} ligne(s)`);
+ok('les deux tentatives annulées du snapshot sont visibles',
+  incidents.rows.length === 2, `${incidents.rows.length} ligne(s)`);
+ok('les 56 migrations réussies et les 13 absentes correspondent au snapshot',
+  avant.n === 58 && snapshot.applied.length === 56 && snapshot.missing.length === 13,
+  `rows=${avant.n}; applied=${snapshot.applied.length}; missing=${snapshot.missing.length}`);
 
 console.log(echecs === 0
   ? '\n  Releve M6 executable et inoffensif sur le schema complet.\n'
