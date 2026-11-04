@@ -8,6 +8,14 @@ Le fichier versionné conserve le SHA-256 :
 
 La copie exacte du SQL du 06/10 n'a pas été retrouvée. L'écart reste visible et n'est pas présenté comme une équivalence octet pour octet. Une exception unique est épinglée à cette paire.
 
+## Recherche historique complémentaire (04/11/2026)
+
+La ligne Neon situe l'application réussie au **2026-10-06 10:36:24.845 UTC**. Le premier commit Git qui contient le dossier de migration est `142fdf583c6b2c2b03b4aa04f3375fdde60beca0`, horodaté **2026-10-06 16:01:52 UTC**. Le fichier a donc été versé au dépôt environ 5 h 25 après l'exécution enregistrée en base.
+
+Ce même commit contient `scripts/apply_migration_chantier2.mjs`. Ce script constitue une piste historique utile, mais **pas une preuve du fichier exact** : il contient notamment les fonctions `tracefab_create_supply_chain_node` et `tracefab_add_supply_chain_link`, absentes du `migration.sql` de ce commit. Il n'est donc ni identique au fichier Prisma, ni un candidat pouvant être renommé ou substitué sans preuve. La recherche des versions du chemin dans les branches et l'historique Git n'a pas révélé de version correspondant au SHA-256 Neon.
+
+Conséquence : la chronologie explique comment le SQL initial a pu ne pas être préservé dans Git, mais ne permet pas d'inférer son contenu. La paire de checksums demeure une exception opérationnelle strictement bornée, et non une réconciliation octet pour octet.
+
 ## Catalogue actuel observé en lecture seule sur les deux bases
 
 - plm_erp_integrations et plm_erp_sync_jobs existent ; RLS et FORCE RLS actifs ; propriétaire neondb_owner.
