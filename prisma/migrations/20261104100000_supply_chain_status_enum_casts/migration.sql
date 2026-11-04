@@ -102,7 +102,7 @@ RETURNS supply_chain_links
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $tf_add_supply_chain_link$
 DECLARE
   v_product tracefab_products;
   v_link supply_chain_links;
@@ -152,7 +152,7 @@ BEGIN
 
   RETURN v_link;
 END;
-$;
+$tf_add_supply_chain_link$;
 
 CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_link(
   p_link_id UUID,
@@ -166,7 +166,7 @@ RETURNS supply_chain_links
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $tf_update_supply_chain_link$
 DECLARE
   v_link supply_chain_links;
   v_brand_organization_id UUID;
@@ -208,6 +208,6 @@ BEGIN
 
   RETURN v_link;
 END;
-$;
+$tf_update_supply_chain_link$;
 
 COMMIT;
