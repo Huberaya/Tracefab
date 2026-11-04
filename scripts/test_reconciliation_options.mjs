@@ -104,11 +104,11 @@ ok('le migrateur obtient INHERIT et SET sans ADMIN OPTION',
   /GRANT tracefab_worker TO %I WITH INHERIT TRUE, SET TRUE/.test(worker));
 const workerVerification = worker.slice(worker.indexOf('v_member_oid'));
 ok('le contrôle distingue le GRANT explicite du bootstrap ADMIN Neon',
-  /m\\.grantor = v_member_oid/.test(workerVerification)
+  /m\.grantor = v_member_oid/.test(workerVerification)
   && /v_bootstrap_rows/.test(workerVerification)
-  && /grantor\\.rolsuper OR grantor\\.rolcreaterole OR grantor\\.rolbypassrls/.test(workerVerification));
+  && /grantor\.rolsuper OR grantor\.rolcreaterole OR grantor\.rolbypassrls/.test(workerVerification));
 ok('le contrôle ne lit plus arbitrairement une seule ligne pg_auth_members',
-  !/SELECT m\\.inherit_option, m\\.set_option, m\\.admin_option\\s+INTO v_membership/i.test(workerVerification));
+  !/SELECT m\.inherit_option, m\.set_option, m\.admin_option\\s+INTO v_membership/i.test(workerVerification));
 ok('CREATE est retiré après le transfert de propriété',
   worker.indexOf('ALTER FUNCTION public.tracefab_notification_outbox_health() OWNER TO tracefab_worker')
     < worker.indexOf('REVOKE CREATE ON SCHEMA public FROM tracefab_worker'));
