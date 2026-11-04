@@ -195,6 +195,10 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   // Les fonctions PLM/ERP refusent explicitement toute dérive de leurs politiques
   // canoniques. 409 signale un conflit avec l'état de schéma attendu sans exposer
   // le SQL interne ni transformer une garde métier en erreur serveur.
+  // Préconditions de la correction forward PLM/GS1 : conflit de schéma, jamais détail SQL exposé.
+  plm_integrations_table_missing: { status: 409 },
+  product_identifier_type_check_missing: { status: 409 },
+  product_identifiers_table_missing: { status: 409 },
   plm_erp_sync_jobs_absente: { status: 409 },
   politique_canonique_insert_absente: { status: 409 },
   politique_canonique_insert_inattendue: { status: 409 },
