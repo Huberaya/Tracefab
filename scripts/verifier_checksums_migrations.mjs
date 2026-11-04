@@ -33,6 +33,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
+import { CHECKSUM_EXCEPTIONS } from './lib/ecarts_migrations.mjs';
 
 const APPLIQUER = process.argv.includes('--appliquer');
 const RACINE = 'prisma/migrations';
@@ -103,6 +104,18 @@ try {
     console.log(`     fichier  : ${e.attendu}`);
   }
   console.log();
+
+  // Une divergence historique explicitement attestée ne peut jamais être
+  // réécrite par cet outil. Seule la récupération du SQL original et le retrait
+  // volontaire de l'exception autorisent une réconciliation octet pour octet.
+  const ecartsProteges = ecarts.filter((e) => Object.hasOwn(CHECKSUM_EXCEPTIONS, e.nom));
+  if (APPLIQUER && ecartsProteges.length > 0) {
+    console.error('  REFUS : checksum historique protégé par une attestation ; aucun UPDATE de _prisma_migrations.');
+    for (const e of ecartsProteges) {
+      console.error(`     ${e.nom} — exception documentée : ${CHECKSUM_EXCEPTIONS[e.nom].evidence}`);
+    }
+    process.exit(3);
+  }
 
   if (!APPLIQUER) {
     console.log('  Le fichier a change apres son application. En l\'etat,');
