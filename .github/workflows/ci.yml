@@ -187,7 +187,7 @@ jobs:
         run: npm run test:reconciliation-historique
 
       - name: Releve M6 executable et inoffensif
-        # Le script de diagnostic s’exécute sur les 69 migrations et sur un historique
+        # Le script de diagnostic s’exécute sur les 70 migrations et sur un historique
         # synthétique calqué sur Neon : 56 réussies, 2 tentatives annulées,
         # 13 absentes, zéro inachevée. Il vérifie aussi l’innocuité READ ONLY.
         run: npm run test:diagnostic-m6
@@ -1145,7 +1145,7 @@ jobs:
         # or le rattrapage `apres` de l execution precedente en creait un. La
         # chaine passait donc UNE fois par cluster, et toute nouvelle base
         # jetable echouait — en cascade sur trois suites. Ce test cree une
-        # base vierge dans le cluster DEJA migre, applique les 69 migrations,
+        # base vierge dans le cluster DEJA migre, applique les 70 migrations,
         # verifie l appartenance finale, puis detruit la base. Il rougit si
         # une entree du registre accorde une appartenance sans fournir de
         # bloc « avant ».
