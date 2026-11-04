@@ -138,8 +138,12 @@ ok('aucun ALTER ROLE ne tente de modifier SUPERUSER',
   !/ALTER\s+ROLE\s+tracefab_worker/i.test(worker));
 ok('le role worker est cree directement NOLOGIN et sans privileges eleves',
   /CREATE ROLE tracefab_worker[\s\S]{0,180}NOLOGIN[\s\S]{0,180}NOSUPERUSER[\s\S]{0,180}NOBYPASSRLS/i.test(worker));
-ok('le role de migration obtient INHERIT et SET sans ADMIN OPTION',
-  /GRANT tracefab_worker TO %I WITH INHERIT TRUE, SET TRUE/.test(worker));
+ok('le GRANT explicite impose INHERIT/SET et ADMIN FALSE',
+  /GRANT tracefab_worker TO %I WITH ADMIN FALSE, INHERIT TRUE, SET TRUE/.test(worker));
+ok('le cas d un worker préexistant est borné et le superuser de test peut établir le GRANT',
+  /worker_migration_executor_membership_missing/.test(worker)
+  && /v_has_admin/.test(worker)
+  && /v_current_is_superuser/.test(worker));
 ok('CREATE est retire au worker apres le transfert des fonctions',
   worker.indexOf('ALTER FUNCTION public.tracefab_notification_outbox_health() OWNER TO tracefab_worker')
     < worker.indexOf('REVOKE CREATE ON SCHEMA public FROM tracefab_worker'));
