@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, optionalString } from '../../../_lib/data-requests.js';
@@ -28,8 +28,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = req.method === 'POST' ? await readJsonBody<QualityBody>(req) : {};
     const calculationVersion = optionalString(body.calculationVersion, 'calculation_version', 120) || 'supplier_quality_v1';
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await accessibleSupplier(tx, supplierId);
+    const result = await withTracefabTenantContext(req, user, { types: ['brand', 'supplier'] }, async (tx, tenant) => {
+      const supplier = await accessibleSupplier(tx, supplierId, user.id, tenant);
       if (!supplier) return null;
       if (req.method === 'POST') {
         await tx.$queryRaw`

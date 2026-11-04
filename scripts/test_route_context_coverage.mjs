@@ -66,7 +66,7 @@ for (const route of routePaths) {
   const source = readFileSync(route.file, 'utf8');
   if (!/requireClerkUser\s*\(/.test(source)) continue;
   authenticatedRoutes += 1;
-  const hasContext = /withTracefab(?:Request|User|Worker|Public)Context\s*\(/.test(source);
+  const hasContext = /withTracefab(?:Request|User|Tenant|Worker|Public)Context\s*\(/.test(source);
   if (hasContext) {
     authenticatedWithContext += 1;
     continue;

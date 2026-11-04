@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { parseCsvRows } from '../../../_lib/bulk-operations/csv-parser.js';
@@ -70,9 +70,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'no_supplier_rows_provided' });
     }
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      return await bulkImportSuppliers(tx, brandOrganizationId, rows, user.id);
-    });
+    const result = await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'], roles: ['owner', 'admin', 'manager'] },
+      async (tx, tenant) => {
+        if (brandOrganizationId !== tenant.organizationId) throw new Error('organization_context_mismatch');
+        return bulkImportSuppliers(tx, tenant.organizationId, rows, user.id);
+      },
+    );
 
     return json(res, 200, {
       message: 'bulk_supplier_import_completed',
