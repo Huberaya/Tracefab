@@ -27,6 +27,7 @@ const worker = fs.readFileSync(path.join(root,
   'prisma/migrations/20261028120100_worker_identity_not_forgeable/migration.sql'), 'utf8');
 const graphForward = fs.readFileSync(path.join(root,
   'prisma/migrations/20261104100000_supply_chain_status_enum_casts/migration.sql'), 'utf8');
+const checksumRepair = fs.readFileSync(path.join(root, 'scripts/verifier_checksums_migrations.mjs'), 'utf8');
 const planPath = path.join(root, 'scripts/plan_reconciliation_migrations.mjs');
 const planResult = spawnSync('node', [planPath, '--markdown'], { encoding: 'utf8' });
 const planAuto = spawnSync('node', [planPath, '--autotest'], { encoding: 'utf8' });
