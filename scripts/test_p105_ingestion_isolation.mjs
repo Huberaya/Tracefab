@@ -96,7 +96,17 @@ async function appeler({ gucs = {}, reference }) {
       resultat = (await app.query(
         `SELECT public.tracefab_ingest_plm_erp_payload($1::uuid,'generic_csv',$2::jsonb,NULL::uuid) AS s`,
         [gucs['tracefab.active_organization_id'] ?? null,
-          JSON.stringify({ products: [{ reference, name: reference }] })],
+          JSON.stringify({
+            products: [{
+              reference,
+              name: reference,
+              materials: [{ materialName: 'P105 test cotton', materialType: 'fiber', percentage: 100, composition: { cotton: 100 } }],
+              productionSteps: [
+                { label: 'P105 spinning', processCode: 'spinning', country: 'FR' },
+                { label: 'P105 knitting', processCode: 'knitting', country: 'PT' },
+              ],
+            }],
+          })],
       )).rows[0].s;
       lignes = (await app.query(
         `SELECT count(*)::int AS n FROM tracefab_products WHERE reference = $1`, [reference],
