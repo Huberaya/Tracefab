@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { pageSource } from './lib/page_source.mjs';
+import './test_product_update_acl_scope.mjs';
 
 console.log('=== TEST SUITE CHANTIER 2: INTEROPÉRABILITÉ PLM/ERP & GS1 ===');
 
@@ -18,6 +19,22 @@ assert(migrationSql.includes('ALTER TABLE plm_erp_sync_jobs FORCE ROW LEVEL SECU
 assert(migrationSql.includes('CREATE OR REPLACE FUNCTION tracefab_ingest_plm_erp_payload'), 'Stored procedure tracefab_ingest_plm_erp_payload required');
 
 assert(migrationSql.includes('gs1_digital_link'), 'Constraint must allow gs1_digital_link');
+
+const forwardSql = await readFile(
+  new URL('../prisma/migrations/20261104090000_plm_integrations_and_gs1_constraints/migration.sql', import.meta.url),
+  'utf8',
+);
+const identifierRoute = await readFile(
+  new URL('../api/_routes/products/[productId]/identifiers.ts', import.meta.url),
+  'utf8',
+);
+const addIdentifierFunctionIndex = forwardSql.indexOf('CREATE OR REPLACE FUNCTION tracefab_add_product_identifier');
+assert.notEqual(addIdentifierFunctionIndex, -1, 'Forward migration must update the SQL identifier helper');
+const addIdentifierFunction = forwardSql.slice(addIdentifierFunctionIndex);
+for (const type of ['gtin', 'ean', 'upc', 'internal', 'gs1_digital_link', 'gln', 'gpc']) {
+  assert(addIdentifierFunction.includes(`'${type}'`), `SQL identifier helper must accept ${type}`);
+  assert(identifierRoute.includes(`'${type}'`), `API identifier route must accept ${type}`);
+}
 
 // P10.2 must remain compatible with the graph schema introduced on 20/10.
 // The migration is still pending on Neon: a direct INSERT into the old
