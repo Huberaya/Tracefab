@@ -86,10 +86,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           create: {
             organization_id: activeOrgId,
-            system_type: systemType,
-            name: name.trim(),
+            system_type: normalizedSystemType,
+            name: normalizedName,
             endpoint_url: endpointUrl || null,
-            auth_type: authType || 'api_key',
+            auth_type: resolvedAuthType,
             config: (config as any) || {},
             status: 'active',
           },
