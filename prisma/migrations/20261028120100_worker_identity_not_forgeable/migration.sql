@@ -390,7 +390,7 @@ BEGIN
           SELECT 1
             FROM pg_catalog.pg_roles grantor
            WHERE grantor.oid = m.grantor
-             AND (grantor.rolsuper OR grantor.rolcreaterole OR grantor.rolbypassrls)
+             AND (grantor.rolsuper OR grantor.rolcreaterole)
         )
     ),
     count(*) FILTER (
@@ -407,7 +407,7 @@ BEGIN
             SELECT 1
               FROM pg_catalog.pg_roles grantor
              WHERE grantor.oid = m.grantor
-               AND (grantor.rolsuper OR grantor.rolcreaterole OR grantor.rolbypassrls)
+               AND (grantor.rolsuper OR grantor.rolcreaterole)
           ))
       )
     )
