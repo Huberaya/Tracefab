@@ -84,7 +84,10 @@ ok('les deux corrections forward sont postérieures au snapshot et non appliqué
   && !ECARTS[plmRepairName] && !ECARTS[graphRepairName]
   && plan.includes(plmRepairName) && plan.includes(graphRepairName));
 ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
-  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForward)
+  ['tracefab_create_supply_chain_node', 'tracefab_update_supply_chain_node', 'tracefab_add_supply_chain_link', 'tracefab_update_supply_chain_link']
+    .every((name) => graphForward.includes(`CREATE OR REPLACE FUNCTION ${name}`))
+  && graphForward.split("CASE WHEN p_source_document_id IS NULL THEN 'declared'::public.data_value_status ELSE 'documented'::public.data_value_status END").length - 1 === 2
+  && graphForward.split("CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public.data_value_status ELSE 'documented'::public.data_value_status END").length - 1 === 2);
   && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForward)
   && /CREATE OR REPLACE FUNCTION tracefab_add_supply_chain_link[\\s\\S]*?CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForward)
   && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_link[\\s\\S]*?CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForward));
