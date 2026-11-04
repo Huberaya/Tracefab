@@ -270,7 +270,8 @@
     "test:jetables:reinitialiser-base": "node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs",
     "test:jetables:nettoyer": "node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs",
     "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:r4-inscription && npm run test:jetables:harnais-rls",
-    "test:neon-migration-reconciliation": "node scripts/test_neon_migration_reconciliation_pglite.mjs"
+    "test:neon-migration-reconciliation": "node scripts/test_neon_migration_reconciliation_pglite.mjs",
+    "test:prisma:checksum-deploy": "node scripts/run-db-suite.mjs scripts/test_prisma_migrate_deploy_checksum_variance.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",

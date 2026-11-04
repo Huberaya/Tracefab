@@ -11,12 +11,12 @@
  *
  *   node scripts/plan_reconciliation_migrations.mjs [--markdown] [--autotest]
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE,
+  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE, CHECKSUM_EXCEPTIONS,
   BORNE_RELEVE, SNAPSHOT_DATE,
 } from './lib/ecarts_migrations.mjs';
 
@@ -85,8 +85,9 @@ function planFor(name) {
 
 const lines = pending.map(planFor);
 const errors = [];
+const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: 'pré-vérification, checksum=0, 13 pending' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 pending ; 1 variance checksum PLM documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -133,7 +134,19 @@ for (const [before,after] of ordered) {
 for (const name of applied) {
   const file = join(migrationsDir,name,'migration.sql');
   const sha = sha256(readFileSync(file));
-  if (sha !== PRODUCTION_APPLIED[name]) errors.push(`${name}: checksum depot différent de l'historique Neon`);
+  const recorded = PRODUCTION_APPLIED[name];
+  if (sha !== recorded) {
+    const exception = CHECKSUM_EXCEPTIONS[name];
+    const evidenceExists = exception?.evidence && existsSync(join(root, exception.evidence));
+    if (exception && exception.appliedChecksum === recorded && exception.repositoryChecksum === sha
+        && exception.exactHistoricalSqlRecovered === false
+        && exception.status === 'DOCUMENTED_NON_BLOCKING_FOR_PRISMA_MIGRATE_DEPLOY'
+        && exception.test === 'test:prisma:checksum-deploy' && evidenceExists) {
+      warnings.push(`${name}: écart historique documenté (${recorded.slice(0,12)} ≠ ${sha.slice(0,12)}), exact SQL non retrouvé`);
+    } else {
+      errors.push(`${name}: checksum depot différent de l'historique Neon sans exception exacte`);
+    }
+  }
 }
 
 function sha256(bytes) {
@@ -174,7 +187,7 @@ if (markdown) {
   console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
   for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
   console.log('\n## Séquence d’exécution');
-  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 0 divergence de checksum, 13 pending.');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 pending ; 1 écart historique PLM explicitement documenté, aucun resolve.');
   console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
   console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
   console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} absentes, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
@@ -197,9 +210,13 @@ if (markdown) {
     console.log(`    risque: ${line.risk}`);
   }
 }
+if (warnings.length) {
+  console.warn('\nAVERTISSEMENTS HISTORIQUES :');
+  for (const warning of warnings) console.warn(`  - ${warning}`);
+}
 if (errors.length) {
   console.error('\nVIOLATIONS :');
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 en attente, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 en attente, 1 écart historique documenté, aucun resolve ni changement de checksum.');

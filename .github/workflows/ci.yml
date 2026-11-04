@@ -371,10 +371,9 @@ jobs:
         run: npm run test:runbook-application
 
       - name: Matrice des migrations — snapshot Neon et checksums
-        # Contrôle final fail-closed : 69 dossiers = 51 exécutées via Prisma,
-        # 5 hors bande déjà présentes, 13 absentes. Les deux tentatives annulées
-        # sont suivies d’une réussite. Le job reste ROUGE tant que le checksum
-        # PLM appliqué (c944ce0c...) n’est pas récupéré exactement.
+        # Contrôle fail-closed : 69 dossiers = 51 via Prisma, 5 hors bande,
+        # 13 absentes. Un seul écart PLM historique est explicitement épinglé
+        # aux deux empreintes et documenté ; toute autre divergence reste rouge.
         run: npm run matrice:migrations
 
   # -------------------------------------------------- 2. suite de verification
@@ -473,7 +472,10 @@ jobs:
           #     demonstration du mode strict). Trois exigent la base migree et
           #     les deux roles ; la premiere n exige rien et tourne partout.
           #     Cablees une par une dans le job « Base ».
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
+          #   test:prisma:checksum-deploy — utilise le PostgreSQL jetable pour
+          #     prouver le comportement de migrate deploy sur checksum divergent.
+          #     Exécuté une fois dans le job « Base », pas dans cette boucle.
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&k!=='test:prisma:checksum-deploy'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -627,6 +629,14 @@ jobs:
 
       - name: Generer le client Prisma
         run: npm run db:generate
+
+      - name: Prisma deploy — checksum historique divergent et pending
+        # Teste le vrai binaire Prisma sur un schéma temporaire local :
+        # l'entrée déjà appliquée garde son checksum et le pending est appliqué.
+        # Le lanceur refuse toute cible autre que la base jetable du job.
+        run: npm run test:prisma:checksum-deploy
+        env:
+          TF_EXIGER_LOCAL: oui
 
       - name: Préparer le rôle applicatif avant migrations
         # Via le lanceur garde : refuse toute cible non jetable avant CREATE ROLE.

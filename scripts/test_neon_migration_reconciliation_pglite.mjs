@@ -9,8 +9,9 @@
  *
  * IMPORTANT : le SQL PLM utilisé ici est celui du dépôt courant. Son checksum
  * exact en Production n'a pas été retrouvé ; cette simulation valide la
- * cohérence de schéma, PAS l'autorisation de lancer prisma migrate deploy.
- * Le plan opérationnel reste bloqué par le test de checksum.
+ * cohérence de schéma, pas une égalité octet pour octet avec le SQL historique.
+ * Le comportement de prisma migrate deploy face à cet écart est éprouvé par
+ * un test PostgreSQL distinct ; aucune réécriture de l'historique n'est admise.
  */
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
@@ -177,7 +178,7 @@ console.log('\n  6. Limite de rejeu et checksum non résolu');
 const replay = await jouer(baseline.db, '20261028120000_runtime_function_registry');
 ok('28120000 n’est pas rejouable après création du registre', !replay.ok
   && /already exists|exists|existe/i.test(replay.message), replay.message);
-console.log('  info  le checksum PLM historique reste un bloqueur distinct ; ce test ne l’autorise pas à être réécrit.');
+console.log("  info  le checksum PLM reste divergent et visible ; son exception exacte ne modifie jamais l'historique, et le test Prisma dédié prouve le comportement de migrate deploy.");
 await baseline.db.close();
 
 console.log('\n  --------------------------------------------');
@@ -185,4 +186,4 @@ if (echecs) {
   console.error(`  ${echecs} échec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} vérifications passées — baseline 56, pending 13, aucune autorisation de deploy tant que le checksum PLM reste non résolu.`);
+console.log(`  ${verifies} vérifications passées — baseline 56, pending 13, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);

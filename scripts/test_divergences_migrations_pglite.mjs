@@ -4,9 +4,10 @@
  *
  * Le snapshot Neon du 04/11/2026 confirme les checksums Production/Preproduction.
  * Deux fichiers historiques ont été restaurés exactement. Le checksum PLM
- * (c944ce0c...) ne correspond à aucune version retrouvée dans Git : le fichier
- * courant est conservé, et Prisma doit BLOQUER tant que le fichier exact n'est
- * pas récupéré. Aucun checksum n'est modifié en base.
+ * (c944ce0c...) n'a pas été récupéré ; l'écart reste visible et épinglé à une
+ * paire exacte. Un test PostgreSQL prouve que migrate deploy applique les
+ * pending sans rejouer ni réécrire l'entrée déjà appliquée. Aucun checksum
+ * n'est modifié dans une base réelle.
  *
  * Ce test ne se connecte à aucune base et ne modifie aucun historique.
  */
@@ -15,6 +16,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { CHECKSUM_EXCEPTIONS } from './lib/ecarts_migrations.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lire = (d) => fs.readFileSync(path.join(root, 'prisma', 'migrations', d, 'migration.sql'));
@@ -56,11 +58,19 @@ ok('le fichier PLM du dépôt est conservé, mais son checksum diffère de la ba
   plmShaCurrent === plmShaCurrentMain && plmShaCurrent !== plmShaApplied,
   `appliqué=${plmShaApplied}; dépôt=${plmShaCurrent}`);
 
+const exception = CHECKSUM_EXCEPTIONS[plmName];
+ok('l’exception PLM est épinglée aux deux checksums exacts et ne prétend pas avoir retrouvé le SQL',
+  exception?.appliedChecksum === plmShaApplied && exception?.repositoryChecksum === plmShaCurrent
+  && exception?.exactHistoricalSqlRecovered === false
+  && exception?.status === 'DOCUMENTED_NON_BLOCKING_FOR_PRISMA_MIGRATE_DEPLOY'
+  && fs.existsSync(path.join(root, exception.evidence)));
+const checksumTampered = sha256(Buffer.from(plmInitial + '--tamper'));
+ok('une modification supplémentaire du fichier invalide immédiatement l’exception', checksumTampered !== exception?.repositoryChecksum);
 const planResult = spawnSync('node', [path.join(root, 'scripts/plan_reconciliation_migrations.mjs'), '--markdown'], { encoding: 'utf8' });
-const planOutput = `${planResult.stdout || ''}\n${planResult.stderr || ''}`;
-ok('le plan Prisma est bloqué tant que le checksum PLM exact manque',
-  planResult.status !== 0 && planOutput.includes(plmName) && /checksum/i.test(planOutput),
-  planOutput.slice(-1200));
+const planOutput = (planResult.stdout || '') + '\n' + (planResult.stderr || '');
+ok('le plan autorise uniquement le deploy Prisma, garde le warning et l’ordre Préproduction → Production',
+  planResult.status === 0 && planOutput.includes(plmName) && /écart historique documenté/i.test(planOutput)
+  && /Préproduction/i.test(planOutput) && /Production/i.test(planOutput), planOutput.slice(-1200));
 
 console.log('\n  2. Les corrections fonctionnelles restent dans des migrations forward');
 const supplierCompat = lire('20261005100000_supplier_invitation_compatibility').toString('utf8');
@@ -126,4 +136,4 @@ if (echecs > 0) {
   console.error(`  ${echecs} echec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} verifications passees — 2 checksums restaurés, PLM bloqué, aucune réécriture d'historique.`);
+console.log(`  ${verifies} verifications passees — 2 checksums restaurés, 1 écart PLM documenté et non réécrit, aucun resolve.`);

@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
-  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE,
+  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE, CHECKSUM_EXCEPTIONS,
 } from './lib/ecarts_migrations.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -76,17 +76,20 @@ ok('les migrations PLM canoniques restent à appliquer, sans resolve',
   Boolean(ECARTS['20261028150000_reconcile_plm_erp_sync_job_policies'])
   && Boolean(ECARTS['20261029180000_plm_erp_sync_jobs_policy_dedup']));
 
-console.log('\n  4. Aucun resolve ni réécriture d’historique');
-ok('le plan est bloqué par le checksum PLM non résolu',
-  planResult.status !== 0 && plan.includes('20261006210000_plm_erp_gs1_interoperability') && /checksum/i.test(plan),
-  plan.slice(-900));
-ok('les autotests des garde-fous passent indépendamment du blocage réel',
-  planAuto.status === 0 && /Autotest OK : 3\/3/.test(planAutoOutput),
-  planAutoOutput.slice(-500));
-ok('le plan bloqué ne propose aucun resolve',
-  !/migrate\s+resolve\s+--(?:applied|rolled-back)/i.test(plan));
-ok('le plan bloqué ne modifie pas _prisma_migrations',
-  !/(UPDATE|DELETE\s+FROM)\s+_prisma_migrations/i.test(plan));
+console.log('\n  4. Écart de checksum PLM borné, aucun resolve ni réécriture d’historique');
+const plmName = '20261006210000_plm_erp_gs1_interoperability';
+const plmException = CHECKSUM_EXCEPTIONS[plmName];
+ok('une seule exception est épinglée aux checksums Production et dépôt',
+  plmException?.appliedChecksum === snapshot.applied.find((m) => m.name === plmName)?.checksum
+  && plmException?.repositoryChecksum === '6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044'
+  && plmException?.exactHistoricalSqlRecovered === false
+  && fs.existsSync(path.join(root, plmException.evidence)));
+ok('le plan est exécutable et conserve l’avertissement historique PLM',
+  planResult.status === 0 && plan.includes(plmName) && /écart historique documenté/i.test(plan)
+  && /Préproduction/i.test(plan) && /Production/i.test(plan), plan.slice(-900));
+ok('les autotests des garde-fous passent', planAuto.status === 0 && /Autotest OK : 3\/3/.test(planAutoOutput), planAutoOutput.slice(-500));
+ok('le plan ne propose aucun resolve', !/migrate\s+resolve\s+--(?:applied|rolled-back)/i.test(plan));
+ok('le plan ne modifie pas _prisma_migrations', !/(UPDATE|DELETE\s+FROM)\s+_prisma_migrations/i.test(plan));
 
 console.log('\n  5. La migration worker est compatible avec un rôle non-superutilisateur');
 ok('aucun ALTER ROLE tracefab_worker', !/ALTER\s+ROLE\s+tracefab_worker/i.test(worker));

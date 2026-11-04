@@ -16,7 +16,7 @@ import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE,
+  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE, CHECKSUM_EXCEPTIONS,
   BORNE_RELEVE, SNAPSHOT_DATE,
 } from './lib/ecarts_migrations.mjs';
 
@@ -36,6 +36,7 @@ const sha256 = (name) => {
 };
 
 const errors = [];
+const warnings = [];
 const rows = [];
 const newNames = [];
 
@@ -47,6 +48,7 @@ for (const name of migrations) {
   let effect;
   let catalogue;
   let status;
+  let checksumException = false;
 
   if (expected) {
     if (HORS_BANDE[name]) {
@@ -61,7 +63,18 @@ for (const name of migrations) {
       status = 'NON PROUVE';
     }
     if (actual !== expected) {
-      errors.push(`${name}: checksum different de Production/Preproduction (attendu ${expected}, depot ${actual})`);
+      const exception = CHECKSUM_EXCEPTIONS[name];
+      const evidenceExists = exception?.evidence && existsSync(join(root, exception.evidence));
+      if (exception && exception.appliedChecksum === expected && exception.repositoryChecksum === actual
+          && exception.exactHistoricalSqlRecovered === false
+          && exception.status === 'DOCUMENTED_NON_BLOCKING_FOR_PRISMA_MIGRATE_DEPLOY' && evidenceExists) {
+        checksumException = true;
+        status = 'ECART CHECKSUM DOCUMENTE';
+        catalogue = 'CHECKSUM HISTORIQUE DIVERGENT — exception explicite ; SQL exact non retrouvé ; deploy Prisma testé';
+        warnings.push(`${name}: checksum ${expected.slice(0,12)} ≠ dépôt ${actual.slice(0,12)} ; exception documentée dans ${exception.evidence}`);
+      } else {
+        errors.push(`${name}: checksum different de Production/Preproduction sans exception exacte (attendu ${expected}, depot ${actual})`);
+      }
     }
   } else if (gap) {
     history = 'ABSENTE';
@@ -83,7 +96,7 @@ for (const name of migrations) {
   }
 
   if (!actual) errors.push(`${name}: migration.sql absente ou illisible`);
-  rows.push({ name, actual, expected: expected ?? null, history, effect, catalogue, status, detail: gap?.objet ?? '—', next: gap?.suite ?? '—' });
+  rows.push({ name, actual, expected: expected ?? null, history, effect, catalogue, status, checksumException, detail: gap?.objet ?? '—', next: gap?.suite ?? '—' });
 }
 
 for (const name of Object.keys(PRODUCTION_APPLIED)) {
@@ -110,6 +123,8 @@ const outOfBand = count('APPLIQUEE HORS BANDE');
 const missing = count('ABSENTE');
 const newCount = count('NOUVELLE (postérieure au snapshot)');
 const checksumCount = rows.filter((row) => row.expected && row.actual !== row.expected).length;
+const checksumExceptionCount = rows.filter((row) => row.checksumException).length;
+const unresolvedChecksumCount = checksumCount - checksumExceptionCount;
 
 if (applied + outOfBand !== Object.keys(PRODUCTION_APPLIED).length) errors.push('compte applique ne correspond pas au snapshot');
 if (outOfBand !== Object.keys(HORS_BANDE).length) errors.push('compte hors bande ne correspond pas au snapshot');
@@ -138,16 +153,20 @@ if (markdown) {
   console.log(`  absentes de l'historique        : ${missing}`);
   console.log(`  nouvelles apres snapshot        : ${newCount}`);
   console.log(`  tentatives annulees historiques : ${ROLLED_BACK_ATTEMPTS.length} (les deux noms ont aussi une ligne terminee)`);
-  console.log(`  divergences de checksum         : ${checksumCount}`);
+  console.log(`  divergences de checksum         : ${checksumCount} (${checksumExceptionCount} documentée, ${unresolvedChecksumCount} non classée)`);
   console.log(`  prefixes en double              : ${duplicates.length} connus`);
   console.log('');
   for (const row of rows.filter((item) => item.history === 'ABSENTE' || item.history.startsWith('NOUVELLE'))) {
     console.log(`  ${row.name}\n    historique=${row.history} catalogue=${row.status}\n    ${row.detail}\n    suite: ${row.next}`);
   }
 }
+if (warnings.length) {
+  console.warn('\nAVERTISSEMENTS HISTORIQUES :');
+  for (const warning of warnings) console.warn(`  - ${warning}`);
+}
 if (errors.length) {
   console.error('\nDIVERGENCES :');
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-if (!markdown) console.log('\nMatrice cohérente : 51 via Prisma + 5 hors bande, 13 absentes, 0 checksum divergent.');
+if (!markdown) console.log('\nMatrice cohérente : 51 via Prisma + 5 hors bande, 13 absentes, 1 écart de checksum documenté, 0 non classé.');

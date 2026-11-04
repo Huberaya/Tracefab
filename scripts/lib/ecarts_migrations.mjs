@@ -73,6 +73,17 @@ export const ROLLED_BACK_ATTEMPTS = [
     "rolled_back_at": "2026-10-18T00:04:00.522159+00:00"
   }
 ];
+export const CHECKSUM_EXCEPTIONS = {
+  "20261006210000_plm_erp_gs1_interoperability": {
+    "appliedChecksum": "c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861",
+    "repositoryChecksum": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044",
+    "evidence": "docs/security/2026-11-04-neon-checksum-variance-attestation.md",
+    "status": "DOCUMENTED_NON_BLOCKING_FOR_PRISMA_MIGRATE_DEPLOY",
+    "test": "test:prisma:checksum-deploy",
+    "exactHistoricalSqlRecovered": false
+  }
+};
+
 export const ECARTS = {
   "20261021170000_dpp_readiness_truthful_gates": { historique: 'ABSENTE', objet: "profil DPP à 9 exigences ; le profil attendu en définit 13", effets: ['MESURE', "profil DPP à 9 exigences ; le profil attendu en définit 13"], suite: "appliquer avant 20261027100000" },
   "20261027100000_dpp_quality_gate_requires_assessment": { historique: 'ABSENTE', objet: "quality.no_open_issues absent de la définition active", effets: ['MESURE', "quality.no_open_issues absent de la définition active"], suite: "appliquer après 20261021170000" },
