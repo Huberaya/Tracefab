@@ -194,7 +194,7 @@ const { rows: registre } = await client.query(
 const terminees = new Set(
   registre.filter((r) => r.finished_at && !r.rolled_back_at).map((r) => r.migration_name),
 );
-const enEchec = registre.filter((r) => !r.finished_at);
+const enEchec = registre.filter((r) => !r.finished_at && !r.rolled_back_at);
 
 console.log(`cible ${hote} · ${migrationsDisque.length} migration(s) sur disque · ${terminees.size} deja appliquee(s)`);
 if (enEchec.length) {
