@@ -41,7 +41,10 @@ assert(files.organizations.includes('organizations: { type: \'supplier\''), 'Org
 // correctif du defaut Production du 2026-10-17.
 assert(files.requests.includes('requireActiveTenant'), 'Data request list must require the active tenant');
 assert(!files.requests.includes('activeOrganizationIds'), 'Data request list must not fall back to every organization of the account');
-assert(files.requestDetail.includes('requestedOrganizationId(req)') || files.requestDetail.includes('requireActiveTenant'), 'Data request detail must honor the selected organization');
+assert(files.requestDetail.includes('withTracefabTenantContext')
+  && files.requestDetail.includes('tenant.organizationId')
+  && files.requestDetail.includes('accessibleRequest')
+  && files.requestDetail.includes('accessibleSupplierRequest'), 'Data request detail must validate the selected tenant and scope both brand and supplier access');
 assert(files.portal.includes("navButton('dataPoints'") && files.portal.includes("navButton('members'") && files.portal.includes('X-Tracefab-Organization-Id'), 'Supplier Portal advanced navigation and tenant context are missing');
 assert(files.portal.includes('sourceDocumentId'), 'Structured data point evidence selection is missing');
 assert(files.docs.includes('Chantier 23'), 'Advanced Supplier Portal documentation is missing');
