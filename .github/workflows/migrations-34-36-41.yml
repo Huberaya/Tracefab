@@ -9,11 +9,13 @@ on:
   pull_request:
     paths:
       - 'scripts/test_migration_integration_34_36_41.sh'
+      - 'scripts/test_prisma_migrate_deploy_checksum_variance.mjs'
       - '.github/workflows/migrations-34-36-41.yml'
       - 'prisma/migrations/**'
   push:
     paths:
       - 'scripts/test_migration_integration_34_36_41.sh'
+      - 'scripts/test_prisma_migrate_deploy_checksum_variance.mjs'
       - '.github/workflows/migrations-34-36-41.yml'
       - 'prisma/migrations/**'
   workflow_dispatch:
