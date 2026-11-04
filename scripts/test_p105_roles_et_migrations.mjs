@@ -5,7 +5,7 @@
  *
  * CE QUE CE TEST ÉPROUVE, ET POURQUOI CHAQUE POINT COMPTE
  *
- *   B2.1  68/68 migrations sur une base VIERGE, exécutées par
+ *   B2.1  toutes les migrations sur une base VIERGE, exécutées par
  *         `tracefab_migrator` — un rôle `NOSUPERUSER` qui possède les objets.
  *   B2.2  reprise : relancer ne rejoue rien et ne casse rien.
  *   B2.3  `tracefab_app` ne peut PAS exécuter de migration (42501).
@@ -19,8 +19,8 @@
  *         privilège d'administration (mesuré : PostgreSQL 16+ exige SUPERUSER
  *         pour changer l'attribut SUPERUSER).
  *   B3.2  un rôle NON conforme (BYPASSRLS) est REFUSÉ, pas rabattu en silence.
- *   B3.3  l'élévation temporaire de la migration assistée est révoquée et
- *         vérifiée : le rôle de migration finit `rolsuper = false`.
+ *   B3.3  la migration worker ne demande aucune élévation : le rôle de migration
+ *         reste `rolsuper = false` et conserve SET TRUE, sans ADMIN OPTION.
  *
  * La base créée est détruite à la fin. Les rôles sont des objets de CLUSTER :
  * ils restent, conformes, pour les suites suivantes.
@@ -131,8 +131,6 @@ try {
   // -------------------------------------------------------------------------
   const mig1 = lancer(['scripts/migrer_fidelement.mjs'], {
     DATABASE_URL: url(ROLE_MIGRATOR),
-    TF_ADMIN_URL: (() => { const u = new URL(urlAdmin); u.pathname = `/${base}`; return u.toString(); })(),
-    TF_ALLOW_ELEVATION: 'oui',
     TF_ALLOW_WRITE: 'oui',
   });
   const appliquees = (mig1.stdout.match(/appliquee\s+20/g) || []).length;
@@ -315,10 +313,21 @@ try {
   }
 
   // -------------------------------------------------------------------------
-  // B3.3 — l'élévation temporaire a bien été révoquée.
+  // B3.3 — aucune élévation n'a été nécessaire ; SET est conservé sans ADMIN.
   // -------------------------------------------------------------------------
   const migFinal = (await admin.query('SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = $1', [ROLE_MIGRATOR])).rows[0];
-  ok(migFinal?.rolsuper === false, 'B3.3 après la chaîne, le rôle de migration n est plus superutilisateur', `superuser=${migFinal?.rolsuper}`);
+  ok(migFinal?.rolsuper === false, 'B3.3 le rôle de migration reste non-superutilisateur', `superuser=${migFinal?.rolsuper}`);
+  const workerMembership = (await admin.query(
+    `SELECT m.inherit_option, m.set_option, m.admin_option
+       FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+       JOIN pg_catalog.pg_roles member ON member.oid = m.member
+      WHERE granted.rolname = $1 AND member.rolname = $2`,
+    [ROLE_WORKER, ROLE_MIGRATOR],
+  )).rows[0];
+  ok(workerMembership?.inherit_option === true && workerMembership?.set_option === true && workerMembership?.admin_option === false,
+    'B3.3 le migrateur conserve INHERIT/SET sans ADMIN OPTION',
+    JSON.stringify(workerMembership));
 } catch (erreur) {
   echecs += 1;
   console.log(`  ECHEC exécution — ${erreur.code || ''} ${String(erreur.message).slice(0, 140)}`);
