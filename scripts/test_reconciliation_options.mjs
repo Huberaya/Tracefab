@@ -25,8 +25,6 @@ const snapshot = JSON.parse(fs.readFileSync(
 ));
 const worker = fs.readFileSync(path.join(root,
   'prisma/migrations/20261028120100_worker_identity_not_forgeable/migration.sql'), 'utf8');
-const plmForward = fs.readFileSync(path.join(root,
-  'prisma/migrations/20261104090000_plm_integrations_and_gs1_constraints/migration.sql'), 'utf8');
 const graphForward = fs.readFileSync(path.join(root,
   'prisma/migrations/20261104100000_supply_chain_status_enum_casts/migration.sql'), 'utf8');
 const planPath = path.join(root, 'scripts/plan_reconciliation_migrations.mjs');
