@@ -60,8 +60,8 @@ Les changements fonctionnels ultérieurs restent portés par des migrations forw
 
 ### Rôles et exécution des migrations
 
-- `tracefab_app` est le rôle runtime mesuré : non-superutilisateur, sans `BYPASSRLS`, sans privilège `CREATEROLE`, sans appartenance à un rôle privilégié.
-- `neondb_owner` est le propriétaire de la base et des fonctions actuellement examinées ; il est non-superutilisateur, avec `CREATEROLE` et `BYPASSRLS`.
+- `tracefab_app` est le rôle runtime mesuré : non-superutilisateur, sans `BYPASSRLS`, sans privilège `CREATEROLE`, et non membre de `neondb_owner` ou de `tracefab_worker`.
+- `neondb_owner` est le propriétaire de la base et des fonctions actuellement examinées ; il est non-superutilisateur, avec `CREATEROLE` et `BYPASSRLS`. Sur Production ET Préproduction, `pg_has_role('neondb_owner','tracefab_app','MEMBER')=true`, mais la relation inverse est fausse. Une session `tracefab_app` exécutant la requête de compteur de rate-limit a été observée en Production.
 - `tracefab_migrator` est absent de Production.
 - `tracefab_worker` est absent de Production.
 - Le propriétaire du schéma `public` est `pg_database_owner`.
@@ -79,7 +79,7 @@ Le profil actif ne comporte que 9 exigences. La nouvelle exigence `quality.no_op
 - `tracefab_app` possède encore un droit `UPDATE` sur `documents`.
 - Les droits colonne par colonne sur `tracefab_products` couvrent encore des champs calculés, dont `data_readiness`, `data_completion`, `data_ready_at` et `version`.
 
-**Écart supplémentaire découvert le 04/11 dans les ACL réelles :** les deux migrations initiales révoquaient les droits au niveau table, mais les catalogues Neon contiennent aussi des privilèges `INSERT`/`UPDATE` au niveau colonne. Un `REVOKE ... ON TABLE` seul ne retire pas ces droits. Les migrations 28120200 et 28130000 ont donc été corrigées dans la branche : elles construisent la liste réelle des colonnes depuis `pg_attribute`, révoquent explicitement tous les privilèges colonne de `tracefab_app`, puis révoquent les droits table et réaccordent uniquement le périmètre prévu. Les tests documents et produits vérifient désormais l'absence de droits résiduels, y compris l'INSERT sur les champs calculés.
+**Écart supplémentaire découvert le 04/11 dans les ACL réelles :** les deux migrations initiales révoquaient les droits au niveau table, mais les catalogues Neon contiennent aussi des privilèges `INSERT`/`UPDATE` au niveau colonne. Un `REVOKE ... ON TABLE` seul ne retire pas ces droits. Les migrations 28120200 et 28130000 ont donc été corrigées dans la branche : elles construisent la liste réelle des colonnes depuis `pg_attribute`, révoquent explicitement tous les privilèges colonne de `tracefab_app`, puis révoquent les droits table et réaccordent uniquement le périmètre prévu. Pour les produits, l'INSERT reste limité aux vingt colonnes de création ; l'UPDATE direct est limité aux neuf colonnes réellement écrites par les routes Prisma (`name`, `category`, `status`, `sku`, `description`, `updated_at`, `weight_grams`, `country_of_manufacture`, `country_of_design`). Les identifiants, la propriété du tenant, les métadonnées de création, le slug et les champs calculés ne sont plus modifiables directement par `tracefab_app`. Les tests documents et produits vérifient désormais l'absence de droits résiduels, y compris l'INSERT sur les champs calculés.
 
 La syntaxe de révocation a été exécutée avec succès sur le projet Neon isolé (PostgreSQL 18.6) : SELECT table-level conservé, aucun droit table-level INSERT/UPDATE/DELETE/TRUNCATE, écriture conservée sur les colonnes métier autorisées et refusée sur la colonne calculée. Cette sonde ne remplace pas la CI complète sur le SHA final.
 
@@ -116,6 +116,8 @@ Le fichier en attente `20261030140000_ingest_payload_role_guard_and_acl` contena
 ### Identité HMAC
 
 La variable Vercel `TRACEFAB_IDENTITY_KEY` n'est pas configurée. Les migrations HMAC peuvent être appliquées avec le mode strict désactivé ; ne pas activer le mode strict tant que la clé n'est pas provisionnée et que la couverture des routes signées n'est pas prouvée.
+
+La table `tracefab_identity_cles` et la fonction vérificatrice `tracefab_identity_jeton_utilisateur` sont détenues par le rôle de migration (`neondb_owner` sur Neon) ; `tracefab_app` et `tracefab_worker` reçoivent uniquement `EXECUTE` sur le vérificateur, pas `SELECT` sur la table des clés. Les commentaires de la migration ont été alignés sur ce modèle effectif.
 
 ## 3 bis. Dérive PLM/GS1 supplémentaire et correction forward (04/11)
 
