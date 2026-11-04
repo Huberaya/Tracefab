@@ -22,9 +22,10 @@
  *       révoque aucune appartenance cluster-wide ;
  *   R6  la chaîne complète s'applique sur une base VIERGE d'un cluster déjà
  *       migré, en endossant le même rôle dédié `tracefab_migrator` ;
- *   R7  la base de travail est détruite et le seul membre distinct de
- *       `tracefab_worker` est `tracefab_migrator` ; `tracefab_app` reste sans
- *       appartenance et aucun rôle runtime n'est élevé.
+ *   R7  la base de travail est détruite ; le seul membre non-superuser de
+ *       `tracefab_worker` est `tracefab_migrator` (un administrateur SUPERUSER
+ *       préexistant du cluster partagé reste toléré) ; `tracefab_app` reste
+ *       sans appartenance et aucun rôle runtime n'est élevé.
  *
  * Sortie : 0 conforme · 1 régression · 2 non exécuté · 3 refus de cible.
  */
@@ -252,13 +253,15 @@ try {
     ok(appliquees >= 60, 'R6 toutes les migrations sont appliquées', `${appliquees} migration(s)`);
 
     const membres = (await client.query(
-      `SELECT DISTINCT r.rolname FROM pg_catalog.pg_auth_members m
+      `SELECT DISTINCT r.rolname, r.rolsuper FROM pg_catalog.pg_auth_members m
          JOIN pg_catalog.pg_roles r ON r.oid = m.member
          JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
-        WHERE c.rolname = 'tracefab_worker' ORDER BY 1`)).rows.map((r) => r.rolname);
-    ok(membres.length === 1 && membres[0] === ROLE_MIGRATOR,
-      'R7 appartenance finale conforme : seul le rôle migrateur est membre de tracefab_worker',
-      membres.join(', ') || 'aucun');
+        WHERE c.rolname = 'tracefab_worker' ORDER BY 1`)).rows;
+    const membresNonSuper = membres.filter((r) => !r.rolsuper);
+    ok(membresNonSuper.length === 1 && membresNonSuper[0].rolname === ROLE_MIGRATOR
+      && membres.every((r) => r.rolsuper || r.rolname === ROLE_MIGRATOR),
+      'R7 seul le rôle migrateur non-superuser est membre ; tout membre supplémentaire doit être SUPERUSER',
+      membres.map((r) => `${r.rolname}:${r.rolsuper ? 'SUPER' : 'non-super'}`).join(', ') || 'aucun');
 
     const appMembre = (await client.query(
       `SELECT count(*)::int AS n FROM pg_catalog.pg_auth_members m
