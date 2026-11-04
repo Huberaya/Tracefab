@@ -359,12 +359,24 @@ try {
   const acl = (await proprio.query(
     `SELECT has_function_privilege('public', 'tracefab_finalize_document_upload(uuid,text,boolean,bigint)', 'EXECUTE') AS pub,
             has_function_privilege('tracefab_app', 'tracefab_finalize_document_upload(uuid,text,boolean,bigint)', 'EXECUTE') AS app,
+            has_table_privilege('tracefab_app', 'documents', 'INSERT') AS app_insert,
+            has_table_privilege('tracefab_app', 'documents', 'UPDATE') AS app_update,
+            has_table_privilege('tracefab_app', 'documents', 'DELETE') AS app_delete,
+            has_column_privilege('tracefab_app', 'documents', 'status', 'UPDATE') AS app_update_status,
+            has_column_privilege('tracefab_app', 'documents', 'metadata', 'UPDATE') AS app_update_metadata,
+            has_column_privilege('tracefab_app', 'documents', 'id', 'INSERT') AS app_insert_id,
             has_table_privilege('tracefab_app', 'documents', 'TRUNCATE') AS app_truncate,
             has_table_privilege(current_user, 'documents', 'TRUNCATE') AS proprio_truncate`)).rows[0];
   if (acl.pub === false) ok('EXECUTE de la finalisation non accorde a PUBLIC');
   else ko('PUBLIC peut executer la finalisation');
   if (acl.app === true) ok('EXECUTE accorde au role applicatif (parcours de scan)');
   else ko('le role applicatif ne peut plus executer la finalisation — parcours de scan casse');
+  if (acl.app_insert === false && acl.app_update === false && acl.app_delete === false
+      && acl.app_update_status === false && acl.app_update_metadata === false && acl.app_insert_id === false) {
+    ok('aucun droit table ou colonne INSERT/UPDATE/DELETE ne subsiste sur documents');
+  } else {
+    ko(`droits directs residuels sur documents : ${JSON.stringify(acl)}`);
+  }
   if (acl.app_truncate === false) ok('le role applicatif ne detient pas TRUNCATE sur documents (voie exploitation fermee)');
   else ko('le role applicatif detient TRUNCATE sur documents — preuve de privilege trafiquee');
   if (acl.proprio_truncate === true) ok('le proprietaire detient TRUNCATE (chemin exploitation utilisable en exploitation)');
