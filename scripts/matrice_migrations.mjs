@@ -16,7 +16,7 @@ import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE,
+  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE,
   BORNE_RELEVE, SNAPSHOT_DATE,
 } from './lib/ecarts_migrations.mjs';
 
@@ -49,10 +49,17 @@ for (const name of migrations) {
   let status;
 
   if (expected) {
-    history = 'APPLIQUEE';
-    effect = 'NON PROUVE';
-    catalogue = 'NON LU — historique réussi, catalogue non relu migration par migration';
-    status = 'NON PROUVE';
+    if (HORS_BANDE[name]) {
+      history = 'APPLIQUEE HORS BANDE';
+      effect = 'MESURE';
+      catalogue = `PRESENT MESURE — objets : ${HORS_BANDE[name].join(', ')}`;
+      status = 'A QUALIFIER';
+    } else {
+      history = 'APPLIQUEE';
+      effect = 'NON PROUVE';
+      catalogue = 'NON LU — historique réussi, catalogue non relu migration par migration';
+      status = 'NON PROUVE';
+    }
     if (actual !== expected) {
       errors.push(`${name}: checksum different de Production/Preproduction (attendu ${expected}, depot ${actual})`);
     }
@@ -85,6 +92,11 @@ for (const name of Object.keys(PRODUCTION_APPLIED)) {
 for (const name of Object.keys(ECARTS)) {
   if (!migrations.includes(name)) errors.push(`migration en attente absente du depot: ${name}`);
 }
+for (const [name, objects] of Object.entries(HORS_BANDE)) {
+  if (!migrations.includes(name)) errors.push(`migration hors bande absente du depot: ${name}`);
+  if (!PRODUCTION_APPLIED[name]) errors.push(`migration hors bande sans ligne terminee dans Neon: ${name}`);
+  if (!Array.isArray(objects) || objects.length === 0) errors.push(`migration hors bande sans objets attestes: ${name}`);
+}
 for (const [name, gap] of Object.entries(ECARTS)) {
   if (gap.historique !== 'ABSENTE') errors.push(`${name}: statut d'historique incoherent`);
   if (!CATALOGUE[name] || !CATALOGUE[name].catalogue || !CATALOGUE[name].statut) {
@@ -94,13 +106,15 @@ for (const [name, gap] of Object.entries(ECARTS)) {
 
 const count = (history) => rows.filter((row) => row.history === history).length;
 const applied = count('APPLIQUEE');
+const outOfBand = count('APPLIQUEE HORS BANDE');
 const missing = count('ABSENTE');
 const newCount = count('NOUVELLE (postérieure au snapshot)');
 const checksumCount = rows.filter((row) => row.expected && row.actual !== row.expected).length;
 
-if (applied !== Object.keys(PRODUCTION_APPLIED).length) errors.push('compte applique ne correspond pas au snapshot');
+if (applied + outOfBand !== Object.keys(PRODUCTION_APPLIED).length) errors.push('compte applique ne correspond pas au snapshot');
+if (outOfBand !== Object.keys(HORS_BANDE).length) errors.push('compte hors bande ne correspond pas au snapshot');
 if (missing !== Object.keys(ECARTS).length) errors.push('compte absent ne correspond pas aux 13 migrations en attente');
-if (applied + missing + newCount !== rows.length) errors.push('l arithmetique des categories ne ferme pas');
+if (applied + outOfBand + missing + newCount !== rows.length) errors.push('l arithmetique des categories ne ferme pas');
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le nombre de tentatives annulees du snapshot a change');
 
 const knownDuplicatePrefixes = ['20261006120000','20261006200000','20261006220000','20261017120000'];
@@ -119,7 +133,8 @@ if (markdown) {
 } else {
   console.log(`Matrice des migrations — snapshot ${SNAPSHOT_DATE}\n`);
   console.log(`  migrations du depot             : ${rows.length}`);
-  console.log(`  appliquees selon Neon           : ${applied}`);
+  console.log(`  appliquees via Prisma           : ${applied}`);
+  console.log(`  appliquees hors bande            : ${outOfBand}`);
   console.log(`  absentes de l'historique        : ${missing}`);
   console.log(`  nouvelles apres snapshot        : ${newCount}`);
   console.log(`  tentatives annulees historiques : ${ROLLED_BACK_ATTEMPTS.length} (les deux noms ont aussi une ligne terminee)`);
