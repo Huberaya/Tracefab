@@ -80,8 +80,8 @@ ok('la correction forward PLM/GS1 est postérieure au snapshot et non appliquée
   && !PRODUCTION_APPLIED[plmRepairName] && !ECARTS[plmRepairName]
   && plan.includes(plmRepairName));
 ok('la correction forward caste explicitement les statuts des deux fonctions du graphe',
-  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(plmForward)
-  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(plmForward));
+  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(plmForward)
+  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(plmForward));
 ok('les migrations PLM canoniques restent à appliquer, sans resolve',
   Boolean(ECARTS['20261028150000_reconcile_plm_erp_sync_job_policies'])
   && Boolean(ECARTS['20261029180000_plm_erp_sync_jobs_policy_dedup']));
