@@ -81,9 +81,15 @@ for (const migration of [
   ok(`${migration} supprime les anciennes politiques INSERT/SELECT`,
     sql.includes('DROP POLICY IF EXISTS plm_erp_sync_jobs_insert_brand')
     && sql.includes('DROP POLICY IF EXISTS plm_erp_sync_jobs_select_brand'));
-  ok(`${migration} reconstruit les politiques canoniques`,
-    sql.includes('CREATE POLICY plm_sync_jobs_insert_brand')
-    && sql.includes('CREATE POLICY plm_sync_jobs_select_org'));
+  if (migration === '20261029180000_plm_erp_sync_jobs_policy_dedup') {
+    ok(`${migration} reconstruit les politiques canoniques`,
+      sql.includes('CREATE POLICY plm_sync_jobs_insert_brand')
+      && sql.includes('CREATE POLICY plm_sync_jobs_select_org'));
+  } else {
+    ok(`${migration} est une suppression ciblée avec préconditions`,
+      sql.includes('BEGIN;') && sql.includes('COMMIT;')
+      && sql.includes('nombre_ou_identite_politiques_inattendu'));
+  }
 }
 
 const publicRead = fichiers['20261009180000_public_read_context'];
@@ -91,10 +97,13 @@ ok('la migration historique public-read accorde les fonctions a tracefab_app',
   /GRANT EXECUTE ON FUNCTION[\s\S]*?TO tracefab_app/i.test(publicRead));
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const deploy = String(pkg.scripts?.['db:deploy'] || '');
-ok('db:deploy provisionne le role app AVANT prisma migrate deploy',
-  deploy.indexOf('bootstrap_app_role.mjs') >= 0
-  && deploy.indexOf('bootstrap_app_role.mjs') < deploy.indexOf('prisma migrate deploy'),
-  deploy);
+const bootstrap = fs.readFileSync(path.join(root, 'scripts/bootstrap_app_role.mjs'), 'utf8');
+ok('db:deploy appelle Prisma migrate deploy sans modifier l’historique',
+  deploy.trim() === 'prisma migrate deploy', deploy);
+ok('le bootstrap tracefab_app est documente comme pre-requis sur base vierge',
+  bootstrap.includes('AVANT la chaine de migrations')
+  && bootstrap.includes('base vierge')
+  && bootstrap.includes('ensureAppRoleFromUrl'));
 
 console.log('\n  3. La migration worker pending ne requiert pas SUPERUSER');
 const worker = lire('20261028120100_worker_identity_not_forgeable').toString('utf8');
