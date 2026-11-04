@@ -61,7 +61,7 @@ try {
   writeFileSync(join(migrations, second, 'migration.sql'), secondSql);
   r = deploy();
   assert(r.status === 0, 'migrate deploy continue malgré le checksum historique divergent', r.output || r.error);
-  assert(r.output.includes('Applying migration ' + second), 'la migration pending est effectivement appliquée', r.output);
+  assert(r.output.includes('Applying migration `'+second+'`'), 'la migration pending est effectivement appliquée', r.output);
   const rows = await client.query('SELECT migration_name, checksum, finished_at FROM "' + schema + '"."_prisma_migrations" ORDER BY migration_name');
   assert(rows.rowCount === 2 && rows.rows.every(x => x.finished_at !== null), 'les deux migrations sont terminées');
   assert(rows.rows.find(x => x.migration_name === first)?.checksum === altered, 'Prisma ne réécrit pas le checksum historique');
