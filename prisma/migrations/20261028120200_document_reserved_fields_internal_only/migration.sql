@@ -123,13 +123,32 @@ ON CONFLICT (name) DO NOTHING;
 --    ecritures restantes passent par les quatre fonctions SECURITY DEFINER.
 --    Le trigger garde son drapeau interne : il n'est simplement plus
 --    atteignable par un client.
-DO $$
+DO $
+DECLARE
+  v_columns text;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app') THEN
+    -- REVOKE au niveau table ne retire PAS les ACL colonne deja accordees.
+    -- Les bases Neon ont effectivement des UPDATE colonne par colonne sur
+    -- documents ; les laisser survivre rendrait le GUC interne falsifiable.
+    SELECT string_agg(pg_catalog.format('%I', a.attname), ', ' ORDER BY a.attnum)
+      INTO v_columns
+      FROM pg_catalog.pg_attribute a
+     WHERE a.attrelid = 'public.documents'::regclass
+       AND a.attnum > 0
+       AND NOT a.attisdropped;
+
+    IF v_columns IS NOT NULL THEN
+      EXECUTE pg_catalog.format(
+        'REVOKE ALL PRIVILEGES (%s) ON TABLE public.documents FROM tracefab_app',
+        v_columns
+      );
+    END IF;
+
     EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.documents FROM tracefab_app';
   END IF;
 END
-$$;
+$;
 
 -- 5. Appliquer le perimetre depuis le registre -------------------------------
 --    Reconstruit EXECUTE a partir des seules lignes declarees, et leve si un
