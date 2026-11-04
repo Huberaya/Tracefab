@@ -72,6 +72,11 @@ for (const name of pendingNames) {
   ok(`${name} possède une observation catalogue`, Boolean(CATALOGUE[name]?.catalogue && CATALOGUE[name]?.statut));
   ok(`${name} n’est pas déjà dans l’historique réussi`, !PRODUCTION_APPLIED[name]);
 }
+const plmRepairName = '20261104090000_plm_integrations_and_gs1_constraints';
+ok('la correction forward PLM/GS1 est postérieure au snapshot et non appliquée',
+  fs.existsSync(path.join(migrationsDir, plmRepairName, 'migration.sql'))
+  && !PRODUCTION_APPLIED[plmRepairName] && !ECARTS[plmRepairName]
+  && plan.includes(plmRepairName));
 ok('les migrations PLM canoniques restent à appliquer, sans resolve',
   Boolean(ECARTS['20261028150000_reconcile_plm_erp_sync_job_policies'])
   && Boolean(ECARTS['20261029180000_plm_erp_sync_jobs_policy_dedup']));
