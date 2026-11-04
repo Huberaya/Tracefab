@@ -84,9 +84,29 @@
 --   Le retour ramene la vulnerabilite : il n'est pas recommande.
 -- ============================================================================
 
-DO $$
+DO $
+DECLARE
+  v_columns text;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app') THEN
+    -- Le catalogue Neon porte aussi des ACL colonne historiques. Un REVOKE
+    -- table-level seul les laisse intacts, notamment INSERT/UPDATE sur les
+    -- quatre champs calcules. On repart donc d'un état sans aucun droit
+    -- colonne, puis on reaccorde explicitement le périmètre métier.
+    SELECT string_agg(pg_catalog.format('%I', a.attname), ', ' ORDER BY a.attnum)
+      INTO v_columns
+      FROM pg_catalog.pg_attribute a
+     WHERE a.attrelid = 'public.tracefab_products'::regclass
+       AND a.attnum > 0
+       AND NOT a.attisdropped;
+
+    IF v_columns IS NOT NULL THEN
+      EXECUTE pg_catalog.format(
+        'REVOKE ALL PRIVILEGES (%s) ON TABLE public.tracefab_products FROM tracefab_app',
+        v_columns
+      );
+    END IF;
+
     -- 1. Plus d'ecriture au niveau table (ni TRUNCATE, ni DELETE).
     EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.tracefab_products FROM tracefab_app';
 
@@ -109,7 +129,7 @@ BEGIN
          || 'last_data_updated_by'
          || ') ON TABLE public.tracefab_products TO tracefab_app';
   END IF;
-END $$;
+END $;
 
 COMMENT ON COLUMN public.tracefab_products.version IS
   'Champ calcule. Ecriture reservee aux fonctions SECURITY DEFINER : le role applicatif ne detient que des privileges colonne, qui excluent ce champ.';
