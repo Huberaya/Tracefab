@@ -398,7 +398,7 @@ jobs:
         run: npm run db:generate
 
       - name: Installer Chromium pour Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Compilation complete
         # `build` enchaine deja types, schema, routes, i18n et les tests de
@@ -529,7 +529,7 @@ jobs:
         run: npm run db:generate
 
       - name: Installer Chromium pour Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Demarrer le serveur de previsualisation
         run: |

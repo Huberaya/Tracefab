@@ -210,6 +210,32 @@ try {
   ok(bootstrap.status === 0, 'R6 rôle applicatif disponible avant la chaîne',
     (bootstrap.stderr || bootstrap.stdout || '').trim().split('\n').pop() || `code ${bootstrap.status}`);
 
+  // Le rôle migrateur est cluster-wide mais CREATE sur public est propre à
+  // chaque base. Le runner endosse ce rôle via SET ROLE ; on lui accorde donc
+  // le droit minimal sur cette base jetable, sans toucher aux autres bases.
+  const migratorAdmin = new pg.Client({
+    connectionString: urlBase.toString(),
+    ssl: sslDepuisUrl(urlBase.toString()),
+  });
+  await migratorAdmin.connect();
+  try {
+    const roleExists = (await migratorAdmin.query(
+      "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1) AS ok",
+      [ROLE_MIGRATOR],
+    )).rows[0].ok;
+    if (roleExists) {
+      await migratorAdmin.query('GRANT CREATE ON SCHEMA public TO tracefab_migrator');
+    }
+    const canCreate = roleExists && (await migratorAdmin.query(
+      "SELECT has_schema_privilege($1, 'public', 'CREATE') AS ok",
+      [ROLE_MIGRATOR],
+    )).rows[0].ok;
+    ok(canCreate, 'R6 le migrateur dispose de CREATE sur public dans la base jetable',
+      roleExists ? 'CREATE accordé et vérifié' : 'rôle migrateur absent');
+  } finally {
+    await migratorAdmin.end();
+  }
+
   const chaine = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs'], {
     env: { ...process.env, DATABASE_URL: urlBase.toString(), TF_ALLOW_WRITE: 'oui', TF_MIGRATION_ROLE: ROLE_MIGRATOR },
     encoding: 'utf8',
