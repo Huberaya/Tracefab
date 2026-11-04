@@ -341,10 +341,11 @@ $$;
 DO $worker_ownership$
 DECLARE
   v_member_oid OID;
+  v_current_is_superuser BOOLEAN := false;
   v_has_explicit BOOLEAN := false;
   v_has_admin BOOLEAN := false;
 BEGIN
-  SELECT oid INTO v_member_oid
+  SELECT oid, rolsuper INTO v_member_oid, v_current_is_superuser
     FROM pg_catalog.pg_roles
    WHERE rolname = current_user;
 
@@ -374,9 +375,9 @@ BEGIN
   ) INTO v_has_admin;
 
   IF NOT v_has_explicit THEN
-    IF NOT v_has_admin THEN
+    IF NOT v_has_admin AND NOT v_current_is_superuser THEN
       RAISE EXCEPTION 'worker_migration_executor_membership_missing'
-        USING HINT = 'Un rôle préexistant tracefab_worker doit être accordé au rôle de migration par un administrateur avant cette migration.';
+        USING HINT = 'Un rôle préexistant tracefab_worker doit être accordé au rôle de migration par un administrateur avant cette migration, sauf si l''exécutant est SUPERUSER.';
     END IF;
 
     EXECUTE pg_catalog.format(
