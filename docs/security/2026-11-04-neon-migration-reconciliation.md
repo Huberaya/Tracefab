@@ -36,7 +36,7 @@ Deux versions exactes ont été retrouvées et restaurées dans la branche dédi
 Les changements fonctionnels ultérieurs restent portés par des migrations forward :
 - invitation fournisseur : `20261005100000_supplier_invitation_compatibility` ;
 - normalisation des politiques PLM : `20261028150000` et `20261029180000` ;
-- provisionnement du rôle applicatif avant migrations : `db:deploy` appelle `bootstrap_app_role.mjs` avant `prisma migrate deploy`.
+- provisionnement du rôle applicatif sur base vierge : exécuter séparément `bootstrap_app_role.mjs` avant `npm run db:deploy` ; le script `db:deploy` lui-même lance uniquement `prisma migrate deploy`.
 
 ## 2. Les 13 migrations réellement en attente
 
