@@ -252,10 +252,19 @@ try {
   const chaine = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs'], {
     env: { ...process.env, DATABASE_URL: urlBase.toString(), TF_ALLOW_WRITE: 'oui', TF_MIGRATION_ROLE: ROLE_MIGRATOR },
     encoding: 'utf8',
+    // La chaîne complète peut produire beaucoup de NOTICE PostgreSQL. Sans
+    // borne explicite, spawnSync coupe à 1 Mio et renvoie status=null, ce qui
+    // masque la vraie erreur derrière une simple assertion R6.
+    maxBuffer: 16 * 1024 * 1024,
   });
   const sortie = `${chaine.stdout || ''}${chaine.stderr || ''}`.trim().split('\n');
-  ok(chaine.status === 0, 'R6 la chaîne s applique sur une base neuve d un cluster déjà migré (défaut D5)',
-    chaine.status === 0 ? sortie.filter((l) => /appliquee\(s\)/.test(l)).pop() : sortie.filter((l) => /ECHEC/.test(l)).slice(-1)[0]);
+  const diagnostic = chaine.status === 0
+    ? sortie.filter((l) => /appliquee\(s\)/.test(l)).pop()
+    : [
+      chaine.error ? `spawn=${chaine.error.code || chaine.error.name}: ${chaine.error.message}` : `code=${chaine.status} signal=${chaine.signal || 'aucun'}`,
+      sortie.filter((l) => /ECHEC|REFUS|ERROR|permission denied|not exist/i.test(l)).slice(-3).join(' | '),
+    ].filter(Boolean).join(' — ').slice(0, 600);
+  ok(chaine.status === 0, 'R6 la chaîne s applique sur une base neuve d un cluster déjà migré (défaut D5)', diagnostic);
 
   const client = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
   await client.connect();
