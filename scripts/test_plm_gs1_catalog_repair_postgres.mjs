@@ -92,9 +92,9 @@ try {
         CHECK (identifier_type IN ('gtin', 'ean', 'upc', 'internal', 'gs1_digital_link', 'gln'))
     );
     CREATE FUNCTION public.tracefab_has_org_role(p_org uuid, p_roles public.membership_role[])
-      RETURNS boolean LANGUAGE sql STABLE AS $ SELECT true $;
+      RETURNS boolean LANGUAGE sql STABLE AS $fixture_role$ SELECT true $fixture_role$;
     CREATE FUNCTION public.tracefab_current_user_id()
-      RETURNS uuid LANGUAGE sql STABLE AS $ SELECT NULL::uuid $;
+      RETURNS uuid LANGUAGE sql STABLE AS $fixture_user$ SELECT NULL::uuid $fixture_user$;
     INSERT INTO public.tracefab_products (id, brand_organization_id)
       VALUES ('00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002');
     INSERT INTO public.plm_erp_integrations (system_type, name, auth_type, status)
