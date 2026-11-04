@@ -28,8 +28,32 @@ const identifierRoute = await readFile(
   new URL('../api/_routes/products/[productId]/identifiers.ts', import.meta.url),
   'utf8',
 );
+const integrationRoute = await readFile(
+  new URL('../api/_routes/integrations.ts', import.meta.url),
+  'utf8',
+);
+const integrationTypes = await readFile(
+  new URL('../api/_lib/plm-erp/types.ts', import.meta.url),
+  'utf8',
+);
+const sqlErrors = await readFile(
+  new URL('../api/_lib/sql-errors.ts', import.meta.url),
+  'utf8',
+);
 const addIdentifierFunctionIndex = forwardSql.indexOf('CREATE OR REPLACE FUNCTION tracefab_add_product_identifier');
 assert.notEqual(addIdentifierFunctionIndex, -1, 'Forward migration must update the SQL identifier helper');
+assert(integrationRoute.includes('isPlmErpSystemType'), 'Integration creation must validate system_type before SQL');
+assert(integrationRoute.includes('isPlmErpAuthType'), 'Integration creation must validate auth_type before SQL');
+assert(integrationTypes.includes('PLM_ERP_SYSTEM_TYPES') && integrationTypes.includes('PLM_ERP_AUTH_TYPES'), 'System/auth allowlists must be centralized');
+for (const constraint of [
+  'plm_erp_integrations_system_type_check',
+  'plm_erp_integrations_auth_type_check',
+  'plm_erp_integrations_name_check',
+  'plm_erp_integrations_status_check',
+  'product_identifiers_identifier_type_check',
+]) {
+  assert(sqlErrors.includes(constraint), `SQL business errors must map ${constraint} to a client error`);
+}
 const addIdentifierFunction = forwardSql.slice(addIdentifierFunctionIndex);
 for (const type of ['gtin', 'ean', 'upc', 'internal', 'gs1_digital_link', 'gln', 'gpc']) {
   assert(addIdentifierFunction.includes(`'${type}'`), `SQL identifier helper must accept ${type}`);
