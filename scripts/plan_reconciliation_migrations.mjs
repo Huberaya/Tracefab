@@ -106,7 +106,7 @@ const lignesForward = (name) => {
       effect: 'corriger les CASE texte en casts explicites data_value_status dans create/update supply-chain node',
       evidence: 'pg_get_functiondef identique en Production/Préproduction ; P10.5 a reproduit SQLSTATE 42804 pendant l’ingestion PLM/ERP',
       risk: 'remplacement de deux fonctions SECURITY DEFINER ; CREATE OR REPLACE doit conserver OID, propriétaire et ACL',
-      prerequisite: '20261104090000 terminée ; exécuter test:p105:ingestion et vérifier propriétaire/ACL des deux fonctions',
+      prerequisite: '20261104090000 terminée ; current_user doit être neondb_owner, propriétaire actuel des deux fonctions (tracefab_migrator absent sur les deux bases) ; exécuter test:p105:ingestion et vérifier propriétaire/ACL après application',
       action: 'APPLIQUER APRÈS LA CORRECTION PLM/GS1, EN PRÉPRODUCTION PUIS PRODUCTION',
     };
   }
