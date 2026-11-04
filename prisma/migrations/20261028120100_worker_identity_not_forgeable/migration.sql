@@ -354,26 +354,78 @@ $worker_ownership$;
 
 REVOKE CREATE ON SCHEMA public FROM tracefab_worker;
 
--- Verification ferme : le role executant peut endosser worker, sans ADMIN
--- OPTION ; l'application ne peut jamais le faire ; worker ne peut plus creer
--- d'objets dans public.
+-- Verification ferme : le role executant peut endosser worker ; l'application
+-- ne le peut jamais ; worker ne peut plus creer d'objets dans public.
+--
+-- PostgreSQL/Neon peut exposer DEUX lignes pour le meme couple membre/role :
+-- CREATE ROLE cree une appartenance bootstrap avec ADMIN OPTION (sur Neon,
+-- grantor = cloud_admin, INHERIT/SET = false), puis le GRANT ci-dessus ajoute
+-- l'appartenance explicite minimale (grantor = current_user, INHERIT/SET =
+-- true, ADMIN = false). La ligne bootstrap est geree par la plateforme et ne
+-- peut pas etre revoquee par neondb_owner. Le controle distingue donc les deux
+-- lignes au lieu de prendre arbitrairement la premiere avec SELECT INTO.
 DO $worker_verify$
 DECLARE
-  v_membership record;
+  v_member_oid OID;
+  v_explicit_rows INTEGER := 0;
+  v_bootstrap_rows INTEGER := 0;
+  v_unexpected_rows INTEGER := 0;
 BEGIN
-  SELECT m.inherit_option, m.set_option, m.admin_option
-    INTO v_membership
+  SELECT oid INTO v_member_oid
+    FROM pg_catalog.pg_roles
+   WHERE rolname = current_user;
+
+  SELECT
+    count(*) FILTER (
+      WHERE m.grantor = v_member_oid
+        AND m.inherit_option IS TRUE
+        AND m.set_option IS TRUE
+        AND m.admin_option IS FALSE
+    ),
+    count(*) FILTER (
+      WHERE m.admin_option IS TRUE
+        AND m.inherit_option IS FALSE
+        AND m.set_option IS FALSE
+        AND EXISTS (
+          SELECT 1
+            FROM pg_catalog.pg_roles grantor
+           WHERE grantor.oid = m.grantor
+             AND (grantor.rolsuper OR grantor.rolcreaterole OR grantor.rolbypassrls)
+        )
+    ),
+    count(*) FILTER (
+      WHERE NOT (
+        (m.grantor = v_member_oid
+          AND m.inherit_option IS TRUE
+          AND m.set_option IS TRUE
+          AND m.admin_option IS FALSE)
+        OR
+        (m.admin_option IS TRUE
+          AND m.inherit_option IS FALSE
+          AND m.set_option IS FALSE
+          AND EXISTS (
+            SELECT 1
+              FROM pg_catalog.pg_roles grantor
+             WHERE grantor.oid = m.grantor
+               AND (grantor.rolsuper OR grantor.rolcreaterole OR grantor.rolbypassrls)
+          ))
+      )
+    )
+    INTO v_explicit_rows, v_bootstrap_rows, v_unexpected_rows
     FROM pg_catalog.pg_auth_members m
     JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
     JOIN pg_catalog.pg_roles member ON member.oid = m.member
    WHERE granted.rolname = 'tracefab_worker'
      AND member.rolname = current_user;
 
-  IF NOT FOUND
-     OR v_membership.inherit_option IS DISTINCT FROM true
-     OR v_membership.set_option IS DISTINCT FROM true
-     OR v_membership.admin_option IS DISTINCT FROM false THEN
-    RAISE EXCEPTION 'worker_migration_membership_not_minimal';
+  IF v_explicit_rows <> 1
+     OR v_bootstrap_rows > 1
+     OR v_unexpected_rows <> 0 THEN
+    RAISE EXCEPTION 'worker_migration_membership_not_minimal'
+      USING DETAIL = pg_catalog.format(
+        'explicit=%s bootstrap=%s unexpected=%s',
+        v_explicit_rows, v_bootstrap_rows, v_unexpected_rows
+      );
   END IF;
 
   IF pg_catalog.pg_has_role('tracefab_app', 'tracefab_worker', 'MEMBER') THEN
