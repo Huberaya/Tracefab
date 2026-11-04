@@ -94,9 +94,11 @@ ok('les deux corrections forward sont postérieures au snapshot et ordonnées',
     '20261104090000_plm_integrations_and_gs1_constraints',
     '20261104100000_supply_chain_status_enum_casts',
   ]), JSON.stringify(newNames));
-ok('la correction graphe caste les statuts enum du create ET update supply-chain',
-  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(graphForwardSql)
-  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(graphForwardSql));
+ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
+  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForwardSql)
+  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForwardSql)
+  && /CREATE OR REPLACE FUNCTION tracefab_add_supply_chain_link[\\s\\S]*?CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForwardSql)
+  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_link[\\s\\S]*?CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForwardSql));
 ok('toutes les migrations du dépôt sont classées',
   baselineNames.length + pendingNames.length + newNames.length === dossiers.length);
 
