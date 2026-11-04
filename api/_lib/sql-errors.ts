@@ -182,6 +182,16 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   organization_node_reference_required: { status: 400 },
   passport_not_found: { status: 404 },
   passport_not_found_or_private: { status: 404 },
+  // Gardes de provisionnement du rôle worker (migration 20261028120100).
+  // Les préconditions de privilèges sont des refus d'autorisation (403) ;
+  // les invariants d'un rôle préexistant ou de ses appartenances sont des
+  // conflits de configuration (409). Aucun détail SQL n'est renvoyé au client.
+  worker_migration_requires_admin_role: { status: 403 },
+  worker_role_creation_requires_createrole: { status: 403 },
+  tracefab_worker_role_not_least_privilege: { status: 409 },
+  worker_migration_membership_not_minimal: { status: 409 },
+  tracefab_app_must_not_be_worker_member: { status: 409 },
+  tracefab_worker_must_not_retain_schema_create: { status: 409 },
   // Les fonctions PLM/ERP refusent explicitement toute dérive de leurs politiques
   // canoniques. 409 signale un conflit avec l'état de schéma attendu sans exposer
   // le SQL interne ni transformer une garde métier en erreur serveur.
