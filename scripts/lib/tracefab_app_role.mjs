@@ -160,7 +160,7 @@ export const COLONNES_CALCULEES_PRODUIT = [
   'data_ready_at',
 ];
 
-export const COLONNES_ECRITURE_PRODUIT = [
+export const COLONNES_INSERT_PRODUIT = [
   'id',
   'brand_organization_id',
   'reference',
@@ -181,6 +181,22 @@ export const COLONNES_ECRITURE_PRODUIT = [
   'weight_grams',
   'care_instructions',
   'last_data_updated_by',
+];
+
+// UPDATE direct : exactement les colonnes écrites par les deux chemins Prisma
+// encore directs (bulk-importer et transitions de statut). Les identifiants,
+// le tenant, les métadonnées de création, le slug et les autres attributs sont
+// modifiés uniquement par les fonctions SECURITY DEFINER dédiées.
+export const COLONNES_UPDATE_PRODUIT = [
+  'name',
+  'category',
+  'status',
+  'sku',
+  'description',
+  'updated_at',
+  'weight_grams',
+  'country_of_manufacture',
+  'country_of_design',
 ];
 
 function quote(s) {
@@ -519,13 +535,32 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
      END
      $grant_dml$;`,
     // `tracefab_products` : ecriture COLONNE PAR COLONNE, jamais au niveau
-    // table. Les champs calcules restent hors de portee du runtime.
-    `DO $$ BEGIN
+    // table. On retire aussi les anciennes ACL colonne avant de reaccorder
+    // INSERT (20 colonnes) et UPDATE (9 colonnes réellement écrites par api/).
+    `DO $bootstrap_products$
+     DECLARE
+       v_columns text;
+     BEGIN
        IF to_regclass('public.tracefab_products') IS NOT NULL THEN
-         EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.tracefab_products FROM ${APP_ROLE}';
-         EXECUTE 'GRANT INSERT (${COLONNES_ECRITURE_PRODUIT.join(', ')}), UPDATE (${COLONNES_ECRITURE_PRODUIT.join(', ')}) ON public.tracefab_products TO ${APP_ROLE}';
+         SELECT string_agg(pg_catalog.format('%I', a.attname), ', ' ORDER BY a.attnum)
+           INTO v_columns
+           FROM pg_catalog.pg_attribute a
+          WHERE a.attrelid = 'public.tracefab_products'::regclass
+            AND a.attnum > 0
+            AND NOT a.attisdropped;
+         IF v_columns IS NOT NULL THEN
+           EXECUTE pg_catalog.format(
+             'REVOKE ALL PRIVILEGES (%s) ON TABLE public.tracefab_products FROM %I',
+             v_columns,
+             '${APP_ROLE}'
+           );
+         END IF;
+         EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.tracefab_products FROM ${APP_ROLE}';
+         EXECUTE 'GRANT INSERT (${COLONNES_INSERT_PRODUIT.join(', ')}) ON TABLE public.tracefab_products TO ${APP_ROLE}';
+         EXECUTE 'GRANT UPDATE (${COLONNES_UPDATE_PRODUIT.join(', ')}) ON TABLE public.tracefab_products TO ${APP_ROLE}';
        END IF;
-     END $$;`,
+     END
+     $bootstrap_products$;`,
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`,
     // EXECUTE sur les fonctions : les nouveaux objets ne doivent pas en hériter.
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
@@ -569,7 +604,7 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
   console.log(
     `  droits applicatifs accordes a ${APP_ROLE} ` +
     `(lecture generale filtree par RLS ; ecriture directe limitee a ${TABLES_ECRITURE_DIRECTE.length} tables ; ` +
-      `tracefab_products en ecriture colonne par colonne (${COLONNES_ECRITURE_PRODUIT.length} colonnes, champs calcules exclus) ; ` +
+      `tracefab_products en ecriture colonne par colonne (INSERT ${COLONNES_INSERT_PRODUIT.length} / UPDATE ${COLONNES_UPDATE_PRODUIT.length}, champs calcules exclus) ; ` +
     `le reste des mutations par fonctions SECURITY DEFINER)`,
   );
 }
