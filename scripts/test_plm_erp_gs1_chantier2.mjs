@@ -31,13 +31,13 @@ assert.match(ingestGuardMigration, /SELECT id, version INTO v_product_id, v_prod
   'PLM ingestion must retain the product version');
 assert.match(ingestGuardMigration, /product_version,/,
   'BOM rows must be scoped to the product version');
-assert.match(ingestGuardMigration, /FROM tracefab_create_supply_chain_node\\(/,
+assert.match(ingestGuardMigration, /FROM tracefab_create_supply_chain_node\(/,
   'supply-chain nodes must be created through the graph helper');
-assert.match(ingestGuardMigration, /PERFORM tracefab_add_supply_chain_link\\(/,
+assert.match(ingestGuardMigration, /PERFORM tracefab_add_supply_chain_link\(/,
   'supply-chain links must be created through the graph helper');
-assert.doesNotMatch(ingestGuardMigration, /INSERT INTO\\s+supply_chain_nodes/i,
+assert.doesNotMatch(ingestGuardMigration, /INSERT INTO\s+supply_chain_nodes/i,
   'must not bypass graph_product_id / node validation');
-assert.doesNotMatch(ingestGuardMigration, /INSERT INTO\\s+supply_chain_links/i,
+assert.doesNotMatch(ingestGuardMigration, /INSERT INTO\s+supply_chain_links/i,
   'must not bypass graph link validation');
 
 
