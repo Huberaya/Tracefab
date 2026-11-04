@@ -29,7 +29,7 @@ function routeParam(req: VercelRequest, key: string) {
 }
 
 function identifierType(value: unknown) {
-  if (typeof value !== 'string' || !['gtin', 'ean', 'upc', 'internal'].includes(value.toLowerCase())) {
+  if (typeof value !== 'string' || !['gtin', 'ean', 'upc', 'internal', 'gs1_digital_link', 'gln', 'gpc'].includes(value.toLowerCase())) {
     throw new Error('invalid_identifier_type');
   }
   return value.toLowerCase();
