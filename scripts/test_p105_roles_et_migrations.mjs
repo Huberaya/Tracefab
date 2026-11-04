@@ -19,8 +19,9 @@
  *         privilège d'administration (mesuré : PostgreSQL 16+ exige SUPERUSER
  *         pour changer l'attribut SUPERUSER).
  *   B3.2  un rôle NON conforme (BYPASSRLS) est REFUSÉ, pas rabattu en silence.
- *   B3.3  la migration worker ne demande aucune élévation : le rôle de migration
- *         reste `rolsuper = false` et conserve SET TRUE, sans ADMIN OPTION.
+ *   B3.3  l'octroi explicite du worker porte INHERIT/SET sans ADMIN OPTION ;
+ *         un éventuel octroi bootstrap ADMIN émis par un rôle privilégié est
+ *         contrôlé séparément et ne donne aucun droit worker à tracefab_app.
  *
  * La base créée est détruite à la fin. Les rôles sont des objets de CLUSTER :
  * ils restent, conformes, pour les suites suivantes.
@@ -123,6 +124,52 @@ try {
   ok(prov2.status === 0, 'B3.1 re-provisioning réussi (idempotent)', `sortie ${prov2.status}`);
   const alterEmis = /durci/.test(prov2.stdout);
   ok(!alterEmis, 'B3.1 le re-provisioning n émet AUCUN ALTER ROLE', alterEmis ? 'un durcissement a eu lieu' : 'aucune instruction ALTER');
+  await verrou.relacher();
+  verrou = null;
+
+  // -------------------------------------------------------------------------
+  // B2.0 — le rôle worker est global au cluster. Si une suite précédente l'a
+  // déjà créé, l'administrateur prépare l'octroi bootstrap minimal au migrateur
+  // afin que la migration puisse créer son octroi explicite INHERIT/SET.
+  // -------------------------------------------------------------------------
+  verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
+  const workerExistant = (await admin.query(
+    'SELECT oid FROM pg_catalog.pg_roles WHERE rolname = $1',
+    [ROLE_WORKER],
+  )).rows[0];
+  if (workerExistant) {
+    const membershipsAvant = (await admin.query(
+      `SELECT grantor.rolname AS grantor_name, grantor.rolsuper AS grantor_superuser,
+              grantor.rolcreaterole AS grantor_createrole,
+              m.inherit_option, m.set_option, m.admin_option
+         FROM pg_catalog.pg_auth_members m
+         JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+         JOIN pg_catalog.pg_roles member ON member.oid = m.member
+         JOIN pg_catalog.pg_roles grantor ON grantor.oid = m.grantor
+        WHERE granted.rolname = $1 AND member.rolname = $2`,
+      [ROLE_WORKER, ROLE_MIGRATOR],
+    )).rows;
+    const explicite = membershipsAvant.some((m) =>
+      m.grantor_name === ROLE_MIGRATOR && m.inherit_option === true
+      && m.set_option === true && m.admin_option === false);
+    const bootstrap = membershipsAvant.some((m) =>
+      m.admin_option === true && m.inherit_option === false
+      && m.set_option === false && (m.grantor_superuser || m.grantor_createrole));
+    if (!explicite && !bootstrap) {
+      if (membershipsAvant.length > 0) {
+        throw new Error('Appartenance préexistante tracefab_worker non canonique pour tracefab_migrator.');
+      }
+      if (![ROLE_WORKER, ROLE_MIGRATOR].every((name) => /^[a-z_][a-z0-9_]*$/i.test(name))) {
+        throw new Error('Nom de rôle inattendu dans le prérequis worker.');
+      }
+      await admin.query(
+        `GRANT ${ROLE_WORKER} TO ${ROLE_MIGRATOR}
+         WITH ADMIN TRUE, INHERIT FALSE, SET FALSE`,
+      );
+      ok(true, 'B2.0 octroi bootstrap ADMIN isolé avant migration',
+        'rôle worker préexistant ; l'octroi explicite sera créé par le migrateur');
+    }
+  }
   await verrou.relacher();
   verrou = null;
 
@@ -313,21 +360,36 @@ try {
   }
 
   // -------------------------------------------------------------------------
-  // B3.3 — aucune élévation n'a été nécessaire ; SET est conservé sans ADMIN.
+  // B3.3 — l'octroi explicite est minimal ; le bootstrap ADMIN éventuel est
+  // distinct, attribué par un rôle privilégié et limité au migrateur.
   // -------------------------------------------------------------------------
-  const migFinal = (await admin.query('SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = $1', [ROLE_MIGRATOR])).rows[0];
-  ok(migFinal?.rolsuper === false, 'B3.3 le rôle de migration reste non-superutilisateur', `superuser=${migFinal?.rolsuper}`);
-  const workerMembership = (await admin.query(
-    `SELECT m.inherit_option, m.set_option, m.admin_option
+  const migFinal = (await admin.query(
+    'SELECT rolsuper, rolbypassrls, rolcreaterole FROM pg_catalog.pg_roles WHERE rolname = $1',
+    [ROLE_MIGRATOR],
+  )).rows[0];
+  ok(migFinal?.rolsuper === false && migFinal?.rolbypassrls === false && migFinal?.rolcreaterole === true,
+    'B3.3 le migrateur reste non-superutilisateur et sans BYPASSRLS', JSON.stringify(migFinal));
+  const workerMemberships = (await admin.query(
+    `SELECT grantor.rolname AS grantor_name, grantor.rolsuper AS grantor_superuser,
+            grantor.rolcreaterole AS grantor_createrole,
+            m.inherit_option, m.set_option, m.admin_option
        FROM pg_catalog.pg_auth_members m
        JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
        JOIN pg_catalog.pg_roles member ON member.oid = m.member
+       JOIN pg_catalog.pg_roles grantor ON grantor.oid = m.grantor
       WHERE granted.rolname = $1 AND member.rolname = $2`,
     [ROLE_WORKER, ROLE_MIGRATOR],
-  )).rows[0];
-  ok(workerMembership?.inherit_option === true && workerMembership?.set_option === true && workerMembership?.admin_option === false,
-    'B3.3 le migrateur conserve INHERIT/SET sans ADMIN OPTION',
-    JSON.stringify(workerMembership));
+  )).rows;
+  const workerExplicit = workerMemberships.filter((m) =>
+    m.grantor_name === ROLE_MIGRATOR && m.inherit_option === true
+    && m.set_option === true && m.admin_option === false);
+  const workerBootstrap = workerMemberships.filter((m) =>
+    m.admin_option === true && m.inherit_option === false
+    && m.set_option === false && (m.grantor_superuser || m.grantor_createrole));
+  ok(workerExplicit.length === 1 && workerBootstrap.length <= 1
+    && workerMemberships.length === workerExplicit.length + workerBootstrap.length,
+    'B3.3 octroi explicite INHERIT/SET sans ADMIN ; bootstrap séparé',
+    JSON.stringify(workerMemberships));
 } catch (erreur) {
   echecs += 1;
   console.log(`  ECHEC exécution — ${erreur.code || ''} ${String(erreur.message).slice(0, 140)}`);
