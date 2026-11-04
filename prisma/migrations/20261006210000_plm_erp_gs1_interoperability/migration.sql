@@ -69,6 +69,11 @@ CREATE POLICY plm_integrations_mutate_brand ON plm_erp_integrations
     tracefab_has_org_role(organization_id, ARRAY['owner', 'admin', 'manager']::membership_role[])
   );
 
+-- Nettoyage des anciennes politiques hors chaîne : PostgreSQL combine les politiques permissives par OR.
+-- Les garder élargirait les rôles autorisés même si les politiques canoniques sont correctes.
+DROP POLICY IF EXISTS plm_erp_sync_jobs_insert_brand ON plm_erp_sync_jobs;
+DROP POLICY IF EXISTS plm_erp_sync_jobs_select_brand ON plm_erp_sync_jobs;
+
 DROP POLICY IF EXISTS plm_sync_jobs_select_org ON plm_erp_sync_jobs;
 CREATE POLICY plm_sync_jobs_select_org ON plm_erp_sync_jobs
   FOR SELECT TO PUBLIC USING (
