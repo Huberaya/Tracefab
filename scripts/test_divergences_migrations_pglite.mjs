@@ -115,6 +115,23 @@ ok('le bootstrap tracefab_app est documente comme pre-requis sur base vierge',
   && bootstrap.includes('base vierge')
   && bootstrap.includes('ensureAppRoleFromUrl'));
 
+const plmRepairName = '20261104090000_plm_integrations_and_gs1_constraints';
+const plmRepair = lire(plmRepairName).toString('utf8');
+ok('la correction forward restaure les quatre CHECK PLM mesurés absents',
+  ['plm_erp_integrations_system_type_check','plm_erp_integrations_name_check',
+   'plm_erp_integrations_auth_type_check','plm_erp_integrations_status_check'].every((name) => plmRepair.includes(name)));
+ok('la correction forward ajoute GPC à la contrainte GS1',
+  plmRepair.includes("'gln', 'gpc'") && plmRepair.includes('product_identifiers_identifier_type_check'));
+ok('les contraintes sont ajoutées NOT VALID puis validées',
+  (plmRepair.match(/NOT VALID/g) || []).length >= 5
+  && (plmRepair.match(/VALIDATE CONSTRAINT/g) || []).length >= 5);
+ok('la correction refuse les données invalides et les définitions inattendues',
+  plmRepair.includes('plm_integrations_invalid_existing_rows')
+  && plmRepair.includes('product_identifiers_invalid_existing_rows')
+  && plmRepair.includes('product_identifier_type_check_unexpected'));
+ok('la correction forward ne réécrit jamais l’historique Prisma',
+  !/_prisma_migrations|migrate\\s+resolve/i.test(plmRepair));
+
 console.log('\n  3. La migration worker pending ne requiert pas SUPERUSER');
 const worker = lire('20261028120100_worker_identity_not_forgeable').toString('utf8');
 ok('aucun ALTER ROLE ne tente de modifier SUPERUSER',
