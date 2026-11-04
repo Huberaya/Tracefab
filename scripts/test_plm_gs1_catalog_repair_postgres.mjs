@@ -49,15 +49,14 @@ function ok(label, condition, detail = '') {
   }
 }
 async function refuse(sql, label) {
-  await client.query('SAVEPOINT expected_rejection');
+  await client.query('BEGIN');
   let error = null;
   try {
     await client.query(sql);
   } catch (e) {
     error = e;
   }
-  await client.query('ROLLBACK TO SAVEPOINT expected_rejection');
-  await client.query('RELEASE SAVEPOINT expected_rejection');
+  await client.query('ROLLBACK');
   ok(label, Boolean(error && error.code === '23514'), error?.message || 'écriture acceptée');
 }
 
@@ -164,5 +163,9 @@ try {
   }
   try { await admin.end(); } catch {}
 }
-if (echecs > 0) process.exitCode = 1;
-else console.log('\n  PASS — correction PLM/GS1 validée sur PostgreSQL réel, refus métier et rejeu idempotent.\n');
+if (echecs > 0 || process.exitCode === 1) {
+  process.exitCode = 1;
+  console.error(`\n  ECHEC — ${echecs} assertion(s) en échec.\n`);
+} else {
+  console.log('\n  PASS — correction PLM/GS1 validée sur PostgreSQL réel, refus métier et rejeu idempotent.\n');
+}
