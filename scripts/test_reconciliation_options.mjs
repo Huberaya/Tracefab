@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import {
   PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE,
 } from './lib/ecarts_migrations.mjs';
@@ -24,7 +25,8 @@ const snapshot = JSON.parse(fs.readFileSync(
 ));
 const worker = fs.readFileSync(path.join(root,
   'prisma/migrations/20261028120100_worker_identity_not_forgeable/migration.sql'), 'utf8');
-const plan = fs.readFileSync(path.join(root, 'scripts/plan_reconciliation_migrations.mjs'), 'utf8');
+const planResult = spawnSync('node', [path.join(root, 'scripts/plan_reconciliation_migrations.mjs'), '--markdown'], { encoding: 'utf8' });
+const plan = `${planResult.stdout || ''}${planResult.stderr || ''}`;
 const assisted = fs.readFileSync(path.join(root, 'scripts/lib/migrations_assistees.mjs'), 'utf8');
 const migrationsDir = path.join(root, 'prisma/migrations');
 
@@ -72,12 +74,13 @@ ok('les migrations PLM canoniques restent à appliquer, sans resolve',
   && Boolean(ECARTS['20261029180000_plm_erp_sync_jobs_policy_dedup']));
 
 console.log('\n  4. Aucun resolve ni réécriture d’historique');
-ok('le plan ne propose pas migrate resolve --applied', !/migrate\s+resolve\s+--applied/i.test(plan));
-ok('le plan ne propose pas migrate resolve --rolled-back', !/migrate\s+resolve\s+--rolled-back/i.test(plan));
-ok('le plan ne modifie pas directement _prisma_migrations',
+ok('le plan markdown s’exécute sans divergence', planResult.status === 0, plan.slice(0, 400));
+ok('le plan généré ne propose aucun resolve', !/migrate\s+resolve\s+--(?:applied|rolled-back)/i.test(plan));
+ok('le plan généré ne modifie pas _prisma_migrations',
   !/(UPDATE|DELETE\s+FROM)\s+_prisma_migrations/i.test(plan));
 ok('le plan impose Préproduction avant Production',
-  /Préproduction d'abord/i.test(plan) && /Production uniquement apres/i.test(plan));
+  /Préproduction doit réussir avant toute action Production/i.test(plan)
+  && /PRÉPRODUCTION[\s\S]*PRODUCTION/.test(plan));
 
 console.log('\n  5. La migration worker est compatible avec un rôle non-superutilisateur');
 ok('aucun ALTER ROLE tracefab_worker', !/ALTER\s+ROLE\s+tracefab_worker/i.test(worker));
