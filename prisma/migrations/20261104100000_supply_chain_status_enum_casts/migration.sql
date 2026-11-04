@@ -1,6 +1,6 @@
 -- Correction forward des casts enum du graphe de traçabilité.
--- Les fonctions sont appelées par l'ingestion PLM/ERP ; leur CASE textuel
--- provoquait 42804 car supply_chain_nodes.status est data_value_status.
+-- Les fonctions sont appelées par l'ingestion PLM/ERP ; leurs CASE textuels
+-- provoquaient 42804 car les statuts des noeuds et liens sont des enums.
 -- CREATE OR REPLACE conserve OID, propriétaire et ACL déjà enregistrées.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
