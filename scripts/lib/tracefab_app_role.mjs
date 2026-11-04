@@ -199,6 +199,10 @@ export const COLONNES_UPDATE_PRODUIT = [
   'country_of_design',
 ];
 
+// Alias historique conservé pour les scripts de contrôle existants : il désigne
+// désormais le périmètre INSERT, jamais le périmètre UPDATE.
+export const COLONNES_ECRITURE_PRODUIT = COLONNES_INSERT_PRODUIT;
+
 function quote(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
 }
