@@ -200,8 +200,9 @@ jobs:
 
       - name: Divergences d empreinte — effet reel mesure
         # Deux fichiers historiques ont été restaurés exactement. Le checksum PLM reste
-        # introuvable dans Git : le test le conserve comme bloqueur et vérifie que
-        # le plan Prisma refuse tout déploiement tant que le fichier exact manque.
+        # une variance d'audit épinglée aux deux empreintes exactes. Le test vérifie
+        # que seule cette paire est admise comme non bloquante pour migrate deploy
+        # et que toute modification supplémentaire invalide immédiatement l'exception.
         run: npm run test:divergences-migrations
 
       - name: Migrations hors bande — deux chemins, meme schema
@@ -230,8 +231,9 @@ jobs:
 
       - name: Reconciliation de l historique — exception PLM bornée, aucun resolve
         # Vérifie le snapshot 56/13, les cinq migrations hors bande et les deux
-        # tentatives annulées déjà suivies d’une réussite. Le plan doit rester
-        # bloqué par le checksum PLM non retrouvé ; aucun resolve n’est autorisé.
+        # tentatives annulées déjà suivies d’une réussite. Le plan accepte uniquement
+        # l'exception PLM documentée, conserve l'avertissement et n'autorise aucun
+        # resolve ni aucune écriture d'historique.
         run: npm run test:reconciliation-options
 
       - name: Appartenances de roles — le SENS, pas l'existence
@@ -332,7 +334,8 @@ jobs:
         # Reconstruit les 56 migrations réussies (51 Prisma + 5 hors bande),
         # applique les 13 absentes, vérifie le worker, les droits, PLM, DPP,
         # l’identité HMAC et les dépendances. Simulation de schéma uniquement :
-        # le checksum PLM non récupéré bloque toujours le vrai deploy.
+        # la variance checksum est testée séparément avec Prisma CLI sur PostgreSQL
+        # jetable par test:prisma:checksum-deploy ; aucune base réelle n'est touchée.
         run: npm run test:neon-migration-reconciliation
 
       - name: PLM — garde statique de la migration 20261029160000
