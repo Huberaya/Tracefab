@@ -229,9 +229,13 @@ try {
       throw new Error('Nom de base jetable invalide pour le GRANT de migration.');
     }
     if (roleExists) {
-      // CREATE sur la base permet notamment CREATE EXTENSION pgcrypto ;
-      // CREATE sur public permet ensuite de poser le schéma Prisma.
+      // Le runner endosse tracefab_migrator via SET ROLE. Sur une base
+      // PostgreSQL 17 neuve, public appartient à pg_database_owner : CREATE
+      // seul ne permet pas à la première migration de GRANT USAGE sur le
+      // schéma. On reproduit l'état Neon (le rôle de migration possède public)
+      // uniquement dans cette base jetable.
       await migratorAdmin.query(`GRANT CREATE ON DATABASE "${databaseName}" TO tracefab_migrator`);
+      await migratorAdmin.query(`ALTER SCHEMA public OWNER TO "${ROLE_MIGRATOR}"`);
       await migratorAdmin.query('GRANT CREATE ON SCHEMA public TO tracefab_migrator');
     }
     const canCreateDb = roleExists && (await migratorAdmin.query(
@@ -242,9 +246,13 @@ try {
       "SELECT has_schema_privilege($1, 'public', 'CREATE') AS ok",
       [ROLE_MIGRATOR],
     )).rows[0].ok;
-    ok(canCreateDb && canCreateSchema,
-      'R6 le migrateur dispose de CREATE sur la base et le schéma public jetables',
-      `database=${canCreateDb} · schema=${canCreateSchema} · role=${roleExists}`);
+    const schemaOwner = (await migratorAdmin.query(
+      "SELECT pg_catalog.pg_get_userbyid(nspowner) AS owner FROM pg_catalog.pg_namespace WHERE nspname='public'",
+    )).rows[0]?.owner;
+    const ownsSchema = schemaOwner === ROLE_MIGRATOR;
+    ok(canCreateDb && canCreateSchema && ownsSchema,
+      'R6 le migrateur possède public et dispose de CREATE sur la base jetable',
+      `database=${canCreateDb} · schemaCreate=${canCreateSchema} · schemaOwner=${schemaOwner} · role=${roleExists}`);
   } finally {
     await migratorAdmin.end();
   }
