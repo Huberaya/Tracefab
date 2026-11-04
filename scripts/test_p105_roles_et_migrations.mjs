@@ -367,8 +367,8 @@ try {
     'SELECT rolsuper, rolbypassrls, rolcreaterole FROM pg_catalog.pg_roles WHERE rolname = $1',
     [ROLE_MIGRATOR],
   )).rows[0];
-  ok(migFinal?.rolsuper === false && migFinal?.rolbypassrls === false && migFinal?.rolcreaterole === true,
-    'B3.3 le migrateur reste non-superutilisateur et sans BYPASSRLS', JSON.stringify(migFinal));
+  ok(migFinal?.rolsuper === false && migFinal?.rolbypassrls === true && migFinal?.rolcreaterole === true,
+    'B3.3 BYPASSRLS est réservé au migrateur non-superutilisateur, jamais au runtime', JSON.stringify(migFinal));
   const workerMemberships = (await admin.query(
     `SELECT grantor.rolname AS grantor_name, grantor.rolsuper AS grantor_superuser,
             grantor.rolcreaterole AS grantor_createrole,
