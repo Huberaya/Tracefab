@@ -162,6 +162,8 @@ Les trois migrations ci-dessus étaient déjà appliquées dans l'historique de 
 
 La migration worker a d'abord échoué avec worker_migration_membership_not_minimal. La mesure pg_auth_members a identifié deux octrois distincts après CREATE ROLE : un octroi bootstrap cloud_admin avec ADMIN OPTION, puis l'octroi explicite neondb_owner avec INHERIT/SET et sans ADMIN. La migration sélectionnait auparavant une seule ligne arbitraire. Le correctif de cette branche distingue désormais les deux lignes, vérifie l'unique octroi explicite minimal et refuse toute autre ligne inattendue.
 
+Un second cas a été couvert : si tracefab_worker préexiste dans le cluster sans appartenance du migrateur, la migration ne tente plus un GRANT aveugle ; elle échoue avec worker_migration_executor_membership_missing, sauf si l'exécutant possède un octroi bootstrap ADMIN vérifié ou est SUPERUSER. La suite P10.5 prépare explicitement le bootstrap sur son cluster PostgreSQL 17 partagé, puis vérifie séparément l'octroi explicite et la ligne bootstrap. Le test M6 PGlite, qui exécute la chaîne en superuser, est également couvert par le chemin SUPERUSER explicite.
+
 Après ce correctif, les migrations suivantes ont été exécutées avec succès sur cette branche Neon, dans cet ordre :
 - 20261028120000_runtime_function_registry ;
 - 20261028120100_worker_identity_not_forgeable ;
