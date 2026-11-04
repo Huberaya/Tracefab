@@ -1,6 +1,6 @@
 # TraceFab — réconciliation Neon des migrations (04/11/2026)
 
-> **État au 04/11 : CI 57/57 verte sur le commit 844ed911 ; correction worker et chaîne SQL testées sur une branche Neon de validation ; aucune migration appliquée sur Production ou Préproduction. Les dernières mises à jour documentaires et assertions de non-régression sont en attente de leur propre CI.**
+> **État au 04/11 : sur le commit `43d6009ff158b801bcb7a343e91744387dab02e7`, CI principale 60/60 verte et workflow d'intégration PostgreSQL 17 vert. Les 15 migrations pending ont également été appliquées avec le vrai CLI Prisma sur une branche Neon isolée ; aucune migration appliquée sur Production ou Préproduction.**
 >
 > Branche de correction : `fix/neon-migration-reconciliation-20261104`.
 >
@@ -203,3 +203,18 @@ Sur Production et Préproduction, les préconditions de la correction forward on
 - Aucun UPDATE de checksum dans `_prisma_migrations`.
 - Aucun `prisma migrate deploy` avant CI entièrement verte, préflight complet de Préproduction et validation des 13 migrations historiques + des deux corrections forward PLM/GS1 puis graphe, avec test:p105:ingestion vert.
 - Aucun déploiement, fusion ou activation du mode strict avant validation des tests et du catalogue.
+
+
+## 8. Validation finale de la chaîne sur Neon isolé — 04/11/2026
+
+La branche `br-sweet-king-b1n2f4u6` (`tracefab-dpp-readiness-validation-current-20261027`) a été retenue comme base de test propre : 56 migrations terminées avant test, registre sans migration inachevée, et absence préalable du registre runtime.
+
+Le vrai Prisma CLI 6.19.3 a appliqué les 15 migrations pending, y compris les deux corrections forward `20261104090000_plm_integrations_and_gs1_constraints` et `20261104100000_supply_chain_status_enum_casts`. Le second passage `migrate status` / `migrate deploy` confirme l'absence de migrations en attente. Après application : 71 réussies, 2 tentatives historiques annulées, 0 inachevée. Le checksum PLM historique reste `c944ce0c…c3861`.
+
+Les vérifications de catalogue après application couvrent : rôles et memberships worker, propriété et ACL des six fonctions, RLS/FORCE RLS et politiques PLM, garde d'ingestion, restrictions de colonnes réservées, contrainte GS1 `gpc`, CHECK PLM et casts enum du graphe. Le détail et les résultats exacts sont dans `2026-11-04-neon-checksum-variance-attestation.md`.
+
+**Limite importante :** ce test prouve que le CLI Prisma peut appliquer les pending sans réécrire le checksum historique. Il ne reconstitue pas le SQL original du 06/10. Production et Préproduction conservent donc leur état initial jusqu'à validation et décision de déploiement distinctes.
+
+## 9. Écarts de validation isolée à ne pas confondre avec Production
+
+La branche historique `br-late-truth-b1q7gy8j` contenait déjà le registre runtime et 92 entrées de registre, mais aucune ligne réussie de la migration `20261028120000_runtime_function_registry`. Un essai de déploiement y a échoué avec `42P07 relation already exists`. Cette branche est un snapshot de validation avec dérive hors bande, pas une baseline propre. Une ligne en échec y demeure après cet essai ; aucune résolution manuelle n'a été faite. La preuve positive repose uniquement sur `br-sweet-king-b1n2f4u6`.

@@ -52,3 +52,33 @@ Le test automatisé test:prisma:checksum-deploy, sur Prisma 6.19.3 et PostgreSQL
 - Préproduction d'abord ; contrôles du catalogue et tests après application ; Production uniquement après validation complète de Préproduction.
 - Les 13 migrations historiques pending restent à appliquer et à vérifier, puis la correction forward PLM/GS1 post-snapshot (14 migrations à appliquer au total sur les environnements actuels).
 - Si le SQL original est retrouvé, restaurer le fichier, vérifier c944… puis retirer l'exception.
+
+
+## Validation réelle sur Neon isolé (04/11/2026)
+
+Une branche de validation Neon existante, distincte de Production et Préproduction, a été utilisée pour exécuter la chaîne avec le vrai CLI Prisma 6.19.3 :
+
+- Branche : `br-sweet-king-b1n2f4u6` (`tracefab-dpp-readiness-validation-current-20261027`), issue du snapshot `br-broad-fog-b1rgt68c`.
+- État avant test : 56 migrations terminées ; 15 migrations en attente (les 13 historiques absentes de Production/Préproduction et les deux corrections forward du 04/11).
+- Commande : `npx prisma migrate deploy --schema prisma/schema.prisma` ; code de sortie **0**.
+- Résultat : les 15 migrations sont appliquées dans l'ordre, sans réécrire l'entrée PLM historique.
+- Recontrôle : `prisma migrate status` retourne `Database schema is up to date!`; un second `prisma migrate deploy` retourne `No pending migrations to apply.`.
+- Historique après test : 71 migrations réussies, 2 tentatives antérieurement annulées, 0 migration inachevée (73 lignes au total).
+- La ligne `20261006210000_plm_erp_gs1_interoperability` conserve exactement `c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861` et sa date `2026-10-06 10:36:24.845 UTC`.
+
+Cette preuve établit que le checksum divergent **ne bloque pas le déploiement des migrations pending avec Prisma sur une base Neon**. Elle n'établit pas que le fichier SQL versionné est identique octet pour octet au fichier exécuté le 06/10. Aucun `migrate resolve`, UPDATE ou DELETE de `_prisma_migrations` n'a été effectué.
+
+### Contrôles de catalogue après les 15 migrations
+
+- `tracefab_worker` existe en NOLOGIN, sans SUPERUSER, BYPASSRLS ni CREATEROLE ; les six fonctions Clerk attendues lui appartiennent, sont SECURITY DEFINER et ne sont pas exécutables par PUBLIC.
+- `tracefab_app` n'est pas membre de `tracefab_worker`. Sur cette branche Neon, les deux lignes de membership attendues sont distinguées : bootstrap `cloud_admin` (ADMIN, sans INHERIT/SET) et octroi explicite `neondb_owner` (INHERIT/SET, sans ADMIN).
+- `plm_erp_integrations` et `plm_erp_sync_jobs` ont RLS et FORCE RLS ; les deux politiques canoniques de chaque table sont présentes.
+- `tracefab_ingest_plm_erp_payload` contient la garde `ingest_role_not_allowed`, est SECURITY DEFINER, a un `search_path` épinglé à `pg_catalog, public`, et n'est pas exécutable par PUBLIC.
+- Les quatre fonctions de noeuds/liens utilisent les casts explicites vers `public.data_value_status`; la contrainte GS1 accepte `gpc` et les CHECK PLM sont validés.
+- La politique HMAC reste volontairement en mode permissif (`strict=false`) et aucune clé n'est provisionnée sur cette branche de validation. L'activation stricte demeure une opération séparée, après provisionnement sécurisé de `TRACEFAB_IDENTITY_KEY` dans l'application.
+
+### Branche historique écartée comme baseline propre
+
+Une autre branche de validation préexistante, `br-late-truth-b1q7gy8j`, contenait déjà le registre runtime (92 entrées) et des effets de migrations ultérieures sans ligne réussie pour `20261028120000_runtime_function_registry`. Le premier essai Prisma sur cette branche s'est donc arrêté sur `42P07 relation already exists`. Cette branche n'est pas une base propre et n'a pas été utilisée comme preuve positive. L'essai a laissé une ligne Prisma en échec sur cette branche de validation uniquement ; aucun `migrate resolve` n'a été exécuté. Production et Préproduction n'ont pas été touchées.
+
+**Conclusion de cette section :** la compatibilité opérationnelle du checksum historique est démontrée sur Neon ; la récupération de son SQL exact reste ouverte et doit être close uniquement si une archive ou un workspace du 06/10 est retrouvé.

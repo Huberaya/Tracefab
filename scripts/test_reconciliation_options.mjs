@@ -34,6 +34,7 @@ const planAuto = spawnSync('node', [planPath, '--autotest'], { encoding: 'utf8' 
 const plan = `${planResult.stdout || ''}${planResult.stderr || ''}`;
 const planAutoOutput = `${planAuto.stdout || ''}${planAuto.stderr || ''}`;
 const assisted = fs.readFileSync(path.join(root, 'scripts/lib/migrations_assistees.mjs'), 'utf8');
+const migrationRunner = fs.readFileSync(path.join(root, 'scripts/migrer_fidelement.mjs'), 'utf8');
 const migrationsDir = path.join(root, 'prisma/migrations');
 
 let verifies = 0;
@@ -135,6 +136,8 @@ ok('l’appartenance SET du migrateur est conservée',
   !/REVOKE\s+tracefab_worker\s+FROM\s+current_user/i.test(worker));
 ok('aucune migration assistée ne demande encore SUPERUSER',
   /MIGRATIONS_ASSISTEES\s*=\s*Object\.freeze\(\{\}\)/.test(assisted));
+ok('les tentatives explicitement annulées ne sont pas signalées comme migrations inachevées',
+  migrationRunner.includes('const enEchec = registre.filter((r) => !r.finished_at && !r.rolled_back_at);'));
 
 console.log('\n  --------------------------------------------');
 console.log(`  ${verifies} vérifications passées — snapshot Neon 04/11, aucune réécriture d’historique.`);

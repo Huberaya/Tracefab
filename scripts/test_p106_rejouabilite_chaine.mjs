@@ -16,19 +16,15 @@
  * La correction vit dans l'OUTIL (`preparerAppartenance`), pas dans la
  * migration publiée. Ce test vérifie les deux :
  *
- *   R1  registre : toute entrée qui accorde une appartenance (`apres`) doit
- *       fournir un bloc `avant`, sinon la chaîne n'est rejouable qu'une fois
- *       par cluster ;
- *   R2  registre : le bloc `avant` ne peut pas révoquer le rôle exécutant
- *       lui-même, et il borne les membres qu'il retire à un motif ;
- *   R3  `preparerAppartenance` est idempotente (deux appels, même état) ;
- *   R4  elle RÉVOQUE un membre `tracefab_*` hors périmètre, et le cluster
- *       revient à l'état attendu ;
- *   R5  elle LÈVE sur un membre étranger au lieu de le retirer en silence ;
- *   R6  la chaîne complète s'applique sur une base VIERGE d'un cluster où elle
- *       s'est déjà appliquée ailleurs — c'est la mesure du défaut D5 ;
- *   R7  la base de travail est détruite, l'appartenance finale est conforme
- *       (exécutant membre, `tracefab_app` membre de rien, aucun `tf_*`).
+ *   R1/R2 le registre d'assistance est fermé : aucune migration actuelle ne
+ *       demande une élévation SUPERUSER ni un bloc de préparation ;
+ *   R3  `preparerAppartenance` reste strictement inerte hors registre et ne
+ *       révoque aucune appartenance cluster-wide ;
+ *   R6  la chaîne complète s'applique sur une base VIERGE d'un cluster déjà
+ *       migré, en endossant le même rôle dédié `tracefab_migrator` ;
+ *   R7  la base de travail est détruite et le seul membre distinct de
+ *       `tracefab_worker` est `tracefab_migrator` ; `tracefab_app` reste sans
+ *       appartenance et aucun rôle runtime n'est élevé.
  *
  * Sortie : 0 conforme · 1 régression · 2 non exécuté · 3 refus de cible.
  */
