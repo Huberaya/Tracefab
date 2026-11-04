@@ -15,7 +15,7 @@ Production et Préproduction présentent le même état :
 - Les 5 hors bande sont les migrations PEF, green claims, quality CAP, supplier passport et mass balance ; leurs 12 objets attendus ont été relus présents sur Production et Préproduction. Ne pas les rejouer.
 - 2 tentatives annulées, toutes deux suivies d'une migration terminée du même nom.
 - 0 migration inachevée.
-- 69 dossiers dans le snapshot initial ; la branche de correction en contient désormais 70 avec une migration forward post-snapshot.
+- 69 dossiers dans le snapshot initial ; la branche de correction en contient désormais 71 avec deux migrations forward post-snapshot.
 - 13 migrations absentes de l'historique réussi.
 - 3 empreintes de migrations déjà appliquées différentes des fichiers de main au début de l'audit ; deux ont été restaurées exactement dans la branche dédiée, une variance PLM reste documentée.
 
@@ -113,7 +113,7 @@ Le fichier en attente `20261030140000_ingest_payload_role_guard_and_acl` contena
 
 **Aucune migration n'a été appliquée sur Production ni Préproduction.** En revanche, onze fichiers SQL ont été exécutés manuellement sur la branche Neon non-production `tracefab-dpp-readiness-validation-20261027` (branch id `br-late-truth-b1q7gy8j`). Cette branche avait déjà 59 migrations réussies : exactement les 56 migrations réussies de Production/Préproduction, plus les trois migrations pending suivantes : 20261021170000_dpp_readiness_truthful_gates, 20261027100000_dpp_quality_gate_requires_assessment et 20261027130000_dpp_review_preservation_and_publication_coherence. Les onze migrations ont été exécutées sans écrire de lignes dans `_prisma_migrations`. Ce test prouve l'exécution SQL sur Neon et les effets catalogue de cette séquence ; il ne remplace ni un `prisma migrate deploy` sur Préproduction, ni le test d'une copie exacte du baseline 56.
 
-Le checksum historique PLM exact reste introuvable et demeure un écart de provenance explicitement documenté. Le test Prisma 6.19.3 prouve que `migrate deploy` applique les migrations pending sans rejouer l'entrée déjà terminée ni réécrire son checksum. L'écart est donc un avertissement de provenance, pas un blocage du moteur `migrate deploy`. Le catalogue a révélé deux écarts fonctionnels supplémentaires ; ils sont corrigés par une migration forward dédiée.
+Le checksum historique PLM exact reste introuvable et demeure un écart de provenance explicitement documenté. Le test Prisma 6.19.3 prouve que `migrate deploy` applique les migrations pending sans rejouer l'entrée déjà terminée ni réécrire son checksum. L'écart est donc un avertissement de provenance, pas un blocage du moteur `migrate deploy`. Le catalogue a révélé deux écarts fonctionnels supplémentaires ; ils sont corrigés par deux migrations forward dédiées et ordonnées.
 
 ### Identité HMAC
 
@@ -135,7 +135,7 @@ Elle vérifie les données existantes, refuse tout état partiel ou toute défin
 
 **Deuxième migration forward :** `20261104100000_supply_chain_status_enum_casts` remplace `tracefab_create_supply_chain_node` et `tracefab_update_supply_chain_node` avec un cast explicite vers `public.data_value_status` pour les statuts `declared`/`documented`. Le CASE texte précédent provoquait `42804` pendant l'ingestion PLM/ERP. Les deux définitions mesurées sont identiques en Production et Préproduction (MD5 respectifs `6cde131116176fb151c42dcdb533d222` et `88cc4468246ae577ec9671250d3cf72a`). `CREATE OR REPLACE` conserve les OID, propriétaires et ACL existants. Cette migration est séparée pour ne pas imposer les types du graphe aux tests isolés de la correction PLM/GS1.
 
-Le plan d'exécution passe donc de 13 migrations historiques pending à **13 + 2 corrections forward ordonnées** : PLM/GS1, puis graphe. La simulation PGlite est étendue pour reproduire le catalogue réellement mesuré, appliquer la correction, vérifier les cinq contraintes, les deux casts enum et rejouer la migration pour prouver l'idempotence. Cette preuve CI doit être verte avant toute application Neon.
+Le plan d'exécution passe donc de 13 migrations historiques pending à **13 + 2 corrections forward ordonnées** : PLM/GS1, puis graphe. La simulation PGlite est étendue pour reproduire le catalogue réellement mesuré, appliquer les deux corrections, vérifier les cinq contraintes, les deux casts enum et rejouer chacune pour prouver l'idempotence. Cette preuve CI doit être verte avant toute application Neon.
 
 ## 4. Correction de la migration worker préparée dans cette branche
 
