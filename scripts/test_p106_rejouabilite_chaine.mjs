@@ -224,15 +224,27 @@ try {
       "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1) AS ok",
       [ROLE_MIGRATOR],
     )).rows[0].ok;
+    const databaseName = decodeURIComponent(urlBase.pathname.replace(/^\\//, ''));
+    if (!/^[a-z0-9_]+$/.test(databaseName)) {
+      throw new Error('Nom de base jetable invalide pour le GRANT de migration.');
+    }
     if (roleExists) {
+      // CREATE sur la base permet notamment CREATE EXTENSION pgcrypto ;
+      // CREATE sur public permet ensuite de poser le schéma Prisma.
+      await migratorAdmin.query(`GRANT CREATE ON DATABASE "${databaseName}" TO tracefab_migrator`);
       await migratorAdmin.query('GRANT CREATE ON SCHEMA public TO tracefab_migrator');
     }
-    const canCreate = roleExists && (await migratorAdmin.query(
+    const canCreateDb = roleExists && (await migratorAdmin.query(
+      "SELECT has_database_privilege($1, $2, 'CREATE') AS ok",
+      [ROLE_MIGRATOR, databaseName],
+    )).rows[0].ok;
+    const canCreateSchema = roleExists && (await migratorAdmin.query(
       "SELECT has_schema_privilege($1, 'public', 'CREATE') AS ok",
       [ROLE_MIGRATOR],
     )).rows[0].ok;
-    ok(canCreate, 'R6 le migrateur dispose de CREATE sur public dans la base jetable',
-      roleExists ? 'CREATE accordé et vérifié' : 'rôle migrateur absent');
+    ok(canCreateDb && canCreateSchema,
+      'R6 le migrateur dispose de CREATE sur la base et le schéma public jetables',
+      `database=${canCreateDb} · schema=${canCreateSchema} · role=${roleExists}`);
   } finally {
     await migratorAdmin.end();
   }
