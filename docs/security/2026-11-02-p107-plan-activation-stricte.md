@@ -1,9 +1,18 @@
 # P10.7 · Chantier E — Plan de migration vérifiable
 
 Ce plan décrit **ce qu'un opérateur doit faire**, dans quel ordre, avec quel
-rôle, et ce qui l'arrête. Il ne décrit aucune action qui aurait déjà été
-exécutée sur une base réelle : **aucune migration n'a été appliquée hors du
-cluster jetable** dans la mission P10.7.
+rôle, et ce qui l'arrête. La phrase historique ci-dessous décrit l'état à la
+clôture de la mission P10.7 ; elle ne décrit pas les essais du 04/11/2026.
+
+**Mise à jour du 04/11/2026 :** le dépôt contient désormais 70 migrations ;
+Production et Préproduction ont 56 migrations réussies, 13 migrations
+historiques absentes et une correction forward PLM/GS1 post-snapshot. Onze
+migrations SQL ont été exécutées manuellement sur une branche Neon de
+validation distincte, sans écrire dans son historique _prisma_migrations.
+Cette branche est un laboratoire de catalogue, pas une Préproduction.
+
+À la date de rédaction de P10.7, aucune migration n'avait été appliquée hors du
+cluster jetable.
 
 Rappel des contraintes qui encadrent ce plan : la PR #105 n'est pas fusionnée,
 `main` n'est pas modifiée, `strict` n'est pas activé, aucun secret n'est lu ni
@@ -23,8 +32,10 @@ P10.5/P10.6 a **deux** migrations en attente :
 | 69 | `20261102120000_identite_stricte_email_et_rotation` | adresse non forgeable en mode strict, trois fonctions d'attestation sur l'identité signée, rotation sans coupure |
 
 Une base plus ancienne appliquera, **dans l'ordre**, tout ce qui manque —
-notamment `20261028120100_worker_identity_not_forgeable` (rang 55), qui est la
-seule migration nécessitant une **élévation** (voir § 3).
+notamment 20261028120100_worker_identity_not_forgeable (rang 55). La version
+présente dans cette branche est corrigée pour l'exécution Neon observée avec
+neondb_owner (CREATEROLE, NOSUPERUSER) : elle ne demande pas d'élévation
+SUPERUSER. Le test réel sur branche Neon est décrit dans le rapport du 04/11.
 
 Ne jamais appliquer une migration hors de cet ordre, ni « en sautant » celles
 qui échouent : le registre `_prisma_migrations` enregistre un échec avec
@@ -49,11 +60,12 @@ Avant la première écriture, l'outil :
 3. **préflight D6** : lit, dans les fichiers en attente, les fonctions visées par
    `CREATE OR REPLACE FUNCTION` / `ALTER FUNCTION`, interroge le catalogue, et
    **refuse (sortie 3) si l'exécutant ne peut pas endosser leur propriétaire** ;
-4. pour une migration assistée (registre fermé, une seule entrée), exige
-   `TF_ADMIN_URL` **et** `TF_ALLOW_ELEVATION=oui`, élève le rôle juste avant,
-   puis le révoque et **vérifie** la révocation, y compris en cas d'échec ;
-5. prend un verrou de cluster (deux applications concurrentes se heurtent en
-   `XX000` sur l'`ALTER ROLE` de la migration assistée).
+4. vérifie le registre MIGRATIONS_ASSISTEES : il est vide pour la chaîne
+   actuelle, donc aucune élévation temporaire n'est demandée. Une migration
+   future ne pourra utiliser TF_ADMIN_URL et TF_ALLOW_ELEVATION=oui qu'après
+   inscription explicite et test dédié ;
+5. prend un verrou avant les opérations de création de rôle et de transfert
+   de propriété afin d'éviter deux exécutions concurrentes.
 
 ---
 
@@ -61,7 +73,7 @@ Avant la première écriture, l'outil :
 
 | Migration | Rôle requis | Pourquoi, mesuré |
 |---|---|---|
-| `20261028120100_worker_identity_not_forgeable` | **SUPERUSER** (ou élévation bornée via `TF_ADMIN_URL`) | `CREATE ROLE tracefab_worker`, `ALTER ROLE … NOSUPERUSER`, `ALTER FUNCTION … OWNER TO` : PostgreSQL 16+ refuse les deux branches à un rôle non superutilisateur (`42501`) |
+| 20261028120100_worker_identity_not_forgeable | **CREATEROLE + propriété des fonctions transférées** ; pas SUPERUSER | La migration crée un rôle worker NOLOGIN sans attributs élevés, accorde explicitement INHERIT/SET sans ADMIN OPTION, puis transfère six fonctions. Sur Neon, CREATE ROLE ajoute aussi une appartenance bootstrap gérée par cloud_admin (ADMIN=true, INHERIT/SET=false) ; le contrôle distingue cette ligne de l'octroi explicite. Testée sur branche Neon avec neondb_owner NOSUPERUSER/CREATEROLE. | `CREATE ROLE tracefab_worker`, `ALTER ROLE … NOSUPERUSER`, `ALTER FUNCTION … OWNER TO` : PostgreSQL 16+ refuse les deux branches à un rôle non superutilisateur (`42501`) |
 | `20261031120000_identite_hmac_liee_au_contexte` | **propriétaire** des fonctions et tables qu'elle crée/remplace (sur Neon : le rôle d'administration du projet, ex. `neondb_owner`) | `CREATE TABLE`, `CREATE OR REPLACE FUNCTION`, `GRANT` |
 | `20261102120000_identite_stricte_email_et_rotation` | **le même propriétaire** — c'est le point dur | `CREATE OR REPLACE FUNCTION` exige d'être propriétaire (mesuré P10.6 : `42501 must be owner of function`) ; la migration remplace `tracefab_current_user_email`, `tracefab_identity_jeton_utilisateur` et trois fonctions d'attestation |
 | toutes les autres | rôle de migration (peut rester non superutilisateur) | aucune ne change de propriétaire |
@@ -73,8 +85,9 @@ seulement, dans cet ordre : (a) relancer avec `DATABASE_URL` du propriétaire ;
 (b) décider explicitement d'un transfert de propriété, avec sa trace. Aucune
 troisième voie ne doit être improvisée sur la base réelle.
 
-Le préflight ne couvre **pas** les migrations du registre assisté : celles-ci
-gardent leur mécanisme d'élévation bornée, distinct et tracé.
+Le registre MIGRATIONS_ASSISTEES est actuellement vide. Le mécanisme
+d'élévation bornée est conservé pour un besoin futur explicitement déclaré,
+mais aucune migration de cette chaîne ne doit l'utiliser.
 
 ---
 
@@ -92,7 +105,7 @@ node scripts/sonde_p107_etat_cible.mjs --url "$TRACEFAB_LECTURE_URL" --role-runt
 | P2 | aucune migration P10.5/P10.6 déjà en échec | `b2_migrations_p105_p106[*].en_echec = false` | une est en échec |
 | P3 | propriétaires connus | `b4_proprietaires` liste six fonctions **et** leur propriétaire | une fonction manque, ou le propriétaire est inattendu |
 | P4 | hygiène des `SECURITY DEFINER` | `b5_hygiene.definer_sans_search_path = 0`, `executables_par_public = 0` | l'un des deux est non nul |
-| P5 | droits de la migration assistée | `b6_droits_migration.migrator_superuser = false` hors fenêtre | `superuser = true` = état d'exploitation anormal |
+| P5 | absence d'élévation non déclarée | MIGRATIONS_ASSISTEES = {} et b6_droits_migration.migrator_superuser = false | une migration demande une élévation non inscrite ou l'exécutant reste SUPERUSER | `superuser = true` = état d'exploitation anormal |
 | P6 | mode d'identité | `b7_identite.mode_identite = 'permissif'` au moment du déploiement | déjà `strict` sans avoir mesuré l'identité |
 | P7 | clé hors de portée du runtime | `b8_portee_de_la_cle.app_lit_les_cles = false` | le runtime lit ou écrit la table des clés |
 | P8 | **identité réelle du runtime** | `GET /api/internal/p2-readiness?identity=1` **ou** `node scripts/sonde_p107_runtime.mjs`, verdict `IDENTITE_CONFORME` | le runtime est propriétaire, `SUPERUSER`, `BYPASSRLS`, `CREATEROLE`, `CREATEDB`, ou peut prendre un rôle privilégié |
