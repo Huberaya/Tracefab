@@ -83,9 +83,11 @@ ok('les deux corrections forward sont postérieures au snapshot et non appliqué
   && !PRODUCTION_APPLIED[plmRepairName] && !PRODUCTION_APPLIED[graphRepairName]
   && !ECARTS[plmRepairName] && !ECARTS[graphRepairName]
   && plan.includes(plmRepairName) && plan.includes(graphRepairName));
-ok('la migration graphe caste explicitement les statuts des deux fonctions',
-  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(graphForward)
-  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\s\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\.data_value_status ELSE 'documented'::public\.data_value_status END/.test(graphForward));
+ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
+  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForward)
+  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForward)
+  && /CREATE OR REPLACE FUNCTION tracefab_add_supply_chain_link[\\s\\S]*?CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForward)
+  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_link[\\s\\S]*?CASE WHEN p_evidence_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(graphForward));
 ok('les migrations PLM canoniques restent à appliquer, sans resolve',
   Boolean(ECARTS['20261028150000_reconcile_plm_erp_sync_job_policies'])
   && Boolean(ECARTS['20261029180000_plm_erp_sync_jobs_policy_dedup']));
