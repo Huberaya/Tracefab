@@ -131,9 +131,11 @@ La confrontation étendue du catalogue PostgreSQL a révélé deux divergences q
 
 **Migration forward ajoutée :** `20261104090000_plm_integrations_and_gs1_constraints`.
 
-Elle vérifie les données existantes, refuse tout état partiel ou toute définition de contrainte inattendue, ajoute les quatre CHECK avec validation explicite, puis étend l'ancienne contrainte GS1 exacte à `gpc`. La même correction forward remplace également `tracefab_create_supply_chain_node` et `tracefab_update_supply_chain_node` avec un cast explicite vers `public.data_value_status` pour les statuts `declared`/`documented` : le CASE texte précédent provoquait `42804` pendant l'ingestion PLM/ERP. Les deux définitions mesurées sont identiques en Production et Préproduction (MD5 respectifs `6cde131116176fb151c42dcdb533d222` et `88cc4468246ae577ec9671250d3cf72a`). `CREATE OR REPLACE` conserve les OID, propriétaires et ACL existants. La migration reste idempotente et ne touche jamais à `_prisma_migrations`.
+Elle vérifie les données existantes, refuse tout état partiel ou toute définition de contrainte inattendue, ajoute les quatre CHECK avec validation explicite, puis étend l'ancienne contrainte GS1 exacte à `gpc`. Elle reste idempotente et ne touche jamais à `_prisma_migrations`.
 
-Le plan d'exécution passe donc de 13 migrations historiques pending à **13 + 1 correction forward**. La simulation PGlite est étendue pour reproduire le catalogue réellement mesuré, appliquer la correction, vérifier les cinq contraintes, les deux casts enum et rejouer la migration pour prouver l'idempotence. Cette preuve CI doit être verte avant toute application Neon.
+**Deuxième migration forward :** `20261104100000_supply_chain_status_enum_casts` remplace `tracefab_create_supply_chain_node` et `tracefab_update_supply_chain_node` avec un cast explicite vers `public.data_value_status` pour les statuts `declared`/`documented`. Le CASE texte précédent provoquait `42804` pendant l'ingestion PLM/ERP. Les deux définitions mesurées sont identiques en Production et Préproduction (MD5 respectifs `6cde131116176fb151c42dcdb533d222` et `88cc4468246ae577ec9671250d3cf72a`). `CREATE OR REPLACE` conserve les OID, propriétaires et ACL existants. Cette migration est séparée pour ne pas imposer les types du graphe aux tests isolés de la correction PLM/GS1.
+
+Le plan d'exécution passe donc de 13 migrations historiques pending à **13 + 2 corrections forward ordonnées** : PLM/GS1, puis graphe. La simulation PGlite est étendue pour reproduire le catalogue réellement mesuré, appliquer la correction, vérifier les cinq contraintes, les deux casts enum et rejouer la migration pour prouver l'idempotence. Cette preuve CI doit être verte avant toute application Neon.
 
 ## 4. Correction de la migration worker préparée dans cette branche
 
@@ -175,11 +177,12 @@ Après ce correctif, les migrations suivantes ont été exécutées avec succès
 - 20261030140000_ingest_payload_role_guard_and_acl ;
 - 20261031120000_identite_hmac_liee_au_contexte ;
 - 20261102120000_identite_stricte_email_et_rotation ;
-- 20261104090000_plm_integrations_and_gs1_constraints.
+- 20261104090000_plm_integrations_and_gs1_constraints ;
+- 20261104100000_supply_chain_status_enum_casts.
 
 Vérifications catalogue et sécurité : 25/25 vraies, dont rôle worker minimal, six fonctions possédées et enregistrées, 11 politiques worker basées sur CURRENT_USER, aucun ancien GUC worker, aucune appartenance de tracefab_app au worker, droits documents/produits limités, deux politiques PLM canoniques, garde session_user sur l'ingestion, ACL PUBLIC révoquée, quatre CHECK PLM, GS1/GPC, casts enum du graphe, tables HMAC présentes et mode strict toujours désactivé. Les fonctions worker ont également été appelées sous tracefab_app ; les opérations d'écriture de test ont été annulées par savepoint.
 
-Sur Production et Préproduction, les préconditions de la correction forward ont été relues en lecture seule : zéro ligne PLM invalide, zéro identifiant invalide, quatre CHECK PLM absents, ancienne contrainte GS1 sans gpc et définitions des deux fonctions du graphe identiques (CASE texte en 42804). La première version de la migration forward (CHECK + GS1/GPC) a réussi sur la branche Neon de validation. Les deux remplacements de fonctions ont été ajoutés ensuite, après l'échec P10.5 ; ils n'ont pas encore été appliqués sur Neon et doivent être validés par la CI PostgreSQL 17 avant tout déploiement.
+Sur Production et Préproduction, les préconditions de la correction forward ont été relues en lecture seule : zéro ligne PLM invalide, zéro identifiant invalide, quatre CHECK PLM absents, ancienne contrainte GS1 sans gpc et définitions des deux fonctions du graphe identiques (CASE texte en 42804). La première version de la migration forward (CHECK + GS1/GPC) a réussi sur la branche Neon de validation. La migration graphe a été séparée ensuite, après l'échec P10.5 ; elle n'a pas encore été appliquée sur Neon et doit être validée par la CI PostgreSQL 17 avant tout déploiement.
 
 **Limite importante :** la branche de validation a été modifiée par ces essais SQL manuels et son historique Prisma n'a volontairement pas été modifié. Ne pas l'utiliser comme Préproduction, ne pas lui lancer Prisma migrate deploy et ne pas la présenter comme preuve d'application Prisma. Elle reste un laboratoire de validation Neon.
 
@@ -187,7 +190,7 @@ Sur Production et Préproduction, les préconditions de la correction forward on
 
 1. Terminer les corrections de code de cette branche et obtenir une CI entièrement verte.
 2. Dans un worktree Codespace séparé, récupérer cette branche. Ne pas remplacer ni réinitialiser le worktree de travail existant.
-3. Avec une connexion directe de migration à Préproduction, vérifier l'identité SQL (`current_user`), les attributs de rôle, la propriété des fonctions et `prisma migrate status`. Résultat exigé : exactement une divergence de checksum PLM connue et documentée, 13 migrations historiques en attente et une migration forward PLM/GS1/graphe post-snapshot.
+3. Avec une connexion directe de migration à Préproduction, vérifier l'identité SQL (`current_user`), les attributs de rôle, la propriété des fonctions et `prisma migrate status`. Résultat exigé : exactement une divergence de checksum PLM connue et documentée, 13 migrations historiques en attente et deux migrations forward post-snapshot, PLM/GS1 puis graphe.
 4. Exécuter `prisma migrate deploy` en Préproduction seulement après cette pré-vérification.
 5. Vérifier que les 70 migrations de la branche sont terminées, puis contrôler le catalogue : profil DPP, fonctions, triggers, politiques, privilèges sur documents/produits, rôle worker, registre runtime et ACL.
 6. Exécuter les tests d'intégration et les parcours applicatifs sur une cible Preview dont l'isolation de base a été prouvée.
@@ -198,5 +201,5 @@ Sur Production et Préproduction, les préconditions de la correction forward on
 
 - Aucun `migrate resolve --applied` pour les migrations déjà terminées.
 - Aucun UPDATE de checksum dans `_prisma_migrations`.
-- Aucun `prisma migrate deploy` avant CI entièrement verte, préflight complet de Préproduction et validation des 13 migrations historiques + de la correction forward PLM/GS1/graphe, avec test:p105:ingestion vert.
+- Aucun `prisma migrate deploy` avant CI entièrement verte, préflight complet de Préproduction et validation des 13 migrations historiques + des deux corrections forward PLM/GS1 puis graphe, avec test:p105:ingestion vert.
 - Aucun déploiement, fusion ou activation du mode strict avant validation des tests et du catalogue.
