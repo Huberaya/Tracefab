@@ -140,6 +140,29 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+if (autotest) {
+  const mutants = [
+    { label: 'resolve --applied', lines: [{ action: 'prisma migrate resolve --applied' }] },
+    { label: 'écriture historique', lines: [{ action: 'UPDATE _prisma_migrations SET checksum = ...' }] },
+  ];
+  let passed = 0;
+  const guardErrors = [];
+  for (const mutant of mutants) {
+    if (violationsFor(mutant.lines).length > 0) passed += 1;
+    else guardErrors.push(`autotest non détecté : ${mutant.label}`);
+  }
+  const reversed = [...phases].reverse();
+  if (violationsFor(lines, reversed).length > 0) passed += 1;
+  else guardErrors.push('autotest non détecté : Production avant Préproduction');
+  if (guardErrors.length) {
+    console.error('\nAUTOTEST ECHEC');
+    for (const error of guardErrors) console.error(`  - ${error}`);
+    process.exit(1);
+  }
+  console.log(`Autotest OK : ${passed}/3 garde-fous détectent les mutations interdites.`);
+  process.exit(0);
+}
+
 if (markdown) {
   console.log(`# Plan de réconciliation Neon — ${SNAPSHOT_DATE}\n`);
   console.log('**Ce plan est généré, non exécuté. Préproduction doit réussir avant toute action Production.**\n');
@@ -178,26 +201,5 @@ if (errors.length) {
   console.error('\nVIOLATIONS :');
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
-}
-if (autotest) {
-  const mutants = [
-    { label: 'resolve --applied', lines: [{ action: 'prisma migrate resolve --applied' }] },
-    { label: 'écriture historique', lines: [{ action: 'UPDATE _prisma_migrations SET checksum = ...' }] },
-  ];
-  let passed = 0;
-  for (const mutant of mutants) {
-    if (violationsFor(mutant.lines).length > 0) passed += 1;
-    else errors.push(`autotest non détecté : ${mutant.label}`);
-  }
-  const reversed = [...phases].reverse();
-  if (violationsFor(lines, reversed).length > 0) passed += 1;
-  else errors.push('autotest non détecté : Production avant Préproduction');
-  if (errors.length) {
-    console.error('\nAUTOTEST ECHEC');
-    for (const error of errors) console.error(`  - ${error}`);
-    process.exit(1);
-  }
-  console.log(`Autotest OK : ${passed}/3 garde-fous détectent les mutations interdites.`);
-  process.exit(0);
 }
 console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 en attente, aucun resolve ni changement de checksum.');
