@@ -1,21 +1,19 @@
 #!/usr/bin/env node
 /**
- * Non-regression de reconciliation des trois migrations historiques.
+ * Non-regression de reconciliation des migrations historiques.
  *
- * Les empreintes ci-dessous ont ete lues dans _prisma_migrations de Production
- * et de Preproduction le 04/11/2026. Les fichiers du depot doivent rester
- * byte-for-byte identiques aux versions effectivement appliquees.
+ * Le snapshot Neon du 04/11/2026 confirme les checksums Production/Preproduction.
+ * Deux fichiers historiques ont été restaurés exactement. Le checksum PLM
+ * (c944ce0c...) ne correspond à aucune version retrouvée dans Git : le fichier
+ * courant est conservé, et Prisma doit BLOQUER tant que le fichier exact n'est
+ * pas récupéré. Aucun checksum n'est modifié en base.
  *
- * Les evolutions ulterieures restent dans des migrations forward distinctes :
- * - supplier invitation : 20261005100000_supplier_invitation_compatibility ;
- * - politiques PLM : 20261028150000 et 20261029180000 ;
- * - bootstrap du role app avant les migrations : db:deploy.
- *
- * Ce test ne se connecte a aucune base et ne modifie aucun historique.
+ * Ce test ne se connecte à aucune base et ne modifie aucun historique.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -34,21 +32,35 @@ function ok(label, condition, detail = '') {
 }
 
 console.log('\n  1. Empreintes historiques Production / Preproduction');
-const attendues = {
+const conformes = {
   '20261005090000_supplier_portal_advanced_hardening':
     '560356c203df6d460f8488f44bdf1ce582d3f609eae1b4acd329ad3cd686bbb7',
-  '20261006210000_plm_erp_gs1_interoperability':
-    'c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861',
   '20261009180000_public_read_context':
     'c12ee33303084b6710284139786058b8d088b2619d92372ea57f282e86480d04',
 };
 const fichiers = {};
-for (const [migration, attendu] of Object.entries(attendues)) {
+for (const [migration, attendu] of Object.entries(conformes)) {
   const sql = lire(migration);
   fichiers[migration] = sql.toString('utf8');
   const calcule = sha256(sql);
   ok(`${migration} conserve l'empreinte appliquee`, calcule === attendu, calcule);
 }
+
+const plmName = '20261006210000_plm_erp_gs1_interoperability';
+const plmShaApplied = 'c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861';
+const plmShaCurrentMain = '6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044';
+const plmInitial = lire(plmName).toString('utf8');
+const plmShaCurrent = sha256(Buffer.from(plmInitial));
+ok('le checksum PLM appliqué est identifié', plmShaApplied.length === 64);
+ok('le fichier PLM du dépôt est conservé, mais son checksum diffère de la base',
+  plmShaCurrent === plmShaCurrentMain && plmShaCurrent !== plmShaApplied,
+  `appliqué=${plmShaApplied}; dépôt=${plmShaCurrent}`);
+
+const planResult = spawnSync('node', [path.join(root, 'scripts/plan_reconciliation_migrations.mjs'), '--markdown'], { encoding: 'utf8' });
+const planOutput = `${planResult.stdout || ''}\n${planResult.stderr || ''}`;
+ok('le plan Prisma est bloqué tant que le checksum PLM exact manque',
+  planResult.status !== 0 && planOutput.includes(plmName) && /checksum/i.test(planOutput),
+  planOutput.slice(-1200));
 
 console.log('\n  2. Les corrections fonctionnelles restent dans des migrations forward');
 const supplierCompat = lire('20261005100000_supplier_invitation_compatibility').toString('utf8');
@@ -57,13 +69,9 @@ ok('la migration de compatibilite fournisseur reste presente',
 ok('elle refuse un owner sans relationship_id',
   /target_role\s*=\s*'owner'[\s\S]{0,180}relationship_id\s+IS\s+NULL/i.test(supplierCompat));
 
-const plmInitial = fichiers['20261006210000_plm_erp_gs1_interoperability'];
-ok('la migration PLM historique cree la politique canonique SELECT',
-  plmInitial.includes('CREATE POLICY plm_sync_jobs_select_org'));
-ok('la migration PLM historique cree la politique canonique INSERT',
-  plmInitial.includes('CREATE POLICY plm_sync_jobs_insert_brand'));
-ok('la migration PLM historique n' + "'" + 'a pas absorbe les suppressions ulterieures',
-  !plmInitial.includes('DROP POLICY IF EXISTS plm_erp_sync_jobs_insert_brand'));
+ok('le fichier PLM courant conserve les deux instructions de nettoyage',
+  plmInitial.includes('DROP POLICY IF EXISTS plm_erp_sync_jobs_insert_brand')
+  && plmInitial.includes('DROP POLICY IF EXISTS plm_erp_sync_jobs_select_brand'));
 
 for (const migration of [
   '20261028150000_reconcile_plm_erp_sync_job_policies',
@@ -109,4 +117,4 @@ if (echecs > 0) {
   console.error(`  ${echecs} echec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} verifications passees — checksums historiques preserves, evolutions versionnees en forward.`);
+console.log(`  ${verifies} verifications passees — 2 checksums restaurés, PLM bloqué, aucune réécriture d'historique.`);
