@@ -90,6 +90,10 @@ ok('les 2 tentatives annulées ont aussi une ligne réussie',
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
 ok('une correction forward est postérieure au snapshot',
   newNames.length === 1 && newNames[0] === '20261104090000_plm_integrations_and_gs1_constraints', JSON.stringify(newNames));
+const forwardSql = lire('20261104090000_plm_integrations_and_gs1_constraints');
+ok('le correctif forward caste les statuts enum du create ET update supply-chain',
+  /CREATE OR REPLACE FUNCTION tracefab_create_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(forwardSql)
+  && /CREATE OR REPLACE FUNCTION tracefab_update_supply_chain_node[\\s\\S]*?CASE WHEN p_source_document_id IS NULL THEN 'declared'::public\\.data_value_status ELSE 'documented'::public\\.data_value_status END/.test(forwardSql));
 ok('toutes les migrations du dépôt sont classées',
   baselineNames.length + pendingNames.length + newNames.length === dossiers.length);
 
