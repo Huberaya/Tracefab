@@ -471,7 +471,10 @@ jobs:
           #   test:prisma:checksum-deploy — utilise le PostgreSQL jetable pour
           #     prouver le comportement de migrate deploy sur checksum divergent.
           #     Exécuté une fois dans le job « Base », pas dans cette boucle.
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&k!=='test:prisma:checksum-deploy'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
+          #   test:plm:gs1-repair-postgres — crée sa propre base temporaire
+          #     PostgreSQL pour la correction forward PLM/GS1. Exécuté dans
+          #     le job « Base », pas dans cette boucle sans DATABASE_URL.
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&k!=='test:prisma:checksum-deploy'&&k!=='test:plm:gs1-repair-postgres'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -644,6 +647,15 @@ jobs:
         # DATABASE_URL = localhost/tracefab_test, aucun secret. La cible
         # est classee avant le binaire prisma local. Jamais npx.
         run: npm run db:deploy:throwaway
+
+      - name: Correctif PLM/GS1 — validation PostgreSQL jetable
+        # Cette suite crée sa propre base temporaire sur le PostgreSQL local du
+        # job, reproduit le catalogue mesuré, applique la correction forward,
+        # éprouve les refus et vérifie le rejeu idempotent. Elle ne doit pas
+        # tourner dans le job de vérification sans DATABASE_URL.
+        run: npm run test:plm:gs1-repair-postgres
+        env:
+          TF_EXIGER_LOCAL: oui
 
       - name: Privilèges et RLS effectifs — mesurés dans le catalogue
         # Une migration qui contient GRANT ne prouve pas ce que la base accorde.
