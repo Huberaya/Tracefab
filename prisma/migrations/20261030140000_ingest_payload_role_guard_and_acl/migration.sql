@@ -54,6 +54,7 @@ DECLARE
   v_products JSONB;
   v_prod JSONB;
   v_product_id UUID;
+  v_product_version INT := 1;
   v_is_new_product BOOLEAN;
   v_ref TEXT;
   v_name TEXT;
@@ -204,7 +205,7 @@ BEGIN
     
     v_weight := NULLIF(COALESCE(v_prod->>'weight_grams', v_prod->>'weightGrams', v_prod->>'netWeight', v_prod->>'BRGEW', ''), '')::numeric;
 
-    SELECT id INTO v_product_id
+    SELECT id, version INTO v_product_id, v_product_version
     FROM tracefab_products
     WHERE brand_organization_id = p_organization_id AND reference = v_ref;
 
@@ -224,6 +225,7 @@ BEGIN
       v_count_updated := v_count_updated + 1;
     ELSE
       v_is_new_product := true;
+      v_product_version := 1;
       INSERT INTO tracefab_products (
         brand_organization_id,
         reference,
@@ -234,6 +236,7 @@ BEGIN
         color_name,
         country_of_manufacture,
         weight_grams,
+        version,
         created_by,
         last_data_updated_by
       ) VALUES (
@@ -246,6 +249,7 @@ BEGIN
         v_color,
         v_country_mfg,
         v_weight,
+        v_product_version,
         v_user_id,
         v_user_id
       )
@@ -330,19 +334,20 @@ BEGIN
         product_id,
         material_id,
         material_role,
+        product_version,
         percentage,
         unit
       ) VALUES (
         v_product_id,
         v_mat_id,
         v_mat_role,
+        v_product_version,
         v_mat_pct,
         '%'
       )
-      ON CONFLICT (product_id, material_id)
+      ON CONFLICT (product_id, material_id, material_role, product_version)
       DO UPDATE SET
-        percentage = EXCLUDED.percentage,
-        material_role = EXCLUDED.material_role;
+        percentage = EXCLUDED.percentage;
     END LOOP;
 
     -- Ingest production steps / supply chain nodes
@@ -365,44 +370,33 @@ BEGIN
       END IF;
 
       SELECT id INTO v_node_id
-      FROM supply_chain_nodes
-      WHERE product_id = v_product_id AND label = v_step_label;
-
-      IF v_node_id IS NULL THEN
-        INSERT INTO supply_chain_nodes (
-          product_id,
-          node_type,
-          label,
-          process_code,
-          country_code,
-          created_by
-        ) VALUES (
-          v_product_id,
-          'process',
-          v_step_label,
-          v_step_process,
-          v_step_country,
-          v_user_id
-        )
-        RETURNING id INTO v_node_id;
-        v_count_nodes := v_count_nodes + 1;
-      END IF;
+      FROM tracefab_create_supply_chain_node(
+        v_product_id,
+        'process'::node_type,
+        v_step_label,
+        NULL::uuid,
+        NULL::uuid,
+        NULL::uuid,
+        NULL::uuid,
+        v_step_process,
+        jsonb_build_object('country_code', v_step_country),
+        NULL::uuid,
+        CURRENT_DATE
+      );
+      v_count_nodes := v_count_nodes + 1;
 
       IF v_prev_node_id IS NOT NULL AND v_prev_node_id <> v_node_id THEN
-        INSERT INTO supply_chain_links (
-          product_id,
-          source_node_id,
-          target_node_id,
-          link_type,
-          created_by
-        ) VALUES (
+        PERFORM tracefab_add_supply_chain_link(
           v_product_id,
           v_prev_node_id,
           v_node_id,
-          'next_step',
-          v_user_id
-        )
-        ON CONFLICT DO NOTHING;
+          'next_step'::supply_chain_link_type,
+          v_count_nodes,
+          CURRENT_DATE,
+          NULL::date,
+          NULL::uuid,
+          '{}'::jsonb
+        );
       END IF;
       v_prev_node_id := v_node_id;
     END LOOP;
