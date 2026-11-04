@@ -375,5 +375,67 @@
     "20261030140000_ingest_payload_role_guard_and_acl",
     "20261031120000_identite_hmac_liee_au_contexte",
     "20261102120000_identite_stricte_email_et_rotation"
+  ],
+  "out_of_band_objects": [
+    {
+      "name": "pef_emission_factors",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "product_pef_assessments",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "green_claims_rules",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "product_green_claims",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "green_claims_audits",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "quality_corrective_action_plans",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "quality_cap_messages",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "supplier_universal_passports",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "supplier_passport_access_requests",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "transaction_certificates",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "mass_balance_allocations",
+      "production_present": true,
+      "preproduction_present": true
+    },
+    {
+      "name": "mass_balance_reconciliations",
+      "production_present": true,
+      "preproduction_present": true
+    }
   ]
 }
