@@ -15,8 +15,9 @@
 --   1. L execution est reservee au ROLE DE SESSION : c est le seul element
 --      authentifie par PostgreSQL, donc non falsifiable par le client. Sont
 --      admis le role applicatif `tracefab_app`, un superutilisateur, et le
---      PROPRIETAIRE de la fonction (le runtime actuel se connecte sous ce
---      role ; voir la branche 3 dans le corps).
+--      PROPRIETAIRE de la fonction (fallback explicite, borne a SECURITY
+--      DEFINER ; le releve Neon du 04/11 montre que neondb_owner est deja
+--      membre de tracefab_app et passe normalement par la premiere branche).
 --      Un GUC n est jamais accepte comme preuve d identite.
 --   2. `search_path` est epingle a `pg_catalog, public` : les noms non
 --      qualifies ne peuvent pas etre detournes par un schema place devant.
