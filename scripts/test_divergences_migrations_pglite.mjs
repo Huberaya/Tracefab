@@ -99,7 +99,7 @@ ok('le role de migration obtient INHERIT et SET sans ADMIN OPTION',
 ok('CREATE est retire au worker apres le transfert des fonctions',
   worker.indexOf('ALTER FUNCTION public.tracefab_notification_outbox_health() OWNER TO tracefab_worker')
     < worker.indexOf('REVOKE CREATE ON SCHEMA public FROM tracefab_worker'));
-ok('l'appartenance worker du role de migration est conservee',
+ok("l'appartenance worker du role de migration est conservee",
   !/REVOKE\s+tracefab_worker\s+FROM\s+current_user/i.test(worker));
 ok('le worker est refuse si tracefab_app en est membre',
   worker.includes('tracefab_app_must_not_be_worker_member'));
