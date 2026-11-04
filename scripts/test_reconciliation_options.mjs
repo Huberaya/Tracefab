@@ -36,6 +36,7 @@ const planAutoOutput = `${planAuto.stdout || ''}${planAuto.stderr || ''}`;
 const assisted = fs.readFileSync(path.join(root, 'scripts/lib/migrations_assistees.mjs'), 'utf8');
 const migrationRunner = fs.readFileSync(path.join(root, 'scripts/migrer_fidelement.mjs'), 'utf8');
 const replayTest = fs.readFileSync(path.join(root, 'scripts/test_p106_rejouabilite_chaine.mjs'), 'utf8');
+const ciWorkflow = fs.readFileSync(path.join(root, '.github/workflows/ci.yml'), 'utf8');
 const migrationsDir = path.join(root, 'prisma/migrations');
 
 let verifies = 0;
@@ -144,6 +145,8 @@ ok('le rejeu accorde CREATE au migrateur seulement sur la base jetable',
   && replayTest.includes('GRANT CREATE ON SCHEMA public TO tracefab_migrator')
   && replayTest.includes('has_database_privilege')
   && replayTest.includes('has_schema_privilege'));
+ok('les jobs Playwright évitent l'installation apt étendue qui bloquait le runner',
+  !ciWorkflow.includes('playwright install --with-deps chromium'));
 ok('P10.6 tolère uniquement un administrateur SUPERUSER préexistant en plus du migrateur',
   replayTest.includes('membresNonSuper.length === 1')
   && replayTest.includes('membres.every((r) => r.rolsuper || r.rolname === ROLE_MIGRATOR)'));
