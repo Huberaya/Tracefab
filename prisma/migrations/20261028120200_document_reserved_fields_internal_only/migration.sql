@@ -123,7 +123,7 @@ ON CONFLICT (name) DO NOTHING;
 --    ecritures restantes passent par les quatre fonctions SECURITY DEFINER.
 --    Le trigger garde son drapeau interne : il n'est simplement plus
 --    atteignable par un client.
-DO $
+DO $tf_acl$
 DECLARE
   v_columns text;
 BEGIN
@@ -148,7 +148,7 @@ BEGIN
     EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.documents FROM tracefab_app';
   END IF;
 END
-$;
+$tf_acl$;
 
 -- 5. Appliquer le perimetre depuis le registre -------------------------------
 --    Reconstruit EXECUTE a partir des seules lignes declarees, et leve si un
