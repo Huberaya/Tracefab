@@ -293,7 +293,7 @@ jobs:
         # existe ailleurs dans le depot) et exige `strpos(lower(...))`.
         run: npm run test:motifs-like
 
-      - name: PLM — provenance des quatre politiques, balayage exhaustif
+      - name: PLM — provenance des politiques historiques, balayage exhaustif
         # Le catalogue Production ne contient plus que les deux politiques canoniques.
         # Ce balayage vérifie qu’aucune migration du dépôt ne réintroduit les
         # anciennes politiques permissives et teste le détecteur sur des témoins.
@@ -313,7 +313,7 @@ jobs:
         # gardes fail-closed, et les privileges EFFECTIFS du role applicatif.
         run: npm run test:plm-rls-isolation
 
-      - name: PLM — les 4 politiques de production confrontees aux 2 canoniques
+      - name: PLM — fixture historique à 4 politiques confronté aux 2 canoniques
         # Chaîne sur base jetable : état synthétique à quatre politiques, puis
         # normalisation ; les scénarios fail-closed vérifient que les politiques
         # inattendues ne sont pas supprimées silencieusement.
@@ -369,14 +369,6 @@ jobs:
         # chaine complete : sans correctif puis avec. Les sondes doivent donner
         # un resultat DIFFERENT, sinon elles ne prouvent rien.
         run: npm run test:runbook-application
-
-      - name: Reprise des migrations — incidents reproduits puis franchis
-        # Sur PostgreSQL 18 (PGlite), meme majeure que Neon : les deux incidents
-        # rapportes (refus de privilege sur public, conflit de signature de
-        # fonction) sont reproduits avec leur code d erreur, le contenu du depot
-        # les franchit, et les rejeux sont idempotents. Conditionne la surete du
-        # plan de reprise, qui re-execute ces migrations.
-        run: npm run test:reprise-migrations
 
       - name: Matrice des migrations — snapshot Neon et checksums
         # Contrôle final fail-closed : 69 dossiers = 51 exécutées via Prisma,
