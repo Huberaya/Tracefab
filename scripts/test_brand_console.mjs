@@ -118,7 +118,7 @@ assert(!reminderRoute.includes('activeOrganizationIds'), 'Manual reminder route 
 // routeur central ignore — aucune reponse n'etait ecrite, la passerelle
 // timeout-ait sur chaque appel et openProduct() rejetait toute la fiche.
 assert(schemaBindingsRoute.includes("return json(res, 200, { bindings: bindings.map(serializeBinding) })"), 'GET /api/schema-bindings doit ecrire la reponse via json(res, 200, { bindings }) — un return nu vaut 504 passerelle');
-assert(schemaBindingsRoute.includes('withTracefabUserContext'), 'GET /api/schema-bindings doit rester sous contexte utilisateur RLS — aucune desactivation de RLS');
+assert(schemaBindingsRoute.includes('withTracefabTenantContext') && schemaBindingsRoute.includes('tenant.organizationId'), 'GET /api/schema-bindings doit valider le tenant actif et borner le sujet avant la lecture RLS');
 assert(!/DISABLE ROW LEVEL SECURITY|NO FORCE ROW LEVEL SECURITY/i.test(schemaBindingsRoute), 'La route ne doit pas toucher a la RLS');
 // La fiche produit doit rester consultable si ce chargement auxiliaire echoue :
 // etat degrade explicite + reessai, et jamais un await en serie qui masque la fiche.
