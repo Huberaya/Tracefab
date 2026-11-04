@@ -5,7 +5,7 @@ import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { activeBrandOrganizationIds } from '../../_lib/products.js';
 import { ingestPlmErpData } from '../../_lib/plm-erp/ingestor.js';
-import type { PlmErpSystemType } from '../../_lib/plm-erp/types.js';
+import { isPlmErpSystemType, PLM_ERP_SYSTEM_TYPES } from '../../_lib/plm-erp/types.js';
 
 interface IngestBody {
   systemType?: string;
@@ -36,23 +36,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return json(res, 400, { error: 'systemType and payload are required' });
       }
 
-      const validSystems: PlmErpSystemType[] = [
-        'centric_plm',
-        'lectra_kubix',
-        'sap_s4hana',
-        'infor_fashion',
-        'gs1_epcis',
-        'generic_csv',
-      ];
-
-      if (!validSystems.includes(systemType as PlmErpSystemType)) {
-        return json(res, 400, { error: `Invalid systemType. Supported: ${validSystems.join(', ')}` });
+      if (!isPlmErpSystemType(systemType)) {
+        return json(res, 400, { error: `Invalid systemType. Supported: ${PLM_ERP_SYSTEM_TYPES.join(', ')}` });
       }
 
       // `tx` est la transaction ouverte par `withTracefabUserContext` : c'est elle
       // qui porte `tracefab.user_id`. Passer le client global ferait partir la
       // requete sur une connexion anonyme (voir ingestor.ts).
-      const result = await ingestPlmErpData(tx, targetOrgId, systemType as PlmErpSystemType, payload, integrationId);
+      const result = await ingestPlmErpData(tx, targetOrgId, systemType, payload, integrationId);
 
       return json(res, 200, result);
     });
