@@ -331,17 +331,59 @@ AS $$
 $$;
 
 -- 6. Propriete des fonctions : `tracefab_worker` -----------------------------
---    Le role executant est membre avec INHERIT + SET, sans ADMIN OPTION. Cela
---    permet le transfert de propriete et les migrations futures, sans lui
---    permettre de deleguer l'identite worker a un autre role.
+--    L'octroi explicite au role executant porte INHERIT + SET, sans ADMIN
+--    OPTION. PostgreSQL/Neon peut aussi conserver un octroi bootstrap ADMIN
+--    émis par un superutilisateur fournisseur ; cet octroi est distinct et
+--    ne donne aucun droit worker au role applicatif. Un role worker preexistant
+--    sans appartenance explicite ou bootstrap du migrateur est refuse.
 --    CREATE est temporairement accorde au worker car PostgreSQL l'exige pour
 --    ALTER FUNCTION ... OWNER TO ; il est retire juste apres.
 DO $worker_ownership$
+DECLARE
+  v_member_oid OID;
+  v_has_explicit BOOLEAN := false;
+  v_has_admin BOOLEAN := false;
 BEGIN
-  EXECUTE pg_catalog.format(
-    'GRANT tracefab_worker TO %I WITH INHERIT TRUE, SET TRUE',
-    current_user
-  );
+  SELECT oid INTO v_member_oid
+    FROM pg_catalog.pg_roles
+   WHERE rolname = current_user;
+
+  SELECT EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_auth_members m
+      JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+     WHERE granted.rolname = 'tracefab_worker'
+       AND m.member = v_member_oid
+       AND m.grantor = v_member_oid
+       AND m.inherit_option IS TRUE
+       AND m.set_option IS TRUE
+       AND m.admin_option IS FALSE
+  ) INTO v_has_explicit;
+
+  SELECT EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_auth_members m
+      JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+      JOIN pg_catalog.pg_roles grantor ON grantor.oid = m.grantor
+     WHERE granted.rolname = 'tracefab_worker'
+       AND m.member = v_member_oid
+       AND m.admin_option IS TRUE
+       AND m.inherit_option IS FALSE
+       AND m.set_option IS FALSE
+       AND (grantor.rolsuper OR grantor.rolcreaterole)
+  ) INTO v_has_admin;
+
+  IF NOT v_has_explicit THEN
+    IF NOT v_has_admin THEN
+      RAISE EXCEPTION 'worker_migration_executor_membership_missing'
+        USING HINT = 'Un rôle préexistant tracefab_worker doit être accordé au rôle de migration par un administrateur avant cette migration.';
+    END IF;
+
+    EXECUTE pg_catalog.format(
+      'GRANT tracefab_worker TO %I WITH ADMIN FALSE, INHERIT TRUE, SET TRUE',
+      current_user
+    );
+  END IF;
 
   EXECUTE 'ALTER FUNCTION public.tracefab_upsert_clerk_user(TEXT, TEXT, TEXT) OWNER TO tracefab_worker';
   EXECUTE 'ALTER FUNCTION public.tracefab_ensure_clerk_user(TEXT, TEXT, TEXT) OWNER TO tracefab_worker';
