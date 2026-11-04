@@ -10,6 +10,7 @@ on:
     paths:
       - 'scripts/test_migration_integration_34_36_41.sh'
       - 'scripts/test_prisma_migrate_deploy_checksum_variance.mjs'
+      - 'scripts/test_plm_gs1_catalog_repair_postgres.mjs'
       - '.github/workflows/migrations-34-36-41.yml'
       - 'prisma/migrations/**'
   push:
@@ -86,6 +87,11 @@ jobs:
         # suivante doit réellement s'appliquer. Le test crée son propre schéma
         # isolé et le détruit ensuite. Aucune cible Neon/Vercel n'est utilisée.
         run: npm run test:prisma:checksum-deploy
+        env:
+          TF_EXIGER_LOCAL: oui
+
+      - name: Réparation PLM/GS1 — PostgreSQL 17 réel jetable
+        run: npm run test:plm:gs1-repair-postgres
         env:
           TF_EXIGER_LOCAL: oui
 
