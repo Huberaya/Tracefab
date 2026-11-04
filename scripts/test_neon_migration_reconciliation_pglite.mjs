@@ -4,8 +4,8 @@
  *
  * Baseline : les 56 migrations qui ont une ligne terminée dans Production et
  * Préproduction (dont les 5 exécutées hors bande). Cible : les 13 migrations
- * réellement absentes. Les deux tentatives rolled_back ont aussi une ligne
- * réussie : elles font donc partie du baseline, jamais de la liste pending.
+ * historiques absentes, puis les corrections forward post-snapshot. Les deux
+ * tentatives rolled_back ont aussi une ligne réussie et font partie du baseline.
  *
  * IMPORTANT : le SQL PLM utilisé ici est celui du dépôt courant. Son checksum
  * exact en Production n'a pas été retrouvé ; cette simulation valide la
@@ -29,6 +29,7 @@ const dossiers = readdirSync(migrationsDir).filter((d) => /^\d{14}_/.test(d)).so
 const lire = (name) => readFileSync(join(migrationsDir, name, 'migration.sql'), 'utf8');
 const baselineNames = Object.keys(PRODUCTION_APPLIED).sort();
 const pendingNames = Object.keys(ECARTS).sort();
+const newNames = dossiers.filter((d) => !PRODUCTION_APPLIED[d] && !ECARTS[d]);
 const outOfBandNames = Object.keys(HORS_BANDE).sort();
 
 let verifies = 0;
@@ -80,15 +81,17 @@ async function scalar(db, sql, params = []) {
 }
 
 console.log(`\n  1. Snapshot Neon ${SNAPSHOT_DATE} — cohérence des catégories`);
-ok('69 dossiers de migration dans le dépôt', dossiers.length === 69, String(dossiers.length));
+ok('70 dossiers de migration dans le dépôt', dossiers.length === 70, String(dossiers.length));
 ok('56 migrations terminées dans les deux bases', baselineNames.length === 56);
 ok('13 migrations réellement en attente', pendingNames.length === 13);
 ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length === 5);
 ok('les 2 tentatives annulées ont aussi une ligne réussie',
   ROLLED_BACK_ATTEMPTS.length === 2 && ROLLED_BACK_ATTEMPTS.every((x) => PRODUCTION_APPLIED[x.name]));
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
+ok('une correction forward est postérieure au snapshot',
+  newNames.length === 1 && newNames[0] === '20261104090000_plm_integrations_and_gs1_constraints', JSON.stringify(newNames));
 ok('toutes les migrations du dépôt sont classées',
-  baselineNames.length + pendingNames.length === dossiers.length);
+  baselineNames.length + pendingNames.length + newNames.length === dossiers.length);
 
 console.log('\n  2. Reconstruction du baseline des 56 migrations réussies');
 const baseline = await construireBaseline();
@@ -111,18 +114,68 @@ ok('baseline PLM : exactement deux politiques canoniques',
 ok('le registre runtime est absent avant 28120000',
   await scalar(baseline.db, "SELECT to_regclass('public.tracefab_runtime_function_registry') IS NULL AS value") === true);
 
-console.log('\n  3. Application séquentielle des 13 migrations absentes');
+console.log('\n  3. Application séquentielle des 13 migrations historiques absentes');
 const results = [];
 for (const name of pendingNames) {
   const result = await jouer(baseline.db, name);
   results.push({ name, ...result });
   console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
 }
-ok('les 13 migrations pending s’appliquent dans l’ordre',
+ok('les 13 migrations historiques pending s’appliquent dans l’ordre',
   results.length === 13 && results.every((r) => r.ok),
   JSON.stringify(results.filter((r) => !r.ok)));
 
-console.log('\n  4. Contrôles du catalogue après application');
+console.log('\n  4. Reproduction du catalogue Neon et correction forward PLM/GS1');
+await baseline.db.exec(`
+  ALTER TABLE public.plm_erp_integrations DROP CONSTRAINT plm_erp_integrations_system_type_check;
+  ALTER TABLE public.plm_erp_integrations DROP CONSTRAINT plm_erp_integrations_name_check;
+  ALTER TABLE public.plm_erp_integrations DROP CONSTRAINT plm_erp_integrations_auth_type_check;
+  ALTER TABLE public.plm_erp_integrations DROP CONSTRAINT plm_erp_integrations_status_check;
+  ALTER TABLE public.product_identifiers DROP CONSTRAINT product_identifiers_identifier_type_check;
+  ALTER TABLE public.product_identifiers
+    ADD CONSTRAINT product_identifiers_identifier_type_check
+    CHECK (identifier_type IN ('gtin', 'ean', 'upc', 'internal', 'gs1_digital_link', 'gln')) NOT VALID;
+  ALTER TABLE public.product_identifiers VALIDATE CONSTRAINT product_identifiers_identifier_type_check;
+`);
+const missingPlmChecks = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_constraint
+  WHERE conrelid='public.plm_erp_integrations'::regclass
+    AND conname IN ('plm_erp_integrations_system_type_check','plm_erp_integrations_name_check',
+                    'plm_erp_integrations_auth_type_check','plm_erp_integrations_status_check')
+`);
+const oldIdentifierCheck = await scalar(baseline.db, `
+  SELECT pg_get_constraintdef(oid) AS value FROM pg_constraint
+  WHERE conrelid='public.product_identifiers'::regclass
+    AND conname='product_identifiers_identifier_type_check'
+`);
+ok('fixture : quatre CHECK PLM absents comme sur Neon', missingPlmChecks === 0, String(missingPlmChecks));
+ok('fixture : CHECK GS1 historique sans GPC', !oldIdentifierCheck.includes('gpc'), oldIdentifierCheck);
+const forwardResults = [];
+for (const name of newNames) {
+  const result = await jouer(baseline.db, name);
+  forwardResults.push({ name, ...result });
+  console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
+}
+ok('la correction forward post-snapshot s’applique', forwardResults.length === 1 && forwardResults.every((r) => r.ok),
+  JSON.stringify(forwardResults.filter((r) => !r.ok)));
+const repairedPlmChecks = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_constraint
+  WHERE conrelid='public.plm_erp_integrations'::regclass
+    AND contype='c' AND convalidated
+    AND conname IN ('plm_erp_integrations_system_type_check','plm_erp_integrations_name_check',
+                    'plm_erp_integrations_auth_type_check','plm_erp_integrations_status_check')
+`);
+const repairedIdentifierCheck = await scalar(baseline.db, `
+  SELECT pg_get_constraintdef(oid) AS value FROM pg_constraint
+  WHERE conrelid='public.product_identifiers'::regclass
+    AND conname='product_identifiers_identifier_type_check'
+`);
+ok('les quatre CHECK PLM sont présents et validés', repairedPlmChecks === 4, String(repairedPlmChecks));
+ok('la contrainte GS1 accepte désormais GPC', repairedIdentifierCheck.includes('gpc'), repairedIdentifierCheck);
+const forwardReplay = await jouer(baseline.db, newNames[0]);
+ok('la correction forward est idempotente', forwardReplay.ok, forwardReplay.message);
+
+console.log('\n  5. Contrôles du catalogue après application');
 const registry = await scalar(baseline.db, "SELECT to_regclass('public.tracefab_runtime_function_registry') IS NOT NULL AS value");
 ok('registre runtime créé', registry === true);
 const workerRole = await baseline.db.query(`
@@ -164,7 +217,7 @@ ok('le mode HMAC strict reste désactivé', identityPolicy.rows.length === 1 && 
 ok('la table des clés HMAC existe mais ne contient aucune clé provisionnée',
   await scalar(baseline.db, 'SELECT count(*)::int = 0 AS value FROM public.tracefab_identity_cles') === true);
 
-console.log('\n  5. Dépendance du worker au registre runtime');
+console.log('\n  6. Dépendance du worker au registre runtime');
 const dependency = await construireBaseline();
 const workerBeforeRegistry = await jouer(dependency.db, '20261028120100_worker_identity_not_forgeable');
 ok('28120100 échoue si 28120000 n’a pas été appliquée', !workerBeforeRegistry.ok, workerBeforeRegistry.message);
@@ -174,7 +227,7 @@ const workerAfterRegistry = await jouer(dependency.db, '20261028120100_worker_id
 ok('28120100 passe après le registre', workerAfterRegistry.ok, workerAfterRegistry.message);
 await dependency.db.close();
 
-console.log('\n  6. Limite de rejeu et checksum non résolu');
+console.log('\n  7. Limite de rejeu et checksum non résolu');
 const replay = await jouer(baseline.db, '20261028120000_runtime_function_registry');
 ok('28120000 n’est pas rejouable après création du registre', !replay.ok
   && /already exists|exists|existe/i.test(replay.message), replay.message);
@@ -186,4 +239,4 @@ if (echecs) {
   console.error(`  ${echecs} échec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} vérifications passées — baseline 56, pending 13, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
+console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 1 correction forward PLM/GS1, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
