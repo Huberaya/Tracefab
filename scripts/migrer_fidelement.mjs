@@ -150,6 +150,29 @@ const client = new pg.Client({
 });
 await client.connect();
 
+// Option réservée aux suites de test sur cluster local : l'administrateur
+// ouvre la connexion, puis endosse le rôle migrateur réel. Cela reproduit
+// l'identité effective utilisée par les déploiements sans exposer le mot de
+// passe du rôle migrateur ni changer les verifieurs partagés du cluster.
+const roleDemande = (process.env.TF_MIGRATION_ROLE || '').trim();
+if (roleDemande) {
+  if (!/^[a-z_][a-z0-9_]*$/.test(roleDemande)) {
+    throw new Error('TF_MIGRATION_ROLE invalide : identifiant PostgreSQL refusé.');
+  }
+  const autorise = (await client.query(
+    "SELECT pg_catalog.pg_has_role(session_user, $1, 'SET') AS ok", [roleDemande],
+  )).rows[0]?.ok;
+  if (autorise !== true) {
+    throw new Error(`SET ROLE refusé pour TF_MIGRATION_ROLE=${roleDemande}.`);
+  }
+  await client.query(`SET ROLE "${roleDemande}"`);
+  const effectif = (await client.query('SELECT current_user AS role')).rows[0].role;
+  if (effectif !== roleDemande) {
+    throw new Error(`SET ROLE non constaté : attendu ${roleDemande}, obtenu ${effectif}.`);
+  }
+  console.log(`role effectif de migration : ${effectif} (SET ROLE explicite)`);
+}
+
 // Le registre est cree a l'identique de ce que pose Prisma.
 await client.query(`
   CREATE TABLE IF NOT EXISTS _prisma_migrations (
