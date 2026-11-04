@@ -1,6 +1,6 @@
 # TraceFab — réconciliation Neon des migrations (04/11/2026)
 
-> **État : investigation en lecture seule terminée ; correctifs et exception de checksum strictement bornée préparés sur une branche dédiée ; application en Préproduction et Production non encore exécutée.**
+> **État : investigation en lecture seule terminée ; correctifs, exception de checksum strictement bornée et migration forward PLM/GS1 préparés sur une branche dédiée ; application en Préproduction et Production non encore exécutée.**
 >
 > Branche de correction : `fix/neon-migration-reconciliation-20261104`.
 >
@@ -15,7 +15,7 @@ Production et Préproduction présentent le même état :
 - Les 5 hors bande sont les migrations PEF, green claims, quality CAP, supplier passport et mass balance ; leurs 12 objets attendus ont été relus présents sur Production et Préproduction. Ne pas les rejouer.
 - 2 tentatives annulées, toutes deux suivies d'une migration terminée du même nom.
 - 0 migration inachevée.
-- 69 dossiers de migration dans `main`.
+- 69 dossiers dans le snapshot initial ; la branche de correction en contient désormais 70 avec une migration forward post-snapshot.
 - 13 migrations absentes de l'historique réussi.
 - 3 empreintes de migrations déjà appliquées différentes des fichiers de `main` au début de l'audit.
 
@@ -31,7 +31,7 @@ Les empreintes suivantes sont celles enregistrées dans les deux bases :
 | `20261006210000_plm_erp_gs1_interoperability` | `c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861` |
 | `20261009180000_public_read_context` | `c12ee33303084b6710284139786058b8d088b2619d92372ea57f282e86480d04` |
 
-Deux versions exactes ont été retrouvées et restaurées dans la branche dédiée : `20261005090000` et `20261009180000`. Pour `20261006210000`, l'empreinte Production/Préproduction (`c944ce0c…`) ne correspond à aucune version retrouvée dans l'historique Git, les branches actives ou les versions examinées. Le fichier courant est conservé sans modification spéculative ; l'écart reste visible et non résolu au niveau des octets. Une exception unique, épinglée aux deux SHA-256 exacts, est documentée dans 2026-11-04-neon-checksum-variance-attestation.md. Un test dédié sur Prisma 6.19.3 et PostgreSQL prouve que migrate deploy applique les migrations pending sans rejouer l'entrée terminée ni réécrire son checksum. La matrice accepte cette seule paire documentée et reste rouge pour toute autre divergence. Aucun migrate resolve ni modification des checksums en base.
+Deux versions exactes ont été retrouvées et restaurées dans la branche dédiée : `20261005090000` et `20261009180000`. Pour `20261006210000`, l'empreinte Production/Préproduction (`c944ce0c…`) ne correspond à aucune version retrouvée dans l'historique Git, les branches actives ou les versions examinées. Le fichier courant est conservé sans modification spéculative ; l'écart reste visible et non résolu au niveau des octets. Une exception unique, épinglée aux deux SHA-256 exacts, est documentée dans 2026-11-04-neon-checksum-variance-attestation.md. Un test dédié sur Prisma 6.19.3 et PostgreSQL prouve que migrate deploy applique les migrations pending sans rejouer l'entrée terminée ni réécrire son checksum. La matrice accepte cette seule paire documentée et reste rouge pour toute autre divergence. Le test Prisma dédié prouve que `migrate deploy` continue et applique une migration pending sans réécrire le checksum terminé. Aucun `migrate resolve` ni modification des checksums en base.
 
 Les changements fonctionnels ultérieurs restent portés par des migrations forward :
 - invitation fournisseur : `20261005100000_supplier_invitation_compatibility` ;
@@ -107,11 +107,25 @@ Le fichier en attente `20261030140000_ingest_payload_role_guard_and_acl` contena
 
 **Correction préparée dans cette branche** : 30140000 conserve les contrôles de rôle de session, mais utilise le modèle de version produit/BOM et les helpers du graphe ; les tests PLM vérifient statiquement l'absence de DML direct, et le test P10.5 exerce désormais BOM + deux étapes de traçabilité dans sa transaction annulée. Cette correction attend encore une exécution CI sur le SHA final.
 
-**Aucune migration n'a été appliquée sur les branches Neon.** Le checksum historique PLM non retrouvé reste le blocage absolu avant tout déploiement.
+**Aucune migration n'a été appliquée sur les branches Neon.** Le checksum historique PLM exact reste introuvable et demeure un écart de provenance explicitement documenté. Il ne bloque pas le moteur `prisma migrate deploy` (comportement prouvé sur PostgreSQL 17), mais le catalogue a révélé deux écarts fonctionnels supplémentaires ; ils sont corrigés par une migration forward dédiée avant tout déploiement.
 
 ### Identité HMAC
 
 La variable Vercel `TRACEFAB_IDENTITY_KEY` n'est pas configurée. Les migrations HMAC peuvent être appliquées avec le mode strict désactivé ; ne pas activer le mode strict tant que la clé n'est pas provisionnée et que la couverture des routes signées n'est pas prouvée.
+
+## 3 bis. Dérive PLM/GS1 supplémentaire et correction forward (04/11)
+
+La confrontation étendue du catalogue PostgreSQL a révélé deux divergences qui n'étaient pas couvertes par le premier contrôle des tables et politiques :
+
+- `plm_erp_integrations` possède ses colonnes, index, clés étrangères, RLS et FORCE RLS, mais aucune des quatre contraintes CHECK attendues sur `system_type`, `name`, `auth_type` et `status`.
+- `product_identifiers_identifier_type_check` n'autorise pas `gpc`, alors que le fichier PLM versionné le prévoit. Les valeurs observées sont `gtin` et `gs1_digital_link` uniquement.
+- Les deux bases sont identiques. `plm_erp_integrations` contient zéro ligne ; aucun identifiant existant n'est invalide au regard de la liste cible.
+
+**Migration forward ajoutée :** `20261104090000_plm_integrations_and_gs1_constraints`.
+
+Elle vérifie les données existantes, refuse tout état partiel ou toute définition de contrainte inattendue, ajoute les quatre CHECK avec validation explicite, puis étend l'ancienne contrainte GS1 exacte à `gpc`. Elle est idempotente et ne touche jamais à `_prisma_migrations`.
+
+Le plan d'exécution passe donc de 13 migrations historiques pending à **13 + 1 correction forward**. La simulation PGlite est étendue pour reproduire le catalogue réellement mesuré, appliquer la correction, vérifier les cinq contraintes et rejouer la migration pour prouver l'idempotence. Cette preuve CI doit être verte avant toute application Neon.
 
 ## 4. Correction de la migration worker préparée dans cette branche
 
@@ -132,9 +146,9 @@ Le test P10.5 est modifié pour exécuter la chaîne sans `TF_ALLOW_ELEVATION` e
 
 1. Terminer les corrections de code de cette branche et obtenir une CI entièrement verte.
 2. Dans un worktree Codespace séparé, récupérer cette branche. Ne pas remplacer ni réinitialiser le worktree de travail existant.
-3. Avec une connexion directe de migration à Préproduction, vérifier l'identité SQL (`current_user`), les attributs de rôle, la propriété des fonctions et `prisma migrate status`. Résultat exigé : zéro divergence de checksum et 13 migrations en attente.
+3. Avec une connexion directe de migration à Préproduction, vérifier l'identité SQL (`current_user`), les attributs de rôle, la propriété des fonctions et `prisma migrate status`. Résultat exigé : exactement une divergence de checksum PLM connue et documentée, 13 migrations historiques en attente et une migration forward PLM/GS1 post-snapshot.
 4. Exécuter `prisma migrate deploy` en Préproduction seulement après cette pré-vérification.
-5. Vérifier que les 69 migrations sont terminées, puis contrôler le catalogue : profil DPP, fonctions, triggers, politiques, privilèges sur documents/produits, rôle worker, registre runtime et ACL.
+5. Vérifier que les 70 migrations de la branche sont terminées, puis contrôler le catalogue : profil DPP, fonctions, triggers, politiques, privilèges sur documents/produits, rôle worker, registre runtime et ACL.
 6. Exécuter les tests d'intégration et les parcours applicatifs sur une cible Preview dont l'isolation de base a été prouvée.
 7. Après réussite complète en Préproduction, appliquer la même procédure en Production avec le rôle administrateur de migration, jamais avec `tracefab_app`.
 8. Provisionner séparément la clé HMAC dans Neon et Vercel. Garder le mode strict désactivé jusqu'à preuve de couverture de toutes les routes.
@@ -143,5 +157,5 @@ Le test P10.5 est modifié pour exécuter la chaîne sans `TF_ALLOW_ELEVATION` e
 
 - Aucun `migrate resolve --applied` pour les migrations déjà terminées.
 - Aucun UPDATE de checksum dans `_prisma_migrations`.
-- Aucun `prisma migrate deploy` global avant restauration des trois fichiers historiques et validation de 28120100.
+- Aucun `prisma migrate deploy` avant CI entièrement verte, préflight complet de Préproduction et validation des 13 migrations historiques + de la correction forward PLM/GS1.
 - Aucun déploiement, fusion ou activation du mode strict avant validation des tests et du catalogue.
