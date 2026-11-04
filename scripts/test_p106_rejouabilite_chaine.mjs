@@ -224,7 +224,7 @@ try {
       "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1) AS ok",
       [ROLE_MIGRATOR],
     )).rows[0].ok;
-    const databaseName = decodeURIComponent(urlBase.pathname.replace(/^\\//, ''));
+    const databaseName = decodeURIComponent(urlBase.pathname.slice(1));
     if (!/^[a-z0-9_]+$/.test(databaseName)) {
       throw new Error('Nom de base jetable invalide pour le GRANT de migration.');
     }
