@@ -342,13 +342,17 @@ jobs:
         # s execute vraiment.
         run: npm run test:plm-sync-policy-drift
 
-      - name: Migrations — plan de reconciliation, et autotest de ses controles
-        # Le plan reste BLOQUÉ par le checksum PLM non récupéré. L’autotest vérifie les
-        # refus de resolve et d’écriture d’historique ; le plan bloqué est ensuite
-        # attendu explicitement, sans tentative de déploiement.
+      - name: Migrations — garde-fous du plan et blocage checksum
+        # L’autotest doit passer indépendamment du bloqueur réel. Le plan lui-même
+        # doit ensuite échouer explicitement tant que le checksum PLM n’est pas récupéré.
         run: |
-          npm run plan:reconciliation
           npm run plan:reconciliation:autotest
+          if npm run plan:reconciliation; then
+            echo "ERREUR : le plan ne devrait pas autoriser un deploy avec checksum PLM divergent"
+            exit 1
+          else
+            echo "BLOCAGE ATTENDU : checksum PLM non récupéré ; aucun deploy autorisé"
+          fi
 
       - name: Confrontation production — le verificateur mord
         # L instrument qui tranchera le BLOCKED de plm_erp_gs1 n a jamais vu la
