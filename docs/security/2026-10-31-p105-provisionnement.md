@@ -8,7 +8,7 @@
 >
 > Le test P10.5 est également modifié pour s'exécuter sans `TF_ALLOW_ELEVATION`. Ne pas lancer la procédure locale de provisionnement `tracefab_migrator` en Production avant revue spécifique : elle transfère la propriété du schéma et ne correspond pas au modèle actuellement observé sur Neon.
 >
-> Le relevé actuel, les 13 migrations en attente, les trois checksums restaurés et la procédure Préproduction → Production sont documentés dans [2026-11-04-neon-migration-reconciliation.md](2026-11-04-neon-migration-reconciliation.md).
+> Le relevé actuel, les 13 migrations en attente, les deux checksums restaurés et le checksum PLM non résolu et la procédure Préproduction → Production sont documentés dans [2026-11-04-neon-migration-reconciliation.md](2026-11-04-neon-migration-reconciliation.md).
 
 
 Date : 2026-10-31 · Branche : `arena/96848462-tracefab`
