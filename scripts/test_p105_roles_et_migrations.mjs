@@ -167,7 +167,7 @@ try {
          WITH ADMIN TRUE, INHERIT FALSE, SET FALSE`,
       );
       ok(true, 'B2.0 octroi bootstrap ADMIN isolé avant migration',
-        `rôle worker préexistant ; l'octroi explicite sera créé par le migrateur`);
+        "rôle worker préexistant ; octroi explicite créé par migrateur");
     }
   }
   await verrou.relacher();
