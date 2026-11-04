@@ -51,6 +51,11 @@ const ok = (libelle, condition, detail = '') => {
   console.error(`  ECHEC ${libelle}${detail ? ` — ${detail}` : ''}`);
 };
 
+const snapshot = JSON.parse(fs.readFileSync(
+  path.join(root, 'docs/security/2026-11-04-neon-migration-history-snapshot.json'), 'utf8',
+));
+const appliedNames = new Set(snapshot.applied.map((entry) => entry.name));
+
 const db = new PGlite({ extensions: { pgcrypto, uuid_ossp } });
 await db.waitReady;
 
@@ -60,18 +65,18 @@ await db.exec(`
   CREATE ROLE tracefab_app LOGIN PASSWORD 'runtime' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 `);
 
-// Les 71 migrations, dans l'ordre.
+// Les 56 migrations reussies du snapshot de production, dans l'ordre.
 const dossiers = fs.readdirSync(MIGRATIONS)
   .filter((d) => /^\d{14}_/.test(d))
   .sort();
 let appliquees = 0;
 for (const d of dossiers) {
   const f = path.join(MIGRATIONS, d, 'migration.sql');
-  if (!fs.existsSync(f)) continue;
+  if (!fs.existsSync(f) || !appliedNames.has(d)) continue;
   await db.exec(fs.readFileSync(f, 'utf8'));
   appliquees += 1;
 }
-ok(`${appliquees} migrations appliquees`, appliquees === dossiers.length && dossiers.length === 71, `${appliquees}/${dossiers.length}`);
+ok(`${appliquees} migrations reussies du snapshot appliquees`, appliquees === snapshot.applied.length && dossiers.length === 71, `${appliquees}/${snapshot.applied.length}; depot=${dossiers.length}`);
 
 // Historique de migrations SYNTHETIQUE. Aucune donnee de production : on
 // fabrique exactement le cas decrit — deux entrees non terminees, deux
@@ -88,9 +93,6 @@ await db.exec(`
     applied_steps_count   integer NOT NULL DEFAULT 0
   );
  `);
-const snapshot = JSON.parse(fs.readFileSync(
-  path.join(root, 'docs/security/2026-11-04-neon-migration-history-snapshot.json'), 'utf8',
-));
 for (let i = 0; i < snapshot.applied.length; i += 1) {
   const entry = snapshot.applied[i];
   await db.query(
