@@ -52,7 +52,7 @@ Les changements fonctionnels ultérieurs restent portés par des migrations forw
 | `20261028140000_supplier_invitation_owner_relationship_scope` | Le trigger existe, mais le validateur actuel ne vérifie pas encore tous les liens et statuts de relation | Appliquer |
 | `20261028150000_reconcile_plm_erp_sync_job_policies` | Les deux politiques canoniques sont déjà présentes | Recréation idempotente attendue |
 | `20261029180000_plm_erp_sync_jobs_policy_dedup` | Les deux politiques canoniques sont déjà présentes | Recréation idempotente attendue |
-| `20261030140000_ingest_payload_role_guard_and_acl` | La fonction d'ingestion est SECURITY DEFINER, exécutable par `tracefab_app`, mais ne possède pas encore la garde sur le rôle de session | Appliquer |
+| `20261030140000_ingest_payload_role_guard_and_acl` | Fonction SECURITY DEFINER exécutable par `tracefab_app`, sans garde de rôle de session ; le corps réel utilise déjà les colonnes de version et les helpers du graphe | Appliquer après correction de compatibilité |
 | `20261031120000_identite_hmac_liee_au_contexte` | Tables d'identité HMAC absentes | Appliquer avec le mode strict désactivé |
 | `20261102120000_identite_stricte_email_et_rotation` | Dépend des tables HMAC précédentes | Appliquer après 31120000, strict toujours désactivé |
 
@@ -85,6 +85,29 @@ Ces deux écarts doivent être fermés par 28120200 et 28130000, puis revérifi�
 
 - `plm_erp_sync_jobs` possède déjà les deux politiques canoniques. Les deux migrations de normalisation peuvent les recréer, mais ne doivent pas être présentées comme la preuve d'un écart actuel à quatre politiques.
 - Le validateur d'invitation fournisseur accepte déjà un `owner` lorsqu'un `relationship_id` est présent. Le trigger et la fonction de la migration 28140000 doivent encore vérifier le rattachement exact et l'état de la relation.
+
+### Confrontation PLM/ERP directe du 04/11
+
+Relecture SQL en lecture seule sur les branches Neon réelles :
+
+| Objet | Production | Préproduction | Référence |
+|---|---|---|---|
+| `plm_erp_integrations` | RLS + FORCE RLS ; propriétaire `neondb_owner` | identique | RLS + FORCE RLS |
+| `plm_erp_sync_jobs` | RLS + FORCE RLS ; propriétaire `neondb_owner` | identique | RLS + FORCE RLS |
+| `plm_integrations_mutate_brand` | ALL ; owner/admin/manager en USING et WITH CHECK | identique | conforme |
+| `plm_integrations_select_org` | SELECT ; `tracefab_is_org_member` | identique | conforme |
+| `plm_sync_jobs_insert_brand` | INSERT ; owner/admin/manager en WITH CHECK | identique | conforme |
+| `plm_sync_jobs_select_org` | SELECT ; `tracefab_is_org_member` | identique | conforme |
+
+La fonction `tracefab_ingest_plm_erp_payload` diverge du référentiel historique : elle est `SECURITY DEFINER`, détenue par `neondb_owner`, `search_path=public`, ACL effective limitée au propriétaire et à `tracefab_app`, empreinte de définition `c1b63651c4eb36fc4fd753b41e22a66a`. Son corps réel utilise `tracefab_create_supply_chain_node` et `tracefab_add_supply_chain_link`, ainsi que `tracefab_products.version` et `product_materials.product_version`.
+
+La migration `20261006210000_plm_erp_gs1_interoperability` est bien terminée par Prisma sur les deux bases (`applied_steps_count=1`), avec le checksum `c944ce0c…`. Elle ne fait pas partie des cinq migrations à zéro étape. La définition actuelle de la fonction a évolué après l'état initial ; elle ne permet pas de reconstituer le SQL historique exact.
+
+Le fichier en attente `20261030140000_ingest_payload_role_guard_and_acl` contenait encore l'ancien chemin d'écriture directe dans `supply_chain_nodes` et `supply_chain_links`. Or `20261020120000_structured_supply_chain_graph_membership`, déjà appliquée, impose `graph_product_id` et les validations via les fonctions du graphe. La version initiale de 30140000 aurait donc remplacé une fonction compatible par un corps incompatible avec le schéma courant.
+
+**Correction préparée dans cette branche** : 30140000 conserve les contrôles de rôle de session, mais utilise le modèle de version produit/BOM et les helpers du graphe ; les tests PLM vérifient statiquement l'absence de DML direct, et le test P10.5 exerce désormais BOM + deux étapes de traçabilité dans sa transaction annulée. Cette correction attend encore une exécution CI sur le SHA final.
+
+**Aucune migration n'a été appliquée sur les branches Neon.** Le checksum historique PLM non retrouvé reste le blocage absolu avant tout déploiement.
 
 ### Identité HMAC
 
