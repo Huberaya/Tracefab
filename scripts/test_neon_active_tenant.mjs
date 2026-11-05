@@ -99,6 +99,25 @@ try {
   if (role.rolbypassrls) { ko(`${role.rolname} porte BYPASSRLS : rien de ce qui suit ne mesure la RLS`); }
   else ok(`le role ${role.rolname} ne porte pas BYPASSRLS`);
 
+  const helperPrivileges = await app.query(`
+    SELECT p.proname, has_function_privilege(current_user, p.oid, 'EXECUTE') AS executable
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = ANY($1::text[])
+    ORDER BY p.proname
+  `, [[
+    'tracefab_require_active_tenant_for_organization',
+    'tracefab_require_active_tenant_for_product',
+    'tracefab_require_active_tenant_for_dpp_record',
+    'tracefab_require_active_tenant_for_supply_chain_link',
+    'tracefab_require_active_tenant_for_tc_allocation',
+    'tracefab_require_active_tenant_for_schema_subject',
+  ]]);
+  if (helperPrivileges.rowCount !== 6 || helperPrivileges.rows.some((row) => row.executable)) {
+    ko('tracefab_app ne doit executer aucun helper SQL de garde tenant');
+  } else {
+    ok('tracefab_app ne peut executer aucun des six helpers SQL de garde tenant');
+  }
+
   /* -- fixture : UN utilisateur, DEUX organisations, produit chez B ------- */
   await proprio.query(
     `insert into users (id, clerk_user_id, email, full_name) values ($1, $2, $3, 'Admin Multi-Tenant')`,
