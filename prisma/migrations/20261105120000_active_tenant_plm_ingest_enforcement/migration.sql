@@ -442,6 +442,21 @@ $function$
 COMMENT ON FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) IS
   'Ingestion PLM/ERP. SECURITY DEFINER avec garde de role, identite signee et verification stricte du tenant actif avant toute operation. search_path epingle a pg_catalog, public.';
 
+-- La route accepte les types déclarés par PLM_ERP_SYSTEM_TYPES. La contrainte
+-- historique des jobs omettait generic_csv et infor_fashion : l'import pouvait
+-- créer les produits puis échouer au moment d'inscrire son job.
+ALTER TABLE public.plm_erp_sync_jobs
+  DROP CONSTRAINT IF EXISTS plm_erp_sync_jobs_source_system_check;
+ALTER TABLE public.plm_erp_sync_jobs
+  ADD CONSTRAINT plm_erp_sync_jobs_source_system_check
+  CHECK (source_system IN (
+    'centric', 'centric_plm',
+    'lectra', 'lectra_kubix',
+    'sap', 'sap_s4hana',
+    'generic_bom', 'generic_csv',
+    'gs1_epcis', 'custom_api', 'infor_fashion'
+  ));
+
 DROP POLICY IF EXISTS plm_integrations_mutate_brand ON public.plm_erp_integrations;
 CREATE POLICY plm_integrations_mutate_brand
   ON public.plm_erp_integrations
