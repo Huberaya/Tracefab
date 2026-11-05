@@ -454,6 +454,36 @@ try {
     `select tracefab_update_supplier_passport($1::uuid, 'Synthetic', null::text, null::jsonb, false)`,
     [orgSupplier]);
 
+  /* Les deux fonctions doivent aussi fonctionner sous le tenant fournisseur
+     légitime ; les refus inter-tenant seuls ne suffisent pas à prouver le parcours. */
+  {
+    const headline = `Tenant supplier positive ${suffixe}`;
+    await app.query('begin');
+    await app.query(`select set_config('tracefab.user_id', $1, true)`, [userMulti]);
+    await app.query(`select set_config('tracefab.user_email', $1, true)`, [`mt-${suffixe}@example.test`]);
+    await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgSupplier]);
+    const { rows: [passport] } = await app.query(
+      'select (tracefab_get_or_create_supplier_passport($1::uuid)).id as id',
+      [orgSupplier],
+    );
+    if (passport?.id !== passportRecette) {
+      throw new Error('supplier_passport_positive_get_or_create_wrong_record');
+    }
+    await app.query(
+      'select tracefab_update_supplier_passport($1::uuid, $2::text, null::text, null::jsonb, false)',
+      [orgSupplier, headline],
+    );
+    await app.query('commit');
+    const { rows: [updatedPassport] } = await proprio.query(
+      'select headline from supplier_universal_passports where id = $1::uuid',
+      [passportRecette],
+    );
+    if (updatedPassport?.headline !== headline) {
+      throw new Error('supplier_passport_positive_update_not_persisted');
+    }
+    ok('les deux fonctions passeport acceptent le tenant fournisseur propriétaire (lecture/création idempotente et mise à jour)');
+  }
+
   await assertTenantGuard('tracefab_create_material',
     `select tracefab_create_material(
       $1::uuid, 'fiber', 'Synthetic negative material', '{}'::jsonb, null::varchar
