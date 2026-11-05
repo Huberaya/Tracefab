@@ -196,10 +196,10 @@ try {
 
     const { rows: [source] } = await app.query(
       `select (tracefab_create_supply_chain_node(
-        $1::uuid, $2::node_type, $3::text, $4::uuid, null::uuid,
-        $5::uuid, null::uuid, null::text, '{}'::jsonb, null::uuid, null::date
+        $1::uuid, $2::node_type, $3::text, null::uuid, null::uuid,
+        $4::uuid, null::uuid, null::text, '{}'::jsonb, null::uuid, null::date
       )).id as id`,
-      [prodRecette, productNodeType, 'Synthetic product node', orgRecette, prodRecette]);
+      [prodRecette, productNodeType, 'Synthetic product node', prodRecette]);
     const { rows: [target] } = await app.query(
       `select (tracefab_create_supply_chain_node(
         $1::uuid, $2::node_type, $3::text, null::uuid, null::uuid,
