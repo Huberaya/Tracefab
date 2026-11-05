@@ -259,7 +259,7 @@ const lines = [
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 16 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER puis enregistrement TC) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 16 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER, enregistrement TC, politiques RLS restantes et fermeture worker/public) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -379,7 +379,7 @@ if (markdown) {
   console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
   for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
   console.log('\n## Séquence d’exécution');
-  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur puis CAP qualité ; 1 écart historique documenté, aucun resolve.');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, puis fermeture RLS/worker/public ; 1 écart historique documenté, aucun resolve.');
   console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
   console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
   console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} migrations historiques absentes + ${newNames.length} correction(s) forward, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
@@ -411,4 +411,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports et qualité fournisseur, 1 écart historique documenté, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports, qualité fournisseur et fermeture RLS/worker/public, 1 écart historique documenté, aucun resolve ni changement de checksum.');
