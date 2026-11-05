@@ -4,7 +4,7 @@
  *
  * Baseline : les 56 migrations qui ont une ligne terminée dans Production et
  * Préproduction (dont les 5 exécutées hors bande). Cible : les 13 migrations
- * historiques absentes, puis les quinze corrections forward post-snapshot. Les deux
+ * historiques absentes, puis les seize corrections forward post-snapshot. Les deux
  * tentatives rolled_back ont aussi une ligne réussie et font partie du baseline.
  *
  * IMPORTANT : le SQL PLM utilisé ici est celui du dépôt courant. Son checksum
@@ -82,14 +82,14 @@ async function scalar(db, sql, params = []) {
 }
 
 console.log(`\n  1. Snapshot Neon ${SNAPSHOT_DATE} — cohérence des catégories`);
-ok('84 dossiers de migration dans le dépôt', dossiers.length === 84, String(dossiers.length));
+ok('85 dossiers de migration dans le dépôt', dossiers.length === 85, String(dossiers.length));
 ok('56 migrations terminées dans les deux bases', baselineNames.length === 56);
 ok('13 migrations réellement en attente', pendingNames.length === 13);
 ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length === 5);
 ok('les 2 tentatives annulées ont aussi une ligne réussie',
   ROLLED_BACK_ATTEMPTS.length === 2 && ROLLED_BACK_ATTEMPTS.every((x) => PRODUCTION_APPLIED[x.name]));
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
-ok('les quinze corrections forward sont postérieures au snapshot et ordonnées',
+ok('les seize corrections forward sont postérieures au snapshot et ordonnées',
   JSON.stringify(newNames) === JSON.stringify([
     '20261104090000_plm_integrations_and_gs1_constraints',
     '20261104100000_supply_chain_status_enum_casts',
@@ -106,6 +106,7 @@ ok('les quinze corrections forward sont postérieures au snapshot et ordonnées'
     '20261105220000_active_tenant_quality_cap_guards',
     '20261105230000_active_tenant_invite_document_passport_guards',
     '20261105240000_active_tenant_supplier_quality_guard',
+    '20261105250000_active_tenant_policy_and_worker_closure',
   ]), JSON.stringify(newNames));
 ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
   ['tracefab_create_supply_chain_node', 'tracefab_update_supply_chain_node', 'tracefab_add_supply_chain_link', 'tracefab_update_supply_chain_link']
@@ -178,7 +179,7 @@ for (const name of newNames) {
   forwardResults.push({ name, ...result });
   console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
 }
-ok('les quinze corrections forward post-snapshot s’appliquent', forwardResults.length === 15 && forwardResults.every((r) => r.ok),
+ok('les seize corrections forward post-snapshot s’appliquent', forwardResults.length === 16 && forwardResults.every((r) => r.ok),
   JSON.stringify(forwardResults.filter((r) => !r.ok)));
 const repairedPlmChecks = await scalar(baseline.db, `
   SELECT count(*)::int AS value FROM pg_constraint
@@ -196,7 +197,7 @@ ok('les quatre CHECK PLM sont présents et validés', repairedPlmChecks === 4, S
 ok('la contrainte GS1 accepte désormais GPC', repairedIdentifierCheck.includes('gpc'), repairedIdentifierCheck);
 const forwardReplay = [];
 for (const name of newNames) forwardReplay.push({ name, ...(await jouer(baseline.db, name)) });
-ok('les quinze corrections forward sont idempotentes', forwardReplay.length === 15 && forwardReplay.every((r) => r.ok),
+ok('les seize corrections forward sont idempotentes', forwardReplay.length === 16 && forwardReplay.every((r) => r.ok),
   JSON.stringify(forwardReplay.filter((r) => !r.ok)));
 
 console.log('\n  5. Contrôles du catalogue après application');
@@ -367,4 +368,4 @@ if (echecs) {
   console.error(`  ${echecs} échec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 7 corrections forward PLM/GS1, graphe, tenant actif, produits/DPP/PEF, allégations vertes, claims/identités DPP et compositions produit-matière, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
+console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 16 corrections forward PLM/GS1, graphe, tenant actif, DPP, fournisseurs, qualité, documents et worker/public, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
