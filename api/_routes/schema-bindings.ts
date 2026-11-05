@@ -5,7 +5,7 @@ import { withTracefabUserContext } from '../_lib/context.js';
 import { isUuid } from '../_lib/data-requests.js';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 import { getSchema } from '../_lib/schema-catalog.js';
-import { isTenantError, requireActiveTenant, requestedTenantId } from '../_lib/tenant.js';
+import { isTenantError, requireActiveTenant, requestedTenantId, resolveActiveTenant } from '../_lib/tenant.js';
 import { sqlBusinessError } from '../_lib/sql-errors.js';
 
 type SubjectType = 'product' | 'material' | 'supplier' | 'data_request';
@@ -139,8 +139,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const activeOrganizationId = requestedTenantId(req) ?? body.organizationId ?? null;
     const binding = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const tenant = await requireActiveTenant(tx, req, user.id, tenantScope(type));
-      if (tenant.organizationId !== activeOrganizationId) throw new Error('active_tenant_mismatch');
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, tenantScope(type));
       if (!await subjectBelongsToTenant(tx, type, body.subjectId!, tenant.organizationId)) {
         throw new Error('schema_subject_not_found');
       }
