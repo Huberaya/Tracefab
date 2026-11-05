@@ -589,7 +589,7 @@ BEGIN
     -- décisions d'accès tenant même sans helper. Elles doivent être bornées
     -- explicitement, sinon l'inventaire échoue fermé.
     IF v_policy.expression ~* 'organization_memberships'
-       AND v_policy.expression !~* 'tracefab_in_active_tenant\\(' THEN
+       AND v_policy.expression !~* 'tracefab_in_active_tenant\(' THEN
       RAISE EXCEPTION 'active_tenant_policy_direct_membership_unclassified: %.%',
         v_policy.tablename, v_policy.policyname;
     END IF;
