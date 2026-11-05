@@ -77,6 +77,13 @@ function controle(libelle, condition, detail) {
     migrationTcRegistrationPresente && texte.includes(migrationTcRegistration),
     migrationTcRegistrationPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
   );
+  const migrationMaterialCertification = '20261105200000_active_tenant_material_certification_guards';
+  const migrationMaterialCertificationPresente = readdirSync('prisma/migrations').includes(migrationMaterialCertification);
+  controle(
+    'la migration des gardes matières/certifications est référencée dans le registre',
+    migrationMaterialCertificationPresente && texte.includes(migrationMaterialCertification),
+    migrationMaterialCertificationPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const migrationQualityCollection = '20261105190000_active_tenant_quality_collection_guards';
   const migrationQualityCollectionPresente = readdirSync('prisma/migrations').includes(migrationQualityCollection);
   controle(
