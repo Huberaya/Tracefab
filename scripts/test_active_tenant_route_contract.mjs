@@ -41,7 +41,7 @@ check('ingest : cible exclusivement le tenant résolu', /ingestPlmErpData\(tx, t
 const jobs = read('api/_routes/integrations/jobs.ts');
 check('jobs : filtre les lignes sur le tenant résolu', /where: \\{ brand_organization_id: activeOrgId \\}/.test(jobs));
 const suppliers = read('api/_routes/suppliers.ts');
-check('fournisseurs : joint la relation sur un seul tenant', /r\.brand_organization_id = \$\\{tenant\.organizationId\\}::uuid/.test(suppliers));
+check('fournisseurs : joint la relation sur un seul tenant', /r\.brand_organization_id = \\$\\{tenant\.organizationId\\}::uuid/.test(suppliers));
 const upload = read('api/_routes/supplier/documents/upload-intent.ts');
 check('upload : document et clé de stockage utilisent le fournisseur du tenant', /currentSupplier\(tx, user\.id, tenant\.organizationId\)/.test(upload));
 const usage = read('api/_routes/supplier/storage/usage.ts');
@@ -49,5 +49,5 @@ check('storage : quota lu pour le fournisseur du tenant', /getOrganizationStorag
 
 const failures = checks.filter((c) => !c.condition);
 for (const c of checks) console.log(`${c.condition ? 'OK' : 'ECHEC'} ${c.name}`);
-console.log(`\\n${checks.length - failures.length}/${checks.length} contrôles réussis`);
+console.log(`\n${checks.length - failures.length}/${checks.length} contrôles réussis`);
 if (failures.length) process.exit(1);
