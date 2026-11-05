@@ -68,8 +68,7 @@ BEGIN
     p_subject_scope,NULLIF(trim(p_subject_reference),''),p_validation_status,p_valid_from,p_valid_until,p_supersedes_claim_id,
     NULLIF(trim(p_rejection_reason),''),tracefab_current_user_id()) RETURNING * INTO v_claim;
   RETURN v_claim;
-END $function$
-
+END $function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_add_dpp_event(p_product_id uuid, p_event_type text, p_summary text, p_business_occurred_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_source_kind text DEFAULT 'actor_declaration'::text, p_validation_status dpp_event_validation_status DEFAULT 'declared'::dpp_event_validation_status, p_public_summary text DEFAULT NULL::text, p_details jsonb DEFAULT '{}'::jsonb, p_evidence_document_ids uuid[] DEFAULT '{}'::uuid[], p_corrects_event_id uuid DEFAULT NULL::uuid, p_idempotency_key text DEFAULT NULL::text, p_subject_scope text DEFAULT 'model'::text, p_subject_reference text DEFAULT NULL::text)
  RETURNS dpp_lifecycle_events
@@ -108,8 +107,7 @@ BEGIN
   IF v_event.id IS NULL THEN SELECT * INTO v_event FROM dpp_lifecycle_events
     WHERE owner_organization_id=v_product.brand_organization_id AND idempotency_key=p_idempotency_key; END IF;
   RETURN v_event;
-END $function$
-
+END $function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_add_product_identifier(p_product_id uuid, p_identifier_type text, p_identifier_value text, p_is_primary boolean DEFAULT false)
  RETURNS product_identifiers
@@ -163,8 +161,7 @@ BEGIN
 
   RETURN v_identifier;
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_audit_product_green_claims(p_product_id uuid)
  RETURNS green_claims_audits
@@ -418,8 +415,7 @@ BEGIN
 
   RETURN v_audit;
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_calculate_product_data_completion(p_product_id uuid)
  RETURNS numeric
@@ -508,8 +504,7 @@ BEGIN
 
   RETURN round((v_completed::NUMERIC / 7) * 100, 2);
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_create_dpp_identity(p_product_id uuid, p_public_id text, p_granularity text, p_qualifier text DEFAULT NULL::text)
  RETURNS dpp_resolvable_identifiers
@@ -522,8 +517,7 @@ DECLARE p tracefab_products;r dpp_resolvable_identifiers;BEGIN SELECT * INTO p F
  IF NOT tracefab_in_active_tenant(p.brand_organization_id) THEN RAISE EXCEPTION 'active_tenant_mismatch'; END IF;
  IF NOT tracefab_has_org_role(p.brand_organization_id,ARRAY['owner','admin','manager']::membership_role[]) THEN RAISE EXCEPTION 'dpp_identity_role_required';END IF;
  INSERT INTO dpp_resolvable_identifiers(product_id,owner_organization_id,public_id,granularity,qualifier,created_by)
- VALUES(p_product_id,p.brand_organization_id,lower(trim(p_public_id)),p_granularity,NULLIF(trim(p_qualifier),''),tracefab_current_user_id()) RETURNING * INTO r;RETURN r;END $function$
-
+ VALUES(p_product_id,p.brand_organization_id,lower(trim(p_public_id)),p_granularity,NULLIF(trim(p_qualifier),''),tracefab_current_user_id()) RETURNING * INTO r;RETURN r;END $function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_link_dpp_claim_evidence(p_claim_id uuid, p_document_id uuid, p_relationship text DEFAULT 'supports'::text, p_coverage_note text DEFAULT NULL::text, p_verification_result text DEFAULT 'pending'::text, p_verification_reason text DEFAULT NULL::text, p_public_label text DEFAULT NULL::text)
  RETURNS dpp_claim_evidence
@@ -546,8 +540,7 @@ BEGIN
   VALUES(p_claim_id,p_document_id,p_relationship,NULLIF(trim(p_coverage_note),''),p_verification_result,
     NULLIF(trim(p_verification_reason),''),NULLIF(trim(p_public_label),''),tracefab_current_user_id()) RETURNING * INTO v_link;
   RETURN v_link;
-END $function$
-
+END $function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_replace_dpp_identity(p_identity_id uuid, p_replacement_public_id text, p_reason text)
  RETURNS dpp_resolvable_identifiers
@@ -564,8 +557,7 @@ DECLARE old dpp_resolvable_identifiers;replacement dpp_resolvable_identifiers;BE
  UPDATE dpp_resolvable_identifiers SET status='retired',retired_at=now(),reason=trim(p_reason) WHERE id=old.id;
  INSERT INTO dpp_resolvable_identifiers(product_id,owner_organization_id,public_id,granularity,qualifier,created_by)
  VALUES(old.product_id,old.owner_organization_id,lower(trim(p_replacement_public_id)),old.granularity,old.qualifier,tracefab_current_user_id()) RETURNING * INTO replacement;
- UPDATE dpp_resolvable_identifiers SET status='replaced',replaced_by_id=replacement.id WHERE id=old.id RETURNING * INTO old;RETURN old;END $function$
-
+ UPDATE dpp_resolvable_identifiers SET status='replaced',replaced_by_id=replacement.id WHERE id=old.id RETURNING * INTO old;RETURN old;END $function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_update_product_identifier(p_product_id uuid, p_identifier_id uuid, p_identifier_value text, p_is_primary boolean)
  RETURNS product_identifiers
@@ -612,7 +604,6 @@ BEGIN
 
   RETURN v_identifier;
 END;
-$function$
-
+$function$;
 
 COMMIT;
