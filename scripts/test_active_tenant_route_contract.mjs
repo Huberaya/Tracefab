@@ -311,7 +311,7 @@ check('migration SQL : postcondition vérifie l’absence d’EXECUTE effectif d
   definerMigration.includes("active_tenant_guard_helpers_executable_by_runtime"));
 
 
-const policyWorkerMigration = read('prisma/migrations/20261105250000_active_tenant_policy_and_worker_closure/migration.sql');
+const policyWorkerMigration = read('prisma/migrations/20261105235900_active_tenant_policy_and_worker_closure/migration.sql');
 for (const fn of [
   'tracefab_apply_document_ai_verification',
   'tracefab_finalize_document_upload',
