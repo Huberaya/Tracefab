@@ -89,7 +89,7 @@ ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length ==
 ok('les 2 tentatives annulées ont aussi une ligne réussie',
   ROLLED_BACK_ATTEMPTS.length === 2 && ROLLED_BACK_ATTEMPTS.every((x) => PRODUCTION_APPLIED[x.name]));
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
-ok('les seize corrections forward sont postérieures au snapshot et ordonnées',
+ok('les dix-sept corrections forward sont postérieures au snapshot et ordonnées',
   JSON.stringify(newNames) === JSON.stringify([
     '20261104090000_plm_integrations_and_gs1_constraints',
     '20261104100000_supply_chain_status_enum_casts',
@@ -107,6 +107,7 @@ ok('les seize corrections forward sont postérieures au snapshot et ordonnées',
     '20261105230000_active_tenant_invite_document_passport_guards',
     '20261105240000_active_tenant_supplier_quality_guard',
     '20261105250000_active_tenant_policy_and_worker_closure',
+    '20261105260000_active_tenant_supplier_passport_guards',
   ]), JSON.stringify(newNames));
 ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
   ['tracefab_create_supply_chain_node', 'tracefab_update_supply_chain_node', 'tracefab_add_supply_chain_link', 'tracefab_update_supply_chain_link']
