@@ -157,7 +157,7 @@ try {
       `select distinct organization_id::text as id
          from public.organization_memberships
         where user_id = $1::uuid and status = 'active'
-        order by organization_id`,
+        order by 1`,
       [userId],
     );
     const organisationsVisibles = await app.query(
