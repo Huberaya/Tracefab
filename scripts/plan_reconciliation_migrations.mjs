@@ -140,6 +140,16 @@ const lignesForward = (name) => {
       action: 'APPLIQUER APRÈS LES GARDES CAP QUALITÉ, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
     };
   }
+  if (name === '20261105250000_active_tenant_policy_and_worker_closure') {
+    return {
+      ...base,
+      effect: 'recalculer et borner les politiques RLS restantes au tenant actif, sécuriser les fonctions documentaires et transférer les traitements globaux de notification à l’identité worker non connectable',
+      evidence: 'inventaire PostgreSQL pg_policies, contrôles de postconditions, tests négatifs directs des fonctions documentaires, tests worker non falsifiable et contrôle du contexte public',
+      risk: 'migration à forte portée : réécrit dynamiquement les prédicats RLS et change le propriétaire de trois fonctions ; revue catalogue/ACL obligatoire avant tout déploiement réel',
+      prerequisite: '20261105240000 terminée ; comparer le nombre de politiques et les expressions USING/WITH CHECK avant/après, vérifier OID/propriétaires/ACL, puis exécuter les tests RLS, documentaires, worker et public',
+      action: 'APPLIQUER APRÈS LES GARDES QUALITÉ FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
   if (name === '20261105240000_active_tenant_supplier_quality_guard') {
     return {
       ...base,
@@ -249,7 +259,7 @@ const lines = [
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 15 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER puis enregistrement TC) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 16 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER puis enregistrement TC) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -288,8 +298,9 @@ if (JSON.stringify(newNames) !== JSON.stringify([
   '20261105220000_active_tenant_quality_cap_guards',
   '20261105230000_active_tenant_invite_document_passport_guards',
   '20261105240000_active_tenant_supplier_quality_guard',
+  '20261105250000_active_tenant_policy_and_worker_closure',
 ])) {
-  errors.push(`les quinze corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
+  errors.push(`les seize corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
 }
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
 for (const name of outOfBand) {
@@ -368,7 +379,7 @@ if (markdown) {
   console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
   for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
   console.log('\n## Séquence d’exécution');
-  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 15 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur puis CAP qualité ; 1 écart historique documenté, aucun resolve.');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur puis CAP qualité ; 1 écart historique documenté, aucun resolve.');
   console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
   console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
   console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} migrations historiques absentes + ${newNames.length} correction(s) forward, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
@@ -400,4 +411,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 15 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports et qualité fournisseur, 1 écart historique documenté, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports et qualité fournisseur, 1 écart historique documenté, aucun resolve ni changement de checksum.');
