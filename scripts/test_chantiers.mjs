@@ -98,6 +98,13 @@ function controle(libelle, condition, detail) {
     migrationPolicyWorkerClosurePresente && texte.includes(migrationPolicyWorkerClosure),
     migrationPolicyWorkerClosurePresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
   );
+  const migrationSupplierPassportGuards = '20261105260000_active_tenant_supplier_passport_guards';
+  const migrationSupplierPassportGuardsPresente = readdirSync('prisma/migrations').includes(migrationSupplierPassportGuards);
+  controle(
+    'la migration de fermeture des deux fonctions passeport fournisseur est référencée dans le registre',
+    migrationSupplierPassportGuardsPresente && texte.includes(migrationSupplierPassportGuards),
+    migrationSupplierPassportGuardsPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const migrationQualityCap = '20261105220000_active_tenant_quality_cap_guards';
   const migrationQualityCapPresente = readdirSync('prisma/migrations').includes(migrationQualityCap);
   controle(
