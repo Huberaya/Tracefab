@@ -21,6 +21,12 @@ GRANT SELECT ON TABLE public.data_requests TO tracefab_worker;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.tracefab_notification_outbox TO tracefab_worker;
 GRANT USAGE ON TYPE public.tracefab_notification_status TO tracefab_worker;
 GRANT USAGE ON TYPE public.tracefab_notification_event TO tracefab_worker;
+-- Les politiques participant restent présentes en OR avec les politiques worker.
+-- Le worker doit donc pouvoir évaluer leurs prédicats, même si sa branche
+-- current_user = tracefab_worker ouvre déjà l'accès global autorisé.
+GRANT EXECUTE ON FUNCTION public.tracefab_active_organization_id() TO tracefab_worker;
+GRANT EXECUTE ON FUNCTION public.tracefab_in_active_tenant(uuid) TO tracefab_worker;
+GRANT EXECUTE ON FUNCTION public.tracefab_can_access_org(uuid) TO tracefab_worker;
 
 -- 2. Ces fonctions étaient possédées par neondb_owner (BYPASSRLS). Les faire
 --    exécuter sous tracefab_worker active les politiques worker de la table
