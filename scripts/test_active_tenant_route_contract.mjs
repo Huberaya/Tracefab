@@ -174,7 +174,7 @@ for (const path of [
   const src = read(path);
   check(`${path}: borne les mutations au tenant fournisseur`,
     src.includes("types: ['supplier']")
-      && src.includes('requestedTenantId(req)')
+      && (src.includes('requestedTenantId(req)') || src.includes('requestedOrganizationId(req)'))
       && src.includes('isTenantError(error)'));
 }
 const supplierPassportRoute = read('api/_routes/supplier/passport.ts');
