@@ -119,16 +119,16 @@ jobs:
           )
           SELECT
             count(*) AS policies_total,
-            count(*) FILTER (WHERE expression ~* 'tracefab_in_active_tenant\\(') AS active_tenant_policies,
-            count(*) FILTER (WHERE expression ~* 'tracefab_(is_org_member|has_org_role|can_access_org)\\(') AS membership_helper_policies,
+            count(*) FILTER (WHERE expression ~* 'tracefab_in_active_tenant\(') AS active_tenant_policies,
+            count(*) FILTER (WHERE expression ~* 'tracefab_(is_org_member|has_org_role|can_access_org)\(') AS membership_helper_policies,
             count(*) FILTER (WHERE expression ~* 'organization_memberships') AS direct_membership_policies,
             count(*) FILTER (
               WHERE (
-                expression ~* 'tracefab_(is_org_member|has_org_role|can_access_org)\\('
-                AND expression !~* 'tracefab_in_active_tenant\\('
+                expression ~* 'tracefab_(is_org_member|has_org_role|can_access_org)\('
+                AND expression !~* 'tracefab_in_active_tenant\('
               ) OR (
                 expression ~* 'organization_memberships'
-                AND expression !~* 'tracefab_in_active_tenant\\('
+                AND expression !~* 'tracefab_in_active_tenant\('
               )
             ) AS unresolved_policies
           FROM policies;
