@@ -79,6 +79,9 @@ jobs:
         # provoquer aucune requete metier.
         run: npm run test:active-tenant
 
+      - name: Contrat des routes sensibles au tenant actif
+        run: npm run test:active-tenant:routes
+
       - name: Commentaires de fin de ligne dans les routes compactees
         # Un commentaire `//` dans une route ecrite sur une ligne met en
         # commentaire tout le handler, sans erreur de compilation.
