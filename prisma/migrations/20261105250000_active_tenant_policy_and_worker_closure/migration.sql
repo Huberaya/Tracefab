@@ -21,6 +21,8 @@ GRANT SELECT ON TABLE public.data_requests TO tracefab_worker;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.tracefab_notification_outbox TO tracefab_worker;
 GRANT USAGE ON TYPE public.tracefab_notification_status TO tracefab_worker;
 GRANT USAGE ON TYPE public.tracefab_notification_event TO tracefab_worker;
+GRANT USAGE ON TYPE public.tracefab_notification_outbox TO tracefab_worker;
+GRANT USAGE ON TYPE public.membership_role TO tracefab_worker;
 -- Les politiques participant restent présentes en OR avec les politiques worker.
 -- Le worker doit donc pouvoir évaluer leurs prédicats, même si sa branche
 -- current_user = tracefab_worker ouvre déjà l'accès global autorisé.
