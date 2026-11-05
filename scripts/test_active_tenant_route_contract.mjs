@@ -163,7 +163,7 @@ for (const [fn, guard] of [
     supplierProfileMigration.includes(fn)
       && supplierProfileMigration.includes(`tracefab_require_active_tenant_for_organization(${guard})`));
 }
-const supplierPassportMigration = read('prisma/migrations/20261105260000_active_tenant_supplier_passport_guards/migration.sql');
+const supplierPassportMigration = read('prisma/migrations/20261106000000_active_tenant_supplier_passport_guards/migration.sql');
 for (const fn of ['tracefab_get_or_create_supplier_passport', 'tracefab_update_supplier_passport']) {
   check(`migration SQL forward : ${fn} exige le tenant fournisseur actif au début du corps`,
     supplierPassportMigration.includes(fn)
