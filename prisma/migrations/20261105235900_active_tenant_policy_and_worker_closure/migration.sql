@@ -18,9 +18,10 @@ BEGIN;
 -- 1. Le worker ne reçoit que les droits nécessaires aux trois opérations
 --    globales de notification (lecture des demandes, claim/complete outbox).
 GRANT SELECT ON TABLE public.data_requests TO tracefab_worker;
--- Nécessaire uniquement à tracefab_current_user_email() SECURITY DEFINER.
--- La politique users_select_self borne la lecture à l'identité authentifiée ;
--- aucun privilège SELECT n'est accordé à tracefab_app.
+-- Nécessaire à tracefab_current_user_email() SECURITY DEFINER.
+-- Le SELECT applicatif préexistant est conservé : users_select_self borne les
+-- lignes visibles à l'identité authentifiée. Cette migration n'élargit pas
+-- l'ACL de tracefab_app ; elle accorde le SELECT manquant au worker NOLOGIN.
 GRANT SELECT ON TABLE public.users TO tracefab_worker;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.tracefab_notification_outbox TO tracefab_worker;
 GRANT USAGE ON TYPE public.tracefab_notification_status TO tracefab_worker;
