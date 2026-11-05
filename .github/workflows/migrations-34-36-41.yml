@@ -100,3 +100,16 @@ jobs:
 
       - name: Intégration A (neuve) et B (10120000 tardif)
         run: bash scripts/test_migration_integration_34_36_41.sh
+
+      # La commande Prisma migrate deploy ci-dessus applique toute la chaîne
+      # du checkout, dont 20261105250000_active_tenant_policy_and_worker_closure.
+      # Ces suites exécutent ensuite les assertions métier sous tracefab_app
+      # sur le même PostgreSQL 17 jetable, après provisionnement du rôle.
+      - name: Isolation tenant actif — positifs et refus inter-tenant PostgreSQL 17
+        run: npm run test:neon:active-tenant
+
+      - name: Identité worker non falsifiable — PostgreSQL 17
+        run: npm run test:neon:worker-non-forgeable
+
+      - name: Isolation RLS inter-tenant — PostgreSQL 17
+        run: npm run test:neon:cross-tenant
