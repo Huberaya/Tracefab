@@ -16,6 +16,7 @@ const checks = [];
 const check = (name, condition) => checks.push({ name, condition });
 
 const routes = [
+  ['api/_routes/integrations.ts', 'brand', ['owner', 'admin', 'manager']],
   ['api/_routes/integrations/ingest.ts', 'brand', ['owner', 'admin', 'manager']],
   ['api/_routes/integrations/jobs.ts', 'brand', null],
   ['api/_routes/suppliers.ts', 'brand', null],
