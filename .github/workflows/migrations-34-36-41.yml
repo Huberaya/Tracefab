@@ -101,6 +101,39 @@ jobs:
       - name: Intégration A (neuve) et B (10120000 tardif)
         run: bash scripts/test_migration_integration_34_36_41.sh
 
+      - name: Inventaire RLS après migration #25 — compteurs et zéro non classé
+        shell: bash
+        run: |
+          psql -X --no-password -v ON_ERROR_STOP=1 -At -F '|' <<'SQL'
+          WITH policies AS (
+            SELECT tablename, policyname,
+                   coalesce(qual, '') || ' ' || coalesce(with_check, '') AS expression
+              FROM pg_catalog.pg_policies
+             WHERE schemaname = 'public'
+               AND tablename NOT IN (
+                 'organizations', 'organization_memberships',
+                 'organization_invitations', 'rate_limit_counters',
+                 'tracefab_schema_catalog', 'dpp_requirement_profiles',
+                 'green_claims_rules', 'pef_emission_factors'
+               )
+          )
+          SELECT
+            count(*) AS policies_total,
+            count(*) FILTER (WHERE expression ~* 'tracefab_in_active_tenant\\(') AS active_tenant_policies,
+            count(*) FILTER (WHERE expression ~* 'tracefab_(is_org_member|has_org_role|can_access_org)\\(') AS membership_helper_policies,
+            count(*) FILTER (WHERE expression ~* 'organization_memberships') AS direct_membership_policies,
+            count(*) FILTER (
+              WHERE (
+                expression ~* 'tracefab_(is_org_member|has_org_role|can_access_org)\\('
+                AND expression !~* 'tracefab_in_active_tenant\\('
+              ) OR (
+                expression ~* 'organization_memberships'
+                AND expression !~* 'tracefab_in_active_tenant\\('
+              )
+            ) AS unresolved_policies
+          FROM policies;
+          SQL
+
       # La commande Prisma migrate deploy ci-dessus applique toute la chaîne
       # du checkout, dont 20261105250000_active_tenant_policy_and_worker_closure.
       # Ces suites exécutent ensuite les assertions métier sous tracefab_app
