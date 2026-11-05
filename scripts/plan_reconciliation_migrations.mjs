@@ -110,6 +110,16 @@ const lignesForward = (name) => {
       action: 'APPLIQUER APRÈS LA CORRECTION PLM/GS1, EN PRÉPRODUCTION PUIS PRODUCTION',
     };
   }
+  if (name === '20261105160000_active_tenant_product_materials_rls') {
+    return {
+      ...base,
+      effect: 'borner les relations produit-matière au tenant actif tout en conservant les partages fournisseur pour les produits du tenant actif',
+      evidence: 'test direct sous tracefab_app : membre A+B, A actif, une relation product_materials de B était visible via la branche partagée de la politique SELECT ; helper material_visible_via_product ignorait aussi le tenant actif',
+      risk: 'préserver les matières partagées sans exposer la composition d’un produit d’un autre tenant ; CREATE OR REPLACE conserve OID/propriétaire/ACL',
+      prerequisite: '20261105150000 terminée ; vérifier les fonctions SECURITY DEFINER d’ajout/mise à jour de matières et la visibilité partagée',
+      action: 'APPLIQUER APRÈS LE BORNAGE DES CLAIMS/IDENTITÉS DPP, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
   if (name === '20261105150000_active_tenant_dpp_claims_identity_rls') {
     return {
       ...base,
@@ -159,7 +169,7 @@ const lines = [
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 6 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, puis claims/identités DPP) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 7 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, puis compositions produit-matière) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -189,8 +199,9 @@ if (JSON.stringify(newNames) !== JSON.stringify([
   '20261105130000_active_tenant_product_dpp_pef_rls',
   '20261105140000_active_tenant_green_claims_rls',
   '20261105150000_active_tenant_dpp_claims_identity_rls',
+  '20261105160000_active_tenant_product_materials_rls',
 ])) {
-  errors.push(`les six corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes puis claims/identités DPP sont attendues, obtenu ${JSON.stringify(newNames)}`);
+  errors.push(`les sept corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP puis compositions produit-matière sont attendues, obtenu ${JSON.stringify(newNames)}`);
 }
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
 for (const name of outOfBand) {
@@ -269,7 +280,7 @@ if (markdown) {
   console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
   for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
   console.log('\n## Séquence d’exécution');
-  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 6 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes puis claims/identités DPP ; 1 écart historique documenté, aucun resolve.');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 7 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP puis compositions produit-matière ; 1 écart historique documenté, aucun resolve.');
   console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
   console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
   console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} migrations historiques absentes + ${newNames.length} correction(s) forward, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
@@ -301,4 +312,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 6 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes puis claims/identités DPP, 1 écart historique documenté, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 7 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP puis compositions produit-matière, 1 écart historique documenté, aucun resolve ni changement de checksum.');
