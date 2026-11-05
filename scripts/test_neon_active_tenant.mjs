@@ -308,6 +308,68 @@ try {
     }
   };
 
+  // Diagnostic executable des gardes du passeport fournisseur : vérifier
+  // séparément le contexte, le prédicat, le helper et la position du guard.
+  {
+    await app.query('begin');
+    await app.query(`select set_config('tracefab.user_id', $1, true)`, [userMulti]);
+    await app.query(`select set_config('tracefab.user_email', $1, true)`, [`mt-${suffixe}@example.test`]);
+    await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgGinger]);
+    const state = await app.query(
+      `select tracefab_active_organization_id()::text as active,
+              tracefab_in_active_tenant($1::uuid) as supplier_active,
+              tracefab_in_active_tenant($2::uuid) as ginger_active`,
+      [orgSupplier, orgGinger],
+    );
+    ok(
+      state.rows[0]?.active === orgGinger
+        && state.rows[0]?.supplier_active === false
+        && state.rows[0]?.ginger_active === true,
+      'contexte actif Ginger refuse explicitement le tenant fournisseur',
+      JSON.stringify(state.rows[0]),
+    );
+    await app.query('rollback');
+
+    const definitions = await proprio.query(`
+      select p.proname, p.prosecdef,
+             position('PERFORM public.tracefab_require_active_tenant_for_organization(p_supplier_organization_id);'
+               in pg_catalog.pg_get_functiondef(p.oid)) as guard_position,
+             position('IF NOT tracefab_has_org_role('
+               in pg_catalog.pg_get_functiondef(p.oid)) as role_position
+        from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname in ('tracefab_get_or_create_supplier_passport', 'tracefab_update_supplier_passport')
+       order by p.proname
+    `);
+    const definitionsValid = definitions.rows.length === 2
+      && definitions.rows.every(row => row.prosecdef && row.guard_position > 0
+        && row.role_position > 0 && row.guard_position < row.role_position);
+    ok(
+      definitionsValid,
+      'les deux fonctions passeport exécutent leur garde avant le contrôle de rôle',
+      JSON.stringify(definitions.rows),
+    );
+
+    await proprio.query('begin');
+    await proprio.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgGinger]);
+    try {
+      await proprio.query(
+        'select public.tracefab_require_active_tenant_for_organization($1::uuid)',
+        [orgSupplier],
+      );
+      ko('le helper SQL accepte le fournisseur depuis Ginger');
+    } catch (error) {
+      if (String(error.message).includes('active_tenant_mismatch')) {
+        ok('le helper SQL refuse directement le fournisseur depuis Ginger');
+      } else {
+        ko(`le helper SQL renvoie une erreur inattendue : ${error.message}`);
+      }
+    } finally {
+      await proprio.query('rollback').catch(() => {});
+    }
+  }
+
   await assertTenantGuard(
     'tracefab_compute_supplier_quality',
     `SELECT * FROM tracefab_compute_supplier_quality($1::uuid, 'active_tenant_test_v1')`,
