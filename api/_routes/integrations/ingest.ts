@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const result = await ingestPlmErpData(tx, targetOrgId, systemType, payload, integrationId);
 
       return json(res, 200, result);
-    });
+    }, requestedOrgId);
   } catch (error: unknown) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     if (isTenantError(error)) return json(res, error.status, { error: error.message });
