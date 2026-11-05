@@ -203,9 +203,9 @@ try {
     [certificationRecette, orgRecette, prodRecette, `CERT-MT-${suffixe}`, userMulti]);
   await proprio.query(
     `insert into data_quality_issues
-      (id, owner_organization_id, rule_key, rule_version, severity, message)
-     values ($1, $2, 'tenant.guard.fixture', '1', 'blocking', 'Synthetic tenant guard issue')`,
-    [issueRecette, orgRecette]);
+      (id, owner_organization_id, product_id, rule_key, rule_version, severity, message)
+     values ($1, $2, $3, 'tenant.guard.fixture', '1', 'blocking', 'Synthetic tenant guard issue')`,
+    [issueRecette, orgRecette, prodRecette]);
   await proprio.query(
     `insert into data_requests
       (id, brand_organization_id, supplier_organization_id, title, questionnaire_key, questionnaire_version, status, created_by)
