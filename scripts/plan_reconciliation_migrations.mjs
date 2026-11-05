@@ -368,7 +368,7 @@ if (markdown) {
   console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
   for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
   console.log('\n## Séquence d’exécution');
-  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 13 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur puis CAP qualité ; 1 écart historique documenté, aucun resolve.');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 15 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur puis CAP qualité ; 1 écart historique documenté, aucun resolve.');
   console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
   console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
   console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} migrations historiques absentes + ${newNames.length} correction(s) forward, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
