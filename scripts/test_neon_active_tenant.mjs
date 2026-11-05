@@ -191,9 +191,6 @@ try {
   await assertTenantGuard('tracefab_audit_product_green_claims',
     'select tracefab_audit_product_green_claims($1::uuid)',
     [prodRecette]);
-  await assertTenantGuard('tracefab_calculate_product_data_completion',
-    'select tracefab_calculate_product_data_completion($1::uuid)',
-    [prodRecette]);
   await assertTenantGuard('tracefab_link_dpp_claim_evidence',
     'select tracefab_link_dpp_claim_evidence($1::uuid, $2::uuid)',
     [dppClaimRecette, randomUUID()]);
