@@ -255,13 +255,17 @@ try {
        has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'INSERT') as outbox_insert,
        has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'UPDATE') as outbox_update,
        has_table_privilege('tracefab_app', 'public.tracefab_notification_outbox', 'INSERT') as app_outbox_insert,
-       has_table_privilege('tracefab_app', 'public.tracefab_notification_outbox', 'UPDATE') as app_outbox_update`,
+       has_table_privilege('tracefab_app', 'public.tracefab_notification_outbox', 'UPDATE') as app_outbox_update,
+       has_function_privilege('tracefab_worker', 'public.tracefab_active_organization_id()', 'EXECUTE') as active_org_exec,
+       has_function_privilege('tracefab_worker', 'public.tracefab_in_active_tenant(uuid)', 'EXECUTE') as active_tenant_exec,
+       has_function_privilege('tracefab_worker', 'public.tracefab_can_access_org(uuid)', 'EXECUTE') as can_access_org_exec`,
   );
   const wp = privilegesWorker.rows[0];
   ok(
     wp.requests_select && wp.outbox_select && wp.outbox_insert && wp.outbox_update
-      && !wp.app_outbox_insert && !wp.app_outbox_update,
-    'le worker dispose uniquement des droits de lecture des demandes et de claim/écriture outbox',
+      && !wp.app_outbox_insert && !wp.app_outbox_update
+      && wp.active_org_exec && wp.active_tenant_exec && wp.can_access_org_exec,
+    'le worker a les droits outbox/demandes et les seuls helpers de prédicat RLS requis',
     JSON.stringify(wp),
   );
   // Le worker ne doit rien pouvoir lire que l applicatif ne puisse lire : le
