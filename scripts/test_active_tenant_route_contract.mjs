@@ -218,6 +218,10 @@ check('currentSupplier : aucun fallback premier fournisseur et GUC actif armé',
     && supplierProfileHelper.includes('if (!organizationId) return null;')
     && !supplierProfileHelper.includes("orderBy: { created_at: 'asc' }"));
 
+check('currentSupplier : absence de tenant ou appartenance invalide échoue fermé',
+  supplierProfileHelper.includes('if (!organizationId) return null;')
+    && supplierProfileHelper.includes('if (isTenantError(error)) return null;'));
+
 const supplierPassportRoute = read('api/_routes/supplier/passport.ts');
 check('supplier passport : résout un tenant supplier explicite', supplierPassportRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })"));
 check('supplier passport : arme le tenant dans le contexte SQL', supplierPassportRoute.includes('}, activeOrganizationId)'));
