@@ -89,6 +89,9 @@ const materialRecette = randomUUID();
 const tcRecette = randomUUID();
 const issueRecette = randomUUID();
 const certificationRecette = randomUUID();
+const documentRecette = randomUUID();
+const passportRecette = randomUUID();
+const accessRequestRecette = randomUUID();
 const requestBrandB = randomUUID();
 const requestSupplierB = randomUUID();
 const itemBrandB = randomUUID();
@@ -145,6 +148,22 @@ try {
   await proprio.query(
     'insert into suppliers (id, organization_id) values ($1, $2)',
     [supplierRecette, orgSupplier]);
+  await proprio.query(
+    `insert into documents
+      (id, owner_organization_id, storage_bucket, storage_path, original_filename, content_type, byte_size, uploaded_by)
+     values ($1, $2, 'private', $3, 'tenant-guard.pdf', 'application/pdf', 128, $4)`,
+    [documentRecette, orgRecette, `${orgRecette}/tenant-guard.pdf`, userMulti]);
+  await proprio.query(
+    `insert into supplier_universal_passports
+      (id, supplier_organization_id, supplier_id, share_token)
+     values ($1, $2, $3, $4)`,
+    [passportRecette, orgSupplier, supplierRecette, `passport-token-${suffixe}`]);
+  await proprio.query(
+    `insert into supplier_passport_access_requests
+      (id, passport_id, supplier_organization_id, requester_email, requester_name, requester_company, requester_organization_id)
+     values ($1, $2, $3, 'requester@example.test', 'Synthetic Requester', 'Synthetic Brand', $4)`,
+    [accessRequestRecette, passportRecette, orgSupplier, orgGinger]);
+
   // Brouillon, sans public_slug : la lecture publique ne peut rien expliquer.
   await proprio.query(
     `insert into tracefab_products (id, brand_organization_id, reference, name, status, version, created_by)
@@ -254,6 +273,21 @@ try {
     await app.query('commit');
     ok('tracefab_create_quality_cap accepte la marque active propriétaire de l’anomalie');
   }
+  await assertTenantGuard('tracefab_invite_supplier',
+    `select tracefab_invite_supplier(
+      $1::uuid, 'blocked-supplier@example.test', 'Blocked Supplier',
+      'Blocked Supplier', 'FR', 'synthetic-token-hash'
+    )`, [orgRecette]);
+  await assertTenantGuard('tracefab_register_document',
+    `select tracefab_register_document(
+      $1::uuid, $2::text, 'tenant-guard.pdf', 'application/pdf',
+      128::bigint, null::text, 'other'::document_kind, null::date, '{}'::jsonb
+    )`, [orgRecette, `${orgRecette}/blocked.pdf`]);
+  await assertTenantGuard('tracefab_mark_document_scanning',
+    'select tracefab_mark_document_scanning($1::uuid)', [documentRecette]);
+  await assertTenantGuard('tracefab_review_passport_access',
+    `select tracefab_review_passport_access($1::uuid, 'approved')`, [accessRequestRecette]);
+
   await assertTenantGuard('tracefab_create_quality_cap',
     `select tracefab_create_quality_cap(
       $1::uuid, $2::uuid, 'Negative CAP', 'Synthetic instructions',
