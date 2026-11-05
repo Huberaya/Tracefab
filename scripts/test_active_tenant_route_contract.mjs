@@ -177,6 +177,26 @@ for (const path of [
       && (src.includes('requestedTenantId(req)') || src.includes('requestedOrganizationId(req)'))
       && src.includes('isTenantError(error)'));
 }
+const tenantBoundForwardRoutes = [
+  'api/_routes/organizations/[organizationId]/invitations.ts',
+  'api/_routes/catalog/suppliers/import.ts',
+  'api/_routes/catalog/import/suppliers.ts',
+  'api/_routes/documents/upload-intent.ts',
+  'api/_routes/documents/[documentId]/scan.ts',
+  'api/_routes/supplier/documents/[documentId]/scan.ts',
+  'api/_routes/supplier/passport/access-requests.ts',
+];
+for (const path of tenantBoundForwardRoutes) {
+  const src = read(path);
+  check(`${path}: arme le tenant actif avant fonction sensible`,
+    src.includes('resolveActiveTenant(tx, user.id')
+      && (src.includes('}, activeOrganizationId)') || src.includes('}, organizationId)'))
+      && src.includes('isTenantError('));
+}
+const scanFlow = read('api/_lib/document-scan-flow.ts');
+check('scan documentaire : les trois transactions réarment le tenant propriétaire',
+  (scanFlow.split('ownerOrganizationId);').length - 1) === 3);
+
 const supplierPassportRoute = read('api/_routes/supplier/passport.ts');
 check('supplier passport : résout un tenant supplier explicite', supplierPassportRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })"));
 check('supplier passport : arme le tenant dans le contexte SQL', supplierPassportRoute.includes('}, activeOrganizationId)'));
