@@ -94,8 +94,7 @@ BEGIN
 
   RETURN v_material;
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_material_visible_via_product(p_material_id uuid)
  RETURNS boolean
@@ -111,8 +110,7 @@ AS $function$
       AND tracefab_in_active_tenant(p.brand_organization_id)
       AND tracefab_can_access_org(p.brand_organization_id)
   );
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.tracefab_update_product_material(p_product_id uuid, p_material_id uuid, p_material_role text, p_product_version integer, p_percentage numeric, p_unit text)
  RETURNS product_materials
@@ -168,7 +166,6 @@ BEGIN
 
   RETURN v_material;
 END;
-$function$
-
+$function$;
 
 COMMIT;
