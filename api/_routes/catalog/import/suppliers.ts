@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, resolveActiveTenant } from '../../../_lib/tenant.js';
 import { parseCsvRows } from '../../../_lib/bulk-operations/csv-parser.js';
 import { bulkImportSuppliers } from '../../../_lib/bulk-operations/bulk-importer.js';
 import type { BulkSupplierImportRow } from '../../../_lib/bulk-operations/types.js';
@@ -70,9 +71,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'no_supplier_rows_provided' });
     }
 
+    const activeOrganizationId = brandOrganizationId;
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      return await bulkImportSuppliers(tx, brandOrganizationId, rows, user.id);
-    });
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['brand'], roles: ['owner', 'admin', 'manager'] });
+      return await bulkImportSuppliers(tx, tenant.organizationId, rows, user.id);
+    }, activeOrganizationId);
 
     return json(res, 200, {
       message: 'bulk_supplier_import_completed',
@@ -82,6 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
     }
+    if (isTenantError(err)) return json(res, err.status, { error: err.message });
     const sqlError = sqlBusinessError(err);
     if (sqlError) {
       return json(res, sqlError.status, { error: sqlError.error });

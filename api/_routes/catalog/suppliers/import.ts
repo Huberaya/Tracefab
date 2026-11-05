@@ -6,6 +6,7 @@ import { withTracefabUserContext } from '../../../_lib/context.js';
 import { isUuid } from '../../../_lib/products.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, resolveActiveTenant } from '../../../_lib/tenant.js';
 import { manualInvitationFallbackAllowed, sendSupplierInvitationEmail } from '../../../_lib/email.js';
 import { CATALOG_IMPORT_MAX_BYTES } from '../../../_lib/catalog-importer.js';
 import { SUPPLIER_IMPORT_MAX_ROWS, validateSupplierCsv, type SupplierImportIssue, type SupplierImportRow } from '../../../_lib/supplier-importer.js';
@@ -89,7 +90,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sourceSha256 = createHash('sha256').update(body.csvContent, 'utf8').digest('hex');
     const validation = validateSupplierCsv(body.csvContent);
 
+    const activeOrganizationId = targetOrgId;
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['brand'], roles: ['owner', 'admin', 'manager'] });
+      const targetOrgId = tenant.organizationId;
       const memberships = await tx.organization_memberships.findMany({
         where: {
           user_id: user.id,
@@ -100,14 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         select: { organization_id: true },
       });
       const organizationIds = memberships.map((membership) => membership.organization_id);
-      if (!organizationIds.includes(body.brandOrganizationId!)) return null;
+      if (!organizationIds.includes(targetOrgId)) return null;
       const supplierEmails = validation.rows.map((row) => row.email);
       const existingInvitations = supplierEmails.length
         ? await tx.$queryRaw<Array<{ email: string }>>`
           SELECT lower(i.email) AS email
           FROM organization_invitations i
           JOIN brand_supplier_relationships r ON r.id = i.relationship_id
-          WHERE r.brand_organization_id = ${body.brandOrganizationId!}::uuid
+          WHERE r.brand_organization_id = ${targetOrgId}::uuid
             AND lower(i.email) = ANY(${supplierEmails}::text[])
             AND i.accepted_at IS NULL
             AND i.expires_at > now()
@@ -130,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (sourceIdempotencyKey) {
         const replay = await tx.$queryRaw<ImportJob[]>`
           SELECT * FROM tracefab_catalog_import_jobs
-          WHERE organization_id = ${body.brandOrganizationId!}::uuid AND idempotency_key = ${sourceIdempotencyKey}
+          WHERE organization_id = ${targetOrgId}::uuid AND idempotency_key = ${sourceIdempotencyKey}
           LIMIT 1
         `;
         if (replay[0]) return { job: jobPayload(replay[0], true), deliveries: [] as PendingInvitation[], brandName: '' };
@@ -141,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           organization_id, actor_user_id, import_kind, source_filename, source_sha256,
           idempotency_key, status, total_rows, accepted_rows, rejected_rows, error_rows
         ) VALUES (
-          ${body.brandOrganizationId!}::uuid, ${user.id}::uuid, 'suppliers', ${sourceFilename}, ${sourceSha256},
+          ${targetOrgId}::uuid, ${user.id}::uuid, 'suppliers', ${sourceFilename}, ${sourceSha256},
           ${sourceIdempotencyKey}, 'processing', ${totalRows}, 0, ${rejectedRows}, ${JSON.stringify(errors)}::jsonb
         )
         ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
@@ -151,14 +155,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!job && sourceIdempotencyKey) {
         const replay = await tx.$queryRaw<ImportJob[]>`
           SELECT * FROM tracefab_catalog_import_jobs
-          WHERE organization_id = ${body.brandOrganizationId!}::uuid AND idempotency_key = ${sourceIdempotencyKey}
+          WHERE organization_id = ${targetOrgId}::uuid AND idempotency_key = ${sourceIdempotencyKey}
           LIMIT 1
         `;
         if (replay[0]) return { job: jobPayload(replay[0], true), deliveries: [] as PendingInvitation[], brandName: '' };
       }
       if (!job) throw new Error('supplier_import_job_creation_failed');
 
-      const brand = await tx.organizations.findUnique({ where: { id: body.brandOrganizationId! }, select: { display_name: true, legal_name: true } });
+      const brand = await tx.organizations.findUnique({ where: { id: targetOrgId }, select: { display_name: true, legal_name: true } });
       const brandName = brand?.display_name || brand?.legal_name || 'A Tracefab organization';
       const deliveries: PendingInvitation[] = [];
       for (const row of importableRows) {
@@ -166,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const tokenHash = createHash('sha256').update(token).digest('hex');
         const rows = await tx.$queryRaw<Array<{ expires_at: Date }>>`
           SELECT expires_at FROM tracefab_invite_supplier(
-            ${body.brandOrganizationId!}::uuid, ${row.email}, ${row.legalName}, ${row.displayName}, ${row.countryCode}, ${tokenHash}
+            ${targetOrgId}::uuid, ${row.email}, ${row.legalName}, ${row.displayName}, ${row.countryCode}, ${tokenHash}
           )
         `;
         if (!rows[0]) throw new Error('supplier_invitation_creation_failed');
@@ -182,11 +186,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       await tx.$executeRaw`
         INSERT INTO audit_logs (organization_id, actor_user_id, action, entity_type, entity_id, metadata)
-        VALUES (${body.brandOrganizationId!}::uuid, ${user.id}::uuid, 'supplier_bulk_import_completed', 'catalog_import_job', ${job.id}::uuid,
+        VALUES (${targetOrgId}::uuid, ${user.id}::uuid, 'supplier_bulk_import_completed', 'catalog_import_job', ${job.id}::uuid,
           ${JSON.stringify({ sourceSha256, filename: sourceFilename, totalRows, acceptedRows, rejectedRows })}::jsonb)
       `;
       return { job: jobPayload(updated[0] ?? job), deliveries, brandName };
-    });
+    }, activeOrganizationId);
 
     if (!result) return json(res, 403, { error: 'brand_organization_access_denied' });
     if ('preview' in result) return json(res, 200, result.preview);
@@ -202,6 +206,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 202, { job: result.job, delivery: { sent, pending, failed, total: result.deliveries.length } });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return json(res, 409, { error: 'active_supplier_invitation_exists' });
