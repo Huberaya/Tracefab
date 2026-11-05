@@ -198,9 +198,9 @@ try {
     [tcRecette, `MT-${suffixe}`, orgRecette, orgGinger, userMulti]);
   await proprio.query(
     `insert into certifications
-      (id, owner_organization_id, standard_name, standard_code, issuer_name, certificate_number, status, created_by)
-     values ($1, $2, 'Synthetic standard', 'SYNTHETIC', 'Synthetic issuer', $3, 'declared', $4)`,
-    [certificationRecette, orgRecette, `CERT-MT-${suffixe}`, userMulti]);
+      (id, owner_organization_id, supplier_id, product_id, standard_name, standard_code, issuer_name, certificate_number, status, created_by)
+     values ($1, $2, $3, $4, 'Synthetic standard', 'SYNTHETIC', 'Synthetic issuer', $5, 'declared', $6)`,
+    [certificationRecette, orgRecette, supplierRecette, prodRecette, `CERT-MT-${suffixe}`, userMulti]);
   await proprio.query(
     `insert into data_quality_issues
       (id, owner_organization_id, rule_key, rule_version, severity, message)
