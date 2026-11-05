@@ -201,6 +201,39 @@ try {
     'select tracefab_update_product_material($1::uuid, $2::uuid, $3, $4, $5, $6)',
     [prodRecette, materialRecette, 'main', 1, 50, '%']);
 
+  // Les fonctions exposées par les autres parcours produit/DPP/PEF doivent
+  // refuser le même produit B avant toute lecture ou mutation métier.
+  await assertTenantGuard('tracefab_compute_dpp_readiness',
+    'select tracefab_compute_dpp_readiness($1::uuid, $2, $3)',
+    [prodRecette, 'textile_dpp', '1']);
+  await assertTenantGuard('tracefab_compute_product_quality',
+    'select tracefab_compute_product_quality($1::uuid, $2)',
+    [prodRecette, 'active-tenant-negative']);
+  await assertTenantGuard('tracefab_calculate_product_pef',
+    'select tracefab_calculate_product_pef($1::uuid, null::numeric, null::text)',
+    [prodRecette]);
+  await assertTenantGuard('tracefab_get_product_traceability',
+    'select tracefab_get_product_traceability($1::uuid)',
+    [prodRecette]);
+  await assertTenantGuard('tracefab_mark_dpp_ready_to_publish',
+    'select tracefab_mark_dpp_ready_to_publish($1::uuid)',
+    [dppRecette]);
+  await assertTenantGuard('tracefab_set_dpp_publication',
+    'select tracefab_set_dpp_publication($1::uuid, $2, null::text)',
+    [prodRecette, 'suspend']);
+  await assertTenantGuard('tracefab_start_product_revision',
+    'select tracefab_start_product_revision($1::uuid)',
+    [prodRecette]);
+  await assertTenantGuard('tracefab_reconcile_mass_balance',
+    'select tracefab_reconcile_mass_balance($1::uuid, 0)',
+    [prodRecette]);
+  await assertTenantGuard('tracefab_create_product',
+    'select tracefab_create_product($1::uuid, $2, $3, $4, $5)',
+    [orgRecette, 'NEGATIVE-TENANT', 'Synthetic negative product', 'tshirt', null]);
+  await assertTenantGuard('tracefab_bind_schema',
+    'select tracefab_bind_schema($1, $2, $3, $4::uuid)',
+    ['tenant-negative-schema', '1', 'product', prodRecette]);
+
   /* -- 1. hors contexte, aucun locataire --------------------------------- */
   {
     const { rows: [r] } = await app.query('select tracefab_active_organization_id() as active');
