@@ -63,6 +63,13 @@ function controle(libelle, condition, detail) {
     migrationDppPresente && texte.includes(migrationDpp),
     migrationDppPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
   );
+  const migrationDefiners = '20261105170000_active_tenant_security_definer_guards';
+  const migrationDefinersPresente = readdirSync('prisma/migrations').includes(migrationDefiners);
+  controle(
+    'la migration des 19 fonctions SECURITY DEFINER est référencée dans le registre',
+    migrationDefinersPresente && texte.includes(migrationDefiners),
+    migrationDefinersPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const migrationMaterials = '20261105160000_active_tenant_product_materials_rls';
   const migrationMaterialsPresente = readdirSync('prisma/migrations').includes(migrationMaterials);
   controle(
